@@ -83,6 +83,9 @@
     <version id="scoring_version" stability="may-change">
       Bumped on scoring formula change (salience weights, tension/support, status mapping). Invalidates semantic_layers and today_payloads.
     </version>
+    <version id="scoring_canon_version" stability="may-change">
+      Bumped on changes to grace/canon/spheres.v1.yml, dignities.v1.yml, aspect_rules.v1.yml, or activation_rules.v1.yml. Invalidates derived scores, semantic_layers, and today_payloads without changing frontend contracts.
+    </version>
     <version id="prompt_version" stability="may-change">
       Bumped on LLM prompt or model change. Invalidates today_payloads.
     </version>
@@ -96,7 +99,7 @@
       <rule>natal change → user's natal_snapshots → period_snapshots → daily_snapshots → semantic_layers → today_payloads</rule>
       <rule>current_location change → period_snapshots → daily_snapshots → semantic_layers → today_payloads</rule>
       <rule>calculation_version bump → all snapshots</rule>
-      <rule>normalization/scoring_version bump → semantic_layers + today_payloads</rule>
+      <rule>normalization/scoring_version/scoring_canon_version bump → semantic_layers + today_payloads</rule>
       <rule>prompt_version or content_version bump → today_payloads only</rule>
     </invalidation-rules>
   </versions>
@@ -120,6 +123,12 @@
     <adaptation id="LA-FIXTURES-FIRST" canon-ref="GRACE §12.2">
       Pilot slice (PHASE-1) returns fixture-backed payloads from real backend. Justification: validates auth/access/contract path independently of the heavy astro+LLM pipeline.
     </adaptation>
+    <adaptation id="LA-SOLARSAGE-REFERENCE-COLLECTOR" canon-ref="GRACE §11">
+      apps/solarsage/collect_solarsage_western_deep.py is accepted as a temporary reference collector, not the final product service. It may remain a large single-shot CLI until W-SOLARSAGE-SVC splits it, but all future code must preserve parity against its approved golden outputs before replacing it.
+    </adaptation>
+    <adaptation id="LA-SCORING-KNOWLEDGE-AS-CANON" canon-ref="GRACE §13">
+      Astrological scoring knowledge lives in versioned canon YAML, not in Python magic constants. This local adaptation exists because scoring quality must be reviewable by agents and humans without reading implementation code.
+    </adaptation>
   </local-adaptations>
 
   <!-- =================================================================== -->
@@ -134,7 +143,7 @@
     <store name="natal_snapshots" cache="true">user_id × input_hash × calculation_version → payload_json.</store>
     <store name="period_snapshots" cache="true">user_id × period_key × input_hash × calculation_version → payload_json.</store>
     <store name="daily_snapshots" cache="true">user_id × date × input_hash × calculation_version → payload_json.</store>
-    <store name="semantic_layers" cache="true">user_id × date × normalization_version × scoring_version → payload_json.</store>
+    <store name="semantic_layers" cache="true">user_id × date × normalization_version × scoring_version × scoring_canon_version → payload_json.</store>
     <store name="today_payloads" cache="true">user_id × date × contract_version × interpretation_version × prompt_version × content_version → payload_json.</store>
     <store name="evening_checkins">user_id × date unique. mood/accuracy/energy/tags/note.</store>
     <store name="microcopy_misses">date × event_key × count. For dictionary growth.</store>
@@ -173,6 +182,8 @@
     <contract id="C-CHECKIN" doc="docs/13 §3" schema="apps/api/app/schemas/checkin.py (W-1.5)" />
     <contract id="C-ASTRO-SIGNAL" doc="docs/04 §4" internal="true" />
     <contract id="C-SEMANTIC-LAYER" doc="docs/04 §14" internal="true" />
+    <contract id="C-SCORING-CANON" doc="grace/canon/{spheres,dignities,aspect_rules,activation_rules}.v1.yml" internal="true" />
+    <contract id="C-ACTIVATION-LAYER" doc="docs/14 §2" internal="true" />
     <contract id="C-LLM-RESPONSE" doc="docs/07 LLM service" internal="true" />
     <contract id="C-MICROCOPY-ITEM" doc="docs/12 §5" />
     <contract id="C-SOLARSAGE" doc="docs/11" internal="true" />
@@ -186,6 +197,8 @@
     <ban>Sending raw SolarSage or internal scoring fields to LLM.</ban>
     <ban>Mixing raw and curated data in the same cache row.</ban>
     <ban>Adding astrology interpretation in frontend code.</ban>
+    <ban>Letting the LLM calculate chart factors, aspects, dignity, lots, activations, or scores.</ban>
+    <ban>Adding new scoring sphere tables, dignity modifiers, aspect thresholds, convergence weights, or top-N cutoffs directly in Python/TypeScript instead of versioned grace/canon/*.yml.</ban>
     <ban>Using localStorage for primary persistence.</ban>
     <ban>Free tier without owner sign-off.</ban>
     <ban>Computing dayStatus on the frontend.</ban>

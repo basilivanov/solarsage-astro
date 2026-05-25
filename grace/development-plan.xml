@@ -289,6 +289,18 @@
   <phase id="PHASE-3-SIDECAR" priority="P0">
     <goal>Rewrite SolarSage CLI as HTTP sidecar per docs/11. Backend becomes its only client.</goal>
 
+    <wave id="W-3.0">
+      <title>Reference collector boundary and parity fixture freeze</title>
+      <modules>M-SOLARSAGE-REFERENCE-COLLECTOR · M-SIDECAR</modules>
+      <write-scope>docs/11_SolarSage_rewrite_TZ.md · docs/14_SolarSage_scoring_rewrite_TZ.md · grace/verification-matrix.md · apps/solarsage/tests/fixtures/*</write-scope>
+      <freeze-scope>collector implementation unless fixing reproducibility defects found by fixture generation</freeze-scope>
+      <exit-criteria>
+        <criterion>Existing deep collector is declared as reference-only, not a product runtime.</criterion>
+        <criterion>Golden JSON fixtures exist for controller-approved charts and target dates.</criterion>
+        <criterion>Future sidecar/split work has a parity gate against the golden fixtures.</criterion>
+      </exit-criteria>
+    </wave>
+
     <wave id="W-3.1">
       <title>Sidecar scaffolding (FastAPI app, /v1/health, settings, ephemerides path)</title>
       <modules>M-SIDECAR</modules>
@@ -330,6 +342,18 @@
   <phase id="PHASE-4-NORMALIZATION-SCORING" priority="P0">
     <goal>Real AstroSignal[] + SemanticLayer; dayStatus computed by backend.</goal>
 
+    <wave id="W-4.0">
+      <title>Scoring canon data schemas and v1 YAML</title>
+      <modules>M-SCORING-CANON · M-SCORING · M-ACTIVATION-LAYER</modules>
+      <write-scope>grace/canon/spheres.v1.yml · grace/canon/dignities.v1.yml · grace/canon/aspect_rules.v1.yml · grace/canon/activation_rules.v1.yml · apps/api/tests/test_scoring_canon.py</write-scope>
+      <freeze-scope>apps/api/app/services/scoring_service.py · apps/solarsage/collect_solarsage_western_deep.py</freeze-scope>
+      <exit-criteria>
+        <criterion>Canon YAML validates against schemas and includes a version field.</criterion>
+        <criterion>No scoring consumer can start if required canon files are missing or invalid.</criterion>
+        <criterion>Static check prevents new hardcoded sphere tables, dignity constants, aspect thresholds, and top-N aspect cutoffs outside canon data.</criterion>
+      </exit-criteria>
+    </wave>
+
     <wave id="W-4.1">
       <title>Normalization to AstroSignal[]</title>
       <modules>M-NORMALIZATION</modules>
@@ -337,9 +361,11 @@
     </wave>
 
     <wave id="W-4.2">
-      <title>Scoring, dayQuality, dayStatus, top flags</title>
-      <modules>M-SCORING · M-FLAGS</modules>
+      <title>Activation layer, convergence bonus, scoring, dayQuality, dayStatus, top flags</title>
+      <modules>M-ACTIVATION-LAYER · M-SCORING · M-FLAGS</modules>
       <exit-criteria>
+        <criterion>Activation layer folds profection, firdaria, solar return, solar arc, progressions, and target-date transits into per-sphere evidence.</criterion>
+        <criterion>Convergence bonus is additive and requires at least two independent techniques pointing to the same planet/house/sphere.</criterion>
         <criterion>Status mapping matches docs/04 §11 table.</criterion>
         <criterion>flags count constraint (2..4) enforced.</criterion>
       </exit-criteria>
@@ -477,6 +503,17 @@
       </exit-criteria>
       <write-scope>docs/DEPLOY.md · scripts/deploy.sh · grace/canon/* (env-var canon section)</write-scope>
     </wave>
+    <wave id="W-SOLARSAGE-SVC" status="anchor-only">
+      <title>Split reference collector into product SolarSage service modules</title>
+      <rationale>The current deep collector is valuable as coverage/reference, but product runtime needs a service split: client, raw collectors, derived calculations, scoring, special points, JSON writer, and cache-friendly API surfaces.</rationale>
+      <entry-criteria>W-3.0 parity fixtures merged · W-4.0 scoring canon data merged</entry-criteria>
+      <exit-criteria>
+        <criterion>Collector logic is split into modules with file/function size guardrails respected.</criterion>
+        <criterion>/natal, /period, /day or equivalent service entrypoints reuse the same calculation core.</criterion>
+        <criterion>Golden fixtures show no unapproved calculation drift from the reference collector.</criterion>
+      </exit-criteria>
+      <write-scope>apps/solarsage/** · apps/api/app/services/solarsage_client.py · apps/api/tests/solarsage/*</write-scope>
+    </wave>
   </future-waves>
 
   <!-- =================================================================== -->
@@ -487,6 +524,8 @@
     <dep from="PHASE-ACCESS" requires="PHASE-1-MOCKED-PIPELINE" />
     <dep from="PHASE-3-SIDECAR" requires="PHASE-1-MOCKED-PIPELINE" parallel-allowed="true" />
     <dep from="PHASE-4-NORMALIZATION-SCORING" requires="PHASE-3-SIDECAR" />
+    <dep from="W-4.1" requires="W-4.0" note="normalization/scoring consumers must not hardcode scoring knowledge before canon YAML exists" />
+    <dep from="W-4.2" requires="W-4.0" note="activation and scoring read canon YAML, not local constants" />
     <dep from="PHASE-5-LLM" requires="PHASE-4-NORMALIZATION-SCORING" />
     <dep from="PHASE-6-PAYMENTS" requires="PHASE-ACCESS" />
     <dep from="PHASE-7-NATAL-READING" requires="PHASE-3-SIDECAR" />

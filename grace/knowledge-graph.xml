@@ -93,6 +93,12 @@
   <!-- =================================================================== -->
   <!-- COMPUTATION PIPELINE                                                 -->
   <!-- =================================================================== -->
+  <module id="M-SOLARSAGE-REFERENCE-COLLECTOR" layer="tooling" path="apps/solarsage/collect_solarsage_western_deep.py">
+    <responsibility>Single-shot deep collector used as parity reference for SolarSage service and scoring rewrites. Not a product runtime surface.</responsibility>
+    <produces>golden raw/deep JSON fixtures</produces>
+    <version-sensitivity>calculation_version · scoring_canon_version</version-sensitivity>
+  </module>
+
   <module id="M-SOLARSAGE-CLIENT" layer="backend" path="apps/api/app/services/solarsage_client.py">
     <responsibility>HTTP client for sidecar /v1/*.</responsibility>
     <talks-to>M-SIDECAR</talks-to>
@@ -111,9 +117,22 @@
     <version-sensitivity>normalization_version</version-sensitivity>
   </module>
 
+  <module id="M-SCORING-CANON" layer="canon" path="grace/canon/spheres.v1.yml, grace/canon/dignities.v1.yml, grace/canon/aspect_rules.v1.yml, grace/canon/activation_rules.v1.yml">
+    <responsibility>Versioned scoring knowledge: sphere definitions, dignity modifiers, aspect rules, activation rules, thresholds, convergence weights.</responsibility>
+    <produces>C-SCORING-CANON</produces>
+    <version-sensitivity>scoring_canon_version</version-sensitivity>
+  </module>
+
+  <module id="M-ACTIVATION-LAYER" layer="backend" path="apps/api/app/services/activation_service.py">
+    <responsibility>Converts predictive raw factors into dated activation evidence by planet, house, lot, and sphere; computes convergence evidence before scoring.</responsibility>
+    <consumes>raw SolarSage period/daily factors · C-SCORING-CANON</consumes>
+    <produces>C-ACTIVATION-LAYER</produces>
+    <version-sensitivity>calculation_version · scoring_canon_version</version-sensitivity>
+  </module>
+
   <module id="M-SCORING" layer="backend" path="apps/api/app/services/scoring_service.py">
-    <responsibility>salience, tension/support, intensity, dayQuality → dayStatus mapping.</responsibility>
-    <version-sensitivity>scoring_version</version-sensitivity>
+    <responsibility>salience, tension/support, intensity, dayQuality → dayStatus mapping. Reads C-SCORING-CANON and C-ACTIVATION-LAYER; does not own hidden astrology constants.</responsibility>
+    <version-sensitivity>scoring_version · scoring_canon_version</version-sensitivity>
     <invariants-honored>INV-WEEK-3STATUSES</invariants-honored>
   </module>
 
@@ -185,10 +204,15 @@
     <edge from="M-DAY-SERVICE" to="M-LLM" />
     <edge from="M-DAY-SERVICE" to="M-MICROCOPY" />
     <edge from="M-DAY-SERVICE" to="M-CHECKIN" optional="true" />
+    <edge from="M-SIDECAR" to="M-SOLARSAGE-REFERENCE-COLLECTOR" via="parity-fixtures" />
     <edge from="M-CALC-PIPELINE" to="M-SOLARSAGE-CLIENT" />
     <edge from="M-SOLARSAGE-CLIENT" to="M-SIDECAR" via="HTTP" contract="C-SOLARSAGE" />
     <edge from="M-CALC-PIPELINE" to="M-NORMALIZATION" />
-    <edge from="M-NORMALIZATION" to="M-SCORING" />
+    <edge from="M-CALC-PIPELINE" to="M-ACTIVATION-LAYER" />
+    <edge from="M-NORMALIZATION" to="M-ACTIVATION-LAYER" />
+    <edge from="M-ACTIVATION-LAYER" to="M-SCORING" />
+    <edge from="M-SCORING-CANON" to="M-ACTIVATION-LAYER" />
+    <edge from="M-SCORING-CANON" to="M-SCORING" />
     <edge from="M-SCORING" to="M-FLAGS" />
     <edge from="M-SEMANTIC" to="M-SCORING" />
     <edge from="M-SEMANTIC" to="M-FLAGS" />
@@ -209,6 +233,7 @@
     <owns version="calculation_version" by="M-SIDECAR, M-CALC-PIPELINE" />
     <owns version="normalization_version" by="M-NORMALIZATION" />
     <owns version="scoring_version" by="M-SCORING, M-FLAGS, M-SEMANTIC" />
+    <owns version="scoring_canon_version" by="M-SCORING-CANON, M-ACTIVATION-LAYER, M-SCORING" />
     <owns version="prompt_version" by="M-LLM" />
     <owns version="content_version" by="M-MICROCOPY" />
     <owns version="schema_version" by="M-WEB-READINGS (natal/v1)" />
@@ -221,7 +246,7 @@
     <edge trigger="user_profiles.birth_*" invalidates="natal_snapshots → period_snapshots → daily_snapshots → semantic_layers → today_payloads (for user)" />
     <edge trigger="user_profiles.current_location | birthday_location" invalidates="period_snapshots → daily_snapshots → semantic_layers → today_payloads" />
     <edge trigger="calculation_version bump" invalidates="natal_snapshots + period_snapshots + daily_snapshots + downstream" />
-    <edge trigger="normalization_version | scoring_version bump" invalidates="semantic_layers + today_payloads" />
+    <edge trigger="normalization_version | scoring_version | scoring_canon_version bump" invalidates="semantic_layers + today_payloads" />
     <edge trigger="prompt_version | content_version bump" invalidates="today_payloads" />
     <edge trigger="contract_version bump" invalidates="today_payloads (consumers must redeploy)" />
   </invalidation-graph>

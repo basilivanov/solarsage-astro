@@ -105,6 +105,15 @@ For each contract in `technology.xml`:
 - Static check: backend code that imports anything from `lib/mocks/*` fails CI.
 - Static check: frontend code that imports anything from `apps/api/*` or references `salience|supportScore|frictionScore|shadowRisk|totalSalience` outside `node_modules` fails CI.
 - Static check: LLM prompt builder must source only from `SemanticLayer`; lint rule forbids passing raw `daily_snapshot` to prompt context.
+- Static check: scoring consumers must read sphere definitions, dignity modifiers, aspect thresholds, activation rules, and convergence weights from `grace/canon/*.yml`; new hardcoded tables or top-N aspect cutoffs fail the scoring canon gate.
+
+### SolarSage reference, scoring canon, and activation layer
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-SOLARSAGE-REFERENCE-COLLECTOR → M-SIDECAR → M-SOLARSAGE-CLIENT | Golden fixture parity. The split service must match controller-approved reference collector JSON for planets, houses, aspects, lots, special points, fixed stars, and derived raw layers within declared tolerances. | S1: Vasiliy golden chart and target date regenerate byte-stable normalized JSON except timestamp fields. S2: A high-latitude chart uses the documented house-system fallback. S3: Chiron/Nodes/Lilith/Vertex fixed-star and aspect coverage remains present after service split. |
+| M-SCORING-CANON → M-ACTIVATION-LAYER → M-SCORING | Canon YAML validates; scoring refuses to run without matching `scoring_canon_version`; activation evidence is included in debug/evidence artifacts but not exposed to frontend. | S1: changing `grace/canon/aspect_rules.v1.yml` changes `scoring_canon_version` and invalidates semantic/today caches. S2: two independent techniques pointing to the same planet/house produce convergence bonus. S3: one isolated rare factor cannot create a strong sphere claim by itself. |
+| M-SCORING → M-SEMANTIC → M-LLM | LLM receives curated interpretation inputs only; no raw SolarSage, no score internals, no self-calculated astrology. | S1: prompt payload contains semantic themes and evidence IDs, not raw ephemeris JSON. S2: generated text may interpret facts but regex gate rejects language implying the LLM calculated positions/aspects itself. |
 
 ### Version sanity
 
