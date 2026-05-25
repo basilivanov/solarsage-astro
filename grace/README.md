@@ -21,6 +21,10 @@ If a code artifact contradicts a higher-priority artifact, the higher-priority o
 | `development-plan.xml` | §13.C | Phases, waves, write-scope, freeze-scope |
 | `knowledge-graph.xml` | §13.D | Modules, dependencies, contracts, versions |
 | `verification-matrix.md` | §13.E | UC ⇄ module gates ⇄ scenarios |
+| `orchestrator/project.yml` | §10, §13 | Project-local adapter for the portable orchestration runtime |
+| `orchestrator/verification_profiles.yml` | §10, §13 | Named verifier profiles mapped to guardrails commands |
+| `orchestrator/packet.schema.json` | §10.7 | Machine-readable packet metadata contract for new packets |
+| `orchestrator/roles/*.md` | §10 | Role contracts/prompts for multi-agent execution |
 
 ## Naming conventions (semantic coordinates §6)
 
@@ -72,5 +76,6 @@ Run locally before pushing:
 ```bash
 python scripts/check_frontmatter.py     # YAML front-matter on every doc/packet
 python scripts/check_docs_manifest.py   # docs/MANIFEST.md mirrors docs/
+python scripts/check_orchestrator_contracts.py # orchestrator adapter/profile/schema/roles
 python scripts/grace_lint.py            # marker contracts in apps/api/app
 ```

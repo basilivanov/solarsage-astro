@@ -1,0 +1,16 @@
+version: 1
+profile.docs: pnpm guardrails:docs
+profile.secrets: pnpm guardrails:secrets
+profile.orchestrator: pnpm guardrails:orchestrator
+profile.contracts: pnpm guardrails:contracts
+profile.backend: pnpm guardrails:backend
+profile.backend_grace: pnpm guardrails:backend-grace
+profile.frontend: pnpm guardrails:frontend
+profile.vercel: pnpm guardrails:vercel
+profile.full: pnpm guardrails:full
+profile.strict: pnpm guardrails:strict
+default.packet: profile.full
+default.spec_only: profile.docs
+default.frontend_packet: profile.frontend
+default.backend_packet: profile.backend
+default.canon_sync_packet: profile.strict

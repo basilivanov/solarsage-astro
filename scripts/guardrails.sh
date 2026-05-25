@@ -29,13 +29,15 @@ Usage:
 Commands:
   docs       Validate docs/ front-matter and docs/MANIFEST.md sync.
   secrets    Run a lightweight accidental-secret scan on tracked files.
+  orchestrator
+             Validate GRACE orchestrator adapter, profiles, roles, schema.
   contracts  Regenerate OpenAPI/TS contracts and fail on drift.
   backend    Run GRACE lint, ruff, mypy, alembic round-trip, pytest.
   backend-grace
              Run strict backend GRACE marker lint for canon-sync waves.
   frontend   Run eslint, TypeScript check, GRACE marker gate, negative tests.
   vercel     Run the checks suitable for Vercel build: docs + secrets + frontend.
-  full       Run docs + secrets + contracts + backend + frontend.
+  full       Run docs + secrets + orchestrator + contracts + backend + frontend.
   strict     Run full + backend-grace.
 
 Dependency setup:
@@ -144,6 +146,14 @@ run_secrets() {
   echo "secret scan: OK"
 }
 
+run_orchestrator() {
+  section "orchestrator: validator self-tests"
+  python3 -m unittest "$ROOT/scripts/test_orchestrator_contracts.py" -v
+
+  section "orchestrator: project adapter"
+  python3 "$ROOT/scripts/check_orchestrator_contracts.py"
+}
+
 run_contracts() {
   section "contracts: regenerate"
   bash "$ROOT/scripts/contracts/generate.sh"
@@ -232,6 +242,7 @@ run_vercel() {
 run_full() {
   run_docs
   run_secrets
+  run_orchestrator
   run_contracts
   run_backend
   run_frontend
@@ -250,6 +261,7 @@ fi
 case "$1" in
   docs) run_docs ;;
   secrets) run_secrets ;;
+  orchestrator) run_orchestrator ;;
   contracts) run_contracts ;;
   backend) run_backend ;;
   backend-grace) run_backend_grace ;;

@@ -492,6 +492,19 @@
   <!-- FUTURE WAVES (anchors only, not yet scoped)                          -->
   <!-- =================================================================== -->
   <future-waves>
+    <wave id="W-ORCH-1" status="anchor-only">
+      <title>GRACE-ready orchestrator runtime adapter and validator</title>
+      <rationale>Before running nonstop agents on this rewrite, the project needs a portable adapter that makes packets, roles, verification profiles, evidence, and Prefect runtime bindings machine-readable.</rationale>
+      <entry-criteria>Root GRACE artifacts exist and guardrails are runnable locally.</entry-criteria>
+      <exit-criteria>
+        <criterion>grace/orchestrator/project.yml defines repo paths, runtime state, agent defaults, Prefect queues, and evidence policy.</criterion>
+        <criterion>grace/orchestrator/packet.schema.json defines the required machine contract for new packets.</criterion>
+        <criterion>grace/orchestrator/verification_profiles.yml maps verification profile names to portable guardrails commands.</criterion>
+        <criterion>Role contracts exist for architect, planner, coder, verifier, reviewer, and orchestrator.</criterion>
+        <criterion>pnpm guardrails:orchestrator passes and is included in pnpm guardrails:full.</criterion>
+      </exit-criteria>
+      <write-scope>grace/orchestrator/** · scripts/check_orchestrator_contracts.py · scripts/test_orchestrator_contracts.py · scripts/guardrails.sh · package.json · grace/*.xml · grace/verification-matrix.md</write-scope>
+    </wave>
     <wave id="W-DEPLOY" status="anchor-only">
       <title>Re-derive authoritative deployment surface (backend + frontend)</title>
       <rationale>The pre-W-1.0 deployment artifacts (docs/DEPLOY.md, scripts/deploy.sh) reference infra that no longer matches the canon: SolarSage sidecar, /opt/solarsage-astro VDS layout, systemd units astro-api/astro-worker/astro-web, apps/web/ path, and SOLARSAGE_* env-vars without canonical prefix. Both files are marked stale and guarded; they MUST NOT be used as runbooks until this wave defines the real surface.</rationale>

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/basilivanov/solarsage-astro/grace/orchestrator/packet.schema.json",
+  "title": "GRACE Controller Packet Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "status",
+    "wave",
+    "phase",
+    "modules",
+    "allowed_write_scope",
+    "frozen_scope",
+    "must_preserve",
+    "verification",
+    "expected_evidence",
+    "escalation_triggers"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^packet-[a-z0-9][a-z0-9.-]*$" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "ready",
+        "running",
+        "rework_required",
+        "blocked",
+        "accepted",
+        "closed",
+        "superseded",
+        "archived"
+      ]
+    },
+    "wave": { "type": "string", "pattern": "^W-[A-Z0-9][A-Z0-9.\\-]*$" },
+    "phase": { "type": "string", "pattern": "^(PHASE-[A-Z0-9.\\-]+|none)$" },
+    "modules": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^M-[A-Z0-9.\\-_]+$" },
+      "minItems": 1
+    },
+    "allowed_write_scope": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "frozen_scope": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "must_preserve": { "type": "array", "items": { "type": "string" } },
+    "verification": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "verification_profile": {
+      "type": "string",
+      "pattern": "^profile\\.[a-z0-9_]+$"
+    },
+    "expected_evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "escalation_triggers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "dependencies": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -14,6 +14,7 @@
     "guardrails": "bash scripts/guardrails.sh full",
     "guardrails:docs": "bash scripts/guardrails.sh docs",
     "guardrails:secrets": "bash scripts/guardrails.sh secrets",
+    "guardrails:orchestrator": "bash scripts/guardrails.sh orchestrator",
     "guardrails:contracts": "bash scripts/guardrails.sh contracts",
     "guardrails:backend": "bash scripts/guardrails.sh backend",
     "guardrails:backend-grace": "bash scripts/guardrails.sh backend-grace",

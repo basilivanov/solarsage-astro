@@ -52,6 +52,12 @@
     <invariant id="INV-SCORING-CANON-DATA">
       Scoring knowledge is canon data, not hidden code: spheres, dignity modifiers, aspect rules, activation rules, thresholds, and convergence bonuses must be versioned under grace/canon/*.yml before product scoring consumes them.
     </invariant>
+    <invariant id="INV-ORCHESTRATOR-ADAPTER">
+      Agent orchestration is configured through grace/orchestrator/*, not hidden in Prefect flows or product backend code. Prefect is runtime only; GRACE semantics live in the project adapter, packet schema, role contracts, and verification profiles.
+    </invariant>
+    <invariant id="INV-ORCHESTRATOR-SCOPE-GUARD">
+      A coder agent must not start from a packet unless the packet has allowed write scope, frozen scope, verification requirements, expected evidence, and escalation triggers. Legacy packets may be warning-only until migrated, but new packets must follow packet.schema.json.
+    </invariant>
     <invariant id="INV-VERSIONED-PAYLOAD">
       Every backend response carries meta with contract_version and applicable layer versions.
     </invariant>
@@ -254,6 +260,7 @@
     <rule id="BR-SOLARSAGE-REFERENCE-FIRST">The existing deep SolarSage collector remains the reference implementation until parity tests prove the service/split implementation is equivalent on controller-approved golden charts.</rule>
     <rule id="BR-SCORING-CONVERGENCE">Sphere salience for time-sensitive product output must include an activation/convergence layer; predictive raw factors cannot remain unused if they are collected and relevant to the target date.</rule>
     <rule id="BR-NO-HARDCODED-SCORING-KNOWLEDGE">New scoring code must not introduce hardcoded sphere tables, dignity constants, aspect thresholds, or top-N aspect cutoffs outside the versioned canon data files.</rule>
+    <rule id="BR-ORCHESTRATOR-PORTABLE">The orchestrator must be portable between projects: project-specific facts live under grace/orchestrator/* and generic runtime code must consume them through stable interfaces.</rule>
   </business-rules>
 
   <!-- =================================================================== -->

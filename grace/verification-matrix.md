@@ -115,6 +115,14 @@ For each contract in `technology.xml`:
 | M-SCORING-CANON → M-ACTIVATION-LAYER → M-SCORING | Canon YAML validates; scoring refuses to run without matching `scoring_canon_version`; activation evidence is included in debug/evidence artifacts but not exposed to frontend. | S1: changing `grace/canon/aspect_rules.v1.yml` changes `scoring_canon_version` and invalidates semantic/today caches. S2: two independent techniques pointing to the same planet/house produce convergence bonus. S3: one isolated rare factor cannot create a strong sphere claim by itself. |
 | M-SCORING → M-SEMANTIC → M-LLM | LLM receives curated interpretation inputs only; no raw SolarSage, no score internals, no self-calculated astrology. | S1: prompt payload contains semantic themes and evidence IDs, not raw ephemeris JSON. S2: generated text may interpret facts but regex gate rejects language implying the LLM calculated positions/aspects itself. |
 
+### GRACE orchestrator readiness
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-GRACE-PROJECT-ADAPTER → M-GRACE-ORCHESTRATOR | `pnpm guardrails:orchestrator` validates project.yml, packet schema, verification profiles, role contracts, packet frontmatter, and legacy packet warnings. | S1: missing `agent_command_default` in `project.yml` fails. S2: non-portable verification command outside guardrails fails. S3: legacy packets warn but do not block until migrated. |
+| M-GRACE-PACKET-SCHEMA → M-GRACE-ORCHESTRATOR | New executable packets must have allowed scope, frozen scope, verification, expected evidence, and escalation triggers before coder launch. | S1: packet without `Frozen / Out Of Scope` is rejected for new-packet mode. S2: planner output references `profile.frontend`; verifier resolves it to `pnpm guardrails:frontend`. |
+| M-GRACE-ROLES → M-GRACE-ORCHESTRATOR | Every role prompt has Role, Inputs, Outputs, Hard Constraints, and machine-readable FINAL marker. | S1: coder role missing allowed-scope hard constraint fails role contract review. S2: reviewer verdict without `FINAL_GRACE_REVIEWER_VERDICT_JSON` fails artifact parse. |
+
 ### Version sanity
 
 - On every CI run: load latest payload, ensure `meta.contract_version` matches frontend's expected; mismatch fails build.

@@ -164,6 +164,37 @@
   </module>
 
   <!-- =================================================================== -->
+  <!-- AGENT ORCHESTRATION                                                  -->
+  <!-- =================================================================== -->
+  <module id="M-GRACE-ORCHESTRATOR" layer="tooling" path="external runtime + grace/orchestrator/*">
+    <responsibility>Coordinates feature, wave, packet, role, verification, rework, and evidence lifecycle. Prefect is only the execution runtime behind this contract.</responsibility>
+    <consumes>C-GRACE-ORCHESTRATOR-PROJECT · C-GRACE-PACKET-SCHEMA · C-GRACE-VERIFICATION-PROFILES</consumes>
+  </module>
+
+  <module id="M-GRACE-PROJECT-ADAPTER" layer="canon" path="grace/orchestrator/project.yml">
+    <responsibility>Project-specific runtime adapter: paths, default branch, runtime state dirs, Prefect queues, Codex defaults, evidence policy.</responsibility>
+    <produces>C-GRACE-ORCHESTRATOR-PROJECT</produces>
+  </module>
+
+  <module id="M-GRACE-ROLES" layer="canon" path="grace/orchestrator/roles/*.md">
+    <responsibility>Role contracts/prompts for architect, planner, coder, verifier, reviewer, and orchestrator.</responsibility>
+  </module>
+
+  <module id="M-GRACE-PACKET-SCHEMA" layer="canon" path="grace/orchestrator/packet.schema.json">
+    <responsibility>Machine-readable required packet fields for new executable packets.</responsibility>
+    <produces>C-GRACE-PACKET-SCHEMA</produces>
+  </module>
+
+  <module id="M-GRACE-VERIFICATION-PROFILES" layer="canon" path="grace/orchestrator/verification_profiles.yml">
+    <responsibility>Maps verifier profile names to portable guardrails commands.</responsibility>
+    <produces>C-GRACE-VERIFICATION-PROFILES</produces>
+  </module>
+
+  <module id="M-GRACE-ORCHESTRATOR-GATE" layer="tooling" path="scripts/check_orchestrator_contracts.py">
+    <responsibility>Static gate proving project adapter, profiles, roles, packet schema, and packet frontmatter are machine-readable.</responsibility>
+  </module>
+
+  <!-- =================================================================== -->
   <!-- SIDECAR                                                              -->
   <!-- =================================================================== -->
   <module id="M-SIDECAR" layer="sidecar" path="apps/solarsage/*">
@@ -217,6 +248,13 @@
     <edge from="M-SEMANTIC" to="M-SCORING" />
     <edge from="M-SEMANTIC" to="M-FLAGS" />
     <edge from="M-LLM" to="M-SEMANTIC" />
+    <edge from="M-GRACE-ORCHESTRATOR" to="M-GRACE-PROJECT-ADAPTER" />
+    <edge from="M-GRACE-ORCHESTRATOR" to="M-GRACE-ROLES" />
+    <edge from="M-GRACE-ORCHESTRATOR" to="M-GRACE-PACKET-SCHEMA" />
+    <edge from="M-GRACE-ORCHESTRATOR" to="M-GRACE-VERIFICATION-PROFILES" />
+    <edge from="M-GRACE-ORCHESTRATOR-GATE" to="M-GRACE-PROJECT-ADAPTER" />
+    <edge from="M-GRACE-ORCHESTRATOR-GATE" to="M-GRACE-PACKET-SCHEMA" />
+    <edge from="M-GRACE-ORCHESTRATOR-GATE" to="M-GRACE-VERIFICATION-PROFILES" />
     <edge from="M-WEB-CALENDAR" to="M-CALENDAR" via="HTTP" contract="C-CALENDAR-PAYLOAD" />
     <edge from="M-WEB-PROFILE" to="M-PROFILE" via="HTTP" contract="C-PROFILE-PAYLOAD" />
     <edge from="M-AUTH-TG" to="users-table" />

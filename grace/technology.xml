@@ -41,6 +41,7 @@
     </llm>
     <infra>
       <orchestration>docker-compose for dev, systemd units for VDS</orchestration>
+      <agent-orchestration>Prefect runtime + project-local GRACE adapter under grace/orchestrator/*</agent-orchestration>
       <reverse-proxy>None at MVP (frontend serves itself, API on its own port)</reverse-proxy>
     </infra>
   </stack>
@@ -187,6 +188,9 @@
     <contract id="C-LLM-RESPONSE" doc="docs/07 LLM service" internal="true" />
     <contract id="C-MICROCOPY-ITEM" doc="docs/12 §5" />
     <contract id="C-SOLARSAGE" doc="docs/11" internal="true" />
+    <contract id="C-GRACE-ORCHESTRATOR-PROJECT" doc="grace/orchestrator/project.yml" internal="true" />
+    <contract id="C-GRACE-PACKET-SCHEMA" doc="grace/orchestrator/packet.schema.json" internal="true" />
+    <contract id="C-GRACE-VERIFICATION-PROFILES" doc="grace/orchestrator/verification_profiles.yml" internal="true" />
   </contracts>
 
   <!-- =================================================================== -->
@@ -199,6 +203,8 @@
     <ban>Adding astrology interpretation in frontend code.</ban>
     <ban>Letting the LLM calculate chart factors, aspects, dignity, lots, activations, or scores.</ban>
     <ban>Adding new scoring sphere tables, dignity modifiers, aspect thresholds, convergence weights, or top-N cutoffs directly in Python/TypeScript instead of versioned grace/canon/*.yml.</ban>
+    <ban>Encoding GRACE packet semantics only inside Prefect flow code. Prefect may execute, but the packet/schema/role/verification truth must remain in grace/orchestrator/*.</ban>
+    <ban>Starting coder agents on packets that fail the orchestrator contract gate.</ban>
     <ban>Using localStorage for primary persistence.</ban>
     <ban>Free tier without owner sign-off.</ban>
     <ban>Computing dayStatus on the frontend.</ban>
