@@ -41,7 +41,7 @@ pnpm contracts:generate
 
 Это эквивалентно `bash scripts/contracts/generate.sh`. Скрипт идемпотентен:
 повторный запуск без изменений Pydantic-моделей даёт байт-в-байт тот же
-результат. CI в `.github/workflows/grace-gate.yml` запускает
+результат. Переносимый guardrail запускает
 
 ```bash
 pnpm contracts:check
@@ -49,7 +49,9 @@ pnpm contracts:check
 
 — это та же генерация плюс `git diff --exit-code` по
 `packages/contracts/openapi.json` и `packages/contracts/_generated.ts`.
-Любой drift между Pydantic и закоммиченными артефактами роняет PR.
+Любой drift между Pydantic и закоммиченными артефактами роняет verifier/CI.
+Пока v0 блокирует `.github/workflows/*`, этот gate вызывается через
+`scripts/guardrails.sh`, а не через GitHub Actions workflow.
 
 ## Правила
 

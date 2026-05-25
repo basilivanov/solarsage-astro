@@ -2,11 +2,25 @@
   "name": "my-project",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "contracts:generate": "bash scripts/contracts/generate.sh",
+    "contracts:check": "bash scripts/contracts/generate.sh && git diff --exit-code -- packages/contracts/openapi.json packages/contracts/_generated.ts",
+    "guardrails": "bash scripts/guardrails.sh full",
+    "guardrails:docs": "bash scripts/guardrails.sh docs",
+    "guardrails:secrets": "bash scripts/guardrails.sh secrets",
+    "guardrails:contracts": "bash scripts/guardrails.sh contracts",
+    "guardrails:backend": "bash scripts/guardrails.sh backend",
+    "guardrails:backend-grace": "bash scripts/guardrails.sh backend-grace",
+    "guardrails:frontend": "bash scripts/guardrails.sh frontend",
+    "guardrails:vercel": "bash scripts/guardrails.sh vercel",
+    "guardrails:full": "bash scripts/guardrails.sh full",
+    "guardrails:strict": "bash scripts/guardrails.sh strict"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

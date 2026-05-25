@@ -1,8 +1,8 @@
 # Manifest
 
 > Source of truth for the contents of `docs/`. Every `*.md` in this directory
-> (except this file) MUST be listed below. The list is verified in CI by
-> `scripts/check_docs_manifest.py`. Every file must also carry a YAML
+> (except this file) MUST be listed below. The list is verified by
+> `pnpm guardrails:docs` (`scripts/check_docs_manifest.py`). Every file must also carry a YAML
 > front-matter block validated by `scripts/check_frontmatter.py`.
 
 ## Active
@@ -19,6 +19,7 @@
 - `10_GRACE_Project_Agent_Guide.md`
 - `GRACE_CANON.md`
 - `README_Структура_документации.md`
+- `15_CI_без_GitHub_Actions_из_v0.md`
 
 ## Planned (target waves)
 

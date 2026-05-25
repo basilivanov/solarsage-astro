@@ -33,9 +33,14 @@ scripts/contracts/
   export_openapi.py             python -m → mounts FastAPI app, dumps openapi
   generate.sh                   export_openapi.py + npx openapi-typescript
 
-.github/workflows/
-  grace-gate.yml                CI: ruff, mypy, alembic, pytest,
-                                contracts:check (Gate 6, Option B drift gate)
+scripts/guardrails.sh           portable verification entrypoint. Used by
+                                local runs, Vercel, Prefect/GRACE verifier,
+                                and any future CI provider.
+
+.github/
+  CODEOWNERS                    ownership metadata
+  pull_request_template.md      PR review template
+  workflows/                    intentionally absent while v0 sync is active
 
 grace/packets/
   W-1.1.md                      backend bootstrap packet (Decision filled,
@@ -46,7 +51,7 @@ grace/packets/
 bootstrap.sh                    one-shot local verification (see below)
 MANIFEST.md                     this file
 package.json                    root scripts: contracts:generate,
-                                contracts:check, lint
+                                contracts:check, guardrails:*
 ```
 
 ## Entry points
@@ -54,7 +59,10 @@ package.json                    root scripts: contracts:generate,
 ```
 bash bootstrap.sh               # full local verification (W-1.1 + W-1.1B)
 pnpm contracts:generate         # regenerate openapi.json + _generated.ts
-pnpm contracts:check            # drift gate (matches CI Gate 6)
+pnpm contracts:check            # contract drift gate
+pnpm guardrails:vercel          # docs + secrets + frontend checks for Vercel
+pnpm guardrails:full            # full verifier profile for Prefect/GRACE
+pnpm guardrails:strict          # full + backend GRACE marker lint
 cd apps/api && pytest -q        # backend tests only
 ```
 
@@ -67,8 +75,8 @@ cd apps/api && pytest -q        # backend tests only
   validation (forms) under `lib/contracts/forms/*.ts`. As of W-1.1B that
   directory is empty — first form will land in W-1.4.
 - **No hand-edits in `packages/contracts/openapi.json` or
-  `_generated.ts`.** CI Gate 6 fails any such PR via
-  `git diff --exit-code`.
+  `_generated.ts`.** `pnpm guardrails:contracts` fails on drift via
+  `git diff --exit-code`; future CI must call this same command.
 - **Forbidden router imports** (until their owning waves land):
   `app.api.day`, `app.api.calendar`, `app.api.profile`, `app.api.readings`,
   `app.api.auth`. Bootstrap.sh greps for these.
