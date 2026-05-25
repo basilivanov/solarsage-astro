@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GRACE §13.D — Knowledge Graph
+  Modules, their inputs/outputs, contracts, version sensitivities, owners.
+  Source: docs/07 (services), docs/04 (pipeline), docs/05 (contracts), docs/09 (transfer).
+-->
+<knowledge-graph project="astro-today" canon="GRACE_CANON.md">
+
+  <!-- =================================================================== -->
+  <!-- FRONTEND MODULES                                                     -->
+  <!-- =================================================================== -->
+  <module id="M-WEB-SHELL" layer="frontend" path="app/layout.tsx, app/(app)/*">
+    <responsibility>Next.js app shell, fonts, theme, bottom nav, route mapping for /day/:date, /calendar, /readings, /profile.</responsibility>
+    <consumes>nothing (renderer only)</consumes>
+    <produces>UI</produces>
+  </module>
+
+  <module id="M-WEB-DAY" layer="frontend" path="app/(app)/day/[date]/*, components/today/*">
+    <responsibility>Today screen rendering: top flags, reading paragraphs, why-for-me inline, week strip, locked preview.</responsibility>
+    <consumes>C-TODAY-PAYLOAD</consumes>
+    <reads-from>M-WEB-API-CLIENT</reads-from>
+    <invariants-honored>INV-INLINE-WHY · INV-WEEK-3STATUSES · INV-FRONT-NO-INTERPRET</invariants-honored>
+  </module>
+
+  <module id="M-WEB-CALENDAR" layer="frontend" path="app/(app)/calendar/*, components/calendar/*">
+    <consumes>C-CALENDAR-PAYLOAD</consumes>
+    <invariants-honored>INV-CALENDAR-NAV</invariants-honored>
+  </module>
+
+  <module id="M-WEB-READINGS" layer="frontend" path="app/(app)/readings/*">
+    <consumes>C-READINGS-PAYLOAD · C-NATAL-PAYLOAD</consumes>
+    <note>Generic block renderer; unknown block.type → graceful skip (LA-FRONT-GRACEFUL-SKIP).</note>
+  </module>
+
+  <module id="M-WEB-PROFILE" layer="frontend" path="app/(app)/profile/*">
+    <consumes>C-PROFILE-PAYLOAD</consumes>
+  </module>
+
+  <module id="M-WEB-API-CLIENT" layer="frontend" path="lib/api/*">
+    <responsibility>Single typed entrypoint to backend; SWR hooks; switches between fixtures and real API by NEXT_PUBLIC_USE_FIXTURES.</responsibility>
+    <consumes>all client-facing contracts</consumes>
+  </module>
+
+  <module id="M-WEB-FIXTURES" layer="frontend" path="lib/mocks/*">
+    <responsibility>Fixture data matching contracts. Used in dev and as parity reference.</responsibility>
+    <note>Source-of-truth fixture file copied/mirrored into apps/api/app/fixtures during PHASE-1.</note>
+  </module>
+
+  <!-- =================================================================== -->
+  <!-- BACKEND CORE                                                         -->
+  <!-- =================================================================== -->
+  <module id="M-AUTH-TG" layer="backend" path="apps/api/app/api/auth.py, apps/api/app/services/telegram_auth.py">
+    <responsibility>Validate Telegram WebApp initData HMAC, upsert users, issue session.</responsibility>
+    <produces>session token</produces>
+    <use-cases>UC-TG-AUTH</use-cases>
+    <secret>TELEGRAM_BOT_TOKEN</secret>
+  </module>
+
+  <module id="M-PROFILE" layer="backend" path="apps/api/app/api/profile.py, apps/api/app/services/profile_service.py">
+    <consumes>session</consumes>
+    <writes>users, user_profiles</writes>
+    <triggers-invalidation>natal/period/daily/semantic/today caches on birth or location change</triggers-invalidation>
+    <use-cases>UC-PROFILE-CREATE · UC-PROFILE-EDIT</use-cases>
+  </module>
+
+  <module id="M-ACCESS" layer="backend" path="apps/api/app/services/access_service.py">
+    <responsibility>can_access_day(user, date) → AccessState. Consume order: referral_bonus → gift → subscription → adjustment.</responsibility>
+    <reads>access_ledger</reads>
+    <produces>C-ACCESS</produces>
+    <use-cases>UC-ACCESS-CHECK</use-cases>
+    <phase-stub>PHASE-1 stub returns state=full; real impl in PHASE-2.</phase-stub>
+  </module>
+
+  <module id="M-REFERRAL" layer="backend" path="apps/api/app/api/referrals.py, apps/api/app/services/referral_service.py">
+    <writes>referrals, access_ledger</writes>
+    <use-cases>UC-REFERRAL</use-cases>
+  </module>
+
+  <module id="M-DAY-SERVICE" layer="backend" path="apps/api/app/api/day.py, apps/api/app/services/today_service.py" pilot="true">
+    <responsibility>Orchestrates: profile → access → cache → pipeline → TodayPayload.</responsibility>
+    <produces>C-TODAY-PAYLOAD</produces>
+    <depends-on>M-PROFILE · M-ACCESS · M-CALC-PIPELINE · M-SEMANTIC · M-LLM · M-MICROCOPY</depends-on>
+    <use-cases>UC-DAY-VIEW · UC-LOCKED-DAY</use-cases>
+    <version-sensitivity>contract_version (output) · all internal versions for cache key</version-sensitivity>
+    <phase-stub>PHASE-1: returns fixture-mapped payloads; PHASE-2 adds preview branch; PHASE-4-5 adds real pipeline.</phase-stub>
+  </module>
+
+  <module id="M-CALENDAR" layer="backend" path="apps/api/app/api/calendar.py, apps/api/app/services/calendar_service.py">
+    <produces>C-CALENDAR-PAYLOAD</produces>
+    <use-cases>UC-CAL-NAV</use-cases>
+  </module>
+
+  <!-- =================================================================== -->
+  <!-- COMPUTATION PIPELINE                                                 -->
+  <!-- =================================================================== -->
+  <module id="M-SOLARSAGE-CLIENT" layer="backend" path="apps/api/app/services/solarsage_client.py">
+    <responsibility>HTTP client for sidecar /v1/*.</responsibility>
+    <talks-to>M-SIDECAR</talks-to>
+    <version-sensitivity>calculation_version</version-sensitivity>
+  </module>
+
+  <module id="M-CALC-PIPELINE" layer="backend" path="apps/api/app/services/calculation_service.py">
+    <responsibility>Builds NatalDeepSnapshot, PeriodSnapshot, DailySnapshot via SolarSage client; persists with input_hash.</responsibility>
+    <writes>natal_snapshots · period_snapshots · daily_snapshots</writes>
+    <version-sensitivity>calculation_version</version-sensitivity>
+  </module>
+
+  <module id="M-NORMALIZATION" layer="backend" path="apps/api/app/services/normalization_service.py">
+    <responsibility>raw → AstroSignal[].</responsibility>
+    <produces>C-ASTRO-SIGNAL</produces>
+    <version-sensitivity>normalization_version</version-sensitivity>
+  </module>
+
+  <module id="M-SCORING" layer="backend" path="apps/api/app/services/scoring_service.py">
+    <responsibility>salience, tension/support, intensity, dayQuality → dayStatus mapping.</responsibility>
+    <version-sensitivity>scoring_version</version-sensitivity>
+    <invariants-honored>INV-WEEK-3STATUSES</invariants-honored>
+  </module>
+
+  <module id="M-FLAGS" layer="backend" path="apps/api/app/services/flags_service.py">
+    <responsibility>Pick top flags 2..4 with hints.</responsibility>
+    <produces>TopFlag[]</produces>
+  </module>
+
+  <module id="M-SEMANTIC" layer="backend" path="apps/api/app/services/semantic_service.py">
+    <responsibility>Assemble SemanticLayer (curated context for LLM).</responsibility>
+    <produces>C-SEMANTIC-LAYER</produces>
+    <writes>semantic_layers</writes>
+    <version-sensitivity>normalization_version + scoring_version</version-sensitivity>
+    <invariants-honored>INV-LLM-CURATED</invariants-honored>
+  </module>
+
+  <module id="M-LLM" layer="backend" path="apps/api/app/services/llm_service.py">
+    <consumes>C-SEMANTIC-LAYER</consumes>
+    <produces>C-LLM-RESPONSE (strict JSON)</produces>
+    <writes>today_payloads</writes>
+    <version-sensitivity>prompt_version + content_version</version-sensitivity>
+    <banned-tokens>salience, supportScore, frictionScore, shadowRisk, totalSalience, raw JSON, internal ranking</banned-tokens>
+  </module>
+
+  <module id="M-MICROCOPY" layer="backend" path="apps/api/app/services/microcopy.py, apps/api/app/content/microcopy.v1.json">
+    <responsibility>Pick top-K microcopy items per (events × scales × tone).</responsibility>
+    <produces>C-MICROCOPY-ITEM[]</produces>
+    <version-sensitivity>content_version</version-sensitivity>
+  </module>
+
+  <!-- =================================================================== -->
+  <!-- SIDECAR                                                              -->
+  <!-- =================================================================== -->
+  <module id="M-SIDECAR" layer="sidecar" path="apps/solarsage/*">
+    <responsibility>HTTP service over pyswisseph. Endpoints /v1/health, /v1/natal, /v1/transits, /v1/range.</responsibility>
+    <bind>127.0.0.1:18091</bind>
+    <produces>C-SOLARSAGE</produces>
+    <version-sensitivity>calculation_version</version-sensitivity>
+    <spec-doc>docs/11_SolarSage_rewrite_TZ.md</spec-doc>
+  </module>
+
+  <!-- =================================================================== -->
+  <!-- WORKERS                                                              -->
+  <!-- =================================================================== -->
+  <module id="M-WORKER" layer="backend" path="apps/api/app/workers/*">
+    <responsibility>arq tasks: pre-warm next-day payload, evening pushes, microcopy_misses report.</responsibility>
+  </module>
+
+  <!-- =================================================================== -->
+  <!-- EVENING CHECKIN                                                      -->
+  <!-- =================================================================== -->
+  <module id="M-CHECKIN" layer="backend" path="apps/api/app/api/checkin.py, apps/api/app/services/yesterday_service.py">
+    <writes>evening_checkins</writes>
+    <produces>YesterdayEcho (composed into TodayPayload)</produces>
+    <use-cases>UC-EVENING-CHECKIN</use-cases>
+    <privacy-rule>note never logged or sent to LLM unless prompt_version is note-aware.</privacy-rule>
+  </module>
+
+  <!-- =================================================================== -->
+  <!-- DEPENDENCIES (read top to bottom; later items depend on earlier)    -->
+  <!-- =================================================================== -->
+  <dependency-graph>
+    <edge from="M-WEB-DAY" to="M-WEB-API-CLIENT" />
+    <edge from="M-WEB-API-CLIENT" to="M-DAY-SERVICE" via="HTTP" contract="C-TODAY-PAYLOAD" />
+    <edge from="M-DAY-SERVICE" to="M-PROFILE" />
+    <edge from="M-DAY-SERVICE" to="M-ACCESS" />
+    <edge from="M-DAY-SERVICE" to="M-CALC-PIPELINE" />
+    <edge from="M-DAY-SERVICE" to="M-SEMANTIC" />
+    <edge from="M-DAY-SERVICE" to="M-LLM" />
+    <edge from="M-DAY-SERVICE" to="M-MICROCOPY" />
+    <edge from="M-DAY-SERVICE" to="M-CHECKIN" optional="true" />
+    <edge from="M-CALC-PIPELINE" to="M-SOLARSAGE-CLIENT" />
+    <edge from="M-SOLARSAGE-CLIENT" to="M-SIDECAR" via="HTTP" contract="C-SOLARSAGE" />
+    <edge from="M-CALC-PIPELINE" to="M-NORMALIZATION" />
+    <edge from="M-NORMALIZATION" to="M-SCORING" />
+    <edge from="M-SCORING" to="M-FLAGS" />
+    <edge from="M-SEMANTIC" to="M-SCORING" />
+    <edge from="M-SEMANTIC" to="M-FLAGS" />
+    <edge from="M-LLM" to="M-SEMANTIC" />
+    <edge from="M-WEB-CALENDAR" to="M-CALENDAR" via="HTTP" contract="C-CALENDAR-PAYLOAD" />
+    <edge from="M-WEB-PROFILE" to="M-PROFILE" via="HTTP" contract="C-PROFILE-PAYLOAD" />
+    <edge from="M-AUTH-TG" to="users-table" />
+    <edge from="M-PROFILE" to="user_profiles-table" />
+    <edge from="M-ACCESS" to="access_ledger-table" />
+    <edge from="M-REFERRAL" to="referrals-table" />
+  </dependency-graph>
+
+  <!-- =================================================================== -->
+  <!-- VERSION OWNERSHIP                                                    -->
+  <!-- =================================================================== -->
+  <version-ownership>
+    <owns version="contract_version" by="M-DAY-SERVICE, M-CALENDAR, M-PROFILE, M-WEB-READINGS" />
+    <owns version="calculation_version" by="M-SIDECAR, M-CALC-PIPELINE" />
+    <owns version="normalization_version" by="M-NORMALIZATION" />
+    <owns version="scoring_version" by="M-SCORING, M-FLAGS, M-SEMANTIC" />
+    <owns version="prompt_version" by="M-LLM" />
+    <owns version="content_version" by="M-MICROCOPY" />
+    <owns version="schema_version" by="M-WEB-READINGS (natal/v1)" />
+  </version-ownership>
+
+  <!-- =================================================================== -->
+  <!-- CACHE-INVALIDATION GRAPH                                             -->
+  <!-- =================================================================== -->
+  <invalidation-graph>
+    <edge trigger="user_profiles.birth_*" invalidates="natal_snapshots → period_snapshots → daily_snapshots → semantic_layers → today_payloads (for user)" />
+    <edge trigger="user_profiles.current_location | birthday_location" invalidates="period_snapshots → daily_snapshots → semantic_layers → today_payloads" />
+    <edge trigger="calculation_version bump" invalidates="natal_snapshots + period_snapshots + daily_snapshots + downstream" />
+    <edge trigger="normalization_version | scoring_version bump" invalidates="semantic_layers + today_payloads" />
+    <edge trigger="prompt_version | content_version bump" invalidates="today_payloads" />
+    <edge trigger="contract_version bump" invalidates="today_payloads (consumers must redeploy)" />
+  </invalidation-graph>
+
+</knowledge-graph>

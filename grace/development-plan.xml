@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GRACE §13.C — Development Plan
+  Source docs: 07 (phase list), 09 (transfer), 10 (project guide), 11 (sidecar TZ),
+               13 (evening checkin), GRACE_CANON.md §12 (pilot slice rules)
+
+  Format:
+    PHASE = a thematic milestone (vertical slice family)
+    WAVE  = a controller-packet-sized unit, one PR
+    Each wave declares:
+      goal · write-scope · freeze-scope · entry-criteria · exit-criteria · deliverables
+-->
+<development-plan project="astro-today" canon="GRACE_CANON.md">
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-1-MOCKED-PIPELINE" priority="P0" pilot="true">
+    <goal>Real backend serves fixture-backed TodayPayload over real auth + real profile + real access. Frontend leaves NEXT_PUBLIC_USE_FIXTURES=true mode.</goal>
+    <pilot-slice>UC-DAY-VIEW with fixture-backed M-DAY-SERVICE.</pilot-slice>
+
+    <wave id="W-1.1">
+      <title>Project skeleton: alembic, db sessions, FastAPI app shell</title>
+      <write-scope>apps/api/app/core/config.py · apps/api/app/db/session.py · apps/api/alembic.ini · apps/api/alembic/env.py · apps/api/app/main.py · apps/api/pyproject.toml</write-scope>
+      <freeze-scope>frontend/* · apps/solarsage/* · packages/contracts/* · all docs/</freeze-scope>
+      <entry-criteria>artifact pack approved.</entry-criteria>
+      <exit-criteria>
+        <criterion>uvicorn app.main:app starts and /api/health returns 200 with version/git_sha.</criterion>
+        <criterion>alembic upgrade head succeeds against empty DB.</criterion>
+      </exit-criteria>
+      <deliverables>healthcheck route · settings via pydantic-settings · DB session helpers</deliverables>
+    </wave>
+
+    <wave id="W-1.1B">
+      <title>Contract boundary: pick source of truth between Pydantic, zod, and packages/contracts</title>
+      <modules>M-CONTRACTS</modules>
+      <write-scope>packages/contracts/* · scripts/contracts/* · package.json (scripts only) · .github/workflows/contracts.yml · apps/api/app/contracts/* OR apps/api/app/schemas/_base.py (per chosen option) · lib/contracts/* (only if Option B reduces it to forms)</write-scope>
+      <freeze-scope>all feature routes · all UI components · apps/solarsage/* · requirements.xml · technology.xml · knowledge-graph.xml</freeze-scope>
+      <entry-criteria>W-1.1 closed · controller has recorded a Decision (A/B/C) in grace/packets/W-1.1B.md.</entry-criteria>
+      <exit-criteria>
+        <criterion>Exactly one source of truth is documented in packages/contracts/README.md.</criterion>
+        <criterion>`pnpm contracts:check` (or equivalent) regenerates artifacts deterministically and CI fails on drift.</criterion>
+        <criterion>Frontend smoke on NEXT_PUBLIC_USE_FIXTURES=true renders /day/today byte-identical to pre-wave.</criterion>
+        <criterion>No existing field name or meta.contract_version value changed.</criterion>
+      </exit-criteria>
+      <deliverables>generator script · committed generated artifacts · CI step · README stating chosen option · parity test scaffold</deliverables>
+    </wave>
+
+    <wave id="W-CANON-LOG" kind="spec-only">
+      <title>Observability canon §8: envelope, redaction list, events registry</title>
+      <modules>M-CANON</modules>
+      <write-scope>grace/canon/observability.xml · grace/development-plan.xml (insertion of this wave + W-1.6 + W-1.7 only) · grace/packets/W-CANON-LOG.md</write-scope>
+      <freeze-scope>everything under apps/ · everything under lib/ · packages/contracts/* · all UI components · all feature routes · grace/requirements.xml · grace/technology.xml · grace/knowledge-graph.xml</freeze-scope>
+      <entry-criteria>W-1.1B closed.</entry-criteria>
+      <exit-criteria>
+        <criterion>grace/canon/observability.xml exists and is internally consistent (envelope §8.2, levels §8.3, privacy §8.4, events registry §8.5, sampling §8.6, gates §8.8 all populated).</criterion>
+        <criterion>Redaction list in §8.4 is exhaustive: every PII / secret / payment / telegram / birth-data key from the data model is enumerated with redact-mode and rationale.</criterion>
+        <criterion>Events registry in §8.5 covers every business event referenced anywhere in development-plan.xml at the time of merge. Each event has owner-wave and payload schema.</criterion>
+        <criterion>Reviewer (controller) signs off in grace/packets/W-CANON-LOG.md under "## Decision".</criterion>
+        <criterion>No code changes under apps/ or lib/. CI runs lint-only on this PR.</criterion>
+      </exit-criteria>
+      <deliverables>grace/canon/observability.xml · grace/packets/W-CANON-LOG.md · this insertion in development-plan.xml</deliverables>
+    </wave>
+
+    <wave id="W-1.2">
+      <title>Telegram auth + users + user_profiles</title>
+      <modules>M-AUTH-TG · M-PROFILE</modules>
+      <write-scope>apps/api/app/api/auth.py · apps/api/app/services/telegram_auth.py · apps/api/app/api/profile.py · apps/api/app/db/models.py (users, user_profiles) · alembic/versions/0001_users.py</write-scope>
+      <freeze-scope>day/calendar/access services · packages/contracts/* · frontend/*</freeze-scope>
+      <exit-criteria>
+        <criterion>POST /api/auth/telegram validates HMAC and upserts users.</criterion>
+        <criterion>GET/PUT /api/profile reads and writes user_profiles.</criterion>
+        <criterion>UC-PROFILE-EDIT invalidation logic stubbed (no caches yet, just marker function).</criterion>
+        <criterion>Tampered initData yields 401 with no DB write.</criterion>
+      </exit-criteria>
+      <deliverables>session cookie helper · profile schemas · 4 unit tests for HMAC</deliverables>
+    </wave>
+
+    <wave id="W-1.3" pilot="true">
+      <title>Pilot: GET /api/day/:date returns fixture-backed TodayPayload</title>
+      <modules>M-DAY-SERVICE · M-ACCESS-STUB</modules>
+      <write-scope>apps/api/app/api/day.py · apps/api/app/services/today_service.py · apps/api/app/services/access_service.py (stub returning state=full) · apps/api/app/schemas/today.py · apps/api/app/fixtures/day_*.json</write-scope>
+      <freeze-scope>auth · profile · packages/contracts/today.ts (READ-ONLY reference) · all calendar/checkin/llm code</freeze-scope>
+      <entry-criteria>W-1.2 merged · TodayPayload contract reviewed against docs/05.</entry-criteria>
+      <exit-criteria>
+        <criterion>GET /api/day/2026-05-24 returns valid TodayPayload (fixture mapped to date).</criterion>
+        <criterion>Response validates against packages/contracts/today.ts via JSON Schema test.</criterion>
+        <criterion>meta.contract_version, meta.cached, meta.generatedAt are present.</criterion>
+        <criterion>p95 latency under 500ms over 100 sequential calls in tests.</criterion>
+      </exit-criteria>
+      <deliverables>day endpoint · fixture loader · contract validator · 6 tests including invalid date and not-onboarded.</deliverables>
+    </wave>
+
+    <wave id="W-1.4">
+      <title>GET /api/calendar?month=YYYY-MM with neutral statuses</title>
+      <modules>M-CALENDAR</modules>
+      <write-scope>apps/api/app/api/calendar.py · apps/api/app/services/calendar_service.py · apps/api/app/schemas/calendar.py</write-scope>
+      <exit-criteria>
+        <criterion>Returns CalendarPayload for prev/current/next month grid.</criterion>
+        <criterion>days[].access matches access_service stub.</criterion>
+        <criterion>Out-of-range months yield INVALID_DATE error.</criterion>
+      </exit-criteria>
+    </wave>
+
+    <wave id="W-1.5">
+      <title>Frontend leaves fixtures mode and points at real API</title>
+      <modules>M-WEB-API-CLIENT</modules>
+      <write-scope>lib/api/* · app/(app)/day/[date]/page.tsx (data source switch) · app/(app)/calendar/page.tsx · .env.example</write-scope>
+      <freeze-scope>UI components · packages/contracts/*</freeze-scope>
+      <exit-criteria>
+        <criterion>Setting NEXT_PUBLIC_USE_FIXTURES=false routes traffic to API_BASE.</criterion>
+        <criterion>e2e: open /day/today → renders headline, top flags, reading paragraphs, week strip.</criterion>
+        <criterion>e2e: open /calendar → renders 3-month grid; tap on a day navigates to /day/:date.</criterion>
+      </exit-criteria>
+      <demo>End of PHASE-1 product slice: clickable product on real backend with fixture content. Pilot acceptance for UC-DAY-VIEW met. Logging spine still pending — added in W-1.6/W-1.7 before PHASE-2 starts.</demo>
+    </wave>
+
+    <wave id="W-1.6">
+      <title>Logging spine: envelope, correlation, redactor, events codegen, gates 11/12/13</title>
+      <modules>M-OBSERVABILITY</modules>
+      <write-scope>
+        apps/api/app/core/logging.py ·
+        apps/api/app/core/logging_events.py (codegen output, committed) ·
+        apps/api/app/core/redactor.py ·
+        apps/api/app/middleware/correlation.py ·
+        apps/api/app/main.py (mount middleware + logger init only; no business logic change) ·
+        apps/api/app/api/auth.py (replace ad-hoc prints with log.event, no behaviour change) ·
+        apps/api/app/api/profile.py (same retrofit) ·
+        apps/api/app/api/day.py (same retrofit) ·
+        apps/api/app/api/calendar.py (same retrofit) ·
+        lib/log/index.ts ·
+        lib/log/redactor.ts ·
+        lib/log/events.gen.ts (codegen output, committed) ·
+        lib/log/correlation.ts ·
+        lib/api/* (inject correlation header, no contract change) ·
+        scripts/codegen/events_from_canon.py ·
+        scripts/codegen/events_from_canon.ts ·
+        .github/workflows/observability.yml
+      </write-scope>
+      <freeze-scope>grace/canon/observability.xml (READ-ONLY reference) · packages/contracts/* · all DB models · all UI components · all alembic migrations</freeze-scope>
+      <entry-criteria>W-CANON-LOG merged. W-1.5 merged (FE on real API). Skeleton of every endpoint that needs instrumentation already exists.</entry-criteria>
+      <exit-criteria>
+        <criterion>Backend logger emits envelope conforming to canon §8.2 on stdout-json (prod-mode) and stderr-pretty (dev-mode).</criterion>
+        <criterion>Frontend logger emits the same envelope to browser console (dev) or buffers in memory (prod, shipping deferred to W-1.7).</criterion>
+        <criterion>Correlation middleware reads/mints X-Correlation-Id and round-trips it on every request. Echoed in response header. Frontend api client injects it on every fetch.</criterion>
+        <criterion>Codegen produces logging_events.py and events.gen.ts byte-identically from observability.xml. CI fails on drift (gate-11).</criterion>
+        <criterion>Redactor canary tests cover every key in §8.4 redact-keys and every pattern in §8.4 redact-patterns. Sentinel never appears in serialized output (gate-12).</criterion>
+        <criterion>Every log line emitted in the test suite parses as JSON and validates against the §8.2 envelope schema (gate-13).</criterion>
+        <criterion>Existing endpoints (auth, profile, day, calendar) emit their declared business events from §8.5 with correct payload shape. No new endpoints created in this wave.</criterion>
+        <criterion>e2e: open /day/today → backend log line carries the same correlation_id as the browser request, asserted in test.</criterion>
+      </exit-criteria>
+      <deliverables>backend logger · frontend logger · correlation middleware · shared redactor · events codegen + committed artifacts · gates 11/12/13 in CI · retrofitted call-sites in already-merged endpoints · 1 e2e correlation round-trip test</deliverables>
+    </wave>
+
+    <wave id="W-1.7">
+      <title>Frontend → backend log shipping via POST /api/_log</title>
+      <modules>M-OBSERVABILITY-SHIPPING</modules>
+      <write-scope>
+        apps/api/app/api/_log.py ·
+        apps/api/app/services/log_intake.py ·
+        apps/api/app/core/rate_limit.py (only if not already introduced earlier) ·
+        lib/log/shipper.ts ·
+        lib/log/index.ts (wire shipper behind GRACE_LOG_SHIPPING flag) ·
+        .env.example
+      </write-scope>
+      <freeze-scope>grace/canon/observability.xml · core logging envelope from W-1.6 · auth · profile · day/calendar services · all DB models</freeze-scope>
+      <entry-criteria>W-1.6 merged. Gates 11/12/13 stable in CI for at least one PR cycle.</entry-criteria>
+      <exit-criteria>
+        <criterion>POST /api/_log accepts a batch of envelopes, validates each against §8.2, runs the same backend redactor, and forwards to stdout-json. No log_intake DB table is added unless controller explicitly decides otherwise in the packet.</criterion>
+        <criterion>Frontend shipper batches by 50 envelopes or 5s, whichever first, with backoff on 429/5xx and a hard kill-switch on GRACE_LOG_SHIPPING=off (default off in dev, on in prod).</criterion>
+        <criterion>Endpoint enforces auth (session cookie required) and per-user rate limit by user_id_hash from §8.4.</criterion>
+        <criterion>Endpoint rejects malformed envelopes with 400 and emits log.intake_rejected (warn) with reject reason.</criterion>
+        <criterion>e2e: a click in the web app produces a log line on the backend with the same correlation_id within 10s.</criterion>
+        <criterion>Load test: 1k envelopes/min sustained for 5 min without backend OOM and without dropping more than 0.1% (drops counted via log.intake_dropped).</criterion>
+      </exit-criteria>
+      <deliverables>shipping endpoint · client batcher with kill-switch · rate limiter · 6 tests (malformed, oversized, kill-switch, auth-required, rate-limited, happy-path) · 1 load-test fixture</deliverables>
+    </wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <!-- PHASE-2-FRONTEND-PORT runs in parallel with PHASE-1 backend waves.   -->
+  <!-- Waves W-2.0…W-2.8 are inserted between W-1.1B and W-1.2 per their    -->
+  <!-- packets and rebuild the legacy frontend under app/(grace)/** while   -->
+  <!-- legacy/** stays inert (INV-LEGACY-INERT). Each wave is fully spec'd  -->
+  <!-- in its own grace/packets/W-2.X.md; the entries here are anchors so   -->
+  <!-- entry-criteria of later phases can reference them by id.             -->
+  <!-- =================================================================== -->
+  <phase id="PHASE-2-FRONTEND-PORT" priority="P0" parallel-with="PHASE-1-MOCKED-PIPELINE">
+    <goal>Port the legacy frontend (legacy/frontend/**) into the active tree under app/(grace)/** and components/** with marker discipline, contract-only typing, and lint/marker gates. Keep legacy/** read-only and unimported (INV-LEGACY-INERT). Source of truth for each wave is its packet under grace/packets/W-2.X.md.</goal>
+
+    <wave id="W-2.0" anchor-only="true">
+      <title>Frontend GRACE conformance: lint/marker gates + 4 negative tests</title>
+      <packet>grace/packets/W-2.0.md</packet>
+      <entry-criteria>W-1.1B closed.</entry-criteria>
+      <exit-criteria>see packet</exit-criteria>
+    </wave>
+
+    <wave id="W-2.1" anchor-only="true">
+      <title>Frontend types reconciliation (additive Pydantic, no UI)</title>
+      <packet>grace/packets/W-2.1.md</packet>
+      <entry-criteria>W-2.0 merged.</entry-criteria>
+    </wave>
+
+    <wave id="W-2.2" anchor-only="true">
+      <title>Shell + Today migration (first UI inside GRACE perimeter)</title>
+      <packet>grace/packets/W-2.2.md</packet>
+      <entry-criteria>W-2.1 merged · W-1.3 merged (real /api/day available for follow-up wiring) OR fixture mode active per packet decision.</entry-criteria>
+    </wave>
+
+    <wave id="W-2.3" anchor-only="true">
+      <title>Calendar + Day pages (first multi-route + dynamic segment)</title>
+      <packet>grace/packets/W-2.3.md</packet>
+      <entry-criteria>W-2.2 merged · W-1.4 merged OR fixture mode active per packet decision.</entry-criteria>
+    </wave>
+
+    <wave id="W-2.4" anchor-only="true">
+      <title>Chat: screen + hook + reducer (frontend port on fixtures)</title>
+      <packet>grace/packets/W-2.4.md</packet>
+      <entry-criteria>W-2.3 merged · W-CHAT-INTAKE closed (Decision A or B).</entry-criteria>
+      <note>Backend for chat (POST /api/chat/messages, storage, rate-limit, real streaming) is intentionally out of scope here. It is owned by W-CHAT-1. chat.* events stay reserved (emitted=false) until W-CHAT-3.</note>
+    </wave>
+
+    <wave id="W-2.5" anchor-only="true">
+      <title>Readings: general + natal + widgets (block-renderer fan-out)</title>
+      <packet>grace/packets/W-2.5.md</packet>
+      <entry-criteria>W-2.4 merged.</entry-criteria>
+    </wave>
+
+    <wave id="W-2.6" anchor-only="true">
+      <title>Profile + Paywall + Trial banner + Telegram-init</title>
+      <packet>grace/packets/W-2.6.md</packet>
+      <entry-criteria>W-2.5 merged.</entry-criteria>
+      <note>Trial banner is wired to a real useAccess() in this wave (replaces the W-2.2 stub). Backend access service is still fixture-backed; the real access state machine lands in PHASE-ACCESS.</note>
+    </wave>
+
+    <wave id="W-2.7" anchor-only="true">
+      <title>Onboarding flow (5-step state machine)</title>
+      <packet>grace/packets/W-2.7.md</packet>
+      <entry-criteria>W-2.6 merged.</entry-criteria>
+      <note>Reduces the W-2.6 /onboarding-placeholder into a real /onboarding route. Reducer + steps + cities lookup; persistence side-effect at submit writes the onboarded flag consumed by useOnboarded() from W-2.6.</note>
+    </wave>
+
+    <wave id="W-2.8" anchor-only="true">
+      <title>JS test gate (vitest for lib/grace/** reducers)</title>
+      <packet>grace/packets/W-2.8.md</packet>
+      <entry-criteria>W-2.7 merged.</entry-criteria>
+      <note>Symmetric to the W-1.1 pytest gate. Lights up vitest and turns the previously-inert *.test.ts files (chat reducer from W-2.4, onboarding reducer from W-2.7) into a real CI gate. No feature module.</note>
+    </wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-ACCESS" priority="P0">
+    <goal>Real access state replaces stub; referral grants 14 days to both; locked days show preview + soft lock. Renamed from former PHASE-2-ACCESS to free the W-2.x namespace for the frontend port phase.</goal>
+
+    <wave id="W-ACCESS.1">
+      <title>access_ledger, access_service.can_access_day</title>
+      <modules>M-ACCESS</modules>
+      <write-scope>apps/api/app/db/models.py (access_ledger) · alembic/versions/0002_access.py · apps/api/app/services/access_service.py (real)</write-scope>
+      <entry-criteria>W-1.5 merged.</entry-criteria>
+      <exit-criteria>
+        <criterion>For 14d referral_bonus → days 0..13 full, day 14 preview.</criterion>
+        <criterion>Subscription consumed only after bonus.</criterion>
+        <criterion>10 unit tests covering boundary days.</criterion>
+      </exit-criteria>
+    </wave>
+
+    <wave id="W-ACCESS.2">
+      <title>Referral codes + signup hook</title>
+      <modules>M-REFERRAL</modules>
+      <write-scope>apps/api/app/api/referrals.py · apps/api/app/services/referral_service.py · alembic/versions/0003_referrals.py</write-scope>
+      <entry-criteria>W-ACCESS.1 merged.</entry-criteria>
+      <exit-criteria>
+        <criterion>New invitee signup writes 2 ledger rows of 14 days.</criterion>
+        <criterion>Repeat invite same user → idempotent.</criterion>
+      </exit-criteria>
+    </wave>
+
+    <wave id="W-ACCESS.3">
+      <title>Preview/locked TodayPayload + soft lock UI</title>
+      <modules>M-DAY-SERVICE · M-WEB-DAY</modules>
+      <write-scope>apps/api/app/services/today_service.py (preview branch) · components/locked-day/* · app/(app)/day/[date]/page.tsx (state switch)</write-scope>
+      <entry-criteria>W-ACCESS.2 merged.</entry-criteria>
+      <exit-criteria>
+        <criterion>Locked day route renders preview payload with subscribe and invite CTAs.</criterion>
+        <criterion>Calendar shows locked badges per access state.</criterion>
+      </exit-criteria>
+    </wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-3-SIDECAR" priority="P0">
+    <goal>Rewrite SolarSage CLI as HTTP sidecar per docs/11. Backend becomes its only client.</goal>
+
+    <wave id="W-3.1">
+      <title>Sidecar scaffolding (FastAPI app, /v1/health, settings, ephemerides path)</title>
+      <modules>M-SIDECAR</modules>
+      <write-scope>apps/solarsage/solarsage/app.py · apps/solarsage/solarsage/core/* · apps/solarsage/solarsage/schemas/* · apps/solarsage/pyproject.toml · infra/systemd/solarsage.service</write-scope>
+      <freeze-scope>backend services that don't yet call sidecar</freeze-scope>
+      <exit-criteria>
+        <criterion>uvicorn solarsage.app:app on 127.0.0.1:18091 returns /v1/health 200.</criterion>
+      </exit-criteria>
+    </wave>
+
+    <wave id="W-3.2">
+      <title>/v1/natal endpoint + parity test against legacy CLI on sample_params.json</title>
+      <write-scope>apps/solarsage/solarsage/services/natal.py · apps/solarsage/solarsage/api/natal.py · apps/solarsage/tests/test_parity.py</write-scope>
+      <exit-criteria>
+        <criterion>For sample_params.json (Vasiliy), planets longitudes match legacy within 1e-6 deg.</criterion>
+        <criterion>calculation_version is bumped and recorded in response meta.</criterion>
+      </exit-criteria>
+    </wave>
+
+    <wave id="W-3.3">
+      <title>/v1/transits and /v1/range</title>
+      <exit-criteria>
+        <criterion>Range endpoint computes daily transits over a window without timeouts (p95 &lt; 3s for 31-day range).</criterion>
+      </exit-criteria>
+    </wave>
+
+    <wave id="W-3.4">
+      <title>solarsage_client + natal/period/daily snapshot caches</title>
+      <modules>M-SOLARSAGE-CLIENT · M-NATAL-CACHE · M-PERIOD-CACHE · M-DAILY-CACHE</modules>
+      <write-scope>apps/api/app/services/solarsage_client.py · apps/api/app/services/calculation_service.py · alembic/versions/0004_snapshots.py</write-scope>
+      <exit-criteria>
+        <criterion>Repeated /api/day/:date hits use natal cache; cold→warm latency drops &gt; 80%.</criterion>
+        <criterion>Birth-data edit invalidates all snapshots for the user.</criterion>
+      </exit-criteria>
+    </wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-4-NORMALIZATION-SCORING" priority="P0">
+    <goal>Real AstroSignal[] + SemanticLayer; dayStatus computed by backend.</goal>
+
+    <wave id="W-4.1">
+      <title>Normalization to AstroSignal[]</title>
+      <modules>M-NORMALIZATION</modules>
+      <exit-criteria>For sample_params.json on 2026-05-24, AstroSignal output matches snapshot fixture committed by the team lead.</exit-criteria>
+    </wave>
+
+    <wave id="W-4.2">
+      <title>Scoring, dayQuality, dayStatus, top flags</title>
+      <modules>M-SCORING · M-FLAGS</modules>
+      <exit-criteria>
+        <criterion>Status mapping matches docs/04 §11 table.</criterion>
+        <criterion>flags count constraint (2..4) enforced.</criterion>
+      </exit-criteria>
+    </wave>
+
+    <wave id="W-4.3">
+      <title>SemanticLayer assembly + cache</title>
+      <modules>M-SEMANTIC</modules>
+      <exit-criteria>semantic_layers row written; today_service builds payload from semantic + microcopy stub.</exit-criteria>
+    </wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-5-LLM" priority="P0">
+    <goal>Real "why for me" text via LLM, strict JSON, prompt_version recorded.</goal>
+
+    <wave id="W-5.1">
+      <title>Prompt v1 + curated context builder + strict JSON validator</title>
+      <modules>M-LLM</modules>
+      <exit-criteria>
+        <criterion>LLM output validates against C-LLM-RESPONSE.</criterion>
+        <criterion>Output never references internal scoring fields (regex check on banned tokens).</criterion>
+      </exit-criteria>
+    </wave>
+
+    <wave id="W-5.2">
+      <title>today_payloads cache + meta.cached</title>
+      <exit-criteria>Repeat call to /api/day/:date returns cached payload without LLM call.</exit-criteria>
+    </wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-6-PAYMENTS" priority="P1">
+    <goal>Telegram payments, subscription state, enforcement of consumption order.</goal>
+    <wave id="W-6.1"><title>Provider integration + webhook</title></wave>
+    <wave id="W-6.2"><title>Subscription ledger entries + enforcement</title></wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-7-NATAL-READING" priority="P2">
+    <goal>Natal reading rendered via versioned blocks.</goal>
+    <wave id="W-7.1"><title>Backend: NatalReadingPayload (sections × blocks)</title></wave>
+    <wave id="W-7.2"><title>Frontend: block renderer + overview/section routes</title></wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-8-EVENING" priority="P2">
+    <goal>Evening checkin and morning yesterdayEcho closure (docs/13).</goal>
+    <wave id="W-8.1"><title>evening_checkins table + POST/GET endpoints</title></wave>
+    <wave id="W-8.2"><title>yesterday_service.build_closure + composer integration</title></wave>
+    <wave id="W-8.3"><title>Worker: 20:00 push notifications by user TZ</title></wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-9-MICROCOPY" priority="P1" parallel-with="PHASE-4">
+    <goal>microcopy.v1.json with ≥70 entries, validation in CI, miss tracking.</goal>
+    <wave id="W-9.1"><title>Schema, dictionary v1, services/microcopy.py</title></wave>
+    <wave id="W-9.2"><title>microcopy_misses table + weekly report</title></wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <phase id="PHASE-CHAT" priority="P2" deferred="true">
+    <goal>Stand up the real chat backend (endpoint, storage, rate-limit, AI provider) and flip chat.* events from reserved to emitted. The frontend port itself is owned by W-2.4 in PHASE-2-FRONTEND-PORT — this phase covers everything that W-2.4 does NOT do (fixture-only there).</goal>
+    <intake>W-CHAT-INTAKE is the only wave allowed to land before Phase-1 closes. It is spec-only: it inventories the legacy module, drafts the Pydantic contract, reserves chat.* events in §8.5 with emitted=false, and records a Decision (A port-1:1 / B rewrite-on-AI-SDK / C drop). All other PHASE-CHAT waves stay frozen until that Decision is recorded.</intake>
+
+    <wave id="W-CHAT-INTAKE" kind="spec-only">
+      <title>Chat intake: inventory, draft contract, reserve events, decision A/B/C</title>
+      <modules>M-CHAT-INTAKE</modules>
+      <write-scope>grace/packets/W-CHAT-INTAKE.md · grace/canon/observability.xml (only the §8.5 reserved block "chat.*" with emitted=false) · grace/development-plan.xml (only PHASE-CHAT block + drift rule about legacy chat)</write-scope>
+      <freeze-scope>everything under apps/ · everything under lib/ · packages/contracts/* · legacy/** (read-only inventory only) · all UI components · all feature routes · grace/requirements.xml · grace/technology.xml · grace/knowledge-graph.xml</freeze-scope>
+      <entry-criteria>W-1.1B closed.</entry-criteria>
+      <exit-criteria>
+        <criterion>grace/packets/W-CHAT-INTAKE.md lists every legacy chat file with line count and one-line role.</criterion>
+        <criterion>Draft Pydantic contract for ChatMessage / ChatHistory / ChatContext is recorded in the packet (not yet under apps/api/app/contracts/).</criterion>
+        <criterion>Events chat.message.sent · chat.message.received · chat.stream.started · chat.stream.finished · chat.stream.failed · chat.rate_limited · chat.tokens.spent are reserved in §8.5 with emitted=false and owner-wave="W-CHAT-3".</criterion>
+        <criterion>Controller records a Decision (A port-1:1 / B rewrite-on-AI-SDK / C drop) under "## Decision".</criterion>
+        <criterion>No code changes under apps/, lib/, app/, components/. CI runs lint-only on this PR.</criterion>
+      </exit-criteria>
+      <deliverables>grace/packets/W-CHAT-INTAKE.md · §8.5 reserved-events block · this PHASE-CHAT block</deliverables>
+    </wave>
+
+    <wave id="W-CHAT-1">
+      <title>Backend: chat contract, threads/messages storage, rate limit, auth-bound endpoints</title>
+      <modules>M-CHAT-API</modules>
+      <write-scope>apps/api/app/api/chat.py · apps/api/app/services/chat_service.py · apps/api/app/schemas/chat.py · apps/api/app/db/models.py (chat_threads, chat_messages) · alembic/versions/00XX_chat.py · packages/contracts/* (regenerated)</write-scope>
+      <freeze-scope>app/(grace)/chat/** (owned by W-2.4) · legacy/** · day/calendar/access services</freeze-scope>
+      <entry-criteria>W-CHAT-INTAKE closed with Decision A or B · W-1.2 merged · W-1.6 merged.</entry-criteria>
+      <exit-criteria>
+        <criterion>POST /api/chat/messages requires session cookie from W-1.2; tampered or missing session yields 401 with no DB write.</criterion>
+        <criterion>Streaming response shape matches the contract drafted in W-CHAT-INTAKE; non-streaming fallback documented.</criterion>
+        <criterion>Per-user rate limit enforced; rate-limited request emits chat.rate_limited and returns 429.</criterion>
+        <criterion>contracts:check passes; meta.contract_version bumped only if shape changed beyond the reserved draft.</criterion>
+        <criterion>W-2.4's frontend chat module can switch its lib/api/chat.ts from fixture to real backend by env flag, with no contract change in the same PR.</criterion>
+      </exit-criteria>
+      <deliverables>chat schemas · chat service · alembic migration · contract regeneration · unit tests for HMAC-bound auth on chat endpoints · feature flag for fixture↔real toggle in W-2.4 client</deliverables>
+    </wave>
+
+    <wave id="W-CHAT-3">
+      <title>Observability: flip chat.* events from reserved to emitted; gates 11/12/13 cover chat</title>
+      <modules>M-OBSERVABILITY</modules>
+      <write-scope>grace/canon/observability.xml (§8.5 chat.* emitted=true) · apps/api/app/api/chat.py (log.event call sites) · lib/api/chat.ts (log.event call sites) · tests/log/* · __tests__/log/*</write-scope>
+      <freeze-scope>chat behaviour · contract shape · UI</freeze-scope>
+      <entry-criteria>W-CHAT-1 merged · W-2.4 merged · W-1.7 merged.</entry-criteria>
+      <exit-criteria>
+        <criterion>Every chat.* event in §8.5 is asserted in at least one test on the side that emits it.</criterion>
+        <criterion>Gate-11 (events registry) passes with chat.* now emitted=true.</criterion>
+        <criterion>Redactor canary on chat payloads strips message content fields by policy from §8.4.</criterion>
+        <criterion>One real chat round-trip in e2e produces ≥1 backend log line and ≥1 frontend log line sharing the same request_id.</criterion>
+      </exit-criteria>
+      <deliverables>event emissions on both sides · redactor coverage for message content · e2e correlation test</deliverables>
+    </wave>
+
+    <wave id="W-CHAT-4" optional="true">
+      <title>Quotas / billing for chat (only if Decision touches monetization)</title>
+      <entry-criteria>W-CHAT-3 merged · PHASE-6 reached the wave that owns access_state for non-day features.</entry-criteria>
+      <exit-criteria>
+        <criterion>Quota source defined (free tier vs subscription) and enforced server-side.</criterion>
+        <criterion>chat.tokens.spent emits actual spend; chat.rate_limited covers quota exhaustion path.</criterion>
+      </exit-criteria>
+    </wave>
+  </phase>
+
+  <!-- =================================================================== -->
+  <!-- FUTURE WAVES (anchors only, not yet scoped)                          -->
+  <!-- =================================================================== -->
+  <future-waves>
+    <wave id="W-DEPLOY" status="anchor-only">
+      <title>Re-derive authoritative deployment surface (backend + frontend)</title>
+      <rationale>The pre-W-1.0 deployment artifacts (docs/DEPLOY.md, scripts/deploy.sh) reference infra that no longer matches the canon: SolarSage sidecar, /opt/solarsage-astro VDS layout, systemd units astro-api/astro-worker/astro-web, apps/web/ path, and SOLARSAGE_* env-vars without canonical prefix. Both files are marked stale and guarded; they MUST NOT be used as runbooks until this wave defines the real surface.</rationale>
+      <entry-criteria>W-1.5 merged · canonical env-var prefix fixed · backend deployment target (Vercel functions vs separate host) decided.</entry-criteria>
+      <exit-criteria>
+        <criterion>docs/DEPLOY.md replaced (or superseded by a new doc) with a runbook that matches the canon and drops the stale-header.</criterion>
+        <criterion>scripts/deploy.sh replaced or removed; GRACE_DEPLOY_ALLOW_STALE guard no longer needed.</criterion>
+        <criterion>Env-var canon documented in one place; no SOLARSAGE_* without canonical prefix remains in the non-legacy tree.</criterion>
+      </exit-criteria>
+      <write-scope>docs/DEPLOY.md · scripts/deploy.sh · grace/canon/* (env-var canon section)</write-scope>
+    </wave>
+  </future-waves>
+
+  <!-- =================================================================== -->
+  <!-- DEPENDENCY GRAPH BETWEEN PHASES                                      -->
+  <!-- =================================================================== -->
+  <phase-deps>
+    <dep from="PHASE-2-FRONTEND-PORT" requires="W-1.1B" note="frontend port can run in parallel with PHASE-1 backend waves once W-1.1B closed; individual waves declare per-wave dependencies on W-1.x" />
+    <dep from="PHASE-ACCESS" requires="PHASE-1-MOCKED-PIPELINE" />
+    <dep from="PHASE-3-SIDECAR" requires="PHASE-1-MOCKED-PIPELINE" parallel-allowed="true" />
+    <dep from="PHASE-4-NORMALIZATION-SCORING" requires="PHASE-3-SIDECAR" />
+    <dep from="PHASE-5-LLM" requires="PHASE-4-NORMALIZATION-SCORING" />
+    <dep from="PHASE-6-PAYMENTS" requires="PHASE-ACCESS" />
+    <dep from="PHASE-7-NATAL-READING" requires="PHASE-3-SIDECAR" />
+    <dep from="PHASE-8-EVENING" requires="PHASE-5-LLM" />
+    <dep from="PHASE-9-MICROCOPY" requires="PHASE-4-NORMALIZATION-SCORING" parallel-allowed="true" />
+    <dep from="PHASE-CHAT" requires="PHASE-1-MOCKED-PIPELINE" />
+    <dep from="PHASE-CHAT" requires="W-1.6" note="chat events ride on the same logging spine; must not predate W-1.6 merge" />
+    <dep from="W-CHAT-3" requires="W-2.4" note="chat frontend port lives in W-2.4; observability flip waits for it" />
+  </phase-deps>
+
+  <!-- =================================================================== -->
+  <!-- DRIFT PROTECTION (canon §10)                                         -->
+  <!-- =================================================================== -->
+  <drift-protection>
+    <rule>Each wave merges as one PR with the wave id in the title.</rule>
+    <rule>PR checklist must mention which artifact-pack file changed (if any).</rule>
+    <rule>If implementation requires changing requirements.xml or technology.xml, the change is a separate prior PR.</rule>
+    <rule>Never edit two waves in the same PR.</rule>
+    <rule>If a wave's exit criteria cannot be met, raise a question, do not silently expand scope.</rule>
+    <rule>Any change to grace/canon/observability.xml (envelope, levels, redact-list, events registry, sampling, gates) is a separate spec-only PR titled W-CANON-LOG-EXT-N and must merge before any wave that depends on the new shape. Workers MUST NOT add a business event by editing only their own packet — the registry in §8.5 is the closed source of truth and is enforced by gate-11.</rule>
+    <rule>Once W-1.6 is merged, every subsequent wave that adds endpoints, workers, or UI flows MUST list the business events it emits (from §8.5) in its packet under "Business events emitted" and assert them in tests. Gate-11 will fail PRs that emit unregistered events.</rule>
+    <rule id="INV-LEGACY-CHAT-DEFERRED">The legacy AI assistant chat under legacy/frontend/app/(app)/chat, legacy/frontend/components/chat/**, legacy/frontend/hooks/use-chat.ts, legacy/frontend/lib/api/chat.{ts,fixtures.ts}, legacy/frontend/lib/contracts/chat.ts, legacy/frontend/lib/reducers/chat-reducer.ts, legacy/frontend/lib/mocks/chat.ts, legacy/frontend/lib/chat.ts is split across two owners: the frontend port (screen, hook, reducer, fixture-backed lib/api/chat.ts) is owned by W-2.4 in PHASE-2-FRONTEND-PORT, and the backend (POST /api/chat/messages, storage, rate-limit, real streaming) is owned by W-CHAT-1 in PHASE-CHAT. No other wave may add chat files to the active tree. The chat.* event namespace in §8.5 is reserved with emitted=false until W-CHAT-3; emitting any chat.* event before then fails gate-11. W-2.4 ships with chat.* events still reserved (its lib/api/chat.ts uses fixtures and does not emit chat.* events).</rule>
+  </drift-protection>
+
+</development-plan>

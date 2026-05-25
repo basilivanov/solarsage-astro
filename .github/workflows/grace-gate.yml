@@ -1,0 +1,79 @@
+# ############################################################################
+# Grace Level-3 machine gate: CI workflow.
+#
+# Mirrors the local pre-commit hooks and the W-1.x packet `Verification`
+# section. Every PR to main must be green here before it can merge.
+# ############################################################################
+
+name: grace-gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  contracts-and-tests:
+    name: contracts, ruff, mypy, pytest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: apps/api/pyproject.toml
+
+      - name: Install API dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # --- Gate 1: contract markers ----------------------------------------
+      - name: grace_lint self-tests (guards the gatekeeper)
+        working-directory: ${{ github.workspace }}
+        run: python -m unittest scripts.test_grace_lint -v
+
+      - name: grace_lint (contract markers)
+        working-directory: ${{ github.workspace }}
+        run: python scripts/grace_lint.py apps/api/app
+
+      # --- Gate 2: lint -----------------------------------------------------
+      - name: ruff
+        run: ruff check .
+
+      # --- Gate 3: types ----------------------------------------------------
+      - name: mypy
+        run: mypy app
+
+      # --- Gate 4: migrations apply cleanly --------------------------------
+      - name: alembic upgrade head (sqlite)
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///./ci.db"
+        run: alembic upgrade head
+
+      # --- Gate 5: tests ----------------------------------------------------
+      - name: pytest
+        run: pytest -q
+
+      # --- Gate 6: contract drift (Option B / W-1.1B) ----------------------
+      # Pydantic -> openapi.json -> _generated.ts is regenerated and the result
+      # MUST be byte-identical to what is committed. Any drift fails the PR.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: contracts:check (drift gate)
+        working-directory: ${{ github.workspace }}
+        run: |
+          bash scripts/contracts/generate.sh
+          git diff --exit-code -- packages/contracts/openapi.json packages/contracts/_generated.ts

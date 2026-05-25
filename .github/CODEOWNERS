@@ -1,0 +1,39 @@
+# ############################################################################
+# CODEOWNERS — write-scope guard for high-leverage paths.
+#
+# Goal: prevent doc/canon drift from passing-by edits. Every PR that touches
+# the paths below requires review from the listed owners. The rest of the
+# repo has no required owner (default branch protection still applies).
+#
+# Replace the placeholder logins below with real GitHub handles before
+# enabling "Require review from Code Owners" in branch protection.
+# ############################################################################
+
+# ----- Root-level source-of-truth files -----
+/MANIFEST.md                 @lead
+/.github/CODEOWNERS          @lead
+/.pre-commit-config.yaml     @lead
+
+# ----- GRACE methodology canon (rare, intentional changes only) -----
+/docs/GRACE_CANON.md         @lead
+/grace/canon/                @lead
+/grace/README.md             @lead
+
+# ----- Project documentation (numbered docs + manifest) -----
+/docs/MANIFEST.md            @lead @reviewer
+/docs/README_*.md            @lead @reviewer
+/docs/0[0-9]_*.md            @lead @reviewer
+/docs/1[0-9]_*.md            @lead @reviewer
+/docs/DEPLOY.md              @lead @reviewer
+
+# ----- Controller packets (waves) -----
+/grace/packets/              @lead @reviewer
+
+# ----- Contract source of truth (Pydantic) and generated TS -----
+/apps/api/app/schemas/       @lead @reviewer
+/packages/contracts/         @lead @reviewer
+
+# ----- Marker / drift / manifest gates -----
+/scripts/grace_lint.py       @lead
+/scripts/grace/              @lead
+/scripts/contracts/          @lead

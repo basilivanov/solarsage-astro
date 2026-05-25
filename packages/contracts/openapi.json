@@ -1,0 +1,1582 @@
+{
+  "components": {
+    "schemas": {
+      "AccessSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "accessUntil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessuntil"
+          },
+          "referralDaysLeft": {
+            "title": "Referraldaysleft",
+            "type": "integer"
+          },
+          "subscriptionActive": {
+            "title": "Subscriptionactive",
+            "type": "boolean"
+          },
+          "user": {
+            "enum": [
+              "trial",
+              "subscription",
+              "expired",
+              "none"
+            ],
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "referralDaysLeft",
+          "subscriptionActive"
+        ],
+        "title": "AccessSummary",
+        "type": "object"
+      },
+      "AllowedRange": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "AllowedRange",
+        "type": "object"
+      },
+      "AuthError": {
+        "additionalProperties": false,
+        "description": "Stable error envelope for 400 and 401 bodies on /api/auth/*.",
+        "properties": {
+          "code": {
+            "enum": [
+              "INVALID_HMAC",
+              "MISSING_FIELDS",
+              "MALFORMED_INITDATA",
+              "INITDATA_EXPIRED",
+              "UNAUTHORIZED"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "AuthError",
+        "type": "object"
+      },
+      "AuthSession": {
+        "additionalProperties": false,
+        "description": "POST /api/auth/telegram — 200 response body.\n\nThe opaque session token itself is NEVER in the body; it travels in the\nHttpOnly Set-Cookie header.",
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "isNewUser": {
+            "title": "Isnewuser",
+            "type": "boolean"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "expiresAt",
+          "isNewUser"
+        ],
+        "title": "AuthSession",
+        "type": "object"
+      },
+      "BirthData": {
+        "additionalProperties": false,
+        "description": "Birth-place + birth-time data. Every field is optional (incremental\nonboarding). Validators enforce per-field ranges and lat/lon co-presence.",
+        "properties": {
+          "birthCity": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthcity"
+          },
+          "birthLat": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthlat"
+          },
+          "birthLon": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthlon"
+          },
+          "birthTime": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthtime"
+          },
+          "birthTz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthtz"
+          },
+          "birthday": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthday"
+          }
+        },
+        "title": "BirthData",
+        "type": "object"
+      },
+      "BulletsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "type": {
+            "const": "bullets",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "BulletsBlock",
+        "type": "object"
+      },
+      "CalendarDay": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentAccessState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "dayNumber": {
+            "title": "Daynumber",
+            "type": "integer"
+          },
+          "dayStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supportive",
+                  "steady",
+                  "tense"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daystatus"
+          },
+          "disabled": {
+            "title": "Disabled",
+            "type": "boolean"
+          },
+          "isCurrentMonth": {
+            "title": "Iscurrentmonth",
+            "type": "boolean"
+          },
+          "isToday": {
+            "title": "Istoday",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "dayNumber",
+          "isCurrentMonth",
+          "isToday",
+          "disabled"
+        ],
+        "title": "CalendarDay",
+        "type": "object"
+      },
+      "CalendarMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "title": "Contractversion",
+            "type": "integer"
+          },
+          "generatedAt": {
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "const": "calendar/v1",
+            "title": "Schemaversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "contractVersion",
+          "generatedAt"
+        ],
+        "title": "CalendarMeta",
+        "type": "object"
+      },
+      "CalendarPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "allowedRange": {
+            "$ref": "#/components/schemas/AllowedRange"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CalendarMeta"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meta",
+          "month",
+          "title",
+          "allowedRange",
+          "days"
+        ],
+        "title": "CalendarPayload",
+        "type": "object"
+      },
+      "ContentAccessState": {
+        "additionalProperties": false,
+        "properties": {
+          "accessUntil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessuntil"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active_referral_days",
+                  "active_subscription",
+                  "expired_access",
+                  "outside_access_window"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "referralDaysLeft": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referraldaysleft"
+          },
+          "state": {
+            "enum": [
+              "full",
+              "preview",
+              "locked"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "subscriptionActive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscriptionactive"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "ContentAccessState",
+        "type": "object"
+      },
+      "DayQuality": {
+        "additionalProperties": false,
+        "properties": {
+          "frictionScore": {
+            "title": "Frictionscore",
+            "type": "number"
+          },
+          "intensityScore": {
+            "title": "Intensityscore",
+            "type": "number"
+          },
+          "supportScore": {
+            "title": "Supportscore",
+            "type": "number"
+          }
+        },
+        "required": [
+          "supportScore",
+          "frictionScore",
+          "intensityScore"
+        ],
+        "title": "DayQuality",
+        "type": "object"
+      },
+      "HighlightItem": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "text"
+        ],
+        "title": "HighlightItem",
+        "type": "object"
+      },
+      "HighlightsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HighlightItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "type": {
+            "const": "highlights",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "HighlightsBlock",
+        "type": "object"
+      },
+      "MicrocopyItem": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "today",
+              "morning",
+              "evening"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "textLong": {
+            "title": "Textlong",
+            "type": "string"
+          },
+          "textShort": {
+            "title": "Textshort",
+            "type": "string"
+          },
+          "tone": {
+            "items": {
+              "enum": [
+                "bold",
+                "supportive",
+                "gentle",
+                "warning"
+              ],
+              "type": "string"
+            },
+            "title": "Tone",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "textShort",
+          "textLong",
+          "tone",
+          "scope"
+        ],
+        "title": "MicrocopyItem",
+        "type": "object"
+      },
+      "NatalMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "calculationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculationversion"
+          },
+          "contractVersion": {
+            "title": "Contractversion",
+            "type": "integer"
+          },
+          "generatedAt": {
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "interpretationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretationversion"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Person"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemaVersion": {
+            "const": "natal/v1",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "contractVersion",
+          "title",
+          "generatedAt"
+        ],
+        "title": "NatalMeta",
+        "type": "object"
+      },
+      "NatalPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/NatalMeta"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/NatalSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "meta",
+          "sections"
+        ],
+        "title": "NatalPayload",
+        "type": "object"
+      },
+      "NatalSection": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "bullets": "#/components/schemas/BulletsBlock",
+                  "highlights": "#/components/schemas/HighlightsBlock",
+                  "paragraph": "#/components/schemas/ParagraphBlock",
+                  "quote": "#/components/schemas/QuoteBlock"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ParagraphBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/BulletsBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/HighlightsBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/QuoteBlock"
+                }
+              ]
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "iconName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iconname"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "blocks"
+        ],
+        "title": "NatalSection",
+        "type": "object"
+      },
+      "ParagraphBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "paragraph",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "ParagraphBlock",
+        "type": "object"
+      },
+      "Person": {
+        "additionalProperties": false,
+        "properties": {
+          "birth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonBirth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "Person",
+        "type": "object"
+      },
+      "PersonBirth": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "PersonBirth",
+        "type": "object"
+      },
+      "ProfileRead": {
+        "additionalProperties": false,
+        "description": "Response shape for GET /api/profile. Privacy: NO tg_user_id, NO tokens.",
+        "properties": {
+          "birth": {
+            "$ref": "#/components/schemas/BirthData"
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstname"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "birth"
+        ],
+        "title": "ProfileRead",
+        "type": "object"
+      },
+      "ProfileWrite": {
+        "additionalProperties": false,
+        "description": "Request body for PUT /api/profile.\n\nField-level partial: omitted top-level fields are 'unchanged'. The\n`birth` block is itself a BirthData (also optional fields), so callers\ncan update e.g. only `birthCity` by sending `{\"birth\": {\"birthCity\": \"...\"}}`.",
+        "properties": {
+          "birth": {
+            "$ref": "#/components/schemas/BirthData"
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstname"
+          }
+        },
+        "title": "ProfileWrite",
+        "type": "object"
+      },
+      "QuoteBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "quote",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "QuoteBlock",
+        "type": "object"
+      },
+      "ReadingBody": {
+        "additionalProperties": false,
+        "properties": {
+          "paragraphs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paragraphs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "paragraphs"
+        ],
+        "title": "ReadingBody",
+        "type": "object"
+      },
+      "TelegramAuthRequest": {
+        "additionalProperties": false,
+        "description": "POST /api/auth/telegram — request body.",
+        "properties": {
+          "initData": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Initdata",
+            "type": "string"
+          }
+        },
+        "required": [
+          "initData"
+        ],
+        "title": "TelegramAuthRequest",
+        "type": "object"
+      },
+      "TodayAction": {
+        "additionalProperties": false,
+        "properties": {
+          "href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Href"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "TodayAction",
+        "type": "object"
+      },
+      "TodayMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "calculationVersion": {
+            "title": "Calculationversion",
+            "type": "integer"
+          },
+          "contentVersion": {
+            "title": "Contentversion",
+            "type": "integer"
+          },
+          "contractVersion": {
+            "title": "Contractversion",
+            "type": "integer"
+          },
+          "generatedAt": {
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "normalizationVersion": {
+            "title": "Normalizationversion",
+            "type": "integer"
+          },
+          "promptVersion": {
+            "title": "Promptversion",
+            "type": "integer"
+          },
+          "schemaVersion": {
+            "const": "today/v1",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "scoringVersion": {
+            "title": "Scoringversion",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "contractVersion",
+          "calculationVersion",
+          "normalizationVersion",
+          "scoringVersion",
+          "promptVersion",
+          "contentVersion",
+          "generatedAt"
+        ],
+        "title": "TodayMeta",
+        "type": "object"
+      },
+      "TodayPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "$ref": "#/components/schemas/ContentAccessState"
+          },
+          "actions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TodayAction"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actions"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "dayQuality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayQuality"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dayStatus": {
+            "enum": [
+              "supportive",
+              "steady",
+              "tense"
+            ],
+            "title": "Daystatus",
+            "type": "string"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/TodayMeta"
+          },
+          "microcopy": {
+            "items": {
+              "$ref": "#/components/schemas/MicrocopyItem"
+            },
+            "title": "Microcopy",
+            "type": "array"
+          },
+          "reading": {
+            "$ref": "#/components/schemas/ReadingBody"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topFlags": {
+            "items": {
+              "$ref": "#/components/schemas/TopFlag"
+            },
+            "title": "Topflags",
+            "type": "array"
+          },
+          "weekStrip": {
+            "items": {
+              "$ref": "#/components/schemas/WeekStripDay"
+            },
+            "title": "Weekstrip",
+            "type": "array"
+          },
+          "whyThisHappens": {
+            "$ref": "#/components/schemas/WhyThisHappens"
+          },
+          "yesterdayEcho": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/YesterdayEcho"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "meta",
+          "date",
+          "title",
+          "headline",
+          "access",
+          "dayStatus",
+          "topFlags",
+          "reading",
+          "whyThisHappens",
+          "weekStrip",
+          "microcopy"
+        ],
+        "title": "TodayPayload",
+        "type": "object"
+      },
+      "TopFlag": {
+        "additionalProperties": false,
+        "properties": {
+          "hint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopFlagHint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "iconName": {
+            "title": "Iconname",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "iconName",
+          "title",
+          "summary"
+        ],
+        "title": "TopFlag",
+        "type": "object"
+      },
+      "TopFlagHint": {
+        "additionalProperties": false,
+        "properties": {
+          "howItFeels": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Howitfeels"
+          },
+          "whyToday": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whytoday"
+          }
+        },
+        "title": "TopFlagHint",
+        "type": "object"
+      },
+      "WeekStripDay": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "dayStatus": {
+            "enum": [
+              "supportive",
+              "steady",
+              "tense"
+            ],
+            "title": "Daystatus",
+            "type": "string"
+          },
+          "isToday": {
+            "title": "Istoday",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "dayStatus",
+          "isToday"
+        ],
+        "title": "WeekStripDay",
+        "type": "object"
+      },
+      "WhyBullets": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "const": "bullets",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "items"
+        ],
+        "title": "WhyBullets",
+        "type": "object"
+      },
+      "WhyParagraph": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "paragraph",
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "WhyParagraph",
+        "type": "object"
+      },
+      "WhySection": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/WhyParagraph"
+                },
+                {
+                  "$ref": "#/components/schemas/WhyBullets"
+                }
+              ]
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "iconName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iconname"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "blocks"
+        ],
+        "title": "WhySection",
+        "type": "object"
+      },
+      "WhyThisHappens": {
+        "additionalProperties": false,
+        "properties": {
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/WhySection"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sections"
+        ],
+        "title": "WhyThisHappens",
+        "type": "object"
+      },
+      "YesterdayEcho": {
+        "additionalProperties": false,
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "enum": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "closureText": {
+            "title": "Closuretext",
+            "type": "string"
+          },
+          "hadCheckin": {
+            "title": "Hadcheckin",
+            "type": "boolean"
+          },
+          "mood": {
+            "anyOf": [
+              {
+                "enum": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood"
+          },
+          "transition": {
+            "enum": [
+              "released",
+              "intensified",
+              "shifted",
+              "continued"
+            ],
+            "title": "Transition",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hadCheckin",
+          "closureText",
+          "transition"
+        ],
+        "title": "YesterdayEcho",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Generated by scripts/contracts/export_openapi.py. Do not edit by hand. This document is the single source of truth for packages/contracts/*.ts (Option B per W-1.1B).",
+    "title": "Astro API — contract surface",
+    "version": "0.0.0-contracts",
+    "x-generator": "scripts/contracts/export_openapi.py",
+    "x-source-of-truth": "apps/api/app/schemas/* (Pydantic v2)"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/__contracts__/accesssummary": {
+      "get": {
+        "operationId": "contracts__accesssummary___contracts___accesssummary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Accesssummary",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/autherror": {
+      "get": {
+        "operationId": "contracts__autherror___contracts___autherror_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Autherror",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/authsession": {
+      "get": {
+        "operationId": "contracts__authsession___contracts___authsession_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Authsession",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/birthdata": {
+      "get": {
+        "operationId": "contracts__birthdata___contracts___birthdata_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BirthData"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Birthdata",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/calendarpayload": {
+      "get": {
+        "operationId": "contracts__calendarpayload___contracts___calendarpayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Calendarpayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/natalpayload": {
+      "get": {
+        "operationId": "contracts__natalpayload___contracts___natalpayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NatalPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Natalpayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/profileread": {
+      "get": {
+        "operationId": "contracts__profileread___contracts___profileread_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Profileread",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/profilewrite": {
+      "get": {
+        "operationId": "contracts__profilewrite___contracts___profilewrite_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileWrite"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Profilewrite",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/telegramauthrequest": {
+      "get": {
+        "operationId": "contracts__telegramauthrequest___contracts___telegramauthrequest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramAuthRequest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Telegramauthrequest",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/todaypayload": {
+      "get": {
+        "operationId": "contracts__todaypayload___contracts___todaypayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Todaypayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    }
+  }
+}

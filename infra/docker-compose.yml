@@ -1,0 +1,41 @@
+# DEV ONLY. Production deployment surface is TBD in W-DEPLOY.
+# This file provisions Postgres + Redis for the local dev-loop only.
+# SolarSage is an EXTERNAL service and is NOT defined here — it runs
+# in its own docker stack and we consume it via SOLARSAGE_BASE_URL.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: astro-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-astro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-astro}
+      POSTGRES_DB: ${POSTGRES_DB:-astro}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - astro_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-astro} -d ${POSTGRES_DB:-astro}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: astro-dev-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - astro_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  astro_pg_data:
+  astro_redis_data:

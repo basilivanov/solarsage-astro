@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GRACE §13.A — Requirements
+  Source docs: 00, 01, 02, 03, 04, 05, 06, 12, 13
+  Naming: UC-* (use cases), BR-* (business rules), INV-* (invariants), NFR-* (non-functional)
+-->
+<requirements project="astro-today" canon="GRACE_CANON.md" local="10_GRACE_Project_Agent_Guide.md">
+
+  <!-- =================================================================== -->
+  <!-- PRODUCT NORTH STAR                                                   -->
+  <!-- =================================================================== -->
+  <north-star>
+    <quality-gate>How does this manifest for ME?</quality-gate>
+    <main-screen>Today</main-screen>
+    <main-route>/day/:date</main-route>
+    <reading-time>3 to 5 minutes</reading-time>
+    <feeling>premium · calm · editorial · private intelligence briefing</feeling>
+    <anti-feeling>cosmos backgrounds · esoteric kitsch · neon · cheap symbols · pop-astro generic</anti-feeling>
+  </north-star>
+
+  <!-- =================================================================== -->
+  <!-- PRODUCT INVARIANTS (cannot be silently violated, see GRACE §11)     -->
+  <!-- =================================================================== -->
+  <invariants>
+    <invariant id="INV-TODAY-MAIN">
+      Today is the main MVP screen, route /day/:date. It is the screen of the SELECTED day, not always today.
+    </invariant>
+    <invariant id="INV-INLINE-WHY">
+      Top flags and "Why for me" are inline UI on Today, not separate screens.
+    </invariant>
+    <invariant id="INV-CALENDAR-NAV">
+      Calendar is navigation, not forecast. It does not show monthly readings.
+    </invariant>
+    <invariant id="INV-WEEK-3STATUSES">
+      7-day strip shows exactly 3 statuses: supportive | steady | tense.
+    </invariant>
+    <invariant id="INV-REFERRAL-14-BOTH">
+      Referral grants 14 days to both inviter and invitee. Bonus days are consumed BEFORE subscription.
+    </invariant>
+    <invariant id="INV-NO-FREE-TIER">
+      There is NO permanent free tier. Access opens via subscription or invite.
+    </invariant>
+    <invariant id="INV-FRONT-NO-INTERPRET">
+      Frontend does not interpret astrology, does not select top flags, does not compute day status, does not reassemble why-sections, does not receive raw SolarSage.
+    </invariant>
+    <invariant id="INV-LLM-CURATED">
+      LLM receives only curated SemanticLayer, never raw SolarSage, never internal scoring fields.
+    </invariant>
+    <invariant id="INV-VERSIONED-PAYLOAD">
+      Every backend response carries meta with contract_version and applicable layer versions.
+    </invariant>
+    <invariant id="INV-CONTRACT-STABLE">
+      contract_version changes rarely. calculation/normalization/scoring/prompt versions can change without breaking the frontend.
+    </invariant>
+    <invariant id="INV-CACHE-LAYERED">
+      Caches are separated by layer: natal_snapshots, period_snapshots, daily_snapshots, semantic_layers, today_payloads. Never mix raw and curated.
+    </invariant>
+    <invariant id="INV-INPUT-HASH">
+      Every cache row carries input_hash that captures all inputs that, if changed, must invalidate the row.
+    </invariant>
+  </invariants>
+
+  <!-- =================================================================== -->
+  <!-- USE CASES                                                            -->
+  <!-- =================================================================== -->
+  <use-cases>
+
+    <use-case id="UC-TG-AUTH" priority="P0" phase="PHASE-1-MOCKED-PIPELINE">
+      <title>Telegram WebApp authentication</title>
+      <actor>Anonymous Telegram user</actor>
+      <trigger>App opens initData payload from Telegram WebApp.</trigger>
+      <main-flow>
+        <step>1. Frontend reads window.Telegram.WebApp.initData.</step>
+        <step>2. POST /api/auth/telegram with raw initData.</step>
+        <step>3. Backend validates HMAC against TELEGRAM_BOT_TOKEN.</step>
+        <step>4. Backend upserts users row by telegram_id.</step>
+        <step>5. Backend returns session token (HttpOnly cookie or JWT).</step>
+      </main-flow>
+      <rules>
+        <rule>HMAC validation must reject expired or tampered initData.</rule>
+        <rule>Session lifetime: 30 days, sliding.</rule>
+      </rules>
+      <errors>UNAUTHORIZED</errors>
+      <acceptance>
+        Valid initData yields a session and a users row. Tampered initData yields 401 with no DB write.
+      </acceptance>
+    </use-case>
+
+    <use-case id="UC-PROFILE-CREATE" priority="P0" phase="PHASE-1-MOCKED-PIPELINE">
+      <title>Onboarding profile creation</title>
+      <actor>Authenticated user without profile</actor>
+      <main-flow>
+        <step>1. User submits birth_date, birth_time, birth_place, current_location, optional birthday_location.</step>
+        <step>2. Backend validates and stores user_profiles row.</step>
+        <step>3. Backend invalidates any pre-existing snapshots for the user.</step>
+        <step>4. User is redirected to /day/today.</step>
+      </main-flow>
+      <rules>
+        <rule>house_system defaults to "placidus" unless overridden.</rule>
+        <rule>Coordinates must include lat/lon/timezone for every location.</rule>
+        <rule>If birthday_location is omitted, current_location is used.</rule>
+      </rules>
+      <errors>PROFILE_INCOMPLETE, INVALID_DATE, UNAUTHORIZED</errors>
+      <acceptance>
+        After successful submit, GET /api/profile returns the saved data.
+      </acceptance>
+    </use-case>
+
+    <use-case id="UC-PROFILE-EDIT" priority="P1" phase="PHASE-1-MOCKED-PIPELINE">
+      <title>Edit birth or location data</title>
+      <actor>Authenticated user with profile</actor>
+      <rules>
+        <rule>Editing birth_date | birth_time | birth_place invalidates natal_snapshots, period_snapshots, daily_snapshots, semantic_layers, today_payloads for this user.</rule>
+        <rule>Editing current_location or birthday_location invalidates period_snapshots, daily_snapshots, semantic_layers, today_payloads.</rule>
+      </rules>
+      <acceptance>After edit, next /api/day/:date returns recomputed payload.</acceptance>
+    </use-case>
+
+    <use-case id="UC-ACCESS-CHECK" priority="P0" phase="PHASE-ACCESS">
+      <title>Compute access state for a date</title>
+      <actor>Backend, on every /api/day/:date and /api/calendar request</actor>
+      <main-flow>
+        <step>1. Read access_ledger entries for user.</step>
+        <step>2. Order: referral_bonus → gift → subscription → adjustment.</step>
+        <step>3. Consume entries in that order against requested date.</step>
+        <step>4. Return state full | preview | locked plus reason and counters.</step>
+      </main-flow>
+      <rules>
+        <rule>Bonus days are consumed BEFORE subscription days.</rule>
+        <rule>If user has no active entry: state = preview, reason = expired_access.</rule>
+      </rules>
+      <acceptance>
+        For a user with 14 referral days starting today and no subscription: dates 0..13 → full, date 14 → preview.
+      </acceptance>
+    </use-case>
+
+    <use-case id="UC-DAY-VIEW" priority="P0" phase="PHASE-1-MOCKED-PIPELINE" pilot="true">
+      <title>View Today screen for a selected date</title>
+      <actor>Authenticated user with profile</actor>
+      <trigger>GET /api/day/:date</trigger>
+      <main-flow>
+        <step>1. Validate user and profile.</step>
+        <step>2. Resolve access via UC-ACCESS-CHECK.</step>
+        <step>3. If preview: return preview TodayPayload (date, headline, partial flags, teaser, soft lock).</step>
+        <step>4. If full: lookup today_payloads by (user_id, date, contract_version). On hit return.</step>
+        <step>5. On miss: traverse pipeline (natal → period → daily → normalize → score → semantic → llm → payload), persist each layer, return payload.</step>
+      </main-flow>
+      <rules>
+        <rule>Return must conform to C-TODAY-PAYLOAD (docs/05).</rule>
+        <rule>meta.cached must be true on cache hit, false on miss.</rule>
+      </rules>
+      <errors>NOT_ONBOARDED, ACCESS_DENIED, INVALID_DATE, CALCULATION_FAILED, LLM_GENERATION_FAILED</errors>
+      <acceptance>
+        Pilot acceptance (PHASE-1): for any onboarded user and any date in allowed range, response is a valid TodayPayload (fixture-backed) within 500ms p95.
+      </acceptance>
+    </use-case>
+
+    <use-case id="UC-DAY-NAV" priority="P0" phase="PHASE-1-MOCKED-PIPELINE">
+      <title>Navigate between days on Today</title>
+      <actor>User on /day/:date</actor>
+      <main-flow>
+        <step>Tap arrow or swipe → push /day/:nextDate, fetch payload, scroll to top.</step>
+      </main-flow>
+      <rules>
+        <rule>Date lives in URL.</rule>
+        <rule>User is identified by Telegram session, not by route.</rule>
+      </rules>
+    </use-case>
+
+    <use-case id="UC-CAL-NAV" priority="P0" phase="PHASE-1-MOCKED-PIPELINE">
+      <title>Calendar navigation across months</title>
+      <actor>User on /calendar</actor>
+      <trigger>GET /api/calendar?month=YYYY-MM</trigger>
+      <rules>
+        <rule>Allowed range: previous, current, next month.</rule>
+        <rule>Disabled days are non-clickable.</rule>
+        <rule>Tap on available or locked day → /day/:date.</rule>
+        <rule>Calendar is navigation, not forecast (INV-CALENDAR-NAV).</rule>
+      </rules>
+    </use-case>
+
+    <use-case id="UC-WEEK-STRIP" priority="P0" phase="PHASE-1-MOCKED-PIPELINE">
+      <title>7-day strip on Today</title>
+      <rules>
+        <rule>Exactly 3 statuses (INV-WEEK-3STATUSES).</rule>
+        <rule>Internal qualities map to public statuses per docs/04 §11.</rule>
+      </rules>
+    </use-case>
+
+    <use-case id="UC-REFERRAL" priority="P1" phase="PHASE-ACCESS">
+      <title>Invite a friend, both receive 14 days</title>
+      <rules>
+        <rule>On a new valid invitee signup, write 2 access_ledger rows (inviter + invitee), type=referral_bonus, days_amount=14.</rule>
+        <rule>Each user can be invited only once.</rule>
+      </rules>
+    </use-case>
+
+    <use-case id="UC-LOCKED-DAY" priority="P0" phase="PHASE-ACCESS">
+      <title>Locked / preview day behaviour</title>
+      <rules>
+        <rule>Locked day opens the same /day/:date.</rule>
+        <rule>Show date, headline, partial flags, teaser, soft lock.</rule>
+        <rule>Soft lock CTAs: subscribe, invite.</rule>
+      </rules>
+    </use-case>
+
+    <use-case id="UC-NATAL-VIEW" priority="P2" phase="PHASE-7-NATAL-READING">
+      <title>Render natal reading as versioned blocks</title>
+      <rules>
+        <rule>Frontend is a generic block renderer; unknown block.type is skipped, not crashed (docs/06 §1).</rule>
+        <rule>Routes: /readings/natal and /readings/natal/[section].</rule>
+      </rules>
+    </use-case>
+
+    <use-case id="UC-EVENING-CHECKIN" priority="P2" phase="PHASE-8-EVENING">
+      <title>Evening checkin and morning closure</title>
+      <rules>
+        <rule>One checkin per (user_id, date), upsert on repeat.</rule>
+        <rule>note text is never sent to LLM unless prompt_version is note-aware.</rule>
+        <rule>yesterdayEcho appears in TodayPayload only when a checkin exists.</rule>
+      </rules>
+    </use-case>
+
+    <use-case id="UC-PAYMENTS" priority="P1" phase="PHASE-6-PAYMENTS">
+      <title>Telegram payments and subscription state</title>
+      <rules>
+        <rule>Successful payment writes access_ledger row type=subscription.</rule>
+        <rule>Subscription is consumed only after referral_bonus and gift days are exhausted.</rule>
+      </rules>
+    </use-case>
+
+  </use-cases>
+
+  <!-- =================================================================== -->
+  <!-- BUSINESS RULES                                                       -->
+  <!-- =================================================================== -->
+  <business-rules>
+    <rule id="BR-ACCESS-ORDER">Consumption order: referral_bonus → gift → subscription → adjustment.</rule>
+    <rule id="BR-NO-FREE-TIER">No permanent free tier (mirrors INV-NO-FREE-TIER).</rule>
+    <rule id="BR-HORARY-WEEKLY">1 horary question per week of active access; bonus credits accumulate.</rule>
+    <rule id="BR-3-STATUSES">UI shows exactly 3 day statuses; internal qualities map per docs/04 §11.</rule>
+    <rule id="BR-FLAGS-COUNT">Top flags: min 2, optimal 3, max 4 (docs/02).</rule>
+    <rule id="BR-WHY-INLINE">"Why for me" is inline disclosure, not a route.</rule>
+    <rule id="BR-DATE-IN-URL">Selected date must be in the URL.</rule>
+    <rule id="BR-WEEKDAY-WINDOW">Calendar allowed range = previous + current + next month.</rule>
+    <rule id="BR-CONTRACT-STABLE">Changing calculation/normalization/scoring/prompt does not change contract_version unless TodayPayload shape changes.</rule>
+    <rule id="BR-LLM-NO-INTERNALS">LLM output must never reference internal scoring fields (salience, supportScore, frictionScore, shadowRisk, internal ranking, raw JSON).</rule>
+  </business-rules>
+
+  <!-- =================================================================== -->
+  <!-- NON-FUNCTIONAL                                                       -->
+  <!-- =================================================================== -->
+  <nfr>
+    <nfr id="NFR-DAY-LATENCY-CACHED" target="p95 &lt; 200ms">Cached /api/day/:date response time.</nfr>
+    <nfr id="NFR-DAY-LATENCY-COLD" target="p95 &lt; 20s">Cold pipeline (PHASE-5 onward).</nfr>
+    <nfr id="NFR-CAL-LATENCY" target="p95 &lt; 300ms">Calendar response time.</nfr>
+    <nfr id="NFR-AVAILABILITY" target="99.5% monthly">API SLO.</nfr>
+    <nfr id="NFR-DATA-RETENTION">Snapshots retained 180 days unless invalidated by version bump.</nfr>
+    <nfr id="NFR-PRIVACY-NOTE">checkin.note never logged in shared logs, never sent to LLM unless prompt is note-aware.</nfr>
+    <nfr id="NFR-OBSERVABILITY">Every payload carries meta.generatedAt, meta.cached, all *_version fields.</nfr>
+    <nfr id="NFR-MOBILE-FIRST">All UI is mobile-first; long-text reading mode tuned for 360-440px.</nfr>
+    <nfr id="NFR-A11Y">Touch targets ≥ 44px; contrast ≥ WCAG AA on body text.</nfr>
+  </nfr>
+
+  <!-- =================================================================== -->
+  <!-- OPEN QUESTIONS (require owner sign-off, see docs/10 §2)             -->
+  <!-- =================================================================== -->
+  <open-questions>
+    <question id="Q-FIFTH-TAB">Is the 5th tab "Ask" in scope for MVP?</question>
+    <question id="Q-TRIAL-LENGTH">Confirm trial = 14 days for both inviter and invitee.</question>
+    <question id="Q-PAYMENTS-PROVIDER">Telegram Stars vs external provider for PHASE-6.</question>
+  </open-questions>
+
+</requirements>

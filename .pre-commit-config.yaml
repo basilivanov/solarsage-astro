@@ -1,0 +1,58 @@
+# ############################################################################
+# Grace Level-3 machine gate: pre-commit configuration.
+#
+# Runs on every `git commit`. If any hook fails, the commit is aborted.
+# Install once per clone:    pre-commit install
+# Run manually on all files: pre-commit run --all-files
+# ############################################################################
+
+repos:
+  - repo: local
+    hooks:
+      - id: docs-frontmatter
+        name: docs/grace front-matter
+        entry: python scripts/check_frontmatter.py
+        language: system
+        files: ^(docs|grace/packets)/.*\.md$
+        pass_filenames: false
+
+      - id: docs-manifest
+        name: docs/MANIFEST.md sync
+        entry: python scripts/check_docs_manifest.py
+        language: system
+        files: ^(docs/.*\.md|grace/packets/.*\.md|grace/README.md|MANIFEST.md)$
+        pass_filenames: false
+
+      - id: grace-lint
+        name: grace_lint (contract markers)
+        entry: python scripts/grace_lint.py
+        language: system
+        types: [python]
+        # Active slice only — keep contracts out of the frontend / migrations.
+        files: ^apps/api/app/.*\.py$
+        pass_filenames: false
+
+      - id: ruff
+        name: ruff (apps/api)
+        entry: bash -c 'cd apps/api && .venv/bin/ruff check .'
+        language: system
+        types: [python]
+        files: ^apps/api/.*\.py$
+        pass_filenames: false
+
+      - id: mypy
+        name: mypy (apps/api)
+        entry: bash -c 'cd apps/api && .venv/bin/mypy app'
+        language: system
+        types: [python]
+        files: ^apps/api/.*\.py$
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest (apps/api)
+        entry: bash -c 'cd apps/api && .venv/bin/pytest -q'
+        language: system
+        types: [python]
+        files: ^apps/api/.*\.py$
+        pass_filenames: false
+        stages: [pre-push]   # heavy: only on push, not every commit

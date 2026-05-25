@@ -1,0 +1,15 @@
+# GRACE frontend enforcement whitelist (W-2.0).
+# Single source of truth for both ESLint (eslint.config.mjs) and the bash marker
+# gate (scripts/grace/check-markers.sh). Lines starting with "#" are ignored.
+# Format: one glob per line, relative to repo root, POSIX style.
+#
+# Rationale: whitelist, not blacklist. New caller directories are inert until
+# explicitly added here, so silent scope creep cannot bypass GRACE markers.
+
+app/(grace)/**/*.tsx
+app/(grace)/**/*.ts
+components/grace/**/*.tsx
+components/grace/**/*.ts
+lib/grace/**/*.ts
+lib/api/**/*.ts
+packages/contracts/index.ts
