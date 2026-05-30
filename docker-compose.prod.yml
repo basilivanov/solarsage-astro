@@ -1,0 +1,101 @@
+# AI_HEADER
+# module: M-DEPLOY-PROD
+# wave: W-DEPLOY
+# purpose: Docker Compose for production deployment
+
+services:
+  # PostgreSQL database (production)
+  db:
+    image: postgres:16-alpine
+    container_name: solarsage-db-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-astro}
+      POSTGRES_USER: ${POSTGRES_USER:-astro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - solarsage_postgres_prod:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"  # Production на порту 5434
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-astro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - solarsage-network
+
+  # Redis (production)
+  redis:
+    image: redis:7-alpine
+    container_name: solarsage-redis-prod
+    ports:
+      - "6382:6379"  # Production на порту 6382
+    volumes:
+      - solarsage_redis_prod:/data
+    restart: unless-stopped
+    networks:
+      - solarsage-network
+
+  # API backend (production)
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: solarsage-api-prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://astro:${POSTGRES_PASSWORD}@db:5432/astro
+      APP_ENV: production
+      APP_DOMAIN: ${APP_DOMAIN}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      BOT_USERNAME: ${BOT_USERNAME}
+      WEBAPP_URL: ${WEBAPP_URL}
+      BOT_ADMIN_IDS: ${BOT_ADMIN_IDS}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      SOLARSAGE_BASE_URL: http://solarsage:8001
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8002:8000"  # Production API на порту 8002
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - solarsage-network
+
+  # SolarSage sidecar (production)
+  solarsage:
+    build:
+      context: ./apps/solarsage
+      dockerfile: Dockerfile
+    container_name: solarsage-sidecar-prod
+    ports:
+      - "8003:8001"  # Production SolarSage на порту 8003
+    restart: unless-stopped
+    networks:
+      - solarsage-network
+
+  # Frontend (production) - опционально
+  # frontend:
+  #   build:
+  #     context: ./apps/web
+  #     dockerfile: Dockerfile
+  #   container_name: solarsage-frontend-prod
+  #   ports:
+  #     - "3001:80"
+  #   environment:
+  #     VITE_API_URL: https://${APP_DOMAIN}/api
+  #   restart: unless-stopped
+  #   networks:
+  #     - solarsage-network
+
+volumes:
+  solarsage_postgres_prod:
+  solarsage_redis_prod:
+
+networks:
+  solarsage-network:
+    driver: bridge

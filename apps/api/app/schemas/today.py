@@ -217,6 +217,7 @@ class TodayMeta(CamelModel):
     prompt_version: int
     content_version: int
     generated_at: str
+    cached: bool = False  # W-5.2: true if returned from cache
 
     # W-4.0: версии canon файлов
     scoring_canon_version: int | None = None  # версия grace/canon/*.yml

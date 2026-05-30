@@ -133,6 +133,14 @@ class Settings(BaseSettings):
     )  # 30d
     session_cookie_secure: bool = Field(True, alias="SESSION_COOKIE_SECURE")
 
+    # --- SolarSage sidecar (W-3.4) ---
+    solarsage_url: str = Field("http://127.0.0.1:18091", alias="SOLARSAGE_URL")
+
+    # --- LLM (W-5.1) ---
+    anthropic_api_key: str = Field("", alias="ANTHROPIC_API_KEY")
+    llm_model: str = Field("claude-3-5-sonnet-20241022", alias="LLM_MODEL")
+    llm_max_tokens: int = Field(500, alias="LLM_MAX_TOKENS")
+
     @property
     def git_sha(self) -> str:
         # START_FUNCTION_CONTRACT: M-CONFIG.Settings.git_sha

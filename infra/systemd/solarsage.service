@@ -1,0 +1,16 @@
+[Unit]
+Description=SolarSage Sidecar
+After=network.target
+
+[Service]
+Type=simple
+User=astro
+WorkingDirectory=/opt/solarsage-astro/apps/solarsage
+Environment="SOLARSAGE_EPHEMERIS_PATH=/opt/sweph/ephe"
+Environment="SOLARSAGE_GIT_SHA=production"
+ExecStart=/usr/bin/uvicorn solarsage.app:app --host 127.0.0.1 --port 18091
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

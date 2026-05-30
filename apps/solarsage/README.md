@@ -1,36 +1,99 @@
 # apps/solarsage — sidecar расчётов
 
-Отдельный Python-сервис на Swiss Ephemeris. Слушает `127.0.0.1:18091` и
-наружу не торчит. Backend ходит к нему через `SOLARSAGE_BASE_URL` +
-`X-API-Key: $SOLARSAGE_API_KEY`.
+FastAPI HTTP-сервис для астрологических расчётов на Swiss Ephemeris.
+Слушает `127.0.0.1:18091` (только loopback).
 
-## Содержимое папки
+## Структура
 
-- `collect_solarsage_western_deep.py` — справочный скрипт сбора deep-натала
-  (шёл в проекте). Используется как образец payload, который ожидает
-  оркестратор.
-- `sample_params.json` — пример входных данных.
-- `Makefile` — установка sidecar в `/opt/solarsage`, сборка Swiss Ephemeris,
-  systemd unit.
-
-## Установка на VDS
-
-```bash
-make install   # клонирует SolarSage в /opt/solarsage и собирает libswe.a
-make systemd   # ставит /etc/systemd/system/solarsage.service
-sudo systemctl enable --now solarsage
+```
+solarsage/
+  app.py              # FastAPI application
+  core/
+    config.py         # Settings (ephemeris_path, port, etc)
+    health.py         # Health check logic
+  api/
+    health.py         # /v1/health endpoint
+  schemas/
+    health.py         # Pydantic schemas
+tests/
+  test_health.py      # Health endpoint tests
 ```
 
-> SolarSage — внешний репозиторий. Подставь свой URL в `Makefile`
-> (`SOLARSAGE_GIT`).
-
-## Проверка
+## Установка
 
 ```bash
-curl -s -H "X-API-Key: $SOLARSAGE_API_KEY" http://127.0.0.1:18091/health
-python collect_solarsage_western_deep.py \
-  --name Vasiliy \
-  --date 1990-01-01 --time 12:00 --timezone Asia/Yekaterinburg \
-  --location Yekaterinburg --lat 56.84 --lon 60.61 \
-  --out /tmp/snapshot.json
+# Создать venv
+python3 -m venv venv
+source venv/bin/activate
+
+# Установить зависимости
+pip install -e ".[dev]"
 ```
+
+## Запуск
+
+```bash
+# Development (с auto-reload)
+uvicorn solarsage.app:app --host 127.0.0.1 --port 18091 --reload
+
+# Production
+uvicorn solarsage.app:app --host 127.0.0.1 --port 18091
+```
+
+## Конфигурация
+
+Environment variables (префикс: `SOLARSAGE_`):
+
+- `SOLARSAGE_EPHEMERIS_PATH` — путь к Swiss Ephemeris data (default: `/opt/sweph/ephe`)
+- `SOLARSAGE_GIT_SHA` — Git commit SHA для версионирования (default: `dev`)
+- `SOLARSAGE_CALCULATION_VERSION` — версия расчётов (default: `ss-1.0.0`)
+
+## Endpoints
+
+### GET /v1/health
+
+Health check endpoint.
+
+**Response (200 OK):**
+```json
+{
+  "ok": true,
+  "version": "dev",
+  "ephemeris_path": "/opt/sweph/ephe",
+  "calculation_version": "ss-1.0.0"
+}
+```
+
+**Response (503 Service Unavailable):**
+```json
+{
+  "detail": "Ephemeris path not found: /opt/sweph/ephe"
+}
+```
+
+## Тестирование
+
+```bash
+pytest tests/ -v
+```
+
+## Systemd Service
+
+```bash
+# Скопировать service file
+sudo cp /opt/solarsage-astro/infra/systemd/solarsage.service /etc/systemd/system/
+
+# Включить и запустить
+sudo systemctl daemon-reload
+sudo systemctl enable solarsage
+sudo systemctl start solarsage
+
+# Проверить статус
+sudo systemctl status solarsage
+```
+
+## Справочные файлы
+
+- `collect_solarsage_western_deep.py` — reference collector для deep-натала
+  (используется как образец payload для оркестратора)
+- `sample_params.json` — пример входных данных

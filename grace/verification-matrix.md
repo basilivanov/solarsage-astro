@@ -20,7 +20,7 @@ Columns:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-AUTH-TG → M-PROFILE → `user_profiles` | All required fields present; lat/lon/tz resolved; redirect target = `/day/today` | S1: full payload → 201, profile readable via GET. S2: missing birth_time → 422 with `PROFILE_INCOMPLETE`. S3: birthday_location omitted → defaults to current_location. |
+| M-AUTH-TG → M-PROFILE → `user_profiles` | All required fields present; lat/lon/tz resolved; redirect target = `/day/today` | S1: full payload → 201, profile readable via GET. S2: missing birth_time → 422 with `PROFILE_INCOMPLETE`. S3: birthday_location omitted → defaults to current_location. **E2E:** Complete 5-step onboarding flow (welcome → birth → place → birthday → done) with validation, localStorage persistence, and redirect to `/day/today`. |
 
 ## UC-PROFILE-EDIT · Edit birth/location
 
@@ -111,7 +111,7 @@ For each contract in `technology.xml`:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-SOLARSAGE-REFERENCE-COLLECTOR → M-SIDECAR → M-SOLARSAGE-CLIENT | Golden fixture parity. The split service must match controller-approved reference collector JSON for planets, houses, aspects, lots, special points, fixed stars, and derived raw layers within declared tolerances. | S1: Vasiliy golden chart and target date regenerate byte-stable normalized JSON except timestamp fields. S2: A high-latitude chart uses the documented house-system fallback. S3: Chiron/Nodes/Lilith/Vertex fixed-star and aspect coverage remains present after service split. |
+| M-SOLARSAGE-REFERENCE-COLLECTOR → M-SIDECAR → M-SOLARSAGE-CLIENT | **Golden fixture parity (W-3.0).** The split service must match controller-approved reference collector JSON for planets, houses, aspects, lots, special points, fixed stars, and derived raw layers within declared tolerances: planets longitudes ±1e-6 deg, houses cusps ±1e-6 deg, aspects orbs ±1e-4 deg. Timestamp fields excluded from comparison. Golden fixtures: `apps/solarsage/tests/fixtures/vasiliy_2026-05-30.json` (high-latitude WHOLE_SIGN), `test_user_2026-06-15.json` (normal-latitude PLACIDUS). Parity tests: `apps/solarsage/tests/test_parity.py`. | S1: Vasiliy golden chart (1980-10-30 19:50 Europe/Moscow, 67.9387°N 32.9241°E) and target date 2026-05-30 regenerate byte-stable normalized JSON except timestamp fields. S2: A high-latitude chart (abs(lat)≥60°) uses the documented house-system fallback (WHOLE_SIGN when `house_system="auto"`). S3: Chiron/Nodes/Lilith/Vertex fixed-star and aspect coverage remains present after service split (30 raw layers + derived layers). |
 | M-SCORING-CANON → M-ACTIVATION-LAYER → M-SCORING | Canon YAML validates; scoring refuses to run without matching `scoring_canon_version`; activation evidence is included in debug/evidence artifacts but not exposed to frontend. | S1: changing `grace/canon/aspect_rules.v1.yml` changes `scoring_canon_version` and invalidates semantic/today caches. S2: two independent techniques pointing to the same planet/house produce convergence bonus. S3: one isolated rare factor cannot create a strong sphere claim by itself. |
 | M-SCORING → M-SEMANTIC → M-LLM | LLM receives curated interpretation inputs only; no raw SolarSage, no score internals, no self-calculated astrology. | S1: prompt payload contains semantic themes and evidence IDs, not raw ephemeris JSON. S2: generated text may interpret facts but regex gate rejects language implying the LLM calculated positions/aspects itself. |
 
@@ -158,16 +158,17 @@ See `docs/ADR-001_Headless_Testing.md` for the complete testing strategy.
 
 | UC | Backend Unit | Backend Integration | Frontend Unit | E2E | Visual |
 |---|---|---|---|---|---|
-| UC-TG-AUTH | test_telegram_hmac.py | test_auth_endpoints.py | - | auth.spec.ts | - |
-| UC-PROFILE-CREATE | - | test_profile_endpoints.py | - | onboarding.spec.ts | onboarding-step*.png |
+| UC-TG-AUTH | test_telegram_hmac.py | test_auth_endpoints.py | - | auth.spec.ts, telegram-auth.spec.ts | - |
+| UC-PROFILE-CREATE | - | test_profile_endpoints.py | - | onboarding.spec.ts, onboarding-complete.spec.ts, onboarding-validation.spec.ts | onboarding-step*.png |
 | UC-PROFILE-EDIT | - | test_profile_endpoints.py | - | - | - |
 | UC-ACCESS-CHECK | - | test_access_service.py | useAccess.test.ts | - | - |
-| UC-DAY-VIEW | test_normalization.py, test_scoring.py | test_day_endpoints.py | - | day-view.spec.ts | today-*.png |
-| UC-DAY-NAV | - | - | - | day-view.spec.ts | - |
-| UC-CAL-NAV | - | test_calendar_endpoints.py | - | calendar.spec.ts | calendar-3months.png |
+| UC-DAY-VIEW | test_normalization.py, test_scoring.py | test_day_endpoints.py | - | day-view.spec.ts, session-persistence.spec.ts | today-*.png |
+| UC-DAY-NAV | - | - | - | day-view.spec.ts, cross-feature-navigation.spec.ts | - |
+| UC-CAL-NAV | - | test_calendar_endpoints.py | - | calendar.spec.ts, cross-feature-navigation.spec.ts | calendar-3months.png |
 | UC-WEEK-STRIP | - | test_day_endpoints.py | - | day-view.spec.ts | week-strip.png |
 | UC-REFERRAL | - | test_referral_service.py | - | - | - |
 | UC-LOCKED-DAY | - | test_day_endpoints.py | - | locked-day.spec.ts | locked-preview.png |
+| UC-ERROR-RECOVERY | - | - | - | error-recovery.spec.ts | error-backend-down.png |
 
 ### Auth-First Principle
 

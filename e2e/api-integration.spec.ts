@@ -151,4 +151,44 @@ test.describe('API Integration', () => {
     // Test passes even with errors, but logs them for visibility
     expect(true).toBe(true);
   });
+
+  test('should call correct API URL without double /api', async ({ page }) => {
+    const apiCalls: string[] = [];
+
+    // Capture all API requests
+    page.on('request', request => {
+      const url = request.url();
+      if (url.includes('/api/')) {
+        apiCalls.push(url);
+      }
+    });
+
+    await page.goto('/day/today');
+
+    // Wait for page to load
+    await page.waitForSelector('[data-testid="today-screen"], [data-testid="error-boundary"]', {
+      timeout: 15000
+    });
+
+    // Check for double /api/api in URLs
+    const badUrls = apiCalls.filter(url => url.includes('/api/api'));
+
+    if (badUrls.length > 0) {
+      console.error('❌ Bad URLs with double /api found:', badUrls);
+    }
+
+    // MUST NOT have double /api/api
+    expect(badUrls).toEqual([]);
+
+    // Check that correct URL is called
+    const correctDayUrl = apiCalls.find(url =>
+      url.match(/\/api\/day\/(today|\d{4}-\d{2}-\d{2})$/) && !url.includes('/api/api')
+    );
+
+    if (correctDayUrl) {
+      console.log('✅ Correct API URL called:', correctDayUrl);
+    }
+
+    expect(correctDayUrl).toBeDefined();
+  });
 });

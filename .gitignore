@@ -36,3 +36,4 @@ playwright-report/
 *.tsbuildinfo
 dist/
 build/
+.env.production

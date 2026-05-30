@@ -105,6 +105,12 @@ async def put_profile(
     db: AsyncSession = Depends(get_session),
 ) -> ProfileRead:
     profile = await update_profile(db, user_id, body)
+
+    # W-5.2: Invalidate cache after profile edit
+    from app.services.today_service import TodayService
+    today_service = TodayService(db)
+    await today_service.invalidate_cache(user_id)
+
     await db.commit()
     # TODO(W-1.6): log.event("profile.updated", {fields: list(...)} )
     return _to_read(profile)

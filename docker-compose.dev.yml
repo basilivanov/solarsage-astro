@@ -1,0 +1,40 @@
+# AI_HEADER
+# module: M-DEPLOY-DEV
+# wave: W-DEPLOY
+# purpose: Docker Compose for local development
+
+version: '3.8'
+
+services:
+  # PostgreSQL database (dev)
+  db:
+    image: postgres:16-alpine
+    container_name: solarsage-db-dev
+    environment:
+      POSTGRES_DB: astro
+      POSTGRES_USER: astro
+      POSTGRES_PASSWORD: astro_dev_password
+    volumes:
+      - solarsage_postgres_dev:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Используем 5433 чтобы не конфликтовать с другими БД
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astro"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis (для будущего кеширования)
+  redis:
+    image: redis:7-alpine
+    container_name: solarsage-redis-dev
+    ports:
+      - "6381:6379"  # Используем 6381
+    volumes:
+      - solarsage_redis_dev:/data
+    restart: unless-stopped
+
+volumes:
+  solarsage_postgres_dev:
+  solarsage_redis_dev:

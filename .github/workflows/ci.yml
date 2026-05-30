@@ -1,0 +1,122 @@
+# ############################################################################
+# AI_HEADER: MODULE_CI_WORKFLOW
+# ROLE: GitHub Actions CI pipeline (W-TEST-4).
+# DEPENDENCIES: GitHub Actions, pytest, vitest, playwright
+# GRACE_ANCHORS: [CI_PIPELINE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-CI-WORKFLOW
+# purpose: Automated CI pipeline for backend, frontend, and E2E tests
+# owns:
+#   - .github/workflows/ci.yml
+# inputs:
+#   - push to main branch
+#   - pull request to main branch
+# outputs:
+#   - test results (pass/fail)
+#   - build artifacts
+# dependencies:
+#   - apps/api (backend)
+#   - __tests__ (frontend unit tests)
+#   - e2e (E2E tests)
+# side_effects:
+#   - runs tests on GitHub runners
+# invariants:
+#   - all test jobs MUST pass for CI to succeed
+#   - backend tests MUST run in Python 3.11
+#   - frontend tests MUST run in Node.js 20
+# failure_policy:
+#   - any job failure -> CI fails
+# non_goals:
+#   - deployment, production builds
+# END_MODULE_CONTRACT: M-CI-WORKFLOW
+
+# START_MODULE_MAP: M-CI-WORKFLOW
+# public_entrypoints:
+#   - GitHub Actions trigger
+# semantic_blocks:
+#   - CI_PIPELINE
+# owned_tests:
+#   - runs all tests in CI
+# END_MODULE_MAP: M-CI-WORKFLOW
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# START_BLOCK: CI_PIPELINE
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd apps/api
+          pip install -e .
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run backend tests
+        run: |
+          cd apps/api
+          pytest tests/ -v
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run frontend tests
+        run: npm run test:run
+
+      - name: Build frontend
+        run: npm run build
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+# END_BLOCK: CI_PIPELINE

@@ -447,7 +447,7 @@
         <criterion>UC-ACCESS-CHECK scenarios S1-S3 covered: 14d referral → days 0..13 full, referral + subscription → consumption order, no entries → preview.</criterion>
         <criterion>authenticated_client fixture: login → onboarding → returns client with session cookie.</criterion>
         <criterion>Cache assertions: meta.cached=false on first call, true on second.</criterion>
-        <criterion>Performance: p95 < 500ms for cached /api/day/:date.</criterion>
+        <criterion>Performance: p95 &lt; 500ms for cached /api/day/:date.</criterion>
       </exit-criteria>
       <deliverables>test_day_endpoints.py · test_calendar_endpoints.py · test_access_service.py · authenticated_client fixture · pytest passing in CI</deliverables>
     </wave>

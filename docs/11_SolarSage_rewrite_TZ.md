@@ -219,3 +219,101 @@ apps/solarsage/
 - HMAC Telegram, юзеры, доступ.
 
 Sidecar делает только астрономию.
+
+---
+
+## 11. Reference Collector Status (W-3.0)
+
+**GRACE Wave:** W-3.0 (PHASE-3-SIDECAR)  
+**Module:** M-SOLARSAGE-REFERENCE-COLLECTOR
+
+The existing `collect_solarsage_western_deep.py` is declared **reference-only** as of W-3.0.
+
+### Purpose
+
+- Generate golden fixtures for parity tests
+- Serve as coverage/reference for future sidecar implementation (W-3.1 → W-3.4)
+- **NOT used in product runtime**
+
+### Golden Fixtures
+
+Located in `apps/solarsage/tests/fixtures/`:
+
+- `vasiliy_2026-05-30.json` — Controller-approved chart (Vasiliy)
+  - Birth: 1980-10-30 19:50 Europe/Moscow (67.9387°N, 32.9241°E, Murmansk)
+  - Target: 2026-05-30 (age 45)
+  - House System: WHOLE_SIGN (auto-selected due to high latitude ≥60°)
+  - Raw Layers: 30 layers (all successful)
+
+- `test_user_2026-06-15.json` — Additional test case (normal latitude)
+  - Birth: 1990-01-15 14:30 Europe/Moscow (55.7558°N, 37.6173°E, Moscow)
+  - Target: 2026-06-15 (age 36)
+  - House System: PLACIDUS (auto-selected due to normal latitude <60°)
+  - Raw Layers: 30 layers (all successful)
+
+### Parity Gate
+
+Future sidecar implementation (W-3.1 → W-3.4) must match these fixtures within declared tolerances:
+
+- **Planets longitudes:** ±1e-6 deg
+- **Houses cusps:** ±1e-6 deg
+- **Aspects orbs:** ±1e-4 deg
+- **Timestamp fields:** Excluded from comparison
+
+### Parity Tests
+
+Run parity tests:
+
+```bash
+cd /opt/solarsage-astro
+pytest apps/solarsage/tests/test_parity.py -v
+```
+
+Tests verify:
+- Fixture existence and structure
+- Natal planets longitudes and signs
+- House cusps validity
+- Special points (ASC, MC, DSC, IC, VERTEX, etc.)
+- Major aspects structure and orbs
+- House system selection (WHOLE_SIGN at high latitude, PLACIDUS at normal)
+- Reproducibility (same input → same output)
+
+### Reproducibility
+
+If fixture generation finds reproducibility defects (e.g., non-deterministic output, timezone issues), the collector may be fixed. All other changes are frozen per W-3.0 freeze-scope.
+
+### Coverage
+
+Each fixture includes:
+
+**Raw layers (30):**
+- natal, natal_whole_sign, natal_placidus
+- chart_wheel, dignity, bonification
+- dispositors (modern/traditional)
+- profection, lots, bounds, antiscia
+- planetary_hours, heliacal, fixed_stars, midpoints
+- aspect_patterns
+- transit, progressions, solar_arc
+- primary_directions, symbolic_directions
+- solar_return, lunar_return
+- lunar_phase (birth/target/year), eclipses
+- firdaria, natal_report
+
+**Derived layers:**
+- element_balance, modality_balance, house_emphasis
+- hemisphere_balance, quadrant_balance, angular_planets
+- dispositor_chains, final_dispositor_frequency
+- major_aspects_ranked, all_aspects_ranked
+- special_points, special_point_major_aspects
+- sphere_scores, lots, aspect_patterns
+- antiscia, dignities, mutual_receptions, sect
+- bonification, faces, planetary_hours
+- heliacal_events, fixed_star_conjunctions, midpoints
+
+### Verification Matrix
+
+See `grace/verification-matrix.md` for the full parity gate specification:
+
+- **S1:** Vasiliy golden chart and target date regenerate byte-stable normalized JSON except timestamp fields
+- **S2:** A high-latitude chart uses the documented house-system fallback (WHOLE_SIGN at ≥60°)
+- **S3:** Chiron/Nodes/Lilith/Vertex fixed-star and aspect coverage remains present after service split
