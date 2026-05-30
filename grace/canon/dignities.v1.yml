@@ -1,0 +1,62 @@
+schema_version: dignities.v1
+description: "Dignity modifiers для condition_factor. Базовый диапазон [0.45, 1.35]."
+
+condition_factor:
+  bounds: [0.45, 1.35]
+
+  modifiers:
+    # Domicile (управление)
+    - { planet: SUN, sign: LEO, delta: +0.25, reason: "domicile" }
+    - { planet: MOON, sign: CANCER, delta: +0.25, reason: "domicile" }
+    - { planet: MERCURY, sign: GEMINI, delta: +0.20, reason: "domicile" }
+    - { planet: MERCURY, sign: VIRGO, delta: +0.20, reason: "domicile" }
+    - { planet: VENUS, sign: TAURUS, delta: +0.25, reason: "domicile" }
+    - { planet: VENUS, sign: LIBRA, delta: +0.25, reason: "domicile" }
+    - { planet: MARS, sign: ARIES, delta: +0.25, reason: "domicile" }
+    - { planet: MARS, sign: SCORPIO, delta: +0.20, reason: "domicile" }
+    - { planet: JUPITER, sign: SAGITTARIUS, delta: +0.25, reason: "domicile" }
+    - { planet: JUPITER, sign: PISCES, delta: +0.20, reason: "domicile" }
+    - { planet: SATURN, sign: CAPRICORN, delta: +0.25, reason: "domicile" }
+    - { planet: SATURN, sign: AQUARIUS, delta: +0.20, reason: "domicile" }
+
+    # Exaltation (экзальтация)
+    - { planet: SUN, sign: ARIES, delta: +0.20, reason: "exaltation" }
+    - { planet: MOON, sign: TAURUS, delta: +0.20, reason: "exaltation" }
+    - { planet: MERCURY, sign: VIRGO, delta: +0.15, reason: "exaltation" }
+    - { planet: VENUS, sign: PISCES, delta: +0.20, reason: "exaltation" }
+    - { planet: MARS, sign: CAPRICORN, delta: +0.20, reason: "exaltation" }
+    - { planet: JUPITER, sign: CANCER, delta: +0.20, reason: "exaltation" }
+    - { planet: SATURN, sign: LIBRA, delta: +0.20, reason: "exaltation" }
+
+    # Detriment (изгнание)
+    - { planet: SUN, sign: AQUARIUS, delta: -0.15, reason: "detriment" }
+    - { planet: MOON, sign: CAPRICORN, delta: -0.15, reason: "detriment" }
+    - { planet: MERCURY, sign: SAGITTARIUS, delta: -0.10, reason: "detriment" }
+    - { planet: MERCURY, sign: PISCES, delta: -0.10, reason: "detriment" }
+    - { planet: VENUS, sign: ARIES, delta: -0.15, reason: "detriment" }
+    - { planet: VENUS, sign: SCORPIO, delta: -0.15, reason: "detriment" }
+    - { planet: MARS, sign: LIBRA, delta: -0.15, reason: "detriment" }
+    - { planet: MARS, sign: TAURUS, delta: -0.15, reason: "detriment" }
+    - { planet: JUPITER, sign: GEMINI, delta: -0.15, reason: "detriment" }
+    - { planet: JUPITER, sign: VIRGO, delta: -0.15, reason: "detriment" }
+    - { planet: SATURN, sign: CANCER, delta: -0.15, reason: "detriment" }
+    - { planet: SATURN, sign: LEO, delta: -0.15, reason: "detriment" }
+
+    # Fall (падение)
+    - { planet: SUN, sign: LIBRA, delta: -0.20, reason: "fall" }
+    - { planet: MOON, sign: SCORPIO, delta: -0.20, reason: "fall" }
+    - { planet: MERCURY, sign: PISCES, delta: -0.15, reason: "fall" }
+    - { planet: VENUS, sign: VIRGO, delta: -0.20, reason: "fall" }
+    - { planet: MARS, sign: CANCER, delta: -0.20, reason: "fall" }
+    - { planet: JUPITER, sign: CAPRICORN, delta: -0.20, reason: "fall" }
+    - { planet: SATURN, sign: ARIES, delta: -0.20, reason: "fall" }
+
+  retrograde_penalty:
+    MERCURY: -0.10
+    VENUS: -0.10
+    MARS: -0.05
+    JUPITER: -0.05
+    SATURN: -0.03
+    URANUS: 0.00
+    NEPTUNE: 0.00
+    PLUTO: 0.00

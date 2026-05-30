@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Microcopy Dictionary Schema",
+  "description": "Schema for microcopy.v1.json — short astrological phrases for events",
+  "type": "object",
+  "required": ["version", "entries"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "Schema version",
+      "minimum": 1
+    },
+    "entries": {
+      "type": "array",
+      "description": "List of microcopy entries",
+      "minItems": 70,
+      "items": {
+        "type": "object",
+        "required": ["id", "key", "text_short", "text_long", "tone", "weight"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "Unique stable slug"
+          },
+          "key": {
+            "type": "object",
+            "description": "Selection key matching normalized events",
+            "properties": {
+              "body": {
+                "type": "string",
+                "enum": ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"]
+              },
+              "aspect": {
+                "type": "string",
+                "enum": ["conjunction", "opposition", "square", "trine", "sextile", "quincunx"]
+              },
+              "target": {
+                "type": "string",
+                "enum": ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto", "asc", "mc", "dsc", "ic"]
+              },
+              "polarity": {
+                "type": "string",
+                "enum": ["soft", "hard", "neutral"]
+              },
+              "speed": {
+                "type": "string",
+                "enum": ["fast", "slow"]
+              },
+              "applying": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": ["retrograde", "direct", "station"]
+              },
+              "phase": {
+                "type": "string",
+                "enum": ["active", "starting", "ending"]
+              },
+              "type": {
+                "type": "string",
+                "enum": ["convergence", "profection", "firdar", "moon_voc", "moon_phase", "eclipse"]
+              },
+              "level": {
+                "type": "string",
+                "enum": ["double", "triple", "quad", "peak"]
+              }
+            }
+          },
+          "text_short": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Short text for badges/chips"
+          },
+          "text_long": {
+            "type": "string",
+            "maxLength": 240,
+            "description": "Long text for 'Why This Happens' section"
+          },
+          "tone": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["bold", "supportive", "gentle", "warning"]
+            },
+            "minItems": 1
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 2.0,
+            "description": "Base priority weight"
+          },
+          "min_orb_deg": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "max_orb_deg": {
+            "type": "number",
+            "minimum": 0.0
+          },
+          "scales_hint": {
+            "type": "object",
+            "properties": {
+              "energy": {
+                "type": "integer",
+                "minimum": -2,
+                "maximum": 2
+              },
+              "risk": {
+                "type": "integer",
+                "minimum": -2,
+                "maximum": 2
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

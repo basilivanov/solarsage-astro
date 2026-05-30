@@ -17,6 +17,7 @@
 - `08_Frontend_current_state_and_alignment.md`
 - `09_Project_transfer_context.md`
 - `10_GRACE_Project_Agent_Guide.md`
+- `ADR-001_Headless_Testing.md`
 - `GRACE_CANON.md`
 - `README_Структура_документации.md`
 - `15_CI_без_GitHub_Actions_из_v0.md`

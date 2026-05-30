@@ -1,0 +1,65 @@
+schema_version: aspect_rules.v1
+description: "Правила аспектов: орбисы, веса, benefic/malefic модификаторы, convergence curve."
+
+orb_profile_default:
+  SUN: 8.0
+  MOON: 8.0
+  MERCURY: 6.0
+  VENUS: 6.0
+  MARS: 6.0
+  JUPITER: 7.0
+  SATURN: 7.0
+  URANUS: 5.0
+  NEPTUNE: 5.0
+  PLUTO: 5.0
+  ASC: 8.0
+  MC: 8.0
+  DSC: 8.0
+  IC: 8.0
+
+aspect_weights:
+  CONJUNCTION: 1.00
+  OPPOSITION: 0.95
+  TRINE: 0.85
+  SQUARE: 0.85
+  SEXTILE: 0.55
+  QUINCUNX: 0.40
+  SEMI_SEXTILE: 0.25
+  SEMI_SQUARE: 0.30
+  SESQUI_QUADRATE: 0.30
+
+benefic_softening:
+  square_or_opposition_with_benefic:
+    description: "Квадрат или оппозиция с участием бенефика (Jupiter, Venus) смягчается"
+    tension_delta: +0.20
+    ease_delta: +0.15
+
+  trine_or_sextile_with_malefic:
+    description: "Трин или секстиль с участием малефика (Saturn, Mars) добавляет структуру"
+    ease_delta: +0.20
+    tension_delta: +0.15
+
+aspect_threshold:
+  major: 0.35
+  minor: 0.55
+  description: "Аспекты с score_hint ниже порога отсекаются. Major: conjunction/opposition/square/trine. Minor: sextile/quincunx/semi."
+
+convergence_curve:
+  description: "Sublinear bonus за convergence (несколько техник указывают на одну планету/дом)"
+  values:
+    2: 0.40
+    3: 0.65
+    4: 0.80
+    5: 0.90
+  max_bonus_cap: 0.90
+
+technique_families:
+  description: "Группы техник для подсчёта convergence. Техники из одной семьи считаются за одну."
+  profection: [annual_profection, monthly_profection]
+  firdar: [firdar_major, firdar_minor]
+  progressive: [secondary_progression, solar_arc, primary_direction]
+  return: [solar_return, lunar_return]
+
+dominance_cap:
+  threshold: 0.65
+  description: "Если одна сфера набирает > 65% от sum_all_salience, её salience обрезается до 65%"

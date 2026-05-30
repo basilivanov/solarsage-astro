@@ -9,6 +9,9 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
     "contracts:generate": "bash scripts/contracts/generate.sh",
     "contracts:check": "bash scripts/contracts/generate.sh && git diff --exit-code -- packages/contracts/openapi.json packages/contracts/_generated.ts",
     "guardrails": "bash scripts/guardrails.sh full",
@@ -81,10 +84,13 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@typescript-eslint/parser": "^8.20.0",
+    "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.17.0",
+    "jsdom": "^25.0.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "vitest": "^2.1.8"
   }
 }

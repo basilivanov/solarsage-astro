@@ -1,0 +1,102 @@
+schema_version: activation_rules.v1
+description: "Правила активации: какие техники активируют планеты, дома, лоты."
+
+techniques:
+  annual_profection:
+    activates:
+      - type: house
+        description: "Дом года"
+      - type: planet
+        description: "Управитель дома года"
+    orb: null
+    weight: 1.5
+
+  monthly_profection:
+    activates:
+      - type: house
+        description: "Дом месяца"
+      - type: planet
+        description: "Управитель дома месяца"
+    orb: null
+    weight: 1.2
+
+  firdar_major:
+    activates:
+      - type: planet
+        description: "Планета мажорного периода фирдара"
+    orb: null
+    weight: 1.4
+
+  firdar_minor:
+    activates:
+      - type: planet
+        description: "Планета минорного периода фирдара"
+    orb: null
+    weight: 1.1
+
+  solar_return:
+    activates:
+      - type: house
+        description: "Дома, в которые попали SR-планеты"
+      - type: planet
+        description: "SR-ASC ruler, SR-MC ruler"
+    orb: null
+    weight: 1.3
+
+  lunar_return:
+    activates:
+      - type: house
+        description: "Дом, в который попала LR-Луна"
+    orb: null
+    weight: 0.9
+
+  solar_arc:
+    activates:
+      - type: planet
+        description: "Планеты в орбе ≤ 1° к натальным точкам"
+    orb: 1.0
+    weight: 1.6
+
+  secondary_progression:
+    activates:
+      - type: planet
+        description: "Планеты в орбе ≤ 1° к натальным точкам"
+    orb: 1.0
+    weight: 1.5
+
+  primary_direction:
+    activates:
+      - type: planet
+        description: "Планеты в орбе ≤ 1° к натальным точкам"
+    orb: 1.0
+    weight: 1.7
+
+  transit_to_natal:
+    activates:
+      - type: planet
+        description: "Applying аспекты в орбе из aspect_rules"
+    orb: "from_aspect_rules"
+    weight: 2.0
+
+  transit_to_angle:
+    activates:
+      - type: angle
+        description: "Applying аспекты к ASC/DSC/MC/IC"
+    orb: "from_aspect_rules"
+    weight: 2.5
+
+  transit_to_lot:
+    activates:
+      - type: lot
+        description: "Applying аспекты к главным лотам (Fortune, Spirit, Eros, Marriage)"
+    orb: "from_aspect_rules"
+    weight: 1.2
+
+  eclipse_window:
+    activates:
+      - type: planet
+        description: "Планета/угол в орбе ≤ 3° к точке затмения"
+      - type: angle
+        description: "Угол в орбе ≤ 3° к точке затмения"
+    orb: 3.0
+    weight: 1.8

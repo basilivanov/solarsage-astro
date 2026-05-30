@@ -1,0 +1,131 @@
+schema_version: spheres.v1
+description: "Сферы жизни для scoring. Каждая сфера — это тематический кластер домов + планет + лотов."
+
+spheres:
+  thinking_speech_learning:
+    title: "мысли · речь · учёба"
+    description: "Ментальная активность, коммуникация, обучение, повседневные контакты"
+    houses: [3, 9]
+    planets:
+      MERCURY: 1.0
+      JUPITER: 0.4
+      MOON: 0.3
+    lots:
+      - SCIENCE
+    weight_multipliers:
+      angular_house_bonus: 1.2
+      ruler_weight: 0.30
+
+  work_status_achievement:
+    title: "работа · статус · достижения"
+    description: "Карьера, публичная позиция, ответственность, внешние обязательства"
+    houses: [10, 6]
+    planets:
+      SATURN: 1.0
+      MARS: 0.6
+      SUN: 0.5
+      JUPITER: 0.3
+    lots:
+      - FORTUNE
+    weight_multipliers:
+      angular_house_bonus: 1.3
+      ruler_weight: 0.35
+
+  relationships_partnership:
+    title: "отношения · партнёрство"
+    description: "Близкие отношения, брак, партнёрство, значимые другие"
+    houses: [7, 5]
+    planets:
+      VENUS: 1.0
+      MOON: 0.6
+      MARS: 0.4
+      SATURN: 0.3
+    lots:
+      - MARRIAGE
+      - EROS
+    weight_multipliers:
+      angular_house_bonus: 1.2
+      ruler_weight: 0.30
+
+  money_security_resources:
+    title: "деньги · безопасность · ресурсы"
+    description: "Финансы, материальная безопасность, ресурсы, ценности"
+    houses: [2, 8]
+    planets:
+      VENUS: 0.8
+      JUPITER: 0.7
+      SATURN: 0.6
+      PLUTO: 0.4
+    lots:
+      - FORTUNE
+    weight_multipliers:
+      angular_house_bonus: 1.1
+      ruler_weight: 0.25
+
+  body_energy_health:
+    title: "тело · энергия · здоровье"
+    description: "Физическое состояние, энергия, витальность, самочувствие"
+    houses: [1, 6]
+    planets:
+      MARS: 1.0
+      SUN: 0.8
+      MOON: 0.6
+      SATURN: 0.5
+    lots: []
+    weight_multipliers:
+      angular_house_bonus: 1.4
+      ruler_weight: 0.40
+
+  home_family_roots:
+    title: "дом · семья · корни"
+    description: "Домашняя жизнь, семья, корни, внутренняя база"
+    houses: [4]
+    planets:
+      MOON: 1.0
+      SATURN: 0.5
+      VENUS: 0.4
+    lots: []
+    weight_multipliers:
+      angular_house_bonus: 1.3
+      ruler_weight: 0.35
+
+  inner_background_unconscious:
+    title: "внутренний фон · бессознательное"
+    description: "Скрытые процессы, внутренняя работа, уединение, духовность"
+    houses: [12, 8]
+    planets:
+      NEPTUNE: 1.0
+      MOON: 0.6
+      SATURN: 0.5
+      PLUTO: 0.4
+    lots: []
+    weight_multipliers:
+      angular_house_bonus: 0.9
+      ruler_weight: 0.20
+
+  crisis_transformation_control:
+    title: "кризис · трансформация · контроль"
+    description: "Кризисные точки, трансформация, глубокий контроль, интенсивность"
+    houses: [8]
+    planets:
+      PLUTO: 1.0
+      MARS: 0.7
+      SATURN: 0.6
+    lots: []
+    weight_multipliers:
+      angular_house_bonus: 1.1
+      ruler_weight: 0.25
+
+  meaning_expansion_vector:
+    title: "смысл · расширение · вектор"
+    description: "Поиск смысла, расширение горизонтов, философия, дальние цели"
+    houses: [9]
+    planets:
+      JUPITER: 1.0
+      NEPTUNE: 0.5
+      MERCURY: 0.4
+    lots:
+      - SPIRIT
+    weight_multipliers:
+      angular_house_bonus: 1.1
+      ruler_weight: 0.25

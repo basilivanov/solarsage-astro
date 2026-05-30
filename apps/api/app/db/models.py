@@ -146,6 +146,9 @@ class UserProfile(Base):
     birth_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
     birth_tz: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
+    # W-1.3: onboarding status (true when birth data is complete)
+    is_onboarded: Mapped[bool] = mapped_column(default=False, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

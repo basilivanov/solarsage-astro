@@ -57,4 +57,32 @@ async def current_user_id(
             detail={"code": exc.code, "reason": exc.message},
         ) from exc
     return session.user_id
+
+
+async def require_session(
+    request: Request,
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    FastAPI dependency: returns the User object with profile relationship loaded.
+
+    W-1.3: Used by /api/day/:date to check onboarding status.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.db.models import User
+
+    user_id = await current_user_id(request, db)
+
+    stmt = select(User).where(User.id == user_id).options(selectinload(User.profile))
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "USER_NOT_FOUND", "reason": "User not found"},
+        )
+
+    return user
 # END_BLOCK: CURRENT_USER_DEP

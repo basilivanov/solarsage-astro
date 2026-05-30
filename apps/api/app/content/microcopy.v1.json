@@ -1,0 +1,1296 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "sun_conjunction_jupiter",
+      "key": {
+        "body": "sun",
+        "aspect": "conjunction",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня тебя несёт — пользуйся",
+      "text_long": "Солнце соединяется с Юпитером: день, когда удача любит наглых. То, что ты откладывал из вежливости, можно делать сегодня.",
+      "tone": ["bold", "supportive"],
+      "tags": ["luck", "expansion", "social"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "sun_conjunction_saturn",
+      "key": {
+        "body": "sun",
+        "aspect": "conjunction",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "День для завершения, не для старта",
+      "text_long": "Солнце встречается с Сатурном: сегодня ты видишь границы чётче обычного. Не пытайся прыгнуть выше — лучше закрой то, что висит.",
+      "tone": ["gentle", "warning"],
+      "tags": ["limits", "completion", "discipline"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": -1, "risk": 1 }
+    },
+    {
+      "id": "sun_conjunction_mars",
+      "key": {
+        "body": "sun",
+        "aspect": "conjunction",
+        "target": "mars",
+        "polarity": "neutral"
+      },
+      "text_short": "Энергии много — направь её точно",
+      "text_long": "Солнце с Марсом: ты чувствуешь себя сильнее, чем обычно. Главное — не распылиться на мелочи и не сжечь мосты в споре.",
+      "tone": ["bold", "warning"],
+      "tags": ["energy", "action", "conflict"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 2, "risk": 1 }
+    },
+    {
+      "id": "sun_conjunction_uranus",
+      "key": {
+        "body": "sun",
+        "aspect": "conjunction",
+        "target": "uranus",
+        "polarity": "neutral"
+      },
+      "text_short": "Сегодня ты не такой, как вчера",
+      "text_long": "Солнце встречает Уран: день, когда хочется сломать шаблон. Если ты давно думал что-то изменить — сегодня самое время.",
+      "tone": ["bold"],
+      "tags": ["change", "breakthrough", "rebellion"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": 1 }
+    },
+    {
+      "id": "sun_conjunction_neptune",
+      "key": {
+        "body": "sun",
+        "aspect": "conjunction",
+        "target": "neptune",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня границы размыты — не принимай решений",
+      "text_long": "Солнце с Нептуном: ты видишь мир через фильтр. Хорошо для творчества, плохо для договоров и обещаний.",
+      "tone": ["gentle", "warning"],
+      "tags": ["illusion", "creativity", "confusion"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "sun_conjunction_pluto",
+      "key": {
+        "body": "sun",
+        "aspect": "conjunction",
+        "target": "pluto",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня ты видишь то, что скрыто",
+      "text_long": "Солнце встречает Плутон: день, когда всплывает правда. Не пытайся контролировать всё — лучше отпусти то, что уже не работает.",
+      "tone": ["bold", "warning"],
+      "tags": ["transformation", "power", "truth"],
+      "weight": 1.4,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": 2 }
+    },
+    {
+      "id": "sun_square_saturn",
+      "key": {
+        "body": "sun",
+        "aspect": "square",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня всё идёт медленнее — это нормально",
+      "text_long": "Солнце в квадрате к Сатурну: день, когда мир говорит «нет». Не бейся головой в стену — лучше пересмотри план.",
+      "tone": ["gentle", "warning"],
+      "tags": ["obstacles", "patience", "limits"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": -1, "risk": 1 }
+    },
+    {
+      "id": "sun_square_mars",
+      "key": {
+        "body": "sun",
+        "aspect": "square",
+        "target": "mars",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня легко вспылить — держи паузу",
+      "text_long": "Солнце в квадрате к Марсу: день, когда хочется всех послать. Прежде чем ответить — сосчитай до десяти.",
+      "tone": ["warning"],
+      "tags": ["conflict", "anger", "impulse"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": 1, "risk": 2 }
+    },
+    {
+      "id": "sun_square_uranus",
+      "key": {
+        "body": "sun",
+        "aspect": "square",
+        "target": "uranus",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня всё может измениться внезапно",
+      "text_long": "Солнце в квадрате к Урану: день неожиданностей. Не строй жёстких планов — оставь место для импровизации.",
+      "tone": ["warning", "bold"],
+      "tags": ["surprise", "disruption", "flexibility"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": 1, "risk": 2 }
+    },
+    {
+      "id": "sun_square_pluto",
+      "key": {
+        "body": "sun",
+        "aspect": "square",
+        "target": "pluto",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня кто-то давит — не поддавайся",
+      "text_long": "Солнце в квадрате к Плутону: день борьбы за контроль. Если чувствуешь давление — не играй в эту игру.",
+      "tone": ["warning", "bold"],
+      "tags": ["power", "control", "resistance"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": 0, "risk": 2 }
+    },
+    {
+      "id": "sun_trine_jupiter",
+      "key": {
+        "body": "sun",
+        "aspect": "trine",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня всё получается легко",
+      "text_long": "Солнце в трине к Юпитеру: день, когда двери открываются сами. Не сиди дома — выходи в мир.",
+      "tone": ["bold", "supportive"],
+      "tags": ["luck", "ease", "opportunity"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 8.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "sun_trine_saturn",
+      "key": {
+        "body": "sun",
+        "aspect": "trine",
+        "target": "saturn",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня ты видишь структуру — используй это",
+      "text_long": "Солнце в трине к Сатурну: день, когда сложное становится понятным. Хорошо для планирования и долгосрочных решений.",
+      "tone": ["supportive"],
+      "tags": ["clarity", "structure", "planning"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 8.0,
+      "scales_hint": { "energy": 0, "risk": -1 }
+    },
+    {
+      "id": "sun_opposition_saturn",
+      "key": {
+        "body": "sun",
+        "aspect": "opposition",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня мир требует отчёта",
+      "text_long": "Солнце напротив Сатурна: день, когда приходится отвечать за прошлое. Не убегай — лучше разберись честно.",
+      "tone": ["warning", "gentle"],
+      "tags": ["responsibility", "accountability", "pressure"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": -1, "risk": 1 }
+    },
+    {
+      "id": "sun_opposition_uranus",
+      "key": {
+        "body": "sun",
+        "aspect": "opposition",
+        "target": "uranus",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня кто-то ведёт себя непредсказуемо",
+      "text_long": "Солнце напротив Урана: день, когда другие люди удивляют. Не пытайся их контролировать — просто адаптируйся.",
+      "tone": ["warning"],
+      "tags": ["surprise", "others", "adaptation"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "moon_conjunction_mars",
+      "key": {
+        "body": "moon",
+        "aspect": "conjunction",
+        "target": "mars",
+        "polarity": "neutral"
+      },
+      "text_short": "Сегодня эмоции на пределе — не реагируй сразу",
+      "text_long": "Луна встречает Марс: день, когда чувства бьют через край. Прежде чем что-то сказать — выдохни.",
+      "tone": ["warning"],
+      "tags": ["emotions", "impulse", "reaction"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": 1 }
+    },
+    {
+      "id": "moon_conjunction_saturn",
+      "key": {
+        "body": "moon",
+        "aspect": "conjunction",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня тяжело на душе — это пройдёт",
+      "text_long": "Луна с Сатурном: день, когда всё кажется серьёзнее, чем есть. Не принимай решений из этого состояния.",
+      "tone": ["gentle", "supportive"],
+      "tags": ["mood", "heaviness", "temporary"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": -1, "risk": 0 }
+    },
+    {
+      "id": "moon_conjunction_jupiter",
+      "key": {
+        "body": "moon",
+        "aspect": "conjunction",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня ты чувствуешь себя хорошо — наслаждайся",
+      "text_long": "Луна с Юпитером: день, когда мир кажется добрее. Хорошо для встреч, разговоров и новых знакомств.",
+      "tone": ["supportive", "bold"],
+      "tags": ["mood", "optimism", "social"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "moon_conjunction_uranus",
+      "key": {
+        "body": "moon",
+        "aspect": "conjunction",
+        "target": "uranus",
+        "polarity": "neutral"
+      },
+      "text_short": "Сегодня настроение скачет — это нормально",
+      "text_long": "Луна встречает Уран: день эмоциональных качелей. Не пытайся себя контролировать — просто наблюдай.",
+      "tone": ["gentle"],
+      "tags": ["mood", "instability", "change"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "moon_conjunction_neptune",
+      "key": {
+        "body": "moon",
+        "aspect": "conjunction",
+        "target": "neptune",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня ты чувствуешь больше обычного",
+      "text_long": "Луна с Нептуном: день, когда границы между тобой и миром стираются. Хорошо для творчества, плохо для ясности.",
+      "tone": ["gentle"],
+      "tags": ["sensitivity", "empathy", "confusion"],
+      "weight": 0.9,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 0, "risk": 0 }
+    },
+    {
+      "id": "moon_square_saturn",
+      "key": {
+        "body": "moon",
+        "aspect": "square",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня всё раздражает — переждать",
+      "text_long": "Луна в квадрате к Сатурну: день, когда мир кажется холодным. Не делай выводов о людях — это временное состояние.",
+      "tone": ["gentle", "warning"],
+      "tags": ["mood", "irritation", "isolation"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": -1, "risk": 0 }
+    },
+    {
+      "id": "moon_square_mars",
+      "key": {
+        "body": "moon",
+        "aspect": "square",
+        "target": "mars",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня легко сорваться — держи дистанцию",
+      "text_long": "Луна в квадрате к Марсу: день, когда эмоции ищут выход. Лучше спорт или физическая работа, чем выяснение отношений.",
+      "tone": ["warning"],
+      "tags": ["emotions", "conflict", "outlet"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": 1 }
+    },
+    {
+      "id": "moon_square_pluto",
+      "key": {
+        "body": "moon",
+        "aspect": "square",
+        "target": "pluto",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня всё кажется драмой — это не так",
+      "text_long": "Луна в квадрате к Плутону: день, когда эмоции преувеличивают реальность. Не принимай решений из этого состояния.",
+      "tone": ["warning", "gentle"],
+      "tags": ["emotions", "intensity", "drama"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "moon_trine_jupiter",
+      "key": {
+        "body": "moon",
+        "aspect": "trine",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня всё легко — пользуйся",
+      "text_long": "Луна в трине к Юпитеру: день, когда люди к тебе добры. Хорошо для просьб, переговоров и новых контактов.",
+      "tone": ["supportive", "bold"],
+      "tags": ["ease", "social", "luck"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "moon_trine_venus",
+      "key": {
+        "body": "moon",
+        "aspect": "trine",
+        "target": "venus",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня ты нравишься людям",
+      "text_long": "Луна в трине к Венере: день, когда отношения текут легко. Хорошо для встреч, примирений и приятных разговоров.",
+      "tone": ["supportive"],
+      "tags": ["relationships", "harmony", "ease"],
+      "weight": 0.9,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 0, "risk": -1 }
+    },
+    {
+      "id": "moon_opposition_saturn",
+      "key": {
+        "body": "moon",
+        "aspect": "opposition",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня чувствуешь себя одиноко — это пройдёт",
+      "text_long": "Луна напротив Сатурна: день, когда кажется, что никто не понимает. Не делай выводов — это временное состояние.",
+      "tone": ["gentle", "supportive"],
+      "tags": ["loneliness", "mood", "temporary"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": -1, "risk": 0 }
+    },
+    {
+      "id": "moon_opposition_pluto",
+      "key": {
+        "body": "moon",
+        "aspect": "opposition",
+        "target": "pluto",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня эмоции на пике — не действуй из них",
+      "text_long": "Луна напротив Плутона: день, когда чувства захватывают полностью. Дай себе время остыть перед решениями.",
+      "tone": ["warning", "gentle"],
+      "tags": ["emotions", "intensity", "pause"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "mercury_square_saturn",
+      "key": {
+        "body": "mercury",
+        "aspect": "square",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня слова даются тяжело — не спеши",
+      "text_long": "Меркурий в квадрате к Сатурну: день, когда сложно объяснить. Лучше отложить важные разговоры на завтра.",
+      "tone": ["warning", "gentle"],
+      "tags": ["communication", "difficulty", "delay"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "mercury_square_mars",
+      "key": {
+        "body": "mercury",
+        "aspect": "square",
+        "target": "mars",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня легко поспорить — выбирай слова",
+      "text_long": "Меркурий в квадрате к Марсу: день, когда слова режут. Прежде чем ответить — подумай, нужен ли тебе этот конфликт.",
+      "tone": ["warning"],
+      "tags": ["communication", "conflict", "words"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "mercury_trine_jupiter",
+      "key": {
+        "body": "mercury",
+        "aspect": "trine",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня слова находятся легко",
+      "text_long": "Меркурий в трине к Юпитеру: день, когда ты говоришь убедительно. Хорошо для презентаций, переговоров и важных разговоров.",
+      "tone": ["supportive", "bold"],
+      "tags": ["communication", "persuasion", "ease"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "mercury_opposition_saturn",
+      "key": {
+        "body": "mercury",
+        "aspect": "opposition",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня тебя не слышат — не настаивай",
+      "text_long": "Меркурий напротив Сатурна: день, когда слова встречают стену. Лучше записать мысли, чем пытаться убедить.",
+      "tone": ["warning", "gentle"],
+      "tags": ["communication", "resistance", "writing"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "mercury_retrograde_active",
+      "key": {
+        "body": "mercury",
+        "state": "retrograde",
+        "phase": "active"
+      },
+      "text_short": "Меркурий ретро: проверяй дважды",
+      "text_long": "Меркурий ретроградный: то, что казалось решённым, вернётся. Перепроверяй договорённости, не спеши с новыми стартами.",
+      "tone": ["warning", "gentle"],
+      "tags": ["communication", "delays", "review"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "mercury_retrograde_starting",
+      "key": {
+        "body": "mercury",
+        "state": "retrograde",
+        "phase": "starting"
+      },
+      "text_short": "Меркурий разворачивается — притормози",
+      "text_long": "Меркурий начинает ретроградное движение: следующие три недели — время пересмотра, не новых стартов.",
+      "tone": ["warning"],
+      "tags": ["communication", "review", "pause"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "mercury_retrograde_ending",
+      "key": {
+        "body": "mercury",
+        "state": "retrograde",
+        "phase": "ending"
+      },
+      "text_short": "Меркурий выходит из ретро — скоро прояснится",
+      "text_long": "Меркурий заканчивает ретроградное движение: то, что застряло, скоро сдвинется. Ещё неделя терпения.",
+      "tone": ["supportive"],
+      "tags": ["communication", "clarity", "relief"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 0, "risk": 0 }
+    },
+    {
+      "id": "mercury_station",
+      "key": {
+        "body": "mercury",
+        "state": "station"
+      },
+      "text_short": "Меркурий стоит — всё зависло",
+      "text_long": "Меркурий в стационарной точке: день максимальной путаницы. Не подписывай ничего важного, не принимай решений.",
+      "tone": ["warning"],
+      "tags": ["communication", "confusion", "pause"],
+      "weight": 1.4,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 0, "risk": 2 }
+    },
+    {
+      "id": "venus_conjunction_jupiter",
+      "key": {
+        "body": "venus",
+        "aspect": "conjunction",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня ты магнит для людей",
+      "text_long": "Венера с Юпитером: день, когда отношения расцветают. Хорошо для знакомств, свиданий и примирений.",
+      "tone": ["supportive", "bold"],
+      "tags": ["relationships", "attraction", "social"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "venus_conjunction_saturn",
+      "key": {
+        "body": "venus",
+        "aspect": "conjunction",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня отношения требуют честности",
+      "text_long": "Венера с Сатурном: день, когда видишь людей без фильтров. Не убегай от сложных разговоров — лучше разобраться.",
+      "tone": ["gentle", "warning"],
+      "tags": ["relationships", "reality", "honesty"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "venus_square_saturn",
+      "key": {
+        "body": "venus",
+        "aspect": "square",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня чувствуешь себя нелюбимым — это не так",
+      "text_long": "Венера в квадрате к Сатурну: день, когда кажется, что ты никому не нужен. Это временное состояние, не делай выводов.",
+      "tone": ["gentle", "supportive"],
+      "tags": ["relationships", "insecurity", "temporary"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": -1, "risk": 0 }
+    },
+    {
+      "id": "venus_square_pluto",
+      "key": {
+        "body": "venus",
+        "aspect": "square",
+        "target": "pluto",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня отношения напряжены — не дави",
+      "text_long": "Венера в квадрате к Плутону: день, когда хочется контролировать близких. Отпусти — это не твоя битва.",
+      "tone": ["warning"],
+      "tags": ["relationships", "control", "intensity"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "venus_trine_jupiter",
+      "key": {
+        "body": "venus",
+        "aspect": "trine",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня всё про удовольствие — наслаждайся",
+      "text_long": "Венера в трине к Юпитеру: день, когда жизнь щедра. Хорошо для встреч, подарков и приятных сюрпризов.",
+      "tone": ["supportive", "bold"],
+      "tags": ["pleasure", "generosity", "joy"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "venus_opposition_saturn",
+      "key": {
+        "body": "venus",
+        "aspect": "opposition",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня отношения проверяются на прочность",
+      "text_long": "Венера напротив Сатурна: день, когда видишь, что реально, а что иллюзия. Не бойся правды — она освобождает.",
+      "tone": ["warning", "gentle"],
+      "tags": ["relationships", "truth", "test"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "venus_retrograde_active",
+      "key": {
+        "body": "venus",
+        "state": "retrograde",
+        "phase": "active"
+      },
+      "text_short": "Венера ретро: пересматривай отношения",
+      "text_long": "Венера ретроградная: время понять, кто тебе действительно важен. Не начинай новых романов — разбирайся со старыми.",
+      "tone": ["gentle", "warning"],
+      "tags": ["relationships", "review", "clarity"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "mars_conjunction_saturn",
+      "key": {
+        "body": "mars",
+        "aspect": "conjunction",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня действия даются тяжело — не форсируй",
+      "text_long": "Марс с Сатурном: день, когда каждый шаг требует усилий. Не пытайся прорваться силой — лучше подожди.",
+      "tone": ["warning", "gentle"],
+      "tags": ["action", "resistance", "patience"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": -1, "risk": 1 }
+    },
+    {
+      "id": "mars_conjunction_uranus",
+      "key": {
+        "body": "mars",
+        "aspect": "conjunction",
+        "target": "uranus",
+        "polarity": "neutral"
+      },
+      "text_short": "Сегодня хочется всё взорвать — подумай дважды",
+      "text_long": "Марс с Ураном: день импульсивных действий. Прежде чем что-то разрушить — убедись, что оно тебе не нужно.",
+      "tone": ["warning", "bold"],
+      "tags": ["action", "impulse", "destruction"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 2, "risk": 2 }
+    },
+    {
+      "id": "mars_square_saturn",
+      "key": {
+        "body": "mars",
+        "aspect": "square",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня всё идёт через сопротивление",
+      "text_long": "Марс в квадрате к Сатурну: день, когда мир говорит «стоп». Не бейся головой в стену — найди обходной путь.",
+      "tone": ["warning", "gentle"],
+      "tags": ["action", "obstacles", "strategy"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": -1, "risk": 1 }
+    },
+    {
+      "id": "mars_square_pluto",
+      "key": {
+        "body": "mars",
+        "aspect": "square",
+        "target": "pluto",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня борьба за власть — не ввязывайся",
+      "text_long": "Марс в квадрате к Плутону: день, когда каждое действие — это битва. Выбирай, за что стоит драться, а что отпустить.",
+      "tone": ["warning"],
+      "tags": ["action", "power", "conflict"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": 2 }
+    },
+    {
+      "id": "mars_trine_jupiter",
+      "key": {
+        "body": "mars",
+        "aspect": "trine",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня действия приносят результат",
+      "text_long": "Марс в трине к Юпитеру: день, когда усилия окупаются. Хорошо для старта проектов, переговоров и смелых шагов.",
+      "tone": ["bold", "supportive"],
+      "tags": ["action", "success", "momentum"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": 2, "risk": -1 }
+    },
+    {
+      "id": "mars_opposition_saturn",
+      "key": {
+        "body": "mars",
+        "aspect": "opposition",
+        "target": "saturn",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня кто-то блокирует твои действия",
+      "text_long": "Марс напротив Сатурна: день, когда другие люди тормозят тебя. Не воюй — лучше договорись или подожди.",
+      "tone": ["warning", "gentle"],
+      "tags": ["action", "resistance", "others"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": -1, "risk": 1 }
+    },
+    {
+      "id": "mars_opposition_uranus",
+      "key": {
+        "body": "mars",
+        "aspect": "opposition",
+        "target": "uranus",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня другие ведут себя непредсказуемо",
+      "text_long": "Марс напротив Урана: день, когда люди делают неожиданные вещи. Не пытайся их контролировать — просто адаптируйся.",
+      "tone": ["warning"],
+      "tags": ["action", "surprise", "others"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": 1 }
+    },
+    {
+      "id": "mars_retrograde_active",
+      "key": {
+        "body": "mars",
+        "state": "retrograde",
+        "phase": "active"
+      },
+      "text_short": "Марс ретро: пересматривай стратегию",
+      "text_long": "Марс ретроградный: время понять, куда ты на самом деле идёшь. Не начинай новых битв — заверши старые.",
+      "tone": ["gentle", "warning"],
+      "tags": ["action", "review", "strategy"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": -1, "risk": 1 }
+    },
+    {
+      "id": "mars_retrograde_ending",
+      "key": {
+        "body": "mars",
+        "state": "retrograde",
+        "phase": "ending"
+      },
+      "text_short": "Марс выходит из ретро — скоро можно действовать",
+      "text_long": "Марс заканчивает ретроградное движение: то, что застопорилось, скоро сдвинется. Готовь план действий.",
+      "tone": ["supportive"],
+      "tags": ["action", "momentum", "relief"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "jupiter_conjunction_asc",
+      "key": {
+        "body": "jupiter",
+        "aspect": "conjunction",
+        "target": "asc",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня ты на виду — используй это",
+      "text_long": "Юпитер на Асценденте: день, когда тебя замечают. Хорошо для презентаций, знакомств и смелых заявлений.",
+      "tone": ["bold", "supportive"],
+      "tags": ["visibility", "opportunity", "expansion"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "saturn_conjunction_asc",
+      "key": {
+        "body": "saturn",
+        "aspect": "conjunction",
+        "target": "asc",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня мир требует серьёзности",
+      "text_long": "Сатурн на Асценденте: день, когда тебя оценивают строго. Не пытайся казаться легче — лучше покажи профессионализм.",
+      "tone": ["warning", "gentle"],
+      "tags": ["responsibility", "image", "maturity"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "uranus_conjunction_asc",
+      "key": {
+        "body": "uranus",
+        "aspect": "conjunction",
+        "target": "asc",
+        "polarity": "neutral"
+      },
+      "text_short": "Сегодня ты не такой, как обычно",
+      "text_long": "Уран на Асценденте: день, когда хочется быть другим. Люди заметят перемену — не бойся этого.",
+      "tone": ["bold"],
+      "tags": ["change", "identity", "breakthrough"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": 1 }
+    },
+    {
+      "id": "pluto_conjunction_asc",
+      "key": {
+        "body": "pluto",
+        "aspect": "conjunction",
+        "target": "asc",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня ты видишь себя по-новому",
+      "text_long": "Плутон на Асценденте: день глубокой трансформации. То, кем ты был вчера, уже не работает. Не сопротивляйся.",
+      "tone": ["bold", "warning"],
+      "tags": ["transformation", "identity", "power"],
+      "weight": 1.5,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": 2 }
+    },
+    {
+      "id": "jupiter_conjunction_mc",
+      "key": {
+        "body": "jupiter",
+        "aspect": "conjunction",
+        "target": "mc",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня карьера идёт в гору",
+      "text_long": "Юпитер на МС: день, когда открываются двери. Хорошо для переговоров о повышении, новых проектов и публичных выступлений.",
+      "tone": ["bold", "supportive"],
+      "tags": ["career", "opportunity", "recognition"],
+      "weight": 1.4,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "saturn_conjunction_mc",
+      "key": {
+        "body": "saturn",
+        "aspect": "conjunction",
+        "target": "mc",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня карьера требует ответственности",
+      "text_long": "Сатурн на МС: день, когда тебя проверяют на прочность. Не пытайся обмануть систему — лучше покажи результат.",
+      "tone": ["warning", "gentle"],
+      "tags": ["career", "responsibility", "test"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "uranus_conjunction_mc",
+      "key": {
+        "body": "uranus",
+        "aspect": "conjunction",
+        "target": "mc",
+        "polarity": "neutral"
+      },
+      "text_short": "Сегодня карьера может измениться внезапно",
+      "text_long": "Уран на МС: день неожиданных поворотов в работе. Не цепляйся за старое — новое может быть лучше.",
+      "tone": ["bold", "warning"],
+      "tags": ["career", "change", "surprise"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": 1 }
+    },
+    {
+      "id": "pluto_conjunction_mc",
+      "key": {
+        "body": "pluto",
+        "aspect": "conjunction",
+        "target": "mc",
+        "polarity": "hard"
+      },
+      "text_short": "Сегодня карьера трансформируется",
+      "text_long": "Плутон на МС: день, когда старая карьерная идентичность умирает. Не бойся потерять статус — новый будет сильнее.",
+      "tone": ["bold", "warning"],
+      "tags": ["career", "transformation", "power"],
+      "weight": 1.5,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 3.0,
+      "scales_hint": { "energy": 1, "risk": 2 }
+    },
+    {
+      "id": "moon_voc",
+      "key": {
+        "type": "moon_voc"
+      },
+      "text_short": "Луна без курса — отложи решения",
+      "text_long": "Луна void of course: время, когда действия не приводят к результату. Лучше подождать несколько часов.",
+      "tone": ["gentle", "warning"],
+      "tags": ["timing", "pause", "void"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 0, "risk": 1 }
+    },
+    {
+      "id": "moon_sign_change",
+      "key": {
+        "type": "moon_phase",
+        "phase": "starting"
+      },
+      "text_short": "Луна меняет знак — настроение тоже",
+      "text_long": "Луна переходит в новый знак: следующие 2-3 дня эмоциональный фон будет другим. Наблюдай за собой.",
+      "tone": ["gentle"],
+      "tags": ["mood", "change", "awareness"],
+      "weight": 0.8,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 0, "risk": 0 }
+    },
+    {
+      "id": "new_moon",
+      "key": {
+        "type": "moon_phase",
+        "phase": "active"
+      },
+      "text_short": "Новолуние — время начинать",
+      "text_long": "Новолуние: день, когда можно посадить семена. Что ты хочешь вырастить в следующие две недели?",
+      "tone": ["supportive", "bold"],
+      "tags": ["beginning", "intention", "cycle"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "full_moon",
+      "key": {
+        "type": "moon_phase",
+        "phase": "ending"
+      },
+      "text_short": "Полнолуние — время завершать",
+      "text_long": "Полнолуние: день, когда всё выходит на поверхность. Хорошо для завершения проектов и отпускания старого.",
+      "tone": ["bold", "warning"],
+      "tags": ["completion", "culmination", "release"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 1, "risk": 1 }
+    },
+    {
+      "id": "first_quarter",
+      "key": {
+        "type": "moon_phase"
+      },
+      "text_short": "Первая четверть — время действовать",
+      "text_long": "Первая четверть Луны: день, когда нужно преодолеть сопротивление. Не сдавайся — это часть процесса.",
+      "tone": ["supportive", "bold"],
+      "tags": ["action", "challenge", "momentum"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "last_quarter",
+      "key": {
+        "type": "moon_phase"
+      },
+      "text_short": "Последняя четверть — время отпускать",
+      "text_long": "Последняя четверть Луны: день, когда нужно убрать лишнее. Что ты тащишь с собой, что уже не нужно?",
+      "tone": ["gentle", "supportive"],
+      "tags": ["release", "clearing", "reflection"],
+      "weight": 0.9,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 0, "risk": 0 }
+    },
+    {
+      "id": "profection_year_ruler_activated",
+      "key": {
+        "type": "profection",
+        "phase": "active"
+      },
+      "text_short": "Твой годовой управитель активирован",
+      "text_long": "Профекция: планета, которая управляет твоим годом, сегодня под транзитом. То, что происходит сейчас — часть годовой темы.",
+      "tone": ["bold"],
+      "tags": ["profection", "timing", "theme"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "profection_house_emphasis",
+      "key": {
+        "type": "profection"
+      },
+      "text_short": "Сегодня активен твой профекционный дом",
+      "text_long": "Профекция: дом, который управляет твоим годом, сегодня под фокусом. Обрати внимание на события в этой сфере жизни.",
+      "tone": ["supportive"],
+      "tags": ["profection", "house", "focus"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "profection_month_ruler_activated",
+      "key": {
+        "type": "profection",
+        "phase": "starting"
+      },
+      "text_short": "Твой месячный управитель активирован",
+      "text_long": "Месячная профекция: планета, которая управляет этим месяцем, сегодня под транзитом. Это ключевой день месяца.",
+      "tone": ["bold"],
+      "tags": ["profection", "month", "timing"],
+      "weight": 1.2,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "convergence_double",
+      "key": {
+        "type": "convergence",
+        "level": "double"
+      },
+      "text_short": "Две техники указывают на одно — обрати внимание",
+      "text_long": "Конвергенция: две разные техники сходятся на одной планете. Это не случайность — это усиление сигнала.",
+      "tone": ["bold"],
+      "tags": ["convergence", "precision", "activation"],
+      "weight": 1.3,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "convergence_triple",
+      "key": {
+        "type": "convergence",
+        "level": "triple"
+      },
+      "text_short": "Три техники указывают на одно — это не случайность",
+      "text_long": "Тройная конвергенция: профекция, транзит и прогрессия сходятся на одной планете. Это точка максимальной концентрации твоей жизни прямо сейчас.",
+      "tone": ["bold"],
+      "tags": ["convergence", "precision", "activation"],
+      "weight": 1.5,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 2, "risk": 0 }
+    },
+    {
+      "id": "convergence_quad",
+      "key": {
+        "type": "convergence",
+        "level": "quad"
+      },
+      "text_short": "Четыре техники на одной точке — это редкость",
+      "text_long": "Четверная конвергенция: четыре техники одновременно указывают на одну планету. Такое бывает раз в несколько лет. Запомни этот день.",
+      "tone": ["bold"],
+      "tags": ["convergence", "precision", "rare"],
+      "weight": 1.8,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 0.0,
+      "scales_hint": { "energy": 2, "risk": 1 }
+    },
+    {
+      "id": "sun_sextile_jupiter",
+      "key": {
+        "body": "sun",
+        "aspect": "sextile",
+        "target": "jupiter",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня возможности рядом — протяни руку",
+      "text_long": "Солнце в секстиле к Юпитеру: день, когда удача доступна, но не падает с неба. Сделай шаг навстречу.",
+      "tone": ["supportive"],
+      "tags": ["opportunity", "effort", "luck"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 6.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "moon_sextile_venus",
+      "key": {
+        "body": "moon",
+        "aspect": "sextile",
+        "target": "venus",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня легко быть приятным",
+      "text_long": "Луна в секстиле к Венере: день, когда отношения текут мягко. Хорошо для примирений и тёплых разговоров.",
+      "tone": ["supportive"],
+      "tags": ["relationships", "ease", "warmth"],
+      "weight": 0.9,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 0, "risk": -1 }
+    },
+    {
+      "id": "mercury_sextile_mars",
+      "key": {
+        "body": "mercury",
+        "aspect": "sextile",
+        "target": "mars",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня слова превращаются в действия",
+      "text_long": "Меркурий в секстиле к Марсу: день, когда можно быстро договориться и сразу сделать. Хорошо для планирования и старта.",
+      "tone": ["supportive", "bold"],
+      "tags": ["communication", "action", "efficiency"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "venus_sextile_mars",
+      "key": {
+        "body": "venus",
+        "aspect": "sextile",
+        "target": "mars",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня желание встречается с действием",
+      "text_long": "Венера в секстиле к Марсу: день, когда знаешь, чего хочешь, и можешь это получить. Хорошо для инициативы в отношениях.",
+      "tone": ["bold", "supportive"],
+      "tags": ["desire", "action", "relationships"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "sun_conjunction_venus",
+      "key": {
+        "body": "sun",
+        "aspect": "conjunction",
+        "target": "venus",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня ты привлекателен без усилий",
+      "text_long": "Солнце с Венерой: день, когда люди тянутся к тебе. Хорошо для знакомств, переговоров и всего, что требует обаяния.",
+      "tone": ["supportive", "bold"],
+      "tags": ["attraction", "charm", "social"],
+      "weight": 1.1,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": -1 }
+    },
+    {
+      "id": "sun_conjunction_mercury",
+      "key": {
+        "body": "sun",
+        "aspect": "conjunction",
+        "target": "mercury",
+        "polarity": "neutral"
+      },
+      "text_short": "Сегодня мысли ясные — используй это",
+      "text_long": "Солнце с Меркурием: день, когда видишь суть вещей. Хорошо для решений, планирования и важных разговоров.",
+      "tone": ["supportive"],
+      "tags": ["clarity", "thinking", "communication"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "mars_sextile_saturn",
+      "key": {
+        "body": "mars",
+        "aspect": "sextile",
+        "target": "saturn",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня дисциплина даётся легко",
+      "text_long": "Марс в секстиле к Сатурну: день, когда усилия структурированы. Хорошо для сложных задач, требующих терпения.",
+      "tone": ["supportive"],
+      "tags": ["discipline", "structure", "effort"],
+      "weight": 1.0,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 5.0,
+      "scales_hint": { "energy": 1, "risk": 0 }
+    },
+    {
+      "id": "mercury_conjunction_venus",
+      "key": {
+        "body": "mercury",
+        "aspect": "conjunction",
+        "target": "venus",
+        "polarity": "soft"
+      },
+      "text_short": "Сегодня слова звучат красиво",
+      "text_long": "Меркурий с Венерой: день, когда легко говорить приятное. Хорошо для комплиментов, признаний и дипломатии.",
+      "tone": ["supportive"],
+      "tags": ["communication", "charm", "diplomacy"],
+      "weight": 0.9,
+      "min_orb_deg": 0.0,
+      "max_orb_deg": 4.0,
+      "scales_hint": { "energy": 0, "risk": -1 }
+    }
+  ]
+}
+

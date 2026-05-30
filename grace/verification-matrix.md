@@ -150,6 +150,45 @@ For each contract in `technology.xml`:
 
 ---
 
+## Testing Strategy
+
+See `docs/ADR-001_Headless_Testing.md` for the complete testing strategy.
+
+### Test Coverage Matrix
+
+| UC | Backend Unit | Backend Integration | Frontend Unit | E2E | Visual |
+|---|---|---|---|---|---|
+| UC-TG-AUTH | test_telegram_hmac.py | test_auth_endpoints.py | - | auth.spec.ts | - |
+| UC-PROFILE-CREATE | - | test_profile_endpoints.py | - | onboarding.spec.ts | onboarding-step*.png |
+| UC-PROFILE-EDIT | - | test_profile_endpoints.py | - | - | - |
+| UC-ACCESS-CHECK | - | test_access_service.py | useAccess.test.ts | - | - |
+| UC-DAY-VIEW | test_normalization.py, test_scoring.py | test_day_endpoints.py | - | day-view.spec.ts | today-*.png |
+| UC-DAY-NAV | - | - | - | day-view.spec.ts | - |
+| UC-CAL-NAV | - | test_calendar_endpoints.py | - | calendar.spec.ts | calendar-3months.png |
+| UC-WEEK-STRIP | - | test_day_endpoints.py | - | day-view.spec.ts | week-strip.png |
+| UC-REFERRAL | - | test_referral_service.py | - | - | - |
+| UC-LOCKED-DAY | - | test_day_endpoints.py | - | locked-day.spec.ts | locked-preview.png |
+
+### Auth-First Principle
+
+All integration and e2e tests go through Telegram auth:
+- Backend: `authenticated_client` fixture (login → onboarding → request)
+- Frontend: `authenticateAndOnboard` helper (inject Telegram WebApp API → auto auth)
+- No backdoors, no test-mode without auth
+
+### Visual Regression
+
+Baseline screenshots stored in `apps/web/e2e/visual/__screenshots__/`:
+- Today screen: supportive / steady / tense days
+- Calendar: 3-month grid
+- Locked day: preview + soft lock
+- Onboarding: all 5 steps
+- Profile: edit form
+
+CI fails on visual diff > 0.1%, uploads diff artifacts.
+
+---
+
 ## How to use this matrix
 
 1. Before merging a wave PR, find every UC its scope touches.

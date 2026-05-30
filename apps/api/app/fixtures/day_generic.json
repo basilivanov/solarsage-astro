@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "schemaVersion": "today/v1",
+    "contractVersion": 1,
+    "calculationVersion": 1,
+    "normalizationVersion": 1,
+    "scoringVersion": 1,
+    "promptVersion": 1,
+    "contentVersion": 1,
+    "generatedAt": "2026-05-30T12:00:00Z"
+  },
+  "date": "2026-05-30",
+  "title": "Обычный день",
+  "subtitle": null,
+  "headline": "День без особых астрологических событий",
+  "access": {
+    "state": "full"
+  },
+  "dayStatus": "steady",
+  "dayQuality": null,
+  "topFlags": [],
+  "reading": {
+    "paragraphs": [
+      "Сегодня спокойный день без ярких астрологических событий.",
+      "Хорошее время для рутинных дел и планирования."
+    ]
+  },
+  "whyThisHappens": {
+    "sections": []
+  },
+  "weekStrip": [
+    {"date": "2026-05-28", "dayStatus": "steady", "isToday": false},
+    {"date": "2026-05-29", "dayStatus": "steady", "isToday": false},
+    {"date": "2026-05-30", "dayStatus": "steady", "isToday": true},
+    {"date": "2026-05-31", "dayStatus": "steady", "isToday": false},
+    {"date": "2026-06-01", "dayStatus": "steady", "isToday": false},
+    {"date": "2026-06-02", "dayStatus": "steady", "isToday": false},
+    {"date": "2026-06-03", "dayStatus": "steady", "isToday": false}
+  ],
+  "microcopy": [],
+  "yesterdayEcho": null,
+  "actions": null
+}

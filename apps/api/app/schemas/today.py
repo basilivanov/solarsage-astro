@@ -92,6 +92,25 @@ class WhySection(CamelModel):
     icon_name: str | None = None
     blocks: list[WhyBlock] = Field(..., discriminator=None)
 
+    # W-4.0: layer metadata for convergence evidence
+    layer: Literal[
+        "main_theme",
+        "daily_layer",
+        "personal_activation",
+        "period_background",
+        "amplifiers",
+        "softeners",
+        "manifestation_zones",
+        "astrological_meaning",
+        "practical_meaning",
+    ] | None = None
+
+    # W-4.0: astrological details for this section
+    planets: list[str] | None = None
+    houses: list[int] | None = None
+    aspects: list[str] | None = None
+    techniques: list[str] | None = None
+
 
 class WhyThisHappens(CamelModel):
     sections: list[WhySection]
@@ -143,6 +162,51 @@ class ReadingBody(CamelModel):
     paragraphs: list[str]
 # END_BLOCK: TODAY_AUX
 
+# START_BLOCK: CONVERGENCE_EVIDENCE
+# AI_HEADER
+# wave: W-4.0
+# purpose: Convergence evidence — доказательство, что несколько техник указывают
+#          на одну планету/дом/сферу. Показывает силу активации через количество
+#          независимых техник.
+class ActivationEvidence(CamelModel):
+    """Convergence: несколько техник указывают на одну планету/дом/сферу"""
+
+    theme: str  # "thinking_speech_learning" или "MERCURY" или "house_3"
+    convergence_level: Literal["double", "triple", "quad", "peak"]  # 2, 3, 4, 5+ техник
+    techniques: list[str]  # ["annual_profection", "transit_to_natal", "solar_arc"]
+    summary: str  # "Меркурий подсвечен через 3 независимые техники"
+# END_BLOCK: CONVERGENCE_EVIDENCE
+
+# START_BLOCK: MANIFESTATION_ZONES
+# AI_HEADER
+# wave: W-4.0
+# purpose: Manifestation zones — где это проявится в жизни (дома).
+#          Показывает конкретные сферы жизни, где активация будет видна.
+class ManifestationZone(CamelModel):
+    """Где это проявится в жизни"""
+
+    house: int  # 3
+    theme: str  # "общение, учёба, ближний круг"
+    intensity: Literal["background", "active", "peak"]
+    description: str  # "Основная зона проявления сегодня"
+# END_BLOCK: MANIFESTATION_ZONES
+
+# START_BLOCK: PERIOD_CONTEXT
+# AI_HEADER
+# wave: W-4.0
+# purpose: Period context — почему это важно именно сейчас (фон периода).
+#          Показывает долгосрочные техники (профекция, фирдар, соляр), которые
+#          создают контекст для сегодняшних активаций.
+class PeriodContext(CamelModel):
+    """Почему это важно именно сейчас (фон периода)"""
+
+    year_theme: str | None = None  # "3-й дом года (профекция)"
+    year_ruler: str | None = None  # "Меркурий"
+    active_period: str | None = None  # "Фирдар Меркурия"
+    solar_return_emphasis: str | None = None  # "Марс в 3-м доме SR"
+    long_term_transit: str | None = None  # "Сатурн квадрат натальный Меркурий (весь год)"
+# END_BLOCK: PERIOD_CONTEXT
+
 # START_BLOCK: TODAY_PAYLOAD
 class TodayMeta(CamelModel):
     schema_version: Literal["today/v1"]
@@ -153,6 +217,10 @@ class TodayMeta(CamelModel):
     prompt_version: int
     content_version: int
     generated_at: str
+
+    # W-4.0: версии canon файлов
+    scoring_canon_version: int | None = None  # версия grace/canon/*.yml
+    activation_layer_version: int | None = None  # версия activation logic
 
 
 class TodayPayload(CamelModel):
@@ -171,4 +239,13 @@ class TodayPayload(CamelModel):
     microcopy: list[MicrocopyItem]
     yesterday_echo: YesterdayEcho | None = None
     actions: list[TodayAction] | None = None
+
+    # W-4.0: convergence evidence
+    activation_evidence: list[ActivationEvidence] | None = None
+
+    # W-4.0: manifestation zones
+    manifestation_zones: list[ManifestationZone] | None = None
+
+    # W-4.0: period context
+    period_context: PeriodContext | None = None
 # END_BLOCK: TODAY_PAYLOAD

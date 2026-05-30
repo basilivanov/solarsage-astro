@@ -49,7 +49,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, health, profile
+from app.api import auth, calendar, day, health, profile
 from app.core.config import settings
 
 # START_BLOCK: APP_CONSTRUCTION
@@ -74,4 +74,6 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(profile.router)
+app.include_router(day.router)  # W-1.3
+app.include_router(calendar.router)  # W-1.4
 # END_BLOCK: ROUTER_MOUNT

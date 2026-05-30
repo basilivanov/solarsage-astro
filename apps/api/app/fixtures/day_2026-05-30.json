@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "schemaVersion": "today/v1",
+    "contractVersion": 1,
+    "calculationVersion": 1,
+    "normalizationVersion": 1,
+    "scoringVersion": 1,
+    "promptVersion": 1,
+    "contentVersion": 1,
+    "generatedAt": "2026-05-30T12:00:00Z"
+  },
+  "date": "2026-05-30",
+  "title": "Сегодня тебя несёт",
+  "subtitle": null,
+  "headline": "День, когда удача любит наглых",
+  "access": {
+    "state": "full"
+  },
+  "dayStatus": "supportive",
+  "dayQuality": null,
+  "topFlags": [
+    {
+      "iconName": "sun-jupiter",
+      "title": "Солнце трин Юпитер",
+      "summary": "Сегодня тебя несёт — пользуйся",
+      "hint": null
+    }
+  ],
+  "reading": {
+    "paragraphs": [
+      "Сегодня Солнце в трине к Юпитеру: день, когда удача любит наглых.",
+      "То, что ты откладывал из вежливости, можно делать сегодня."
+    ]
+  },
+  "whyThisHappens": {
+    "sections": []
+  },
+  "weekStrip": [
+    {"date": "2026-05-28", "dayStatus": "steady", "isToday": false},
+    {"date": "2026-05-29", "dayStatus": "supportive", "isToday": false},
+    {"date": "2026-05-30", "dayStatus": "supportive", "isToday": true},
+    {"date": "2026-05-31", "dayStatus": "steady", "isToday": false},
+    {"date": "2026-06-01", "dayStatus": "tense", "isToday": false},
+    {"date": "2026-06-02", "dayStatus": "steady", "isToday": false},
+    {"date": "2026-06-03", "dayStatus": "supportive", "isToday": false}
+  ],
+  "microcopy": [],
+  "yesterdayEcho": null,
+  "actions": null
+}

@@ -196,6 +196,23 @@ export interface components {
              */
             user: "trial" | "subscription" | "expired" | "none";
         };
+        /**
+         * ActivationEvidence
+         * @description Convergence: несколько техник указывают на одну планету/дом/сферу
+         */
+        ActivationEvidence: {
+            /**
+             * Convergencelevel
+             * @enum {string}
+             */
+            convergenceLevel: "double" | "triple" | "quad" | "peak";
+            /** Summary */
+            summary: string;
+            /** Techniques */
+            techniques: string[];
+            /** Theme */
+            theme: string;
+        };
         /** AllowedRange */
         AllowedRange: {
             /** From */
@@ -351,6 +368,23 @@ export interface components {
              */
             type: "highlights";
         };
+        /**
+         * ManifestationZone
+         * @description Где это проявится в жизни
+         */
+        ManifestationZone: {
+            /** Description */
+            description: string;
+            /** House */
+            house: number;
+            /**
+             * Intensity
+             * @enum {string}
+             */
+            intensity: "background" | "active" | "peak";
+            /** Theme */
+            theme: string;
+        };
         /** MicrocopyItem */
         MicrocopyItem: {
             /** Id */
@@ -414,6 +448,22 @@ export interface components {
              * @enum {string}
              */
             type: "paragraph";
+        };
+        /**
+         * PeriodContext
+         * @description Почему это важно именно сейчас (фон периода)
+         */
+        PeriodContext: {
+            /** Activeperiod */
+            activePeriod?: string | null;
+            /** Longtermtransit */
+            longTermTransit?: string | null;
+            /** Solarreturnemphasis */
+            solarReturnEmphasis?: string | null;
+            /** Yearruler */
+            yearRuler?: string | null;
+            /** Yeartheme */
+            yearTheme?: string | null;
         };
         /** Person */
         Person: {
@@ -493,6 +543,8 @@ export interface components {
         };
         /** TodayMeta */
         TodayMeta: {
+            /** Activationlayerversion */
+            activationLayerVersion?: number | null;
             /** Calculationversion */
             calculationVersion: number;
             /** Contentversion */
@@ -510,6 +562,8 @@ export interface components {
              * @constant
              */
             schemaVersion: "today/v1";
+            /** Scoringcanonversion */
+            scoringCanonVersion?: number | null;
             /** Scoringversion */
             scoringVersion: number;
         };
@@ -518,6 +572,8 @@ export interface components {
             access: components["schemas"]["ContentAccessState"];
             /** Actions */
             actions?: components["schemas"]["TodayAction"][] | null;
+            /** Activationevidence */
+            activationEvidence?: components["schemas"]["ActivationEvidence"][] | null;
             /** Date */
             date: string;
             dayQuality?: components["schemas"]["DayQuality"] | null;
@@ -528,9 +584,12 @@ export interface components {
             dayStatus: "supportive" | "steady" | "tense";
             /** Headline */
             headline: string;
+            /** Manifestationzones */
+            manifestationZones?: components["schemas"]["ManifestationZone"][] | null;
             meta: components["schemas"]["TodayMeta"];
             /** Microcopy */
             microcopy: components["schemas"]["MicrocopyItem"][];
+            periodContext?: components["schemas"]["PeriodContext"] | null;
             reading: components["schemas"]["ReadingBody"];
             /** Subtitle */
             subtitle?: string | null;
@@ -594,12 +653,22 @@ export interface components {
         };
         /** WhySection */
         WhySection: {
+            /** Aspects */
+            aspects?: string[] | null;
             /** Blocks */
             blocks: (components["schemas"]["WhyParagraph"] | components["schemas"]["WhyBullets"])[];
+            /** Houses */
+            houses?: number[] | null;
             /** Iconname */
             iconName?: string | null;
             /** Id */
             id: string;
+            /** Layer */
+            layer?: ("main_theme" | "daily_layer" | "personal_activation" | "period_background" | "amplifiers" | "softeners" | "manifestation_zones" | "astrological_meaning" | "practical_meaning") | null;
+            /** Planets */
+            planets?: string[] | null;
+            /** Techniques */
+            techniques?: string[] | null;
             /** Title */
             title: string;
         };

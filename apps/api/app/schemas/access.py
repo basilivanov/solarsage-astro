@@ -35,4 +35,22 @@ class AccessSummary(CamelModel):
     referral_days_left: int
     subscription_active: bool
     access_until: str | None = None
+
+
+# W-1.3: ContentAccessState for per-day access control
+ContentAccessReason = Literal[
+    "active_referral_days",
+    "active_subscription",
+    "expired_access",
+    "outside_access_window",
+]
+
+
+class ContentAccessState(CamelModel):
+    """Access state for a specific day (W-1.3 stub, W-ACCESS.1 real)."""
+    state: Literal["full", "preview", "locked"]
+    reason: ContentAccessReason | None = None
+    referral_days_left: int | None = None
+    subscription_active: bool | None = None
+    access_until: str | None = None  # ISO date
 # END_BLOCK: ACCESS_TYPES

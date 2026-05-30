@@ -42,6 +42,45 @@
         "title": "AccessSummary",
         "type": "object"
       },
+      "ActivationEvidence": {
+        "additionalProperties": false,
+        "description": "Convergence: несколько техник указывают на одну планету/дом/сферу",
+        "properties": {
+          "convergenceLevel": {
+            "enum": [
+              "double",
+              "triple",
+              "quad",
+              "peak"
+            ],
+            "title": "Convergencelevel",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "techniques": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Techniques",
+            "type": "array"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme",
+          "convergenceLevel",
+          "techniques",
+          "summary"
+        ],
+        "title": "ActivationEvidence",
+        "type": "object"
+      },
       "AllowedRange": {
         "additionalProperties": false,
         "properties": {
@@ -490,6 +529,41 @@
         "title": "HighlightsBlock",
         "type": "object"
       },
+      "ManifestationZone": {
+        "additionalProperties": false,
+        "description": "Где это проявится в жизни",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "house": {
+            "title": "House",
+            "type": "integer"
+          },
+          "intensity": {
+            "enum": [
+              "background",
+              "active",
+              "peak"
+            ],
+            "title": "Intensity",
+            "type": "string"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "house",
+          "theme",
+          "intensity",
+          "description"
+        ],
+        "title": "ManifestationZone",
+        "type": "object"
+      },
       "MicrocopyItem": {
         "additionalProperties": false,
         "properties": {
@@ -712,6 +786,69 @@
         "title": "ParagraphBlock",
         "type": "object"
       },
+      "PeriodContext": {
+        "additionalProperties": false,
+        "description": "Почему это важно именно сейчас (фон периода)",
+        "properties": {
+          "activePeriod": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activeperiod"
+          },
+          "longTermTransit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longtermtransit"
+          },
+          "solarReturnEmphasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Solarreturnemphasis"
+          },
+          "yearRuler": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearruler"
+          },
+          "yearTheme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yeartheme"
+          }
+        },
+        "title": "PeriodContext",
+        "type": "object"
+      },
       "Person": {
         "additionalProperties": false,
         "properties": {
@@ -928,6 +1065,17 @@
       "TodayMeta": {
         "additionalProperties": false,
         "properties": {
+          "activationLayerVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activationlayerversion"
+          },
           "calculationVersion": {
             "title": "Calculationversion",
             "type": "integer"
@@ -956,6 +1104,17 @@
             "const": "today/v1",
             "title": "Schemaversion",
             "type": "string"
+          },
+          "scoringCanonVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoringcanonversion"
           },
           "scoringVersion": {
             "title": "Scoringversion",
@@ -995,6 +1154,20 @@
             ],
             "title": "Actions"
           },
+          "activationEvidence": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ActivationEvidence"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activationevidence"
+          },
           "date": {
             "title": "Date",
             "type": "string"
@@ -1022,6 +1195,20 @@
             "title": "Headline",
             "type": "string"
           },
+          "manifestationZones": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ManifestationZone"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifestationzones"
+          },
           "meta": {
             "$ref": "#/components/schemas/TodayMeta"
           },
@@ -1031,6 +1218,16 @@
             },
             "title": "Microcopy",
             "type": "array"
+          },
+          "periodContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "reading": {
             "$ref": "#/components/schemas/ReadingBody"
@@ -1232,6 +1429,20 @@
       "WhySection": {
         "additionalProperties": false,
         "properties": {
+          "aspects": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspects"
+          },
           "blocks": {
             "items": {
               "anyOf": [
@@ -1245,6 +1456,20 @@
             },
             "title": "Blocks",
             "type": "array"
+          },
+          "houses": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Houses"
           },
           "iconName": {
             "anyOf": [
@@ -1260,6 +1485,56 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "enum": [
+                  "main_theme",
+                  "daily_layer",
+                  "personal_activation",
+                  "period_background",
+                  "amplifiers",
+                  "softeners",
+                  "manifestation_zones",
+                  "astrological_meaning",
+                  "practical_meaning"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer"
+          },
+          "planets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planets"
+          },
+          "techniques": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Techniques"
           },
           "title": {
             "title": "Title",

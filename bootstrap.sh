@@ -62,12 +62,12 @@ rm -f ci.db
 DATABASE_URL="sqlite+aiosqlite:///./ci.db" alembic upgrade head
 
 step "Gate 4: uvicorn + GET /api/health"
-uvicorn app.main:app --port 8765 >/tmp/uvicorn.log 2>&1 &
+uvicorn app.main:app --port 8766 >/tmp/uvicorn.log 2>&1 &
 UVPID=$!
 trap 'kill $UVPID 2>/dev/null || true' EXIT
 sleep 2
-BODY="$(curl -s localhost:8765/api/health)"
-CODE="$(curl -s -o /dev/null -w '%{http_code}' localhost:8765/api/health)"
+BODY="$(curl -s localhost:8766/api/health)"
+CODE="$(curl -s -o /dev/null -w '%{http_code}' localhost:8766/api/health)"
 echo "body: $BODY"
 echo "code: $CODE"
 [[ "$CODE" == "200" ]] || { echo "health not 200"; exit 1; }
@@ -112,12 +112,15 @@ echo "OK: openapi.json + _generated.ts are byte-identical to committed version"
 # ---------------------------------------------------------------------------
 step "Gate 7: pnpm install (frozen)"
 if ! command -v pnpm >/dev/null 2>&1; then
-  echo "pnpm not found — install pnpm to run frontend gates"; exit 1
+  echo "pnpm not found — using npx pnpm"
+  PNPM="npx -y pnpm@10.32.1"
+else
+  PNPM="pnpm"
 fi
-pnpm install --prefer-frozen-lockfile --silent
+$PNPM install --prefer-frozen-lockfile --silent
 
 step "Gate 8: eslint (grace plugin: contracts-only-import + no-redeclare-contract-types)"
-pnpm exec eslint .
+$PNPM exec eslint .
 
 step "Gate 9: GRACE marker gate"
 bash scripts/grace/check-markers.sh
@@ -125,8 +128,11 @@ bash scripts/grace/check-markers.sh
 step "Gate 10: GRACE negative tests"
 bash scripts/grace/check-negative.sh
 
+step "Gate 11: vitest (grace tests)"
+$PNPM exec vitest run
+
 # ---------------------------------------------------------------------------
 step "ALL GREEN"
 echo "W-1.1:  ruff/mypy/alembic/health/pytest/drift — ok"
 echo "W-1.1B: contracts:generate idempotent, drift gate clean"
-echo "W-2.0:  eslint(grace) + marker gate + negative tests — ok"
+echo "W-2.0:  eslint(grace) + marker gate + negative tests + vitest — ok"

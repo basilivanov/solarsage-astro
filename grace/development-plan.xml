@@ -427,6 +427,105 @@
   </phase>
 
   <!-- =================================================================== -->
+  <phase id="PHASE-TEST" priority="P0">
+    <goal>Executable verification matrix: unit/integration/e2e tests with visual regression. Auth-first approach for all endpoint/e2e tests.</goal>
+
+    <wave id="W-TEST-1">
+      <title>Backend integration tests with authenticated_client fixture</title>
+      <modules>M-TEST-BACKEND</modules>
+      <write-scope>
+        apps/api/tests/test_day_endpoints.py ·
+        apps/api/tests/test_calendar_endpoints.py ·
+        apps/api/tests/test_access_service.py ·
+        apps/api/tests/conftest.py (authenticated_client fixture)
+      </write-scope>
+      <freeze-scope>apps/api/app/api/* (endpoints already exist) · frontend</freeze-scope>
+      <entry-criteria>W-1.3 merged (day endpoint) · W-1.4 merged (calendar endpoint) · W-ACCESS.1 merged (access service)</entry-criteria>
+      <exit-criteria>
+        <criterion>UC-DAY-VIEW scenarios S1-S5 covered: valid auth → TodayPayload, not onboarded → 422, no access → preview, invalid date → 400, cold call → full pipeline.</criterion>
+        <criterion>UC-CAL-NAV scenarios S1-S3 covered: valid month → 3-month grid, out of range → 400, tap day → navigates.</criterion>
+        <criterion>UC-ACCESS-CHECK scenarios S1-S3 covered: 14d referral → days 0..13 full, referral + subscription → consumption order, no entries → preview.</criterion>
+        <criterion>authenticated_client fixture: login → onboarding → returns client with session cookie.</criterion>
+        <criterion>Cache assertions: meta.cached=false on first call, true on second.</criterion>
+        <criterion>Performance: p95 < 500ms for cached /api/day/:date.</criterion>
+      </exit-criteria>
+      <deliverables>test_day_endpoints.py · test_calendar_endpoints.py · test_access_service.py · authenticated_client fixture · pytest passing in CI</deliverables>
+    </wave>
+
+    <wave id="W-TEST-2">
+      <title>Frontend unit tests (vitest for hooks/reducers)</title>
+      <modules>M-TEST-FRONTEND-UNIT</modules>
+      <write-scope>
+        apps/web/vitest.config.ts ·
+        apps/web/__tests__/lib/useAccess.test.ts ·
+        apps/web/__tests__/lib/useOnboarded.test.ts ·
+        apps/web/__tests__/lib/chatReducer.test.ts ·
+        apps/web/__tests__/lib/onboardingReducer.test.ts
+      </write-scope>
+      <freeze-scope>apps/api/* · components (UI tests in W-TEST-3)</freeze-scope>
+      <entry-criteria>W-2.6 merged (useAccess hook) · W-2.7 merged (onboarding reducer) · W-2.4 merged (chat reducer)</entry-criteria>
+      <exit-criteria>
+        <criterion>useAccess.test.ts: covers referral days countdown, subscription active, expired access, locked state.</criterion>
+        <criterion>chatReducer.test.ts: covers message append, thread switch, loading states.</criterion>
+        <criterion>onboardingReducer.test.ts: covers step navigation, validation, submit.</criterion>
+        <criterion>Coverage 60%+ for lib/grace/** (hooks, reducers, utils).</criterion>
+        <criterion>CI gate: vitest runs in GitHub Actions, fails on test failure.</criterion>
+      </exit-criteria>
+      <deliverables>vitest.config.ts · 4+ unit test files · vitest CI gate</deliverables>
+    </wave>
+
+    <wave id="W-TEST-3">
+      <title>E2E tests (Playwright) + Visual regression (baseline screenshots)</title>
+      <modules>M-TEST-E2E · M-TEST-VISUAL</modules>
+      <write-scope>
+        apps/web/playwright.config.ts ·
+        apps/web/e2e/helpers/auth.ts (authenticateAndOnboard, generateFakeInitData) ·
+        apps/web/e2e/auth.spec.ts ·
+        apps/web/e2e/day-view.spec.ts ·
+        apps/web/e2e/calendar.spec.ts ·
+        apps/web/e2e/onboarding.spec.ts ·
+        apps/web/e2e/locked-day.spec.ts ·
+        apps/web/e2e/visual/today-screen.spec.ts ·
+        apps/web/e2e/visual/calendar.spec.ts ·
+        apps/web/e2e/visual/__screenshots__/*.png (baseline)
+      </write-scope>
+      <freeze-scope>apps/api/* (backend already tested in W-TEST-1)</freeze-scope>
+      <entry-criteria>W-2.0..W-2.7 merged (frontend port complete) · W-TEST-1 merged (backend endpoints tested)</entry-criteria>
+      <exit-criteria>
+        <criterion>UC-TG-AUTH: valid initData → session set, tampered hash → 401.</criterion>
+        <criterion>UC-DAY-VIEW: renders headline, flags, reading; cache hit on second load.</criterion>
+        <criterion>UC-DAY-NAV: tap arrow → URL updates, headline changes, week strip active marker moves.</criterion>
+        <criterion>UC-CAL-NAV: tap day → navigates to /day/:date.</criterion>
+        <criterion>UC-LOCKED-DAY: no access → preview + soft lock + CTAs.</criterion>
+        <criterion>Visual regression: baseline screenshots for today-supportive.png, today-tense.png, locked-preview.png, calendar-3months.png, onboarding-step*.png.</criterion>
+        <criterion>authenticateAndOnboard helper: inject Telegram WebApp API → auto auth → onboarding → /day/today.</criterion>
+        <criterion>CI gate: Playwright runs in GitHub Actions, fails on test failure or visual diff > 0.1%.</criterion>
+      </exit-criteria>
+      <deliverables>playwright.config.ts · auth helper · 5+ e2e spec files · baseline screenshots (~5-10MB) · Playwright CI gate</deliverables>
+    </wave>
+
+    <wave id="W-TEST-4">
+      <title>CI integration: test workflow, visual diff artifacts, contracts gate</title>
+      <modules>M-CI-TEST</modules>
+      <write-scope>
+        .github/workflows/test.yml ·
+        .github/workflows/contracts.yml ·
+        scripts/ci/upload-visual-diffs.sh
+      </write-scope>
+      <freeze-scope>test files (already written in W-TEST-1..W-TEST-3)</freeze-scope>
+      <entry-criteria>W-TEST-1 merged · W-TEST-2 merged · W-TEST-3 merged</entry-criteria>
+      <exit-criteria>
+        <criterion>GitHub Actions workflow runs: pytest → vitest → Playwright → contracts:check.</criterion>
+        <criterion>Visual diff artifacts uploaded on Playwright failure.</criterion>
+        <criterion>PR blocked on any test failure.</criterion>
+        <criterion>Performance monitoring: p95 latency for /api/day/:date logged in CI.</criterion>
+        <criterion>contracts:check gate: fails on drift between Pydantic and TypeScript.</criterion>
+      </exit-criteria>
+      <deliverables>.github/workflows/test.yml · visual diff upload script · CI gates active</deliverables>
+    </wave>
+  </phase>
+
+  <!-- =================================================================== -->
   <phase id="PHASE-CHAT" priority="P2" deferred="true">
     <goal>Stand up the real chat backend (endpoint, storage, rate-limit, AI provider) and flip chat.* events from reserved to emitted. The frontend port itself is owned by W-2.4 in PHASE-2-FRONTEND-PORT — this phase covers everything that W-2.4 does NOT do (fixture-only there).</goal>
     <intake>W-CHAT-INTAKE is the only wave allowed to land before Phase-1 closes. It is spec-only: it inventories the legacy module, drafts the Pydantic contract, reserves chat.* events in §8.5 with emitted=false, and records a Decision (A port-1:1 / B rewrite-on-AI-SDK / C drop). All other PHASE-CHAT waves stay frozen until that Decision is recorded.</intake>
@@ -544,6 +643,16 @@
     <dep from="PHASE-7-NATAL-READING" requires="PHASE-3-SIDECAR" />
     <dep from="PHASE-8-EVENING" requires="PHASE-5-LLM" />
     <dep from="PHASE-9-MICROCOPY" requires="PHASE-4-NORMALIZATION-SCORING" parallel-allowed="true" />
+    <dep from="PHASE-TEST" requires="PHASE-1-MOCKED-PIPELINE" note="W-TEST-1 needs endpoints from W-1.3/W-1.4" />
+    <dep from="PHASE-TEST" requires="PHASE-2-FRONTEND-PORT" note="W-TEST-2/W-TEST-3 need frontend from W-2.0..W-2.7" />
+    <dep from="W-TEST-1" requires="W-1.3" note="test_day_endpoints needs /api/day/:date" />
+    <dep from="W-TEST-1" requires="W-1.4" note="test_calendar_endpoints needs /api/calendar" />
+    <dep from="W-TEST-1" requires="W-ACCESS.1" note="test_access_service needs access logic" />
+    <dep from="W-TEST-2" requires="W-2.6" note="useAccess.test needs useAccess hook" />
+    <dep from="W-TEST-2" requires="W-2.7" note="onboardingReducer.test needs reducer" />
+    <dep from="W-TEST-3" requires="W-2.7" note="e2e tests need complete frontend" />
+    <dep from="W-TEST-3" requires="W-TEST-1" note="e2e tests assume backend endpoints work" />
+    <dep from="W-TEST-4" requires="W-TEST-3" note="CI workflow needs all test files" />
     <dep from="PHASE-CHAT" requires="PHASE-1-MOCKED-PIPELINE" />
     <dep from="PHASE-CHAT" requires="W-1.6" note="chat events ride on the same logging spine; must not predate W-1.6 merge" />
     <dep from="W-CHAT-3" requires="W-2.4" note="chat frontend port lives in W-2.4; observability flip waits for it" />

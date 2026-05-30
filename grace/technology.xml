@@ -194,6 +194,53 @@
   </contracts>
 
   <!-- =================================================================== -->
+  <!-- TESTING                                                              -->
+  <!-- =================================================================== -->
+  <technology id="TECH-PYTEST" category="testing">
+    <name>pytest</name>
+    <version>8.x</version>
+    <purpose>Backend unit and integration tests</purpose>
+    <scope>apps/api/tests/**</scope>
+    <decision>
+      <rationale>Industry standard for Python testing, excellent async support, rich fixture ecosystem</rationale>
+      <alternatives>unittest (too verbose), nose (unmaintained)</alternatives>
+    </decision>
+  </technology>
+
+  <technology id="TECH-VITEST" category="testing">
+    <name>vitest</name>
+    <version>2.x</version>
+    <purpose>Frontend unit tests (hooks, reducers, utils)</purpose>
+    <scope>apps/web/__tests__/**</scope>
+    <decision>
+      <rationale>Fast, Vite-native, Jest-compatible API, ESM support</rationale>
+      <alternatives>Jest (slower, CJS-first), Mocha (too low-level)</alternatives>
+    </decision>
+  </technology>
+
+  <technology id="TECH-PLAYWRIGHT" category="testing">
+    <name>Playwright</name>
+    <version>1.x</version>
+    <purpose>E2E tests and visual regression</purpose>
+    <scope>apps/web/e2e/**</scope>
+    <decision>
+      <rationale>Headless browser automation, built-in screenshots, cross-browser support, fast execution</rationale>
+      <alternatives>Cypress (slower, no multi-tab), Selenium (outdated API)</alternatives>
+    </decision>
+  </technology>
+
+  <technology id="TECH-HTTPX" category="testing">
+    <name>httpx</name>
+    <version>0.27.x</version>
+    <purpose>Async HTTP client for pytest (ASGITransport)</purpose>
+    <scope>apps/api/tests/conftest.py</scope>
+    <decision>
+      <rationale>Async-native, ASGI transport for FastAPI testing, requests-compatible API</rationale>
+      <alternatives>requests (sync-only), aiohttp (different API)</alternatives>
+    </decision>
+  </technology>
+
+  <!-- =================================================================== -->
   <!-- BANNED CHOICES (canon §11 violations)                               -->
   <!-- =================================================================== -->
   <banned>
