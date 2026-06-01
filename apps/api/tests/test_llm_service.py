@@ -217,3 +217,72 @@ async def test_generate_reading_max_paragraphs(sample_signals):
         assert len(paragraphs) == 3
         assert paragraphs == ["P1.", "P2.", "P3."]
 # END_BLOCK: TEST_MAX_PARAGRAPHS
+
+
+# START_BLOCK: TEST_WHY_SECTIONS_PARSING
+@pytest.mark.asyncio
+async def test_why_sections_parses_markdown_wrapped_json(sample_signals):
+    """generate_why_sections strips ```json ... ``` blocks before parsing."""
+    natal = {
+        "planets": [
+            {"name": "Sun", "sign": "Gemini", "longitude": 69.5},
+            {"name": "Moon", "sign": "Leo", "longitude": 120.0},
+        ]
+    }
+    semantic = {"day_theme": "Test", "top_keywords": ["a", "b"]}
+
+    json_body = '{"sections":[{"id":"w1","layer":"main_theme","title":"T","blocks":[{"kind":"paragraph","text":"x"}]}]}'
+    markdown_response = f"```json\n{json_body}\n```"
+
+    mock_resp = MagicMock()
+    mock_resp.json = MagicMock(return_value={
+        "choices": [{"message": {"content": markdown_response}}]
+    })
+    mock_resp.raise_for_status = MagicMock()
+
+    mock_client = MagicMock()
+    mock_client.post = AsyncMock(return_value=mock_resp)
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_class:
+        mock_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        service = LLMService()
+        sections = await service.generate_why_sections(
+            "supportive", sample_signals,
+            {"career": 2}, semantic, natal
+        )
+
+        assert sections is not None, "Should parse markdown-wrapped JSON"
+        assert len(sections) == 1
+        assert sections[0]["id"] == "w1"
+        assert sections[0]["layer"] == "main_theme"
+
+
+@pytest.mark.asyncio
+async def test_why_sections_parses_bare_json(sample_signals):
+    """generate_why_sections handles bare JSON (no markdown wrapping)."""
+    json_body = '{"sections":[{"id":"w1","layer":"main_theme","title":"T","blocks":[{"kind":"paragraph","text":"x"}]}]}'
+
+    mock_resp = MagicMock()
+    mock_resp.json = MagicMock(return_value={
+        "choices": [{"message": {"content": json_body}}]
+    })
+    mock_resp.raise_for_status = MagicMock()
+
+    mock_client = MagicMock()
+    mock_client.post = AsyncMock(return_value=mock_resp)
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_class:
+        mock_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        service = LLMService()
+        sections = await service.generate_why_sections(
+            "steady", sample_signals,
+            {"career": 0}, {"day_theme": "X"}, {"planets": []}
+        )
+
+        assert sections is not None, "Should parse bare JSON"
+        assert len(sections) == 1
+# END_BLOCK: TEST_WHY_SECTIONS_PARSING

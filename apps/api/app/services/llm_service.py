@@ -285,9 +285,11 @@ class LLMService:
         for p in natal_planets:
             name = _planet(p.get("name", ""))
             sign = p.get("sign", "?")
-            house_approx = int(p.get("longitude", 0) / 30) + 1
+            lon = p.get("longitude", 0)
+            # Convert absolute longitude (0-360°) to zodiac degree (0-30° within sign)
+            sign_deg = lon % 30
             parts.append(
-                f"- {name}: {sign}, {house_approx} дом ({p.get('longitude', 0):.1f}°)"
+                f"- {name}: {sign_deg:.1f}° {sign}"
             )
 
         # 2. Top transits (ranked by strength)
@@ -389,7 +391,8 @@ class LLMService:
 - Без англицизмов — все названия планет, аспектов, домов на русском
 - Каждая секция ОБЯЗАНА использовать конкретные названия планет, градусов, домов из входных данных
 - Запрещены общие фразы без астрологических деталей
-- Не выдумывай планеты и аспекты — используй ТОЛЬКО те что есть во входных данных
+- Не выдумывай планеты, аспекты и градусы — используй ТОЛЬКО те что есть во входных данных
+- Градусы всегда указывай в формате «19.9° Овна», а не «319.9°»
 - keyInsight — короткое предложение, ключ дня
 - В секции 09 ОБЯЗАТЕЛЬНО bullets, не paragraphs
 
@@ -399,11 +402,17 @@ JSON:"""
         if not text:
             return None
 
+        # Strip markdown code blocks (LLMs often wrap JSON in ```json ... ```)
+        for marker in ['{\n', '{', '```json', '```']:
+            text = text.strip()
+        for marker in ['```json', '```']:
+            if marker in text:
+                text = text.split(marker, 1)[1].rsplit('```', 1)[0].strip()
+                break
+
         try:
             data = json_lib.loads(text)
-            sections = data.get("sections", [])
-            # Attach keyInsight if present
-            return sections
-        except json_lib.JSONDecodeError:
-            logger.warning(f"[LLM] Failed to parse why-sections JSON: {text[:200]}")
+            return data.get("sections", [])
+        except json_lib.JSONDecodeError as e:
+            logger.warning(f"[LLM] Failed to parse why-sections JSON: {text[:300]}... error={e}")
             return None
