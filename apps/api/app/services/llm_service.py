@@ -267,26 +267,96 @@ class LLMService:
 
         return await self._generate_text(prompt, max_tokens=300)
 
+    # ── Full context builder ────────────────────────────────────────
+
+    def _build_full_context(
+        self,
+        natal: dict,
+        top_signals: list,
+        sphere_scores: dict,
+        semantic_layer,
+    ) -> str:
+        """Build rich context for LLM — natal chart, ranked signals, grouping."""
+        parts = []
+
+        # 1. Natal chart
+        parts.append("=== НАТАЛЬНАЯ КАРТА ===")
+        natal_planets = natal.get("planets", [])
+        for p in natal_planets:
+            name = _planet(p.get("name", ""))
+            sign = p.get("sign", "?")
+            house_approx = int(p.get("longitude", 0) / 30) + 1
+            parts.append(
+                f"- {name}: {sign}, {house_approx} дом ({p.get('longitude', 0):.1f}°)"
+            )
+
+        # 2. Top transits (ranked by strength)
+        parts.append("\n=== ТОП-ТРАНЗИТЫ (по силе) ===")
+        for i, s in enumerate(top_signals[:5]):
+            p = _planet(s.planet)
+            if s.type == "planet_in_house":
+                parts.append(
+                    f"{i+1}. [сила {s.strength:.2f}] {p} в {s.house} доме"
+                )
+            elif s.type == "aspect" and s.aspect_type and s.target_planet:
+                a = _ASPECT_RU.get(s.aspect_type, s.aspect_type)
+                t = _planet(s.target_planet)
+                parts.append(
+                    f"{i+1}. [сила {s.strength:.2f}] {p} {a} {t} (орб {s.orb:.1f}°)"
+                )
+
+        # 3. Grouping
+        parts.append("\n=== ГРУППИРОВКА ===")
+        houses = [s for s in top_signals if s.type == "planet_in_house"]
+        aspects = [s for s in top_signals if s.type == "aspect"]
+        if houses:
+            house_list = ", ".join(
+                f"{_planet(s.planet)}({s.house} дом)" for s in houses
+            )
+            parts.append(f"Планеты в домах: {house_list}")
+        if aspects:
+            aspect_list = ", ".join(
+                f"{_planet(s.planet)}-{_planet(s.target_planet or '?')} ({_ASPECT_RU.get(s.aspect_type or '', s.aspect_type or '')})"
+                for s in aspects
+            )
+            parts.append(f"Аспекты: {aspect_list}")
+
+        # 4. Sphere scores
+        parts.append("\n=== СФЕРЫ ПО ВЛИЯНИЮ ===")
+        for sphere, score in sorted(sphere_scores.items(), key=lambda x: -x[1]):
+            name = _SPHERE_RU.get(sphere, sphere)
+            level = "сильное" if score >= 3 else ("среднее" if score >= 1 else "слабое")
+            parts.append(f"- {name}: {level} (балл {score})")
+
+        # 5. Semantic layer
+        sem = self._build_semantic_context(semantic_layer)
+        if sem:
+            parts.append(f"\n=== СЕМАНТИКА ===\n{sem}")
+
+        return "\n".join(parts)
+
+    # ── Why sections generation ─────────────────────────────────────
+
     async def generate_why_sections(
         self,
         day_status: str,
         top_signals: list,
         sphere_scores: dict,
-        semantic_layer: dict,
+        semantic_layer,
+        natal: dict | None = None,
     ) -> list[dict] | None:
-        signals_desc = self._build_signal_descriptions(top_signals, limit=4)
-        sem_context = self._build_semantic_context(semantic_layer)
+        full_context = self._build_full_context(
+            natal or {}, top_signals, sphere_scores, semantic_layer
+        )
 
         prompt = f"""Ты — астролог. Объясни пользователю на «ты», почему сегодняшний день именно такой.
 
 Статус дня: {day_status}
 
-Сигналы:
-{signals_desc}
-
-{sem_context}
+{full_context}
 
 Верни ТОЛЬКО валидный JSON, без markdown-блоков и пояснений. Структура ЖЁСТКАЯ — ровно 9 секций:
+
 
 {{
   "sections": [
@@ -304,20 +374,22 @@ class LLMService:
 }}
 
 Требования к каждой секции:
-- 01 main_theme: о чём день в целом, какая ось/конфликт/гармония задаёт тон
-- 02 daily_layer: быстрые транзиты, Луна, смена знаков — что меняется в течение дня
-- 03 personal_activation: почему это задевает ИМЕННО этого пользователя — натальные планеты которые активированы
-- 04 period_background: профекции, соляр, дирекции — фон периода (год/месяц/неделя)
-- 05 amplifiers: что усиливает день — ретро-планеты, лунные фазы, стеллиумы
-- 06 softeners: что смягчает день — гармоничные аспекты, Сатурн в поддержке
-- 07 manifestation_zones: через какие дома/сферы всё проявляется (bullets!)
-- 08 astrological_meaning: астрологический смысл — это день пересборки или прорыва?
-- 09 practical_meaning: что делать практически (bullets — 3-4 конкретных совета)
+- 01 main_theme: о чём день в целом, какая ось/конфликт/гармония задаёт тон. НАЗОВИ доминирующую планету и точный аспект из входных данных.
+- 02 daily_layer: быстрые транзиты, Луна, смена знаков — что меняется в течение дня. УКАЖИ положения Луны и быстрых планет цифрами (градусы, время).
+- 03 personal_activation: почему это задевает ИМЕННО этого пользователя. НАЗОВИ какие натальные планеты активированы какими транзитными аспектами. УКАЖИ дома и градусы.
+- 04 period_background: профекции, соляр, дирекции — фон периода (год/месяц/неделя). Свяжи с конкретными домами и планетами из натала.
+- 05 amplifiers: что усиливает день. ПЕРЕЧИСЛИ ретро-планеты поименно, лунные фазы, стеллиумы — с названиями.
+- 06 softeners: что смягчает день. НАЗОВИ гармоничные аспекты — какие планеты в трине/секстиле, с какими орбисами.
+- 07 manifestation_zones: через какие дома/сферы всё проявляется (bullets!). УКАЖИ номера домов и их значение.
+- 08 astrological_meaning: астрологический смысл — это день пересборки или прорыва? Свяжи с конкретными конфигурациями из входных данных.
+- 09 practical_meaning: что делать практически (bullets — 3-4 конкретных совета, привязанных к астрологическим фактам дня)
 
 Правила:
 - Разговорный стиль, на «ты»
 - Без англицизмов — все названия планет, аспектов, домов на русском
-- Конкретно, без общих фраз
+- Каждая секция ОБЯЗАНА использовать конкретные названия планет, градусов, домов из входных данных
+- Запрещены общие фразы без астрологических деталей
+- Не выдумывай планеты и аспекты — используй ТОЛЬКО те что есть во входных данных
 - keyInsight — короткое предложение, ключ дня
 - В секции 09 ОБЯЗАТЕЛЬНО bullets, не paragraphs
 

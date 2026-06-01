@@ -169,6 +169,7 @@ class TodayService:
             scoring_result["top_signals"],
             scoring_result["sphere_scores"],
             semantic_layer,
+            natal,  # Full natal chart for context
         )
 
         # W-4.2: Build top_flags from top signals

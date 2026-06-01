@@ -89,7 +89,7 @@ export function WhyExpanded({ sections, keyInsight }: Props) {
                           {s.bullets.map((b, idx) => (
                             <li
                               key={idx}
-                              className="flex items-start gap-2 font-sans text-[13.5px] leading-snug text-foreground/75"
+                              className="flex items-start gap-2 font-serif text-[16px] leading-[1.55] text-foreground/75"
                             >
                               <span
                                 aria-hidden
