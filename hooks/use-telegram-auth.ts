@@ -121,6 +121,10 @@ export function useTelegramAuth() {
         const claimKey = '__astro_referral_claimed';
         try {
           const startParam = tg.initDataUnsafe?.start_param
+            || (() => {
+              const sp = new URLSearchParams(window.location.search);
+              return sp.get('tgWebAppStartParam') || undefined;
+            })()
           const ownId = tg.initDataUnsafe?.user?.id
           const alreadyClaimed = (window as any)[claimKey]
 
@@ -141,6 +145,8 @@ export function useTelegramAuth() {
             }
           } else if (startParam && String(startParam) === String(ownId)) {
             logger.info('[TGAuth] Skipping self-referral')
+          } else if (!startParam) {
+            logger.info('[TGAuth] No start_param — not a referral link')
           }
         } catch (e) {
           logger.error('[TGAuth] Referral claim error', { extra: { error: String(e) } })
