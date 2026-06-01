@@ -1,23 +1,13 @@
 'use client'
 
-import { useEffect, useState } from "react"
-import { NatalToc } from "@/components/readings/natal/natal-toc"
-import { getNatalReport } from "@/lib/api/natal"
-import type { NatalReport } from "@/lib/api/natal"
+import { LockedFeatureCard } from "@/components/locked-feature-card"
 
-/**
- * /readings/natal — оглавление глубокого разбора натальной карты.
- *
- * Client-side render: данные приходят через API /api/natal/overview.
- */
 export default function NatalReadingPage() {
-  const [report, setReport] = useState<NatalReport | null>(null)
-
-  useEffect(() => {
-    getNatalReport().then(setReport).catch(() => setReport(null))
-  }, [])
-
-  if (!report) return null
-
-  return <NatalToc report={report} />
+  return (
+    <LockedFeatureCard
+      title="Натальная карта"
+      description="Натальная карта скоро будет доступна. Мы уже готовим глубокий персональный разбор: характер, сильные стороны, напряжения, сферы жизни и планетарные функции."
+      badge="Скоро"
+    />
+  )
 }
