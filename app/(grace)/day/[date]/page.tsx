@@ -133,6 +133,7 @@ export default function DayPage() {
       access={access}
       payload={payload}
       onDateChange={onDateChange}
+      importantToday={(data as any).importantToday || (data as any).important_today}
     />
   );
 }

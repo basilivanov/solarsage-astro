@@ -34,29 +34,39 @@
   --accent: oklch(0.93 0.018 305);
   --accent-foreground: oklch(0.36 0.04 305);
 
-  --destructive: oklch(0.55 0.16 27);
-  --destructive-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.45 0.15 25);
+  --destructive-foreground: oklch(0.98 0.01 85);
 
-  --border: oklch(0.92 0.01 300);
-  --input: oklch(0.92 0.01 300);
-  --ring: oklch(0.55 0.05 305);
+  --border: oklch(0.88 0.01 295);
+  --input: oklch(0.88 0.01 295);
+  --ring: oklch(0.48 0.06 305);
 
-  --chart-1: oklch(0.55 0.06 305);
-  --chart-2: oklch(0.7 0.05 85);
-  --chart-3: oklch(0.6 0.04 230);
-  --chart-4: oklch(0.78 0.08 60);
-  --chart-5: oklch(0.65 0.07 330);
+  --radius: 0.5rem;
+}
 
-  --radius: 1rem;
-
-  --sidebar: oklch(0.985 0.006 85);
-  --sidebar-foreground: oklch(0.26 0.02 295);
-  --sidebar-primary: oklch(0.48 0.06 305);
-  --sidebar-primary-foreground: oklch(0.985 0.005 85);
-  --sidebar-accent: oklch(0.93 0.018 305);
-  --sidebar-accent-foreground: oklch(0.36 0.04 305);
-  --sidebar-border: oklch(0.92 0.01 300);
-  --sidebar-ring: oklch(0.55 0.05 305);
+/* Fallback for Samsung/old Android WebView — oklch() not supported before Chrome 111 */
+@supports not (color: oklch(0 0 0)) {
+  :root {
+    --background: #faf7f0;
+    --foreground: #3d314a;
+    --card: #fefcf8;
+    --card-foreground: #3d314a;
+    --popover: #fefcf8;
+    --popover-foreground: #3d314a;
+    --primary: #7b5e8b;
+    --primary-foreground: #faf7f0;
+    --secondary: #f0e8f5;
+    --secondary-foreground: #5a4080;
+    --muted: #f2edf5;
+    --muted-foreground: #7b6a8a;
+    --accent: #e6d8f0;
+    --accent-foreground: #5a4080;
+    --destructive: #9b3030;
+    --destructive-foreground: #faf7f0;
+    --border: #dcd5e5;
+    --input: #dcd5e5;
+    --ring: #7b5e8b;
+  }
 }
 
 .dark {

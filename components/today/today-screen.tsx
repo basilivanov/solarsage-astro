@@ -9,6 +9,7 @@ import { WhyExpanded } from "./why-expanded"
 import { WeekStrip } from "./week-strip"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
+import { TodayImportantBlock } from "@/components/today-important-block"
 import { addDays, sameDay, TODAY, type TodayPayload } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
 
@@ -17,6 +18,7 @@ type Props = {
   access: AccessInfo
   payload: TodayPayload
   onDateChange: (d: Date) => void
+  importantToday?: any[]
 }
 
 // Порог срабатывания свайпа — чтобы случайные жесты не перелистывали день
@@ -29,6 +31,7 @@ export function TodayScreen({
   access,
   payload,
   onDateChange,
+  importantToday,
 }: Props) {
   const accessible = isDayAccessible(selectedDate, access)
   const isToday = sameDay(selectedDate, TODAY)
@@ -117,6 +120,7 @@ export function TodayScreen({
           {access.state === "trial" ? (
             <TrialBanner daysLeft={access.daysLeft} />
           ) : null}
+          <TodayImportantBlock items={importantToday || []} />
           <TodayNotes notes={payload.notes} />
           <DayReading paragraphs={payload.reading.paragraphs} />
           <WhyExpanded

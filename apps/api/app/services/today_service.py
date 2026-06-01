@@ -68,6 +68,7 @@ from app.services.scoring_service import ScoringService
 from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
+from app.services.today_important_service import TodayImportantService
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +239,16 @@ class TodayService:
                 "blocks": [{"kind": "paragraph", "text": "Пожалуйста, попробуйте позже."}],
             }]
 
+        # W-PHASE-1: Compute "Today Important" items
+        important_service = TodayImportantService(
+            transits=transits,
+            natal=natal,
+            signals=signals,
+            scoring_result=scoring_result,
+            user_tz=profile.birth_tz or "UTC",
+        )
+        important_items = important_service.compute()
+
         payload = TodayPayload(
             meta=TodayMeta(
                 schema_version="today/v1",
@@ -271,6 +282,7 @@ class TodayService:
             ],
             microcopy=[],
             yesterday_echo=None,
+            important_today=important_items,
             actions=None,
         )
 
