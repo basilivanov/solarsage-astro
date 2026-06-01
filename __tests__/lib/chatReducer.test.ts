@@ -30,4 +30,35 @@ describe('chatReducer', () => {
     expect(state.threads[0].messages).toHaveLength(1);
     expect(state.threads[0].messages[0]).toEqual(message);
   });
+
+  it('SET_LOADING sets loading to true', () => {
+    const state = chatReducer(initialChatState, { type: 'SET_LOADING', loading: true });
+    expect(state.loading).toBe(true);
+  });
+
+  it('SET_LOADING sets loading to false', () => {
+    const state = chatReducer({ ...initialChatState, loading: true }, { type: 'SET_LOADING', loading: false });
+    expect(state.loading).toBe(false);
+  });
+
+  it('SET_ERROR sets error message', () => {
+    const state = chatReducer(initialChatState, { type: 'SET_ERROR', error: 'Something went wrong' });
+    expect(state.error).toBe('Something went wrong');
+  });
+
+  it('SET_ERROR clears error when null', () => {
+    const state = chatReducer({ ...initialChatState, error: 'Old error' }, { type: 'SET_ERROR', error: null });
+    expect(state.error).toBeNull();
+  });
+
+  it('ADD_MESSAGE to non-existent thread does nothing', () => {
+    const message = { id: 'msg-1', role: 'user' as const, content: 'Hello', timestamp: '' };
+    const state = chatReducer(initialChatState, { type: 'ADD_MESSAGE', threadId: 'nonexistent', message });
+    expect(state.threads).toEqual(initialChatState.threads);
+  });
+
+  it('default case returns unchanged state for unknown action', () => {
+    const state = chatReducer(initialChatState, { type: 'UNKNOWN_ACTION' as any });
+    expect(state).toBe(initialChatState);
+  });
 });

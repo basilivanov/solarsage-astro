@@ -11,6 +11,9 @@ import {
   isValidBirthTime,
   selectEffectiveCurrentCity,
   selectEffectiveBirthdayCity,
+  selectProgress,
+  selectIsFirstStep,
+  selectIsLastStep,
   type OnboardingState,
 } from '../../lib/reducers/onboarding-reducer';
 
@@ -205,5 +208,58 @@ describe('selectors', () => {
       birthdaySameAsCurrent: true,
     };
     expect(selectEffectiveBirthdayCity(state)).toEqual(city1);
+  });
+
+  it('selectProgress returns 0 at welcome step', () => {
+    expect(selectProgress(initialOnboardingState)).toBe(0);
+  });
+
+  it('selectProgress returns 100 at done step', () => {
+    const state: OnboardingState = { ...initialOnboardingState, step: 'done' };
+    expect(selectProgress(state)).toBe(100);
+  });
+
+  it('selectProgress returns 50 at place step', () => {
+    const state: OnboardingState = { ...initialOnboardingState, step: 'place' };
+    expect(selectProgress(state)).toBe(50);
+  });
+
+  it('selectIsFirstStep returns true at welcome', () => {
+    expect(selectIsFirstStep(initialOnboardingState)).toBe(true);
+  });
+
+  it('selectIsFirstStep returns false at birth', () => {
+    const state: OnboardingState = { ...initialOnboardingState, step: 'birth' };
+    expect(selectIsFirstStep(state)).toBe(false);
+  });
+
+  it('selectIsLastStep returns true at done', () => {
+    const state: OnboardingState = { ...initialOnboardingState, step: 'done' };
+    expect(selectIsLastStep(state)).toBe(true);
+  });
+
+  it('selectIsLastStep returns false at place', () => {
+    const state: OnboardingState = { ...initialOnboardingState, step: 'place' };
+    expect(selectIsLastStep(state)).toBe(false);
+  });
+
+  it('birthday step is valid with birthdaySameAsCurrent=true and no birthdayCity', () => {
+    const state: OnboardingState = {
+      ...initialOnboardingState,
+      step: 'birthday',
+      birthdaySameAsCurrent: true,
+      birthdayCity: null,
+    };
+    expect(isStepValid(state)).toBe(true);
+  });
+
+  it('birthday step is invalid with birthdaySameAsCurrent=false and no birthdayCity', () => {
+    const state: OnboardingState = {
+      ...initialOnboardingState,
+      step: 'birthday',
+      birthdaySameAsCurrent: false,
+      birthdayCity: null,
+    };
+    expect(isStepValid(state)).toBe(false);
   });
 });

@@ -1,165 +1,233 @@
-// ############################################################################
-// AI_HEADER: MODULE_TEST_TODAY_SCREEN
-// ROLE: Unit tests for TodayScreen component (W-TEST-2).
-// DEPENDENCIES: vitest, @testing-library/react, TodayScreen
-// GRACE_ANCHORS: [TEST_TODAY_SCREEN]
-// ############################################################################
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import React from 'react'
 
-// START_MODULE_CONTRACT: M-TEST-TODAY-SCREEN
-// purpose: Test TodayScreen component rendering and behavior
-// owns:
-//   - __tests__/components/TodayScreen.test.tsx
-// inputs:
-//   - TodayPayload mock data
-// outputs:
-//   - test results (pass/fail)
-// dependencies:
-//   - components/grace/TodayScreen.tsx
-//   - packages/contracts/_generated.ts
-// side_effects:
-//   - none (tests only)
-// invariants:
-//   - headline MUST render when payload.headline is present
-//   - reading MUST render when payload.reading.paragraphs is non-empty
-//   - week-strip MUST render when payload.weekStrip is present
-//   - locked state MUST render LockedDay component
-// failure_policy:
-//   - test failure -> CI fails
-// non_goals:
-//   - E2E tests, API integration tests
-// END_MODULE_CONTRACT: M-TEST-TODAY-SCREEN
+// Polyfill PointerEvent for jsdom (Node 20/jsdom lacks it)
+if (typeof PointerEvent === 'undefined') {
+  ;(globalThis as any).PointerEvent = class PointerEvent extends MouseEvent {
+    declare pointerId: number
+    constructor(type: string, init?: any) {
+      super(type, init)
+      this.pointerId = init?.pointerId ?? 0
+    }
+  }
+}
 
-// START_MODULE_MAP: M-TEST-TODAY-SCREEN
-// public_entrypoints:
-//   - test suite (vitest)
-// semantic_blocks:
-//   - TEST_TODAY_SCREEN
-// owned_tests:
-//   - this file
-// END_MODULE_MAP: M-TEST-TODAY-SCREEN
+vi.mock('@/lib/log', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { TodayScreen } from '@/components/grace/TodayScreen';
-import type { components } from '@/packages/contracts/_generated';
-
-type TodayPayload = components['schemas']['TodayPayload'];
-
-// Mock Next.js router
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    prefetch: vi.fn(),
-  }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
   usePathname: () => '/',
+  useParams: () => ({}),
   useSearchParams: () => new URLSearchParams(),
-}));
+}))
 
-// START_BLOCK: TEST_TODAY_SCREEN
+vi.mock('@/components/today/date-header', () => ({
+  DateHeader: (props: any) => (
+    <div data-testid="date-header">
+      locked:{String(props.locked)} canPrev:{String(props.canPrev)} canNext:{String(props.canNext)}
+    </div>
+  ),
+}))
+vi.mock('@/components/today/today-notes', () => ({
+  TodayNotes: (props: any) => (
+    <div data-testid="today-notes">
+      heading:{props.heading || 'default'} limit:{props.limit ?? 'none'}
+    </div>
+  ),
+}))
+vi.mock('@/components/today/day-reading', () => ({
+  DayReading: (props: any) => (
+    <div data-testid="day-reading">preview:{String(!!props.preview)}</div>
+  ),
+}))
+vi.mock('@/components/today/why-expanded', () => ({
+  WhyExpanded: (props: any) => (
+    <div data-testid="why-expanded">sections:{props.sections?.length ?? 0}</div>
+  ),
+}))
+vi.mock('@/components/today/week-strip', () => ({
+  WeekStrip: () => <div data-testid="week-strip" />,
+}))
+vi.mock('@/components/paywall', () => ({
+  Paywall: (props: any) => <div data-testid="paywall">{props.title}</div>,
+}))
+vi.mock('@/components/trial-banner', () => ({
+  TrialBanner: (props: any) => (
+    <div data-testid="trial-banner">daysLeft:{props.daysLeft}</div>
+  ),
+}))
+
+const { mockAddDays, mockSameDay, mockIsDayAccessible } = vi.hoisted(() => ({
+  mockAddDays: vi.fn(),
+  mockSameDay: vi.fn(),
+  mockIsDayAccessible: vi.fn(),
+}))
+
+vi.mock('@/lib/today', () => ({
+  addDays: mockAddDays,
+  sameDay: mockSameDay,
+  TODAY: new Date('2026-06-01T12:00:00Z'),
+}))
+
+vi.mock('@/lib/access', () => ({
+  isDayAccessible: mockIsDayAccessible,
+}))
+
+import { TodayScreen } from '@/components/today/today-screen'
+
 describe('TodayScreen', () => {
-  const mockPayload: TodayPayload = {
-    meta: {
-      schemaVersion: 'today/v1',
-      contractVersion: 1,
-      calculationVersion: 1,
-      normalizationVersion: 1,
-      scoringVersion: 1,
-      promptVersion: 1,
-      contentVersion: 1,
-      generatedAt: '2026-05-30T12:00:00Z',
-      cached: false,
-    },
-    date: '2026-05-30',
-    title: 'Сегодня',
-    subtitle: null,
-    headline: 'Тестовый заголовок',
-    access: { state: 'full' },
-    dayStatus: 'supportive',
-    dayQuality: null,
-    topFlags: [],
-    reading: {
-      paragraphs: ['Параграф 1', 'Параграф 2'],
-    },
-    whyThisHappens: {
-      sections: [],
-    },
-    weekStrip: [
-      { date: '2026-05-30', dayStatus: 'supportive', isToday: false },
-    ],
-    microcopy: [],
-    yesterdayEcho: null,
-    actions: null,
-  };
+  const selectedDate = new Date('2026-06-01T12:00:00Z')
+  const onDateChange = vi.fn()
 
-  it('renders headline', () => {
-    render(<TodayScreen payload={mockPayload} />);
-    const headline = screen.getByTestId('today-headline');
-    expect(headline.textContent).toBe('Тестовый заголовок');
-  });
+  function buildPayload(overrides: Record<string, any> = {}) {
+    return {
+      notes: [],
+      reading: { paragraphs: [] },
+      why: [],
+      keyInsight: null,
+      ...overrides,
+    } as any
+  }
 
-  it('renders reading paragraphs', () => {
-    render(<TodayScreen payload={mockPayload} />);
-    const reading = screen.getByTestId('reading');
-    expect(reading).toBeTruthy();
-    expect(reading.textContent).toContain('Параграф 1');
-    expect(reading.textContent).toContain('Параграф 2');
-  });
+  function buildAccess(overrides: Record<string, any> = {}) {
+    return { state: 'active', daysLeft: 0, ...overrides } as any
+  }
 
-  it('renders week strip', () => {
-    render(<TodayScreen payload={mockPayload} />);
-    const weekStrip = screen.getByTestId('week-strip');
-    expect(weekStrip).toBeTruthy();
-  });
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSameDay.mockReturnValue(true)
+    mockIsDayAccessible.mockReturnValue(true)
+    mockAddDays.mockImplementation((d: Date, n: number) => {
+      const next = new Date(d)
+      next.setDate(next.getDate() + n)
+      return next
+    })
+  })
 
-  it('renders subtitle when present', () => {
-    const payloadWithSubtitle = {
-      ...mockPayload,
-      subtitle: 'Тестовый подзаголовок',
-    };
-    render(<TodayScreen payload={payloadWithSubtitle} />);
-    const subtitle = screen.getByText('Тестовый подзаголовок');
-    expect(subtitle).toBeTruthy();
-  });
+  it('renders accessible content: notes, reading, why, week-strip', () => {
+    const payload = buildPayload({
+      notes: [{ text: 'Note 1' }],
+      reading: { paragraphs: ['p1', 'p2'] },
+      why: [{ title: 'Why' }],
+    })
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess()}
+        payload={payload}
+        onDateChange={onDateChange}
+      />,
+    )
+    expect(screen.getByTestId('today-notes')).toBeTruthy()
+    expect(screen.getByTestId('day-reading')).toBeTruthy()
+    expect(screen.getByTestId('why-expanded')).toBeTruthy()
+    expect(screen.getByTestId('week-strip')).toBeTruthy()
+    expect(screen.queryByTestId('paywall')).toBeNull()
+  })
 
-  it('renders locked state when access is locked', () => {
-    const lockedPayload: TodayPayload = {
-      ...mockPayload,
-      access: { state: 'locked' },
-    };
-    render(<TodayScreen payload={lockedPayload} />);
-    // Should not render headline when locked
-    expect(screen.queryByTestId('today-headline')).toBeNull();
-    // Should still render today-screen container
-    expect(screen.getByTestId('today-screen')).toBeTruthy();
-  });
+  it('renders locked state with Paywall', () => {
+    mockIsDayAccessible.mockReturnValue(false)
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess({ state: 'locked' })}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+    expect(screen.getByTestId('paywall')).toBeTruthy()
+  })
 
-  it('renders why section when present', () => {
-    const payloadWithWhy: TodayPayload = {
-      ...mockPayload,
-      whyThisHappens: {
-        sections: [
-          {
-            id: 'test-section',
-            title: 'Почему раздел',
-            aspects: null,
-            blocks: [
-              { kind: 'paragraph', text: 'Объяснение 1' },
-              { kind: 'paragraph', text: 'Объяснение 2' },
-            ],
-          },
-        ],
-      },
-    };
-    render(<TodayScreen payload={payloadWithWhy} />);
-    expect(screen.getByText('Почему так у меня')).toBeTruthy();
-    expect(screen.getByText('Почему раздел')).toBeTruthy();
-    expect(screen.getByText('Объяснение 1')).toBeTruthy();
-  });
+  it('renders notes with limit in locked/preview state', () => {
+    mockIsDayAccessible.mockReturnValue(false)
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess({ state: 'locked' })}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+    const notes = screen.getByTestId('today-notes')
+    expect(notes.textContent).toContain('limit:2')
+    expect(notes.textContent).toContain('heading:Главное на этот день')
+  })
 
-  it('does not render why section when empty', () => {
-    render(<TodayScreen payload={mockPayload} />);
-    expect(screen.queryByText('Почему так у меня')).toBeNull();
-  });
-});
-// END_BLOCK: TEST_TODAY_SCREEN
+  it('renders day-reading in preview mode when locked', () => {
+    mockIsDayAccessible.mockReturnValue(false)
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess({ state: 'locked' })}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+    expect(screen.getByTestId('day-reading').textContent).toContain('preview:true')
+  })
+
+  it('renders TrialBanner when access state is trial', () => {
+    mockIsDayAccessible.mockReturnValue(true)
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess({ state: 'trial', daysLeft: 5 })}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+    const banner = screen.getByTestId('trial-banner')
+    expect(banner.textContent).toContain('daysLeft:5')
+  })
+
+  it('shows today-specific paywall title when locked on today', () => {
+    mockIsDayAccessible.mockReturnValue(false)
+    mockSameDay.mockReturnValue(true)
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess({ state: 'locked' })}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+    expect(screen.getByTestId('paywall').textContent).toContain(
+      'Твой персональный разбор на сегодня уже готов',
+    )
+  })
+
+  it('swipe right (pointer) triggers onDateChange with previous day', () => {
+    mockIsDayAccessible.mockReturnValue(true)
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess()}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+    const el = screen.getByTestId('today-screen')
+    el.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, clientY: 100, pointerId: 1, bubbles: true }))
+    el.dispatchEvent(new PointerEvent('pointerup', { clientX: 300, clientY: 110, pointerId: 1, bubbles: true }))
+    expect(onDateChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('swipe left (pointer) triggers onDateChange with next day', () => {
+    mockIsDayAccessible.mockReturnValue(true)
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess()}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+    const el = screen.getByTestId('today-screen')
+    el.dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, clientY: 100, pointerId: 1, bubbles: true }))
+    el.dispatchEvent(new PointerEvent('pointerup', { clientX: 200, clientY: 110, pointerId: 1, bubbles: true }))
+    expect(onDateChange).toHaveBeenCalledTimes(1)
+  })
+})

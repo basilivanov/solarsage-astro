@@ -1,0 +1,68 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
+
+vi.mock('@/lib/log', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
+const store = new Map<string, string>()
+
+beforeEach(() => {
+  store.clear()
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: vi.fn((key: string) => store.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => store.set(key, value)),
+      removeItem: vi.fn((key: string) => store.delete(key)),
+    },
+    writable: true,
+  })
+})
+
+import { useOnboarded } from '@/hooks/use-onboarded'
+
+describe('useOnboarded', () => {
+  it('returns onboarded=false when no localStorage entry', () => {
+    const { result } = renderHook(() => useOnboarded())
+    expect(result.current.onboarded).toBe(false)
+  })
+
+  it('reads onboarded=true from localStorage on mount', () => {
+    store.set('lumen:onboarded', '1')
+    const { result } = renderHook(() => useOnboarded())
+    expect(result.current.onboarded).toBe(true)
+  })
+
+  it('reads any non-"1" value as false', () => {
+    store.set('lumen:onboarded', '0')
+    const { result } = renderHook(() => useOnboarded())
+    expect(result.current.onboarded).toBe(false)
+  })
+
+  it('setOnboarded(true) writes "1" to localStorage', () => {
+    const { result } = renderHook(() => useOnboarded())
+    act(() => result.current.setOnboarded(true))
+    expect(result.current.onboarded).toBe(true)
+    expect(store.get('lumen:onboarded')).toBe('1')
+  })
+
+  it('setOnboarded(false) removes key from localStorage', () => {
+    store.set('lumen:onboarded', '1')
+    const { result } = renderHook(() => useOnboarded())
+    expect(result.current.onboarded).toBe(true)
+
+    act(() => result.current.setOnboarded(false))
+    expect(result.current.onboarded).toBe(false)
+    expect(store.has('lumen:onboarded')).toBe(false)
+  })
+
+  it('resetOnboarded removes key and sets false', () => {
+    store.set('lumen:onboarded', '1')
+    const { result } = renderHook(() => useOnboarded())
+    expect(result.current.onboarded).toBe(true)
+
+    act(() => result.current.resetOnboarded())
+    expect(result.current.onboarded).toBe(false)
+    expect(store.has('lumen:onboarded')).toBe(false)
+  })
+})
