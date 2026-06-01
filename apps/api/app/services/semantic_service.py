@@ -94,6 +94,10 @@ class SemanticService:
         transit_planets = transits.get("planets", []) if transits else []
 
         # Helpers
+        def _fmt_planet(raw: str | None) -> str:
+            if not raw: return "?"
+            return _p(raw.replace("Transit_", "").replace("Natal_", ""))
+        
         def natal_planet(name: str) -> dict | None:
             for p in natal_planets:
                 if p.get("name") == name:
