@@ -46,7 +46,13 @@ test.describe('Today Screen - Real Auth', () => {
       // Paywall should NOT be visible for user with full access
       const paywall = page.locator('text=/открыть доступ|подписки/i');
       await expect(paywall).not.toBeVisible({ timeout: 3000 });
-      console.log('Today screen rendered — no paywall');
+      // Почему так у меня section should be visible
+      const whySection = page.locator('text=/почему так у меня/i');
+      await expect(whySection).toBeVisible({ timeout: 5000 });
+      // TabBar with navigation icons should be visible
+      const tabBar = page.locator('nav[aria-label="Основная навигация"]');
+      await expect(tabBar).toBeVisible({ timeout: 5000 });
+      console.log('Today screen rendered — paywall absent, WhyExpanded + TabBar visible');
     }
   });
 

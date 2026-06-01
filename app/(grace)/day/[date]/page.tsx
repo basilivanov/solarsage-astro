@@ -6,6 +6,7 @@ import { TodayScreen } from '@/components/today/today-screen';
 import { LoadingSpinner } from '@/components/grace/LoadingSpinner';
 import { ErrorBoundary } from '@/components/grace/ErrorBoundary';
 import { useDay } from '@/lib/grace/hooks/useDay';
+import { useOnboarded } from '@/hooks/use-onboarded';
 import { fromDateParam, toDateParam } from '@/lib/date';
 import { TODAY } from '@/lib/today';
 import type { TodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today';
@@ -33,15 +34,15 @@ function adaptPayload(api: any, selectedDate: Date): {
 
   const why: TodayWhySection[] = (api.whyThisHappens?.sections || []).map(
     (s: any) => ({
-      id: s.title || String(Math.random()),
-      iconName: 'telescope',
+      id: s.id || s.title || String(Math.random()),
+      iconName: s.iconName || s.icon_name || 'telescope',
       title: s.title || '',
       paragraphs: s.blocks
         ?.filter((b: any) => b.kind === 'paragraph')
-        ?.map((b: any) => b.text) || [],
+        ?.map((b: any) => b.text) || s.paragraphs || [],
       bullets: s.blocks
         ?.filter((b: any) => b.kind === 'bullets')
-        ?.flatMap((b: any) => b.items) || [],
+        ?.flatMap((b: any) => b.items) || s.bullets || [],
     })
   );
 
@@ -75,6 +76,7 @@ export default function DayPage() {
   const params = useParams();
   const dateStr = params.date as string;
   const router = useRouter();
+  const { setOnboarded } = useOnboarded();
 
   const selectedDate = useMemo(() => fromDateParam(dateStr) ?? TODAY, [dateStr]);
 
@@ -85,6 +87,13 @@ export default function DayPage() {
   }, [dateStr, router]);
 
   const { data, loading, error } = useDay(dateStr);
+
+  // Sync localStorage when day loads successfully (backend says user is onboarded)
+  useEffect(() => {
+    if (data) {
+      setOnboarded(true);
+    }
+  }, [data, setOnboarded]);
 
   const onDateChange = useCallback(
     (d: Date) => router.push(`/day/${toDateParam(d)}`),

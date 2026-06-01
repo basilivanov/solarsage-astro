@@ -235,6 +235,7 @@ class TodayPayload(CamelModel):
     day_quality: DayQuality | None = None
     top_flags: list[TopFlag]
     reading: ReadingBody
+    notes: str | None = None
     why_this_happens: WhyThisHappens
     week_strip: list[WeekStripDay]
     microcopy: list[MicrocopyItem]
