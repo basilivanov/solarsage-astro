@@ -122,9 +122,9 @@ class SemanticService:
         # 01 main_theme
         main_parts = [f"Статус дня: {DAY_THEMES.get(day_status, 'Обычный день')}."]
         if top_aspect:
-            main_parts.append(f"Доминирующий аспект: {_p(top_aspect.planet)} в {_a(top_aspect.aspect_type)} с {_p(top_aspect.target_planet)} (сила {top_aspect.strength:.2f}).")
+            main_parts.append(f"Доминирующий аспект: транзитный {_p(top_aspect.planet)} в {_a(top_aspect.aspect_type)} с твоим натальным {_p(top_aspect.target_planet)} (сила {top_aspect.strength:.2f}).")
         if top_house:
-            main_parts.append(f"Ведущий транзит: {_p(top_house.planet)} в {top_house.house} доме.")
+            main_parts.append(f"Ведущий транзит: {_p(top_house.planet)} в твоём {top_house.house} доме.")
         if houses:
             house_nums = sorted(set(s.house for s in houses if s.house))
             if len(house_nums) >= 2:
@@ -140,13 +140,30 @@ class SemanticService:
 
         # 03 personal_activation
         pers_parts = []
+        # Show natal planets being activated by transits (aspect matches)
         for s in aspects[:3]:
             np = natal_planet(s.target_planet or "")
             if np:
-                pers_parts.append(f"Транзитный {_p(s.planet)} активирует натальный {_p(s.target_planet or '')} ({np.get('sign','?')} дом {s.house or '?'}): {_a(s.aspect_type or '')}, орб {s.orb:.1f}°.")
+                pers_parts.append(
+                    f"Транзитный {_p(s.planet)} в {_a(s.aspect_type or '')} "
+                    f"с ТВОИМ натальным {_p(s.target_planet or '')} "
+                    f"(твой {_p(s.target_planet or '')} стоит в {np.get('sign','?')} на {(np.get('longitude',0)%30):.1f}°) — орб {s.orb:.1f}°."
+                )
+        # Also show transit planets in houses that match natal house positions
+        for s in houses[:2]:
+            np = natal_planet(s.planet)
+            if np:
+                pers_parts.append(
+                    f"Транзитный {_p(s.planet)} в {s.house} доме — "
+                    f"в твоём натале {_p(s.planet)} стоит в {np.get('sign','?')}, "
+                    f"так что эта сфера для тебя особенно чувствительна."
+                )
+            else:
+                pers_parts.append(
+                    f"Транзитный {_p(s.planet)} в {s.house} доме акцентирует эту сферу лично для тебя."
+                )
         if not pers_parts:
-            for s in houses[:2]:
-                pers_parts.append(f"Транзитный {_p(s.planet)} ({s.house} дом) акцентирует тему этого дома в натальной карте.")
+            pers_parts.append("Нет ярко выраженных личных активаций через аспекты к натальным планетам.")
         contexts.append({"layer": "personal_activation", "title": "Почему это задевает именно тебя", "context": " ".join(pers_parts) or "Нет ярко выраженных личных активаций.", "blocks_kind": "paragraph"})
 
         # 04 period_background
