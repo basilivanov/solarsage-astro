@@ -1,13 +1,13 @@
 # ############################################################################
 # AI_HEADER: MODULE_LLM_SERVICE
 # ROLE: LLM integration for generating astrological interpretations.
-# DEPENDENCIES: anthropic, app.core.config
-# GRACE_ANCHORS: [HEADLINE_GENERATION, READING_GENERATION]
+# DEPENDENCIES: anthropic, httpx, app.core.config
+# GRACE_ANCHORS: [HEADLINE_GENERATION, READING_GENERATION, LLM_CLIENT]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-LLM-SERVICE
 # purpose: Generate headline and reading paragraphs from scoring results using
-#   Anthropic Claude API.
+#   LLM API (Anthropic Claude or OpenRouter).
 # owns:
 #   - apps/api/app/services/llm_service.py
 # inputs:
@@ -19,9 +19,10 @@
 #   - reading: list[str] (2-3 paragraphs)
 # dependencies:
 #   - anthropic (Claude API client)
-#   - M-CONFIG (settings.anthropic_api_key, settings.llm_model, settings.llm_max_tokens)
+#   - httpx (for OpenRouter API)
+#   - M-CONFIG (settings.llm_provider, settings.llm_model, settings.llm_max_tokens)
 # invariants:
-#   - ANTHROPIC_API_KEY must be set (raises ValueError if empty)
+#   - API key must be set for selected provider (raises ValueError if empty)
 #   - headline is always a single sentence
 #   - reading contains 2-3 paragraphs
 # failure_policy:
@@ -38,28 +39,99 @@
 #   - LLMService.generate_headline
 #   - LLMService.generate_reading
 # semantic_blocks:
-#   - HEADLINE_GENERATION: build prompt and call Claude API for headline
-#   - READING_GENERATION: build prompt and call Claude API for reading
+#   - LLM_CLIENT: unified client for Anthropic and OpenRouter
+#   - HEADLINE_GENERATION: build prompt and call LLM API for headline
+#   - READING_GENERATION: build prompt and call LLM API for reading
 # owned_tests:
 #   - apps/api/tests/test_llm_service.py
 # END_MODULE_MAP
 
 from __future__ import annotations
 
+import logging
+
 import anthropic
+import httpx
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 
-# START_BLOCK: HEADLINE_GENERATION
+
+# START_BLOCK: LLM_CLIENT
 class LLMService:
     """LLM service for generating astrological interpretations."""
 
     def __init__(self):
-        if not settings.anthropic_api_key:
-            raise ValueError("ANTHROPIC_API_KEY not set")
+        self.provider = settings.llm_provider
+        self.model = settings.llm_model
 
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        if self.provider == "anthropic":
+            if not settings.anthropic_api_key:
+                raise ValueError("ANTHROPIC_API_KEY not set")
+            self.anthropic_client = anthropic.Anthropic(
+                api_key=settings.anthropic_api_key
+            )
+            logger.info(f"[LLM] Initialized Anthropic client with model {self.model}")
+
+        elif self.provider == "openrouter":
+            if not settings.openrouter_api_key:
+                raise ValueError("OPENROUTER_API_KEY not set")
+            self.openrouter_base_url = settings.openrouter_base_url
+            self.openrouter_api_key = settings.openrouter_api_key
+            logger.info(f"[LLM] Initialized OpenRouter client with model {self.model}")
+
+        else:
+            raise ValueError(f"Unknown LLM provider: {self.provider}")
+
+    async def _generate_text(self, prompt: str, max_tokens: int) -> str:
+        """
+        Generate text using configured LLM provider.
+
+        Args:
+            prompt: User prompt
+            max_tokens: Maximum tokens to generate
+
+        Returns:
+            Generated text
+        """
+        if self.provider == "anthropic":
+            response = self.anthropic_client.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return response.content[0].text.strip()
+
+        elif self.provider == "openrouter":
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.openrouter_base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.openrouter_api_key}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": settings.openrouter_site_url or "",
+                        "X-Title": settings.openrouter_app_name,
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": max_tokens,
+                    },
+                    timeout=60.0,
+                )
+
+                response.raise_for_status()
+                data = response.json()
+
+                return data["choices"][0]["message"]["content"].strip()
+
+        else:
+            raise ValueError(f"Unknown LLM provider: {self.provider}")
+# END_BLOCK: LLM_CLIENT
+
+
+# START_BLOCK: HEADLINE_GENERATION
 
     async def generate_headline(
         self,
@@ -94,13 +166,7 @@ class LLMService:
 
 Заголовок:"""
 
-        response = self.client.messages.create(
-            model=settings.llm_model,
-            max_tokens=100,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        headline = response.content[0].text.strip()
+        headline = await self._generate_text(prompt, max_tokens=100)
         return headline
 # END_BLOCK: HEADLINE_GENERATION
 
@@ -152,13 +218,7 @@ class LLMService:
 
 Интерпретация:"""
 
-        response = self.client.messages.create(
-            model=settings.llm_model,
-            max_tokens=settings.llm_max_tokens,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        text = response.content[0].text.strip()
+        text = await self._generate_text(prompt, max_tokens=settings.llm_max_tokens)
 
         # Split into paragraphs
         paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]

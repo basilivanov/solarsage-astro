@@ -1,16 +1,24 @@
 // AI_HEADER
 // module: M-WEB-GRACE-LAYOUT
-// wave: W-2.2
-// purpose: Grace app layout with Telegram Web App authentication
+// wave: W-2.7
+// purpose: Grace app layout with Telegram Web App authentication and AppShell
 
 'use client';
 
 import { useTelegramAuth } from '@/hooks/use-telegram-auth';
+import { AppShell } from '@/components/app-shell';
+import { ProfileReset } from '@/components/profile-reset';
+import { usePathname } from 'next/navigation';
+import { logger } from '@/lib/log';
 
 export default function GraceLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated, error } = useTelegramAuth();
+  const pathname = usePathname();
+
+  logger.debug('[GraceLayout] Render', { extra: { isLoading, isAuthenticated, error, pathname } });
 
   if (isLoading) {
+    logger.info('[GraceLayout] Showing loading spinner');
     return (
       <div
         className="flex min-h-screen items-center justify-center bg-background"
@@ -24,9 +32,8 @@ export default function GraceLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // In dev mode (not in Telegram) - show content without auth
-  // In production (Telegram) - show error if not authenticated
   if (error && typeof window !== 'undefined' && window.Telegram?.WebApp) {
+    logger.warn('[GraceLayout] Auth error', { extra: { error } });
     return (
       <div
         className="flex min-h-screen items-center justify-center bg-background px-6"
@@ -47,6 +54,19 @@ export default function GraceLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // Show content (works both with auth and without in dev mode)
-  return <>{children}</>;
+  logger.info('[GraceLayout] Showing content', { extra: { pathname } });
+  const isOnboarding = pathname?.startsWith('/onboarding');
+
+  return (
+    <>
+      {isOnboarding ? (
+        <>{children}</>
+      ) : (
+        <>
+          <AppShell>{children}</AppShell>
+          <ProfileReset />
+        </>
+      )}
+    </>
+  );
 }

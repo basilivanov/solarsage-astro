@@ -6,6 +6,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { logger } from '@/lib/log';
 
 interface TelegramAuthState {
   isLoading: boolean;
@@ -13,78 +14,136 @@ interface TelegramAuthState {
   error: string | null;
 }
 
-/**
- * Hook to authenticate user via Telegram Web App initData
- * Automatically runs on mount and sends initData to backend
- * @returns Object with isLoading, isAuthenticated, and error states
- */
 export function useTelegramAuth() {
+  logger.debug('[TGAuth] Hook called');
   const [state, setState] = useState<TelegramAuthState>({
     isLoading: true,
     isAuthenticated: false,
     error: null,
   });
 
-  useEffect(() => {
-    const authenticate = async () => {
-      console.log('[Telegram Auth] Starting...');
+  logger.debug('[TGAuth] Initial state', { extra: state });
 
-      // Timeout 10 секунд
+  useEffect(() => {
+    logger.debug('[TGAuth] useEffect triggered');
+
+    const authenticate = async () => {
+      logger.info('[TGAuth] authenticate() started');
+
       const timeoutId = setTimeout(() => {
-        console.error('[Telegram Auth] Timeout after 10 seconds!');
+        logger.warn('[TGAuth] TIMEOUT — auth took too long');
         setState({
           isLoading: false,
           isAuthenticated: false,
           error: 'Authentication timeout'
         });
-      }, 10000);
+      }, 5000);
 
       try {
-        // Check if we're in browser environment
         if (typeof window === 'undefined') {
-          console.log('[Telegram Auth] SSR mode, skipping');
+          logger.debug('[TGAuth] SSR — skipping');
           clearTimeout(timeoutId);
           setState({ isLoading: false, isAuthenticated: false, error: null });
           return;
         }
 
         const tg = window.Telegram?.WebApp;
-        console.log('[Telegram Auth] Telegram.WebApp:', tg ? 'exists' : 'missing');
+        logger.debug('[TGAuth] WebApp', { extra: { exists: !!tg, hasInitData: !!tg?.initData } });
 
-        // FALLBACK: If not in Telegram Web App - skip auth (dev/test mode)
         if (!tg || !tg.initData) {
-          console.log('[Telegram Auth] Not in Telegram Web App, skipping auth (dev mode)');
+          logger.info('[TGAuth] Not in Telegram WebApp');
+
+          const isDevMode = process.env.NODE_ENV === 'development';
+          logger.debug('[TGAuth] Dev mode:', { extra: { isDevMode, NODE_ENV: process.env.NODE_ENV } });
+
+          if (isDevMode) {
+            logger.info('[TGAuth] Using dev auth...');
+            try {
+              const devResponse = await fetch('/api/auth/dev', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+              });
+
+              logger.debug('[TGAuth] Dev auth response', { extra: { status: devResponse.status } });
+
+              if (devResponse.ok) {
+                const devData = await devResponse.json();
+                logger.info('[TGAuth] Dev auth OK', { extra: { userId: devData.userId } });
+                await new Promise(resolve => setTimeout(resolve, 500));
+                clearTimeout(timeoutId);
+                setState({ isLoading: false, isAuthenticated: true, error: null });
+                return;
+              }
+
+              logger.warn('[TGAuth] Dev auth failed', { extra: { status: devResponse.status } });
+              throw new Error('Dev auth failed');
+            } catch (error) {
+              logger.error('[TGAuth] Dev auth exception', { extra: { error: String(error) } });
+              clearTimeout(timeoutId);
+              setState({
+                isLoading: false,
+                isAuthenticated: false,
+                error: error instanceof Error ? error.message : 'Dev auth error'
+              });
+              return;
+            }
+          }
+
+          logger.info('[TGAuth] Not dev mode, skipping auth');
           clearTimeout(timeoutId);
           setState({ isLoading: false, isAuthenticated: false, error: null });
           return;
         }
 
         const initData = tg.initData;
-        console.log('[Telegram Auth] initData length:', initData.length);
-        console.log('[Telegram Auth] Sending to /api/auth/telegram...');
+        logger.info('[TGAuth] Sending to /api/auth/telegram', { extra: { len: initData.length } });
 
-        // Send initData to backend for validation
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
-        const response = await fetch(`${apiBase}/api/auth/telegram`, {
+        const response = await fetch('/api/auth/telegram', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ initData }),
-          credentials: 'include', // Important: enables session cookie
+          credentials: 'include',
         });
 
-        console.log('[Telegram Auth] Response status:', response.status);
+        logger.debug('[TGAuth] Auth response', { extra: { status: response.status } });
 
         if (!response.ok) {
-          const error = await response.json();
-          console.error('[Telegram Auth] Error response:', error);
-          throw new Error(error.detail || 'Authentication failed');
+          const errBody = await response.json();
+          logger.error('[TGAuth] Auth failed', { extra: { status: response.status, body: errBody } });
+          throw new Error(errBody.detail || 'Authentication failed');
         }
 
-        console.log('[Telegram Auth] Success!');
+        logger.info('[TGAuth] Auth SUCCESS');
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Auto-claim referral if opened via startapp link
+        try {
+          const startParam = tg.initDataUnsafe?.start_param
+          const ownId = tg.initDataUnsafe?.user?.id
+          if (startParam && String(startParam) !== String(ownId)) {
+            logger.info('[TGAuth] Auto-claiming referral', { extra: { code: startParam } })
+            const claimRes = await fetch('/api/referral/claim', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ referrer_code: startParam }),
+            })
+            if (!claimRes.ok) {
+              const err = await claimRes.json().catch(() => ({}))
+              logger.warn(`[TGAuth] Referral claim failed: HTTP ${claimRes.status} code=${err.detail?.code || '?'}`)
+            } else {
+              logger.info('[TGAuth] Referral claimed! +14 days')
+            }
+          } else if (startParam) {
+            logger.info('[TGAuth] Skipping self-referral')
+          }
+        } catch {}
+
         clearTimeout(timeoutId);
         setState({ isLoading: false, isAuthenticated: true, error: null });
       } catch (error) {
-        console.error('[Telegram Auth] Exception:', error);
+        logger.error('[TGAuth] Exception', { extra: { error: String(error) } });
         clearTimeout(timeoutId);
         setState({
           isLoading: false,
@@ -94,8 +153,16 @@ export function useTelegramAuth() {
       }
     };
 
-    authenticate();
+    authenticate().catch(err => {
+      logger.error('[TGAuth] authenticate() threw', { extra: { error: String(err) } });
+      setState({
+        isLoading: false,
+        isAuthenticated: false,
+        error: err.message || 'Authentication failed'
+      });
+    });
   }, []);
 
+  logger.debug('[TGAuth] Returning state', { extra: state });
   return state;
 }

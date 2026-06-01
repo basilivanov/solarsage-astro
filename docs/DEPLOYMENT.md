@@ -74,7 +74,7 @@ nginx:
 - **Logs**: `docker-compose logs -f`
 - **Health checks**: 
   - API: `curl http://localhost:8000/api/health`
-  - SolarSage: `curl http://localhost:8001/v1/health`
+  - SolarSage: `curl http://localhost:8000/api/health`
 
 ## Backup
 

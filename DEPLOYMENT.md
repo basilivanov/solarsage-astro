@@ -151,7 +151,7 @@ Telegram Web App
     ↓
 Nginx (443) → dev.astro.vasiliy-ivanov.ru
     ↓
-    ├─ /api/ → FastAPI (8001)
+    ├─ /api/ → FastAPI (8000)
     └─ / → Next.js Production (3002)
 ```
 

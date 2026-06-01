@@ -545,6 +545,11 @@ export interface components {
         TodayMeta: {
             /** Activationlayerversion */
             activationLayerVersion?: number | null;
+            /**
+             * Cached
+             * @default false
+             */
+            cached: boolean;
             /** Calculationversion */
             calculationVersion: number;
             /** Contentversion */

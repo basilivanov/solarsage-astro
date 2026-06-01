@@ -5,50 +5,53 @@
 
 import React from 'react';
 import { ReadingEntry } from '@/lib/contracts/readings';
+import { cn } from '@/lib/utils';
 
 interface ReadingCardProps {
   entry: ReadingEntry;
   onClick: () => void;
 }
 
+const STATUS_STYLES: Record<string, string> = {
+  supportive: 'border-green-500/20 bg-green-500/5 text-green-600',
+  tense: 'border-red-500/20 bg-red-500/5 text-red-600',
+  calm: 'border-border/70 bg-muted/30 text-muted-foreground',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  supportive: 'Благоприятный',
+  tense: 'Напряжённый',
+  calm: 'Спокойный',
+};
+
 export function ReadingCard({ entry, onClick }: ReadingCardProps) {
+  const statusKey = entry.dayStatus || 'calm';
+
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      className="bg-white rounded-lg p-4 shadow-sm cursor-pointer hover:shadow-md transition"
+      className="group flex w-full flex-col items-start gap-3 rounded-2xl border border-border/70 bg-card p-5 text-left transition active:scale-[0.99]"
       data-testid="reading-card"
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-gray-500">{entry.date}</div>
-        <div className={`text-xs px-2 py-1 rounded ${getStatusColor(entry.dayStatus)}`}>
-          {getStatusLabel(entry.dayStatus)}
-        </div>
+      <div className="flex w-full items-center justify-between gap-3">
+        <span className="text-[12px] text-muted-foreground/80">{entry.date}</span>
+        <span
+          className={cn(
+            "rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em]",
+            STATUS_STYLES[statusKey] || STATUS_STYLES.calm,
+          )}
+        >
+          {STATUS_LABELS[statusKey] || STATUS_LABELS.calm}
+        </span>
       </div>
 
-      <h3 className="text-lg font-semibold mb-1">{entry.headline}</h3>
-      <p className="text-sm text-gray-600 line-clamp-2">{entry.preview}</p>
-    </div>
+      <h3 className="font-serif text-[20px] leading-tight tracking-tight text-foreground">
+        {entry.headline}
+      </h3>
+      <p className="text-pretty text-[13.5px] leading-relaxed text-muted-foreground line-clamp-2">
+        {entry.preview}
+      </p>
+    </button>
   );
-}
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'supportive':
-      return 'bg-green-100 text-green-800';
-    case 'tense':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
-
-function getStatusLabel(status: string): string {
-  switch (status) {
-    case 'supportive':
-      return 'Благоприятный';
-    case 'tense':
-      return 'Напряжённый';
-    default:
-      return 'Спокойный';
-  }
 }

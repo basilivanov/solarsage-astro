@@ -1,7 +1,17 @@
 # AI_HEADER
 # module: M-DEPLOY-PROD
 # wave: W-DEPLOY
-# purpose: Docker Compose for production deployment
+# purpose: NAMESPACED Docker Compose — for running alongside other projects.
+#
+# PORT MAP (host → container):
+#   8002 → API (FastAPI)
+#   8003 → SolarSage sidecar
+#   5434 → PostgreSQL
+#   6382 → Redis
+#
+# Use this file when you need to avoid port conflicts with other projects.
+# The canonical (non-namespaced) compose is docker-compose.yml.
+# nginx and next.config must be updated to match if you switch compose files.
 
 services:
   # PostgreSQL database (production)

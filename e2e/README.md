@@ -72,7 +72,7 @@ pnpm exec playwright test --debug
 PORT=3002
 
 # FastAPI backend
-NEXT_PUBLIC_API_URL=http://localhost:8001
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ### Start Services
@@ -81,7 +81,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8001
 # Terminal 1: Start backend
 cd apps/api
 source venv/bin/activate
-uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # Terminal 2: Start frontend
 npm run dev
@@ -147,7 +147,7 @@ pnpm exec playwright test --debug e2e/api-integration.spec.ts
 **Причина:** API не отвечает или фронтенд висит в загрузке.
 
 **Решение:**
-1. Проверьте, что backend запущен: `curl http://localhost:8001/api/health`
+1. Проверьте, что backend запущен: `curl http://localhost:8000/api/health`
 2. Проверьте логи backend: `tail -f /tmp/solarsage-api.log`
 3. Проверьте `NEXT_PUBLIC_API_URL` в `.env`
 

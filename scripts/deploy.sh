@@ -41,7 +41,7 @@ else
     exit 1
 fi
 
-if curl -f http://localhost:8001/v1/health > /dev/null 2>&1; then
+if curl -f http://localhost:8000/api/health > /dev/null 2>&1; then
     echo "✅ SolarSage is healthy"
 else
     echo "❌ SolarSage health check failed"

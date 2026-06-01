@@ -24,12 +24,11 @@ async def test_login_happy_path(
     assert body["userId"]
     assert "expiresAt" in body
 
-    # Cookie set with HttpOnly + SameSite=Lax (Secure asserted in a
-    # dedicated test that toggles SESSION_COOKIE_SECURE).
+    # Cookie set with HttpOnly + SameSite=None (REQUIRED for Telegram Web App iframe).
     raw_cookie = r.headers.get("set-cookie", "")
     assert settings.session_cookie_name in raw_cookie
     assert "HttpOnly" in raw_cookie
-    assert "SameSite=lax" in raw_cookie.lower() or "samesite=lax" in raw_cookie.lower()
+    assert "samesite=none" in raw_cookie.lower()
 
     # users + sessions rows landed; tokens are stored hashed (sha256-hex 64).
     user = (

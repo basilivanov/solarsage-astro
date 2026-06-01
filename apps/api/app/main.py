@@ -52,7 +52,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import _log, auth, calendar, chat, checkin, day, health, microcopy, natal, payment, profile, referral
+from app.api import _log, auth, calendar, chat, checkin, day, debug, geo, health, health_extended, metrics, microcopy, natal, payment, profile, referral
 from app.core.config import settings
 from app.core.logging import logger
 from app.middleware.correlation import CorrelationMiddleware
@@ -82,6 +82,9 @@ app.add_middleware(
 
 # START_BLOCK: ROUTER_MOUNT
 app.include_router(health.router)
+app.include_router(health_extended.router)  # W-2.7 extended health check
+app.include_router(metrics.router)  # W-2.7 production metrics
+app.include_router(debug.router)  # Debug endpoint for troubleshooting
 app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(day.router)  # W-1.3
@@ -93,4 +96,5 @@ app.include_router(payment.router)  # W-6.1
 app.include_router(natal.router)  # W-7.2
 app.include_router(checkin.router)  # W-8.1
 app.include_router(chat.router)  # W-CHAT-1
+app.include_router(geo.router)  # GeoNames city autocomplete
 # END_BLOCK: ROUTER_MOUNT

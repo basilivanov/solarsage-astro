@@ -59,13 +59,26 @@ class LogShipper {
   private readonly maxBatchSize = 50;
   private readonly maxWaitMs = 5000;
   private readonly endpoint = "/api/_log";
+  private flushing = false;
 
-  constructor(private enabled: boolean) {}
+  constructor(private enabled: boolean) {
+    if (typeof window !== 'undefined') {
+      // Flush on page unload to not lose logs
+      window.addEventListener('beforeunload', () => this.flushSync());
+      window.addEventListener('pagehide', () => this.flushSync());
+    }
+  }
 
   enqueue(envelope: LogEnvelope): void {
     if (!this.enabled) return;
 
     this.buffer.push(envelope);
+
+    // In debug mode, flush immediately — don't batch
+    if (process.env.NEXT_PUBLIC_LOG_LEVEL === 'debug') {
+      this.flush();
+      return;
+    }
 
     // Flush if batch is full
     if (this.buffer.length >= this.maxBatchSize) {
@@ -80,7 +93,8 @@ class LogShipper {
   }
 
   async flush(): Promise<void> {
-    if (this.buffer.length === 0) return;
+    if (this.buffer.length === 0 || this.flushing) return;
+    this.flushing = true;
 
     // Clear timer
     if (this.timer) {
@@ -88,7 +102,6 @@ class LogShipper {
       this.timer = null;
     }
 
-    // Take current buffer
     const batch = this.buffer.splice(0, this.maxBatchSize);
 
     try {
@@ -96,22 +109,37 @@ class LogShipper {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ envelopes: batch }),
-        credentials: "include", // Send session cookie
+        credentials: "include",
       });
 
       if (!response.ok) {
-        console.error("Log shipping failed:", response.status);
-
-        // Backoff on 429/5xx
+        // Re-enqueue on server error
         if (response.status === 429 || response.status >= 500) {
-          // Re-enqueue with delay
-          setTimeout(() => {
-            batch.forEach((e) => this.enqueue(e));
-          }, 5000);
+          this.buffer.unshift(...batch);
         }
       }
-    } catch (error) {
-      console.error("Log shipping error:", error);
+    } catch {
+      // Network error — re-enqueue
+      this.buffer.unshift(...batch);
+    } finally {
+      this.flushing = false;
+    }
+  }
+
+  private flushSync(): void {
+    if (this.buffer.length === 0) return;
+    const batch = this.buffer.splice(0);
+    const body = JSON.stringify({ envelopes: batch });
+    // Use sendBeacon for reliable delivery on page unload
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(this.endpoint, new Blob([body], { type: 'application/json' }));
+    } else {
+      fetch(this.endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true,
+      }).catch(() => {});
     }
   }
 }

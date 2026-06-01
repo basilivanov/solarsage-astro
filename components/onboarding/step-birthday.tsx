@@ -3,12 +3,13 @@
 import { OnboardingShell } from "./onboarding-shell"
 import { PrimaryCta } from "./primary-cta"
 import { CityPicker } from "./city-picker"
+import type { City } from "@/lib/contracts/city"
 
 type Props = {
-  currentCity: string
-  birthdayCity: string
+  currentCity: City | null
+  birthdayCity: City | null
   sameAsCurrent: boolean
-  onChangeBirthdayCity: (v: string) => void
+  onChangeBirthdayCity: (v: City | null) => void
   onChangeSameAsCurrent: (v: boolean) => void
   onBack: () => void
   onNext: () => void
@@ -28,7 +29,7 @@ export function StepBirthday({
   onNext,
 }: Props) {
   const isValid =
-    sameAsCurrent || birthdayCity.trim().length >= 2
+    sameAsCurrent || birthdayCity !== null
 
   return (
     <OnboardingShell
@@ -48,7 +49,7 @@ export function StepBirthday({
             Текущий город
           </p>
           <p className="font-serif text-[22px] leading-tight tracking-tight text-foreground">
-            {currentCity || "—"}
+            {currentCity ? `${currentCity.name}, ${currentCity.country}` : "—"}
           </p>
         </div>
 

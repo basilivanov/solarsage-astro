@@ -1,76 +1,52 @@
 /**
  * API-фасад для справочника городов.
  *
- * Компоненты ходят сюда, никогда напрямую в fixtures.
- * Переключение между fixtures и реальным API — через ENV.
- *
- * Когда появится геокодер:
- *
- *   export async function searchCities(query: string): Promise<City[]> {
- *     const res = await fetch(`${API_BASE_URL}/cities?q=${encodeURIComponent(query)}`)
- *     if (!res.ok) throw new Error(...)
- *     return validateCities(await res.json())
- *   }
+ * Использует реальный GeoNames API через /api/geo/autocomplete.
  */
 
 import { type City } from "@/lib/contracts/city"
-import { USE_FIXTURES } from "./config"
+import { searchCities as searchGeoNames, type GeoSuggestion } from "./geo"
 
 export type { City }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-export function searchCities(query: string, limit?: number): City[] {
-  if (USE_FIXTURES) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { searchCitiesFixture } = require("./cities.fixtures") as typeof import("./cities.fixtures")
-    return searchCitiesFixture(query, limit)
+function geoSuggestionToCity(geo: GeoSuggestion): City {
+  return {
+    name: geo.name,
+    country: geo.country || "Unknown",
+    region: geo.admin1 || undefined,
+    lat: geo.lat,
+    lon: geo.lon,
   }
-
-  // Production stub
-  throw new Error(
-    "Production API not implemented. Set NEXT_PUBLIC_USE_FIXTURES=true for development."
-  )
 }
 
-export function getPopularCities(): string[] {
-  if (USE_FIXTURES) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { getPopularCitiesFixture } = require("./cities.fixtures") as typeof import("./cities.fixtures")
-    return getPopularCitiesFixture()
-  }
-
-  // Production stub
-  throw new Error(
-    "Production API not implemented. Set NEXT_PUBLIC_USE_FIXTURES=true for development."
-  )
+export function searchCities(_query: string, _limit?: number): City[] {
+  return []
 }
 
-// ---------------------------------------------------------------------------
-// Async versions for future backend integration
-// ---------------------------------------------------------------------------
+export function getPopularCities(): City[] {
+  return [
+    { name: "Москва", country: "Россия", lat: 55.7558, lon: 37.6173, timezone: "Europe/Moscow" },
+    { name: "Санкт-Петербург", country: "Россия", lat: 59.9343, lon: 30.3351, timezone: "Europe/Moscow" },
+    { name: "Новосибирск", country: "Россия", lat: 55.0415, lon: 82.9346, timezone: "Asia/Novosibirsk" },
+    { name: "Екатеринбург", country: "Россия", lat: 56.8389, lon: 60.6057, timezone: "Asia/Yekaterinburg" },
+    { name: "Казань", country: "Россия", lat: 55.7879, lon: 49.1233, timezone: "Europe/Moscow" },
+    { name: "Нижний Новгород", country: "Россия", lat: 56.2965, lon: 43.9361, timezone: "Europe/Moscow" },
+  ]
+}
 
 export async function searchCitiesAsync(
   query: string,
-  limit?: number,
+  limit: number = 8,
 ): Promise<City[]> {
-  if (USE_FIXTURES) {
-    const { searchCitiesFixture } = await import("./cities.fixtures")
-    return searchCitiesFixture(query, limit)
+  try {
+    const suggestions = await searchGeoNames(query, limit)
+    return suggestions.map(geoSuggestionToCity)
+  } catch (error) {
+    console.error("Failed to search cities:", error)
+    return []
   }
-
-  // TODO: Implement real API call
-  throw new Error("Production API not implemented")
 }
 
-export async function getPopularCitiesAsync(): Promise<string[]> {
-  if (USE_FIXTURES) {
-    const { getPopularCitiesFixture } = await import("./cities.fixtures")
-    return getPopularCitiesFixture()
-  }
-
-  // TODO: Implement real API call
-  throw new Error("Production API not implemented")
+export async function getPopularCitiesAsync(): Promise<City[]> {
+  return getPopularCities()
 }

@@ -116,6 +116,11 @@ async def update_profile(
             if f in birth:
                 setattr(profile, f, birth[f])
 
+    # W-2.7: Mark user as onboarded if they have birthday and birth_city
+    # This allows completing onboarding flow
+    if profile.birthday and profile.birth_city and not profile.is_onboarded:
+        profile.is_onboarded = True
+
     await db.flush()
     mark_profile_dirty(user_id)
     return profile

@@ -34,7 +34,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -56,7 +56,7 @@ class JSONFormatter(logging.Formatter):
         - extra: additional fields (if present)
         """
         envelope = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
             "module": record.module,

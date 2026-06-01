@@ -48,7 +48,7 @@ cd ../solarsage
 ### 5. Проверить
 
 ```bash
-curl http://localhost:8001/api/health
+curl http://localhost:8000/api/health
 curl http://localhost:18091/v1/health
 ```
 

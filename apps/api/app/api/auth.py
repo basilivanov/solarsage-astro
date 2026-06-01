@@ -154,3 +154,78 @@ async def auth_logout(
     # TODO(W-1.6): log.event("auth.logout", {})
     return Response(status_code=status.HTTP_204_NO_CONTENT, headers=dict(response.headers))
 # END_BLOCK: ROUTE_AUTH_LOGOUT
+
+
+# START_BLOCK: ROUTE_AUTH_DEV
+@router.post(
+    "/api/auth/dev",
+    response_model=AuthSession,
+    responses={
+        403: {"model": AuthError},
+    },
+)
+async def auth_dev(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_session),
+) -> AuthSession:
+    # START_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_dev
+    # purpose: Dev mode authentication - creates a test user session.
+    #   Only works when DEV_MODE=true in environment.
+    # error_behavior: 403 if dev_mode is disabled
+    # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_dev
+
+    if not settings.dev_mode:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "DEV_MODE_DISABLED", "message": "Dev mode not enabled"},
+        )
+
+    # Create test TelegramUser
+    from app.services.telegram_auth import TelegramUser
+    test_tg_user = TelegramUser(
+        id=999999999,
+        username="dev_user",
+        first_name="Dev",
+        last_name="User",
+    )
+
+    # Upsert test user
+    user, is_new = await get_or_create_user(db, test_tg_user)
+
+    # Ensure profile exists
+    profile = await read_profile(db, user.id)
+
+    # If new user or profile not onboarded, set up test birth data
+    if is_new or not profile.is_onboarded:
+        from datetime import date, time
+        from decimal import Decimal
+
+        profile.first_name = "Dev"
+        profile.birthday = date(1990, 1, 1)
+        profile.birth_time = time(12, 0, 0)
+        profile.birth_city = "Moscow, Russia"
+        profile.birth_lat = Decimal("55.75580")
+        profile.birth_lon = Decimal("37.61730")
+        profile.birth_tz = "Europe/Moscow"
+        profile.is_onboarded = True
+        await db.flush()
+
+    # Create session
+    user_agent = request.headers.get("user-agent")
+    opaque_token, session = await create_session(
+        db, user.id, ttl=SESSION_TTL, user_agent=user_agent
+    )
+    await db.commit()
+
+    set_session_cookie(
+        response, opaque_token, max_age=settings.session_ttl_seconds
+    )
+
+    expires_at = session.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    # TODO(W-1.6): log.event("auth.dev_login", {is_new_user, ...})
+    return AuthSession(user_id=user.id, expires_at=expires_at, is_new_user=is_new)
+# END_BLOCK: ROUTE_AUTH_DEV

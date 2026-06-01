@@ -5,6 +5,8 @@
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select, and_
+from app.db.models import User, AccessLedger
 
 
 @pytest.mark.asyncio
@@ -30,6 +32,16 @@ async def test_claim_referral_success(async_client: AsyncClient, make_initdata, 
     assert data["days_granted"] == 14
     assert "access_until" in data
     assert "message" in data
+
+    # Verify REFERRER also got bonus (not just invitee)
+    ref_id = (await db_session.execute(select(User.id).where(User.tg_user_id == 1111))).scalar_one()
+    ref_bonus = (await db_session.execute(
+        select(AccessLedger).where(
+            and_(AccessLedger.user_id == ref_id, AccessLedger.entry_type == "referral_bonus")
+        )
+    )).scalar_one_or_none()
+    assert ref_bonus is not None, "Referrer should get referral_bonus in access_ledger"
+    assert ref_bonus.days_granted == 14
 
 
 @pytest.mark.asyncio
@@ -93,3 +105,50 @@ async def test_claim_referral_self_referral(async_client: AsyncClient, make_init
 
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "SELF_REFERRAL"
+
+
+@pytest.mark.asyncio
+async def test_get_referral_info(async_client: AsyncClient, make_initdata, db_session):
+    """GET /api/referral returns invite info for authenticated user."""
+    raw = make_initdata(user_id=3333, username="inviter")
+    await async_client.post("/api/auth/telegram", json={"initData": raw})
+
+    response = await async_client.get("/api/referral")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "inviteCode" in data
+    assert "inviteUrl" in data
+    assert "totalInvited" in data
+    assert data["totalInvited"] == 0
+    assert data["inviteCode"] == "3333"
+    assert "startapp=3333" in data["inviteUrl"]
+    assert "/app" in data["inviteUrl"]
+
+
+@pytest.mark.asyncio
+async def test_get_referral_info_with_invites(async_client: AsyncClient, make_initdata, db_session):
+    """GET /api/referral counts invited users."""
+    # Referrer
+    referrer_raw = make_initdata(user_id=4444, username="referrer2")
+    await async_client.post("/api/auth/telegram", json={"initData": referrer_raw})
+
+    # Switch to invitee and claim
+    invitee_raw = make_initdata(user_id=5555, username="invitee2")
+    await async_client.post("/api/auth/telegram", json={"initData": invitee_raw})
+    await async_client.post("/api/referral/claim", json={"referrer_code": "4444"})
+
+    # Switch back to referrer and check stats
+    await async_client.post("/api/auth/telegram", json={"initData": referrer_raw})
+    response = await async_client.get("/api/referral")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["totalInvited"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_referral_info_unauthorized(async_client: AsyncClient):
+    """GET /api/referral requires auth."""
+    # Clear cookies by making request without them
+    response = await async_client.get("/api/referral")
+    assert response.status_code == 401

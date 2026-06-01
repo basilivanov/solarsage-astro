@@ -12,41 +12,57 @@ interface DayNavigationProps {
 export function DayNavigation({ currentDate }: DayNavigationProps) {
   const date = new Date(currentDate);
 
-  // Previous day
   const prevDate = new Date(date);
   prevDate.setDate(prevDate.getDate() - 1);
   const prevDateStr = prevDate.toISOString().split('T')[0];
 
-  // Next day
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() + 1);
   const nextDateStr = nextDate.toISOString().split('T')[0];
 
+  const monthName = date.toLocaleDateString('ru-RU', {
+    month: 'long',
+    day: 'numeric',
+  });
+
   return (
-    <nav className="day-navigation">
+    <header className="flex items-center justify-between px-5 pt-3 pb-4">
       <Link
         href={`/day/${prevDateStr}`}
-        className="day-nav-button"
         data-testid="day-nav-prev"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition active:scale-95"
+        aria-label="Предыдущий день"
       >
-        ← Вчера
+        ←
       </Link>
 
-      <Link
-        href="/calendar"
-        className="day-nav-calendar"
-        data-testid="day-nav-calendar"
-      >
-        Календарь
-      </Link>
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          День
+        </span>
+        <span className="font-serif text-[22px] leading-none text-foreground">
+          {monthName}
+        </span>
+      </div>
 
-      <Link
-        href={`/day/${nextDateStr}`}
-        className="day-nav-button"
-        data-testid="day-nav-next"
-      >
-        Завтра →
-      </Link>
-    </nav>
+      <div className="flex items-center gap-2">
+        <Link
+          href="/calendar"
+          data-testid="day-nav-calendar"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition active:scale-95"
+          aria-label="Календарь"
+        >
+          <span className="text-xs font-medium">Ка</span>
+        </Link>
+        <Link
+          href={`/day/${nextDateStr}`}
+          data-testid="day-nav-next"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition active:scale-95"
+          aria-label="Следующий день"
+        >
+          →
+        </Link>
+      </div>
+    </header>
   );
 }

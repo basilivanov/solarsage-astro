@@ -10,11 +10,22 @@ export const CitySchema = z.object({
   name: z.string().min(1),
   country: z.string().min(1),
   region: z.string().optional(),
+  lat: z.number().optional(),
+  lon: z.number().optional(),
+  timezone: z.string().optional(),
 })
 
 export const CityListSchema = z.array(CitySchema)
 
 export type City = z.infer<typeof CitySchema>
+
+/**
+ * Format city as display string: "Name, Country"
+ */
+export function formatCity(city: City | string): string {
+  if (typeof city === 'string') return city
+  return `${city.name}, ${city.country}`
+}
 
 /**
  * Валидирует массив городов и выбрасывает при несоответствии.

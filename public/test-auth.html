@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        button { margin: 10px; padding: 10px; }
+        pre { background: #f0f0f0; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Auth Test</h1>
+    <button onclick="testAuth()">1. Auth</button>
+    <button onclick="testDay()">2. Test Day</button>
+    <button onclick="testProfile()">3. Test Profile</button>
+    <pre id="output"></pre>
+
+    <script>
+        const output = document.getElementById('output');
+
+        async function testAuth() {
+            output.textContent = 'Testing auth...\n';
+            
+            try {
+                const res = await fetch('/api/auth/dev', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                });
+                
+                output.textContent += `Status: ${res.status}\n`;
+                output.textContent += `Headers:\n`;
+                for (const [key, value] of res.headers.entries()) {
+                    output.textContent += `  ${key}: ${value}\n`;
+                }
+                
+                const data = await res.json();
+                output.textContent += `\nResponse: ${JSON.stringify(data, null, 2)}\n`;
+                output.textContent += `\nCookies (visible): ${document.cookie}\n`;
+                output.textContent += `Note: HttpOnly cookies are not visible in document.cookie\n`;
+            } catch (err) {
+                output.textContent += `Error: ${err.message}\n`;
+            }
+        }
+
+        async function testDay() {
+            output.textContent = 'Testing day...\n';
+            
+            try {
+                const res = await fetch('/api/day/today', {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' },
+                });
+                
+                output.textContent += `Status: ${res.status}\n`;
+                
+                const data = await res.json();
+                if (res.ok) {
+                    output.textContent += `Success! Date: ${data.date}\n`;
+                    output.textContent += `Title: ${data.title}\n`;
+                } else {
+                    output.textContent += `Error: ${JSON.stringify(data, null, 2)}\n`;
+                }
+            } catch (err) {
+                output.textContent += `Error: ${err.message}\n`;
+            }
+        }
+
+        async function testProfile() {
+            output.textContent = 'Testing profile...\n';
+            
+            try {
+                const res = await fetch('/api/profile', {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' },
+                });
+                
+                output.textContent += `Status: ${res.status}\n`;
+                
+                const data = await res.json();
+                if (res.ok) {
+                    output.textContent += `Success! User: ${data.userId}\n`;
+                    output.textContent += `Name: ${data.firstName}\n`;
+                } else {
+                    output.textContent += `Error: ${JSON.stringify(data, null, 2)}\n`;
+                }
+            } catch (err) {
+                output.textContent += `Error: ${err.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>

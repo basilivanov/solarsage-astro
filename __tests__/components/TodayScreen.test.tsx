@@ -41,7 +41,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TodayScreen } from '@/components/grace/TodayScreen';
-import type { TodayPayload } from '@/packages/contracts/_generated';
+import type { components } from '@/packages/contracts/_generated';
+
+type TodayPayload = components['schemas']['TodayPayload'];
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
@@ -83,7 +85,7 @@ describe('TodayScreen', () => {
       sections: [],
     },
     weekStrip: [
-      { date: '2026-05-30', status: 'supportive' },
+      { date: '2026-05-30', dayStatus: 'supportive', isToday: false },
     ],
     microcopy: [],
     yesterdayEcho: null,
@@ -138,8 +140,13 @@ describe('TodayScreen', () => {
       whyThisHappens: {
         sections: [
           {
+            id: 'test-section',
             title: 'Почему раздел',
-            paragraphs: ['Объяснение 1', 'Объяснение 2'],
+            aspects: null,
+            blocks: [
+              { kind: 'paragraph', text: 'Объяснение 1' },
+              { kind: 'paragraph', text: 'Объяснение 2' },
+            ],
           },
         ],
       },

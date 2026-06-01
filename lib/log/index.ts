@@ -52,8 +52,42 @@ interface LogOptions {
   extra?: Record<string, any>;
 }
 
+const levelPriority: Record<string, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
+
+const LOG_LEVEL = (process.env.NEXT_PUBLIC_LOG_LEVEL || 'info').toLowerCase();
+
+// Global correlation ID — set once per page session
+let _correlationId: string | null = null;
+
+export function setCorrelationId(id: string) {
+  _correlationId = id;
+}
+
+export function getCorrelationId(): string | null {
+  return _correlationId;
+}
+
+function generateCorrelationId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 class Logger {
   private shipper = getLogShipper();
+
+  debug(message: string, options?: LogOptions): void {
+    this.log("debug", message, options);
+  }
 
   info(message: string, options?: LogOptions): void {
     this.log("info", message, options);
@@ -68,18 +102,22 @@ class Logger {
   }
 
   private log(level: string, message: string, options?: LogOptions): void {
+    const minLevel = levelPriority[LOG_LEVEL] ?? 1;
+    if ((levelPriority[level] ?? 99) < minLevel) return;
+
+    const corrId = options?.correlation_id || _correlationId;
+
     const envelope = {
       timestamp: new Date().toISOString(),
       level,
       message,
-      correlation_id: options?.correlation_id,
+      correlation_id: corrId,
       extra: options?.extra,
     };
 
-    // Console (dev)
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[${level.toUpperCase()}]`, message, options?.extra);
-    }
+    // Always console in dev, always ship in production
+    const tag = corrId ? `[${corrId.slice(0, 8)}]` : '';
+    console.log(`${tag}[${level.toUpperCase()}]`, message, options?.extra ?? '');
 
     // Ship to backend (W-1.7)
     this.shipper.enqueue(envelope);

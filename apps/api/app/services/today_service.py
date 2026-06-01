@@ -53,7 +53,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date as Date, datetime, timedelta
+from datetime import UTC, date as Date, datetime, timedelta
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -112,10 +112,10 @@ class TodayService:
         # Get natal chart
         natal = await client.get_natal(
             birth_date=profile.birthday.isoformat(),
-            birth_time=profile.birth_time.strftime("%H:%M"),
+            birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
             birth_lat=float(profile.birth_lat),
             birth_lon=float(profile.birth_lon),
-            birth_tz=profile.birth_tz,
+            birth_tz=profile.birth_tz or "UTC",
         )
 
         # Get transits for target date (noon in user's current timezone)
@@ -123,7 +123,7 @@ class TodayService:
         transits = await client.get_transits(
             target_date=target_date.isoformat(),
             target_time="12:00",
-            target_tz=profile.birth_tz,
+            target_tz=profile.birth_tz or "UTC",
         )
 
         # W-4.1: Normalize raw data into AstroSignal[]
@@ -188,7 +188,7 @@ class TodayService:
                 scoring_version=1,
                 prompt_version=1,
                 content_version=1,
-                generated_at=datetime.utcnow().isoformat() + "Z",
+                generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
             ),
             date=target_date.isoformat(),
@@ -257,7 +257,7 @@ class TodayService:
 
         if existing:
             existing.payload_json = payload_json
-            existing.created_at = datetime.utcnow()
+            existing.created_at = datetime.now(UTC)
         else:
             cache_entry = TodayPayloadCache(
                 user_id=user_id,
@@ -289,7 +289,7 @@ class TodayService:
 
         if existing:
             existing.semantic_json = semantic_json
-            existing.created_at = datetime.utcnow()
+            existing.created_at = datetime.now(UTC)
         else:
             cache_entry = SemanticLayerCache(
                 user_id=user_id,
@@ -316,7 +316,7 @@ class TodayService:
                 scoring_version=1,
                 prompt_version=1,
                 content_version=1,
-                generated_at=datetime.utcnow().isoformat() + "Z",
+                generated_at=datetime.now(UTC).isoformat(),
                 cached=False,
             ),
             date=target_date.isoformat(),

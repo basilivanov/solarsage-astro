@@ -14,10 +14,8 @@ interface CalendarGridProps {
 
 export function CalendarGrid({ payload }: CalendarGridProps) {
   return (
-    <div className="calendar-grid" data-testid="calendar-grid">
-      {payload.months.map((month) => (
-        <CalendarMonth key={month.month} month={month} />
-      ))}
+    <div className="w-full space-y-8 py-4" data-testid="calendar-grid">
+      <CalendarMonth month={payload} />
     </div>
   );
 }

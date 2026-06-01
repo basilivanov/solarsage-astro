@@ -48,10 +48,17 @@ async def current_user_id(
 ) -> uuid.UUID:
     """FastAPI dependency: returns the user UUID resolved from the session cookie."""
     token = request.cookies.get(settings.session_cookie_name, "")
+
+    # DEBUG: Log cookie presence
+    print(f"[Auth] Cookie '{settings.session_cookie_name}': {'present' if token else 'MISSING'}")
+    print(f"[Auth] All cookies: {list(request.cookies.keys())}")
+    print(f"[Auth] Token length: {len(token) if token else 0}")
+
     try:
         session = await resolve_session(db, token)
     except InvalidSession as exc:
         # TODO(W-1.6): log.event("auth.session_rejected", {code: exc.code})
+        print(f"[Auth] Session rejected: {exc.code} - {exc.message}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": exc.code, "reason": exc.message},
@@ -83,6 +90,35 @@ async def require_session(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "USER_NOT_FOUND", "reason": "User not found"},
         )
+
+    return user
+
+
+async def require_session_optional(
+    request: Request,
+    db: AsyncSession = Depends(get_session),
+):
+    """
+    FastAPI dependency: returns the User object or None if not authenticated.
+
+    Used for debug endpoints that should work regardless of auth status.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.db.models import User
+
+    token = request.cookies.get(settings.session_cookie_name, "")
+    if not token:
+        return None
+
+    try:
+        session = await resolve_session(db, token)
+    except InvalidSession:
+        return None
+
+    stmt = select(User).where(User.id == session.user_id).options(selectinload(User.profile))
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
 
     return user
 # END_BLOCK: CURRENT_USER_DEP

@@ -3,79 +3,107 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@layer base {
+  html {
+    --app-height: 100dvh;
+  }
+}
+
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* warm milk / off-white */
+  --background: oklch(0.985 0.006 85);
+  --foreground: oklch(0.26 0.02 295);
+
+  --card: oklch(1 0.003 90);
+  --card-foreground: oklch(0.26 0.02 295);
+
+  --popover: oklch(1 0.003 90);
+  --popover-foreground: oklch(0.26 0.02 295);
+
+  /* dusty plum */
+  --primary: oklch(0.48 0.06 305);
+  --primary-foreground: oklch(0.985 0.005 85);
+
+  /* pale lavender */
+  --secondary: oklch(0.965 0.012 305);
+  --secondary-foreground: oklch(0.36 0.04 305);
+
+  --muted: oklch(0.96 0.008 305);
+  --muted-foreground: oklch(0.52 0.025 295);
+
+  --accent: oklch(0.93 0.018 305);
+  --accent-foreground: oklch(0.36 0.04 305);
+
+  --destructive: oklch(0.55 0.16 27);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.92 0.01 300);
+  --input: oklch(0.92 0.01 300);
+  --ring: oklch(0.55 0.05 305);
+
+  --chart-1: oklch(0.55 0.06 305);
+  --chart-2: oklch(0.7 0.05 85);
+  --chart-3: oklch(0.6 0.04 230);
+  --chart-4: oklch(0.78 0.08 60);
+  --chart-5: oklch(0.65 0.07 330);
+
+  --radius: 1rem;
+
+  --sidebar: oklch(0.985 0.006 85);
+  --sidebar-foreground: oklch(0.26 0.02 295);
+  --sidebar-primary: oklch(0.48 0.06 305);
+  --sidebar-primary-foreground: oklch(0.985 0.005 85);
+  --sidebar-accent: oklch(0.93 0.018 305);
+  --sidebar-accent-foreground: oklch(0.36 0.04 305);
+  --sidebar-border: oklch(0.92 0.01 300);
+  --sidebar-ring: oklch(0.55 0.05 305);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --background: oklch(0.18 0.015 295);
+  --foreground: oklch(0.96 0.005 85);
+  --card: oklch(0.22 0.015 295);
+  --card-foreground: oklch(0.96 0.005 85);
+  --popover: oklch(0.22 0.015 295);
+  --popover-foreground: oklch(0.96 0.005 85);
+  --primary: oklch(0.75 0.06 305);
+  --primary-foreground: oklch(0.18 0.015 295);
+  --secondary: oklch(0.28 0.02 305);
+  --secondary-foreground: oklch(0.96 0.005 85);
+  --muted: oklch(0.28 0.02 305);
+  --muted-foreground: oklch(0.7 0.02 295);
+  --accent: oklch(0.32 0.03 305);
+  --accent-foreground: oklch(0.96 0.005 85);
+  --destructive: oklch(0.5 0.15 27);
+  --destructive-foreground: oklch(0.96 0 0);
+  --border: oklch(0.3 0.02 300);
+  --input: oklch(0.3 0.02 300);
+  --ring: oklch(0.55 0.05 305);
+  --chart-1: oklch(0.65 0.07 305);
+  --chart-2: oklch(0.72 0.05 85);
+  --chart-3: oklch(0.62 0.04 230);
+  --chart-4: oklch(0.78 0.08 60);
+  --chart-5: oklch(0.68 0.07 330);
+  --sidebar: oklch(0.22 0.015 295);
+  --sidebar-foreground: oklch(0.96 0.005 85);
+  --sidebar-primary: oklch(0.75 0.06 305);
+  --sidebar-primary-foreground: oklch(0.18 0.015 295);
+  --sidebar-accent: oklch(0.32 0.03 305);
+  --sidebar-accent-foreground: oklch(0.96 0.005 85);
+  --sidebar-border: oklch(0.3 0.02 300);
+  --sidebar-ring: oklch(0.55 0.05 305);
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
+  --font-sans: var(--font-sans, 'Geist', 'Geist Fallback');
+  /*
+   * Цепочка serif: Instrument Serif → Lora → Georgia.
+   * Instrument Serif не содержит кириллицы, поэтому для кириллических
+   * глифов браузер per-glyph упадёт на Lora, которая подключена
+   * с cyrillic subset'ом в layout.tsx. Это сохраняет фирменный
+   * серив для латиницы и даёт читаемую кириллицу без смены класса.
+   */
+  --font-serif: var(--font-serif-display), var(--font-serif-cyrillic), Georgia, 'Times New Roman', serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -101,10 +129,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -124,606 +152,31 @@
   }
 }
 
-/* W-2.2: Today Screen Styles */
-
-.today-screen {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.today-header {
-  margin-bottom: 24px;
-}
-
-.today-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.today-subtitle {
-  font-size: 16px;
-  color: #666;
-}
-
-/* Week Strip */
-.week-strip {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  overflow-x: auto;
-}
-
-.week-day {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  text-decoration: none;
-  color: #333;
-  font-weight: 500;
-}
-
-.week-day.active {
-  background: #007AFF;
-  color: white;
-}
-
-.week-day-supportive {
-  background: #E8F5E9;
-}
-
-.week-day-steady {
-  background: #F5F5F5;
-}
-
-.week-day-tense {
-  background: #FFEBEE;
-}
-
-/* Top Flags */
-.top-flags {
-  margin-bottom: 24px;
-}
-
-.flag-card {
-  display: flex;
-  gap: 12px;
-  padding: 16px;
-  background: #F9F9F9;
-  border-radius: 12px;
-  margin-bottom: 12px;
-}
-
-.flag-icon {
-  width: 40px;
-  height: 40px;
-  background: #DDD;
-  border-radius: 8px;
-  flex-shrink: 0;
-}
-
-.flag-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.flag-summary {
-  font-size: 14px;
-  color: #666;
-}
-
-.flag-hint {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-
-/* Reading */
-.reading {
-  margin-bottom: 24px;
-}
-
-.reading-paragraph {
-  font-size: 16px;
-  line-height: 1.6;
-  margin-bottom: 16px;
-}
-
-/* Why Section */
-.why-section {
-  margin-bottom: 24px;
-}
-
-.why-section h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 16px;
-}
-
-.why-section-item {
-  margin-bottom: 16px;
-}
-
-.why-section-item h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-/* Loading */
-.loading-spinner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #F3F3F3;
-  border-top: 4px solid #007AFF;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Error */
-.error-boundary {
-  padding: 40px 20px;
-  text-align: center;
-}
-
-.error-boundary h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #D32F2F;
-}
-
-.error-details {
-  font-size: 14px;
-  color: #999;
-  margin-top: 8px;
-}
-
-/* W-2.3: Calendar Styles */
-
-.calendar-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.calendar-header h1 {
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.calendar-nav {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-.calendar-nav button {
-  padding: 8px 16px;
-  background: #007AFF;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.calendar-nav button:hover {
-  background: #0056B3;
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
-}
-
-.calendar-month {
-  background: #F9F9F9;
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.calendar-month-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  text-transform: capitalize;
-}
-
-.calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.calendar-weekday {
-  text-align: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #666;
-  padding: 4px;
-}
-
-.calendar-days {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.calendar-day {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  text-decoration: none;
-  color: #333;
-  font-weight: 500;
-  transition: transform 0.2s;
-}
-
-.calendar-day:hover {
-  transform: scale(1.05);
-}
-
-.calendar-day.disabled {
-  pointer-events: none;
-  opacity: 0.3;
-}
-
-.calendar-day.other-month {
-  opacity: 0.4;
-}
-
-.calendar-day.today {
-  border: 2px solid #007AFF;
-}
-
-.calendar-day-supportive {
-  background: #E8F5E9;
-}
-
-.calendar-day-steady {
-  background: #F5F5F5;
-}
-
-.calendar-day-tense {
-  background: #FFEBEE;
-}
-
-/* Day Navigation */
-.day-navigation {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding: 12px;
-  background: #F9F9F9;
-  border-radius: 12px;
-}
-
-.day-nav-button,
-.day-nav-calendar {
-  padding: 8px 16px;
-  background: #007AFF;
-  color: white;
-  text-decoration: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.day-nav-button:hover,
-.day-nav-calendar:hover {
-  background: #0056B3;
-}
-
-.day-nav-calendar {
-  background: #6C757D;
-}
-
-.day-nav-calendar:hover {
-  background: #5A6268;
-}
-
-/* W-2.6: Profile Page Styles */
-
-.profile-page {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.profile-page h1 {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 24px;
-}
-
-.profile-page form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #666;
-}
-
-.form-group input {
-  padding: 12px;
-  border: 1px solid #DDD;
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-.form-actions,
-.profile-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.btn-primary,
-.btn-secondary,
-.btn-danger {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-primary {
-  background: #007AFF;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #0056B3;
-}
-
-.btn-primary:disabled {
-  background: #CCC;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #F5F5F5;
-  color: #333;
-}
-
-.btn-secondary:hover {
-  background: #E0E0E0;
-}
-
-.btn-danger {
-  background: #D32F2F;
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #B71C1C;
-}
-
-.profile-view {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.profile-field {
-  display: flex;
-  justify-content: space-between;
-  padding: 16px;
-  background: #F9F9F9;
-  border-radius: 8px;
-}
-
-.field-label {
-  font-weight: 500;
-  color: #666;
-}
-
-.field-value {
-  font-weight: 600;
-  color: #333;
-}
-
-/* W-2.7: Locked Day Styles */
-
-.locked-day {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.locked-day .preview {
-  background: #F9F9F9;
-  padding: 24px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  text-align: center;
-}
-
-.locked-day .preview h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-.locked-day .preview p {
-  font-size: 16px;
-  color: #666;
-  line-height: 1.5;
-}
-
-.locked-day .ctas {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.locked-day .cta-referral,
-.locked-day .cta-subscription {
-  padding: 16px;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.locked-day .cta-referral:hover,
-.locked-day .cta-subscription:hover {
-  transform: translateY(-2px);
-}
-
-.locked-day .cta-referral {
-  background: #E8F5E9;
-  color: #2E7D32;
-}
-
-.locked-day .cta-subscription {
-  background: #007AFF;
-  color: white;
-}
-
-/* W-2.8: Onboarding Page Styles */
-
-.onboarding-page {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.onboarding-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.onboarding-header h1 {
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.step-indicator {
-  font-size: 14px;
-  color: #666;
-}
-
-.onboarding-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.onboarding-step {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.onboarding-step h2 {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-.step-description {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 24px;
-  line-height: 1.5;
-}
-
-.onboarding-step input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #DDD;
-  border-radius: 8px;
-  font-size: 16px;
-  margin-bottom: 24px;
-}
-
-.step-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: auto;
-  padding-top: 24px;
-}
-
-.step-actions button {
-  flex: 1;
-}
-
-.summary {
-  background: #F9F9F9;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-}
-
-.summary-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid #E0E0E0;
-}
-
-.summary-item:last-child {
-  border-bottom: none;
-}
-
-.summary-label {
-  font-weight: 500;
-  color: #666;
-}
-
-.summary-value {
-  font-weight: 600;
-  color: #333;
+/*
+ * Анимация для typing-индикатора в чате (components/chat/chat-screen).
+ * Лежит в globals.css, потому что это глобальный keyframe — на уровне
+ * компонента в JSX задать @keyframes мы не можем.
+ */
+@keyframes lumen-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* Мигающий курсор у сообщения, которое сейчас стримится. */
+@keyframes lumen-caret {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }

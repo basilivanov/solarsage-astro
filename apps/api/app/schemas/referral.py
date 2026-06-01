@@ -17,3 +17,11 @@ class ReferralClaimResponse(BaseModel):
     days_granted: int
     access_until: str  # ISO date
     message: str
+
+
+class ReferralInfo(BaseModel):
+    """Referral info for profile display."""
+    invite_code: str
+    invite_url: str
+    total_invited: int
+    days_per_invite: int = 14

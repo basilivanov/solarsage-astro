@@ -15,12 +15,12 @@
 //   - E2E test runner configuration
 // dependencies:
 //   - @playwright/test
-//   - Next.js dev server (http://localhost:3002)
+//   - nginx proxy (https://dev.astro.vasiliy-ivanov.ru)
 // side_effects:
-//   - starts dev server if not running
+//   - none (tests run against deployed environment)
 // invariants:
-//   - baseURL MUST be http://localhost:3002
-//   - webServer MUST start before tests run
+//   - baseURL MUST be https://dev.astro.vasiliy-ivanov.ru
+//   - API endpoints accessible through nginx proxy
 // failure_policy:
 //   - invalid config -> playwright exits with error
 // non_goals:
@@ -52,11 +52,20 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://localhost:3002',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3002',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
+  // Visual regression testing config
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixels: 100, // допустимая разница в пикселях
+      threshold: 0.2, // 20% допустимой разницы
+    },
+  },
+  // Update snapshots with --update-snapshots flag
+  updateSnapshots: process.env.UPDATE_SNAPSHOTS === 'true' ? 'all' : 'missing',
   projects: [
     {
       name: 'chromium',
@@ -67,11 +76,12 @@ export default defineConfig({
       use: { ...devices['iPhone 13'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3002',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  // webServer disabled - tests run against deployed environment
+  // webServer: {
+  //   command: 'npm run dev',
+  //   url: 'http://localhost:3002',
+  //   reuseExistingServer: !process.env.CI,
+  //   timeout: 120000,
+  // },
 });
 // END_BLOCK: E2E_CONFIG

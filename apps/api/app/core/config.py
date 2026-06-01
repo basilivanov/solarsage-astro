@@ -59,7 +59,7 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _resolve_git_sha() -> str:
@@ -127,7 +127,7 @@ class Settings(BaseSettings):
     )
 
     # --- Server-side session (W-1.2 Option A: opaque cookie + sessions) ---
-    session_cookie_name: str = Field("grace_session", alias="SESSION_COOKIE_NAME")
+    session_cookie_name: str = Field("grace_session_v2", alias="SESSION_COOKIE_NAME")
     session_ttl_seconds: int = Field(
         60 * 60 * 24 * 30, alias="SESSION_TTL_SECONDS"
     )  # 30d
@@ -137,9 +137,27 @@ class Settings(BaseSettings):
     solarsage_url: str = Field("http://127.0.0.1:18091", alias="SOLARSAGE_URL")
 
     # --- LLM (W-5.1) ---
+    # Provider: "anthropic" | "openrouter"
+    llm_provider: str = Field("openrouter", alias="LLM_PROVIDER")
+
+    # API Keys
     anthropic_api_key: str = Field("", alias="ANTHROPIC_API_KEY")
-    llm_model: str = Field("claude-3-5-sonnet-20241022", alias="LLM_MODEL")
+    openrouter_api_key: str = Field("", alias="OPENROUTER_API_KEY")
+
+    # Model configuration
+    llm_model: str = Field("openai/gpt-4o-mini", alias="LLM_MODEL")
     llm_max_tokens: int = Field(500, alias="LLM_MAX_TOKENS")
+
+    # OpenRouter specific settings
+    openrouter_base_url: str = Field(
+        "https://openrouter.ai/api/v1", alias="OPENROUTER_BASE_URL"
+    )
+    openrouter_app_name: str = Field("solarsage-astro", alias="OPENROUTER_APP_NAME")
+    openrouter_site_url: str = Field("", alias="OPENROUTER_SITE_URL")
+
+    # --- Dev mode (W-2.2) ---
+    # When true, enables /api/auth/dev endpoint for local development without Telegram
+    dev_mode: bool = Field(False, alias="DEV_MODE")
 
     @property
     def git_sha(self) -> str:

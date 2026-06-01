@@ -5,9 +5,14 @@
 
 export function LoadingSpinner() {
   return (
-    <div className="loading-spinner" data-testid="loading-spinner">
-      <div className="spinner" />
-      <p>Загрузка...</p>
+    <div
+      className="flex flex-col items-center justify-center gap-4 py-16"
+      data-testid="loading-spinner"
+      role="status"
+      aria-label="Загрузка"
+    >
+      <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-muted-foreground/20 border-t-primary" />
+      <p className="text-[13px] text-muted-foreground">Загрузка...</p>
     </div>
   );
 }

@@ -1076,6 +1076,11 @@
             ],
             "title": "Activationlayerversion"
           },
+          "cached": {
+            "default": false,
+            "title": "Cached",
+            "type": "boolean"
+          },
           "calculationVersion": {
             "title": "Calculationversion",
             "type": "integer"

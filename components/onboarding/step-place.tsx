@@ -3,13 +3,14 @@
 import { OnboardingShell } from "./onboarding-shell"
 import { PrimaryCta } from "./primary-cta"
 import { CityPicker } from "./city-picker"
+import type { City } from "@/lib/contracts/city"
 
 type Props = {
-  birthPlace: string
-  currentCity: string
+  birthPlace: City | null
+  currentCity: City | null
   sameAsBirth: boolean
-  onChangeBirthPlace: (v: string) => void
-  onChangeCurrentCity: (v: string) => void
+  onChangeBirthPlace: (v: City | null) => void
+  onChangeCurrentCity: (v: City | null) => void
   onChangeSameAsBirth: (v: boolean) => void
   onBack: () => void
   onNext: () => void
@@ -25,9 +26,9 @@ export function StepPlace({
   onBack,
   onNext,
 }: Props) {
-  const birthValid = birthPlace.trim().length >= 2
+  const birthValid = birthPlace !== null
   const currentValid =
-    sameAsBirth || currentCity.trim().length >= 2
+    sameAsBirth || currentCity !== null
   const isValid = birthValid && currentValid
 
   return (

@@ -8,6 +8,7 @@
  */
 
 import type { BirthDateParts, BirthTimeParts } from "@/lib/contracts/profile"
+import type { City } from "@/lib/contracts/city"
 
 // Алиасы для совместимости с reducer API
 export type BirthDate = BirthDateParts
@@ -31,10 +32,10 @@ export interface OnboardingState {
   step: StepKey
   birthDate: BirthDate
   birthTime: BirthTime
-  birthPlace: string
-  currentCity: string
+  birthPlace: City | null
+  currentCity: City | null
   sameAsBirth: boolean
-  birthdayCity: string
+  birthdayCity: City | null
   birthdaySameAsCurrent: boolean
 }
 
@@ -42,10 +43,10 @@ export const initialOnboardingState: OnboardingState = {
   step: "welcome",
   birthDate: { day: "", month: "", year: "" },
   birthTime: { hours: "", minutes: "", unknown: false },
-  birthPlace: "",
-  currentCity: "",
+  birthPlace: null,
+  currentCity: null,
   sameAsBirth: false,
-  birthdayCity: "",
+  birthdayCity: null,
   birthdaySameAsCurrent: true,
 }
 
@@ -59,10 +60,10 @@ export type OnboardingEvent =
   | { type: "skip" }
   | { type: "set_birth_date"; value: BirthDate }
   | { type: "set_birth_time"; value: BirthTime }
-  | { type: "set_birth_place"; value: string }
-  | { type: "set_current_city"; value: string }
+  | { type: "set_birth_place"; value: City | null }
+  | { type: "set_current_city"; value: City | null }
   | { type: "set_same_as_birth"; value: boolean }
-  | { type: "set_birthday_city"; value: string }
+  | { type: "set_birthday_city"; value: City | null }
   | { type: "set_birthday_same_as_current"; value: boolean }
   | { type: "reset" }
 
@@ -168,12 +169,12 @@ export function isStepValid(state: OnboardingState): boolean {
       return isValidBirthDate(state.birthDate) && isValidBirthTime(state.birthTime)
 
     case "place":
-      if (!state.birthPlace.trim()) return false
-      if (!state.sameAsBirth && !state.currentCity.trim()) return false
+      if (!state.birthPlace) return false
+      if (!state.sameAsBirth && !state.currentCity) return false
       return true
 
     case "birthday":
-      if (!state.birthdaySameAsCurrent && !state.birthdayCity.trim()) return false
+      if (!state.birthdaySameAsCurrent && !state.birthdayCity) return false
       return true
 
     case "done":
@@ -188,11 +189,11 @@ export function isStepValid(state: OnboardingState): boolean {
 // Selectors
 // ---------------------------------------------------------------------------
 
-export function selectEffectiveCurrentCity(state: OnboardingState): string {
+export function selectEffectiveCurrentCity(state: OnboardingState): City | null {
   return state.sameAsBirth ? state.birthPlace : state.currentCity
 }
 
-export function selectEffectiveBirthdayCity(state: OnboardingState): string {
+export function selectEffectiveBirthdayCity(state: OnboardingState): City | null {
   if (state.birthdaySameAsCurrent) {
     return selectEffectiveCurrentCity(state)
   }

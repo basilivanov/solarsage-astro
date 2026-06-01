@@ -178,7 +178,7 @@ cp .env.example .env
 Services:
 - Frontend: http://localhost:3000
 - API: http://localhost:8000
-- SolarSage: http://localhost:8001
+- SolarSage: http://localhost:8000
 - Database: localhost:5432
 
 ## Monitoring
@@ -189,7 +189,7 @@ docker-compose logs -f
 
 # Health checks
 curl http://localhost:8000/api/health
-curl http://localhost:8001/v1/health
+curl http://localhost:8000/v1/health
 
 # Orchestrator status
 python scripts/grace-orch status

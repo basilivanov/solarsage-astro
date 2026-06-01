@@ -19,6 +19,28 @@ from app.services.access_service import AccessService
 router = APIRouter(prefix="/api/referral", tags=["referral"])
 
 
+@router.get("")
+async def get_referral_info(
+    user: Annotated[User, Depends(require_session)],
+    db: Annotated[AsyncSession, Depends(get_session)],
+):
+    """Get user's referral info: invite code, invite URL, stats."""
+    # Count referrals
+    result = await db.execute(
+        select(Referral).where(Referral.referrer_id == user.id)
+    )
+    referrals = result.scalars().all()
+
+    invite_url = f"https://t.me/vi_astro_bot/app?startapp={user.tg_user_id}"
+
+    return {
+        "inviteCode": str(user.tg_user_id),
+        "inviteUrl": invite_url,
+        "totalInvited": len(referrals),
+        "daysPerInvite": 14,
+    }
+
+
 @router.post("/claim")
 async def claim_referral(
     request: ReferralClaimRequest,
@@ -76,10 +98,11 @@ async def claim_referral(
     )
     db.add(referral)
 
-    # Grant 14-day bonus
+    # Grant 14-day bonus to BOTH
     access_service = AccessService(db)
     start_date = Date.today()
     await access_service.grant_referral_bonus(user.id, start_date)
+    await access_service.grant_referral_bonus(referrer.id, start_date)
 
     await db.commit()
 

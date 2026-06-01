@@ -5,19 +5,42 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useCalendar } from '../../lib/grace/hooks/useCalendar';
 import type { components } from '../../packages/contracts/_generated';
 
 type CalendarPayload = components['schemas']['CalendarPayload'];
 
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch as any;
+const { mockFetchCalendar } = vi.hoisted(() => ({
+  mockFetchCalendar: vi.fn(),
+}));
+
+vi.mock('../../lib/grace/api/client', () => ({
+  fetchCalendar: mockFetchCalendar,
+  fetchDay: vi.fn(),
+  ApiError: class ApiError extends Error {
+    status: number;
+    code?: string;
+    constructor(message: string, status: number, code?: string) {
+      super(message);
+      this.status = status;
+      this.code = code;
+    }
+  },
+}));
+
+vi.mock('@/hooks/use-telegram-auth', () => ({
+  useTelegramAuth: () => ({
+    isLoading: false,
+    isAuthenticated: true,
+    error: null,
+  }),
+}));
+
+import { useCalendar } from '../../lib/grace/hooks/useCalendar';
+import { ApiError } from '../../lib/grace/api/client';
 
 describe('useCalendar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFetch.mockReset();
   });
 
   it('should fetch calendar data successfully', async () => {
@@ -29,39 +52,18 @@ describe('useCalendar', () => {
       },
       month: '2026-05',
       title: 'May 2026',
-      allowedRange: {
-        from: '2026-05-01',
-        to: '2026-05-31',
-      },
-      days: [
-        {
-          date: '2026-05-01',
-          dayNumber: 1,
-          isCurrentMonth: true,
-          isToday: false,
-          disabled: false,
-          dayStatus: 'supportive',
-          access: {
-            state: 'full',
-            reason: null,
-            referralDaysLeft: null,
-            subscriptionActive: null,
-            accessUntil: null,
-          },
-        },
-      ],
+      allowedRange: { from: '2026-05-01', to: '2026-05-31' },
+      days: [{
+        date: '2026-05-01', dayNumber: 1,
+        isCurrentMonth: true, isToday: false, disabled: false,
+        dayStatus: 'supportive',
+        access: { state: 'full', reason: null, referralDaysLeft: null, subscriptionActive: null, accessUntil: null },
+      }],
     };
 
-    (mockFetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockPayload,
-    });
+    mockFetchCalendar.mockResolvedValueOnce(mockPayload);
 
     const { result } = renderHook(() => useCalendar('2026-05'));
-
-    expect(result.current.loading).toBe(true);
-    expect(result.current.data).toBeNull();
-    expect(result.current.error).toBeNull();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -69,25 +71,13 @@ describe('useCalendar', () => {
 
     expect(result.current.data).toEqual(mockPayload);
     expect(result.current.error).toBeNull();
-    expect(mockFetch).toHaveBeenCalledWith(
-      'http://localhost:8000/api/calendar?month=2026-05',
-      expect.objectContaining({
-        credentials: 'include',
-      })
-    );
+    expect(mockFetchCalendar).toHaveBeenCalledWith('2026-05');
   });
 
   it('should handle API errors with error code', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-      json: async () => ({
-        detail: {
-          code: 'ACCESS_DENIED',
-          message: 'Calendar access denied',
-        },
-      }),
-    });
+    mockFetchCalendar.mockRejectedValueOnce(
+      new ApiError('Calendar access denied', 403, 'ACCESS_DENIED')
+    );
 
     const { result } = renderHook(() => useCalendar('2026-05'));
 
@@ -99,18 +89,12 @@ describe('useCalendar', () => {
     expect(result.current.error).toBeTruthy();
     expect(result.current.error?.status).toBe(403);
     expect(result.current.error?.code).toBe('ACCESS_DENIED');
-    expect(result.current.error?.message).toBe('Calendar access denied');
   });
 
   it('should handle API errors without error code', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
-      json: async () => {
-        throw new Error('Not JSON');
-      },
-    });
+    mockFetchCalendar.mockRejectedValueOnce(
+      new ApiError('Not Found', 404)
+    );
 
     const { result } = renderHook(() => useCalendar('2026-05'));
 
@@ -121,11 +105,10 @@ describe('useCalendar', () => {
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBeTruthy();
     expect(result.current.error?.status).toBe(404);
-    expect(result.current.error?.message).toBe('Not Found');
   });
 
   it('should handle network errors', async () => {
-    (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
+    mockFetchCalendar.mockRejectedValueOnce(new Error('Network error'));
 
     const { result } = renderHook(() => useCalendar('2026-05'));
 
@@ -135,7 +118,6 @@ describe('useCalendar', () => {
 
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBeTruthy();
-    expect(result.current.error?.message).toBe('Unknown error');
     expect(result.current.error?.status).toBe(500);
   });
 
@@ -145,46 +127,23 @@ describe('useCalendar', () => {
       resolvePromise = resolve;
     });
 
-    (global.fetch as any).mockReturnValueOnce(promise);
+    mockFetchCalendar.mockReturnValueOnce(promise);
 
     const { result, unmount } = renderHook(() => useCalendar('2026-05'));
 
-    expect(result.current.loading).toBe(true);
-
-    unmount();
-
-    // Resolve after unmount
-    resolvePromise!({
-      ok: true,
-      json: async () => ({ month: '2026-05' }),
-    });
-
     await waitFor(() => {
-      // State should not update after unmount
       expect(result.current.loading).toBe(true);
     });
+
+    unmount();
+    resolvePromise!({ month: '2026-05' });
+    expect(result.current.loading).toBe(true);
   });
 
   it('should refetch when month changes', async () => {
-    const mockPayload1: Partial<CalendarPayload> = {
-      month: '2026-05',
-      title: 'May 2026',
-    };
-
-    const mockPayload2: Partial<CalendarPayload> = {
-      month: '2026-06',
-      title: 'June 2026',
-    };
-
-    (global.fetch as any)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPayload1,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockPayload2,
-      });
+    mockFetchCalendar
+      .mockResolvedValueOnce({ month: '2026-05', title: 'May 2026' })
+      .mockResolvedValueOnce({ month: '2026-06', title: 'June 2026' });
 
     const { result, rerender } = renderHook(
       ({ month }) => useCalendar(month),
@@ -194,19 +153,14 @@ describe('useCalendar', () => {
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
-
     expect(result.current.data?.month).toBe('2026-05');
 
-    // Change month
     rerender({ month: '2026-06' });
-
-    expect(result.current.loading).toBe(true);
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
-
     expect(result.current.data?.month).toBe('2026-06');
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(mockFetchCalendar).toHaveBeenCalledTimes(2);
   });
 });

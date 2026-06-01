@@ -1,32 +1,46 @@
-import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
+import type { Metadata, Viewport } from "next"
+import { Inter, Instrument_Serif, Lora } from "next/font/google"
+import Script from "next/script"
+import { Analytics } from "@vercel/analytics/next"
+import { TelegramInit } from "@/components/telegram-init"
+import { CorrelationInit } from "@/components/correlation-init"
+import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-sans",
+  display: "swap",
+})
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-serif-display",
+  display: "swap",
+})
+
+const loraSerif = Lora({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
+  variable: "--font-serif-cyrillic",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
+  title: "Today — астрологический навигатор дня",
+  description:
+    "Персональный разбор дня: что сегодня происходит, как это проявляется у тебя, какие силы формируют день.",
+}
+
+export const viewport: Viewport = {
+  themeColor: "#f6f3ec",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 }
 
 export default function RootLayout({
@@ -35,10 +49,33 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
+    <html lang="ru" className="bg-background">
+      <body
+        className={`${inter.variable} ${instrumentSerif.variable} ${loraSerif.variable} font-sans antialiased`}
+      >
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
+        <Script id="error-catcher" strategy="beforeInteractive">
+          {`
+            window.__astroErrors = [];
+            window.addEventListener('error', function(e) {
+              var err = { msg: e.message, src: e.filename, line: e.lineno, col: e.colno, time: Date.now() };
+              window.__astroErrors.push(err);
+              try { fetch('/api/_log', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({envelopes:[{timestamp:new Date().toISOString(),level:'error',message:'CLIENT_CRASH: '+e.message+' at '+e.filename+':'+e.lineno,correlation_id:null,extra:{stack:e.error?.stack}}]}) }); } catch(_) {}
+            });
+            window.addEventListener('unhandledrejection', function(e) {
+              var err = { msg: String(e.reason), time: Date.now() };
+              window.__astroErrors.push(err);
+              try { fetch('/api/_log', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({envelopes:[{timestamp:new Date().toISOString(),level:'error',message:'UNHANDLED_REJECTION: '+String(e.reason),correlation_id:null}]}) }); } catch(_) {}
+            });
+          `}
+        </Script>
+        <TelegramInit />
+        <CorrelationInit />
         {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
   )

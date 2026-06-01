@@ -44,15 +44,15 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_session
+from app.core.dependencies import require_session_optional
 from app.core.logging import logger
-from app.db.models import User
 from app.db.session import get_session
 from app.services.log_intake import LogIntakeService
 
@@ -80,30 +80,21 @@ class LogBatch(BaseModel):
 async def intake_logs(
     batch: LogBatch,
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(require_session),
+    current_user = Depends(require_session_optional),
 ) -> dict[str, int]:
     """
-    Accept log batch from frontend.
+    Accept log batch from frontend. Auth is optional — logs before
+    authentication are accepted for crash debugging.
 
     W-1.7: Validates envelopes, redacts PII, forwards to stdout.
-
-    Args:
-        batch: Batch of log envelopes from frontend
-        db: Database session
-        current_user: Authenticated user (from session cookie)
-
-    Returns:
-        {"accepted": count, "rejected": count}
-
-    Raises:
-        HTTPException: 401 if not authenticated, 500 on service error
     """
     service = LogIntakeService(db)
 
+    user_id = current_user.id if current_user else uuid.uuid4()
+
     try:
-        # Process batch
         result = await service.process_batch(
-            user_id=current_user.id,
+            user_id=user_id,
             envelopes=[e.model_dump() for e in batch.envelopes],
         )
 
@@ -113,7 +104,7 @@ async def intake_logs(
         }
 
     except Exception as e:
-        logger.error(f"Log intake failed: {e}", extra={"user_id": str(current_user.id)})
+        logger.error(f"Log intake failed: {e}", extra={"user_id": str(user_id)})
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Log intake failed",

@@ -19,6 +19,8 @@ const CITIES: City[] = [
   { name: "Сочи", country: "Россия" },
   { name: "Владивосток", country: "Россия" },
   { name: "Калининград", country: "Россия" },
+  { name: "Мончегорск", country: "Россия" },
+  { name: "Мурманск", country: "Россия" },
   { name: "Минск", country: "Беларусь" },
   { name: "Киев", country: "Украина" },
   { name: "Алматы", country: "Казахстан" },

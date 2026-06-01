@@ -3,7 +3,9 @@
 // wave: W-2.2
 // purpose: Top flags display
 
-import type { TopFlag } from '@/packages/contracts/_generated';
+import type { components } from '@/packages/contracts/_generated';
+
+type TopFlag = components['schemas']['TopFlag'];
 
 interface TopFlagsProps {
   flags: TopFlag[];
@@ -13,17 +15,58 @@ export function TopFlags({ flags }: TopFlagsProps) {
   if (flags.length === 0) return null;
 
   return (
-    <section className="top-flags" data-testid="top-flags">
-      {flags.map((flag, idx) => (
-        <div key={idx} className="flag-card">
-          <div className="flag-icon" data-icon={flag.iconName} />
-          <div className="flag-content">
-            <h3 className="flag-title">{flag.title}</h3>
-            <p className="flag-summary">{flag.summary}</p>
-            {flag.hint && <p className="flag-hint">{flag.hint}</p>}
-          </div>
-        </div>
-      ))}
+    <section className="px-5" data-testid="top-flags">
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+        {flags.map((flag, idx) => {
+          const isLast = idx === flags.length - 1;
+          return (
+            <div
+              key={idx}
+              className={isLast ? "" : "border-b border-border/60"}
+            >
+              <div className="flex items-start gap-4 px-4 py-4">
+                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-accent">
+                  <span className="text-[18px] leading-none text-accent-foreground" data-icon={flag.iconName}>
+                    {flag.iconName}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[15px] font-medium leading-snug text-foreground">
+                    {flag.title}
+                  </div>
+                  <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
+                    {flag.summary}
+                  </div>
+                  {flag.hint && (
+                    <div className="mt-2 rounded-lg border border-border/60 bg-secondary/40 px-3 py-2.5 space-y-2">
+                      {flag.hint.howItFeels && (
+                        <div>
+                          <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                            Ощущения
+                          </div>
+                          <p className="mt-0.5 font-serif text-[14px] leading-[1.5] text-foreground/85">
+                            {flag.hint.howItFeels}
+                          </p>
+                        </div>
+                      )}
+                      {flag.hint.whyToday && (
+                        <div>
+                          <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                            Почему сегодня
+                          </div>
+                          <p className="mt-0.5 font-serif text-[14px] leading-[1.5] text-foreground/85">
+                            {flag.hint.whyToday}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }

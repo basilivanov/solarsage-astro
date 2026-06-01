@@ -83,14 +83,26 @@ def sample_signals():
 @pytest.mark.asyncio
 async def test_generate_headline(sample_signals):
     """LLM generates headline from day_status and top signals."""
-    # Mock Anthropic client response
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text="День, когда удача на твоей стороне")]
+    # Mock OpenRouter response
+    mock_response_json = {
+        "choices": [
+            {"message": {"content": "День, когда удача на твоей стороне"}}
+        ]
+    }
 
-    with patch("app.services.llm_service.anthropic.Anthropic") as mock_anthropic:
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+        # Create mock response
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value=mock_response_json)
+        mock_response.raise_for_status = MagicMock()
+
+        # Create mock client
         mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
-        mock_anthropic.return_value = mock_client
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        # Setup async context manager
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
         service = LLMService()
         headline = await service.generate_headline("supportive", sample_signals)
@@ -101,15 +113,16 @@ async def test_generate_headline(sample_signals):
         assert headline == "День, когда удача на твоей стороне"
 
         # Verify API was called once
-        mock_client.messages.create.assert_called_once()
+        mock_client.post.assert_called_once()
 
         # Verify call parameters
-        call_args = mock_client.messages.create.call_args
-        assert call_args.kwargs["model"] == "claude-3-5-sonnet-20241022"
-        assert call_args.kwargs["max_tokens"] == 100
-        assert len(call_args.kwargs["messages"]) == 1
-        assert call_args.kwargs["messages"][0]["role"] == "user"
-        assert "supportive" in call_args.kwargs["messages"][0]["content"]
+        call_args = mock_client.post.call_args
+        assert "openrouter.ai" in call_args.args[0]
+        assert call_args.kwargs["json"]["model"] == "openai/gpt-4o-mini"
+        assert call_args.kwargs["json"]["max_tokens"] == 100
+        assert len(call_args.kwargs["json"]["messages"]) == 1
+        assert call_args.kwargs["json"]["messages"][0]["role"] == "user"
+        assert "supportive" in call_args.kwargs["json"]["messages"][0]["content"]
 # END_BLOCK: TEST_HEADLINE_GENERATION
 
 
@@ -117,14 +130,26 @@ async def test_generate_headline(sample_signals):
 @pytest.mark.asyncio
 async def test_generate_reading(sample_signals):
     """LLM generates reading paragraphs from scoring results."""
-    # Mock Anthropic client response with multiple paragraphs
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text="Параграф 1.\n\nПараграф 2.\n\nПараграф 3.")]
+    # Mock OpenRouter response with multiple paragraphs
+    mock_response_json = {
+        "choices": [
+            {"message": {"content": "Параграф 1.\n\nПараграф 2.\n\nПараграф 3."}}
+        ]
+    }
 
-    with patch("app.services.llm_service.anthropic.Anthropic") as mock_anthropic:
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+        # Create mock response
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value=mock_response_json)
+        mock_response.raise_for_status = MagicMock()
+
+        # Create mock client
         mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
-        mock_anthropic.return_value = mock_client
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        # Setup async context manager
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
         service = LLMService()
         paragraphs = await service.generate_reading(
@@ -142,16 +167,17 @@ async def test_generate_reading(sample_signals):
         assert paragraphs[2] == "Параграф 3."
 
         # Verify API was called once
-        mock_client.messages.create.assert_called_once()
+        mock_client.post.assert_called_once()
 
         # Verify call parameters
-        call_args = mock_client.messages.create.call_args
-        assert call_args.kwargs["model"] == "claude-3-5-sonnet-20241022"
-        assert call_args.kwargs["max_tokens"] == 500
-        assert len(call_args.kwargs["messages"]) == 1
-        assert call_args.kwargs["messages"][0]["role"] == "user"
-        assert "supportive" in call_args.kwargs["messages"][0]["content"]
-        assert "career" in call_args.kwargs["messages"][0]["content"]
+        call_args = mock_client.post.call_args
+        assert "openrouter.ai" in call_args.args[0]
+        assert call_args.kwargs["json"]["model"] == "openai/gpt-4o-mini"
+        assert call_args.kwargs["json"]["max_tokens"] == 500
+        assert len(call_args.kwargs["json"]["messages"]) == 1
+        assert call_args.kwargs["json"]["messages"][0]["role"] == "user"
+        assert "supportive" in call_args.kwargs["json"]["messages"][0]["content"]
+        assert "career" in call_args.kwargs["json"]["messages"][0]["content"]
 # END_BLOCK: TEST_READING_GENERATION
 
 
@@ -160,13 +186,25 @@ async def test_generate_reading(sample_signals):
 async def test_generate_reading_max_paragraphs(sample_signals):
     """LLM reading is capped at 3 paragraphs."""
     # Mock response with 5 paragraphs
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text="P1.\n\nP2.\n\nP3.\n\nP4.\n\nP5.")]
+    mock_response_json = {
+        "choices": [
+            {"message": {"content": "P1.\n\nP2.\n\nP3.\n\nP4.\n\nP5."}}
+        ]
+    }
 
-    with patch("app.services.llm_service.anthropic.Anthropic") as mock_anthropic:
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+        # Create mock response
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value=mock_response_json)
+        mock_response.raise_for_status = MagicMock()
+
+        # Create mock client
         mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
-        mock_anthropic.return_value = mock_client
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        # Setup async context manager
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
         service = LLMService()
         paragraphs = await service.generate_reading(

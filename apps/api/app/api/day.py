@@ -45,7 +45,7 @@
 
 from __future__ import annotations
 
-from datetime import date as Date, datetime
+from datetime import UTC, date as Date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -78,7 +78,7 @@ async def get_day(
     # Resolve 'today' to current date in user's timezone
     if date_str == "today":
         # TODO(W-PROFILE.1): use user.profile.current_location.timezone when available
-        target_date = datetime.utcnow().date()
+        target_date = datetime.now(UTC).date()
     else:
         try:
             target_date = Date.fromisoformat(date_str)
@@ -88,12 +88,23 @@ async def get_day(
                 detail={"code": "INVALID_DATE", "message": f"Invalid date format: {date_str}"}
             )
 
-    # Check if user is onboarded
-    if not user.profile or not user.profile.is_onboarded:
+    # Check if user is onboarded and has required birth data
+    print(f"[day.py] user.profile: {user.profile}")
+    print(f"[day.py] is_onboarded: {user.profile.is_onboarded if user.profile else None}")
+    print(f"[day.py] birth_lat: {user.profile.birth_lat if user.profile else None}")
+    print(f"[day.py] birth_lon: {user.profile.birth_lon if user.profile else None}")
+
+    if (not user.profile or
+        not user.profile.is_onboarded or
+        user.profile.birth_lat is None or
+        user.profile.birth_lon is None):
+        print(f"[day.py] NOT_ONBOARDED triggered")
         raise HTTPException(
             status_code=422,
             detail={"code": "NOT_ONBOARDED", "message": "User must complete onboarding first"}
         )
+
+    print(f"[day.py] Onboarding check passed, proceeding...")
 
     # Check access (stub in W-1.3, real in W-ACCESS.1)
     access_service = AccessService(db)
