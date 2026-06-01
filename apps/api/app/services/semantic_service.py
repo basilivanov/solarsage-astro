@@ -144,18 +144,29 @@ class SemanticService:
         for s in aspects[:3]:
             np = natal_planet(s.target_planet or "")
             if np:
+                lon = np.get('longitude', 0)
+                sign = np.get('sign', '?')
+                deg = lon % 30
+                # Compute approximate natal house from longitude
+                nh = next((h['number'] for h in natal.get('houses', []) if lon >= h['cusp']), None)
+                nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
                     f"Транзитный {_p(s.planet)} в {_a(s.aspect_type or '')} "
                     f"с ТВОИМ натальным {_p(s.target_planet or '')} "
-                    f"(твой {_p(s.target_planet or '')} стоит в {np.get('sign','?')} на {(np.get('longitude',0)%30):.1f}°) — орб {s.orb:.1f}°."
+                    f"(твой {_p(s.target_planet or '')} в натале: {sign} {deg:.1f}°{nh_str}) — орб {s.orb:.1f}°."
                 )
         # Also show transit planets in houses that match natal house positions
         for s in houses[:2]:
             np = natal_planet(s.planet)
             if np:
+                lon = np.get('longitude', 0)
+                sign = np.get('sign', '?')
+                deg = lon % 30
+                nh = next((h['number'] for h in natal.get('houses', []) if lon >= h['cusp']), None)
+                nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
                     f"Транзитный {_p(s.planet)} в {s.house} доме — "
-                    f"в твоём натале {_p(s.planet)} стоит в {np.get('sign','?')}, "
+                    f"в твоём натале {_p(s.planet)} стоит в {sign} {deg:.1f}°{nh_str}, "
                     f"так что эта сфера для тебя особенно чувствительна."
                 )
             else:
