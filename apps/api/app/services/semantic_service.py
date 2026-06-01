@@ -26,6 +26,15 @@ _SPHERE_RU: dict[str, str] = {
 
 def _p(s: str) -> str: return _PLANET_RU.get(s, s)
 def _a(s: str) -> str: return _ASPECT_RU.get(s, s)
+def _s(s: str) -> str:
+    """Translate sign name to Russian."""
+    signs = {
+        "Aries": "Овен", "Taurus": "Телец", "Gemini": "Близнецы",
+        "Cancer": "Рак", "Leo": "Лев", "Virgo": "Дева",
+        "Libra": "Весы", "Scorpio": "Скорпион", "Sagittarius": "Стрелец",
+        "Capricorn": "Козерог", "Aquarius": "Водолей", "Pisces": "Рыбы",
+    }
+    return signs.get(s, s)
 
 # Theme mappings
 DAY_THEMES = {
@@ -135,7 +144,7 @@ class SemanticService:
         daily_parts = []
         moon_transit = next((t for t in transit_planets if t.get("name") == "Moon"), None)
         if moon_transit:
-            moon_sign = moon_transit.get('sign', '?')
+            moon_sign = _s(moon_transit.get('sign', '?'))
             moon_lon = moon_transit.get('longitude', 0)
             # Find which natal house Moon is transiting through
             houses_sorted = sorted(natal.get("houses", []), key=lambda h: h.get("cusp", 0))
@@ -160,7 +169,7 @@ class SemanticService:
             for s in moon_aspects[:3]:
                 np = natal_planet(s.target_planet or "")
                 if np:
-                    n_sign = np.get('sign', '?')
+                    n_sign = _s(np.get('sign', '?'))
                     n_lon = np.get('longitude', 0)
                     nh = None
                     for i, h in enumerate(houses_sorted):
@@ -184,7 +193,7 @@ class SemanticService:
             np = natal_planet(s.target_planet or "")
             if np:
                 lon = np.get('longitude', 0)
-                sign = np.get('sign', '?')
+                sign = _s(np.get('sign', '?'))
                 deg = lon % 30
                 # Compute approximate natal house from longitude
                 nh = next((h['number'] for h in natal.get('houses', []) if lon >= h['cusp']), None)
@@ -199,7 +208,7 @@ class SemanticService:
             np = natal_planet(s.planet)
             if np:
                 lon = np.get('longitude', 0)
-                sign = np.get('sign', '?')
+                sign = _s(np.get('sign', '?'))
                 deg = lon % 30
                 nh = next((h['number'] for h in natal.get('houses', []) if lon >= h['cusp']), None)
                 nh_str = f", {nh} дом" if nh else ""
