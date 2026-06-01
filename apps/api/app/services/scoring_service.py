@@ -58,16 +58,75 @@ def _condition_factor(planet: str, sign: str | None, retrograde: bool = False) -
     
     return max(bounds[0], min(bounds[1], cf))
 
+
+def _convergence_curve(n: int) -> float:
+    curve = _ASPECTS.get("convergence_curve", {})
+    vals = curve.get("values", {2: 0.4, 3: 0.65, 4: 0.8, 5: 0.9})
+    n = int(n)
+    if n >= 5:
+        return float(vals.get(5, 0.9))
+    return float(vals.get(n, 0))
+
+
 # ── Main scoring class ─────────────────────────────────────────
 
 class ScoringService:
 
     def score(self, signals: list[AstroSignal]) -> dict:
-        """Score signals v2 — canon-based with aspect weights, dignities, spheres."""
         sphere_scores = self._calculate_sphere_scores(signals)
+        convergence = self._compute_convergence(signals)
+        sphere_scores = self._apply_convergence(sphere_scores, convergence)
         day_status = self._calculate_day_status(signals)
         top_signals = self._get_top_signals(signals, limit=5)
-        return {"day_status": day_status, "sphere_scores": sphere_scores, "top_signals": top_signals}
+        return {
+            "day_status": day_status,
+            "sphere_scores": sphere_scores,
+            "top_signals": top_signals,
+        }
+
+    def _compute_convergence(self, signals: list[AstroSignal]) -> dict:
+        by_planet: dict[str, int] = {}
+        by_house: dict[str, int] = {}
+
+        for s in signals:
+            if s.type == "aspect" and s.target_planet:
+                p = s.target_planet.upper()
+                by_planet[p] = by_planet.get(p, 0) + 1
+            if s.type == "planet_in_house" and s.house:
+                h = str(s.house)
+                by_house[h] = by_house.get(h, 0) + 1
+                if s.planet:
+                    p = s.planet.upper()
+                    by_planet[p] = by_planet.get(p, 0) + 1
+
+        return {"by_planet": by_planet, "by_house": by_house}
+
+    def _apply_convergence(self, sphere_scores: dict, convergence: dict) -> dict:
+        sphere_list = _SPHERES.get("spheres", {})
+        by_planet = convergence.get("by_planet", {})
+        by_house = convergence.get("by_house", {})
+
+        result = dict(sphere_scores)
+        for key, sphere in sphere_list.items():
+            bonus = 0.0
+            for planet, weight in sphere.get("planets", {}).items():
+                n = by_planet.get(planet, 0)
+                if n >= 2:
+                    bonus += _convergence_curve(n) * float(weight)
+            for house in sphere.get("houses", []):
+                n = by_house.get(str(house), 0)
+                if n >= 2:
+                    bonus += _convergence_curve(n) * 0.3
+            result[key] = round(result.get(key, 0) + bonus, 2)
+
+        # Anti-dominance cap
+        total = sum(v for v in result.values() if v > 0)
+        cap_pct = float(_ASPECTS.get("dominance_cap", {}).get("threshold", 0.65))
+        for key in result:
+            if total > 0 and result[key] > cap_pct * total:
+                result[key] = round(cap_pct * total, 2)
+
+        return result
 
     def _calculate_sphere_scores(self, signals: list[AstroSignal]) -> dict:
         """Canon-based sphere scores with aspect weights, dignities, house rulers."""
