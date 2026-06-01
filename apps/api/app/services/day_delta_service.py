@@ -1,0 +1,78 @@
+# AI_HEADER
+# module: M-DAY-DELTA-SERVICE
+# wave: W-PHASE-1
+# purpose: Compare yesterday vs today signals, compute delta_kind and phase
+
+from app.schemas.normalization import AstroSignal
+
+
+def _signal_key(s: AstroSignal) -> tuple:
+    """Stable key for matching signals across days."""
+    return (
+        s.type,
+        s.planet,
+        s.target_planet,
+        s.aspect_type,
+        s.house,
+        s.sign,
+        s.technique,
+    )
+
+
+class DayDeltaService:
+    """Compute delta between yesterday's and today's signals."""
+
+    def __init__(
+        self,
+        yesterday_signals: list[AstroSignal],
+        today_signals: list[AstroSignal],
+    ):
+        self.yesterday = {_signal_key(s): s for s in yesterday_signals}
+        self.today = {_signal_key(s): s for s in today_signals}
+
+    def compute_deltas(self) -> list[AstroSignal]:
+        """Return today's signals annotated with delta_kind and phase."""
+        result = []
+        for s in list(self.today.values()):
+            key = _signal_key(s)
+
+            # Create copy to avoid mutating cached signals
+            annotated = s.model_copy()
+
+            was_yesterday = key in self.yesterday
+            yesterday_signal = self.yesterday.get(key)
+
+            if not was_yesterday:
+                annotated.delta_kind = "new_today"
+                annotated.phase = "entering"
+                annotated.daily_salience = s.strength * 1.30
+            elif yesterday_signal:
+                str_diff = s.strength - yesterday_signal.strength
+                threshold = 0.08
+
+                if abs(str_diff) < threshold:
+                    annotated.delta_kind = "background"
+                    annotated.phase = "background"
+                    annotated.daily_salience = s.strength * 0.55
+                elif str_diff > threshold:
+                    annotated.delta_kind = "stronger_than_yesterday"
+                    annotated.phase = "applying"
+                    annotated.daily_salience = s.strength * 1.15
+                else:
+                    annotated.delta_kind = "weaker_than_yesterday"
+                    annotated.phase = "separating"
+                    annotated.daily_salience = s.strength * 0.90
+
+                # Peak detection
+                if str_diff >= threshold and yesterday_signal.strength >= s.strength * 0.95:
+                    annotated.delta_kind = "peak_today"
+                    annotated.phase = "exact"
+                    annotated.daily_salience = s.strength * 1.35
+            else:
+                annotated.delta_kind = "background"
+                annotated.phase = "background"
+                annotated.daily_salience = s.strength * 0.55
+
+            result.append(annotated)
+
+        return result

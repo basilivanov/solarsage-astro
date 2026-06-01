@@ -70,6 +70,16 @@ def _convergence_curve(n: int) -> float:
 
 # ── Main scoring class ─────────────────────────────────────────
 
+def _base_planet_name(name: str | None) -> str:
+    """Normalize planet name: strip Transit_ prefix for velocity lookup."""
+    if not name:
+        return ""
+    n = name.upper()
+    if n.startswith("TRANSIT_"):
+        n = n.replace("TRANSIT_", "", 1)
+    return n
+
+
 class ScoringService:
 
     def score(self, signals: list[AstroSignal]) -> dict:
@@ -236,7 +246,11 @@ class ScoringService:
         slow_set = set(vel_class.get("slow", ["URANUS", "NEPTUNE", "PLUTO"]))
 
         def _daily_salience(s: AstroSignal) -> float:
-            name = (s.planet or "").upper()
+            # Use pre-computed daily_salience from DayDeltaService if available
+            if s.daily_salience is not None:
+                return s.daily_salience
+            # Fallback: velocity-weighted strength
+            name = _base_planet_name(s.planet)
             if name in fast_set: vf = float(vel_factor.get("fast", 1.0))
             elif name in medium_set: vf = float(vel_factor.get("medium", 0.7))
             elif name in slow_set: vf = float(vel_factor.get("slow", 0.45))

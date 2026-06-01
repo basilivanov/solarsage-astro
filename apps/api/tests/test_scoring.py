@@ -147,3 +147,37 @@ def test_top_signals_velocity_sorted():
     top = service._get_top_signals(signals, limit=2)
     # Moon: 0.80 × 1.0 = 0.80, Neptune: 0.95 × 0.45 = 0.43
     assert top[0].planet == "Moon", f"Moon should rank first, got {top[0].planet}"
+
+
+def test_transit_moon_uses_fast_velocity_factor():
+    """Transit_Moon must be recognized as Moon → fast class → velocity_factor 1.0."""
+    service = ScoringService()
+    signals = [
+        AstroSignal(type="aspect", planet="Transit_Moon", target_planet="Sun", aspect_type="sextile", orb=1.0, strength=0.8),
+        AstroSignal(type="aspect", planet="Transit_Neptune", target_planet="Venus", aspect_type="trine", orb=1.0, strength=0.9),
+    ]
+    top = service._get_top_signals(signals, limit=2)
+    assert top[0].planet == "Transit_Moon", f"Transit_Moon (0.8×1.0=0.8) should outrank Transit_Neptune (0.9×0.45=0.41), got {top[0].planet}"
+
+
+def test_transit_neptune_uses_slow_velocity_factor():
+    """Transit_Neptune → slow class → velocity_factor 0.45."""
+    service = ScoringService()
+    signals = [
+        AstroSignal(type="aspect", planet="Transit_Neptune", target_planet="Sun", aspect_type="trine", orb=1.0, strength=0.95),
+        AstroSignal(type="aspect", planet="Transit_Mercury", target_planet="Venus", aspect_type="sextile", orb=2.0, strength=0.70),
+    ]
+    top = service._get_top_signals(signals, limit=2)
+    # Mercury: 0.70×1.0=0.70, Neptune: 0.95×0.45=0.43
+    assert top[0].planet == "Transit_Mercury", f"Fast Mercury should outrank slow Neptune, got {top[0].planet}"
+
+
+def test_transit_prefix_is_stripped_for_velocity_lookup():
+    """_base_planet_name drops Transit_ prefix."""
+    from app.services.scoring_service import _base_planet_name
+    assert _base_planet_name("Transit_Moon") == "MOON"
+    assert _base_planet_name("Transit_Neptune") == "NEPTUNE"
+    assert _base_planet_name("Moon") == "MOON"
+    assert _base_planet_name("Sun") == "SUN"
+    assert _base_planet_name(None) == ""
+    assert _base_planet_name("") == ""
