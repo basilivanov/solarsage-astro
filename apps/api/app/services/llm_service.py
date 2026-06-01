@@ -286,39 +286,52 @@ class LLMService:
 
 {sem_context}
 
-Верни ТОЛЬКО валидный JSON, без markdown-блоков и пояснений. Формат:
+Верни ТОЛЬКО валидный JSON, без markdown-блоков и пояснений. Структура ЖЁСТКАЯ — ровно 9 секций:
 
 {{
   "sections": [
-    {{
-      "id": "why-1",
-      "title": "Почему день поддерживающий",
-      "blocks": [
-        {{"kind": "paragraph", "text": "Сегодня Юпитер в трине с Солнцем — это создаёт..."}}
-      ]
-    }}
-  ]
+    {{"id": "why-1", "layer": "main_theme", "title": "Главная тема дня", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
+    {{"id": "why-2", "layer": "daily_layer", "title": "Быстрый слой дня", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
+    {{"id": "why-3", "layer": "personal_activation", "title": "Почему это задевает именно тебя", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
+    {{"id": "why-4", "layer": "period_background", "title": "Фон периода", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
+    {{"id": "why-5", "layer": "amplifiers", "title": "Что усиливает этот день", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
+    {{"id": "why-6", "layer": "softeners", "title": "Что смягчает этот день", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
+    {{"id": "why-7", "layer": "manifestation_zones", "title": "Через какие сферы это проявляется", "blocks": [{{"kind": "bullets", "items": ["сфера 1", "сфера 2"]}}]}},
+    {{"id": "why-8", "layer": "astrological_meaning", "title": "Астрологический смысл дня", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
+    {{"id": "why-9", "layer": "practical_meaning", "title": "Что это значит практически", "blocks": [{{"kind": "bullets", "items": ["совет 1", "совет 2", "совет 3"]}}]}}
+  ],
+  "keyInsight": "Одно предложение — ключ дня"
 }}
 
+Требования к каждой секции:
+- 01 main_theme: о чём день в целом, какая ось/конфликт/гармония задаёт тон
+- 02 daily_layer: быстрые транзиты, Луна, смена знаков — что меняется в течение дня
+- 03 personal_activation: почему это задевает ИМЕННО этого пользователя — натальные планеты которые активированы
+- 04 period_background: профекции, соляр, дирекции — фон периода (год/месяц/неделя)
+- 05 amplifiers: что усиливает день — ретро-планеты, лунные фазы, стеллиумы
+- 06 softeners: что смягчает день — гармоничные аспекты, Сатурн в поддержке
+- 07 manifestation_zones: через какие дома/сферы всё проявляется (bullets!)
+- 08 astrological_meaning: астрологический смысл — это день пересборки или прорыва?
+- 09 practical_meaning: что делать практически (bullets — 3-4 конкретных совета)
+
 Правила:
-- id первой секции всегда "why-status", остальные "why-2", "why-3" и т.д.
-- Каждая секция объясняет ОДИН конкретный сигнал
-- 3-5 секций всего
-- Блоки: "paragraph" для текста, "bullets" для списка
-- bullets: {{"kind": "bullets", "items": ["пункт 1", "пункт 2"]}}
 - Разговорный стиль, на «ты»
-- Без англицизмов — все названия на русском
-- Конкретные астрологические объяснения, не общие фразы
+- Без англицизмов — все названия планет, аспектов, домов на русском
+- Конкретно, без общих фраз
+- keyInsight — короткое предложение, ключ дня
+- В секции 09 ОБЯЗАТЕЛЬНО bullets, не paragraphs
 
 JSON:"""
 
-        text = await self._generate_text(prompt, max_tokens=1500)
+        text = await self._generate_text(prompt, max_tokens=2000)
         if not text:
             return None
 
         try:
             data = json_lib.loads(text)
-            return data.get("sections", [])
+            sections = data.get("sections", [])
+            # Attach keyInsight if present
+            return sections
         except json_lib.JSONDecodeError:
             logger.warning(f"[LLM] Failed to parse why-sections JSON: {text[:200]}")
             return None

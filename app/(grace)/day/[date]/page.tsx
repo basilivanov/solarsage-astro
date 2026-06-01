@@ -45,8 +45,9 @@ function adaptPayload(api: any, selectedDate: Date): {
   const why: TodayWhySection[] = (api.whyThisHappens?.sections || []).map(
     (s: any) => ({
       id: s.id || s.title || String(Math.random()),
-      iconName: s.iconName || s.icon_name || 'telescope',
+      iconName: s.iconName || s.icon_name || s.layer || 'telescope',
       title: s.title || '',
+      layer: s.layer || null,
       paragraphs: s.blocks
         ?.filter((b: any) => b.kind === 'paragraph')
         ?.map((b: any) => b.text) || s.paragraphs || [],
@@ -56,7 +57,7 @@ function adaptPayload(api: any, selectedDate: Date): {
     })
   );
 
-  const keyInsight = api.whyThisHappens?.sections?.[0]?.title || '';
+  const keyInsight = api.whyThisHappens?.keyInsight || why[0]?.title || '';
 
   const access: AccessInfo = {
     state: (api.access?.state === 'full' || api.access?.state === 'trial') 

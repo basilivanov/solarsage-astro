@@ -70,16 +70,15 @@ def mock_llm_service():
         mock_instance.generate_notes = AsyncMock(return_value="Сегодня важно проявить гибкость и внимание к деталям.")
 
         mock_instance.generate_why_sections = AsyncMock(return_value=[
-            {
-                "id": "why-status",
-                "title": "Почему день поддерживающий",
-                "blocks": [{"kind": "paragraph", "text": "Тестовое объяснение статуса дня."}],
-            },
-            {
-                "id": "why-2",
-                "title": "Солнце в 3 доме",
-                "blocks": [{"kind": "paragraph", "text": "Тестовое объяснение сигнала."}],
-            },
+            {"id": "why-1", "layer": "main_theme", "title": "Главная тема дня", "blocks": [{"kind": "paragraph", "text": "Тестовое объяснение главной темы."}]},
+            {"id": "why-2", "layer": "daily_layer", "title": "Быстрый слой дня", "blocks": [{"kind": "paragraph", "text": "Тестовый быстрый слой."}]},
+            {"id": "why-3", "layer": "personal_activation", "title": "Почему это задевает именно тебя", "blocks": [{"kind": "paragraph", "text": "Тестовая личная активация."}]},
+            {"id": "why-4", "layer": "period_background", "title": "Фон периода", "blocks": [{"kind": "paragraph", "text": "Тестовый фон периода."}]},
+            {"id": "why-5", "layer": "amplifiers", "title": "Что усиливает этот день", "blocks": [{"kind": "paragraph", "text": "Тестовые усилители."}]},
+            {"id": "why-6", "layer": "softeners", "title": "Что смягчает этот день", "blocks": [{"kind": "paragraph", "text": "Тестовые смягчители."}]},
+            {"id": "why-7", "layer": "manifestation_zones", "title": "Через какие сферы это проявляется", "blocks": [{"kind": "bullets", "items": ["Работа", "Отношения"]}]},
+            {"id": "why-8", "layer": "astrological_meaning", "title": "Астрологический смысл дня", "blocks": [{"kind": "paragraph", "text": "Тестовый астрологический смысл."}]},
+            {"id": "why-9", "layer": "practical_meaning", "title": "Что это значит практически", "blocks": [{"kind": "bullets", "items": ["Совет 1", "Совет 2"]}]},
         ])
 
         mock_class.return_value = mock_instance
