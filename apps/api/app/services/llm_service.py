@@ -337,69 +337,86 @@ class LLMService:
 
         return "\n".join(parts)
 
-    # ── Why sections generation ─────────────────────────────────────
+    # ── Why sections generation (contexts pre-computed by SemanticService) ──
 
     async def generate_why_sections(
         self,
-        day_status: str,
-        top_signals: list,
-        sphere_scores: dict,
-        semantic_layer,
-        natal: dict | None = None,
+        contexts: list[dict],
+        semantic_layer=None,
     ) -> list[dict] | None:
-        full_context = self._build_full_context(
-            natal or {}, top_signals, sphere_scores, semantic_layer
+        """LLM writes narrative text for each pre-computed context.
+        All numbers, planets, houses are pre-computed — LLM cannot hallucinate."""
+        
+        # Build prompt with all 9 pre-filled contexts
+        context_text = "\n\n".join(
+            f"СЕКЦИЯ #{i+1}: {c['title']}\nДАННЫЕ: {c['context']}"
+            for i, c in enumerate(contexts)
         )
 
-        prompt = f"""Ты — астролог. Объясни пользователю на «ты», почему сегодняшний день именно такой.
+        prompt = f"""Ты — астролог. Напиши текст для каждой из 9 секций «Почему так у меня» на основе готовых данных.
 
-Статус дня: {day_status}
+{context_text}
 
-{full_context}
-
-Верни ТОЛЬКО валидный JSON, без markdown-блоков и пояснений. Структура ЖЁСТКАЯ — ровно 9 секций:
-
+Для каждой секции напиши narrative текст, используя ДАННЫЕ выше.
+Верни ТОЛЬКО валидный JSON (без markdown):
 
 {{
   "sections": [
-    {{"id": "why-1", "layer": "main_theme", "title": "Главная тема дня", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
-    {{"id": "why-2", "layer": "daily_layer", "title": "Быстрый слой дня", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
-    {{"id": "why-3", "layer": "personal_activation", "title": "Почему это задевает именно тебя", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
-    {{"id": "why-4", "layer": "period_background", "title": "Фон периода", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
-    {{"id": "why-5", "layer": "amplifiers", "title": "Что усиливает этот день", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
-    {{"id": "why-6", "layer": "softeners", "title": "Что смягчает этот день", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
-    {{"id": "why-7", "layer": "manifestation_zones", "title": "Через какие сферы это проявляется", "blocks": [{{"kind": "bullets", "items": ["сфера 1", "сфера 2"]}}]}},
-    {{"id": "why-8", "layer": "astrological_meaning", "title": "Астрологический смысл дня", "blocks": [{{"kind": "paragraph", "text": "..."}}]}},
-    {{"id": "why-9", "layer": "practical_meaning", "title": "Что это значит практически", "blocks": [{{"kind": "bullets", "items": ["совет 1", "совет 2", "совет 3"]}}]}}
-  ],
-  "keyInsight": "Одно предложение — ключ дня"
+    {{"id": "why-1", "text": "Солнце в 10 доме создаёт..."}},
+    {{"id": "why-2", "text": "Луна в Деве (23°) — до 17:40..."}},
+    ...
+    {{"id": "why-9", "text": "- Действуй: энергии поддерживают\\n- Заверши отложенное\\n- Общайся с близкими"}}
+  ]
 }}
 
-Требования к каждой секции:
-- 01 main_theme: о чём день в целом, какая ось/конфликт/гармония задаёт тон. НАЗОВИ доминирующую планету и точный аспект из входных данных.
-- 02 daily_layer: быстрые транзиты, Луна, смена знаков — что меняется в течение дня. УКАЖИ положения Луны и быстрых планет цифрами (градусы, время).
-- 03 personal_activation: почему это задевает ИМЕННО этого пользователя. НАЗОВИ какие натальные планеты активированы какими транзитными аспектами. УКАЖИ дома и градусы.
-- 04 period_background: профекции, соляр, дирекции — фон периода (год/месяц/неделя). Свяжи с конкретными домами и планетами из натала.
-- 05 amplifiers: что усиливает день. ПЕРЕЧИСЛИ ретро-планеты поименно, лунные фазы, стеллиумы — с названиями.
-- 06 softeners: что смягчает день. НАЗОВИ гармоничные аспекты — какие планеты в трине/секстиле, с какими орбисами.
-- 07 manifestation_zones: через какие дома/сферы всё проявляется (bullets!). УКАЖИ номера домов и их значение.
-- 08 astrological_meaning: астрологический смысл — это день пересборки или прорыва? Свяжи с конкретными конфигурациями из входных данных.
-- 09 practical_meaning: что делать практически (bullets — 3-4 конкретных совета, привязанных к астрологическим фактам дня)
-
 Правила:
+- НЕ выдумывай планеты, градусы, аспекты — используй ТОЛЬКО данные выше
 - Разговорный стиль, на «ты»
-- Без англицизмов — все названия планет, аспектов, домов на русском
-- Каждая секция ОБЯЗАНА использовать конкретные названия планет, градусов, домов из входных данных
-- Запрещены общие фразы без астрологических деталей
-- Не выдумывай планеты, аспекты и градусы — используй ТОЛЬКО те что есть во входных данных
-- Градусы всегда указывай в формате «19.9° Овна», а не «319.9°»
-- keyInsight — короткое предложение, ключ дня
-- В секции 09 ОБЯЗАТЕЛЬНО bullets, не paragraphs
+- Без англицизмов
+- Для секций с bullets (07, 09) — каждая строка с дефисом, разделение \\n
+- Для остальных секций — связный текст 1-2 предложения
+- keyInsight — одно предложение, ключ дня
 
 JSON:"""
 
         text = await self._generate_text(prompt, max_tokens=2000)
         if not text:
+            return None
+
+        # Strip markdown
+        for marker in ['```json', '```']:
+            if marker in text:
+                text = text.split(marker, 1)[1].rsplit('```', 1)[0].strip()
+                break
+
+        try:
+            data = json_lib.loads(text)
+            llm_sections = data.get("sections", [])
+
+            # Merge pre-computed metadata with LLM text
+            sections = []
+            for i, ctx in enumerate(contexts):
+                text = llm_sections[i].get("text", ctx["context"]) if i < len(llm_sections) else ctx["context"]
+                blocks = []
+                if ctx["blocks_kind"] == "bullets":
+                    items = [line.strip("- ") for line in text.split("\n") if line.strip()]
+                    if items:
+                        blocks.append({"kind": "bullets", "items": items})
+                    else:
+                        blocks.append({"kind": "paragraph", "text": text})
+                else:
+                    blocks.append({"kind": "paragraph", "text": text})
+
+                sections.append({
+                    "id": f"why-{i+1}",
+                    "layer": ctx["layer"],
+                    "title": ctx["title"],
+                    "blocks": blocks,
+                })
+
+            return sections
+        except (json_lib.JSONDecodeError, KeyError, IndexError) as e:
+            logger.warning(f"[LLM] Failed to parse why-sections JSON: {text[:200]}... error={e}")
             return None
 
         # Strip markdown code blocks (LLMs often wrap JSON in ```json ... ```)

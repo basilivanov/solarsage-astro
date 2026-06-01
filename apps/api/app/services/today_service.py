@@ -141,6 +141,16 @@ class TodayService:
             scoring_result["sphere_scores"],
         )
 
+        # W-4.3: Compute WhyThisHappens section contexts (pre-computed, no LLM)
+        why_contexts = semantic_service.build_why_contexts(
+            scoring_result["day_status"],
+            scoring_result["sphere_scores"],
+            scoring_result["top_signals"],
+            natal,
+            transits,
+            semantic_layer,
+        )
+
         # W-4.3: Cache semantic layer
         await self._cache_semantic_layer(user_id, target_date, semantic_layer)
 
@@ -165,11 +175,8 @@ class TodayService:
 
         # W-4.2: Build why-this-happens sections via LLM
         why_sections = await llm_service.generate_why_sections(
-            scoring_result["day_status"],
-            scoring_result["top_signals"],
-            scoring_result["sphere_scores"],
+            why_contexts,
             semantic_layer,
-            natal,  # Full natal chart for context
         )
 
         # W-4.2: Build top_flags from top signals
