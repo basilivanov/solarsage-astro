@@ -224,6 +224,59 @@ class TodayMeta(CamelModel):
     activation_layer_version: int | None = None  # версия activation logic
 
 
+ImportantTodayType = Literal[
+    "moon_void",
+    "retrograde",
+    "new_moon",
+    "full_moon",
+    "eclipse",
+    "active_house",
+    "station",
+    "ingress",
+    "daily_note",
+]
+
+ImportantTodaySeverity = Literal[
+    "info",
+    "soft_warning",
+    "warning",
+    "high_attention",
+]
+
+ImportantTodaySource = Literal[
+    "live_calculation",
+    "fallback",
+]
+
+
+class ImportantTodayDetails(CamelModel):
+    meaning: str | None = None
+    why_important: str | None = None
+    personal_context: str | None = None
+
+
+class ImportantTodayItem(CamelModel):
+    """Today Important block item."""
+    id: str
+    type: ImportantTodayType
+    title: str
+    subtitle: str
+    severity: ImportantTodaySeverity = "info"
+    icon_name: str | None = None
+    planet: str | None = None
+    sign: str | None = None
+    house: int | None = None
+    exact_at: str | None = None
+    starts_at: str | None = None
+    ends_at: str | None = None
+    days_remaining: int | None = None
+    orb: float | None = None
+    degree: float | None = None
+    priority: int = 5
+    details: ImportantTodayDetails | None = None
+    source: ImportantTodaySource = "live_calculation"
+
+
 class TodayPayload(CamelModel):
     meta: TodayMeta
     date: str
@@ -251,26 +304,6 @@ class TodayPayload(CamelModel):
     # W-4.0: period context
     period_context: PeriodContext | None = None
 
-    # W-PHASE-1: today important items
-    important_today: list["ImportantTodayItem"] = []
+    # W-PHASE-2: today important items
+    important_today: list[ImportantTodayItem] = []
 # END_BLOCK: TODAY_PAYLOAD
-
-
-class ImportantTodayItem(CamelModel):
-    """Today Important block item."""
-    id: str
-    type: str  # moon_void, retrograde, new_moon, full_moon, eclipse, active_house, station, ingress
-    title: str
-    subtitle: str
-    severity: str = "info"  # info, soft_warning, warning, high_attention
-    planet: str | None = None
-    sign: str | None = None
-    house: int | None = None
-    exact_at: str | None = None
-    starts_at: str | None = None
-    ends_at: str | None = None
-    days_remaining: int | None = None
-    orb: float | None = None
-    degree: float | None = None
-    priority: int = 5
-    source: str = "live_calculation"

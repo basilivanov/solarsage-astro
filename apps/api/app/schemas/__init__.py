@@ -67,6 +67,10 @@ from .today import (
     WhyThisHappens,
     YesterdayEcho,
     YesterdayTransition,
+    ImportantTodayItem,
+    ImportantTodayDetails,
+    ImportantTodayType,
+    ImportantTodaySeverity,
 )
 
 __all__ = [
@@ -103,22 +107,9 @@ __all__ = [
     "WhyThisHappens",
     "YesterdayEcho",
     "YesterdayTransition",
-    # calendar
-    "AllowedRange",
-    "CalendarDay",
-    "CalendarMeta",
-    "CalendarPayload",
-    # natal
-    "BulletsBlock",
-    "HighlightItem",
-    "HighlightsBlock",
-    "NatalBlock",
-    "NatalMeta",
-    "NatalPayload",
-    "NatalSection",
-    "ParagraphBlock",
-    "Person",
-    "PersonBirth",
-    "QuoteBlock",
+    "ImportantTodayItem",
+    "ImportantTodayDetails",
+    "ImportantTodayType",
+    "ImportantTodaySeverity",
 ]
 # END_BLOCK: SCHEMAS_REEXPORTS

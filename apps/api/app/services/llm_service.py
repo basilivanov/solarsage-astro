@@ -436,17 +436,69 @@ JSON:"""
             logger.warning(f"[LLM] Failed to parse why-sections JSON: {text[:200]}... error={e}")
             return None
 
-        # Strip markdown code blocks (LLMs often wrap JSON in ```json ... ```)
-        for marker in ['{\n', '{', '```json', '```']:
-            text = text.strip()
+    # ── Important today details ─────────────────────────────────────
+
+    async def generate_important_today_details(
+        self,
+        items: list[dict],
+        context: dict,
+    ) -> list[dict] | None:
+        """LLM fills meaning/why_important/personal_context for each item.
+        Events, times, planets, houses are already set by code — LLM only adds text."""
+
+        items_json = json_lib.dumps(items, ensure_ascii=False, indent=2)
+        context_json = json_lib.dumps(context, ensure_ascii=False, indent=2)
+
+        prompt = f"""Ты пишешь раскрытие для блока «Сегодня важно учесть».
+
+События уже рассчитаны кодом. Нельзя добавлять новые события, менять время, планеты, дома, орбы или количество дней.
+
+Для каждого item заполни:
+- meaning: что это значит астрологически;
+- why_important: почему это важно для действий сегодня;
+- personal_context: как это проявляется у пользователя через дом/сферу/главные сигналы.
+
+Пиши коротко: 1–2 предложения на каждое поле.
+Не используй англицизмы.
+Не используй служебные имена Transit_ / Natal_.
+Верни ТОЛЬКО валидный JSON (без markdown):
+
+{{
+  "items": [
+    {{
+      "id": "retro_mercury",
+      "details": {{
+        "meaning": "...",
+        "why_important": "...",
+        "personal_context": "..."
+      }}
+    }}
+  ]
+}}
+
+События:
+{items_json}
+
+Контекст дня:
+{context_json}
+
+JSON:"""
+
+        text = await self._generate_text(prompt, max_tokens=800)
+        if not text:
+            return None
+
+        # Strip markdown code blocks
         for marker in ['```json', '```']:
             if marker in text:
-                text = text.split(marker, 1)[1].rsplit('```', 1)[0].strip()
+                parts = text.split(marker, 1)
+                if len(parts) > 1:
+                    text = parts[1].rsplit('```', 1)[0].strip()
                 break
 
         try:
             data = json_lib.loads(text)
-            return data.get("sections", [])
+            return data.get("items", [])
         except json_lib.JSONDecodeError as e:
-            logger.warning(f"[LLM] Failed to parse why-sections JSON: {text[:300]}... error={e}")
+            logger.warning(f"[LLM] Failed to parse important-today details JSON: {text[:200]}... error={e}")
             return None
