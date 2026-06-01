@@ -23,7 +23,7 @@ cd "$ROOT/apps/api" && source .venv/bin/activate && python -m pytest tests/ -q -
 PYTEST_PID=$!
 
 # 3. Playwright (E2E) — параллельный внутри (fullyParallel + workers)
-cd "$ROOT" && E2E_BASE_URL=http://localhost:3000 npx playwright test --reporter=line > "$RESULTS/e2e.log" 2>&1 &
+cd "$ROOT" && E2E_BASE_URL=http://localhost:3002 npx playwright test --reporter=line > "$RESULTS/e2e.log" 2>&1 &
 E2E_PID=$!
 
 # Ждём всех

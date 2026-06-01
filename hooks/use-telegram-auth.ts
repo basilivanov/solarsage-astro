@@ -117,11 +117,14 @@ export function useTelegramAuth() {
         logger.info('[TGAuth] Auth SUCCESS');
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Auto-claim referral if opened via startapp link
+        // Auto-claim referral if opened via startapp link (once per session)
+        const claimKey = '__astro_referral_claimed';
         try {
           const startParam = tg.initDataUnsafe?.start_param
           const ownId = tg.initDataUnsafe?.user?.id
-          if (startParam && String(startParam) !== String(ownId)) {
+          const alreadyClaimed = (window as any)[claimKey]
+
+          if (startParam && String(startParam) !== String(ownId) && !alreadyClaimed) {
             logger.info('[TGAuth] Auto-claiming referral', { extra: { code: startParam } })
             const claimRes = await fetch('/api/referral/claim', {
               method: 'POST',
@@ -129,16 +132,19 @@ export function useTelegramAuth() {
               credentials: 'include',
               body: JSON.stringify({ referrer_code: startParam }),
             })
+            ;(window as any)[claimKey] = true
             if (!claimRes.ok) {
               const err = await claimRes.json().catch(() => ({}))
               logger.warn(`[TGAuth] Referral claim failed: HTTP ${claimRes.status} code=${err.detail?.code || '?'}`)
             } else {
               logger.info('[TGAuth] Referral claimed! +14 days')
             }
-          } else if (startParam) {
+          } else if (startParam && String(startParam) === String(ownId)) {
             logger.info('[TGAuth] Skipping self-referral')
           }
-        } catch {}
+        } catch (e) {
+          logger.error('[TGAuth] Referral claim error', { extra: { error: String(e) } })
+        }
 
         clearTimeout(timeoutId);
         setState({ isLoading: false, isAuthenticated: true, error: null });

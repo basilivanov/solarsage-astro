@@ -18,12 +18,10 @@ export type HoraryMeta = {
 }
 
 export type ReferralMeta = {
-  /** Сколько друзей уже пришло по приглашению. */
   count: number
-  /** Сколько бонусных дней доступа уже начислено за рефералов. */
   bonusDays: number
-  /** Сколько дней доступа получат пригласивший и приглашённый. */
   rewardDays: number
+  inviteUrl: string
 }
 
 export type ProfileMeta = {

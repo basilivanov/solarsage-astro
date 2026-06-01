@@ -50,6 +50,7 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
     },
     referral: {
       count: referralCount,
+      bonusDays: referralCount * 14,
       inviteUrl: referralUrl,
       rewardDays: 14,
     },

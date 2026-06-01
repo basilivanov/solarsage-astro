@@ -123,10 +123,24 @@ def build_full_url(initdata: str, base_url: str = "") -> str:
 
 
 if __name__ == "__main__":
+    import sys
+    user_id = 833478509
+    username = "testuser"
+    first_name = "Test"
+    
+    for arg in sys.argv[1:]:
+        if arg.startswith("--user-id="):
+            user_id = int(arg.split("=")[1])
+        elif arg.startswith("--username="):
+            username = arg.split("=")[1]
+        elif arg.startswith("--first-name="):
+            first_name = arg.split("=")[1]
+
     try:
-        initdata = generate_initdata()
+        initdata = generate_initdata(user_id=user_id, username=username, first_name=first_name)
         full_url = build_full_url(initdata)
         print(f"# Generated at UNIX timestamp {int(time.time())}")
+        print(f"# user_id={user_id}, username={username}")
         print(f"# Validity window: ~24 hours (86400s by default)")
         print()
         print(initdata)
@@ -134,5 +148,5 @@ if __name__ == "__main__":
         print("# Full URL fragment (append to your frontend URL):")
         print(full_url)
     except Exception as exc:
-        print(f"ERROR: {exc}", file=__import__("sys").stderr)
+        print(f"ERROR: {exc}", file=sys.stderr)
         raise SystemExit(1)
