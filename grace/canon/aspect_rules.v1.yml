@@ -63,3 +63,15 @@ technique_families:
 dominance_cap:
   threshold: 0.65
   description: "Если одна сфера набирает > 65% от sum_all_salience, её salience обрезается до 65%"
+
+planet_velocity_class:
+  description: "Классы скорости планет для velocity-aware ранжирования top_signals"
+  fast: [MOON, SUN, MERCURY, VENUS]
+  medium: [MARS, JUPITER, SATURN]
+  slow: [URANUS, NEPTUNE, PLUTO]
+
+velocity_factor:
+  description: "Множитель daily_salience для каждого класса. Не трогает strength в AstroSignal."
+  fast: 1.0
+  medium: 0.70
+  slow: 0.45

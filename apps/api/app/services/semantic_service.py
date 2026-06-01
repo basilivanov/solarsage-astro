@@ -131,11 +131,50 @@ class SemanticService:
                 main_parts.append(f"Ось домов: {house_nums[0]}-{house_nums[-1]}.")
         contexts.append({"layer": "main_theme", "title": "Главная тема дня", "context": " ".join(main_parts), "blocks_kind": "paragraph"})
 
-        # 02 daily_layer
+        # 02 daily_layer — expanded lunar context
         daily_parts = []
         moon_transit = next((t for t in transit_planets if t.get("name") == "Moon"), None)
         if moon_transit:
-            daily_parts.append(f"Луна: {moon_transit.get('sign', '?')} ({moon_transit.get('longitude', 0) % 30:.1f}°).")
+            moon_sign = moon_transit.get('sign', '?')
+            moon_lon = moon_transit.get('longitude', 0)
+            # Find which natal house Moon is transiting through
+            houses_sorted = sorted(natal.get("houses", []), key=lambda h: h.get("cusp", 0))
+            moon_house = None
+            for i, h in enumerate(houses_sorted):
+                next_cusp = houses_sorted[(i+1) % len(houses_sorted)].get("cusp", 360)
+                if h.get("cusp", 0) <= moon_lon < next_cusp:
+                    moon_house = h.get("number", "?")
+                    break
+            if moon_house is None and houses_sorted:
+                moon_house = houses_sorted[0].get("number", "?")
+
+            daily_parts.append(
+                f"Транзитная Луна в {moon_sign} проходит через твой {moon_house} дом."
+            )
+
+            # Moon aspects to natal planets (from top_signals)
+            moon_aspects = [
+                s for s in top_signals
+                if s.planet and "Moon" in s.planet and s.type == "aspect"
+            ]
+            for s in moon_aspects[:3]:
+                np = natal_planet(s.target_planet or "")
+                if np:
+                    n_sign = np.get('sign', '?')
+                    n_lon = np.get('longitude', 0)
+                    nh = None
+                    for i, h in enumerate(houses_sorted):
+                        next_cusp = houses_sorted[(i+1) % len(houses_sorted)].get("cusp", 360)
+                        if h.get("cusp", 0) <= n_lon < next_cusp:
+                            nh = h.get("number", "?")
+                            break
+                    nh_str = f", {nh} дом" if nh else ""
+                    daily_parts.append(
+                        f"Луна в {_a(s.aspect_type)} с твоим натальным "
+                        f"{_p(s.target_planet or '')} в {n_sign}{nh_str} "
+                        f"(орб {s.orb:.1f}°, сила {s.strength:.2f})."
+                    )
+
         contexts.append({"layer": "daily_layer", "title": "Быстрый слой дня", "context": " ".join(daily_parts) or "Данные по быстрым транзитам.", "blocks_kind": "paragraph"})
 
         # 03 personal_activation

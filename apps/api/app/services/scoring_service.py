@@ -85,21 +85,43 @@ class ScoringService:
         }
 
     def _compute_convergence(self, signals: list[AstroSignal]) -> dict:
-        by_planet: dict[str, int] = {}
-        by_house: dict[str, int] = {}
+        """Считает convergence по уникальным technique families (не raw count).
+        transit_to_natal и planet_in_house — одна семья 'transit'.
+        Когда будет profection/lunar — добавятся отдельные семьи."""
+        tech_families = _ASPECTS.get("technique_families", {})
+        by_planet: dict[str, set[str]] = {}
+        by_house: dict[str, set[str]] = {}
+
+        def _family(s: AstroSignal) -> str:
+            """Map signal type to family name."""
+            # Check if signal has explicit technique (future-proof)
+            tech = getattr(s, "technique", None)
+            if tech:
+                for fam, members in tech_families.items():
+                    if tech in members:
+                        return fam
+                return tech
+            # Derive from signal type
+            if s.type in ("aspect", "planet_in_house", "planet_in_sign"):
+                return "transit"
+            return s.type or "unknown"
 
         for s in signals:
+            fam = _family(s)
             if s.type == "aspect" and s.target_planet:
                 p = s.target_planet.upper()
-                by_planet[p] = by_planet.get(p, 0) + 1
+                by_planet.setdefault(p, set()).add(fam)
             if s.type == "planet_in_house" and s.house:
                 h = str(s.house)
-                by_house[h] = by_house.get(h, 0) + 1
+                by_house.setdefault(h, set()).add(fam)
                 if s.planet:
                     p = s.planet.upper()
-                    by_planet[p] = by_planet.get(p, 0) + 1
+                    by_planet.setdefault(p, set()).add(fam)
 
-        return {"by_planet": by_planet, "by_house": by_house}
+        return {
+            "by_planet": {p: len(fams) for p, fams in by_planet.items()},
+            "by_house": {h: len(fams) for h, fams in by_house.items()},
+        }
 
     def _apply_convergence(self, sphere_scores: dict, convergence: dict) -> dict:
         sphere_list = _SPHERES.get("spheres", {})
@@ -202,4 +224,32 @@ class ScoringService:
         return "steady"
 
     def _get_top_signals(self, signals: list[AstroSignal], limit: int = 5) -> list[AstroSignal]:
-        return sorted(signals, key=lambda s: s.strength, reverse=True)[:limit]
+        """Top N signals by velocity-weighted daily salience.
+        Fast planets (Moon, Sun, Mercury, Venus) get full weight.
+        Slow planets (Uranus, Neptune, Pluto) get 0.45× weight.
+        Guaranteed Moon slot: if no lunar signal in top, replace last with best Moon."""
+
+        vel_class = _ASPECTS.get("planet_velocity_class", {})
+        vel_factor = _ASPECTS.get("velocity_factor", {"fast": 1.0, "medium": 0.7, "slow": 0.45})
+        fast_set = set(vel_class.get("fast", ["MOON", "SUN", "MERCURY", "VENUS"]))
+        medium_set = set(vel_class.get("medium", ["MARS", "JUPITER", "SATURN"]))
+        slow_set = set(vel_class.get("slow", ["URANUS", "NEPTUNE", "PLUTO"]))
+
+        def _daily_salience(s: AstroSignal) -> float:
+            name = (s.planet or "").upper()
+            if name in fast_set: vf = float(vel_factor.get("fast", 1.0))
+            elif name in medium_set: vf = float(vel_factor.get("medium", 0.7))
+            elif name in slow_set: vf = float(vel_factor.get("slow", 0.45))
+            else: vf = 0.5
+            return s.strength * vf
+
+        ranked = sorted(signals, key=_daily_salience, reverse=True)[:limit]
+
+        # Guaranteed Moon slot
+        has_moon = any(s.planet and "Moon" in s.planet for s in ranked)
+        if not has_moon:
+            moon_signals = [s for s in signals if s.planet and "Moon" in s.planet]
+            if moon_signals:
+                ranked[-1] = max(moon_signals, key=lambda s: s.strength)
+
+        return ranked
