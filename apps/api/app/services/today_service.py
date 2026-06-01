@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from datetime import UTC, date as Date, datetime, timedelta
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,11 +62,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.access import ContentAccessState
 from app.schemas.today import TodayPayload, TodayMeta, TopFlag
 from app.clients.solarsage_client import get_solarsage_client
+from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
 from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
-from app.db.models import UserProfile, TodayPayloadCache, SemanticLayerCache
+from app.services.day_delta_service import DayDeltaService
+
+logger = logging.getLogger(__name__)
 
 
 # START_BLOCK: REAL_CALCULATION
@@ -135,6 +139,18 @@ class TodayService:
         # W-4.1: Normalize raw data into AstroSignal[]
         normalization_service = NormalizationService()
         signals = normalization_service.normalize(natal, transits)
+
+        # W-PHASE-1: Compute DayDelta — compare yesterday vs today signals
+        yesterday_signals = await self._get_yesterday_signals(user_id, target_date, profile, client, natal)
+        if yesterday_signals:
+            delta_service = DayDeltaService(yesterday_signals, signals)
+            signals = delta_service.compute_deltas()
+            new_count = sum(1 for s in signals if s.delta_kind == "new_today")
+            peak_count = sum(1 for s in signals if s.delta_kind == "peak_today")
+            bg_count = sum(1 for s in signals if s.delta_kind == "background")
+            logger.info(f"[DayDelta] Computed: {len(signals)} signals, {new_count} new_today, {peak_count} peak, {bg_count} background")
+        else:
+            logger.info("[DayDelta] No yesterday data — skipping delta computation")
 
         # W-4.2: Score signals and calculate day_status
         scoring_service = ScoringService()
@@ -390,6 +406,23 @@ class TodayService:
             actions=None,
         )
 # END_BLOCK: REAL_CALCULATION
+
+    async def _get_yesterday_signals(self, user_id, today: Date, profile, client, natal: dict) -> list | None:
+        """Get yesterday's normalized signals for DayDelta comparison.
+        Returns None if yesterday's data can't be computed."""
+        yesterday = today - timedelta(days=1)
+        try:
+            y_transits = await client.get_transits(
+                target_date=yesterday.isoformat(),
+                target_time="12:00",
+                target_tz=profile.birth_tz or "UTC",
+            )
+            normalization_service = NormalizationService()
+            y_signals = normalization_service.normalize(natal=natal, transits=y_transits)
+            return y_signals
+        except Exception as e:
+            logger.info(f"[DayDelta] Could not get yesterday signals: {e}")
+            return None
 
     async def _prefetch_week(self, user_id, today: Date) -> None:
         """Prefetch 7 days of payloads in background. W-5.2.
