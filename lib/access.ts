@@ -18,10 +18,15 @@ import type { AccessInfo } from "@/lib/contracts/access"
 
 /** Доступен ли конкретный день внутри текущего окна доступа. */
 export function isDayAccessible(date: Date, info: AccessInfo): boolean {
-  if (!info.hasAccess || !info.accessStart || !info.accessEnd) return false
-  const t = stripTime(date).getTime()
-  return (
-    t >= stripTime(info.accessStart).getTime() &&
-    t <= stripTime(info.accessEnd).getTime()
-  )
+  if (!info.hasAccess) return false
+  // If access window is set, check boundaries
+  if (info.accessStart && info.accessEnd) {
+    const t = stripTime(date).getTime()
+    return (
+      t >= stripTime(info.accessStart).getTime() &&
+      t <= stripTime(info.accessEnd).getTime()
+    )
+  }
+  // No window = unlimited access
+  return true
 }

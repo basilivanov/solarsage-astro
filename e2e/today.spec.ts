@@ -43,7 +43,10 @@ test.describe('Today Screen - Real Auth', () => {
     const todayScreen = page.getByTestId('today-screen');
     if (await todayScreen.isVisible({ timeout: 3000 }).catch(() => false)) {
       await expect(page.getByTestId('today-headline')).toBeVisible({ timeout: 5000 });
-      console.log('Today screen rendered successfully');
+      // Paywall should NOT be visible for user with full access
+      const paywall = page.locator('text=/открыть доступ|подписки/i');
+      await expect(paywall).not.toBeVisible({ timeout: 3000 });
+      console.log('Today screen rendered — no paywall');
     }
   });
 

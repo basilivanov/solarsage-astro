@@ -43,17 +43,17 @@ describe('isDayAccessible', () => {
     ).toBe(false)
   })
 
-  it('returns false when accessStart is null', () => {
+  it('returns true when accessStart is null but hasAccess=true', () => {
     expect(
-      isDayAccessible(new Date(2025, 5, 3), makeInfo({ accessStart: null }))
-    ).toBe(false)
-  })
+      isDayAccessible(new Date(2025, 5, 3), makeInfo({ accessStart: null, accessEnd: null, hasAccess: true }))
+    ).toBe(true)
+  });
 
-  it('returns false when accessEnd is null', () => {
+  it('returns false when accessEnd is null and hasAccess is false', () => {
     expect(
-      isDayAccessible(new Date(2025, 5, 3), makeInfo({ accessEnd: null }))
+      isDayAccessible(new Date(2025, 5, 3), makeInfo({ accessEnd: null, hasAccess: false }))
     ).toBe(false)
-  })
+  });
 
   it('returns false for "none" state with no access', () => {
     expect(

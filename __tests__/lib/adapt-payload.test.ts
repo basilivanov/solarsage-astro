@@ -1,0 +1,113 @@
+// AI_HEADER
+// module: M-TEST-ADAPT-PAYLOAD
+// purpose: Unit tests for adaptPayload — verifies API data → component props mapping
+
+import { describe, it, expect } from 'vitest';
+
+// Inline adaptPayload for testing (copied from page.tsx)
+import type { AccessInfo } from '../../lib/access';
+
+function adaptPayload(api: any, selectedDate: Date): { payload: any; access: AccessInfo } {
+  const notes: any[] = api.notes
+    ? [{ id: 'daily-note', iconName: 'compass', title: 'Заметка дня', description: api.notes, hint: { meaning: api.notes, whyImportant: '', howForMe: '' } }]
+    : [];
+
+  const reading = api.reading || { paragraphs: [] };
+
+  const why: any[] = (api.whyThisHappens?.sections || []).map(
+    (s: any) => ({
+      id: s.title || String(Math.random()),
+      iconName: 'telescope',
+      title: s.title || '',
+      paragraphs: s.blocks?.filter((b: any) => b.kind === 'paragraph')?.map((b: any) => b.text) || [],
+      bullets: s.blocks?.filter((b: any) => b.kind === 'bullets')?.flatMap((b: any) => b.items) || [],
+    })
+  );
+
+  const keyInsight = api.whyThisHappens?.sections?.[0]?.title || '';
+
+  const access: AccessInfo = {
+    state: (api.access?.state === 'full' || api.access?.state === 'trial') 
+      ? 'trial' 
+      : api.access?.state === 'locked' 
+        ? 'none' 
+        : (api.access?.state === 'preview' ? 'expired' : 'none') as AccessInfo['state'],
+    hasAccess: api.access?.state === 'full' || api.access?.state === 'trial',
+    accessStart: null,
+    accessEnd: null,
+    daysLeft: api.access?.referralDaysLeft ?? api.access?.daysLeft ?? 0,
+  };
+
+  return {
+    payload: { date: api.date || selectedDate.toISOString().split('T')[0], notes, reading, why, keyInsight },
+    access,
+  };
+}
+
+import { isDayAccessible } from '../../lib/access';
+import { TODAY } from '../../lib/today';
+
+describe('adaptPayload', () => {
+  const baseApi = {
+    date: '2026-06-01',
+    headline: 'Test day',
+    notes: null,
+    reading: { paragraphs: ['Test paragraph'] },
+    whyThisHappens: { sections: [] },
+  };
+
+  it('full access → hasAccess=true, isDayAccessible=true', () => {
+    const api = { ...baseApi, access: { state: 'full', referralDaysLeft: 13 } };
+    const { access } = adaptPayload(api, TODAY);
+
+    expect(access.hasAccess).toBe(true);
+    expect(access.state).toBe('trial');
+    expect(isDayAccessible(TODAY, access)).toBe(true);
+  });
+
+  it('trial access → hasAccess=true', () => {
+    const api = { ...baseApi, access: { state: 'trial', referralDaysLeft: 5 } };
+    const { access } = adaptPayload(api, TODAY);
+
+    expect(access.hasAccess).toBe(true);
+    expect(access.daysLeft).toBe(5);
+    expect(isDayAccessible(TODAY, access)).toBe(true);
+  });
+
+  it('preview → hasAccess=false, isDayAccessible=false', () => {
+    const api = { ...baseApi, access: { state: 'preview' } };
+    const { access } = adaptPayload(api, TODAY);
+
+    expect(access.hasAccess).toBe(false);
+    expect(isDayAccessible(TODAY, access)).toBe(false);
+  });
+
+  it('locked → hasAccess=false', () => {
+    const api = { ...baseApi, access: { state: 'locked' } };
+    const { access } = adaptPayload(api, TODAY);
+
+    expect(access.hasAccess).toBe(false);
+    expect(access.state).toBe('none');
+  });
+
+  it('missing access → hasAccess=false', () => {
+    const api = { ...baseApi };
+    const { access } = adaptPayload(api, TODAY);
+
+    expect(access.hasAccess).toBe(false);
+  });
+
+  it('preserves referralDaysLeft', () => {
+    const api = { ...baseApi, access: { state: 'full', referralDaysLeft: 7 } };
+    const { access } = adaptPayload(api, TODAY);
+
+    expect(access.daysLeft).toBe(7);
+  });
+
+  it('falls back to daysLeft', () => {
+    const api = { ...baseApi, access: { state: 'full', daysLeft: 3 } };
+    const { access } = adaptPayload(api, TODAY);
+
+    expect(access.daysLeft).toBe(3);
+  });
+});

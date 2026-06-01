@@ -48,11 +48,15 @@ function adaptPayload(api: any, selectedDate: Date): {
   const keyInsight = api.whyThisHappens?.sections?.[0]?.title || '';
 
   const access: AccessInfo = {
-    state: api.access?.state || 'preview',
-    daysLeft: api.access?.referralDaysLeft ?? null,
-    referralDaysLeft: api.access?.referralDaysLeft ?? null,
-    subscriptionActive: api.access?.subscriptionActive ?? null,
-    accessUntil: api.access?.accessUntil ?? null,
+    state: (api.access?.state === 'full' || api.access?.state === 'trial') 
+      ? 'trial' 
+      : api.access?.state === 'locked' 
+        ? 'none' 
+        : (api.access?.state === 'preview' ? 'expired' : 'none') as AccessInfo['state'],
+    hasAccess: api.access?.state === 'full' || api.access?.state === 'trial',
+    accessStart: null,
+    accessEnd: null,
+    daysLeft: api.access?.referralDaysLeft ?? api.access?.daysLeft ?? 0,
   };
 
   return {
