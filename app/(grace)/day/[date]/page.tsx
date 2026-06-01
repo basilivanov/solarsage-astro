@@ -28,7 +28,17 @@ function adaptPayload(api: any, selectedDate: Date): {
           howForMe: '',
         },
       }]
-    : [];
+    : [{
+        id: 'no-data',
+        iconName: 'compass',
+        title: 'Данные временно недоступны',
+        description: 'Пожалуйста, попробуйте позже.',
+        hint: {
+          meaning: 'Данные временно недоступны',
+          whyImportant: '',
+          howForMe: '',
+        },
+      }];
 
   const reading = api.reading || { paragraphs: [] };
 

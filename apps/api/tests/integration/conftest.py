@@ -60,13 +60,26 @@ def mock_llm_service():
     with patch("app.services.today_service.LLMService") as mock_class:
         mock_instance = MagicMock()
 
-        # Mock generate_headline
         mock_instance.generate_headline = AsyncMock(return_value="Test Headline")
 
-        # Mock generate_reading
         mock_instance.generate_reading = AsyncMock(return_value=[
             "Test reading paragraph 1.",
             "Test reading paragraph 2.",
+        ])
+
+        mock_instance.generate_notes = AsyncMock(return_value="Сегодня важно проявить гибкость и внимание к деталям.")
+
+        mock_instance.generate_why_sections = AsyncMock(return_value=[
+            {
+                "id": "why-status",
+                "title": "Почему день поддерживающий",
+                "blocks": [{"kind": "paragraph", "text": "Тестовое объяснение статуса дня."}],
+            },
+            {
+                "id": "why-2",
+                "title": "Солнце в 3 доме",
+                "blocks": [{"kind": "paragraph", "text": "Тестовое объяснение сигнала."}],
+            },
         ])
 
         mock_class.return_value = mock_instance

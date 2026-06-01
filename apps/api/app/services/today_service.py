@@ -156,18 +156,18 @@ class TodayService:
             scoring_result["sphere_scores"],
         )
 
-        # W-4.2: Build day notes from scoring data
-        notes_text = self._build_notes(
+        # W-4.2: Build day notes via LLM
+        notes_text = await llm_service.generate_notes(
             scoring_result["day_status"],
-            scoring_result["top_signals"],
             scoring_result["sphere_scores"],
             semantic_layer,
         )
 
-        # W-4.2: Build why-this-happens sections
-        why_sections = self._build_why_sections(
+        # W-4.2: Build why-this-happens sections via LLM
+        why_sections = await llm_service.generate_why_sections(
             scoring_result["day_status"],
             scoring_result["top_signals"],
+            scoring_result["sphere_scores"],
             semantic_layer,
         )
 
@@ -193,6 +193,20 @@ class TodayService:
         # W-4.2: Add scoring layer
         # W-5.1: Add LLM-generated text
         # W-5.2: meta.cached = False (fresh generation)
+
+        # Fallback for LLM failures — show placeholder text so tests catch it
+        if not headline:
+            headline = "Ваш персональный разбор дня"
+        if not reading_paragraphs:
+            reading_paragraphs = ["Данные временно недоступны. Пожалуйста, попробуйте позже."]
+        if not notes_text:
+            notes_text = "Данные временно недоступны"
+        if not why_sections:
+            why_sections = [{
+                "id": "why-fallback",
+                "title": "Данные временно недоступны",
+                "blocks": [{"kind": "paragraph", "text": "Пожалуйста, попробуйте позже."}],
+            }]
 
         payload = TodayPayload(
             meta=TodayMeta(
@@ -234,121 +248,6 @@ class TodayService:
         await self._cache_payload(user_id, target_date, payload)
 
         return payload
-
-    # ── Content builders ──────────────────────────────────────────────
-
-    def _build_notes(
-        self,
-        day_status: str,
-        top_signals: list,
-        sphere_scores: dict,
-        semantic_layer: dict,
-    ) -> str:
-        """Build day notes text from scoring data. No LLM — pure logic."""
-        status_notes = {
-            "supportive": "Сегодня энергии планет складываются благоприятно. "
-                          "Это хороший день для начинаний, общения и принятия решений. "
-                          "Поддержка ощущается во всех сферах — от личных отношений до карьеры. "
-                          "Используйте этот поток для важных шагов.",
-            "tense": "День с высоким напряжением. Лучше избегать конфликтов и серьёзных "
-                     "решений. Сосредоточьтесь на рутине, завершении начатого. "
-                     "Эмоции могут зашкаливать — дайте себе паузу перед реакцией.",
-            "steady": "Нейтральный день без резких перепадов. Хорошо подходит "
-                      "для плановой работы, анализа и постепенного движения вперёд. "
-                      "Ничего не форсируйте — день сам всё расставит по местам.",
-        }
-        base = status_notes.get(day_status, status_notes["steady"])
-
-        # Add sphere highlights
-        if sphere_scores:
-            top_sphere = max(sphere_scores.items(), key=lambda x: x[1])
-            sphere_names = {
-                "personal": "личной жизни",
-                "relationships": "отношениях",
-                "career": "карьере",
-                "finance": "финансах",
-                "health": "здоровье",
-                "creativity": "творчестве",
-                "spirituality": "духовном развитии",
-            }
-            sphere_ru = sphere_names.get(top_sphere[0], top_sphere[0])
-            base += f" Наибольшее влияние сегодня ощущается в {sphere_ru}."
-
-        return base
-
-    def _build_why_sections(
-        self,
-        day_status: str,
-        top_signals: list,
-        semantic_layer: dict,
-    ) -> list[dict]:
-        """Build why-this-happens sections from signals. One section per top signal.
-        Returns dicts in WhySection schema format (converted by TodayPayload model)."""
-        sections = []
-        seen_titles = set()
-
-        for i, signal in enumerate(top_signals[:4]):
-            if signal.type == "aspect":
-                title = f"Аспект {signal.planet}–{signal.target_planet}"
-                text = (
-                    f"{signal.planet} образует аспект с {signal.target_planet} — "
-                    f"это влияет на то, как вы взаимодействуете с окружающими и "
-                    f"принимаете решения. Орбис {signal.orb:.1f}°, сила {signal.strength:.2f}."
-                )
-            elif signal.type == "planet_in_house":
-                title = f"{signal.planet} в {signal.house} доме"
-                text = (
-                    f"Транзитный {signal.planet} находится в вашем {signal.house} доме. "
-                    f"Это активирует темы, связанные с этой сферой жизни. "
-                    f"Сила сигнала: {signal.strength:.2f}."
-                )
-            else:
-                continue
-
-            if title in seen_titles:
-                continue
-            seen_titles.add(title)
-
-            sections.append({
-                "id": f"why-{i+1}",
-                "title": title,
-                "blocks": [
-                    {"kind": "paragraph", "text": text},
-                ],
-            })
-
-        # Day status summary
-        status_titles = {
-            "supportive": "Почему день поддерживающий",
-            "tense": "Почему день напряжённый",
-            "steady": "Почему день нейтральный",
-        }
-        status_bodies = {
-            "supportive": (
-                "Большинство планет сегодня в гармоничных аспектах друг с другом, "
-                "что создаёт ощущение потока и лёгкости. Нет серьёзных конфликтующих "
-                "транзитов, которые могли бы нарушить равновесие."
-            ),
-            "tense": (
-                "Сегодняшняя конфигурация планет создаёт напряжение в нескольких "
-                "сферах одновременно. Квадратуры и оппозиции между планетами "
-                "могут вызывать внутренний конфликт и внешние препятствия."
-            ),
-            "steady": (
-                "Планетарная картина сегодня не имеет ярко выраженных акцентов. "
-                "Нет ни сильной поддержки, ни серьёзных препятствий — "
-                "нейтральный фон для обычных дел."
-            ),
-        }
-        sections.insert(0, {
-            "id": "why-status",
-            "title": status_titles.get(day_status, status_titles["steady"]),
-            "blocks": [
-                {"kind": "paragraph", "text": status_bodies.get(day_status, status_bodies["steady"])},
-            ],
-        })
-
-        return sections
 
     async def _get_cached_payload(self, user_id, target_date: Date) -> TodayPayload | None:
         """Get cached payload if exists. W-5.2."""

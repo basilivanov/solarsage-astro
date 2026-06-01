@@ -119,7 +119,7 @@ async def test_generate_headline(sample_signals):
         call_args = mock_client.post.call_args
         assert "openrouter.ai" in call_args.args[0]
         assert call_args.kwargs["json"]["model"] == "openai/gpt-4o-mini"
-        assert call_args.kwargs["json"]["max_tokens"] == 100
+        assert call_args.kwargs["json"]["max_tokens"] == 120
         assert len(call_args.kwargs["json"]["messages"]) == 1
         assert call_args.kwargs["json"]["messages"][0]["role"] == "user"
         assert "supportive" in call_args.kwargs["json"]["messages"][0]["content"]
@@ -177,7 +177,7 @@ async def test_generate_reading(sample_signals):
         assert len(call_args.kwargs["json"]["messages"]) == 1
         assert call_args.kwargs["json"]["messages"][0]["role"] == "user"
         assert "supportive" in call_args.kwargs["json"]["messages"][0]["content"]
-        assert "career" in call_args.kwargs["json"]["messages"][0]["content"]
+        assert "карьера" in call_args.kwargs["json"]["messages"][0]["content"]
 # END_BLOCK: TEST_READING_GENERATION
 
 

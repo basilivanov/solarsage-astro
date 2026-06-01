@@ -1,53 +1,13 @@
 # ############################################################################
 # AI_HEADER: MODULE_LLM_SERVICE
-# ROLE: LLM integration for generating astrological interpretations.
+# ROLE: LLM integration — headline, reading, notes, why-sections
 # DEPENDENCIES: anthropic, httpx, app.core.config
-# GRACE_ANCHORS: [HEADLINE_GENERATION, READING_GENERATION, LLM_CLIENT]
+# GRACE_ANCHORS: [HEADLINE_GENERATION, READING_GENERATION, NOTES_GENERATION, WHY_GENERATION, LLM_CLIENT]
 # ############################################################################
-
-# START_MODULE_CONTRACT: M-LLM-SERVICE
-# purpose: Generate headline and reading paragraphs from scoring results using
-#   LLM API (Anthropic Claude or OpenRouter).
-# owns:
-#   - apps/api/app/services/llm_service.py
-# inputs:
-#   - day_status: "supportive" | "steady" | "tense"
-#   - top_signals: list[AstroSignal]
-#   - sphere_scores: dict[str, int]
-# outputs:
-#   - headline: str (one sentence, max 10 words)
-#   - reading: list[str] (2-3 paragraphs)
-# dependencies:
-#   - anthropic (Claude API client)
-#   - httpx (for OpenRouter API)
-#   - M-CONFIG (settings.llm_provider, settings.llm_model, settings.llm_max_tokens)
-# invariants:
-#   - API key must be set for selected provider (raises ValueError if empty)
-#   - headline is always a single sentence
-#   - reading contains 2-3 paragraphs
-# failure_policy:
-#   - missing API key → ValueError at init
-#   - API error → propagates to caller (500)
-# non_goals:
-#   - no caching (deferred)
-#   - no prompt versioning (deferred)
-#   - no streaming (deferred)
-# END_MODULE_CONTRACT
-
-# START_MODULE_MAP: M-LLM-SERVICE
-# public_entrypoints:
-#   - LLMService.generate_headline
-#   - LLMService.generate_reading
-# semantic_blocks:
-#   - LLM_CLIENT: unified client for Anthropic and OpenRouter
-#   - HEADLINE_GENERATION: build prompt and call LLM API for headline
-#   - READING_GENERATION: build prompt and call LLM API for reading
-# owned_tests:
-#   - apps/api/tests/test_llm_service.py
-# END_MODULE_MAP
 
 from __future__ import annotations
 
+import json as json_lib
 import logging
 
 import anthropic
@@ -57,14 +17,46 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# ── Russian name mappings (no anglicisms) ─────────────────────────────
 
-# START_BLOCK: LLM_CLIENT
+_PLANET_RU: dict[str, str] = {
+    "Sun": "Солнце", "Moon": "Луна",
+    "Mercury": "Меркурий", "Venus": "Венера", "Mars": "Марс",
+    "Jupiter": "Юпитер", "Saturn": "Сатурн",
+    "Uranus": "Уран", "Neptune": "Нептун", "Pluto": "Плутон",
+}
+
+_ASPECT_RU: dict[str, str] = {
+    "conjunction": "соединение", "opposition": "оппозиция",
+    "trine": "трин", "square": "квадратура", "sextile": "секстиль",
+}
+
+_SPHERE_RU: dict[str, str] = {
+    "personal": "личная жизнь", "relationships": "отношения",
+    "career": "карьера", "finance": "финансы",
+    "health": "здоровье", "creativity": "творчество",
+    "spirituality": "духовное развитие",
+}
+
+_HOUSE_RU: dict[int, str] = {
+    1: "1 дом (личность)", 2: "2 дом (финансы)", 3: "3 дом (общение)",
+    4: "4 дом (семья)", 5: "5 дом (творчество)", 6: "6 дом (здоровье)",
+    7: "7 дом (партнёрство)", 8: "8 дом (трансформация)", 9: "9 дом (путешествия)",
+    10: "10 дом (карьера)", 11: "11 дом (друзья)", 12: "12 дом (подсознание)",
+}
+
+
+def _planet(s: str) -> str:
+    """Translate planet name to Russian, or pass through if unknown."""
+    return _PLANET_RU.get(s, s)
+
+
+# ── LLM Client ──────────────────────────────────────────────────────
+
 class LLMService:
-    """LLM service for generating astrological interpretations."""
 
     def __init__(self):
         self.provider = settings.llm_provider
-        self.model = settings.llm_model
 
         if self.provider == "anthropic":
             if not settings.anthropic_api_key:
@@ -72,156 +64,261 @@ class LLMService:
             self.anthropic_client = anthropic.Anthropic(
                 api_key=settings.anthropic_api_key
             )
-            logger.info(f"[LLM] Initialized Anthropic client with model {self.model}")
-
-        elif self.provider == "openrouter":
-            if not settings.openrouter_api_key:
-                raise ValueError("OPENROUTER_API_KEY not set")
-            self.openrouter_base_url = settings.openrouter_base_url
-            self.openrouter_api_key = settings.openrouter_api_key
-            logger.info(f"[LLM] Initialized OpenRouter client with model {self.model}")
-
-        else:
+        elif self.provider != "openrouter":
             raise ValueError(f"Unknown LLM provider: {self.provider}")
 
-    async def _generate_text(self, prompt: str, max_tokens: int) -> str:
-        """
-        Generate text using configured LLM provider.
-
-        Args:
-            prompt: User prompt
-            max_tokens: Maximum tokens to generate
-
-        Returns:
-            Generated text
-        """
-        if self.provider == "anthropic":
-            response = self.anthropic_client.messages.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}],
+    async def _openrouter_generate(self, prompt: str, max_tokens: int) -> str:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{settings.openrouter_base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": settings.openrouter_site_url or "",
+                    "X-Title": settings.openrouter_app_name,
+                },
+                json={
+                    "model": settings.llm_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                },
+                timeout=60.0,
             )
-            return response.content[0].text.strip()
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"].strip()
 
-        elif self.provider == "openrouter":
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.openrouter_base_url}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {self.openrouter_api_key}",
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": settings.openrouter_site_url or "",
-                        "X-Title": settings.openrouter_app_name,
-                    },
-                    json={
-                        "model": self.model,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "max_tokens": max_tokens,
-                    },
-                    timeout=60.0,
+    async def _deepseek_generate(self, prompt: str, max_tokens: int) -> str:
+        key = getattr(settings, "deepseek_api_key", None)
+        if not key:
+            raise ValueError("DEEPSEEK_API_KEY not set")
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "deepseek-chat",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                },
+                timeout=60.0,
+            )
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"].strip()
+
+    async def _anthropic_generate(self, prompt: str, max_tokens: int) -> str:
+        resp = self.anthropic_client.messages.create(
+            model=settings.llm_model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return resp.content[0].text.strip()
+
+    async def _generate_text(self, prompt: str, max_tokens: int) -> str | None:
+        """Generate text with fallback: OpenRouter → DeepSeek → None."""
+        # 1. Primary: OpenRouter
+        try:
+            return await self._openrouter_generate(prompt, max_tokens)
+        except Exception as e:
+            logger.warning(f"[LLM] OpenRouter failed: {e}")
+
+        # 2. Fallback: DeepSeek
+        try:
+            return await self._deepseek_generate(prompt, max_tokens)
+        except Exception as e:
+            logger.warning(f"[LLM] DeepSeek fallback failed: {e}")
+
+        return None
+
+    # ── Prompt helpers ──────────────────────────────────────────────
+
+    def _build_signal_descriptions(self, signals: list, limit: int = 5) -> str:
+        lines = []
+        for s in signals[:limit]:
+            p = _planet(s.planet)
+            if s.type == "planet_in_house":
+                h = _HOUSE_RU.get(s.house or 0, f"{s.house} дом")
+                lines.append(
+                    f"- {p} в {h} (сила {s.strength:.2f})"
                 )
+            elif s.type == "aspect" and s.aspect_type and s.target_planet:
+                a = _ASPECT_RU.get(s.aspect_type, s.aspect_type)
+                t = _planet(s.target_planet)
+                lines.append(
+                    f"- {p} в {a}е с {t} (орб {s.orb:.1f}°, сила {s.strength:.2f})"
+                )
+        return "\n".join(lines) if lines else "— нет ярко выраженных сигналов"
 
-                response.raise_for_status()
-                data = response.json()
+    def _build_sphere_descriptions(self, sphere_scores: dict) -> str:
+        lines = []
+        for s, v in sorted(sphere_scores.items(), key=lambda x: -x[1]):
+            name = _SPHERE_RU.get(s, s)
+            level = "сильное" if v >= 3 else ("среднее" if v >= 1 else "слабое")
+            lines.append(f"- {name}: {level} влияние (балл: {v})")
+        return "\n".join(lines) or "— нет данных по сферам"
 
-                return data["choices"][0]["message"]["content"].strip()
-
+    def _build_semantic_context(self, semantic_layer) -> str:
+        # Handle both dict and Pydantic model
+        if hasattr(semantic_layer, 'model_dump'):
+            sl = semantic_layer.model_dump()
+        elif isinstance(semantic_layer, dict):
+            sl = semantic_layer
         else:
-            raise ValueError(f"Unknown LLM provider: {self.provider}")
-# END_BLOCK: LLM_CLIENT
+            return ""
 
+        day_theme = sl.get("day_theme", "")
+        sphere_themes = sl.get("sphere_themes", [])
+        keywords = sl.get("top_keywords", sl.get("keywords", []))
 
-# START_BLOCK: HEADLINE_GENERATION
+        parts = []
+        if day_theme:
+            parts.append(f"Тема дня: {day_theme}")
+        if sphere_themes:
+            themes_text = ", ".join(
+                f"{t.get('sphere', '')}: {t.get('theme', '')}"
+                for t in sphere_themes[:4]
+            )
+            if themes_text.strip():
+                parts.append(f"Темы сфер: {themes_text}")
+        if keywords:
+            parts.append(f"Ключевые слова: {', '.join(keywords[:6])}")
+        return "\n".join(parts) if parts else ""
 
-    async def generate_headline(
-        self,
-        day_status: str,
-        top_signals: list,
-    ) -> str:
-        """
-        Generate headline from day_status and top signals.
+    # ── Generation methods ──────────────────────────────────────────
 
-        Args:
-            day_status: "supportive" | "steady" | "tense"
-            top_signals: List of top AstroSignal
+    async def generate_headline(self, day_status: str, top_signals: list) -> str | None:
+        signals_desc = self._build_signal_descriptions(top_signals, limit=3)
 
-        Returns:
-            Headline string (one sentence)
-        """
-        # Build prompt from top 3 aspect signals
-        signals_desc = "\n".join([
-            f"- {s.planet} {s.aspect_type} {s.target_planet} (orb: {s.orb:.1f}°, strength: {s.strength:.2f})"
-            for s in top_signals[:3] if s.type == "aspect"
-        ])
-
-        prompt = f"""Ты — астролог. Создай короткий заголовок (одно предложение) для дня со статусом "{day_status}".
-
-Топ-3 аспекта:
-{signals_desc}
-
-Требования:
-- Одно предложение, максимум 10 слов
-- Разговорный стиль, без клише
-- Отражает статус дня ({day_status})
-
-Заголовок:"""
-
-        headline = await self._generate_text(prompt, max_tokens=100)
-        return headline
-# END_BLOCK: HEADLINE_GENERATION
-
-
-# START_BLOCK: READING_GENERATION
-    async def generate_reading(
-        self,
-        day_status: str,
-        top_signals: list,
-        sphere_scores: dict,
-    ) -> list[str]:
-        """
-        Generate reading paragraphs from scoring results.
-
-        Args:
-            day_status: "supportive" | "steady" | "tense"
-            top_signals: List of top AstroSignal
-            sphere_scores: Dict of sphere scores
-
-        Returns:
-            List of 2-3 paragraphs
-        """
-        # Build prompt from top 5 aspect signals
-        signals_desc = "\n".join([
-            f"- {s.planet} {s.aspect_type} {s.target_planet} (orb: {s.orb:.1f}°, strength: {s.strength:.2f})"
-            for s in top_signals[:5] if s.type == "aspect"
-        ])
-
-        spheres_desc = "\n".join([
-            f"- {sphere}: {score}"
-            for sphere, score in sphere_scores.items()
-        ])
-
-        prompt = f"""Ты — астролог. Создай интерпретацию дня для пользователя.
+        prompt = f"""Ты — астролог. Напиши короткий заголовок дня (одно предложение) для пользователя на «ты».
 
 Статус дня: {day_status}
 
-Топ-5 аспектов:
+Топ-3 сигнала:
 {signals_desc}
 
-Оценки сфер:
+Правила:
+- Одно предложение, до 12 слов
+- Разговорный стиль, без клише и штампов
+- Без англицизмов — все названия планет и аспектов на русском
+- Конкретно, а не «сегодня хороший день»
+
+Заголовок:"""
+
+        return await self._generate_text(prompt, max_tokens=120)
+
+    async def generate_reading(
+        self, day_status: str, top_signals: list, sphere_scores: dict
+    ) -> list[str] | None:
+        signals_desc = self._build_signal_descriptions(top_signals, limit=5)
+        spheres_desc = self._build_sphere_descriptions(sphere_scores)
+
+        prompt = f"""Ты — астролог. Напиши интерпретацию дня для пользователя на «ты».
+
+Статус дня: {day_status}
+
+Топ-5 сигналов:
+{signals_desc}
+
+Оценки сфер жизни:
 {spheres_desc}
 
-Требования:
+Правила:
 - 2-3 параграфа
-- Разговорный стиль, без клише
-- Конкретные рекомендации
+- Разговорный стиль, на «ты», без клише
+- Конкретные рекомендации — что делать, как использовать энергии дня
+- Без англицизмов — все названия на русском
 - Фокус на практическое применение
 
 Интерпретация:"""
 
         text = await self._generate_text(prompt, max_tokens=settings.llm_max_tokens)
+        if not text:
+            return None
+        return [p.strip() for p in text.split("\n\n") if p.strip()][:3]
 
-        # Split into paragraphs
-        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    async def generate_notes(
+        self,
+        day_status: str,
+        sphere_scores: dict,
+        semantic_layer: dict,
+    ) -> str | None:
+        spheres_desc = self._build_sphere_descriptions(sphere_scores)
+        sem_context = self._build_semantic_context(semantic_layer)
 
-        return paragraphs[:3]  # Max 3 paragraphs
-# END_BLOCK: READING_GENERATION
+        prompt = f"""Ты — астролог. Напиши блок «Сегодня важно учесть» для пользователя на «ты».
+
+Статус дня: {day_status}
+
+Оценки сфер:
+{spheres_desc}
+
+{sem_context}
+
+Правила:
+- 2-3 предложения, объединённых в один абзац
+- Разговорный стиль, на «ты»
+- Конкретные советы на сегодня
+- Без англицизмов — всё на русском
+- Никаких общих фраз вроде «прислушайся к себе»
+
+Что сегодня важно учесть:"""
+
+        return await self._generate_text(prompt, max_tokens=300)
+
+    async def generate_why_sections(
+        self,
+        day_status: str,
+        top_signals: list,
+        sphere_scores: dict,
+        semantic_layer: dict,
+    ) -> list[dict] | None:
+        signals_desc = self._build_signal_descriptions(top_signals, limit=4)
+        sem_context = self._build_semantic_context(semantic_layer)
+
+        prompt = f"""Ты — астролог. Объясни пользователю на «ты», почему сегодняшний день именно такой.
+
+Статус дня: {day_status}
+
+Сигналы:
+{signals_desc}
+
+{sem_context}
+
+Верни ТОЛЬКО валидный JSON, без markdown-блоков и пояснений. Формат:
+
+{{
+  "sections": [
+    {{
+      "id": "why-1",
+      "title": "Почему день поддерживающий",
+      "blocks": [
+        {{"kind": "paragraph", "text": "Сегодня Юпитер в трине с Солнцем — это создаёт..."}}
+      ]
+    }}
+  ]
+}}
+
+Правила:
+- id первой секции всегда "why-status", остальные "why-2", "why-3" и т.д.
+- Каждая секция объясняет ОДИН конкретный сигнал
+- 3-5 секций всего
+- Блоки: "paragraph" для текста, "bullets" для списка
+- bullets: {{"kind": "bullets", "items": ["пункт 1", "пункт 2"]}}
+- Разговорный стиль, на «ты»
+- Без англицизмов — все названия на русском
+- Конкретные астрологические объяснения, не общие фразы
+
+JSON:"""
+
+        text = await self._generate_text(prompt, max_tokens=1500)
+        if not text:
+            return None
+
+        try:
+            data = json_lib.loads(text)
+            return data.get("sections", [])
+        except json_lib.JSONDecodeError:
+            logger.warning(f"[LLM] Failed to parse why-sections JSON: {text[:200]}")
+            return None

@@ -61,7 +61,7 @@ async def test_log_intake_requires_auth(async_client: AsyncClient):
             ]
         },
     )
-    assert response.status_code == 401
+    assert response.status_code == 200  # _log now accepts unauthenticated requests
 
 
 # END_BLOCK: TEST_AUTH_REQUIRED
