@@ -80,7 +80,7 @@ export function TabBar() {
                     : "text-muted-foreground active:text-foreground"
                 }`}
               >
-                <Icon className="h-[22px] w-[22px]" strokeWidth={1.6} />
+                <Icon className="h-[22px] w-[22px] text-current" strokeWidth={1.6} />
                 <span
                   className={`truncate ${isActive ? "font-medium" : ""}`}
                 >
