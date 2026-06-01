@@ -24,7 +24,7 @@ _SPHERE_RU: dict[str, str] = {
     "spirituality": "духовное развитие",
 }
 
-def _p(s: str) -> str: return _PLANET_RU.get(s, s)
+def _p(s: str) -> str: return _PLANET_RU.get(s.replace("Transit_", "").replace("Natal_", ""), s.replace("Transit_", "").replace("Natal_", ""))
 def _a(s: str) -> str: return _ASPECT_RU.get(s, s)
 def _s(s: str) -> str:
     """Translate sign name to Russian."""
@@ -232,16 +232,34 @@ class SemanticService:
         # 04 period_background
         contexts.append({"layer": "period_background", "title": "Фон периода", "context": f"Солярный акцент: дома {', '.join(str(s.house) for s in houses[:3] if s.house)}. Тема периода: {semantic_layer.day_theme}.", "blocks_kind": "paragraph"})
 
-        # 05 amplifiers
-        amp_lines = signal_lines(top_signals, "aspect")
-        amp_text = "\n".join(amp_lines[:3]) if amp_lines else "Нет выраженных усилителей."
+        # 05 amplifiers — explain WHY they amplify
+        tense_aspects = [s for s in aspects if s.aspect_type in ("square", "opposition")]
+        amp_lines = []
+        for s in tense_aspects[:3]:
+            amp_lines.append(
+                f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_p(s.target_planet or '')} "
+                f"(орб {s.orb:.1f}°, сила {s.strength:.2f}). Это создаёт напряжение — "
+                f"день ощущается плотнее, реакции острее, решения труднее."
+            )
+        if not amp_lines:
+            # Fallback: any strong aspect
+            for s in aspects[:2]:
+                amp_lines.append(
+                    f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_p(s.target_planet or '')} "
+                    f"(орб {s.orb:.1f}°, сила {s.strength:.2f})."
+                )
+        amp_text = "\n".join(amp_lines) if amp_lines else "Нет выраженных усилителей."
         contexts.append({"layer": "amplifiers", "title": "Что усиливает этот день", "context": amp_text, "blocks_kind": "paragraph"})
 
-        # 06 softeners — гармоничные аспекты
+        # 06 softeners — explain WHY they soften
         harmony_signals = [s for s in aspects if s.aspect_type in ("trine", "sextile")]
         soft_lines = []
         for s in harmony_signals[:3]:
-            soft_lines.append(f"- {_p(s.planet)} в {_a(s.aspect_type)} с {_p(s.target_planet or '')} (орб {s.orb:.1f}°)")
+            soft_lines.append(
+                f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_p(s.target_planet or '')} "
+                f"(орб {s.orb:.1f}°, сила {s.strength:.2f}). Гармоничный аспект — "
+                f"сглаживает острые углы, даёт пространство для манёвра, снижает давление."
+            )
         soft_text = "\n".join(soft_lines) if soft_lines else "Нет выраженных смягчающих аспектов."
         contexts.append({"layer": "softeners", "title": "Что смягчает этот день", "context": soft_text, "blocks_kind": "paragraph"})
 
