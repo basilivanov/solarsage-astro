@@ -11,52 +11,33 @@ from app.schemas.normalization import AstroSignal
 
 @pytest.fixture
 def supportive_signals():
-    """Signals with strong positive aspects."""
+    """Signals with strong positive aspects (pass canon thresholds)."""
     return [
         AstroSignal(
-            type="aspect",
-            planet="Sun",
-            target_planet="Jupiter",
-            aspect_type="trine",
-            orb=1.0,
-            strength=0.9,
+            type="aspect", planet="Sun", target_planet="Jupiter",
+            aspect_type="trine", orb=1.0, strength=0.95,
         ),
         AstroSignal(
-            type="aspect",
-            planet="Venus",
-            target_planet="Mars",
-            aspect_type="sextile",
-            orb=2.0,
-            strength=0.8,
+            type="aspect", planet="Venus", target_planet="Mars",
+            aspect_type="trine", orb=2.0, strength=0.85,
         ),
         AstroSignal(
-            type="planet_in_house",
-            planet="Sun",
-            house=10,
-            strength=1.0,
+            type="planet_in_house", planet="Sun", house=10, strength=1.0,
         ),
     ]
 
 
 @pytest.fixture
 def tense_signals():
-    """Signals with strong negative aspects."""
+    """Signals with strong negative aspects (pass canon thresholds)."""
     return [
         AstroSignal(
-            type="aspect",
-            planet="Mars",
-            target_planet="Saturn",
-            aspect_type="square",
-            orb=1.5,
-            strength=0.85,
+            type="aspect", planet="Mars", target_planet="Saturn",
+            aspect_type="square", orb=1.5, strength=0.95,
         ),
         AstroSignal(
-            type="aspect",
-            planet="Sun",
-            target_planet="Pluto",
-            aspect_type="opposition",
-            orb=2.0,
-            strength=0.8,
+            type="aspect", planet="Sun", target_planet="Pluto",
+            aspect_type="opposition", orb=2.0, strength=0.90,
         ),
     ]
 
@@ -107,13 +88,13 @@ def test_day_status_steady(steady_signals):
 
 
 def test_sphere_scores(supportive_signals):
-    """Sphere scores are calculated."""
+    """Sphere scores are calculated from canon."""
     service = ScoringService()
     result = service.score(supportive_signals)
 
     assert "sphere_scores" in result
-    assert "career" in result["sphere_scores"]
-    assert "relationships" in result["sphere_scores"]
+    # Canon keys — not hardcoded career/relationships
+    assert "work_status_achievement" in result["sphere_scores"] or "thinking_speech_learning" in result["sphere_scores"]
 
 
 def test_top_signals(supportive_signals):

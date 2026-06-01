@@ -1,98 +1,146 @@
 # AI_HEADER
 # module: M-SCORING-SERVICE
-# wave: W-4.2
-# purpose: Scoring layer (AstroSignal[] → scored signals + day_status)
+# wave: W-4.2, W-4.3
+# purpose: Scoring layer v2 — canon-based sphere_scores from grace/canon/*.yml
+
+import os
+from pathlib import Path
+
+import yaml
 
 from app.schemas.normalization import AstroSignal
 
+# ── Load canon (cached at module level) ────────────────────────
 
-POSITIVE_ASPECTS = ["trine", "sextile"]
-NEGATIVE_ASPECTS = ["square", "opposition"]
-NEUTRAL_ASPECTS = ["conjunction"]
+_CANON_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent / "grace" / "canon"
 
+def _load_canon(name: str) -> dict:
+    path = _CANON_DIR / f"{name}.v1.yml"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+_SPHERES = _load_canon("spheres")
+_ASPECTS = _load_canon("aspect_rules")
+_DIGNITIES = _load_canon("dignities")
+
+# ── Aspect helpers ─────────────────────────────────────────────
+
+_POSITIVE = {"trine", "sextile"}
+_NEGATIVE = {"square", "opposition"}
+
+def _aspect_weight(aspect_type: str) -> float:
+    w = _ASPECTS.get("aspect_weights", {}).get(aspect_type.upper())
+    return float(w) if w else 0.5
+
+def _aspect_threshold(is_major: bool) -> float:
+    key = "major" if is_major else "minor"
+    return float(_ASPECTS.get("aspect_threshold", {}).get(key, 0.35))
+
+def _is_major(aspect_type: str) -> bool:
+    return aspect_type.upper() in {"CONJUNCTION", "OPPOSITION", "TRINE", "SQUARE"}
+
+# ── Dignity helpers ────────────────────────────────────────────
+
+def _condition_factor(planet: str, sign: str | None, retrograde: bool = False) -> float:
+    """Compute condition_factor for a planet in a sign. Range [0.45, 1.35]."""
+    cf = 1.0
+    bounds = _DIGNITIES.get("condition_factor", {}).get("bounds", [0.45, 1.35])
+    
+    for m in _DIGNITIES.get("condition_factor", {}).get("modifiers", []):
+        if m.get("planet") == planet.upper() and m.get("sign") == (sign or "").upper():
+            cf += float(m.get("delta", 0))
+    
+    if retrograde:
+        penalty = _DIGNITIES.get("condition_factor", {}).get("retrograde_penalty", {})
+        cf += float(penalty.get(planet.upper(), 0))
+    
+    return max(bounds[0], min(bounds[1], cf))
+
+# ── Main scoring class ─────────────────────────────────────────
 
 class ScoringService:
-    """Scoring layer for astrological signals."""
 
     def score(self, signals: list[AstroSignal]) -> dict:
-        """
-        Score signals and calculate day_status.
-
-        Args:
-            signals: List of AstroSignal from normalization
-
-        Returns:
-            {
-                "day_status": "supportive" | "steady" | "tense",
-                "sphere_scores": {...},
-                "top_signals": [...],
-            }
-        """
-        # Calculate sphere scores (W-4.2: simplified, W-4.3: real from canon)
+        """Score signals v2 — canon-based with aspect weights, dignities, spheres."""
         sphere_scores = self._calculate_sphere_scores(signals)
-
-        # Calculate day_status
         day_status = self._calculate_day_status(signals)
-
-        # Get top signals (strongest 5)
         top_signals = self._get_top_signals(signals, limit=5)
-
-        return {
-            "day_status": day_status,
-            "sphere_scores": sphere_scores,
-            "top_signals": top_signals,
-        }
+        return {"day_status": day_status, "sphere_scores": sphere_scores, "top_signals": top_signals}
 
     def _calculate_sphere_scores(self, signals: list[AstroSignal]) -> dict:
-        """
-        Calculate sphere scores.
+        """Canon-based sphere scores with aspect weights, dignities, house rulers."""
+        sphere_list = _SPHERES.get("spheres", {})
+        scores: dict[str, float] = {}
 
-        W-4.2: Simplified (count signals per sphere).
-        W-4.3: Real scoring from canon rules.
-        """
-        # Simplified: just count aspects
-        aspect_signals = [s for s in signals if s.type == "aspect"]
+        # Only process aspect signals
+        aspects = [s for s in signals if s.type == "aspect"]
+        houses = [s for s in signals if s.type == "planet_in_house"]
 
-        return {
-            "career": len([s for s in aspect_signals if s.planet in ["Sun", "Saturn"]]),
-            "relationships": len([s for s in aspect_signals if s.planet in ["Venus", "Moon"]]),
-            "health": len([s for s in aspect_signals if s.planet in ["Mars", "Moon"]]),
-            "creativity": len([s for s in aspect_signals if s.planet in ["Sun", "Venus"]]),
-        }
+        for key, sphere in sphere_list.items():
+            total = 0.0
+
+            # 1. Aspect signals → score per sphere based on planet weights
+            for s in aspects:
+                planet_weight = sphere.get("planets", {}).get(s.planet.upper(), 0)
+                if planet_weight > 0:
+                    aw = _aspect_weight(s.aspect_type or "")
+                    # benefic softening
+                    softening = _ASPECTS.get("benefic_softening", {})
+                    tension_mod = 0.0
+                    if s.aspect_type in _NEGATIVE and s.target_planet and s.target_planet.upper() in {"JUPITER", "VENUS"}:
+                        tension_mod = float(softening.get("square_or_opposition_with_benefic", {}).get("tension_delta", 0))
+                    elif s.aspect_type in _POSITIVE and s.target_planet and s.target_planet.upper() in {"SATURN", "MARS"}:
+                        tension_mod = float(softening.get("trine_or_sextile_with_malefic", {}).get("ease_delta", 0))
+
+                    threshold = _aspect_threshold(_is_major(s.aspect_type or ""))
+                    base = aw * planet_weight * s.strength
+                    if base < threshold:
+                        continue
+                    total += base + tension_mod
+
+            # 2. Planet-in-house signals → score per sphere
+            for s in houses:
+                house_key = s.house
+                if house_key and house_key in sphere.get("houses", []):
+                    planet_weight = sphere.get("planets", {}).get(s.planet.upper(), 0.1)
+                    angular_bonus = sphere.get("weight_multipliers", {}).get("angular_house_bonus", 1.0)
+                    if house_key in {1, 4, 7, 10}:
+                        planet_weight *= angular_bonus
+                    total += planet_weight * s.strength
+
+            scores[key] = round(total, 2)
+
+        return scores
 
     def _calculate_day_status(self, signals: list[AstroSignal]) -> str:
-        """
-        Calculate day_status from signals.
+        """Canon-based day_status with aspect weights."""
+        aspects = [s for s in signals if s.type == "aspect"]
+        positive_score = 0.0
+        negative_score = 0.0
 
-        Logic:
-        - supportive: strong positive aspects (trine, sextile with strength > 0.7)
-        - tense: strong negative aspects (square, opposition with strength > 0.7)
-        - steady: otherwise
-        """
-        aspect_signals = [s for s in signals if s.type == "aspect"]
+        for s in aspects:
+            aw = _aspect_weight(s.aspect_type or "")
+            threshold = _aspect_threshold(_is_major(s.aspect_type or ""))
+            base = aw * s.strength
+            if base < threshold:
+                continue
 
-        # Count strong positive aspects
-        strong_positive = sum(
-            1 for s in aspect_signals
-            if s.aspect_type in POSITIVE_ASPECTS and s.strength > 0.7
-        )
+            if s.aspect_type in _POSITIVE:
+                positive_score += base
+            elif s.aspect_type in _NEGATIVE:
+                negative_score += base
+            else:
+                # conjunction — counts 50/50
+                positive_score += base * 0.5
+                negative_score += base * 0.5
 
-        # Count strong negative aspects
-        strong_negative = sum(
-            1 for s in aspect_signals
-            if s.aspect_type in NEGATIVE_ASPECTS and s.strength > 0.7
-        )
-
-        # Determine status
-        if strong_positive > strong_negative and strong_positive >= 2:
+        if positive_score > negative_score * 1.3 and positive_score >= 1.0:
             return "supportive"
-        elif strong_negative > strong_positive and strong_negative >= 2:
+        elif negative_score > positive_score * 1.3 and negative_score >= 1.0:
             return "tense"
-        else:
-            return "steady"
+        return "steady"
 
     def _get_top_signals(self, signals: list[AstroSignal], limit: int = 5) -> list[AstroSignal]:
-        """Get top N signals by strength."""
-        # Sort by strength descending
-        sorted_signals = sorted(signals, key=lambda s: s.strength, reverse=True)
-        return sorted_signals[:limit]
+        return sorted(signals, key=lambda s: s.strength, reverse=True)[:limit]
