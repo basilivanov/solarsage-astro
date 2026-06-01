@@ -10,7 +10,7 @@ import type { AccessInfo } from '../../lib/access';
 function adaptPayload(api: any, selectedDate: Date): { payload: any; access: AccessInfo } {
   const notes: any[] = api.notes
     ? [{ id: 'daily-note', iconName: 'compass', title: 'Заметка дня', description: api.notes, hint: { meaning: api.notes, whyImportant: '', howForMe: '' } }]
-    : [];
+    : [{ id: 'no-data', iconName: 'compass', title: 'Данные временно недоступны', description: 'Пожалуйста, попробуйте позже.', hint: { meaning: 'Данные временно недоступны', whyImportant: '', howForMe: '' } }];
 
   const reading = api.reading || { paragraphs: [] };
 
@@ -109,5 +109,31 @@ describe('adaptPayload', () => {
     const { access } = adaptPayload(api, TODAY);
 
     expect(access.daysLeft).toBe(3);
+  });
+
+  // ── Placeholder tests — blocks must be visible even when data is missing ──
+
+  it('null notes → placeholder card (not empty)', () => {
+    const api = { ...baseApi, notes: null };
+    const { payload } = adaptPayload(api, TODAY);
+
+    expect(payload.notes.length).toBeGreaterThan(0);
+    expect(payload.notes[0].title).toBe('Данные временно недоступны');
+    expect(payload.notes[0].description).toBe('Пожалуйста, попробуйте позже.');
+  });
+
+  it('real notes → real card (not placeholder)', () => {
+    const api = { ...baseApi, notes: 'Сегодня отличный день для общения' };
+    const { payload } = adaptPayload(api, TODAY);
+
+    expect(payload.notes[0].title).toBe('Заметка дня');
+    expect(payload.notes[0].title).not.toBe('Данные временно недоступны');
+  });
+
+  it('empty why sections → empty array (WhyExpanded hides itself)', () => {
+    const api = { ...baseApi, whyThisHappens: { sections: [] } };
+    const { payload } = adaptPayload(api, TODAY);
+
+    expect(payload.why.length).toBe(0);
   });
 });

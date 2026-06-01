@@ -56,6 +56,20 @@ test.describe('Today Screen - Real Auth', () => {
     }
   });
 
+  test('no placeholder when API returns real data', async ({ page }) => {
+    test.setTimeout(30000);
+
+    await page.addInitScript(() => localStorage.setItem('lumen:onboarded', '1'));
+
+    await page.goto('/');
+    await page.waitForTimeout(6000);
+
+    // Placeholder should NOT be visible — real LLM data should render instead
+    const placeholder = page.locator('text=/Данные временно недоступны/i');
+    const hasPlaceholder = await placeholder.isVisible({ timeout: 3000 }).catch(() => false);
+    expect(hasPlaceholder).toBe(false);
+  });
+
   test('calendar navigation with real auth', async ({ page }) => {
     test.setTimeout(30000);
 
