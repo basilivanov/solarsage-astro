@@ -52,6 +52,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, date as Date, datetime, timedelta
 from sqlalchemy import select, delete
@@ -76,7 +77,8 @@ class TodayService:
         self,
         user_id,
         target_date: Date,
-        access_state: ContentAccessState,
+        access_state: ContentAccessState | None,
+        skip_prefetch: bool = False,
     ) -> TodayPayload:
         """
         Get TodayPayload for a user and date.
@@ -89,6 +91,10 @@ class TodayService:
         W-5.2: cache layer (check cache first, store on miss).
         W-ACCESS.3: returns preview payload for locked days.
         """
+        # Default access state for prefetch (real state checked on-demand by API route)
+        if access_state is None:
+            access_state = ContentAccessState(state="full", reason="cached_prefetch", referralDaysLeft=None, subscriptionActive=None, accessUntil=None)
+
         # W-ACCESS.3: If locked, return preview payload
         if access_state.state == "locked":
             return await self._build_preview_payload(user_id, target_date, access_state)
@@ -255,6 +261,10 @@ class TodayService:
         # W-5.2: Cache payload
         await self._cache_payload(user_id, target_date, payload)
 
+        # W-5.2: Prefetch week in background (don't block user)
+        if not skip_prefetch:
+            asyncio.ensure_future(self._prefetch_week(user_id, target_date))
+
         return payload
 
     async def _get_cached_payload(self, user_id, target_date: Date) -> TodayPayload | None:
@@ -380,3 +390,25 @@ class TodayService:
             actions=None,
         )
 # END_BLOCK: REAL_CALCULATION
+
+    async def _prefetch_week(self, user_id, today: Date) -> None:
+        """Prefetch 7 days of payloads in background. W-5.2.
+        Skips already-cached days to avoid duplicate work.
+        Errors are silently ignored (background task)."""
+        days = [today + timedelta(days=i) for i in range(-3, 4)]  # today ±3 days
+
+        async def _calc_one(day: Date):
+            try:
+                cached = await self._get_cached_payload(user_id, day)
+                if cached:
+                    return  # Already cached — skip
+                # Use preview access state for prefetch (real access checked on-demand)
+                await self.get_today_payload(user_id, day, None, skip_prefetch=True)
+            except Exception:
+                pass  # Background task — don't break the app
+
+        tasks = [_calc_one(d) for d in days]
+        try:
+            await asyncio.gather(*tasks)
+        except Exception:
+            pass
