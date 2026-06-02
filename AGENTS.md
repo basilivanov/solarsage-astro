@@ -70,3 +70,10 @@ python3 scripts/generate-telegram-test-initdata.py
 | Backend env | `/opt/astro-project/.env` |
 | Docker compose | `/opt/solarsage-astro/docker-compose.yml` |
 | InitData генератор | `scripts/generate-telegram-test-initdata.py` |
+
+## Известные баги / технический долг
+
+| # | Баг | Где | Суть |
+|---|-----|-----|------|
+| 1 | `Transit_` / `Natal_` в UI | `today_service.py:209` — построение `TopFlag` | Имена сигналов приходят из нормализации с префиксом `Transit_Planet`. При построении `topFlags` используется сырое `signal.planet` без стриппинга. В результате в JSON-ответе: `"title": "Transit_Moon square Saturn"`. LLM-промпт просит не использовать Transit_, но сигналы попадают в UI независимо от LLM. **Fix:** стриппить префикс в `today_service.py` при построении `TopFlag`, либо в `NormalizationService` на этапе создания сигналов. |
+| 2 | SolarSage не отдаёт `planet.house` | `normalization_service.py:60` — `_planets_in_houses()` | SolarSage возвращает `houses: [{number, cusp}]` отдельно от планет. `NormalizationService` вынужден вручную маппить `planet.longitude → house` через `_find_house()`. Это лишняя работа на стороне API. **Fix:** добавить в SolarSage выдачу `planet.house` сразу при расчёте транзитов и натала. |

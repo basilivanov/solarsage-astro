@@ -172,6 +172,7 @@ class TodayService:
             natal,
             transits,
             semantic_layer,
+            signals,
         )
 
         # W-4.3: Cache semantic layer

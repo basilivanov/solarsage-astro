@@ -85,6 +85,7 @@ class SemanticService:
         natal: dict,
         transits: dict,
         semantic_layer: SemanticLayer,
+        all_signals: list | None = None,
     ) -> list[dict]:
         """Compute pre-filled context for each of 9 WhyThisHappens sections.
         LLM only writes narrative text — no numbers, no planet names.
@@ -99,8 +100,9 @@ class SemanticService:
             return _p(raw.replace("Transit_", "").replace("Natal_", ""))
         
         def natal_planet(name: str) -> dict | None:
+            clean = name.replace("Transit_", "").replace("Natal_", "")
             for p in natal_planets:
-                if p.get("name") == name:
+                if p.get("name") == clean:
                     return p
             return None
 
@@ -124,8 +126,12 @@ class SemanticService:
                     lines.append(f"- {p} в {a} с {t} (орб {s.orb:.1f}°, сила {s.strength:.2f})")
             return lines
 
-        aspects = [s for s in top_signals if s.type == "aspect"]
-        houses = [s for s in top_signals if s.type == "planet_in_house"]
+        # Use ALL signals (not just top_signals) for context building — top_signals
+        # may exclude aspects due to velocity ranking of planet_in_house signals.
+        src = all_signals if all_signals else top_signals
+        src_sorted = sorted(src, key=lambda s: s.strength, reverse=True)
+        aspects = [s for s in src_sorted if s.type == "aspect"]
+        houses = [s for s in src_sorted if s.type == "planet_in_house"]
         top_aspect = aspects[0] if aspects else None
         top_house = houses[0] if houses else None
 
@@ -190,17 +196,32 @@ class SemanticService:
 
         contexts.append({"layer": "daily_layer", "title": "Быстрый слой дня", "context": " ".join(daily_parts) or "Данные по быстрым транзитам.", "blocks_kind": "paragraph"})
 
+        def find_natal_house(lon: float) -> int | None:
+            """Find which natal house a planet longitude falls into."""
+            houses = natal.get("houses", [])
+            if not houses:
+                return None
+            for i, h in enumerate(houses):
+                next_h = houses[(i + 1) % 12]
+                cusp = h["cusp"]
+                next_cusp = next_h["cusp"]
+                if next_cusp > cusp:
+                    if cusp <= lon < next_cusp:
+                        return h["number"]
+                else:  # wraparound
+                    if lon >= cusp or lon < next_cusp:
+                        return h["number"]
+            return houses[0]["number"]  # fallback (shouldn't happen)
+
         # 03 personal_activation
         pers_parts = []
-        # Show natal planets being activated by transits (aspect matches)
         for s in aspects[:3]:
             np = natal_planet(s.target_planet or "")
             if np:
                 lon = np.get('longitude', 0)
                 sign = _s(np.get('sign', '?'))
                 deg = lon % 30
-                # Compute approximate natal house from longitude
-                nh = next((h['number'] for h in natal.get('houses', []) if lon >= h['cusp']), None)
+                nh = find_natal_house(lon)
                 nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
                     f"Транзитный {_p(s.planet)} в {_a(s.aspect_type or '')} "
@@ -214,7 +235,7 @@ class SemanticService:
                 lon = np.get('longitude', 0)
                 sign = _s(np.get('sign', '?'))
                 deg = lon % 30
-                nh = next((h['number'] for h in natal.get('houses', []) if lon >= h['cusp']), None)
+                nh = find_natal_house(lon)
                 nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
                     f"Транзитный {_p(s.planet)} в {s.house} доме — "
