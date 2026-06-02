@@ -174,7 +174,7 @@ class SemanticService:
             moon_house = find_house(moon_lon, natal_houses) or "?"
 
             daily_parts.append(
-                f"Транзитная Луна в {moon_sign} проходит через твой {moon_house} дом."
+                f"Сегодня Луна в {moon_sign} проходит через твой {moon_house} дом."
             )
 
             # Moon aspects to natal planets (from top_signals)
@@ -210,7 +210,7 @@ class SemanticService:
                 nh = find_house(lon, natal_houses_all)
                 nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
-                    f"Транзитный {_p(s.planet)} в {_a(s.aspect_type or '')} "
+                    f"Сегодня {_p(s.planet)} в {_a(s.aspect_type or '')} "
                     f"с ТВОИМ натальным {_pi(s.target_planet or '')} "
                     f"(твой {_p(s.target_planet or '')} в натале: {sign} {deg:.1f}°{nh_str}) — орб {s.orb:.1f}°."
                 )
@@ -224,13 +224,13 @@ class SemanticService:
                 nh = find_house(lon, natal_houses_all)
                 nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
-                    f"Транзитный {_p(s.planet)} в {s.house} доме — "
+                    f"Сегодня {_p(s.planet)} в {s.house} доме — "
                     f"в твоём натале {_p(s.planet)} стоит в {sign} {deg:.1f}°{nh_str}, "
                     f"так что эта сфера для тебя особенно чувствительна."
                 )
             else:
                 pers_parts.append(
-                    f"Транзитный {_p(s.planet)} в {s.house} доме акцентирует эту сферу лично для тебя."
+                    f"Сегодня {_p(s.planet)} в {s.house} доме акцентирует эту сферу лично для тебя."
                 )
         if not pers_parts:
             pers_parts.append("Нет ярко выраженных личных активаций через аспекты к натальным планетам.")
@@ -244,7 +244,7 @@ class SemanticService:
         amp_lines = []
         for s in tense_aspects[:3]:
             amp_lines.append(
-                f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
+                f"Сегодня {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
                 f"(орб {s.orb:.1f}°, сила {s.strength:.2f}). Это создаёт напряжение — "
                 f"день ощущается плотнее, реакции острее, решения труднее."
             )
@@ -252,7 +252,7 @@ class SemanticService:
             # Fallback: any strong aspect
             for s in aspects[:2]:
                 amp_lines.append(
-                    f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
+                    f"Сегодня {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
                     f"(орб {s.orb:.1f}°, сила {s.strength:.2f})."
                 )
         amp_text = "\n".join(amp_lines) if amp_lines else "Нет выраженных усилителей."
@@ -263,7 +263,7 @@ class SemanticService:
         soft_lines = []
         for s in harmony_signals[:3]:
             soft_lines.append(
-                f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
+                f"Сегодня {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
                 f"(орб {s.orb:.1f}°, сила {s.strength:.2f}). Гармоничный аспект — "
                 f"сглаживает острые углы, даёт пространство для манёвра, снижает давление."
             )
