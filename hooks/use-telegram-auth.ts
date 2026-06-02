@@ -119,6 +119,7 @@ export function useTelegramAuth() {
 
         // Auto-claim referral if opened via startapp link (once per session)
         const claimKey = '__astro_referral_claimed';
+        const persistKey = '__astro_referral_code';
         try {
           const startParam = tg.initDataUnsafe?.start_param
             || (() => {
@@ -128,22 +129,34 @@ export function useTelegramAuth() {
           const ownId = tg.initDataUnsafe?.user?.id
           const alreadyClaimed = (window as any)[claimKey]
 
-          if (startParam && String(startParam) !== String(ownId) && !alreadyClaimed) {
-            logger.info('[TGAuth] Auto-claiming referral', { extra: { code: startParam } })
+          // Persist referral code to localStorage so it survives
+          // the user closing and reopening the Mini App without the deep link.
+          if (startParam) {
+            try { localStorage.setItem(persistKey, startParam); } catch (_) {}
+          }
+
+          // Fallback: use persisted code from a previous visit
+          const effectiveCode = startParam || (
+            !alreadyClaimed ? (() => { try { return localStorage.getItem(persistKey); } catch (_) { return null; } })() : null
+          )
+
+          if (effectiveCode && String(effectiveCode) !== String(ownId) && !alreadyClaimed) {
+            logger.info('[TGAuth] Auto-claiming referral', { extra: { code: effectiveCode } })
             const claimRes = await fetch('/api/referral/claim', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ referrer_code: startParam }),
+              body: JSON.stringify({ referrer_code: effectiveCode }),
             })
             ;(window as any)[claimKey] = true
+            try { localStorage.removeItem(persistKey); } catch (_) {}
             if (!claimRes.ok) {
               const err = await claimRes.json().catch(() => ({}))
               logger.warn(`[TGAuth] Referral claim failed: HTTP ${claimRes.status} code=${err.detail?.code || '?'}`)
             } else {
               logger.info('[TGAuth] Referral claimed! +14 days')
             }
-          } else if (startParam && String(startParam) === String(ownId)) {
+          } else if (effectiveCode && String(effectiveCode) === String(ownId)) {
             logger.info('[TGAuth] Skipping self-referral')
           } else if (!startParam) {
             logger.info('[TGAuth] No start_param — not a referral link')
