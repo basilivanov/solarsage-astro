@@ -4,6 +4,7 @@
 # purpose: Semantic layer service — computes 9 WhyThisHappens section contexts
 
 from app.schemas.semantic import SemanticLayer, SphereTheme
+from app.services.astro_utils import find_house
 
 # ── Transliterations ──────────────────────────────────────────────
 
@@ -156,16 +157,8 @@ class SemanticService:
         if moon_transit:
             moon_sign = _s(moon_transit.get('sign', '?'))
             moon_lon = moon_transit.get('longitude', 0)
-            # Find which natal house Moon is transiting through
-            houses_sorted = sorted(natal.get("houses", []), key=lambda h: h.get("cusp", 0))
-            moon_house = None
-            for i, h in enumerate(houses_sorted):
-                next_cusp = houses_sorted[(i+1) % len(houses_sorted)].get("cusp", 360)
-                if h.get("cusp", 0) <= moon_lon < next_cusp:
-                    moon_house = h.get("number", "?")
-                    break
-            if moon_house is None and houses_sorted:
-                moon_house = houses_sorted[0].get("number", "?")
+            natal_houses = natal.get("houses", [])
+            moon_house = find_house(moon_lon, natal_houses) or "?"
 
             daily_parts.append(
                 f"Транзитная Луна в {moon_sign} проходит через твой {moon_house} дом."
@@ -181,12 +174,7 @@ class SemanticService:
                 if np:
                     n_sign = _s(np.get('sign', '?'))
                     n_lon = np.get('longitude', 0)
-                    nh = None
-                    for i, h in enumerate(houses_sorted):
-                        next_cusp = houses_sorted[(i+1) % len(houses_sorted)].get("cusp", 360)
-                        if h.get("cusp", 0) <= n_lon < next_cusp:
-                            nh = h.get("number", "?")
-                            break
+                    nh = find_house(n_lon, natal_houses)
                     nh_str = f", {nh} дом" if nh else ""
                     daily_parts.append(
                         f"Луна в {_a(s.aspect_type)} с твоим натальным "
@@ -196,22 +184,7 @@ class SemanticService:
 
         contexts.append({"layer": "daily_layer", "title": "Быстрый слой дня", "context": " ".join(daily_parts) or "Данные по быстрым транзитам.", "blocks_kind": "paragraph"})
 
-        def find_natal_house(lon: float) -> int | None:
-            """Find which natal house a planet longitude falls into."""
-            houses = natal.get("houses", [])
-            if not houses:
-                return None
-            for i, h in enumerate(houses):
-                next_h = houses[(i + 1) % 12]
-                cusp = h["cusp"]
-                next_cusp = next_h["cusp"]
-                if next_cusp > cusp:
-                    if cusp <= lon < next_cusp:
-                        return h["number"]
-                else:  # wraparound
-                    if lon >= cusp or lon < next_cusp:
-                        return h["number"]
-            return houses[0]["number"]  # fallback (shouldn't happen)
+        natal_houses_all = natal.get("houses", [])
 
         # 03 personal_activation
         pers_parts = []
@@ -221,7 +194,7 @@ class SemanticService:
                 lon = np.get('longitude', 0)
                 sign = _s(np.get('sign', '?'))
                 deg = lon % 30
-                nh = find_natal_house(lon)
+                nh = find_house(lon, natal_houses_all)
                 nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
                     f"Транзитный {_p(s.planet)} в {_a(s.aspect_type or '')} "
@@ -235,7 +208,7 @@ class SemanticService:
                 lon = np.get('longitude', 0)
                 sign = _s(np.get('sign', '?'))
                 deg = lon % 30
-                nh = find_natal_house(lon)
+                nh = find_house(lon, natal_houses_all)
                 nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
                     f"Транзитный {_p(s.planet)} в {s.house} доме — "

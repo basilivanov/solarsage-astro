@@ -206,17 +206,19 @@ class TodayService:
         # W-4.2: Build top_flags from top signals
         top_flags = []
         for signal in scoring_result["top_signals"][:3]:  # Top 3
+            planet = (signal.planet or "").replace("Transit_", "").replace("Natal_", "")
             if signal.type == "aspect":
+                target = (signal.target_planet or "").replace("Transit_", "").replace("Natal_", "")
                 top_flags.append(TopFlag(
-                    icon_name=f"{signal.planet}-{signal.aspect_type}",
-                    title=f"{signal.planet} {signal.aspect_type} {signal.target_planet}",
+                    icon_name=f"{planet}-{signal.aspect_type}",
+                    title=f"{planet} {signal.aspect_type} {target}",
                     summary=f"Orb: {signal.orb:.1f}°, Strength: {signal.strength:.2f}",
                     hint=None,
                 ))
             elif signal.type == "planet_in_house":
                 top_flags.append(TopFlag(
-                    icon_name=f"{signal.planet}-house",
-                    title=f"{signal.planet} в {signal.house} доме",
+                    icon_name=f"{planet}-house",
+                    title=f"{planet} в {signal.house} доме",
                     summary=f"Strength: {signal.strength:.2f}",
                     hint=None,
                 ))

@@ -3,8 +3,8 @@
 # wave: W-4.1
 # purpose: Normalization layer (raw → AstroSignal[])
 
+from app.services.astro_utils import find_house
 from app.schemas.normalization import AstroSignal, AspectType
-
 
 ASPECT_ANGLES = {
     "conjunction": 0,
@@ -67,7 +67,7 @@ class NormalizationService:
         for planet in planets:
             # Find which house the planet is in
             planet_lon = planet["longitude"]
-            house_num = self._find_house(planet_lon, houses)
+            house_num = find_house(planet_lon, houses) or 1
 
             signals.append(AstroSignal(
                 type="planet_in_house",
@@ -136,26 +136,8 @@ class NormalizationService:
 
         return signals
 
-    def _find_house(self, longitude: float, houses: list[dict]) -> int:
-        """Find which house a longitude falls into."""
-        # Simple implementation: find the house whose cusp is closest before the longitude
-        for i, house in enumerate(houses):
-            next_house = houses[(i + 1) % 12]
-            cusp = house["cusp"]
-            next_cusp = next_house["cusp"]
-
-            # Handle wrap-around at 360/0
-            if next_cusp < cusp:
-                next_cusp += 360
-            if longitude < cusp:
-                longitude += 360
-
-            if cusp <= longitude < next_cusp:
-                return house["number"]
-
-        return 1  # Fallback
-
-    def _calculate_aspect(self, lon1: float, lon2: float) -> tuple[AspectType, float] | None:
+    @staticmethod
+    def _calculate_aspect(lon1: float, lon2: float) -> tuple[AspectType, float] | None:
         """
         Calculate aspect between two longitudes.
 

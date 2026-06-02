@@ -174,7 +174,7 @@ class ScoringService:
 
             # 1. Aspect signals → score per sphere based on planet weights
             for s in aspects:
-                planet_weight = sphere.get("planets", {}).get(s.planet.upper(), 0)
+                planet_weight = sphere.get("planets", {}).get(_base_planet_name(s.planet).upper(), 0)
                 if planet_weight > 0:
                     aw = _aspect_weight(s.aspect_type or "")
                     # benefic softening
@@ -195,7 +195,7 @@ class ScoringService:
             for s in houses:
                 house_key = s.house
                 if house_key and house_key in sphere.get("houses", []):
-                    planet_weight = sphere.get("planets", {}).get(s.planet.upper(), 0.1)
+                    planet_weight = sphere.get("planets", {}).get(_base_planet_name(s.planet).upper(), 0.1)
                     angular_bonus = sphere.get("weight_multipliers", {}).get("angular_house_bonus", 1.0)
                     if house_key in {1, 4, 7, 10}:
                         planet_weight *= angular_bonus
