@@ -225,15 +225,14 @@ class TodayMeta(CamelModel):
 
 
 ImportantTodayType = Literal[
+    "eclipse_window",
+    "new_moon_window",
+    "full_moon_window",
     "moon_void",
-    "retrograde",
-    "new_moon",
-    "full_moon",
-    "eclipse",
+    "mercury_retrograde",
+    "mercury_station",
+    "exact_daily_aspect",
     "active_house",
-    "station",
-    "ingress",
-    "daily_note",
 ]
 
 ImportantTodaySeverity = Literal[

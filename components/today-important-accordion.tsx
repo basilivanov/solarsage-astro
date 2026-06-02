@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, Moon, AlertTriangle, Home, RotateCcw, Zap, ArrowRight, Star } from "lucide-react"
+import { ChevronDown, Moon, AlertTriangle, Home, RotateCcw, Zap, Star } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export type ImportantTodayItem = {
@@ -29,14 +29,13 @@ type Props = {
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
   moon_void: Moon,
-  retrograde: RotateCcw,
-  new_moon: Moon,
-  full_moon: Moon,
-  eclipse: AlertTriangle,
+  mercury_retrograde: RotateCcw,
+  new_moon_window: Moon,
+  full_moon_window: Moon,
+  eclipse_window: AlertTriangle,
   active_house: Home,
-  station: Zap,
-  ingress: ArrowRight,
-  daily_note: Star,
+  mercury_station: Zap,
+  exact_daily_aspect: Star,
 }
 
 function severityBg(severity: string): string {
@@ -55,7 +54,7 @@ function subtitleColor(severity: string): string {
 export function TodayImportantAccordion({ items }: Props) {
   if (!items || items.length === 0) return null
 
-  const [openIds, setOpenIds] = useState<Set<string>>(new Set(items.length > 0 ? [items[0].id] : []))
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set())
 
   function toggle(id: string) {
     setOpenIds((prev) => {

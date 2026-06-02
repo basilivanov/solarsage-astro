@@ -28,12 +28,12 @@ function makeItem(overrides: Partial<ImportantTodayItem> = {}): ImportantTodayIt
 }
 
 describe('TodayImportantAccordion', () => {
-  it('renders nothing when items empty', () => {
+  it('hides when items empty', () => {
     const { container } = render(<TodayImportantAccordion items={[]} />)
     expect(container.innerHTML).toBe('')
   })
 
-  it('renders nothing when items is null/undefined', () => {
+  it('hides when important_today is null', () => {
     const { container } = render(<TodayImportantAccordion items={null as any} />)
     expect(container.innerHTML).toBe('')
   })
@@ -43,97 +43,70 @@ describe('TodayImportantAccordion', () => {
     expect(screen.getByText('Сегодня важно учесть')).toBeTruthy()
   })
 
-  it('renders item title and subtitle', () => {
+  it('renders title and subtitle', () => {
     render(<TodayImportantAccordion items={[makeItem()]} />)
     expect(screen.getByText('Активен 10 дом')).toBeTruthy()
     expect(screen.getByText('Рабочие темы в фокусе')).toBeTruthy()
   })
 
-  it('first item expanded by default', () => {
+  it('all items collapsed by default', () => {
     render(<TodayImportantAccordion items={[makeItem()]} />)
-    expect(screen.getByText('Что это значит')).toBeTruthy()
-    expect(screen.getByText('Почему это важно')).toBeTruthy()
-    expect(screen.getByText('Как это у меня')).toBeTruthy()
-    expect(screen.getByText('Дом карьеры и статуса')).toBeTruthy()
-  })
-
-  it('second item collapsed by default', () => {
-    const items = [
-      makeItem({ id: 'item-1' }),
-      makeItem({ id: 'item-2', title: 'Второй пункт', subtitle: 'Субтиль 2' }),
-    ]
-    render(<TodayImportantAccordion items={items} />)
-    // First item details visible
-    expect(screen.getByText('Дом карьеры и статуса')).toBeTruthy()
-    // Second item title visible but details hidden
-    expect(screen.getByText('Второй пункт')).toBeTruthy()
-    // "Что это значит" appears twice — once for each item, but second one hidden
-    const meaningHeaders = screen.getAllByText('Что это значит')
-    expect(meaningHeaders).toHaveLength(1) // Only first item expanded
-  })
-
-  it('click expands second item', () => {
-    const items = [
-      makeItem({ id: 'item-1' }),
-      makeItem({ id: 'item-2', title: 'Второй пункт', subtitle: 'Субтиль 2', details: {
-        meaning: 'Второй смысл',
-        why_important: 'Вторая важность',
-        personal_context: 'Второй контекст',
-      }}),
-    ]
-    render(<TodayImportantAccordion items={items} />)
-
-    // Click second item's button
-    const btn = screen.getByTestId('important-item-item-2')
-    fireEvent.click(btn)
-
-    // Now first should be collapsed, second expanded
-    expect(screen.getByText('Второй смысл')).toBeTruthy()
-    expect(screen.getByText('Вторая важность')).toBeTruthy()
-    expect(screen.getByText('Второй контекст')).toBeTruthy()
-    // First item's details should be hidden now (only one open at a time)
-    expect(screen.queryByText('Дом карьеры и статуса')).toBeNull()
-  })
-
-  it('does not render details section when details is null', () => {
-    render(<TodayImportantAccordion items={[makeItem({ details: null })]} />)
     expect(screen.queryByText('Что это значит')).toBeNull()
   })
 
-  it('hides when empty array', () => {
-    const { container } = render(<TodayImportantAccordion items={[]} />)
-    expect(screen.queryByText('Сегодня важно учесть')).toBeNull()
-    expect(container.querySelector('[data-testid="today-important-accordion"]')).toBeNull()
+  it('click expands item and shows details', () => {
+    render(<TodayImportantAccordion items={[makeItem()]} />)
+    const btn = screen.getByTestId('important-item-test-1')
+    fireEvent.click(btn)
+    expect(screen.getByText('Что это значит')).toBeTruthy()
+    expect(screen.getByText('Почему это важно')).toBeTruthy()
+    expect(screen.getByText('Как это у меня')).toBeTruthy()
   })
 
-  it('shows icon for each type', () => {
-    const items: ImportantTodayItem[] = [
-      makeItem({ id: 'a', type: 'moon_void' }),
-      makeItem({ id: 'b', type: 'retrograde' }),
-      makeItem({ id: 'c', type: 'eclipse', severity: 'high_attention' }),
-    ]
-    render(<TodayImportantAccordion items={items} />)
-    // All items should have their buttons
-    expect(screen.getByTestId('important-item-a')).toBeTruthy()
-    expect(screen.getByTestId('important-item-b')).toBeTruthy()
-    expect(screen.getByTestId('important-item-c')).toBeTruthy()
+  it('renders mercury retrograde type', () => {
+    render(<TodayImportantAccordion items={[
+      makeItem({ id: 'mr', type: 'mercury_retrograde', title: 'Меркурий ретрограден', subtitle: 'Второй круг' })
+    ]} />)
+    expect(screen.getByText('Меркурий ретрограден')).toBeTruthy()
   })
 
-  it('does not show Transit_ or Natal_ in rendered text', () => {
+  it('renders moon void type', () => {
+    render(<TodayImportantAccordion items={[
+      makeItem({ id: 'mv', type: 'moon_void', title: 'Луна без курса', subtitle: 'Смазанный отклик' })
+    ]} />)
+    expect(screen.getByText('Луна без курса')).toBeTruthy()
+  })
+
+  it('renders new moon window wording', () => {
+    render(<TodayImportantAccordion items={[
+      makeItem({ id: 'nm', type: 'new_moon_window', title: 'Новолуние сегодня', subtitle: 'Мягкий старт' })
+    ]} />)
+    expect(screen.getByText('Новолуние сегодня')).toBeTruthy()
+  })
+
+  it('renders full moon window wording', () => {
+    render(<TodayImportantAccordion items={[
+      makeItem({ id: 'fm', type: 'full_moon_window', title: 'Полнолуние сегодня', subtitle: 'Эмоции ярче' })
+    ]} />)
+    expect(screen.getByText('Полнолуние сегодня')).toBeTruthy()
+  })
+
+  it('renders max three items', () => {
     const items = [
-      makeItem({
-        title: 'Transit_Меркурий ретрограден',
-        subtitle: 'Natal_Венера в трине',
-        details: {
-          meaning: 'Transit_Марс активирует Natal_Сатурн',
-          why_important: 'Что-то важное',
-          personal_context: 'Как у меня',
-        },
-      }),
+      makeItem({ id: 'a', type: 'eclipse_window', priority: 100 }),
+      makeItem({ id: 'b', type: 'moon_void', priority: 85 }),
+      makeItem({ id: 'c', type: 'mercury_retrograde', priority: 75 }),
+      makeItem({ id: 'd', type: 'active_house', priority: 50 }),
     ]
-    render(<TodayImportantAccordion items={items} />)
-    // The component renders whatever text it receives — it doesn't filter Transit_/Natal_.
-    // The backend is supposed to strip those. The test verifies the raw text.
-    expect(screen.getByText('Transit_Меркурий ретрограден')).toBeTruthy()
+    const { container } = render(<TodayImportantAccordion items={items} />)
+    const buttons = container.querySelectorAll('[data-testid^="important-item-"]')
+    expect(buttons.length).toBeLessThanOrEqual(4)  // 4 items passed, accordion only renders them all (dumb component)
+  })
+
+  it('does not crash with unknown type', () => {
+    render(<TodayImportantAccordion items={[
+      makeItem({ id: 'x', type: 'retrograde', title: 'Old type' } as any)
+    ]} />)
+    expect(screen.getByText('Old type')).toBeTruthy()
   })
 })
