@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { TodayScreen } from '@/components/today/today-screen';
-import { LoadingSpinner } from '@/components/grace/LoadingSpinner';
+import { CosmicLoader } from '@/components/shared/cosmic-loader';
 import { ErrorBoundary } from '@/components/grace/ErrorBoundary';
 import { useDay } from '@/lib/grace/hooks/useDay';
 import { useOnboarded } from '@/hooks/use-onboarded';
@@ -99,6 +99,22 @@ export default function DayPage() {
 
   const { data, loading, error } = useDay(dateStr);
 
+  // Cosmic loader state: show while loading, dismiss with delay when done
+  const [showLoader, setShowLoader] = useState(true);
+  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ready = !!data && !loading;
+
+  useEffect(() => {
+    if (ready) {
+      dismissTimer.current = setTimeout(() => setShowLoader(false), 600);
+    } else {
+      setShowLoader(true);
+    }
+    return () => {
+      if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    };
+  }, [ready, dateStr]);
+
   // Sync localStorage when day loads successfully (backend says user is onboarded)
   useEffect(() => {
     if (data) {
@@ -111,7 +127,7 @@ export default function DayPage() {
     [router]
   );
 
-  if (loading) return <LoadingSpinner />;
+  if (showLoader || !data) return <CosmicLoader done={ready} />;
 
   if (error) {
     return (
