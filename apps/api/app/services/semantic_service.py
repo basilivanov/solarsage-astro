@@ -14,6 +14,15 @@ _PLANET_RU: dict[str, str] = {
     "Jupiter": "Юпитер", "Saturn": "Сатурн",
     "Uranus": "Уран", "Neptune": "Нептун", "Pluto": "Плутон",
 }
+
+# Instrumental case (творительный падеж) — for "с <planet>ом"
+_PLANET_INST: dict[str, str] = {
+    "Солнце": "Солнцем", "Луна": "Луной",
+    "Меркурий": "Меркурием", "Венера": "Венерой",
+    "Марс": "Марсом", "Юпитер": "Юпитером",
+    "Сатурн": "Сатурном", "Уран": "Ураном",
+    "Нептун": "Нептуном", "Плутон": "Плутоном",
+}
 _ASPECT_RU: dict[str, str] = {
     "conjunction": "соединении", "opposition": "оппозиции",
     "trine": "трине", "square": "квадратуре", "sextile": "секстиле",
@@ -26,6 +35,10 @@ _SPHERE_RU: dict[str, str] = {
 }
 
 def _p(s: str) -> str: return _PLANET_RU.get(s.replace("Transit_", "").replace("Natal_", ""), s.replace("Transit_", "").replace("Natal_", ""))
+def _pi(s: str) -> str:
+    """Planet name in instrumental case (творительный падеж): с Марсом, с Венерой."""
+    base = _p(s)
+    return _PLANET_INST.get(base, base + "ом")
 def _a(s: str) -> str: return _ASPECT_RU.get(s, s)
 def _s(s: str) -> str:
     """Translate sign name to Russian."""
@@ -142,7 +155,7 @@ class SemanticService:
         # 01 main_theme
         main_parts = [f"Статус дня: {DAY_THEMES.get(day_status, 'Обычный день')}."]
         if top_aspect:
-            main_parts.append(f"Доминирующий аспект: транзитный {_p(top_aspect.planet)} в {_a(top_aspect.aspect_type)} с твоим натальным {_p(top_aspect.target_planet)} (сила {top_aspect.strength:.2f}).")
+            main_parts.append(f"Доминирующий аспект: транзитный {_p(top_aspect.planet)} в {_a(top_aspect.aspect_type)} с твоим натальным {_pi(top_aspect.target_planet or '')} (сила {top_aspect.strength:.2f}).")
         if top_house:
             main_parts.append(f"Ведущий транзит: {_p(top_house.planet)} в твоём {top_house.house} доме.")
         if houses:
@@ -178,7 +191,7 @@ class SemanticService:
                     nh_str = f", {nh} дом" if nh else ""
                     daily_parts.append(
                         f"Луна в {_a(s.aspect_type)} с твоим натальным "
-                        f"{_p(s.target_planet or '')} в {n_sign}{nh_str} "
+                        f"{_pi(s.target_planet or '')} в {n_sign}{nh_str} "
                         f"(орб {s.orb:.1f}°, сила {s.strength:.2f})."
                     )
 
@@ -198,7 +211,7 @@ class SemanticService:
                 nh_str = f", {nh} дом" if nh else ""
                 pers_parts.append(
                     f"Транзитный {_p(s.planet)} в {_a(s.aspect_type or '')} "
-                    f"с ТВОИМ натальным {_p(s.target_planet or '')} "
+                    f"с ТВОИМ натальным {_pi(s.target_planet or '')} "
                     f"(твой {_p(s.target_planet or '')} в натале: {sign} {deg:.1f}°{nh_str}) — орб {s.orb:.1f}°."
                 )
         # Also show transit planets in houses that match natal house positions
@@ -231,7 +244,7 @@ class SemanticService:
         amp_lines = []
         for s in tense_aspects[:3]:
             amp_lines.append(
-                f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_p(s.target_planet or '')} "
+                f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
                 f"(орб {s.orb:.1f}°, сила {s.strength:.2f}). Это создаёт напряжение — "
                 f"день ощущается плотнее, реакции острее, решения труднее."
             )
@@ -239,7 +252,7 @@ class SemanticService:
             # Fallback: any strong aspect
             for s in aspects[:2]:
                 amp_lines.append(
-                    f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_p(s.target_planet or '')} "
+                    f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
                     f"(орб {s.orb:.1f}°, сила {s.strength:.2f})."
                 )
         amp_text = "\n".join(amp_lines) if amp_lines else "Нет выраженных усилителей."
@@ -250,7 +263,7 @@ class SemanticService:
         soft_lines = []
         for s in harmony_signals[:3]:
             soft_lines.append(
-                f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_p(s.target_planet or '')} "
+                f"Транзитный {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
                 f"(орб {s.orb:.1f}°, сила {s.strength:.2f}). Гармоничный аспект — "
                 f"сглаживает острые углы, даёт пространство для манёвра, снижает давление."
             )
