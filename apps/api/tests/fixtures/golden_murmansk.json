@@ -1,0 +1,36 @@
+{
+  "profile": {
+    "name": "murmansk",
+    "birth": "1990-01-15",
+    "time": "12:00",
+    "lat": 67.94,
+    "lon": 32.92,
+    "tz": "Europe/Moscow"
+  },
+  "generated_at": "2026-06-02T17:47:49.978977",
+  "transit_date": "2026-06-02",
+  "house_system": "WHOLE_SIGN",
+  "natal_houses": {
+    "Sun": 1,
+    "Moon": 9,
+    "Mercury": 1,
+    "Venus": 2,
+    "Mars": 12,
+    "Jupiter": 7,
+    "Saturn": 1,
+    "Uranus": 1,
+    "Neptune": 1,
+    "Pluto": 11
+  },
+  "sphere_scores_min": {
+    "thinking_speech_learning": 1.33,
+    "work_status_achievement": 1.42,
+    "relationships_partnership": 2.01,
+    "money_security_resources": 2.06,
+    "body_energy_health": 3.31,
+    "home_family_roots": 2.52,
+    "inner_background_unconscious": 2.07,
+    "crisis_transformation_control": 1.19,
+    "meaning_expansion_vector": 1.06
+  }
+}

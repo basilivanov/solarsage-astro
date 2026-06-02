@@ -1,0 +1,36 @@
+{
+  "profile": {
+    "name": "moscow",
+    "birth": "1990-01-15",
+    "time": "12:00",
+    "lat": 55.75,
+    "lon": 37.62,
+    "tz": "Europe/Moscow"
+  },
+  "generated_at": "2026-06-02T17:47:49.957285",
+  "transit_date": "2026-06-02",
+  "house_system": "PLACIDUS",
+  "natal_houses": {
+    "Sun": 10,
+    "Moon": 6,
+    "Mercury": 9,
+    "Venus": 10,
+    "Mars": 8,
+    "Jupiter": 3,
+    "Saturn": 10,
+    "Uranus": 9,
+    "Neptune": 9,
+    "Pluto": 7
+  },
+  "sphere_scores_min": {
+    "thinking_speech_learning": 1.99,
+    "work_status_achievement": 2.51,
+    "relationships_partnership": 2.01,
+    "money_security_resources": 1.72,
+    "body_energy_health": 2.49,
+    "home_family_roots": 2.52,
+    "inner_background_unconscious": 2.07,
+    "crisis_transformation_control": 1.53,
+    "meaning_expansion_vector": 1.51
+  }
+}

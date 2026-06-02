@@ -139,7 +139,7 @@ class TodayImportantService:
 
         has_eclipse = self._check_eclipse_window(items, transits, target_date)
         self._check_lunation_window(items, transits, target_date, has_eclipse)
-        self._check_moon_voc(items, transits, signals)
+        self._check_moon_voc(items, transits, signals, timezone)
         has_station = self._check_mercury_station(items, transits)
         if not has_station:
             self._check_mercury_retrograde(items, transits)
@@ -264,7 +264,7 @@ class TodayImportantService:
 
     # ── Moon Void of Course ─────────────────────────────────────────
 
-    def _check_moon_voc(self, items: list[ImportantTodayItem], transits: dict, signals: list[AstroSignal]):
+    def _check_moon_voc(self, items: list[ImportantTodayItem], transits: dict, signals: list[AstroSignal], tz: str):
         transit_planets = transits.get("planets", [])
         moon = self._find_planet(transit_planets, "Moon")
         if not moon:
@@ -285,7 +285,13 @@ class TodayImportantService:
             if degrees_to_next < 0:
                 degrees_to_next += 360
             hours_to_next = degrees_to_next / moon_speed
-            end_time = datetime.now().replace(tzinfo=None) + timedelta(hours=hours_to_next)
+            from zoneinfo import ZoneInfo
+            try:
+                user_tz = ZoneInfo(tz)
+            except Exception:
+                user_tz = ZoneInfo("UTC")
+            now = datetime.now(user_tz)
+            end_time = now + timedelta(hours=hours_to_next)
 
             items.append(ImportantTodayItem(
                 id="moon_voc",
