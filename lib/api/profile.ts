@@ -4,6 +4,8 @@
 // purpose: API client for profile endpoints
 
 import type { components } from '@/packages/contracts/_generated'
+import { IS_DEMO_MODE } from '@/lib/demo-mode'
+import { DEMO_PROFILE } from '@/lib/demo-data'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -18,6 +20,8 @@ export type ProfileWrite = components['schemas']['ProfileWrite']
  * @throws Error on HTTP errors
  */
 export async function getProfile(): Promise<ProfileRead> {
+  if (IS_DEMO_MODE) return DEMO_PROFILE as unknown as ProfileRead;
+
   const res = await fetch(`${API_BASE}/api/profile`, {
     credentials: 'include',
     headers: {

@@ -4,6 +4,8 @@
 // purpose: API client for backend endpoints with type-safe contracts
 
 import type { components } from '@/packages/contracts/_generated';
+import { IS_DEMO_MODE } from '@/lib/demo-mode';
+import { DEMO_TODAY_RESPONSE, DEMO_CALENDAR_RESPONSE } from '@/lib/demo-data';
 
 type TodayPayload = components['schemas']['TodayPayload'];
 type CalendarPayload = components['schemas']['CalendarPayload'];
@@ -31,6 +33,8 @@ export class ApiError extends Error {
  * @throws ApiError on HTTP errors
  */
 export async function fetchDay(date: string): Promise<TodayPayload> {
+  if (IS_DEMO_MODE) return DEMO_TODAY_RESPONSE as unknown as TodayPayload;
+
   const res = await fetch(`${API_BASE}/api/day/${date}`, {
     credentials: 'include', // Send session cookie for auth
     headers: {
@@ -64,6 +68,8 @@ export async function fetchDay(date: string): Promise<TodayPayload> {
  * @throws ApiError on HTTP errors
  */
 export async function fetchCalendar(month: string): Promise<CalendarPayload> {
+  if (IS_DEMO_MODE) return DEMO_CALENDAR_RESPONSE as unknown as CalendarPayload;
+
   const res = await fetch(`${API_BASE}/api/calendar?month=${month}`, {
     credentials: 'include',
     headers: {

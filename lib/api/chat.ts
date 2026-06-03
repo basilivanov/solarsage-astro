@@ -6,6 +6,8 @@
  */
 
 import type { ChatContext, ChatMessage } from "@/lib/contracts/chat"
+import { IS_DEMO_MODE } from "@/lib/demo-mode"
+import { DEMO_CHAT_MESSAGES } from "@/lib/demo-data"
 
 export type { ChatContext, ChatMessage }
 
@@ -15,6 +17,18 @@ export async function* sendMessage(args: {
   context: ChatContext
   signal?: AbortSignal
 }): AsyncGenerator<string, void, unknown> {
+  if (IS_DEMO_MODE) {
+    const reply = DEMO_CHAT_MESSAGES.find(m => m.role === "assistant")?.text
+      || "Я твой астрологический ассистент. Спрашивай о дне, отношениях, карьере — я помогу разобраться!"
+    // Simulate streaming — yield word by word
+    const words = reply.split(" ")
+    for (let i = 0; i < words.length; i++) {
+      yield (i === 0 ? "" : " ") + words[i]
+      await new Promise(r => setTimeout(r, 30))
+    }
+    return
+  }
+
   const createRes = await fetch("/api/chat/threads", {
     method: "POST",
     credentials: "include",

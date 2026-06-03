@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { logger } from '@/lib/log';
+import { IS_DEMO_MODE } from '@/lib/demo-mode';
 
 interface TelegramAuthState {
   isLoading: boolean;
@@ -44,6 +45,14 @@ export function useTelegramAuth() {
           logger.debug('[TGAuth] SSR — skipping');
           clearTimeout(timeoutId);
           setState({ isLoading: false, isAuthenticated: false, error: null });
+          return;
+        }
+
+        // Demo mode — skip real auth
+        if (IS_DEMO_MODE) {
+          logger.info('[TGAuth] DEMO MODE — skipping auth');
+          clearTimeout(timeoutId);
+          setState({ isLoading: false, isAuthenticated: true, error: null });
           return;
         }
 
