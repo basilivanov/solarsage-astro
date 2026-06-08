@@ -19,7 +19,7 @@ describe('getProfileMeta', () => {
     global.fetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ remaining: 5, resetAt: '2025-12-31T00:00:00Z' }),
+        json: async () => ({ left: 5, next_in_days: 5 }),
       })
       .mockResolvedValueOnce({
         ok: false,
@@ -34,7 +34,7 @@ describe('getProfileMeta', () => {
     global.fetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ remaining: 3 }),
+        json: async () => ({ left: 3, next_in_days: 7 }),
       })
       .mockResolvedValueOnce({
         ok: false,
@@ -66,7 +66,7 @@ describe('getProfileMeta', () => {
     global.fetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ remaining: 2 }),
+        json: async () => ({ left: 2, next_in_days: 7 }),
       })
       .mockResolvedValueOnce({
         ok: true,

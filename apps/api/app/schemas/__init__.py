@@ -32,6 +32,12 @@ from .access import AccessSummary, UserAccessState
 from .auth import AuthError, AuthSession, TelegramAuthRequest
 from .calendar import AllowedRange, CalendarDay, CalendarMeta, CalendarPayload
 from .profile import BirthData, LocationData, ProfileRead, ProfileWrite
+from .horary import (
+    HoraryQuestionCreate,
+    HoraryQuestionRead,
+    HoraryAnswerRead,
+    HoraryQuotaRead,
+)
 from .natal import (
     BulletsBlock,
     HighlightItem,
@@ -86,6 +92,11 @@ __all__ = [
     "LocationData",
     "ProfileRead",
     "ProfileWrite",
+    # horary (W-HORARY)
+    "HoraryQuestionCreate",
+    "HoraryQuestionRead",
+    "HoraryAnswerRead",
+    "HoraryQuotaRead",
     # today
     "ContentAccessReason",
     "ContentAccessState",

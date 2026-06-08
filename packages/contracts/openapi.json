@@ -378,6 +378,54 @@
         "title": "CalendarPayload",
         "type": "object"
       },
+      "CalloutBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "enum": [
+                  "neutral",
+                  "strength",
+                  "risk",
+                  "insight"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          },
+          "type": {
+            "const": "callout",
+            "default": "callout",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CalloutBlock",
+        "type": "object"
+      },
       "ContentAccessState": {
         "additionalProperties": false,
         "properties": {
@@ -471,6 +519,48 @@
         "title": "DayQuality",
         "type": "object"
       },
+      "DividerBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "divider",
+            "default": "divider",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "DividerBlock",
+        "type": "object"
+      },
+      "HeadingBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "enum": [
+              2,
+              3
+            ],
+            "title": "Level",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "heading",
+            "default": "heading",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "text"
+        ],
+        "title": "HeadingBlock",
+        "type": "object"
+      },
       "HighlightItem": {
         "additionalProperties": false,
         "properties": {
@@ -527,6 +617,269 @@
           "items"
         ],
         "title": "HighlightsBlock",
+        "type": "object"
+      },
+      "HoraryAnswerRead": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "callout": "#/components/schemas/CalloutBlock",
+                  "divider": "#/components/schemas/DividerBlock",
+                  "heading": "#/components/schemas/HeadingBlock",
+                  "lead": "#/components/schemas/LeadBlock",
+                  "list": "#/components/schemas/ListBlock",
+                  "paragraph": "#/components/schemas/app__schemas__horary__ParagraphBlock",
+                  "pros_cons": "#/components/schemas/ProsConsBlock",
+                  "quote": "#/components/schemas/app__schemas__horary__QuoteBlock",
+                  "timing": "#/components/schemas/TimingBlock",
+                  "verdict_card": "#/components/schemas/VerdictCardBlock"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/app__schemas__horary__ParagraphBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/LeadBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/HeadingBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/ListBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/CalloutBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/ProsConsBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DividerBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__horary__QuoteBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/VerdictCardBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/TimingBlock"
+                }
+              ]
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "generatedAt": {
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "planets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Planets",
+            "type": "array"
+          },
+          "verdict": {
+            "enum": [
+              "yes",
+              "no",
+              "maybe"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "confidence",
+          "blocks",
+          "planets",
+          "generatedAt"
+        ],
+        "title": "HoraryAnswerRead",
+        "type": "object"
+      },
+      "HoraryQuestionCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "love",
+                  "career",
+                  "money",
+                  "health",
+                  "travel",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "clientLocalTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clientlocaltime"
+          },
+          "clientTimezone": {
+            "maxLength": 100,
+            "title": "Clienttimezone",
+            "type": "string"
+          },
+          "questionLat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionlat"
+          },
+          "questionLon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionlon"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "clientTimezone"
+        ],
+        "title": "HoraryQuestionCreate",
+        "type": "object"
+      },
+      "HoraryQuestionRead": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HoraryAnswerRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "clientLocalTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clientlocaltime"
+          },
+          "clientTimezone": {
+            "title": "Clienttimezone",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "processing",
+              "answered",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "category",
+          "status",
+          "clientTimezone",
+          "clientLocalTime",
+          "createdAt"
+        ],
+        "title": "HoraryQuestionRead",
+        "type": "object"
+      },
+      "HoraryQuotaRead": {
+        "additionalProperties": false,
+        "properties": {
+          "canPurchase": {
+            "default": true,
+            "title": "Canpurchase",
+            "type": "boolean"
+          },
+          "left": {
+            "title": "Left",
+            "type": "integer"
+          },
+          "nextInDays": {
+            "title": "Nextindays",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "left",
+          "nextInDays"
+        ],
+        "title": "HoraryQuotaRead",
         "type": "object"
       },
       "ImportantTodayDetails": {
@@ -752,6 +1105,64 @@
           "subtitle"
         ],
         "title": "ImportantTodayItem",
+        "type": "object"
+      },
+      "LeadBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "lead",
+            "default": "lead",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "LeadBlock",
+        "type": "object"
+      },
+      "ListBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "enum": [
+                  "bullet",
+                  "check"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "type": {
+            "const": "list",
+            "default": "list",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ListBlock",
         "type": "object"
       },
       "LocationData": {
@@ -996,14 +1407,14 @@
                 "mapping": {
                   "bullets": "#/components/schemas/BulletsBlock",
                   "highlights": "#/components/schemas/HighlightsBlock",
-                  "paragraph": "#/components/schemas/ParagraphBlock",
-                  "quote": "#/components/schemas/QuoteBlock"
+                  "paragraph": "#/components/schemas/app__schemas__natal__ParagraphBlock",
+                  "quote": "#/components/schemas/app__schemas__natal__QuoteBlock"
                 },
                 "propertyName": "type"
               },
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/ParagraphBlock"
+                  "$ref": "#/components/schemas/app__schemas__natal__ParagraphBlock"
                 },
                 {
                   "$ref": "#/components/schemas/BulletsBlock"
@@ -1012,7 +1423,7 @@
                   "$ref": "#/components/schemas/HighlightsBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/QuoteBlock"
+                  "$ref": "#/components/schemas/app__schemas__natal__QuoteBlock"
                 }
               ]
             },
@@ -1045,26 +1456,6 @@
           "blocks"
         ],
         "title": "NatalSection",
-        "type": "object"
-      },
-      "ParagraphBlock": {
-        "additionalProperties": false,
-        "properties": {
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "type": {
-            "const": "paragraph",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "text"
-        ],
-        "title": "ParagraphBlock",
         "type": "object"
       },
       "PeriodContext": {
@@ -1288,10 +1679,24 @@
         "title": "ProfileWrite",
         "type": "object"
       },
-      "QuoteBlock": {
+      "ProsConsBlock": {
         "additionalProperties": false,
         "properties": {
-          "source": {
+          "cons": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cons"
+          },
+          "consLabel": {
             "anyOf": [
               {
                 "type": "string"
@@ -1300,23 +1705,41 @@
                 "type": "null"
               }
             ],
-            "title": "Source"
+            "title": "Conslabel"
           },
-          "text": {
-            "title": "Text",
-            "type": "string"
+          "pros": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pros"
+          },
+          "prosLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proslabel"
           },
           "type": {
-            "const": "quote",
+            "const": "pros_cons",
+            "default": "pros_cons",
             "title": "Type",
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "text"
-        ],
-        "title": "QuoteBlock",
+        "title": "ProsConsBlock",
         "type": "object"
       },
       "ReadingBody": {
@@ -1351,6 +1774,38 @@
           "initData"
         ],
         "title": "TelegramAuthRequest",
+        "type": "object"
+      },
+      "TimingBlock": {
+        "additionalProperties": false,
+        "description": "Блок со сроками реализации.",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "timeRange": {
+            "title": "Timerange",
+            "type": "string"
+          },
+          "type": {
+            "const": "timing",
+            "default": "timing",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timeRange"
+        ],
+        "title": "TimingBlock",
         "type": "object"
       },
       "TodayAction": {
@@ -1699,6 +2154,48 @@
         "title": "TopFlagHint",
         "type": "object"
       },
+      "VerdictCardBlock": {
+        "additionalProperties": false,
+        "description": "Крупная карточка вердикта: да/нет/возможно + confidence.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "type": {
+            "const": "verdict_card",
+            "default": "verdict_card",
+            "title": "Type",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "yes",
+              "no",
+              "maybe"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "confidence"
+        ],
+        "title": "VerdictCardBlock",
+        "type": "object"
+      },
       "WeekStripDay": {
         "additionalProperties": false,
         "properties": {
@@ -1976,6 +2473,108 @@
         ],
         "title": "YesterdayEcho",
         "type": "object"
+      },
+      "app__schemas__horary__ParagraphBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "paragraph",
+            "default": "paragraph",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ParagraphBlock",
+        "type": "object"
+      },
+      "app__schemas__horary__QuoteBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "quote",
+            "default": "quote",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "QuoteBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__ParagraphBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "paragraph",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "ParagraphBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__QuoteBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "quote",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "QuoteBlock",
+        "type": "object"
       }
     }
   },
@@ -2088,6 +2687,90 @@
           }
         },
         "summary": "Contracts  Calendarpayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/horaryanswerread": {
+      "get": {
+        "operationId": "contracts__horaryanswerread___contracts___horaryanswerread_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraryAnswerRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Horaryanswerread",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/horaryquestioncreate": {
+      "get": {
+        "operationId": "contracts__horaryquestioncreate___contracts___horaryquestioncreate_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraryQuestionCreate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Horaryquestioncreate",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/horaryquestionread": {
+      "get": {
+        "operationId": "contracts__horaryquestionread___contracts___horaryquestionread_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraryQuestionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Horaryquestionread",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/horaryquotaread": {
+      "get": {
+        "operationId": "contracts__horaryquotaread___contracts___horaryquotaread_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraryQuotaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Horaryquotaread",
         "tags": [
           "__contracts__"
         ]

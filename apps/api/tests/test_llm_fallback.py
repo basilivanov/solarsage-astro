@@ -32,6 +32,7 @@ async def test_day_endpoint_returns_placeholder_when_llm_fails(
         mock_instance.generate_reading = AsyncMock(return_value=None)
         mock_instance.generate_notes = AsyncMock(return_value=None)
         mock_instance.generate_why_sections = AsyncMock(return_value=None)
+        mock_instance.generate_important_today_details = AsyncMock(return_value=None)
 
         resp = await async_client.get("/api/day/today")
         assert resp.status_code == 200

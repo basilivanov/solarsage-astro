@@ -52,7 +52,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import _log, auth, calendar, chat, checkin, day, debug, geo, health, health_extended, metrics, microcopy, natal, payment, profile, referral
+from app.api import _log, auth, calendar, chat, checkin, day, debug, geo, health, health_extended, horary, metrics, microcopy, natal, payment, profile, referral
 from app.core.config import settings
 from app.core.logging import logger
 from app.middleware.correlation import CorrelationMiddleware
@@ -97,4 +97,5 @@ app.include_router(natal.router)  # W-7.2
 app.include_router(checkin.router)  # W-8.1
 app.include_router(chat.router)  # W-CHAT-1
 app.include_router(geo.router)  # GeoNames city autocomplete
+app.include_router(horary.router)  # Horary questions (W-HORARY)
 # END_BLOCK: ROUTER_MOUNT

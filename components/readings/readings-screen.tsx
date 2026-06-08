@@ -14,26 +14,14 @@ export function ReadingsScreen() {
   const router = useRouter()
   const { available, coming } = useMemo(() => listReadings(), [])
   const [devCard, setDevCard] = useState<ComingReading | null>(null)
-  const [comingAvailable, setComingAvailable] = useState<{
-    title: string
-    description: string
-    icon: ComingReading["icon"]
-  } | null>(null)
 
   // Натальная карта подключена как полноценный экран — уходим на TOC.
   const openNatal = () => {
     router.push("/readings/natal")
   }
 
-  const openComingHorary = () => {
-    const card = available.find((r) => r.key === "horary")
-    if (!card) return
-    setComingAvailable({
-      title: card.title,
-      description:
-        "Форма вопроса и разбор хорара скоро откроются. Мы готовим сценарий, в котором ты сможешь задать точный вопрос и получить ответ.",
-      icon: card.icon,
-    })
+  const openHorary = () => {
+    router.push("/readings/horary")
   }
 
   return (
@@ -87,7 +75,7 @@ export function ReadingsScreen() {
                 title={r.title}
                 description={r.description}
                 teaser={r.teaser}
-                onClick={r.key === "natal" ? openNatal : openComingHorary}
+                onClick={r.key === "natal" ? openNatal : openHorary}
               />
             ))}
           </div>
@@ -132,15 +120,6 @@ export function ReadingsScreen() {
           title={devCard.title}
           description={devCard.description}
           onClose={() => setDevCard(null)}
-        />
-      ) : null}
-
-      {comingAvailable ? (
-        <InDevOverlay
-          icon={comingAvailable.icon}
-          title={comingAvailable.title}
-          description={comingAvailable.description}
-          onClose={() => setComingAvailable(null)}
         />
       ) : null}
     </div>

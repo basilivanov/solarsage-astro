@@ -56,4 +56,10 @@ export type AuthError = components["schemas"]["AuthError"];
 export type BirthData = components["schemas"]["BirthData"];
 export type ProfileRead = components["schemas"]["ProfileRead"];
 export type ProfileWrite = components["schemas"]["ProfileWrite"];
+
+// W-HORARY: Horary schemas
+export type HoraryQuestionCreate = components["schemas"]["HoraryQuestionCreate"];
+export type HoraryQuestionRead = components["schemas"]["HoraryQuestionRead"];
+export type HoraryAnswerRead = components["schemas"]["HoraryAnswerRead"];
+export type HoraryQuotaRead = components["schemas"]["HoraryQuotaRead"];
 // END_BLOCK: BARREL_REEXPORT

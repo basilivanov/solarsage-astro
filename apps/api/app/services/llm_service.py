@@ -566,3 +566,98 @@ JSON:"""
         except json_lib.JSONDecodeError as e:
             logger.warning(f"[LLM] Failed to parse important-today details JSON: {text[:200]}... error={e}")
             return None
+
+    # ── Horary generation ──────────────────────────────────────────
+
+    async def generate_horary_answer(
+        self,
+        question_text: str,
+        category: str | None,
+        verdict: str,
+        confidence: float,
+        involved_planets: list[str],
+        asc_ruler: str,
+        significator: str,
+    ) -> dict:
+        # Translate to Russian for the prompt
+        significator_ru = _PLANET_RU.get(significator, significator)
+        asc_ruler_ru = _PLANET_RU.get(asc_ruler, asc_ruler)
+        planets_ru = [_PLANET_RU.get(p, p) for p in involved_planets]
+
+        verdict_translation = {"yes": "Да", "no": "Нет", "maybe": "Возможно"}.get(verdict, "Возможно")
+
+        system_prompt = (
+            "Ты — астролог, отвечающий на хорарный вопрос. Стиль: разговорный, на «ты», без англицизмов.\n"
+            "Планеты и дома называй по-русски. Не выдумывай аспекты — используй только данные из контекста.\n\n"
+            "Обязательные блоки в порядке:\n"
+            "1. verdict_card — вердикт и confidence\n"
+            "2. lead — одно предложение, главный вывод\n"
+            "3. paragraph — объяснение сигнификатора и ASC-управителя\n"
+            "4. pros_cons — за и против\n"
+            "5. timing — сроки реализации\n"
+            "6. callout (tone=insight) — совет\n"
+            "7. paragraph — итог"
+        )
+
+        user_prompt = (
+            f"Вопрос: {question_text}\n"
+            f"Категория: {category}\n"
+            f"Вердикт: {verdict_translation} ({verdict}) (confidence: {confidence:.2f})\n"
+            f"Сигнификатор: {significator_ru} ({significator})\n"
+            f"Управитель ASC: {asc_ruler_ru} ({asc_ruler})\n"
+            f"Задействованные планеты: {', '.join(planets_ru)}\n\n"
+            "Верни ТОЛЬКО валидный JSON (без markdown):\n"
+            "{\n"
+            "  \"blocks\": [\n"
+            "    { \"type\": \"verdict_card\", \"verdict\": \"yes|no|maybe\", \"confidence\": 0.0-1.0, \"label\": \"...\" },\n"
+            "    { \"type\": \"lead\", \"text\": \"...\" },\n"
+            "    { \"type\": \"paragraph\", \"text\": \"...\" },\n"
+            "    { \"type\": \"pros_cons\", \"pros_label\": \"За\", \"cons_label\": \"Против\", \"pros\": [\"...\"], \"cons\": [\"...\"] },\n"
+            "    { \"type\": \"timing\", \"time_range\": \"2–3 недели\", \"text\": \"...\" },\n"
+            "    { \"type\": \"callout\", \"tone\": \"insight\", \"title\": \"Совет\", \"text\": \"...\" },\n"
+            "    { \"type\": \"paragraph\", \"text\": \"...\" }\n"
+            "  ]\n"
+            "}"
+        )
+
+        prompt = f"{system_prompt}\n\n{user_prompt}"
+
+        # 2 attempts to generate valid JSON
+        for attempt in range(2):
+            try:
+                # Use generate text helper
+                text = await self._generate_text(prompt, max_tokens=1500)
+                if not text:
+                    continue
+                # Clean markdown formatting if any
+                for marker in ['```json', '```']:
+                    if marker in text:
+                        text = text.split(marker, 1)[1].rsplit('```', 1)[0].strip()
+                        break
+                data = json_lib.loads(text)
+                if "blocks" in data and isinstance(data["blocks"], list):
+                    return data
+            except Exception as e:
+                logger.warning(f"[Horary LLM] Attempt {attempt+1} failed: {e}")
+
+        # Fallback response
+        lead_text = {
+            "yes": "Звёзды склоняются к положительному ответу на твой вопрос.",
+            "no": "В данный момент обстоятельства складываются не в твою пользу.",
+            "maybe": "Сейчас ситуация неопределённая, звёзды не дают однозначного ответа.",
+        }.get(verdict, "Сейчас ситуация неопределённая.")
+
+        return {
+            "blocks": [
+                {
+                    "type": "verdict_card",
+                    "verdict": verdict,
+                    "confidence": confidence,
+                    "label": f"Скорее {verdict_translation.lower()}"
+                },
+                {
+                    "type": "lead",
+                    "text": lead_text
+                }
+            ]
+        }

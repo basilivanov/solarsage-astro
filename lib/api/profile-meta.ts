@@ -6,13 +6,13 @@ import type { ProfileMeta } from "@/lib/profile-meta"
 
 export async function getProfileMeta(): Promise<ProfileMeta> {
   let quotaRemaining = 0
-  let resetAt = ""
+  let nextInDays = 7
   let referralCount = 0
   let referralUrl = ""
 
   try {
     const [quotaRes, referralRes] = await Promise.all([
-      fetch("/api/chat/quota", {
+      fetch("/api/horary/quota", {
         credentials: "include",
         headers: { "Accept": "application/json" },
       }),
@@ -24,8 +24,8 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
 
     if (quotaRes.ok) {
       const quota = await quotaRes.json()
-      quotaRemaining = quota.remaining || 0
-      resetAt = quota.resetAt || ""
+      quotaRemaining = quota.left || 0
+      nextInDays = quota.next_in_days || 7
     }
 
     if (referralRes.ok) {
@@ -35,12 +35,6 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
     }
   } catch {
     // fallback to defaults
-  }
-
-  let nextInDays = 7
-  if (resetAt) {
-    const ms = new Date(resetAt).getTime() - Date.now()
-    nextInDays = Math.max(1, Math.ceil(ms / 86400000))
   }
 
   return {

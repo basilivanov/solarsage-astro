@@ -533,3 +533,82 @@ class ChatQuota(Base):
 
     user: Mapped["User"] = relationship("User")
 # END_BLOCK: CHAT_QUOTAS_TABLE
+
+
+# START_BLOCK: HORARY_TABLES
+class HoraryQuestion(Base):
+    __tablename__ = "horary_questions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    text: Mapped[str] = mapped_column(String(500), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    client_timezone: Mapped[str] = mapped_column(String(100), nullable=False)
+    client_local_time: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    question_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5), nullable=True)
+    question_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User")
+    answer: Mapped["HoraryAnswer | None"] = relationship(
+        "HoraryAnswer",
+        back_populates="question",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class HoraryAnswer(Base):
+    __tablename__ = "horary_answers"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("horary_questions.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    verdict: Mapped[str] = mapped_column(String(10), nullable=False)  # yes/no/maybe
+    confidence: Mapped[float] = mapped_column(nullable=False)
+    blocks_json: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list[HoraryBlock]
+    planets_json: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list[str]
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    question: Mapped["HoraryQuestion"] = relationship("HoraryQuestion", back_populates="answer")
+
+
+class HoraryQuota(Base):
+    __tablename__ = "horary_quotas"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    questions_used: Mapped[int] = mapped_column(default=0, nullable=False)
+    questions_limit: Mapped[int] = mapped_column(default=3, nullable=False)
+    reset_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User")
+# END_BLOCK: HORARY_TABLES
