@@ -6,7 +6,7 @@
 
 Хорар — отдельный формат раздела «Разборы». Он не является частью `TodayPayload`: Today объясняет выбранный день, а хорар отвечает на конкретный вопрос пользователя, заданный в конкретный момент времени.
 
-Ключевой принцип хорара: **момент вопроса важен**. Поэтому приложение фиксирует и показывает пользователю время вопроса перед отправкой.
+Ключевой принцип хорара: **момент вопроса и место вопроса важны**. Поэтому приложение фиксирует и показывает пользователю время и место вопроса перед отправкой.
 
 ---
 
@@ -202,14 +202,41 @@ Week 4: 2026-06-22 12:00 → 2026-06-29 12:00
 ### 6.2. Форма вопроса
 
 - Категория: `love | career | money | health | travel | other`.
+- Категория optional, но chips single-select: клик по другой категории всегда переключает selected category.
 - Textarea: min 5, max 500 символов.
 - Подтверждение времени вопроса:
   - timezone: `Intl.DateTimeFormat().resolvedOptions().timeZone`;
   - local time: текущее локальное время;
   - возможность изменить время вручную.
-- Кнопка «Спросить» disabled, если:
+- Подтверждение места вопроса:
+  - показать человекочитаемое место: город + страна, например `Москва, Россия`;
+  - возможность изменить место;
+  - если место не определено, показать `Место вопроса: не определено` и CTA `Указать место`;
+  - не показывать raw coordinates как основной UX.
+- Кнопка disabled, если:
   - текст короче 5 символов;
-  - нет доступных кредитов.
+  - нет доступных кредитов;
+  - место вопроса требуется, но не определено.
+
+Рекомендуемый текст кнопки:
+
+```text
+Получить ответ карты
+```
+
+Допустимый вариант:
+
+```text
+Открыть ответ карты
+```
+
+Не использовать generic/kitsch copy как основной CTA:
+
+```text
+Спросить звёзды
+Спросить Вселенную
+Магический ответ
+```
 
 ### 6.3. Генерация
 
@@ -219,7 +246,7 @@ Week 4: 2026-06-22 12:00 → 2026-06-29 12:00
 2. создаёт `HoraryQuestion`;
 3. ставит `status = processing`;
 4. запускает генерацию;
-5. frontend показывает progress screen и polling.
+5. frontend показывает premium progress screen и polling.
 
 Polling:
 
@@ -228,10 +255,26 @@ GET /api/horary/questions/{id}
 interval: 2 sec
 ```
 
+Processing screen должен быть продуктовым, не техническим spinner-only.
+
+Рекомендуемая копия:
+
+```text
+Строим карту вопроса
+Фиксируем момент, место и главные сигнификаторы. Обычно это занимает несколько секунд.
+```
+
+Визуальная идея:
+
+- мягкая карточка на тёплом фоне;
+- тонкое анимированное кольцо/орбита;
+- маленькая moon/star-dot animation;
+- 3 шага: `Фиксируем момент` → `Строим карту` → `Формулируем ответ`.
+
 Timeout UI: если через 30 секунд ответ ещё `processing`, показать текст:
 
 ```text
-Ответ формируется дольше обычного. Мы покажем его, когда он будет готов.
+Ответ формируется дольше обычного. Мы сохраним вопрос и покажем ответ, когда карта будет готова.
 ```
 
 ### 6.4. Экран ответа `/readings/horary/[id]`
@@ -241,6 +284,7 @@ Timeout UI: если через 30 секунд ответ ещё `processing`, 
 - текст вопроса;
 - категорию;
 - дату/время вопроса;
+- место вопроса / место построения карты;
 - verdict card: `yes | no | maybe`, confidence;
 - блоки ответа;
 - timing-блок;
@@ -334,12 +378,15 @@ horary_questions
 - client_local_time nullable
 - question_lat nullable
 - question_lon nullable
+- question_location_name nullable
 - spent_credit_id nullable
 - idempotency_key
 - request_hash
 - created_at
 - updated_at
 ```
+
+`question_location_name` is optional but recommended for displaying the place used later in history/answer screens. If not implemented in the first UI polish pass, frontend must still show the place currently used before submit.
 
 ### 8.3. `horary_answers`
 
@@ -414,6 +461,7 @@ export type HoraryQuestionCreate = {
   clientLocalTime?: string
   questionLat?: number
   questionLon?: number
+  questionLocationName?: string
   idempotencyKey: string
 }
 ```
@@ -429,6 +477,7 @@ export type HoraryQuestionRead = {
   spentCreditSource?: "subscription_weekly_free" | "referral_bonus" | "gift" | "paid" | "adjustment"
   clientTimezone: string
   clientLocalTime?: string | null
+  questionLocationName?: string | null
   createdAt: string
   answer?: HoraryAnswerRead | null
 }
@@ -460,6 +509,16 @@ Errors:
 5. посчитать verdict и confidence;
 6. передать LLM только готовый контекст, а не сырые внутренние структуры.
 
+Место вопроса не является сигнификатором. Корректные термины:
+
+```text
+question place
+место вопроса
+место построения хорарной карты
+```
+
+Сигнификатор — это планета/дом, представляющие кверента или тему вопроса.
+
 Категории:
 
 | category | significator | houses |
@@ -481,6 +540,8 @@ LLM получает:
 
 - текст вопроса;
 - категорию;
+- момент вопроса;
+- место вопроса / место построения карты;
 - verdict;
 - confidence;
 - сигнификатор;
@@ -564,6 +625,34 @@ Implementation must not use the old model:
 - weekly_bonus as an accumulating source
 ```
 
+### 12.7. Category switching
+
+```text
+Given selectedCategory = love
+When user taps career
+Then selectedCategory = career
+And career chip is visually selected
+And love chip is visually unselected
+```
+
+### 12.8. Question place is visible and editable
+
+```text
+Given the horary form is open
+Then user sees question time and question place
+And user can edit question place
+And submitted payload includes questionLat/questionLon when known
+```
+
+### 12.9. Premium processing state
+
+```text
+Given user submits a horary question
+Then progress screen is shown
+And it mentions moment + place + card/chart calculation
+And it is not a plain technical spinner-only state
+```
+
 ---
 
 ## 13. Implementation order
@@ -579,7 +668,9 @@ Implementation must not use the old model:
 9. Frontend contracts and API facade.
 10. `/readings/horary` and `/readings/horary/[id]`.
 11. Profile `HoraryCard`: show weekly-free separately from paid/bonus.
-12. Tests.
+12. Question place selector / resolver.
+13. Premium horary progress state.
+14. Tests.
 
 ---
 
@@ -595,6 +686,10 @@ Implementation must not use the old model:
 8. Frontend does not invent quotas locally; it renders API state.
 9. User cannot read another user's question.
 10. Duplicate submit cannot double-spend credits.
+11. Horary form must show both question time and question place.
+12. Location must be called `Место вопроса`, not `сигнификатор`.
+13. Category chips must be reliable single-select controls.
+14. Processing state must be product/premium UX, not a plain spinner-only state.
 
 ---
 
@@ -722,6 +817,18 @@ UNIQUE(idempotency_key)
 
 Хранить `request_hash` на `horary_questions`.
 
+`request_hash` должен включать все business-input поля хорара, кроме `idempotencyKey`:
+
+```text
+text
+category
+clientTimezone / client_timezone
+clientLocalTime / client_local_time
+questionLat / question_lat
+questionLon / question_lon
+questionLocationName / question_location_name, если поле добавлено
+```
+
 ### 16.7. Failure / refund policy
 
 Если генерация ответа упала до создания `HoraryAnswer`:
@@ -735,6 +842,13 @@ UNIQUE(idempotency_key)
 
 - поставить question status = `answered`;
 - automatic refund не делать.
+
+Late/stale generation guard:
+
+```text
+Before saving HoraryAnswer, reload/lock question and require status='processing'.
+If question is already failed/refunded/answered, skip answer save and do not change status.
+```
 
 ### 16.8. Deprecated model forbidden
 
@@ -777,7 +891,10 @@ canPurchase
 11. same idempotency key with different request hash returns 409;
 12. generation failure refunds paid credit;
 13. generation failure restores weekly-free only if access-week is still active;
-14. frontend does not use `left` / `nextInDays` as primary balance.
+14. frontend does not use `left` / `nextInDays` as primary balance;
+15. category chips switch reliably;
+16. question place is visible, editable, and submitted as lat/lon when known;
+17. progress screen uses premium horary UX copy and not only a spinner.
 
 ---
 
@@ -789,4 +906,37 @@ canPurchase
 Платные хорарные вопросы копятся и не сгорают по умолчанию.
 Подарочные / реферальные / ручные кредиты живут по expires_at своей акции.
 Сначала списывается weekly-free, потом expiring bonus/gift/referral/adjustment, потом paid.
+```
+
+---
+
+## 18. UI/location addendum
+
+This section captures the post-implementation UX feedback from the current horary screen.
+
+Required polish packet:
+
+```text
+W-HORARY-UX-LOCATION: question place, category fix, premium processing
+```
+
+Scope:
+
+- fix category chip switching;
+- show/edit question place;
+- send `questionLat/questionLon` when known;
+- optionally persist/display `questionLocationName`;
+- change CTA from generic `Спросить звёзды` to `Получить ответ карты` or approved equivalent;
+- replace plain spinner with branded/premium horary processing state.
+
+Acceptance:
+
+```text
+[ ] Category chips switch visually and logically.
+[ ] User sees both time and place before submit.
+[ ] User can edit question place.
+[ ] Location is called “Место вопроса”.
+[ ] Location is not called “сигнификатор”.
+[ ] Submit CTA is premium and concrete.
+[ ] Processing screen is beautiful and mentions moment/place/card construction.
 ```
