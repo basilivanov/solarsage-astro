@@ -11,9 +11,11 @@ type Props = {
   profileCurrentCity?: string | null
   profileCurrentLat?: number | null
   profileCurrentLon?: number | null
+  profileCurrentTz?: string | null
   profileBirthCity?: string | null
   profileBirthLat?: number | null
   profileBirthLon?: number | null
+  profileBirthTz?: string | null
   onSubmit: (
     text: string,
     category: HoraryCategory | undefined,
@@ -30,9 +32,11 @@ export function HoraryForm({
   profileCurrentCity,
   profileCurrentLat,
   profileCurrentLon,
+  profileCurrentTz,
   profileBirthCity,
   profileBirthLat,
   profileBirthLon,
+  profileBirthTz,
   onSubmit,
 }: Props) {
   const [text, setText] = useState("")
@@ -46,7 +50,8 @@ export function HoraryForm({
   const activeCategoryMeta = HORARY_CATEGORIES.find((c) => c.key === selectedCategory)
   const placeholder = activeCategoryMeta?.placeholder || "Сформулируй вопрос так, чтобы на него можно было ответить Да или Нет..."
 
-  const isValid = text.trim().length >= 5 && text.length <= 500 && hasSpendableCredit
+  const hasQuestionPlace = typeof questionLat === "number" && typeof questionLon === "number"
+  const isValid = text.trim().length >= 5 && text.length <= 500 && hasSpendableCredit && hasQuestionPlace
 
   const handleCategoryClick = (cat: HoraryCategory) => {
     // Tapping another chip switches selection; tapping already selected chip keeps it selected (fixes 3.1)
@@ -118,7 +123,7 @@ export function HoraryForm({
       {/* Text Area */}
       <div className="space-y-2">
         <label className="block text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          Твой вопрос звёздам
+          Твой вопрос
         </label>
         <div className="relative">
           <textarea
@@ -140,11 +145,19 @@ export function HoraryForm({
         profileCurrentCity={profileCurrentCity}
         profileCurrentLat={profileCurrentLat}
         profileCurrentLon={profileCurrentLon}
+        profileCurrentTz={profileCurrentTz}
         profileBirthCity={profileBirthCity}
         profileBirthLat={profileBirthLat}
         profileBirthLon={profileBirthLon}
+        profileBirthTz={profileBirthTz}
         onChange={handleMomentChange}
       />
+
+      {!hasQuestionPlace && (
+        <p className="text-[12.5px] text-red-500 font-medium px-1">
+          Укажи место вопроса — оно нужно для построения карты.
+        </p>
+      )}
 
       {/* Submit Button */}
       <button

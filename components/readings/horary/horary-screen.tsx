@@ -98,7 +98,7 @@ export function HoraryScreen() {
         clearInterval(interval)
         setSubmitting(false)
         toast({
-          description: "Ответ формируется дольше обычного. Мы покажем его, когда он будет готов.",
+          description: "Ответ формируется дольше обычного. Мы сохраним вопрос и покажем ответ, когда карта будет готова.",
         })
         loadData()
         return
@@ -165,7 +165,7 @@ export function HoraryScreen() {
             Хорарный оракул
           </h2>
           <p className="text-[14px] leading-relaxed text-muted-foreground">
-            Задай конкретный вопрос звёздам и получи мгновенный ответ «да / нет» с астрологическим обоснованием на момент вопроса.
+            Задай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и практическим выводом.
           </p>
         </div>
 
@@ -182,9 +182,11 @@ export function HoraryScreen() {
               profileCurrentCity={profile?.currentLocation?.city}
               profileCurrentLat={profile?.currentLocation?.lat}
               profileCurrentLon={profile?.currentLocation?.lon}
+              profileCurrentTz={profile?.currentLocation?.tz}
               profileBirthCity={profile?.birth?.birthCity}
               profileBirthLat={profile?.birth?.birthLat}
               profileBirthLon={profile?.birth?.birthLon}
+              profileBirthTz={profile?.birth?.birthTz}
               onSubmit={handleSubmit}
             />
           </div>

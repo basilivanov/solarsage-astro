@@ -9,9 +9,11 @@ type Props = {
   profileCurrentCity?: string | null
   profileCurrentLat?: number | null
   profileCurrentLon?: number | null
+  profileCurrentTz?: string | null
   profileBirthCity?: string | null
   profileBirthLat?: number | null
   profileBirthLon?: number | null
+  profileBirthTz?: string | null
   onChange: (localTime: string, timezone: string, lat?: number, lon?: number, locationName?: string) => void
 }
 
@@ -19,9 +21,11 @@ export function HoraryTimeConfirm({
   profileCurrentCity,
   profileCurrentLat,
   profileCurrentLon,
+  profileCurrentTz,
   profileBirthCity,
   profileBirthLat,
   profileBirthLon,
+  profileBirthTz,
   onChange,
 }: Props) {
   const [localTime, setLocalTime] = useState("")
@@ -40,6 +44,7 @@ export function HoraryTimeConfirm({
         country: parts[1]?.trim() || "",
         lat: profileCurrentLat ?? undefined,
         lon: profileCurrentLon ?? undefined,
+        timezone: profileCurrentTz ?? undefined,
       }
     } else if (profileBirthCity) {
       const parts = profileBirthCity.split(",")
@@ -48,10 +53,18 @@ export function HoraryTimeConfirm({
         country: parts[1]?.trim() || "",
         lat: profileBirthLat ?? undefined,
         lon: profileBirthLon ?? undefined,
+        timezone: profileBirthTz ?? undefined,
       }
     }
     setSelectedCity(resolvedCity)
-  }, [profileCurrentCity, profileCurrentLat, profileCurrentLon, profileBirthCity, profileBirthLat, profileBirthLon])
+  }, [profileCurrentCity, profileCurrentLat, profileCurrentLon, profileCurrentTz, profileBirthCity, profileBirthLat, profileBirthLon, profileBirthTz])
+
+  // Sync timezone when selected city changes (fixes F2)
+  useEffect(() => {
+    if (selectedCity?.timezone) {
+      setTimezone(selectedCity.timezone)
+    }
+  }, [selectedCity])
 
   // Initialize time/timezone
   useEffect(() => {
