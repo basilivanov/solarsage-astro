@@ -5,7 +5,7 @@
 
 import pytest
 from httpx import AsyncClient
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -54,7 +54,7 @@ async def test_locked_day_returns_preview(async_client: AsyncClient, make_initda
     await _onboard_user(async_client, db_session, make_initdata, user_id=7777)
 
     # Request day beyond referral bonus (day 20)
-    future_date = (date.today() + timedelta(days=20)).isoformat()
+    future_date = (datetime.now(timezone.utc).date() + timedelta(days=20)).isoformat()
 
     response = await async_client.get(f"/api/day/{future_date}")
     assert response.status_code == 200
@@ -96,7 +96,7 @@ async def test_full_access_day_returns_full_payload(async_client: AsyncClient, m
     user = result.scalar_one()
 
     access_service = AccessService(db_session)
-    await access_service.grant_referral_bonus(user.id, date.today())
+    await access_service.grant_referral_bonus(user.id, datetime.now(timezone.utc).date())
 
     # Request today (within referral bonus)
     response = await async_client.get("/api/day/today")
@@ -139,12 +139,12 @@ async def test_locked_day_with_subscription(async_client: AsyncClient, make_init
     access_service = AccessService(db_session)
     await access_service.grant_subscription(
         user.id,
-        start_date=date.today(),
+        start_date=datetime.now(timezone.utc).date(),
         days=365
     )
 
     # Request day far in future (day 100)
-    future_date = (date.today() + timedelta(days=100)).isoformat()
+    future_date = (datetime.now(timezone.utc).date() + timedelta(days=100)).isoformat()
 
     response = await async_client.get(f"/api/day/{future_date}")
     assert response.status_code == 200

@@ -109,6 +109,7 @@ class HoraryQuestionCreate(CamelModel):
     client_local_time: str | None = None
     question_lat: float | None = None
     question_lon: float | None = None
+    idempotency_key: str = Field(..., min_length=1, max_length=255)
 
 
 class HoraryAnswerRead(CamelModel):
@@ -123,7 +124,8 @@ class HoraryQuestionRead(CamelModel):
     id: str
     text: str
     category: str | None
-    status: Literal["pending", "processing", "answered", "expired"]
+    status: Literal["pending", "processing", "answered", "failed", "refunded", "expired"]
+    spent_credit_source: Literal["subscription_weekly_free", "referral_bonus", "gift", "paid", "adjustment"] | None = None
     client_timezone: str
     client_local_time: str | None
     created_at: str
@@ -131,6 +133,9 @@ class HoraryQuestionRead(CamelModel):
 
 
 class HoraryQuotaRead(CamelModel):
-    left: int
-    next_in_days: int
+    weekly_free_available: bool
+    weekly_free_expires_at: str | None = None
+    next_weekly_free_at: str | None = None
+    bonus_credits: int
+    paid_credits: int
     can_purchase: bool = True

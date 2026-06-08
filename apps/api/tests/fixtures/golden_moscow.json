@@ -7,8 +7,8 @@
     "lon": 37.62,
     "tz": "Europe/Moscow"
   },
-  "generated_at": "2026-06-02T17:47:49.957285",
-  "transit_date": "2026-06-02",
+  "generated_at": "2026-06-09T00:17:45.833651",
+  "transit_date": "2026-06-09",
   "house_system": "PLACIDUS",
   "natal_houses": {
     "Sun": 10,
@@ -23,14 +23,14 @@
     "Pluto": 7
   },
   "sphere_scores_min": {
-    "thinking_speech_learning": 1.99,
-    "work_status_achievement": 2.51,
-    "relationships_partnership": 2.01,
-    "money_security_resources": 1.72,
-    "body_energy_health": 2.49,
-    "home_family_roots": 2.52,
-    "inner_background_unconscious": 2.07,
-    "crisis_transformation_control": 1.53,
-    "meaning_expansion_vector": 1.51
+    "thinking_speech_learning": 2.31,
+    "work_status_achievement": 3.03,
+    "relationships_partnership": 0.83,
+    "money_security_resources": 1.36,
+    "body_energy_health": 3.04,
+    "home_family_roots": 1.79,
+    "inner_background_unconscious": 1.32,
+    "crisis_transformation_control": 1.93,
+    "meaning_expansion_vector": 1.68
   }
 }

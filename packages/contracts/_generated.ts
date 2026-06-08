@@ -558,6 +558,8 @@ export interface components {
             clientLocalTime?: string | null;
             /** Clienttimezone */
             clientTimezone: string;
+            /** Idempotencykey */
+            idempotencyKey: string;
             /** Questionlat */
             questionLat?: number | null;
             /** Questionlon */
@@ -578,25 +580,33 @@ export interface components {
             createdAt: string;
             /** Id */
             id: string;
+            /** Spentcreditsource */
+            spentCreditSource?: ("subscription_weekly_free" | "referral_bonus" | "gift" | "paid" | "adjustment") | null;
             /**
              * Status
              * @enum {string}
              */
-            status: "pending" | "processing" | "answered" | "expired";
+            status: "pending" | "processing" | "answered" | "failed" | "refunded" | "expired";
             /** Text */
             text: string;
         };
         /** HoraryQuotaRead */
         HoraryQuotaRead: {
+            /** Bonuscredits */
+            bonusCredits: number;
             /**
              * Canpurchase
              * @default true
              */
             canPurchase: boolean;
-            /** Left */
-            left: number;
-            /** Nextindays */
-            nextInDays: number;
+            /** Nextweeklyfreeat */
+            nextWeeklyFreeAt?: string | null;
+            /** Paidcredits */
+            paidCredits: number;
+            /** Weeklyfreeavailable */
+            weeklyFreeAvailable: boolean;
+            /** Weeklyfreeexpiresat */
+            weeklyFreeExpiresAt?: string | null;
         };
         /** ImportantTodayDetails */
         ImportantTodayDetails: {

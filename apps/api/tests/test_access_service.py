@@ -4,7 +4,7 @@
 # purpose: Access service tests
 
 import pytest
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.access_service import AccessService
@@ -20,7 +20,7 @@ async def test_no_access_entries(db_session: AsyncSession):
     await db_session.commit()
 
     service = AccessService(db_session)
-    state = await service.can_access_day(user.id, date.today())
+    state = await service.can_access_day(user.id, datetime.now(timezone.utc).date())
 
     assert state.state == "preview"
     assert state.reason == "expired_access"
@@ -38,7 +38,7 @@ async def test_referral_bonus_14_days(db_session: AsyncSession):
 
     # Grant referral bonus
     service = AccessService(db_session)
-    start_date = date.today()
+    start_date = datetime.now(timezone.utc).date()
     await service.grant_referral_bonus(user.id, start_date)
 
     # Check day 0 (today)
@@ -69,7 +69,7 @@ async def test_referral_plus_subscription(db_session: AsyncSession):
     await db_session.commit()
 
     service = AccessService(db_session)
-    start_date = date.today()
+    start_date = datetime.now(timezone.utc).date()
 
     # Grant referral bonus (days 0..13)
     await service.grant_referral_bonus(user.id, start_date)

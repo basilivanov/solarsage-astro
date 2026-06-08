@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import AsyncClient
 
-from app.db.models import HoraryQuestion, HoraryQuota
+from app.db.models import HoraryQuestion, HoraryCredit
 from app.services.horary_service import HoraryService
 
 
@@ -23,15 +23,17 @@ async def test_horary_requires_session(async_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_quota_initial_state(
+async def test_get_quota_initial_state_no_access(
     async_client: AsyncClient, make_initdata
 ) -> None:
     await _login(async_client, make_initdata, user_id=42)
     r = await async_client.get("/api/horary/quota")
     assert r.status_code == 200
     body = r.json()
-    assert body["left"] == 3
-    assert body["nextInDays"] == 7
+    assert body["weeklyFreeAvailable"] is False
+    assert body["weeklyFreeExpiresAt"] is None
+    assert body["bonusCredits"] == 0
+    assert body["paidCredits"] == 0
     assert body["canPurchase"] is True
 
 
@@ -48,6 +50,7 @@ async def test_post_question_validation_errors(
             "text": "abcd",
             "category": "love",
             "clientTimezone": "Europe/Moscow",
+            "idempotencyKey": "key-val-err",
         },
     )
     assert r.status_code == 422
@@ -59,16 +62,54 @@ async def test_post_question_validation_errors(
             "text": "a" * 501,
             "category": "love",
             "clientTimezone": "Europe/Moscow",
+            "idempotencyKey": "key-val-err",
         },
     )
     assert r3.status_code == 422
 
+    # Missing idempotencyKey
+    r4 = await async_client.post(
+        "/api/horary/questions",
+        json={
+            "text": "Valid question text?",
+            "category": "love",
+            "clientTimezone": "Europe/Moscow",
+        },
+    )
+    assert r4.status_code == 422
+
 
 @pytest.mark.asyncio
-async def test_post_question_success_and_quota_consumption(
-    async_client: AsyncClient, make_initdata
+async def test_post_question_success_and_credit_consumption(
+    async_client: AsyncClient, make_initdata, db_session
 ) -> None:
     await _login(async_client, make_initdata, user_id=45)
+
+    # Resolve user
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=45, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    # Setup profile lat/lon
+    from app.db.models import UserProfile
+    from decimal import Decimal
+    from sqlalchemy import select
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+    profile.birth_lat = Decimal("55.75")
+    profile.birth_lon = Decimal("37.62")
+
+    # Give user a paid credit
+    credit = HoraryCredit(
+        user_id=user.id,
+        source="paid",
+        amount=1,
+        used_amount=0,
+    )
+    db_session.add(credit)
+    await db_session.commit()
 
     # Mock sidecar + LLM so it doesn't fail background task
     with patch(
@@ -103,6 +144,7 @@ async def test_post_question_success_and_quota_consumption(
             "clientLocalTime": "2026-06-08T14:32:00",
             "questionLat": 55.75,
             "questionLon": 37.62,
+            "idempotencyKey": "key-success-endpoint",
         }
 
         r = await async_client.post("/api/horary/questions", json=payload)
@@ -113,40 +155,74 @@ async def test_post_question_success_and_quota_consumption(
         assert body["status"] == "processing"
         assert body["clientTimezone"] == "Europe/Moscow"
         assert body["clientLocalTime"] == "2026-06-08T14:32:00"
+        assert body["spentCreditSource"] == "paid"
 
         # Check quota decremented
         r_quota = await async_client.get("/api/horary/quota")
         assert r_quota.status_code == 200
-        assert r_quota.json()["left"] == 2
+        assert r_quota.json()["paidCredits"] == 0
 
 
 @pytest.mark.asyncio
-async def test_quota_exceeded_returns_403(
-    async_client: AsyncClient, make_initdata, db_session
+async def test_no_credits_returns_402(
+    async_client: AsyncClient, make_initdata
 ) -> None:
     await _login(async_client, make_initdata, user_id=50)
 
-    # Manually drain quota in DB
-    from app.services.telegram_auth import TelegramUser
-    from app.services.profile_service import get_or_create_user
-    tg = TelegramUser(id=50, username="ada", first_name="Ada")
-    user, _ = await get_or_create_user(db_session, tg)
-    
-    service = HoraryService(db_session)
-    quota = await service.get_or_create_quota(user.id)
-    quota.questions_used = 3
-    await db_session.commit()
-
+    # Attempt to post a question without any credits
     r = await async_client.post(
         "/api/horary/questions",
         json={
             "text": "Will I win the lottery?",
             "category": "money",
             "clientTimezone": "Europe/Moscow",
+            "idempotencyKey": "key-insufficient-credits",
         },
     )
-    assert r.status_code == 403
-    assert r.json()["detail"] == "Horary quota exceeded"
+    assert r.status_code == 402
+    assert r.json()["detail"] == "NO_HORARY_CREDITS"
+
+
+@pytest.mark.asyncio
+async def test_idempotency_conflict_returns_409(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    await _login(async_client, make_initdata, user_id=55)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=55, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    # Add credits
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=5, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    # Post first time
+    r1 = await async_client.post(
+        "/api/horary/questions",
+        json={
+            "text": "Will I get a promotion?",
+            "category": "career",
+            "clientTimezone": "Europe/Moscow",
+            "idempotencyKey": "key-dup-endpoint",
+        },
+    )
+    assert r1.status_code == 201
+
+    # Post second time with different text -> 409
+    r2 = await async_client.post(
+        "/api/horary/questions",
+        json={
+            "text": "Will I get rich instead?",
+            "category": "money",
+            "clientTimezone": "Europe/Moscow",
+            "idempotencyKey": "key-dup-endpoint",
+        },
+    )
+    assert r2.status_code == 409
+    assert r2.json()["detail"] == "IDEMPOTENCY_CONFLICT"
 
 
 @pytest.mark.asyncio
@@ -168,6 +244,8 @@ async def test_get_questions_list_and_details(
         category="career",
         status="answered",
         client_timezone="Europe/Moscow",
+        idempotency_key="key-list",
+        request_hash="hash-list",
     )
     db_session.add(question)
     await db_session.flush()
@@ -218,6 +296,8 @@ async def test_get_foreign_question_returns_404(
         user_id=user.id,
         text="Is it a good question?",
         client_timezone="UTC",
+        idempotency_key="key-foreign",
+        request_hash="hash-foreign",
     )
     db_session.add(question)
     await db_session.commit()

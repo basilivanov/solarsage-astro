@@ -748,6 +748,12 @@
             "title": "Clienttimezone",
             "type": "string"
           },
+          "idempotencyKey": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Idempotencykey",
+            "type": "string"
+          },
           "questionLat": {
             "anyOf": [
               {
@@ -779,7 +785,8 @@
         },
         "required": [
           "text",
-          "clientTimezone"
+          "clientTimezone",
+          "idempotencyKey"
         ],
         "title": "HoraryQuestionCreate",
         "type": "object"
@@ -831,11 +838,31 @@
             "title": "Id",
             "type": "string"
           },
+          "spentCreditSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "subscription_weekly_free",
+                  "referral_bonus",
+                  "gift",
+                  "paid",
+                  "adjustment"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spentcreditsource"
+          },
           "status": {
             "enum": [
               "pending",
               "processing",
               "answered",
+              "failed",
+              "refunded",
               "expired"
             ],
             "title": "Status",
@@ -861,23 +888,50 @@
       "HoraryQuotaRead": {
         "additionalProperties": false,
         "properties": {
+          "bonusCredits": {
+            "title": "Bonuscredits",
+            "type": "integer"
+          },
           "canPurchase": {
             "default": true,
             "title": "Canpurchase",
             "type": "boolean"
           },
-          "left": {
-            "title": "Left",
+          "nextWeeklyFreeAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextweeklyfreeat"
+          },
+          "paidCredits": {
+            "title": "Paidcredits",
             "type": "integer"
           },
-          "nextInDays": {
-            "title": "Nextindays",
-            "type": "integer"
+          "weeklyFreeAvailable": {
+            "title": "Weeklyfreeavailable",
+            "type": "boolean"
+          },
+          "weeklyFreeExpiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weeklyfreeexpiresat"
           }
         },
         "required": [
-          "left",
-          "nextInDays"
+          "weeklyFreeAvailable",
+          "bonusCredits",
+          "paidCredits"
         ],
         "title": "HoraryQuotaRead",
         "type": "object"

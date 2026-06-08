@@ -7,11 +7,11 @@ import type { HoraryCategory } from "@/lib/contracts/horary"
 import { HoraryTimeConfirm } from "./horary-time-confirm"
 
 type Props = {
-  left: number
+  hasSpendableCredit: boolean
   onSubmit: (text: string, category: HoraryCategory | undefined, localTime: string, timezone: string) => void
 }
 
-export function HoraryForm({ left, onSubmit }: Props) {
+export function HoraryForm({ hasSpendableCredit, onSubmit }: Props) {
   const [text, setText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<HoraryCategory | undefined>(undefined)
   const [localTime, setLocalTime] = useState("")
@@ -20,7 +20,7 @@ export function HoraryForm({ left, onSubmit }: Props) {
   const activeCategoryMeta = HORARY_CATEGORIES.find((c) => c.key === selectedCategory)
   const placeholder = activeCategoryMeta?.placeholder || "Сформулируй вопрос так, чтобы на него можно было ответить Да или Нет..."
 
-  const isValid = text.trim().length >= 5 && text.length <= 500 && left > 0
+  const isValid = text.trim().length >= 5 && text.length <= 500 && hasSpendableCredit
 
   const handleCategoryClick = (cat: HoraryCategory) => {
     if (selectedCategory === cat) {

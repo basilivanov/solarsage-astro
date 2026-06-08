@@ -5,8 +5,13 @@
 import type { ProfileMeta } from "@/lib/profile-meta"
 
 export async function getProfileMeta(): Promise<ProfileMeta> {
-  let quotaRemaining = 0
-  let nextInDays = 7
+  let weeklyFreeAvailable = false
+  let weeklyFreeExpiresAt: string | null = null
+  let nextWeeklyFreeAt: string | null = null
+  let bonusCredits = 0
+  let paidCredits = 0
+  let canPurchase = true
+
   let referralCount = 0
   let referralUrl = ""
 
@@ -24,8 +29,12 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
 
     if (quotaRes.ok) {
       const quota = await quotaRes.json()
-      quotaRemaining = quota.left || 0
-      nextInDays = quota.next_in_days || 7
+      weeklyFreeAvailable = quota.weeklyFreeAvailable || false
+      weeklyFreeExpiresAt = quota.weeklyFreeExpiresAt || null
+      nextWeeklyFreeAt = quota.nextWeeklyFreeAt || null
+      bonusCredits = quota.bonusCredits || 0
+      paidCredits = quota.paidCredits || 0
+      canPurchase = quota.canPurchase !== undefined ? quota.canPurchase : true
     }
 
     if (referralRes.ok) {
@@ -39,8 +48,12 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
 
   return {
     horary: {
-      left: quotaRemaining,
-      nextInDays,
+      weeklyFreeAvailable,
+      weeklyFreeExpiresAt,
+      nextWeeklyFreeAt,
+      bonusCredits,
+      paidCredits,
+      canPurchase,
     },
     referral: {
       count: referralCount,

@@ -3,7 +3,8 @@
 import { useEffect, useState, use } from "react"
 import { HoraryAnswerView } from "@/components/readings/horary/horary-answer-view"
 import { HoraryProgress } from "@/components/readings/horary/horary-progress"
-import { getHoraryQuestion, type HoraryQuestion } from "@/lib/api/horary"
+import { getHoraryQuestion } from "@/lib/api/horary"
+import type { HoraryQuestion } from "@/lib/contracts/horary"
 
 type Props = {
   params: Promise<{ id: string }>

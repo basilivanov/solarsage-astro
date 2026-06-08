@@ -58,11 +58,13 @@ export function HoraryScreen() {
   ) => {
     setSubmitting(true)
     try {
+      const idempotencyKey = crypto.randomUUID()
       const q = await createHoraryQuestion({
         text,
         category,
         clientTimezone: timezone,
         clientLocalTime: localTime,
+        idempotencyKey,
       })
 
       // Start polling status
@@ -85,7 +87,7 @@ export function HoraryScreen() {
         clearInterval(interval)
         setSubmitting(false)
         toast({
-          description: "Ответ формируется дольше обычного. Мы пришлем уведомление, когда он будет готов.",
+          description: "Ответ формируется дольше обычного. Мы покажем его, когда он будет готов.",
         })
         loadData()
         return
@@ -96,7 +98,7 @@ export function HoraryScreen() {
         if (q.status === "answered") {
           clearInterval(interval)
           router.push(`/readings/horary/${id}`)
-        } else if (q.status === "expired") {
+        } else if (q.status === "failed") {
           clearInterval(interval)
           setSubmitting(false)
           toast({
@@ -122,6 +124,10 @@ export function HoraryScreen() {
   if (submitting) {
     return <HoraryProgress />
   }
+
+  const hasSpendableCredit = quota
+    ? (quota.weeklyFreeAvailable || quota.bonusCredits > 0 || quota.paidCredits > 0)
+    : false
 
   return (
     <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
@@ -157,10 +163,10 @@ export function HoraryScreen() {
           <HoraryQuotaBar quota={quota} onBuy={() => setShowPurchase(true)} />
         )}
 
-        {/* Form to submit question if quota left > 0 */}
-        {quota && quota.left > 0 ? (
+        {/* Form to submit question if we have spendable credits */}
+        {hasSpendableCredit ? (
           <div className="border-t border-border/40 pt-5">
-            <HoraryForm left={quota.left} onSubmit={handleSubmit} />
+            <HoraryForm hasSpendableCredit={hasSpendableCredit} onSubmit={handleSubmit} />
           </div>
         ) : (
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 flex gap-3 text-muted-foreground text-[13.5px]">

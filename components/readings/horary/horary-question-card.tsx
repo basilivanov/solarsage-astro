@@ -21,10 +21,14 @@ export function HoraryQuestionCard({ question }: Props) {
   if (status === "processing") {
     verdictText = "Расчёт..."
     iconClass = "text-primary animate-pulse"
-  } else if (status === "expired") {
+  } else if (status === "expired" || status === "failed") {
     verdictText = "Ошибка"
     iconClass = "text-destructive"
     StatusIcon = XCircle
+  } else if (status === "refunded") {
+    verdictText = "Возвращен"
+    iconClass = "text-muted-foreground"
+    StatusIcon = HelpCircle
   } else if (status === "answered" && answer) {
     if (answer.verdict === "yes") {
       StatusIcon = CheckCircle2

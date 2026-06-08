@@ -5,7 +5,7 @@
 
 import pytest
 from httpx import AsyncClient
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -126,7 +126,7 @@ async def test_access_expiration_flow(async_client: AsyncClient, make_initdata, 
     user = result.scalar_one()
 
     access_service = AccessService(db_session)
-    start_date = date.today() - timedelta(days=20)
+    start_date = datetime.now(timezone.utc).date() - timedelta(days=20)
     await access_service.grant_referral_bonus(user.id, start_date)
 
     # View today (should be preview - referral expired)

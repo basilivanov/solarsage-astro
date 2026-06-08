@@ -24,8 +24,15 @@ export default function ProfilePage() {
   const { resetOnboarded } = useOnboarded()
 
   const [profileMeta, setProfileMeta] = useState<ProfileMeta>({
-    horary: { left: 0, nextInDays: 7 },
-    referral: { count: 0, bonusDays: 0, rewardDays: 7 },
+    horary: {
+      weeklyFreeAvailable: false,
+      weeklyFreeExpiresAt: null,
+      nextWeeklyFreeAt: null,
+      bonusCredits: 0,
+      paidCredits: 0,
+      canPurchase: true,
+    },
+    referral: { count: 0, bonusDays: 0, rewardDays: 7, inviteUrl: "" },
   })
 
   useEffect(() => {

@@ -1,7 +1,8 @@
 "use client"
 
 import { Check, Sparkles, AlertTriangle, Info, Quote, CheckCircle2, XCircle, HelpCircle, Timer } from "lucide-react"
-import type { HoraryBlock, CalloutTone } from "@/lib/contracts/horary"
+import type { HoraryBlock } from "@/lib/contracts/horary"
+import type { CalloutTone } from "@/lib/contracts/natal"
 
 type Props = {
   block: HoraryBlock

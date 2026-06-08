@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import uuid
 import math
+import asyncio
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -21,6 +23,7 @@ from app.schemas.horary import (
     HoraryQuotaRead,
 )
 from app.services.horary_service import HoraryService
+from app.services.horary_credit_service import HoraryCreditService
 
 router = APIRouter(prefix="/api", tags=["horary"])
 
@@ -46,11 +49,16 @@ def _to_question_read(q) -> HoraryQuestionRead:
             generated_at=q.answer.generated_at.isoformat(),
         )
 
+    spent_source = None
+    if q.spent_credit:
+        spent_source = q.spent_credit.source
+
     return HoraryQuestionRead(
         id=str(q.id),
         text=q.text,
         category=q.category,
         status=q.status,
+        spent_credit_source=spent_source,
         client_timezone=q.client_timezone,
         client_local_time=q.client_local_time,
         created_at=q.created_at.isoformat(),
@@ -63,24 +71,11 @@ async def get_horary_quota(
     user_id: uuid.UUID = Depends(current_user_id),
     db: AsyncSession = Depends(get_session),
 ) -> HoraryQuotaRead:
-    service = HoraryService(db)
-    quota = await service.get_or_create_quota(user_id)
-    await db.commit()
-
-    left = max(0, quota.questions_limit - quota.questions_used)
-    
-    # Calculate next_in_days
-    from datetime import datetime, timezone
+    credit_service = HoraryCreditService(db)
     now = datetime.now(timezone.utc)
-    reset_at = quota.reset_at.replace(tzinfo=timezone.utc) if quota.reset_at.tzinfo is None else quota.reset_at
-    delta = reset_at - now
-    next_in_days = max(1, int(math.ceil(delta.total_seconds() / 86400)))
-
-    return HoraryQuotaRead(
-        left=left,
-        next_in_days=next_in_days,
-        can_purchase=True,
-    )
+    quota = await credit_service.get_balance(user_id, now)
+    await db.commit()
+    return quota
 
 
 @router.get("/horary/questions", response_model=List[HoraryQuestionRead])
@@ -107,20 +102,34 @@ async def create_horary_question(
     db: AsyncSession = Depends(get_session),
 ) -> HoraryQuestionRead:
     service = HoraryService(db)
-    
+    now = datetime.now(timezone.utc)
+
     try:
-        question = await service.create_question(user_id, body)
+        # Atomic database transaction (commits separately in router)
+        question = await service.create_question(user_id, body, now)
         await db.commit()
+        
+        # Enqueue background generation ONLY after commit (fixes B6)
+        if question.status == "processing":
+            asyncio.create_task(service._generate_answer_task(question.id))
+
         return _to_question_read(question)
+
     except ValueError as e:
-        if str(e) == "Horary quota exceeded":
+        err_msg = str(e)
+        if err_msg == "NO_HORARY_CREDITS":
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Horary quota exceeded",
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="NO_HORARY_CREDITS",
+            )
+        elif err_msg == "IDEMPOTENCY_CONFLICT":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="IDEMPOTENCY_CONFLICT",
             )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=err_msg,
         )
 
 

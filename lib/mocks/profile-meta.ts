@@ -10,13 +10,18 @@ import type { ProfileMeta } from "@/lib/profile-meta"
 
 const MOCK: ProfileMeta = {
   horary: {
-    left: 2,
-    nextInDays: 4,
+    weeklyFreeAvailable: true,
+    weeklyFreeExpiresAt: "2026-06-15T12:00:00Z",
+    nextWeeklyFreeAt: "2026-06-22T12:00:00Z",
+    bonusCredits: 2,
+    paidCredits: 0,
+    canPurchase: true,
   },
   referral: {
     count: 0,
     bonusDays: 0,
     rewardDays: 14,
+    inviteUrl: "",
   },
 }
 

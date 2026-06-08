@@ -44,7 +44,7 @@
 
 from __future__ import annotations
 
-from datetime import date as Date, timedelta
+from datetime import UTC, date as Date, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
@@ -87,7 +87,7 @@ class AccessService:
         if not entries:
             # No access entries
             # W-ACCESS.3: preview for past/today, locked for future
-            if target_date <= Date.today():
+            if target_date <= datetime.now(UTC).date():
                 return ContentAccessState(
                     state="preview",
                     reason="expired_access",
@@ -130,7 +130,7 @@ class AccessService:
         # No covering entry
         # Determine state based on target_date position
         last_entry = entries[-1]
-        today = Date.today()
+        today = datetime.now(UTC).date()
 
         if target_date > last_entry.end_date:
             # After last entry

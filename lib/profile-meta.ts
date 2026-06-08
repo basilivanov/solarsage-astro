@@ -11,10 +11,12 @@
  */
 
 export type HoraryMeta = {
-  /** Сколько хорарных вопросов доступно прямо сейчас. */
-  left: number
-  /** Через сколько дней начислится следующий вопрос. */
-  nextInDays: number
+  weeklyFreeAvailable: boolean
+  weeklyFreeExpiresAt?: string | null
+  nextWeeklyFreeAt?: string | null
+  bonusCredits: number
+  paidCredits: number
+  canPurchase: boolean
 }
 
 export type ReferralMeta = {

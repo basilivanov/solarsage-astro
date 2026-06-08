@@ -9,21 +9,23 @@ import asyncio
 import json
 import logging
 import uuid
+import hashlib
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.solarsage_client import get_solarsage_client
-from app.db.models import HoraryAnswer, HoraryQuestion, HoraryQuota, UserProfile
+from app.db.models import HoraryAnswer, HoraryQuestion, UserProfile, HoraryCredit, HoraryCreditSpend
 from app.db.session import SessionLocal
 from app.schemas.horary import HoraryQuestionCreate
 from app.services.horary_engine import HoraryEngine
 from app.services.llm_service import LLMService
 from app.services.normalization_service import NormalizationService
+from app.services.horary_credit_service import HoraryCreditService
 
 logger = logging.getLogger(__name__)
 
@@ -32,52 +34,56 @@ class HoraryService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_or_create_quota(self, user_id: uuid.UUID) -> HoraryQuota:
-        """Get or create quota for user (3 free questions initially)."""
-        row = (
-            await self.db.execute(select(HoraryQuota).where(HoraryQuota.user_id == user_id))
-        ).scalar_one_or_none()
+    async def create_question(self, user_id: uuid.UUID, data: HoraryQuestionCreate, now: datetime) -> HoraryQuestion:
+        """
+        Create question, validate idempotency, consume credit, and return the question.
+        Does NOT trigger the background generator task (must be triggered after transaction commits).
+        """
+        # 1. Idempotency validation
+        payload_str = f"{data.text}:{data.category or ''}"
+        request_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
-        if row is None:
-            # First time user: 3 limits, resets in 7 days
-            reset_at = datetime.now(timezone.utc) + timedelta(days=7)
-            row = HoraryQuota(
-                user_id=user_id,
-                questions_used=0,
-                questions_limit=3,
-                reset_at=reset_at,
+        # Check if question with this idempotency key already exists for user
+        result = await self.db.execute(
+            select(HoraryQuestion)
+            .options(selectinload(HoraryQuestion.answer))
+            .where(
+                and_(
+                    HoraryQuestion.user_id == user_id,
+                    HoraryQuestion.idempotency_key == data.idempotency_key,
+                )
             )
-            self.db.add(row)
-            await self.db.flush()
-        else:
-            # Check for automatic reset
-            now = datetime.now(timezone.utc)
-            reset_at = row.reset_at
-            if reset_at.tzinfo is None:
-                reset_at = reset_at.replace(tzinfo=timezone.utc)
-            if now >= reset_at:
-                # Add 1 question limit every 7 days (or reset questions_used)
-                # Spec: +1 question limit every 7 days, reset_at shifted by +7 days
-                row.questions_limit += 1
-                row.reset_at = now + timedelta(days=7)
-                await self.db.flush()
+        )
+        existing = result.scalar_one_or_none()
 
-        return row
+        if existing:
+            if existing.request_hash == request_hash:
+                return existing
+            else:
+                # Same key, different hash -> conflict
+                raise ValueError("IDEMPOTENCY_CONFLICT")
 
-    async def check_quota(self, user_id: uuid.UUID) -> bool:
-        """Check if user has available questions left."""
-        quota = await self.get_or_create_quota(user_id)
-        return quota.questions_used < quota.questions_limit
+        # 2. Resolve/create current weekly-free if active access exists
+        credit_service = HoraryCreditService(self.db)
+        await credit_service.get_or_create_current_weekly_free(user_id, now)
 
-    async def create_question(self, user_id: uuid.UUID, data: HoraryQuestionCreate) -> HoraryQuestion:
-        """Create question, consume quota, trigger background answer generation."""
-        # 1. Check and fetch quota
-        quota = await self.get_or_create_quota(user_id)
-        if quota.questions_used >= quota.questions_limit:
-            raise ValueError("Horary quota exceeded")
+        # 3. Create question row first, so we have its ID for the spend record
+        question_id = uuid.uuid4()
 
-        # 2. Save question
+        try:
+            spend = await credit_service.spend_credit_for_question(
+                user_id=user_id,
+                question_id=question_id,
+                idempotency_key=data.idempotency_key,
+                now=now,
+            )
+        except ValueError as e:
+            if "No spendable horary credits found" in str(e):
+                raise ValueError("NO_HORARY_CREDITS")
+            raise
+
         question = HoraryQuestion(
+            id=question_id,
             user_id=user_id,
             text=data.text,
             category=data.category,
@@ -86,16 +92,13 @@ class HoraryService:
             client_local_time=data.client_local_time,
             question_lat=Decimal(str(data.question_lat)) if data.question_lat is not None else None,
             question_lon=Decimal(str(data.question_lon)) if data.question_lon is not None else None,
+            spent_credit_id=spend.credit_id,
+            idempotency_key=data.idempotency_key,
+            request_hash=request_hash,
+            created_at=now,
         )
         self.db.add(question)
-        
-        # Increment used questions
-        quota.questions_used += 1
         await self.db.flush()
-
-        # 3. Trigger background generation
-        question_id = question.id
-        asyncio.create_task(self._generate_answer_task(question_id))
 
         return question
 
@@ -108,7 +111,7 @@ class HoraryService:
         question = (
             await self.db.execute(
                 select(HoraryQuestion)
-                .options(selectinload(HoraryQuestion.answer))
+                .options(selectinload(HoraryQuestion.answer), selectinload(HoraryQuestion.spent_credit))
                 .where(HoraryQuestion.id == question_id, HoraryQuestion.user_id == user_id)
             )
         ).scalar_one_or_none()
@@ -131,7 +134,7 @@ class HoraryService:
         rows = (
             await self.db.execute(
                 select(HoraryQuestion)
-                .options(selectinload(HoraryQuestion.answer))
+                .options(selectinload(HoraryQuestion.answer), selectinload(HoraryQuestion.spent_credit))
                 .where(HoraryQuestion.user_id == user_id)
                 .order_by(HoraryQuestion.created_at.desc())
                 .limit(limit)
@@ -141,14 +144,8 @@ class HoraryService:
 
         return list(rows)
 
-    async def increase_limit(self, user_id: uuid.UUID, additional: int) -> None:
-        """Increase the user's limit of questions (used post purchase)."""
-        quota = await self.get_or_create_quota(user_id)
-        quota.questions_limit += additional
-        await self.db.flush()
-
     async def _check_lazy_ttl(self, question_id: uuid.UUID) -> None:
-        """If question is 'processing' for >5 minutes, mark as 'expired'."""
+        """If question is 'processing' for >5 minutes, mark as 'failed' (refund triggers)."""
         question = (
             await self.db.execute(select(HoraryQuestion).where(HoraryQuestion.id == question_id))
         ).scalar_one_or_none()
@@ -157,12 +154,42 @@ class HoraryService:
             now = datetime.now(timezone.utc)
             created_at = question.created_at.replace(tzinfo=timezone.utc) if question.created_at.tzinfo is None else question.created_at
             if now - created_at > timedelta(minutes=5):
-                question.status = "expired"
+                # We must fail the question and refund it
+                question.status = "failed"
                 await self.db.flush()
+                await self._refund_credit_for_failed_question(self.db, question_id, now)
+                await self.db.flush()
+
+    async def _refund_credit_for_failed_question(self, db: AsyncSession, question_id: uuid.UUID, now: datetime) -> None:
+        """Refund the spent credit associated with the question if it qualifies."""
+        result = await db.execute(
+            select(HoraryCreditSpend).where(HoraryCreditSpend.question_id == question_id)
+        )
+        spend = result.scalar_one_or_none()
+        if not spend:
+            return
+
+        credit = await db.get(HoraryCredit, spend.credit_id)
+        if credit:
+            should_refund = True
+            if credit.source == "subscription_weekly_free":
+                # subscription weekly free is refunded only if we are still inside that access week
+                if credit.access_week_end and now >= credit.access_week_end.replace(tzinfo=timezone.utc):
+                    should_refund = False
+
+            if should_refund:
+                credit.used_amount = max(0, credit.used_amount - 1)
+                logger.info(f"[Horary Refund] Refunded credit {credit.id} for failed question {question_id}")
+            else:
+                logger.info(f"[Horary Refund] Weekly-free credit {credit.id} already expired. Not refunding for question {question_id}")
+
+        # Remove the spend record since we refunded the credit
+        await db.delete(spend)
 
     async def _generate_answer_task(self, question_id: uuid.UUID) -> None:
         """Background task running in a new session context to generate the horary answer."""
         async with SessionLocal() as db:
+            now = datetime.now(timezone.utc)
             try:
                 # 1. Load entities
                 question = (
@@ -177,7 +204,8 @@ class HoraryService:
                 ).scalar_one_or_none()
                 if not profile:
                     logger.error(f"[Horary Generator] Profile for user {question.user_id} not found")
-                    question.status = "expired"
+                    question.status = "failed"
+                    await self._refund_credit_for_failed_question(db, question_id, now)
                     await db.commit()
                     return
 
@@ -224,7 +252,7 @@ class HoraryService:
 
                 # 7. LLM narration
                 llm_service = LLMService()
-                
+
                 # Resolve Ascendant and Ruler to pass to LLM
                 special_points = horary_chart.get("special_points", [])
                 asc_point = next((sp for sp in special_points if sp["name"] == "ASC"), None)
@@ -260,12 +288,14 @@ class HoraryService:
             except Exception as e:
                 logger.error(f"[Horary Generator] Error generating answer for question {question_id}: {e}", exc_info=True)
                 try:
-                    # Update status to expired on failure
+                    # Update status to failed and refund
                     question = (
                         await db.execute(select(HoraryQuestion).where(HoraryQuestion.id == question_id))
                     ).scalar_one_or_none()
                     if question:
-                        question.status = "expired"
+                        question.status = "failed"
+                        await db.flush()
+                        await self._refund_credit_for_failed_question(db, question_id, now)
                         await db.commit()
                 except Exception as rollback_err:
                     logger.error(f"[Horary Generator] Rollback state update failed: {rollback_err}")

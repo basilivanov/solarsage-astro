@@ -3,7 +3,7 @@
 # wave: W-ACCESS.2
 # purpose: POST /api/referral/claim endpoint
 
-from datetime import date as Date, timedelta
+from datetime import UTC, date as Date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -100,7 +100,7 @@ async def claim_referral(
 
     # Grant 14-day bonus to BOTH
     access_service = AccessService(db)
-    start_date = Date.today()
+    start_date = datetime.now(UTC).date()
     await access_service.grant_referral_bonus(user.id, start_date)
     await access_service.grant_referral_bonus(referrer.id, start_date)
 

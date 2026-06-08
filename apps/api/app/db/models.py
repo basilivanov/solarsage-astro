@@ -538,6 +538,9 @@ class ChatQuota(Base):
 # START_BLOCK: HORARY_TABLES
 class HoraryQuestion(Base):
     __tablename__ = "horary_questions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key", name="uq_horary_questions_idempotency"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -555,11 +558,19 @@ class HoraryQuestion(Base):
     client_local_time: Mapped[str | None] = mapped_column(String(100), nullable=True)
     question_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5), nullable=True)
     question_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
+    spent_credit_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("horary_credits.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     user: Mapped["User"] = relationship("User")
+    spent_credit: Mapped["HoraryCredit | None"] = relationship("HoraryCredit")
     answer: Mapped["HoraryAnswer | None"] = relationship(
         "HoraryAnswer",
         back_populates="question",
@@ -611,4 +622,78 @@ class HoraryQuota(Base):
     )
 
     user: Mapped["User"] = relationship("User")
+
+
+class HoraryCredit(Base):
+    __tablename__ = "horary_credits"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_horary_credits_amount_positive"),
+        CheckConstraint("used_amount >= 0", name="ck_horary_credits_used_amount_nonnegative"),
+        CheckConstraint("used_amount <= amount", name="ck_horary_credits_used_amount_le_amount"),
+        CheckConstraint(
+            "source IN ('subscription_weekly_free', 'referral_bonus', 'gift', 'paid', 'adjustment')",
+            name="ck_horary_credits_source_values",
+        ),
+        UniqueConstraint("user_id", "source", "access_week_start", "access_week_end", name="uq_horary_credits_weekly_free"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    source: Mapped[str] = mapped_column(String(50), nullable=False)
+    amount: Mapped[int] = mapped_column(nullable=False, default=1)
+    used_amount: Mapped[int] = mapped_column(nullable=False, default=0)
+    access_week_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    access_week_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User")
+
+
+class HoraryCreditSpend(Base):
+    __tablename__ = "horary_credit_spends"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_horary_credit_spends_idempotency"),
+        UniqueConstraint("question_id", name="uq_horary_credit_spends_question"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    credit_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("horary_credits.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("horary_questions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    amount: Mapped[int] = mapped_column(nullable=False, default=1)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User")
+    credit: Mapped["HoraryCredit"] = relationship("HoraryCredit")
+    question: Mapped["HoraryQuestion"] = relationship("HoraryQuestion")
 # END_BLOCK: HORARY_TABLES

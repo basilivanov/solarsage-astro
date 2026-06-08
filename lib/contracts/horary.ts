@@ -59,6 +59,7 @@ export const HoraryQuestionCreateSchema = z.object({
   clientLocalTime: z.string().optional(),
   questionLat: z.number().optional(),
   questionLon: z.number().optional(),
+  idempotencyKey: z.string().min(1),
 })
 
 export const HoraryAnswerSchema = z.object({
@@ -73,7 +74,8 @@ export const HoraryQuestionSchema = z.object({
   id: z.string(),
   text: z.string(),
   category: HoraryCategorySchema.optional().nullable(),
-  status: z.enum(["pending", "processing", "answered", "expired"]),
+  status: z.enum(["pending", "processing", "answered", "failed", "refunded", "expired"]),
+  spentCreditSource: z.enum(["subscription_weekly_free", "referral_bonus", "gift", "paid", "adjustment"]).optional().nullable(),
   clientTimezone: z.string(),
   clientLocalTime: z.string().optional().nullable(),
   createdAt: z.string(),
@@ -81,8 +83,11 @@ export const HoraryQuestionSchema = z.object({
 })
 
 export const HoraryQuotaSchema = z.object({
-  left: z.number(),
-  nextInDays: z.number(),
+  weeklyFreeAvailable: z.boolean(),
+  weeklyFreeExpiresAt: z.string().optional().nullable(),
+  nextWeeklyFreeAt: z.string().optional().nullable(),
+  bonusCredits: z.number(),
+  paidCredits: z.number(),
   canPurchase: z.boolean(),
 })
 
