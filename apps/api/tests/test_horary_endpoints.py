@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import uuid
 from unittest.mock import AsyncMock, patch
+from sqlalchemy import select
+from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
 
-from app.db.models import HoraryQuestion, HoraryCredit
+from app.db.models import HoraryQuestion, HoraryCredit, UserProfile
 from app.services.horary_service import HoraryService
 
 
@@ -305,3 +307,143 @@ async def test_get_foreign_question_returns_404(
     # Attempt to GET as user 70
     r = await async_client.get(f"/api/horary/questions/{question.id}")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_duplicate_same_payload_returns_existing_and_does_not_enqueue_twice(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    await _login(async_client, make_initdata, user_id=85)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=85, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    # Setup profile
+    from app.db.models import UserProfile
+    from decimal import Decimal
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+    
+    # Give user 2 paid credits
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=2, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    payload = {
+        "text": "Will I find my wallet?",
+        "category": "other",
+        "clientTimezone": "UTC",
+        "clientLocalTime": "2026-06-08T15:00:00",
+        "idempotencyKey": "key-idempotency-twice",
+    }
+
+    # Patch create_task
+    with patch("app.api.horary.asyncio.create_task") as mock_create_task:
+        r1 = await async_client.post("/api/horary/questions", json=payload)
+        assert r1.status_code == 201
+        body1 = r1.json()
+
+        r2 = await async_client.post("/api/horary/questions", json=payload)
+        assert r2.status_code == 201
+        body2 = r2.json()
+
+        assert body1["id"] == body2["id"]
+        # Background task should be enqueued ONLY once
+        assert mock_create_task.call_count == 1
+
+        # Only 1 credit spent
+        await db_session.refresh(credit)
+        assert credit.used_amount == 1
+
+
+@pytest.mark.asyncio
+async def test_same_idempotency_key_different_client_time_returns_409(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    await _login(async_client, make_initdata, user_id=90)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=90, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=2, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    payload1 = {
+        "text": "Will I buy a car?",
+        "category": "money",
+        "clientTimezone": "UTC",
+        "clientLocalTime": "2026-06-08T15:00:00",
+        "idempotencyKey": "key-time-diff",
+    }
+
+    payload2 = {
+        "text": "Will I buy a car?",
+        "category": "money",
+        "clientTimezone": "UTC",
+        "clientLocalTime": "2026-06-08T15:30:00",  # changed time
+        "idempotencyKey": "key-time-diff",
+    }
+
+    r1 = await async_client.post("/api/horary/questions", json=payload1)
+    assert r1.status_code == 201
+
+    r2 = await async_client.post("/api/horary/questions", json=payload2)
+    assert r2.status_code == 409
+    assert r2.json()["detail"] == "IDEMPOTENCY_CONFLICT"
+
+
+@pytest.mark.asyncio
+async def test_same_idempotency_key_different_location_returns_409(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    await _login(async_client, make_initdata, user_id=95)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=95, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=2, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    payload1 = {
+        "text": "Will I travel to Paris?",
+        "category": "travel",
+        "clientTimezone": "UTC",
+        "clientLocalTime": "2026-06-08T15:00:00",
+        "questionLat": 55.75,
+        "questionLon": 37.62,
+        "idempotencyKey": "key-loc-diff",
+    }
+
+    payload2 = {
+        "text": "Will I travel to Paris?",
+        "category": "travel",
+        "clientTimezone": "UTC",
+        "clientLocalTime": "2026-06-08T15:00:00",
+        "questionLat": 48.85,  # changed location
+        "questionLon": 2.35,
+        "idempotencyKey": "key-loc-diff",
+    }
+
+    r1 = await async_client.post("/api/horary/questions", json=payload1)
+    assert r1.status_code == 201
+
+    r2 = await async_client.post("/api/horary/questions", json=payload2)
+    assert r2.status_code == 409
+    assert r2.json()["detail"] == "IDEMPOTENCY_CONFLICT"

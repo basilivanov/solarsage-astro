@@ -125,31 +125,8 @@ def upgrade() -> None:
     op.create_index("ix_horary_credit_spends_user_id", "horary_credit_spends", ["user_id"])
     op.create_index("ix_horary_credit_spends_credit_id", "horary_credit_spends", ["credit_id"])
 
-    # 5. horary_quotas (legacy)
-    op.create_table(
-        "horary_quotas",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.Uuid(), nullable=False),
-        sa.Column("questions_used", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("questions_limit", sa.Integer(), nullable=False, server_default="3"),
-        sa.Column("reset_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("user_id"),
-    )
-    op.create_index("ix_horary_quotas_user_id", "horary_quotas", ["user_id"])
-
 
 def downgrade() -> None:
-    op.drop_index("ix_horary_quotas_user_id", table_name="horary_quotas")
-    op.drop_table("horary_quotas")
-
     op.drop_index("ix_horary_credit_spends_credit_id", table_name="horary_credit_spends")
     op.drop_index("ix_horary_credit_spends_user_id", table_name="horary_credit_spends")
     op.drop_table("horary_credit_spends")

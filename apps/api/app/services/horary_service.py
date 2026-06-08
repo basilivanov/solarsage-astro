@@ -34,14 +34,22 @@ class HoraryService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_question(self, user_id: uuid.UUID, data: HoraryQuestionCreate, now: datetime) -> HoraryQuestion:
+    async def create_question(self, user_id: uuid.UUID, data: HoraryQuestionCreate, now: datetime) -> tuple[HoraryQuestion, bool]:
         """
-        Create question, validate idempotency, consume credit, and return the question.
+        Create question, validate idempotency, consume credit, and return the (question, created) tuple.
         Does NOT trigger the background generator task (must be triggered after transaction commits).
         """
         # 1. Idempotency validation
-        payload_str = f"{data.text}:{data.category or ''}"
-        request_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+        payload_for_hash = {
+            "text": data.text,
+            "category": data.category,
+            "client_timezone": data.client_timezone,
+            "client_local_time": data.client_local_time,
+            "question_lat": data.question_lat,
+            "question_lon": data.question_lon,
+        }
+        payload_json = json.dumps(payload_for_hash, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        request_hash = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
 
         # Check if question with this idempotency key already exists for user
         result = await self.db.execute(
@@ -58,7 +66,7 @@ class HoraryService:
 
         if existing:
             if existing.request_hash == request_hash:
-                return existing
+                return existing, False
             else:
                 # Same key, different hash -> conflict
                 raise ValueError("IDEMPOTENCY_CONFLICT")
@@ -100,7 +108,7 @@ class HoraryService:
         self.db.add(question)
         await self.db.flush()
 
-        return question
+        return question, True
 
     async def get_question(self, user_id: uuid.UUID, question_id: uuid.UUID) -> HoraryQuestion | None:
         """Retrieve a question by ID. Ownership check enforced."""
@@ -191,12 +199,16 @@ class HoraryService:
         async with SessionLocal() as db:
             now = datetime.now(timezone.utc)
             try:
-                # 1. Load entities
-                question = (
-                    await db.execute(select(HoraryQuestion).where(HoraryQuestion.id == question_id))
-                ).scalar_one_or_none()
+                # 1. Load entities with lock to prevent race conditions (fixes B3)
+                stmt = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
+                question = (await db.execute(stmt)).scalar_one_or_none()
+                
                 if not question:
                     logger.error(f"[Horary Generator] Question {question_id} not found")
+                    return
+
+                if question.status != "processing":
+                    logger.info(f"[Horary Generator] Question {question_id} is no longer processing (status={question.status}), skipping generation")
                     return
 
                 profile = (
@@ -272,16 +284,23 @@ class HoraryService:
                     significator=significator,
                 )
 
-                # 8. Save Answer
+                # 8. Re-lock and save Answer if still processing
+                stmt = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
+                fresh_question = (await db.execute(stmt)).scalar_one_or_none()
+                if not fresh_question or fresh_question.status != "processing":
+                    logger.info(f"[Horary Generator] Question {question_id} is no longer processing at save boundary, rolling back and skipping save")
+                    await db.rollback()
+                    return
+
                 answer = HoraryAnswer(
-                    question_id=question.id,
+                    question_id=fresh_question.id,
                     verdict=verdict,
                     confidence=confidence,
                     blocks_json=json.dumps(llm_resp["blocks"], ensure_ascii=False),
                     planets_json=json.dumps(involved, ensure_ascii=False),
                 )
                 db.add(answer)
-                question.status = "answered"
+                fresh_question.status = "answered"
                 await db.commit()
                 logger.info(f"[Horary Generator] Successfully generated answer for question {question_id}")
 

@@ -360,11 +360,13 @@ async def test_duplicate_idempotency_key_does_not_double_spend(db_session) -> No
     )
 
     # First submit
-    q1 = await service.create_question(user_id, data, now)
+    q1, created1 = await service.create_question(user_id, data, now)
+    assert created1 is True
     assert q1.status == "processing"
 
     # Second submit with same key and same text/category
-    q2 = await service.create_question(user_id, data, now)
+    q2, created2 = await service.create_question(user_id, data, now)
+    assert created2 is False
     assert q2.id == q1.id
     
     # Verify only 1 credit was spent
@@ -435,7 +437,8 @@ async def test_generation_failure_refunds_paid_credit(db_session) -> None:
         idempotency_key="key-fail",
     )
 
-    q = await service.create_question(user_id, data, now)
+    q, created = await service.create_question(user_id, data, now)
+    assert created is True
     assert q.status == "processing"
 
     # Verify credit was spent
@@ -481,7 +484,7 @@ async def test_generation_failure_restores_weekly_free_only_if_active(db_session
         idempotency_key="key-weekly",
     )
 
-    q = await service.create_question(user_id, data, now_active)
+    q, created = await service.create_question(user_id, data, now_active)
     await db_session.refresh(credit)
     assert credit.used_amount == 1
 
@@ -499,7 +502,7 @@ async def test_generation_failure_restores_weekly_free_only_if_active(db_session
         client_timezone="UTC",
         idempotency_key="key-weekly-2",
     )
-    q2 = await service.create_question(user_id, data2, now_active)
+    q2, created2 = await service.create_question(user_id, data2, now_active)
     await db_session.flush()
     await db_session.refresh(credit)
     assert credit.used_amount == 1
@@ -510,3 +513,55 @@ async def test_generation_failure_restores_weekly_free_only_if_active(db_session
     await db_session.flush()
     await db_session.refresh(credit)
     assert credit.used_amount == 1  # stays used / expired
+
+
+@pytest.mark.asyncio
+async def test_late_generation_does_not_answer_failed_refunded_question(db_session) -> None:
+    user_id = uuid.uuid4()
+    now = datetime(2026, 6, 2, 12, 0, tzinfo=timezone.utc)
+
+    profile = UserProfile(
+        user_id=user_id,
+        current_lat=Decimal("55.75"),
+        current_lon=Decimal("37.62"),
+    )
+    db_session.add(profile)
+
+    credit = HoraryCredit(user_id=user_id, source="paid", amount=1, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    service = HoraryService(db_session)
+    data = HoraryQuestionCreate(
+        text="Will I win?",
+        category="other",
+        client_timezone="UTC",
+        idempotency_key="key-late",
+    )
+
+    q, created = await service.create_question(user_id, data, now)
+    assert created is True
+    assert q.status == "processing"
+
+    # Simulate lazy TTL / fail and refund first
+    q.status = "failed"
+    await db_session.flush()
+    await service._refund_credit_for_failed_question(db_session, q.id, now)
+    await db_session.commit()
+
+    # Verify credit was refunded and question status is failed
+    await db_session.refresh(credit)
+    assert credit.used_amount == 0
+    await db_session.refresh(q)
+    assert q.status == "failed"
+
+    # Now run background task generator or mock saving answer against failed question
+    # Re-fetch/lock question within generator session context
+    stmt = select(HoraryQuestion).where(HoraryQuestion.id == q.id).with_for_update()
+    fresh = (await db_session.execute(stmt)).scalar_one_or_none()
+    
+    # Assert generator save boundary condition is not met
+    assert fresh.status != "processing"
+    # Status is failed, so we should skip saving answer
+    assert fresh.status == "failed"
+

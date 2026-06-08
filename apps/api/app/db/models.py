@@ -603,27 +603,6 @@ class HoraryAnswer(Base):
     question: Mapped["HoraryQuestion"] = relationship("HoraryQuestion", back_populates="answer")
 
 
-class HoraryQuota(Base):
-    __tablename__ = "horary_quotas"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-        index=True,
-    )
-    questions_used: Mapped[int] = mapped_column(default=0, nullable=False)
-    questions_limit: Mapped[int] = mapped_column(default=3, nullable=False)
-    reset_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-    user: Mapped["User"] = relationship("User")
-
-
 class HoraryCredit(Base):
     __tablename__ = "horary_credits"
     __table_args__ = (

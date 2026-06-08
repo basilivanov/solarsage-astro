@@ -106,11 +106,11 @@ async def create_horary_question(
 
     try:
         # Atomic database transaction (commits separately in router)
-        question = await service.create_question(user_id, body, now)
+        question, created = await service.create_question(user_id, body, now)
         await db.commit()
         
         # Enqueue background generation ONLY after commit (fixes B6)
-        if question.status == "processing":
+        if created and question.status == "processing":
             asyncio.create_task(service._generate_answer_task(question.id))
 
         return _to_question_read(question)
