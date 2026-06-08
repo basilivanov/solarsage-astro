@@ -2,7 +2,7 @@
 id: doc-07-backend-arch
 status: active
 wave: W-1.1
-last_review: 2026-05-25
+last_review: 2026-06-08
 ---
 # 07. Backend architecture draft
 
@@ -35,8 +35,6 @@ Backend в этом проекте — не просто CRUD. Он являет
 - Pydantic
 - SolarSage как REST sidecar
 - отдельный LLM service module
-
-## Почему Python
 
 Для расчётного слоя, JSON-пайплайнов, SolarSage-интеграции и LLM-оркестрации Python удобнее, чем Node. Фронт остаётся React/Next.
 
@@ -82,6 +80,7 @@ app/
     auth.py
     payments.py
     referrals.py
+    horary.py
 
   core/
     config.py
@@ -107,6 +106,9 @@ app/
     calendar_service.py
     referral_service.py
     subscription_service.py
+    horary_credit_service.py
+    horary_service.py
+    horary_engine.py
 
   schemas/
     today.py
@@ -115,6 +117,7 @@ app/
     readings.py
     access.py
     astro_signal.py
+    horary.py
 
   workers/
     tasks.py
@@ -236,24 +239,104 @@ referrals
 
 # Horary credits
 
-Даже если хорар будет реализован позже, модель лучше заложить заранее.
+Source of truth для продуктовой логики: `docs/16_Horary_questions_TZ.md`.
+
+Даже если хорар реализуется позже, модель кредитов нужно заложить заранее, потому что она влияет на Profile, paywall и будущие payment flows.
+
+## horary_credits
 
 ```text
 horary_credits
 - id
 - user_id
-- source: weekly_bonus / referral / paid / adjustment
+- source: subscription_weekly_free / referral_bonus / gift / paid / adjustment
 - amount
 - used_amount
+- access_week_start nullable
+- access_week_end nullable
 - created_at
 - expires_at nullable
+- metadata_json nullable
 ```
 
-Правило продукта:
+Deprecated:
 
-- 1 хорарный вопрос в неделю активного доступа;
-- бонусные хорары копятся;
-- платные хорары должны отличаться от бонусных.
+```text
+weekly_bonus
+```
+
+`weekly_bonus` больше не используется, потому что смешивает два разных понятия: weekly-free вопрос активного доступа и настоящие бонусные / подарочные кредиты.
+
+## Правило продукта
+
+- активный доступ даёт **1 бесплатный хорарный вопрос в неделю доступа**;
+- weekly-free вопрос называется `subscription_weekly_free`;
+- `subscription_weekly_free` не копится;
+- `subscription_weekly_free` сгорает в конце своей недели доступа, если пользователь его не использовал;
+- продление trial/referral/gift/subscription создаёт будущие недели доступа, но не выдаёт все будущие weekly-вопросы сразу;
+- paid-хорары копятся и не сгорают по умолчанию;
+- gift/referral/adjustment-хорары живут по своему `expires_at`.
+
+## Порядок списания
+
+```text
+1. Активный subscription_weekly_free текущей access-week.
+2. referral_bonus / gift / adjustment с ближайшим expires_at.
+3. paid credits, oldest first.
+```
+
+Инварианты:
+
+- нельзя списать paid-кредит, если доступен активный weekly-free;
+- истёкшие кредиты не списываются;
+- списание атомарное;
+- один вопрос списывает максимум один кредит;
+- повторный submit с тем же idempotency_key не списывает второй кредит.
+
+## horary_questions
+
+```text
+horary_questions
+- id
+- user_id
+- text
+- category nullable
+- status: pending / processing / answered / failed / refunded / expired
+- client_timezone
+- client_local_time nullable
+- question_lat nullable
+- question_lon nullable
+- spent_credit_id nullable
+- idempotency_key
+- created_at
+- updated_at
+```
+
+## horary_answers
+
+```text
+horary_answers
+- id
+- question_id
+- verdict: yes / no / maybe
+- confidence
+- blocks_json
+- planets_json
+- generated_at
+```
+
+## horary_credit_spends
+
+```text
+horary_credit_spends
+- id
+- user_id
+- credit_id
+- question_id
+- amount
+- idempotency_key
+- created_at
+```
 
 ---
 
@@ -389,23 +472,74 @@ today_payloads
 
 ---
 
+# Horary endpoints
+
+## GET /api/horary/quota
+
+Возвращает баланс:
+
+```ts
+{
+  weeklyFreeAvailable: boolean,
+  weeklyFreeExpiresAt?: string,
+  nextWeeklyFreeAt?: string,
+  bonusCredits: number,
+  paidCredits: number,
+  canPurchase: boolean
+}
+```
+
+`bonusCredits` не включает текущий `subscription_weekly_free`.
+
+## POST /api/horary/questions
+
+Создаёт вопрос, атомарно списывает кредит и запускает генерацию.
+
+Request:
+
+```ts
+{
+  text: string,
+  category?: "love" | "career" | "money" | "health" | "travel" | "other",
+  clientTimezone: string,
+  clientLocalTime?: string,
+  questionLat?: number,
+  questionLon?: number,
+  idempotencyKey: string
+}
+```
+
+## GET /api/horary/questions
+
+Список вопросов пользователя.
+
+## GET /api/horary/questions/{id}
+
+Один вопрос + ответ. Обязательная ownership-проверка по `user_id`.
+
+---
+
 # Sync vs async generation
 
 ## MVP v1
 
-Можно считать синхронно, если укладываемся в 10–20 секунд.
+Today можно считать синхронно, если укладываемся в 10–20 секунд.
 
-## Следующий шаг
-
-Фоновая генерация:
+Horary генерация может быть асинхронной:
 
 ```text
-POST/GET /api/day/:date
-  → если нет payload, создать job
-  → вернуть state: generating
-  → фронт показывает loading
-  → polling /api/day/:date/status
+POST /api/horary/questions
+  → списать кредит
+  → создать question(status=processing)
+  → запустить generate_answer
+  → frontend polling GET /api/horary/questions/{id}
 ```
+
+Если генерация упала:
+
+- paid-кредит не должен пропадать без retry/refund политики;
+- вопрос переводится в `failed` или `refunded`;
+- ошибка логируется.
 
 ---
 
@@ -437,7 +571,9 @@ POST/GET /api/day/:date
 
 # LLM service
 
-LLM получает не raw SolarSage, а curated context:
+LLM получает не raw SolarSage, а curated context.
+
+Для Today:
 
 ```json
 {
@@ -455,21 +591,9 @@ LLM получает не raw SolarSage, а curated context:
 }
 ```
 
-LLM возвращает строгий JSON:
+Для Horary LLM получает уже посчитанный backend-движком verdict/confidence и только narrates результат. LLM не рассчитывает хорар самостоятельно.
 
-```json
-{
-  "headline": "...",
-  "reading": {
-    "paragraphs": []
-  },
-  "whyThisHappens": {
-    "sections": []
-  }
-}
-```
-
-LLM не должна придумывать расчёты. Она пишет текст только на основе SemanticLayer.
+LLM возвращает строгий JSON и не должна придумывать расчёты.
 
 ---
 
@@ -579,6 +703,14 @@ GET /api/debug/day/:date
 - subscription state
 - порядок списания доступа
 
+## Фаза 8. Horary
+
+- `subscription_weekly_free` weekly-credit
+- paid / gift / referral horary credits
+- horary question lifecycle
+- deterministic verdict engine
+- LLM narration
+
 ---
 
 # Главное решение
@@ -593,4 +725,10 @@ GET /api/day/:date
 
 ```text
 Profile + Access + SolarSage + SemanticLayer + LLM + Cache → TodayPayload
+```
+
+Хорар строится как отдельный product flow:
+
+```text
+Profile + Access + HoraryCredits + HoraryEngine + LLM narration + HoraryAnswer
 ```
