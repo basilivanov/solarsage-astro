@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { MapPin, Search, Loader2 } from "lucide-react"
 
 import { getPopularCities, searchCitiesAsync } from "@/lib/api/cities"
+import { getTimezone } from "@/lib/api/geo"
 import type { City } from "@/lib/contracts/city"
 import { formatCity } from "@/lib/contracts/city"
 
@@ -11,20 +12,32 @@ type Props = {
   value: City | null
   onChange: (city: City | null) => void
   placeholder?: string
+  autoFocus?: boolean
 }
 
 export function CityPicker({
   value,
   onChange,
   placeholder = "Начни вводить город",
+  autoFocus = false,
 }: Props) {
   const [inputValue, setInputValue] = useState(value ? formatCity(value) : "")
   const [focused, setFocused] = useState(false)
   const [matches, setMatches] = useState<City[]>([])
   const [loading, setLoading] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const popular = useMemo(() => getPopularCities(), [])
+
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      inputRef.current.focus()
+      setTimeout(() => {
+        rootRef.current?.scrollIntoView({ block: "center", behavior: "smooth" })
+      }, 300)
+    }
+  }, [autoFocus])
 
   // Sync input value with prop value
   useEffect(() => {
@@ -68,8 +81,19 @@ export function CityPicker({
 
   const handleSelect = (city: City) => {
     setInputValue(formatCity(city))
-    onChange(city)
     setFocused(false)
+    if (city.timezone) {
+      onChange(city)
+    } else {
+      onChange(city)
+      getTimezone(city.lat!, city.lon!)
+        .then((tz) => {
+          if (tz.timezone_id) {
+            onChange({ ...city, timezone: tz.timezone_id })
+          }
+        })
+        .catch(() => {})
+    }
   }
 
   const handleInputChange = (newValue: string) => {
@@ -87,6 +111,7 @@ export function CityPicker({
           <Search className="h-4 w-4" strokeWidth={1.5} />
         </span>
         <input
+          ref={inputRef}
           type="text"
           value={inputValue}
           onChange={(e) => handleInputChange(e.target.value)}

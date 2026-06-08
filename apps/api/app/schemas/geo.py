@@ -17,6 +17,7 @@ class GeoSuggestionOut(BaseModel):
     lat: float
     lon: float
     label: str
+    timezone_id: Optional[str] = None
 
 
 class GeoTimezoneOut(BaseModel):

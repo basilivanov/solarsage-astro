@@ -67,6 +67,7 @@ _TOP_LEVEL_NAMES: tuple[str, ...] = (
     "AuthSession",
     "BirthData",
     "CalendarPayload",
+    "LocationData",
     "NatalPayload",
     "ProfileRead",
     "ProfileWrite",

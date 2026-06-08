@@ -5,12 +5,12 @@ import { Sparkles, Crown, Lock, Ban, ArrowRight, Gift } from "lucide-react"
 import type { AccessInfo, AccessState } from "@/lib/access"
 import { formatLong } from "@/lib/date"
 import { cn } from "@/lib/utils"
+import { useShareInvite } from "@/lib/hooks/use-share-invite"
 
 type Props = {
   access: AccessInfo
   currentState: AccessState
   onSubscribe?: () => void
-  onInvite?: () => void
 }
 
 type Variant = {
@@ -99,8 +99,9 @@ function pluralDays(n: number) {
   return "дней"
 }
 
-export function AccessCard({ access, currentState, onSubscribe, onInvite }: Props) {
-  const v = buildVariant(access, currentState, onSubscribe, onInvite)
+export function AccessCard({ access, currentState, onSubscribe }: Props) {
+  const share = useShareInvite()
+  const v = buildVariant(access, currentState, onSubscribe, share)
   const Icon = v.icon
   const PrimaryIcon = v.primary.icon
   const SecondaryIcon = v.secondary.icon

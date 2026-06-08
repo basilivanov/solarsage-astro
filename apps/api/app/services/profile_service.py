@@ -45,13 +45,37 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal as D
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, UserProfile
-from app.schemas.profile import ProfileWrite
+from app.schemas.profile import LocationData, ProfileWrite
 from app.services.telegram_auth import TelegramUser
+
+
+# START_BLOCK: LOCATION_APPLY
+def _apply_location(
+    profile: UserProfile, loc: dict | LocationData | None, prefix: str
+) -> None:
+    if loc is None:
+        return
+    if isinstance(loc, dict):
+        loc = LocationData(**loc)
+    setattr(profile, f"{prefix}_city", loc.city)
+    setattr(
+        profile,
+        f"{prefix}_lat",
+        D(str(loc.lat)) if loc.lat is not None else None,
+    )
+    setattr(
+        profile,
+        f"{prefix}_lon",
+        D(str(loc.lon)) if loc.lon is not None else None,
+    )
+    setattr(profile, f"{prefix}_tz", loc.tz)
+# END_BLOCK: LOCATION_APPLY
 
 
 # START_BLOCK: USER_UPSERT
@@ -115,6 +139,9 @@ async def update_profile(
         ):
             if f in birth:
                 setattr(profile, f, birth[f])
+
+    _apply_location(profile, data.get("current_location"), "current")
+    _apply_location(profile, data.get("birthday_location"), "birthday")
 
     # W-2.7: Mark user as onboarded if they have birthday and birth_city
     # This allows completing onboarding flow

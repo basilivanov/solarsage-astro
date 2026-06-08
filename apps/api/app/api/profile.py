@@ -52,10 +52,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import current_user_id
 from app.db.models import UserProfile
 from app.db.session import get_session
-from app.schemas.profile import BirthData, ProfileRead, ProfileWrite
+from app.schemas.profile import BirthData, LocationData, ProfileRead, ProfileWrite
 from app.services.profile_service import read_profile, update_profile
 
 router = APIRouter()
+
+
+def _loc_to_data(profile: UserProfile, prefix: str) -> LocationData | None:
+    city = getattr(profile, f"{prefix}_city")
+    lat = getattr(profile, f"{prefix}_lat")
+    lon = getattr(profile, f"{prefix}_lon")
+    tz = getattr(profile, f"{prefix}_tz")
+    if city is None and lat is None:
+        return None
+    return LocationData(
+        city=city,
+        lat=float(lat) if isinstance(lat, Decimal) else lat,
+        lon=float(lon) if isinstance(lon, Decimal) else lon,
+        tz=tz,
+    )
 
 
 def _to_read(profile: UserProfile) -> ProfileRead:
@@ -78,6 +93,8 @@ def _to_read(profile: UserProfile) -> ProfileRead:
             ),
             birth_tz=profile.birth_tz,
         ),
+        current_location=_loc_to_data(profile, "current"),
+        birthday_location=_loc_to_data(profile, "birthday"),
     )
 
 

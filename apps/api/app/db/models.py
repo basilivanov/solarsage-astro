@@ -162,6 +162,22 @@ class UserProfile(Base):
             "birth_lon IS NULL OR (birth_lon >= -180 AND birth_lon <= 180)",
             name="ck_user_profiles_birth_lon_range",
         ),
+        CheckConstraint(
+            "current_lat IS NULL OR (current_lat >= -90 AND current_lat <= 90)",
+            name="ck_user_profiles_current_lat_range",
+        ),
+        CheckConstraint(
+            "current_lon IS NULL OR (current_lon >= -180 AND current_lon <= 180)",
+            name="ck_user_profiles_current_lon_range",
+        ),
+        CheckConstraint(
+            "birthday_lat IS NULL OR (birthday_lat >= -90 AND birthday_lat <= 90)",
+            name="ck_user_profiles_birthday_lat_range",
+        ),
+        CheckConstraint(
+            "birthday_lon IS NULL OR (birthday_lon >= -180 AND birthday_lon <= 180)",
+            name="ck_user_profiles_birthday_lon_range",
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -177,6 +193,16 @@ class UserProfile(Base):
     birth_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5), nullable=True)
     birth_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
     birth_tz: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    current_city: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    current_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5), nullable=True)
+    current_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
+    current_tz: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    birthday_city: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    birthday_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5), nullable=True)
+    birthday_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
+    birthday_tz: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # W-1.3: onboarding status (true when birth data is complete)
     is_onboarded: Mapped[bool] = mapped_column(default=False, nullable=False)

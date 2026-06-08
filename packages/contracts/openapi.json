@@ -529,6 +529,287 @@
         "title": "HighlightsBlock",
         "type": "object"
       },
+      "ImportantTodayDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "meaning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meaning"
+          },
+          "personalContext": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personalcontext"
+          },
+          "whyImportant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whyimportant"
+          }
+        },
+        "title": "ImportantTodayDetails",
+        "type": "object"
+      },
+      "ImportantTodayItem": {
+        "additionalProperties": false,
+        "description": "Today Important block item.",
+        "properties": {
+          "daysRemaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daysremaining"
+          },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degree"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportantTodayDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endsat"
+          },
+          "exactAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exactat"
+          },
+          "house": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House"
+          },
+          "iconName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iconname"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "orb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orb"
+          },
+          "planet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planet"
+          },
+          "priority": {
+            "default": 5,
+            "title": "Priority",
+            "type": "integer"
+          },
+          "severity": {
+            "default": "info",
+            "enum": [
+              "info",
+              "soft_warning",
+              "warning",
+              "high_attention"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign"
+          },
+          "source": {
+            "default": "live_calculation",
+            "enum": [
+              "live_calculation",
+              "fallback"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "startsAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startsat"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "eclipse_window",
+              "new_moon_window",
+              "full_moon_window",
+              "moon_void",
+              "mercury_retrograde",
+              "mercury_station",
+              "exact_daily_aspect",
+              "active_house"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "subtitle"
+        ],
+        "title": "ImportantTodayItem",
+        "type": "object"
+      },
+      "LocationData": {
+        "additionalProperties": false,
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "tz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz"
+          }
+        },
+        "title": "LocationData",
+        "type": "object"
+      },
       "ManifestationZone": {
         "additionalProperties": false,
         "description": "Где это проявится в жизни",
@@ -920,6 +1201,26 @@
           "birth": {
             "$ref": "#/components/schemas/BirthData"
           },
+          "birthdayLocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentLocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "firstName": {
             "anyOf": [
               {
@@ -950,6 +1251,26 @@
         "properties": {
           "birth": {
             "$ref": "#/components/schemas/BirthData"
+          },
+          "birthdayLocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentLocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "firstName": {
             "anyOf": [
@@ -1200,6 +1521,14 @@
             "title": "Headline",
             "type": "string"
           },
+          "importantToday": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ImportantTodayItem"
+            },
+            "title": "Importanttoday",
+            "type": "array"
+          },
           "manifestationZones": {
             "anyOf": [
               {
@@ -1223,6 +1552,17 @@
             },
             "title": "Microcopy",
             "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
           },
           "periodContext": {
             "anyOf": [
@@ -1748,6 +2088,27 @@
           }
         },
         "summary": "Contracts  Calendarpayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/locationdata": {
+      "get": {
+        "operationId": "contracts__locationdata___contracts___locationdata_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationData"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Locationdata",
         "tags": [
           "__contracts__"
         ]

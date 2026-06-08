@@ -130,11 +130,11 @@ class TodayService:
         )
 
         # Get transits for target date (noon in user's current timezone)
-        # W-3.4: use birth_tz as current_tz (proper current_tz tracking deferred)
+        target_tz = profile.current_tz or profile.birth_tz or "UTC"
         transits = await client.get_transits(
             target_date=target_date.isoformat(),
             target_time="12:00",
-            target_tz=profile.birth_tz or "UTC",
+            target_tz=target_tz,
         )
 
         # W-4.1: Normalize raw data into AstroSignal[]

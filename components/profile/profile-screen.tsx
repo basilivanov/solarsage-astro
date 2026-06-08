@@ -91,12 +91,11 @@ export function ProfileScreen({
           access={access}
           currentState={currentState}
           onSubscribe={noop}
-          onInvite={noop}
         />
       </section>
 
       <section className="px-5 pt-5">
-        <ReferralCard referral={profileMeta.referral} onInvite={noop} />
+        <ReferralCard referral={profileMeta.referral} />
       </section>
 
       <section className="px-5 pt-5">

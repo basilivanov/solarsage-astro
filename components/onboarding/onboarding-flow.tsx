@@ -83,6 +83,24 @@ export function OnboardingFlow({ onComplete }: Props) {
         ? undefined
         : `${profile.birthTime.hours.padStart(2, '0')}:${profile.birthTime.minutes.padStart(2, '0')}`
 
+      const currentLocation = effectiveCurrentCity
+        ? {
+            city: `${effectiveCurrentCity.name}, ${effectiveCurrentCity.country}`,
+            lat: effectiveCurrentCity.lat,
+            lon: effectiveCurrentCity.lon,
+            tz: effectiveCurrentCity.timezone,
+          }
+        : undefined
+
+      const birthdayLocation = effectiveBirthdayCity
+        ? {
+            city: `${effectiveBirthdayCity.name}, ${effectiveBirthdayCity.country}`,
+            lat: effectiveBirthdayCity.lat,
+            lon: effectiveBirthdayCity.lon,
+            tz: effectiveBirthdayCity.timezone,
+          }
+        : undefined
+
       await updateProfile({
         birth: {
           birthday,
@@ -92,6 +110,8 @@ export function OnboardingFlow({ onComplete }: Props) {
           birthLon: birthPlaceCity?.lon ?? undefined,
           birthTz: birthPlaceCity?.timezone ?? undefined,
         },
+        currentLocation: currentLocation ?? undefined,
+        birthdayLocation: birthdayLocation ?? undefined,
       })
 
       console.log('[Onboarding] Profile saved to backend')

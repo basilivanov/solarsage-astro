@@ -4,30 +4,41 @@
 
 | Порт | Сервис | Где запущен | Комментарий |
 |------|--------|-------------|-------------|
+| **5433** | PostgreSQL | `solarsage-db` (Docker) | База данных. .env: `DATABASE_URL` → `localhost:5433` |
 | **8000** | API (FastAPI) | `solarsage-api.service` (systemd) | **Единственный API**. Nginx: `/api/` → 8000 |
-| **8001** | API (чужая) | `astro-project-backend-1` (Docker) | `backend.app.main:app` — другой проект, НЕ наш |
 | **3002** | Frontend (Next.js) | `solarsage-frontend.service` (systemd) | Production build. Nginx: `/` → 3002 |
-| **3000** | Frontend (dev) | `pnpm dev` вручную | Только для локальной разработки |
 | **80/443** | Nginx | `nginx.service` | Единая точка входа: `/api/*` → 8000, всё остальное → 3002 |
-| **18091** | SolarSage sidecar | Docker, внутренний | Расчётный движок, только для API (не снаружи) |
 
-### Docker Compose
+### Вспомогательные порты (не продакшен)
 
-- `docker-compose.yml` — **канонический** (API=8000, SolarSage=8001, Frontend=3000)
-- `docker-compose.prod.yml` — **неймспейснутый** (API=8002, SolarSage=8003) для запуска рядом с другими проектами
-- Если меняешь compose-файл — обнови nginx и next.config.mjs соответственно
+| Порт | Сервис | Комментарий |
+|------|--------|-------------|
+| **5434** | PostgreSQL (dev) | Дублирует 5433 для локальной разработки |
+| **3000** | Frontend (dev) | `pnpm dev` вручную, только для локальной разработки |
+| **55432** | Magia DB | Другой проект, НЕ наш |
+| **55173-55181** | Magia (dev/prod) | Другой проект, НЕ наш |
+| **18080** | Adminer | DB-менеджер, другой проект |
+| **18091** | SolarSage sidecar | Расчётный движок (systemd, внутренний) |
+
+### Docker
+
+- `solarsage-db` — PostgreSQL 15 на портах 5433+5434, `POSTGRES_DB=astro`, user/password из `.env`
+- Docker Compose (`docker-compose.yml`) — канонический файл, API=8000, SolarSage=8001, Frontend=3000
+- Docker Compose (`docker-compose.prod.yml`) — неймспейснутый для запуска рядом с другими проектами
 
 ### Systemd
 
+- `solarsage-sidecar.service` — SolarSage (pyswissePH), порт 18091, PYTHONPATH=/opt/solarsage-astro/apps/solarsage
+- `solarsage-api.service` — FastAPI, порт 8000, EnvironmentFile=`/opt/solarsage-astro/.env`
 - `solarsage-frontend.service` — Next.js production build, порт 3002
 - `ductor-astro.service` — Telegram бот @vi_astro_bot
-- `prefect-worker-solarsage-astro.service` — фоновая обработка (Prefect)
 
 ### НЕ ИСПОЛЬЗОВАТЬ
 
 - ❌ **Ручной uvicorn** — `nohup uvicorn ... &` создаёт фантомный бэкенд без env-переменных
 - ❌ **Порт 8001 как API** — это SolarSage sidecar, не API
 - ❌ **USE_FIXTURES** — удалён, только реальный API через Telegram auth
+- ❌ **Prefect** — удалён, контейнеры и systemd-юниты очищены
 
 ## Аутентификация
 

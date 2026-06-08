@@ -50,6 +50,30 @@ from app.schemas._base import CamelModel
 _MIN_BIRTHDAY: date = date(1900, 1, 1)
 
 
+# START_BLOCK: LOCATION_DATA
+class LocationData(CamelModel):
+    city: str | None = Field(None, max_length=200)
+    lat: float | None = Field(None, ge=-90, le=90)
+    lon: float | None = Field(None, ge=-180, le=180)
+    tz: str | None = None
+
+    @field_validator("tz")
+    @classmethod
+    def _validate_tz(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if v not in available_timezones():
+            raise ValueError(f"tz {v!r} is not an IANA timezone")
+        return v
+
+    @model_validator(mode="after")
+    def _check_lat_lon_pair(self) -> "LocationData":
+        if (self.lat is None) ^ (self.lon is None):
+            raise ValueError("lat and lon must be set together")
+        return self
+# END_BLOCK: LOCATION_DATA
+
+
 # START_BLOCK: BIRTH_DATA
 class BirthData(CamelModel):
     """Birth-place + birth-time data. Every field is optional (incremental
@@ -94,6 +118,8 @@ class ProfileRead(CamelModel):
     user_id: UUID
     first_name: str | None = None
     birth: BirthData
+    current_location: LocationData | None = None
+    birthday_location: LocationData | None = None
 # END_BLOCK: PROFILE_READ
 
 
@@ -108,4 +134,6 @@ class ProfileWrite(CamelModel):
 
     first_name: str | None = Field(None, max_length=120)
     birth: BirthData = Field(default_factory=BirthData)
+    current_location: LocationData | None = None
+    birthday_location: LocationData | None = None
 # END_BLOCK: PROFILE_WRITE

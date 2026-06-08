@@ -98,18 +98,19 @@ export function StepBirthday({
             />
           </label>
 
-          {!sameAsCurrent ? (
-            <div className="mt-5">
-              <p className="mb-3 font-sans text-[11px] uppercase tracking-[0.14em] text-foreground/45">
-                Город на день рождения
-              </p>
-              <CityPicker
-                value={birthdayCity}
-                onChange={onChangeBirthdayCity}
-                placeholder="Например, Берлин"
-              />
-            </div>
-          ) : null}
+{!sameAsCurrent ? (
+             <div className="mt-5">
+               <p className="mb-3 font-sans text-[11px] uppercase tracking-[0.14em] text-foreground/45">
+                 Город на день рождения
+               </p>
+               <CityPicker
+                 value={birthdayCity}
+                 onChange={onChangeBirthdayCity}
+                 placeholder="Например, Берлин"
+                 autoFocus
+               />
+             </div>
+           ) : null}
         </div>
       </div>
     </OnboardingShell>

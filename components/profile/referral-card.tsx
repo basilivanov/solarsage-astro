@@ -2,18 +2,15 @@
 
 import { Gift, Users } from "lucide-react"
 import type { ReferralMeta } from "@/lib/profile-meta"
+import { useShareInvite } from "@/lib/hooks/use-share-invite"
 
 type Props = {
   referral: ReferralMeta
-  onInvite: () => void
 }
 
-/**
- * Карточка реферальной программы на /profile.
- * Показывает потенциальную награду и, если уже есть приглашённые —
- * прогресс-полоску.
- */
-export function ReferralCard({ referral, onInvite }: Props) {
+export function ReferralCard({ referral }: Props) {
+  const share = useShareInvite()
+
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-5">
       <div className="flex items-start gap-3">
@@ -44,7 +41,7 @@ export function ReferralCard({ referral, onInvite }: Props) {
 
       <button
         type="button"
-        onClick={onInvite}
+        onClick={share}
         className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99]"
       >
         <Gift className="h-4 w-4" strokeWidth={1.75} />

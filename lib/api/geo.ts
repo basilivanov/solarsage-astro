@@ -6,6 +6,7 @@ export interface GeoSuggestion {
   lat: number
   lon: number
   label: string
+  timezone_id: string | null
 }
 
 export interface GeoTimezone {

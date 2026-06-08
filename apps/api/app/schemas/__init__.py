@@ -31,7 +31,7 @@ from __future__ import annotations
 from .access import AccessSummary, UserAccessState
 from .auth import AuthError, AuthSession, TelegramAuthRequest
 from .calendar import AllowedRange, CalendarDay, CalendarMeta, CalendarPayload
-from .profile import BirthData, ProfileRead, ProfileWrite
+from .profile import BirthData, LocationData, ProfileRead, ProfileWrite
 from .natal import (
     BulletsBlock,
     HighlightItem,
@@ -83,6 +83,7 @@ __all__ = [
     "TelegramAuthRequest",
     # profile (W-1.2)
     "BirthData",
+    "LocationData",
     "ProfileRead",
     "ProfileWrite",
     # today

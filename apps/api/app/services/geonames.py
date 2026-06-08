@@ -23,6 +23,23 @@ def _get_username() -> str:
     return username
 
 
+def _fetch_timezone(lat: float, lon: float) -> Optional[str]:
+    params = {
+        "lat": str(lat),
+        "lng": str(lon),
+        "username": _get_username(),
+    }
+    url = "https://secure.geonames.org/timezoneJSON?" + urllib.parse.urlencode(params)
+    try:
+        with urllib.request.urlopen(url, timeout=3) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        if isinstance(data, dict) and data.get("timezoneId"):
+            return data["timezoneId"]
+    except Exception:
+        pass
+    return None
+
+
 def _fetch_geonames(query: str, limit: int, mode: str) -> List[dict]:
     params = {
         "maxRows": str(limit),
@@ -73,6 +90,8 @@ def _fetch_geonames(query: str, limit: int, mode: str) -> List[dict]:
         if lat is None or lon is None:
             continue
 
+        tz_id = _fetch_timezone(lat, lon)
+
         results.append(
             {
                 "id": str(item.get("geonameId", "")),
@@ -82,6 +101,7 @@ def _fetch_geonames(query: str, limit: int, mode: str) -> List[dict]:
                 "lat": lat,
                 "lon": lon,
                 "label": label,
+                "timezone_id": tz_id,
             }
         )
 

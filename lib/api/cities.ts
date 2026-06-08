@@ -16,6 +16,7 @@ function geoSuggestionToCity(geo: GeoSuggestion): City {
     region: geo.admin1 || undefined,
     lat: geo.lat,
     lon: geo.lon,
+    timezone: geo.timezone_id || undefined,
   }
 }
 
