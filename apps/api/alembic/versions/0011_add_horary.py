@@ -64,6 +64,7 @@ def upgrade() -> None:
         sa.Column("client_local_time", sa.String(length=100), nullable=True),
         sa.Column("question_lat", sa.Numeric(precision=8, scale=5), nullable=True),
         sa.Column("question_lon", sa.Numeric(precision=9, scale=5), nullable=True),
+        sa.Column("question_location_name", sa.String(length=200), nullable=True),
         sa.Column("spent_credit_id", sa.Uuid(), nullable=True),
         sa.Column("idempotency_key", sa.String(length=255), nullable=False),
         sa.Column("request_hash", sa.String(length=64), nullable=False),

@@ -765,6 +765,17 @@
             ],
             "title": "Questionlat"
           },
+          "questionLocationName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionlocationname"
+          },
           "questionLon": {
             "anyOf": [
               {
@@ -837,6 +848,17 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "questionLocationName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionlocationname"
           },
           "spentCreditSource": {
             "anyOf": [

@@ -47,6 +47,7 @@ class HoraryService:
             "client_local_time": data.client_local_time,
             "question_lat": data.question_lat,
             "question_lon": data.question_lon,
+            "question_location_name": data.question_location_name,
         }
         payload_json = json.dumps(payload_for_hash, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         request_hash = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
@@ -100,6 +101,7 @@ class HoraryService:
             client_local_time=data.client_local_time,
             question_lat=Decimal(str(data.question_lat)) if data.question_lat is not None else None,
             question_lon=Decimal(str(data.question_lon)) if data.question_lon is not None else None,
+            question_location_name=data.question_location_name,
             spent_credit_id=spend.credit_id,
             idempotency_key=data.idempotency_key,
             request_hash=request_hash,

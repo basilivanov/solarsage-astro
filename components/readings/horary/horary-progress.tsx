@@ -1,68 +1,142 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Sparkles } from "lucide-react"
-import { Progress } from "@/components/ui/progress"
+import { Sparkles, Check } from "lucide-react"
 
-const STAGES = [
-  "Определяю момент вопроса...",
-  "Строю хорарную карту...",
-  "Анализирую аспекты...",
-  "Формулирую ответ...",
+const STEPS = [
+  "Фиксируем момент",
+  "Строим карту",
+  "Формулируем ответ",
 ]
 
 export function HoraryProgress() {
   const [progress, setProgress] = useState(0)
-  const [stageIndex, setStageIndex] = useState(0)
+  const [stepIndex, setStepIndex] = useState(0)
+  const [isLongRunning, setIsLongRunning] = useState(false)
 
   useEffect(() => {
-    // Smooth progress bar increment (0 to 95 over 8 seconds)
+    // Increment progress and update active steps
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 95) {
+        const next = prev + 1
+        if (next >= 100) {
           clearInterval(interval)
-          return 95
+          return 99
         }
-        return prev + 1.2
+        return next
       })
-    }, 100)
+    }, 300) // reaches ~95% in 28 seconds
 
     return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
-    // Stage updates every 2 seconds
-    const interval = setInterval(() => {
-      setStageIndex((prev) => {
-        if (prev < STAGES.length - 1) {
-          return prev + 1
-        }
-        return prev
-      })
-    }, 2000)
+    // Map progress to steps
+    if (progress < 30) {
+      setStepIndex(0)
+    } else if (progress < 70) {
+      setStepIndex(1)
+    } else {
+      setStepIndex(2)
+    }
+  }, [progress])
 
-    return () => clearInterval(interval)
+  useEffect(() => {
+    // After 30 seconds show the long running state
+    const timer = setTimeout(() => {
+      setIsLongRunning(true)
+    }, 30000)
+
+    return () => clearTimeout(timer)
   }, [])
 
+  if (isLongRunning) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50dvh] px-6 py-12 text-center max-w-md mx-auto space-y-6">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground animate-pulse">
+          <Sparkles className="h-6 w-6" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="font-serif text-[22px] font-bold text-foreground">
+            Карта рассчитывается
+          </h3>
+          <p className="text-[14px] leading-relaxed text-muted-foreground">
+            Ответ формируется дольше обычного. Мы сохраним вопрос и покажем ответ, когда карта будет готова.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50dvh] px-6 py-12 text-center max-w-md mx-auto">
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary animate-pulse">
-        <Sparkles className="h-7 w-7" />
+    <div className="flex flex-col items-center justify-center min-h-[60dvh] px-6 py-12 text-center max-w-md mx-auto space-y-8">
+      {/* Branded Ritual Orbit Animation */}
+      <div className="relative h-28 w-28 flex items-center justify-center">
+        {/* Outer Orbit Ring */}
+        <div className="absolute inset-0 rounded-full border border-primary/15" />
+        
+        {/* Rotating Moon Dot */}
+        <div 
+          className="absolute inset-0 animate-spin" 
+          style={{ animationDuration: "5s" }}
+        >
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-primary shadow-lg shadow-primary/40" />
+        </div>
+
+        {/* Center Sparkle */}
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Sparkles className="h-6 w-6 animate-pulse" />
+        </div>
       </div>
 
-      <h3 className="font-serif text-[24px] font-bold leading-tight tracking-tight text-foreground mb-2">
-        Созвездия выстраиваются...
-      </h3>
+      {/* Branded Titles */}
+      <div className="space-y-2">
+        <h3 className="font-serif text-[24px] font-bold leading-tight tracking-tight text-foreground">
+          Строим карту вопроса
+        </h3>
+        <p className="text-[13.5px] leading-relaxed text-muted-foreground px-4">
+          Мы учитываем время, место и тему вопроса, чтобы дать точный хорарный ответ.
+        </p>
+      </div>
 
-      <p className="text-[14px] text-muted-foreground mb-6 h-5">
-        {STAGES[stageIndex]}
-      </p>
-
-      <div className="w-full max-w-[280px]">
-        <Progress value={progress} className="h-1.5 w-full bg-border/40" />
-        <div className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-[0.14em] mt-2 text-right">
-          {Math.round(progress)}%
-        </div>
+      {/* Animated 3 Steps */}
+      <div className="w-full max-w-[240px] space-y-3 pt-2">
+        {STEPS.map((step, idx) => {
+          const isActive = idx === stepIndex
+          const isCompleted = idx < stepIndex
+          
+          return (
+            <div 
+              key={step} 
+              className={`flex items-center gap-3 transition-opacity duration-300 ${
+                isActive ? "opacity-100" : isCompleted ? "opacity-75" : "opacity-35"
+              }`}
+            >
+              <div 
+                className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-medium transition-colors ${
+                  isCompleted 
+                    ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-500" 
+                    : isActive 
+                    ? "bg-primary/10 border-primary/25 text-primary animate-pulse" 
+                    : "border-border bg-card text-muted-foreground/50"
+                }`}
+              >
+                {isCompleted ? (
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                ) : (
+                  <span>{idx + 1}</span>
+                )}
+              </div>
+              <span 
+                className={`text-[14px] transition-colors ${
+                  isActive ? "font-medium text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {step}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

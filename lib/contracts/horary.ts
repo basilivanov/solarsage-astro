@@ -59,6 +59,7 @@ export const HoraryQuestionCreateSchema = z.object({
   clientLocalTime: z.string().optional(),
   questionLat: z.number().optional(),
   questionLon: z.number().optional(),
+  questionLocationName: z.string().optional(),
   idempotencyKey: z.string().min(1),
 })
 
@@ -78,6 +79,7 @@ export const HoraryQuestionSchema = z.object({
   spentCreditSource: z.enum(["subscription_weekly_free", "referral_bonus", "gift", "paid", "adjustment"]).optional().nullable(),
   clientTimezone: z.string(),
   clientLocalTime: z.string().optional().nullable(),
+  questionLocationName: z.string().optional().nullable(),
   createdAt: z.string(),
   answer: HoraryAnswerSchema.optional().nullable(),
 })

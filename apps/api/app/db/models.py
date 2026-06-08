@@ -558,6 +558,7 @@ class HoraryQuestion(Base):
     client_local_time: Mapped[str | None] = mapped_column(String(100), nullable=True)
     question_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5), nullable=True)
     question_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
+    question_location_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     spent_credit_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("horary_credits.id", ondelete="SET NULL"),

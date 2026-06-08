@@ -109,6 +109,7 @@ class HoraryQuestionCreate(CamelModel):
     client_local_time: str | None = None
     question_lat: float | None = None
     question_lon: float | None = None
+    question_location_name: str | None = None
     idempotency_key: str = Field(..., min_length=1, max_length=255)
 
 
@@ -128,6 +129,7 @@ class HoraryQuestionRead(CamelModel):
     spent_credit_source: Literal["subscription_weekly_free", "referral_bonus", "gift", "paid", "adjustment"] | None = None
     client_timezone: str
     client_local_time: str | None
+    question_location_name: str | None = None
     created_at: str
     answer: HoraryAnswerRead | None = None
 

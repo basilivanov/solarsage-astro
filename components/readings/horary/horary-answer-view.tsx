@@ -24,7 +24,7 @@ const PLANET_RU: Record<string, string> = {
 }
 
 export function HoraryAnswerView({ question }: Props) {
-  const { text, category, createdAt, answer } = question
+  const { text, category, createdAt, answer, questionLocationName } = question
 
   if (!answer) return null
 
@@ -78,6 +78,12 @@ export function HoraryAnswerView({ question }: Props) {
           <p className="font-serif text-[17px] italic leading-relaxed text-foreground/90">
             «{text}»
           </p>
+          {questionLocationName && (
+            <p className="text-[12.5px] text-muted-foreground flex items-center gap-1.5 pt-1.5 border-t border-border/40">
+              <span className="font-sans font-medium uppercase text-[10px] tracking-wider text-muted-foreground/60">Место расчета:</span>
+              <span>{questionLocationName}</span>
+            </p>
+          )}
         </div>
 
         {/* Blocks rendering (contains verdict_card as the first block in spec, but let's render blocks sequentially) */}

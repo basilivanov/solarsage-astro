@@ -7,6 +7,8 @@ import { ChevronLeft, MessageSquare, AlertCircle } from "lucide-react"
 
 import type { HoraryQuestion, HoraryQuota, HoraryCategory } from "@/lib/contracts/horary"
 import { getHoraryQuota, listHoraryQuestions, createHoraryQuestion, getHoraryQuestion } from "@/lib/api/horary"
+import { getProfile } from "@/lib/api/profile"
+import type { ProfileRead } from "@/packages/contracts"
 import { useToast } from "@/hooks/use-toast"
 
 import { HoraryQuotaBar } from "./horary-quota-bar"
@@ -26,15 +28,18 @@ export function HoraryScreen() {
   
   const [quota, setQuota] = useState<HoraryQuota | null>(null)
   const [questions, setQuestions] = useState<HoraryQuestion[]>([])
+  const [profile, setProfile] = useState<ProfileRead | null>(null)
 
   const loadData = useCallback(async () => {
     try {
-      const [qQuota, qQuestions] = await Promise.all([
+      const [qQuota, qQuestions, qProfile] = await Promise.all([
         getHoraryQuota(),
         listHoraryQuestions(20, 0),
+        getProfile(),
       ])
       setQuota(qQuota)
       setQuestions(qQuestions)
+      setProfile(qProfile)
     } catch (error) {
       console.error("[HoraryScreen] Failed to load data:", error)
       toast({
@@ -54,7 +59,10 @@ export function HoraryScreen() {
     text: string,
     category: HoraryCategory | undefined,
     localTime: string,
-    timezone: string
+    timezone: string,
+    lat?: number,
+    lon?: number,
+    locationName?: string
   ) => {
     setSubmitting(true)
     try {
@@ -64,6 +72,9 @@ export function HoraryScreen() {
         category,
         clientTimezone: timezone,
         clientLocalTime: localTime,
+        questionLat: lat,
+        questionLon: lon,
+        questionLocationName: locationName,
         idempotencyKey,
       })
 
@@ -166,7 +177,16 @@ export function HoraryScreen() {
         {/* Form to submit question if we have spendable credits */}
         {hasSpendableCredit ? (
           <div className="border-t border-border/40 pt-5">
-            <HoraryForm hasSpendableCredit={hasSpendableCredit} onSubmit={handleSubmit} />
+            <HoraryForm
+              hasSpendableCredit={hasSpendableCredit}
+              profileCurrentCity={profile?.currentLocation?.city}
+              profileCurrentLat={profile?.currentLocation?.lat}
+              profileCurrentLon={profile?.currentLocation?.lon}
+              profileBirthCity={profile?.birth?.birthCity}
+              profileBirthLat={profile?.birth?.birthLat}
+              profileBirthLon={profile?.birth?.birthLon}
+              onSubmit={handleSubmit}
+            />
           </div>
         ) : (
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 flex gap-3 text-muted-foreground text-[13.5px]">

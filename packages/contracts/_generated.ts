@@ -562,6 +562,8 @@ export interface components {
             idempotencyKey: string;
             /** Questionlat */
             questionLat?: number | null;
+            /** Questionlocationname */
+            questionLocationName?: string | null;
             /** Questionlon */
             questionLon?: number | null;
             /** Text */
@@ -580,6 +582,8 @@ export interface components {
             createdAt: string;
             /** Id */
             id: string;
+            /** Questionlocationname */
+            questionLocationName?: string | null;
             /** Spentcreditsource */
             spentCreditSource?: ("subscription_weekly_free" | "referral_bonus" | "gift" | "paid" | "adjustment") | null;
             /**

@@ -1,21 +1,47 @@
 "use client"
 
 import { useState } from "react"
-import { Send, Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
 import type { HoraryCategory } from "@/lib/contracts/horary"
 import { HoraryTimeConfirm } from "./horary-time-confirm"
 
 type Props = {
   hasSpendableCredit: boolean
-  onSubmit: (text: string, category: HoraryCategory | undefined, localTime: string, timezone: string) => void
+  profileCurrentCity?: string | null
+  profileCurrentLat?: number | null
+  profileCurrentLon?: number | null
+  profileBirthCity?: string | null
+  profileBirthLat?: number | null
+  profileBirthLon?: number | null
+  onSubmit: (
+    text: string,
+    category: HoraryCategory | undefined,
+    localTime: string,
+    timezone: string,
+    lat?: number,
+    lon?: number,
+    locationName?: string
+  ) => void
 }
 
-export function HoraryForm({ hasSpendableCredit, onSubmit }: Props) {
+export function HoraryForm({
+  hasSpendableCredit,
+  profileCurrentCity,
+  profileCurrentLat,
+  profileCurrentLon,
+  profileBirthCity,
+  profileBirthLat,
+  profileBirthLon,
+  onSubmit,
+}: Props) {
   const [text, setText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<HoraryCategory | undefined>(undefined)
   const [localTime, setLocalTime] = useState("")
   const [timezone, setTimezone] = useState("")
+  const [questionLat, setQuestionLat] = useState<number | undefined>(undefined)
+  const [questionLon, setQuestionLon] = useState<number | undefined>(undefined)
+  const [questionLocationName, setQuestionLocationName] = useState<string | undefined>(undefined)
 
   const activeCategoryMeta = HORARY_CATEGORIES.find((c) => c.key === selectedCategory)
   const placeholder = activeCategoryMeta?.placeholder || "Сформулируй вопрос так, чтобы на него можно было ответить Да или Нет..."
@@ -23,22 +49,41 @@ export function HoraryForm({ hasSpendableCredit, onSubmit }: Props) {
   const isValid = text.trim().length >= 5 && text.length <= 500 && hasSpendableCredit
 
   const handleCategoryClick = (cat: HoraryCategory) => {
-    if (selectedCategory === cat) {
-      setSelectedCategory(undefined)
-    } else {
-      setSelectedCategory(cat)
-      // If textarea is empty, let's prefill with example placeholder for convenience
-      if (text.trim() === "") {
-        const catMeta = HORARY_CATEGORIES.find((c) => c.key === cat)
-        if (catMeta) setText(catMeta.placeholder)
-      }
+    // Tapping another chip switches selection; tapping already selected chip keeps it selected (fixes 3.1)
+    setSelectedCategory(cat)
+    // If textarea is empty, prefill with example placeholder
+    if (text.trim() === "") {
+      const catMeta = HORARY_CATEGORIES.find((c) => c.key === cat)
+      if (catMeta) setText(catMeta.placeholder)
     }
+  }
+
+  const handleMomentChange = (
+    lt: string,
+    tz: string,
+    lat?: number,
+    lon?: number,
+    locName?: string
+  ) => {
+    setLocalTime(lt)
+    setTimezone(tz)
+    setQuestionLat(lat)
+    setQuestionLon(lon)
+    setQuestionLocationName(locName)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!isValid) return
-    onSubmit(text, selectedCategory, localTime, timezone)
+    onSubmit(
+      text,
+      selectedCategory,
+      localTime,
+      timezone,
+      questionLat,
+      questionLon,
+      questionLocationName
+    )
   }
 
   return (
@@ -90,11 +135,16 @@ export function HoraryForm({ hasSpendableCredit, onSubmit }: Props) {
         </div>
       </div>
 
-      {/* Time & Timezone Confirmation */}
-      <HoraryTimeConfirm onChange={(lt, tz) => {
-        setLocalTime(lt)
-        setTimezone(tz)
-      }} />
+      {/* Time & Location Confirmation */}
+      <HoraryTimeConfirm
+        profileCurrentCity={profileCurrentCity}
+        profileCurrentLat={profileCurrentLat}
+        profileCurrentLon={profileCurrentLon}
+        profileBirthCity={profileBirthCity}
+        profileBirthLat={profileBirthLat}
+        profileBirthLon={profileBirthLon}
+        onChange={handleMomentChange}
+      />
 
       {/* Submit Button */}
       <button
@@ -103,7 +153,7 @@ export function HoraryForm({ hasSpendableCredit, onSubmit }: Props) {
         className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none"
       >
         <Sparkles className="h-4 w-4" />
-        Спросить звёзды
+        Получить ответ карты
       </button>
     </form>
   )

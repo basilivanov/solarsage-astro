@@ -61,6 +61,7 @@ def _to_question_read(q) -> HoraryQuestionRead:
         spent_credit_source=spent_source,
         client_timezone=q.client_timezone,
         client_local_time=q.client_local_time,
+        question_location_name=q.question_location_name,
         created_at=q.created_at.isoformat(),
         answer=answer_read,
     )
