@@ -336,6 +336,7 @@ horary_questions
 - question_lon nullable
 - spent_credit_id nullable
 - idempotency_key
+- request_hash
 - created_at
 - updated_at
 ```
@@ -609,7 +610,178 @@ Implementation must not use the old model:
 
 ---
 
-## 16. Final product rule
+## 16. No-guessing implementation rules
+
+Этот раздел обязателен для coder agents. Не придумывать альтернативную модель квот и не возвращаться к старой модели `HoraryQuota.questions_used / questions_limit`.
+
+### 16.1. Weekly-free credit creation
+
+Не создавать все будущие weekly-free credits заранее.
+
+`subscription_weekly_free` должен резолвиться лениво:
+
+- на `GET /api/horary/quota`;
+- на `POST /api/horary/questions`.
+
+Backend может создать `subscription_weekly_free` row только для текущей активной access-week.
+
+Будущие access-weeks не создают credits до фактического наступления этой недели.
+
+### 16.2. Access-week interval
+
+Access-week intervals are half-open:
+
+```text
+active if now >= access_week_start AND now < access_week_end
+expired if now >= access_week_end
+```
+
+Все timestamps в DB должны храниться как timezone-aware UTC timestamps.
+
+Frontend может показывать локальное время, но backend comparisons всегда идут в UTC.
+
+### 16.3. Horary access rule
+
+Активный product access нужен только для получения `subscription_weekly_free`.
+
+Paid, gift, referral и adjustment horary credits можно тратить даже если Today access expired, если сам credit не expired.
+
+```text
+No active access + no horary credits → NO_HORARY_CREDITS
+No active access + paid horary credits → question may be submitted
+Active access + current weekly-free → weekly-free is spent first
+```
+
+### 16.4. Required DB constraints
+
+`horary_credits`:
+
+```text
+CHECK amount > 0
+CHECK used_amount >= 0
+CHECK used_amount <= amount
+CHECK source IN (
+  'subscription_weekly_free',
+  'referral_bonus',
+  'gift',
+  'paid',
+  'adjustment'
+)
+```
+
+Unique current-week free credit:
+
+```text
+UNIQUE(user_id, source, access_week_start, access_week_end)
+WHERE source = 'subscription_weekly_free'
+```
+
+`horary_questions`:
+
+```text
+UNIQUE(user_id, idempotency_key)
+```
+
+`horary_credit_spends`:
+
+```text
+UNIQUE(question_id)
+UNIQUE(idempotency_key)
+```
+
+### 16.5. Atomic spend algorithm
+
+`POST /api/horary/questions` должен использовать одну DB transaction:
+
+```text
+1. Begin transaction.
+2. Resolve current access-week.
+3. Create current subscription_weekly_free if active access exists and row does not exist.
+4. Select spendable credits FOR UPDATE.
+5. Sort by spend order:
+   a. active subscription_weekly_free
+   b. referral_bonus / gift / adjustment by nearest expires_at
+   c. paid by oldest created_at
+6. If no spendable credit exists, return NO_HORARY_CREDITS.
+7. Create horary_questions row with status='processing'.
+8. Create horary_credit_spends row.
+9. Increment horary_credits.used_amount by 1.
+10. Commit.
+11. Start async generation only after commit.
+```
+
+Нельзя запускать генерацию до commit списания кредита.
+
+### 16.6. Idempotency behavior
+
+Если тот же user отправляет тот же `idempotencyKey` повторно:
+
+- same payload hash → вернуть существующий question;
+- different payload hash → вернуть `409 IDEMPOTENCY_CONFLICT`;
+- второй credit не списывается.
+
+Хранить `request_hash` на `horary_questions`.
+
+### 16.7. Failure / refund policy
+
+Если генерация ответа упала до создания `HoraryAnswer`:
+
+- поставить question status = `failed`;
+- для paid / gift / referral / adjustment credits создать compensating refund или уменьшить `used_amount`;
+- для `subscription_weekly_free` восстановить кредит только если текущее время всё ещё внутри той же access-week;
+- если weekly-free уже expired к моменту failure — не восстанавливать его.
+
+Если ответ успешно создан:
+
+- поставить question status = `answered`;
+- automatic refund не делать.
+
+### 16.8. Deprecated model forbidden
+
+Implementation must not create or rely on:
+
+```text
+HoraryQuota.questions_used
+HoraryQuota.questions_limit
+left / nextInDays as primary quota model
+default 3 free questions
++1 accumulating question every 7 days
+weekly_bonus as a source
+```
+
+Frontend must render quota from:
+
+```text
+weeklyFreeAvailable
+weeklyFreeExpiresAt
+nextWeeklyFreeAt
+bonusCredits
+paidCredits
+canPurchase
+```
+
+### 16.9. Required tests
+
+Добавить тесты:
+
+1. weekly-free создаётся только для текущей access-week;
+2. future access weeks do not pre-create credits;
+3. unused weekly-free expires at `access_week_end`;
+4. boundary: ровно в `access_week_end` старый weekly-free уже unavailable;
+5. next week has exactly one new weekly-free, not accumulated;
+6. paid credits can be spent without active Today access;
+7. paid credit is not spent while weekly-free is available;
+8. expired gift/referral credits are ignored;
+9. nearest `expires_at` bonus credit is spent before paid;
+10. duplicate idempotency key does not double-spend;
+11. same idempotency key with different request hash returns 409;
+12. generation failure refunds paid credit;
+13. generation failure restores weekly-free only if access-week is still active;
+14. frontend does not use `left` / `nextInDays` as primary balance.
+
+---
+
+## 17. Final product rule
 
 ```text
 Активный доступ даёт 1 бесплатный хорарный вопрос в неделю доступа.
