@@ -249,7 +249,8 @@
   <business-rules>
     <rule id="BR-ACCESS-ORDER">Consumption order: referral_bonus → gift → subscription → adjustment.</rule>
     <rule id="BR-NO-FREE-TIER">No permanent free tier (mirrors INV-NO-FREE-TIER).</rule>
-    <rule id="BR-HORARY-WEEKLY">1 horary question per week of active access; bonus credits accumulate.</rule>
+    <rule id="BR-HORARY-WEEKLY">Active access grants 1 subscription_weekly_free horary question per access week; it expires weekly and does not accumulate. Paid horary credits accumulate and do not expire unless explicitly configured.</rule>
+    <rule id="BR-HORARY-SPEND-ORDER">Horary spend order: current subscription_weekly_free → expiring referral/gift/adjustment credits by nearest expires_at → paid credits oldest first.</rule>
     <rule id="BR-3-STATUSES">UI shows exactly 3 day statuses; internal qualities map per docs/04 §11.</rule>
     <rule id="BR-FLAGS-COUNT">Top flags: min 2, optimal 3, max 4 (docs/02).</rule>
     <rule id="BR-WHY-INLINE">"Why for me" is inline disclosure, not a route.</rule>
