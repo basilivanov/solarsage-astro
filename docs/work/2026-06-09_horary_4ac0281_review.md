@@ -63,8 +63,52 @@ Connector-visible CI evidence:
 - No GitHub Actions workflow runs were visible for `4ac028114288ca45272a28f94a5f010b66f01a33`.
 - No combined status checks were visible for the commit.
 
+## Required follow-up fixes
+
+These are not acceptance blockers for `4ac0281`, but should be scheduled as the next small cleanup packet.
+
+### F1 — Handle 403 during polling the same as 401
+
+Current polling catch branch aborts polling only for `HoraryApiError` with `status === 401`.
+
+Required change:
+
+```ts
+if (err instanceof HoraryApiError && (err.status === 401 || err.status === 403)) {
+  clearInterval(interval)
+  setLoadError("auth")
+}
+```
+
+Acceptance:
+
+- During polling, `401` and `403` both stop polling.
+- UI renders `Нужно авторизоваться`.
+- Polling interval is cleared.
+
+### F2 — Add frontend tests for detail page error mapping
+
+Add tests that prove server/auth/network failures are not masked as not-found.
+
+Required cases:
+
+1. `getHoraryQuestion()` returns `null` → renders `Вопрос не найден`.
+2. `getHoraryQuestion()` throws `HoraryApiError({ status: 401 })` → renders `Нужно авторизоваться`.
+3. `getHoraryQuestion()` throws `HoraryApiError({ status: 403 })` → renders `Нужно авторизоваться`.
+4. `getHoraryQuestion()` throws `HoraryApiError({ status: 500 })` → renders `Сервер временно недоступен`.
+5. `getHoraryQuestion()` throws ordinary `Error` → renders `Нет соединения`.
+
+### F3 — Optional UX polish for load-error state
+
+The current error state is clear enough. Future polish can make it visually consistent with the rest of the horary product:
+
+- use a soft card instead of bare centered text;
+- add retry button for server/network errors;
+- keep `К списку вопросов` secondary;
+- do not show retry for real `not_found` unless desired.
+
 ## Final decision
 
 ACCEPTED WITH NOTES.
 
-The remaining B1 blocker from the previous review is fixed. Server/auth/network failures are no longer masked as `Вопрос не найден`. The only residual notes are frontend test coverage and optionally handling `403` during polling the same way as `401`.
+The remaining B1 blocker from the previous review is fixed. Server/auth/network failures are no longer masked as `Вопрос не найден`. The residual work is explicitly captured in `Required follow-up fixes`: handle `403` during polling, add frontend tests, and optionally polish the error card UI.
