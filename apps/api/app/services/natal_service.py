@@ -117,6 +117,21 @@ _SIGN_RU = {
     "Pisces": "Рыбах",
 }
 
+_SIGN_NOM = {
+    "Aries": "Овен",
+    "Taurus": "Телец",
+    "Gemini": "Близнецы",
+    "Cancer": "Рак",
+    "Leo": "Лев",
+    "Virgo": "Дева",
+    "Libra": "Весы",
+    "Scorpio": "Скорпион",
+    "Sagittarius": "Стрелец",
+    "Capricorn": "Козерог",
+    "Aquarius": "Водолей",
+    "Pisces": "Рыбы",
+}
+
 
 def _gender_forms(gender: str) -> dict[str, str]:
     return {
@@ -254,18 +269,19 @@ def _build_planets(chart_data, scores, gender: str, signals=None) -> list[NatalP
     for planet in chart_data.get("planets", [])[:5]:
         name = planet.get("name") or "Planet"
         house = planet.get("house") or find_house(planet.get("longitude", 0), houses)
-        sign = planet.get("sign")
-        sign_ru = _SIGN_RU.get(sign or "", sign or "знаке")
+        sign_en = planet.get("sign")
+        sign_nom = _SIGN_NOM.get(sign_en or "", sign_en or "")
+        sign_prep = _SIGN_RU.get(sign_en or "", sign_en or "знаке")
         house_text = f"{house} дом" if house is not None else ""
         hint = _planet_hints.get(name, f"{_planet_label(name)} — важный элемент твоей карты.")
         planets.append(
             NatalPlanetPreview(
                 id=name.lower(),
                 name=_planet_label(name),
-                sign=sign,
+                sign=sign_nom,
                 house=house,
                 score=planet_scores.get(name),
-                description=f"{_planet_label(name)} в {sign_ru}, {house_text}. {hint}" if house_text else f"{_planet_label(name)} в {sign_ru}. {hint}",
+                description=f"{_planet_label(name)} в {sign_prep}, {house_text}. {hint}" if house_text else f"{_planet_label(name)} в {sign_prep}. {hint}",
             )
         )
     return planets
