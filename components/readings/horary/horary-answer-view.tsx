@@ -7,7 +7,7 @@ import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
 import { HoraryBlockRenderer } from "./horary-block-renderer"
 
 type Props = {
-  question: HoraryQuestion
+  question: HoraryQuestionRead
 }
 
 const PLANET_RU: Record<string, string> = {
@@ -88,7 +88,7 @@ export function HoraryAnswerView({ question }: Props) {
 
         {/* Blocks rendering (contains verdict_card as the first block in spec, but let's render blocks sequentially) */}
         <div className="space-y-5">
-          {answer.blocks.map((block, i) => (
+          {answer.blocks.map((block: any, i: number) => (
             <div key={i}>
               <HoraryBlockRenderer block={block} />
             </div>
@@ -102,7 +102,7 @@ export function HoraryAnswerView({ question }: Props) {
               Задействованные светила
             </h4>
             <div className="flex flex-wrap gap-2">
-              {answer.planets.map((p) => {
+              {answer.planets.map((p: string) => {
                 const ruName = PLANET_RU[p] || p
                 return (
                   <span

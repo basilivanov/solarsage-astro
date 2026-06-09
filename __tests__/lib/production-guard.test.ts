@@ -48,6 +48,38 @@ describe("assertProductionSafety", () => {
     vi.stubEnv("ALLOW_DEMO_MODE_IN_PREVIEW", "true")
     expect(() => assertProductionSafety()).not.toThrow()
   })
+
+  it("allows demo mode true in Vercel preview when override is set even if NODE_ENV is production", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("VERCEL_ENV", "preview")
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "true")
+    vi.stubEnv("ALLOW_DEMO_MODE_IN_PREVIEW", "true")
+    expect(() => assertProductionSafety()).not.toThrow()
+  })
+
+  it("allows demo mode true in staging when override is set even if NODE_ENV is production", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("APP_ENV", "staging")
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "true")
+    vi.stubEnv("ALLOW_DEMO_MODE_IN_PREVIEW", "true")
+    expect(() => assertProductionSafety()).not.toThrow()
+  })
+
+  it("throws in Vercel preview when demo mode is true and override is not set", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("VERCEL_ENV", "preview")
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "true")
+    vi.stubEnv("ALLOW_DEMO_MODE_IN_PREVIEW", "false")
+    expect(() => assertProductionSafety()).toThrow("Unsafe preview config")
+  })
+
+  it("throws in Vercel production environment when demo mode is true even if ALLOW_DEMO_MODE_IN_PREVIEW is true", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("VERCEL_ENV", "production")
+    vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "true")
+    vi.stubEnv("ALLOW_DEMO_MODE_IN_PREVIEW", "true")
+    expect(() => assertProductionSafety()).toThrow("Unsafe production config")
+  })
 })
 
 describe("API error does not return demo payload in production", () => {
