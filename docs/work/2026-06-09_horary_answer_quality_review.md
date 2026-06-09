@@ -1,61 +1,35 @@
 # Review: W-HORARY-ANSWER-QUALITY-V1
 
 Date: 2026-06-09
-Reviewed repository state: `origin/main` as visible through GitHub connector
+Reviewed implementation commit: `c85497faf4f211893de67e01b682e92b8a94792c`
+Previous stale review commit: `efbafd4b2d62b75025a7ed35ed1292165f294e0a`
 Source TZ: `docs/work/2026-06-09_horary_answer_quality_TZ.md`
 Canon dependency: `docs/FAILURE_HANDLING_CANON.md`
 
 ## Verdict
 
-Status: **REWORK / BLOCKED**
+Status: **REWORK REQUIRED — 2 BLOCKERS**
 
-I do not see an implementation commit for `W-HORARY-ANSWER-QUALITY-V1` in `origin/main` through the GitHub connector. The latest matching commit found is the TZ commit itself:
+The main implementation direction is correct and most of the original horary quality issues are fixed:
 
-- `b1d9f7a7e58df8dd38d8151001b57222b509af15` — `Add horary answer quality TZ`
+- structured `HoraryAnalysis` exists;
+- confidence is exposed as `low|medium|high` + explanation;
+- LLM receives structured computed evidence;
+- generic horary fallback answer was removed;
+- invalid LLM output raises `HoraryGenerationError` and the service marks the question failed;
+- frontend renders failed/error state instead of a normal-looking answer;
+- frontend verdict card renders a confidence label instead of percent/probability.
 
-The current code path still appears to preserve the exact issues that this packet was supposed to remove.
+However, the packet is not accepted yet because two user-facing / gate issues remain.
 
-## Blockers
+## Accepted parts
 
-### B1. Generic fallback answer still exists
+### A1. Engine now returns structured analysis
 
-The current `LLMService.generate_horary_answer()` still returns a generic fallback answer when structured LLM generation fails.
-
-This violates `docs/FAILURE_HANDLING_CANON.md` and the packet requirement:
-
-- do not save generic answer blocks;
-- mark question failed/error;
-- refund credit if applicable;
-- show a real error state.
-
-Expected behavior:
-
-- invalid/missing LLM output must not create a `HoraryAnswer` row;
-- question status must become failed/error;
-- credit refund behavior must execute where applicable.
-
-### B2. Hardcoded timing still exists
-
-The horary prompt still uses hardcoded default timing text equivalent to `2–3 недели` in the timing block template.
-
-This violates the packet requirement: timing must be derived from explicit question timeframe or computed chart evidence, otherwise return a not-enough-evidence timing state.
-
-Expected behavior:
-
-- remove hardcoded default time range from prompt/template;
-- introduce structured timing result;
-- if no timing evidence exists, return `not_enough_evidence`.
-
-### B3. Engine still returns tuple instead of structured evidence
-
-The current engine still returns roughly:
+`HoraryEngine.analyze()` now returns `HoraryAnalysis` with:
 
 - verdict;
-- confidence;
-- involved planets.
-
-The packet requires a structured result containing:
-
+- confidence score;
 - confidence label;
 - confidence explanation;
 - testimonies for;
@@ -64,59 +38,135 @@ The packet requires a structured result containing:
 - timing;
 - calculation warnings.
 
-Without this, the LLM still lacks enough evidence to explain the answer in a detailed, trustworthy way.
+The old `compute_verdict()` remains only as a backward-compatible helper and delegates to `analyze()`.
 
-### B4. LLM still receives too little evidence
+### A2. Structured evidence model exists
 
-The answer generation call still appears to pass only question text, category, verdict, confidence, involved planets, ASC ruler, and significator.
+`apps/api/app/schemas/horary_analysis.py` defines explicit models for evidence, timing and analysis.
 
-It does not pass structured testimonies such as applying/separating aspect, orb, Moon testimony, house context, support/opposition factors, or timing evidence.
+Important invariant is present: every evidence item is `source="computed"`, and confidence label is restricted to `low|medium|high`.
 
-This is why answer quality remains shallow and generic.
+### A3. LLM generation no longer has generic fallback
 
-### B5. Confidence still risks being treated as probability
+`LLMService.generate_horary_answer()` now accepts `HoraryAnalysis`, builds the prompt from structured evidence, validates block structure, and raises `HoraryGenerationError` after failed attempts.
 
-The backend still stores numeric `confidence`, and the old verdict card model still uses numeric confidence. The packet requires public UI to show confidence as low/medium/high or strength of evidence, not event probability.
+This removes the previous generic two-line fallback answer.
 
-Expected behavior:
+### A4. Service failure path does not save `HoraryAnswer`
 
-- API/blocks should include public confidence label and explanation;
-- frontend must not show probability wording;
-- numeric score should be internal/dev-only or clearly labelled as strength of indications.
+`HoraryService._generate_answer_task()` catches `HoraryGenerationError`, marks the question as `failed`, refunds through `_refund_credit_for_failed_question()`, commits, and returns before answer creation.
 
-## Required rework packet
+This is the correct direction for the no-synthetic-fallback canon.
 
-Implement the actual code changes from `W-HORARY-ANSWER-QUALITY-V1`:
+### A5. Frontend no longer renders probability wording in verdict card
 
-1. Replace `HoraryEngine.compute_verdict()` tuple return with a structured result or wrapper model.
-2. Add evidence objects: for/against/neutral/timing/warnings.
-3. Pass structured evidence to LLM.
-4. Remove hardcoded timing default from prompt and UI assumptions.
-5. Remove generic fallback answer creation.
-6. On invalid LLM result: mark failed/error, refund if applicable, and do not save answer row.
-7. Add backend tests for invalid JSON, LLM unavailable, no timing evidence, confidence labels.
-8. Add frontend tests for confidence label, failed/error state, no probability wording, no default hardcoded timing.
-9. Add grep guard for hardcoded timing and generic fallback text.
+`HoraryBlockRenderer` renders `Уверенность разбора: Низкая/Средняя/Высокая` and does not display percent probability in the verdict card.
+
+### A6. Failed/error state exists on answer page
+
+The horary answer page now renders a visible failed/expired state and says it will not show generic text instead of a real reading.
+
+## Blockers
+
+### B1. Grep guard is broken and not wired into guardrails
+
+`W-HORARY-ANSWER-QUALITY-V1` requires a grep guard for hardcoded timing, generic fallback text and probability wording.
+
+A guard script was added at `scripts/check_horary_quality.sh`, but it has two problems:
+
+1. `ROOT` is computed as `$(dirname scripts/check_horary_quality.sh)/../..`, which resolves to the parent of the repository, not the repository root. Since the script lives in `scripts/`, it should use `/..`, not `/../..`.
+2. The script is not called from `package.json` scripts or from `scripts/guardrails.sh`, so normal `guardrails`, `guardrails:full`, `guardrails:strict`, frontend, backend or prod guard runs will not execute it.
+
+Impact: the advertised regression guard can report OK or never run at all, so the packet does not actually satisfy the acceptance gate.
+
+Required fix:
+
+- change `ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`;
+- add a package script, e.g. `guardrails:horary-quality`;
+- call it from `scripts/guardrails.sh` in `run_frontend` or `run_full`;
+- add evidence that the script fails when a forbidden string is intentionally present, or at least show a real successful run from repo root.
+
+### B2. `creditRefunded` can be incorrect/misleading
+
+`_to_question_read()` currently sets:
+
+`credit_refunded = q.status == "failed" and q.spent_credit_id is not None`
+
+But `_refund_credit_for_failed_question()` can decide not to refund expired weekly-free credits while still deleting the spend row. The question also keeps `spent_credit_id`.
+
+Impact: UI can show `Списание возвращено` even when no refund happened. This violates the failure-handling canon because the error state may mislead the user about credit recovery.
+
+Required fix:
+
+- persist refund outcome explicitly, e.g. `HoraryQuestion.refund_status = refunded | not_refundable | none`, or equivalent;
+- return `creditRefunded=true` only when `used_amount` was actually decremented/refund was actually applied;
+- add tests for both paths:
+  - paid credit failed => `creditRefunded=true`;
+  - expired weekly-free failed => `creditRefunded=false` / `not_refundable`.
+
+## Important non-blocking risks
+
+### R1. LLM can still alter evidence contents inside `testimonies`
+
+The prompt instructs the LLM to use only provided evidence, and schema validation checks block shape. But validation does not verify that LLM-provided testimony titles/explanations/weights correspond exactly to computed evidence.
+
+This is acceptable for this iteration if the product owner accepts LLM paraphrasing, but the stronger version would render testimonies directly from backend-computed evidence and let LLM write only explanatory paragraphs.
+
+### R2. Category timing hints use internal English ranges
+
+`_CATEGORY_TIMING_HINTS` stores values like `weeks`, `months`, `weeks-months`. If these ever leak into `timeRange`, they will be user-visible English/internal labels. The prompt currently asks LLM to avoid `timeRange` for unclear timing, but the risk remains.
+
+Preferred fix: store Russian display labels or split internal bucket from user-facing label.
+
+### R3. CI/workflow status was not visible through connector
+
+`fetch_commit_workflow_runs` returned no workflow runs for implementation commit `c85497faf4f211893de67e01b682e92b8a94792c`.
+
+Commit message claims backend/frontend tests and grep guard, but I could not independently verify CI from GitHub.
 
 ## Acceptance checklist
 
 ```text
-[ ] Generic horary fallback answer removed.
-[ ] Invalid LLM JSON does not save HoraryAnswer.
-[ ] Invalid/unavailable generation marks question failed/error.
-[ ] Credit refund remains correct.
-[ ] Hardcoded `2–3 недели` default removed from horary prompt/template.
-[ ] Timing supports derived / low-confidence / not_enough_evidence states.
-[ ] Engine returns structured evidence, not only verdict/confidence/planets.
-[ ] LLM receives structured computed evidence.
-[ ] Public UI shows low/medium/high confidence, not probability.
-[ ] Backend tests cover failure behavior.
-[ ] Frontend tests cover failed/error rendering and confidence wording.
-[ ] Grep guard blocks regression.
+[x] Generic horary fallback answer removed.
+[x] Invalid LLM JSON raises HoraryGenerationError.
+[x] Invalid/unavailable generation marks question failed/error.
+[x] Invalid/unavailable generation does not save HoraryAnswer.
+[!] Credit refund works for paid-credit happy failure path, but user-visible creditRefunded can be false-positive.
+[x] Hardcoded `2–3 недели` removed from main horary prompt/template.
+[x] Timing supports known / unclear / not_enough_evidence states.
+[x] Engine returns structured evidence via HoraryAnalysis.
+[x] LLM receives structured computed evidence.
+[x] Public UI shows low/medium/high confidence, not probability percent.
+[x] Backend tests added for engine and LLM failure behavior.
+[x] Frontend tests added for verdict/timing/error state.
+[ ] Grep guard is correctly rooted and wired into guardrails.
+[ ] Failed-question refund flag is accurate for refundable vs non-refundable credits.
 ```
+
+## Required rework packet
+
+### W-HORARY-ANSWER-QUALITY-FOLLOWUP-1
+
+Scope:
+
+- `scripts/check_horary_quality.sh`
+- `scripts/guardrails.sh`
+- `package.json`
+- `apps/api/app/api/horary.py`
+- `apps/api/app/services/horary_service.py`
+- `apps/api/app/db/models.py` and migration only if explicit refund status is persisted
+- backend tests for refund flag correctness
+
+Tasks:
+
+1. Fix guard script root path.
+2. Wire horary quality guard into normal guardrails.
+3. Make `creditRefunded` reflect actual refund result, not `spent_credit_id != null`.
+4. Add paid-credit and expired-weekly-free failure tests.
+5. Re-run backend tests, frontend tests, contracts if schema changes, and guardrails/horary-quality guard.
 
 ## Final conclusion
 
-Do not accept this packet yet.
+Do not accept yet.
 
-Either the implementation was not pushed to `origin/main`, or it was not discoverable through the GitHub connector. In the repository state visible to review, the main blockers remain.
+The core feature implementation is mostly done, but the packet still fails two important acceptance conditions: a broken/unwired regression guard and a potentially misleading refund flag in the failed-answer UX.
