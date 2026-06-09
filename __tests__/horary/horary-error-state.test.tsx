@@ -165,4 +165,34 @@ describe("HoraryAnswerPage — failed/error state", () => {
       expect(screen.getByText(/Нет соединения/)).toBeTruthy();
     }, { timeout: 2000 });
   });
+
+  it("shows auth error on 403 (same as 401)", async () => {
+    mockGet.mockRejectedValue(Object.assign(new Error("Forbidden"), { name: "HoraryApiError", status: 403 }));
+
+    await renderAndAwait("forbidden");
+
+    await waitFor(() => {
+      expect(screen.getByText(/Нужно авторизоваться/)).toBeTruthy();
+    }, { timeout: 2000 });
+  });
+
+  it("shows retry button on server error", async () => {
+    mockGet.mockRejectedValue(Object.assign(new Error("Server error"), { name: "HoraryApiError", status: 500 }));
+
+    await renderAndAwait("servererr2");
+
+    await waitFor(() => {
+      expect(screen.getByText(/Попробовать снова/)).toBeTruthy();
+    }, { timeout: 2000 });
+  });
+
+  it("shows retry button on network error", async () => {
+    mockGet.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await renderAndAwait("networkerr2");
+
+    await waitFor(() => {
+      expect(screen.getByText(/Попробовать снова/)).toBeTruthy();
+    }, { timeout: 2000 });
+  });
 });

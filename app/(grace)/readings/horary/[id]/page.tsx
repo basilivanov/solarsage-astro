@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, use } from "react"
+import { useCallback, useEffect, useMemo, useState, use } from "react"
 import Link from "next/link"
 import { AlertOctagon, ChevronLeft, Sparkles } from "lucide-react"
 import { HoraryAnswerView } from "@/components/readings/horary/horary-answer-view"
@@ -88,9 +88,18 @@ export default function HoraryAnswerPage({ params }: Props) {
         }
       } catch (err) {
         console.error("[HoraryAnswerPage] Poll error:", err)
-        if ((err as Error)?.name === "HoraryApiError" && (err as Error & { status: number }).status === 401) {
+        if ((err as Error)?.name === "HoraryApiError") {
+          const pollStatus = (err as Error & { status: number }).status
+          if (pollStatus === 401 || pollStatus === 403) {
+            clearInterval(interval)
+            setLoadError("auth")
+          } else if (pollStatus >= 500) {
+            clearInterval(interval)
+            setLoadError("server")
+          }
+        } else if ((err as Error)?.name === "TypeError") {
           clearInterval(interval)
-          setLoadError("auth")
+          setLoadError("network")
         }
       }
     }, 2000)
@@ -104,16 +113,50 @@ export default function HoraryAnswerPage({ params }: Props) {
     return pollingTimedOut || Date.now() - new Date(question.createdAt).getTime() > 30000
   }, [pollingTimedOut, question?.createdAt])
 
+  const retry = useCallback(() => {
+    if (!id) return
+    setLoading(true)
+    setLoadError(false)
+    getHoraryQuestion(id)
+      .then((q) => {
+        if (!q) {
+          setLoadError("not_found")
+          setLoading(false)
+          return
+        }
+        setQuestion(q)
+        setPollingTimedOut(false)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("[HoraryAnswerPage] Retry error:", err)
+        if ((err as Error)?.name === "HoraryApiError") {
+          const apiErr = err as Error & { status: number }
+          if (apiErr.status === 401 || apiErr.status === 403) {
+            setLoadError("auth")
+          } else if (apiErr.status >= 500) {
+            setLoadError("server")
+          } else {
+            setLoadError("unknown")
+          }
+        } else {
+          setLoadError("network")
+        }
+        setLoading(false)
+      })
+  }, [id])
+
   if (loading) {
     return <HoraryProgress />
   }
 
   if (loadError || !question) {
+    const isRetryable = loadError === "server" || loadError === "network"
     const errorConfig =
       loadError === "auth"
         ? { title: "Нужно авторизоваться", message: "Сессия истекла. Войди в приложение заново." }
         : loadError === "server"
-          ? { title: "Сервер временно недоступен", message: "Попробуй обновить страницу или зайти позже." }
+          ? { title: "Сервер временно недоступен", message: "Не удалось загрузить вопрос. Попробуй снова." }
           : loadError === "network"
             ? { title: "Нет соединения", message: "Проверь интернет и попробуй снова." }
             : { title: "Вопрос не найден", message: "Возможно, ссылка устарела или вопрос был удалён." }
@@ -126,13 +169,23 @@ export default function HoraryAnswerPage({ params }: Props) {
         <p className="text-[14px] text-muted-foreground max-w-[280px]">
           {errorConfig.message}
         </p>
-        <Link
-          href="/readings/horary"
-          className="inline-flex items-center gap-1.5 text-[14px] text-primary"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          К списку вопросов
-        </Link>
+        <div className="flex flex-col items-center gap-2">
+          {isRetryable ? (
+            <button
+              onClick={retry}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-[14px] font-medium text-primary-foreground active:scale-[0.99] transition"
+            >
+              Попробовать снова
+            </button>
+          ) : null}
+          <Link
+            href="/readings/horary"
+            className="inline-flex items-center gap-1.5 text-[14px] text-muted-foreground hover:text-foreground transition"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            К списку вопросов
+          </Link>
+        </div>
       </div>
     )
   }
