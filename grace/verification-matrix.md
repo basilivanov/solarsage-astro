@@ -1,12 +1,12 @@
 # Verification Matrix
 
-GRACE §13.E. Each row binds a use case to the modules it traverses, the gates it must pass, and the scenarios that prove it.
+GRACE §13.E. Current-state verification matrix for SolarSage Astro after profile/access/day/calendar/natal/horary and test-stack updates.
 
-Columns:
-- **UC** — use case id from `requirements.xml`.
-- **Modules traversed** — every module on the happy path; if any is missing, gate fails.
-- **Gates** — exit criteria from the wave; pass means measurable, not "looks good".
-- **Scenarios** — concrete test inputs/outputs that auditor can run.
+Every row binds a use case to:
+
+- **Modules traversed** — runtime modules on happy path.
+- **Gates** — measurable acceptance criteria.
+- **Scenarios** — concrete proofs/tests/evidence expected before acceptance.
 
 ---
 
@@ -14,185 +14,220 @@ Columns:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-AUTH-TG → `users` table | `sign_check` matches Telegram HMAC; expired payloads rejected; users row upserted exactly once per `telegram_id` | S1: valid initData → 200, session set, `users.count` +=1. S2: tampered hash → 401, no DB write. S3: replay after 24h → 401 if `auth_date` too old. |
+| M-AUTH-TG → users → session cookie | Telegram initData HMAC validates; tampered/expired payloads rejected; user upsert is idempotent. | S1: valid initData → 200/session. S2: tampered hash → 401/no DB write. S3: stale auth_date → rejected. |
 
-## UC-PROFILE-CREATE · Onboarding
+---
 
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-AUTH-TG → M-PROFILE → `user_profiles` | All required fields present; lat/lon/tz resolved; redirect target = `/day/today` | S1: full payload → 201, profile readable via GET. S2: missing birth_time → 422 with `PROFILE_INCOMPLETE`. S3: birthday_location omitted → defaults to current_location. **E2E:** Complete 5-step onboarding flow (welcome → birth → place → birthday → done) with validation, localStorage persistence, and redirect to `/day/today`. |
-
-## UC-PROFILE-EDIT · Edit birth/location
+## UC-PROFILE-CREATE · Onboarding and profile creation
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-PROFILE → invalidation hooks | Edit of `birth_*` clears all 5 cache layers for the user; edit of `current_location` clears period/daily/semantic/today | S1: edit birth_time → assert `natal_snapshots`, `period_snapshots`, `daily_snapshots`, `semantic_layers`, `today_payloads` rows for user are gone. S2: edit current_location only → assert `natal_snapshots` retained, others cleared. |
+| M-WEB-ONBOARDING → M-WEB-API → M-PROFILE → user_profiles | Required birth/current location fields accepted; city lat/lon/tz resolved; profile can be read after create. | S1: complete onboarding → profile row. S2: missing required field → 422. S3: birthday location omitted → accepted fallback/contract behavior. S4 E2E: onboarding flow completes and lands on `/day/today`. |
+
+---
+
+## UC-PROFILE-EDIT · Edit birth/current location
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-WEB-PROFILE → M-PROFILE → cache invalidation | Birth edits invalidate natal and downstream caches; current location edits invalidate period/daily/semantic/today, but keep natal where valid. | S1: edit birth_time → natal/period/daily/semantic/today cache rows cleared. S2: edit current location → downstream rows cleared, natal retained. |
+
+---
 
 ## UC-ACCESS-CHECK · Access state
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-ACCESS → `access_ledger` | Consumption order honored; counters accurate; preview returned when no entry | S1: 14d referral_bonus starts today, no subscription → day 0..13 = full, day 14 = preview. S2: 14d referral + 30d subscription → days 0..13 full from referral, days 14..43 full from subscription. S3: no entries → preview with reason `expired_access`. |
+| M-ACCESS → access_ledger | Consumption order honored; access windows and preview states correct. | S1: referral_bonus 14d → days 0..13 full, day 14 preview. S2: referral + subscription → bonus consumed before subscription. S3: no entries → preview/expired reason. |
 
-## UC-DAY-VIEW · `GET /api/day/:date` (PILOT)
+---
+
+## UC-REFERRAL · Referral reward
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-AUTH-TG → M-PROFILE → M-ACCESS → M-DAY-SERVICE → C-TODAY-PAYLOAD | Schema validation passes; meta has all version fields; cache hit on second call; p95 < 500ms (PHASE-1) | S1 (PHASE-1): valid auth + profile + date → TodayPayload validates; meta.cached=false on first call, true on second. S2: not onboarded → 422 `NOT_ONBOARDED`. S3: tomorrow's date in PHASE-2 with no access → preview payload with soft lock. S4: invalid date → 400 `INVALID_DATE`. S5 (PHASE-5): cold call traverses M-CALC-PIPELINE → M-NORMALIZATION → M-SCORING → M-SEMANTIC → M-LLM and persists each layer. |
+| M-AUTH-TG → M-REFERRAL → referrals + access_ledger | Referral creates reward rows once; repeated invitee does not double grant. | S1: invitee signs up by referral link → inviter and invitee access reward. S2: same invitee repeats → no duplicate rows. |
+
+---
+
+## UC-DAY-VIEW · Today screen
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-WEB-DAY → M-WEB-API → M-DAY-SERVICE → M-PROFILE/M-ACCESS/M-CALC-PIPELINE/M-SEMANTIC/M-LLM as enabled | TodayPayload schema valid; access honored; cache behavior correct; frontend renders without calculating astrology. | S1: valid auth/profile/date → TodayPayload. S2: not onboarded → 422. S3: no access → preview/locked payload. S4: invalid date → error. S5: second call shows cache hit when cache layer enabled. |
+
+---
 
 ## UC-DAY-NAV · Navigate days
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-DAY → M-WEB-API-CLIENT | URL changes to `/day/:nextDate` on arrow/swipe; scroll resets; payload refetches | E2E: tap right arrow on `/day/today` → URL updates, headline changes, week strip's active marker moves. |
+| M-WEB-DAY → router → M-WEB-API | URL/date state changes; week strip active marker and payload update; scroll behavior sane. | E2E: tap/swipe next day → URL and rendered day update. |
+
+---
 
 ## UC-CAL-NAV · Calendar
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-CALENDAR → M-CALENDAR | Allowed range = prev/curr/next month; disabled days non-clickable; tap → `/day/:date` | S1: GET `?month=2026-05` → grid of 3 months. S2: GET `?month=2030-01` → 400 `INVALID_DATE` (out of range). S3 e2e: tap on day 15 → URL `/day/2026-05-15`. |
+| M-WEB-CALENDAR → M-CALENDAR | Allowed range enforced; day click navigates; calendar payload validates. | S1: valid month → 3-month grid. S2: out-of-range month → error. S3 E2E: tap date → `/day/:date`. |
+
+---
 
 ## UC-WEEK-STRIP · 7-day strip
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-DAY-SERVICE → C-TODAY-PAYLOAD.weekStrip | Exactly 3 distinct status values across the strip's domain; mapping per docs/04 §11 | S1: payload weekStrip[*].status ∈ {supportive, steady, tense}. S2: internal quality `high_contrast` maps to `tense`; `quiet` maps to `steady`. |
-
-## UC-REFERRAL · 14 days for both
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-AUTH-TG → M-REFERRAL → `referrals` + `access_ledger` | 2 ledger rows of 14 days created on new invitee; idempotent on repeat | S1: invitee signs up via referral link → both users have ledger row of 14d. S2: same invitee tries again → no second pair of rows. |
-
-## UC-LOCKED-DAY · Preview/locked
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-DAY-SERVICE (preview branch) → M-WEB-DAY locked state | Preview payload contains date, headline, partial flags, teaser, soft lock; CTAs present | S1: locked /day/2026-12-01 with no access → response has `access.state=preview`, soft lock with subscribe + invite CTAs. |
-
-## UC-NATAL-VIEW · Versioned natal blocks
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-WEB-READINGS → C-NATAL-PAYLOAD | Unknown block.type does not crash render; routes /readings/natal and /readings/natal/[section] both render | S1: payload contains a block.type=`future_block` → renderer skips it, dev log emitted. S2: section route renders only that section's blocks. |
-
-## UC-EVENING-CHECKIN · Checkin + closure
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-CHECKIN → `evening_checkins` → composer integration | Upsert by (user_id, date); note never sent to LLM; yesterdayEcho appears only when checkin exists | S1: POST checkin twice → one row, second updates fields. S2: GET /api/day/today after yesterday's checkin → payload.yesterdayEcho.hadCheckin=true. S3: no checkin → yesterdayEcho omitted or `hadCheckin=false`. |
-
-## UC-PAYMENTS · Subscription
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-PAYMENTS → `access_ledger` | Successful payment writes subscription ledger row; consumed only after bonus | S1: user has 14d bonus + paid 30d → days 0..13 from bonus, days 14..43 from subscription. |
+| M-DAY-SERVICE → C-TODAY-PAYLOAD.weekStrip → M-WEB-DAY | Status values come from backend; frontend only renders. | S1: weekStrip statuses are from allowed set. S2: frontend does not compute dayStatus. |
 
 ---
 
-## Cross-cutting verifications
-
-### Contract drift
-
-For each contract in `technology.xml`:
-- TS shape in `packages/contracts/*` matches Pydantic schema in `apps/api/app/schemas/*`.
-- JSON Schema generated from each side compares equal.
-- Test: `tests/contract_parity_test.py` regenerates and diffs.
-- Authoring direction is set by W-1.1B. The "regenerates and diffs" step in `tests/contract_parity_test.py` runs the generator declared by the chosen option (A/B/C); the test fails if regeneration produces a non-empty diff against committed artifacts.
-
-### Layer isolation (canon §11)
-
-- Static check: backend code that imports anything from `lib/mocks/*` fails CI.
-- Static check: frontend code that imports anything from `apps/api/*` or references `salience|supportScore|frictionScore|shadowRisk|totalSalience` outside `node_modules` fails CI.
-- Static check: LLM prompt builder must source only from `SemanticLayer`; lint rule forbids passing raw `daily_snapshot` to prompt context.
-- Static check: scoring consumers must read sphere definitions, dignity modifiers, aspect thresholds, activation rules, and convergence weights from `grace/canon/*.yml`; new hardcoded tables or top-N aspect cutoffs fail the scoring canon gate.
-
-### SolarSage reference, scoring canon, and activation layer
+## UC-NATAL-VIEW · Natal reading blocks
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-SOLARSAGE-REFERENCE-COLLECTOR → M-SIDECAR → M-SOLARSAGE-CLIENT | **Golden fixture parity (W-3.0).** The split service must match controller-approved reference collector JSON for planets, houses, aspects, lots, special points, fixed stars, and derived raw layers within declared tolerances: planets longitudes ±1e-6 deg, houses cusps ±1e-6 deg, aspects orbs ±1e-4 deg. Timestamp fields excluded from comparison. Golden fixtures: `apps/solarsage/tests/fixtures/vasiliy_2026-05-30.json` (high-latitude WHOLE_SIGN), `test_user_2026-06-15.json` (normal-latitude PLACIDUS). Parity tests: `apps/solarsage/tests/test_parity.py`. | S1: Vasiliy golden chart (1980-10-30 19:50 Europe/Moscow, 67.9387°N 32.9241°E) and target date 2026-05-30 regenerate byte-stable normalized JSON except timestamp fields. S2: A high-latitude chart (abs(lat)≥60°) uses the documented house-system fallback (WHOLE_SIGN when `house_system="auto"`). S3: Chiron/Nodes/Lilith/Vertex fixed-star and aspect coverage remains present after service split (30 raw layers + derived layers). |
-| M-SCORING-CANON → M-ACTIVATION-LAYER → M-SCORING | Canon YAML validates; scoring refuses to run without matching `scoring_canon_version`; activation evidence is included in debug/evidence artifacts but not exposed to frontend. | S1: changing `grace/canon/aspect_rules.v1.yml` changes `scoring_canon_version` and invalidates semantic/today caches. S2: two independent techniques pointing to the same planet/house produce convergence bonus. S3: one isolated rare factor cannot create a strong sphere claim by itself. |
-| M-SCORING → M-SEMANTIC → M-LLM | LLM receives curated interpretation inputs only; no raw SolarSage, no score internals, no self-calculated astrology. | S1: prompt payload contains semantic themes and evidence IDs, not raw ephemeris JSON. S2: generated text may interpret facts but regex gate rejects language implying the LLM calculated positions/aspects itself. |
-
-### GRACE orchestrator readiness
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-GRACE-PROJECT-ADAPTER → M-GRACE-ORCHESTRATOR | `pnpm guardrails:orchestrator` validates project.yml, packet schema, verification profiles, role contracts, packet frontmatter, and legacy packet warnings. | S1: missing `agent_command_default` in `project.yml` fails. S2: non-portable verification command outside guardrails fails. S3: legacy packets warn but do not block until migrated. |
-| M-GRACE-PACKET-SCHEMA → M-GRACE-ORCHESTRATOR | New executable packets must have allowed scope, frozen scope, verification, expected evidence, and escalation triggers before coder launch. | S1: packet without `Frozen / Out Of Scope` is rejected for new-packet mode. S2: planner output references `profile.frontend`; verifier resolves it to `pnpm guardrails:frontend`. |
-| M-GRACE-ROLES → M-GRACE-ORCHESTRATOR | Every role prompt has Role, Inputs, Outputs, Hard Constraints, and machine-readable FINAL marker. | S1: coder role missing allowed-scope hard constraint fails role contract review. S2: reviewer verdict without `FINAL_GRACE_REVIEWER_VERDICT_JSON` fails artifact parse. |
-
-### Version sanity
-
-- On every CI run: load latest payload, ensure `meta.contract_version` matches frontend's expected; mismatch fails build.
-- On every cache write: row carries the version it was computed with; reading code rejects rows whose version differs from current.
-
-### Privacy
-
-- Test: `evening_checkins.note` is not present in any structured log JSON.
-- Test: prompt builder excludes `note` unless `prompt_version` is in note-aware allowlist.
-
-### Observability (canon §8, enforced from W-1.6)
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-CANON (`grace/canon/observability.xml`) → `apps/api/app/core/logging.py` (W-1.6) → `lib/log/*` (W-1.6) → `apps/api/app/api/_log.py` (W-1.7) | gate-11 events-registry parity (codegen byte-equal); gate-12 redactor canaries (every redact-key + every redact-pattern + allow-keys round-trip); gate-13 envelope shape (all CI log lines validate against §8.2 schema) | S1: emit `log.event("auth.tg_login_succeeded", {is_new_user: true})` → JSON line validates, `correlation_id` propagated end-to-end via `X-Correlation-Id`. S2: payload contains `tg_user_id=123456789` → serialized line shows `[redacted]`, sentinel grep finds zero hits. S3: payload contains `Bearer eyJabc.def.ghi` in a free-text msg → value-pattern replaces with `[redacted-jwt]`/`[redacted-bearer]`. S4: emit unregistered event name `auth.tg_login_OK` (typo) → mypy/tsc fail at compile, gate-11 backstop fails CI. S5: response carries the same `X-Correlation-Id` echo as the incoming request, or a freshly minted one if absent. |
-
-### Performance gates
-
-| Endpoint | Target | Phase introduced |
-|---|---|---|
-| `/api/day/:date` (cached) | p95 < 200ms | PHASE-1 |
-| `/api/day/:date` (cold, full pipeline) | p95 < 20s | PHASE-5 |
-| `/api/calendar` | p95 < 300ms | PHASE-1 |
-| Sidecar `/v1/range` 31d | p95 < 3s | PHASE-3 |
+| M-WEB-READINGS → M-NATAL-READING → C-NATAL-PAYLOAD | Versioned blocks render; unknown block types gracefully skipped. | S1: overview route renders. S2: section route renders. S3: unknown block.type does not crash. |
 
 ---
 
-## Testing Strategy
+## UC-HORARY-QUOTA · Horary balance and credit ledger
 
-See `docs/ADR-001_Headless_Testing.md` for the complete testing strategy.
-
-### Test Coverage Matrix
-
-| UC | Backend Unit | Backend Integration | Frontend Unit | E2E | Visual |
-|---|---|---|---|---|---|
-| UC-TG-AUTH | test_telegram_hmac.py | test_auth_endpoints.py | - | auth.spec.ts, telegram-auth.spec.ts | - |
-| UC-PROFILE-CREATE | - | test_profile_endpoints.py | - | onboarding.spec.ts, onboarding-complete.spec.ts, onboarding-validation.spec.ts | onboarding-step*.png |
-| UC-PROFILE-EDIT | - | test_profile_endpoints.py | - | - | - |
-| UC-ACCESS-CHECK | - | test_access_service.py | useAccess.test.ts | - | - |
-| UC-DAY-VIEW | test_normalization.py, test_scoring.py | test_day_endpoints.py | - | day-view.spec.ts, session-persistence.spec.ts | today-*.png |
-| UC-DAY-NAV | - | - | - | day-view.spec.ts, cross-feature-navigation.spec.ts | - |
-| UC-CAL-NAV | - | test_calendar_endpoints.py | - | calendar.spec.ts, cross-feature-navigation.spec.ts | calendar-3months.png |
-| UC-WEEK-STRIP | - | test_day_endpoints.py | - | day-view.spec.ts | week-strip.png |
-| UC-REFERRAL | - | test_referral_service.py | - | - | - |
-| UC-LOCKED-DAY | - | test_day_endpoints.py | - | locked-day.spec.ts | locked-preview.png |
-| UC-ERROR-RECOVERY | - | - | - | error-recovery.spec.ts | error-backend-down.png |
-
-### Auth-First Principle
-
-All integration and e2e tests go through Telegram auth:
-- Backend: `authenticated_client` fixture (login → onboarding → request)
-- Frontend: `authenticateAndOnboard` helper (inject Telegram WebApp API → auto auth)
-- No backdoors, no test-mode without auth
-
-### Visual Regression
-
-Baseline screenshots stored in `apps/web/e2e/visual/__screenshots__/`:
-- Today screen: supportive / steady / tense days
-- Calendar: 3-month grid
-- Locked day: preview + soft lock
-- Onboarding: all 5 steps
-- Profile: edit form
-
-CI fails on visual diff > 0.1%, uploads diff artifacts.
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-WEB-HORARY → M-HORARY-API → M-HORARY-CREDIT-SERVICE → horary_credits/horary_credit_spends | New ledger model only; no HoraryQuota/questions_used/questions_limit/left/nextInDays as primary balance. Weekly-free does not accumulate; paid persists; spend order deterministic. | S1: active access creates current subscription_weekly_free lazily only for current access week. S2: unused weekly-free expires at access_week_end. S3: paid credits persist after weekly expiry. S4: spend order weekly-free → expiring referral/gift/adjustment → paid. S5: no spendable credits → 402 NO_HORARY_CREDITS. |
 
 ---
 
-## How to use this matrix
+## UC-HORARY-SUBMIT · Create horary question
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-WEB-HORARY → M-HORARY-API → M-HORARY-SERVICE → M-HORARY-CREDIT-SERVICE → M-HORARY-ENGINE/M-LLM | Requires spendable credit and usable question place. Idempotency prevents double spend/generation. Request hash includes text/category/time/timezone/place/name. Generation starts only after commit. | S1: valid paid credit + questionLat/questionLon → 201, one spend row. S2: same idempotencyKey + same full payload → same question, no second spend, no second generator. S3: same key + changed clientLocalTime/timezone/place → 409. S4: no place coordinates → frontend submit disabled. |
+
+---
+
+## UC-HORARY-ANSWER · Horary processing and answer view
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-HORARY-SERVICE → M-HORARY-ENGINE → M-LLM → horary_answers → M-WEB-HORARY | Backend owns verdict/context; LLM narrates only. Late/stale generator cannot overwrite failed/refunded/answered question. Answer shows question location name when available. | S1: processing → answered with verdict/confidence/blocks. S2: generation failure refunds paid or restores weekly-free only if access-week active. S3: late generator after failed/refunded skips answer save. S4: answer UI displays place of calculation. |
+
+---
+
+## UC-HORARY-UX-LOCATION · Horary time/place/category UX
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-WEB-HORARY → M-WEB-PROFILE → CityPicker/cities/geo helpers | Form shows time and place; default place may come from profile current location; user can change place; selected city timezone syncs; submit disabled without coordinates; premium progress state used. | S1: profile current city/lat/lon/tz → form shows place and can submit. S2: no coordinates → red warning and disabled CTA. S3: changing city updates timezone when city.timezone exists. S4: category chip switches love → career. S5: progress shows orbit/steps and long-running copy. |
+
+---
+
+## UC-EVENING-CHECKIN · Checkin and closure
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-CHECKIN → evening_checkins → Today composer | Upsert by user/date; private note not leaked to logs/LLM by default; yesterdayEcho appears only when applicable. | S1: POST twice → one row updated. S2: GET today after yesterday checkin → echo present. S3: note absent from logs/prompt unless note-aware prompt_version. |
+
+---
+
+## UC-SOLARSAGE-PARITY · Sidecar/reference parity
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-SOLARSAGE-REFERENCE-COLLECTOR → M-SIDECAR → M-SOLARSAGE-CLIENT | Sidecar outputs match golden fixtures within declared tolerances; high-latitude fallback documented. | S1: golden Vasiliy fixture parity. S2: normal-latitude fixture parity. S3: high-latitude house-system fallback behavior stable. |
+
+---
+
+## UC-SCORING-SEMANTIC-LLM · Real interpretation pipeline
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-SCORING-CANON → M-ACTIVATION-LAYER → M-SCORING → M-SEMANTIC → M-LLM | Canon YAML validates; scoring refuses hidden constants; prompt receives curated context only. | S1: changing canon YAML invalidates downstream caches. S2: convergence bonus requires multiple independent evidence sources. S3: prompt payload has semantic evidence, not raw ephemeris/internal scores. |
+
+---
+
+## UC-GRACE-ORCHESTRATOR · Agent packet execution
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-GRACE-PROJECT-ADAPTER → M-GRACE-PACKET-SCHEMA → M-GRACE-ROLES → M-GRACE-VERIFICATION-PROFILES | Project adapter and packet schema are machine-readable; roles have parseable final markers; verification profiles map to portable commands. | S1: `pnpm guardrails:orchestrator` validates. S2: packet missing Frozen/Out Of Scope rejected for new-packet mode. S3: reviewer output without final JSON marker fails parse. |
+
+---
+
+# Cross-cutting verification gates
+
+## Contract drift
+
+- Run contracts generation/check after any Pydantic schema change.
+- `packages/contracts/_generated.ts` must be byte-stable after regeneration.
+- New frontend payload imports should use `packages/contracts` barrel unless a local runtime zod schema is intentionally needed.
+
+## Layer isolation
+
+- Frontend must not import backend modules.
+- Backend must not import frontend mocks.
+- Frontend must not calculate astrology, dayStatus, scores, horary verdicts, or access/credit spend logic.
+- LLM prompt builder must not receive raw SolarSage or internal score fields.
+
+## Horary anti-regression grep gate
+
+These must not appear as live primary horary balance logic:
+
+```bash
+grep -R "HoraryQuota\|questions_used\|questions_limit\|left\|nextInDays" apps/api lib components packages/contracts \
+  --exclude-dir=.venv --exclude-dir=__pycache__ --exclude-dir=node_modules
+```
+
+Allowed hits: historical docs/work review files only.
+
+## Privacy
+
+- Telegram IDs, auth tokens, birth data, location data, and private notes must be redacted from structured logs according to observability canon.
+- Evening checkin free-text note is not sent to LLM unless prompt_version is explicitly note-aware.
+
+## Performance gates
+
+| Endpoint / flow | Target |
+|---|---|
+| `/api/day/:date` cached | p95 &lt; 200ms when cached layer enabled |
+| `/api/day/:date` cold full pipeline | p95 &lt; 20s when real pipeline enabled |
+| `/api/calendar` | p95 &lt; 300ms |
+| Sidecar `/v1/range` 31d | p95 &lt; 3s |
+| Horary quota | p95 &lt; 300ms |
+| Horary create question | p95 &lt; 1s before async generation |
+
+---
+
+# Test coverage matrix
+
+Current reported test status after horary follow-up:
+
+```text
+Backend: 237 tests green
+Frontend: 467 tests green
+```
+
+| UC | Backend Unit | Backend Integration | Frontend Unit/Component | E2E/Visual |
+|---|---|---|---|---|
+| UC-TG-AUTH | test_telegram_hmac.py | test_auth_endpoints.py | - | auth/telegram auth specs if enabled |
+| UC-PROFILE-CREATE | - | test_profile_endpoints.py | onboarding reducer/components | onboarding specs/visuals |
+| UC-PROFILE-EDIT | - | test_profile_endpoints.py | profile components | profile visual if enabled |
+| UC-ACCESS-CHECK | test_access_service.py | endpoint coverage where applicable | access hook/lib tests | locked-day specs |
+| UC-DAY-VIEW | normalization/scoring tests | test_day_endpoints.py | day components where present | day-view/visual specs |
+| UC-CAL-NAV | - | test_calendar_endpoints.py | calendar components | calendar specs/visuals |
+| UC-NATAL-VIEW | schema/block tests | readings endpoints where present | block renderer tests | readings navigation specs |
+| UC-HORARY-QUOTA | test_horary_credit_service.py | test_horary_endpoints.py | quota bar tests if present | manual/QA acceptable for MVP |
+| UC-HORARY-SUBMIT | test_horary_credit_service.py | test_horary_endpoints.py | horary form/time-place tests | manual/QA acceptable for MVP |
+| UC-HORARY-ANSWER | horary service/engine tests | test_horary_endpoints.py | answer/progress tests | manual/QA acceptable for MVP |
+| UC-EVENING-CHECKIN | yesterday/checkin tests | checkin endpoint tests | - | - |
+| UC-SOLARSAGE-PARITY | apps/solarsage/tests/test_parity.py | sidecar health/API tests | - | - |
+| UC-GRACE-ORCHESTRATOR | scripts/check_orchestrator_contracts.py | guardrails scripts | - | - |
+
+---
+
+# How to use this matrix
 
 1. Before merging a wave PR, find every UC its scope touches.
-2. For each UC row, every gate must have a passing test or measurement linked in PR.
-3. If a gate cannot be met under the wave's freeze-scope, raise a question; do not silently expand.
-4. After merge, the matrix row is updated with PR link and date passed.
+2. For each UC row, every gate must have passing tests, grep evidence, or explicit controller acceptance.
+3. If a gate cannot be met under the wave scope, raise it as a question; do not silently expand scope.
+4. After merge, update this matrix when the runtime behavior or acceptance gates change.
