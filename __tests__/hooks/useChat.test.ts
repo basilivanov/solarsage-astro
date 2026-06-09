@@ -107,6 +107,7 @@ const context: ChatContext = {
     birthdayCity: 'Лиссабон, Португалия',
     sameAsBirth: false,
     birthdaySameAsCurrent: true,
+    gender: 'male',
   },
 }
 

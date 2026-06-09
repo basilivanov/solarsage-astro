@@ -69,6 +69,7 @@ export type OnboardingEvent =
   | { type: "set_birthday_city"; value: City | null }
   | { type: "set_birthday_same_as_current"; value: boolean }
   | { type: "set_gender"; value: "male" | "female" | null }
+  | { type: "go_to_step"; value: StepKey }
   | { type: "reset" }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +99,12 @@ export function onboardingReducer(
 
     case "skip":
       return { ...state, step: "done" }
+
+    case "go_to_step":
+      if (STEP_ORDER.includes(event.value)) {
+        return { ...state, step: event.value }
+      }
+      return state
 
     case "set_birth_date":
       return { ...state, birthDate: event.value }

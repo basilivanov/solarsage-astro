@@ -48,6 +48,12 @@ export function OnboardingFlow({ onComplete }: Props) {
   const finish = async () => {
     if (isSaving) return
 
+    if (!state.gender) {
+      dispatch({ type: "go_to_step", value: "gender" })
+      return
+    }
+    const gender: "male" | "female" = state.gender
+
     const birthPlaceCity = state.birthPlace
     const effectiveCurrentCity = selectEffectiveCurrentCity(state)
     const effectiveBirthdayCity = selectEffectiveBirthdayCity(state)
@@ -70,7 +76,7 @@ export function OnboardingFlow({ onComplete }: Props) {
       sameAsBirth: state.sameAsBirth,
       birthdayCity: birthdayCityStr,
       birthdaySameAsCurrent: state.birthdaySameAsCurrent,
-      gender: state.gender,
+      gender,
     }
 
     // Save to localStorage first (for immediate access)
