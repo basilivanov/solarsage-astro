@@ -91,19 +91,111 @@ Connector-visible CI evidence:
 - No GitHub Actions workflow runs were visible for `bb65453`.
 - No combined GitHub status checks were visible for the commit.
 
-## Residual notes
+## Final follow-up packet — добить перед закрытием волны
 
-No blockers found.
+These items are not blockers for accepting `bb65453`, but should be done immediately as the final cleanup packet so the flow is fully protected.
 
-Recommended future hardening, not required for this acceptance:
+### F1 — Successful horary create flow test
 
-1. Add an integration/component test for successful horary create flow: submit valid question → `createHoraryQuestion` called → processing item appears.
-2. Add a small test for successful polling start after create if test harness allows it.
-3. In `HoraryForm`, invalid reason priority currently shows no-credit before missing text/place. If product wants first-empty-form click to say `Напиши вопрос` first, adjust priority later.
-4. Consider reducing/renaming technical planet score pills in the natal UI if screenshots still feel too technical.
+Status: REQUIRED FOLLOW-UP
+
+Add an integration/component test proving the happy path works:
+
+1. user enters valid text;
+2. question location has lat/lon;
+3. user has spendable credit;
+4. click submit;
+5. `createHoraryQuestion()` is called with expected payload:
+   - text;
+   - category if selected;
+   - client local time;
+   - timezone;
+   - questionLat/questionLon;
+   - questionLocationName;
+   - idempotencyKey;
+6. created question is inserted into UI/history;
+7. processing card appears.
+
+Acceptance:
+
+- valid click is not just “not blocked”; it actually starts visible processing.
+- test fails if future refactor breaks submit → create → processing.
+
+### F2 — Successful polling start test after create
+
+Status: REQUIRED FOLLOW-UP IF TEST HARNESS ALLOWS
+
+Add a test that proves polling starts after successful create.
+
+Suggested strategy:
+
+- mock `createHoraryQuestion()` to return a `processing` question;
+- mock `getHoraryQuestion()` / list refresh behavior;
+- assert that polling path is invoked or that processing state remains visible and updates.
+
+Acceptance:
+
+- after successful create, frontend does not wait silently;
+- new processing question is actively watched.
+
+### F3 — Invalid reason priority polish
+
+Status: REQUIRED FOLLOW-UP / PRODUCT POLISH
+
+Current invalid reason priority in `HoraryForm` checks:
+
+1. no credit;
+2. missing place;
+3. short text.
+
+For an empty form, this may show `Укажи место вопроса` before `Напиши вопрос`.
+
+Required behavior:
+
+- if text is empty/too short, first show `Напиши вопрос`;
+- then show missing place;
+- then no credit;
+
+or show all missing reasons at once.
+
+Preferred simple rule:
+
+```ts
+if (text.trim().length < 5) {
+  reason = "Напиши вопрос (минимум 5 символов)"
+} else if (!hasQuestionPlace) {
+  reason = "Укажи место вопроса"
+} else if (!hasSpendableCredit) {
+  reason = "Нужен доступный хорарный вопрос"
+}
+```
+
+Acceptance:
+
+- first empty-form submit tells user to write the question first;
+- missing place is shown when text is valid but place is missing;
+- no-credit is shown when text/place are valid but balance is missing.
+
+### F4 — Natal technical score visual cleanup
+
+Status: REQUIRED VISUAL REVIEW FOLLOW-UP
+
+Current redesign is accepted, but the page may still feel technical if planet/sphere score pills are visually prominent.
+
+Required check:
+
+- review actual mobile screenshots after the redesign;
+- if `+4.96` / numeric score pills still make the landing feel like debug output, hide or soften them;
+- prefer human labels over raw scores.
+
+Acceptance:
+
+- natal landing should feel like a premium teaser, not a scoring dashboard.
 
 ## Final decision
 
 ACCEPTED WITH NOTES.
 
-The previous blockers are fixed: planet cards no longer expose English signs, natal no-English regression coverage exists, and horary invalid/API-error submit states have frontend tests. The remaining items are follow-up hardening, not acceptance blockers.
+The previous blockers are fixed: planet cards no longer expose English signs, natal no-English regression coverage exists, and horary invalid/API-error submit states have frontend tests.
+
+Before fully closing this wave, complete the `Final follow-up packet`: happy-path horary create test, polling-start test if feasible, invalid-reason priority polish, and visual check for technical score pills in natal.
