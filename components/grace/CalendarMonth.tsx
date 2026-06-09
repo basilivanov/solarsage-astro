@@ -3,11 +3,9 @@
 // wave: W-2.3, W-ACCESS.3
 // purpose: Single month in calendar grid with locked badges
 
-import type { components } from '@/packages/contracts/_generated';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-
-type CalendarPayload = components['schemas']['CalendarPayload'];
+import type { CalendarPayload } from '@/packages/contracts';
 
 interface CalendarMonthProps {
   month: CalendarPayload;

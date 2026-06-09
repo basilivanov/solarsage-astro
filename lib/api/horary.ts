@@ -1,12 +1,12 @@
 import type {
-  HoraryQuestion,
   HoraryQuestionCreate,
-  HoraryQuota,
-} from "@/lib/contracts/horary"
+  HoraryQuestionRead,
+  HoraryQuotaRead,
+} from "@/packages/contracts"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
-export async function getHoraryQuota(): Promise<HoraryQuota> {
+export async function getHoraryQuota(): Promise<HoraryQuotaRead> {
   const res = await fetch(`${API_BASE}/api/horary/quota`, { credentials: "include" })
   if (!res.ok) throw new Error("Failed to fetch horary quota")
   return res.json()
@@ -15,7 +15,7 @@ export async function getHoraryQuota(): Promise<HoraryQuota> {
 export async function listHoraryQuestions(
   limit = 20,
   offset = 0
-): Promise<HoraryQuestion[]> {
+): Promise<HoraryQuestionRead[]> {
   const res = await fetch(
     `${API_BASE}/api/horary/questions?limit=${limit}&offset=${offset}`,
     { credentials: "include" }
@@ -24,7 +24,7 @@ export async function listHoraryQuestions(
   return res.json()
 }
 
-export async function getHoraryQuestion(id: string): Promise<HoraryQuestion> {
+export async function getHoraryQuestion(id: string): Promise<HoraryQuestionRead> {
   const res = await fetch(`${API_BASE}/api/horary/questions/${id}`, {
     credentials: "include",
   })
@@ -34,7 +34,7 @@ export async function getHoraryQuestion(id: string): Promise<HoraryQuestion> {
 
 export async function createHoraryQuestion(
   data: HoraryQuestionCreate
-): Promise<HoraryQuestion> {
+): Promise<HoraryQuestionRead> {
   const res = await fetch(`${API_BASE}/api/horary/questions`, {
     method: "POST",
     credentials: "include",

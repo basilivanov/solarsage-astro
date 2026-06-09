@@ -3,14 +3,12 @@
 // wave: W-2.2, W-2.3, W-2.7
 // purpose: Today screen main component — Tailwind styled matching reference design
 
-import type { components } from '@/packages/contracts/_generated';
 import { WeekStrip } from './WeekStrip';
 import { TopFlags } from './TopFlags';
 import { Reading } from './Reading';
 import { DayNavigation } from './DayNavigation';
 import { LockedDay } from './LockedDay';
-
-type TodayPayload = components['schemas']['TodayPayload'];
+import type { TodayPayload } from '@/packages/contracts';
 
 interface TodayScreenProps {
   payload: TodayPayload;

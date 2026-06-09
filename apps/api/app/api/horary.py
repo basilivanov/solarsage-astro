@@ -1,7 +1,29 @@
-# AI_HEADER
-# module: M-API-HORARY
-# wave: W-HORARY
-# purpose: API router for horary questions
+# ############################################################################
+# AI_HEADER: MODULE_API_HORARY
+# ROLE: HTTP surface for /api/horary (GET, POST). Owns UC-HORARY-ASK.
+# DEPENDENCIES: fastapi, sqlalchemy, app.services.horary_service
+# GRACE_ANCHORS: [ROUTE_QUOTA, ROUTE_LIST, ROUTE_CREATE, ROUTE_GET]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-API-HORARY
+# purpose: GET /api/horary/quota, GET /api/horary/questions, POST /api/horary/questions, GET /api/horary/questions/{id}.
+# owns:
+#   - apps/api/app/api/horary.py
+# inputs:
+#   - user_id from current_user_id dep
+#   - DB session
+#   - request body conforms to HoraryQuestionCreate
+# outputs:
+#   - APIRouter with horary endpoints
+# invariants:
+#   - all endpoints require session auth.
+#   - duplicates under same idempotencyKey are idempotent without double spend.
+# END_MODULE_CONTRACT: M-API-HORARY
+
+# START_MODULE_MAP: M-API-HORARY
+# public_entrypoints:
+#   - router
+# END_MODULE_MAP: M-API-HORARY
 
 from __future__ import annotations
 
@@ -72,6 +94,15 @@ async def get_horary_quota(
     user_id: uuid.UUID = Depends(current_user_id),
     db: AsyncSession = Depends(get_session),
 ) -> HoraryQuotaRead:
+    # START_FUNCTION_CONTRACT: M-API-HORARY.get_horary_quota
+    # purpose: Fetch user's remaining horary credits and next weekly-free details.
+    # inputs: user_id (UUID), db (AsyncSession)
+    # returns: HoraryQuotaRead
+    # side_effects: queries database (HoraryCredit)
+    # emitted_logs: none
+    # error_behavior: propagates database exceptions
+    # END_FUNCTION_CONTRACT: M-API-HORARY.get_horary_quota
+    
     credit_service = HoraryCreditService(db)
     now = datetime.now(timezone.utc)
     quota = await credit_service.get_balance(user_id, now)
@@ -86,6 +117,15 @@ async def list_horary_questions(
     user_id: uuid.UUID = Depends(current_user_id),
     db: AsyncSession = Depends(get_session),
 ) -> List[HoraryQuestionRead]:
+    # START_FUNCTION_CONTRACT: M-API-HORARY.list_questions
+    # purpose: Retrieve a list of the user's past horary questions, newest first.
+    # inputs: limit (int), offset (int), user_id (UUID), db (AsyncSession)
+    # returns: List[HoraryQuestionRead]
+    # side_effects: queries database (HoraryQuestion)
+    # emitted_logs: none
+    # error_behavior: propagates database exceptions
+    # END_FUNCTION_CONTRACT: M-API-HORARY.list_questions
+    
     service = HoraryService(db)
     questions = await service.list_questions(user_id, limit=limit, offset=offset)
     await db.commit()
@@ -102,6 +142,15 @@ async def create_horary_question(
     user_id: uuid.UUID = Depends(current_user_id),
     db: AsyncSession = Depends(get_session),
 ) -> HoraryQuestionRead:
+    # START_FUNCTION_CONTRACT: M-API-HORARY.create_horary_question
+    # purpose: Atomically spends a credit and creates a new question; starts background generator.
+    # inputs: body (HoraryQuestionCreate), user_id (UUID), db (AsyncSession)
+    # returns: HoraryQuestionRead
+    # side_effects: inserts question, updates credits, spawns background task
+    # emitted_logs: none
+    # error_behavior: raises 402 on no credits, 409 on idempotency conflict, propagates DB errors
+    # END_FUNCTION_CONTRACT: M-API-HORARY.create_horary_question
+    
     service = HoraryService(db)
     now = datetime.now(timezone.utc)
 
@@ -140,6 +189,15 @@ async def get_horary_question(
     user_id: uuid.UUID = Depends(current_user_id),
     db: AsyncSession = Depends(get_session),
 ) -> HoraryQuestionRead:
+    # START_FUNCTION_CONTRACT: M-API-HORARY.get_horary_question
+    # purpose: Retrieve detail context for a single horary question + answer.
+    # inputs: question_id (UUID), user_id (UUID), db (AsyncSession)
+    # returns: HoraryQuestionRead
+    # side_effects: queries database (HoraryQuestion)
+    # emitted_logs: none
+    # error_behavior: raises 404 if not found / not owned, propagates DB errors
+    # END_FUNCTION_CONTRACT: M-API-HORARY.get_horary_question
+    
     service = HoraryService(db)
     question = await service.get_question(user_id, question_id)
     await db.commit()

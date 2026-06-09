@@ -3,10 +3,8 @@
 // wave: W-2.3
 // purpose: 3-month calendar grid display
 
-import type { components } from '@/packages/contracts/_generated';
 import { CalendarMonth } from './CalendarMonth';
-
-type CalendarPayload = components['schemas']['CalendarPayload'];
+import type { CalendarPayload } from '@/packages/contracts';
 
 interface CalendarGridProps {
   payload: CalendarPayload;

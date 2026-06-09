@@ -1,10 +1,10 @@
 "use client"
 
 import { Coins } from "lucide-react"
-import type { HoraryQuota } from "@/lib/contracts/horary"
+import type { HoraryQuotaRead } from "@/packages/contracts"
 
 type Props = {
-  quota: HoraryQuota
+  quota: HoraryQuotaRead
   onBuy: () => void
 }
 

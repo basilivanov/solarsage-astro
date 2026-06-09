@@ -3,11 +3,7 @@
 // wave: W-2.7
 // purpose: Today API facade
 
-import {
-  type TodayPayload,
-} from "@/lib/contracts/today"
-
-export type { TodayPayload }
+import type { TodayPayload } from "@/packages/contracts"
 
 export async function getTodayPayload(date: Date): Promise<TodayPayload> {
   const dateStr = date.toISOString().split("T")[0]

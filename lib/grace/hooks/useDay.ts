@@ -7,12 +7,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { components } from '@/packages/contracts/_generated';
 import { fetchDay, ApiError } from '../api/client';
 import { useTelegramAuth } from '@/hooks/use-telegram-auth';
 import { logger } from '@/lib/log';
-
-type TodayPayload = components['schemas']['TodayPayload'];
+import type { TodayPayload } from '@/packages/contracts';
 
 export interface UseDayResult {
   data: TodayPayload | null;

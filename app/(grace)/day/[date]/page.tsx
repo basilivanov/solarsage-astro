@@ -9,7 +9,9 @@ import { useDay } from '@/lib/grace/hooks/useDay';
 import { useOnboarded } from '@/hooks/use-onboarded';
 import { fromDateParam, toDateParam } from '@/lib/date';
 import { TODAY } from '@/lib/today';
-import type { TodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today';
+import type { TodayPayload } from '@/packages/contracts';
+type TodayNote = TodayPayload['notes'][number];
+type TodayWhySection = TodayPayload['whyThisHappens']['sections'][number];
 import type { AccessInfo } from '@/lib/access';
 
 function adaptPayload(api: any, selectedDate: Date): {

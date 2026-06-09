@@ -5,10 +5,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, MessageSquare, AlertCircle } from "lucide-react"
 
-import type { HoraryQuestion, HoraryQuota, HoraryCategory } from "@/lib/contracts/horary"
+import type { HoraryCategory } from "@/lib/contracts/horary"
+import type { HoraryQuestionRead, HoraryQuotaRead, ProfileRead } from "@/packages/contracts"
 import { getHoraryQuota, listHoraryQuestions, createHoraryQuestion, getHoraryQuestion } from "@/lib/api/horary"
 import { getProfile } from "@/lib/api/profile"
-import type { ProfileRead } from "@/packages/contracts"
 import { useToast } from "@/hooks/use-toast"
 
 import { HoraryQuotaBar } from "./horary-quota-bar"
@@ -26,8 +26,8 @@ export function HoraryScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [showPurchase, setShowPurchase] = useState(false)
   
-  const [quota, setQuota] = useState<HoraryQuota | null>(null)
-  const [questions, setQuestions] = useState<HoraryQuestion[]>([])
+  const [quota, setQuota] = useState<HoraryQuotaRead | null>(null)
+  const [questions, setQuestions] = useState<HoraryQuestionRead[]>([])
   const [profile, setProfile] = useState<ProfileRead | null>(null)
 
   const loadData = useCallback(async () => {

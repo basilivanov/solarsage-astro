@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import { CheckCircle2, XCircle, HelpCircle, ChevronRight } from "lucide-react"
-import type { HoraryQuestion } from "@/lib/contracts/horary"
+import type { HoraryQuestionRead } from "@/packages/contracts"
 import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
 
 type Props = {
-  question: HoraryQuestion
+  question: HoraryQuestionRead
 }
 
 export function HoraryQuestionCard({ question }: Props) {

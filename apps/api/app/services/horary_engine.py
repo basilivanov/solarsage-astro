@@ -1,7 +1,28 @@
-# AI_HEADER
-# module: M-HORARY-ENGINE
-# wave: W-HORARY
-# purpose: Computational engine for horary questions
+# ############################################################################
+# AI_HEADER: MODULE_HORARY_ENGINE
+# ROLE: Computational engine for horary questions.
+# DEPENDENCIES: stdlib only
+# GRACE_ANCHORS: [SIGNIFICATORS, COMPUTATION]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-HORARY-ENGINE
+# purpose: Computational logic for determining significators and calculating verdicts.
+# owns:
+#   - apps/api/app/services/horary_engine.py
+# inputs:
+#   - horary_chart: dict, signals: list[AstroSignal], category: str
+# outputs:
+#   - verdict: str, confidence: float, involved_planets: list[str]
+# invariants:
+#   - significators must align to category mapping.
+#   - verdict logic is deterministic, not LLM-driven.
+# END_MODULE_CONTRACT: M-HORARY-ENGINE
+
+# START_MODULE_MAP: M-HORARY-ENGINE
+# public_entrypoints:
+#   - get_significator
+#   - compute_verdict
+# END_MODULE_MAP: M-HORARY-ENGINE
 
 from __future__ import annotations
 
@@ -54,6 +75,15 @@ CATEGORY_SIGNIFICATORS = {
 class HoraryEngine:
     @staticmethod
     def get_significator(category: str | None) -> str:
+        # START_FUNCTION_CONTRACT: M-HORARY-ENGINE.get_significator
+        # purpose: Resolve the significator planet name for a given question category.
+        # inputs: category (str or None)
+        # returns: str (planet name)
+        # side_effects: none
+        # emitted_logs: none
+        # error_behavior: returns Moon as fallback
+        # END_FUNCTION_CONTRACT: M-HORARY-ENGINE.get_significator
+        
         if not category:
             return "Moon"
         return CATEGORY_SIGNIFICATORS.get(category, "Moon")
@@ -62,9 +92,15 @@ class HoraryEngine:
     def compute_verdict(
         horary_chart: dict[str, Any], signals: list[AstroSignal], category: str | None
     ) -> tuple[str, float, list[str]]:
-        """
-        Compute horary verdict (yes/no/maybe), confidence score, and involved planets.
-        """
+        # START_FUNCTION_CONTRACT: M-HORARY-ENGINE.compute_verdict
+        # purpose: Calculate horary verdict (yes/no/maybe) and confidence based on aspects.
+        # inputs: horary_chart (dict), signals (list[AstroSignal]), category (str or None)
+        # returns: tuple[str, float, list[str]]
+        # side_effects: none
+        # emitted_logs: none
+        # error_behavior: propagates KeyError on missing houses/special points
+        # END_FUNCTION_CONTRACT: M-HORARY-ENGINE.compute_verdict
+        
         # 1. Resolve Ascendant and its ruler
         special_points = horary_chart.get("special_points", [])
         asc_point = next((sp for sp in special_points if sp["name"] == "ASC"), None)
@@ -85,7 +121,6 @@ class HoraryEngine:
             if sig.type == "aspect":
                 p1 = sig.planet
                 p2 = sig.target_planet
-                # Normalize names (e.g. strip "Transit_" prefix if any, but they are natal aspects mostly)
                 p1_clean = p1.replace("Transit_", "")
                 p2_clean = p2.replace("Transit_", "") if p2 else ""
 

@@ -3,9 +3,7 @@
 // wave: W-2.2
 // purpose: Top flags display
 
-import type { components } from '@/packages/contracts/_generated';
-
-type TopFlag = components['schemas']['TopFlag'];
+import type { TopFlag } from '@/packages/contracts';
 
 interface TopFlagsProps {
   flags: TopFlag[];

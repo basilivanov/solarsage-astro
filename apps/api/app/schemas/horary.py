@@ -1,7 +1,29 @@
-# AI_HEADER
-# module: M-CONTRACTS.horary
-# wave: W-HORARY
-# purpose: Horary schema definitions
+# ############################################################################
+# AI_HEADER: MODULE_HORARY_SCHEMAS
+# ROLE: Pydantic v2 schemas for horary request/response payload structures.
+# DEPENDENCIES: pydantic, app.schemas._base.CamelModel
+# GRACE_ANCHORS: [BLOCKS, PAYLOADS]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-CONTRACTS.horary
+# purpose: Pydantic wire payload definitions for GET /api/horary/quota, GET/POST questions.
+# owns:
+#   - apps/api/app/schemas/horary.py
+# inputs:
+#   - none
+# outputs:
+#   - HoraryQuestionCreate, HoraryQuestionRead, HoraryQuotaRead
+# invariants:
+#   - all schemas inherit from CamelModel for camelCase JSON translation.
+#   - Text length constraints (5-500 chars) are enforced on input questions.
+# END_MODULE_CONTRACT: M-CONTRACTS.horary
+
+# START_MODULE_MAP: M-CONTRACTS.horary
+# public_entrypoints:
+#   - HoraryQuestionCreate
+#   - HoraryQuestionRead
+#   - HoraryQuotaRead
+# END_MODULE_MAP: M-CONTRACTS.horary
 
 from __future__ import annotations
 

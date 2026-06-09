@@ -5,11 +5,9 @@
 
 import type { ReadingsList, ReadingEntry } from '@/lib/contracts/readings';
 import type { ReadingsCatalog } from '@/lib/readings';
-import type { components } from '@/packages/contracts/_generated';
+import type { TodayPayload } from '@/packages/contracts';
 
 import { Sparkles, Star, CalendarDays, Calendar, Users } from 'lucide-react';
-
-type TodayPayload = components['schemas']['TodayPayload'];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 

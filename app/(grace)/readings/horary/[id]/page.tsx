@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react"
 import { HoraryAnswerView } from "@/components/readings/horary/horary-answer-view"
 import { HoraryProgress } from "@/components/readings/horary/horary-progress"
 import { getHoraryQuestion } from "@/lib/api/horary"
-import type { HoraryQuestion } from "@/lib/contracts/horary"
+import type { HoraryQuestionRead } from "@/packages/contracts"
 
 type Props = {
   params: Promise<{ id: string }>
@@ -12,7 +12,7 @@ type Props = {
 
 export default function HoraryAnswerPage({ params }: Props) {
   const { id } = use(params)
-  const [question, setQuestion] = useState<HoraryQuestion | null>(null)
+  const [question, setQuestion] = useState<HoraryQuestionRead | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

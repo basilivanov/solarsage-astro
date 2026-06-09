@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { ChevronLeft, Sparkles, HelpCircle } from "lucide-react"
-import type { HoraryQuestion } from "@/lib/contracts/horary"
+import type { HoraryQuestionRead } from "@/packages/contracts"
 import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
 import { HoraryBlockRenderer } from "./horary-block-renderer"
 

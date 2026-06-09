@@ -48,6 +48,8 @@ export type CalendarPayload = components["schemas"]["CalendarPayload"];
 export type ReadingBody = components["schemas"]["ReadingBody"];
 export type AccessSummary = components["schemas"]["AccessSummary"];
 export type ContentAccessState = components["schemas"]["ContentAccessState"];
+export type TopFlag = components["schemas"]["TopFlag"];
+export type WeekStripDay = components["schemas"]["WeekStripDay"];
 
 // W-1.2: auth + profile surface.
 export type TelegramAuthRequest = components["schemas"]["TelegramAuthRequest"];

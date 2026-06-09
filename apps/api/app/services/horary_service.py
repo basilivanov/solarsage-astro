@@ -1,7 +1,29 @@
-# AI_HEADER
-# module: M-HORARY-SERVICE
-# wave: W-HORARY
-# purpose: Service layer for horary questions, answers, and quotas
+# ############################################################################
+# AI_HEADER: MODULE_HORARY_SERVICE
+# ROLE: Service layer for horary questions, answers, and quotas.
+# DEPENDENCIES: sqlalchemy, app.db.models
+# GRACE_ANCHORS: [CREATE_QUESTION, GET_QUESTION, LIST_QUESTIONS, GENERATION_TASK]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-HORARY-SERVICE
+# purpose: Question CRUD, credit spend checks, and background answer cast tasks.
+# owns:
+#   - apps/api/app/services/horary_service.py
+# inputs:
+#   - AsyncSession, User ID, question payloads
+# outputs:
+#   - HoraryQuestion, HoraryAnswer
+# invariants:
+#   - spend transaction must commit before generation enqueues.
+#   - idempotent submits return same row ID without second credit spend.
+# END_MODULE_CONTRACT: M-HORARY-SERVICE
+
+# START_MODULE_MAP: M-HORARY-SERVICE
+# public_entrypoints:
+#   - create_question
+#   - get_question
+#   - list_questions
+# END_MODULE_MAP: M-HORARY-SERVICE
 
 from __future__ import annotations
 
@@ -35,10 +57,15 @@ class HoraryService:
         self.db = db
 
     async def create_question(self, user_id: uuid.UUID, data: HoraryQuestionCreate, now: datetime) -> tuple[HoraryQuestion, bool]:
-        """
-        Create question, validate idempotency, consume credit, and return the (question, created) tuple.
-        Does NOT trigger the background generator task (must be triggered after transaction commits).
-        """
+        # START_FUNCTION_CONTRACT: M-HORARY-SERVICE.create_question
+        # purpose: Create question, validate idempotency, consume credit, and return the (question, created) tuple.
+        # inputs: user_id (UUID), data (HoraryQuestionCreate), now (datetime)
+        # returns: tuple[HoraryQuestion, bool]
+        # side_effects: inserts question and spends credit row in DB
+        # emitted_logs: none
+        # error_behavior: raises ValueError on conflict/insufficient credits, propagates DB exceptions
+        # END_FUNCTION_CONTRACT: M-HORARY-SERVICE.create_question
+        
         # 1. Idempotency validation
         payload_for_hash = {
             "text": data.text,
@@ -69,7 +96,6 @@ class HoraryService:
             if existing.request_hash == request_hash:
                 return existing, False
             else:
-                # Same key, different hash -> conflict
                 raise ValueError("IDEMPOTENCY_CONFLICT")
 
         # 2. Resolve/create current weekly-free if active access exists
@@ -113,11 +139,17 @@ class HoraryService:
         return question, True
 
     async def get_question(self, user_id: uuid.UUID, question_id: uuid.UUID) -> HoraryQuestion | None:
-        """Retrieve a question by ID. Ownership check enforced."""
-        # Check lazy TTL timeout first
+        # START_FUNCTION_CONTRACT: M-HORARY-SERVICE.get_question
+        # purpose: Retrieve a question by ID. Ownership check enforced.
+        # inputs: user_id (UUID), question_id (UUID)
+        # returns: HoraryQuestion or None
+        # side_effects: queries database, runs lazy TTL check
+        # emitted_logs: none
+        # error_behavior: propagates database exceptions
+        # END_FUNCTION_CONTRACT: M-HORARY-SERVICE.get_question
+        
         await self._check_lazy_ttl(question_id)
 
-        # Query
         question = (
             await self.db.execute(
                 select(HoraryQuestion)
@@ -129,8 +161,15 @@ class HoraryService:
         return question
 
     async def list_questions(self, user_id: uuid.UUID, limit: int = 20, offset: int = 0) -> list[HoraryQuestion]:
-        """List user's questions, newest first."""
-        # First check lazy TTLs on all processing questions for this user
+        # START_FUNCTION_CONTRACT: M-HORARY-SERVICE.list_questions
+        # purpose: List user's questions, newest first.
+        # inputs: user_id (UUID), limit (int), offset (int)
+        # returns: list[HoraryQuestion]
+        # side_effects: queries database, runs lazy TTL checks
+        # emitted_logs: none
+        # error_behavior: propagates database exceptions
+        # END_FUNCTION_CONTRACT: M-HORARY-SERVICE.list_questions
+        
         processing_ids = (
             await self.db.execute(
                 select(HoraryQuestion.id)
@@ -140,7 +179,6 @@ class HoraryService:
         for pid in processing_ids:
             await self._check_lazy_ttl(pid)
 
-        # Now query list
         rows = (
             await self.db.execute(
                 select(HoraryQuestion)
@@ -155,7 +193,6 @@ class HoraryService:
         return list(rows)
 
     async def _check_lazy_ttl(self, question_id: uuid.UUID) -> None:
-        """If question is 'processing' for >5 minutes, mark as 'failed' (refund triggers)."""
         question = (
             await self.db.execute(select(HoraryQuestion).where(HoraryQuestion.id == question_id))
         ).scalar_one_or_none()
@@ -164,14 +201,12 @@ class HoraryService:
             now = datetime.now(timezone.utc)
             created_at = question.created_at.replace(tzinfo=timezone.utc) if question.created_at.tzinfo is None else question.created_at
             if now - created_at > timedelta(minutes=5):
-                # We must fail the question and refund it
                 question.status = "failed"
                 await self.db.flush()
                 await self._refund_credit_for_failed_question(self.db, question_id, now)
                 await self.db.flush()
 
     async def _refund_credit_for_failed_question(self, db: AsyncSession, question_id: uuid.UUID, now: datetime) -> None:
-        """Refund the spent credit associated with the question if it qualifies."""
         result = await db.execute(
             select(HoraryCreditSpend).where(HoraryCreditSpend.question_id == question_id)
         )
@@ -183,7 +218,6 @@ class HoraryService:
         if credit:
             should_refund = True
             if credit.source == "subscription_weekly_free":
-                # subscription weekly free is refunded only if we are still inside that access week
                 if credit.access_week_end and now >= credit.access_week_end.replace(tzinfo=timezone.utc):
                     should_refund = False
 
@@ -193,15 +227,12 @@ class HoraryService:
             else:
                 logger.info(f"[Horary Refund] Weekly-free credit {credit.id} already expired. Not refunding for question {question_id}")
 
-        # Remove the spend record since we refunded the credit
         await db.delete(spend)
 
     async def _generate_answer_task(self, question_id: uuid.UUID) -> None:
-        """Background task running in a new session context to generate the horary answer."""
         async with SessionLocal() as db:
             now = datetime.now(timezone.utc)
             try:
-                # 1. Load entities with lock to prevent race conditions (fixes B3)
                 stmt = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
                 question = (await db.execute(stmt)).scalar_one_or_none()
                 
@@ -223,11 +254,9 @@ class HoraryService:
                     await db.commit()
                     return
 
-                # 2. Resolve coords
                 lat = float(question.question_lat) if question.question_lat is not None else float(profile.current_lat or profile.birth_lat or 0.0)
                 lon = float(question.question_lon) if question.question_lon is not None else float(profile.current_lon or profile.birth_lon or 0.0)
 
-                # 3. Parse local time
                 if question.client_local_time:
                     try:
                         dt = datetime.fromisoformat(question.client_local_time)
@@ -239,7 +268,6 @@ class HoraryService:
                 date_str = dt.date().isoformat()
                 time_str = dt.time().strftime("%H:%M")
 
-                # 4. Fetch natal + transits from sidecar
                 client = get_solarsage_client()
                 horary_chart = await client.get_natal(
                     birth_date=date_str,
@@ -255,19 +283,15 @@ class HoraryService:
                     target_tz=question.client_timezone,
                 )
 
-                # 5. Normalize
                 normalization_service = NormalizationService()
                 signals = normalization_service.normalize(horary_chart, transits)
 
-                # 6. Compute verdict
                 verdict, confidence, involved = HoraryEngine.compute_verdict(
                     horary_chart, signals, question.category
                 )
 
-                # 7. LLM narration
                 llm_service = LLMService()
-
-                # Resolve Ascendant and Ruler to pass to LLM
+                
                 special_points = horary_chart.get("special_points", [])
                 asc_point = next((sp for sp in special_points if sp["name"] == "ASC"), None)
                 asc_lon = asc_point["longitude"] if asc_point else 0.0
@@ -286,7 +310,6 @@ class HoraryService:
                     significator=significator,
                 )
 
-                # 8. Re-lock and save Answer if still processing
                 stmt = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
                 fresh_question = (await db.execute(stmt)).scalar_one_or_none()
                 if not fresh_question or fresh_question.status != "processing":
@@ -309,7 +332,6 @@ class HoraryService:
             except Exception as e:
                 logger.error(f"[Horary Generator] Error generating answer for question {question_id}: {e}", exc_info=True)
                 try:
-                    # Update status to failed and refund
                     question = (
                         await db.execute(select(HoraryQuestion).where(HoraryQuestion.id == question_id))
                     ).scalar_one_or_none()

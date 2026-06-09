@@ -3,12 +3,9 @@
 // wave: W-2.1
 // purpose: API client for backend endpoints with type-safe contracts
 
-import type { components } from '@/packages/contracts/_generated';
 import { IS_DEMO_MODE } from '@/lib/demo-mode';
 import { DEMO_TODAY_RESPONSE, DEMO_CALENDAR_RESPONSE } from '@/lib/demo-data';
-
-type TodayPayload = components['schemas']['TodayPayload'];
-type CalendarPayload = components['schemas']['CalendarPayload'];
+import type { TodayPayload, CalendarPayload } from '@/packages/contracts';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 

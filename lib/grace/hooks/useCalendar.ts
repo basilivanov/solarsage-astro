@@ -6,10 +6,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { components } from '@/packages/contracts/_generated';
 import { fetchCalendar, ApiError } from '../api/client';
-
-type CalendarPayload = components['schemas']['CalendarPayload'];
+import type { CalendarPayload } from '@/packages/contracts';
 
 export interface UseCalendarResult {
   data: CalendarPayload | null;

@@ -1,7 +1,31 @@
-# AI_HEADER
-# module: M-HORARY-CREDIT-SERVICE
-# wave: W-HORARY
-# purpose: Core credit ledger logic for Horary questions
+# ############################################################################
+# AI_HEADER: MODULE_HORARY_CREDIT_SERVICE
+# ROLE: Core credit ledger logic for Horary questions.
+# DEPENDENCIES: sqlalchemy, app.db.models
+# GRACE_ANCHORS: [WEEK_RESOLUTION, BALANCE_CHECK, CREDIT_SPEND]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-HORARY-CREDIT-SERVICE
+# purpose: Partition access weeks, calculate balances, and deduct credits atomically.
+# owns:
+#   - apps/api/app/services/horary_credit_service.py
+# inputs:
+#   - db: AsyncSession, user_id: UUID, now: datetime
+# outputs:
+#   - HoraryCredit, HoraryCreditSpend, HoraryQuotaRead
+# invariants:
+#   - weekly-free credits are resolved lazily and do not pre-create future weeks.
+#   - spent order is strictly: weekly-free -> expiring bonus -> paid.
+# END_MODULE_CONTRACT: M-HORARY-CREDIT-SERVICE
+
+# START_MODULE_MAP: M-HORARY-CREDIT-SERVICE
+# public_entrypoints:
+#   - resolve_current_access_week
+#   - get_or_create_current_weekly_free
+#   - get_balance
+#   - select_spendable_credit
+#   - spend_credit_for_question
+# END_MODULE_MAP: M-HORARY-CREDIT-SERVICE
 
 from __future__ import annotations
 
@@ -25,10 +49,15 @@ class HoraryCreditService:
         self.db = db
 
     async def resolve_current_access_week(self, user_id: uuid.UUID, now: datetime) -> tuple[datetime, datetime] | None:
-        """
-        Partition user's continuous access intervals into 7-day weeks.
-        Returns (week_start, week_end) containing `now`, or None if not covered.
-        """
+        # START_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.resolve_current_access_week
+        # purpose: Map continuous access dates to 7-day intervals and find the current week.
+        # inputs: user_id (UUID), now (datetime)
+        # returns: tuple[datetime, datetime] or None
+        # side_effects: queries database (AccessLedger)
+        # emitted_logs: none
+        # error_behavior: propagates database exceptions
+        # END_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.resolve_current_access_week
+        
         # 1. Fetch all entries
         result = await self.db.execute(
             select(AccessLedger)
@@ -56,7 +85,6 @@ class HoraryCreditService:
         # 3. Find week containing `now`
         for start_date, end_date in intervals:
             interval_start = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
-            # interval end is the beginning of the day after end_date
             next_day = end_date + timedelta(days=1)
             interval_end = datetime(next_day.year, next_day.month, next_day.day, tzinfo=timezone.utc)
 
@@ -73,9 +101,15 @@ class HoraryCreditService:
         return None
 
     async def get_or_create_current_weekly_free(self, user_id: uuid.UUID, now: datetime) -> HoraryCredit | None:
-        """
-        Lazily resolve and create the subscription_weekly_free credit for the current access week.
-        """
+        # START_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.get_or_create_current_weekly_free
+        # purpose: Lazily resolve and instantiate subscription_weekly_free row for active week.
+        # inputs: user_id (UUID), now (datetime)
+        # returns: HoraryCredit or None
+        # side_effects: queries and optionally inserts HoraryCredit
+        # emitted_logs: none
+        # error_behavior: propagates database exceptions
+        # END_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.get_or_create_current_weekly_free
+        
         week = await self.resolve_current_access_week(user_id, now)
         if not week:
             return None
@@ -112,9 +146,15 @@ class HoraryCreditService:
         return credit
 
     async def get_balance(self, user_id: uuid.UUID, now: datetime) -> HoraryQuotaRead:
-        """
-        Retrieve quota balance read schema representing current credits.
-        """
+        # START_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.get_balance
+        # purpose: Calculate aggregate counts for weekly-free, paid, and bonus credits.
+        # inputs: user_id (UUID), now (datetime)
+        # returns: HoraryQuotaRead
+        # side_effects: queries database (HoraryCredit, AccessLedger)
+        # emitted_logs: none
+        # error_behavior: propagates database exceptions
+        # END_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.get_balance
+        
         # Resolve weekly free credit first
         weekly_credit = await self.get_or_create_current_weekly_free(user_id, now)
 
@@ -130,7 +170,6 @@ class HoraryCreditService:
             # Determine next weekly free at if access is continuous
             week_end = weekly_credit.access_week_end
             if week_end:
-                # check if user has access covering that moment
                 next_week_start_date = Date(week_end.year, week_end.month, week_end.day)
                 access_check = await self.db.execute(
                     select(AccessLedger)
@@ -162,7 +201,11 @@ class HoraryCreditService:
         paid_credits = 0
 
         for c in credits:
-            if c.expires_at and c.expires_at <= now:
+            expires = None
+            if c.expires_at:
+                expires = c.expires_at.replace(tzinfo=timezone.utc) if c.expires_at.tzinfo is None else c.expires_at
+            
+            if expires and expires <= now:
                 continue  # expired
             
             avail = c.amount - c.used_amount
@@ -181,12 +224,15 @@ class HoraryCreditService:
         )
 
     async def select_spendable_credit(self, user_id: uuid.UUID, now: datetime, lock: bool = False) -> HoraryCredit | None:
-        """
-        Select the best spendable credit following TZ rules:
-        1. Current active subscription_weekly_free
-        2. Non-expired bonus/gift/adjustment by nearest expires_at
-        3. Paid by oldest created_at
-        """
+        # START_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.select_spendable_credit
+        # purpose: Resolve candidate credits and sort them in priority order.
+        # inputs: user_id (UUID), now (datetime), lock (bool)
+        # returns: HoraryCredit or None
+        # side_effects: queries database (with optional lock)
+        # emitted_logs: none
+        # error_behavior: propagates database exceptions
+        # END_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.select_spendable_credit
+        
         # Fetch all candidate credits with remaining balance
         stmt = select(HoraryCredit).where(
             and_(
@@ -206,7 +252,6 @@ class HoraryCreditService:
         paids = []
 
         for c in candidates:
-            # Normalize expires_at
             expires = None
             if c.expires_at:
                 expires = c.expires_at.replace(tzinfo=timezone.utc) if c.expires_at.tzinfo is None else c.expires_at
@@ -219,11 +264,9 @@ class HoraryCreditService:
                     if start <= now < end:
                         weekly_frees.append(c)
             elif c.source == "paid":
-                # Paid usually doesn't expire, but if expires_at is set, check it
                 if expires is None or expires > now:
                     paids.append(c)
             else:
-                # referral_bonus, gift, adjustment
                 if expires is None or expires > now:
                     bonuses.append(c)
 
@@ -250,10 +293,15 @@ class HoraryCreditService:
         idempotency_key: str,
         now: datetime,
     ) -> HoraryCreditSpend:
-        """
-        Deducts a single credit atom and saves the spend record.
-        Must be executed inside an active transaction.
-        """
+        # START_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.spend_credit_for_question
+        # purpose: Deduct a single credit atom and insert transaction spend row.
+        # inputs: user_id (UUID), question_id (UUID), idempotency_key (str), now (datetime)
+        # returns: HoraryCreditSpend
+        # side_effects: inserts spend record and updates HoraryCredit row
+        # emitted_logs: none
+        # error_behavior: raises ValueError if no credit available, propagates DB exceptions
+        # END_FUNCTION_CONTRACT: M-HORARY-CREDIT-SERVICE.spend_credit_for_question
+        
         # 1. Fetch candidate credit
         credit = await self.select_spendable_credit(user_id, now, lock=True)
         if not credit:

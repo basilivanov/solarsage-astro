@@ -3,11 +3,9 @@
 // wave: W-2.2
 // purpose: 7-day week strip navigation
 
-import type { components } from '@/packages/contracts/_generated';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-
-type WeekStripDay = components['schemas']['WeekStripDay'];
+import type { WeekStripDay } from '@/packages/contracts';
 
 interface WeekStripProps {
   days: WeekStripDay[];

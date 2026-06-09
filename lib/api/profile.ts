@@ -3,16 +3,12 @@
 // wave: W-2.7
 // purpose: API client for profile endpoints
 
-import type { components } from '@/packages/contracts/_generated'
 import { IS_DEMO_MODE } from '@/lib/demo-mode'
 import { DEMO_PROFILE } from '@/lib/demo-data'
+import type { BirthData, ProfileRead, ProfileWrite } from '@/packages/contracts'
+export type { BirthData, ProfileRead, ProfileWrite }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
-
-// Use types from generated contracts (INV-CONTRACTS-NO-LOCAL-TYPES)
-export type BirthData = components['schemas']['BirthData']
-export type ProfileRead = components['schemas']['ProfileRead']
-export type ProfileWrite = components['schemas']['ProfileWrite']
 
 /**
  * Get user profile
