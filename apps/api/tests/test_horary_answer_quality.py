@@ -226,18 +226,18 @@ async def test_llm_valid_response_with_full_block_set_passes(monkeypatch):
     valid_response = {
         "blocks": [
             {"type": "verdict_card", "verdict": "yes", "confidence": 0.5,
-             "label": "Да", "confidenceLabel": "medium", "confidenceExplanation": "x"},
-            {"type": "lead", "text": "ok"},
-            {"type": "paragraph", "text": "x"},
+             "label": "Да", "confidenceLabel": "medium", "confidenceExplanation": "Данных достаточно для умеренной уверенности, потому что карта показывает согласованные указания без критичных противоречий."},
+            {"type": "lead", "text": "Ответ скорее положительный, потому что карта показывает больше поддерживающих факторов, чем ослабляющих указаний."},
+            {"type": "paragraph", "text": "Сигнификаторы пользователя и вопроса описывают ситуацию без явных противоречий и позволяют рассматривать развитие как рабочее и реалистичное."},
             {"type": "testimonies",
              "prosLabel": "За", "consLabel": "Против", "neutralLabel": "Нейтр",
-             "pros": [{"title": "t", "explanation": "e", "weight": 0.5, "planets": [], "aspectType": None, "orb": None}],
+             "pros": [{"title": "Поддержка", "explanation": "Есть показатель, который говорит в пользу благоприятного исхода.", "weight": 0.5, "planets": [], "aspectType": None, "orb": None}],
              "cons": [],
              "neutral": []},
-            {"type": "paragraph", "text": "x"},
-            {"type": "timing", "status": "known", "timeRange": "1 неделя", "text": "ok"},
-            {"type": "callout", "tone": "insight", "title": "Совет", "text": "x"},
-            {"type": "paragraph", "text": "x"},
+            {"type": "paragraph", "text": "Исход может измениться, если появятся новые сдерживающие факторы или если участники начнут действовать менее последовательно, чем сейчас."},
+            {"type": "timing", "status": "known", "timeRange": "1 неделя", "text": "Вероятное проявление видно в течение недели, потому что карта показывает достаточно ясный и относительно близкий временной ориентир."},
+            {"type": "callout", "tone": "insight", "title": "Совет", "text": "Действуй спокойно и не форсируй процесс: лучше закрепить уже имеющиеся преимущества, проверить детали и дать ситуации раскрыться естественным образом."},
+            {"type": "paragraph", "text": "Итог указывает на благоприятное развитие при сохранении текущего курса, особенно если не создавать лишнего давления и не торопить события."},
         ]
     }
     async def fake_gen(prompt, max_tokens):

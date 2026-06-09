@@ -14,6 +14,18 @@ type HoraryErrorBody = {
   }
 }
 
+export class HoraryApiError extends Error {
+  status: number
+  code?: string
+
+  constructor({ status, code, message }: { status: number; code?: string; message: string }) {
+    super(message)
+    this.name = "HoraryApiError"
+    this.status = status
+    this.code = code
+  }
+}
+
 async function parseHoraryError(res: Response) {
   const body = await res.json().catch(() => ({} as HoraryErrorBody))
   const detail = body?.detail
@@ -29,6 +41,24 @@ async function parseHoraryError(res: Response) {
   }
 
   return detail?.message || detail?.reason || "Не удалось отправить вопрос."
+}
+
+async function buildHoraryApiError(res: Response): Promise<HoraryApiError> {
+  const body = await res.json().catch(() => ({} as HoraryErrorBody))
+  const detail = body?.detail
+  const message = await parseHoraryError(
+    new Response(JSON.stringify(body), {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers,
+    })
+  )
+
+  return new HoraryApiError({
+    status: res.status,
+    code: detail?.code,
+    message,
+  })
 }
 
 export async function getHoraryQuota(): Promise<HoraryQuotaRead> {
@@ -47,7 +77,7 @@ export async function listHoraryQuestions(
   )
 
   if (!res.ok) {
-    return []
+    throw await buildHoraryApiError(res)
   }
 
   return res.json()
@@ -58,8 +88,12 @@ export async function getHoraryQuestion(id: string): Promise<HoraryQuestionRead 
     credentials: "include",
   })
 
-  if (!res.ok) {
+  if (res.status === 404) {
     return null
+  }
+
+  if (!res.ok) {
+    throw await buildHoraryApiError(res)
   }
 
   return res.json()

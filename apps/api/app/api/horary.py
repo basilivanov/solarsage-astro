@@ -31,7 +31,7 @@ import uuid
 import math
 import asyncio
 from datetime import datetime, timezone
-from typing import List
+from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,12 +50,42 @@ from app.services.horary_credit_service import HoraryCreditService
 router = APIRouter(prefix="/api", tags=["horary"])
 
 
+def _derive_confidence_label(confidence: float) -> str:
+    if confidence < 0.4:
+        return "low"
+    if confidence < 0.7:
+        return "medium"
+    return "high"
+
+
+def _normalize_horary_blocks(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized_blocks: list[dict[str, Any]] = []
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+
+        normalized = dict(block)
+        if normalized.get("type") == "verdict_card":
+            confidence = normalized.get("confidence")
+            if normalized.get("confidenceLabel") is None and isinstance(confidence, (int, float)):
+                normalized["confidenceLabel"] = _derive_confidence_label(float(confidence))
+            if normalized.get("confidenceExplanation") is None:
+                normalized["confidenceExplanation"] = ""
+
+        if normalized.get("type") == "timing" and normalized.get("status") is None:
+            normalized["status"] = "unclear"
+
+        normalized_blocks.append(normalized)
+
+    return normalized_blocks
+
+
 def _to_question_read(q) -> HoraryQuestionRead:
     answer_read = None
     if q.status == "answered" and q.answer:
         import json
         try:
-            blocks = json.loads(q.answer.blocks_json)
+            blocks = _normalize_horary_blocks(json.loads(q.answer.blocks_json))
         except Exception:
             blocks = []
         try:
@@ -63,11 +93,20 @@ def _to_question_read(q) -> HoraryQuestionRead:
         except Exception:
             planets = []
 
+        confidence = q.answer.confidence
+        confidence_label = getattr(q.answer, "confidence_label", None)
+        if confidence_label is None:
+            confidence_label = _derive_confidence_label(confidence)
+
+        confidence_explanation = getattr(q.answer, "confidence_explanation", None)
+        if confidence_explanation is None:
+            confidence_explanation = ""
+
         answer_read = HoraryAnswerRead(
             verdict=q.answer.verdict,
-            confidence=q.answer.confidence,
-            confidence_label=getattr(q.answer, "confidence_label", None) or "medium",
-            confidence_explanation=getattr(q.answer, "confidence_explanation", None) or "",
+            confidence=confidence,
+            confidence_label=confidence_label,
+            confidence_explanation=confidence_explanation,
             blocks=blocks,
             planets=planets,
             generated_at=q.answer.generated_at.isoformat(),

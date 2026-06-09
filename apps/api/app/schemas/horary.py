@@ -87,8 +87,8 @@ class VerdictCardBlock(CamelModel):
     verdict: Literal["yes", "no", "maybe"]
     confidence: float
     label: str | None = None
-    confidence_label: Literal["low", "medium", "high"] | None = None
-    confidence_explanation: str | None = None
+    confidence_label: Literal["low", "medium", "high"]
+    confidence_explanation: str
 
     @field_validator("confidence")
     @classmethod
@@ -121,7 +121,7 @@ class TestimoniesBlock(CamelModel):
 
 class TimingBlock(CamelModel):
     type: Literal["timing"] = "timing"
-    status: Literal["known", "unclear", "not_enough_evidence"] | None = None
+    status: Literal["known", "unclear", "not_enough_evidence"]
     time_range: str | None = None
     text: str
 

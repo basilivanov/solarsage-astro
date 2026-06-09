@@ -56,6 +56,8 @@ import asyncio
 import json
 import logging
 from datetime import UTC, date as Date, datetime, timedelta
+
+from fastapi import HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -117,6 +119,12 @@ class TodayService:
         )
         profile = result.scalar_one()
 
+        if profile.birth_lat is None or profile.birth_lon is None:
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Birth coordinates are required", "missingFields": ["birth_lat", "birth_lon"]},
+            )
+
         # Get SolarSage client
         client = get_solarsage_client()
 
@@ -124,8 +132,8 @@ class TodayService:
         natal = await client.get_natal(
             birth_date=profile.birthday.isoformat(),
             birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
-            birth_lat=float(profile.birth_lat or profile.birthday_lat or 0),
-            birth_lon=float(profile.birth_lon or profile.birthday_lon or 0),
+            birth_lat=float(profile.birth_lat),
+            birth_lon=float(profile.birth_lon),
             birth_tz=profile.birth_tz or "UTC",
         )
 

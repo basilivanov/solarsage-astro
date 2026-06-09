@@ -95,9 +95,7 @@ async def get_day(
     print(f"[day.py] birth_lon: {user.profile.birth_lon if user.profile else None}")
 
     has_birth_coords = (
-        (user.profile.birth_lat is not None and user.profile.birth_lon is not None)
-        or
-        (user.profile.birthday_lat is not None and user.profile.birthday_lon is not None)
+        user.profile.birth_lat is not None and user.profile.birth_lon is not None
     )
     if (not user.profile or
         not user.profile.is_onboarded or
