@@ -23,6 +23,7 @@ export function ProfileReset() {
 
   async function handleReset() {
     if (resetting) return
+    if (!confirm('Сбросить профиль? Все данные будут удалены.')) return
     setResetting(true)
     try {
       // Clear backend profile
@@ -47,7 +48,7 @@ export function ProfileReset() {
   return (
     <button
       onClick={handleReset}
-      className="fixed bottom-20 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-muted/60 text-muted-foreground/60 shadow-sm transition active:scale-95"
+      className="fixed top-4 right-4 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground/40 shadow-sm transition active:scale-95 opacity-30"
       title="Сбросить профиль и начать заново"
     >
       {resetting ? (

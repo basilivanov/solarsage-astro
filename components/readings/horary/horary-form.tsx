@@ -8,6 +8,7 @@ import { HoraryTimeConfirm } from "./horary-time-confirm"
 
 type Props = {
   hasSpendableCredit: boolean
+  submitting?: boolean
   profileCurrentCity?: string | null
   profileCurrentLat?: number | null
   profileCurrentLon?: number | null
@@ -27,8 +28,10 @@ type Props = {
   ) => void
 }
 
+
 export function HoraryForm({
   hasSpendableCredit,
+  submitting = false,
   profileCurrentCity,
   profileCurrentLat,
   profileCurrentLon,
@@ -39,6 +42,7 @@ export function HoraryForm({
   profileBirthTz,
   onSubmit,
 }: Props) {
+
   const [text, setText] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<HoraryCategory | undefined>(undefined)
   const [localTime, setLocalTime] = useState("")
@@ -153,21 +157,36 @@ export function HoraryForm({
         onChange={handleMomentChange}
       />
 
-      {!hasQuestionPlace && (
-        <p className="text-[12.5px] text-red-500 font-medium px-1">
-          Укажи место вопроса — оно нужно для построения карты.
-        </p>
-      )}
-
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={!isValid}
+        disabled={!isValid || submitting}
         className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none"
       >
         <Sparkles className="h-4 w-4" />
-        Получить ответ карты
+        {submitting ? "Отправляем вопрос..." : "Получить ответ карты"}
       </button>
+
+      {!isValid && (
+        <div className="space-y-1 px-1">
+          {text.trim().length > 0 && text.trim().length < 5 && (
+            <p className="text-[12.5px] text-muted-foreground">
+              Вопрос должен быть минимум 5 символов.
+            </p>
+          )}
+          {!hasQuestionPlace && (
+            <p className="text-[12.5px] text-muted-foreground">
+              Укажи место вопроса.
+            </p>
+          )}
+          {!hasSpendableCredit && (
+            <p className="text-[12.5px] text-muted-foreground">
+              Нужен хорарный вопрос на балансе.
+            </p>
+          )}
+        </div>
+      )}
+
     </form>
   )
 }

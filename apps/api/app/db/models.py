@@ -567,6 +567,11 @@ class HoraryQuestion(Base):
     refund_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="none"
     )  # none|refunded|not_refundable
+    failure_stage: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    public_error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    public_error_message: Mapped[str | None] = mapped_column(String(200), nullable=True)
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

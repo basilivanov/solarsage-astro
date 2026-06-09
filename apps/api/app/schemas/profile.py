@@ -117,6 +117,7 @@ class ProfileRead(CamelModel):
 
     user_id: UUID
     first_name: str | None = None
+    is_onboarded: bool = False
     birth: BirthData
     current_location: LocationData | None = None
     birthday_location: LocationData | None = None

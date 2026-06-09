@@ -52,6 +52,13 @@ from app.services.horary_credit_service import HoraryCreditService
 logger = logging.getLogger(__name__)
 
 
+class HoraryTaskStageError(RuntimeError):
+    def __init__(self, stage: str, cause: Exception):
+        super().__init__(str(cause))
+        self.stage = stage
+        self.cause = cause
+
+
 class HoraryService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -247,7 +254,7 @@ class HoraryService:
             try:
                 stmt = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
                 question = (await db.execute(stmt)).scalar_one_or_none()
-                
+
                 if not question:
                     logger.error(f"[Horary Generator] Question {question_id} not found")
                     return
@@ -262,12 +269,17 @@ class HoraryService:
                 if not profile:
                     logger.error(f"[Horary Generator] Profile for user {question.user_id} not found")
                     question.status = "failed"
+                    question.failure_stage = "profile"
+                    question.failure_code = "ProfileNotFound"
+                    question.failure_message = "Profile for user not found"
+                    question.public_error_code = "GENERATION_FAILED"
+                    question.public_error_message = "Не удалось построить ответ"
                     await self._refund_credit_for_failed_question(db, question_id, now)
                     await db.commit()
                     return
 
-                lat = float(question.question_lat) if question.question_lat is not None else float(profile.current_lat or profile.birth_lat or 0.0)
-                lon = float(question.question_lon) if question.question_lon is not None else float(profile.current_lon or profile.birth_lon or 0.0)
+                lat = float(question.question_lat) if question.question_lat is not None else float(profile.current_lat or profile.birth_lat or profile.birthday_lat or 0.0)
+                lon = float(question.question_lon) if question.question_lon is not None else float(profile.current_lon or profile.birth_lon or profile.birthday_lon or 0.0)
 
                 if question.client_local_time:
                     try:
@@ -281,54 +293,51 @@ class HoraryService:
                 time_str = dt.time().strftime("%H:%M")
 
                 client = get_solarsage_client()
-                horary_chart = await client.get_natal(
-                    birth_date=date_str,
-                    birth_time=time_str,
-                    birth_lat=lat,
-                    birth_lon=lon,
-                    birth_tz=question.client_timezone,
-                )
+                try:
+                    horary_chart = await client.get_natal(
+                        birth_date=date_str,
+                        birth_time=time_str,
+                        birth_lat=lat,
+                        birth_lon=lon,
+                        birth_tz=question.client_timezone,
+                    )
 
-                transits = await client.get_transits(
-                    target_date=date_str,
-                    target_time=time_str,
-                    target_tz=question.client_timezone,
-                )
+                    transits = await client.get_transits(
+                        target_date=date_str,
+                        target_time=time_str,
+                        target_tz=question.client_timezone,
+                    )
+                except Exception as e:
+                    raise HoraryTaskStageError("sidecar", e) from e
 
                 normalization_service = NormalizationService()
                 signals = normalization_service.normalize(horary_chart, transits)
 
-                analysis = HoraryEngine.analyze(
-                    horary_chart,
-                    signals,
-                    question.category,
-                    question.text,
-                )
-
-                llm_service = LLMService()
                 try:
+                    analysis = HoraryEngine.analyze(
+                        horary_chart,
+                        signals,
+                        question.category,
+                        question.text,
+                    )
+                except Exception as e:
+                    raise HoraryTaskStageError("engine", e) from e
+
+                try:
+                    llm_service = LLMService()
                     llm_resp = await llm_service.generate_horary_answer(
                         question_text=question.text,
                         category=question.category,
                         analysis=analysis,
                     )
                 except HoraryGenerationError as e:
-                    logger.error(
-                        f"[Horary Generator] LLM generation failed for question "
-                        f"{question_id}: {e}"
-                    )
-                    stmt2 = select(HoraryQuestion).where(
-                        HoraryQuestion.id == question_id
-                    ).with_for_update()
-                    fresh = (await db.execute(stmt2)).scalar_one_or_none()
-                    if fresh and fresh.status == "processing":
-                        fresh.status = "failed"
-                        await db.flush()
-                        await self._refund_credit_for_failed_question(
-                            db, question_id, now
-                        )
-                        await db.commit()
-                    return
+                    message = str(e).lower()
+                    stage = "timeout" if "timeout" in message else "llm_contract"
+                    raise HoraryTaskStageError(stage, e) from e
+                except Exception as e:
+                    message = str(e).lower()
+                    stage = "timeout" if "timeout" in message else "llm_provider"
+                    raise HoraryTaskStageError(stage, e) from e
 
                 stmt3 = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
                 fresh_question = (await db.execute(stmt3)).scalar_one_or_none()
@@ -348,6 +357,11 @@ class HoraryService:
                 )
                 db.add(answer)
                 fresh_question.status = "answered"
+                fresh_question.failure_stage = None
+                fresh_question.failure_code = None
+                fresh_question.failure_message = None
+                fresh_question.public_error_code = None
+                fresh_question.public_error_message = None
                 await db.commit()
                 logger.info(f"[Horary Generator] Successfully generated answer for question {question_id}")
 
@@ -358,7 +372,13 @@ class HoraryService:
                         await db.execute(select(HoraryQuestion).where(HoraryQuestion.id == question_id))
                     ).scalar_one_or_none()
                     if question:
+                        cause = e.cause if isinstance(e, HoraryTaskStageError) else e
                         question.status = "failed"
+                        question.failure_stage = e.stage if isinstance(e, HoraryTaskStageError) else "unknown"
+                        question.failure_code = type(cause).__name__
+                        question.failure_message = str(cause)[:500]
+                        question.public_error_code = "GENERATION_FAILED"
+                        question.public_error_message = "Не удалось построить ответ"
                         await db.flush()
                         await self._refund_credit_for_failed_question(db, question_id, now)
                         await db.commit()

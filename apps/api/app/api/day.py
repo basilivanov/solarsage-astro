@@ -94,10 +94,14 @@ async def get_day(
     print(f"[day.py] birth_lat: {user.profile.birth_lat if user.profile else None}")
     print(f"[day.py] birth_lon: {user.profile.birth_lon if user.profile else None}")
 
+    has_birth_coords = (
+        (user.profile.birth_lat is not None and user.profile.birth_lon is not None)
+        or
+        (user.profile.birthday_lat is not None and user.profile.birthday_lon is not None)
+    )
     if (not user.profile or
         not user.profile.is_onboarded or
-        user.profile.birth_lat is None or
-        user.profile.birth_lon is None):
+        not has_birth_coords):
         print(f"[day.py] NOT_ONBOARDED triggered")
         raise HTTPException(
             status_code=422,

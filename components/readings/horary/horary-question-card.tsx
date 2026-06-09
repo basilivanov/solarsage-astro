@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { CheckCircle2, XCircle, HelpCircle, ChevronRight } from "lucide-react"
+import { CheckCircle2, XCircle, HelpCircle, ChevronRight, Sparkles } from "lucide-react"
 import type { HoraryQuestionRead } from "@/packages/contracts"
 import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
 
@@ -10,19 +10,19 @@ type Props = {
 }
 
 export function HoraryQuestionCard({ question }: Props) {
-  const { id, text, category, status, createdAt, answer } = question
+  const { id, text, category, status, createdAt, answer, creditRefunded } = question
 
-  // Resolve verdict icon and style
   let StatusIcon = HelpCircle
   let iconClass = "text-muted-foreground"
   let bgClass = "bg-muted/10 border-border/60"
   let verdictText = "Ожидание"
+  let showAnsweredLabel = false
 
   if (status === "processing") {
     verdictText = "Расчёт..."
-    iconClass = "text-primary animate-pulse"
+    iconClass = "text-primary"
   } else if (status === "expired" || status === "failed") {
-    verdictText = "Ошибка"
+    verdictText = "Не удалось построить ответ"
     iconClass = "text-destructive"
     StatusIcon = XCircle
   } else if (status === "refunded") {
@@ -30,6 +30,8 @@ export function HoraryQuestionCard({ question }: Props) {
     iconClass = "text-muted-foreground"
     StatusIcon = HelpCircle
   } else if (status === "answered" && answer) {
+    showAnsweredLabel = true
+
     if (answer.verdict === "yes") {
       StatusIcon = CheckCircle2
       iconClass = "text-emerald-500"
@@ -71,7 +73,17 @@ export function HoraryQuestionCard({ question }: Props) {
     >
       <div className="flex items-start gap-3.5">
         <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-card border border-border/50">
-          <StatusIcon className={`h-5 w-5 ${iconClass}`} />
+          {status === "processing" ? (
+            <div className="relative h-5 w-5">
+              <div className="absolute inset-0 rounded-full border border-primary/20" />
+              <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-primary border-r-primary/70" />
+              <div className="absolute inset-0 flex items-center justify-center text-primary">
+                <Sparkles className="h-2.5 w-2.5 animate-pulse" />
+              </div>
+            </div>
+          ) : (
+            <StatusIcon className={`h-5 w-5 ${iconClass}`} />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -81,6 +93,11 @@ export function HoraryQuestionCard({ question }: Props) {
                 <span>{catMeta.label}</span>
               </span>
             )}
+            {showAnsweredLabel ? (
+              <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/[0.05] px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                Ответ готов
+              </span>
+            ) : null}
             <span className="text-[12px] text-muted-foreground">
               {formatDisplayDate(createdAt)}
             </span>
@@ -90,8 +107,15 @@ export function HoraryQuestionCard({ question }: Props) {
             {text}
           </p>
 
-          <div className="mt-2 flex items-center justify-between text-[13px] text-muted-foreground">
-            <span>Ответ: <strong className="text-foreground">{verdictText}</strong></span>
+          <div className="mt-2 flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
+            <div className="min-w-0">
+              <span>Ответ: <strong className="text-foreground">{verdictText}</strong></span>
+              {(status === "failed" || status === "expired") && creditRefunded ? (
+                <p className="mt-1 text-[12px] text-emerald-600 dark:text-emerald-400">
+                  Списание возвращено
+                </p>
+              ) : null}
+            </div>
             <span className="flex items-center gap-0.5 text-[12px] text-primary/80 font-medium">
               Подробнее
               <ChevronRight className="h-3 w-3" />

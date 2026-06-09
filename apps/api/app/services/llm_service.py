@@ -756,43 +756,75 @@ JSON:"""
         """Validate that LLM-produced blocks contain the required types and
         the required fields per type. Does not invent missing data — simply
         fails the request so the service marks it failed."""
+        if not isinstance(blocks, list):
+            raise HoraryGenerationError("LLM response 'blocks' is not a list")
+        if len(blocks) < 7:
+            raise HoraryGenerationError("LLM response must contain at least 7 blocks")
+
         types_seen: set[str] = set()
+        paragraph_count = 0
+
         for b in blocks:
             if not isinstance(b, dict) or "type" not in b:
-                return False
+                raise HoraryGenerationError("LLM block must be an object with a type")
             t = b["type"]
             types_seen.add(t)
+
             if t == "verdict_card":
                 if b.get("verdict") not in ("yes", "no", "maybe"):
-                    return False
+                    raise HoraryGenerationError("verdict_card.verdict is invalid")
                 if not isinstance(b.get("confidence"), (int, float)):
-                    return False
+                    raise HoraryGenerationError("verdict_card.confidence must be numeric")
                 if not (0.0 <= float(b["confidence"]) <= 1.0):
-                    return False
+                    raise HoraryGenerationError("verdict_card.confidence must be between 0 and 1")
                 if b.get("confidenceLabel") not in ("low", "medium", "high"):
-                    return False
+                    raise HoraryGenerationError("verdict_card.confidenceLabel is invalid")
                 if not isinstance(b.get("confidenceExplanation"), str):
-                    return False
+                    raise HoraryGenerationError("verdict_card.confidenceExplanation must be a string")
+                if len(b["confidenceExplanation"].strip()) < 60:
+                    raise HoraryGenerationError("verdict_card.confidenceExplanation is too short")
+            elif t == "lead":
+                if not isinstance(b.get("text"), str):
+                    raise HoraryGenerationError("lead.text must be a string")
+                if len(b["text"].strip()) < 60:
+                    raise HoraryGenerationError("lead.text is too short")
+            elif t == "paragraph":
+                if not isinstance(b.get("text"), str):
+                    raise HoraryGenerationError("paragraph.text must be a string")
+                if b["text"].strip():
+                    paragraph_count += 1
             elif t == "timing":
                 if b.get("status") not in ("known", "unclear", "not_enough_evidence"):
-                    return False
+                    raise HoraryGenerationError("timing.status is invalid")
                 if not isinstance(b.get("text"), str):
-                    return False
+                    raise HoraryGenerationError("timing.text must be a string")
+                if len(b["text"].strip()) < 60:
+                    raise HoraryGenerationError("timing.text is too short")
                 if b["status"] == "known" and not b.get("timeRange"):
-                    return False
+                    raise HoraryGenerationError("timing.timeRange is required for known status")
+            elif t == "callout":
+                if not isinstance(b.get("text"), str):
+                    raise HoraryGenerationError("callout.text must be a string")
+                if len(b["text"].strip()) < 80:
+                    raise HoraryGenerationError("callout.text is too short")
             elif t == "testimonies":
                 for bucket in ("pros", "cons", "neutral"):
                     items = b.get(bucket) or []
                     if not isinstance(items, list):
-                        return False
+                        raise HoraryGenerationError(f"testimonies.{bucket} must be a list")
                     for it in items:
                         if not isinstance(it, dict):
-                            return False
+                            raise HoraryGenerationError(f"testimonies.{bucket} item must be an object")
                         if not isinstance(it.get("title"), str):
-                            return False
+                            raise HoraryGenerationError(f"testimonies.{bucket} item title must be a string")
                         if not isinstance(it.get("explanation"), str):
-                            return False
+                            raise HoraryGenerationError(f"testimonies.{bucket} item explanation must be a string")
+                        if not it["explanation"].strip():
+                            raise HoraryGenerationError(f"testimonies.{bucket} item explanation must not be empty")
+
         required = {"verdict_card", "lead", "testimonies", "timing", "callout"}
         if not required.issubset(types_seen):
-            return False
+            raise HoraryGenerationError("LLM response is missing required horary blocks")
+        if paragraph_count < 2:
+            raise HoraryGenerationError("LLM response must contain at least 2 paragraph blocks")
         return True

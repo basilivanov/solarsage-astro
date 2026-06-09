@@ -89,6 +89,9 @@ def _to_question_read(q) -> HoraryQuestionRead:
         client_timezone=q.client_timezone,
         client_local_time=q.client_local_time,
         question_location_name=q.question_location_name,
+        failure_stage=getattr(q, "failure_stage", None),
+        public_error_code=getattr(q, "public_error_code", None),
+        public_error_message=getattr(q, "public_error_message", None),
         created_at=q.created_at.isoformat(),
         answer=answer_read,
     )

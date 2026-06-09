@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
+import { useEffect, useMemo, useState, use } from "react"
 import Link from "next/link"
-import { AlertOctagon, ChevronLeft } from "lucide-react"
+import { AlertOctagon, ChevronLeft, Sparkles } from "lucide-react"
 import { HoraryAnswerView } from "@/components/readings/horary/horary-answer-view"
 import { HoraryProgress } from "@/components/readings/horary/horary-progress"
 import { getHoraryQuestion } from "@/lib/api/horary"
@@ -16,25 +16,79 @@ export default function HoraryAnswerPage({ params }: Props) {
   const { id } = use(params)
   const [question, setQuestion] = useState<HoraryQuestionRead | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [pollingTimedOut, setPollingTimedOut] = useState(false)
 
   useEffect(() => {
     if (!id) return
+
+    setLoading(true)
+    setLoadError(false)
     getHoraryQuestion(id)
       .then((q) => {
         setQuestion(q)
+        setPollingTimedOut(false)
         setLoading(false)
       })
       .catch((err) => {
         console.error("[HoraryAnswerPage] Error loading question:", err)
+        setLoadError(true)
         setLoading(false)
       })
   }, [id])
+
+  useEffect(() => {
+    if (
+      !question ||
+      question.status === "answered" ||
+      question.status === "failed" ||
+      question.status === "expired"
+    ) {
+      return
+    }
+
+    setPollingTimedOut(false)
+    const startTime = Date.now()
+    const interval = setInterval(async () => {
+      if (Date.now() - startTime > 30000) {
+        clearInterval(interval)
+        setPollingTimedOut(true)
+        return
+      }
+
+      try {
+        const updated = await getHoraryQuestion(id)
+        if (!updated) {
+          return
+        }
+
+        setQuestion(updated)
+        if (
+          updated.status === "answered" ||
+          updated.status === "failed" ||
+          updated.status === "expired"
+        ) {
+          clearInterval(interval)
+        }
+      } catch (err) {
+        console.error("[HoraryAnswerPage] Poll error:", err)
+      }
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [id, question?.status])
+
+  const isLongRunning = useMemo(() => {
+    if (!question?.createdAt) return pollingTimedOut
+
+    return pollingTimedOut || Date.now() - new Date(question.createdAt).getTime() > 30000
+  }, [pollingTimedOut, question?.createdAt])
 
   if (loading) {
     return <HoraryProgress />
   }
 
-  if (!question) {
+  if (loadError || !question) {
     return (
       <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
         <h3 className="font-serif text-[20px] font-bold text-foreground">
@@ -105,7 +159,32 @@ export default function HoraryAnswerPage({ params }: Props) {
   }
 
   if (!question.answer) {
-    return <HoraryProgress />
+    if (!isLongRunning) {
+      return <HoraryProgress />
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50dvh] px-6 py-12 text-center max-w-md mx-auto space-y-6">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground animate-pulse">
+          <Sparkles className="h-6 w-6" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="font-serif text-[22px] font-bold text-foreground">
+            Карта рассчитывается
+          </h3>
+          <p className="text-[14px] leading-relaxed text-muted-foreground">
+            Ответ формируется дольше обычного. Вопрос сохранён — можно вернуться к истории и открыть его позже.
+          </p>
+        </div>
+        <Link
+          href="/readings/horary"
+          className="inline-flex items-center gap-1.5 text-[14px] text-primary"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Вернуться к истории
+        </Link>
+      </div>
+    )
   }
 
   return <HoraryAnswerView question={question} />

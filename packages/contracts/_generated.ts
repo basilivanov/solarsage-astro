@@ -596,8 +596,14 @@ export interface components {
              * @default false
              */
             creditRefunded: boolean;
+            /** Failurestage */
+            failureStage?: string | null;
             /** Id */
             id: string;
+            /** Publicerrorcode */
+            publicErrorCode?: string | null;
+            /** Publicerrormessage */
+            publicErrorMessage?: string | null;
             /** Questionlocationname */
             questionLocationName?: string | null;
             /** Spentcreditsource */
@@ -773,6 +779,8 @@ export interface components {
             currentLocation?: components["schemas"]["LocationData"] | null;
             /** Firstname */
             firstName?: string | null;
+            /** Isonboarded */
+            isOnboarded?: boolean;
             /**
              * Userid
              * Format: uuid

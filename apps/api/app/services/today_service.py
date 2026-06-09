@@ -124,8 +124,8 @@ class TodayService:
         natal = await client.get_natal(
             birth_date=profile.birthday.isoformat(),
             birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
-            birth_lat=float(profile.birth_lat),
-            birth_lon=float(profile.birth_lon),
+            birth_lat=float(profile.birth_lat or profile.birthday_lat or 0),
+            birth_lon=float(profile.birth_lon or profile.birthday_lon or 0),
             birth_tz=profile.birth_tz or "UTC",
         )
 

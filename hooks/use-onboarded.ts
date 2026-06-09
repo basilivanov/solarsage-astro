@@ -13,11 +13,27 @@ export function useOnboarded() {
       const saved = window.localStorage.getItem(STORAGE_KEYS.onboarded)
       const val = saved === "1"
       logger.debug('[Onboarded] Read from localStorage', { extra: { saved, val } })
-      setOnboardedState(val)
+      if (val) {
+        setOnboardedState(true)
+        return
+      }
     } catch (e) {
       logger.warn('[Onboarded] localStorage error', { extra: { error: String(e) } })
-      setOnboardedState(false)
     }
+
+    // localStorage empty — check backend profile
+    fetch('/api/profile', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(profile => {
+        if (profile?.isOnboarded) {
+          logger.info('[Onboarded] Backend says onboarded — syncing localStorage')
+          try { window.localStorage.setItem(STORAGE_KEYS.onboarded, "1") } catch {}
+          setOnboardedState(true)
+        } else {
+          setOnboardedState(false)
+        }
+      })
+      .catch(() => setOnboardedState(false))
   }, [])
 
   const setOnboarded = useCallback((value: boolean) => {

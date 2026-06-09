@@ -77,6 +77,7 @@ def _to_read(profile: UserProfile) -> ProfileRead:
     return ProfileRead(
         user_id=profile.user_id,
         first_name=profile.first_name,
+        is_onboarded=profile.is_onboarded,
         birth=BirthData(
             birthday=profile.birthday,
             birth_time=profile.birth_time,

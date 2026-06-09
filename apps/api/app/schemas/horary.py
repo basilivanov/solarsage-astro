@@ -83,18 +83,12 @@ class QuoteBlock(CamelModel):
 
 
 class VerdictCardBlock(CamelModel):
-    """Крупная карточка вердикта: да/нет/возможно + label уверенности.
-
-    Per W-HORARY-ANSWER-QUALITY-V1 §3.1–3.2 confidence here is shown as
-    a human label (low/medium/high), NOT as a probability percentage.
-    """
-
     type: Literal["verdict_card"] = "verdict_card"
     verdict: Literal["yes", "no", "maybe"]
-    confidence: float  # 0.0–1.0 (internal/debug; UI shows the label)
-    label: str | None = None  # Короткий текст рядом с вердиктом
-    confidence_label: Literal["low", "medium", "high"]
-    confidence_explanation: str
+    confidence: float
+    label: str | None = None
+    confidence_label: Literal["low", "medium", "high"] | None = None
+    confidence_explanation: str | None = None
 
     @field_validator("confidence")
     @classmethod
@@ -126,16 +120,8 @@ class TestimoniesBlock(CamelModel):
 
 
 class TimingBlock(CamelModel):
-    """Блок со сроками реализации.
-
-    status="known"            — есть выраженный срок, time_range обязателен.
-    status="unclear"          — карта не даёт точного срока, time_range
-                                опционален (типовая оценка по категории).
-    status="not_enough_evidence" — срок не выражен и не выводится, time_range=None.
-    """
-
     type: Literal["timing"] = "timing"
-    status: Literal["known", "unclear", "not_enough_evidence"]
+    status: Literal["known", "unclear", "not_enough_evidence"] | None = None
     time_range: str | None = None
     text: str
 
@@ -190,6 +176,9 @@ class HoraryQuestionRead(CamelModel):
     client_timezone: str
     client_local_time: str | None
     question_location_name: str | None = None
+    failure_stage: str | None = None
+    public_error_code: str | None = None
+    public_error_message: str | None = None
     created_at: str
     answer: HoraryAnswerRead | None = None
 

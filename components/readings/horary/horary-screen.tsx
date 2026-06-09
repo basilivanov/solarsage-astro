@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { ChevronLeft, MessageSquare, AlertCircle } from "lucide-react"
 
 import type { HoraryCategory } from "@/lib/contracts/horary"
@@ -14,21 +13,41 @@ import { useToast } from "@/hooks/use-toast"
 import { HoraryQuotaBar } from "./horary-quota-bar"
 import { HoraryForm } from "./horary-form"
 import { HoraryQuestionCard } from "./horary-question-card"
-import { HoraryProgress } from "./horary-progress"
 import { HoraryPurchaseSheet } from "./horary-purchase-sheet"
+import { HoraryProcessingCard } from "./horary-processing-card"
 import { Spinner } from "@/components/ui/spinner"
 
 export function HoraryScreen() {
-  const router = useRouter()
   const { toast } = useToast()
-  
+
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showPurchase, setShowPurchase] = useState(false)
-  
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null)
+  const [activeQuestionStartedAt, setActiveQuestionStartedAt] = useState<number | null>(null)
+
   const [quota, setQuota] = useState<HoraryQuotaRead | null>(null)
   const [questions, setQuestions] = useState<HoraryQuestionRead[]>([])
   const [profile, setProfile] = useState<ProfileRead | null>(null)
+
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pollStartedAtRef = useRef<number | null>(null)
+  const activeQuestionIdRef = useRef<string | null>(null)
+  const seenAnsweredIdsRef = useRef<Set<string>>(new Set())
+  const seenFailedIdsRef = useRef<Set<string>>(new Set())
+
+  const upsertQuestion = useCallback((question: HoraryQuestionRead) => {
+    setQuestions((prev) => {
+      const existingIndex = prev.findIndex((item) => item.id === question.id)
+      if (existingIndex === 0) {
+        return [question, ...prev.slice(1)]
+      }
+      if (existingIndex > 0) {
+        return [question, ...prev.slice(0, existingIndex), ...prev.slice(existingIndex + 1)]
+      }
+      return [question, ...prev]
+    })
+  }, [])
 
   const loadData = useCallback(async () => {
     try {
@@ -52,8 +71,123 @@ export function HoraryScreen() {
   }, [toast])
 
   useEffect(() => {
+    activeQuestionIdRef.current = activeQuestionId
+  }, [activeQuestionId])
+
+  const stopPolling = useCallback(() => {
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current)
+      pollTimeoutRef.current = null
+    }
+    pollStartedAtRef.current = null
+  }, [])
+
+  const pollAllProcessing = useCallback(async (processingQuestions?: HoraryQuestionRead[]) => {
+    const currentProcessingQuestions = processingQuestions ?? questions.filter(
+      (q) => q.status === "processing" || q.status === "pending"
+    )
+
+    if (currentProcessingQuestions.length === 0) {
+      stopPolling()
+      return
+    }
+
+    if (!pollStartedAtRef.current) {
+      pollStartedAtRef.current = Date.now()
+    }
+
+    if (Date.now() - pollStartedAtRef.current > 60000) {
+      stopPolling()
+      setSubmitting(false)
+      toast({
+        description: "Ответ формируется дольше обычного. Мы сохраним вопрос и покажем ответ, когда карта будет готова.",
+      })
+      return
+    }
+
+    try {
+      const updates = await Promise.all(currentProcessingQuestions.map((q) => getHoraryQuestion(q.id)))
+      let hasProcessingLeft = false
+
+      updates.forEach((updatedQuestion) => {
+        if (!updatedQuestion) {
+          return
+        }
+
+        upsertQuestion(updatedQuestion)
+
+        if (updatedQuestion.status === "processing" || updatedQuestion.status === "pending") {
+          hasProcessingLeft = true
+        }
+
+        if (updatedQuestion.status === "answered" && !seenAnsweredIdsRef.current.has(updatedQuestion.id)) {
+          seenAnsweredIdsRef.current.add(updatedQuestion.id)
+          setActiveQuestionId((current) => (current === updatedQuestion.id ? null : current))
+          setActiveQuestionStartedAt((current) =>
+            activeQuestionIdRef.current === updatedQuestion.id ? null : current
+          )
+          toast({ description: "Ответ готов" })
+        }
+
+        if (
+          (updatedQuestion.status === "failed" || updatedQuestion.status === "expired") &&
+          !seenFailedIdsRef.current.has(updatedQuestion.id)
+        ) {
+          seenFailedIdsRef.current.add(updatedQuestion.id)
+          setActiveQuestionId((current) => (current === updatedQuestion.id ? null : current))
+          setActiveQuestionStartedAt((current) =>
+            activeQuestionIdRef.current === updatedQuestion.id ? null : current
+          )
+          toast({
+            variant: "destructive",
+            description:
+              updatedQuestion.publicErrorMessage ||
+              (updatedQuestion.status === "expired"
+                ? "Время ожидания ответа истекло. Попробуйте задать вопрос снова."
+                : "Не удалось рассчитать хорарный ответ. Пожалуйста, попробуйте снова."),
+          })
+        }
+      })
+
+      if (hasProcessingLeft) {
+        pollTimeoutRef.current = setTimeout(() => {
+          void pollAllProcessing()
+        }, 2000)
+      } else {
+        stopPolling()
+        setSubmitting(false)
+      }
+    } catch (error) {
+      console.error("[HoraryScreen] Polling error:", error)
+      pollTimeoutRef.current = setTimeout(() => {
+        void pollAllProcessing()
+      }, 2000)
+    }
+  }, [questions, stopPolling, toast, upsertQuestion])
+
+  useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    const hasProcessing = questions.some((q) => q.status === "processing" || q.status === "pending")
+
+    if (!hasProcessing) {
+      stopPolling()
+      return
+    }
+
+    if (!pollTimeoutRef.current) {
+      void pollAllProcessing()
+    }
+
+    return () => {
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current)
+        pollTimeoutRef.current = null
+      }
+    }
+  }, [questions, pollAllProcessing, stopPolling])
 
   const handleSubmit = async (
     text: string,
@@ -65,6 +199,7 @@ export function HoraryScreen() {
     locationName?: string
   ) => {
     setSubmitting(true)
+
     try {
       const idempotencyKey = crypto.randomUUID()
       const q = await createHoraryQuestion({
@@ -78,11 +213,16 @@ export function HoraryScreen() {
         idempotencyKey,
       })
 
-      // Start polling status
-      pollStatus(q.id)
+      upsertQuestion(q)
+      setActiveQuestionId(q.id)
+      setActiveQuestionStartedAt(Date.now())
+      pollStartedAtRef.current = Date.now()
+      void pollAllProcessing([q])
     } catch (error: any) {
       console.error("[HoraryScreen] Failed to submit:", error)
       setSubmitting(false)
+      setActiveQuestionId(null)
+      setActiveQuestionStartedAt(null)
       toast({
         variant: "destructive",
         description: error.message || "Не удалось отправить вопрос",
@@ -90,39 +230,14 @@ export function HoraryScreen() {
     }
   }
 
-  const pollStatus = (id: string) => {
-    const startTime = Date.now()
-    const interval = setInterval(async () => {
-      // 30 seconds timeout
-      if (Date.now() - startTime > 30000) {
-        clearInterval(interval)
-        setSubmitting(false)
-        toast({
-          description: "Ответ формируется дольше обычного. Мы сохраним вопрос и покажем ответ, когда карта будет готова.",
-        })
-        loadData()
-        return
-      }
-
-      try {
-        const q = await getHoraryQuestion(id)
-        if (q.status === "answered") {
-          clearInterval(interval)
-          router.push(`/readings/horary/${id}`)
-        } else if (q.status === "failed") {
-          clearInterval(interval)
-          setSubmitting(false)
-          toast({
-            variant: "destructive",
-            description: "Не удалось рассчитать хорарный ответ. Пожалуйста, попробуйте снова.",
-          })
-          loadData()
-        }
-      } catch (error) {
-        console.error("[HoraryScreen] Polling error:", error)
-      }
-    }, 2000)
-  }
+  const pollStatus = useCallback((id: string) => {
+    setActiveQuestionId(id)
+    setActiveQuestionStartedAt(Date.now())
+    if (!pollStartedAtRef.current) {
+      pollStartedAtRef.current = Date.now()
+    }
+    void pollAllProcessing()
+  }, [pollAllProcessing])
 
   if (loading) {
     return (
@@ -132,17 +247,20 @@ export function HoraryScreen() {
     )
   }
 
-  if (submitting) {
-    return <HoraryProgress />
-  }
-
   const hasSpendableCredit = quota
     ? (quota.weeklyFreeAvailable || quota.bonusCredits > 0 || quota.paidCredits > 0)
     : false
 
+  const activeQuestion = activeQuestionId
+    ? questions.find((q) => q.id === activeQuestionId && (q.status === "processing" || q.status === "pending"))
+    : null
+
+  const regularQuestions = activeQuestionId
+    ? questions.filter((q) => q.id !== activeQuestionId)
+    : questions
+
   return (
     <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
-      {/* Header */}
       <header
         className="flex-none px-4 pb-4 border-b border-border/40"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)" }}
@@ -169,16 +287,15 @@ export function HoraryScreen() {
           </p>
         </div>
 
-        {/* Quota Bar */}
         {quota && (
           <HoraryQuotaBar quota={quota} onBuy={() => setShowPurchase(true)} />
         )}
 
-        {/* Form to submit question if we have spendable credits */}
         {hasSpendableCredit ? (
           <div className="border-t border-border/40 pt-5">
             <HoraryForm
               hasSpendableCredit={hasSpendableCredit}
+              submitting={submitting}
               profileCurrentCity={profile?.currentLocation?.city}
               profileCurrentLat={profile?.currentLocation?.lat}
               profileCurrentLon={profile?.currentLocation?.lon}
@@ -199,13 +316,12 @@ export function HoraryScreen() {
           </div>
         )}
 
-        {/* List of past questions */}
         <div className="border-t border-border/40 pt-5 space-y-4">
           <h3 className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
             История вопросов
           </h3>
-          
-          {questions.length === 0 ? (
+
+          {questions.length === 0 && !activeQuestion ? (
             <div className="rounded-2xl border border-dashed border-border/70 p-8 text-center text-muted-foreground text-[14px] space-y-2">
               <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground/45" />
               <p>Вы еще не задавали хорарных вопросов.</p>
@@ -213,7 +329,16 @@ export function HoraryScreen() {
             </div>
           ) : (
             <div className="grid gap-3.5">
-              {questions.map((q) => (
+              {activeQuestion && (
+                <HoraryProcessingCard
+                  questionText={activeQuestion.text}
+                  createdAt={activeQuestion.createdAt}
+                  category={activeQuestion.category}
+                  startedAt={activeQuestionStartedAt ?? undefined}
+                />
+              )}
+
+              {regularQuestions.map((q) => (
                 <HoraryQuestionCard key={q.id} question={q} />
               ))}
             </div>
@@ -227,3 +352,4 @@ export function HoraryScreen() {
     </div>
   )
 }
+

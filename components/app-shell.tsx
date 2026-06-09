@@ -15,7 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
-        {onboarded === true ? <TabBar /> : null}
+        <TabBar />
       </div>
     </main>
   )
