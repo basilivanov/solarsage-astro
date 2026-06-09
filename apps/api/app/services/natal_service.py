@@ -173,30 +173,33 @@ def _build_highlights(chart_data, gender: str) -> list[NatalHighlight]:
     highlights: list[NatalHighlight] = []
 
     if asc:
+        sign = _SIGN_RU.get(asc.get("sign") or "", asc.get("sign") or "—")
         highlights.append(
             NatalHighlight(
                 id="asc",
                 title="Асцендент",
-                value=asc.get("sign") or "—",
-                description="Первое впечатление и способ входить в контакт.",
+                value=sign,
+                description="Как ты входишь в контакт и проявляешься внешне.",
             )
         )
     if sun:
+        sign = _SIGN_RU.get(sun.get("sign") or "", sun.get("sign") or "—")
         highlights.append(
             NatalHighlight(
                 id="sun-sign",
                 title="Солнце",
-                value=sun.get("sign") or "—",
-                description=f"Базовый вектор личности: {_gender_forms(gender)['manifested']} через качества Солнца.",
+                value=sign,
+                description=f"Твой базовый вектор личности: через что {_gender_forms(gender)['manifested']} сильнее всего.",
             )
         )
     if moon:
+        sign = _SIGN_RU.get(moon.get("sign") or "", moon.get("sign") or "—")
         highlights.append(
             NatalHighlight(
                 id="moon-sign",
                 title="Луна",
-                value=moon.get("sign") or "—",
-                description=f"Эмоциональный отклик: как ты {_gender_forms(gender)['feels']} и восстанавливаешься.",
+                value=sign,
+                description=f"Эмоциональный отклик: как ты {_gender_forms(gender)['feels']} мир и восстанавливаешься.",
             )
         )
     return highlights[:3]
@@ -204,24 +207,46 @@ def _build_highlights(chart_data, gender: str) -> list[NatalHighlight]:
 
 def _build_spheres(scores, gender: str) -> list[NatalSpherePreview]:
     ranked = sorted(scores.get("sphere_scores", {}).items(), key=lambda item: item[1], reverse=True)
-    forms = _gender_forms(gender)
+    _sphere_hints = {
+        "thinking_speech_learning": "Твой ум активно ищет информацию, обмен и новые знания.",
+        "work_status_achievement": "Здесь заложен твой потенциал роста, статуса и профессионального признания.",
+        "relationships_partnership": "Отношения — твоя важная опора и зеркало внутренних сценариев.",
+        "body_energy_health": "Телесный тонус, энергия и базовый ресурс — твоя фундаментальная опора.",
+        "money_security_resources": "Материальная стабильность и чувство безопасности тесно связаны в карте.",
+        "emotions_inner_world": "Внутренний мир, эмоции и интуиция — твоя глубинная навигация.",
+        "family_roots_ancestors": "Семья, род и корни формируют базовые сценарии опоры и близости.",
+        "creativity_self_expression": "Творчество и самовыражение — твой естественный способ проявить себя.",
+        "spirit_meaning_transformation": "Духовный рост, поиск смысла и глубокая трансформация — твой путь.",
+    }
     result: list[NatalSpherePreview] = []
     for index, (sphere_id, score) in enumerate(ranked[:7], start=1):
         title = _sphere_label(sphere_id)
+        hint = _sphere_hints.get(sphere_id, f"Сфера «{title}» заметно выражена в карте.")
         result.append(
             NatalSpherePreview(
                 id=sphere_id,
                 title=title,
                 score=round(float(score), 2),
                 rank=index,
-                description=f"Сфера «{title}» заметно выражена в карте: здесь {forms['assembled']} и легче считываешь свои приоритеты.",
+                description=hint,
             )
         )
     return result
 
 
 def _build_planets(chart_data, scores, gender: str, signals=None) -> list[NatalPlanetPreview]:
-    forms = _gender_forms(gender)
+    _planet_hints = {
+        "Sun": "Твоё Солнце показывает базовый вектор личности и главный источник жизненной силы.",
+        "Moon": "Луна раскрывает эмоциональные потребности, интуицию и способ восстановления.",
+        "Mercury": "Меркурий определяет стиль мышления, речи и обработки информации.",
+        "Venus": "Венера показывает твой стиль любви, красоты, ценностей и привязанностей.",
+        "Mars": "Марс — это твоя воля, активность, инициатива и способ действия.",
+        "Jupiter": "Юпитер указывает на зоны роста, удачи и естественного расширения.",
+        "Saturn": "Сатурн показывает твои опоры, границы, ответственность и зоны дисциплины.",
+        "Uranus": "Уран отвечает за оригинальность, свободу и нестандартные решения.",
+        "Neptune": "Нептун связан с интуицией, мечтами, вдохновением и размытием границ.",
+        "Pluto": "Плутон — зона глубинной трансформации, силы и перерождения.",
+    }
     houses = chart_data.get("houses", [])
     planet_scores = _extract_planet_scores(scores, chart_data, signals)
     planets: list[NatalPlanetPreview] = []
@@ -231,7 +256,8 @@ def _build_planets(chart_data, scores, gender: str, signals=None) -> list[NatalP
         house = planet.get("house") or find_house(planet.get("longitude", 0), houses)
         sign = planet.get("sign")
         sign_ru = _SIGN_RU.get(sign or "", sign or "знаке")
-        house_text = f"в {house} доме" if house is not None else "без дома"
+        house_text = f"{house} дом" if house is not None else ""
+        hint = _planet_hints.get(name, f"{_planet_label(name)} — важный элемент твоей карты.")
         planets.append(
             NatalPlanetPreview(
                 id=name.lower(),
@@ -239,7 +265,7 @@ def _build_planets(chart_data, scores, gender: str, signals=None) -> list[NatalP
                 sign=sign,
                 house=house,
                 score=planet_scores.get(name),
-                description=f"{_planet_label(name)} в {sign_ru}, {house_text}: через эту планету особенно {forms['manifested']} личный паттерн карты.",
+                description=f"{_planet_label(name)} в {sign_ru}, {house_text}. {hint}" if house_text else f"{_planet_label(name)} в {sign_ru}. {hint}",
             )
         )
     return planets

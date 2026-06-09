@@ -110,7 +110,7 @@ export async function createHoraryQuestion(
   })
 
   if (!res.ok) {
-    throw new Error(await parseHoraryError(res))
+    throw await buildHoraryApiError(res)
   }
 
   return res.json()

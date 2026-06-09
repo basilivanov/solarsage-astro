@@ -9,6 +9,7 @@ import { HoraryTimeConfirm } from "./horary-time-confirm"
 type Props = {
   hasSpendableCredit: boolean
   submitting?: boolean
+  submitError?: string | null
   profileCurrentCity?: string | null
   profileCurrentLat?: number | null
   profileCurrentLon?: number | null
@@ -32,6 +33,7 @@ type Props = {
 export function HoraryForm({
   hasSpendableCredit,
   submitting = false,
+  submitError = null,
   profileCurrentCity,
   profileCurrentLat,
   profileCurrentLon,
@@ -50,6 +52,8 @@ export function HoraryForm({
   const [questionLat, setQuestionLat] = useState<number | undefined>(undefined)
   const [questionLon, setQuestionLon] = useState<number | undefined>(undefined)
   const [questionLocationName, setQuestionLocationName] = useState<string | undefined>(undefined)
+  const [blockedReason, setBlockedReason] = useState<string | null>(null)
+  const [shakeKey, setShakeKey] = useState(0)
 
   const activeCategoryMeta = HORARY_CATEGORIES.find((c) => c.key === selectedCategory)
   const placeholder = activeCategoryMeta?.placeholder || "Сформулируй вопрос так, чтобы на него можно было ответить Да или Нет..."
@@ -83,7 +87,25 @@ export function HoraryForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isValid) return
+
+    if (submitting) return
+
+    if (!isValid) {
+      let reason = ""
+      if (!hasSpendableCredit) {
+        reason = "Нужен доступный хорарный вопрос"
+      } else if (!hasQuestionPlace) {
+        reason = "Укажи место вопроса"
+      } else if (text.trim().length < 5) {
+        reason = "Напиши вопрос (минимум 5 символов)"
+      }
+      setBlockedReason(reason)
+      setShakeKey((k) => k + 1)
+      setTimeout(() => setBlockedReason(null), 4000)
+      return
+    }
+
+    setBlockedReason(null)
     onSubmit(
       text,
       selectedCategory,
@@ -157,14 +179,38 @@ export function HoraryForm({
         onChange={handleMomentChange}
       />
 
+      {/* Blocked reason */}
+      {blockedReason && (
+        <div
+          key={shakeKey}
+          className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-[13px] text-destructive/90 animate-in slide-in-from-top-1"
+          data-testid="horary-blocked-reason"
+        >
+          {blockedReason}
+        </div>
+      )}
+
+      {/* Submit error from API */}
+      {submitError && (
+        <div
+          className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-[13px] text-destructive/90"
+          data-testid="horary-submit-error"
+        >
+          {submitError}
+        </div>
+      )}
+
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={!isValid || submitting}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none"
+        className={`flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99] ${
+          !isValid || submitting
+            ? "opacity-40 cursor-not-allowed"
+            : "hover:opacity-90"
+        }`}
       >
         <Sparkles className="h-4 w-4" />
-        {submitting ? "Отправляем вопрос..." : "Получить ответ карты"}
+        {submitting ? "Считаем карту..." : "Получить ответ карты"}
       </button>
 
       {!isValid && (

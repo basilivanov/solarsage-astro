@@ -23,6 +23,7 @@ export function HoraryScreen() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showPurchase, setShowPurchase] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null)
   const [activeQuestionStartedAt, setActiveQuestionStartedAt] = useState<number | null>(null)
 
@@ -199,6 +200,7 @@ export function HoraryScreen() {
     locationName?: string
   ) => {
     setSubmitting(true)
+    setSubmitError(null)
 
     try {
       const idempotencyKey = crypto.randomUUID()
@@ -223,9 +225,11 @@ export function HoraryScreen() {
       setSubmitting(false)
       setActiveQuestionId(null)
       setActiveQuestionStartedAt(null)
+      const msg = error.message || "Не удалось отправить вопрос"
+      setSubmitError(msg)
       toast({
         variant: "destructive",
-        description: error.message || "Не удалось отправить вопрос",
+        description: msg,
       })
     }
   }
@@ -296,6 +300,7 @@ export function HoraryScreen() {
             <HoraryForm
               hasSpendableCredit={hasSpendableCredit}
               submitting={submitting}
+              submitError={submitError}
               profileCurrentCity={profile?.currentLocation?.city}
               profileCurrentLat={profile?.currentLocation?.lat}
               profileCurrentLon={profile?.currentLocation?.lon}
