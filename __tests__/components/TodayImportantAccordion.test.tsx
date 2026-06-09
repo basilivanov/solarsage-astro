@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 
 vi.mock('@/lib/log', () => ({
@@ -39,15 +39,27 @@ describe('TodayImportantAccordion', () => {
     expect(screen.getByText('Сегодня важно')).toBeTruthy()
   })
 
-  it('renders title and summary', () => {
+  it('renders title', () => {
     render(<TodayImportantAccordion items={[makeItem()]} />)
     expect(screen.getByText('Меркурий квадрат Нептун')).toBeTruthy()
-    expect(screen.getByText('Осторожнее с резкими решениями, конфликтами и обещаниями.')).toBeTruthy()
   })
 
   it('renders time label if present', () => {
     render(<TodayImportantAccordion items={[makeItem()]} />)
     expect(screen.getByText('· 03:38–11:33')).toBeTruthy()
+  })
+
+  it('is collapsed by default and shows summary on click', () => {
+    render(<TodayImportantAccordion items={[makeItem()]} />)
+    // Summary should not be visible initially
+    expect(screen.queryByText('Осторожнее с резкими решениями, конфликтами и обещаниями.')).toBeNull()
+    
+    // Expand it
+    const btn = screen.getByTestId('important-item-test-1')
+    fireEvent.click(btn)
+    
+    // Now it should be visible
+    expect(screen.getByText('Осторожнее с резкими решениями, конфликтами и обещаниями.')).toBeTruthy()
   })
 
   it('renders void moon kind', () => {

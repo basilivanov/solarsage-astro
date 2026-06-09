@@ -1,8 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import type { TodayImportantEvent } from "@/packages/contracts"
-import { Moon, AlertTriangle, RotateCcw, Zap, Star, Sparkles } from "lucide-react"
+import { Moon, AlertTriangle, RotateCcw, Zap, Star, Sparkles, ChevronDown } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 type Props = {
   items: TodayImportantEvent[]
@@ -38,7 +40,23 @@ function toneColors(tone: string) {
 }
 
 export function TodayImportantAccordion({ items }: Props) {
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set())
+
   if (!items || items.length === 0) return null
+
+  function toggle(id: string) {
+    setOpenIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        // Keep only one open
+        next.clear()
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   return (
     <section className="px-5" aria-label="Сегодня важно" data-testid="today-important-accordion">
@@ -52,31 +70,55 @@ export function TodayImportantAccordion({ items }: Props) {
           </div>
         </div>
 
-        <div className="divide-y divide-border/50">
-          {items.map((item) => {
+        <div>
+          {items.map((item, i) => {
             const Icon = KIND_ICONS[item.kind] || Star
             const colors = toneColors(item.tone)
+            const isOpen = openIds.has(item.id)
+            const isLast = i === items.length - 1
 
             return (
-              <div key={item.id} className="flex items-start gap-3 px-5 py-4" data-testid={`important-item-${item.id}`}>
-                <div className={`flex h-8 w-8 flex-none items-center justify-center rounded-full ${colors.bg}`}>
-                  <Icon className="h-4 w-4" strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-baseline gap-2 flex-wrap">
+              <div key={item.id} className={!isLast ? "border-b border-border/50" : ""}>
+                {/* Header row (always visible) */}
+                <button
+                  type="button"
+                  onClick={() => toggle(item.id)}
+                  className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-secondary/30"
+                  aria-expanded={isOpen}
+                  data-testid={`important-item-${item.id}`}
+                >
+                  <div className={`flex h-8 w-8 flex-none items-center justify-center rounded-full ${colors.bg}`}>
+                    <Icon className="h-4 w-4" strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0 flex-1">
                     <span className="font-sans text-[13.5px] font-semibold text-foreground">
                       {item.title}
                     </span>
                     {item.localTimeLabel && (
-                      <span className="text-[12px] font-medium text-muted-foreground/85">
+                      <span className="text-[12px] font-medium text-muted-foreground/85 ml-1.5">
                         · {item.localTimeLabel}
                       </span>
                     )}
                   </div>
-                  <p className="font-sans text-[12.5px] leading-relaxed text-muted-foreground">
-                    {item.summary}
-                  </p>
-                </div>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 flex-none text-muted-foreground/50 transition-transform duration-200",
+                      isOpen && "rotate-180"
+                    )}
+                    strokeWidth={1.75}
+                  />
+                </button>
+
+                {/* Expanded description (fixes user-reported bug) */}
+                {isOpen && (
+                  <div className="px-5 pb-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="rounded-xl bg-secondary/30 px-4 py-3.5">
+                      <p className="font-sans text-[13px] leading-relaxed text-foreground/85">
+                        {item.summary}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}

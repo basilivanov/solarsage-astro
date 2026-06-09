@@ -78,7 +78,7 @@ export function listReadings(): ReadingsCatalog {
         title: "Хорар",
         description: "Спросите о конкретной ситуации",
         icon: Sparkles,
-        teaser: "Скоро: задайте точный вопрос и получите ответ",
+        teaser: "Задайте точный вопрос и получите ответ карты",
       },
     ],
     coming: [
