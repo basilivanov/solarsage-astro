@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 from sqlalchemy import select
 from decimal import Decimal
@@ -447,3 +449,223 @@ async def test_same_idempotency_key_different_location_returns_409(
     r2 = await async_client.post("/api/horary/questions", json=payload2)
     assert r2.status_code == 409
     assert r2.json()["detail"] == "IDEMPOTENCY_CONFLICT"
+
+
+@pytest.mark.asyncio
+async def test_llm_invalid_json_marks_question_failed_and_no_answer_saved(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    """W-HORARY-ANSWER-QUALITY-V1 §4.4 / §6.1.
+
+    When LLM JSON is invalid the service must mark the question failed and
+    not save a HoraryAnswer row. The credit is refunded.
+    """
+    await _login(async_client, make_initdata, user_id=110)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=110, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    from app.db.models import UserProfile, HoraryAnswer
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=1, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _test_session_local():
+        yield db_session
+
+    with patch(
+        "app.services.horary_service.get_solarsage_client"
+    ) as mock_client_factory, patch(
+        "app.services.horary_service.LLMService"
+    ) as mock_llm_class, patch(
+        "app.services.horary_service.SessionLocal", _test_session_local
+    ), patch(
+        "app.api.horary.asyncio.create_task"
+    ):
+        mock_client = AsyncMock()
+        mock_client.get_natal.return_value = {
+            "planets": [
+                {"name": "Sun", "longitude": 0.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries"},
+                {"name": "Moon", "longitude": 30.0, "latitude": 0.0, "speed": 1.0, "sign": "Taurus"},
+                {"name": "Venus", "longitude": 60.0, "latitude": 0.0, "speed": 1.0, "sign": "Gemini"},
+                {"name": "Saturn", "longitude": 90.0, "latitude": 0.0, "speed": 0.05, "sign": "Cancer"},
+            ],
+            "houses": [
+                {"number": 1, "cusp": 0.0}, {"number": 2, "cusp": 30.0},
+                {"number": 3, "cusp": 60.0}, {"number": 4, "cusp": 90.0},
+                {"number": 5, "cusp": 120.0}, {"number": 6, "cusp": 150.0},
+                {"number": 7, "cusp": 180.0}, {"number": 8, "cusp": 210.0},
+                {"number": 9, "cusp": 240.0}, {"number": 10, "cusp": 270.0},
+                {"number": 11, "cusp": 300.0}, {"number": 12, "cusp": 330.0},
+            ],
+            "special_points": [{"name": "ASC", "longitude": 0.0}],
+        }
+        mock_client.get_transits.return_value = {"planets": []}
+        mock_client_factory.return_value = mock_client
+
+        from app.services.llm_service import HoraryGenerationError
+        mock_llm = AsyncMock()
+        mock_llm.generate_horary_answer.side_effect = HoraryGenerationError("bad json")
+        mock_llm_class.return_value = mock_llm
+
+        payload = {
+            "text": "Will the meeting succeed tomorrow?",
+            "category": "career",
+            "clientTimezone": "UTC",
+            "clientLocalTime": "2026-06-08T15:00:00",
+            "idempotencyKey": "key-llm-bad-json",
+        }
+        r = await async_client.post("/api/horary/questions", json=payload)
+        assert r.status_code == 201
+        qid = r.json()["id"]
+        qid_uuid = uuid.UUID(qid)
+
+        from app.services.horary_service import HoraryService
+        svc = HoraryService(db_session)
+        await svc._generate_answer_task(qid_uuid)
+
+        q_row = (await db_session.execute(select(HoraryQuestion).where(HoraryQuestion.id == qid_uuid))).scalar_one()
+        assert q_row.status == "failed"
+
+        answer_count = (await db_session.execute(
+            select(HoraryAnswer).where(HoraryAnswer.question_id == qid_uuid)
+        )).all()
+        assert len(answer_count) == 0
+
+        await db_session.refresh(credit)
+        assert credit.used_amount == 0
+
+        r2 = await async_client.get(f"/api/horary/questions/{qid}")
+        assert r2.status_code == 200
+        body = r2.json()
+        assert body["status"] == "failed"
+        assert body["creditRefunded"] is True
+        assert body["answer"] is None
+
+
+@pytest.mark.asyncio
+async def test_llm_unavailable_marks_question_failed_and_refunds_credit(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    """W-HORARY-ANSWER-QUALITY-V1 §6.2: LLM unavailable => failed + refund."""
+    await _login(async_client, make_initdata, user_id=120)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=120, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    from app.db.models import UserProfile, HoraryAnswer
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=1, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _test_session_local():
+        yield db_session
+
+    with patch(
+        "app.services.horary_service.get_solarsage_client"
+    ) as mock_client_factory, patch(
+        "app.services.horary_service.LLMService"
+    ) as mock_llm_class, patch(
+        "app.services.horary_service.SessionLocal", _test_session_local
+    ), patch(
+        "app.api.horary.asyncio.create_task"
+    ):
+        mock_client = AsyncMock()
+        mock_client.get_natal.return_value = {
+            "planets": [
+                {"name": "Sun", "longitude": 0.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries"},
+                {"name": "Moon", "longitude": 30.0, "latitude": 0.0, "speed": 1.0, "sign": "Taurus"},
+                {"name": "Venus", "longitude": 60.0, "latitude": 0.0, "speed": 1.0, "sign": "Gemini"},
+                {"name": "Jupiter", "longitude": 90.0, "latitude": 0.0, "speed": 0.05, "sign": "Cancer"},
+            ],
+            "houses": [
+                {"number": 1, "cusp": 0.0}, {"number": 2, "cusp": 30.0},
+                {"number": 3, "cusp": 60.0}, {"number": 4, "cusp": 90.0},
+                {"number": 5, "cusp": 120.0}, {"number": 6, "cusp": 150.0},
+                {"number": 7, "cusp": 180.0}, {"number": 8, "cusp": 210.0},
+                {"number": 9, "cusp": 240.0}, {"number": 10, "cusp": 270.0},
+                {"number": 11, "cusp": 300.0}, {"number": 12, "cusp": 330.0},
+            ],
+            "special_points": [{"name": "ASC", "longitude": 0.0}],
+        }
+        mock_client.get_transits.return_value = {"planets": []}
+        mock_client_factory.return_value = mock_client
+
+        from app.services.llm_service import HoraryGenerationError
+        mock_llm = AsyncMock()
+        mock_llm.generate_horary_answer.side_effect = HoraryGenerationError("LLM provider down")
+        mock_llm_class.return_value = mock_llm
+
+        payload = {
+            "text": "Will the deal close this quarter?",
+            "category": "money",
+            "clientTimezone": "UTC",
+            "clientLocalTime": "2026-06-08T15:00:00",
+            "idempotencyKey": "key-llm-unavail",
+        }
+        r = await async_client.post("/api/horary/questions", json=payload)
+        assert r.status_code == 201
+        qid = r.json()["id"]
+        qid_uuid = uuid.UUID(qid)
+
+        from app.services.horary_service import HoraryService
+        svc = HoraryService(db_session)
+        await svc._generate_answer_task(qid_uuid)
+
+        q_row = (await db_session.execute(select(HoraryQuestion).where(HoraryQuestion.id == qid_uuid))).scalar_one()
+        assert q_row.status == "failed"
+        await db_session.refresh(credit)
+        assert credit.used_amount == 0
+        answers = (await db_session.execute(
+            select(HoraryAnswer).where(HoraryAnswer.question_id == qid_uuid)
+        )).all()
+        assert len(answers) == 0
+
+
+@pytest.mark.asyncio
+async def test_no_probability_wording_in_horary_answer_payload(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    """W-HORARY-ANSWER-QUALITY-V1 §6.6: API contract does not emit
+    probability wording in user-facing horary payloads."""
+    from app.schemas.horary import VerdictCardBlock, HoraryAnswerRead
+
+    block = VerdictCardBlock(
+        verdict="yes",
+        confidence=0.5,
+        label="Да",
+        confidenceLabel="medium",
+        confidenceExplanation="x",
+    )
+    answer = HoraryAnswerRead(
+        verdict="yes",
+        confidence=0.5,
+        confidenceLabel="medium",
+        confidenceExplanation="x",
+        blocks=[block],
+        planets=["Sun"],
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    raw = answer.model_dump(by_alias=True)
+    s = json.dumps(raw, ensure_ascii=False)
+    assert "вероятность" not in s.lower()
+    assert "55%" not in s
+    assert "65%" not in s

@@ -66,6 +66,8 @@ def _to_question_read(q) -> HoraryQuestionRead:
         answer_read = HoraryAnswerRead(
             verdict=q.answer.verdict,
             confidence=q.answer.confidence,
+            confidence_label=getattr(q.answer, "confidence_label", None) or "medium",
+            confidence_explanation=getattr(q.answer, "confidence_explanation", None) or "",
             blocks=blocks,
             planets=planets,
             generated_at=q.answer.generated_at.isoformat(),
@@ -75,12 +77,15 @@ def _to_question_read(q) -> HoraryQuestionRead:
     if q.spent_credit:
         spent_source = q.spent_credit.source
 
+    credit_refunded = q.status == "failed" and q.spent_credit_id is not None
+
     return HoraryQuestionRead(
         id=str(q.id),
         text=q.text,
         category=q.category,
         status=q.status,
         spent_credit_source=spent_source,
+        credit_refunded=credit_refunded,
         client_timezone=q.client_timezone,
         client_local_time=q.client_local_time,
         question_location_name=q.question_location_name,

@@ -595,6 +595,12 @@ class HoraryAnswer(Base):
     )
     verdict: Mapped[str] = mapped_column(String(10), nullable=False)  # yes/no/maybe
     confidence: Mapped[float] = mapped_column(nullable=False)
+    confidence_label: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="medium"
+    )  # low/medium/high
+    confidence_explanation: Mapped[str] = mapped_column(
+        String(500), nullable=False, default=""
+    )
     blocks_json: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list[HoraryBlock]
     planets_json: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list[str]
     generated_at: Mapped[datetime] = mapped_column(

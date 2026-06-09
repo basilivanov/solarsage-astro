@@ -634,6 +634,7 @@
                   "paragraph": "#/components/schemas/app__schemas__horary__ParagraphBlock",
                   "pros_cons": "#/components/schemas/ProsConsBlock",
                   "quote": "#/components/schemas/app__schemas__horary__QuoteBlock",
+                  "testimonies": "#/components/schemas/TestimoniesBlock",
                   "timing": "#/components/schemas/TimingBlock",
                   "verdict_card": "#/components/schemas/VerdictCardBlock"
                 },
@@ -668,6 +669,9 @@
                   "$ref": "#/components/schemas/VerdictCardBlock"
                 },
                 {
+                  "$ref": "#/components/schemas/TestimoniesBlock"
+                },
+                {
                   "$ref": "#/components/schemas/TimingBlock"
                 }
               ]
@@ -678,6 +682,21 @@
           "confidence": {
             "title": "Confidence",
             "type": "number"
+          },
+          "confidenceExplanation": {
+            "default": "",
+            "title": "Confidenceexplanation",
+            "type": "string"
+          },
+          "confidenceLabel": {
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidencelabel",
+            "type": "string"
           },
           "generatedAt": {
             "title": "Generatedat",
@@ -844,6 +863,11 @@
           "createdAt": {
             "title": "Createdat",
             "type": "string"
+          },
+          "creditRefunded": {
+            "default": false,
+            "title": "Creditrefunded",
+            "type": "boolean"
           },
           "id": {
             "title": "Id",
@@ -1627,11 +1651,60 @@
         "title": "TelegramAuthRequest",
         "type": "object"
       },
-      "TimingBlock": {
+      "TestimoniesBlock": {
         "additionalProperties": false,
-        "description": "Блок со сроками реализации.",
+        "description": "Свидетельства «за», «против» и нейтральные факторы.",
         "properties": {
-          "text": {
+          "cons": {
+            "items": {
+              "$ref": "#/components/schemas/TestimonyItem"
+            },
+            "title": "Cons",
+            "type": "array"
+          },
+          "consLabel": {
+            "default": "Свидетельства «против»",
+            "title": "Conslabel",
+            "type": "string"
+          },
+          "neutral": {
+            "items": {
+              "$ref": "#/components/schemas/TestimonyItem"
+            },
+            "title": "Neutral",
+            "type": "array"
+          },
+          "neutralLabel": {
+            "default": "Нейтральные факторы",
+            "title": "Neutrallabel",
+            "type": "string"
+          },
+          "pros": {
+            "items": {
+              "$ref": "#/components/schemas/TestimonyItem"
+            },
+            "title": "Pros",
+            "type": "array"
+          },
+          "prosLabel": {
+            "default": "Свидетельства «за»",
+            "title": "Proslabel",
+            "type": "string"
+          },
+          "type": {
+            "const": "testimonies",
+            "default": "testimonies",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "TestimoniesBlock",
+        "type": "object"
+      },
+      "TestimonyItem": {
+        "additionalProperties": false,
+        "properties": {
+          "aspectType": {
             "anyOf": [
               {
                 "type": "string"
@@ -1640,11 +1713,74 @@
                 "type": "null"
               }
             ],
-            "title": "Text"
+            "title": "Aspecttype"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "orb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orb"
+          },
+          "planets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Planets",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "title",
+          "explanation",
+          "weight"
+        ],
+        "title": "TestimonyItem",
+        "type": "object"
+      },
+      "TimingBlock": {
+        "additionalProperties": false,
+        "description": "Блок со сроками реализации.\n\nstatus=\"known\"            — есть выраженный срок, time_range обязателен.\nstatus=\"unclear\"          — карта не даёт точного срока, time_range\n                            опционален (типовая оценка по категории).\nstatus=\"not_enough_evidence\" — срок не выражен и не выводится, time_range=None.",
+        "properties": {
+          "status": {
+            "enum": [
+              "known",
+              "unclear",
+              "not_enough_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
           },
           "timeRange": {
-            "title": "Timerange",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timerange"
           },
           "type": {
             "const": "timing",
@@ -1654,7 +1790,8 @@
           }
         },
         "required": [
-          "timeRange"
+          "status",
+          "text"
         ],
         "title": "TimingBlock",
         "type": "object"
@@ -2113,11 +2250,24 @@
       },
       "VerdictCardBlock": {
         "additionalProperties": false,
-        "description": "Крупная карточка вердикта: да/нет/возможно + confidence.",
+        "description": "Крупная карточка вердикта: да/нет/возможно + label уверенности.\n\nPer W-HORARY-ANSWER-QUALITY-V1 §3.1–3.2 confidence here is shown as\na human label (low/medium/high), NOT as a probability percentage.",
         "properties": {
           "confidence": {
             "title": "Confidence",
             "type": "number"
+          },
+          "confidenceExplanation": {
+            "title": "Confidenceexplanation",
+            "type": "string"
+          },
+          "confidenceLabel": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidencelabel",
+            "type": "string"
           },
           "label": {
             "anyOf": [
@@ -2148,7 +2298,9 @@
         },
         "required": [
           "verdict",
-          "confidence"
+          "confidence",
+          "confidenceLabel",
+          "confidenceExplanation"
         ],
         "title": "VerdictCardBlock",
         "type": "object"

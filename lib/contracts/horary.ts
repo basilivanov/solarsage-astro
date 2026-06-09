@@ -23,12 +23,34 @@ export const VerdictCardBlockSchema = z.object({
   verdict: z.enum(["yes", "no", "maybe"]),
   confidence: z.number().min(0).max(1),
   label: z.string().optional(),
+  confidenceLabel: z.enum(["low", "medium", "high"]),
+  confidenceExplanation: z.string(),
+})
+
+export const TestimonyItemSchema = z.object({
+  title: z.string(),
+  explanation: z.string(),
+  weight: z.number(),
+  planets: z.array(z.string()).default([]),
+  aspectType: z.string().optional().nullable(),
+  orb: z.number().optional().nullable(),
+})
+
+export const TestimoniesBlockSchema = z.object({
+  type: z.literal("testimonies"),
+  prosLabel: z.string().default('Свидетельства «за»'),
+  consLabel: z.string().default('Свидетельства «против»'),
+  neutralLabel: z.string().default("Нейтральные факторы"),
+  pros: z.array(TestimonyItemSchema).default([]),
+  cons: z.array(TestimonyItemSchema).default([]),
+  neutral: z.array(TestimonyItemSchema).default([]),
 })
 
 export const TimingBlockSchema = z.object({
   type: z.literal("timing"),
-  timeRange: z.string().min(1),
-  text: z.string().optional(),
+  status: z.enum(["known", "unclear", "not_enough_evidence"]),
+  timeRange: z.string().optional().nullable(),
+  text: z.string(),
 })
 
 // ---- Расширенный Block union для хорара ----
@@ -43,6 +65,7 @@ export const HoraryBlockSchema = z.discriminatedUnion("type", [
   DividerBlockSchema,
   HoraryQuoteBlockSchema,
   VerdictCardBlockSchema,
+  TestimoniesBlockSchema,
   TimingBlockSchema,
 ])
 
@@ -66,6 +89,8 @@ export const HoraryQuestionCreateSchema = z.object({
 export const HoraryAnswerSchema = z.object({
   verdict: z.enum(["yes", "no", "maybe"]),
   confidence: z.number(),
+  confidenceLabel: z.enum(["low", "medium", "high"]).default("medium"),
+  confidenceExplanation: z.string().default(""),
   blocks: z.array(HoraryBlockSchema),
   planets: z.array(z.string()),
   generatedAt: z.string(),
@@ -77,6 +102,7 @@ export const HoraryQuestionSchema = z.object({
   category: HoraryCategorySchema.optional().nullable(),
   status: z.enum(["pending", "processing", "answered", "failed", "refunded", "expired"]),
   spentCreditSource: z.enum(["subscription_weekly_free", "referral_bonus", "gift", "paid", "adjustment"]).optional().nullable(),
+  creditRefunded: z.boolean().default(false),
   clientTimezone: z.string(),
   clientLocalTime: z.string().optional().nullable(),
   questionLocationName: z.string().optional().nullable(),

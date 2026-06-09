@@ -537,9 +537,20 @@ export interface components {
         /** HoraryAnswerRead */
         HoraryAnswerRead: {
             /** Blocks */
-            blocks: (components["schemas"]["app__schemas__horary__ParagraphBlock"] | components["schemas"]["LeadBlock"] | components["schemas"]["HeadingBlock"] | components["schemas"]["ListBlock"] | components["schemas"]["CalloutBlock"] | components["schemas"]["ProsConsBlock"] | components["schemas"]["DividerBlock"] | components["schemas"]["app__schemas__horary__QuoteBlock"] | components["schemas"]["VerdictCardBlock"] | components["schemas"]["TimingBlock"])[];
+            blocks: (components["schemas"]["app__schemas__horary__ParagraphBlock"] | components["schemas"]["LeadBlock"] | components["schemas"]["HeadingBlock"] | components["schemas"]["ListBlock"] | components["schemas"]["CalloutBlock"] | components["schemas"]["ProsConsBlock"] | components["schemas"]["DividerBlock"] | components["schemas"]["app__schemas__horary__QuoteBlock"] | components["schemas"]["VerdictCardBlock"] | components["schemas"]["TestimoniesBlock"] | components["schemas"]["TimingBlock"])[];
             /** Confidence */
             confidence: number;
+            /**
+             * Confidenceexplanation
+             * @default
+             */
+            confidenceExplanation: string;
+            /**
+             * Confidencelabel
+             * @default medium
+             * @enum {string}
+             */
+            confidenceLabel: "low" | "medium" | "high";
             /** Generatedat */
             generatedAt: string;
             /** Planets */
@@ -580,6 +591,11 @@ export interface components {
             clientTimezone: string;
             /** Createdat */
             createdAt: string;
+            /**
+             * Creditrefunded
+             * @default false
+             */
+            creditRefunded: boolean;
             /** Id */
             id: string;
             /** Questionlocationname */
@@ -808,14 +824,71 @@ export interface components {
             initData: string;
         };
         /**
+         * TestimoniesBlock
+         * @description Свидетельства «за», «против» и нейтральные факторы.
+         */
+        TestimoniesBlock: {
+            /** Cons */
+            cons?: components["schemas"]["TestimonyItem"][];
+            /**
+             * Conslabel
+             * @default Свидетельства «против»
+             */
+            consLabel: string;
+            /** Neutral */
+            neutral?: components["schemas"]["TestimonyItem"][];
+            /**
+             * Neutrallabel
+             * @default Нейтральные факторы
+             */
+            neutralLabel: string;
+            /** Pros */
+            pros?: components["schemas"]["TestimonyItem"][];
+            /**
+             * Proslabel
+             * @default Свидетельства «за»
+             */
+            prosLabel: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "testimonies";
+        };
+        /** TestimonyItem */
+        TestimonyItem: {
+            /** Aspecttype */
+            aspectType?: string | null;
+            /** Explanation */
+            explanation: string;
+            /** Orb */
+            orb?: number | null;
+            /** Planets */
+            planets?: string[];
+            /** Title */
+            title: string;
+            /** Weight */
+            weight: number;
+        };
+        /**
          * TimingBlock
          * @description Блок со сроками реализации.
+         *
+         *     status="known"            — есть выраженный срок, time_range обязателен.
+         *     status="unclear"          — карта не даёт точного срока, time_range
+         *                                 опционален (типовая оценка по категории).
+         *     status="not_enough_evidence" — срок не выражен и не выводится, time_range=None.
          */
         TimingBlock: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "known" | "unclear" | "not_enough_evidence";
             /** Text */
-            text?: string | null;
+            text: string;
             /** Timerange */
-            timeRange: string;
+            timeRange?: string | null;
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -960,11 +1033,21 @@ export interface components {
         };
         /**
          * VerdictCardBlock
-         * @description Крупная карточка вердикта: да/нет/возможно + confidence.
+         * @description Крупная карточка вердикта: да/нет/возможно + label уверенности.
+         *
+         *     Per W-HORARY-ANSWER-QUALITY-V1 §3.1–3.2 confidence here is shown as
+         *     a human label (low/medium/high), NOT as a probability percentage.
          */
         VerdictCardBlock: {
             /** Confidence */
             confidence: number;
+            /** Confidenceexplanation */
+            confidenceExplanation: string;
+            /**
+             * Confidencelabel
+             * @enum {string}
+             */
+            confidenceLabel: "low" | "medium" | "high";
             /** Label */
             label?: string | null;
             /**

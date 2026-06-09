@@ -1,11 +1,23 @@
 "use client"
 
-import { Check, Sparkles, AlertTriangle, Info, Quote, CheckCircle2, XCircle, HelpCircle, Timer } from "lucide-react"
+import { Check, Sparkles, AlertTriangle, Info, Quote, CheckCircle2, XCircle, HelpCircle, Timer, AlertOctagon } from "lucide-react"
 import type { HoraryBlock } from "@/lib/contracts/horary"
 import type { CalloutTone } from "@/lib/contracts/natal"
 
 type Props = {
   block: HoraryBlock
+}
+
+const CONFIDENCE_LABELS: Record<"low" | "medium" | "high", string> = {
+  low: "Низкая",
+  medium: "Средняя",
+  high: "Высокая",
+}
+
+const CONFIDENCE_INTRO: Record<"low" | "medium" | "high", string> = {
+  low: "Уверенность разбора:",
+  medium: "Уверенность разбора:",
+  high: "Уверенность разбора:",
 }
 
 export function HoraryBlockRenderer({ block }: Props) {
@@ -189,9 +201,10 @@ export function HoraryBlockRenderer({ block }: Props) {
       }[block.verdict]
 
       const Icon = config.icon
+      const confLabel = CONFIDENCE_LABELS[block.confidenceLabel] ?? "Средняя"
 
       return (
-        <div className={`rounded-2xl border p-5 ${config.bg}`}>
+        <div className={`rounded-2xl border p-5 ${config.bg}`} data-testid="horary-verdict-card">
           <div className="flex items-center gap-3">
             <Icon className={`h-8 w-8 ${config.color}`} />
             <div>
@@ -203,46 +216,171 @@ export function HoraryBlockRenderer({ block }: Props) {
               </div>
             </div>
           </div>
-          <div className="mt-4">
-            <div className="flex justify-between text-[12px] text-muted-foreground mb-1">
-              <span>Уверенность звёзд</span>
-              <span>{Math.round(block.confidence * 100)}%</span>
+          <div className="mt-4 space-y-1.5">
+            <div
+              className="text-[12.5px] text-muted-foreground"
+              data-testid="horary-confidence-label"
+            >
+              <span className="font-medium text-foreground/85">
+                {CONFIDENCE_INTRO[block.confidenceLabel]}
+              </span>{" "}
+              {confLabel}
             </div>
-            <div className="h-1.5 w-full bg-border/40 rounded-full overflow-hidden">
-              <div
-                className={`h-full ${config.color.replace("text-", "bg-")}`}
-                style={{ width: `${block.confidence * 100}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    case "timing":
-      return (
-        <div className="flex gap-3 rounded-2xl border border-border/70 bg-secondary/[0.05] px-4 py-3.5">
-          <div className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Timer className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Сроки реализации
-            </div>
-            <div className="font-serif text-[17px] font-semibold mt-1">
-              {block.timeRange}
-            </div>
-            {block.text ? (
-              <p className="mt-1 font-serif text-[15px] leading-relaxed text-foreground/80">
-                {block.text}
+            {block.confidenceExplanation ? (
+              <p
+                className="text-[12.5px] leading-relaxed text-foreground/75"
+                data-testid="horary-confidence-explanation"
+              >
+                {block.confidenceExplanation}
               </p>
             ) : null}
           </div>
         </div>
       )
+    }
+
+    case "testimonies": {
+      return (
+        <div className="grid gap-2.5" data-testid="horary-testimonies">
+          {block.pros && block.pros.length > 0 ? (
+            <div className="rounded-2xl border border-border/70 bg-card px-4 py-3.5">
+              <div className="mb-2 text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary">
+                {block.prosLabel}
+              </div>
+              <ul className="flex flex-col gap-2">
+                {block.pros.map((p, i) => (
+                  <TestimonyRow key={`p-${i}`} item={p} positive />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {block.cons && block.cons.length > 0 ? (
+            <div className="rounded-2xl border border-border/70 bg-muted/40 px-4 py-3.5">
+              <div className="mb-2 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                {block.consLabel}
+              </div>
+              <ul className="flex flex-col gap-2">
+                {block.cons.map((c, i) => (
+                  <TestimonyRow key={`c-${i}`} item={c} positive={false} />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {block.neutral && block.neutral.length > 0 ? (
+            <div className="rounded-2xl border border-dashed border-border/70 bg-secondary/30 px-4 py-3.5">
+              <div className="mb-2 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                {block.neutralLabel}
+              </div>
+              <ul className="flex flex-col gap-2">
+                {block.neutral.map((n, i) => (
+                  <TestimonyRow key={`n-${i}`} item={n} neutral />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      )
+    }
+
+    case "timing": {
+      const config = timingConfig(block.status)
+      const Icon = config.icon
+      return (
+        <div
+          className={`flex gap-3 rounded-2xl border px-4 py-3.5 ${config.wrap}`}
+          data-testid="horary-timing"
+          data-timing-status={block.status}
+        >
+          <div
+            className={`mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full ${config.iconWrap}`}
+          >
+            <Icon className="h-4 w-4" strokeWidth={1.7} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              Сроки реализации
+            </div>
+            {block.status === "known" && block.timeRange ? (
+              <div
+                className="font-serif text-[17px] font-semibold mt-1"
+                data-testid="horary-timing-range"
+              >
+                {block.timeRange}
+              </div>
+            ) : null}
+            {block.status === "unclear" && block.timeRange ? (
+              <div
+                className="font-serif text-[16px] font-medium mt-1 text-foreground/85"
+                data-testid="horary-timing-range"
+              >
+                {block.timeRange}
+              </div>
+            ) : null}
+            <p
+              className="mt-1 font-serif text-[15px] leading-relaxed text-foreground/80"
+              data-testid="horary-timing-text"
+            >
+              {block.text}
+            </p>
+          </div>
+        </div>
+      )
+    }
 
     default:
       return null
+  }
+}
+
+function TestimonyRow({
+  item,
+  positive,
+  neutral,
+}: {
+  item: { title: string; explanation: string }
+  positive?: boolean
+  neutral?: boolean
+}) {
+  const Icon = neutral ? Info : positive ? Check : AlertTriangle
+  const iconClass = neutral
+    ? "text-muted-foreground"
+    : positive
+      ? "text-primary"
+      : "text-foreground/50"
+  return (
+    <li className="flex items-start gap-2.5">
+      <Icon className={`mt-0.5 h-4 w-4 flex-none ${iconClass}`} strokeWidth={1.7} />
+      <div className="min-w-0 flex-1">
+        <div className="text-[14px] font-medium text-foreground/90">
+          {item.title}
+        </div>
+        <div className="text-[13px] leading-relaxed text-foreground/75">
+          {item.explanation}
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function timingConfig(status: "known" | "unclear" | "not_enough_evidence") {
+  if (status === "not_enough_evidence") {
+    return {
+      wrap: "border-border/60 bg-muted/30",
+      iconWrap: "bg-muted text-muted-foreground",
+      icon: AlertOctagon,
+    }
+  }
+  if (status === "unclear") {
+    return {
+      wrap: "border-border/70 bg-secondary/[0.05]",
+      iconWrap: "bg-secondary text-foreground/70",
+      icon: Timer,
+    }
+  }
+  return {
+    wrap: "border-border/70 bg-secondary/[0.05]",
+    iconWrap: "bg-primary/10 text-primary",
+    icon: Timer,
   }
 }
 

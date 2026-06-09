@@ -83,12 +83,18 @@ class QuoteBlock(CamelModel):
 
 
 class VerdictCardBlock(CamelModel):
-    """Крупная карточка вердикта: да/нет/возможно + confidence."""
+    """Крупная карточка вердикта: да/нет/возможно + label уверенности.
+
+    Per W-HORARY-ANSWER-QUALITY-V1 §3.1–3.2 confidence here is shown as
+    a human label (low/medium/high), NOT as a probability percentage.
+    """
 
     type: Literal["verdict_card"] = "verdict_card"
     verdict: Literal["yes", "no", "maybe"]
-    confidence: float  # 0.0–1.0
+    confidence: float  # 0.0–1.0 (internal/debug; UI shows the label)
     label: str | None = None  # Короткий текст рядом с вердиктом
+    confidence_label: Literal["low", "medium", "high"]
+    confidence_explanation: str
 
     @field_validator("confidence")
     @classmethod
@@ -98,12 +104,40 @@ class VerdictCardBlock(CamelModel):
         return v
 
 
+class TestimonyItem(CamelModel):
+    title: str
+    explanation: str
+    weight: float
+    planets: list[str] = Field(default_factory=list)
+    aspect_type: str | None = None
+    orb: float | None = None
+
+
+class TestimoniesBlock(CamelModel):
+    """Свидетельства «за», «против» и нейтральные факторы."""
+
+    type: Literal["testimonies"] = "testimonies"
+    pros_label: str = "Свидетельства «за»"
+    cons_label: str = "Свидетельства «против»"
+    neutral_label: str = "Нейтральные факторы"
+    pros: list[TestimonyItem] = Field(default_factory=list)
+    cons: list[TestimonyItem] = Field(default_factory=list)
+    neutral: list[TestimonyItem] = Field(default_factory=list)
+
+
 class TimingBlock(CamelModel):
-    """Блок со сроками реализации."""
+    """Блок со сроками реализации.
+
+    status="known"            — есть выраженный срок, time_range обязателен.
+    status="unclear"          — карта не даёт точного срока, time_range
+                                опционален (типовая оценка по категории).
+    status="not_enough_evidence" — срок не выражен и не выводится, time_range=None.
+    """
 
     type: Literal["timing"] = "timing"
-    time_range: str
-    text: str | None = None
+    status: Literal["known", "unclear", "not_enough_evidence"]
+    time_range: str | None = None
+    text: str
 
 
 HoraryBlock = Annotated[
@@ -116,6 +150,7 @@ HoraryBlock = Annotated[
     | DividerBlock
     | QuoteBlock
     | VerdictCardBlock
+    | TestimoniesBlock
     | TimingBlock,
     Field(discriminator="type"),
 ]
@@ -138,6 +173,8 @@ class HoraryQuestionCreate(CamelModel):
 class HoraryAnswerRead(CamelModel):
     verdict: Literal["yes", "no", "maybe"]
     confidence: float
+    confidence_label: Literal["low", "medium", "high"] = "medium"
+    confidence_explanation: str = ""
     blocks: list[HoraryBlock]
     planets: list[str]
     generated_at: str
@@ -149,6 +186,7 @@ class HoraryQuestionRead(CamelModel):
     category: str | None
     status: Literal["pending", "processing", "answered", "failed", "refunded", "expired"]
     spent_credit_source: Literal["subscription_weekly_free", "referral_bonus", "gift", "paid", "adjustment"] | None = None
+    credit_refunded: bool = False
     client_timezone: str
     client_local_time: str | None
     question_location_name: str | None = None

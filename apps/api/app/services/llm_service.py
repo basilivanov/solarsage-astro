@@ -53,6 +53,16 @@ def _planet(s: str) -> str:
 
 # ── LLM Client ──────────────────────────────────────────────────────
 
+
+class HoraryGenerationError(RuntimeError):
+    """Raised when structured horary answer generation fails.
+
+    Per docs/FAILURE_HANDLING_CANON.md and W-HORARY-ANSWER-QUALITY-V1,
+    the service must mark the question failed and refund the credit
+    instead of returning a generic fallback answer.
+    """
+
+
 class LLMService:
 
     def __init__(self):
@@ -573,91 +583,216 @@ JSON:"""
         self,
         question_text: str,
         category: str | None,
-        verdict: str,
-        confidence: float,
-        involved_planets: list[str],
-        asc_ruler: str,
-        significator: str,
+        analysis,
     ) -> dict:
-        # Translate to Russian for the prompt
-        significator_ru = _PLANET_RU.get(significator, significator)
-        asc_ruler_ru = _PLANET_RU.get(asc_ruler, asc_ruler)
-        planets_ru = [_PLANET_RU.get(p, p) for p in involved_planets]
+        # START_FUNCTION_CONTRACT: LLMService.generate_horary_answer
+        # purpose: Build a horary LLM prompt from a structured analysis and
+        #          parse the response. Returns the validated blocks dict.
+        # inputs:
+        #   - question_text (str)
+        #   - category (str | None)
+        #   - analysis (HoraryAnalysis with verdict, confidence, testimonies,
+        #     timing, warnings)
+        # returns:
+        #   - dict with key "blocks" -> list of block dicts
+        # side_effects:
+        #   - calls external LLM provider (OpenRouter / DeepSeek / Anthropic)
+        # emitted_logs:
+        #   - warnings on each failed parse attempt
+        # error_behavior:
+        #   - raises HoraryGenerationError on 2 failed attempts (no fallback)
+        # END_FUNCTION_CONTRACT: LLMService.generate_horary_answer
+        from app.schemas.horary_analysis import (
+            EvidenceItem,
+            HoraryAnalysis,
+            TimingInfo,
+        )
 
-        verdict_translation = {"yes": "Да", "no": "Нет", "maybe": "Возможно"}.get(verdict, "Возможно")
+        if not isinstance(analysis, HoraryAnalysis):
+            raise TypeError("analysis must be a HoraryAnalysis instance")
+
+        verdict = analysis.verdict
+        verdict_ru = {"yes": "да", "no": "нет", "maybe": "возможно"}.get(verdict, "возможно")
+
+        evidences_for = [
+            self._format_evidence(e) for e in analysis.testimonies_for
+        ]
+        evidences_against = [
+            self._format_evidence(e) for e in analysis.testimonies_against
+        ]
+        neutrals = [self._format_evidence(e) for e in analysis.neutral_factors]
+        warnings = list(analysis.calculation_warnings)
 
         system_prompt = (
-            "Ты — астролог, отвечающий на хорарный вопрос. Стиль: разговорный, на «ты», без англицизмов.\n"
-            "Планеты и дома называй по-русски. Не выдумывай аспекты — используй только данные из контекста.\n\n"
-            "Обязательные блоки в порядке:\n"
-            "1. verdict_card — вердикт и confidence\n"
-            "2. lead — одно предложение, главный вывод\n"
-            "3. paragraph — объяснение сигнификатора и ASC-управителя\n"
-            "4. pros_cons — за и против\n"
-            "5. timing — сроки реализации\n"
-            "6. callout (tone=insight) — совет\n"
-            "7. paragraph — итог"
+            "Ты — астролог, отвечающий на хорарный вопрос. Стиль: разговорный, "
+            "на «ты», без англицизмов. Планеты и дома называй по-русски.\n\n"
+            "КРИТИЧЕСКИ ВАЖНО:\n"
+            "- Используй ТОЛЬКО астрологические факты из раздела «СВИДЕТЕЛЬСТВА».\n"
+            "- НЕ выдумывай аспекты, дома, орбы, фазы или причины.\n"
+            "- Если в свидетельствах чего-то нет — не упоминай это.\n"
+            "- Срок реализации (timing) бери ТОЛЬКО из раздела «СРОК ПО КАРТЕ».\n"
+            "- Не выдумывай временной диапазон. Если статус timing "
+            "«not_enough_evidence», timeRange НЕ указывай.\n"
+            "- Все имена планет — на русском, в творительном падеже после «с».\n"
+            "- Верни ТОЛЬКО валидный JSON без markdown-обёрток.\n\n"
+            "Обязательная структура blocks (порядок важен):\n"
+            "1. verdict_card — verdict, confidence 0..1, label (короткая подпись),\n"
+            "   confidenceLabel (low|medium|high), confidenceExplanation (1-2 предложения).\n"
+            "2. lead — одно предложение, главный вывод.\n"
+            "3. paragraph — что представляет пользователя и что — тему вопроса.\n"
+            "4. testimonies — prosLabel='Свидетельства «за»',\n"
+            "   consLabel='Свидетельства «против»', neutralLabel='Нейтральные факторы'.\n"
+            "   В pros/cons/neutral клади [{title, explanation, weight, planets, aspectType, orb}].\n"
+            "   Не повторяй pros в cons.\n"
+            "5. paragraph — что может изменить исход.\n"
+            "6. timing — status: 'known'|'unclear'|'not_enough_evidence'.\n"
+            "   timeRange: только если status='known'. text — всегда.\n"
+            "7. callout (tone='insight', title='Совет') — практический совет.\n"
+            "8. paragraph — итоговое резюме."
         )
+
+        timing_block = self._format_timing(analysis.timing)
 
         user_prompt = (
             f"Вопрос: {question_text}\n"
-            f"Категория: {category}\n"
-            f"Вердикт: {verdict_translation} ({verdict}) (confidence: {confidence:.2f})\n"
-            f"Сигнификатор: {significator_ru} ({significator})\n"
-            f"Управитель ASC: {asc_ruler_ru} ({asc_ruler})\n"
-            f"Задействованные планеты: {', '.join(planets_ru)}\n\n"
-            "Верни ТОЛЬКО валидный JSON (без markdown):\n"
+            f"Категория: {category or 'не указана'}\n"
+            f"Вердикт движка: {verdict_ru} ({verdict})\n"
+            f"Уровень уверенности движка: {analysis.confidence_label} "
+            f"({analysis.confidence_score}/100)\n"
+            f"Пояснение движка: {analysis.confidence_explanation}\n"
+            f"Задействованные планеты: "
+            f"{', '.join(_PLANET_RU.get(p, p) for p in analysis.involved_planets)}\n\n"
+            "СВИДЕТЕЛЬСТВА «ЗА»:\n"
+            f"{evidences_for or '— нет'}\n\n"
+            "СВИДЕТЕЛЬСТВА «ПРОТИВ»:\n"
+            f"{evidences_against or '— нет'}\n\n"
+            "НЕЙТРАЛЬНЫЕ ФАКТОРЫ:\n"
+            f"{neutrals or '— нет'}\n\n"
+            f"СРОК ПО КАРТЕ:\n{timing_block}\n\n"
+            f"ПРЕДУПРЕЖДЕНИЯ ДВИЖКА:\n"
+            f"{chr(10).join(warnings) if warnings else '— нет'}\n\n"
+            "Верни ТОЛЬКО валидный JSON со схемой:\n"
             "{\n"
             "  \"blocks\": [\n"
-            "    { \"type\": \"verdict_card\", \"verdict\": \"yes|no|maybe\", \"confidence\": 0.0-1.0, \"label\": \"...\" },\n"
-            "    { \"type\": \"lead\", \"text\": \"...\" },\n"
-            "    { \"type\": \"paragraph\", \"text\": \"...\" },\n"
-            "    { \"type\": \"pros_cons\", \"pros_label\": \"За\", \"cons_label\": \"Против\", \"pros\": [\"...\"], \"cons\": [\"...\"] },\n"
-            "    { \"type\": \"timing\", \"time_range\": \"2–3 недели\", \"text\": \"...\" },\n"
-            "    { \"type\": \"callout\", \"tone\": \"insight\", \"title\": \"Совет\", \"text\": \"...\" },\n"
-            "    { \"type\": \"paragraph\", \"text\": \"...\" }\n"
+            "    {\"type\": \"verdict_card\", \"verdict\": \"yes|no|maybe\",\n"
+            "     \"confidence\": 0.0-1.0, \"label\": \"...\",\n"
+            "     \"confidenceLabel\": \"low|medium|high\",\n"
+            "     \"confidenceExplanation\": \"...\"},\n"
+            "    {\"type\": \"lead\", \"text\": \"...\"},\n"
+            "    {\"type\": \"paragraph\", \"text\": \"...\"},\n"
+            "    {\"type\": \"testimonies\",\n"
+            "     \"prosLabel\": \"...\", \"consLabel\": \"...\", \"neutralLabel\": \"...\",\n"
+            "     \"pros\": [{\"title\": \"...\", \"explanation\": \"...\",\n"
+            "                \"weight\": 0.0, \"planets\": [\"...\"], \"aspectType\": \"...\", \"orb\": 0.0}],\n"
+            "     \"cons\": [{\"title\": \"...\", \"explanation\": \"...\",\n"
+            "                \"weight\": 0.0, \"planets\": [\"...\"], \"aspectType\": \"...\", \"orb\": 0.0}],\n"
+            "     \"neutral\": [{\"title\": \"...\", \"explanation\": \"...\",\n"
+            "                   \"weight\": 0.0, \"planets\": [], \"aspectType\": null, \"orb\": null}]},\n"
+            "    {\"type\": \"paragraph\", \"text\": \"...\"},\n"
+            "    {\"type\": \"timing\", \"status\": \"known|unclear|not_enough_evidence\",\n"
+            "     \"timeRange\": \"...\" | null, \"text\": \"...\"},\n"
+            "    {\"type\": \"callout\", \"tone\": \"insight\", \"title\": \"Совет\", \"text\": \"...\"},\n"
+            "    {\"type\": \"paragraph\", \"text\": \"...\"}\n"
             "  ]\n"
             "}"
         )
 
         prompt = f"{system_prompt}\n\n{user_prompt}"
 
-        # 2 attempts to generate valid JSON
+        last_error: Exception | None = None
         for attempt in range(2):
             try:
-                # Use generate text helper
-                text = await self._generate_text(prompt, max_tokens=1500)
+                text = await self._generate_text(prompt, max_tokens=1800)
                 if not text:
+                    last_error = HoraryGenerationError("LLM returned empty response")
                     continue
-                # Clean markdown formatting if any
                 for marker in ['```json', '```']:
                     if marker in text:
                         text = text.split(marker, 1)[1].rsplit('```', 1)[0].strip()
                         break
                 data = json_lib.loads(text)
-                if "blocks" in data and isinstance(data["blocks"], list):
-                    return data
-            except Exception as e:
+                if not isinstance(data, dict) or "blocks" not in data:
+                    raise HoraryGenerationError("LLM response missing 'blocks'")
+                if not isinstance(data["blocks"], list):
+                    raise HoraryGenerationError("LLM response 'blocks' is not a list")
+                if not self._validate_horary_blocks(data["blocks"]):
+                    raise HoraryGenerationError("LLM response failed block schema validation")
+                return data
+            except (json_lib.JSONDecodeError, HoraryGenerationError) as e:
+                last_error = e
                 logger.warning(f"[Horary LLM] Attempt {attempt+1} failed: {e}")
+                continue
+            except Exception as e:
+                last_error = e
+                logger.warning(f"[Horary LLM] Attempt {attempt+1} error: {e}")
+                continue
 
-        # Fallback response
-        lead_text = {
-            "yes": "Звёзды склоняются к положительному ответу на твой вопрос.",
-            "no": "В данный момент обстоятельства складываются не в твою пользу.",
-            "maybe": "Сейчас ситуация неопределённая, звёзды не дают однозначного ответа.",
-        }.get(verdict, "Сейчас ситуация неопределённая.")
+        raise HoraryGenerationError(
+            f"horary answer generation failed after 2 attempts: {last_error}"
+        )
 
-        return {
-            "blocks": [
-                {
-                    "type": "verdict_card",
-                    "verdict": verdict,
-                    "confidence": confidence,
-                    "label": f"Скорее {verdict_translation.lower()}"
-                },
-                {
-                    "type": "lead",
-                    "text": lead_text
-                }
-            ]
-        }
+    @staticmethod
+    def _format_evidence(item) -> str:
+        planets = ", ".join(_PLANET_RU.get(p, p) for p in item.planets_involved)
+        aspect = f", аспект {item.aspect_type}" if item.aspect_type else ""
+        orb = f", орб {item.orb:.1f}°" if item.orb is not None else ""
+        return (
+            f"- {item.title}\n"
+            f"  {item.explanation}\n"
+            f"  (планеты: {planets}{aspect}{orb}, вес: {item.weight:+.2f})"
+        )
+
+    @staticmethod
+    def _format_timing(timing) -> str:
+        range_str = f", диапазон: {timing.time_range}" if timing.time_range else ""
+        basis = f"\n  Основание: {timing.basis}" if timing.basis else ""
+        return (
+            f"Статус: {timing.status}{range_str}\n"
+            f"Текст для пользователя: {timing.text}{basis}"
+        )
+
+    @staticmethod
+    def _validate_horary_blocks(blocks: list) -> bool:
+        """Validate that LLM-produced blocks contain the required types and
+        the required fields per type. Does not invent missing data — simply
+        fails the request so the service marks it failed."""
+        types_seen: set[str] = set()
+        for b in blocks:
+            if not isinstance(b, dict) or "type" not in b:
+                return False
+            t = b["type"]
+            types_seen.add(t)
+            if t == "verdict_card":
+                if b.get("verdict") not in ("yes", "no", "maybe"):
+                    return False
+                if not isinstance(b.get("confidence"), (int, float)):
+                    return False
+                if not (0.0 <= float(b["confidence"]) <= 1.0):
+                    return False
+                if b.get("confidenceLabel") not in ("low", "medium", "high"):
+                    return False
+                if not isinstance(b.get("confidenceExplanation"), str):
+                    return False
+            elif t == "timing":
+                if b.get("status") not in ("known", "unclear", "not_enough_evidence"):
+                    return False
+                if not isinstance(b.get("text"), str):
+                    return False
+                if b["status"] == "known" and not b.get("timeRange"):
+                    return False
+            elif t == "testimonies":
+                for bucket in ("pros", "cons", "neutral"):
+                    items = b.get(bucket) or []
+                    if not isinstance(items, list):
+                        return False
+                    for it in items:
+                        if not isinstance(it, dict):
+                            return False
+                        if not isinstance(it.get("title"), str):
+                            return False
+                        if not isinstance(it.get("explanation"), str):
+                            return False
+        required = {"verdict_card", "lead", "testimonies", "timing", "callout"}
+        if not required.issubset(types_seen):
+            return False
+        return True

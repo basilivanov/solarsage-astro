@@ -45,7 +45,7 @@ from app.db.models import HoraryAnswer, HoraryQuestion, UserProfile, HoraryCredi
 from app.db.session import SessionLocal
 from app.schemas.horary import HoraryQuestionCreate
 from app.services.horary_engine import HoraryEngine
-from app.services.llm_service import LLMService
+from app.services.llm_service import HoraryGenerationError, LLMService
 from app.services.normalization_service import NormalizationService
 from app.services.horary_credit_service import HoraryCreditService
 
@@ -286,32 +286,40 @@ class HoraryService:
                 normalization_service = NormalizationService()
                 signals = normalization_service.normalize(horary_chart, transits)
 
-                verdict, confidence, involved = HoraryEngine.compute_verdict(
-                    horary_chart, signals, question.category
+                analysis = HoraryEngine.analyze(
+                    horary_chart,
+                    signals,
+                    question.category,
+                    question.text,
                 )
 
                 llm_service = LLMService()
-                
-                special_points = horary_chart.get("special_points", [])
-                asc_point = next((sp for sp in special_points if sp["name"] == "ASC"), None)
-                asc_lon = asc_point["longitude"] if asc_point else 0.0
-                from app.services.horary_engine import SIGNS, SIGN_RULERS
-                asc_sign = SIGNS[int(asc_lon / 30) % 12]
-                asc_ruler = SIGN_RULERS.get(asc_sign, "MARS").title()
-                significator = HoraryEngine.get_significator(question.category)
+                try:
+                    llm_resp = await llm_service.generate_horary_answer(
+                        question_text=question.text,
+                        category=question.category,
+                        analysis=analysis,
+                    )
+                except HoraryGenerationError as e:
+                    logger.error(
+                        f"[Horary Generator] LLM generation failed for question "
+                        f"{question_id}: {e}"
+                    )
+                    stmt2 = select(HoraryQuestion).where(
+                        HoraryQuestion.id == question_id
+                    ).with_for_update()
+                    fresh = (await db.execute(stmt2)).scalar_one_or_none()
+                    if fresh and fresh.status == "processing":
+                        fresh.status = "failed"
+                        await db.flush()
+                        await self._refund_credit_for_failed_question(
+                            db, question_id, now
+                        )
+                        await db.commit()
+                    return
 
-                llm_resp = await llm_service.generate_horary_answer(
-                    question_text=question.text,
-                    category=question.category,
-                    verdict=verdict,
-                    confidence=confidence,
-                    involved_planets=involved,
-                    asc_ruler=asc_ruler,
-                    significator=significator,
-                )
-
-                stmt = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
-                fresh_question = (await db.execute(stmt)).scalar_one_or_none()
+                stmt3 = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
+                fresh_question = (await db.execute(stmt3)).scalar_one_or_none()
                 if not fresh_question or fresh_question.status != "processing":
                     logger.info(f"[Horary Generator] Question {question_id} is no longer processing at save boundary, rolling back and skipping save")
                     await db.rollback()
@@ -319,10 +327,12 @@ class HoraryService:
 
                 answer = HoraryAnswer(
                     question_id=fresh_question.id,
-                    verdict=verdict,
-                    confidence=confidence,
+                    verdict=analysis.verdict,
+                    confidence=analysis.confidence_score / 100.0,
+                    confidence_label=analysis.confidence_label,
+                    confidence_explanation=analysis.confidence_explanation,
                     blocks_json=json.dumps(llm_resp["blocks"], ensure_ascii=False),
-                    planets_json=json.dumps(involved, ensure_ascii=False),
+                    planets_json=json.dumps(analysis.involved_planets, ensure_ascii=False),
                 )
                 db.add(answer)
                 fresh_question.status = "answered"
