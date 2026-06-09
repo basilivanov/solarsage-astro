@@ -19,6 +19,7 @@ async def test_cache_miss_then_hit(async_client: AsyncClient, make_initdata, db_
     user_raw = make_initdata(user_id=user_id, username="cacheuser")
     await async_client.post("/api/auth/telegram", json={"initData": user_raw})
     await async_client.put("/api/profile", json={
+        "gender": "male",
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30",
@@ -65,6 +66,7 @@ async def test_cache_invalidation_on_profile_edit(async_client: AsyncClient, mak
     user_raw = make_initdata(user_id=user_id, username="invaliduser")
     await async_client.post("/api/auth/telegram", json={"initData": user_raw})
     await async_client.put("/api/profile", json={
+        "gender": "male",
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30",
@@ -91,8 +93,9 @@ async def test_cache_invalidation_on_profile_edit(async_client: AsyncClient, mak
 
     # Edit profile (should invalidate cache)
     await async_client.put("/api/profile", json={
+        "gender": "male",
         "birth": {
-            "birthday": "1990-01-16",  # Changed
+            "birthday": "1990-01-15",
             "birthTime": "14:30",
             "birthCity": "Moscow",
             "birthLat": 55.7558,

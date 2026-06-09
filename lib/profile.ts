@@ -17,6 +17,7 @@ export const DEFAULT_PROFILE: Profile = {
   birthPlace: "Киев, Украина",
   currentCity: "Лиссабон, Португалия",
   birthdayCity: "Лиссабон, Португалия",
+  gender: "female",
   sameAsBirth: false,
   birthdaySameAsCurrent: true,
 }

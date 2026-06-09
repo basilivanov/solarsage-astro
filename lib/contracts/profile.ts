@@ -24,6 +24,7 @@ export const ProfileSchema = z.object({
   birthPlace: z.string().min(1),
   currentCity: z.string().min(1),
   birthdayCity: z.string().min(1),
+  gender: z.enum(["male", "female"]),
   /** birthPlace == currentCity (чекбокс «сейчас живу там же») */
   sameAsBirth: z.boolean(),
   /** currentCity == birthdayCity (чекбокс «ДР проведу там же») */

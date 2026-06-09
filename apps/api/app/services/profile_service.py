@@ -145,9 +145,9 @@ async def update_profile(
     _apply_location(profile, data.get("current_location"), "current")
     _apply_location(profile, data.get("birthday_location"), "birthday")
 
-    # W-2.7: Mark user as onboarded if they have birthday and birth_city
+    # W-2.7: Mark user as onboarded if they have birthday, birth_city, and gender
     # This allows completing onboarding flow
-    if profile.birthday and profile.birth_city and not profile.is_onboarded:
+    if profile.birthday and profile.birth_city and profile.gender and not profile.is_onboarded:
         profile.is_onboarded = True
 
     await db.flush()

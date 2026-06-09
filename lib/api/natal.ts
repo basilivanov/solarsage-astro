@@ -8,7 +8,11 @@ export interface NatalPreviewError {
   missingFields?: string[]
 }
 
-type ErrorBody = { message?: string; missingFields?: string[] }
+type ErrorBody = {
+  message?: string
+  missingFields?: string[]
+  detail?: { message?: string; missingFields?: string[]; code?: string }
+}
 
 export async function fetchNatalPreview(): Promise<
   { ok: true; data: NatalPreviewRead } | { ok: false; error: NatalPreviewError }
@@ -24,8 +28,8 @@ export async function fetchNatalPreview(): Promise<
         ok: false,
         error: {
           type: "profile_incomplete",
-          message: body.message || "Profile incomplete",
-          missingFields: body.missingFields || [],
+          message: body.detail?.message || body.message || "Profile incomplete",
+          missingFields: body.detail?.missingFields || body.missingFields || [],
         },
       }
     }
@@ -33,7 +37,7 @@ export async function fetchNatalPreview(): Promise<
       const body: ErrorBody = await res.json().catch(() => ({ message: "Failed to load natal preview" }))
       return {
         ok: false,
-        error: { type: "error", message: body.message || "Failed to load natal preview" },
+        error: { type: "error", message: body.detail?.message || body.message || "Failed to load natal preview" },
       }
     }
     const data: NatalPreviewRead = await res.json()

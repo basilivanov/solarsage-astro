@@ -21,6 +21,7 @@ async def _onboard_user(async_client: AsyncClient, db_session: AsyncSession, mak
     # Create profile with birth data
     await async_client.put("/api/profile", json={
         "firstName": "Test User",
+        "gender": "male",
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30:00",

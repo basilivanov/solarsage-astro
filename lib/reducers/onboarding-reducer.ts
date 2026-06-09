@@ -18,13 +18,14 @@ export type BirthTime = BirthTimeParts
 // State
 // ---------------------------------------------------------------------------
 
-export type StepKey = "welcome" | "birth" | "place" | "birthday" | "done"
+export type StepKey = "welcome" | "birth" | "place" | "birthday" | "gender" | "done"
 
 export const STEP_ORDER: readonly StepKey[] = [
   "welcome",
   "birth",
   "place",
   "birthday",
+  "gender",
   "done",
 ] as const
 
@@ -37,6 +38,7 @@ export interface OnboardingState {
   sameAsBirth: boolean
   birthdayCity: City | null
   birthdaySameAsCurrent: boolean
+  gender: "male" | "female" | null
 }
 
 export const initialOnboardingState: OnboardingState = {
@@ -48,6 +50,7 @@ export const initialOnboardingState: OnboardingState = {
   sameAsBirth: false,
   birthdayCity: null,
   birthdaySameAsCurrent: true,
+  gender: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +68,7 @@ export type OnboardingEvent =
   | { type: "set_same_as_birth"; value: boolean }
   | { type: "set_birthday_city"; value: City | null }
   | { type: "set_birthday_same_as_current"; value: boolean }
+  | { type: "set_gender"; value: "male" | "female" | null }
   | { type: "reset" }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +119,9 @@ export function onboardingReducer(
 
     case "set_birthday_same_as_current":
       return { ...state, birthdaySameAsCurrent: event.value }
+
+    case "set_gender":
+      return { ...state, gender: event.value }
 
     case "reset":
       return initialOnboardingState
@@ -176,6 +183,9 @@ export function isStepValid(state: OnboardingState): boolean {
     case "birthday":
       if (!state.birthdaySameAsCurrent && !state.birthdayCity) return false
       return true
+
+    case "gender":
+      return state.gender !== null
 
     case "done":
       return true

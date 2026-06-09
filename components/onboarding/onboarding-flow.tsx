@@ -6,6 +6,7 @@ import { StepWelcome } from "./step-welcome"
 import { StepBirth } from "./step-birth"
 import { StepPlace } from "./step-place"
 import { StepBirthday } from "./step-birthday"
+import { StepGender } from "./step-gender"
 import { StepDone } from "./step-done"
 import { saveProfile, type Profile } from "@/lib/profile"
 import { updateProfile } from "@/lib/api/profile"
@@ -69,6 +70,7 @@ export function OnboardingFlow({ onComplete }: Props) {
       sameAsBirth: state.sameAsBirth,
       birthdayCity: birthdayCityStr,
       birthdaySameAsCurrent: state.birthdaySameAsCurrent,
+      gender: state.gender ?? "female",
     }
 
     // Save to localStorage first (for immediate access)
@@ -102,6 +104,7 @@ export function OnboardingFlow({ onComplete }: Props) {
         : undefined
 
       await updateProfile({
+        gender: profile.gender,
         birth: {
           birthday,
           birthTime,
@@ -170,6 +173,15 @@ export function OnboardingFlow({ onComplete }: Props) {
             }
             onBack={back}
             onNext={next}
+          />
+        ) : state.step === "gender" ? (
+          <StepGender
+            gender={state.gender}
+            onSelect={(value) => {
+              dispatch({ type: "set_gender", value })
+              next()
+            }}
+            onBack={back}
           />
         ) : (
           <StepDone onFinish={finish} />

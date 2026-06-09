@@ -33,14 +33,18 @@
 #   - no caching (future wave)
 # END_MODULE_CONTRACT: M-API-NATAL
 
+import logging
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-import uuid
 
 from app.core.dependencies import current_user_id, require_session
 from app.db.session import get_session
 from app.schemas.natal import NatalPreviewRead
 from app.services.natal_service import NatalService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -77,9 +81,13 @@ async def get_natal_preview(
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error(f"Natal preview failed for user {user_id}: {exc}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to build natal preview: {exc}",
+            detail={
+                "code": "NATAL_PREVIEW_FAILED",
+                "message": "Не удалось построить натальную карту. Попробуй позже или проверь данные профиля.",
+            },
         ) from exc
 
 

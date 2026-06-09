@@ -33,6 +33,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 import uuid
 
 import httpx
@@ -64,6 +65,8 @@ from app.schemas.natal import (
 from app.services.astro_utils import find_house
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
+
+logger = logging.getLogger(__name__)
 
 _SPHERE_TITLES = {
     "love": "Отношения",
@@ -203,7 +206,7 @@ def _build_spheres(scores, gender: str) -> list[NatalSpherePreview]:
     ranked = sorted(scores.get("sphere_scores", {}).items(), key=lambda item: item[1], reverse=True)
     forms = _gender_forms(gender)
     result: list[NatalSpherePreview] = []
-    for index, (sphere_id, score) in enumerate(ranked[:3], start=1):
+    for index, (sphere_id, score) in enumerate(ranked[:7], start=1):
         title = _sphere_label(sphere_id)
         result.append(
             NatalSpherePreview(
@@ -263,6 +266,36 @@ def _build_chapters(gender: str) -> list[NatalChapterPreview]:
             title="Деньги и стратегия роста",
             description="Разложим по карте, где легче монетизировать способности и что мешает стабильно расти.",
         ),
+        NatalChapterPreview(
+            id="career",
+            eyebrow="Полный разбор",
+            title="Карьера и публичная позиция",
+            description=f"Покажем, в какой роли ты ярче всего {forms['manifested']} в работе, статусе и публичной реализации.",
+        ),
+        NatalChapterPreview(
+            id="health",
+            eyebrow="Полный разбор",
+            title="Здоровье и энергия тела",
+            description=f"Разберём, как у тебя {forms['manifested']} ритм восстановления, запас энергии и телесная устойчивость.",
+        ),
+        NatalChapterPreview(
+            id="family",
+            eyebrow="Полный разбор",
+            title="Семья и род",
+            description=f"Покажем, как в теме семьи и корней {forms['manifested']} твои базовые сценарии опоры и близости.",
+        ),
+        NatalChapterPreview(
+            id="creativity",
+            eyebrow="Полный разбор",
+            title="Творчество и самовыражение",
+            description=f"Подсветим, через что ты естественнее всего {forms['manifested']} в творчестве, удовольствии и самоподаче.",
+        ),
+        NatalChapterPreview(
+            id="spiritual_path",
+            eyebrow="Полный разбор",
+            title="Духовный путь и трансформация",
+            description=f"Разберём, где глубже всего {forms['manifested']} твой внутренний рост, смысл и точки личной трансформации.",
+        ),
     ]
 
 
@@ -282,7 +315,23 @@ def _build_calculation_stats(chart_data, scores) -> NatalCalculationStats:
     special_points_count = len(chart_data.get("special_points", []))
     scoring_factors_count = len(scores.get("top_signals", []))
     dignity_factors_count = 0
-    total_factors_count = planets_count + houses_count + aspects_count + special_points_count + scoring_factors_count
+    total_factors_count = (
+        planets_count
+        + houses_count
+        + aspects_count
+        + spheres_count
+        + special_points_count
+        + scoring_factors_count
+        + dignity_factors_count
+    )
+    if total_factors_count >= 350:
+        display_label = "350+ факторов карты"
+    elif total_factors_count >= 300:
+        display_label = "300+ факторов карты"
+    elif total_factors_count >= 200:
+        display_label = "200+ факторов карты"
+    else:
+        display_label = f"{total_factors_count} факторов карты"
     return NatalCalculationStats(
         planets_count=planets_count,
         houses_count=houses_count,
@@ -292,7 +341,7 @@ def _build_calculation_stats(chart_data, scores) -> NatalCalculationStats:
         scoring_factors_count=scoring_factors_count,
         dignity_factors_count=dignity_factors_count,
         total_factors_count=total_factors_count,
-        display_label=f"{planets_count} планет • {aspects_count} аспектов • {spheres_count} сфер",
+        display_label=display_label,
     )
 
 
@@ -470,9 +519,13 @@ class NatalService:
                 target_tz=birth_tz,
             )
         except httpx.HTTPError as exc:
+            logger.error(f"SolarSage sidecar error: {exc}")
             raise HTTPException(
-                status_code=500,
-                detail=f"SolarSage sidecar request failed: {exc}",
+                status_code=502,
+                detail={
+                    "code": "SOLARSAGE_UNAVAILABLE",
+                    "message": "Сервис расчёта временно недоступен. Попробуй позже.",
+                },
             ) from exc
 
         normalization_service = NormalizationService()

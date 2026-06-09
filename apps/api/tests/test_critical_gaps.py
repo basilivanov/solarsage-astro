@@ -23,6 +23,7 @@ async def test_calendar_passes_but_day_rejects_without_latlon(
 
     # Onboard WITHOUT lat/lon — only birthday + city
     await async_client.put("/api/profile", json={
+        "gender": "male",
         "birth": {"birthday": "1990-06-15", "birthCity": "Moscow, Russia"}
     })
 
