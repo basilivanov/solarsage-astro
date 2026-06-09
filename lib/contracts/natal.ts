@@ -184,6 +184,76 @@ export type ReportSection = z.infer<typeof ReportSectionSchema>
 export type NatalReport = z.infer<typeof NatalReportSchema>
 export type CalloutTone = z.infer<typeof CalloutToneSchema>
 
+// -------------------------------- Preview Types --------------------------------
+
+export interface NatalPreviewMeta {
+  name?: string | null
+  birthDate: string
+  birthTime?: string | null
+  birthCity?: string | null
+  houseSystem?: string | null
+  ascSign?: string | null
+  ascDegree?: number | null
+  gender: "male" | "female"
+}
+
+export interface NatalPreviewHighlight {
+  id: string
+  title: string
+  value: string
+  description?: string | null
+}
+
+export interface NatalPreviewSphere {
+  id: string
+  title: string
+  score: number
+  rank: number
+  description: string
+}
+
+export interface NatalPreviewPlanet {
+  id: string
+  name: string
+  sign?: string | null
+  house?: number | string | null
+  score?: number | null
+  description: string
+}
+
+export interface NatalPreviewChapter {
+  id: string
+  eyebrow: string
+  title: string
+  locked: boolean
+  description: string
+}
+
+export interface NatalCalculationStats {
+  planetsCount: number
+  housesCount: number
+  aspectsCount: number
+  spheresCount: number
+  specialPointsCount: number
+  scoringFactorsCount: number
+  dignityFactorsCount: number
+  totalFactorsCount: number
+  displayLabel: string
+}
+
+export interface NatalPreviewRead {
+  meta: NatalPreviewMeta
+  highlights: NatalPreviewHighlight[]
+  spheres: NatalPreviewSphere[]
+  planets: NatalPreviewPlanet[]
+  chapters: NatalPreviewChapter[]
+  personalHook: string
+  calculationStats: NatalCalculationStats
+  salesBullets: string[]
+  fullReportAvailable: boolean
+  fullReportPriceKopecks: number
+}
+
 // -------------------------------- Validators --------------------------------
 
 /**

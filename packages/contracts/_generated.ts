@@ -779,6 +779,8 @@ export interface components {
             currentLocation?: components["schemas"]["LocationData"] | null;
             /** Firstname */
             firstName?: string | null;
+            /** Gender */
+            gender?: string | null;
             /** Isonboarded */
             isOnboarded?: boolean;
             /**
@@ -801,6 +803,8 @@ export interface components {
             currentLocation?: components["schemas"]["LocationData"] | null;
             /** Firstname */
             firstName?: string | null;
+            /** Gender */
+            gender?: "male" | "female" | null;
         };
         /** ProsConsBlock */
         ProsConsBlock: {

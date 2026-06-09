@@ -127,6 +127,8 @@ async def update_profile(
     data = payload.model_dump(exclude_unset=True, by_alias=False)
     if "first_name" in data:
         profile.first_name = data["first_name"]
+    if "gender" in data:
+        profile.gender = data["gender"]
     birth = data.get("birth")
     if isinstance(birth, dict):
         for f in (

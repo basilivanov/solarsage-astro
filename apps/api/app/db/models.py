@@ -187,6 +187,7 @@ class UserProfile(Base):
     )
 
     first_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(10), nullable=True)
     birthday: Mapped[date | None] = mapped_column(Date, nullable=True)
     birth_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     birth_city: Mapped[str | None] = mapped_column(String(200), nullable=True)

@@ -105,4 +105,72 @@ class NatalMeta(CamelModel):
 class NatalPayload(CamelModel):
     meta: NatalMeta
     sections: list[NatalSection]
+
+
+class NatalCalculationStats(CamelModel):
+    planets_count: int = 0
+    houses_count: int = 0
+    aspects_count: int = 0
+    spheres_count: int = 0
+    special_points_count: int = 0
+    scoring_factors_count: int = 0
+    dignity_factors_count: int = 0
+    total_factors_count: int = 0
+    display_label: str = ""
+
+
+class NatalHighlight(CamelModel):
+    id: str
+    title: str
+    value: str
+    description: str | None = None
+
+
+class NatalSpherePreview(CamelModel):
+    id: str
+    title: str
+    score: float
+    rank: int
+    description: str
+
+
+class NatalPlanetPreview(CamelModel):
+    id: str
+    name: str
+    sign: str | None = None
+    house: int | str | None = None
+    score: float | None = None
+    description: str
+
+
+class NatalChapterPreview(CamelModel):
+    id: str
+    eyebrow: str
+    title: str
+    locked: bool = True
+    description: str
+
+
+class NatalPreviewMeta(CamelModel):
+    name: str | None = None
+    birth_date: str
+    birth_time: str | None = None
+    birth_city: str | None = None
+    house_system: str | None = None
+    asc_sign: str | None = None
+    asc_degree: float | None = None
+    gender: Literal["male", "female"]
+
+
+class NatalPreviewRead(CamelModel):
+    meta: NatalPreviewMeta
+    highlights: list[NatalHighlight] = []
+    spheres: list[NatalSpherePreview] = []
+    planets: list[NatalPlanetPreview] = []
+    chapters: list[NatalChapterPreview] = []
+    personal_hook: str = ""
+    calculation_stats: NatalCalculationStats
+    sales_bullets: list[str] = []
+    full_report_available: bool = False
+    full_report_price_kopecks: int = 99900
 # END_BLOCK: NATAL_PAYLOAD

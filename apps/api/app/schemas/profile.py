@@ -40,6 +40,7 @@
 from __future__ import annotations
 
 from datetime import date, time
+from typing import Literal
 from uuid import UUID
 from zoneinfo import available_timezones
 
@@ -117,6 +118,7 @@ class ProfileRead(CamelModel):
 
     user_id: UUID
     first_name: str | None = None
+    gender: Literal["male", "female"] | None = None
     is_onboarded: bool = False
     birth: BirthData
     current_location: LocationData | None = None
@@ -134,7 +136,17 @@ class ProfileWrite(CamelModel):
     """
 
     first_name: str | None = Field(None, max_length=120)
+    gender: Literal["male", "female"] | None = None
     birth: BirthData = Field(default_factory=BirthData)
     current_location: LocationData | None = None
     birthday_location: LocationData | None = None
+
+    @field_validator("gender")
+    @classmethod
+    def _validate_gender(cls, v: Literal["male", "female"] | None) -> Literal["male", "female"] | None:
+        if v is None:
+            return v
+        if v not in {"male", "female"}:
+            raise ValueError("gender must be 'male' or 'female'")
+        return v
 # END_BLOCK: PROFILE_WRITE
