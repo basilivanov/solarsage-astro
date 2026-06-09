@@ -231,6 +231,9 @@ run_frontend() {
 
   section "frontend: GRACE negative tests"
   bash "$ROOT/scripts/grace/check-negative.sh"
+
+  section "frontend: horary quality guard"
+  bash "$ROOT/scripts/check_horary_quality.sh"
 }
 
 run_prod_guard() {

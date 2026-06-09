@@ -564,6 +564,9 @@ class HoraryQuestion(Base):
         ForeignKey("horary_credits.id", ondelete="SET NULL"),
         nullable=True,
     )
+    refund_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="none"
+    )  # none|refunded|not_refundable
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

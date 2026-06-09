@@ -211,10 +211,18 @@ class HoraryService:
             select(HoraryCreditSpend).where(HoraryCreditSpend.question_id == question_id)
         )
         spend = result.scalar_one_or_none()
+        question = await db.get(HoraryQuestion, question_id)
+
         if not spend:
+            # No spend row => nothing to refund. Make sure the question
+            # explicitly reflects that so the UI does not claim a refund
+            # that never happened.
+            if question is not None and question.refund_status == "none":
+                question.refund_status = "none"
             return
 
         credit = await db.get(HoraryCredit, spend.credit_id)
+        new_status = "not_refundable"
         if credit:
             should_refund = True
             if credit.source == "subscription_weekly_free":
@@ -223,11 +231,15 @@ class HoraryService:
 
             if should_refund:
                 credit.used_amount = max(0, credit.used_amount - 1)
+                new_status = "refunded"
                 logger.info(f"[Horary Refund] Refunded credit {credit.id} for failed question {question_id}")
             else:
                 logger.info(f"[Horary Refund] Weekly-free credit {credit.id} already expired. Not refunding for question {question_id}")
 
         await db.delete(spend)
+
+        if question is not None:
+            question.refund_status = new_status
 
     async def _generate_answer_task(self, question_id: uuid.UUID) -> None:
         async with SessionLocal() as db:

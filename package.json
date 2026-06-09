@@ -31,6 +31,7 @@
     "guardrails:backend": "bash scripts/guardrails.sh backend",
     "guardrails:backend-grace": "bash scripts/guardrails.sh backend-grace",
     "guardrails:frontend": "bash scripts/guardrails.sh frontend",
+    "guardrails:horary-quality": "bash scripts/check_horary_quality.sh",
     "guardrails:vercel": "bash scripts/guardrails.sh vercel",
     "guardrails:full": "bash scripts/guardrails.sh full",
     "guardrails:strict": "bash scripts/guardrails.sh strict"

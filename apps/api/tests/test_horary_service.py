@@ -453,6 +453,134 @@ async def test_generation_failure_refunds_paid_credit(db_session) -> None:
     await db_session.refresh(credit)
     assert credit.used_amount == 0
 
+    # Question refund_status must reflect the actual refund
+    await db_session.refresh(q)
+    assert q.refund_status == "refunded"
+
+
+@pytest.mark.asyncio
+async def test_refund_status_is_not_refundable_for_expired_weekly_free(db_session) -> None:
+    """W-HORARY-ANSWER-QUALITY-V1 followup §B2.
+
+    When the weekly-free access week has already ended the credit is NOT
+    actually refunded. The persisted refund_status must reflect that so the
+    UI does not display a misleading refund notice.
+    """
+    user_id = uuid.uuid4()
+    now = datetime(2026, 6, 9, 12, 0, tzinfo=timezone.utc)
+
+    profile = UserProfile(
+        user_id=user_id,
+        current_lat=Decimal("55.75"),
+        current_lon=Decimal("37.62"),
+    )
+    db_session.add(profile)
+
+    # Pre-create a weekly-free credit whose access_week_end is already in
+    # the past relative to `now`. This forces the refund path to detect the
+    # expired-credit case regardless of when the current week is.
+    expired_credit = HoraryCredit(
+        user_id=user_id,
+        source="subscription_weekly_free",
+        amount=1,
+        used_amount=0,
+        access_week_start=datetime(2026, 5, 25, 0, 0, tzinfo=timezone.utc),
+        access_week_end=datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc),
+    )
+    db_session.add(expired_credit)
+    await db_session.commit()
+
+    service = HoraryService(db_session)
+    credit_service = HoraryCreditService(db_session)
+    # The expired credit is not auto-picked for `now`; force-spend it via the
+    # internal path: directly create a question + spend row.
+    from app.db.models import HoraryCreditSpend
+    import hashlib, json
+    payload_json = json.dumps(
+        {"text": "Will I win?", "category": "other", "client_timezone": "UTC"},
+        sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    )
+    request_hash = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+    question = HoraryQuestion(
+        id=uuid.uuid4(),
+        user_id=user_id,
+        text="Will I win?",
+        category="other",
+        status="processing",
+        client_timezone="UTC",
+        idempotency_key="key-expired-week",
+        request_hash=request_hash,
+        spent_credit_id=expired_credit.id,
+    )
+    db_session.add(question)
+    spend = HoraryCreditSpend(
+        user_id=user_id,
+        credit_id=expired_credit.id,
+        question_id=question.id,
+        amount=1,
+        idempotency_key="key-expired-week",
+    )
+    db_session.add(spend)
+    expired_credit.used_amount = 1
+    await db_session.commit()
+
+    # Refund path runs at `now` > access_week_end
+    await service._refund_credit_for_failed_question(db_session, question.id, now)
+    await db_session.commit()
+    await db_session.refresh(expired_credit)
+    assert expired_credit.used_amount == 1  # stays used / expired
+
+    await db_session.refresh(question)
+    assert question.refund_status == "not_refundable"
+
+
+@pytest.mark.asyncio
+async def test_refund_status_for_active_weekly_free_is_refunded(db_session) -> None:
+    """W-HORARY-ANSWER-QUALITY-V1 followup §B2: weekly-free while week is
+    still active => refund_status must be 'refunded'."""
+    user_id = uuid.uuid4()
+    now = datetime(2026, 6, 2, 12, 0, tzinfo=timezone.utc)
+
+    profile = UserProfile(
+        user_id=user_id,
+        current_lat=Decimal("55.75"),
+        current_lon=Decimal("37.62"),
+    )
+    db_session.add(profile)
+
+    ledger = AccessLedger(
+        user_id=user_id,
+        entry_type="subscription",
+        days_granted=14,
+        start_date=Date(2026, 6, 1),
+        end_date=Date(2026, 6, 14),
+    )
+    db_session.add(ledger)
+    await db_session.commit()
+
+    service = HoraryService(db_session)
+    credit_service = HoraryCreditService(db_session)
+    credit = await credit_service.get_or_create_current_weekly_free(user_id, now)
+    assert credit is not None
+
+    data = HoraryQuestionCreate(
+        text="Will I win?",
+        category="other",
+        client_timezone="UTC",
+        idempotency_key="key-active-week",
+    )
+    q, _ = await service.create_question(user_id, data, now)
+    await db_session.refresh(credit)
+    assert credit.used_amount == 1
+
+    await service._refund_credit_for_failed_question(db_session, q.id, now)
+    await db_session.commit()
+    await db_session.refresh(credit)
+    assert credit.used_amount == 0
+
+    await db_session.refresh(q)
+    assert q.refund_status == "refunded"
+
 
 @pytest.mark.asyncio
 async def test_generation_failure_restores_weekly_free_only_if_active(db_session) -> None:

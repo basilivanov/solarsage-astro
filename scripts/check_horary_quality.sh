@@ -9,7 +9,9 @@
 # ############################################################################
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Script lives at <repo>/scripts/check_horary_quality.sh, so the repo root
+# is one level up from this file's directory.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 2
 
 errors=0

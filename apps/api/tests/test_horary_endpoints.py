@@ -669,3 +669,163 @@ async def test_no_probability_wording_in_horary_answer_payload(
     assert "вероятность" not in s.lower()
     assert "55%" not in s
     assert "65%" not in s
+
+
+@pytest.mark.asyncio
+async def test_credit_refunded_true_for_paid_credit_on_failure(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    """W-HORARY-ANSWER-QUALITY-V1 followup §B2: paid credit failure
+    => API reports creditRefunded=true."""
+    await _login(async_client, make_initdata, user_id=210)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=210, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=1, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _test_session_local():
+        yield db_session
+
+    with patch(
+        "app.services.horary_service.get_solarsage_client"
+    ) as mock_client_factory, patch(
+        "app.services.horary_service.LLMService"
+    ) as mock_llm_class, patch(
+        "app.services.horary_service.SessionLocal", _test_session_local
+    ), patch(
+        "app.api.horary.asyncio.create_task"
+    ):
+        mock_client = AsyncMock()
+        mock_client.get_natal.return_value = {
+            "planets": [
+                {"name": "Sun", "longitude": 0.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries"},
+                {"name": "Moon", "longitude": 30.0, "latitude": 0.0, "speed": 1.0, "sign": "Taurus"},
+                {"name": "Venus", "longitude": 60.0, "latitude": 0.0, "speed": 1.0, "sign": "Gemini"},
+                {"name": "Saturn", "longitude": 90.0, "latitude": 0.0, "speed": 0.05, "sign": "Cancer"},
+            ],
+            "houses": [
+                {"number": 1, "cusp": 0.0}, {"number": 2, "cusp": 30.0},
+                {"number": 3, "cusp": 60.0}, {"number": 4, "cusp": 90.0},
+                {"number": 5, "cusp": 120.0}, {"number": 6, "cusp": 150.0},
+                {"number": 7, "cusp": 180.0}, {"number": 8, "cusp": 210.0},
+                {"number": 9, "cusp": 240.0}, {"number": 10, "cusp": 270.0},
+                {"number": 11, "cusp": 300.0}, {"number": 12, "cusp": 330.0},
+            ],
+            "special_points": [{"name": "ASC", "longitude": 0.0}],
+        }
+        mock_client.get_transits.return_value = {"planets": []}
+        mock_client_factory.return_value = mock_client
+
+        from app.services.llm_service import HoraryGenerationError
+        mock_llm = AsyncMock()
+        mock_llm.generate_horary_answer.side_effect = HoraryGenerationError("bad json")
+        mock_llm_class.return_value = mock_llm
+
+        payload = {
+            "text": "Will the deal close?",
+            "category": "career",
+            "clientTimezone": "UTC",
+            "clientLocalTime": "2026-06-08T15:00:00",
+            "idempotencyKey": "key-paid-refund-flag",
+        }
+        r = await async_client.post("/api/horary/questions", json=payload)
+        assert r.status_code == 201
+        qid = r.json()["id"]
+        qid_uuid = uuid.UUID(qid)
+
+        from app.services.horary_service import HoraryService
+        svc = HoraryService(db_session)
+        await svc._generate_answer_task(qid_uuid)
+
+        r2 = await async_client.get(f"/api/horary/questions/{qid}")
+        assert r2.status_code == 200
+        body = r2.json()
+        assert body["status"] == "failed"
+        assert body["creditRefunded"] is True
+
+
+@pytest.mark.asyncio
+async def test_credit_refunded_false_for_expired_weekly_free_on_failure(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    """W-HORARY-ANSWER-QUALITY-V1 followup §B2: expired weekly-free
+    failure => creditRefunded must be false (no actual refund happened)."""
+    await _login(async_client, make_initdata, user_id=220)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=220, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+
+    # Pre-create a weekly-free credit whose access_week_end is in the past
+    expired_credit = HoraryCredit(
+        user_id=user.id,
+        source="subscription_weekly_free",
+        amount=1,
+        used_amount=0,
+        access_week_start=datetime(2026, 5, 25, 0, 0, tzinfo=timezone.utc),
+        access_week_end=datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc),
+    )
+    db_session.add(expired_credit)
+    await db_session.commit()
+
+    from datetime import datetime as _dt
+    from app.db.models import HoraryCreditSpend
+    import hashlib
+    payload_json = json.dumps(
+        {"text": "Will I win?", "category": "other", "client_timezone": "UTC"},
+        sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    )
+    request_hash = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+    now = _dt(2026, 6, 9, 12, 0, tzinfo=timezone.utc)
+    question = HoraryQuestion(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        text="Will I win?",
+        category="other",
+        status="processing",
+        client_timezone="UTC",
+        idempotency_key="key-expired-week-endpoint",
+        request_hash=request_hash,
+        spent_credit_id=expired_credit.id,
+    )
+    db_session.add(question)
+    spend = HoraryCreditSpend(
+        user_id=user.id,
+        credit_id=expired_credit.id,
+        question_id=question.id,
+        amount=1,
+        idempotency_key="key-expired-week-endpoint",
+    )
+    db_session.add(spend)
+    expired_credit.used_amount = 1
+    await db_session.commit()
+
+    from app.services.horary_service import HoraryService
+    svc = HoraryService(db_session)
+    question.status = "failed"
+    await db_session.flush()
+    await svc._refund_credit_for_failed_question(db_session, question.id, now)
+    await db_session.commit()
+
+    r = await async_client.get(f"/api/horary/questions/{question.id}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "failed"
+    assert body["creditRefunded"] is False

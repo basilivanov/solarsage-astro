@@ -77,7 +77,7 @@ def _to_question_read(q) -> HoraryQuestionRead:
     if q.spent_credit:
         spent_source = q.spent_credit.source
 
-    credit_refunded = q.status == "failed" and q.spent_credit_id is not None
+    credit_refunded = getattr(q, "refund_status", None) == "refunded"
 
     return HoraryQuestionRead(
         id=str(q.id),
