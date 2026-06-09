@@ -13,8 +13,10 @@ function renderForm(props: Record<string, unknown> = {}) {
 }
 
 describe("HoraryForm — blocked reason on invalid submit", () => {
-  it("shows blocked reason when location is missing", () => {
+  it("shows blocked reason when location is missing but text is valid", () => {
     renderForm();
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "Выйду ли я замуж в этом году?" } });
     const button = screen.getByRole("button", { name: /Получить ответ карты/ });
     fireEvent.click(button);
     expect(screen.getByTestId("horary-blocked-reason")).toBeTruthy();
@@ -36,13 +38,19 @@ describe("HoraryForm — blocked reason on invalid submit", () => {
     expect(screen.getByTestId("horary-blocked-reason").textContent).toMatch(/Напиши вопрос/);
   });
 
-  it("shows blocked reason when no spendable credit", () => {
+  it("shows blocked reason when no spendable credit and text/place are valid", () => {
     render(
       <HoraryForm
         hasSpendableCredit={false}
         onSubmit={vi.fn()}
+        profileCurrentCity="Москва"
+        profileCurrentLat={55.75}
+        profileCurrentLon={37.62}
+        profileCurrentTz="Europe/Moscow"
       />
     );
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "Выйду ли я замуж в этом году?" } });
     const button = screen.getByRole("button", { name: /Получить ответ карты/ });
     fireEvent.click(button);
     expect(screen.getByTestId("horary-blocked-reason")).toBeTruthy();

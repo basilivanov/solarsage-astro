@@ -26,7 +26,7 @@ export function SpheresStrip({ spheres }: Props) {
               <h3 className="font-serif text-[18px] leading-tight text-foreground">
                 {sphere.title}
               </h3>
-              <span className="text-[12px] font-medium text-primary">{sphere.score.toFixed(1)}</span>
+              <span className="text-[11px] text-muted-foreground/70">#{sphere.rank}</span>
             </div>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
               {sphere.description}

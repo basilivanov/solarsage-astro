@@ -92,12 +92,12 @@ export function HoraryForm({
 
     if (!isValid) {
       let reason = ""
-      if (!hasSpendableCredit) {
-        reason = "Нужен доступный хорарный вопрос"
+      if (text.trim().length < 5) {
+        reason = "Напиши вопрос (минимум 5 символов)"
       } else if (!hasQuestionPlace) {
         reason = "Укажи место вопроса"
-      } else if (text.trim().length < 5) {
-        reason = "Напиши вопрос (минимум 5 символов)"
+      } else if (!hasSpendableCredit) {
+        reason = "Нужен доступный хорарный вопрос"
       }
       setBlockedReason(reason)
       setShakeKey((k) => k + 1)

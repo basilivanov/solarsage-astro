@@ -22,15 +22,10 @@ export function PlanetsRow({ planets }: Props) {
       <div className="grid grid-cols-1 gap-3">
         {visible.map((planet) => (
           <div key={planet.id} className="rounded-2xl border border-border/70 bg-card p-4">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <h3 className="font-serif text-[17px] leading-tight text-foreground">
                 {planet.name}
               </h3>
-              {typeof planet.score === "number" && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary">
-                  {planet.score > 0 ? `+${planet.score.toFixed(2)}` : planet.score.toFixed(2)}
-                </span>
-              )}
             </div>
             {(planet.sign || planet.house) ? (
               <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
