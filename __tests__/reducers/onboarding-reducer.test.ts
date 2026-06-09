@@ -72,6 +72,22 @@ describe('onboardingReducer', () => {
     });
     expect(state.birthPlace).toEqual(city);
   });
+
+  it('should set gender to male', () => {
+    const state = onboardingReducer(initialOnboardingState, {
+      type: 'set_gender',
+      value: 'male',
+    });
+    expect(state.gender).toBe('male');
+  });
+
+  it('should set gender to female', () => {
+    const state = onboardingReducer(initialOnboardingState, {
+      type: 'set_gender',
+      value: 'female',
+    });
+    expect(state.gender).toBe('female');
+  });
 });
 
 describe('isValidBirthDate', () => {
@@ -174,6 +190,33 @@ describe('isStepValid', () => {
   it('done is always valid', () => {
     expect(isStepValid({ ...initialOnboardingState, step: 'done' })).toBe(true);
   });
+
+  it('gender step requires non-null gender', () => {
+    const state: OnboardingState = {
+      ...initialOnboardingState,
+      step: 'gender',
+      gender: null,
+    };
+    expect(isStepValid(state)).toBe(false);
+  });
+
+  it('gender step is valid with male', () => {
+    const state: OnboardingState = {
+      ...initialOnboardingState,
+      step: 'gender',
+      gender: 'male',
+    };
+    expect(isStepValid(state)).toBe(true);
+  });
+
+  it('gender step is valid with female', () => {
+    const state: OnboardingState = {
+      ...initialOnboardingState,
+      step: 'gender',
+      gender: 'female',
+    };
+    expect(isStepValid(state)).toBe(true);
+  });
 });
 
 describe('selectors', () => {
@@ -219,9 +262,9 @@ describe('selectors', () => {
     expect(selectProgress(state)).toBe(100);
   });
 
-  it('selectProgress returns 50 at place step', () => {
+  it('selectProgress returns 40 at place step (5 divisions)', () => {
     const state: OnboardingState = { ...initialOnboardingState, step: 'place' };
-    expect(selectProgress(state)).toBe(50);
+    expect(selectProgress(state)).toBe(40);
   });
 
   it('selectIsFirstStep returns true at welcome', () => {

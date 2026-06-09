@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const mockGet = vi.fn();
+
 vi.mock("@/lib/api/horary", () => ({
   getHoraryQuestion: (...args: unknown[]) => mockGet(...args),
 }));
@@ -122,5 +123,46 @@ describe("HoraryAnswerPage — failed/error state", () => {
       },
       { timeout: 2000 }
     );
+  });
+
+  it("shows not found message on 404 (null response)", async () => {
+    mockGet.mockResolvedValue(null);
+
+    await renderAndAwait("notfound");
+
+    await waitFor(() => {
+      expect(screen.getByText(/Вопрос не найден/)).toBeTruthy();
+      expect(screen.getByText(/ссылка устарела/)).toBeTruthy();
+    }, { timeout: 2000 });
+  });
+
+  it("shows auth error on 401", async () => {
+    mockGet.mockRejectedValue(Object.assign(new Error("Unauthorized"), { name: "HoraryApiError", status: 401 }));
+
+    await renderAndAwait("noauth");
+
+    await waitFor(() => {
+      expect(screen.getByText(/Нужно авторизоваться/)).toBeTruthy();
+    }, { timeout: 2000 });
+  });
+
+  it("shows server error on 500", async () => {
+    mockGet.mockRejectedValue(Object.assign(new Error("Server error"), { name: "HoraryApiError", status: 500 }));
+
+    await renderAndAwait("servererr");
+
+    await waitFor(() => {
+      expect(screen.getByText(/Сервер временно недоступен/)).toBeTruthy();
+    }, { timeout: 2000 });
+  });
+
+  it("shows network error on non-HTTP failure", async () => {
+    mockGet.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await renderAndAwait("networkerr");
+
+    await waitFor(() => {
+      expect(screen.getByText(/Нет соединения/)).toBeTruthy();
+    }, { timeout: 2000 });
   });
 });

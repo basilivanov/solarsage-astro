@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 
 vi.mock('@/lib/log', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -9,6 +9,9 @@ const store = new Map<string, string>()
 
 beforeEach(() => {
   store.clear()
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: false,
+  })
   Object.defineProperty(window, 'localStorage', {
     value: {
       getItem: vi.fn((key: string) => store.get(key) ?? null),
@@ -22,44 +25,44 @@ beforeEach(() => {
 import { useOnboarded } from '@/hooks/use-onboarded'
 
 describe('useOnboarded', () => {
-  it('returns onboarded=false when no localStorage entry', () => {
+  it('returns onboarded=false when no localStorage entry', async () => {
     const { result } = renderHook(() => useOnboarded())
-    expect(result.current.onboarded).toBe(false)
+    await waitFor(() => expect(result.current.onboarded).toBe(false))
   })
 
-  it('reads onboarded=true from localStorage on mount', () => {
+  it('reads onboarded=true from localStorage on mount', async () => {
     store.set('lumen:onboarded', '1')
     const { result } = renderHook(() => useOnboarded())
-    expect(result.current.onboarded).toBe(true)
+    await waitFor(() => expect(result.current.onboarded).toBe(true))
   })
 
-  it('reads any non-"1" value as false', () => {
+  it('reads any non-"1" value as false', async () => {
     store.set('lumen:onboarded', '0')
     const { result } = renderHook(() => useOnboarded())
-    expect(result.current.onboarded).toBe(false)
+    await waitFor(() => expect(result.current.onboarded).toBe(false))
   })
 
-  it('setOnboarded(true) writes "1" to localStorage', () => {
+  it('setOnboarded(true) writes "1" to localStorage', async () => {
     const { result } = renderHook(() => useOnboarded())
     act(() => result.current.setOnboarded(true))
-    expect(result.current.onboarded).toBe(true)
+    await waitFor(() => expect(result.current.onboarded).toBe(true))
     expect(store.get('lumen:onboarded')).toBe('1')
   })
 
-  it('setOnboarded(false) removes key from localStorage', () => {
+  it('setOnboarded(false) removes key from localStorage', async () => {
     store.set('lumen:onboarded', '1')
     const { result } = renderHook(() => useOnboarded())
-    expect(result.current.onboarded).toBe(true)
+    await waitFor(() => expect(result.current.onboarded).toBe(true))
 
     act(() => result.current.setOnboarded(false))
     expect(result.current.onboarded).toBe(false)
     expect(store.has('lumen:onboarded')).toBe(false)
   })
 
-  it('resetOnboarded removes key and sets false', () => {
+  it('resetOnboarded removes key and sets false', async () => {
     store.set('lumen:onboarded', '1')
     const { result } = renderHook(() => useOnboarded())
-    expect(result.current.onboarded).toBe(true)
+    await waitFor(() => expect(result.current.onboarded).toBe(true))
 
     act(() => result.current.resetOnboarded())
     expect(result.current.onboarded).toBe(false)

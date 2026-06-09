@@ -70,7 +70,7 @@ export function OnboardingFlow({ onComplete }: Props) {
       sameAsBirth: state.sameAsBirth,
       birthdayCity: birthdayCityStr,
       birthdaySameAsCurrent: state.birthdaySameAsCurrent,
-      gender: state.gender ?? "female",
+      gender: state.gender,
     }
 
     // Save to localStorage first (for immediate access)

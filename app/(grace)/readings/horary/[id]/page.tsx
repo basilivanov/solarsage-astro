@@ -5,7 +5,7 @@ import Link from "next/link"
 import { AlertOctagon, ChevronLeft, Sparkles } from "lucide-react"
 import { HoraryAnswerView } from "@/components/readings/horary/horary-answer-view"
 import { HoraryProgress } from "@/components/readings/horary/horary-progress"
-import { getHoraryQuestion, HoraryApiError } from "@/lib/api/horary"
+import { getHoraryQuestion } from "@/lib/api/horary"
 import type { HoraryQuestionRead } from "@/packages/contracts"
 
 type Props = {
@@ -37,10 +37,11 @@ export default function HoraryAnswerPage({ params }: Props) {
       })
       .catch((err) => {
         console.error("[HoraryAnswerPage] Error loading question:", err)
-        if (err instanceof HoraryApiError) {
-          if (err.status === 401 || err.status === 403) {
+        if ((err as Error)?.name === "HoraryApiError") {
+          const apiErr = err as Error & { status: number }
+          if (apiErr.status === 401 || apiErr.status === 403) {
             setLoadError("auth")
-          } else if (err.status >= 500) {
+          } else if (apiErr.status >= 500) {
             setLoadError("server")
           } else {
             setLoadError("unknown")
@@ -87,7 +88,7 @@ export default function HoraryAnswerPage({ params }: Props) {
         }
       } catch (err) {
         console.error("[HoraryAnswerPage] Poll error:", err)
-        if (err instanceof HoraryApiError && err.status === 401) {
+        if ((err as Error)?.name === "HoraryApiError" && (err as Error & { status: number }).status === 401) {
           clearInterval(interval)
           setLoadError("auth")
         }

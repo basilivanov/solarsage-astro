@@ -16,6 +16,7 @@ describe('ProfileSchema', () => {
     birthdayCity: 'Moscow',
     sameAsBirth: false,
     birthdaySameAsCurrent: false,
+    gender: 'male',
   }
 
   it('validates a complete valid Profile', () => {
@@ -74,6 +75,7 @@ describe('safeValidateProfile', () => {
       birthdayCity: 'City',
       sameAsBirth: true,
       birthdaySameAsCurrent: true,
+      gender: 'male',
     }
     const result = safeValidateProfile(valid)
     expect(result.success).toBe(true)
