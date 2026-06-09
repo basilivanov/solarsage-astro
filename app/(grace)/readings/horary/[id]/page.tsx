@@ -5,7 +5,7 @@ import Link from "next/link"
 import { AlertOctagon, ChevronLeft, Sparkles } from "lucide-react"
 import { HoraryAnswerView } from "@/components/readings/horary/horary-answer-view"
 import { HoraryProgress } from "@/components/readings/horary/horary-progress"
-import { getHoraryQuestion } from "@/lib/api/horary"
+import { getHoraryQuestion, HoraryApiError } from "@/lib/api/horary"
 import type { HoraryQuestionRead } from "@/packages/contracts"
 
 type Props = {
@@ -16,7 +16,7 @@ export default function HoraryAnswerPage({ params }: Props) {
   const { id } = use(params)
   const [question, setQuestion] = useState<HoraryQuestionRead | null>(null)
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(false)
+  const [loadError, setLoadError] = useState<string | false>(false)
   const [pollingTimedOut, setPollingTimedOut] = useState(false)
 
   useEffect(() => {
@@ -26,13 +26,28 @@ export default function HoraryAnswerPage({ params }: Props) {
     setLoadError(false)
     getHoraryQuestion(id)
       .then((q) => {
+        if (!q) {
+          setLoadError("not_found")
+          setLoading(false)
+          return
+        }
         setQuestion(q)
         setPollingTimedOut(false)
         setLoading(false)
       })
       .catch((err) => {
         console.error("[HoraryAnswerPage] Error loading question:", err)
-        setLoadError(true)
+        if (err instanceof HoraryApiError) {
+          if (err.status === 401 || err.status === 403) {
+            setLoadError("auth")
+          } else if (err.status >= 500) {
+            setLoadError("server")
+          } else {
+            setLoadError("unknown")
+          }
+        } else {
+          setLoadError("network")
+        }
         setLoading(false)
       })
   }, [id])
@@ -72,6 +87,10 @@ export default function HoraryAnswerPage({ params }: Props) {
         }
       } catch (err) {
         console.error("[HoraryAnswerPage] Poll error:", err)
+        if (err instanceof HoraryApiError && err.status === 401) {
+          clearInterval(interval)
+          setLoadError("auth")
+        }
       }
     }, 2000)
 
@@ -89,13 +108,22 @@ export default function HoraryAnswerPage({ params }: Props) {
   }
 
   if (loadError || !question) {
+    const errorConfig =
+      loadError === "auth"
+        ? { title: "Нужно авторизоваться", message: "Сессия истекла. Войди в приложение заново." }
+        : loadError === "server"
+          ? { title: "Сервер временно недоступен", message: "Попробуй обновить страницу или зайти позже." }
+          : loadError === "network"
+            ? { title: "Нет соединения", message: "Проверь интернет и попробуй снова." }
+            : { title: "Вопрос не найден", message: "Возможно, ссылка устарела или вопрос был удалён." }
+
     return (
       <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
         <h3 className="font-serif text-[20px] font-bold text-foreground">
-          Вопрос не найден
+          {errorConfig.title}
         </h3>
         <p className="text-[14px] text-muted-foreground max-w-[280px]">
-          Возможно, ссылка устарела или вопрос был удалён.
+          {errorConfig.message}
         </p>
         <Link
           href="/readings/horary"
