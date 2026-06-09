@@ -74,6 +74,18 @@ _SPHERE_TITLES = {
     "self": "Личность",
 }
 
+_SPHERE_TITLES_CAP = {
+    "thinking_speech_learning": "Мысли · речь · учёба",
+    "work_status_achievement": "Работа · статус · достижения",
+    "relationships_partnership": "Отношения · партнёрство",
+    "body_energy_health": "Тело · энергия · здоровье",
+    "money_security_resources": "Деньги · ресурсы",
+    "emotions_inner_world": "Эмоции · внутренний мир",
+    "family_roots_ancestors": "Семья · корни · предки",
+    "creativity_self_expression": "Творчество · самовыражение",
+    "spirit_meaning_transformation": "Дух · смысл · трансформация",
+}
+
 _PLANET_TITLES = {
     "Sun": "Солнце",
     "Moon": "Луна",
@@ -118,7 +130,7 @@ def _planet_label(name: str | None) -> str:
 
 
 def _sphere_label(sphere_id: str) -> str:
-    return _SPHERE_TITLES.get(sphere_id, sphere_id.replace("_", " ").title())
+    return _SPHERE_TITLES_CAP.get(sphere_id) or _SPHERE_TITLES.get(sphere_id) or sphere_id.replace("_", " ").title()
 
 
 def _find_special_point(chart_data: dict, name: str) -> dict | None:
@@ -136,16 +148,17 @@ def _aspect_count(chart_data: dict) -> int:
     return count
 
 
-def _extract_planet_scores(scores: dict, chart_data: dict) -> dict[str, float]:
+def _extract_planet_scores(scores: dict, chart_data: dict, signals=None) -> dict[str, float]:
     planet_scores: dict[str, float] = {}
     for planet in chart_data.get("planets", []):
         name = planet.get("name")
         if not name:
             continue
         total = 0.0
-        for sphere_id, sphere_score in scores.get("sphere_scores", {}).items():
-            if sphere_id and sphere_score and name.upper() in sphere_id.upper():
-                total += float(sphere_score)
+        if signals:
+            for s in signals:
+                if s.planet == name or s.target_planet == name:
+                    total += float(s.strength)
         planet_scores[name] = round(total, 2)
     return planet_scores
 
@@ -204,10 +217,10 @@ def _build_spheres(scores, gender: str) -> list[NatalSpherePreview]:
     return result
 
 
-def _build_planets(chart_data, scores, gender: str) -> list[NatalPlanetPreview]:
+def _build_planets(chart_data, scores, gender: str, signals=None) -> list[NatalPlanetPreview]:
     forms = _gender_forms(gender)
     houses = chart_data.get("houses", [])
-    planet_scores = _extract_planet_scores(scores, chart_data)
+    planet_scores = _extract_planet_scores(scores, chart_data, signals)
     planets: list[NatalPlanetPreview] = []
 
     for planet in chart_data.get("planets", [])[:5]:
@@ -480,7 +493,7 @@ class NatalService:
         )
         highlights = _build_highlights(chart_data, gender)
         spheres = _build_spheres(scores, gender)
-        planets = _build_planets(chart_data, scores, gender)
+        planets = _build_planets(chart_data, scores, gender, signals)
         chapters = _build_chapters(gender)
         personal_hook = _build_personal_hook(meta, highlights, spheres, gender)
         calculation_stats = _build_calculation_stats(chart_data, scores)
