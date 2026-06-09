@@ -22,6 +22,7 @@
     "test:quick": "vitest run && cd apps/api && source .venv/bin/activate && python -m pytest tests/ -q -n auto",
     "contracts:generate": "bash scripts/contracts/generate.sh",
     "contracts:check": "bash scripts/contracts/generate.sh && git diff --exit-code -- packages/contracts/openapi.json packages/contracts/_generated.ts",
+    "guardrails:prod": "bash scripts/check_prod_guard.sh",
     "guardrails": "bash scripts/guardrails.sh full",
     "guardrails:docs": "bash scripts/guardrails.sh docs",
     "guardrails:secrets": "bash scripts/guardrails.sh secrets",

@@ -1,9 +1,18 @@
-/**
- * Демо-режим — флаг для v0.app и локальной разработки.
- *
- * Когда NEXT_PUBLIC_DEMO_MODE=true:
- * - Все API-запросы подменяются на моки из lib/demo-data.ts
- * - Telegram auth пропускается (в v0 нет window.Telegram.WebApp)
- * - Все экраны работают без реального бэкенда
- */
-export const IS_DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true"
+// ############################################################################
+// AI_HEADER: MODULE_DEMO_MODE
+// ROLE: Resolve and gate demo/mock mode flag for local development.
+// DEPENDENCIES: ./env/production-guard
+// GRACE_ANCHORS: [DEMO_MODE_RESOLVE]
+// ############################################################################
+
+import { assertProductionSafety } from "./env/production-guard";
+
+/* START_BLOCK: DEMO_MODE_RESOLVE */
+export function resolveDemoMode(): boolean {
+  assertProductionSafety();
+  return process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+}
+
+// Retained for backward compatibility
+export const IS_DEMO_MODE = resolveDemoMode();
+/* END_BLOCK: DEMO_MODE_RESOLVE */

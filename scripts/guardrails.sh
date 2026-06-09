@@ -233,10 +233,16 @@ run_frontend() {
   bash "$ROOT/scripts/grace/check-negative.sh"
 }
 
+run_prod_guard() {
+  section "guardrails:prod"
+  bash "$ROOT/scripts/check_prod_guard.sh"
+}
+
 run_vercel() {
   run_docs
   run_secrets
   run_frontend
+  run_prod_guard
 }
 
 run_full() {
@@ -246,6 +252,7 @@ run_full() {
   run_contracts
   run_backend
   run_frontend
+  run_prod_guard
 }
 
 run_strict() {
@@ -266,6 +273,7 @@ case "$1" in
   backend) run_backend ;;
   backend-grace) run_backend_grace ;;
   frontend) run_frontend ;;
+  prod|guardrails:prod) run_prod_guard ;;
   vercel) run_vercel ;;
   full|all) run_full ;;
   strict) run_strict ;;

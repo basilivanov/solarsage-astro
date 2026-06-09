@@ -1,3 +1,8 @@
+import { assertProductionSafety } from "./lib/env/production-guard.mjs";
+
+// Build-time production environment check (fixes W-PROD-DEMO-GUARD)
+assertProductionSafety();
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
