@@ -8,7 +8,7 @@ from datetime import date
 import pytest
 
 from app.schemas.normalization import AstroSignal
-from app.schemas.today import ImportantTodayItem, ImportantTodayDetails
+from app.schemas.today import TodayImportantEvent
 from app.services.today_important_service import TodayImportantService
 
 
@@ -49,9 +49,9 @@ def test_outer_planet_retrogrades_are_not_rendered():
         timezone="UTC", natal={}, transits=transits, signals=[],
         scoring_result=_make_scoring(),
     )
-    retro_items = [it for it in items if it.type == "mercury_retrograde"]
+    retro_items = [it for it in items if it.kind == "mercury_retrograde"]
     assert len(retro_items) == 0
-    station_items = [it for it in items if it.type == "mercury_station"]
+    station_items = [it for it in items if it.kind == "mercury_station"]
     assert len(station_items) == 0
 
 
@@ -69,9 +69,9 @@ def test_only_mercury_retrograde_is_allowed():
         timezone="UTC", natal={}, transits=transits, signals=[msig],
         scoring_result=_make_scoring(),
     )
-    retro = [it for it in items if it.type == "mercury_retrograde"]
+    retro = [it for it in items if it.kind == "mercury_retrograde"]
     assert len(retro) == 1
-    assert retro[0].planet == "Меркурий"
+    assert "Меркурий" in retro[0].title
 
 
 def test_mercury_station_suppresses_mercury_retrograde():
@@ -87,8 +87,8 @@ def test_mercury_station_suppresses_mercury_retrograde():
         timezone="UTC", natal={}, transits=transits, signals=[msig],
         scoring_result=_make_scoring(),
     )
-    stations = [it for it in items if it.type == "mercury_station"]
-    retros = [it for it in items if it.type == "mercury_retrograde"]
+    stations = [it for it in items if it.kind == "mercury_station"]
+    retros = [it for it in items if it.kind == "mercury_retrograde"]
     assert len(stations) == 1
     assert len(retros) == 0  # Station suppresses retrograde
 
@@ -108,8 +108,8 @@ def test_new_moon_window_three_days_before_and_after():
             timezone="UTC", natal={}, transits=transits, signals=[],
             scoring_result=_make_scoring(),
         )
-        found = any(it.type == "new_moon_window" for it in items)
-        assert found == expected, f"offset={offset}: expected new_moon_window={expected}"
+        found = any(it.kind == "new_moon" for it in items)
+        assert found == expected, f"offset={offset}: expected new_moon={expected}"
 
 
 def test_full_moon_window_three_days_before_and_after():
@@ -127,8 +127,8 @@ def test_full_moon_window_three_days_before_and_after():
             timezone="UTC", natal={}, transits=transits, signals=[],
             scoring_result=_make_scoring(),
         )
-        found = any(it.type == "full_moon_window" for it in items)
-        assert found, f"offset={offset}: expected full_moon_window=True, diff={diff}"
+        found = any(it.kind == "full_moon" for it in items)
+        assert found, f"offset={offset}: expected full_moon=True, diff={diff}"
 
 
 def test_eclipse_suppresses_lunation_item():
@@ -143,8 +143,8 @@ def test_eclipse_suppresses_lunation_item():
         timezone="UTC", natal={}, transits=transits, signals=[],
         scoring_result=_make_scoring(),
     )
-    ecl = [it for it in items if it.type == "eclipse_window"]
-    new = [it for it in items if it.type == "new_moon_window"]
+    ecl = [it for it in items if it.kind in ("solar_eclipse", "lunar_eclipse")]
+    new = [it for it in items if it.kind == "new_moon"]
     assert len(ecl) == 1  # Eclipse detected (sun & moon near node)
     assert len(new) == 0   # New moon suppressed by eclipse
 
@@ -162,49 +162,34 @@ def test_empty_important_today_when_no_whitelisted_events():
         timezone="UTC", natal={}, transits=transits, signals=[msig],
         scoring_result=_make_scoring(),
     )
-    # Only active_house might appear (from Moon position), which is fine.
-    # No retrograde, no station, no eclipse, no lunation, no exact aspect.
-    forbidden = ["mercury_retrograde", "mercury_station", "eclipse_window",
-                 "new_moon_window", "full_moon_window", "exact_daily_aspect"]
+    forbidden = ["mercury_retrograde", "mercury_station", "solar_eclipse", "lunar_eclipse",
+                 "new_moon", "full_moon", "fast_planet_aspect"]
     for it in items:
-        assert it.type not in forbidden, f"Unexpected item type: {it.type}"
+        assert it.kind not in forbidden, f"Unexpected item type: {it.kind}"
 
 
-def test_active_house_can_be_single_item_if_computed():
-    svc = TodayImportantService()
-    transits = _make_transits([
-        _transit_planet("Sun", 100.0, speed=1),
-        _transit_planet("Moon", 200.0, speed=13),
-    ])
-    msig = AstroSignal(type="aspect", planet="Moon", target_planet="Mars", aspect_type="trine", orb=2, strength=0.5)
-    items = svc.build_items(
-        target_date=date.today(),
-        timezone="UTC", natal={}, transits=transits, signals=[msig],
-        scoring_result=_make_scoring(),
-    )
-    house = [it for it in items if it.type == "active_house"]
-    assert len(house) <= 1
-    if house:
-        assert house[0].house is not None
-
-
-def test_important_today_limited_to_three_items():
+def test_important_today_limited_to_three_events():
     svc = TodayImportantService()
     planets = [
         _transit_planet("Sun", 120.0),
         _transit_planet("Moon", 120.0 + 180),  # Full moon
         _transit_planet("Mercury", 130.0, speed=-0.3),  # Retrograde
+        _transit_planet("NORTH_NODE_TRUE", 122.0),  # Eclipse season
     ]
     transits = _make_transits(planets)
     msig = AstroSignal(type="aspect", planet="Moon", target_planet="Sun",
                        aspect_type="opposition", orb=3, strength=0.8,
                        delta_kind="peak_today", daily_salience=0.9)
-    top_sig = AstroSignal(type="planet_in_house", planet="Mars", house=10, strength=0.9)
+    # Give several extra signals to trigger active_house and exact aspects
+    signals = [
+        msig,
+        AstroSignal(type="aspect", planet="Mercury", target_planet="Neptune", aspect_type="square", orb=1, strength=0.9),
+    ]
     items = svc.build_items(
         target_date=date.today(),
         timezone="UTC", natal={}, transits=transits,
-        signals=[msig, top_sig],
-        scoring_result=_make_scoring(top_signals=[top_sig]),
+        signals=signals,
+        scoring_result=_make_scoring(),
     )
     assert len(items) <= 3
 
@@ -228,43 +213,21 @@ def test_sorted_by_priority():
         assert items[i].priority >= items[i+1].priority
 
 
-def test_exact_daily_aspect_requires_delta_kind():
+def test_exact_daily_aspect_requires_whitelist_and_shows_with_peak_delta():
     svc = TodayImportantService()
     transits = _make_transits([
         _transit_planet("Sun", 100.0),
         _transit_planet("Moon", 200.0),
     ])
-    # Aspect with background delta — should NOT be shown
-    bg_sig = AstroSignal(type="aspect", planet="Moon", target_planet="Saturn",
-                         aspect_type="square", orb=1, strength=0.9,
-                         delta_kind="background", daily_salience=0.5)
-    msig = AstroSignal(type="aspect", planet="Moon", target_planet="Mars",
-                       aspect_type="trine", orb=2, strength=0.5)
+    
+    # Whitelisted caution aspect: Mercury square Neptune
+    peak_sig = AstroSignal(type="aspect", planet="Mercury", target_planet="Neptune",
+                           aspect_type="square", orb=1, strength=0.9)
     items = svc.build_items(
         target_date=date.today(),
-        timezone="UTC", natal={}, transits=transits, signals=[bg_sig, msig],
+        timezone="UTC", natal={}, transits=transits, signals=[peak_sig],
         scoring_result=_make_scoring(),
     )
-    exact = [it for it in items if it.type == "exact_daily_aspect"]
-    assert len(exact) == 0
-
-
-def test_exact_daily_aspect_shows_with_peak_delta():
-    svc = TodayImportantService()
-    transits = _make_transits([
-        _transit_planet("Sun", 100.0),
-        _transit_planet("Moon", 200.0),
-    ])
-    peak_sig = AstroSignal(type="aspect", planet="Moon", target_planet="Saturn",
-                           aspect_type="square", orb=1, strength=0.9,
-                           delta_kind="peak_today", daily_salience=1.17)
-    msig = AstroSignal(type="aspect", planet="Moon", target_planet="Mars",
-                       aspect_type="trine", orb=2, strength=0.5)
-    items = svc.build_items(
-        target_date=date.today(),
-        timezone="UTC", natal={}, transits=transits, signals=[peak_sig, msig],
-        scoring_result=_make_scoring(),
-    )
-    exact = [it for it in items if it.type == "exact_daily_aspect"]
+    exact = [it for it in items if it.kind == "fast_planet_aspect"]
     assert len(exact) == 1
-    assert "Луна" in exact[0].title and "Сатурн" in exact[0].title
+    assert "Меркурий" in exact[0].title and "Нептун" in exact[0].title

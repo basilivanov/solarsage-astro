@@ -1,96 +1,47 @@
-# AI_HEADER
-# module: M-TODAY-IMPORTANT-SERVICE
-# wave: W-PHASE-3
-# purpose: Deterministic "Today Important" — only real daily-impact events.
-#          Whitelist: eclipse_window, new_moon_window, full_moon_window, moon_void,
-#          mercury_retrograde, mercury_station, exact_daily_aspect, active_house.
-#          No outer planet retrogrades/stations, no ingresses, no daily_note fallback.
+# ############################################################################
+# AI_HEADER: MODULE_TODAY_IMPORTANT_SERVICE
+# ROLE: Deterministic "Today Important" — daily-impact astrological alerts.
+# DEPENDENCIES: stdlib only
+# GRACE_ANCHORS: [BUILD_ITEMS, EVENT_CHECKS]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-DAY-SERVICE.important_service
+# purpose: Extract and prioritize key daily transit events for the user.
+# owns:
+#   - apps/api/app/services/today_important_service.py
+# inputs:
+#   - target_date: Date, timezone: str, natal: dict, transits: dict, signals: list[AstroSignal]
+# outputs:
+#   - list[TodayImportantEvent]
+# invariants:
+#   - maximum 3 events returned.
+#   - eclipse events take precedence over regular new/full moons.
+# END_MODULE_CONTRACT: M-DAY-SERVICE.important_service
+
+# START_MODULE_MAP: M-DAY-SERVICE.important_service
+# public_entrypoints:
+#   - TodayImportantService.build_items
+# END_MODULE_MAP: M-DAY-SERVICE.important_service
 
 from __future__ import annotations
 
-from datetime import date as Date, datetime, timedelta
+from datetime import date as Date, datetime, timedelta, timezone
 from typing import Any
 
 from app.schemas.normalization import AstroSignal
-from app.schemas.today import ImportantTodayItem, ImportantTodayDetails
-
-# ── Priority map ────────────────────────────────────────────────────
-
-_PRIORITY: dict[str, int] = {
-    "eclipse_window": 100,
-    "new_moon_window": 90,
-    "full_moon_window": 90,
-    "moon_void": 85,
-    "mercury_station": 80,
-    "mercury_retrograde": 75,
-    "exact_daily_aspect": 70,
-    "active_house": 50,
-}
-
-_LUNATION_WINDOW_DAYS = 3
-_STATION_WINDOW_DAYS = 1
-_ECLIPSE_WINDOW_DAYS = 3
-
-# ── Fallback details ─────────────────────────────────────────────────
-
-_DETAILS_FALLBACK = {
-    "eclipse_window": ImportantTodayDetails(
-        meaning="Затмение сжимает во времени события, которые в обычный период растянулись бы на месяцы.",
-        why_important="Решения, принятые сейчас, могут иметь длинный хвост — на полгода и больше.",
-        personal_context="Смотри, в каком доме происходит затмение: эта сфера будет главной точкой перемен в ближайшие месяцы.",
-    ),
-    "new_moon_window": ImportantTodayDetails(
-        meaning="Новолуние начинает новый лунный цикл и задаёт тему ближайших недель.",
-        why_important="Это хороший момент для намерений и перезапуска, но не всегда для резкого внешнего старта.",
-        personal_context="Смотри, через какой дом проходит новолуние: там начинается новая внутренняя сборка.",
-    ),
-    "full_moon_window": ImportantTodayDetails(
-        meaning="Полнолуние подсвечивает накопленные темы и делает эмоции заметнее.",
-        why_important="То, что раньше было фоном, может выйти наружу и потребовать реакции.",
-        personal_context="Дом полнолуния показывает сферу, где проще увидеть результат, напряжение или необходимость завершения.",
-    ),
-    "moon_void": ImportantTodayDetails(
-        meaning="Луна уже прошла последний значимый аспект в знаке и находится в паузе до перехода в следующий знак.",
-        why_important="В такие окна лучше завершать начатое, чем запускать новое: договорённости могут позже пересобраться.",
-        personal_context="У тебя это связано с активным домом дня, поэтому лучше перепроверять короткие решения и не форсировать запуск.",
-    ),
-    "mercury_retrograde": ImportantTodayDetails(
-        meaning="Меркурий движется ретроградно, поэтому темы общения, документов, решений и маршрутов чаще требуют пересмотра.",
-        why_important="Сейчас лучше закладывать время на второй круг: уточнение, перепроверку, повторный разговор.",
-        personal_context="Если день затрагивает рабочие или партнёрские дома, это особенно заметно в договорённостях, сроках и формулировках.",
-    ),
-    "mercury_station": ImportantTodayDetails(
-        meaning="Меркурий замедляется перед разворотом — информация, планы и разговоры требуют паузы.",
-        why_important="Вблизи разворота Меркурия связь может сбоить, а решения — требовать пересмотра позже.",
-        personal_context="Если Меркурий затрагивает твои рабочие или бытовые дома, дай себе больше времени на уточнения.",
-    ),
-    "exact_daily_aspect": ImportantTodayDetails(
-        meaning="Точный аспект сегодня означает, что взаимодействие планет достигает пика именно в этот день.",
-        why_important="В момент точного аспекта энергия сфокусирована: событие или решение может иметь более заметный результат.",
-        personal_context="Этот аспект связан с твоими натальными точками, поэтому эффект будет личным, а не общим.",
-    ),
-    "active_house": ImportantTodayDetails(
-        meaning="Этот дом показывает главную сцену дня — сферу, через которую сильнее всего проявляются текущие транзиты.",
-        why_important="Даже небольшие события в этой зоне могут ощущаться заметнее обычного.",
-        personal_context="Сегодня главные сигналы собираются вокруг этой сферы, поэтому лучше дать ей внимание и не распыляться.",
-    ),
-}
-
-# ── Planet name helpers ──────────────────────────────────────────────
+from app.schemas.today import TodayImportantEvent
 
 _PLANET_NAMES_RU: dict[str, str] = {
-    "Sun": "Солнце", "Moon": "Луна",
-    "Mercury": "Меркурий", "Venus": "Венера", "Mars": "Марс",
-    "Jupiter": "Юпитер", "Saturn": "Сатурн", "Uranus": "Уран",
-    "Neptune": "Нептун", "Pluto": "Плутон",
-}
-
-_ASPECT_RU: dict[str, str] = {
-    "conjunction": "соединении",
-    "opposition": "оппозиции",
-    "trine": "трине",
-    "square": "квадратуре",
-    "sextile": "секстиле",
+    "Sun": "Солнце",
+    "Moon": "Луна",
+    "Mercury": "Меркурий",
+    "Venus": "Венера",
+    "Mars": "Марс",
+    "Jupiter": "Юпитер",
+    "Saturn": "Сатурн",
+    "Uranus": "Уран",
+    "Neptune": "Нептун",
+    "Pluto": "Плутон",
 }
 
 _ASPECT_RU_NOMINATIVE = {
@@ -101,30 +52,8 @@ _ASPECT_RU_NOMINATIVE = {
     "sextile": "секстиль",
 }
 
-_HOUSE_MEANINGS_RU: dict[int, str] = {
-    1: "Тело и самочувствие требуют внимания",
-    2: "Финансы и ресурсы в фокусе",
-    3: "Общение и поездки активны",
-    4: "Дом и семья на первом плане",
-    5: "Творчество и радость важны сегодня",
-    6: "Работа и здоровье требуют порядка",
-    7: "Партнёрство и договорённости в приоритете",
-    8: "Глубинные процессы и общие ресурсы",
-    9: "Обучение и расширение горизонтов",
-    10: "Рабочие темы и ответственность ощущаются сильнее",
-    11: "Друзья и планы на будущее",
-    12: "Уединение и восстановление",
-}
-
-_HARD_ASPECTS = {"conjunction", "opposition", "square"}
-_FAST_PLANETS = {"Moon", "Sun", "Mercury", "Venus", "Mars"}
-_OUTER_PLANETS = {"Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"}
-
 
 class TodayImportantService:
-    """Collect only daily-impact items for the 'Today Important' block.
-    Whitelist-only: no outer planet retrogrades, no ingresses, no daily_note fallbacks."""
-
     def build_items(
         self,
         target_date: Date,
@@ -132,77 +61,112 @@ class TodayImportantService:
         natal: dict,
         transits: dict,
         signals: list[AstroSignal],
-        scoring_result: dict,
+        scoring_result: dict = None,
         semantic_layer=None,
-    ) -> list[ImportantTodayItem]:
-        items: list[ImportantTodayItem] = []
+    ) -> list[TodayImportantEvent]:
+        # START_FUNCTION_CONTRACT: M-DAY-SERVICE.important_service.build_items
+        # purpose: Scan transit parameters and build the prioritized whitelisted list of events.
+        # inputs: target_date (Date), timezone (str), natal (dict), transits (dict), signals (list[AstroSignal])
+        # returns: list[TodayImportantEvent]
+        # side_effects: none
+        # emitted_logs: none
+        # error_behavior: propagates database/key errors
+        # END_FUNCTION_CONTRACT: M-DAY-SERVICE.important_service.build_items
+        
+        items: list[TodayImportantEvent] = []
 
-        has_eclipse = self._check_eclipse_window(items, transits, target_date)
-        self._check_lunation_window(items, transits, target_date, has_eclipse)
+        # 1. Eclipse and lunation checks
+        has_eclipse = self._check_eclipses(items, transits, target_date)
+        self._check_lunation(items, transits, has_eclipse)
+
+        # 2. Moon Void of Course
         self._check_moon_voc(items, transits, signals, timezone)
-        has_station = self._check_mercury_station(items, transits)
-        if not has_station:
-            self._check_mercury_retrograde(items, transits)
-        self._check_exact_daily_aspect(items, signals, scoring_result)
-        self._check_active_house(items, transits, signals, scoring_result)
 
-        for it in items:
-            if it.details is None:
-                it.details = _DETAILS_FALLBACK.get(it.type)
+        # 3. Mercury retro / station
+        self._check_mercury(items, transits, timezone)
 
+        # 4. Moon Quarter
+        self._check_moon_quarter(items, transits, timezone)
+
+        # 5. Sun Ingress
+        self._check_sun_ingress(items, transits, timezone)
+
+        # 6. Fast Planet Aspects
+        self._check_fast_planet_aspects(items, signals, timezone)
+
+        # Sort by priority, then limit to max 3
         items.sort(key=lambda x: x.priority, reverse=True)
         return items[:3]
 
-    # ── Eclipse window ───────────────────────────────────────────────
-
-    def _check_eclipse_window(self, items: list[ImportantTodayItem], transits: dict, target_date: Date) -> bool:
-        """Detect eclipse and return True if one was added."""
+    def _check_eclipses(self, items: list[TodayImportantEvent], transits: dict, target_date: Date) -> bool:
         transit_planets = transits.get("planets", [])
+        sun = self._find_planet(transit_planets, "Sun")
         moon = self._find_planet(transit_planets, "Moon")
         north_node = self._find_planet(transit_planets, ["NORTH_NODE_TRUE", "NORTH_NODE"])
-        if not moon or not north_node:
-            return False
-
-        moon_lon = moon.get("longitude", 0)
-        node_lon = north_node.get("longitude", 0)
-        dist_to_north = abs(moon_lon - node_lon) % 360
-        dist_to_south = abs(moon_lon - (node_lon + 180)) % 360
-        min_dist = min(dist_to_north, dist_to_south)
-
-        if min_dist >= 18:
-            return False
-
-        sun = self._find_planet(transit_planets, "Sun")
-        if not sun:
+        if not sun or not moon or not north_node:
             return False
 
         sun_lon = sun.get("longitude", 0)
+        moon_lon = moon.get("longitude", 0)
+        node_lon = north_node.get("longitude", 0)
+
+        # Sun near node (eclipse season ±3 days)
         sun_node_dist = min(
             abs(sun_lon - node_lon) % 360,
-            abs(sun_lon - node_lon - 180) % 360,
+            abs(sun_lon - (node_lon + 180)) % 360,
         )
         if sun_node_dist >= 18:
             return False
 
-        # Determine if exact eclipse day (Moon at node) or window day
-        exact = min_dist < 4 and sun_node_dist < 4
-        title = "Затмение сегодня" if exact else "Затменный фон"
+        diff = abs(moon_lon - sun_lon) % 360
+        diff = min(diff, 360 - diff)
 
-        items.append(ImportantTodayItem(
-            id="eclipse",
-            type="eclipse_window",
-            title=title,
-            subtitle="Не форсируй резкие решения — события могут иметь длинный хвост",
-            severity="high_attention",
-            priority=_PRIORITY["eclipse_window"],
-            source="live_calculation",
-        ))
-        return True
+        is_new = diff <= 3 * 12
+        is_full = abs(diff - 180) <= 3 * 12
 
-    # ── Lunation window (new/full moon ±3 days) ──────────────────────
+        if not is_new and not is_full:
+            return False
 
-    def _check_lunation_window(self, items: list[ImportantTodayItem], transits: dict, target_date: Date, has_eclipse: bool):
-        """Detect new/full moon window. Eclipse suppresses lunation items."""
+        # Moon near Node (actual eclipse window)
+        moon_node_dist = min(
+            abs(moon_lon - node_lon) % 360,
+            abs(moon_lon - (node_lon + 180)) % 360,
+        )
+        if moon_node_dist >= 18:
+            return False
+
+        exact = diff < 4 or abs(diff - 180) < 4
+
+        if is_new:
+            title = "Солнечное затмение сегодня" if exact else "Солнечное затмение"
+            items.append(TodayImportantEvent(
+                id="solar_eclipse",
+                kind="solar_eclipse",
+                tone="caution",
+                title=title,
+                summary="Сильная точка разворота. Лучше не принимать резких решений на эмоциях.",
+                priority=100,
+                timezone="UTC",
+            ))
+            return True
+        elif is_full:
+            title = "Лунное затмение сегодня" if exact else "Лунное затмение"
+            items.append(TodayImportantEvent(
+                id="lunar_eclipse",
+                kind="lunar_eclipse",
+                tone="caution",
+                title=title,
+                summary="Сильная точка разворота. Лучше не принимать резких решений на эмоциях.",
+                priority=100,
+                timezone="UTC",
+            ))
+            return True
+
+        return False
+
+    def _check_lunation(self, items: list[TodayImportantEvent], transits: dict, has_eclipse: bool):
+        if has_eclipse:
+            return
         transit_planets = transits.get("planets", [])
         sun = self._find_planet(transit_planets, "Sun")
         moon = self._find_planet(transit_planets, "Moon")
@@ -214,57 +178,48 @@ class TodayImportantService:
         diff = abs(moon_lon - sun_lon) % 360
         diff = min(diff, 360 - diff)
 
-        is_new = diff <= _LUNATION_WINDOW_DAYS * 12  # Moon moves ~12°/day
-        is_full = abs(diff - 180) <= _LUNATION_WINDOW_DAYS * 12
+        is_new = diff <= 3 * 12
+        is_full = abs(diff - 180) <= 3 * 12
 
         if not is_new and not is_full:
             return
-        if has_eclipse and (is_new and diff < 18 or is_full and abs(diff - 180) < 18):
-            return  # Eclipse covers this lunation
 
-        event_type = "new_moon_window" if is_new else "full_moon_window"
         exact = diff < 4 or abs(diff - 180) < 4
 
         if is_new:
             if exact:
                 title = "Новолуние сегодня"
-                subtitle = "День перезапуска, но старт лучше делать мягко"
-                prio = 90
             elif moon_lon < sun_lon or (sun_lon < 30 and moon_lon > 330):
                 title = "Новолуние на подходе"
-                subtitle = "Новая тема собирается — не требуй быстрых результатов"
-                prio = 82
             else:
-                title = "Новолуние ещё ощущается"
-                subtitle = "Новая тема собирается — не требуй быстрых результатов"
-                prio = 82
-        else:
+                title = "Новолуние было 2 дня назад"
+            items.append(TodayImportantEvent(
+                id="new_moon",
+                kind="new_moon",
+                tone="neutral_shift",
+                title=title,
+                summary="День перезагрузки и нового цикла. Лучше не форсировать, а настроить направление.",
+                priority=90 - int(diff / 4),
+                timezone="UTC",
+            ))
+        elif is_full:
             if exact:
                 title = "Полнолуние сегодня"
-                subtitle = "Эмоции и важные темы проявляются ярче"
-                prio = 90
             elif 168 < diff < 180:
                 title = "Полнолуние на подходе"
-                subtitle = "Эмоциональный фон нарастает — важные темы выходят наружу"
-                prio = 82
             else:
-                title = "Полнолуние ещё ощущается"
-                subtitle = "Эмоции и важные темы проявляются ярче"
-                prio = 82
+                title = "Полнолуние было 2 дня назад"
+            items.append(TodayImportantEvent(
+                id="full_moon",
+                kind="full_moon",
+                tone="neutral_shift",
+                title=title,
+                summary="Пик эмоций и ясности. Хорошо завершать, видеть результат, не перегревать конфликты.",
+                priority=90 - int(abs(diff - 180) / 4),
+                timezone="UTC",
+            ))
 
-        items.append(ImportantTodayItem(
-            id=event_type,
-            type=event_type,
-            title=title,
-            subtitle=subtitle,
-            severity="info",
-            priority=prio,
-            source="live_calculation",
-        ))
-
-    # ── Moon Void of Course ─────────────────────────────────────────
-
-    def _check_moon_voc(self, items: list[ImportantTodayItem], transits: dict, signals: list[AstroSignal], tz: str):
+    def _check_moon_voc(self, items: list[TodayImportantEvent], transits: dict, signals: list[AstroSignal], tz: str):
         transit_planets = transits.get("planets", [])
         moon = self._find_planet(transit_planets, "Moon")
         if not moon:
@@ -285,182 +240,201 @@ class TodayImportantService:
             if degrees_to_next < 0:
                 degrees_to_next += 360
             hours_to_next = degrees_to_next / moon_speed
+            
             from zoneinfo import ZoneInfo
             try:
                 user_tz = ZoneInfo(tz)
             except Exception:
                 user_tz = ZoneInfo("UTC")
             now = datetime.now(user_tz)
-            end_time = now + timedelta(hours=hours_to_next)
-
-            items.append(ImportantTodayItem(
+            
+            starts_at_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            ends_at_dt = now + timedelta(hours=hours_to_next)
+            
+            local_time_label = f"до {ends_at_dt.strftime('%H:%M')}"
+            
+            items.append(TodayImportantEvent(
                 id="moon_voc",
-                type="moon_void",
-                title=f"Луна без курса до {end_time.strftime('%H:%M')}",
-                subtitle="Лучше завершать начатое, чем запускать новое",
-                severity="soft_warning",
-                planet="Moon",
-                ends_at=end_time.isoformat(),
-                priority=_PRIORITY["moon_void"],
-                source="live_calculation",
+                kind="void_moon",
+                tone="caution",
+                title="Луна без курса",
+                summary="Лучше не запускать новое и не принимать решения на спешке. Подходит для завершения, рутины и отдыха.",
+                starts_at=starts_at_dt.isoformat(),
+                ends_at=ends_at_dt.isoformat(),
+                local_time_label=local_time_label,
+                timezone=tz,
+                priority=85,
             ))
 
-    # ── Mercury retrograde (only Mercury, no other planets) ─────────
-
-    def _check_mercury_retrograde(self, items: list[ImportantTodayItem], transits: dict):
+    def _check_mercury(self, items: list[TodayImportantEvent], transits: dict, tz: str):
         transit_planets = transits.get("planets", [])
         mercury = self._find_planet(transit_planets, "Mercury")
         if not mercury:
             return
 
-        speed = mercury.get("speed", 0)
-        if speed >= 0:
-            return
-
-        title = "Меркурий ретрограден"
-        days_remaining: int | None = None
+        speed = mercury.get("speed", 1.0)
+        is_retro = speed < 0.0
         abs_speed = abs(speed)
-        if abs_speed > 0:
-            days_remaining = max(1, int(10 / abs_speed))
-            title = f"Меркурий ретрограден · ещё {days_remaining} дней"
+        is_station = abs_speed < 0.05
 
-        items.append(ImportantTodayItem(
-            id="retro_mercury",
-            type="mercury_retrograde",
-            title=title,
-            subtitle="Решения и разговоры требуют второго круга",
-            severity="warning",
-            planet="Меркурий",
-            days_remaining=days_remaining,
-            priority=_PRIORITY["mercury_retrograde"],
-            source="live_calculation",
-        ))
+        if is_station:
+            items.append(TodayImportantEvent(
+                id="mercury_station",
+                kind="mercury_station",
+                tone="caution",
+                title="Меркурий разворачивается",
+                summary="Самая нестабильная точка периода: больше путаницы, задержек и пересмотров.",
+                priority=80,
+                timezone=tz,
+            ))
+        elif is_retro:
+            items.append(TodayImportantEvent(
+                id="mercury_retrograde",
+                kind="mercury_retrograde",
+                tone="caution",
+                title="Меркурий ретроградный",
+                summary="Проверяй договорённости, документы, технику и сообщения. Лучше перепроверить детали.",
+                priority=75,
+                timezone=tz,
+            ))
 
-    # ── Mercury station (only Mercury) ──────────────────────────────
-
-    def _check_mercury_station(self, items: list[ImportantTodayItem], transits: dict) -> bool:
-        """Returns True if station was added (to suppress retrograde)."""
+    def _check_moon_quarter(self, items: list[TodayImportantEvent], transits: dict, tz: str):
         transit_planets = transits.get("planets", [])
-        mercury = self._find_planet(transit_planets, "Mercury")
-        if not mercury:
-            return False
-
-        speed = abs(mercury.get("speed", 1))
-        if speed >= 0.05:  # Not near station
-            return False
-
-        items.append(ImportantTodayItem(
-            id="station_mercury",
-            type="mercury_station",
-            title="Меркурий разворачивается",
-            subtitle="Информация, планы и разговоры требуют паузы",
-            severity="warning",
-            planet="Меркурий",
-            priority=_PRIORITY["mercury_station"],
-            source="live_calculation",
-        ))
-        return True
-
-    # ── Exact daily aspect ──────────────────────────────────────────
-
-    def _check_exact_daily_aspect(self, items: list[ImportantTodayItem], signals: list[AstroSignal], scoring_result: dict):
-        """Show a hard daily aspect if it's exact_today/peak_today/new_today and not background."""
-        candidates = []
-
-        for s in signals:
-            if s.type != "aspect":
-                continue
-            if not s.aspect_type or not s.target_planet:
-                continue
-
-            # Must have a strong delta — not background
-            if s.delta_kind in ("background", None, "weaker_than_yesterday"):
-                continue
-            # Must be a hard aspect (conjunction, square, opposition)
-            if s.aspect_type not in _HARD_ASPECTS:
-                continue
-            # Prefer fast planets
-            planet_name = _normalize_name(s.planet or "")
-            target_name = _normalize_name(s.target_planet or "")
-            is_fast = (
-                planet_name in _FAST_PLANETS or
-                target_name in _FAST_PLANETS
-            )
-            if not is_fast:
-                continue
-
-            candidates.append(s)
-
-        if not candidates:
+        sun = self._find_planet(transit_planets, "Sun")
+        moon = self._find_planet(transit_planets, "Moon")
+        if not sun or not moon:
             return
 
-        # Pick the strongest daily salience
-        best = max(candidates, key=lambda s: s.daily_salience or s.strength)
-        # Normalize planet names
-        pn = _normalize_name(best.planet or "")
-        tn = _normalize_name(best.target_planet or "")
-        p1 = _PLANET_NAMES_RU.get(pn, pn)
-        p2 = _PLANET_NAMES_RU.get(tn, tn)
-        asp_ru = _ASPECT_RU.get(best.aspect_type or "", best.aspect_type or "")
+        sun_lon = sun.get("longitude", 0)
+        moon_lon = moon.get("longitude", 0)
+        diff = (moon_lon - sun_lon) % 360
 
-        if best.aspect_type == "square":
-            sub = "Энергия требует собранности — не форсируй конфликт"
-        elif best.aspect_type == "opposition":
-            sub = "Напряжение между темами — ищи баланс, а не крайность"
-        else:
-            sub = "Фокус на стыковке этих двух тем"
+        is_first = abs(diff - 90) <= 12
+        is_last = abs(diff - 270) <= 12
 
-        items.append(ImportantTodayItem(
-            id="exact_daily_aspect",
-            type="exact_daily_aspect",
-            title=f"{p1} в {asp_ru} с {p2}",
-            subtitle=sub,
-            severity="soft_warning",
-            planet=p1,
-            priority=_PRIORITY["exact_daily_aspect"],
-            source="live_calculation",
-        ))
+        if is_first:
+            items.append(TodayImportantEvent(
+                id="first_quarter",
+                kind="moon_quarter",
+                tone="neutral_shift",
+                title="Первая четверть Луны",
+                summary="День действия и проверки намерений. Может быть напряжение между желанием и реальностью.",
+                priority=50,
+                timezone=tz,
+            ))
+        elif is_last:
+            items.append(TodayImportantEvent(
+                id="last_quarter",
+                kind="moon_quarter",
+                tone="neutral_shift",
+                title="Последняя четверть Луны",
+                summary="День корректировки и освобождения от лишнего. Лучше завершать, чем начинать.",
+                priority=50,
+                timezone=tz,
+            ))
 
-    # ── Active House ────────────────────────────────────────────────
-
-    def _check_active_house(self, items: list[ImportantTodayItem], transits: dict, signals: list[AstroSignal], scoring_result: dict):
-        main_house: int | None = None
-
-        top_signals = scoring_result.get("top_signals", [])
-        for s in top_signals[:1]:
-            if getattr(s, "house", None):
-                main_house = s.house
-                break
-
-        if not main_house:
-            transit_planets = transits.get("planets", [])
-            moon = self._find_planet(transit_planets, "Moon")
-            if moon:
-                main_house = int(moon.get("longitude", 0) / 30) + 1
-
-        if not main_house:
-            houses = [s for s in signals if s.type == "planet_in_house" and s.house]
-            if houses:
-                house_list = [s.house for s in houses if s.house]
-                if house_list:
-                    main_house = max(set(house_list), key=house_list.count)
-
-        if not main_house:
+    def _check_sun_ingress(self, items: list[TodayImportantEvent], transits: dict, tz: str):
+        transit_planets = transits.get("planets", [])
+        sun = self._find_planet(transit_planets, "Sun")
+        if not sun:
             return
 
-        meaning = _HOUSE_MEANINGS_RU.get(main_house, f"Акцент на {main_house} доме")
-        items.append(ImportantTodayItem(
-            id="active_house",
-            type="active_house",
-            title=f"Активен {main_house} дом",
-            subtitle=meaning,
-            severity="info",
-            house=main_house,
-            priority=_PRIORITY["active_house"],
-            source="live_calculation",
-        ))
+        sun_lon = sun.get("longitude", 0)
+        if (sun_lon % 30) < 1.0:
+            sign_idx = int(sun_lon / 30)
+            sign_ru = {
+                0: "Овен", 1: "Телец", 2: "Близнецы", 3: "Рак",
+                4: "Лев", 5: "Дева", 6: "Весы", 7: "Скорпион",
+                8: "Стрелец", 9: "Козерог", 10: "Водолей", 11: "Рыбы"
+            }.get(sign_idx, "новый знак")
 
-    # ── Helpers ─────────────────────────────────────────────────────
+            items.append(TodayImportantEvent(
+                id="sun_ingress",
+                kind="sun_ingress",
+                tone="neutral_shift",
+                title=f"Солнце входит в {sign_ru}",
+                summary="Меняется общий фокус месяца. День подходит, чтобы заметить новую тему и перестроить планы.",
+                priority=60,
+                timezone=tz,
+            ))
+
+    def _check_fast_planet_aspects(self, items: list[TodayImportantEvent], signals: list[AstroSignal], tz: str):
+        caution_whitelist = [
+            ({"Mercury", "Neptune"}, "square"),
+            ({"Venus", "Saturn"}, "square"),
+            ({"Mars", "Saturn"}, "square"),
+            ({"Sun", "Mars"}, "square"),
+            ({"Mercury", "Uranus"}, "opposition"),
+            ({"Venus", "Pluto"}, "opposition"),
+            ({"Mars", "Pluto"}, "square"),
+        ]
+        
+        supportive_whitelist = [
+            ({"Sun", "Jupiter"}, "trine"),
+            ({"Sun", "Jupiter"}, "sextile"),
+            ({"Mercury", "Jupiter"}, "trine"),
+            ({"Mercury", "Jupiter"}, "sextile"),
+            ({"Venus", "Jupiter"}, "trine"),
+            ({"Venus", "Jupiter"}, "sextile"),
+            ({"Mars", "Jupiter"}, "trine"),
+            ({"Mars", "Jupiter"}, "sextile"),
+            ({"Venus", "Sun"}, "trine"),
+            ({"Venus", "Sun"}, "sextile"),
+            ({"Venus", "Sun"}, "conjunction"),
+        ]
+
+        for sig in signals:
+            if sig.type != "aspect":
+                continue
+            if not sig.aspect_type or not sig.target_planet:
+                continue
+
+            p1_clean = _normalize_name(sig.planet)
+            p2_clean = _normalize_name(sig.target_planet)
+            pair = {p1_clean, p2_clean}
+
+            # Check caution whitelist
+            is_caution = False
+            for w_pair, w_asp in caution_whitelist:
+                if pair == w_pair and sig.aspect_type == w_asp:
+                    is_caution = True
+                    break
+
+            if is_caution:
+                p1_ru = _PLANET_NAMES_RU.get(p1_clean, p1_clean)
+                p2_ru = _PLANET_NAMES_RU.get(p2_clean, p2_clean)
+                asp_ru = _ASPECT_RU_NOMINATIVE.get(sig.aspect_type, sig.aspect_type)
+                items.append(TodayImportantEvent(
+                    id=f"aspect_{p1_clean.lower()}_{p2_clean.lower()}",
+                    kind="fast_planet_aspect",
+                    tone="caution",
+                    title=f"{p1_ru} {asp_ru} {p2_ru}",
+                    summary="Осторожнее с резкими решениями, конфликтами и обещаниями. Лучше перепроверить детали.",
+                    priority=70,
+                    timezone=tz,
+                ))
+                continue
+
+            # Check supportive whitelist
+            is_supportive = False
+            for w_pair, w_asp in supportive_whitelist:
+                if pair == w_pair and sig.aspect_type == w_asp:
+                    is_supportive = True
+                    break
+
+            if is_supportive:
+                p1_ru = _PLANET_NAMES_RU.get(p1_clean, p1_clean)
+                p2_ru = _PLANET_NAMES_RU.get(p2_clean, p2_clean)
+                asp_ru = _ASPECT_RU_NOMINATIVE.get(sig.aspect_type, sig.aspect_type)
+                items.append(TodayImportantEvent(
+                    id=f"aspect_{p1_clean.lower()}_{p2_clean.lower()}",
+                    kind="fast_planet_aspect",
+                    tone="supportive",
+                    title=f"{p1_ru} {asp_ru} {p2_ru}",
+                    summary="Хорошее окно для переговоров, поддержки, знакомств, денег или продвижения дел.",
+                    priority=65,
+                    timezone=tz,
+                ))
 
     @staticmethod
     def _find_planet(planets: list[dict], name: str | list[str]) -> dict | None:
@@ -472,7 +446,6 @@ class TodayImportantService:
 
 
 def _normalize_name(name: str) -> str:
-    """Strip Transit_/Natal_ prefix for lookup."""
     for prefix in ("Transit_", "Natal_"):
         if name.startswith(prefix):
             return name[len(prefix):]

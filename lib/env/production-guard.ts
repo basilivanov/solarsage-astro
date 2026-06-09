@@ -5,7 +5,6 @@
 // GRACE_ANCHORS: [SAFETY_CHECK_TS]
 // ############################################################################
 
-// @ts-expect-error - importing mjs file
 import { assertProductionSafety as _assertProductionSafety } from "./production-guard.mjs";
 
 /* START_BLOCK: SAFETY_CHECK_TS */

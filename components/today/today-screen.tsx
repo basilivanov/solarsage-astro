@@ -10,16 +10,16 @@ import { WeekStrip } from "./week-strip"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
-import type { ImportantTodayItem } from "@/components/today-important-accordion"
-import { addDays, sameDay, TODAY, type TodayPayload } from "@/lib/today"
+import { addDays, sameDay, TODAY, type AdaptedTodayPayload } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
+import type { TodayImportantEvent } from "@/packages/contracts"
 
 type Props = {
   selectedDate: Date
   access: AccessInfo
-  payload: TodayPayload
+  payload: AdaptedTodayPayload
   onDateChange: (d: Date) => void
-  importantToday?: ImportantTodayItem[]
+  importantToday?: TodayImportantEvent[]
 }
 
 // Порог срабатывания свайпа — чтобы случайные жесты не перелистывали день

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateTodayPayload, TodayPayloadSchema } from '../../lib/contracts/today'
+import { validateAdaptedTodayPayload, TodayPayloadSchema } from '../../lib/contracts/today'
 
 const validTodayPayload = {
   date: '2026-06-01',
@@ -31,10 +31,10 @@ const validTodayPayload = {
   keyInsight: 'Today is a day of transformation.',
 }
 
-describe('validateTodayPayload', () => {
+describe('validateAdaptedTodayPayload', () => {
   it('validates a complete valid TodayPayload', () => {
-    expect(() => validateTodayPayload(validTodayPayload)).not.toThrow()
-    const result = validateTodayPayload(validTodayPayload)
+    expect(() => validateAdaptedTodayPayload(validTodayPayload)).not.toThrow()
+    const result = validateAdaptedTodayPayload(validTodayPayload)
     expect(result.date).toBe('2026-06-01')
     expect(result.notes).toHaveLength(1)
     expect(result.keyInsight).toBe('Today is a day of transformation.')
@@ -42,32 +42,32 @@ describe('validateTodayPayload', () => {
 
   it('rejects payload with invalid date format (dd-mm-yyyy)', () => {
     const data = { ...validTodayPayload, date: '01-06-2026' }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects payload with date missing dashes', () => {
     const data = { ...validTodayPayload, date: '20260601' }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects payload with missing keyInsight', () => {
     const { keyInsight, ...data } = validTodayPayload
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects payload with empty keyInsight', () => {
     const data = { ...validTodayPayload, keyInsight: '' }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects payload with missing reading', () => {
     const { reading, ...data } = validTodayPayload
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects payload with empty paragraphs in reading', () => {
     const data = { ...validTodayPayload, reading: { paragraphs: [] } }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects note with missing hint', () => {
@@ -75,7 +75,7 @@ describe('validateTodayPayload', () => {
       ...validTodayPayload,
       notes: [{ id: 'n1', iconName: 'moon', title: 'Test', description: 'Test' }],
     }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects note with empty hint fields', () => {
@@ -91,7 +91,7 @@ describe('validateTodayPayload', () => {
         },
       ],
     }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects why section with empty paragraphs array', () => {
@@ -106,7 +106,7 @@ describe('validateTodayPayload', () => {
         },
       ],
     }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects why section with missing title', () => {
@@ -120,7 +120,7 @@ describe('validateTodayPayload', () => {
         },
       ],
     }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 
   it('rejects why section with empty id', () => {
@@ -128,6 +128,6 @@ describe('validateTodayPayload', () => {
       ...validTodayPayload,
       why: [{ ...validTodayPayload.why[0], id: '' }],
     }
-    expect(() => validateTodayPayload(data)).toThrow()
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
 })

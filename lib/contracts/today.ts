@@ -71,11 +71,8 @@ export type IconName = z.infer<typeof IconNameSchema>
 export type TodayNote = z.infer<typeof TodayNoteSchema>
 export type TodayReading = z.infer<typeof TodayReadingSchema>
 export type TodayWhySection = z.infer<typeof TodayWhySectionSchema>
-export type TodayPayload = z.infer<typeof TodayPayloadSchema>
+export type AdaptedTodayPayload = z.infer<typeof TodayPayloadSchema>
 
-/**
- * Валидирует TodayPayload и выбрасывает при несоответствии.
- */
-export function validateTodayPayload(data: unknown): TodayPayload {
+export function validateAdaptedTodayPayload(data: unknown): AdaptedTodayPayload {
   return TodayPayloadSchema.parse(data)
 }

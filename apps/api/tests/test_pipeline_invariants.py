@@ -247,7 +247,7 @@ def test_today_important_no_crash(pipeline_for_profile):
 
     for it in items:
         assert it.id, f"Item missing id: {it}"
-        assert it.type, f"Item missing type: {it}"
+        assert it.kind, f"Item missing kind: {it}"
         assert it.title, f"Item missing title: {it}"
         assert 0 <= it.priority <= 100, f"Item priority out of range: {it.priority}"
 

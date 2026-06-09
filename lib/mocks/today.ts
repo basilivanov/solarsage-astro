@@ -13,7 +13,7 @@
 
 import type {
   TodayNote,
-  TodayPayload,
+  AdaptedTodayPayload,
   TodayReading,
   TodayWhySection,
 } from "@/lib/contracts/today"
@@ -163,7 +163,7 @@ const MOCK_WHY: TodayWhySection[] = [
 const KEY_INSIGHT =
   "Не форсируй ясность. Собирай её по частям — день вознаграждает внимательность, а не скорость."
 
-export function buildMockTodayPayload(date: Date): TodayPayload {
+export function buildMockTodayPayload(date: Date): AdaptedTodayPayload {
   const yyyy = date.getFullYear()
   const mm = String(date.getMonth() + 1).padStart(2, "0")
   const dd = String(date.getDate()).padStart(2, "0")

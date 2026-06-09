@@ -89,6 +89,7 @@ describe('useDay', () => {
       activationEvidence: null,
       manifestationZones: null,
       periodContext: null,
+      importantToday: [],
     };
 
     mockFetchDay.mockResolvedValueOnce(mockPayload);

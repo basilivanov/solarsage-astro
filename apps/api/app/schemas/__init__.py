@@ -73,10 +73,7 @@ from .today import (
     WhyThisHappens,
     YesterdayEcho,
     YesterdayTransition,
-    ImportantTodayItem,
-    ImportantTodayDetails,
-    ImportantTodayType,
-    ImportantTodaySeverity,
+    TodayImportantEvent,
 )
 
 __all__ = [
@@ -119,9 +116,6 @@ __all__ = [
     "WhyThisHappens",
     "YesterdayEcho",
     "YesterdayTransition",
-    "ImportantTodayItem",
-    "ImportantTodayDetails",
-    "ImportantTodayType",
-    "ImportantTodaySeverity",
+    "TodayImportantEvent",
 ]
 # END_BLOCK: SCHEMAS_REEXPORTS

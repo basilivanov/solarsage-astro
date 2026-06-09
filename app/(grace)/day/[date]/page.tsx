@@ -8,14 +8,12 @@ import { ErrorBoundary } from '@/components/grace/ErrorBoundary';
 import { useDay } from '@/lib/grace/hooks/useDay';
 import { useOnboarded } from '@/hooks/use-onboarded';
 import { fromDateParam, toDateParam } from '@/lib/date';
-import { TODAY } from '@/lib/today';
+import { TODAY, type AdaptedTodayPayload, type TodayNote, type TodayWhySection } from '@/lib/today';
 import type { TodayPayload } from '@/packages/contracts';
-type TodayNote = TodayPayload['notes'][number];
-type TodayWhySection = TodayPayload['whyThisHappens']['sections'][number];
 import type { AccessInfo } from '@/lib/access';
 
-function adaptPayload(api: any, selectedDate: Date): {
-  payload: TodayPayload;
+function adaptPayload(api: TodayPayload, selectedDate: Date): {
+  payload: AdaptedTodayPayload;
   access: AccessInfo;
 } {
   const notes: TodayNote[] = api.notes
@@ -59,18 +57,18 @@ function adaptPayload(api: any, selectedDate: Date): {
     })
   );
 
-  const keyInsight = api.whyThisHappens?.keyInsight || why[0]?.title || '';
+  const keyInsight = why[0]?.title || '';
 
   const access: AccessInfo = {
-    state: (api.access?.state === 'full' || api.access?.state === 'trial') 
+    state: (api.access?.state === 'full') 
       ? 'trial' 
       : api.access?.state === 'locked' 
         ? 'none' 
         : (api.access?.state === 'preview' ? 'expired' : 'none') as AccessInfo['state'],
-    hasAccess: api.access?.state === 'full' || api.access?.state === 'trial',
+    hasAccess: api.access?.state === 'full',
     accessStart: null,
     accessEnd: null,
-    daysLeft: api.access?.referralDaysLeft ?? api.access?.daysLeft ?? 0,
+    daysLeft: api.access?.referralDaysLeft ?? 0,
   };
 
   return {
@@ -151,7 +149,7 @@ export default function DayPage() {
       access={access}
       payload={payload}
       onDateChange={onDateChange}
-      importantToday={(data as any).importantToday || []}
+      importantToday={data.importantToday || []}
     />
   );
 }

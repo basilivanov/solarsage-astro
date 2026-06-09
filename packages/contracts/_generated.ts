@@ -612,70 +612,6 @@ export interface components {
             /** Weeklyfreeexpiresat */
             weeklyFreeExpiresAt?: string | null;
         };
-        /** ImportantTodayDetails */
-        ImportantTodayDetails: {
-            /** Meaning */
-            meaning?: string | null;
-            /** Personalcontext */
-            personalContext?: string | null;
-            /** Whyimportant */
-            whyImportant?: string | null;
-        };
-        /**
-         * ImportantTodayItem
-         * @description Today Important block item.
-         */
-        ImportantTodayItem: {
-            /** Daysremaining */
-            daysRemaining?: number | null;
-            /** Degree */
-            degree?: number | null;
-            details?: components["schemas"]["ImportantTodayDetails"] | null;
-            /** Endsat */
-            endsAt?: string | null;
-            /** Exactat */
-            exactAt?: string | null;
-            /** House */
-            house?: number | null;
-            /** Iconname */
-            iconName?: string | null;
-            /** Id */
-            id: string;
-            /** Orb */
-            orb?: number | null;
-            /** Planet */
-            planet?: string | null;
-            /**
-             * Priority
-             * @default 5
-             */
-            priority: number;
-            /**
-             * Severity
-             * @default info
-             * @enum {string}
-             */
-            severity: "info" | "soft_warning" | "warning" | "high_attention";
-            /** Sign */
-            sign?: string | null;
-            /**
-             * Source
-             * @default live_calculation
-             * @enum {string}
-             */
-            source: "live_calculation" | "fallback";
-            /** Startsat */
-            startsAt?: string | null;
-            /** Subtitle */
-            subtitle: string;
-            /** Title */
-            title: string;
-            /**
-             * Type
-             * @enum {string}
-             */
-            type: "eclipse_window" | "new_moon_window" | "full_moon_window" | "moon_void" | "mercury_retrograde" | "mercury_station" | "exact_daily_aspect" | "active_house";
-        };
         /** LeadBlock */
         LeadBlock: {
             /** Text */
@@ -895,6 +831,43 @@ export interface components {
             /** Label */
             label: string;
         };
+        /**
+         * TodayImportantEvent
+         * @description Today Important block event.
+         */
+        TodayImportantEvent: {
+            /** Endsat */
+            endsAt?: string | null;
+            /** Exactat */
+            exactAt?: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "void_moon" | "new_moon" | "full_moon" | "solar_eclipse" | "lunar_eclipse" | "mercury_retrograde" | "mercury_station" | "moon_quarter" | "sun_ingress" | "fast_planet_aspect";
+            /** Localtimelabel */
+            localTimeLabel?: string | null;
+            /**
+             * Priority
+             * @default 5
+             */
+            priority: number;
+            /** Startsat */
+            startsAt?: string | null;
+            /** Summary */
+            summary: string;
+            /** Timezone */
+            timezone: string;
+            /** Title */
+            title: string;
+            /**
+             * Tone
+             * @enum {string}
+             */
+            tone: "supportive" | "caution" | "neutral_shift";
+        };
         /** TodayMeta */
         TodayMeta: {
             /** Activationlayerversion */
@@ -947,7 +920,7 @@ export interface components {
              * Importanttoday
              * @default []
              */
-            importantToday: components["schemas"]["ImportantTodayItem"][];
+            importantToday: components["schemas"]["TodayImportantEvent"][];
             /** Manifestationzones */
             manifestationZones?: components["schemas"]["ManifestationZone"][] | null;
             meta: components["schemas"]["TodayMeta"];

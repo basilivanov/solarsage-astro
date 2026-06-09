@@ -224,56 +224,38 @@ class TodayMeta(CamelModel):
     activation_layer_version: int | None = None  # версия activation logic
 
 
-ImportantTodayType = Literal[
-    "eclipse_window",
-    "new_moon_window",
-    "full_moon_window",
-    "moon_void",
+# START_BLOCK: TODAY_IMPORTANT_EVENTS
+ImportantTodayKind = Literal[
+    "void_moon",
+    "new_moon",
+    "full_moon",
+    "solar_eclipse",
+    "lunar_eclipse",
     "mercury_retrograde",
     "mercury_station",
-    "exact_daily_aspect",
-    "active_house",
+    "moon_quarter",
+    "sun_ingress",
+    "fast_planet_aspect",
 ]
 
-ImportantTodaySeverity = Literal[
-    "info",
-    "soft_warning",
-    "warning",
-    "high_attention",
-]
-
-ImportantTodaySource = Literal[
-    "live_calculation",
-    "fallback",
-]
+ImportantTodayTone = Literal["supportive", "caution", "neutral_shift"]
 
 
-class ImportantTodayDetails(CamelModel):
-    meaning: str | None = None
-    why_important: str | None = None
-    personal_context: str | None = None
+class TodayImportantEvent(CamelModel):
+    """Today Important block event."""
 
-
-class ImportantTodayItem(CamelModel):
-    """Today Important block item."""
     id: str
-    type: ImportantTodayType
+    kind: ImportantTodayKind
+    tone: ImportantTodayTone
     title: str
-    subtitle: str
-    severity: ImportantTodaySeverity = "info"
-    icon_name: str | None = None
-    planet: str | None = None
-    sign: str | None = None
-    house: int | None = None
-    exact_at: str | None = None
+    summary: str
     starts_at: str | None = None
     ends_at: str | None = None
-    days_remaining: int | None = None
-    orb: float | None = None
-    degree: float | None = None
+    exact_at: str | None = None
+    local_time_label: str | None = None
+    timezone: str
     priority: int = 5
-    details: ImportantTodayDetails | None = None
-    source: ImportantTodaySource = "live_calculation"
+# END_BLOCK: TODAY_IMPORTANT_EVENTS
 
 
 class TodayPayload(CamelModel):
@@ -304,5 +286,5 @@ class TodayPayload(CamelModel):
     period_context: PeriodContext | None = None
 
     # W-PHASE-2: today important items
-    important_today: list[ImportantTodayItem] = []
+    important_today: list[TodayImportantEvent] = []
 # END_BLOCK: TODAY_PAYLOAD

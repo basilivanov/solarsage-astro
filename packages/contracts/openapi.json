@@ -958,231 +958,6 @@
         "title": "HoraryQuotaRead",
         "type": "object"
       },
-      "ImportantTodayDetails": {
-        "additionalProperties": false,
-        "properties": {
-          "meaning": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Meaning"
-          },
-          "personalContext": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Personalcontext"
-          },
-          "whyImportant": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Whyimportant"
-          }
-        },
-        "title": "ImportantTodayDetails",
-        "type": "object"
-      },
-      "ImportantTodayItem": {
-        "additionalProperties": false,
-        "description": "Today Important block item.",
-        "properties": {
-          "daysRemaining": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Daysremaining"
-          },
-          "degree": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Degree"
-          },
-          "details": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ImportantTodayDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "endsAt": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Endsat"
-          },
-          "exactAt": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exactat"
-          },
-          "house": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "House"
-          },
-          "iconName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Iconname"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "orb": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Orb"
-          },
-          "planet": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Planet"
-          },
-          "priority": {
-            "default": 5,
-            "title": "Priority",
-            "type": "integer"
-          },
-          "severity": {
-            "default": "info",
-            "enum": [
-              "info",
-              "soft_warning",
-              "warning",
-              "high_attention"
-            ],
-            "title": "Severity",
-            "type": "string"
-          },
-          "sign": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sign"
-          },
-          "source": {
-            "default": "live_calculation",
-            "enum": [
-              "live_calculation",
-              "fallback"
-            ],
-            "title": "Source",
-            "type": "string"
-          },
-          "startsAt": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Startsat"
-          },
-          "subtitle": {
-            "title": "Subtitle",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "type": {
-            "enum": [
-              "eclipse_window",
-              "new_moon_window",
-              "full_moon_window",
-              "moon_void",
-              "mercury_retrograde",
-              "mercury_station",
-              "exact_daily_aspect",
-              "active_house"
-            ],
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "type",
-          "title",
-          "subtitle"
-        ],
-        "title": "ImportantTodayItem",
-        "type": "object"
-      },
       "LeadBlock": {
         "additionalProperties": false,
         "properties": {
@@ -1914,6 +1689,112 @@
         "title": "TodayAction",
         "type": "object"
       },
+      "TodayImportantEvent": {
+        "additionalProperties": false,
+        "description": "Today Important block event.",
+        "properties": {
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endsat"
+          },
+          "exactAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exactat"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "void_moon",
+              "new_moon",
+              "full_moon",
+              "solar_eclipse",
+              "lunar_eclipse",
+              "mercury_retrograde",
+              "mercury_station",
+              "moon_quarter",
+              "sun_ingress",
+              "fast_planet_aspect"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "localTimeLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Localtimelabel"
+          },
+          "priority": {
+            "default": 5,
+            "title": "Priority",
+            "type": "integer"
+          },
+          "startsAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startsat"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "supportive",
+              "caution",
+              "neutral_shift"
+            ],
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "tone",
+          "title",
+          "summary",
+          "timezone"
+        ],
+        "title": "TodayImportantEvent",
+        "type": "object"
+      },
       "TodayMeta": {
         "additionalProperties": false,
         "properties": {
@@ -2055,7 +1936,7 @@
           "importantToday": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/ImportantTodayItem"
+              "$ref": "#/components/schemas/TodayImportantEvent"
             },
             "title": "Importanttoday",
             "type": "array"

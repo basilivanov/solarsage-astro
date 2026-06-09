@@ -15,7 +15,7 @@ export type {
   TodayNote,
   TodayReading,
   TodayWhySection,
-  TodayPayload,
+  AdaptedTodayPayload,
 } from "@/lib/contracts/today"
 
 /**

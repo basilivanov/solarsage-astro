@@ -60,7 +60,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.access import ContentAccessState
-from app.schemas.today import TodayPayload, TodayMeta, TopFlag, ImportantTodayDetails
+from app.schemas.today import TodayPayload, TodayMeta, TopFlag
 from app.clients.solarsage_client import get_solarsage_client
 from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
 from app.services.normalization_service import NormalizationService
@@ -246,36 +246,13 @@ class TodayService:
         important_service = TodayImportantService()
         important_items = important_service.build_items(
             target_date=target_date,
-            timezone=profile.birth_tz or "UTC",
+            timezone=profile.current_tz or profile.birth_tz or "Europe/Moscow",
             natal=natal,
             transits=transits,
             signals=signals,
             scoring_result=scoring_result,
             semantic_layer=semantic_layer,
         )
-
-        # W-PHASE-2: Enrich with LLM-generated details (only text, not events)
-        if important_items:
-            items_export = [it.model_dump(exclude={"details"}) for it in important_items]
-            llm_details = await llm_service.generate_important_today_details(
-                items_export,
-                context={
-                    "day_status": scoring_result["day_status"],
-                    "top_signals": [s.model_dump() for s in scoring_result["top_signals"][:3]],
-                    "sphere_scores": scoring_result["sphere_scores"],
-                },
-            )
-            if llm_details:
-                # Merge LLM details back into items by id
-                llm_map = {d["id"]: d.get("details") for d in llm_details if d.get("details")}
-                for it in important_items:
-                    llm_det = llm_map.get(it.id)
-                    if llm_det:
-                        it.details = ImportantTodayDetails(
-                            meaning=llm_det.get("meaning"),
-                            why_important=llm_det.get("why_important"),
-                            personal_context=llm_det.get("personal_context"),
-                        )
 
         payload = TodayPayload(
             meta=TodayMeta(

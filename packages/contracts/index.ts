@@ -50,6 +50,7 @@ export type AccessSummary = components["schemas"]["AccessSummary"];
 export type ContentAccessState = components["schemas"]["ContentAccessState"];
 export type TopFlag = components["schemas"]["TopFlag"];
 export type WeekStripDay = components["schemas"]["WeekStripDay"];
+export type TodayImportantEvent = components["schemas"]["TodayImportantEvent"];
 
 // W-1.2: auth + profile surface.
 export type TelegramAuthRequest = components["schemas"]["TelegramAuthRequest"];

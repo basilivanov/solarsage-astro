@@ -228,7 +228,7 @@ def test_voc_time_has_timezone_info(llm_context_data):
     Before the fix, datetime.now() was used without tz.
     """
     items = llm_context_data["important_items"]
-    voc_items = [it for it in items if it.type == "moon_void"]
+    voc_items = [it for it in items if it.kind == "void_moon"]
 
     if not voc_items:
         pytest.skip("No moon_void event today")
