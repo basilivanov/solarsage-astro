@@ -191,21 +191,8 @@ function NatalSectionView({
           ))}
         </div>
 
-        {/* Prev/Next navigation */}
+        {/* Next/Prev navigation — следующая сверху, предыдущая снизу */}
         <div className="border-t border-border/40 pt-5 space-y-2">
-          {prevSection ? (
-            <button
-              type="button"
-              onClick={() => onGoToSection(prevSection.id)}
-              className="flex w-full items-center gap-2 rounded-xl border border-border/50 bg-card px-4 py-3 text-left transition active:scale-[0.99]"
-            >
-              <ChevronLeft className="h-4 w-4 flex-none text-muted-foreground" />
-              <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Предыдущая</div>
-                <div className="text-[13px] font-medium text-foreground">{prevSection.title}</div>
-              </div>
-            </button>
-          ) : null}
           {nextSection ? (
             <button
               type="button"
@@ -228,6 +215,19 @@ function NatalSectionView({
               <span className="text-[13px] font-medium text-primary">Вернуться к содержанию</span>
             </button>
           )}
+          {prevSection ? (
+            <button
+              type="button"
+              onClick={() => onGoToSection(prevSection.id)}
+              className="flex w-full items-center gap-2 rounded-xl border border-border/50 bg-card px-4 py-3 text-left transition active:scale-[0.99]"
+            >
+              <ChevronLeft className="h-4 w-4 flex-none text-muted-foreground" />
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Предыдущая</div>
+                <div className="text-[13px] font-medium text-foreground">{prevSection.title}</div>
+              </div>
+            </button>
+          ) : null}
         </div>
       </main>
     </div>
