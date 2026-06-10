@@ -1,8 +1,9 @@
 # AI_HEADER
 # module: M-TEST-NATAL-REPORT-SERVICE
-# wave: W-NATAL-FULL (Wave 6 — test evidence)
+# wave: W-NATAL-FULL (Wave 4 — full report backend)
 # purpose: Unit tests for NatalReportService — block parsing, section validation,
-#          report generation idempotency, LLM output validation, failure states.
+#          report generation idempotency, LLM output validation, failure states,
+#          hallucination detection, no-placeholder guarantee.
 
 import json
 import uuid
@@ -330,3 +331,268 @@ class TestSectionPromptInstructions:
     def test_unknown_section_has_fallback(self):
         instructions = NatalReportService._section_prompt_instructions("nonexistent")
         assert instructions, "Unknown section should get fallback instructions"
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 7. Hallucination detection (Wave 4)
+# ══════════════════════════════════════════════════════════════════════
+
+class TestHallucinationDetection:
+    """_validate_sections must reject hallucinated planet names and
+    invalid block types — TZ §11 p.3-5."""
+
+    def test_rejects_hallucinated_planet_zeus(self, sample_context):
+        """LLM output referencing fabricated planet 'Зевс' must be rejected."""
+        sections = _make_all_valid_sections()
+        # Inject hallucinated planet into portrait section
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Психологический портрет",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Зевс в твоей карте показывает сильную волю.",
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_rejects_hallucinated_planet_proserpina(self, sample_context):
+        """LLM output referencing fabricated planet 'Прозерпина' must be rejected."""
+        sections = _make_all_valid_sections()
+        sections[5] = NatalReportSectionRead(
+            id="planets",
+            title="Планеты в деталях",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Прозерпина в 8 доме говорит о глубинных трансформациях.",
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_allows_real_planet_names_in_russian(self, sample_context):
+        """Real planet names in Russian (Солнце, Марс, etc.) must pass."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Психологический портрет",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Солнце в Козероге и Марс в Раке создают внутреннее напряжение.",
+            )],
+        )
+        # Should not raise
+        NatalReportService._validate_sections(sections, sample_context)
+
+    def test_rejects_invalid_block_type(self, sample_context):
+        """Block type not in the allowed set is rejected by Pydantic schema
+        at parse time. The NatalBlock discriminated union enforces only the
+        8+2 valid types: lead, paragraph, heading, list, callout, pros_cons,
+        quote, divider, highlights, bullets."""
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="union_tag_invalid"):
+            NatalReportSectionRead(
+                id="portrait",
+                title="Психологический портрет",
+                blocks=[{"type": "timeline", "text": "Some timeline content"}],
+            )
+
+    def test_allows_all_8_valid_block_types(self, sample_context):
+        """All 8 valid block types must pass validation."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Психологический портрет",
+            blocks=[
+                LeadBlock(type="lead", text="Ты собран: ASC в Рыбах"),
+                ParagraphBlock(type="paragraph", text="Солнце в Козероге даёт структуру."),
+                HeadingBlock(type="heading", text="Ключевые черты", level=2),
+                ListBlock(type="list", items=["Целеустремлённость", "Дисциплина"], ordered=False),
+                CalloutBlock(type="callout", title="Совет", text="Используй свою энергию.", tone="insight"),
+                ProsConsBlock(
+                    type="pros_cons",
+                    pros=[ProsConsItem(title="Сила", text="Упорство")],
+                    cons=[ProsConsItem(title="Риск", text="Перфекционизм")],
+                ),
+                QuoteBlock(type="quote", text="Дисциплина — мост между целями и достижениями.", source=None),
+                DividerBlock(type="divider"),
+            ],
+        )
+        # Should not raise
+        NatalReportService._validate_sections(sections, sample_context)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 8. No placeholder sections (Wave 4)
+# ══════════════════════════════════════════════════════════════════════
+
+class TestNoPlaceholderSections:
+    """Failed LLM generation must not produce a READY report with
+    placeholder/fallback text — TZ §11 p.6-7."""
+
+    @pytest.mark.asyncio
+    async def test_llm_failure_produces_failed_retryable(self):
+        """When LLM returns None, generation must produce FAILED_RETRYABLE,
+        NOT a READY report with placeholder text."""
+        import pytest_asyncio
+        from datetime import date as Date, time
+        from decimal import Decimal
+        from unittest.mock import AsyncMock, patch, MagicMock
+        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+        from app.db.session import Base
+        from app.db.models import User, UserProfile, NatalChartCache
+        from app.services.natal_report_service import NatalReportService
+
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with factory() as session:
+            # Create user + profile
+            user_id = uuid.uuid4()
+            user = User(id=user_id, tg_user_id=hash(str(user_id)) % (10**18))
+            session.add(user)
+            await session.commit()
+
+            profile = UserProfile(
+                user_id=user_id, first_name="Test", gender="female",
+                birthday=Date(1993, 1, 7), birth_time=time(10, 33),
+                birth_city="Chirchiq", birth_lat=Decimal("41.46890"),
+                birth_lon=Decimal("69.58220"), birth_tz="Asia/Tashkent",
+                is_onboarded=True,
+            )
+            session.add(profile)
+            await session.commit()
+
+            # Create natal context cache
+            profile_hash = "testhash123"
+            cache_entry = NatalChartCache(
+                user_id=user_id, profile_hash=profile_hash,
+                raw_chart_json="{}", normalized_context_json="{}",
+            )
+            session.add(cache_entry)
+            await session.commit()
+
+            service = NatalReportService(session)
+
+            # Mock: NatalContextService returns a valid context
+            mock_context = NatalContextData(
+                planets=[
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
+                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
+                ],
+                houses=[
+                    NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
+                    for i in range(1, 13)
+                ],
+                aspects=[],
+                angles=[NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9)],
+            )
+
+            with patch("app.services.natal_report_service.NatalContextService") as MockCtxSvc, \
+                 patch("app.services.llm_service.LLMService") as MockLLM:
+                mock_ctx_instance = AsyncMock()
+                mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
+                MockCtxSvc.return_value = mock_ctx_instance
+                MockCtxSvc.compute_profile_hash = MagicMock(return_value=profile_hash)
+
+                # LLM returns None → simulates failure
+                mock_llm = AsyncMock()
+                mock_llm._generate_text.return_value = None
+                MockLLM.return_value = mock_llm
+
+                result = await service.generate_report(user_id)
+
+            # Must NOT be READY — must be FAILED_RETRYABLE
+            assert result.status == "FAILED_RETRYABLE", (
+                f"Expected FAILED_RETRYABLE when LLM fails, got {result.status}"
+            )
+            assert not result.sections_available
+
+        await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_invalid_llm_json_produces_failed_retryable(self):
+        """When LLM returns invalid JSON, generation must produce FAILED_RETRYABLE."""
+        from datetime import date as Date, time
+        from decimal import Decimal
+        from unittest.mock import AsyncMock, patch, MagicMock
+        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+        from app.db.session import Base
+        from app.db.models import User, UserProfile, NatalChartCache
+        from app.services.natal_report_service import NatalReportService
+
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with factory() as session:
+            user_id = uuid.uuid4()
+            user = User(id=user_id, tg_user_id=hash(str(user_id)) % (10**18))
+            session.add(user)
+            await session.commit()
+
+            profile = UserProfile(
+                user_id=user_id, first_name="Test", gender="female",
+                birthday=Date(1993, 1, 7), birth_time=time(10, 33),
+                birth_city="Chirchiq", birth_lat=Decimal("41.46890"),
+                birth_lon=Decimal("69.58220"), birth_tz="Asia/Tashkent",
+                is_onboarded=True,
+            )
+            session.add(profile)
+            await session.commit()
+
+            profile_hash = "testhash456"
+            cache_entry = NatalChartCache(
+                user_id=user_id, profile_hash=profile_hash,
+                raw_chart_json="{}", normalized_context_json="{}",
+            )
+            session.add(cache_entry)
+            await session.commit()
+
+            service = NatalReportService(session)
+
+            mock_context = NatalContextData(
+                planets=[
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
+                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
+                ],
+                houses=[
+                    NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
+                    for i in range(1, 13)
+                ],
+                aspects=[],
+                angles=[NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9)],
+            )
+
+            with patch("app.services.natal_report_service.NatalContextService") as MockCtxSvc, \
+                 patch("app.services.llm_service.LLMService") as MockLLM:
+                mock_ctx_instance = AsyncMock()
+                mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
+                MockCtxSvc.return_value = mock_ctx_instance
+                MockCtxSvc.compute_profile_hash = MagicMock(return_value=profile_hash)
+
+                # LLM returns non-JSON garbage
+                mock_llm = AsyncMock()
+                mock_llm._generate_text.return_value = "This is not JSON at all, just random text"
+                MockLLM.return_value = mock_llm
+
+                result = await service.generate_report(user_id)
+
+            assert result.status == "FAILED_RETRYABLE", (
+                f"Expected FAILED_RETRYABLE for invalid LLM JSON, got {result.status}"
+            )
+
+        await engine.dispose()
+
+
+# ── Test helpers ────────────────────────────────────────────────────
+
+def _make_all_valid_sections() -> list[NatalReportSectionRead]:
+    """Create all 8 required sections with valid paragraph blocks."""
+    return [
+        NatalReportSectionRead(id=sid, title=f"Section {sid}", blocks=[
+            ParagraphBlock(type="paragraph", text=f"Valid content for {sid} section.")
+        ])
+        for sid in REQUIRED_SECTIONS
+    ]

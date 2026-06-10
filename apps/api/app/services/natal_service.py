@@ -452,6 +452,18 @@ class NatalService:
         calculation_stats = self._build_calculation_stats_from_context(natal_context)
         sales_bullets = _build_sales_bullets(gender)
 
+        # W-NATAL-FULL Wave 4: Check if user has a READY report
+        full_report_available = False
+        from app.db.models import NatalReport
+        report_result = await self.db.execute(
+            select(NatalReport).where(
+                NatalReport.user_id == user_id,
+                NatalReport.status == "READY",
+            )
+        )
+        if report_result.scalar_one_or_none() is not None:
+            full_report_available = True
+
         return NatalPreviewRead(
             meta=meta,
             highlights=highlights,
@@ -461,7 +473,7 @@ class NatalService:
             personal_hook=personal_hook,
             calculation_stats=calculation_stats,
             sales_bullets=sales_bullets,
-            full_report_available=False,
+            full_report_available=full_report_available,
             full_report_price_kopecks=99900,
         )
 

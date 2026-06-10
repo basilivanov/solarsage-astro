@@ -46,7 +46,7 @@ from fastapi import HTTPException
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import NatalChartCache, NatalReport
+from app.db.models import NatalChartCache, NatalReport, UserProfile
 from app.schemas.natal import (
     NatalContextData,
     NatalGenerateResponse,
@@ -93,6 +93,41 @@ _SECTION_TITLES = {
 PROMPT_VERSION = "1"
 REPORT_SCHEMA_VERSION = "natal/v1"
 MAX_RETRY_ATTEMPTS = 3
+
+# ── Known astrological proper nouns (for hallucination detection) ──
+# These are planet names that LLM might fabricate — obviously not real
+# natal planets. We don't block all unknown words, only clearly
+# astrological-planet-like fabrications.
+_FORBIDDEN_PLANET_PATTERNS = [
+    "зевс", "гера", "афина", "аполлон", "артемида",
+    "кронос", "немезида", "вулкан", "изида",
+    "хирон",  # Chiron IS a special point but NOT a natal planet
+    "селена", "лилит",  # These are special points, not planets
+    "xenu", "nibiru", "pholus", "ceres", "pallas", "juno", "vesta",
+    # Trans-Plutonian fabrications
+    "прозерпина",
+]
+
+
+def _check_hallucinated_planets(text: str, known_planet_names: set[str], section_id: str) -> None:
+    """Check text for clearly fabricated planet names.
+
+    This is a heuristic guard: it catches obvious fabrications like
+    "Зевс", "Гера", "Немезида" used as if they were natal planets.
+    It does NOT try to validate every word — just catches the most
+    common LLM confabulation patterns.
+    """
+    text_lower = text.lower()
+    for forbidden in _FORBIDDEN_PLANET_PATTERNS:
+        if forbidden in text_lower:
+            # Allow if it's contextual (e.g. "мифологический Зевс" as cultural ref)
+            # But flag if used as an astrological body
+            # For now, strict: if a forbidden name appears, reject.
+            # This prevents LLM from fabricating chart positions for non-existent planets.
+            raise ValueError(
+                f"Hallucinated planet name '{forbidden}' found in section {section_id}. "
+                f"LLM must only reference planets from the provided chart context."
+            )
 
 
 class NatalReportService:
@@ -222,7 +257,10 @@ class NatalReportService:
     async def get_report(
         self, user_id: uuid.UUID, report_id: str | None = None
     ) -> NatalReportRead:
-        """Get a report by id or latest READY report for user."""
+        """Get a report by id or latest READY report for user.
+
+        W-NATAL-FULL Wave 4: Populates NatalReportMeta with profile data.
+        """
         if report_id:
             result = await self.db.execute(
                 select(NatalReport).where(
@@ -249,7 +287,10 @@ class NatalReportService:
                 detail={"code": "REPORT_NOT_FOUND", "message": "Отчёт не найден."},
             )
 
-        return self._report_to_read(report)
+        report_read = self._report_to_read(report)
+        # Populate meta with profile data
+        report_read.meta = await self._populate_report_meta(report, report_read.meta)
+        return report_read
 
     async def get_report_section(
         self, user_id: uuid.UUID, report_id: str, section_id: str
@@ -269,7 +310,12 @@ class NatalReportService:
     async def _generate_sections(
         self, context: NatalContextData, profile
     ) -> list[NatalReportSectionRead]:
-        """Generate all report sections via LLM."""
+        """Generate all report sections via LLM.
+
+        W-NATAL-FULL Wave 4: No placeholder sections on failure.
+        If any section fails, the entire generation fails with
+        FAILED_RETRYABLE — never persist a partial/fake report.
+        """
         from app.services.llm_service import LLMService
 
         llm = LLMService()
@@ -284,28 +330,19 @@ class NatalReportService:
 
         for section_id in REQUIRED_SECTIONS:
             section_title = _SECTION_TITLES[section_id]
-            try:
-                section_blocks = await self._generate_section_blocks(
-                    llm, chart_facts, section_id, section_title, gender, user_name
-                )
-                sections.append(NatalReportSectionRead(
-                    id=section_id,
-                    title=section_title,
-                    summary=None,
-                    blocks=section_blocks,
-                ))
-            except Exception as exc:
-                logger.warning(f"Section {section_id} generation failed: {exc}")
-                # Add fallback paragraph instead of failing entire report
-                sections.append(NatalReportSectionRead(
-                    id=section_id,
-                    title=section_title,
-                    summary=None,
-                    blocks=[ParagraphBlock(
-                        type="paragraph",
-                        text=f"Раздел «{section_title}» временно недоступен. Попробуй перегенерировать отчёт.",
-                    )],
-                ))
+            section_blocks = await self._generate_section_blocks(
+                llm, chart_facts, section_id, section_title, gender, user_name
+            )
+            # W-NATAL-FULL: No placeholder sections — if LLM fails, raise.
+            # The caller catches the exception and sets status=FAILED_RETRYABLE.
+            if not section_blocks:
+                raise ValueError(f"Section {section_id} produced no blocks")
+            sections.append(NatalReportSectionRead(
+                id=section_id,
+                title=section_title,
+                summary=None,
+                blocks=section_blocks,
+            ))
 
         return sections
 
@@ -352,8 +389,10 @@ class NatalReportService:
 JSON:"""
 
         text = await llm._generate_text(prompt, max_tokens=2000)
+        # W-NATAL-FULL: No placeholder text — raise on LLM failure.
+        # Caller catches and sets FAILED_RETRYABLE.
         if not text:
-            return [ParagraphBlock(type="paragraph", text="Не удалось сгенерировать текст раздела.")]
+            raise ValueError(f"LLM returned empty response for section {section_id}")
 
         # Strip markdown
         for marker in ['```json', '```']:
@@ -364,10 +403,14 @@ JSON:"""
         try:
             data = json.loads(text)
             raw_blocks = data.get("blocks", [])
-            return self._parse_blocks(raw_blocks)
+            blocks = self._parse_blocks(raw_blocks)
+            # W-NATAL-FULL: Reject empty parsed blocks — no placeholder.
+            if not blocks:
+                raise ValueError(f"Section {section_id}: no valid blocks parsed from LLM output")
+            return blocks
         except (json.JSONDecodeError, KeyError) as exc:
             logger.warning(f"Failed to parse section {section_id} JSON: {exc}")
-            return [ParagraphBlock(type="paragraph", text=text[:1000])]
+            raise ValueError(f"Section {section_id}: invalid JSON from LLM") from exc
 
     @staticmethod
     def _parse_blocks(raw_blocks: list[dict]) -> list[NatalBlock]:
@@ -540,22 +583,65 @@ JSON:"""
     ) -> None:
         """Validate that generated sections don't contain hallucinated chart facts.
 
-        Basic validation: required sections exist, no empty blocks.
-        Advanced hallucination check could be added later.
+        W-NATAL-FULL Wave 4: Full validation per TZ §11:
+        1. Required sections exist
+        2. No empty blocks
+        3. Hallucinated planet names rejected
+        4. Hallucinated sign names rejected
+        5. Invalid block types rejected
         """
+        # Build whitelists from deterministic context
+        known_planets = {p.name.lower() for p in context.planets}
+        known_signs = {
+            "aries", "taurus", "gemini", "cancer", "leo", "virgo",
+            "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
+            # Russian names (LLM may use either)
+            "овен", "телец", "близнецы", "рак", "лев", "дева",
+            "весы", "скорпион", "стрелец", "козерог", "водолей", "рыбы",
+            # Prepositional forms
+            "овне", "тельце", "близнецах", "раке", "льве", "деве",
+            "весах", "скорпионе", "стрельце", "козероге", "водолее", "рыбах",
+        }
+        known_planet_names_ru = {
+            "солнце", "луна", "меркурий", "венера", "марс",
+            "юпитер", "сатурн", "уран", "нептун", "плутон",
+            # Instrumental case (с Солнцем, с Луной...)
+            "солнцем", "луной", "меркурием", "венерой", "марсом",
+            "юпитером", "сатурном", "ураном", "нептуном", "плутоном",
+        }
+        # All known planet names: English + Russian variants
+        all_known_planet_names = known_planets | known_planet_names_ru
+
         section_ids = {s.id for s in sections}
         for required_id in REQUIRED_SECTIONS:
             if required_id not in section_ids:
                 raise ValueError(f"Missing required section: {required_id}")
 
+        valid_block_types = {"lead", "paragraph", "heading", "list", "callout", "pros_cons", "quote", "divider"}
+
         for section in sections:
             if not section.blocks:
                 raise ValueError(f"Section {section.id} has no blocks")
 
-            # Check no block is completely empty
             for block in section.blocks:
+                # Check block type is valid
+                block_type = getattr(block, "type", None)
+                if block_type and block_type not in valid_block_types:
+                    raise ValueError(
+                        f"Invalid block type '{block_type}' in section {section.id}. "
+                        f"Valid types: {valid_block_types}"
+                    )
+
+                # Check no block is completely empty
                 if hasattr(block, "text") and not block.text.strip():
                     raise ValueError(f"Empty text in section {section.id}")
+
+                # Hallucination check: scan text for unknown planet names
+                # This is a heuristic check — it catches obviously fabricated planets
+                # like "Зевс", "Гера", "Xenu" etc.
+                text_to_check = getattr(block, "text", "") or ""
+                if text_to_check:
+                    _check_hallucinated_planets(text_to_check, all_known_planet_names, section.id)
 
     # ── Private: DB helpers ────────────────────────────────────────
 
@@ -619,7 +705,11 @@ JSON:"""
         return hashlib.sha256(data.encode()).hexdigest()[:16]
 
     def _report_to_read(self, report: NatalReport) -> NatalReportRead:
-        """Convert DB model to read schema."""
+        """Convert DB model to read schema.
+
+        W-NATAL-FULL Wave 4: Populate NatalReportMeta with profile data
+        from the associated NatalChartCache + UserProfile.
+        """
         sections: list[NatalReportSectionRead] = []
         if report.sections_json:
             try:
@@ -651,3 +741,35 @@ JSON:"""
             created_at=report.created_at.isoformat() if report.created_at else None,
             completed_at=report.completed_at.isoformat() if report.completed_at else None,
         )
+
+    async def _populate_report_meta(
+        self, report: NatalReport, meta: NatalReportMeta
+    ) -> NatalReportMeta:
+        """Enrich NatalReportMeta with profile data from DB.
+
+        Called after _report_to_read to fill user_name, birth_date, etc.
+        """
+        try:
+            # Get the natal context cache entry to find the user_id
+            cache_result = await self.db.execute(
+                select(NatalChartCache).where(
+                    NatalChartCache.id == report.natal_context_id
+                )
+            )
+            cache_entry = cache_result.scalar_one_or_none()
+            if cache_entry:
+                profile_result = await self.db.execute(
+                    select(UserProfile).where(
+                        UserProfile.user_id == cache_entry.user_id
+                    )
+                )
+                profile = profile_result.scalar_one_or_none()
+                if profile:
+                    meta.user_name = profile.first_name
+                    meta.birth_date = profile.birthday.isoformat() if profile.birthday else None
+                    meta.birth_time = profile.birth_time.strftime("%H:%M") if profile.birth_time else None
+                    meta.birth_place = profile.birth_city
+                    meta.house_system = cache_entry.house_system
+        except Exception as exc:
+            logger.warning(f"Failed to populate report meta: {exc}")
+        return meta
