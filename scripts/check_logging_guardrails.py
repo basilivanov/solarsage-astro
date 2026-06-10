@@ -129,8 +129,13 @@ def check_frontend_console() -> bool:
         ROOT / "apps" / "solarsage",
     }
     
-    exclude_files = {
-        "index.ts", "shipper.ts", "redactor.ts", "logger.ts", "fetch-interceptor.js", "chat-reducer.test.ts"
+    # Exclude only the logging-layer files by path (not any file named index.ts)
+    exclude_paths = {
+        "lib/log/index.ts",
+        "lib/log/shipper.ts",
+        "lib/log/redactor.ts",
+        "lib/log/logger.ts",
+        "public/telemetry/fetch-interceptor.js",
     }
 
     # Allow-listed paths where console.log/warn/error is intentional
@@ -148,14 +153,14 @@ def check_frontend_console() -> bool:
             # Exclude directories
             if any(path.is_relative_to(d) for d in exclude_dirs):
                 continue
-            # Exclude specific logging files
-            if path.name in exclude_files:
+            # Exclude only logging-layer files by path
+            rel = path.relative_to(ROOT).as_posix()
+            if rel in exclude_paths:
                 continue
             # Exclude test files
             if ".test." in path.name or ".spec." in path.name:
                 continue
             # Exclude allow-listed paths
-            rel = path.relative_to(ROOT).as_posix()
             if any(rel.startswith(p) for p in allow_listed_prefixes):
                 continue
 

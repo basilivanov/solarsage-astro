@@ -37,7 +37,7 @@ const ALLOW_KEYS = new Set([
 const REDACT_PATTERNS: [RegExp, string][] = [
   [/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/gu, "[redacted-email]"],
   [/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[redacted-jwt]"],
-  [new RegExp("\\\\bbearer\\\\s+[A-Za-z0-9._\\\\-]+\\\\b", "gi"), "[redacted-bearer]"],
+  [new RegExp("\\bbearer\\s+[A-Za-z0-9._\\-]+\\b", "gi"), "[redacted-bearer]"],
   [/\btg_user_id[=:\s]+\d{5,}\b/g, "[redacted-tg-id]"],
   [/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "[redacted-ip]"],
 ];
