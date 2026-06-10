@@ -134,18 +134,6 @@ class TodayService:
         context_service = NatalContextService(self.db)
         natal_context = await context_service.get_or_build_natal_context(user_id)
 
-        # Load raw chart from cache for legacy code that needs it
-        from app.db.models import NatalChartCache
-        cache_result = await self.db.execute(
-            select(NatalChartCache).where(
-                NatalChartCache.user_id == user_id,
-                NatalChartCache.profile_hash == profile_hash,
-                NatalChartCache.invalidated_at.is_(None),
-            )
-        )
-        cache_entry = cache_result.scalar_one_or_none()
-        natal = json.loads(cache_entry.raw_chart_json) if cache_entry else {}
-
         # Get SolarSage client — only for transits now
         client = get_solarsage_client()
 
@@ -157,12 +145,15 @@ class TodayService:
             target_tz=target_tz,
         )
 
-        # W-4.1: Normalize raw data into AstroSignal[]
+        # W-NATAL-FULL: Use the new day-specific normalization path.
+        # normalize_day() uses cached natal context + fresh transits.
+        # score_day() is the day scoring method (includes day_status).
+        natal_context_dict = natal_context.model_dump(by_alias=False)
         normalization_service = NormalizationService()
-        signals = normalization_service.normalize(natal, transits)
+        signals = normalization_service.normalize_day(natal_context_dict, transits)
 
         # W-PHASE-1: Compute DayDelta — compare yesterday vs today signals
-        yesterday_signals = await self._get_yesterday_signals(user_id, target_date, profile, client, natal)
+        yesterday_signals = await self._get_yesterday_signals(user_id, target_date, profile, client, natal_context_dict)
         if yesterday_signals:
             delta_service = DayDeltaService(yesterday_signals, signals)
             signals = delta_service.compute_deltas()
@@ -173,9 +164,9 @@ class TodayService:
         else:
             logger.info("[DayDelta] No yesterday data — skipping delta computation")
 
-        # W-4.2: Score signals and calculate day_status
+        # W-4.2: Score signals and calculate day_status using day-specific scorer
         scoring_service = ScoringService()
-        scoring_result = scoring_service.score(signals)
+        scoring_result = scoring_service.score_day(signals)
 
         # W-4.3: Build semantic layer
         semantic_service = SemanticService()
@@ -189,7 +180,7 @@ class TodayService:
             scoring_result["day_status"],
             scoring_result["sphere_scores"],
             scoring_result["top_signals"],
-            natal,
+            natal_context_dict,
             transits,
             semantic_layer,
             signals,
@@ -267,7 +258,7 @@ class TodayService:
         important_items = important_service.build_items(
             target_date=target_date,
             timezone=profile.current_tz or profile.birth_tz or "Europe/Moscow",
-            natal=natal,
+            natal=natal_context_dict,
             transits=transits,
             signals=signals,
             scoring_result=scoring_result,
@@ -455,7 +446,7 @@ class TodayService:
         )
 # END_BLOCK: REAL_CALCULATION
 
-    async def _get_yesterday_signals(self, user_id, today: Date, profile, client, natal: dict) -> list | None:
+    async def _get_yesterday_signals(self, user_id, today: Date, profile, client, natal_context_dict: dict) -> list | None:
         """Get yesterday's normalized signals for DayDelta comparison.
         Returns None if yesterday's data can't be computed."""
         yesterday = today - timedelta(days=1)
@@ -466,7 +457,7 @@ class TodayService:
                 target_tz=profile.birth_tz or "UTC",
             )
             normalization_service = NormalizationService()
-            y_signals = normalization_service.normalize(natal=natal, transits=y_transits)
+            y_signals = normalization_service.normalize_day(natal_context=natal_context_dict, transits=y_transits)
             return y_signals
         except Exception as e:
             logger.info(f"[DayDelta] Could not get yesterday signals: {e}")
@@ -474,22 +465,21 @@ class TodayService:
 
     async def _prefetch_week(self, user_id, today: Date) -> None:
         """Prefetch 7 days of payloads in background. W-5.2.
-        Skips already-cached days to avoid duplicate work.
-        Errors are silently ignored (background task)."""
+
+        Delegates to get_today_payload(skip_prefetch=True) which handles
+        cache check internally with the correct profile_hash.
+        Errors are logged at debug level but do not break the app.
+        """
         days = [today + timedelta(days=i) for i in range(-3, 4)]  # today ±3 days
 
         async def _calc_one(day: Date):
             try:
-                cached = await self._get_cached_payload(user_id, day)
-                if cached:
-                    return  # Already cached — skip
-                # Use preview access state for prefetch (real access checked on-demand)
                 await self.get_today_payload(user_id, day, None, skip_prefetch=True)
             except Exception:
-                pass  # Background task — don't break the app
+                logger.debug("Prefetch failed for day %s", day, exc_info=True)
 
         tasks = [_calc_one(d) for d in days]
         try:
             await asyncio.gather(*tasks)
         except Exception:
-            pass
+            logger.debug("Prefetch week gather failed", exc_info=True)

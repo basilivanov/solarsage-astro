@@ -247,7 +247,9 @@ class NatalContextService:
         birth_tz = profile.birth_tz  # type: ignore[assignment]
 
         try:
-            raw_chart = await client.get_natal(
+            # Client already returns validated.model_dump(by_alias=True),
+            # so this dict is guaranteed to match the Pydantic schema.
+            validated_chart_dict = await client.get_natal(
                 birth_date=birth_date,
                 birth_time=birth_time,
                 birth_lat=birth_lat,
@@ -264,9 +266,10 @@ class NatalContextService:
                 },
             ) from exc
 
-        # 2. Validate sidecar response with Pydantic
+        # 2. Re-validate sidecar response (defense-in-depth: client already
+        #    validated, but this service is the authoritative boundary).
         try:
-            validated = SolarSageNatalResponse.model_validate(raw_chart)
+            validated = SolarSageNatalResponse.model_validate(validated_chart_dict)
         except Exception as exc:
             logger.error(f"SolarSage natal response validation failed: {exc}")
             raise HTTPException(
@@ -279,7 +282,7 @@ class NatalContextService:
 
         # 3. Normalize natal-only (no transits)
         normalization_service = NormalizationService()
-        natal_signals = normalization_service.normalize_natal_only(raw_chart)
+        natal_signals = normalization_service.normalize_natal_only(validated_chart_dict)
 
         # 4. Score natal
         scoring_service = ScoringService()
@@ -294,7 +297,7 @@ class NatalContextService:
         #    be violated by a race between invalidate and rebuild.
         await self._cleanup_invalidated_rows(profile.user_id, profile_hash)
 
-        raw_chart_json = json.dumps(raw_chart, ensure_ascii=False)
+        raw_chart_json = json.dumps(validated_chart_dict, ensure_ascii=False)
         normalized_context_json = context.model_dump_json(by_alias=False)
         summary_json = self._build_summary(context)
 

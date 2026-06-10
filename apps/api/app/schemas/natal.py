@@ -353,6 +353,9 @@ class NatalContextData(CamelModel):
 # END_BLOCK: NATAL_CONTEXT_SCHEMAS
 
 # START_BLOCK: SIDECAR_VALIDATION_SCHEMAS
+from pydantic import model_validator
+
+
 class SolarSagePlanetPosition(CamelModel):
     """Pydantic schema for a single planet in SolarSage natal response."""
     name: str
@@ -380,11 +383,25 @@ class SolarSageSpecialPoint(CamelModel):
 
 class SolarSageNatalResponse(CamelModel):
     """Pydantic schema for the full SolarSage /v1/natal response.
-    Validates raw sidecar output before it enters business logic."""
+    Validates raw sidecar output before it enters business logic.
+
+    planets and houses are required and must be non-empty — a natal chart
+    without planets or houses is invalid, not just empty.
+    special_points is optional (some house systems may not return extra points).
+    """
     house_system: str = "Placidus"
-    planets: list[SolarSagePlanetPosition] = []
-    houses: list[SolarSageHouseCusp] = []
+    planets: list[SolarSagePlanetPosition]
+    houses: list[SolarSageHouseCusp]
     special_points: list[SolarSageSpecialPoint] = []
+
+    @model_validator(mode="after")
+    def _validate_non_empty(self) -> "SolarSageNatalResponse":
+        """Reject empty planets/houses — these indicate a broken sidecar response."""
+        if not self.planets:
+            raise ValueError("SolarSage natal response must contain at least one planet")
+        if not self.houses:
+            raise ValueError("SolarSage natal response must contain at least one house cusp")
+        return self
 
 
 class SolarSageTransitPlanet(CamelModel):
@@ -397,7 +414,18 @@ class SolarSageTransitPlanet(CamelModel):
 
 
 class SolarSageTransitsResponse(CamelModel):
-    """Pydantic schema for the full SolarSage /v1/transits response."""
+    """Pydantic schema for the full SolarSage /v1/transits response.
+
+    planets is required and must be non-empty — transit data without
+    any planets is invalid.
+    """
     target_jd: float | None = None
-    planets: list[SolarSageTransitPlanet] = []
+    planets: list[SolarSageTransitPlanet]
+
+    @model_validator(mode="after")
+    def _validate_non_empty(self) -> "SolarSageTransitsResponse":
+        """Reject empty transit planets — indicates a broken sidecar response."""
+        if not self.planets:
+            raise ValueError("SolarSage transits response must contain at least one planet")
+        return self
 # END_BLOCK: SIDECAR_VALIDATION_SCHEMAS

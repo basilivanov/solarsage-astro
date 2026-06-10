@@ -100,7 +100,28 @@ class ScoringService:
             "natal_signals": signals,
         }
 
+    def score_day(self, signals: list[AstroSignal]) -> dict:
+        """Score day signals (natal + transit). Includes day_status.
+
+        This is the production path for TodayService. It returns day_status
+        in addition to sphere_scores and top_signals.
+        """
+        sphere_scores = self._calculate_sphere_scores(signals)
+        convergence = self._compute_convergence(signals)
+        sphere_scores = self._apply_convergence(sphere_scores, convergence)
+        day_status = self._calculate_day_status(signals)
+        top_signals = self._get_top_signals(signals, limit=5)
+        return {
+            "day_status": day_status,
+            "sphere_scores": sphere_scores,
+            "top_signals": top_signals,
+        }
+
     def score(self, signals: list[AstroSignal]) -> dict:
+        """Legacy scoring method. Kept for backward compatibility.
+
+        Prefer score_natal() for natal-only or score_day() for day paths.
+        """
         sphere_scores = self._calculate_sphere_scores(signals)
         convergence = self._compute_convergence(signals)
         sphere_scores = self._apply_convergence(sphere_scores, convergence)
