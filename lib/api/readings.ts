@@ -67,18 +67,18 @@ export function listReadings(): ReadingsCatalog {
   return {
     available: [
       {
-        key: "natal",
-        title: "Натальная карта",
-        description: "Персональный разбор вашей натальной карты",
-        icon: Star,
-        teaser: "Планеты, дома, аспекты — глубокий разбор вашей карты рождения",
-      },
-      {
         key: "horary",
         title: "Хорар",
-        description: "Спросите о конкретной ситуации",
+        description: "Задай точный вопрос и получи ответ карты",
         icon: Sparkles,
-        teaser: "Задайте точный вопрос и получите ответ карты",
+        teaser: "Конкретный вопрос — конкретный ответ по моменту вопроса",
+      },
+      {
+        key: "natal",
+        title: "Натальная карта",
+        description: "Глубокий разбор карты рождения",
+        icon: Star,
+        teaser: "Планеты, дома, аспекты — всё о тебе по данным рождения",
       },
     ],
     coming: [

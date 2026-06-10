@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ChevronLeft } from "lucide-react"
 
 import { CalculationDepth } from "@/components/readings/natal-preview/calculation-depth"
@@ -27,6 +28,7 @@ type State =
 
 export default function NatalReadingPage() {
   const [state, setState] = useState<State>({ status: "loading" })
+  const router = useRouter()
 
   const load = useCallback(async () => {
     setState({ status: "loading" })
@@ -45,6 +47,12 @@ export default function NatalReadingPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const handleOpenReport = useCallback(() => {
+    // TODO: After payment integration, use real natal ID from user's purchase.
+    // For now, navigate to demo report.
+    router.push("/readings/natal/demo")
+  }, [router])
 
   return (
     <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
@@ -100,8 +108,7 @@ export default function NatalReadingPage() {
             {/* 9. CTA */}
             <CtaButton
               priceKopecks={state.data.fullReportPriceKopecks}
-              disabled={!state.data.fullReportAvailable}
-              onClick={() => undefined}
+              onClick={handleOpenReport}
             />
           </>
         ) : null}
