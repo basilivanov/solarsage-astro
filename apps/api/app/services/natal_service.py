@@ -1,72 +1,57 @@
 # ############################################################################
 # AI_HEADER: MODULE_NATAL_SERVICE
-# ROLE: Natal reading service — generates structured natal reading payload.
-# DEPENDENCIES: sqlalchemy, app.schemas.natal
-# GRACE_ANCHORS: [NATAL_READING_GENERATION]
-# WAVE: W-7.1, W-7.2
+# ROLE: Natal preview service — builds NatalPreviewRead from cached NatalContext.
+# DEPENDENCIES: sqlalchemy, app.schemas.natal, app.services.natal_context_service
+# GRACE_ANCHORS: [NATAL_PREVIEW]
+# WAVE: W-NATAL-FULL
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-NATAL-SERVICE
-# purpose: Generate natal reading payload with sections and blocks.
-#   W-7.1: Returns structured sections × blocks.
-#   W-7.2: Simplified MVP version (hardcoded content).
+# purpose: Build natal preview from cached NatalContext via NatalContextService.
+#   W-NATAL-FULL: Uses NatalContextService as single source of truth.
 # owns:
 #   - apps/api/app/services/natal_service.py
 # inputs:
 #   - user_id: UUID
 # outputs:
-#   - NatalPayload: structured natal reading
+#   - NatalPreviewRead: structured preview for the natal screen
 # dependencies:
-#   - M-CONTRACTS.natal
+#   - M-NATAL-CONTEXT-SERVICE
 # side_effects:
-#   - none (read-only)
+#   - may trigger sidecar call on cache miss (via NatalContextService)
 # invariants:
-#   - sections are ordered by order field
-#   - blocks within sections are ordered by order field
+#   - never calls sidecar directly; delegates to NatalContextService
+#   - never calls transits for preview
 # failure_policy:
-#   - returns hardcoded content for MVP
+#   - 409 if profile incomplete
+#   - 502 if sidecar unavailable
 # non_goals:
-#   - no LLM integration (future wave)
-#   - no database persistence (future wave)
+#   - no LLM integration (see NatalReportService)
+#   - no legacy hardcoded content (removed in W-NATAL-FULL cleanup)
 # END_MODULE_CONTRACT: M-NATAL-SERVICE
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 import logging
 import uuid
-
-import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clients.solarsage_client import get_solarsage_client
 from app.db.models import UserProfile
 from app.schemas.natal import (
-    BulletsBlock,
-    HighlightsBlock,
-    HighlightItem,
     NatalCalculationStats,
     NatalChapterPreview,
     NatalContextData,
     NatalHighlight,
-    NatalMeta,
-    NatalPayload,
     NatalPlanetPreview,
     NatalPreviewMeta,
     NatalPreviewRead,
-    NatalSection,
     NatalSpherePreview,
-    ParagraphBlock,
-    Person,
-    PersonBirth,
-    QuoteBlock,
 )
 from app.services.astro_utils import find_house
 from app.services.normalization_service import NormalizationService
-from app.services.scoring_service import ScoringService
 
 logger = logging.getLogger(__name__)
 
@@ -403,105 +388,6 @@ class NatalService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-
-    async def get_natal_reading(self, user_id: uuid.UUID) -> NatalPayload:
-        sections = [
-            NatalSection(
-                id="sun",
-                title="Солнце",
-                icon_name="sun",
-                blocks=[
-                    ParagraphBlock(
-                        type="paragraph",
-                        text="Ваше Солнце находится в знаке Овна, что наделяет вас энергией первопроходца. Вы прирожденный лидер, который не боится брать инициативу в свои руки.",
-                    ),
-                    HighlightsBlock(
-                        type="highlights",
-                        items=[
-                            HighlightItem(
-                                id="sun_strength",
-                                title="Сильные стороны",
-                                text="Смелость, решительность, энергичность",
-                                tone="positive",
-                            ),
-                            HighlightItem(
-                                id="sun_challenge",
-                                title="Вызовы",
-                                text="Импульсивность, нетерпеливость",
-                                tone="neutral",
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            NatalSection(
-                id="moon",
-                title="Луна",
-                icon_name="moon",
-                blocks=[
-                    ParagraphBlock(
-                        type="paragraph",
-                        text="Ваша Луна находится в знаке Рака, что делает вас глубоко эмоциональным и чувствительным человеком. Вы интуитивно понимаете эмоции других людей.",
-                    ),
-                    BulletsBlock(
-                        type="bullets",
-                        items=[
-                            "Сильная связь с семьей и домом",
-                            "Развитая интуиция и эмпатия",
-                            "Потребность в эмоциональной безопасности",
-                            "Склонность к заботе о других",
-                        ],
-                    ),
-                    QuoteBlock(
-                        type="quote",
-                        text="Луна в Раке — это дар глубокого понимания человеческой природы.",
-                        source="Классическая астрология",
-                    ),
-                ],
-            ),
-            NatalSection(
-                id="ascendant",
-                title="Асцендент",
-                icon_name="arrow-up",
-                blocks=[
-                    ParagraphBlock(
-                        type="paragraph",
-                        text="Ваш Асцендент находится в знаке Льва, что придает вам харизму и естественное обаяние. Вы производите яркое впечатление на окружающих.",
-                    ),
-                    HighlightsBlock(
-                        type="highlights",
-                        items=[
-                            HighlightItem(
-                                id="asc_appearance",
-                                title="Внешнее впечатление",
-                                text="Уверенность, достоинство, магнетизм",
-                                tone="positive",
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-        ]
-
-        meta = NatalMeta(
-            schema_version="natal/v1",
-            contract_version=1,
-            title="Натальная карта",
-            subtitle="Ваш астрологический портрет",
-            generated_at=datetime.now(timezone.utc).isoformat(),
-            calculation_version=1,
-            interpretation_version=1,
-            person=Person(
-                name="Пользователь",
-                birth=PersonBirth(
-                    date="1990-01-01",
-                    time="12:00",
-                    place="Москва",
-                ),
-            ),
-        )
-
-        return NatalPayload(meta=meta, sections=sections)
 
     async def get_preview(self, user_id: uuid.UUID) -> NatalPreviewRead:
         """Build preview from cached/buildable NatalContext.

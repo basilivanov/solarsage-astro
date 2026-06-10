@@ -2,15 +2,13 @@
 # AI_HEADER: MODULE_API_NATAL
 # ROLE: Natal reading endpoints — preview, generation, and report retrieval.
 # DEPENDENCIES: fastapi, app.services.natal_service, app.services.natal_report_service
-# GRACE_ANCHORS: [NATAL_OVERVIEW, NATAL_SECTION, NATAL_GENERATE, NATAL_REPORT]
+# GRACE_ANCHORS: [NATAL_PREVIEW, NATAL_GENERATE, NATAL_REPORT]
 # WAVE: W-7.2, W-NATAL-FULL
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-API-NATAL
 # purpose: Expose natal reading endpoints.
-#   GET /api/natal/overview — returns overview + section list (legacy)
 #   GET /api/natal/preview — returns preview from cached NatalContext
-#   GET /api/natal/section/{section_id} — returns section with blocks (legacy)
 #   POST /api/natal/generate — starts full report generation
 #   GET /api/natal/report — returns latest READY report
 #   GET /api/natal/report/{report_id} — returns specific report
@@ -68,27 +66,6 @@ router = APIRouter()
 
 # ── Preview ───────────────────────────────────────────────────────
 
-@router.get("/api/natal/overview")
-async def get_natal_overview(
-    db: AsyncSession = Depends(get_session),
-    user_id: uuid.UUID = Depends(require_session),
-):
-    service = NatalService(db)
-    reading = await service.get_natal_reading(user_id)
-
-    return {
-        "meta": reading.meta.model_dump(by_alias=True),
-        "sections": [
-            {
-                "id": s.id,
-                "title": s.title,
-                "iconName": s.icon_name,
-            }
-            for s in reading.sections
-        ],
-    }
-
-
 @router.get("/api/natal/preview", response_model=NatalPreviewRead)
 async def get_natal_preview(
     db: AsyncSession = Depends(get_session),
@@ -108,23 +85,6 @@ async def get_natal_preview(
                 "message": "Не удалось построить натальную карту. Попробуй позже или проверь данные профиля.",
             },
         ) from exc
-
-
-@router.get("/api/natal/section/{section_id}")
-async def get_natal_section(
-    section_id: str,
-    db: AsyncSession = Depends(get_session),
-    user_id: uuid.UUID = Depends(require_session),
-):
-    service = NatalService(db)
-    reading = await service.get_natal_reading(user_id)
-
-    section = next((s for s in reading.sections if s.id == section_id), None)
-
-    if not section:
-        raise HTTPException(status_code=404, detail="Section not found")
-
-    return section.model_dump(by_alias=True)
 
 
 # ── Full report generation ────────────────────────────────────────

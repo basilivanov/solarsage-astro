@@ -268,13 +268,10 @@ class TestPreviewCoexistence:
         # Feature flag disabled (default)
         assert not settings.natal_report_enabled
 
-        with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory, \
-             patch("app.services.natal_service.get_solarsage_client") as mock_nat_factory:
+        with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory:
             mock_client = AsyncMock()
             mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
-            mock_client.get_transits.return_value = {"planets": []}
             mock_ctx_factory.return_value = mock_client
-            mock_nat_factory.return_value = mock_client
 
             response = await async_client.get("/api/natal/preview")
 

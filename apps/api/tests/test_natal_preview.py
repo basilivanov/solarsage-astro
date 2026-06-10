@@ -1,3 +1,9 @@
+# AI_HEADER
+# module: M-TEST-NATAL-PREVIEW
+# wave: W-NATAL-FULL
+# purpose: Tests for GET /api/natal/preview — profile validation, gender wording,
+#          sidecar error handling, response structure.
+
 import uuid
 from datetime import date as Date, time
 from decimal import Decimal
@@ -6,6 +12,30 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 from httpx import AsyncClient
+
+
+# ── Shared mock sidecar data (valid against SolarSageNatalResponse) ──────
+
+MOCK_SIDECAR_NATAL = {
+    "house_system": "Placidus",
+    "planets": [
+        {"name": "Sun", "longitude": 10.0, "sign": "Aries", "house": 1, "retrograde": False, "speed": 1.0},
+        {"name": "Moon", "longitude": 40.0, "sign": "Taurus", "house": 2, "retrograde": False, "speed": 1.0},
+        {"name": "Mercury", "longitude": 70.0, "sign": "Gemini", "house": 3, "retrograde": False, "speed": 1.0},
+        {"name": "Venus", "longitude": 100.0, "sign": "Cancer", "house": 4, "retrograde": False, "speed": 1.0},
+        {"name": "Mars", "longitude": 130.0, "sign": "Leo", "house": 5, "retrograde": True, "speed": -0.5},
+        {"name": "Jupiter", "longitude": 200.0, "sign": "Libra", "house": 7, "retrograde": False, "speed": 0.2},
+        {"name": "Saturn", "longitude": 300.0, "sign": "Aquarius", "house": 11, "retrograde": False, "speed": 0.1},
+    ],
+    "houses": [
+        {"number": i, "longitude": float((i - 1) * 30), "sign": "Aries" if i == 1 else "Taurus"}
+        for i in range(1, 13)
+    ],
+    "special_points": [
+        {"name": "ASC", "longitude": 15.0, "sign": "Aries", "house": None},
+        {"name": "MC", "longitude": 280.0, "sign": "Capricorn", "house": None},
+    ],
+}
 
 
 async def _login(async_client: AsyncClient, make_initdata, *, user_id: int) -> None:
@@ -35,6 +65,11 @@ async def _set_profile(
     profile.birth_lon = birth_lon
     await db_session.commit()
     return profile
+
+
+def _mock_sidecar():
+    """Return a context manager that patches the sidecar client in NatalContextService."""
+    return patch("app.services.natal_context_service.get_solarsage_client")
 
 
 @pytest.mark.asyncio
@@ -85,10 +120,10 @@ async def test_natal_preview_returns_safe_error_on_sidecar_failure(async_client:
     user, _ = await get_or_create_user(db_session, tg)
     await _set_profile(db_session, user.id, gender="male")
 
-    with patch("app.services.natal_service.get_solarsage_client") as mock_client_factory:
+    with _mock_sidecar() as mock_factory:
         mock_client = AsyncMock()
         mock_client.get_natal.side_effect = httpx.ConnectError("raw sidecar boom text")
-        mock_client_factory.return_value = mock_client
+        mock_factory.return_value = mock_client
 
         response = await async_client.get("/api/natal/preview")
 
@@ -110,22 +145,10 @@ async def test_natal_preview_price_is_99900(async_client: AsyncClient, make_init
     user, _ = await get_or_create_user(db_session, tg)
     await _set_profile(db_session, user.id, gender="male")
 
-    with patch("app.services.natal_service.get_solarsage_client") as mock_client_factory:
+    with _mock_sidecar() as mock_factory:
         mock_client = AsyncMock()
-        mock_client.get_natal.return_value = {
-            "house_system": "Placidus",
-            "planets": [
-                {"name": "Sun", "longitude": 10.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries", "house": 1},
-                {"name": "Moon", "longitude": 40.0, "latitude": 0.0, "speed": 1.0, "sign": "Taurus", "house": 2},
-                {"name": "Mercury", "longitude": 70.0, "latitude": 0.0, "speed": 1.0, "sign": "Gemini", "house": 3},
-                {"name": "Venus", "longitude": 100.0, "latitude": 0.0, "speed": 1.0, "sign": "Cancer", "house": 4},
-                {"name": "Mars", "longitude": 130.0, "latitude": 0.0, "speed": 1.0, "sign": "Leo", "house": 5},
-            ],
-            "houses": [{"number": i, "cusp": float((i - 1) * 30)} for i in range(1, 13)],
-            "special_points": [{"name": "ASC", "longitude": 15.0, "sign": "Aries"}],
-        }
-        mock_client.get_transits.return_value = {"planets": []}
-        mock_client_factory.return_value = mock_client
+        mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+        mock_factory.return_value = mock_client
 
         response = await async_client.get("/api/natal/preview")
 
@@ -144,19 +167,10 @@ async def test_natal_preview_male_gender_wording(async_client: AsyncClient, make
     user, _ = await get_or_create_user(db_session, tg)
     await _set_profile(db_session, user.id, gender="male")
 
-    with patch("app.services.natal_service.get_solarsage_client") as mock_client_factory:
+    with _mock_sidecar() as mock_factory:
         mock_client = AsyncMock()
-        mock_client.get_natal.return_value = {
-            "house_system": "Placidus",
-            "planets": [
-                {"name": "Sun", "longitude": 10.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries", "house": 1},
-                {"name": "Moon", "longitude": 40.0, "latitude": 0.0, "speed": 1.0, "sign": "Taurus", "house": 2},
-            ],
-            "houses": [{"number": i, "cusp": float((i - 1) * 30)} for i in range(1, 13)],
-            "special_points": [{"name": "ASC", "longitude": 15.0, "sign": "Aries"}],
-        }
-        mock_client.get_transits.return_value = {"planets": []}
-        mock_client_factory.return_value = mock_client
+        mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+        mock_factory.return_value = mock_client
 
         response = await async_client.get("/api/natal/preview")
 
@@ -185,19 +199,10 @@ async def test_natal_preview_female_gender_wording(async_client: AsyncClient, ma
     user, _ = await get_or_create_user(db_session, tg)
     await _set_profile(db_session, user.id, gender="female")
 
-    with patch("app.services.natal_service.get_solarsage_client") as mock_client_factory:
+    with _mock_sidecar() as mock_factory:
         mock_client = AsyncMock()
-        mock_client.get_natal.return_value = {
-            "house_system": "Placidus",
-            "planets": [
-                {"name": "Sun", "longitude": 10.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries", "house": 1},
-                {"name": "Moon", "longitude": 40.0, "latitude": 0.0, "speed": 1.0, "sign": "Taurus", "house": 2},
-            ],
-            "houses": [{"number": i, "cusp": float((i - 1) * 30)} for i in range(1, 13)],
-            "special_points": [{"name": "ASC", "longitude": 15.0, "sign": "Aries"}],
-        }
-        mock_client.get_transits.return_value = {"planets": []}
-        mock_client_factory.return_value = mock_client
+        mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+        mock_factory.return_value = mock_client
 
         response = await async_client.get("/api/natal/preview")
 
@@ -285,19 +290,10 @@ async def test_natal_preview_returns_8_chapters(async_client: AsyncClient, make_
     user, _ = await get_or_create_user(db_session, tg)
     await _set_profile(db_session, user.id, gender="male")
 
-    with patch("app.services.natal_service.get_solarsage_client") as mock_client_factory:
+    with _mock_sidecar() as mock_factory:
         mock_client = AsyncMock()
-        mock_client.get_natal.return_value = {
-            "house_system": "Placidus",
-            "planets": [
-                {"name": "Sun", "longitude": 10.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries", "house": 1},
-                {"name": "Moon", "longitude": 40.0, "latitude": 0.0, "speed": 1.0, "sign": "Taurus", "house": 2},
-            ],
-            "houses": [{"number": i, "cusp": float((i - 1) * 30)} for i in range(1, 13)],
-            "special_points": [{"name": "ASC", "longitude": 15.0, "sign": "Aries"}],
-        }
-        mock_client.get_transits.return_value = {"planets": []}
-        mock_client_factory.return_value = mock_client
+        mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+        mock_factory.return_value = mock_client
 
         response = await async_client.get("/api/natal/preview")
 
@@ -318,29 +314,10 @@ async def test_natal_preview_returns_at_least_5_spheres(async_client: AsyncClien
     user, _ = await get_or_create_user(db_session, tg)
     await _set_profile(db_session, user.id, gender="male")
 
-    with patch("app.services.natal_service.get_solarsage_client") as mock_client_factory:
+    with _mock_sidecar() as mock_factory:
         mock_client = AsyncMock()
-        mock_client.get_natal.return_value = {
-            "house_system": "Placidus",
-            "planets": [
-                {"name": "Sun", "longitude": 0.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries", "house": 1},
-                {"name": "Moon", "longitude": 60.0, "latitude": 0.0, "speed": 1.0, "sign": "Gemini", "house": 3},
-                {"name": "Mercury", "longitude": 120.0, "latitude": 0.0, "speed": 1.0, "sign": "Leo", "house": 5},
-                {"name": "Venus", "longitude": 180.0, "latitude": 0.0, "speed": 1.0, "sign": "Libra", "house": 7},
-                {"name": "Mars", "longitude": 240.0, "latitude": 0.0, "speed": 1.0, "sign": "Sagittarius", "house": 9},
-                {"name": "Jupiter", "longitude": 300.0, "latitude": 0.0, "speed": 1.0, "sign": "Aquarius", "house": 11},
-            ],
-            "houses": [{"number": i, "cusp": float((i - 1) * 30)} for i in range(1, 13)],
-            "special_points": [{"name": "ASC", "longitude": 15.0, "sign": "Aries"}],
-        }
-        mock_client.get_transits.return_value = {
-            "planets": [
-                {"name": "Transit_Sun", "longitude": 0.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries"},
-                {"name": "Transit_Moon", "longitude": 90.0, "latitude": 0.0, "speed": 1.0, "sign": "Cancer"},
-                {"name": "Transit_Mercury", "longitude": 180.0, "latitude": 0.0, "speed": 1.0, "sign": "Libra"},
-            ]
-        }
-        mock_client_factory.return_value = mock_client
+        mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+        mock_factory.return_value = mock_client
 
         response = await async_client.get("/api/natal/preview")
 
