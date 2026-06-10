@@ -21,6 +21,7 @@ from app.schemas.natal import (
     NatalChartAngle,
     NatalChartHouse,
     NatalChartAspect,
+    NatalChartSpecialPoint,
     ElementsBalance,
     ModalitiesBalance,
     NatalReportSectionRead,
@@ -29,7 +30,14 @@ from app.schemas.natal import (
     ProsConsItem,
     QuoteBlock,
 )
-from app.services.natal_report_service import NatalReportService, REQUIRED_SECTIONS
+from app.services.natal_report_service import (
+    NatalReportService,
+    REQUIRED_SECTIONS,
+    _check_hallucinated_planets,
+    _iter_block_texts,
+    _FORBIDDEN_PLANET_PATTERNS_ALWAYS,
+    _SPECIAL_POINT_PATTERNS,
+)
 
 
 # ── Sample NatalContextData for tests ──────────────────────────────
@@ -66,6 +74,33 @@ def sample_context() -> NatalContextData:
         top_signals=[],
         dominants=["Saturn", "Mercury", "Sun"],
     )
+
+
+@pytest.fixture
+def context_with_special_points() -> NatalContextData:
+    """NatalContextData WITH special points (Chiron, Selena, Lilith)."""
+    ctx = NatalContextData(
+        angles=[
+            NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9),
+        ],
+        planets=[
+            NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
+            NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
+        ],
+        houses=[
+            NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30))
+            for i in range(1, 13)
+        ],
+        aspects=[],
+        special_points=[
+            NatalChartSpecialPoint(name="Chiron", sign="Aries", degree=15.0, longitude=15.0, house=1),
+            NatalChartSpecialPoint(name="Selena", sign="Taurus", degree=5.0, longitude=35.0, house=2),
+            NatalChartSpecialPoint(name="Lilith", sign="Scorpio", degree=20.0, longitude=230.0, house=8),
+        ],
+        elements_balance=ElementsBalance(),
+        modalities_balance=ModalitiesBalance(),
+    )
+    return ctx
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -137,17 +172,23 @@ class TestBlockParsing:
         assert len(blocks) == 1
         assert isinstance(blocks[0], DividerBlock)
 
-    def test_unknown_type_fallback_to_paragraph(self):
-        """Unknown block types should fall back to paragraph, not crash."""
-        blocks = NatalReportService._parse_blocks([{"type": "unknown_type", "text": "whatever"}])
-        assert len(blocks) == 1
-        assert isinstance(blocks[0], ParagraphBlock)
+    def test_unknown_type_raises_value_error(self):
+        """BLOCKER 1 FIX: Unknown block types must raise ValueError,
+        NOT be converted to ParagraphBlock."""
+        with pytest.raises(ValueError, match="Unknown natal report block type"):
+            NatalReportService._parse_blocks([{"type": "timeline", "text": "whatever"}])
 
-    def test_malformed_block_is_skipped(self):
-        """Completely broken blocks should be skipped, not crash parsing."""
-        blocks = NatalReportService._parse_blocks([None, {"type": "paragraph", "text": "ok"}])
-        # Should not crash; at least the valid one should parse
-        assert len(blocks) >= 1
+    def test_unknown_type_does_not_become_paragraph(self):
+        """BLOCKER 1 FIX: Unknown block type must NOT silently become ParagraphBlock."""
+        with pytest.raises(ValueError):
+            NatalReportService._parse_blocks([{"type": "accordion", "text": "data"}])
+        # Verify it's not swallowed — the parse must fail hard
+
+    def test_malformed_block_raises_value_error(self):
+        """BLOCKER 1 FIX: Malformed blocks must raise ValueError,
+        NOT be silently skipped."""
+        with pytest.raises(ValueError, match="Malformed block data"):
+            NatalReportService._parse_blocks([None])
 
     def test_empty_list_produces_no_blocks(self):
         blocks = NatalReportService._parse_blocks([])
@@ -293,6 +334,26 @@ class TestLLMInputBuilding:
         for p in data["chart"]["planets"]:
             assert not p["name"].startswith("Transit_")
 
+    def test_llm_input_includes_special_points(self, context_with_special_points):
+        """BLOCKER 4: Special points ARE passed to LLM input.
+        The guard allows them in output when present in context."""
+        from unittest.mock import MagicMock
+        profile = MagicMock()
+        profile.birthday.isoformat.return_value = "1993-01-07"
+        profile.birth_time.strftime.return_value = "10:33"
+        profile.birth_city = "Chirchiq"
+        profile.birth_tz = "Asia/Tashkent"
+        profile.gender = "female"
+        profile.first_name = "Zhanna"
+
+        result = NatalReportService._build_llm_input(context_with_special_points, profile)
+        data = json.loads(result)
+
+        sp_names = [sp["name"] for sp in data["chart"]["special_points"]]
+        assert "Chiron" in sp_names
+        assert "Selena" in sp_names
+        assert "Lilith" in sp_names
+
 
 # ══════════════════════════════════════════════════════════════════════
 # 5. Context hash
@@ -384,6 +445,178 @@ class TestHallucinationDetection:
         # Should not raise
         NatalReportService._validate_sections(sections, sample_context)
 
+    # ── BLOCKER 2: hallucination in list/pros_cons/callout.title ────
+
+    def test_rejects_hallucinated_planet_in_list_items(self, sample_context):
+        """BLOCKER 2 FIX: 'Зевс' inside ListBlock.items must be rejected."""
+        sections = _make_all_valid_sections()
+        sections[4] = NatalReportSectionRead(
+            id="spheres",
+            title="Сферы жизни",
+            blocks=[ListBlock(
+                type="list",
+                items=["Зевс в 10 доме даёт статус", "Марс в Раке"],
+                ordered=False,
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_rejects_hallucinated_planet_in_pros_cons_title(self, sample_context):
+        """BLOCKER 2 FIX: 'Прозерпина' in ProsConsBlock.pros[].title must be rejected."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Психологический портрет",
+            blocks=[ProsConsBlock(
+                type="pros_cons",
+                pros=[ProsConsItem(title="Прозерпина", text="Глубинная трансформация")],
+                cons=[],
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_rejects_hallucinated_planet_in_pros_cons_text(self, sample_context):
+        """BLOCKER 2 FIX: Forbidden name in ProsConsBlock.pros[].text must be rejected."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Психологический портрет",
+            blocks=[ProsConsBlock(
+                type="pros_cons",
+                pros=[ProsConsItem(title="Сила", text="Немезида даёт мощь")],
+                cons=[],
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_rejects_hallucinated_planet_in_callout_title(self, sample_context):
+        """BLOCKER 2 FIX: Forbidden name in CalloutBlock.title must be rejected."""
+        sections = _make_all_valid_sections()
+        sections[1] = NatalReportSectionRead(
+            id="ascendant",
+            title="Асцендент",
+            blocks=[CalloutBlock(
+                type="callout",
+                title="Совет Зевса",
+                text="Обычный текст без запрещённых слов",
+                tone="insight",
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_rejects_hallucinated_planet_in_cons_text(self, sample_context):
+        """BLOCKER 2 FIX: Forbidden name in ProsConsBlock.cons[].text must be rejected."""
+        sections = _make_all_valid_sections()
+        sections[6] = NatalReportSectionRead(
+            id="shadow",
+            title="Теневая сторона",
+            blocks=[ProsConsBlock(
+                type="pros_cons",
+                pros=[],
+                cons=[ProsConsItem(title="Риск", text="Вулкан может разрушать")],
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    # ── BLOCKER 4: Special points allowed from context ──────────────
+
+    def test_special_points_allowed_when_in_context(self, context_with_special_points):
+        """BLOCKER 4 FIX: Chiron/Selena/Lilith pass when in context.special_points."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Портрет",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Хирон в Овне говорит о ранах через самоутверждение. "
+                     "Селена в Тельце указывает на свет через стабильность. "
+                     "Лилит в Скорпионе раскрывает теневые темы власти.",
+            )],
+        )
+        # Should NOT raise — these special points are in the deterministic context
+        NatalReportService._validate_sections(sections, context_with_special_points)
+
+    def test_special_points_rejected_when_not_in_context(self, sample_context):
+        """BLOCKER 4 FIX: Chiron/Selena/Lilith rejected when NOT in context."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Портрет",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Хирон в Овне говорит о ранах через самоутверждение.",
+            )],
+        )
+        # sample_context has NO special_points, so Хирон must be rejected
+        with pytest.raises(ValueError, match="Hallucinated special point"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_lilith_rejected_when_not_in_context(self, sample_context):
+        """BLOCKER 4 FIX: Лилит rejected when NOT in context special_points."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Портрет",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Лилит в Скорпионе раскрывает теневые темы.",
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated special point"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_always_forbidden_planets_rejected_even_with_special_points(self, context_with_special_points):
+        """Always-forbidden names (Зевс, Прозерпина) must be rejected
+        even when context has special points."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Портрет",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Прозерпина в 8 доме даёт глубинную трансформацию.",
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            NatalReportService._validate_sections(sections, context_with_special_points)
+
+    # ── RISK 1: Sign hallucination detection ────────────────────────
+
+    def test_rejects_hallucinated_sign_ophiuchus(self, sample_context):
+        """RISK 1 FIX: Fabricated sign 'Змееносец' must be rejected."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Портрет",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Твоё Солнце в Змееносце указывает на скрытую силу.",
+            )],
+        )
+        with pytest.raises(ValueError, match="Hallucinated sign"):
+            NatalReportService._validate_sections(sections, sample_context)
+
+    def test_allows_real_sign_names_in_russian(self, sample_context):
+        """Standard zodiac sign names in Russian must pass."""
+        sections = _make_all_valid_sections()
+        sections[0] = NatalReportSectionRead(
+            id="portrait",
+            title="Портрет",
+            blocks=[ParagraphBlock(
+                type="paragraph",
+                text="Солнце в Козероге и Луна в Близнецах формируют контраст.",
+            )],
+        )
+        # Should not raise
+        NatalReportService._validate_sections(sections, sample_context)
+
+    # ── Existing tests ──────────────────────────────────────────────
+
     def test_rejects_invalid_block_type(self, sample_context):
         """Block type not in the allowed set is rejected by Pydantic schema
         at parse time. The NatalBlock discriminated union enforces only the
@@ -434,7 +667,6 @@ class TestNoPlaceholderSections:
     async def test_llm_failure_produces_failed_retryable(self):
         """When LLM returns None, generation must produce FAILED_RETRYABLE,
         NOT a READY report with placeholder text."""
-        import pytest_asyncio
         from datetime import date as Date, time
         from decimal import Decimal
         from unittest.mock import AsyncMock, patch, MagicMock
@@ -581,6 +813,375 @@ class TestNoPlaceholderSections:
 
             assert result.status == "FAILED_RETRYABLE", (
                 f"Expected FAILED_RETRYABLE for invalid LLM JSON, got {result.status}"
+            )
+
+        await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_llm_unknown_block_type_produces_failed_retryable(self):
+        """BLOCKER 1 FIX: LLM JSON with unknown block type must produce
+        FAILED_RETRYABLE, not a READY report with ParagraphBlock fallback."""
+        from datetime import date as Date, time
+        from decimal import Decimal
+        from unittest.mock import AsyncMock, patch, MagicMock
+        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+        from app.db.session import Base
+        from app.db.models import User, UserProfile, NatalChartCache
+        from app.services.natal_report_service import NatalReportService
+
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with factory() as session:
+            user_id = uuid.uuid4()
+            user = User(id=user_id, tg_user_id=hash(str(user_id)) % (10**18))
+            session.add(user)
+            await session.commit()
+
+            profile = UserProfile(
+                user_id=user_id, first_name="Test", gender="female",
+                birthday=Date(1993, 1, 7), birth_time=time(10, 33),
+                birth_city="Chirchiq", birth_lat=Decimal("41.46890"),
+                birth_lon=Decimal("69.58220"), birth_tz="Asia/Tashkent",
+                is_onboarded=True,
+            )
+            session.add(profile)
+            await session.commit()
+
+            profile_hash = "testhash789"
+            cache_entry = NatalChartCache(
+                user_id=user_id, profile_hash=profile_hash,
+                raw_chart_json="{}", normalized_context_json="{}",
+            )
+            session.add(cache_entry)
+            await session.commit()
+
+            service = NatalReportService(session)
+
+            mock_context = NatalContextData(
+                planets=[
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
+                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
+                ],
+                houses=[
+                    NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
+                    for i in range(1, 13)
+                ],
+                aspects=[],
+                angles=[NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9)],
+            )
+
+            # LLM returns JSON with an unknown block type
+            bad_json = json.dumps({
+                "blocks": [
+                    {"type": "timeline", "text": "Timeline content"},
+                ]
+            })
+
+            with patch("app.services.natal_report_service.NatalContextService") as MockCtxSvc, \
+                 patch("app.services.llm_service.LLMService") as MockLLM:
+                mock_ctx_instance = AsyncMock()
+                mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
+                MockCtxSvc.return_value = mock_ctx_instance
+                MockCtxSvc.compute_profile_hash = MagicMock(return_value=profile_hash)
+
+                mock_llm = AsyncMock()
+                mock_llm._generate_text.return_value = bad_json
+                MockLLM.return_value = mock_llm
+
+                result = await service.generate_report(user_id)
+
+            # Must NOT be READY — unknown block type must fail
+            assert result.status == "FAILED_RETRYABLE", (
+                f"Expected FAILED_RETRYABLE for unknown block type, got {result.status}"
+            )
+
+        await engine.dispose()
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 9. _iter_block_texts helper
+# ══════════════════════════════════════════════════════════════════════
+
+class TestIterBlockTexts:
+    """_iter_block_texts must yield all text-bearing fields from every block type."""
+
+    def test_yields_paragraph_text(self):
+        block = ParagraphBlock(type="paragraph", text="Hello world")
+        assert list(_iter_block_texts(block)) == ["Hello world"]
+
+    def test_yields_lead_text(self):
+        block = LeadBlock(type="lead", text="Key insight")
+        assert list(_iter_block_texts(block)) == ["Key insight"]
+
+    def test_yields_heading_text(self):
+        block = HeadingBlock(type="heading", text="Title", level=2)
+        assert list(_iter_block_texts(block)) == ["Title"]
+
+    def test_yields_list_items(self):
+        block = ListBlock(type="list", items=["First", "Second"], ordered=False)
+        assert list(_iter_block_texts(block)) == ["First", "Second"]
+
+    def test_yields_callout_title_and_text(self):
+        block = CalloutBlock(type="callout", title="Tip", text="Advice", tone="info")
+        assert list(_iter_block_texts(block)) == ["Tip", "Advice"]
+
+    def test_yields_pros_cons_all_fields(self):
+        block = ProsConsBlock(
+            type="pros_cons",
+            pros=[ProsConsItem(title="P1", text="Good")],
+            cons=[ProsConsItem(title="C1", text="Bad")],
+        )
+        texts = list(_iter_block_texts(block))
+        assert "P1" in texts
+        assert "Good" in texts
+        assert "C1" in texts
+        assert "Bad" in texts
+
+    def test_yields_quote_text(self):
+        block = QuoteBlock(type="quote", text="Wisdom", source="Author")
+        assert list(_iter_block_texts(block)) == ["Wisdom"]
+
+    def test_divider_yields_nothing(self):
+        block = DividerBlock(type="divider")
+        assert list(_iter_block_texts(block)) == []
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 10. _check_hallucinated_planets (context-aware)
+# ══════════════════════════════════════════════════════════════════════
+
+class TestCheckHallucinatedPlanets:
+    """_check_hallucinated_planets is now context-aware for special points."""
+
+    def test_always_forbidden_zeus(self):
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            _check_hallucinated_planets("Зевс в карте", set(), set(), "test")
+
+    def test_always_forbidden_proserpina(self):
+        with pytest.raises(ValueError, match="Hallucinated planet"):
+            _check_hallucinated_planets("Прозерпина в 8 доме", set(), set(), "test")
+
+    def test_special_point_chiron_rejected_without_context(self):
+        """Chiron rejected when not in allowed_special_point_names."""
+        with pytest.raises(ValueError, match="Hallucinated special point"):
+            _check_hallucinated_planets("Хирон в Овне", set(), set(), "test")
+
+    def test_special_point_chiron_allowed_with_context(self):
+        """Chiron allowed when 'chiron' in allowed_special_point_names."""
+        # Should NOT raise
+        _check_hallucinated_planets(
+            "Хирон в Овне", set(), {"chiron"}, "test"
+        )
+
+    def test_special_point_lilith_rejected_without_context(self):
+        with pytest.raises(ValueError, match="Hallucinated special point"):
+            _check_hallucinated_planets("Лилит в Скорпионе", set(), set(), "test")
+
+    def test_special_point_lilith_allowed_with_context(self):
+        _check_hallucinated_planets(
+            "Лилит в Скорпионе", set(), {"lilith"}, "test"
+        )
+
+    def test_special_point_selena_rejected_without_context(self):
+        with pytest.raises(ValueError, match="Hallucinated special point"):
+            _check_hallucinated_planets("Селена в Тельце", set(), set(), "test")
+
+    def test_special_point_selena_allowed_with_context(self):
+        _check_hallucinated_planets(
+            "Селена в Тельце", set(), {"selena"}, "test"
+        )
+
+    def test_real_planet_names_pass(self):
+        """Real planet names must not trigger hallucination detection."""
+        _check_hallucinated_planets(
+            "Солнце в Козероге и Марс в Раке",
+            {"sun", "mars", "солнце", "марс"},
+            set(),
+            "test",
+        )
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 11. full_report_available tied to current context (BLOCKER 3)
+# ══════════════════════════════════════════════════════════════════════
+
+class TestFullReportAvailability:
+    """full_report_available must be tied to current active NatalChartCache,
+    not just any READY report for the user."""
+
+    @pytest.mark.asyncio
+    async def test_old_context_report_does_not_enable_availability(self):
+        """BLOCKER 3 FIX: READY report for old context + new profile → unavailable."""
+        from datetime import date as Date, time
+        from decimal import Decimal
+        from unittest.mock import AsyncMock, patch, MagicMock
+        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+        from app.db.session import Base
+        from app.db.models import User, UserProfile, NatalChartCache, NatalReport
+        from app.services.natal_service import NatalService
+        from app.services.natal_report_service import PROMPT_VERSION, REPORT_SCHEMA_VERSION
+
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with factory() as session:
+            user_id = uuid.uuid4()
+            user = User(id=user_id, tg_user_id=hash(str(user_id)) % (10**18))
+            session.add(user)
+            await session.commit()
+
+            # Old profile data
+            profile = UserProfile(
+                user_id=user_id, first_name="Test", gender="female",
+                birthday=Date(1993, 1, 7), birth_time=time(10, 33),
+                birth_city="Chirchiq", birth_lat=Decimal("41.46890"),
+                birth_lon=Decimal("69.58220"), birth_tz="Asia/Tashkent",
+                is_onboarded=True,
+            )
+            session.add(profile)
+            await session.commit()
+
+            # Old cache entry (different profile_hash = old birth data)
+            old_hash = "oldhash999"
+            old_cache = NatalChartCache(
+                user_id=user_id, profile_hash=old_hash,
+                raw_chart_json="{}", normalized_context_json="{}",
+            )
+            session.add(old_cache)
+            await session.commit()
+
+            # Old READY report tied to old_cache
+            old_report = NatalReport(
+                user_id=user_id,
+                natal_context_id=old_cache.id,
+                status="READY",
+                prompt_version=PROMPT_VERSION,
+                report_schema_version=REPORT_SCHEMA_VERSION,
+                sections_json='[{"id":"portrait","title":"P","blocks":[]}]',
+            )
+            session.add(old_report)
+            await session.commit()
+
+            # Current cache entry (new profile_hash = new birth data)
+            current_hash = "currenthash123"
+            current_cache = NatalChartCache(
+                user_id=user_id, profile_hash=current_hash,
+                raw_chart_json='{"planets":[{"name":"Sun","sign":"Capricorn","degree":16.9,"longitude":286.9}],"houses":[{"number":1,"sign":"Aries","degree":0.0,"longitude":0}],"special_points":[],"house_system":"Placidus"}',
+                normalized_context_json="{}",
+            )
+            session.add(current_cache)
+            await session.commit()
+
+            # Mock NatalContextService to return context for current profile
+            mock_context = NatalContextData(
+                planets=[
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
+                ],
+                houses=[
+                    NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
+                    for i in range(1, 13)
+                ],
+                aspects=[],
+                angles=[NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9)],
+            )
+
+            with patch("app.services.natal_context_service.NatalContextService") as MockCtxSvc:
+                mock_ctx_instance = AsyncMock()
+                mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
+                MockCtxSvc.return_value = mock_ctx_instance
+                MockCtxSvc.compute_profile_hash = MagicMock(return_value=current_hash)
+
+                service = NatalService(session)
+                preview = await service.get_preview(user_id)
+
+            # Old READY report exists but is for a DIFFERENT context
+            # → full_report_available must be False
+            assert preview.full_report_available is False, (
+                "full_report_available must be False when only an old-context report exists"
+            )
+
+        await engine.dispose()
+
+    @pytest.mark.asyncio
+    async def test_current_context_report_enables_availability(self):
+        """BLOCKER 3 FIX: READY report for current context → available."""
+        from datetime import date as Date, time
+        from decimal import Decimal
+        from unittest.mock import AsyncMock, patch, MagicMock
+        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+        from app.db.session import Base
+        from app.db.models import User, UserProfile, NatalChartCache, NatalReport
+        from app.services.natal_service import NatalService
+        from app.services.natal_report_service import PROMPT_VERSION, REPORT_SCHEMA_VERSION
+
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        async with factory() as session:
+            user_id = uuid.uuid4()
+            user = User(id=user_id, tg_user_id=hash(str(user_id)) % (10**18))
+            session.add(user)
+            await session.commit()
+
+            profile = UserProfile(
+                user_id=user_id, first_name="Test", gender="female",
+                birthday=Date(1993, 1, 7), birth_time=time(10, 33),
+                birth_city="Chirchiq", birth_lat=Decimal("41.46890"),
+                birth_lon=Decimal("69.58220"), birth_tz="Asia/Tashkent",
+                is_onboarded=True,
+            )
+            session.add(profile)
+            await session.commit()
+
+            current_hash = "currenthash456"
+            current_cache = NatalChartCache(
+                user_id=user_id, profile_hash=current_hash,
+                raw_chart_json='{"planets":[{"name":"Sun","sign":"Capricorn","degree":16.9,"longitude":286.9}],"houses":[{"number":1,"sign":"Aries","degree":0.0,"longitude":0}],"special_points":[],"house_system":"Placidus"}',
+                normalized_context_json="{}",
+            )
+            session.add(current_cache)
+            await session.commit()
+
+            # READY report tied to current cache entry
+            current_report = NatalReport(
+                user_id=user_id,
+                natal_context_id=current_cache.id,
+                status="READY",
+                prompt_version=PROMPT_VERSION,
+                report_schema_version=REPORT_SCHEMA_VERSION,
+                sections_json='[{"id":"portrait","title":"P","blocks":[]}]',
+            )
+            session.add(current_report)
+            await session.commit()
+
+            mock_context = NatalContextData(
+                planets=[
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
+                ],
+                houses=[
+                    NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
+                    for i in range(1, 13)
+                ],
+                aspects=[],
+                angles=[NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9)],
+            )
+
+            with patch("app.services.natal_context_service.NatalContextService") as MockCtxSvc:
+                mock_ctx_instance = AsyncMock()
+                mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
+                MockCtxSvc.return_value = mock_ctx_instance
+                MockCtxSvc.compute_profile_hash = MagicMock(return_value=current_hash)
+
+                service = NatalService(session)
+                preview = await service.get_preview(user_id)
+
+            # READY report for CURRENT context → full_report_available must be True
+            assert preview.full_report_available is True, (
+                "full_report_available must be True when a READY report exists for current context"
             )
 
         await engine.dispose()
