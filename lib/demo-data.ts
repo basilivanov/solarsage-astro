@@ -573,7 +573,7 @@ export const DEMO_NATAL_PREVIEW = {
     { id: "p-mars", name: "Марс", sign: "Стрелец", house: 3, score: 2.7, description: "Энергия направлена на познание и действие" },
   ],
   chapters: [
-    { id: "ch-portrait", eyebrow: "Глава 1", title: "Из чего ты собрана", locked: true, description: "Общий портрет личности и ключевые черты характера" },
+    { id: "ch-portrait", eyebrow: "Глава 1", title: "Из чего ты состоишь", locked: true, description: "Общий портрет личности и ключевые черты характера" },
     { id: "ch-asc", eyebrow: "Глава 2", title: "Как ты входишь в контакт", locked: true, description: "Асцендент и маска, с которой мир тебя видит" },
     { id: "ch-axis", eyebrow: "Глава 3", title: "Кто здесь главный", locked: true, description: "Ось ASC–DSC и базовое напряжение карты" },
     { id: "ch-aspects", eyebrow: "Глава 4", title: "Главные аспекты", locked: true, description: "Ключевые связи между планетами" },
@@ -595,7 +595,7 @@ export const DEMO_NATAL_PREVIEW = {
     displayLabel: "111+ факторов карты",
   },
   salesBullets: [
-    "поймёшь, в чём уже сильна больше всего;",
+    "поймёшь, в чём у тебя больше всего силы;",
     "увидишь, какие темы в жизни для тебя приоритетны;",
     "получишь связный разбор карты, а не набор разрозненных фактов.",
   ],
