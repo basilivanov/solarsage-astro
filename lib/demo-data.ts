@@ -208,6 +208,319 @@ export const DEMO_CITIES = [
   { name: "Нью-Йорк", lat: 40.71, lon: -74.01, country: "США", timezone: "America/New_York" },
 ]
 
+// ── Хорар (Horary) ──────────────────────────────────────────────────
+
+export const DEMO_HORARY_QUOTA = {
+  weeklyFreeAvailable: true,
+  weeklyFreeExpiresAt: "2026-06-09T00:00:00Z",
+  nextWeeklyFreeAt: "2026-06-09T00:00:00Z",
+  bonusCredits: 2,
+  paidCredits: 3,
+  canPurchase: true,
+}
+
+export const DEMO_HORARY_QUESTIONS = [
+  // ── 1. Отвеченный: «Да» (любовь) ────────────────────────────────
+  {
+    id: "hq-love-yes-001",
+    text: "Выйду ли я замуж в этом году?",
+    category: "love" as const,
+    status: "answered" as const,
+    spentCreditSource: "subscription_weekly_free" as const,
+    creditRefunded: false,
+    clientTimezone: "Europe/Moscow",
+    clientLocalTime: "2026-06-01T14:30:00",
+    questionLocationName: "Москва",
+    createdAt: "2026-06-01T14:30:00Z",
+    answer: {
+      verdict: "yes" as const,
+      confidence: 0.78,
+      confidenceLabel: "high" as const,
+      confidenceExplanation: "Карта указывает на позитивный исход с высокой уверенностью. Аспекты между управителями 1 и 7 домов поддерживают союз.",
+      blocks: [
+        {
+          type: "verdict_card" as const,
+          verdict: "yes" as const,
+          confidence: 0.78,
+          label: "Да, скорее всего",
+          confidenceLabel: "high" as const,
+          confidenceExplanation: "Карта указывает на позитивный исход с высокой уверенностью. Аспекты между управителями 1 и 7 домов поддерживают союз.",
+        },
+        { type: "divider" as const },
+        {
+          type: "heading" as const,
+          text: "Разбор карты",
+          level: 2,
+        },
+        {
+          type: "lead" as const,
+          text: "На момент вопроса Луна находится в Тельце — знак стабильности и постоянства. Управитель 7 дома Венера в секстиле с Юпитером — это сильный показатель благоприятного союза.",
+        },
+        {
+          type: "testimonies" as const,
+          prosLabel: "Свидетельства «за»",
+          consLabel: "Свидетельства «против»",
+          neutralLabel: "Нейтральные факторы",
+          pros: [
+            { title: "Венера в секстиле с Юпитером", explanation: "Управитель 7 дома (партнёрство) в благоприятном аспекте с планетой удачи — указывает на счастливый союз", weight: 0.85, planets: ["Венера", "Юпитер"], aspectType: "sextile", orb: 1.2 },
+            { title: "Луна в Тельце", explanation: "Луна в знаке экзальтации — эмоции стабильны и направлены на создание семьи", weight: 0.72, planets: ["Луна"], aspectType: null, orb: null },
+            { title: "Солнце в соединении с управителем ASC", explanation: "Вопросящий в сильной позиции — готов к действию", weight: 0.65, planets: ["Солнце", "Меркурий"], aspectType: "conjunction", orb: 2.1 },
+          ],
+          cons: [
+            { title: "Сатурн в квадратуре с Луной", explanation: "Возможны задержки из-за обстоятельств, но не отказ", weight: 0.45, planets: ["Сатурн", "Луна"], aspectType: "square", orb: 3.5 },
+          ],
+          neutral: [
+            { title: "Марс в 3 доме", explanation: "Активные обсуждения и переписка — информация о браке может прийти через общение", weight: 0.30, planets: ["Марс"], aspectType: null, orb: null },
+          ],
+        },
+        { type: "divider" as const },
+        {
+          type: "heading" as const,
+          text: "Сроки",
+          level: 3,
+        },
+        {
+          type: "timing" as const,
+          status: "known" as const,
+          timeRange: "август — октябрь 2026",
+          text: "Луна в фиксированном знаке указывает на средний срок. Активация Венеры ретроградной в сентябре может стать поворотным моментом. Наиболее вероятное окно — август–октябрь текущего года.",
+        },
+        {
+          type: "callout" as const,
+          text: "Не форсируй события — карта показывает, что естественное развитие ситуации приведёт к нужному результату. Лучшая стратегия сейчас — быть открытой и не давить.",
+          title: "Совет",
+          tone: "tip" as const,
+        },
+      ],
+      planets: ["Венера", "Юпитер", "Луна", "Сатурн", "Солнце", "Меркурий", "Марс"],
+      generatedAt: "2026-06-01T14:30:45Z",
+    },
+  },
+
+  // ── 2. Отвеченный: «Нет» (карьера) ──────────────────────────────
+  {
+    id: "hq-career-no-002",
+    text: "Стоит ли мне переходить на новую работу в этом месяце?",
+    category: "career" as const,
+    status: "answered" as const,
+    spentCreditSource: "paid" as const,
+    creditRefunded: false,
+    clientTimezone: "Europe/Moscow",
+    clientLocalTime: "2026-05-28T09:15:00",
+    questionLocationName: "Москва",
+    createdAt: "2026-05-28T09:15:00Z",
+    answer: {
+      verdict: "no" as const,
+      confidence: 0.71,
+      confidenceLabel: "high" as const,
+      confidenceExplanation: "Управитель 10 дома в оппозиции с Марсом — конфликт интересов и переоценка ситуации. Переход сейчас несёт риски.",
+      blocks: [
+        {
+          type: "verdict_card" as const,
+          verdict: "no" as const,
+          confidence: 0.71,
+          label: "Нет, сейчас не стоит",
+          confidenceLabel: "high" as const,
+          confidenceExplanation: "Управитель 10 дома в оппозиции с Марсом — конфликт интересов и переоценка ситуации. Переход сейчас несёт риски.",
+        },
+        { type: "divider" as const },
+        {
+          type: "heading" as const,
+          text: "Разбор карты",
+          level: 2,
+        },
+        {
+          type: "paragraph" as const,
+          text: "На момент вопроса управитель 10 дома (карьера) Сатурн находится в оппозиции с Марсом. Это классический показатель препятствий и конфликта. Новая позиция может оказаться не такой привлекательной, как кажется на первый взгляд.",
+        },
+        {
+          type: "testimonies" as const,
+          prosLabel: "Свидетельства «за»",
+          consLabel: "Свидетельства «против»",
+          neutralLabel: "Нейтральные факторы",
+          pros: [
+            { title: "Юпитер в трине с МС", explanation: "Долгосрочные перспективы роста существуют, но они проявятся позже", weight: 0.55, planets: ["Юпитер"], aspectType: "trine", orb: 2.8 },
+          ],
+          cons: [
+            { title: "Сатурн в оппозиции с Марсом", explanation: "Прямое указание на конфликт и препятствия при перемене места работы", weight: 0.88, planets: ["Сатурн", "Марс"], aspectType: "opposition", orb: 1.5 },
+            { title: "Управитель 2 дома поражён", explanation: "Финансовые условия перехода могут быть хуже текущих", weight: 0.70, planets: ["Плутон", "Венера"], aspectType: "square", orb: 0.8 },
+            { title: "Луна в 12 доме", explanation: "Скрытые обстоятельства, о которых вы не знаете — информация неполная", weight: 0.62, planets: ["Луна"], aspectType: null, orb: null },
+          ],
+          neutral: [
+            { title: "Меркурий ретроградный", explanation: "Документы и договорённости могут пересматриваться — не спешите подписывать", weight: 0.40, planets: ["Меркурий"], aspectType: null, orb: null },
+          ],
+        },
+        {
+          type: "callout" as const,
+          text: "Подожди с переходом минимум до конца ретроградного Меркурия (10 июня). Если предложение останется — пересмотри вопрос заново.",
+          title: "Рекомендация",
+          tone: "warning" as const,
+        },
+      ],
+      planets: ["Сатурн", "Марс", "Плутон", "Венера", "Луна", "Меркурий", "Юпитер"],
+      generatedAt: "2026-05-28T09:15:52Z",
+    },
+  },
+
+  // ── 3. Отвеченный: «Может быть» (деньги) ───────────────────────
+  {
+    id: "hq-money-maybe-003",
+    text: "Будет ли у меня доход от нового проекта?",
+    category: "money" as const,
+    status: "answered" as const,
+    spentCreditSource: "referral_bonus" as const,
+    creditRefunded: false,
+    clientTimezone: "Europe/Moscow",
+    clientLocalTime: "2026-05-25T18:45:00",
+    questionLocationName: "Санкт-Петербург",
+    createdAt: "2026-05-25T18:45:00Z",
+    answer: {
+      verdict: "maybe" as const,
+      confidence: 0.52,
+      confidenceLabel: "medium" as const,
+      confidenceExplanation: "Карта не даёт однозначного ответа. Свидетельства «за» и «против» примерно равны — исход зависит от ваших действий.",
+      blocks: [
+        {
+          type: "verdict_card" as const,
+          verdict: "maybe" as const,
+          confidence: 0.52,
+          label: "Возможно, но не гарантировано",
+          confidenceLabel: "medium" as const,
+          confidenceExplanation: "Карта не даёт однозначного ответа. Свидетельства «за» и «против» примерно равны — исход зависит от ваших действий.",
+        },
+        { type: "divider" as const },
+        {
+          type: "paragraph" as const,
+          text: "Управитель 2 дома (финансы) Венера не имеет мажорных аспектов — ситуация «висит». Это означает, что результат ещё не определён и сильно зависит от твоей проактивности.",
+        },
+        {
+          type: "pros_cons" as const,
+          pros: ["Юпитер во 2 доме — потенциал для дохода существует", "Венера в секстиле с Марсом — энергия для действий есть"],
+          cons: ["Луна в квадратуре с Нептуном — возможна путаница в финансах", "Управитель 2 дома без аспектов — нет чёткого канала для денег"],
+          prosLabel: "Что говорит за",
+          consLabel: "Что говорит против",
+        },
+        {
+          type: "timing" as const,
+          status: "unclear" as const,
+          timeRange: "июль — август 2026",
+          text: "Сроки размыты. Юпитер во 2 доме указывает на потенциальное окно в июле–августе, но многое зависит от твоих действий в ближайшие недели.",
+        },
+        {
+          type: "list" as const,
+          style: "check" as const,
+          items: [
+            "Прояви инициативу — карта не сработает сама по себе",
+            "Проверь все расчёты — Нептун говорит о возможных иллюзиях",
+            "Не вкладывай больше, чем готов потерять",
+          ],
+        },
+      ],
+      planets: ["Венера", "Юпитер", "Марс", "Луна", "Нептун"],
+      generatedAt: "2026-05-25T18:45:38Z",
+    },
+  },
+
+  // ── 4. Не удалось (failed) — деньги возвращены ──────────────────
+  {
+    id: "hq-health-fail-004",
+    text: "Пройдёт ли болезнь к концу месяца?",
+    category: "health" as const,
+    status: "failed" as const,
+    spentCreditSource: "subscription_weekly_free" as const,
+    creditRefunded: true,
+    clientTimezone: "Europe/Moscow",
+    clientLocalTime: "2026-05-20T11:00:00",
+    questionLocationName: "Москва",
+    createdAt: "2026-05-20T11:00:00Z",
+    answer: null,
+  },
+
+  // ── 5. Истёк срок (expired) — деньги возвращены ─────────────────
+  {
+    id: "hq-travel-exp-005",
+    text: "Удачным ли будет переезд в Нижний Новгород?",
+    category: "travel" as const,
+    status: "expired" as const,
+    spentCreditSource: "paid" as const,
+    creditRefunded: true,
+    clientTimezone: "Europe/Moscow",
+    clientLocalTime: "2026-05-15T16:20:00",
+    questionLocationName: "Москва",
+    createdAt: "2026-05-15T16:20:00Z",
+    answer: null,
+  },
+
+  // ── 6. Отвеченный: «Да» (другое) — с точным сроком ─────────────
+  {
+    id: "hq-other-yes-006",
+    text: "Найду ли я потерянные ключи от квартиры?",
+    category: "other" as const,
+    status: "answered" as const,
+    spentCreditSource: "paid" as const,
+    creditRefunded: false,
+    clientTimezone: "Europe/Moscow",
+    clientLocalTime: "2026-06-02T08:30:00",
+    questionLocationName: "Москва",
+    createdAt: "2026-06-02T08:30:00Z",
+    answer: {
+      verdict: "yes" as const,
+      confidence: 0.91,
+      confidenceLabel: "high" as const,
+      confidenceExplanation: "Управитель 2 дома (потерянная вещь) в соединении с Луной — вещь найдётся быстро.",
+      blocks: [
+        {
+          type: "verdict_card" as const,
+          verdict: "yes" as const,
+          confidence: 0.91,
+          label: "Да, точно найдёшь",
+          confidenceLabel: "high" as const,
+          confidenceExplanation: "Управитель 2 дома (потерянная вещь) в соединении с Луной — вещь найдётся быстро.",
+        },
+        { type: "divider" as const },
+        {
+          type: "paragraph" as const,
+          text: "Управитель 2 дома Меркурий находится в соединении с Луной — это классический показатель скорого обнаружения потерянной вещи. Луна в подвижном знаке Близнецов — ключи перемещались, но находятся недалеко.",
+        },
+        {
+          type: "quote" as const,
+          text: "Ищи там, где обычно хранишь мелочи — в сумке, кармане куртки или возле входной двери.",
+          source: "Хорарная традиция",
+        },
+        {
+          type: "timing" as const,
+          status: "known" as const,
+          timeRange: "сегодня, до вечера",
+          text: "Луна быстрая и подвижная — ключи найдутся в тот же день, вероятнее всего до вечера. Обрати внимание на место, где ты обычно оставляешь мелкие предметы.",
+        },
+        {
+          type: "callout" as const,
+          text: "Не трать время на поиски в необычных местах — карта указывает, что ключи в привычном месте, просто ты их не замечаешь.",
+          title: "Подсказка",
+          tone: "tip" as const,
+        },
+      ],
+      planets: ["Меркурий", "Луна"],
+      generatedAt: "2026-06-02T08:30:30Z",
+    },
+  },
+
+  // ── 7. В процессе (processing) ──────────────────────────────────
+  {
+    id: "hq-love-proc-007",
+    text: "Вернётся ли ко мне бывший партнёр?",
+    category: "love" as const,
+    status: "processing" as const,
+    spentCreditSource: "bonus" as const,
+    creditRefunded: false,
+    clientTimezone: "Europe/Moscow",
+    clientLocalTime: "2026-06-02T12:00:00",
+    questionLocationName: "Казань",
+    createdAt: "2026-06-02T12:00:00Z",
+    answer: null,
+  },
+]
+
 // ── Чат (Chat) ─────────────────────────────────────────────────────
 
 export const DEMO_CHAT_MESSAGES = [

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ChevronLeft, MessageSquare, AlertCircle } from "lucide-react"
 
 import type { HoraryCategory } from "@/lib/contracts/horary"
@@ -20,6 +21,7 @@ import { Spinner } from "@/components/ui/spinner"
 
 export function HoraryScreen() {
   const { toast } = useToast()
+  const router = useRouter()
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -27,6 +29,7 @@ export function HoraryScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null)
   const [activeQuestionStartedAt, setActiveQuestionStartedAt] = useState<number | null>(null)
+  const [pendingScrollId, setPendingScrollId] = useState<string | null>(null)
 
   const [quota, setQuota] = useState<HoraryQuotaRead | null>(null)
   const [questions, setQuestions] = useState<HoraryQuestionRead[]>([])
@@ -37,6 +40,7 @@ export function HoraryScreen() {
   const activeQuestionIdRef = useRef<string | null>(null)
   const seenAnsweredIdsRef = useRef<Set<string>>(new Set())
   const seenFailedIdsRef = useRef<Set<string>>(new Set())
+  const autoNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const upsertQuestion = useCallback((question: HoraryQuestionRead) => {
     setQuestions((prev) => {
@@ -124,11 +128,20 @@ export function HoraryScreen() {
 
         if (updatedQuestion.status === "answered" && !seenAnsweredIdsRef.current.has(updatedQuestion.id)) {
           seenAnsweredIdsRef.current.add(updatedQuestion.id)
+
+          // If this is the question user just submitted, auto-scroll + auto-navigate
+          const isJustSubmitted = activeQuestionIdRef.current === updatedQuestion.id
           setActiveQuestionId((current) => (current === updatedQuestion.id ? null : current))
           setActiveQuestionStartedAt((current) =>
             activeQuestionIdRef.current === updatedQuestion.id ? null : current
           )
-          toast({ description: "Ответ готов" })
+
+          if (isJustSubmitted) {
+            // Trigger scroll: wait for the card to render, then scroll + navigate
+            setPendingScrollId(updatedQuestion.id)
+          } else {
+            toast({ description: "Ответ готов" })
+          }
         }
 
         if (
@@ -166,6 +179,38 @@ export function HoraryScreen() {
       }, 2000)
     }
   }, [questions, stopPolling, toast, upsertQuestion])
+
+  // Auto-scroll to answered card + auto-navigate to answer page
+  useEffect(() => {
+    if (!pendingScrollId) return
+
+    // Wait for the card to render in the DOM after activeQuestionId is cleared
+    const scrollTimer = setTimeout(() => {
+      const cardEl = document.getElementById(`horary-question-${pendingScrollId}`)
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: "smooth", block: "center" })
+
+        // After the user briefly sees the card, navigate to the answer page
+        if (autoNavTimeoutRef.current) clearTimeout(autoNavTimeoutRef.current)
+        autoNavTimeoutRef.current = setTimeout(() => {
+          router.push(`/readings/horary/${pendingScrollId}`)
+          setPendingScrollId(null)
+        }, 800)
+      } else {
+        // Card not found in DOM yet — fallback: navigate directly
+        router.push(`/readings/horary/${pendingScrollId}`)
+        setPendingScrollId(null)
+      }
+    }, 150)
+
+    return () => {
+      clearTimeout(scrollTimer)
+      if (autoNavTimeoutRef.current) {
+        clearTimeout(autoNavTimeoutRef.current)
+        autoNavTimeoutRef.current = null
+      }
+    }
+  }, [pendingScrollId, router])
 
   useEffect(() => {
     loadData()
@@ -234,6 +279,15 @@ export function HoraryScreen() {
       })
     }
   }
+
+  // Cleanup auto-nav timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoNavTimeoutRef.current) {
+        clearTimeout(autoNavTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const pollStatus = useCallback((id: string) => {
     setActiveQuestionId(id)

@@ -69,6 +69,7 @@ export function HoraryQuestionCard({ question }: Props) {
   return (
     <Link
       href={`/readings/horary/${id}`}
+      id={`horary-question-${id}`}
       data-testid="horary-question-card"
       className={`block rounded-2xl border p-4 hover:bg-foreground/[0.01] active:scale-[0.99] transition ${bgClass}`}
     >

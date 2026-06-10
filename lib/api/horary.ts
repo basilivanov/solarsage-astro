@@ -3,6 +3,8 @@ import type {
   HoraryQuestionRead,
   HoraryQuotaRead,
 } from "@/packages/contracts"
+import { IS_DEMO_MODE } from "@/lib/demo-mode"
+import { DEMO_HORARY_QUOTA, DEMO_HORARY_QUESTIONS } from "@/lib/demo-data"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
@@ -62,6 +64,8 @@ async function buildHoraryApiError(res: Response): Promise<HoraryApiError> {
 }
 
 export async function getHoraryQuota(): Promise<HoraryQuotaRead> {
+  if (IS_DEMO_MODE) return DEMO_HORARY_QUOTA as unknown as HoraryQuotaRead
+
   const res = await fetch(`${API_BASE}/api/horary/quota`, { credentials: "include" })
   if (!res.ok) throw new Error("Failed to fetch horary quota")
   return res.json()
@@ -71,6 +75,8 @@ export async function listHoraryQuestions(
   limit = 20,
   offset = 0
 ): Promise<HoraryQuestionRead[]> {
+  if (IS_DEMO_MODE) return DEMO_HORARY_QUESTIONS.slice(offset, offset + limit) as unknown as HoraryQuestionRead[]
+
   const res = await fetch(
     `${API_BASE}/api/horary/questions?limit=${limit}&offset=${offset}`,
     { credentials: "include" }
@@ -84,6 +90,10 @@ export async function listHoraryQuestions(
 }
 
 export async function getHoraryQuestion(id: string): Promise<HoraryQuestionRead | null> {
+  if (IS_DEMO_MODE) {
+    return (DEMO_HORARY_QUESTIONS.find((q) => q.id === id) ?? null) as unknown as HoraryQuestionRead | null
+  }
+
   const res = await fetch(`${API_BASE}/api/horary/questions/${id}`, {
     credentials: "include",
   })
@@ -102,6 +112,24 @@ export async function getHoraryQuestion(id: string): Promise<HoraryQuestionRead 
 export async function createHoraryQuestion(
   data: HoraryQuestionCreate
 ): Promise<HoraryQuestionRead> {
+  if (IS_DEMO_MODE) {
+    // In demo mode, return a mock "processing" question
+    const mockQ: HoraryQuestionRead = {
+      id: `hq-demo-${Date.now()}`,
+      text: data.text,
+      category: data.category ?? null,
+      status: "processing",
+      spentCreditSource: "paid",
+      creditRefunded: false,
+      clientTimezone: data.clientTimezone,
+      clientLocalTime: data.clientLocalTime ?? null,
+      questionLocationName: data.questionLocationName ?? null,
+      createdAt: new Date().toISOString(),
+      answer: null,
+    } as unknown as HoraryQuestionRead
+    return mockQ
+  }
+
   const res = await fetch(`${API_BASE}/api/horary/questions`, {
     method: "POST",
     credentials: "include",

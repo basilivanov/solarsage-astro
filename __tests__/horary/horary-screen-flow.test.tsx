@@ -127,6 +127,70 @@ describe("HoraryScreen — happy path create flow", () => {
   });
 });
 
+describe("HoraryScreen — hooks stability across loading states", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMocks();
+  });
+
+  it("renders loading spinner first, then content — no hooks order mismatch", async () => {
+    // This test catches Rules of Hooks violations where a hook is placed
+    // after an early return (e.g. if (loading) return <Spinner />).
+    // In that case, the first render calls N hooks, but after loading=false
+    // the component renders more hooks → React crashes.
+
+    // Delay API responses so the component starts in loading=true state
+    let resolveQuota: Function, resolveList: Function, resolveProfile: Function;
+    mockQuota.mockReturnValue(new Promise((r) => { resolveQuota = r; }));
+    mockList.mockReturnValue(new Promise((r) => { resolveList = r; }));
+    mockProfile.mockReturnValue(new Promise((r) => { resolveProfile = r; }));
+
+    // Render while still loading
+    const { unmount } = render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    // Component should show spinner (loading state)
+    // No React error should be thrown here — if a hook was placed after
+    // the early return, React would crash on this first render already
+    const spinner = document.querySelector('[class*="animate-spin"]') || screen.getByRole("status");
+    expect(spinner).toBeTruthy();
+
+    // Now resolve the API calls — component transitions from loading to loaded
+    await act(async () => {
+      resolveQuota!({
+        weeklyFreeAvailable: true,
+        weeklyFreeExpiresAt: null,
+        nextWeeklyFreeAt: null,
+        bonusCredits: 0,
+        paidCredits: 0,
+        canPurchase: true,
+      });
+      resolveList!([]);
+      resolveProfile!({
+        userId: "u1",
+        firstName: "Анна",
+        gender: "female",
+        isOnboarded: true,
+        currentLocation: { city: "Москва", lat: 55.75, lon: 37.62, tz: "Europe/Moscow" },
+        birth: null,
+        birthdayLocation: null,
+      });
+    });
+
+    // After loading completes, the main content should appear
+    // If a hook was placed after the early return, React would have thrown
+    // "Rendered more hooks than during the previous render" by this point
+    await waitFor(() => {
+      expect(screen.getByText(/Хорарный оракул/)).toBeTruthy();
+    }, { timeout: 2000 });
+
+    unmount();
+  });
+});
+
 describe("HoraryScreen — polling starts after create", () => {
   beforeEach(() => {
     vi.clearAllMocks();

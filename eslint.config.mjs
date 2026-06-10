@@ -5,6 +5,7 @@
 import js from "@eslint/js";
 import tsParser from "@typescript-eslint/parser";
 import grace from "./eslint-rules/grace-plugin.mjs";
+import reactHooks from "eslint-plugin-react-hooks";
 
 // Mirror of grace/frontend.paths. Kept in sync manually; check-markers.sh and
 // check-negative.sh both read the .paths file at runtime, this config does not
@@ -36,6 +37,23 @@ export default [
     ],
   },
   js.configs.recommended,
+  // React Hooks rules — apply to ALL tsx files (catches Rules of Hooks violations early)
+  {
+    files: ["**/*.tsx", "**/*.jsx"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    plugins: { "react-hooks": reactHooks },
+    rules: {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+    },
+  },
   {
     files: ENFORCED_GLOBS,
     languageOptions: {
@@ -46,10 +64,12 @@ export default [
         ecmaFeatures: { jsx: true },
       },
     },
-    plugins: { grace },
+    plugins: { grace, "react-hooks": reactHooks },
     rules: {
       "grace/contracts-only-import": "error",
       "grace/no-redeclare-contract-types": "error",
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "no-unused-vars": "off",
       "no-undef": "off",
     },
