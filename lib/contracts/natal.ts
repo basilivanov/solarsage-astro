@@ -1,9 +1,18 @@
 /**
  * Zod-контракт для Natal (натальный отчёт).
  *
- * Единственный источник правды о форме данных натального отчёта.
+ * Единственный источник правды о форме данных натального отчёта на фронте.
  * Версионирован: schemaVersion позволяет фронту держать несколько
  * рендереров параллельно.
+ *
+ * Wave 5: добавлены типы, выровненные с backend Pydantic-схемами:
+ *   - NatalReportRead — ответ GET /api/natal/report/{id}
+ *   - NatalGenerateResponse — ответ POST /api/natal/generate
+ *   - ProsConsItem — {title, text} вместо plain string
+ *   - Callout tone выровнен с backend: info | warning | insight | positive
+ *
+ * Backend Pydantic (apps/api/app/schemas/natal.py) — окончательный
+ * источник правды для wire-формата. Если расхождение — правим тут.
  */
 
 import { z } from "zod"
@@ -261,4 +270,187 @@ export interface NatalPreviewRead {
  */
 export function validateNatalReport(data: unknown): NatalReport {
   return NatalReportSchema.parse(data)
+}
+
+// ===========================================================================
+// Wave 5: Backend-aligned types (source: apps/api/app/schemas/natal.py)
+// ===========================================================================
+
+/**
+ * Callout tone values from backend Pydantic.
+ * Frontend display mapping:
+ *   info → neutral (default)
+ *   warning → risk/caution
+ *   insight → insight
+ *   positive → strength/success
+ */
+export const BackendCalloutToneSchema = z.enum(["info", "warning", "insight", "positive"])
+export type BackendCalloutTone = z.infer<typeof BackendCalloutToneSchema>
+
+/** ProsConsItem — backend sends {title, text}, not plain strings. */
+export const ProsConsItemSchema = z.object({
+  title: z.string(),
+  text: z.string(),
+})
+export type ProsConsItem = z.infer<typeof ProsConsItemSchema>
+
+// ---- Backend-aligned block schemas ----
+
+export const BackendParagraphBlockSchema = z.object({
+  type: z.literal("paragraph"),
+  text: z.string().min(1),
+})
+
+export const BackendLeadBlockSchema = z.object({
+  type: z.literal("lead"),
+  text: z.string().min(1),
+})
+
+export const BackendHeadingBlockSchema = z.object({
+  type: z.literal("heading"),
+  text: z.string().min(1),
+  level: z.number().default(2),
+})
+
+export const BackendListBlockSchema = z.object({
+  type: z.literal("list"),
+  items: z.array(z.string()).min(1),
+  ordered: z.boolean().default(false),
+})
+
+export const BackendCalloutBlockSchema = z.object({
+  type: z.literal("callout"),
+  title: z.string().nullable().optional(),
+  text: z.string().min(1),
+  tone: BackendCalloutToneSchema.default("info"),
+})
+
+export const BackendProsConsBlockSchema = z.object({
+  type: z.literal("pros_cons"),
+  prosLabel: z.string().default("Сильные стороны"),
+  consLabel: z.string().default("Зоны роста"),
+  pros: z.array(ProsConsItemSchema).default([]),
+  cons: z.array(ProsConsItemSchema).default([]),
+})
+
+export const BackendQuoteBlockSchema = z.object({
+  type: z.literal("quote"),
+  text: z.string().min(1),
+  source: z.string().nullable().optional(),
+})
+
+export const BackendDividerBlockSchema = z.object({
+  type: z.literal("divider"),
+})
+
+export const BackendHighlightsBlockSchema = z.object({
+  type: z.literal("highlights"),
+  items: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    text: z.string(),
+    tone: z.string().nullable().optional(),
+  })),
+})
+
+export const BackendBulletsBlockSchema = z.object({
+  type: z.literal("bullets"),
+  items: z.array(z.string()),
+})
+
+export const BackendBlockSchema = z.discriminatedUnion("type", [
+  BackendParagraphBlockSchema,
+  BackendLeadBlockSchema,
+  BackendHeadingBlockSchema,
+  BackendListBlockSchema,
+  BackendCalloutBlockSchema,
+  BackendProsConsBlockSchema,
+  BackendQuoteBlockSchema,
+  BackendDividerBlockSchema,
+  BackendHighlightsBlockSchema,
+  BackendBulletsBlockSchema,
+])
+
+export type BackendBlock = z.infer<typeof BackendBlockSchema>
+
+// ---- Backend-aligned report types ----
+
+export const NatalReportMetaSchema = z.object({
+  userName: z.string().nullable().optional(),
+  birthDate: z.string().nullable().optional(),
+  birthTime: z.string().nullable().optional(),
+  birthPlace: z.string().nullable().optional(),
+  houseSystem: z.string().default("Placidus"),
+  contextHash: z.string().nullable().optional(),
+  promptVersion: z.string().default("1"),
+})
+export type NatalReportMeta = z.infer<typeof NatalReportMetaSchema>
+
+export const NatalReportSectionReadSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  summary: z.string().nullable().optional(),
+  blocks: z.array(BackendBlockSchema),
+})
+export type NatalReportSectionRead = z.infer<typeof NatalReportSectionReadSchema>
+
+export const NatalReportStatusSchema = z.enum([
+  "PENDING",
+  "GENERATING",
+  "READY",
+  "FAILED_RETRYABLE",
+  "FAILED_PERMANENT",
+])
+export type NatalReportStatus = z.infer<typeof NatalReportStatusSchema>
+
+export const NatalReportAccessStateSchema = z.enum([
+  "FREE_PREVIEW",
+  "UNLOCKED",
+  "INTERNAL_TEST",
+  "BLOCKED",
+])
+export type NatalReportAccessState = z.infer<typeof NatalReportAccessStateSchema>
+
+export const NatalReportReadSchema = z.object({
+  id: z.string(),
+  status: NatalReportStatusSchema,
+  accessState: NatalReportAccessStateSchema.default("FREE_PREVIEW"),
+  meta: NatalReportMetaSchema,
+  sections: z.array(NatalReportSectionReadSchema).default([]),
+  errorCode: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+  createdAt: z.string().nullable().optional(),
+  completedAt: z.string().nullable().optional(),
+})
+export type NatalReportRead = z.infer<typeof NatalReportReadSchema>
+
+export const NatalGenerateResponseSchema = z.object({
+  reportId: z.string(),
+  status: NatalReportStatusSchema,
+  sectionsAvailable: z.boolean().default(false),
+  errorCode: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+})
+export type NatalGenerateResponse = z.infer<typeof NatalGenerateResponseSchema>
+
+/**
+ * Валидирует NatalReportRead (backend-формат) и выбрасывает при несоответствии.
+ */
+export function validateNatalReportRead(data: unknown): NatalReportRead {
+  return NatalReportReadSchema.parse(data)
+}
+
+/**
+ * Maps backend callout tone to frontend display class key.
+ * Backend sends: info, warning, insight, positive
+ * Frontend renders: neutral, risk, insight, strength
+ */
+export function mapCalloutTone(tone?: BackendCalloutTone | null): "neutral" | "risk" | "insight" | "strength" {
+  switch (tone) {
+    case "warning": return "risk"
+    case "positive": return "strength"
+    case "insight": return "insight"
+    case "info":
+    default: return "neutral"
+  }
 }

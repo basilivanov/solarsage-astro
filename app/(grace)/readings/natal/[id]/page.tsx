@@ -2,42 +2,114 @@
 
 import { useCallback, useEffect, useState, use } from "react"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react"
+import { ChevronLeft, ChevronRight, Sparkles, AlertTriangle, RefreshCw } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { IS_DEMO_MODE } from "@/lib/demo-mode"
-import { MOCK_NATAL_REPORT } from "@/lib/mocks/natal"
-import type { NatalReport, ReportSection } from "@/lib/contracts/natal"
+import { fetchNatalReport } from "@/lib/api/natal"
+import type {
+  NatalReportRead,
+  NatalReportSectionRead,
+  BackendBlock,
+  BackendCalloutTone,
+  ProsConsItem,
+} from "@/lib/contracts/natal"
+import { mapCalloutTone } from "@/lib/contracts/natal"
 
 type Props = {
   params: Promise<{ id: string }>
 }
 
+type PageState =
+  | { status: "loading" }
+  | { status: "not_found" }
+  | { status: "error"; message: string }
+  | { status: "generating"; reportId: string }
+  | { status: "failed"; message: string; retryable: boolean; reportId?: string }
+  | { status: "ready"; data: NatalReportRead }
+
 export default function NatalReportPage({ params }: Props) {
   const { id } = use(params)
-  const [report, setReport] = useState<NatalReport | null>(null)
+  const [state, setState] = useState<PageState>({ status: "loading" })
   const [activeSection, setActiveSection] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // TODO: Replace with real API call when backend is ready
-    // GET /api/natal/report/{id}
-    if (IS_DEMO_MODE || id === "demo") {
-      setReport(MOCK_NATAL_REPORT)
-      setLoading(false)
-      return
+    let cancelled = false
+
+    async function load() {
+      const result = await fetchNatalReport(id)
+
+      if (cancelled) return
+
+      if (!result.ok) {
+        if (result.error.type === "not_found") {
+          setState({ status: "not_found" })
+        } else {
+          setState({ status: "error", message: result.error.message })
+        }
+        return
+      }
+
+      const report = result.data
+
+      if (report.status === "READY") {
+        setState({ status: "ready", data: report })
+        return
+      }
+
+      if (report.status === "GENERATING" || report.status === "PENDING") {
+        setState({ status: "generating", reportId: report.id })
+        return
+      }
+
+      if (report.status === "FAILED_RETRYABLE") {
+        setState({
+          status: "failed",
+          message: report.errorMessage || "Generation failed, you can retry",
+          retryable: true,
+          reportId: report.id,
+        })
+        return
+      }
+
+      if (report.status === "FAILED_PERMANENT") {
+        setState({
+          status: "failed",
+          message: report.errorMessage || "Generation failed permanently",
+          retryable: false,
+        })
+        return
+      }
     }
 
-    // For now, always use mock
-    setReport(MOCK_NATAL_REPORT)
-    setLoading(false)
+    void load()
+
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
-  const handleSectionClick = useCallback((sectionId: string) => {
-    setActiveSection(sectionId)
-  }, [])
+  const handleRetry = useCallback(async () => {
+    if (state.status !== "failed" || !state.retryable) return
+    setState({ status: "loading" })
+    // Re-trigger generation
+    const { fetchNatalGenerate } = await import("@/lib/api/natal")
+    const result = await fetchNatalGenerate(true)
+    if (result.ok) {
+      // Reload the report
+      const reportResult = await fetchNatalReport(result.data.reportId)
+      if (reportResult.ok) {
+        if (reportResult.data.status === "READY") {
+          setState({ status: "ready", data: reportResult.data })
+          return
+        }
+      }
+    }
+    setState({ status: "error", message: "Retry failed. Please try again." })
+  }, [state])
 
-  if (loading) {
+  // ---- Loading state ----
+  if (state.status === "loading") {
     return (
       <div className="flex h-[80dvh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -45,7 +117,8 @@ export default function NatalReportPage({ params }: Props) {
     )
   }
 
-  if (!report) {
+  // ---- Not found ----
+  if (state.status === "not_found") {
     return (
       <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
         <h3 className="font-serif text-[20px] font-bold text-foreground">Отчёт не найден</h3>
@@ -56,6 +129,65 @@ export default function NatalReportPage({ params }: Props) {
       </div>
     )
   }
+
+  // ---- Error ----
+  if (state.status === "error") {
+    return (
+      <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
+        <AlertTriangle className="h-8 w-8 text-muted-foreground" />
+        <h3 className="font-serif text-[20px] font-bold text-foreground">Ошибка загрузки</h3>
+        <p className="text-[14px] text-muted-foreground">{state.message}</p>
+        <Link href="/readings/natal" className="inline-flex items-center gap-1.5 text-[14px] text-primary">
+          <ChevronLeft className="h-4 w-4" />
+          Вернуться к превью
+        </Link>
+      </div>
+    )
+  }
+
+  // ---- Still generating ----
+  if (state.status === "generating") {
+    return (
+      <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <h3 className="font-serif text-[20px] font-bold text-foreground">Отчёт ещё генерируется</h3>
+        <p className="text-[14px] text-muted-foreground">Подождите немного, разбор почти готов</p>
+        <Link href={`/readings/natal/generating`} className="inline-flex items-center gap-1.5 text-[14px] text-primary">
+          Перейти на экран генерации
+        </Link>
+      </div>
+    )
+  }
+
+  // ---- Failed ----
+  if (state.status === "failed") {
+    return (
+      <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
+        <AlertTriangle className="h-8 w-8 text-rose-500" />
+        <h3 className="font-serif text-[20px] font-bold text-foreground">Не удалось создать разбор</h3>
+        <p className="text-[14px] text-muted-foreground">{state.message}</p>
+        <div className="flex gap-3">
+          {state.retryable && (
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-[14px] font-medium text-primary-foreground transition active:scale-[0.99]"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Попробовать ещё раз
+            </button>
+          )}
+          <Link href="/readings/natal" className="inline-flex items-center gap-1.5 rounded-xl border border-border/50 bg-card px-4 py-3 text-[14px] font-medium text-foreground">
+            <ChevronLeft className="h-4 w-4" />
+            Вернуться
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // ---- Ready: show report ----
+  const report = state.data
 
   // If a section is selected, show it
   if (activeSection) {
@@ -73,6 +205,7 @@ export default function NatalReportPage({ params }: Props) {
   }
 
   // Show TOC
+  const meta = report.meta
   return (
     <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
       <header
@@ -95,7 +228,7 @@ export default function NatalReportPage({ params }: Props) {
             Полный разбор карты
           </h1>
           <p className="text-[14px] text-muted-foreground">
-            {report.meta.name} · {report.meta.birth.place} · {report.meta.birth.date.split("-")[0]}
+            {meta.userName || ""}{meta.userName && meta.birthPlace ? " · " : ""}{meta.birthPlace || ""}{(meta.userName || meta.birthPlace) && meta.birthDate ? " · " : ""}{meta.birthDate?.split("-")[0] || ""}
           </p>
         </div>
 
@@ -112,7 +245,7 @@ export default function NatalReportPage({ params }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 * index, duration: 0.25 }}
                 type="button"
-                onClick={() => handleSectionClick(section.id)}
+                onClick={() => setActiveSection(section.id)}
                 className="flex w-full items-start gap-3 rounded-xl border border-border/50 bg-card px-4 py-3.5 text-left transition hover:border-border active:scale-[0.99]"
               >
                 <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-primary/10 text-[12px] font-semibold text-primary">
@@ -146,8 +279,8 @@ function NatalSectionView({
   onGoToSection,
   onBackToTOC,
 }: {
-  section: ReportSection
-  report: NatalReport
+  section: NatalReportSectionRead
+  report: NatalReportRead
   onGoToSection: (id: string) => void
   onBackToTOC: () => void
 }) {
@@ -174,11 +307,6 @@ function NatalSectionView({
       <main className="flex-1 px-5 py-6 max-w-md mx-auto w-full space-y-5">
         {/* Section header */}
         <div className="space-y-1">
-          {section.eyebrow ? (
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-primary">
-              {section.eyebrow}
-            </span>
-          ) : null}
           <h1 className="font-serif text-[26px] leading-tight tracking-tight text-foreground">
             {section.title}
           </h1>
@@ -187,11 +315,11 @@ function NatalSectionView({
         {/* Blocks */}
         <div className="space-y-4">
           {section.blocks.map((block, index) => (
-            <NatalBlock key={`${section.id}-block-${index}`} block={block} />
+            <BackendBlockRenderer key={`${section.id}-block-${index}`} block={block} />
           ))}
         </div>
 
-        {/* Next/Prev navigation — следующая сверху, предыдущая снизу */}
+        {/* Next/Prev navigation */}
         <div className="border-t border-border/40 pt-5 space-y-2">
           {nextSection ? (
             <button
@@ -234,9 +362,16 @@ function NatalSectionView({
   )
 }
 
-/* ── Block Renderer ────────────────────────────────────────────── */
+/* ── Backend Block Renderer ────────────────────────────────────── */
 
-function NatalBlock({ block }: { block: any }) {
+/**
+ * Renders backend-aligned block types.
+ * Handles: paragraph, lead, heading, list, callout, pros_cons, quote, divider,
+ * highlights, bullets.
+ * ProsConsBlock uses ProsConsItem[] ({title, text}), not plain strings.
+ * CalloutBlock uses backend tones: info, warning, insight, positive.
+ */
+function BackendBlockRenderer({ block }: { block: BackendBlock }) {
   switch (block.type) {
     case "lead":
       return (
@@ -259,26 +394,30 @@ function NatalBlock({ block }: { block: any }) {
         </h2>
       )
 
-    case "list":
+    case "list": {
+      const isOrdered = "ordered" in block && block.ordered
+      const Tag = isOrdered ? "ol" : "ul"
       return (
-        <ul className="space-y-1.5">
-          {block.items?.map((item: string, i: number) => (
+        <Tag className={`space-y-1.5 ${isOrdered ? "list-decimal pl-5" : ""}`}>
+          {block.items.map((item, i) => (
             <li key={i} className="flex gap-2 text-[14px] leading-relaxed text-foreground/80">
-              <span className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-primary/40" />
+              {!isOrdered && <span className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-primary/40" />}
               {item}
             </li>
           ))}
-        </ul>
+        </Tag>
       )
+    }
 
     case "callout": {
+      const displayTone = mapCalloutTone(block.tone as BackendCalloutTone | undefined)
       const toneStyles: Record<string, string> = {
         strength: "border-emerald-500/20 bg-emerald-500/[0.04]",
         risk: "border-rose-500/20 bg-rose-500/[0.04]",
         insight: "border-primary/15 bg-primary/[0.04]",
         neutral: "border-border/50 bg-muted/30",
       }
-      const style = toneStyles[block.tone ?? "neutral"] ?? toneStyles.neutral
+      const style = toneStyles[displayTone] ?? toneStyles.neutral
       return (
         <aside className={`rounded-xl border px-4 py-3 ${style}`}>
           {block.title ? (
@@ -291,35 +430,46 @@ function NatalBlock({ block }: { block: any }) {
       )
     }
 
-    case "pros_cons":
+    case "pros_cons": {
+      const pros: ProsConsItem[] = block.pros ?? []
+      const cons: ProsConsItem[] = block.cons ?? []
       return (
         <div className="grid grid-cols-2 gap-3">
-          {block.pros?.length ? (
+          {pros.length ? (
             <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.03] px-3.5 py-3">
               <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-emerald-600 dark:text-emerald-400 mb-2">
-                {block.prosLabel ?? "За"}
+                {block.prosLabel ?? "Сильные стороны"}
               </div>
               <ul className="space-y-1.5">
-                {block.pros.map((item: string, i: number) => (
-                  <li key={i} className="text-[13px] leading-relaxed text-foreground/80">{item}</li>
+                {pros.map((item, i) => (
+                  <li key={i} className="text-[13px] leading-relaxed text-foreground/80">
+                    {item.title ? <span className="font-medium">{item.title}</span> : null}
+                    {item.title && item.text ? " — " : null}
+                    {item.text}
+                  </li>
                 ))}
               </ul>
             </div>
           ) : null}
-          {block.cons?.length ? (
+          {cons.length ? (
             <div className="rounded-xl border border-rose-500/15 bg-rose-500/[0.03] px-3.5 py-3">
               <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-rose-600 dark:text-rose-400 mb-2">
-                {block.consLabel ?? "Против"}
+                {block.consLabel ?? "Зоны роста"}
               </div>
               <ul className="space-y-1.5">
-                {block.cons.map((item: string, i: number) => (
-                  <li key={i} className="text-[13px] leading-relaxed text-foreground/80">{item}</li>
+                {cons.map((item, i) => (
+                  <li key={i} className="text-[13px] leading-relaxed text-foreground/80">
+                    {item.title ? <span className="font-medium">{item.title}</span> : null}
+                    {item.title && item.text ? " — " : null}
+                    {item.text}
+                  </li>
                 ))}
               </ul>
             </div>
           ) : null}
         </div>
       )
+    }
 
     case "quote":
       return (
@@ -327,8 +477,8 @@ function NatalBlock({ block }: { block: any }) {
           <p className="font-serif text-[15px] leading-relaxed text-foreground/80 italic">
             {block.text}
           </p>
-          {block.cite ? (
-            <cite className="mt-1 block text-[12px] text-muted-foreground not-italic">{block.cite}</cite>
+          {block.source ? (
+            <cite className="mt-1 block text-[12px] text-muted-foreground not-italic">{block.source}</cite>
           ) : null}
         </blockquote>
       )
@@ -336,7 +486,32 @@ function NatalBlock({ block }: { block: any }) {
     case "divider":
       return <hr className="border-border/30" />
 
+    case "highlights":
+      return (
+        <div className="space-y-2">
+          {block.items.map((item, i) => (
+            <div key={i} className="rounded-xl border border-border/50 bg-card px-3.5 py-2.5">
+              {item.title ? <div className="text-[12px] font-medium text-foreground/70">{item.title}</div> : null}
+              <p className="text-[13px] text-foreground/80">{item.text}</p>
+            </div>
+          ))}
+        </div>
+      )
+
+    case "bullets":
+      return (
+        <ul className="space-y-1.5">
+          {block.items.map((item, i) => (
+            <li key={i} className="flex gap-2 text-[14px] leading-relaxed text-foreground/80">
+              <span className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-primary/40" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      )
+
     default:
+      // Graceful skip for unknown block types
       return null
   }
 }

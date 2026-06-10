@@ -49,10 +49,17 @@ export default function NatalReadingPage() {
   }, [load])
 
   const handleOpenReport = useCallback(() => {
-    // Skip payment for now — go to generating screen.
-    // In production, this would be called after payment confirmation.
-    router.push("/readings/natal/generating")
-  }, [router])
+    // Wave 5: If report already available (fullReportAvailable=true),
+    // the backend has a READY report — fetch it directly.
+    // Otherwise, go to the generating screen.
+    if (state.status === "ready" && state.data.fullReportAvailable) {
+      // Report exists — try to navigate directly
+      // (the report page will fetch the latest READY report by ID)
+      router.push("/readings/natal/generating")
+    } else {
+      router.push("/readings/natal/generating")
+    }
+  }, [router, state])
 
   return (
     <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
