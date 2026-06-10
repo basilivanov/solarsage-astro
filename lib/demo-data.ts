@@ -521,6 +521,88 @@ export const DEMO_HORARY_QUESTIONS = [
   },
 ]
 
+// ── Натал (Preview) ────────────────────────────────────────────────
+
+export const DEMO_NATAL_PREVIEW = {
+  meta: {
+    name: "Анна",
+    birthDate: "1990-01-15",
+    birthTime: "12:00",
+    birthCity: "Москва",
+    houseSystem: "PLACIDUS",
+    ascSign: "Cancer",
+    ascDegree: 14.2,
+    gender: "female" as const,
+  },
+  highlights: [
+    {
+      id: "h-asc",
+      title: "Асцендент",
+      value: "Рак",
+      description: "Как ты входишь в контакт с миром",
+    },
+    {
+      id: "h-sun",
+      title: "Солнце",
+      value: "Козерог",
+      description: "Твой базовый вектор и мотивация",
+    },
+    {
+      id: "h-moon",
+      title: "Луна",
+      value: "Лев",
+      description: "Твой эмоциональный отклик",
+    },
+  ],
+  spheres: [
+    { id: "s-body", title: "Тело, энергия, здоровье", score: 4.7, rank: 1, description: "Физическая витальность и ресурсы — одна из самых выраженных тем карты" },
+    { id: "s-relations", title: "Отношения и партнёрство", score: 4.3, rank: 2, description: "Тема связи с другим человеком проявлена ярко и требует внимания" },
+    { id: "s-money", title: "Деньги и ресурсы", score: 3.9, rank: 3, description: "Финансовая сфера активна — есть потенциал для роста" },
+    { id: "s-career", title: "Карьера и реализация", score: 3.5, rank: 4, description: "Профессиональная сфера стабильна, но требует осознанного подхода" },
+    { id: "s-family", title: "Семья и корни", score: 3.2, rank: 5, description: "Родовые сценарии и домашняя среда влияют на многие решения" },
+    { id: "s-creative", title: "Творчество и самовыражение", score: 2.8, rank: 6, description: "Творческая энергия есть, но не всегда находит выход" },
+    { id: "s-spiritual", title: "Духовный путь", score: 2.1, rank: 7, description: "Внутренний поиск и трансформация — фоновая, но важная тема" },
+  ],
+  planets: [
+    { id: "p-venus", name: "Венера", sign: "Водолей", house: 5, score: 4.6, description: "Любовь и красота через свободу и нестандартность" },
+    { id: "p-moon", name: "Луна", sign: "Лев", house: 11, score: 4.2, description: "Эмоции яркие, потребность в признании и тепле" },
+    { id: "p-jupiter", name: "Юпитер", sign: "Рак", house: 10, score: 3.8, description: "Расширение через семью, заботу и профессию" },
+    { id: "p-sun", name: "Солнце", sign: "Козерог", house: 4, score: 3.5, description: "Амбиции, структура, связь с корнями" },
+    { id: "p-saturn", name: "Сатурн", sign: "Козерог", house: 4, score: 3.3, description: "Дисциплина и ответственность как фундамент" },
+    { id: "p-mercury", name: "Меркурий", sign: "Стрелец", house: 3, score: 2.9, description: "Мышление масштабное, коммуникабельность" },
+    { id: "p-mars", name: "Марс", sign: "Стрелец", house: 3, score: 2.7, description: "Энергия направлена на познание и действие" },
+  ],
+  chapters: [
+    { id: "ch-portrait", eyebrow: "Глава 1", title: "Из чего ты собрана", locked: true, description: "Общий портрет личности и ключевые черты характера" },
+    { id: "ch-asc", eyebrow: "Глава 2", title: "Как ты входишь в контакт", locked: true, description: "Асцендент и маска, с которой мир тебя видит" },
+    { id: "ch-axis", eyebrow: "Глава 3", title: "Кто здесь главный", locked: true, description: "Ось ASC–DSC и базовое напряжение карты" },
+    { id: "ch-aspects", eyebrow: "Глава 4", title: "Главные аспекты", locked: true, description: "Ключевые связи между планетами" },
+    { id: "ch-spheres", eyebrow: "Глава 5", title: "Сферы жизни", locked: true, description: "Где карта проявлена сильнее всего" },
+    { id: "ch-planets", eyebrow: "Глава 6", title: "Планетарные функции", locked: true, description: "Роль каждой планеты в твоей карте" },
+    { id: "ch-shadow", eyebrow: "Глава 7", title: "Тень и защитные паттерны", locked: true, description: "Скрытые мотивы и автоматические реакции" },
+    { id: "ch-synthesis", eyebrow: "Глава 8", title: "Итоговый синтез", locked: true, description: "Связный разбор всей карты в единую картину" },
+  ],
+  personalHook: "Ты считываешь мир глубоко и тонко. В карте заметно сочетание чувствительности, внутренней силы и выраженной личной воли. Сильнее всего у тебя читаются темы тела, ресурса и личного проявления.",
+  calculationStats: {
+    planetsCount: 10,
+    housesCount: 12,
+    aspectsCount: 24,
+    spheresCount: 7,
+    specialPointsCount: 3,
+    scoringFactorsCount: 48,
+    dignityFactorsCount: 14,
+    totalFactorsCount: 111,
+    displayLabel: "111+ факторов карты",
+  },
+  salesBullets: [
+    "поймёшь, в чём уже сильна больше всего;",
+    "увидишь, какие темы в жизни для тебя приоритетны;",
+    "получишь связный разбор карты, а не набор разрозненных фактов.",
+  ],
+  fullReportAvailable: false,
+  fullReportPriceKopecks: 99900,
+}
+
 // ── Чат (Chat) ─────────────────────────────────────────────────────
 
 export const DEMO_CHAT_MESSAGES = [

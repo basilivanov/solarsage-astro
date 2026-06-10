@@ -8,28 +8,30 @@ type Props = {
 
 export function CalculationDepth({ stats }: Props) {
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-4">
+    <section className="rounded-2xl border border-border/50 bg-card px-4 py-3.5">
       <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
         Глубина расчёта
       </div>
-      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-        В разборе учитываются:
-      </p>
+      {stats.displayLabel ? (
+        <p className="mt-1.5 text-[14px] font-medium text-foreground">
+          {stats.displayLabel}
+        </p>
+      ) : null}
       <ul className="mt-2 space-y-1.5">
-        <li className="flex items-center gap-2 text-[13px] text-foreground/85">
-          <span className="h-1 w-1 rounded-full bg-primary/60 flex-none" />
+        <li className="flex items-center gap-2 text-[12.5px] text-foreground/75">
+          <span className="h-1 w-1 rounded-full bg-primary/50 flex-none" />
           планеты и дома
         </li>
-        <li className="flex items-center gap-2 text-[13px] text-foreground/85">
-          <span className="h-1 w-1 rounded-full bg-primary/60 flex-none" />
+        <li className="flex items-center gap-2 text-[12.5px] text-foreground/75">
+          <span className="h-1 w-1 rounded-full bg-primary/50 flex-none" />
           аспекты и акценты карты
         </li>
-        <li className="flex items-center gap-2 text-[13px] text-foreground/85">
-          <span className="h-1 w-1 rounded-full bg-primary/60 flex-none" />
+        <li className="flex items-center gap-2 text-[12.5px] text-foreground/75">
+          <span className="h-1 w-1 rounded-full bg-primary/50 flex-none" />
           приоритетные жизненные сферы
         </li>
-        <li className="flex items-center gap-2 text-[13px] text-foreground/85">
-          <span className="h-1 w-1 rounded-full bg-primary/60 flex-none" />
+        <li className="flex items-center gap-2 text-[12.5px] text-foreground/75">
+          <span className="h-1 w-1 rounded-full bg-primary/50 flex-none" />
           сильные и напряжённые зоны
         </li>
       </ul>

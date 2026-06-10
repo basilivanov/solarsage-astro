@@ -8,13 +8,14 @@ export function SalesBullets({ bullets }: Props) {
   if (!bullets.length) return null
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-4">
+    <section className="rounded-2xl border border-primary/10 bg-primary/[0.03] px-4 py-4">
       <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-        Что входит
+        Что ты получишь
       </div>
-      <ul className="mt-3 space-y-2">
+      <p className="mt-2 text-[13px] text-foreground/70">Ты:</p>
+      <ul className="mt-1.5 space-y-2">
         {bullets.map((bullet, index) => (
-          <li key={`${bullet}-${index}`} className="flex gap-2 text-[13px] leading-relaxed text-foreground/85">
+          <li key={`${bullet}-${index}`} className="flex gap-2 text-[13.5px] leading-relaxed text-foreground/85">
             <span className="mt-0.5 text-primary">✦</span>
             <span>{bullet}</span>
           </li>

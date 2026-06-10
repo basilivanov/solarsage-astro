@@ -1,4 +1,6 @@
 import type { NatalPreviewRead } from "@/lib/contracts/natal"
+import { IS_DEMO_MODE } from "@/lib/demo-mode"
+import { DEMO_NATAL_PREVIEW } from "@/lib/demo-data"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
@@ -17,6 +19,10 @@ type ErrorBody = {
 export async function fetchNatalPreview(): Promise<
   { ok: true; data: NatalPreviewRead } | { ok: false; error: NatalPreviewError }
 > {
+  if (IS_DEMO_MODE) {
+    return { ok: true, data: DEMO_NATAL_PREVIEW as unknown as NatalPreviewRead }
+  }
+
   try {
     const res = await fetch(`${API_BASE}/api/natal/preview`, {
       credentials: "include",

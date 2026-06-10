@@ -15,16 +15,26 @@ export function LockedChapters({ chapters }: Props) {
       <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
         Что войдёт в полный отчёт
       </div>
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {chapters.map((chapter) => (
           <div
             key={chapter.id}
-            className="flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3"
+            className="relative rounded-xl border border-border/50 bg-card px-3 py-2.5"
           >
-            <Lock className="h-3.5 w-3.5 flex-none text-muted-foreground/50" />
-            <span className="text-[13.5px] leading-snug text-foreground/85">
+            <Lock className="absolute right-2.5 top-2.5 h-3 w-3 text-muted-foreground/35" />
+            {chapter.eyebrow ? (
+              <div className="text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground/60">
+                {chapter.eyebrow}
+              </div>
+            ) : null}
+            <p className="mt-0.5 text-[12.5px] font-medium leading-snug text-foreground/85 pr-4">
               {chapter.title}
-            </span>
+            </p>
+            {chapter.description ? (
+              <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground/70 line-clamp-2">
+                {chapter.description}
+              </p>
+            ) : null}
           </div>
         ))}
       </div>

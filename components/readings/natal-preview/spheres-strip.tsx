@@ -19,18 +19,20 @@ export function SpheresStrip({ spheres }: Props) {
       <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
         Сильнее всего у тебя проявлены
       </div>
-      <div className="grid grid-cols-1 gap-3">
+      <div className="space-y-2">
         {visible.map((sphere) => (
-          <div key={sphere.id} className="rounded-2xl border border-border/70 bg-card p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-serif text-[18px] leading-tight text-foreground">
+          <div key={sphere.id} className="flex items-start gap-3 rounded-xl border border-border/50 bg-card px-3.5 py-3">
+            <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+              {sphere.rank}
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-[14px] font-medium leading-tight text-foreground">
                 {sphere.title}
               </h3>
-              <span className="text-[11px] text-muted-foreground/70">#{sphere.rank}</span>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+                {sphere.description}
+              </p>
             </div>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-              {sphere.description}
-            </p>
           </div>
         ))}
       </div>
@@ -38,7 +40,7 @@ export function SpheresStrip({ spheres }: Props) {
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-card py-2.5 text-[12.5px] font-medium text-muted-foreground hover:text-foreground transition active:scale-[0.99]"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border/50 bg-card py-2 text-[12px] font-medium text-muted-foreground hover:text-foreground transition active:scale-[0.99]"
         >
           {expanded ? (
             <>

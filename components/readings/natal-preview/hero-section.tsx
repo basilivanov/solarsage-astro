@@ -8,7 +8,6 @@ type Props = {
   sunSign?: string | null
   moonSign?: string | null
   birthCity?: string | null
-  gender: string
 }
 
 const SIGN_RU: Record<string, string> = {
@@ -19,13 +18,14 @@ const SIGN_RU: Record<string, string> = {
 }
 
 export function HeroSection({ name, ascSign, sunSign, moonSign, birthCity }: Props) {
-  const title = name ? `Натальная карта ${name}` : "Твоя натальная карта"
   const ascLabel = ascSign ? SIGN_RU[ascSign] ?? ascSign : null
+  const sunLabel = sunSign ? SIGN_RU[sunSign] ?? sunSign : null
+  const moonLabel = moonSign ? SIGN_RU[moonSign] ?? moonSign : null
 
   const badges = [
     ascLabel ? { label: `ASC в ${ascLabel}` } : null,
-    sunSign ? { label: `Солнце в ${sunSign}` } : null,
-    moonSign ? { label: `Луна в ${moonSign}` } : null,
+    sunLabel ? { label: `Солнце в ${sunLabel}` } : null,
+    moonLabel ? { label: `Луна в ${moonLabel}` } : null,
   ].filter(Boolean) as { label: string }[]
 
   return (
@@ -36,7 +36,7 @@ export function HeroSection({ name, ascSign, sunSign, moonSign, birthCity }: Pro
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="font-serif text-[28px] leading-tight tracking-tight text-foreground">
-            {title}
+            Твоя натальная карта
           </h1>
           <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
             Твой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождения.
