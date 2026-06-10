@@ -52,9 +52,9 @@ def test_redact_pii():
 
     redacted = redact_dict(data)
 
-    assert redacted["username"] == "test"
-    assert redacted["password"] == "[REDACTED]"
-    assert redacted["birth_date"] == "[REDACTED]"
+    assert redacted["username"] == "[redacted]"
+    assert redacted["password"] == "[redacted]"
+    assert redacted["birth_date"] == "[redacted]"
     assert redacted["public_field"] == "visible"
 
 
@@ -70,7 +70,7 @@ def test_redact_nested():
     redacted = redact_dict(data)
 
     assert redacted["user"]["name"] == "test"
-    assert redacted["user"]["token"] == "[REDACTED]"
+    assert redacted["user"]["token"] == "[redacted]"
 
 
 def test_redact_list():
@@ -85,9 +85,9 @@ def test_redact_list():
     redacted = redact_dict(data)
 
     assert redacted["users"][0]["name"] == "alice"
-    assert redacted["users"][0]["password"] == "[REDACTED]"
+    assert redacted["users"][0]["password"] == "[redacted]"
     assert redacted["users"][1]["name"] == "bob"
-    assert redacted["users"][1]["api_key"] == "[REDACTED]"
+    assert redacted["users"][1]["api_key"] == "[redacted]"
 
 
 def test_redact_case_insensitive():
@@ -100,9 +100,9 @@ def test_redact_case_insensitive():
 
     redacted = redact_dict(data)
 
-    assert redacted["Password"] == "[REDACTED]"
-    assert redacted["API_KEY"] == "[REDACTED]"
-    assert redacted["Token"] == "[REDACTED]"
+    assert redacted["Password"] == "[redacted]"
+    assert redacted["API_KEY"] == "[redacted]"
+    assert redacted["Token"] == "[redacted]"
 # END_BLOCK: TEST_REDACTOR
 
 

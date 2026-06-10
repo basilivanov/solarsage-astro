@@ -48,6 +48,11 @@
     <field name="correlation_id" type="string"  format="uuid-v4" required="true" desc="One id per user-visible operation. Propagated via X-Correlation-Id header. Frontend mints on user action, backend reuses or mints if absent." />
     <field name="session_id"     type="string"  format="uuid-v4" required="false" desc="Per-tab session, frontend only; backend mirrors when received." />
     <field name="user_id_hash"   type="string"  pattern="^[a-f0-9]{12}$" required="false" desc="sha256(tg_user_id || GRACE_USER_SALT)[0:12]. NEVER raw tg_user_id." />
+    <field name="slice"          type="string"  required="true" desc="GRACE wave/slice id (e.g. 'W-1.2', 'W-HORARY'). Identifies the initiative that owns the code path." />
+    <field name="module"         type="string"  required="true" desc="Module contract id (e.g. 'M-AUTH-TG.api', 'M-PROFILE.service'). Maps one-to-one with START_MODULE_CONTRACT names." />
+    <field name="block"          type="string"  required="true" desc="Semantic block id from GRACE_ANCHORS or START_BLOCK comment (e.g. 'ROUTE_AUTH_TG', 'PROFILE_UPDATE'). Identifies the specific code block emitting the event." />
+    <field name="phase"          type="string"  required="false" desc="Phase-level orchestration id for multi-phase operations (e.g. 'phase-1', 'credit-verify')." />
+    <field name="operation_id"   type="string"  required="false" desc="Id for multi-step background jobs. Generated per job instance." />
     <field name="event"          type="string"  required="true" desc="Either business-event name from §8.5 registry, or technical event 'system.&lt;verb&gt;' (system.request, system.error, system.startup, system.shutdown). Validated against codegen-generated enum." />
     <field name="msg"            type="string"  required="false" desc="Human-readable single-line message. No PII. Max 500 chars; truncate with ellipsis." />
     <field name="payload"        type="object"  required="false" desc="Event-specific structured fields. Schema per event in §8.5. Passed through redactor." />

@@ -51,8 +51,20 @@ describe('LogShipper', () => {
     return mod.getLogShipper();
   }
 
-  function envelope(msg: string) {
-    return { timestamp: new Date().toISOString(), level: 'info', message: msg };
+  function envelope(msg: string): import('@/lib/log/shipper').CanonEnvelope {
+    return {
+      ts: new Date().toISOString(),
+      level: 'info',
+      env: 'test',
+      service: 'web',
+      service_version: 'test',
+      slice: 'W-TEST',
+      module: 'M-TEST-SHIPPER',
+      block: 'TEST_ENVELOPE',
+      event: 'system.request',
+      correlation_id: 'test-corr-id',
+      msg,
+    };
   }
 
   // 1 — enqueue pushes to buffer without flushing when under batch size
@@ -72,7 +84,7 @@ describe('LogShipper', () => {
     expect(url).toBe('/api/_log');
     const body = JSON.parse(init.body);
     expect(body.envelopes).toHaveLength(1);
-    expect(body.envelopes[0].message).toBe('hello');
+    expect(body.envelopes[0].msg).toBe('hello');
   });
 
   // 3 — batch auto-flushes when buffer reaches maxBatchSize (50)

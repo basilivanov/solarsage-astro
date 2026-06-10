@@ -1,55 +1,56 @@
 // ############################################################################
 // AI_HEADER: MODULE_LOG_FRONTEND
-// ROLE: Frontend logger with shipping to backend via POST /api/_log.
-// DEPENDENCIES: lib/log/shipper
-// GRACE_ANCHORS: [LOGGER_CLASS, LOG_METHODS]
+// ROLE: Frontend structured logger — canonical envelope per §8.2.
+// DEPENDENCIES: lib/log/shipper, lib/log/events.gen
+// GRACE_ANCHORS: [LOGGER_CLASS, LOG_METHODS, LOG_EVENT_API]
 // WAVE: W-1.6, W-1.7
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-LOG-FRONTEND
-// purpose: Provide structured logging for frontend with optional shipping to
-//   backend. Logs to console in dev, ships to backend when enabled.
+// purpose: Provide structured logging for frontend with canonical envelope
+//   (ts, level, env, service, slice, module, block, event, correlation_id, payload).
+//   Ships to backend via POST /api/_log when GRACE_LOG_SHIPPING is enabled.
 // owns:
 //   - lib/log/index.ts
 // inputs:
-//   - message: string
-//   - options: { correlation_id?, extra? }
+//   - event: LogEventName (typed string-literal union)
+//   - payload?: event-specific payload (passes through redactor)
+//   - meta?: { slice?, module?, block?, level?, msg?, duration_ms? }
 // outputs:
 //   - console logs (dev)
 //   - POST /api/_log (when GRACE_LOG_SHIPPING enabled)
 // dependencies:
 //   - M-LOG-SHIPPER (getLogShipper)
+//   - M-OBSERVABILITY-EVENTS (LogEventName)
 // side_effects:
 //   - console.log in development
 //   - network requests when shipping enabled
 // invariants:
-//   - always logs to console in development
-//   - ships to backend only when GRACE_LOG_SHIPPING=true
-//   - envelope format matches §8.2
+//   - envelope format matches canon §8.2
+//   - every event has slice/module/block/event/correlation_id
+//   - redacts PII before ship
 // failure_policy:
 //   - shipper errors are handled internally (no throw)
-// non_goals:
-//   - no log levels beyond info/warn/error
-//   - no sampling (deferred to W-CANON-LOG)
 // END_MODULE_CONTRACT: M-LOG-FRONTEND
 
-// START_MODULE_MAP: M-LOG-FRONTEND
-// public_entrypoints:
-//   - logger
-//   - Logger (class)
-// semantic_blocks:
-//   - LOGGER_CLASS: Logger implementation
-//   - LOG_METHODS: info/warn/error methods
-// owned_tests:
-//   - apps/api/tests/test_log_intake.py (e2e)
-// END_MODULE_MAP: M-LOG-FRONTEND
+import { getLogShipper, type CanonEnvelope } from "./shipper";
+import type { LogEventName } from "./events.gen";
 
-import { getLogShipper } from "./shipper";
+// Re-export for convenience
+export type { LogEventName } from "./events.gen";
 
-// START_BLOCK: LOGGER_CLASS
-interface LogOptions {
+// ── Log level type ────────────────────────────────────────────────────────
+
+export type LogLevel = "debug" | "info" | "warn" | "error" | "fatal";
+
+// ── Context ───────────────────────────────────────────────────────────────
+
+interface LogContext {
+  slice: string;
+  module: string;
+  block: string;
+  event: LogEventName;
   correlation_id?: string;
-  extra?: Record<string, any>;
 }
 
 const levelPriority: Record<string, number> = {
@@ -57,12 +58,25 @@ const levelPriority: Record<string, number> = {
   info: 1,
   warn: 2,
   error: 3,
+  fatal: 4,
 };
 
-const LOG_LEVEL = (process.env.NEXT_PUBLIC_LOG_LEVEL || 'info').toLowerCase();
+const LOG_LEVEL = (process.env.NEXT_PUBLIC_LOG_LEVEL || "info").toLowerCase();
+const SERVICE_VERSION: string =
+  (typeof process !== "undefined" &&
+    (process.env?.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
+      process.env?.NEXT_PUBLIC_GRACE_SERVICE_VERSION)) ||
+  "dev";
 
-// Global correlation ID — set once per page session
+const SERVICE_VERSION_SHORT = SERVICE_VERSION.length > 7
+  ? SERVICE_VERSION.slice(0, 7)
+  : SERVICE_VERSION;
+
 let _correlationId: string | null = null;
+let _sessionId: string | null = null;
+let _slice: string = "";
+let _module: string = "";
+let _block: string = "";
 
 export function setCorrelationId(id: string) {
   _correlationId = id;
@@ -72,14 +86,119 @@ export function getCorrelationId(): string | null {
   return _correlationId;
 }
 
-function generateCorrelationId(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+export function setLogContext(slice: string, module: string, block: string) {
+  _slice = slice;
+  _module = module;
+  _block = block;
+}
+
+function generateId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });
+}
+
+function getEnv(): string {
+  // Default to dev, override via build-time env
+  if (process.env.NODE_ENV === "production") {
+    if (process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") return "staging";
+    return "prod";
+  }
+  return "dev";
+}
+
+// ── Public API ────────────────────────────────────────────────────────────
+
+export function logEvent(
+  event: LogEventName,
+  payload?: Record<string, unknown>,
+  meta?: {
+    level?: LogLevel;
+    msg?: string;
+    slice?: string;
+    module?: string;
+    block?: string;
+    duration_ms?: number;
+  },
+): void {
+  try {
+    const level = meta?.level || "info";
+    const minLevel = levelPriority[LOG_LEVEL] ?? 1;
+    if ((levelPriority[level] ?? 99) < minLevel) return;
+
+    const correlationId = _correlationId || generateId();
+    const env = getEnv();
+
+    const envelope: CanonEnvelope = {
+      ts: new Date().toISOString(),
+      level,
+      env,
+      service: "web",
+      service_version: SERVICE_VERSION_SHORT,
+      slice: meta?.slice || _slice || "W-FRONTEND",
+      module: meta?.module || _module || "M-LOG-FRONTEND",
+      block: meta?.block || _block || "LOG_EVENT",
+      event,
+      correlation_id: correlationId,
+    };
+
+    if (meta?.msg) envelope.msg = meta.msg.slice(0, 500);
+    if (payload) envelope.payload = payload as Record<string, unknown>;
+    if (meta?.duration_ms !== undefined) envelope.duration_ms = meta.duration_ms;
+    if (_sessionId) envelope.session_id = _sessionId;
+
+    // Console in dev
+    const tag = correlationId ? `[${correlationId.slice(0, 8)}]` : "";
+    const levelTag = level.toUpperCase().padEnd(5);
+    console.log(`${tag}[${levelTag}] ${event}`, meta?.msg ?? "", payload ?? "");
+
+    // Ship to backend
+    getLogShipper().enqueue(envelope);
+  } catch {
+    // Logger must never crash the app
+  }
+}
+
+// ── Convenience wrappers ─────────────────────────────────────────────────
+
+export function logStart(
+  event: LogEventName,
+  payload?: Record<string, unknown>,
+  meta?: { slice?: string; module?: string; block?: string },
+) {
+  logEvent(event, payload, { ...meta, level: "info" });
+}
+
+export function logSuccess(
+  event: LogEventName,
+  payload?: Record<string, unknown>,
+  meta?: { slice?: string; module?: string; block?: string; duration_ms?: number },
+) {
+  logEvent(event.replace("_started", "_succeeded") as LogEventName, payload, { ...meta, level: "info" });
+}
+
+export function logFailure(
+  event: LogEventName,
+  error: Error | string,
+  payload?: Record<string, unknown>,
+  meta?: { slice?: string; module?: string; block?: string; duration_ms?: number },
+) {
+  const errorPayload = {
+    ...payload,
+    error: typeof error === "string" ? error : error.message,
+  };
+  logEvent(event, errorPayload, { ...meta, level: "error" });
+}
+
+// ── Legacy Logger class (deprecated — use logEvent directly) ─────────────
+
+interface LogOptions {
+  correlation_id?: string;
+  extra?: Record<string, any>;
 }
 
 class Logger {
@@ -106,23 +225,34 @@ class Logger {
     if ((levelPriority[level] ?? 99) < minLevel) return;
 
     const corrId = options?.correlation_id || _correlationId;
+    const env = getEnv();
 
-    const envelope = {
-      timestamp: new Date().toISOString(),
+    const envelope: CanonEnvelope = {
+      ts: new Date().toISOString(),
       level,
-      message,
-      correlation_id: corrId || undefined,
-      extra: options?.extra,
+      env,
+      service: "web",
+      service_version: SERVICE_VERSION_SHORT,
+      slice: _slice || "W-CANON-LOG",
+      module: _module || "M-LOG-FRONTEND",
+      block: _block || "LOG_METHODS",
+      event: "system.request",
+      correlation_id: corrId || generateId(),
+      msg: message.slice(0, 500),
     };
 
-    // Always console in dev, always ship in production
-    const tag = corrId ? `[${corrId.slice(0, 8)}]` : '';
-    console.log(`${tag}[${level.toUpperCase()}]`, message, options?.extra ?? '');
+    if (options?.extra) {
+      envelope.payload = options.extra;
+    }
+    if (_sessionId) envelope.session_id = _sessionId;
 
-    // Ship to backend (W-1.7)
+    const tag = corrId ? `[${corrId.slice(0, 8)}]` : "";
+    const levelTag = level.toUpperCase().padEnd(5);
+    console.log(`${tag}[${levelTag}]`, message, options?.extra ?? "");
+
     this.shipper.enqueue(envelope);
   }
 }
 
 export const logger = new Logger();
-// END_BLOCK: LOGGER_CLASS
+export type { CanonEnvelope } from "./shipper";

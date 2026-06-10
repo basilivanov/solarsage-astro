@@ -8,11 +8,11 @@
 
 // START_MODULE_CONTRACT: M-LOG-SHIPPER
 // purpose: Batch frontend log envelopes and ship to POST /api/_log with
-//   backoff on 429/5xx and kill-switch via GRACE_LOG_SHIPPING flag.
+//   backoff on 429/5xx and kill-switch via NEXT_PUBLIC_GRACE_LOG_SHIPPING.
 // owns:
 //   - lib/log/shipper.ts
 // inputs:
-//   - LogEnvelope { timestamp, level, message, correlation_id?, extra? }
+//   - CanonEnvelope (canonical envelope per §8.2)
 //   - NEXT_PUBLIC_GRACE_LOG_SHIPPING env var (on/off)
 // outputs:
 //   - POST /api/_log requests with batched envelopes
@@ -28,33 +28,33 @@
 // failure_policy:
 //   - network error -> console.error, batch dropped
 //   - 429/5xx -> re-enqueue with 5s delay
-// non_goals:
-//   - no persistent queue (in-memory only)
-//   - no retry limit (deferred to W-CANON-LOG)
 // END_MODULE_CONTRACT: M-LOG-SHIPPER
 
-// START_MODULE_MAP: M-LOG-SHIPPER
-// public_entrypoints:
-//   - getLogShipper
-//   - LogEnvelope (type)
-// semantic_blocks:
-//   - LOG_SHIPPER: singleton shipper instance
-//   - BATCH_FLUSH: batch flushing logic
-// owned_tests:
-//   - apps/api/tests/test_log_intake.py (e2e)
-// END_MODULE_MAP: M-LOG-SHIPPER
-
 // START_BLOCK: LOG_SHIPPER
-export interface LogEnvelope {
-  timestamp: string;
+export interface CanonEnvelope {
+  ts: string;
   level: string;
-  message: string;
-  correlation_id?: string;
-  extra?: Record<string, any>;
+  env: string;
+  service: string;
+  service_version: string;
+  slice: string;
+  module: string;
+  block: string;
+  event: string;
+  correlation_id: string;
+  msg?: string;
+  session_id?: string;
+  user_id_hash?: string;
+  payload?: Record<string, unknown>;
+  error?: Record<string, unknown>;
+  duration_ms?: number;
+  http?: Record<string, unknown>;
+  operation_id?: string;
+  phase?: string;
 }
 
 class LogShipper {
-  private buffer: LogEnvelope[] = [];
+  private buffer: CanonEnvelope[] = [];
   private timer: NodeJS.Timeout | null = null;
   private readonly maxBatchSize = 50;
   private readonly maxWaitMs = 5000;
@@ -62,31 +62,27 @@ class LogShipper {
   private flushing = false;
 
   constructor(private enabled: boolean) {
-    if (typeof window !== 'undefined') {
-      // Flush on page unload to not lose logs
-      window.addEventListener('beforeunload', () => this.flushSync());
-      window.addEventListener('pagehide', () => this.flushSync());
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => this.flushSync());
+      window.addEventListener("pagehide", () => this.flushSync());
     }
   }
 
-  enqueue(envelope: LogEnvelope): void {
+  enqueue(envelope: CanonEnvelope): void {
     if (!this.enabled) return;
 
     this.buffer.push(envelope);
 
-    // In debug mode, flush immediately — don't batch
-    if (process.env.NEXT_PUBLIC_LOG_LEVEL === 'debug') {
+    if (process.env.NEXT_PUBLIC_LOG_LEVEL === "debug") {
       this.flush();
       return;
     }
 
-    // Flush if batch is full
     if (this.buffer.length >= this.maxBatchSize) {
       this.flush();
       return;
     }
 
-    // Start timer if not running
     if (!this.timer) {
       this.timer = setTimeout(() => this.flush(), this.maxWaitMs);
     }
@@ -96,7 +92,6 @@ class LogShipper {
     if (this.buffer.length === 0 || this.flushing) return;
     this.flushing = true;
 
-    // Clear timer
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -113,13 +108,11 @@ class LogShipper {
       });
 
       if (!response.ok) {
-        // Re-enqueue on server error
         if (response.status === 429 || response.status >= 500) {
           this.buffer.unshift(...batch);
         }
       }
     } catch {
-      // Network error — re-enqueue
       this.buffer.unshift(...batch);
     } finally {
       this.flushing = false;
@@ -130,9 +123,8 @@ class LogShipper {
     if (this.buffer.length === 0) return;
     const batch = this.buffer.splice(0);
     const body = JSON.stringify({ envelopes: batch });
-    // Use sendBeacon for reliable delivery on page unload
     if (navigator.sendBeacon) {
-      navigator.sendBeacon(this.endpoint, new Blob([body], { type: 'application/json' }));
+      navigator.sendBeacon(this.endpoint, new Blob([body], { type: "application/json" }));
     } else {
       fetch(this.endpoint, {
         method: "POST",
@@ -146,7 +138,6 @@ class LogShipper {
 // END_BLOCK: LOG_SHIPPER
 
 // START_BLOCK: BATCH_FLUSH
-// Singleton instance
 let shipper: LogShipper | null = null;
 
 export function getLogShipper(): LogShipper {

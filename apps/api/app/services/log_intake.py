@@ -84,32 +84,35 @@ class LogIntakeService:
                 # Validate envelope
                 if not self._validate_envelope(envelope):
                     rejected += 1
-                    logger.warning(
-                        "Log intake rejected: invalid envelope",
-                        extra={"user_id": str(user_id)},
+                    self._log_event(
+                        "system.error",
+                        level="warn",
+                        msg="Log intake rejected: invalid envelope",
+                        payload={"rejected_field": "missing required fields"},
                     )
                     continue
 
                 # Redact PII
                 redacted = redact_dict(envelope)
 
-                # Forward to stdout (backend logger)
-                logger.info(
-                    f"[FRONTEND] {redacted['message']}",
-                    extra={
-                        "user_id": str(user_id),
-                        "correlation_id": redacted.get("correlation_id"),
-                        "frontend_log": redacted,
-                    },
+                # Forward to stdout as canon event (not nested)
+                self._log_event(
+                    redacted.get("event", "system.request"),
+                    level=redacted.get("level", "info"),
+                    msg=redacted.get("msg", ""),
+                    payload=redacted.get("payload"),
+                    correlation_id=redacted.get("correlation_id", ""),
+                    service="web",
                 )
 
                 accepted += 1
 
             except Exception as e:
                 rejected += 1
-                logger.error(
-                    f"Log intake error: {e}",
-                    extra={"user_id": str(user_id)},
+                self._log_event(
+                    "system.error",
+                    level="error",
+                    msg=f"Log intake error: {type(e).__name__}",
                 )
 
         return {"accepted": accepted, "rejected": rejected}
@@ -119,9 +122,10 @@ class LogIntakeService:
         Validate log envelope structure.
 
         Required fields per §8.2:
-        - timestamp: ISO 8601 string
-        - level: log level (info, warn, error)
-        - message: log message
+        - ts: ISO 8601 string
+        - level: log level
+        - event: event name
+        - service: service name
 
         Args:
             envelope: Log envelope to validate
@@ -129,8 +133,38 @@ class LogIntakeService:
         Returns:
             True if valid, False otherwise
         """
-        required_fields = ["timestamp", "level", "message"]
+        required_fields = ["ts", "level", "event", "service"]
         return all(field in envelope for field in required_fields)
+
+    def _log_event(
+        self,
+        event: str,
+        level: str = "info",
+        msg: str = "",
+        payload: dict[str, Any] | None = None,
+        correlation_id: str = "",
+        service: str = "",
+    ) -> None:
+        """Emit a frontend log as a canon event via log_event."""
+        from app.core.logging import log_event as core_log_event, bind_log_context, clear_log_context
+
+        if correlation_id:
+            bind_log_context(
+                correlation_id=correlation_id,
+                module="M-LOG-INTAKE-SERVICE",
+                block="FRONTEND_LOG",
+                service=service,
+            )
+
+        core_log_event(
+            event,
+            level=level,
+            msg=msg,
+            payload=payload,
+        )
+
+        if correlation_id:
+            clear_log_context()
 
 
 # END_BLOCK: PROCESS_BATCH

@@ -1,103 +1,26 @@
 /**
- * Frontend structured logger for production monitoring.
+ * @deprecated Since W-1.6. Use lib/log/index.ts (logEvent, logger) instead.
+ * Kept as a thin re-export shim for existing call sites.
  *
- * Usage:
- *   Logger.log('user_action', { action: 'click', button: 'submit' })
- *   Logger.error('api_error', error, { endpoint: '/api/profile' })
- *
- * WAVE: W-2.7
+ * TODO(W-1.6): Remove this file and update all imports to @/lib/log.
  */
+
+import { logger } from "./log/index";
 
 export interface LogData {
   [key: string]: any
 }
 
 export class Logger {
-  /**
-   * Log an event with optional data.
-   */
   static log(event: string, data?: LogData): void {
-    const logData = {
-      timestamp: new Date().toISOString(),
-      event,
-      level: 'info',
-      ...data,
-    }
-
-    // Console log in development
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[LOG]', event, data)
-    } else {
-      console.log(JSON.stringify(logData))
-    }
-
-    // Send to backend for aggregation (fire and forget)
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(logData),
-      }).catch(() => {
-        // Silent fail - don't break user experience
-      })
-    }
+    logger.info(event, { extra: data });
   }
 
-  /**
-   * Log an error with stack trace.
-   */
   static error(event: string, error: Error, data?: LogData): void {
-    const logData = {
-      timestamp: new Date().toISOString(),
-      event,
-      level: 'error',
-      error: error.message,
-      stack: error.stack,
-      ...data,
-    }
-
-    // Console error in development
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[ERROR]', event, error, data)
-    } else {
-      console.error(JSON.stringify(logData))
-    }
-
-    // Send to backend for aggregation (fire and forget)
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(logData),
-      }).catch(() => {
-        // Silent fail
-      })
-    }
+    logger.error(`${event}: ${error.message}`, { extra: { ...data, stack: error.stack } });
   }
 
-  /**
-   * Log a warning.
-   */
   static warn(event: string, data?: LogData): void {
-    const logData = {
-      timestamp: new Date().toISOString(),
-      event,
-      level: 'warning',
-      ...data,
-    }
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[WARN]', event, data)
-    } else {
-      console.warn(JSON.stringify(logData))
-    }
-
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-      fetch('/api/logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(logData),
-      }).catch(() => {})
-    }
+    logger.warn(event, { extra: data });
   }
 }

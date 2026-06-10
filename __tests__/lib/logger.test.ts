@@ -28,10 +28,16 @@ describe('Logger — envelope creation', () => {
     expect(mockEnqueue).toHaveBeenCalledTimes(1);
     const env = mockEnqueue.mock.calls[0][0];
     expect(env.level).toBe('info');
-    expect(env.message).toBe('test msg');
+    expect(env.msg).toBe('test msg');
     expect(env.correlation_id).toBe('corr-1');
-    expect(env.extra).toEqual({ a: 1 });
-    expect(env.timestamp).toBeTruthy();
+    expect(env.payload).toEqual({ a: 1 });
+    expect(env.ts).toBeTruthy();
+    expect(env.event).toBe('system.request');
+    expect(env.slice).toBeTruthy();
+    expect(env.module).toBeTruthy();
+    expect(env.block).toBeTruthy();
+    expect(env.service).toBe('web');
+    expect(env.env).toBeTruthy();
   });
 
   it('warn creates envelope', () => {
@@ -44,7 +50,7 @@ describe('Logger — envelope creation', () => {
     logger.error('boom', { extra: { code: 500 } });
     const env = mockEnqueue.mock.calls[0][0];
     expect(env.level).toBe('error');
-    expect(env.extra).toEqual({ code: 500 });
+    expect(env.payload).toEqual({ code: 500 });
   });
 
   it('debug creates envelope (when level permits)', () => {
@@ -82,7 +88,7 @@ describe('Logger — console output', () => {
     setCorrelationId('abcdef01-9999');
     logger.warn('watch out', { extra: { hint: 'careful' } });
     expect(consoleLogSpy).toHaveBeenCalledWith(
-      '[abcdef01][WARN]',
+      '[abcdef01][WARN ]',
       'watch out',
       { hint: 'careful' },
     );
@@ -154,6 +160,6 @@ describe('Logger — fresh state', () => {
     const cSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const mod = await import('@/lib/log');
     mod.logger.info('hello world');
-    expect(cSpy).toHaveBeenCalledWith('[INFO]', 'hello world', '');
+    expect(cSpy).toHaveBeenCalledWith('[INFO ]', 'hello world', '');
   });
 });

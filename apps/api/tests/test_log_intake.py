@@ -48,20 +48,28 @@ from httpx import AsyncClient
 # START_BLOCK: TEST_AUTH_REQUIRED
 @pytest.mark.asyncio
 async def test_log_intake_requires_auth(async_client: AsyncClient):
-    """Log intake requires authentication."""
+    """Log intake accepts logs even without auth."""
     response = await async_client.post(
         "/api/_log",
         json={
             "envelopes": [
                 {
-                    "timestamp": "2026-05-30T10:00:00Z",
+                    "ts": "2026-05-30T10:00:00Z",
                     "level": "info",
-                    "message": "test",
+                    "event": "system.request",
+                    "correlation_id": "test-corr-id",
+                    "service": "web",
+                    "service_version": "test",
+                    "env": "test",
+                    "slice": "W-TEST",
+                    "module": "M-TEST-LOG-INTAKE",
+                    "block": "TEST_INT_AUTH",
+                    "msg": "test",
                 }
             ]
         },
     )
-    assert response.status_code == 200  # _log now accepts unauthenticated requests
+    assert response.status_code == 200  # _log accepts unauthenticated requests
 
 
 # END_BLOCK: TEST_AUTH_REQUIRED
@@ -81,16 +89,30 @@ async def test_log_intake_accepts_valid_batch(async_client: AsyncClient, make_in
         json={
             "envelopes": [
                 {
-                    "timestamp": "2026-05-30T10:00:00Z",
+                    "ts": "2026-05-30T10:00:00Z",
                     "level": "info",
-                    "message": "test1",
+                    "event": "system.request",
+                    "correlation_id": "abc123",
+                    "service": "web",
+                    "service_version": "test",
+                    "env": "test",
+                    "slice": "W-TEST",
+                    "module": "M-TEST-LOG-INTAKE",
+                    "block": "TEST_BATCH",
+                    "msg": "test1",
                 },
                 {
-                    "timestamp": "2026-05-30T10:00:01Z",
+                    "ts": "2026-05-30T10:00:01Z",
                     "level": "warn",
-                    "message": "test2",
-                    "correlation_id": "abc123",
-                    "extra": {"foo": "bar"},
+                    "event": "system.request",
+                    "correlation_id": "abc124",
+                    "service": "web",
+                    "service_version": "test",
+                    "env": "test",
+                    "slice": "W-TEST",
+                    "module": "M-TEST-LOG-INTAKE",
+                    "block": "TEST_BATCH",
+                    "msg": "test2",
                 },
             ]
         },
@@ -120,7 +142,7 @@ async def test_log_intake_rejects_invalid_envelope(
         "/api/_log",
         json={
             "envelopes": [
-                {"level": "info"},  # Missing timestamp and message (Pydantic validation fails)
+                {"level": "info"},  # Missing required fields (Pydantic validation fails)
             ]
         },
     )
@@ -145,15 +167,30 @@ async def test_log_intake_handles_mixed_batch(
         json={
             "envelopes": [
                 {
-                    "timestamp": "2026-05-30T10:00:00Z",
+                    "ts": "2026-05-30T10:00:00Z",
                     "level": "info",
-                    "message": "valid message",
+                    "event": "system.request",
+                    "correlation_id": "abc125",
+                    "service": "web",
+                    "service_version": "test",
+                    "env": "test",
+                    "slice": "W-TEST",
+                    "module": "M-TEST-LOG-INTAKE",
+                    "block": "TEST_MIXED",
+                    "msg": "valid message",
                 },
                 {
-                    "timestamp": "2026-05-30T10:00:01Z",
+                    "ts": "2026-05-30T10:00:01Z",
                     "level": "warn",
-                    "message": "another valid message",
-                    "correlation_id": "test-123",
+                    "event": "system.request",
+                    "correlation_id": "abc126",
+                    "service": "web",
+                    "service_version": "test",
+                    "env": "test",
+                    "slice": "W-TEST",
+                    "module": "M-TEST-LOG-INTAKE",
+                    "block": "TEST_MIXED",
+                    "msg": "another valid message",
                 },
             ]
         },

@@ -1,99 +1,290 @@
 # ############################################################################
 # AI_HEADER: MODULE_OBSERVABILITY_LOGGING
-# ROLE: Structured JSON logging with envelope format.
-# DEPENDENCIES: logging, json, datetime
-# GRACE_ANCHORS: [JSON_FORMATTER, LOGGER_SETUP]
+# ROLE: Structured JSON logging with canonical envelope and contextvars.
+# DEPENDENCIES: logging, json, contextvars
+# GRACE_ANCHORS: [LOG_EVENT, CONTEXT_VARS, LOGGER_SETUP]
 # WAVE: W-1.6
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-OBSERVABILITY-LOGGING
-# purpose: Provide structured JSON logging with envelope format conforming to
-#   observability canon §8.2 (simplified for MVP).
+# purpose: Provide structured JSON logging with canonical envelope per §8.2.
+#   Context variables (correlation_id, slice, module, block) are auto-attached.
+#   log_event() is the only public API for business events.
 # owns:
 #   - apps/api/app/core/logging.py
 # inputs:
-#   - log records from application code
-#   - correlation_id from request context (optional)
+#   - event name from LogEventName registry
+#   - optional payload dict
+#   - optional meta overrides (level, msg, duration_ms, error, http)
 # outputs:
 #   - JSON-formatted log lines to stdout
 # dependencies:
-#   - standard library: logging, json, datetime
+#   - standard library: logging, json, contextvars
+#   - apps/api/app/core/redactor (redact_dict)
+#   - apps/api/app/core/logging_events (LogEventName, EVENT_PAYLOAD_TYPES)
 # side_effects:
 #   - configures global logger instance
 #   - writes to stdout
 # invariants:
 #   - all logs emitted as valid JSON
-#   - timestamp in ISO 8601 format with Z suffix
-#   - correlation_id included when present in record
+#   - every envelope has slice/module/block/event/correlation_id
+#   - unknown fields are dropped; payload passes through redactor
 # failure_policy:
 #   - logging errors must not crash the application
-# non_goals:
-#   - no log aggregation (external concern)
-#   - no sampling or rate limiting (deferred to W-CANON-LOG)
 # END_MODULE_CONTRACT: M-OBSERVABILITY-LOGGING
 
+from __future__ import annotations
+
+import contextvars
 import json
 import logging
+import os
+import re
+import traceback
 from datetime import UTC, datetime
 from typing import Any
 
-
-# START_BLOCK: JSON_FORMATTER
-class JSONFormatter(logging.Formatter):
-    """JSON formatter for structured logging."""
-
-    def format(self, record: logging.LogRecord) -> str:
-        """Format log record as JSON envelope.
-
-        Envelope structure:
-        - timestamp: ISO 8601 with Z suffix
-        - level: log level name (INFO, ERROR, etc.)
-        - message: formatted message
-        - module: source module name
-        - function: source function name
-        - line: source line number
-        - correlation_id: request correlation ID (if present)
-        - extra: additional fields (if present)
-        """
-        envelope = {
-            "timestamp": datetime.now(UTC).isoformat(),
-            "level": record.levelname,
-            "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno,
-        }
-
-        # Add correlation_id if present
-        if hasattr(record, "correlation_id"):
-            envelope["correlation_id"] = record.correlation_id
-
-        # Add extra fields
-        if hasattr(record, "extra"):
-            envelope["extra"] = record.extra
-
-        return json.dumps(envelope)
-# END_BLOCK: JSON_FORMATTER
+from app.core.redactor import redact_dict
 
 
-# START_BLOCK: LOGGER_SETUP
-def setup_logging() -> logging.Logger:
-    """Setup structured logging.
+# ── Context variables (auto-attached by middleware) ────────────────────────
+
+correlation_id_var: contextvars.Var[str] = contextvars.ContextVar("correlation_id", default="")
+user_id_hash_var: contextvars.Var[str] = contextvars.ContextVar("user_id_hash", default="")
+http_route_var: contextvars.Var[str] = contextvars.ContextVar("http_route", default="")
+http_method_var: contextvars.Var[str] = contextvars.ContextVar("http_method", default="")
+slice_var: contextvars.Var[str] = contextvars.ContextVar("slice", default="")
+module_var: contextvars.Var[str] = contextvars.ContextVar("module", default="")
+block_var: contextvars.Var[str] = contextvars.ContextVar("block", default="")
+operation_id_var: contextvars.Var[str] = contextvars.ContextVar("operation_id", default="")
+service_var: contextvars.Var[str] = contextvars.ContextVar("service", default="api")
+env_var: contextvars.Var[str] = contextvars.ContextVar("env", default="dev")
+
+
+def bind_log_context(
+    *,
+    correlation_id: str = "",
+    user_id_hash: str = "",
+    http_route: str = "",
+    http_method: str = "",
+    slice: str = "",
+    module: str = "",
+    block: str = "",
+    operation_id: str = "",
+    service: str = "",
+    env: str = "",
+) -> None:
+    """Bind one or more log context variables for the current scope."""
+    if correlation_id:
+        correlation_id_var.set(correlation_id)
+    if user_id_hash:
+        user_id_hash_var.set(user_id_hash)
+    if http_route:
+        http_route_var.set(http_route)
+    if http_method:
+        http_method_var.set(http_method)
+    if slice:
+        slice_var.set(slice)
+    if module:
+        module_var.set(module)
+    if block:
+        block_var.set(block)
+    if operation_id:
+        operation_id_var.set(operation_id)
+    if service:
+        service_var.set(service)
+    if env:
+        env_var.set(env)
+
+
+def clear_log_context() -> None:
+    """Reset all log context variables."""
+    correlation_id_var.set("")
+    user_id_hash_var.set("")
+    http_route_var.set("")
+    http_method_var.set("")
+    slice_var.set("")
+    module_var.set("")
+    block_var.set("")
+    operation_id_var.set("")
+    service_var.set("api")
+    env_var.set(os.getenv("GRACE_ENV", "dev"))
+
+
+# ── Service version ───────────────────────────────────────────────────────
+
+_SERVICE_VERSION: str = os.getenv("GRACE_SERVICE_VERSION", "dev")
+_git_sha_match = re.search(r"[a-f0-9]{7,}", _SERVICE_VERSION)
+SERVICE_VERSION: str = _git_sha_match.group(0) if _git_sha_match else _SERVICE_VERSION
+
+
+# ── Envelope builder ──────────────────────────────────────────────────────
+
+def build_envelope(
+    event: str,
+    *,
+    level: str = "info",
+    msg: str = "",
+    payload: dict[str, Any] | None = None,
+    error: dict[str, Any] | None = None,
+    duration_ms: float | None = None,
+    http: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a canonical log envelope per §8.2, auto-attaching context vars."""
+    now = datetime.now(UTC)
+
+    envelope: dict[str, Any] = {
+        "ts": now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z",
+        "level": level,
+        "env": env_var.get(),
+        "service": service_var.get(),
+        "service_version": SERVICE_VERSION,
+        "slice": slice_var.get(),
+        "module": module_var.get(),
+        "block": block_var.get(),
+        "event": event,
+        "correlation_id": correlation_id_var.get(),
+    }
+
+    if msg:
+        envelope["msg"] = msg[:500]
+    if payload:
+        envelope["payload"] = payload
+    if error:
+        envelope["error"] = error
+    if duration_ms is not None:
+        envelope["duration_ms"] = duration_ms
+    if http:
+        envelope["http"] = http
+
+    user_id_hash = user_id_hash_var.get()
+    if user_id_hash:
+        envelope["user_id_hash"] = user_id_hash
+
+    operation_id = operation_id_var.get()
+    if operation_id:
+        envelope["operation_id"] = operation_id
+
+    return envelope
+
+
+# ── Public API ────────────────────────────────────────────────────────────
+
+def log_event(
+    event: str,
+    *,
+    level: str = "info",
+    msg: str = "",
+    payload: dict[str, Any] | None = None,
+    error: dict[str, Any] | None = None,
+    duration_ms: float | None = None,
+    http: dict[str, Any] | None = None,
+) -> None:
+    """Emit a structured log event with the canonical envelope.
+
+    Args:
+        event: Event name from LogEventName registry.
+        level: Log level (debug, info, warn, error, fatal).
+        msg: Human-readable message (max 500 chars).
+        payload: Event-specific structured fields (passes through redactor).
+        error: Present iff level in {error, fatal}.
+        duration_ms: Wall-clock duration for timed operations.
+        http: HTTP context (method, route, status).
+    """
+    try:
+        envelope = build_envelope(
+            event,
+            level=level,
+            msg=msg,
+            payload=payload,
+            error=error,
+            duration_ms=duration_ms,
+            http=http,
+        )
+
+        # Redact payload and error
+        if "payload" in envelope:
+            envelope["payload"] = redact_dict(envelope["payload"])
+        if "error" in envelope:
+            envelope["error"] = redact_dict(envelope["error"])
+
+        _emit(envelope)
+    except Exception:
+        # Logging must never crash the application
+        try:
+            _emit({
+                "ts": datetime.now(UTC).isoformat(),
+                "level": "error",
+                "event": "system.error",
+                "msg": "log_event failed",
+                "service": service_var.get(),
+                "slice": slice_var.get() or "W-CANON-LOG",
+                "module": "M-OBSERVABILITY-LOGGING",
+                "block": "LOG_EVENT",
+            })
+        except Exception:
+            pass
+
+
+def _emit(envelope: dict[str, Any]) -> None:
+    """Write envelope to stdout as single-line JSON."""
+    line = json.dumps(envelope, default=str, ensure_ascii=False)
+    _stdout.write(line + "\n")
+    _stdout.flush()
+
+
+_stdout = open(1, "w", encoding="utf-8", closefd=False)
+
+
+# ── Internal logging.Logger based helper (for ad-hoc debug only) ──────────
+
+import logging as _logging
+
+_logger: _logging.Logger | None = None
+
+
+def _get_fallback_logger() -> _logging.Logger:
+    """Get a fallback stdlib logger for use during context setup only.
+    All production code should use log_event() instead."""
+    global _logger
+    if _logger is None:
+        _logger = _logging.getLogger("astro.fallback")
+        _logger.setLevel(_logging.INFO)
+        if not _logger.handlers:
+            handler = _logging.StreamHandler()
+            handler.setFormatter(_logging.Formatter(
+                "%(asctime)s [%(levelname)s] %(message)s"
+            ))
+            _logger.addHandler(handler)
+            _logger.propagate = False
+    return _logger
+
+
+# ── Logger setup (for backward-compat with legacy log calls) ──────────────
+
+_log: _logging.Logger | None = None
+
+
+def setup_logging() -> _logging.Logger:
+    """Setup legacy structured logging (deprecated — use log_event() instead).
 
     Returns:
-        Configured logger instance with JSON formatter.
+        Configured logger instance for backward compatibility.
     """
-    logger = logging.getLogger("astro")
-    logger.setLevel(logging.INFO)
+    global _log
+    if _log is None:
+        _log = _logging.getLogger("astro")
+        _log.setLevel(_logging.INFO)
+        if _log.handlers:
+            _log.handlers.clear()
+        handler = _logging.StreamHandler()
+        handler.setFormatter(_logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(message)s"
+        ))
+        _log.addHandler(handler)
+        _log.propagate = False
+    return _log
 
-    # JSON handler for stdout
-    handler = logging.StreamHandler()
-    handler.setFormatter(JSONFormatter())
-    logger.addHandler(handler)
 
-    return logger
-
-
-# Global logger instance
+# Global legacy logger instance (deprecated — use log_event)
 logger = setup_logging()
-# END_BLOCK: LOGGER_SETUP
