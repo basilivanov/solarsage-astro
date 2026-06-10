@@ -53,9 +53,9 @@ describe('TrialBanner', () => {
     expect(screen.getByText('Осталось 10 дней')).toBeTruthy()
   })
 
-  it('renders "0 дня" for daysLeft=0 (0 < 5 → дня)', () => {
+  it('renders "0 дней" for daysLeft=0', () => {
     const text = getDaysLeftText(0)
-    expect(text).toBe('Осталось 0 дня')
+    expect(text).toBe('Осталось 0 дней')
   })
 
   it('renders "2 дня" for daysLeft=2', () => {
@@ -68,8 +68,23 @@ describe('TrialBanner', () => {
     expect(text).toBe('Осталось 5 дней')
   })
 
-  it('renders "21 дней" for daysLeft=21 (simple pluralization)', () => {
+  it('renders "21 день" for daysLeft=21 (correct Russian plural)', () => {
     const text = getDaysLeftText(21)
-    expect(text).toBe('Осталось 21 дней')
+    expect(text).toBe('Осталось 21 день')
+  })
+
+  it('renders "22 дня" for daysLeft=22', () => {
+    const text = getDaysLeftText(22)
+    expect(text).toBe('Осталось 22 дня')
+  })
+
+  it('renders "11 дней" for daysLeft=11 (teen exception)', () => {
+    const text = getDaysLeftText(11)
+    expect(text).toBe('Осталось 11 дней')
+  })
+
+  it('renders "101 день" for daysLeft=101', () => {
+    const text = getDaysLeftText(101)
+    expect(text).toBe('Осталось 101 день')
   })
 })

@@ -5,6 +5,15 @@
 
 import { Sparkles } from "lucide-react"
 
+function pluralizeDays(n: number): string {
+  const abs = Math.abs(n) % 100
+  const lastDigit = abs % 10
+  if (abs >= 11 && abs <= 19) return "дней"
+  if (lastDigit === 1) return "день"
+  if (lastDigit >= 2 && lastDigit <= 4) return "дня"
+  return "дней"
+}
+
 export function TrialBanner({ daysLeft }: { daysLeft: number }) {
   return (
     <div className="mx-5 flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/40 px-4 py-3">
@@ -16,8 +25,7 @@ export function TrialBanner({ daysLeft }: { daysLeft: number }) {
           14 дней бесплатного доступа
         </div>
         <div className="text-[11.5px] text-muted-foreground">
-          Осталось {daysLeft}{" "}
-          {daysLeft === 1 ? "день" : daysLeft < 5 ? "дня" : "дней"}
+          Осталось {daysLeft} {pluralizeDays(daysLeft)}
         </div>
       </div>
       <button
