@@ -40,4 +40,69 @@ describe('ReadingCard', () => {
 
     expect(screen.getByText('Благоприятный')).toBeTruthy();
   });
+
+  it('shows "Напряжённый" badge for tense dayStatus', () => {
+    const onClick = vi.fn();
+    const tenseEntry = { ...mockEntry, dayStatus: 'tense' as const };
+    render(<ReadingCard entry={tenseEntry} onClick={onClick} />);
+
+    expect(screen.getByText('Напряжённый')).toBeTruthy();
+  });
+
+  it('shows "Спокойный" badge for calm dayStatus', () => {
+    const onClick = vi.fn();
+    const calmEntry = { ...mockEntry, dayStatus: 'calm' as any };
+    render(<ReadingCard entry={calmEntry} onClick={onClick} />);
+
+    expect(screen.getByText('Спокойный')).toBeTruthy();
+  });
+
+  it('defaults to calm when dayStatus is undefined', () => {
+    const onClick = vi.fn();
+    const noStatusEntry = { ...mockEntry, dayStatus: undefined as any };
+    render(<ReadingCard entry={noStatusEntry} onClick={onClick} />);
+
+    expect(screen.getByText('Спокойный')).toBeTruthy();
+  });
+
+  it('falls back to calm style for unknown dayStatus', () => {
+    const onClick = vi.fn();
+    const unknownEntry = { ...mockEntry, dayStatus: 'mysterious' as any };
+    render(<ReadingCard entry={unknownEntry} onClick={onClick} />);
+
+    // Unknown dayStatus falls back to calm label
+    expect(screen.getByText('Спокойный')).toBeTruthy();
+  });
+
+  it('has data-testid="reading-card"', () => {
+    const onClick = vi.fn();
+    render(<ReadingCard entry={mockEntry} onClick={onClick} />);
+
+    expect(screen.getByTestId('reading-card')).toBeTruthy();
+  });
+
+  it('renders without crashing when preview is empty', () => {
+    const onClick = vi.fn();
+    const emptyPreviewEntry = { ...mockEntry, preview: '' };
+    render(<ReadingCard entry={emptyPreviewEntry} onClick={onClick} />);
+
+    expect(screen.getByTestId('reading-card')).toBeTruthy();
+    expect(screen.getByText('День возможностей')).toBeTruthy();
+  });
+
+  it('renders date text from entry', () => {
+    const onClick = vi.fn();
+    const entry = { ...mockEntry, date: '2026-12-25' };
+    render(<ReadingCard entry={entry} onClick={onClick} />);
+
+    expect(screen.getByText('2026-12-25')).toBeTruthy();
+  });
+
+  it('renders headline text from entry', () => {
+    const onClick = vi.fn();
+    const entry = { ...mockEntry, headline: 'Уникальный заголовок' };
+    render(<ReadingCard entry={entry} onClick={onClick} />);
+
+    expect(screen.getByText('Уникальный заголовок')).toBeTruthy();
+  });
 });

@@ -39,4 +39,34 @@ describe('ErrorBoundary', () => {
     render(<ErrorBoundary error={error} />)
     expect(screen.queryByText('Debug Info')).toBeNull()
   })
+
+  it('renders "Debug Info" button when in dev mode', () => {
+    process.env.NEXT_PUBLIC_DEV_MODE = 'true'
+    render(<ErrorBoundary error={error} />)
+    expect(screen.getByText('Debug Info')).toBeTruthy()
+  })
+
+  it('falls back to "Произошла неизвестная ошибка" when error has no message', () => {
+    const errorNoMessage = new Error()
+    errorNoMessage.message = ''
+    render(<ErrorBoundary error={errorNoMessage} />)
+    expect(screen.getByTestId('error-message').textContent).toBe(
+      'Произошла неизвестная ошибка',
+    )
+  })
+
+  it('custom message prop overrides error.message', () => {
+    render(<ErrorBoundary error={error} message="Кастомное сообщение" />)
+    expect(screen.getByTestId('error-message').textContent).toBe('Кастомное сообщение')
+  })
+
+  it('has role="alert" for accessibility', () => {
+    render(<ErrorBoundary error={error} />)
+    expect(screen.getByRole('alert')).toBeTruthy()
+  })
+
+  it('has data-testid="error-boundary"', () => {
+    render(<ErrorBoundary error={error} />)
+    expect(screen.getByTestId('error-boundary')).toBeTruthy()
+  })
 })

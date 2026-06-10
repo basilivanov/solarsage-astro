@@ -67,4 +67,27 @@ describe('DateHeader', () => {
     fireEvent.click(screen.getByLabelText('Следующий день'))
     expect(onNext).toHaveBeenCalledTimes(1)
   })
+
+  it('disables previous button when canPrev is false', () => {
+    render(<DateHeader date={date} canPrev={false} />)
+    const prevBtn = screen.getByLabelText('Предыдущий день')
+    expect(prevBtn.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('disables next button when canNext is false', () => {
+    render(<DateHeader date={date} canNext={false} />)
+    const nextBtn = screen.getByLabelText('Следующий день')
+    expect(nextBtn.hasAttribute('disabled')).toBe(true)
+  })
+
+  it('disables both buttons when canPrev and canNext are false simultaneously', () => {
+    render(<DateHeader date={date} canPrev={false} canNext={false} />)
+    expect(screen.getByLabelText('Предыдущий день').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByLabelText('Следующий день').hasAttribute('disabled')).toBe(true)
+  })
+
+  it('has data-testid="today-headline" on the date span', () => {
+    render(<DateHeader date={date} />)
+    expect(screen.getByTestId('today-headline')).toBeTruthy()
+  })
 })

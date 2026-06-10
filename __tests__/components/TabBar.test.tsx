@@ -6,9 +6,13 @@ vi.mock('@/lib/log', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
+const { mockPathname } = vi.hoisted(() => ({
+  mockPathname: vi.fn(() => '/'),
+}))
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
-  usePathname: () => '/',
+  usePathname: () => mockPathname(),
   useParams: () => ({}),
   useSearchParams: () => new URLSearchParams(),
 }))
@@ -34,6 +38,7 @@ import { TabBar } from '@/components/today/tab-bar'
 describe('TabBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPathname.mockReturnValue('/')
   })
 
   it('renders all 5 tabs', () => {
@@ -69,5 +74,42 @@ describe('TabBar', () => {
     for (const label of labels) {
       expect(screen.getByText(label)).toBeTruthy()
     }
+  })
+
+  it('highlights "Календарь" tab as active when pathname is /calendar', () => {
+    mockPathname.mockReturnValue('/calendar')
+    render(<TabBar />)
+    const calendarLink = screen.getByText('Календарь').closest('a')
+    expect(calendarLink?.getAttribute('aria-current')).toBe('page')
+    // Today tab should NOT be active
+    const todayLink = screen.getByText('Сегодня').closest('a')
+    expect(todayLink?.getAttribute('aria-current')).toBeNull()
+  })
+
+  it('highlights "Спросить" tab as active when pathname is /chat', () => {
+    mockPathname.mockReturnValue('/chat')
+    render(<TabBar />)
+    const chatLink = screen.getByText('Спросить').closest('a')
+    expect(chatLink?.getAttribute('aria-current')).toBe('page')
+  })
+
+  it('falls back to "/" when usePathname returns null', () => {
+    mockPathname.mockReturnValue(null)
+    render(<TabBar />)
+    // When pathname is null, component falls back to "/" which matches "today"
+    const todayLink = screen.getByText('Сегодня').closest('a')
+    expect(todayLink?.getAttribute('aria-current')).toBe('page')
+  })
+
+  it('sets aria-current="page" on the active tab', () => {
+    render(<TabBar />)
+    // With pathname="/", the "Сегодня" tab should have aria-current="page"
+    const todayLink = screen.getByText('Сегодня').closest('a')
+    expect(todayLink?.getAttribute('aria-current')).toBe('page')
+    // Other tabs should not have aria-current
+    const calendarLink = screen.getByText('Календарь').closest('a')
+    expect(calendarLink?.getAttribute('aria-current')).toBeNull()
+    const chatLink = screen.getByText('Спросить').closest('a')
+    expect(chatLink?.getAttribute('aria-current')).toBeNull()
   })
 })
