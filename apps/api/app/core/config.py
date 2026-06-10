@@ -159,6 +159,11 @@ class Settings(BaseSettings):
     # When true, enables /api/auth/dev endpoint for local development without Telegram
     dev_mode: bool = Field(False, alias="DEV_MODE")
 
+    # --- Feature flags ---
+    # W-NATAL-FULL Wave 4: natal full report generation endpoints.
+    # Disabled by default; enable when LLM prompts are validated and tested.
+    natal_report_enabled: bool = Field(False, alias="NATAL_REPORT_ENABLED")
+
     @property
     def git_sha(self) -> str:
         # START_FUNCTION_CONTRACT: M-CONFIG.Settings.git_sha
