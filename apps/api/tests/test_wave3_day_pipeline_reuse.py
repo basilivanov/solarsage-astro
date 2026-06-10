@@ -152,9 +152,9 @@ class TestDayNoNatalSidecarOnCacheHit:
     """
 
     @pytest.mark.asyncio
-    async def test_second_day_call_skips_natal_sidecar(self, db, user_with_profile):
-        """After natal context is cached, a second get_today_payload call
-        should not trigger a natal sidecar call.
+    async def test_same_date_both_caches_hit(self, db, user_with_profile):
+        """After building a payload for a date, a second call for the same date
+        hits both TodayPayload cache and NatalContext cache — no sidecar calls at all.
         """
         user, profile = user_with_profile
         target_date = Date(2026, 6, 11)
@@ -172,12 +172,10 @@ class TestDayNoNatalSidecarOnCacheHit:
             with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory, \
                  patch("app.services.today_service.get_solarsage_client") as mock_day_factory:
 
-                # Context service sidecar (natal)
                 mock_ctx_client = AsyncMock()
                 mock_ctx_client.get_natal.return_value = MOCK_SIDECAR_NATAL
                 mock_ctx_factory.return_value = mock_ctx_client
 
-                # Day service sidecar (transits)
                 mock_day_client = AsyncMock()
                 mock_day_client.get_transits.return_value = MOCK_SIDECAR_TRANSITS
                 mock_day_factory.return_value = mock_day_client
@@ -188,8 +186,9 @@ class TestDayNoNatalSidecarOnCacheHit:
 
                 # Natal sidecar was called (cache miss)
                 assert mock_ctx_client.get_natal.call_count == 1
+                assert payload1.meta.cached is False
 
-            # Second call: natal context cache hit → NO natal sidecar call
+            # Second call (same date): TodayPayload cache hit → NO sidecar calls
             with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory2, \
                  patch("app.services.today_service.get_solarsage_client") as mock_day_factory2:
 
@@ -205,12 +204,81 @@ class TestDayNoNatalSidecarOnCacheHit:
                     user.id, target_date, access_state, skip_prefetch=True
                 )
 
-                # Natal sidecar NOT called (cache hit)
+                # Both sidecars NOT called (TodayPayload cache hit)
+                mock_ctx_client2.get_natal.assert_not_called()
+                mock_day_client2.get_transits.assert_not_called()
+                assert payload2.meta.cached is True
+        finally:
+            _teardown_service_mocks(mocks)
+
+    @pytest.mark.asyncio
+    async def test_different_date_today_miss_natal_hit(self, db, user_with_profile):
+        """Key scenario: call for date A caches natal context. Then call for
+        date B: TodayPayload cache MISSES (different date), but NatalContext
+        cache HITS (same user). Proves:
+        - natal sidecar NOT called (NatalContext cache hit)
+        - transit sidecar IS called (need transits for new date)
+        - fresh TodayPayload generated with meta.cached=False
+        """
+        user, profile = user_with_profile
+        date_a = Date(2026, 6, 11)
+        date_b = Date(2026, 6, 12)  # different date → TodayPayload miss
+        access_state = ContentAccessState(
+            state="full", reason="active_subscription", referralDaysLeft=None,
+            subscriptionActive=None, accessUntil=None,
+        )
+
+        service = TodayService(db)
+        mocks = _mock_all_services()
+        _setup_service_mocks(mocks)
+
+        try:
+            # Call 1: date A → natal context miss, sidecar called
+            with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory, \
+                 patch("app.services.today_service.get_solarsage_client") as mock_day_factory:
+
+                mock_ctx_client = AsyncMock()
+                mock_ctx_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+                mock_ctx_factory.return_value = mock_ctx_client
+
+                mock_day_client = AsyncMock()
+                mock_day_client.get_transits.return_value = MOCK_SIDECAR_TRANSITS
+                mock_day_factory.return_value = mock_day_client
+
+                payload_a = await service.get_today_payload(
+                    user.id, date_a, access_state, skip_prefetch=True
+                )
+
+                # Both sidecars called (fresh generation)
+                assert mock_ctx_client.get_natal.call_count == 1
+                assert mock_day_client.get_transits.call_count == 1
+                assert payload_a.meta.cached is False
+
+            # Call 2: date B → TodayPayload miss, NatalContext hit
+            with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory2, \
+                 patch("app.services.today_service.get_solarsage_client") as mock_day_factory2:
+
+                mock_ctx_client2 = AsyncMock()
+                mock_ctx_client2.get_natal.return_value = MOCK_SIDECAR_NATAL
+                mock_ctx_factory2.return_value = mock_ctx_client2
+
+                mock_day_client2 = AsyncMock()
+                mock_day_client2.get_transits.return_value = MOCK_SIDECAR_TRANSITS
+                mock_day_factory2.return_value = mock_day_client2
+
+                payload_b = await service.get_today_payload(
+                    user.id, date_b, access_state, skip_prefetch=True
+                )
+
+                # Natal sidecar NOT called (NatalContext cache hit)
                 mock_ctx_client2.get_natal.assert_not_called()
 
-                # Transit sidecar still called (today cache hit)
-                # Actually today cache should also hit, so transit sidecar may not be called either
-                assert payload2 is not None
+                # Transit sidecar IS called (different date, need fresh transits)
+                assert mock_day_client2.get_transits.call_count == 1
+
+                # Fresh TodayPayload (not from cache)
+                assert payload_b.meta.cached is False
+                assert payload_b.date == date_b.isoformat()
         finally:
             _teardown_service_mocks(mocks)
 
@@ -224,14 +292,8 @@ class TestDayRebuildOnProfileChange:
 
     @pytest.mark.asyncio
     async def test_profile_change_causes_today_cache_miss(self, db, user_with_profile):
+        """Baseline: verify that profile_hash changes when birth data changes."""
         user, profile = user_with_profile
-        target_date = Date(2026, 6, 11)
-        access_state = ContentAccessState(
-            state="full", reason="active_subscription", referralDaysLeft=None,
-            subscriptionActive=None, accessUntil=None,
-        )
-
-        # Compute original profile_hash
         original_hash = NatalContextService.compute_profile_hash(profile)
 
         # Change birth data → profile_hash changes
@@ -241,18 +303,103 @@ class TestDayRebuildOnProfileChange:
         await db.commit()
 
         new_hash = NatalContextService.compute_profile_hash(profile)
-
-        # profile_hash must change
         assert original_hash != new_hash, "Profile hash must change when birth data changes"
 
-        # Today cache keyed by profile_hash → old hash won't match → cache miss
-        service = TodayService(db)
-        cached_with_old_hash = await service._get_cached_payload(user.id, target_date, original_hash)
-        cached_with_new_hash = await service._get_cached_payload(user.id, target_date, new_hash)
+    @pytest.mark.asyncio
+    async def test_rebuild_after_profile_change_end_to_end(self, db, user_with_profile):
+        """Full end-to-end scenario:
+        1. Build payload with original birth data → cached with original profile_hash
+        2. Change birth data → new profile_hash → old cache becomes stale
+        3. Call get_today_payload again → proves rebuild:
+           - natal sidecar called again (new context)
+           - meta.cached=False (fresh generation)
+           - new cache entry with new profile_hash exists
+           - old cache entry with old profile_hash still exists but is not returned
+        """
+        user, profile = user_with_profile
+        target_date = Date(2026, 6, 11)
+        access_state = ContentAccessState(
+            state="full", reason="active_subscription", referralDaysLeft=None,
+            subscriptionActive=None, accessUntil=None,
+        )
 
-        # No cache for either hash (nothing was built yet)
-        assert cached_with_old_hash is None
-        assert cached_with_new_hash is None
+        service = TodayService(db)
+        mocks = _mock_all_services()
+        _setup_service_mocks(mocks)
+
+        original_hash = NatalContextService.compute_profile_hash(profile)
+
+        try:
+            # Step 1: Build payload with original birth data
+            with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory, \
+                 patch("app.services.today_service.get_solarsage_client") as mock_day_factory:
+
+                mock_ctx_client = AsyncMock()
+                mock_ctx_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+                mock_ctx_factory.return_value = mock_ctx_client
+
+                mock_day_client = AsyncMock()
+                mock_day_client.get_transits.return_value = MOCK_SIDECAR_TRANSITS
+                mock_day_factory.return_value = mock_day_client
+
+                payload1 = await service.get_today_payload(
+                    user.id, target_date, access_state, skip_prefetch=True
+                )
+
+                # First call: natal sidecar called (cache miss)
+                assert mock_ctx_client.get_natal.call_count == 1
+                assert payload1.meta.cached is False
+
+            # Verify old cache exists
+            cached_old = await service._get_cached_payload(user.id, target_date, original_hash)
+            assert cached_old is not None, "Payload should be cached with original profile_hash"
+
+            # Step 2: Change birth data
+            profile.birth_lat = Decimal("55.75580")
+            profile.birth_lon = Decimal("37.61730")
+            profile.birth_tz = "Europe/Moscow"
+            await db.commit()
+
+            new_hash = NatalContextService.compute_profile_hash(profile)
+            assert original_hash != new_hash, "Profile hash must change"
+
+            # Old hash cache still exists but new hash cache doesn't
+            cached_old_still = await service._get_cached_payload(user.id, target_date, original_hash)
+            assert cached_old_still is not None, "Old cache entry persists in DB"
+            cached_new = await service._get_cached_payload(user.id, target_date, new_hash)
+            assert cached_new is None, "No cache for new profile_hash yet"
+
+            # Step 3: Call get_today_payload again with new birth data
+            with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory2, \
+                 patch("app.services.today_service.get_solarsage_client") as mock_day_factory2:
+
+                mock_ctx_client2 = AsyncMock()
+                mock_ctx_client2.get_natal.return_value = MOCK_SIDECAR_NATAL
+                mock_ctx_factory2.return_value = mock_ctx_client2
+
+                mock_day_client2 = AsyncMock()
+                mock_day_client2.get_transits.return_value = MOCK_SIDECAR_TRANSITS
+                mock_day_factory2.return_value = mock_day_client2
+
+                payload2 = await service.get_today_payload(
+                    user.id, target_date, access_state, skip_prefetch=True
+                )
+
+                # Natal sidecar called again (new profile_hash → natal context miss)
+                assert mock_ctx_client2.get_natal.call_count == 1
+
+                # Fresh generation, not from cache
+                assert payload2.meta.cached is False
+
+            # Verify new cache exists with new profile_hash
+            cached_after_rebuild = await service._get_cached_payload(user.id, target_date, new_hash)
+            assert cached_after_rebuild is not None, "New payload cached with new profile_hash"
+
+            # Old cache entry still in DB but won't be served (different hash)
+            cached_old_after = await service._get_cached_payload(user.id, target_date, original_hash)
+            assert cached_old_after is not None, "Old cache entry still in DB (not deleted, just not matched)"
+        finally:
+            _teardown_service_mocks(mocks)
 
 
 # ══════════════════════════════════════════════════════════════════════
