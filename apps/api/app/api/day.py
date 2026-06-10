@@ -1,14 +1,14 @@
 # AI_HEADER
 # module: M-DAY-SERVICE.api
 # canon: docs/GRACE_CANON.md §6; docs/05_API_contracts_и_TodayPayload.md
-# wave: W-1.3 (pilot wave)
-# purpose: GET /api/day/:date endpoint returns fixture-backed TodayPayload.
+# wave: W-NATAL-FULL (Wave 3 — day pipeline reuse)
+# purpose: GET /api/day/:date endpoint returns TodayPayload.
 
 # START_MODULE_CONTRACT: M-DAY-SERVICE.api
 # purpose: HTTP surface for /api/day/:date. Returns TodayPayload for a given date.
-#          W-1.3: fixture-backed, access stub returns state=full.
-#          W-3.4: real calculation pipeline.
+#          W-3.4: real calculation pipeline via NatalContextService.
 #          W-ACCESS.1: real access logic.
+#          W-NATAL-FULL: day pipeline reuses cached natal context.
 # owns:
 #   - apps/api/app/api/day.py
 # inputs:
@@ -23,15 +23,14 @@
 #   - M-ACCESS (AccessService)
 #   - M-DB-SESSION (get_session)
 # invariants:
-#   - 'today' resolves to current date in user's timezone (UTC in W-1.3).
+#   - 'today' resolves to current date (UTC for now, W-PROFILE.1 for timezone).
 #   - Invalid date format → 400 INVALID_DATE.
 #   - Not onboarded → 422 NOT_ONBOARDED.
 #   - No auth → 401 (from require_session).
 # failure_policy:
 #   - HTTPException with code + message in detail.
 # non_goals:
-#   - no caching (W-3.4)
-#   - no timezone handling (W-PROFILE.1)
+#   - timezone-aware 'today' resolution (W-PROFILE.1)
 # END_MODULE_CONTRACT
 
 # START_MODULE_MAP: M-DAY-SERVICE.api
@@ -71,9 +70,9 @@ async def get_day(
     """
     Get TodayPayload for a specific date.
 
-    W-1.3: fixture-backed, access stub returns state=full.
-    W-3.4: real calculation pipeline.
+    W-3.4: real calculation pipeline via NatalContextService.
     W-ACCESS.1: real access logic.
+    W-NATAL-FULL: day pipeline reuses cached natal context.
     """
     # Resolve 'today' to current date in user's timezone
     if date_str == "today":
@@ -89,26 +88,18 @@ async def get_day(
             )
 
     # Check if user is onboarded and has required birth data
-    print(f"[day.py] user.profile: {user.profile}")
-    print(f"[day.py] is_onboarded: {user.profile.is_onboarded if user.profile else None}")
-    print(f"[day.py] birth_lat: {user.profile.birth_lat if user.profile else None}")
-    print(f"[day.py] birth_lon: {user.profile.birth_lon if user.profile else None}")
-
     has_birth_coords = (
         user.profile.birth_lat is not None and user.profile.birth_lon is not None
     )
     if (not user.profile or
         not user.profile.is_onboarded or
         not has_birth_coords):
-        print(f"[day.py] NOT_ONBOARDED triggered")
         raise HTTPException(
             status_code=422,
             detail={"code": "NOT_ONBOARDED", "message": "User must complete onboarding first"}
         )
 
-    print(f"[day.py] Onboarding check passed, proceeding...")
-
-    # Check access (stub in W-1.3, real in W-ACCESS.1)
+    # Check access (real in W-ACCESS.1)
     access_service = AccessService(db)
     access_state = await access_service.can_access_day(user.id, target_date)
 
