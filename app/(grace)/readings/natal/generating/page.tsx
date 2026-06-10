@@ -144,10 +144,36 @@ export default function NatalGeneratingPage() {
   // ---- Retry handler ----
   const handleRetry = useCallback(async () => {
     if (genState.status !== "failed_retryable") return
-    const { reportId } = genState
 
-    setGenState({ status: "generating", reportId, attempt: 0 })
-  }, [genState])
+    setGenState({ status: "starting" })
+    const result = await fetchNatalGenerate(true)
+
+    if (!result.ok) {
+      setGenState({ status: "error", message: result.error.message })
+      return
+    }
+
+    const { reportId, status } = result.data
+
+    if (status === "READY") {
+      router.replace(`/readings/natal/${reportId}`)
+      return
+    }
+
+    if (status === "GENERATING" || status === "PENDING") {
+      setGenState({ status: "generating", reportId, attempt: 0 })
+      return
+    }
+
+    if (status === "FAILED_RETRYABLE") {
+      setGenState({ status: "failed_retryable", reportId, message: result.data.errorMessage || "Generation failed" })
+      return
+    }
+
+    if (status === "FAILED_PERMANENT") {
+      setGenState({ status: "failed_permanent", message: result.data.errorMessage || "Generation failed permanently" })
+    }
+  }, [router])
 
   // ---- Back to preview ----
   const handleBack = useCallback(() => {

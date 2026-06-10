@@ -92,20 +92,45 @@ export default function NatalReportPage({ params }: Props) {
   const handleRetry = useCallback(async () => {
     if (state.status !== "failed" || !state.retryable) return
     setState({ status: "loading" })
-    // Re-trigger generation
+    // Re-trigger generation with force
     const { fetchNatalGenerate } = await import("@/lib/api/natal")
     const result = await fetchNatalGenerate(true)
-    if (result.ok) {
-      // Reload the report
-      const reportResult = await fetchNatalReport(result.data.reportId)
-      if (reportResult.ok) {
-        if (reportResult.data.status === "READY") {
-          setState({ status: "ready", data: reportResult.data })
-          return
-        }
+    if (!result.ok) {
+      setState({ status: "error", message: result.error.message })
+      return
+    }
+    const { reportId, status } = result.data
+    if (status === "READY") {
+      // Report ready immediately — fetch full content
+      const reportResult = await fetchNatalReport(reportId)
+      if (reportResult.ok && reportResult.data.status === "READY") {
+        setState({ status: "ready", data: reportResult.data })
+        return
       }
     }
-    setState({ status: "error", message: "Retry failed. Please try again." })
+    if (status === "GENERATING" || status === "PENDING") {
+      // Backend is still generating — transition to generating state
+      setState({ status: "generating", reportId })
+      return
+    }
+    if (status === "FAILED_RETRYABLE") {
+      setState({
+        status: "failed",
+        message: result.data.errorMessage || "Generation failed, you can retry",
+        retryable: true,
+        reportId: result.data.reportId,
+      })
+      return
+    }
+    if (status === "FAILED_PERMANENT") {
+      setState({
+        status: "failed",
+        message: result.data.errorMessage || "Generation failed permanently",
+        retryable: false,
+      })
+      return
+    }
+    setState({ status: "error", message: "Unexpected generation status" })
   }, [state])
 
   // ---- Loading state ----
