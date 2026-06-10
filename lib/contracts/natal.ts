@@ -193,75 +193,85 @@ export type ReportSection = z.infer<typeof ReportSectionSchema>
 export type NatalReport = z.infer<typeof NatalReportSchema>
 export type CalloutTone = z.infer<typeof CalloutToneSchema>
 
-// -------------------------------- Preview Types --------------------------------
+// -------------------------------- Preview Zod Schemas --------------------------------
 
-export interface NatalPreviewMeta {
-  name?: string | null
-  birthDate: string
-  birthTime?: string | null
-  birthCity?: string | null
-  houseSystem?: string | null
-  ascSign?: string | null
-  ascDegree?: number | null
-  gender: "male" | "female"
-}
+export const NatalPreviewMetaSchema = z.object({
+  name: z.string().nullable().optional(),
+  birthDate: z.string().min(1),
+  birthTime: z.string().nullable().optional(),
+  birthCity: z.string().nullable().optional(),
+  houseSystem: z.string().nullable().optional(),
+  ascSign: z.string().nullable().optional(),
+  ascDegree: z.number().nullable().optional(),
+  gender: z.enum(["male", "female"]),
+})
 
-export interface NatalPreviewHighlight {
-  id: string
-  title: string
-  value: string
-  description?: string | null
-}
+export const NatalPreviewHighlightSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  value: z.string().min(1),
+  description: z.string().nullable().optional(),
+})
 
-export interface NatalPreviewSphere {
-  id: string
-  title: string
-  score: number
-  rank: number
-  description: string
-}
+export const NatalPreviewSphereSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  score: z.number(),
+  rank: z.number(),
+  description: z.string().min(1),
+})
 
-export interface NatalPreviewPlanet {
-  id: string
-  name: string
-  sign?: string | null
-  house?: number | string | null
-  score?: number | null
-  description: string
-}
+export const NatalPreviewPlanetSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  sign: z.string().nullable().optional(),
+  house: z.union([z.number(), z.string()]).nullable().optional(),
+  score: z.number().nullable().optional(),
+  description: z.string().min(1),
+})
 
-export interface NatalPreviewChapter {
-  id: string
-  eyebrow: string
-  title: string
-  locked: boolean
-  description: string
-}
+export const NatalPreviewChapterSchema = z.object({
+  id: z.string().min(1),
+  eyebrow: z.string().min(1),
+  title: z.string().min(1),
+  locked: z.boolean(),
+  description: z.string().min(1),
+})
 
-export interface NatalCalculationStats {
-  planetsCount: number
-  housesCount: number
-  aspectsCount: number
-  spheresCount: number
-  specialPointsCount: number
-  scoringFactorsCount: number
-  dignityFactorsCount: number
-  totalFactorsCount: number
-  displayLabel: string
-}
+export const NatalCalculationStatsSchema = z.object({
+  planetsCount: z.number(),
+  housesCount: z.number(),
+  aspectsCount: z.number(),
+  spheresCount: z.number(),
+  specialPointsCount: z.number(),
+  scoringFactorsCount: z.number(),
+  dignityFactorsCount: z.number(),
+  totalFactorsCount: z.number(),
+  displayLabel: z.string().min(1),
+})
 
-export interface NatalPreviewRead {
-  meta: NatalPreviewMeta
-  highlights: NatalPreviewHighlight[]
-  spheres: NatalPreviewSphere[]
-  planets: NatalPreviewPlanet[]
-  chapters: NatalPreviewChapter[]
-  personalHook: string
-  calculationStats: NatalCalculationStats
-  salesBullets: string[]
-  fullReportAvailable: boolean
-  fullReportPriceKopecks: number
-}
+export const NatalPreviewReadSchema = z.object({
+  meta: NatalPreviewMetaSchema,
+  highlights: z.array(NatalPreviewHighlightSchema),
+  spheres: z.array(NatalPreviewSphereSchema),
+  planets: z.array(NatalPreviewPlanetSchema),
+  chapters: z.array(NatalPreviewChapterSchema),
+  personalHook: z.string().min(1),
+  calculationStats: NatalCalculationStatsSchema,
+  salesBullets: z.array(z.string()),
+  fullReportAvailable: z.boolean(),
+  fullReportPriceKopecks: z.number(),
+})
+
+// -------------------------------- Preview Types (backed by Zod) --------------------------------
+
+export type NatalPreviewMeta = z.infer<typeof NatalPreviewMetaSchema>
+export type NatalPreviewHighlight = z.infer<typeof NatalPreviewHighlightSchema>
+export type NatalPreviewSphere = z.infer<typeof NatalPreviewSphereSchema>
+export type NatalPreviewPlanet = z.infer<typeof NatalPreviewPlanetSchema>
+export type NatalPreviewChapter = z.infer<typeof NatalPreviewChapterSchema>
+export type NatalCalculationStats = z.infer<typeof NatalCalculationStatsSchema>
+export type NatalPreviewRead = z.infer<typeof NatalPreviewReadSchema>
 
 // -------------------------------- Validators --------------------------------
 
