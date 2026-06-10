@@ -1,7 +1,8 @@
 # AI_HEADER
 # module: M-NORMALIZATION-SERVICE
-# wave: W-4.1
+# wave: W-4.1, W-NATAL-FULL
 # purpose: Normalization layer (raw → AstroSignal[])
+#          W-NATAL-FULL: split into normalize_natal_only() and normalize_day()
 
 from app.services.astro_utils import find_house
 from app.schemas.normalization import AstroSignal, AspectType
@@ -24,7 +25,80 @@ ASPECT_ORBS = {
 
 
 class NormalizationService:
-    """Normalization layer for astrological data."""
+    """Normalization layer for astrological data.
+
+    W-NATAL-FULL: split into natal-only and day (natal + transits) paths.
+    """
+
+    # ── Natal-only path (no transits) ─────────────────────────────
+
+    def normalize_natal_only(self, natal: dict) -> list[AstroSignal]:
+        """Normalize natal chart data only — no transits.
+
+        Used by NatalContextService to build persistent natal context.
+        Must NOT include any transit signals.
+        """
+        signals = []
+
+        # 1. Natal planets in houses
+        signals.extend(self._planets_in_houses(natal))
+
+        # 2. Natal planets in signs
+        signals.extend(self._planets_in_signs(natal))
+
+        # 3. Natal aspects (planet-to-planet)
+        signals.extend(self._natal_aspects(natal))
+
+        # NO transit aspects — natal-only!
+
+        return signals
+
+    # ── Day path (natal context + transits) ────────────────────────
+
+    def normalize_day(
+        self,
+        natal_context: dict,
+        transits: dict,
+    ) -> list[AstroSignal]:
+        """Normalize day signals from cached natal context + fresh transits.
+
+        W-NATAL-FULL: This replaces the old normalize(natal, transits) for day use.
+        Natal context is already normalized; we only add transit signals.
+        """
+        signals = []
+
+        # 1. Natal signals from context (planets in houses, signs, natal aspects)
+        #    These are already computed in NatalContextData; rebuild from raw chart
+        #    so we get proper AstroSignal objects for scoring.
+        natal_signals = natal_context.get("natal_signals", [])
+        if natal_signals:
+            # If pre-computed signals are available, use them
+            for s_data in natal_signals:
+                signals.append(AstroSignal(
+                    type=s_data.get("type"),
+                    planet=s_data.get("planet"),
+                    house=s_data.get("house"),
+                    sign=s_data.get("sign"),
+                    target_planet=s_data.get("target_planet"),
+                    aspect_type=s_data.get("aspect_type"),
+                    orb=s_data.get("orb"),
+                    strength=s_data.get("strength", 1.0),
+                ))
+        else:
+            # Fallback: rebuild from raw chart if signals not available
+            signals.extend(self._planets_in_houses(natal_context))
+            signals.extend(self._planets_in_signs(natal_context))
+            signals.extend(self._natal_aspects(natal_context))
+
+        # 2. Transit aspects (transit planet to natal planet)
+        natal_planets = natal_context.get("planets", natal_context.get("planets", []))
+        transit_planets = transits.get("planets", [])
+        if transit_planets and natal_planets:
+            signals.extend(self._transit_aspects_from_planets(transit_planets, natal_planets))
+
+        return signals
+
+    # ── Legacy path (backward compat) ─────────────────────────────
 
     def normalize(
         self,
@@ -119,6 +193,31 @@ class NormalizationService:
 
         transit_planets = transits["planets"]
         natal_planets = natal["planets"]
+
+        for t_planet in transit_planets:
+            for n_planet in natal_planets:
+                aspect = self._calculate_aspect(t_planet["longitude"], n_planet["longitude"])
+                if aspect:
+                    aspect_type, orb = aspect
+                    signals.append(AstroSignal(
+                        type="aspect",
+                        planet=f"Transit_{t_planet['name']}",
+                        target_planet=n_planet["name"],
+                        aspect_type=aspect_type,
+                        orb=orb,
+                        strength=self._aspect_strength(orb, aspect_type),
+                    ))
+
+        return signals
+
+    def _transit_aspects_from_planets(
+        self, transit_planets: list[dict], natal_planets: list[dict]
+    ) -> list[AstroSignal]:
+        """Generate transit aspect signals from pre-separated planet lists.
+
+        Used by normalize_day() when natal context provides planets separately.
+        """
+        signals = []
 
         for t_planet in transit_planets:
             for n_planet in natal_planets:

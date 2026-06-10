@@ -125,17 +125,26 @@ class TodayService:
                 detail={"message": "Birth coordinates are required", "missingFields": ["birth_lat", "birth_lon"]},
             )
 
-        # Get SolarSage client
-        client = get_solarsage_client()
+        # W-NATAL-FULL: Use cached natal context instead of direct sidecar call
+        from app.services.natal_context_service import NatalContextService
+        context_service = NatalContextService(self.db)
+        natal_context = await context_service.get_or_build_natal_context(user_id)
 
-        # Get natal chart
-        natal = await client.get_natal(
-            birth_date=profile.birthday.isoformat(),
-            birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
-            birth_lat=float(profile.birth_lat),
-            birth_lon=float(profile.birth_lon),
-            birth_tz=profile.birth_tz or "UTC",
+        # Load raw chart from cache for legacy code that needs it
+        from app.db.models import NatalChartCache
+        profile_hash = NatalContextService.compute_profile_hash(profile)
+        cache_result = await self.db.execute(
+            select(NatalChartCache).where(
+                NatalChartCache.user_id == user_id,
+                NatalChartCache.profile_hash == profile_hash,
+                NatalChartCache.invalidated_at.is_(None),
+            )
         )
+        cache_entry = cache_result.scalar_one_or_none()
+        natal = json.loads(cache_entry.raw_chart_json) if cache_entry else {}
+
+        # Get SolarSage client — only for transits now
+        client = get_solarsage_client()
 
         # Get transits for target date (noon in user's current timezone)
         target_tz = profile.current_tz or profile.birth_tz or "UTC"

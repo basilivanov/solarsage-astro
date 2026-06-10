@@ -82,6 +82,24 @@ def _base_planet_name(name: str | None) -> str:
 
 class ScoringService:
 
+    def score_natal(self, signals: list[AstroSignal]) -> dict:
+        """Score natal-only signals. No day_status (that's a day concept).
+
+        Returns sphere_scores, top_signals, planet_scores, and the original
+        natal_signals for context building.
+        """
+        sphere_scores = self._calculate_sphere_scores(signals)
+        convergence = self._compute_convergence(signals)
+        sphere_scores = self._apply_convergence(sphere_scores, convergence)
+        top_signals = self._get_top_signals(signals, limit=5)
+        planet_scores = self._calculate_planet_scores(signals)
+        return {
+            "sphere_scores": sphere_scores,
+            "top_signals": top_signals,
+            "planet_scores": planet_scores,
+            "natal_signals": signals,
+        }
+
     def score(self, signals: list[AstroSignal]) -> dict:
         sphere_scores = self._calculate_sphere_scores(signals)
         convergence = self._compute_convergence(signals)
@@ -267,3 +285,25 @@ class ScoringService:
                 ranked[-1] = max(moon_signals, key=lambda s: s.strength)
 
         return ranked
+
+    def _calculate_planet_scores(self, signals: list[AstroSignal]) -> dict[str, float]:
+        """Calculate per-planet score from natal signals.
+
+        Sums strength of all signals involving each planet.
+        Used for dominant planet determination.
+        """
+        planet_scores: dict[str, float] = {}
+        for s in signals:
+            if s.planet:
+                name = _base_planet_name(s.planet)
+                # Skip transit prefixes — natal-only
+                if name.startswith("TRANSIT_"):
+                    continue
+                planet_scores[name] = planet_scores.get(name, 0.0) + float(s.strength)
+            if s.target_planet:
+                name = _base_planet_name(s.target_planet)
+                if name.startswith("TRANSIT_"):
+                    continue
+                planet_scores[name] = planet_scores.get(name, 0.0) + float(s.strength) * 0.5
+
+        return {k: round(v, 4) for k, v in sorted(planet_scores.items(), key=lambda x: -x[1])}

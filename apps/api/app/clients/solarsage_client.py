@@ -92,7 +92,13 @@ class SolarSageClient:
             },
         )
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+
+        # W-NATAL-FULL: Validate sidecar response with Pydantic before returning
+        from app.schemas.natal import SolarSageNatalResponse
+        SolarSageNatalResponse.model_validate(data)
+
+        return data
 
     async def get_transits(
         self,
@@ -124,7 +130,13 @@ class SolarSageClient:
             },
         )
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+
+        # W-NATAL-FULL: Validate transits response with Pydantic
+        from app.schemas.natal import SolarSageTransitsResponse
+        SolarSageTransitsResponse.model_validate(data)
+
+        return data
 
     async def close(self):
         """Close HTTP client."""
