@@ -49,17 +49,11 @@ export default function NatalReadingPage() {
   }, [load])
 
   const handleOpenReport = useCallback(() => {
-    // Wave 5: If report already available (fullReportAvailable=true),
-    // the backend has a READY report — fetch it directly.
-    // Otherwise, go to the generating screen.
-    if (state.status === "ready" && state.data.fullReportAvailable) {
-      // Report exists — try to navigate directly
-      // (the report page will fetch the latest READY report by ID)
-      router.push("/readings/natal/generating")
-    } else {
-      router.push("/readings/natal/generating")
-    }
-  }, [router, state])
+    // Wave 5: Route to generating page, which handles both cases:
+    // - If a READY report exists, backend returns it immediately and we redirect
+    // - If not, generation starts. Backend idempotency ensures no duplicate work.
+    router.push("/readings/natal/generating")
+  }, [router])
 
   return (
     <div className="flex h-full w-full flex-col bg-background overflow-y-auto">

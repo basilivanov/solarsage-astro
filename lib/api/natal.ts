@@ -10,6 +10,11 @@ import type {
   NatalReportRead,
   NatalGenerateResponse,
 } from "@/lib/contracts/natal"
+import {
+  NatalReportReadSchema,
+  NatalGenerateResponseSchema,
+  NatalReportSectionReadSchema,
+} from "@/lib/contracts/natal"
 import { IS_DEMO_MODE } from "@/lib/demo-mode"
 import { DEMO_NATAL_PREVIEW } from "@/lib/demo-data"
 import { MOCK_NATAL_REPORT_READ } from "@/lib/mocks/natal"
@@ -156,9 +161,13 @@ export async function fetchNatalGenerate(forceRegenerate = false): Promise<
       }
     }
 
-    const data: NatalGenerateResponse = await res.json()
+    const raw = await res.json()
+    const data = NatalGenerateResponseSchema.parse(raw)
     return { ok: true, data }
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === "ZodError") {
+      return { ok: false, error: { type: "error", message: "Invalid response format from server" } }
+    }
     return { ok: false, error: { type: "error", message: "Network error" } }
   }
 }
@@ -168,8 +177,12 @@ export async function fetchNatalGenerate(forceRegenerate = false): Promise<
 export async function fetchNatalReport(reportId?: string): Promise<
   { ok: true; data: NatalReportRead } | { ok: false; error: NatalReportError }
 > {
-  if (IS_DEMO_MODE || reportId === "demo") {
+  if (IS_DEMO_MODE) {
     return { ok: true, data: MOCK_NATAL_REPORT_READ }
+  }
+  if (reportId === "demo") {
+    // Production must not serve mock data — "demo" is not a real report id
+    return { ok: false, error: { type: "not_found", message: "Report not found" } }
   }
 
   try {
@@ -210,9 +223,13 @@ export async function fetchNatalReport(reportId?: string): Promise<
       }
     }
 
-    const data: NatalReportRead = await res.json()
+    const raw = await res.json()
+    const data = NatalReportReadSchema.parse(raw)
     return { ok: true, data }
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === "ZodError") {
+      return { ok: false, error: { type: "error", message: "Invalid response format from server" } }
+    }
     return { ok: false, error: { type: "error", message: "Network error" } }
   }
 }
@@ -225,6 +242,19 @@ export async function fetchNatalReportSection(
 ): Promise<
   { ok: true; data: NatalReportRead["sections"][number] } | { ok: false; error: NatalReportError }
 > {
+  // Demo mode: return section from mock report
+  if (IS_DEMO_MODE) {
+    const section = MOCK_NATAL_REPORT_READ.sections.find((s) => s.id === sectionId)
+    if (!section) {
+      return { ok: false, error: { type: "not_found", message: "Section not found" } }
+    }
+    return { ok: true, data: section }
+  }
+  // Production: "demo" is not a real report id
+  if (reportId === "demo") {
+    return { ok: false, error: { type: "not_found", message: "Report not found" } }
+  }
+
   try {
     const res = await fetch(
       `${API_BASE}/api/natal/report/${reportId}/section/${sectionId}`,
@@ -246,9 +276,14 @@ export async function fetchNatalReportSection(
       }
     }
 
-    const data = await res.json()
+    const raw = await res.json()
+    const data = NatalReportSectionReadSchema.parse(raw)
     return { ok: true, data }
-  } catch {
+  } catch (err) {
+    // Zod validation error — surface as contract mismatch, not generic network error
+    if (err instanceof Error && err.name === "ZodError") {
+      return { ok: false, error: { type: "error", message: "Invalid response format from server" } }
+    }
     return { ok: false, error: { type: "error", message: "Network error" } }
   }
 }
