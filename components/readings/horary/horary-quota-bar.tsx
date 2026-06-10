@@ -36,7 +36,7 @@ export function HoraryQuotaBar({ quota, onBuy }: Props) {
 
   if (totalCredits === 0) {
     return (
-      <div className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-4 flex items-center justify-between gap-4">
+      <div className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-4 flex items-center justify-between gap-4" data-testid="horary-quota-bar">
         <div>
           <h4 className="font-serif text-[16px] font-semibold text-destructive">
             Вопросы закончились
@@ -55,6 +55,7 @@ export function HoraryQuotaBar({ quota, onBuy }: Props) {
           type="button"
           onClick={onBuy}
           className="flex-none rounded-full bg-destructive text-destructive-foreground px-4 py-2 text-[13px] font-medium transition active:scale-[0.98]"
+          data-testid="horary-buy-btn"
         >
           Докупить
         </button>
@@ -63,7 +64,7 @@ export function HoraryQuotaBar({ quota, onBuy }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-border/70 bg-card p-4 flex flex-col gap-3.5">
+    <div className="rounded-xl border border-border/70 bg-card p-4 flex flex-col gap-3.5" data-testid="horary-quota-bar">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -99,6 +100,7 @@ export function HoraryQuotaBar({ quota, onBuy }: Props) {
           type="button"
           onClick={onBuy}
           className="rounded-full border border-border/70 bg-card px-3.5 py-1.5 text-[12.5px] font-medium text-foreground transition active:scale-[0.98]"
+          data-testid="horary-buy-btn"
         >
           Докупить
         </button>

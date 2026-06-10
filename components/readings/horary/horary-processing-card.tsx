@@ -74,7 +74,7 @@ export function HoraryProcessingCard({
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/[0.07] via-background to-primary/[0.03] p-4 shadow-sm shadow-primary/5">
+    <div className="overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/[0.07] via-background to-primary/[0.03] p-4 shadow-sm shadow-primary/5" data-testid="horary-processing-card">
       <div className="flex items-start gap-3.5">
         <div className="relative mt-0.5 flex h-12 w-12 flex-none items-center justify-center">
           <div className="absolute inset-0 rounded-full border border-primary/15" />

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { ChevronLeft, Sparkles, HelpCircle } from "lucide-react"
+import { motion } from "framer-motion"
 import type { HoraryQuestionRead } from "@/packages/contracts"
 import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
 import { HoraryBlockRenderer } from "./horary-block-renderer"
@@ -46,7 +47,7 @@ export function HoraryAnswerView({ question }: Props) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
+    <div className="flex h-full w-full flex-col bg-background overflow-y-auto" data-testid="horary-answer-view">
       {/* Header */}
       <header
         className="flex-none px-4 pb-4 border-b border-border/40"
@@ -63,7 +64,7 @@ export function HoraryAnswerView({ question }: Props) {
 
       <div className="flex-1 px-5 py-6 space-y-6 max-w-md mx-auto w-full">
         {/* Question Details */}
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-5 space-y-3">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="rounded-2xl border border-border/60 bg-muted/20 p-5 space-y-3">
           <div className="flex items-center justify-between gap-2">
             {catMeta && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-2.5 py-0.5 text-[12px] text-foreground/85">
@@ -84,14 +85,14 @@ export function HoraryAnswerView({ question }: Props) {
               <span>{questionLocationName}</span>
             </p>
           )}
-        </div>
+        </motion.div>
 
         {/* Blocks rendering (contains verdict_card as the first block in spec, but let's render blocks sequentially) */}
         <div className="space-y-5">
           {answer.blocks.map((block: any, i: number) => (
-            <div key={i}>
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.06, duration: 0.3 }}>
               <HoraryBlockRenderer block={block} />
-            </div>
+            </motion.div>
           ))}
         </div>
 

@@ -69,6 +69,7 @@ export function HoraryQuestionCard({ question }: Props) {
   return (
     <Link
       href={`/readings/horary/${id}`}
+      data-testid="horary-question-card"
       className={`block rounded-2xl border p-4 hover:bg-foreground/[0.01] active:scale-[0.99] transition ${bgClass}`}
     >
       <div className="flex items-start gap-3.5">
@@ -109,7 +110,7 @@ export function HoraryQuestionCard({ question }: Props) {
 
           <div className="mt-2 flex items-center justify-between gap-3 text-[13px] text-muted-foreground">
             <div className="min-w-0">
-              <span>Ответ: <strong className="text-foreground">{verdictText}</strong></span>
+              <span>Ответ: <strong className="text-foreground" data-testid="horary-verdict-text">{verdictText}</strong></span>
               {(status === "failed" || status === "expired") && creditRefunded ? (
                 <p className="mt-1 text-[12px] text-emerald-600 dark:text-emerald-400">
                   Списание возвращено

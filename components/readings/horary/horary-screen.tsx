@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { ChevronLeft, MessageSquare, AlertCircle } from "lucide-react"
 
@@ -279,7 +280,7 @@ export function HoraryScreen() {
       </header>
 
       <div className="flex-1 px-5 py-6 space-y-6 max-w-md mx-auto w-full">
-        <div className="space-y-1">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-1">
           <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
             Раздел
           </span>
@@ -289,10 +290,12 @@ export function HoraryScreen() {
           <p className="text-[14px] leading-relaxed text-muted-foreground">
             Задай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и практическим выводом.
           </p>
-        </div>
+        </motion.div>
 
         {quota && (
-          <HoraryQuotaBar quota={quota} onBuy={() => setShowPurchase(true)} />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.35 }}>
+            <HoraryQuotaBar quota={quota} onBuy={() => setShowPurchase(true)} />
+          </motion.div>
         )}
 
         {hasSpendableCredit ? (
@@ -327,11 +330,11 @@ export function HoraryScreen() {
           </h3>
 
           {questions.length === 0 && !activeQuestion ? (
-            <div className="rounded-2xl border border-dashed border-border/70 p-8 text-center text-muted-foreground text-[14px] space-y-2">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, duration: 0.3 }} className="rounded-2xl border border-dashed border-border/70 p-8 text-center text-muted-foreground text-[14px] space-y-2">
               <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground/45" />
               <p>Вы еще не задавали хорарных вопросов.</p>
               <p className="text-[12px]">Ваш первый вердикт появится здесь.</p>
-            </div>
+            </motion.div>
           ) : (
             <div className="grid gap-3.5">
               {activeQuestion && (
@@ -343,17 +346,21 @@ export function HoraryScreen() {
                 />
               )}
 
-              {regularQuestions.map((q) => (
-                <HoraryQuestionCard key={q.id} question={q} />
+              {regularQuestions.map((q, index) => (
+                <motion.div key={q.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * index, duration: 0.3 }}>
+                  <HoraryQuestionCard question={q} />
+                </motion.div>
               ))}
             </div>
           )}
         </div>
       </div>
 
-      {showPurchase && (
-        <HoraryPurchaseSheet onClose={() => setShowPurchase(false)} />
-      )}
+      <AnimatePresence>
+        {showPurchase && (
+          <HoraryPurchaseSheet onClose={() => setShowPurchase(false)} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

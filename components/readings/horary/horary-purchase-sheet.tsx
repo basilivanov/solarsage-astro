@@ -45,12 +45,13 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog">
+    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog" data-testid="horary-purchase-sheet">
       {/* Backdrop */}
       <button
         type="button"
         aria-label="Закрыть"
         onClick={close}
+        data-testid="horary-purchase-close"
         className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${
           mounted ? "opacity-100" : "opacity-0"
         }`}
@@ -81,6 +82,7 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
               type="button"
               onClick={close}
               aria-label="Закрыть"
+              data-testid="horary-purchase-close"
               className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition active:scale-95"
             >
               <X className="h-4 w-4" strokeWidth={1.75} />
@@ -93,6 +95,7 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
                 <button
                   key={i}
                   type="button"
+                  data-testid={`horary-purchase-option-${i}`}
                   onClick={() => handlePurchase(opt.qty)}
                   className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-4 transition active:bg-foreground/5 text-left w-full"
                 >
