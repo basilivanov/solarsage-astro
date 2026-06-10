@@ -32,6 +32,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 import logging
 import uuid
@@ -49,6 +50,7 @@ from app.schemas.natal import (
     HighlightItem,
     NatalCalculationStats,
     NatalChapterPreview,
+    NatalContextData,
     NatalHighlight,
     NatalMeta,
     NatalPayload,
@@ -502,96 +504,66 @@ class NatalService:
         return NatalPayload(meta=meta, sections=sections)
 
     async def get_preview(self, user_id: uuid.UUID) -> NatalPreviewRead:
+        """Build preview from cached/buildable NatalContext.
+
+        W-NATAL-FULL: Uses NatalContextService as single source of truth.
+        No direct SolarSage calls. No transit calls for preview.
+        """
+        from app.services.natal_context_service import NatalContextService
+        from app.db.models import NatalChartCache
+
+        context_service = NatalContextService(self.db)
+
+        # get_or_build_natal_context handles profile validation and sidecar calls
+        natal_context = await context_service.get_or_build_natal_context(user_id)
+
+        # Load profile for name/city (already validated by context service)
         result = await self.db.execute(
             select(UserProfile).where(UserProfile.user_id == user_id)
         )
         profile = result.scalar_one_or_none()
-        if profile is None:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "message": "Profile is incomplete",
-                    "missingFields": [
-                        "birthday",
-                        "birth_time",
-                        "birth_lat",
-                        "birth_lon",
-                        "birth_tz",
-                        "gender",
-                    ],
-                },
+        gender = profile.gender if profile else "female"
+        birth_date = profile.birthday.isoformat() if profile and profile.birthday else ""
+        birth_time = profile.birth_time.strftime("%H:%M") if profile and profile.birth_time else ""
+        birth_city = profile.birth_city if profile else None
+
+        # Find the cache entry for raw_chart_json (needed for highlights/stats)
+        profile_hash = NatalContextService.compute_profile_hash(profile) if profile else ""
+        cache_result = await self.db.execute(
+            select(NatalChartCache).where(
+                NatalChartCache.user_id == user_id,
+                NatalChartCache.profile_hash == profile_hash,
+                NatalChartCache.invalidated_at.is_(None),
             )
+        )
+        cache_entry = cache_result.scalar_one_or_none()
+        chart_data = json.loads(cache_entry.raw_chart_json) if cache_entry else {}
 
-        missing_fields = [
-            field_name
-            for field_name in ["birthday", "birth_time", "birth_lat", "birth_lon", "birth_tz", "gender"]
-            if getattr(profile, field_name) is None
-        ]
-        if missing_fields:
-            raise HTTPException(
-                status_code=409,
-                detail={"message": "Profile is incomplete", "missingFields": missing_fields},
-            )
-
-        gender = profile.gender
-        if gender not in {"male", "female"}:
-            raise HTTPException(
-                status_code=409,
-                detail={"message": "Profile is incomplete", "missingFields": ["gender"]},
-            )
-
-        client = get_solarsage_client()
-        birth_date = profile.birthday.isoformat()
-        birth_time = profile.birth_time.strftime("%H:%M")
-        birth_lat = float(profile.birth_lat)
-        birth_lon = float(profile.birth_lon)
-        birth_tz = profile.birth_tz
-
-        try:
-            chart_data = await client.get_natal(
-                birth_date=birth_date,
-                birth_time=birth_time,
-                birth_lat=birth_lat,
-                birth_lon=birth_lon,
-                birth_tz=birth_tz,
-            )
-            transits = await client.get_transits(
-                target_date=birth_date,
-                target_time=birth_time,
-                target_tz=birth_tz,
-            )
-        except httpx.HTTPError as exc:
-            logger.error(f"SolarSage sidecar error: {exc}")
-            raise HTTPException(
-                status_code=502,
-                detail={
-                    "code": "SOLARSAGE_UNAVAILABLE",
-                    "message": "Сервис расчёта временно недоступен. Попробуй позже.",
-                },
-            ) from exc
-
-        normalization_service = NormalizationService()
-        signals = normalization_service.normalize(chart_data, transits)
-        scoring_service = ScoringService()
-        scores = scoring_service.score(signals)
-
-        asc = _find_special_point(chart_data, "ASC")
+        # Build preview components from natal context
+        asc = next((a for a in natal_context.angles if a.name == "ASC"), None)
         meta = NatalPreviewMeta(
-            name=profile.first_name,
+            name=profile.first_name if profile else None,
             birth_date=birth_date,
             birth_time=birth_time,
-            birth_city=profile.birth_city,
-            house_system=chart_data.get("house_system"),
-            asc_sign=asc.get("sign") if asc else None,
-            asc_degree=float(asc["longitude"]) if asc and asc.get("longitude") is not None else None,
+            birth_city=birth_city,
+            house_system=natal_context.house_system,
+            asc_sign=asc.sign if asc else None,
+            asc_degree=asc.degree if asc else None,
             gender=gender,
         )
-        highlights = _build_highlights(chart_data, gender)
+
+        # Build scores dict from context for helper functions
+        scores = {
+            "sphere_scores": natal_context.sphere_scores,
+            "top_signals": natal_context.top_signals,
+        }
+
+        highlights = self._build_highlights_from_context(natal_context, gender)
         spheres = _build_spheres(scores, gender)
-        planets = _build_planets(chart_data, scores, gender, signals)
+        planets = self._build_planets_from_context(natal_context, gender)
         chapters = _build_chapters(gender)
         personal_hook = _build_personal_hook(meta, highlights, spheres, gender)
-        calculation_stats = _build_calculation_stats(chart_data, scores)
+        calculation_stats = self._build_calculation_stats_from_context(natal_context)
         sales_bullets = _build_sales_bullets(gender)
 
         return NatalPreviewRead(
@@ -605,4 +577,98 @@ class NatalService:
             sales_bullets=sales_bullets,
             full_report_available=False,
             full_report_price_kopecks=99900,
+        )
+
+    @staticmethod
+    def _build_highlights_from_context(context: NatalContextData, gender: str) -> list[NatalHighlight]:
+        """Build highlights from NatalContextData instead of raw chart_data."""
+        asc = next((a for a in context.angles if a.name == "ASC"), None)
+        sun = next((p for p in context.planets if p.name == "Sun"), None)
+        moon = next((p for p in context.planets if p.name == "Moon"), None)
+        highlights: list[NatalHighlight] = []
+
+        if asc:
+            sign = _SIGN_RU.get(asc.sign, asc.sign)
+            highlights.append(NatalHighlight(
+                id="asc", title="Асцендент", value=sign,
+                description="Как ты входишь в контакт и проявляешься внешне.",
+            ))
+        if sun:
+            sign = _SIGN_RU.get(sun.sign, sun.sign)
+            highlights.append(NatalHighlight(
+                id="sun-sign", title="Солнце", value=sign,
+                description=f"Твой базовый вектор личности: через что {_gender_forms(gender)['manifested']} сильнее всего.",
+            ))
+        if moon:
+            sign = _SIGN_RU.get(moon.sign, moon.sign)
+            highlights.append(NatalHighlight(
+                id="moon-sign", title="Луна", value=sign,
+                description=f"Эмоциональный отклик: как ты {_gender_forms(gender)['feels']} мир и восстанавливаешься.",
+            ))
+        return highlights[:3]
+
+    @staticmethod
+    def _build_planets_from_context(context: NatalContextData, gender: str) -> list[NatalPlanetPreview]:
+        """Build planet previews from NatalContextData."""
+        _planet_hints = {
+            "Sun": "Твоё Солнце показывает базовый вектор личности и главный источник жизненной силы.",
+            "Moon": "Луна раскрывает эмоциональные потребности, интуицию и способ восстановления.",
+            "Mercury": "Меркурий определяет стиль мышления, речи и обработки информации.",
+            "Venus": "Венера показывает твой стиль любви, красоты, ценностей и привязанностей.",
+            "Mars": "Марс — это твоя воля, активность, инициатива и способ действия.",
+            "Jupiter": "Юпитер указывает на зоны роста, удачи и естественного расширения.",
+            "Saturn": "Сатурн показывает твои опоры, границы, ответственность и зоны дисциплины.",
+            "Uranus": "Уран отвечает за оригинальность, свободу и нестандартные решения.",
+            "Neptune": "Нептун связан с интуицией, мечтами, вдохновением и размытием границ.",
+            "Pluto": "Плутон — зона глубинной трансформации, силы и перерождения.",
+        }
+        planets: list[NatalPlanetPreview] = []
+        for planet in context.planets[:5]:
+            name = planet.name
+            sign_en = planet.sign
+            sign_nom = _SIGN_NOM.get(sign_en, sign_en)
+            sign_prep = _SIGN_RU.get(sign_en, sign_en)
+            house_text = f"{planet.house} дом" if planet.house is not None else ""
+            hint = _planet_hints.get(name, f"{_planet_label(name)} — важный элемент твоей карты.")
+            planets.append(NatalPlanetPreview(
+                id=name.lower(),
+                name=_planet_label(name),
+                sign=sign_nom,
+                house=planet.house,
+                score=None,
+                description=f"{_planet_label(name)} в {sign_prep}, {house_text}. {hint}" if house_text else f"{_planet_label(name)} в {sign_prep}. {hint}",
+            ))
+        return planets
+
+    @staticmethod
+    def _build_calculation_stats_from_context(context: NatalContextData) -> NatalCalculationStats:
+        """Build calculation stats from NatalContextData."""
+        planets_count = len(context.planets)
+        houses_count = len(context.houses)
+        aspects_count = len(context.aspects)
+        spheres_count = len(context.sphere_scores)
+        special_points_count = len(context.special_points)
+        scoring_factors_count = len(context.top_signals)
+        total_factors_count = (
+            planets_count + houses_count + aspects_count +
+            spheres_count + special_points_count + scoring_factors_count
+        )
+        if total_factors_count >= 350:
+            display_label = "350+ факторов карты"
+        elif total_factors_count >= 300:
+            display_label = "300+ факторов карты"
+        elif total_factors_count >= 200:
+            display_label = "200+ факторов карты"
+        else:
+            display_label = f"{total_factors_count} факторов карты"
+        return NatalCalculationStats(
+            planets_count=planets_count,
+            houses_count=houses_count,
+            aspects_count=aspects_count,
+            spheres_count=spheres_count,
+            special_points_count=special_points_count,
+            scoring_factors_count=scoring_factors_count,
+            dignity_factors_count=0,
+            total_factors_count=total_factors_count,
+            display_label=display_label,
         )

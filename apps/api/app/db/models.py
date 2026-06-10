@@ -2,9 +2,10 @@
 # AI_HEADER: MODULE_DB_MODELS
 # ROLE: ORM models for users, user_profiles, sessions (W-1.2 / Option A),
 #       access_ledger, referrals (W-ACCESS.1), today_payloads_cache (W-5.2),
-#       semantic_layers (W-4.3), microcopy_misses (W-9.2).
+#       semantic_layers (W-4.3), microcopy_misses (W-9.2),
+#       natal_chart_cache, natal_reports (W-NATAL-FULL).
 # DEPENDENCIES: sqlalchemy, app.db.session.Base
-# GRACE_ANCHORS: [USERS_TABLE, USER_PROFILES_TABLE, SESSIONS_TABLE, ACCESS_LEDGER_TABLE, REFERRALS_TABLE, TODAY_PAYLOADS_CACHE_TABLE, SEMANTIC_LAYERS_TABLE, MICROCOPY_MISSES_TABLE]
+# GRACE_ANCHORS: [USERS_TABLE, USER_PROFILES_TABLE, SESSIONS_TABLE, ACCESS_LEDGER_TABLE, REFERRALS_TABLE, TODAY_PAYLOADS_CACHE_TABLE, SEMANTIC_LAYERS_TABLE, MICROCOPY_MISSES_TABLE, NATAL_CHART_CACHE_TABLE, NATAL_REPORTS_TABLE]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-AUTH-TG.models
@@ -692,3 +693,117 @@ class HoraryCreditSpend(Base):
     credit: Mapped["HoraryCredit"] = relationship("HoraryCredit")
     question: Mapped["HoraryQuestion"] = relationship("HoraryQuestion")
 # END_BLOCK: HORARY_TABLES
+
+
+# START_BLOCK: NATAL_CHART_CACHE_TABLE
+class NatalChartCache(Base):
+    """Deterministic reusable natal calculation result. W-NATAL-FULL."""
+
+    __tablename__ = "natal_chart_cache"
+    __table_args__ = (
+        Index(
+            "ix_natal_chart_cache_active",
+            "user_id", "profile_hash", "engine_version",
+            "calculation_version", "house_system",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(32), nullable=False, default="1")
+    calculation_version: Mapped[str] = mapped_column(String(32), nullable=False, default="1")
+    house_system: Mapped[str] = mapped_column(String(32), nullable=False, default="placidus")
+    raw_chart_json: Mapped[str] = mapped_column(Text, nullable=False)
+    normalized_context_json: Mapped[str] = mapped_column(Text, nullable=False)
+    summary_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    invalidated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship("User")
+# END_BLOCK: NATAL_CHART_CACHE_TABLE
+
+
+# START_BLOCK: NATAL_REPORTS_TABLE
+class NatalReport(Base):
+    """Persisted generated full natal report. W-NATAL-FULL."""
+
+    __tablename__ = "natal_reports"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "natal_context_id", "prompt_version", "report_schema_version",
+            name="uq_natal_reports_context_prompt",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    natal_context_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("natal_chart_cache.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="PENDING"
+    )  # PENDING | GENERATING | READY | FAILED_RETRYABLE | FAILED_PERMANENT
+    access_state: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="FREE_PREVIEW"
+    )  # FREE_PREVIEW | UNLOCKED | INTERNAL_TEST | BLOCKED
+    prompt_version: Mapped[str] = mapped_column(String(32), nullable=False, default="1")
+    report_schema_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="natal/v1"
+    )
+    model_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    model_params_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sections_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sections_status_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    input_context_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    output_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message_sanitized: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped["User"] = relationship("User")
+    natal_context: Mapped["NatalChartCache"] = relationship("NatalChartCache")
+# END_BLOCK: NATAL_REPORTS_TABLE
