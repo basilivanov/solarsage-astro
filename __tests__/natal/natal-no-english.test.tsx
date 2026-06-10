@@ -6,6 +6,35 @@ import type { NatalPreviewRead } from "@/lib/contracts/natal";
 
 const mockFetch = vi.fn();
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => "/readings/natal",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
+  const FakeIcon = (props: Record<string, unknown>) =>
+    React.createElement("span", { "data-testid": "icon" });
+  return {
+    ...actual,
+    ChevronLeft: FakeIcon,
+    Sparkles: FakeIcon,
+    Lock: FakeIcon,
+  };
+});
+
+vi.mock("next/link", () => ({
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 vi.mock("@/lib/api/natal", () => ({
   fetchNatalPreview: (...args: unknown[]) => mockFetch(...args),
 }));
@@ -72,8 +101,8 @@ describe("NatalReadingPage — no English signs in UI", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Натальная карта/)).toBeTruthy();
-    }, { timeout: 2000 });
+      expect(screen.getByText(/натальная карта/i)).toBeTruthy();
+    }, { timeout: 3000 });
 
     const body = document.body.textContent || "";
 

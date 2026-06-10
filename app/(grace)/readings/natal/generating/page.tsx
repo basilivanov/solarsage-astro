@@ -173,7 +173,7 @@ export default function NatalGeneratingPage() {
     if (status === "FAILED_PERMANENT") {
       setGenState({ status: "failed_permanent", message: result.data.errorMessage || "Generation failed permanently" })
     }
-  }, [router])
+  }, [genState, router])
 
   // ---- Back to preview ----
   const handleBack = useCallback(() => {
