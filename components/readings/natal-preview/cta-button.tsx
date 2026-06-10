@@ -26,7 +26,7 @@ export function CtaButton({ priceKopecks, onClick }: Props) {
         </div>
       </button>
       <p className="text-center text-[11px] text-muted-foreground/60">
-        Разбор по точным данным рождения · 8 глав
+        Разбор по точным данным рождения · 13 разделов
       </p>
     </div>
   )

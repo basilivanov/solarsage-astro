@@ -49,9 +49,9 @@ export default function NatalReadingPage() {
   }, [load])
 
   const handleOpenReport = useCallback(() => {
-    // TODO: After payment integration, use real natal ID from user's purchase.
-    // For now, navigate to demo report.
-    router.push("/readings/natal/demo")
+    // Skip payment for now — go to generating screen.
+    // In production, this would be called after payment confirmation.
+    router.push("/readings/natal/generating")
   }, [router])
 
   return (
