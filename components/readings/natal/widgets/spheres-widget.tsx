@@ -1,4 +1,4 @@
-import type { SphereScore } from "@/lib/readings/natal-schema"
+import type { SphereScore } from "@/lib/contracts/natal"
 
 type Props = {
   spheres: SphereScore[]

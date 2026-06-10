@@ -26,7 +26,13 @@ async def test_get_natal():
                 "sign": "Gemini",
             }
         ],
-        "houses": [],
+        "houses": [
+            {
+                "number": 1,
+                "cusp": 10.0,
+                "sign": "Aries",
+            }
+        ],
         "special_points": [],
         "house_system": "PLACIDUS",
     }
@@ -61,6 +67,7 @@ async def test_get_natal():
         assert "planets" in result
         assert len(result["planets"]) == 1
         assert result["planets"][0]["name"] == "Sun"
+        assert result["planets"][0]["latitude"] == 0.0
 
 
 @pytest.mark.asyncio
@@ -107,5 +114,28 @@ async def test_get_transits():
 
         # Check result
         assert "planets" in result
-        assert "target_jd" in result
-        assert result["target_jd"] == 2461190.0
+        assert "targetJd" in result
+        assert result["targetJd"] == 2461190.0
+        assert result["planets"][0]["latitude"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_validation_errors():
+    """SolarSageClient fails if sidecar response is invalid or missing required fields."""
+    from pydantic import ValidationError
+    from app.schemas.natal import SolarSageNatalResponse, SolarSageTransitsResponse
+
+    # 1. Missing houses
+    with pytest.raises(ValidationError):
+        SolarSageNatalResponse.model_validate({
+            "planets": [{"name": "Sun", "longitude": 69.5, "sign": "Gemini", "speed": 1.0}],
+            "houses": [],
+            "special_points": [],
+        })
+
+    # 2. Missing planets in transits
+    with pytest.raises(ValidationError):
+        SolarSageTransitsResponse.model_validate({
+            "planets": [],
+            "target_jd": 2461190.0,
+        })

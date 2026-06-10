@@ -1,4 +1,4 @@
-import type { PlanetScore } from "@/lib/readings/natal-schema"
+import type { PlanetScore } from "@/lib/contracts/natal"
 
 type Props = {
   planets: PlanetScore[]

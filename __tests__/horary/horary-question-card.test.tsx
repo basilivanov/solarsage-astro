@@ -8,6 +8,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { HoraryQuestionCard } from "@/components/readings/horary/horary-question-card";
+import type { HoraryQuestionRead } from "@/packages/contracts";
 
 // ---------------------------------------------------------------------------
 // Mock next/link so it renders a real <a> instead of the Next.js proxy.
@@ -31,7 +32,7 @@ vi.mock("next/link", () => ({
 // overrides only the fields it needs, keeping the test data minimal yet
 // type-safe.
 // ---------------------------------------------------------------------------
-const baseAnswer = {
+const baseAnswer: Required<HoraryQuestionRead>["answer"] = {
   verdict: "yes" as const,
   confidence: 0.85,
   confidenceLabel: "high" as const,
@@ -41,18 +42,18 @@ const baseAnswer = {
   blocks: [],
 };
 
-const baseQuestion = {
+const baseQuestion: HoraryQuestionRead = {
   id: "q-test-001",
   text: "Выйду ли я замуж в этом году?",
-  category: "love" as string | null,
-  status: "processing" as const,
+  category: "love",
+  status: "processing",
   creditRefunded: false,
-  spentCreditSource: "subscription_weekly_free" as const,
+  spentCreditSource: "subscription_weekly_free",
   clientTimezone: "Europe/Moscow",
   clientLocalTime: "2026-06-09T14:30",
   questionLocationName: "Москва",
   createdAt: "2026-06-09T14:30:00",
-  answer: null as typeof baseAnswer | null,
+  answer: null,
 };
 
 // ---------------------------------------------------------------------------

@@ -111,7 +111,7 @@ class Logger {
       timestamp: new Date().toISOString(),
       level,
       message,
-      correlation_id: corrId,
+      correlation_id: corrId || undefined,
       extra: options?.extra,
     };
 

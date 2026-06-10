@@ -23,8 +23,7 @@ export function useTelegramUser(): TelegramUser | null {
 
   useEffect(() => {
     try {
-      // @ts-expect-error — window.Telegram типы определены в telegram-init
-      const u = window.Telegram?.WebApp?.initDataUnsafe?.user
+      const u = window.Telegram?.WebApp?.initDataUnsafe?.user as any
       if (!u) return
       setUser({
         firstName: u.first_name,

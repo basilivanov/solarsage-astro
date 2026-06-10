@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { Trash2 } from "lucide-react"
 
 import type { Profile } from "@/lib/profile"
+import type { ChatMessage } from "@/lib/contracts/chat"
 import { buildContextSummary, suggestedPrompts } from "@/lib/chat"
 import { useChat } from "@/hooks/use-chat"
 
@@ -108,7 +109,7 @@ export function ChatScreen({ profile }: Props) {
           </ChatEmpty>
         ) : (
           <ul className="flex flex-col gap-3 pb-3">
-            {messages.map((m) => (
+            {messages.map((m: ChatMessage) => (
               <MessageBubble
                 key={m.id}
                 message={m}

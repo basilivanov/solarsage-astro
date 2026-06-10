@@ -130,7 +130,7 @@ export function useTelegramAuth() {
         const claimKey = '__astro_referral_claimed';
         const persistKey = '__astro_referral_code';
         try {
-          const startParam = tg.initDataUnsafe?.start_param
+          const startParam = (tg.initDataUnsafe as any)?.start_param
             || (() => {
               const sp = new URLSearchParams(window.location.search);
               return sp.get('tgWebAppStartParam') || undefined;
