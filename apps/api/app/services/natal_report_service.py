@@ -62,6 +62,8 @@ from app.schemas.natal import (
     ProsConsBlock,
     QuoteBlock,
     DividerBlock,
+    HighlightsBlock,
+    BulletsBlock,
 )
 from app.services.natal_context_service import NatalContextService
 
@@ -98,36 +100,104 @@ MAX_RETRY_ATTEMPTS = 3
 # These are planet names that LLM might fabricate — obviously not real
 # natal planets. We don't block all unknown words, only clearly
 # astrological-planet-like fabrications.
-_FORBIDDEN_PLANET_PATTERNS = [
+# NOTE: Chiron/Selena/Lilith are special points, not natal planets.
+# They are conditionally allowed if present in the deterministic context's
+# special_points list (see _check_hallucinated_planets).
+_FORBIDDEN_PLANET_PATTERNS_ALWAYS = [
     "зевс", "гера", "афина", "аполлон", "артемида",
     "кронос", "немезида", "вулкан", "изида",
-    "хирон",  # Chiron IS a special point but NOT a natal planet
-    "селена", "лилит",  # These are special points, not planets
     "xenu", "nibiru", "pholus", "ceres", "pallas", "juno", "vesta",
     # Trans-Plutonian fabrications
     "прозерпина",
 ]
 
+# Special-point names that are allowed ONLY when present in the
+# deterministic context's special_points list.
+# Maps Russian search terms to the English sidecar names for matching.
+_SPECIAL_POINT_PATTERNS = [
+    ("хирон", "chiron"),
+    ("селена", "selena"),
+    ("лилит", "lilith"),
+]
 
-def _check_hallucinated_planets(text: str, known_planet_names: set[str], section_id: str) -> None:
+
+def _check_hallucinated_planets(
+    text: str,
+    known_planet_names: set[str],
+    allowed_special_point_names: set[str],
+    section_id: str,
+) -> None:
     """Check text for clearly fabricated planet names.
 
-    This is a heuristic guard: it catches obvious fabrications like
-    "Зевс", "Гера", "Немезида" used as if they were natal planets.
-    It does NOT try to validate every word — just catches the most
-    common LLM confabulation patterns.
+    This is a context-aware guard:
+    - Always rejects fabricated planets (Зевс, Гера, Прозерпина, etc.).
+    - Rejects special-point names (Хирон, Селена, Лилит) only if they
+      are NOT in the deterministic context's special_points list.
+      If the LLM input explicitly included them as special points,
+      the LLM is allowed to reference them.
+
+    known_planet_names: set of allowed planet names (from context) for future use.
+    allowed_special_point_names: lowercased names from context.special_points
+      that are permitted in LLM output.
     """
     text_lower = text.lower()
-    for forbidden in _FORBIDDEN_PLANET_PATTERNS:
+
+    # Always-forbidden fabricated planet names
+    for forbidden in _FORBIDDEN_PLANET_PATTERNS_ALWAYS:
         if forbidden in text_lower:
-            # Allow if it's contextual (e.g. "мифологический Зевс" as cultural ref)
-            # But flag if used as an astrological body
-            # For now, strict: if a forbidden name appears, reject.
-            # This prevents LLM from fabricating chart positions for non-existent planets.
             raise ValueError(
                 f"Hallucinated planet name '{forbidden}' found in section {section_id}. "
                 f"LLM must only reference planets from the provided chart context."
             )
+
+    # Conditionally-allowed special-point names
+    # The sidecar returns English names (Chiron, Selena, Lilith), but LLM
+    # writes in Russian (Хирон, Селена, Лилит). We check the Russian text
+    # against the English names from context.special_points.
+    for ru_pattern, en_name in _SPECIAL_POINT_PATTERNS:
+        if ru_pattern in text_lower and en_name not in allowed_special_point_names:
+            raise ValueError(
+                f"Hallucinated special point '{ru_pattern}' found in section {section_id}. "
+                f"This point is not in the chart's deterministic special_points."
+            )
+
+
+def _iter_block_texts(block: NatalBlock):
+    """Yield all human-readable text strings from a block, recursively.
+
+    Covers every block type's text-bearing fields so hallucination
+    detection scans everything, not just block.text.
+    """
+    if isinstance(block, ParagraphBlock | LeadBlock | HeadingBlock | QuoteBlock):
+        if block.text:
+            yield block.text
+    elif isinstance(block, ListBlock):
+        yield from (item for item in block.items if item)
+    elif isinstance(block, CalloutBlock):
+        if block.title:
+            yield block.title
+        if block.text:
+            yield block.text
+    elif isinstance(block, ProsConsBlock):
+        for item in block.pros:
+            if item.title:
+                yield item.title
+            if item.text:
+                yield item.text
+        for item in block.cons:
+            if item.title:
+                yield item.title
+            if item.text:
+                yield item.text
+    elif isinstance(block, HighlightsBlock):
+        for item in block.items:
+            if item.title:
+                yield item.title
+            if item.text:
+                yield item.text
+    elif isinstance(block, BulletsBlock):
+        yield from (item for item in block.items if item)
+    # DividerBlock has no text fields
 
 
 class NatalReportService:
@@ -449,11 +519,15 @@ JSON:"""
                 elif b_type == "divider":
                     blocks.append(DividerBlock(type="divider"))
                 else:
-                    # Fallback: unknown block type → paragraph
-                    blocks.append(ParagraphBlock(type="paragraph", text=str(b)))
-            except Exception:
-                # Skip malformed blocks
-                continue
+                    # W-NATAL-FULL: unknown block type is a hard error.
+                    # LLM must only emit the 8+2 valid block types.
+                    raise ValueError(f"Unknown natal report block type: {b_type}")
+            except ValueError:
+                # Re-raise validation errors (unknown types, bad data)
+                raise
+            except Exception as exc:
+                # Malformed block data — fail generation, don't silently skip
+                raise ValueError(f"Malformed block data: {b}") from exc
         return blocks
 
     @staticmethod
@@ -586,9 +660,9 @@ JSON:"""
         W-NATAL-FULL Wave 4: Full validation per TZ §11:
         1. Required sections exist
         2. No empty blocks
-        3. Hallucinated planet names rejected
+        3. Hallucinated planet names rejected (across ALL text fields)
         4. Hallucinated sign names rejected
-        5. Invalid block types rejected
+        5. Invalid block types rejected (enforced by _parse_blocks raising)
         """
         # Build whitelists from deterministic context
         known_planets = {p.name.lower() for p in context.planets}
@@ -612,12 +686,27 @@ JSON:"""
         # All known planet names: English + Russian variants
         all_known_planet_names = known_planets | known_planet_names_ru
 
+        # Build allowed special-point names from deterministic context.
+        # LLM is allowed to reference special points that were explicitly
+        # provided in the chart context.
+        allowed_special_point_names = {
+            sp.name.lower() for sp in context.special_points
+        }
+
+        # Fabricated sign names — signs that don't exist in standard astrology.
+        # Use stem matching because Russian text uses declined forms
+        # (Змееносце, Змееносцем, etc.)
+        forbidden_sign_stems = ["змееносц", "ophiuchus"]
+
         section_ids = {s.id for s in sections}
         for required_id in REQUIRED_SECTIONS:
             if required_id not in section_ids:
                 raise ValueError(f"Missing required section: {required_id}")
 
-        valid_block_types = {"lead", "paragraph", "heading", "list", "callout", "pros_cons", "quote", "divider"}
+        valid_block_types = {
+            "lead", "paragraph", "heading", "list", "callout",
+            "pros_cons", "quote", "divider", "highlights", "bullets",
+        }
 
         for section in sections:
             if not section.blocks:
@@ -632,16 +721,26 @@ JSON:"""
                         f"Valid types: {valid_block_types}"
                     )
 
-                # Check no block is completely empty
-                if hasattr(block, "text") and not block.text.strip():
+                # Check no block is completely empty (for text-bearing blocks)
+                if hasattr(block, "text") and not getattr(block, "text", "").strip():
                     raise ValueError(f"Empty text in section {section.id}")
 
-                # Hallucination check: scan text for unknown planet names
-                # This is a heuristic check — it catches obviously fabricated planets
-                # like "Зевс", "Гера", "Xenu" etc.
-                text_to_check = getattr(block, "text", "") or ""
-                if text_to_check:
-                    _check_hallucinated_planets(text_to_check, all_known_planet_names, section.id)
+                # Hallucination check: scan ALL text fields via _iter_block_texts
+                for text_fragment in _iter_block_texts(block):
+                    _check_hallucinated_planets(
+                        text_fragment,
+                        all_known_planet_names,
+                        allowed_special_point_names,
+                        section.id,
+                    )
+                    # Sign hallucination check: reject fabricated zodiac signs
+                    text_lower = text_fragment.lower()
+                    for forbidden_stem in forbidden_sign_stems:
+                        if forbidden_stem in text_lower:
+                            raise ValueError(
+                                f"Hallucinated sign name '{forbidden_stem}' found in section {section.id}. "
+                                f"Only standard 12 zodiac signs are valid."
+                            )
 
     # ── Private: DB helpers ────────────────────────────────────────
 

@@ -36,7 +36,7 @@ import json
 import logging
 import uuid
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import UserProfile
@@ -452,17 +452,27 @@ class NatalService:
         calculation_stats = self._build_calculation_stats_from_context(natal_context)
         sales_bullets = _build_sales_bullets(gender)
 
-        # W-NATAL-FULL Wave 4: Check if user has a READY report
+        # W-NATAL-FULL Wave 4: Check if user has a READY report tied to
+        # the CURRENT active natal context (not any old context).
+        # This prevents an old READY report from a previous birth-data
+        # configuration from appearing as available for the current preview.
         full_report_available = False
-        from app.db.models import NatalReport
-        report_result = await self.db.execute(
-            select(NatalReport).where(
-                NatalReport.user_id == user_id,
-                NatalReport.status == "READY",
+        if cache_entry is not None:
+            from app.db.models import NatalReport
+            from app.services.natal_report_service import PROMPT_VERSION, REPORT_SCHEMA_VERSION
+            report_result = await self.db.execute(
+                select(NatalReport).where(
+                    and_(
+                        NatalReport.user_id == user_id,
+                        NatalReport.natal_context_id == cache_entry.id,
+                        NatalReport.status == "READY",
+                        NatalReport.prompt_version == PROMPT_VERSION,
+                        NatalReport.report_schema_version == REPORT_SCHEMA_VERSION,
+                    )
+                )
             )
-        )
-        if report_result.scalar_one_or_none() is not None:
-            full_report_available = True
+            if report_result.scalar_one_or_none() is not None:
+                full_report_available = True
 
         return NatalPreviewRead(
             meta=meta,
