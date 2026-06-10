@@ -54,7 +54,12 @@ def test_envelope_has_required_fields():
 def test_envelope_serializes_to_json():
     """Envelope must be JSON-serializable (for stdout)."""
     clear_log_context()
-    bind_log_context(correlation_id="json-test")
+    bind_log_context(
+        correlation_id="json-test",
+        slice="W-TEST",
+        module="M-TEST",
+        block="TEST_BLOCK",
+    )
     envelope = build_envelope("system.startup", level="info", payload={"pid": 123})
     json_str = json.dumps(envelope, default=str)
     parsed = json.loads(json_str)
@@ -65,7 +70,7 @@ def test_envelope_serializes_to_json():
 def test_log_event_writes_to_stdout():
     """log_event must write a valid JSON line to stdout."""
     clear_log_context()
-    bind_log_context(correlation_id="stdout-test")
+    bind_log_context(correlation_id="stdout-test", slice="W-TEST", module="M-TEST", block="TEST_BLOCK")
 
     captured = []
 
@@ -106,7 +111,12 @@ def test_log_event_writes_to_stdout():
 def test_known_events_build_valid_envelope(event):
     """All known events must build a valid envelope without errors."""
     clear_log_context()
-    bind_log_context(correlation_id="event-test")
+    bind_log_context(
+        correlation_id="event-test",
+        slice="W-TEST",
+        module="M-TEST-EVENTS",
+        block="TEST_KNOWN_EVENTS",
+    )
     envelope = build_envelope(event, level="info", msg=f"test {event}")
     assert envelope["event"] == event
 

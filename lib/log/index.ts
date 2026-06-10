@@ -35,6 +35,7 @@
 
 import { getLogShipper, type CanonEnvelope } from "./shipper";
 import type { LogEventName } from "./events.gen";
+import { redactLogData, redactString as _redactString, shouldConsoleLog } from "./redactor";
 
 // Re-export for convenience
 export type { LogEventName } from "./events.gen";
@@ -147,14 +148,23 @@ export function logEvent(
     };
 
     if (meta?.msg) envelope.msg = meta.msg.slice(0, 500);
-    if (payload) envelope.payload = payload as Record<string, unknown>;
+    if (payload) envelope.payload = redactLogData(payload) as Record<string, unknown>;
     if (meta?.duration_ms !== undefined) envelope.duration_ms = meta.duration_ms;
     if (_sessionId) envelope.session_id = _sessionId;
 
-    // Console in dev
-    const tag = correlationId ? `[${correlationId.slice(0, 8)}]` : "";
-    const levelTag = level.toUpperCase().padEnd(5);
-    console.log(`${tag}[${levelTag}] ${event}`, meta?.msg ?? "", payload ?? "");
+    // Redact msg before console/ship
+    if (envelope.msg) envelope.msg = _redactString(envelope.msg);
+
+    // Console in dev only (or when explicitly enabled)
+    if (shouldConsoleLog()) {
+      const tag = correlationId ? `[${correlationId.slice(0, 8)}]` : "";
+      const levelTag = level.toUpperCase().padEnd(5);
+      console.log(
+        `${tag}[${levelTag}] ${event}`,
+        meta?.msg ?? "",
+        payload ? "(redacted)" : "",
+      );
+    }
 
     // Ship to backend
     getLogShipper().enqueue(envelope);
@@ -246,9 +256,16 @@ class Logger {
     }
     if (_sessionId) envelope.session_id = _sessionId;
 
-    const tag = corrId ? `[${corrId.slice(0, 8)}]` : "";
-    const levelTag = level.toUpperCase().padEnd(5);
-    console.log(`${tag}[${levelTag}]`, message, options?.extra ?? "");
+    // Redact payload before console/ship
+    if (envelope.payload) envelope.payload = redactLogData(envelope.payload) as Record<string, unknown>;
+    if (envelope.msg) envelope.msg = _redactString(envelope.msg);
+
+    // Console in dev only
+    if (shouldConsoleLog()) {
+      const tag = corrId ? `[${corrId.slice(0, 8)}]` : '';
+      const levelTag = level.toUpperCase().padEnd(5);
+      console.log(`${tag}[${levelTag}]`, message, options?.extra ? "(redacted)" : "");
+    }
 
     this.shipper.enqueue(envelope);
   }

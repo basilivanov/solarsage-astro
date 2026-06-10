@@ -44,6 +44,7 @@ import traceback
 from datetime import UTC, datetime
 from typing import Any
 
+from app.core.logging_events import LogEventName
 from app.core.redactor import redact_dict
 
 
@@ -121,7 +122,7 @@ SERVICE_VERSION: str = _git_sha_match.group(0) if _git_sha_match else _SERVICE_V
 # ── Envelope builder ──────────────────────────────────────────────────────
 
 def build_envelope(
-    event: str,
+    event: LogEventName,
     *,
     level: str = "info",
     msg: str = "",
@@ -133,17 +134,30 @@ def build_envelope(
     """Build a canonical log envelope per §8.2, auto-attaching context vars."""
     now = datetime.now(UTC)
 
+    slice_val = slice_var.get()
+    module_val = module_var.get()
+    block_val = block_var.get()
+    corr_id = correlation_id_var.get()
+    env_val = env_var.get()
+    svc = service_var.get()
+
+    # Required fields must be non-empty
+    assert slice_val, "slice is required for log events"
+    assert module_val, "module is required for log events"
+    assert block_val, "block is required for log events"
+    assert corr_id, "correlation_id is required for log events"
+
     envelope: dict[str, Any] = {
         "ts": now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z",
         "level": level,
-        "env": env_var.get(),
-        "service": service_var.get(),
+        "env": env_val,
+        "service": svc,
         "service_version": SERVICE_VERSION,
-        "slice": slice_var.get(),
-        "module": module_var.get(),
-        "block": block_var.get(),
+        "slice": slice_val,
+        "module": module_val,
+        "block": block_val,
         "event": event,
-        "correlation_id": correlation_id_var.get(),
+        "correlation_id": corr_id,
     }
 
     if msg:
@@ -190,7 +204,18 @@ def log_event(
         error: Present iff level in {error, fatal}.
         duration_ms: Wall-clock duration for timed operations.
         http: HTTP context (method, route, status).
+
+    Raises:
+        ValueError: If event name is not in the registry (when PYTHON_LOG_STRICT=1).
     """
+    strict = os.getenv("PYTHON_LOG_STRICT", "0") == "1"
+    if strict:
+        from app.core.logging_events import LogEventName
+        import typing
+        # Validate at runtime if strict mode is on
+        valid_events = typing.get_args(LogEventName)
+        if event not in valid_events:
+            raise ValueError(f"Unknown log event: {event}. Must be one of {valid_events}")
     try:
         envelope = build_envelope(
             event,

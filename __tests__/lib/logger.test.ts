@@ -90,7 +90,7 @@ describe('Logger — console output', () => {
     expect(consoleLogSpy).toHaveBeenCalledWith(
       '[abcdef01][WARN ]',
       'watch out',
-      { hint: 'careful' },
+      '(redacted)',
     );
   });
 

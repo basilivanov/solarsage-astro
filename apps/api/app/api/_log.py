@@ -1,38 +1,13 @@
 # ############################################################################
 # AI_HEADER: MODULE_API_LOG_INTAKE
 # ROLE: HTTP surface for POST /api/_log — accepts frontend log batches.
-# DEPENDENCIES: fastapi, sqlalchemy, app.services.log_intake, app.core.dependencies
-# GRACE_ANCHORS: [ROUTE_LOG_INTAKE]
 # WAVE: W-1.7
 # ############################################################################
-
-# START_MODULE_CONTRACT: M-API-LOG-INTAKE
-# purpose: Accept batches of canonical log envelopes from frontend, validate,
-#   redact PII, and forward to backend stdout via log_event.
-# owns:
-#   - apps/api/app/api/_log.py
-# inputs:
-#   - POST /api/_log body: LogBatch { envelopes: CanonEnvelope[] }
-#   - session cookie (optional auth)
-# outputs:
-#   - {"accepted": int, "rejected": int}
-# dependencies:
-#   - M-LOG-INTAKE-SERVICE (process_batch)
-#   - M-OBSERVABILITY-LOGGING (log_event)
-# side_effects:
-#   - writes redacted logs to stdout via log_event
-# invariants:
-#   - auth is optional (accept pre-auth logs for crash debugging)
-#   - validates envelope structure per §8.2
-#   - redacts PII before forwarding
-# failure_policy:
-#   - service error -> 500
-# END_MODULE_CONTRACT: M-API-LOG-INTAKE
 
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -46,20 +21,19 @@ from app.services.log_intake import LogIntakeService
 router = APIRouter()
 
 
-# START_BLOCK: ROUTE_LOG_INTAKE
 class CanonEnvelope(BaseModel):
-    """Canonical log envelope per §8.2."""
+    """Canonical log envelope per §8.2 — strict required fields."""
 
     ts: str
-    level: str = Field(pattern=r"^(debug|info|warn|error|fatal)$")
-    env: str = Field(default="dev")
-    service: str = Field(default="web")
-    service_version: str = Field(default="dev")
-    slice: str = Field(default="")
-    module: str = Field(default="")
-    block: str = Field(default="")
-    event: str
-    correlation_id: str = Field(default="")
+    level: Annotated[str, Field(pattern=r'^(debug|info|warn|error|fatal)$')]
+    env: Annotated[str, Field(min_length=1)]
+    service: Annotated[str, Field(min_length=1)]
+    service_version: Annotated[str, Field(min_length=1)]
+    slice: Annotated[str, Field(min_length=1)]
+    module: Annotated[str, Field(min_length=1)]
+    block: Annotated[str, Field(min_length=1)]
+    event: Annotated[str, Field(min_length=1)]
+    correlation_id: Annotated[str, Field(min_length=1)]
     msg: str | None = None
     session_id: str | None = None
     user_id_hash: str | None = None
@@ -84,10 +58,9 @@ async def intake_logs(
     current_user = Depends(require_session_optional),
 ) -> dict[str, int]:
     """
-    Accept log batch from frontend. Auth is optional — logs before
-    authentication are accepted for crash debugging.
-
-    W-1.7: Canon envelope validation, PII redaction, forward to stdout.
+    Accept log batch from frontend. Auth is optional.
+    Each valid canonical envelope is redacted and forwarded to stdout
+    preserving all original fields (slice, module, block, duration, etc.).
     """
     service = LogIntakeService(db)
 
@@ -115,6 +88,3 @@ async def intake_logs(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Log intake failed",
         ) from e
-
-
-# END_BLOCK: ROUTE_LOG_INTAKE

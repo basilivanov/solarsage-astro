@@ -1,47 +1,34 @@
 # ############################################################################
 # AI_HEADER: MODULE_LOG_INTAKE_SERVICE
 # ROLE: Process frontend log batches — validate, redact, forward to stdout.
-# DEPENDENCIES: sqlalchemy, app.core.logging, app.core.redactor
-# GRACE_ANCHORS: [PROCESS_BATCH, VALIDATE_ENVELOPE]
 # WAVE: W-1.7
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-LOG-INTAKE-SERVICE
 # purpose: Service layer for processing frontend log envelopes. Validates
-#   structure per §8.2, redacts PII, and forwards to backend stdout logger.
+#   structure per §8.2, redacts PII, and forwards the SAME envelope to stdout
+#   (preserving all original fields) without rebuilding.
 # owns:
 #   - apps/api/app/services/log_intake.py
 # inputs:
 #   - user_id: UUID (for correlation and rate limiting)
-#   - envelopes: List[Dict[str, Any]] (log envelopes from frontend)
+#   - envelopes: List[Dict[str, Any]] (canonical log envelopes from frontend)
 # outputs:
 #   - {"accepted": int, "rejected": int}
 # dependencies:
-#   - M-OBSERVABILITY-LOGGING (logger)
 #   - M-OBSERVABILITY-REDACTOR (redact_dict)
 # side_effects:
-#   - writes to stdout via logger
+#   - writes to stdout via direct JSON emit
 # invariants:
-#   - validates required fields: timestamp, level, message
+#   - validates required fields: ts, level, event, service
 #   - redacts PII before forwarding
+#   - preserves ALL original envelope fields (slice, module, block, etc.)
 #   - never throws on individual envelope errors (counts as rejected)
+#   - never clears/modifies request-level contextvars
 # failure_policy:
-#   - invalid envelope -> rejected count incremented, logged as warning
+#   - invalid envelope -> rejected count incremented
 #   - redaction error -> rejected count incremented
-# non_goals:
-#   - no rate limiting (deferred to W-RATELIMIT)
-#   - no sampling (deferred to W-CANON-LOG)
 # END_MODULE_CONTRACT: M-LOG-INTAKE-SERVICE
-
-# START_MODULE_MAP: M-LOG-INTAKE-SERVICE
-# public_entrypoints:
-#   - LogIntakeService
-# semantic_blocks:
-#   - PROCESS_BATCH: main processing loop
-#   - VALIDATE_ENVELOPE: structure validation
-# owned_tests:
-#   - apps/api/tests/test_log_intake.py
-# END_MODULE_MAP: M-LOG-INTAKE-SERVICE
 
 from __future__ import annotations
 
@@ -50,8 +37,10 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.logging import logger
 from app.core.redactor import redact_dict
+
+
+REQUIRED_FIELDS = {"ts", "level", "event", "service"}
 
 
 # START_BLOCK: PROCESS_BATCH
@@ -67,11 +56,14 @@ class LogIntakeService:
         envelopes: list[dict[str, Any]],
     ) -> dict[str, int]:
         """
-        Process a batch of log envelopes.
+        Process a batch of frontend log envelopes.
+
+        Each valid envelope is redacted and emitted directly to stdout
+        as a complete JSON line (preserving all original canon fields).
 
         Args:
             user_id: User ID (for correlation and rate limiting)
-            envelopes: List of log envelopes from frontend
+            envelopes: List of canonical log envelopes from frontend
 
         Returns:
             {"accepted": count, "rejected": count}
@@ -81,90 +73,50 @@ class LogIntakeService:
 
         for envelope in envelopes:
             try:
-                # Validate envelope
-                if not self._validate_envelope(envelope):
+                # Validate required fields
+                if not all(f in envelope for f in REQUIRED_FIELDS):
                     rejected += 1
-                    self._log_event(
-                        "system.error",
-                        level="warn",
-                        msg="Log intake rejected: invalid envelope",
-                        payload={"rejected_field": "missing required fields"},
-                    )
+                    self._emit_rejected(accepted, rejected)
                     continue
 
-                # Redact PII
+                # Redact PII — preserve all keys, just mask values
                 redacted = redact_dict(envelope)
 
-                # Forward to stdout as canon event (not nested)
-                self._log_event(
-                    redacted.get("event", "system.request"),
-                    level=redacted.get("level", "info"),
-                    msg=redacted.get("msg", ""),
-                    payload=redacted.get("payload"),
-                    correlation_id=redacted.get("correlation_id", ""),
-                    service="web",
-                )
+                # Emit the SAME redacted envelope directly to stdout
+                # Do NOT rebuild via log_event() — preserve original fields
+                self._emit_line(redacted)
 
                 accepted += 1
 
-            except Exception as e:
+            except Exception:
                 rejected += 1
-                self._log_event(
-                    "system.error",
-                    level="error",
-                    msg=f"Log intake error: {type(e).__name__}",
-                )
 
         return {"accepted": accepted, "rejected": rejected}
 
-    def _validate_envelope(self, envelope: dict[str, Any]) -> bool:
-        """
-        Validate log envelope structure.
+    def _emit_line(self, data: dict[str, Any]) -> None:
+        """Write a JSON line directly to stdout."""
+        import json
+        import os
+        line = json.dumps(data, default=str, ensure_ascii=False)
+        fd = os.fdopen(1, "a", encoding="utf-8", closefd=False) if os.name != "nt" else None
+        if fd:
+            fd.write(line + "\n")
+            fd.flush()
+        else:
+            import sys
+            print(line, file=sys.__stdout__, flush=True)
 
-        Required fields per §8.2:
-        - ts: ISO 8601 string
-        - level: log level
-        - event: event name
-        - service: service name
-
-        Args:
-            envelope: Log envelope to validate
-
-        Returns:
-            True if valid, False otherwise
-        """
-        required_fields = ["ts", "level", "event", "service"]
-        return all(field in envelope for field in required_fields)
-
-    def _log_event(
-        self,
-        event: str,
-        level: str = "info",
-        msg: str = "",
-        payload: dict[str, Any] | None = None,
-        correlation_id: str = "",
-        service: str = "",
-    ) -> None:
-        """Emit a frontend log as a canon event via log_event."""
-        from app.core.logging import log_event as core_log_event, bind_log_context, clear_log_context
-
-        if correlation_id:
-            bind_log_context(
-                correlation_id=correlation_id,
-                module="M-LOG-INTAKE-SERVICE",
-                block="FRONTEND_LOG",
-                service=service,
-            )
-
-        core_log_event(
-            event,
-            level=level,
-            msg=msg,
-            payload=payload,
+    def _emit_rejected(self, accepted: int, rejected: int) -> None:
+        """Emit a backend-level warning about rejected envelope."""
+        from app.core.logging import log_event
+        log_event(
+            "system.error",
+            level="warn",
+            msg="Log intake rejected: invalid envelope",
+            payload={
+                "missing_fields": [f for f in REQUIRED_FIELDS],
+            },
         )
-
-        if correlation_id:
-            clear_log_context()
 
 
 # END_BLOCK: PROCESS_BATCH

@@ -3,10 +3,8 @@
 // ROLE: Canonical event registry — TypeScript string-literal union.
 // GENERATED FROM: grace/canon/observability.xml §8.5
 // WAVE: W-1.6
-// WARNING: This file is code-generated. Manual edits will be overwritten.
+// WARNING: This file MUST match the canon. Edit the XML, not this file.
 // ############################################################################
-
-// ── Event name union ──────────────────────────────────────────────────────
 
 export type LogEventName =
   // system / technical
@@ -16,16 +14,16 @@ export type LogEventName =
   | "system.error"
   | "system.config_loaded"
   // auth / profile
+  | "auth.tg_login_started"
   | "auth.tg_login_succeeded"
   | "auth.tg_login_failed"
-  | "auth.tg_login_started"
   | "auth.session_expired"
   | "auth.logout"
   | "auth.dev_login_blocked"
   | "auth.dev_login_succeeded"
   | "profile.viewed"
-  | "profile.updated"
   | "profile.update_started"
+  | "profile.updated"
   | "profile.update_failed"
   | "profile.cache_invalidation_requested"
   | "profile.cache_invalidated"
@@ -48,10 +46,10 @@ export type LogEventName =
   | "horary.question_create_failed"
   | "horary.credit_spent"
   | "horary.credit_refunded"
+  | "horary.generation_enqueued"
   | "horary.generation_started"
   | "horary.generation_succeeded"
   | "horary.generation_failed"
-  | "horary.generation_enqueued"
   // natal
   | "natal.preview_requested"
   | "natal.preview_succeeded"
@@ -73,10 +71,11 @@ export type LogEventName =
   | "llm.requested"
   | "llm.response_validated"
   | "llm.response_rejected"
+  // chat
+  | "chat.quota_increased"
   // frontend ux
   | "ui.error_boundary_tripped"
+  | "ui.fixtures_mode_toggled"
   | "ui.fetch_started"
   | "ui.fetch_succeeded"
-  | "ui.fetch_failed"
-  // chat
-  | "chat.quota_increased";
+  | "ui.fetch_failed";

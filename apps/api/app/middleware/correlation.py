@@ -89,6 +89,9 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
             correlation_id=correlation_id,
             http_route=route_template,
             http_method=request.method,
+            slice="W-1.6",
+            module="M-OBSERVABILITY-CORRELATION",
+            block="CORRELATION_MIDDLEWARE",
             env=os.getenv("GRACE_ENV", "dev"),
         )
 
