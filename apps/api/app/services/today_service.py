@@ -71,6 +71,7 @@ from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
+from app.services.natal_context_service import NatalContextService
 
 logger = logging.getLogger(__name__)
 
@@ -106,14 +107,7 @@ class TodayService:
         if access_state.state == "locked":
             return await self._build_preview_payload(user_id, target_date, access_state)
 
-        # W-5.2: Check cache first
-        cached = await self._get_cached_payload(user_id, target_date)
-        if cached:
-            # Update access state (may have changed since cache)
-            cached.access = access_state
-            return cached
-
-        # Get user profile
+        # Get user profile (need it early for profile_hash in cache key)
         result = await self.db.execute(
             select(UserProfile).where(UserProfile.user_id == user_id)
         )
@@ -125,14 +119,23 @@ class TodayService:
                 detail={"message": "Birth coordinates are required", "missingFields": ["birth_lat", "birth_lon"]},
             )
 
+        # W-NATAL-FULL: profile_hash ties today cache to natal context.
+        # If user changes birth data, hash changes → cache miss → fresh data.
+        profile_hash = NatalContextService.compute_profile_hash(profile)
+
+        # W-5.2: Check cache first (keyed by user_id + target_date + profile_hash)
+        cached = await self._get_cached_payload(user_id, target_date, profile_hash)
+        if cached:
+            # Update access state (may have changed since cache)
+            cached.access = access_state
+            return cached
+
         # W-NATAL-FULL: Use cached natal context instead of direct sidecar call
-        from app.services.natal_context_service import NatalContextService
         context_service = NatalContextService(self.db)
         natal_context = await context_service.get_or_build_natal_context(user_id)
 
         # Load raw chart from cache for legacy code that needs it
         from app.db.models import NatalChartCache
-        profile_hash = NatalContextService.compute_profile_hash(profile)
         cache_result = await self.db.execute(
             select(NatalChartCache).where(
                 NatalChartCache.user_id == user_id,
@@ -308,8 +311,8 @@ class TodayService:
             actions=None,
         )
 
-        # W-5.2: Cache payload
-        await self._cache_payload(user_id, target_date, payload)
+        # W-5.2: Cache payload (with profile_hash in key)
+        await self._cache_payload(user_id, target_date, payload, profile_hash)
 
         # W-5.2: Prefetch week in background (don't block user)
         if not skip_prefetch:
@@ -317,12 +320,18 @@ class TodayService:
 
         return payload
 
-    async def _get_cached_payload(self, user_id, target_date: Date) -> TodayPayload | None:
-        """Get cached payload if exists. W-5.2."""
+    async def _get_cached_payload(self, user_id, target_date: Date, profile_hash: str) -> TodayPayload | None:
+        """Get cached payload if exists. W-5.2.
+
+        W-NATAL-FULL: profile_hash is part of the cache key. If user changes
+        birth data, the hash changes → cache miss → fresh generation.
+        This proves today cache is tied to natal context.
+        """
         result = await self.db.execute(
             select(TodayPayloadCache).where(
                 TodayPayloadCache.user_id == user_id,
                 TodayPayloadCache.target_date == target_date,
+                TodayPayloadCache.profile_hash == profile_hash,
             )
         )
         cache_entry = result.scalar_one_or_none()
@@ -339,16 +348,20 @@ class TodayService:
 
         return payload
 
-    async def _cache_payload(self, user_id, target_date: Date, payload: TodayPayload) -> None:
-        """Cache payload. W-5.2."""
+    async def _cache_payload(self, user_id, target_date: Date, payload: TodayPayload, profile_hash: str) -> None:
+        """Cache payload. W-5.2.
+
+        W-NATAL-FULL: profile_hash is part of the cache key.
+        """
         # Serialize to JSON
         payload_json = payload.model_dump_json()
 
-        # Upsert cache entry
+        # Upsert cache entry (keyed by user_id + target_date + profile_hash)
         result = await self.db.execute(
             select(TodayPayloadCache).where(
                 TodayPayloadCache.user_id == user_id,
                 TodayPayloadCache.target_date == target_date,
+                TodayPayloadCache.profile_hash == profile_hash,
             )
         )
         existing = result.scalar_one_or_none()
@@ -360,6 +373,7 @@ class TodayService:
             cache_entry = TodayPayloadCache(
                 user_id=user_id,
                 target_date=target_date,
+                profile_hash=profile_hash,
                 payload_json=payload_json,
             )
             self.db.add(cache_entry)

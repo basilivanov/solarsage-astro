@@ -3,8 +3,10 @@
 # wave: W-NATAL-FULL
 # purpose: Add natal_chart_cache and natal_reports tables for persistent
 #          natal context caching and full report generation.
+#          Also adds profile_hash to today_payloads_cache (cache key
+#          must depend on natal context).
 
-"""add natal chart cache and natal reports
+"""add natal chart cache, natal reports, profile_hash in today cache
 
 Revision ID: 0016
 Revises: 0015
@@ -57,11 +59,13 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
-    op.create_index(
-        "ix_natal_chart_cache_active",
-        "natal_chart_cache",
-        ["user_id", "profile_hash", "engine_version", "calculation_version", "house_system"],
-        unique=True,
+    # Partial unique index: only active (invalidated_at IS NULL) rows compete
+    # for the slot. Invalidated rows are kept for audit but don't block new inserts.
+    # Both PostgreSQL and SQLite 3.8+ support partial indexes with WHERE clause.
+    op.execute(
+        "CREATE UNIQUE INDEX ix_natal_chart_cache_active "
+        "ON natal_chart_cache (user_id, profile_hash, engine_version, calculation_version, house_system) "
+        "WHERE invalidated_at IS NULL"
     )
 
     # ── natal_reports ──────────────────────────────────────────────────
@@ -133,8 +137,32 @@ def upgrade() -> None:
         ),
     )
 
+    # ── today_payloads_cache: add profile_hash column ──────────────────
+    # W-NATAL-FULL: profile_hash ties today cache to natal context.
+    # If user changes birth data, hash changes → cache miss → fresh data.
+    op.add_column(
+        "today_payloads_cache",
+        sa.Column("profile_hash", sa.String(64), nullable=False, server_default=""),
+    )
+    # Drop old unique constraint (user_id, target_date) and replace with
+    # (user_id, target_date, profile_hash) so cache key depends on natal context.
+    op.drop_constraint("uq_user_date", "today_payloads_cache", type_="unique")
+    op.create_unique_constraint(
+        "uq_user_date_profile",
+        "today_payloads_cache",
+        ["user_id", "target_date", "profile_hash"],
+    )
+
 
 def downgrade() -> None:
+    # ── today_payloads_cache: revert profile_hash ──────────────────────
+    op.drop_constraint("uq_user_date_profile", "today_payloads_cache", type_="unique")
+    op.create_unique_constraint("uq_user_date", "today_payloads_cache", ["user_id", "target_date"])
+    op.drop_column("today_payloads_cache", "profile_hash")
+
+    # ── natal_reports ──────────────────────────────────────────────────
     op.drop_table("natal_reports")
-    op.drop_index("ix_natal_chart_cache_active", table_name="natal_chart_cache")
+
+    # ── natal_chart_cache ──────────────────────────────────────────────
+    op.execute("DROP INDEX IF EXISTS ix_natal_chart_cache_active")
     op.drop_table("natal_chart_cache")

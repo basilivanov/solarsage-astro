@@ -48,7 +48,7 @@ from datetime import UTC, datetime
 
 import httpx
 from fastapi import HTTPException
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.solarsage_client import get_solarsage_client
@@ -289,6 +289,11 @@ class NatalContextService:
         context = self._build_context_data(validated, natal_scores)
 
         # 6. Persist to cache
+        #    Defensive cleanup: remove any invalidated rows with the same key
+        #    so the partial unique index (WHERE invalidated_at IS NULL) can't
+        #    be violated by a race between invalidate and rebuild.
+        await self._cleanup_invalidated_rows(profile.user_id, profile_hash)
+
         raw_chart_json = json.dumps(raw_chart, ensure_ascii=False)
         normalized_context_json = context.model_dump_json(by_alias=False)
         summary_json = self._build_summary(context)
@@ -426,6 +431,27 @@ class NatalContextService:
             ],
             dominants=dominants,
         )
+
+    async def _cleanup_invalidated_rows(
+        self, user_id: uuid.UUID, profile_hash: str
+    ) -> None:
+        """Delete invalidated cache rows for this user+hash to prevent
+        unique-index conflicts on rebuild.
+
+        Belt-and-suspenders with the partial unique index: even if the
+        partial index somehow fails (e.g. SQLite < 3.8), this ensures
+        the INSERT won't collide with an invalidated row.
+        """
+        await self.db.execute(
+            delete(NatalChartCache).where(
+                and_(
+                    NatalChartCache.user_id == user_id,
+                    NatalChartCache.profile_hash == profile_hash,
+                    NatalChartCache.invalidated_at.is_not(None),
+                )
+            )
+        )
+        # Don't commit here — caller will commit after the INSERT.
 
     @staticmethod
     def _build_summary(context: NatalContextData) -> str:

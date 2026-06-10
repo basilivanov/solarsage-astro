@@ -330,7 +330,9 @@ class TodayPayloadCache(Base):
 
     __tablename__ = "today_payloads_cache"
     __table_args__ = (
-        UniqueConstraint('user_id', 'target_date', name='uq_user_date'),
+        # W-NATAL-FULL: profile_hash added to cache key so that a birth-data
+        # change invalidates today cache even if explicit invalidation is missed.
+        UniqueConstraint('user_id', 'target_date', 'profile_hash', name='uq_user_date_profile'),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -341,6 +343,10 @@ class TodayPayloadCache(Base):
         index=True,
     )
     target_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    # W-NATAL-FULL: Hash of birth-data fields that determine natal chart.
+    # Same hash as NatalChartCache.profile_hash — ensures today cache is tied
+    # to natal context. If user edits birth data, hash changes → cache miss.
+    profile_hash: Mapped[str] = mapped_column(String(64), nullable=False, server_default="")
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -701,11 +707,16 @@ class NatalChartCache(Base):
 
     __tablename__ = "natal_chart_cache"
     __table_args__ = (
+        # Partial unique index: only active (non-invalidated) rows compete for
+        # the (user_id, profile_hash, engine_version, calculation_version, house_system) slot.
+        # Invalidated rows are kept for audit but don't block new inserts.
+        # Supported by both PostgreSQL (native) and SQLite (3.8+).
         Index(
             "ix_natal_chart_cache_active",
             "user_id", "profile_hash", "engine_version",
             "calculation_version", "house_system",
             unique=True,
+            postgresql_where=("invalidated_at IS NULL"),
         ),
     )
 

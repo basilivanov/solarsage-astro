@@ -49,6 +49,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import current_user_id, require_session
+from app.core.config import settings
 from app.db.session import get_session
 from app.schemas.natal import (
     NatalGenerateRequest,
@@ -137,7 +138,13 @@ async def generate_natal_report(
     """Start or return full natal report generation.
 
     Idempotent: returns existing READY/GENERATING report unless force_regenerate=True.
+    Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.
     """
+    if not settings.natal_report_enabled:
+        raise HTTPException(
+            status_code=501,
+            detail={"code": "FEATURE_DISABLED", "message": "Генерация натального отчёта пока недоступна."},
+        )
     service = NatalReportService(db)
     try:
         return await service.generate_report(user_id, force_regenerate=request.force_regenerate)
@@ -161,7 +168,14 @@ async def get_natal_report_latest(
     db: AsyncSession = Depends(get_session),
     user_id: uuid.UUID = Depends(current_user_id),
 ) -> NatalReportRead:
-    """Get latest READY report for current user."""
+    """Get latest READY report for current user.
+    Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.
+    """
+    if not settings.natal_report_enabled:
+        raise HTTPException(
+            status_code=501,
+            detail={"code": "FEATURE_DISABLED", "message": "Генерация натального отчёта пока недоступна."},
+        )
     service = NatalReportService(db)
     return await service.get_report(user_id)
 
@@ -172,7 +186,14 @@ async def get_natal_report_by_id(
     db: AsyncSession = Depends(get_session),
     user_id: uuid.UUID = Depends(current_user_id),
 ) -> NatalReportRead:
-    """Get specific report by id."""
+    """Get specific report by id.
+    Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.
+    """
+    if not settings.natal_report_enabled:
+        raise HTTPException(
+            status_code=501,
+            detail={"code": "FEATURE_DISABLED", "message": "Генерация натального отчёта пока недоступна."},
+        )
     service = NatalReportService(db)
     return await service.get_report(user_id, report_id)
 
@@ -184,6 +205,13 @@ async def get_natal_report_section(
     db: AsyncSession = Depends(get_session),
     user_id: uuid.UUID = Depends(current_user_id),
 ) -> NatalReportSectionRead:
-    """Get single section from a report."""
+    """Get single section from a report.
+    Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.
+    """
+    if not settings.natal_report_enabled:
+        raise HTTPException(
+            status_code=501,
+            detail={"code": "FEATURE_DISABLED", "message": "Генерация натального отчёта пока недоступна."},
+        )
     service = NatalReportService(db)
     return await service.get_report_section(user_id, report_id, section_id)

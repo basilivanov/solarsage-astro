@@ -75,7 +75,9 @@ class SolarSageClient:
             birth_tz: Birth timezone (IANA)
 
         Returns:
-            {"planets": [...], "houses": [...], "special_points": [...], "house_system": "..."}
+            Validated dict from SolarSageNatalResponse.
+            All fields are guaranteed to match the Pydantic schema;
+            unknown fields from sidecar are stripped; defaults are filled.
 
         Raises:
             httpx.HTTPStatusError: on non-2xx response
@@ -94,11 +96,14 @@ class SolarSageClient:
         response.raise_for_status()
         data = response.json()
 
-        # W-NATAL-FULL: Validate sidecar response with Pydantic before returning
+        # W-NATAL-FULL: Validate and return sanitized model output.
+        # Returns validated.model_dump(by_alias=True) instead of raw dict so that:
+        #   1. Unknown fields from sidecar are stripped
+        #   2. Default values are filled for missing fields
+        #   3. Data flowing through the system is guaranteed to match the schema
         from app.schemas.natal import SolarSageNatalResponse
-        SolarSageNatalResponse.model_validate(data)
-
-        return data
+        validated = SolarSageNatalResponse.model_validate(data)
+        return validated.model_dump(by_alias=True)
 
     async def get_transits(
         self,
@@ -115,7 +120,8 @@ class SolarSageClient:
             target_tz: Target timezone (IANA)
 
         Returns:
-            {"planets": [...], "target_jd": ...}
+            Validated dict from SolarSageTransitsResponse.
+            Unknown fields are stripped; defaults are filled.
 
         Raises:
             httpx.HTTPStatusError: on non-2xx response
@@ -132,11 +138,10 @@ class SolarSageClient:
         response.raise_for_status()
         data = response.json()
 
-        # W-NATAL-FULL: Validate transits response with Pydantic
+        # W-NATAL-FULL: Validate and return sanitized model output.
         from app.schemas.natal import SolarSageTransitsResponse
-        SolarSageTransitsResponse.model_validate(data)
-
-        return data
+        validated = SolarSageTransitsResponse.model_validate(data)
+        return validated.model_dump(by_alias=True)
 
     async def close(self):
         """Close HTTP client."""
