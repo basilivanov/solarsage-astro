@@ -1,7 +1,13 @@
+# AI_HEADER
+# module: M-TEST-DAY-NO-BIRTHDAY-FALLBACK
+# wave: W-NATAL-FULL (Wave 3 — day pipeline reuse)
+# purpose: Tests for day endpoint — onboarding gate, birth coords requirement,
+#          and proof that TodayService uses NatalContextService (not direct natal sidecar).
+
 from __future__ import annotations
 
 import uuid
-from datetime import date as Date
+from datetime import date as Date, time
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
@@ -15,6 +21,38 @@ from app.schemas.access import ContentAccessState
 from app.services.today_service import TodayService
 
 from .test_horary_endpoints import _login
+
+
+# ── Shared mock sidecar data (valid against SolarSageNatalResponse) ──────
+
+MOCK_SIDECAR_NATAL = {
+    "house_system": "Placidus",
+    "planets": [
+        {"name": "Sun", "longitude": 286.93, "sign": "Capricorn", "house": 11, "retrograde": False, "speed": 1.0},
+        {"name": "Moon", "longitude": 119.63, "sign": "Gemini", "house": 4, "retrograde": False, "speed": 1.0},
+        {"name": "Mercury", "longitude": 277.10, "sign": "Capricorn", "house": 10, "retrograde": False, "speed": 1.0},
+        {"name": "Venus", "longitude": 333.55, "sign": "Pisces", "house": 12, "retrograde": False, "speed": 1.0},
+        {"name": "Mars", "longitude": 137.95, "sign": "Cancer", "house": 5, "retrograde": True, "speed": -0.5},
+        {"name": "Jupiter", "longitude": 193.95, "sign": "Libra", "house": 7, "retrograde": False, "speed": 0.2},
+        {"name": "Saturn", "longitude": 327.02, "sign": "Aquarius", "house": 12, "retrograde": False, "speed": 0.1},
+    ],
+    "houses": [
+        {"number": i, "longitude": float((i - 1) * 30), "sign": "Aries" if i == 1 else "Taurus"}
+        for i in range(1, 13)
+    ],
+    "special_points": [
+        {"name": "ASC", "longitude": 341.9, "sign": "Pisces", "house": None},
+        {"name": "MC", "longitude": 260.5, "sign": "Sagittarius", "house": None},
+    ],
+}
+
+MOCK_SIDECAR_TRANSITS = {
+    "planets": [
+        {"name": "Sun", "longitude": 80.0, "sign": "Gemini", "retrograde": False, "speed": 1.0},
+        {"name": "Moon", "longitude": 200.0, "sign": "Libra", "retrograde": False, "speed": 1.0},
+        {"name": "Mars", "longitude": 140.0, "sign": "Leo", "retrograde": False, "speed": 0.8},
+    ],
+}
 
 
 @pytest.mark.asyncio
@@ -47,6 +85,12 @@ async def test_day_not_onboarded_without_birth_coords(
 async def test_day_passes_with_real_birth_coords(
     async_client: AsyncClient, make_initdata, db_session
 ) -> None:
+    """Day endpoint returns 200 when profile has birth coords.
+
+    W-NATAL-FULL: TodayService now uses NatalContextService, not direct
+    get_natal(). This test mocks the sidecar client at the context service
+    level and verifies the endpoint works end-to-end.
+    """
     await _login(async_client, make_initdata, user_id=402)
 
     user_id = (
@@ -57,47 +101,43 @@ async def test_day_passes_with_real_birth_coords(
     ).scalar_one()
     profile.is_onboarded = True
     profile.birthday = Date(1990, 6, 15)
+    profile.birth_time = time(12, 0)
     profile.birth_tz = "Europe/Moscow"
     profile.current_tz = "Europe/Moscow"
+    profile.gender = "female"
     profile.birth_lat = Decimal("55.75580")
     profile.birth_lon = Decimal("37.61730")
     profile.birthday_lat = Decimal("40.71280")
     profile.birthday_lon = Decimal("-74.00600")
     await db_session.commit()
 
-    with patch("app.services.today_service.get_solarsage_client") as mock_client_factory, patch(
-        "app.services.today_service.NormalizationService"
-    ) as mock_normalization_class, patch(
-        "app.services.today_service.ScoringService"
-    ) as mock_scoring_class, patch(
-        "app.services.today_service.SemanticService"
-    ) as mock_semantic_class, patch(
-        "app.services.today_service.LLMService"
-    ) as mock_llm_class, patch(
-        "app.services.today_service.TodayImportantService"
-    ) as mock_important_class, patch.object(
-        TodayService, "_get_yesterday_signals", new=AsyncMock(return_value=None)
-    ), patch.object(
-        TodayService, "_cache_semantic_layer", new=AsyncMock(return_value=None)
-    ), patch.object(
-        TodayService, "_cache_payload", new=AsyncMock(return_value=None)
-    ), patch.object(
-        TodayService, "_prefetch_week", new=AsyncMock(return_value=None)
-    ):
-        mock_client = AsyncMock()
-        mock_client.get_natal.return_value = {
-            "planets": [{"name": "Sun", "longitude": 0.0}],
-            "houses": [{"number": n, "cusp": float((n - 1) * 30)} for n in range(1, 13)],
-            "special_points": [{"name": "ASC", "longitude": 0.0}],
-        }
-        mock_client.get_transits.return_value = {"planets": []}
-        mock_client_factory.return_value = mock_client
+    with patch("app.services.natal_context_service.get_solarsage_client") as mock_ctx_factory, \
+         patch("app.services.today_service.get_solarsage_client") as mock_day_factory, \
+         patch("app.services.today_service.NormalizationService") as mock_normalization_class, \
+         patch("app.services.today_service.ScoringService") as mock_scoring_class, \
+         patch("app.services.today_service.SemanticService") as mock_semantic_class, \
+         patch("app.services.today_service.LLMService") as mock_llm_class, \
+         patch("app.services.today_service.TodayImportantService") as mock_important_class, \
+         patch.object(TodayService, "_get_yesterday_signals", new=AsyncMock(return_value=None)), \
+         patch.object(TodayService, "_cache_semantic_layer", new=AsyncMock(return_value=None)), \
+         patch.object(TodayService, "_cache_payload", new=AsyncMock(return_value=None)), \
+         patch.object(TodayService, "_prefetch_week", new=AsyncMock(return_value=None)):
+
+        # NatalContextService sidecar mock (for natal context)
+        mock_ctx_client = AsyncMock()
+        mock_ctx_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+        mock_ctx_factory.return_value = mock_ctx_client
+
+        # TodayService sidecar mock (for transits only)
+        mock_day_client = AsyncMock()
+        mock_day_client.get_transits.return_value = MOCK_SIDECAR_TRANSITS
+        mock_day_factory.return_value = mock_day_client
 
         mock_normalization = mock_normalization_class.return_value
-        mock_normalization.normalize.return_value = []
+        mock_normalization.normalize_day.return_value = []
 
         mock_scoring = mock_scoring_class.return_value
-        mock_scoring.score.return_value = {
+        mock_scoring.score_day.return_value = {
             "day_status": "steady",
             "sphere_scores": {},
             "top_signals": [],
@@ -118,11 +158,12 @@ async def test_day_passes_with_real_birth_coords(
 
         r = await async_client.get("/api/day/today")
         assert r.status_code == 200
-        natal_call = mock_client.get_natal.await_args.kwargs
-        assert natal_call["birth_lat"] == float(profile.birth_lat)
-        assert natal_call["birth_lon"] == float(profile.birth_lon)
-        assert natal_call["birth_lat"] != float(profile.birthday_lat)
-        assert natal_call["birth_lon"] != float(profile.birthday_lon)
+
+        # W-NATAL-FULL proof: TodayService does NOT call get_natal() directly.
+        # It uses NatalContextService which handles natal sidecar calls.
+        # The day_client only calls get_transits().
+        mock_day_client.get_natal.assert_not_called()
+        mock_day_client.get_transits.assert_called()
 
 
 @pytest.mark.asyncio

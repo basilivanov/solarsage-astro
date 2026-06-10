@@ -1,16 +1,14 @@
 # AI_HEADER
 # module: M-DAY-SERVICE
 # canon: docs/GRACE_CANON.md §6; docs/05_API_contracts_и_TodayPayload.md
-# wave: W-1.3 (fixture-backed), W-3.4 (real pipeline), W-4.1 (normalization), W-4.2 (scoring), W-5.1 (LLM), W-5.2 (cache)
+# wave: W-NATAL-FULL (Wave 3 — day pipeline reuse)
 # purpose: TodayService returns TodayPayload for a given user and date.
 
 # START_MODULE_CONTRACT: M-DAY-SERVICE
 # purpose: Get TodayPayload for a user and date.
-#          W-1.3: returns fixture-backed payload.
-#          W-3.4: calls solarsage_client for natal + transits.
-#          W-4.3: calls semantic_layer_service.
-#          W-5.1: calls llm_service.
-#          W-5.2: cache layer (check cache first, store on miss).
+#          W-NATAL-FULL: Uses NatalContextService for natal facts.
+#          Only calls sidecar for transits, never for natal chart.
+#          Day cache keyed by (user_id, target_date, profile_hash).
 # owns:
 #   - apps/api/app/services/today_service.py
 # inputs:
@@ -24,30 +22,34 @@
 #   - M-DB-SESSION (AsyncSession)
 #   - M-CONTRACTS.today (TodayPayload)
 #   - M-ACCESS (ContentAccessState)
-#   - M-SOLARSAGE-CLIENT (get_solarsage_client)
-#   - M-LLM-SERVICE (W-5.1)
+#   - M-NATAL-CONTEXT-SERVICE (NatalContextService)
+#   - M-SOLARSAGE-CLIENT (get_solarsage_client — transits only)
+#   - M-LLM-SERVICE
 # invariants:
-#   - W-1.3: loads fixture from apps/api/app/fixtures/day_*.json.
-#   - W-3.4: calls solarsage_client.get_natal() and get_transits().
-#   - W-5.2: meta.cached is true when returned from cache, false on fresh generation.
+#   - Never calls get_natal() directly; uses NatalContextService.
+#   - profile_hash ties today cache to natal context version.
+#   - If birth profile changes, cache misses and rebuilds.
+#   - meta.cached is true when returned from cache, false on fresh generation.
 # failure_policy:
-#   - W-3.4: calculation error → 500.
-#   - missing profile → 404.
+#   - Incomplete profile → 409.
+#   - Sidecar unavailable → 502/503.
 # non_goals:
-#   - no LLM generation (W-5.1)
+#   - No direct natal sidecar calls (use NatalContextService).
 # END_MODULE_CONTRACT
 
 # START_MODULE_MAP: M-DAY-SERVICE
 # public_entrypoints:
 #   - TodayService.get_today_payload
-#   - TodayService.invalidate_cache (W-5.2)
+#   - TodayService.invalidate_cache
 # semantic_blocks:
-#   - REAL_CALCULATION: call solarsage_client for natal + transits (W-3.4)
-#   - PAYLOAD_BUILDER: construct TodayPayload from raw data
-#   - CACHE_LAYER: check cache, store on miss (W-5.2)
+#   - NATAL_CONTEXT_REUSE: uses NatalContextService for natal facts (W-NATAL-FULL)
+#   - TRANSIT_FETCH: calls solarsage_client.get_transits() for fresh transits
+#   - PAYLOAD_BUILDER: construct TodayPayload from natal context + transits + LLM
+#   - CACHE_LAYER: check cache by (user_id, date, profile_hash), store on miss
 # owned_tests:
-#   - apps/api/tests/test_today_service.py
-#   - apps/api/tests/test_cache.py (W-5.2)
+#   - apps/api/tests/test_day_no_birthday_fallback.py
+#   - apps/api/tests/test_day_endpoints.py
+#   - apps/api/tests/test_today_important.py
 # END_MODULE_MAP
 
 from __future__ import annotations
