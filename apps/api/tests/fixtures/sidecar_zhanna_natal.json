@@ -1,0 +1,41 @@
+{
+  "house_system": "Placidus",
+  "planets": [
+    {"name": "Sun",        "longitude": 286.93, "sign": "Capricorn",   "house": 11, "retrograde": false, "speed": 1.01},
+    {"name": "Moon",       "longitude": 89.63,  "sign": "Gemini",     "house": 4,  "retrograde": false, "speed": 12.34},
+    {"name": "Mercury",    "longitude": 277.10, "sign": "Capricorn",   "house": 10, "retrograde": false, "speed": 1.52},
+    {"name": "Venus",      "longitude": 333.55, "sign": "Pisces",     "house": 12, "retrograde": false, "speed": 1.24},
+    {"name": "Mars",       "longitude": 107.95, "sign": "Cancer",     "house": 5,  "retrograde": true,  "speed": -0.52},
+    {"name": "Jupiter",    "longitude": 193.95, "sign": "Libra",      "house": 7,  "retrograde": false, "speed": 0.21},
+    {"name": "Saturn",     "longitude": 317.02, "sign": "Aquarius",   "house": 12, "retrograde": false, "speed": 0.08},
+    {"name": "Uranus",     "longitude": 288.03, "sign": "Capricorn",   "house": 11, "retrograde": false, "speed": 0.04},
+    {"name": "Neptune",    "longitude": 288.58, "sign": "Capricorn",   "house": 11, "retrograde": false, "speed": 0.02},
+    {"name": "Pluto",      "longitude": 234.78, "sign": "Scorpio",    "house": 9,  "retrograde": false, "speed": 0.01},
+    {"name": "North Node", "longitude": 261.42, "sign": "Sagittarius", "house": 10, "retrograde": true,  "speed": -0.05},
+    {"name": "South Node", "longitude": 81.42,  "sign": "Gemini",     "house": 4,  "retrograde": true,  "speed": -0.05}
+  ],
+  "houses": [
+    {"number": 1,  "longitude": 341.92, "sign": "Pisces"},
+    {"number": 2,  "longitude": 11.50,  "sign": "Aries"},
+    {"number": 3,  "longitude": 43.20,  "sign": "Taurus"},
+    {"number": 4,  "longitude": 80.50,  "sign": "Gemini"},
+    {"number": 5,  "longitude": 118.00, "sign": "Cancer"},
+    {"number": 6,  "longitude": 150.80, "sign": "Virgo"},
+    {"number": 7,  "longitude": 161.92, "sign": "Virgo"},
+    {"number": 8,  "longitude": 191.50, "sign": "Libra"},
+    {"number": 9,  "longitude": 223.20, "sign": "Scorpio"},
+    {"number": 10, "longitude": 260.47, "sign": "Sagittarius"},
+    {"number": 11, "longitude": 298.00, "sign": "Capricorn"},
+    {"number": 12, "longitude": 330.80, "sign": "Aquarius"}
+  ],
+  "special_points": [
+    {"name": "ASC",           "longitude": 341.92, "sign": "Pisces",      "house": null},
+    {"name": "MC",            "longitude": 260.47, "sign": "Sagittarius", "house": null},
+    {"name": "IC",            "longitude": 80.47,  "sign": "Gemini",      "house": null},
+    {"name": "DSC",           "longitude": 161.92, "sign": "Virgo",       "house": null},
+    {"name": "Chiron",        "longitude": 165.00, "sign": "Virgo",       "house": 6},
+    {"name": "Lilith",        "longitude": 310.00, "sign": "Aquarius",    "house": 11},
+    {"name": "Selena",        "longitude": 25.00,  "sign": "Taurus",      "house": 1},
+    {"name": "Pars Fortunae", "longitude": 95.00,  "sign": "Cancer",      "house": 4}
+  ]
+}
