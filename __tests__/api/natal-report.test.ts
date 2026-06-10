@@ -1,5 +1,5 @@
 /**
- * Wave 5 fix tests: natal API client — retry, demo isolation, Zod validation.
+ * Wave 5 fix tests + follow-up: natal API client — retry, demo isolation, Zod validation.
  *
  * Tests cover:
  * - Blocker 1: generating-page retry calls fetchNatalGenerate(true)
@@ -7,6 +7,8 @@
  * - Blocker 3: report-page retry handles GENERATING/PENDING
  * - Risk 1: API client uses Zod schemas for runtime validation
  * - Risk 2: fetchNatalReportSection has demo-mode handling
+ * - Follow-up Note 2: fetchNatalPreview uses Zod schema for runtime validation
+ * - Follow-up Note 3: fetchNatalReportSection validates reportId in demo mode
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
@@ -150,10 +152,11 @@ describe("fetchNatalReportSection — demo-mode handling", () => {
     vi.restoreAllMocks()
   })
 
-  it("returns section from mock in demo mode", async () => {
+  it("returns section from mock in demo mode (reportId must be 'demo')", async () => {
     mockDemoMode = true
     const { fetchNatalReportSection } = await import("@/lib/api/natal")
 
+    // Demo mode only returns mock data when reportId === "demo"
     const result = await fetchNatalReportSection("demo", "portrait")
     // Section "portrait" exists in MOCK_NATAL_REPORT_READ
     if (result.ok) {
@@ -162,6 +165,25 @@ describe("fetchNatalReportSection — demo-mode handling", () => {
       // Section might not be found — that's acceptable as long as it's not a network call
       expect(result.error.type).toBe("not_found")
     }
+  })
+
+  it("calls backend for non-demo reportId in demo mode", async () => {
+    mockDemoMode = true
+    const { fetchNatalReportSection } = await import("@/lib/api/natal")
+
+    // In demo mode with a non-demo reportId, the function should call backend
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => VALID_SECTION_READ,
+    })
+
+    const result = await fetchNatalReportSection("real-id", "portrait")
+    expect(result.ok).toBe(true)
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/natal/report/real-id/section/portrait"),
+      expect.any(Object)
+    )
   })
 
   it("returns not_found for 'demo' reportId in production", async () => {
@@ -501,6 +523,103 @@ describe("error states — backend returns GENERATING/PENDING", () => {
     expect(result.ok).toBe(true)
     if (result.ok) {
       expect(result.data.status).toBe("GENERATING")
+    }
+  })
+})
+
+// ---- Follow-up Note 2: fetchNatalPreview Zod validation ----
+
+const VALID_PREVIEW_RESPONSE = {
+  meta: {
+    birthDate: "2000-01-01",
+    gender: "female",
+  },
+  highlights: [
+    { id: "sun", title: "Солнце", value: "Лев", description: "Ядро личности" },
+  ],
+  spheres: [
+    { id: "career", title: "Карьера", score: 4.5, rank: 1, description: "Сильная сфера" },
+  ],
+  planets: [
+    { id: "sun", name: "Солнце", description: "Солнце во Льве" },
+  ],
+  chapters: [
+    { id: "ch1", eyebrow: "Раздел 1", title: "Портрет", locked: true, description: "Психологический портрет" },
+  ],
+  personalHook: "Ты собрана",
+  calculationStats: {
+    planetsCount: 5,
+    housesCount: 12,
+    aspectsCount: 0,
+    spheresCount: 1,
+    specialPointsCount: 0,
+    scoringFactorsCount: 0,
+    dignityFactorsCount: 0,
+    totalFactorsCount: 18,
+    displayLabel: "18 факторов",
+  },
+  salesBullets: ["Поймёшь себя"],
+  fullReportAvailable: true,
+  fullReportPriceKopecks: 99900,
+}
+
+describe("fetchNatalPreview — Zod validation", () => {
+  beforeEach(() => {
+    mockDemoMode = false
+    vi.restoreAllMocks()
+  })
+
+  it("parses valid preview response with Zod schema", async () => {
+    const { fetchNatalPreview } = await import("@/lib/api/natal")
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => VALID_PREVIEW_RESPONSE,
+    })
+
+    const result = await fetchNatalPreview()
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.meta.birthDate).toBe("2000-01-01")
+      expect(result.data.highlights).toHaveLength(1)
+      expect(result.data.personalHook).toBe("Ты собрана")
+      expect(result.data.fullReportAvailable).toBe(true)
+    }
+  })
+
+  it("returns error for invalid preview response format (Zod validation failure)", async () => {
+    const { fetchNatalPreview } = await import("@/lib/api/natal")
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ invalid: true }),
+    })
+
+    const result = await fetchNatalPreview()
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.type).toBe("error")
+      expect(result.error.message).toContain("Invalid response format")
+    }
+  })
+
+  it("returns error for preview with missing required meta.birthDate", async () => {
+    const { fetchNatalPreview } = await import("@/lib/api/natal")
+
+    const invalidPreview = { ...VALID_PREVIEW_RESPONSE, meta: { gender: "female" } }
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => invalidPreview,
+    })
+
+    const result = await fetchNatalPreview()
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.message).toContain("Invalid response format")
     }
   })
 })

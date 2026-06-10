@@ -11,6 +11,7 @@ import type {
   NatalGenerateResponse,
 } from "@/lib/contracts/natal"
 import {
+  NatalPreviewReadSchema,
   NatalReportReadSchema,
   NatalGenerateResponseSchema,
   NatalReportSectionReadSchema,
@@ -86,9 +87,13 @@ export async function fetchNatalPreview(): Promise<
         error: { type: "error", message: body.detail?.message || body.message || "Failed to load natal preview" },
       }
     }
-    const data: NatalPreviewRead = await res.json()
+    const raw = await res.json()
+    const data = NatalPreviewReadSchema.parse(raw)
     return { ok: true, data }
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.name === "ZodError") {
+      return { ok: false, error: { type: "error", message: "Invalid response format from server" } }
+    }
     return { ok: false, error: { type: "error", message: "Network error" } }
   }
 }
@@ -242,8 +247,8 @@ export async function fetchNatalReportSection(
 ): Promise<
   { ok: true; data: NatalReportRead["sections"][number] } | { ok: false; error: NatalReportError }
 > {
-  // Demo mode: return section from mock report
-  if (IS_DEMO_MODE) {
+  // Demo mode: return section from mock report (only for "demo" reportId)
+  if (IS_DEMO_MODE && reportId === "demo") {
     const section = MOCK_NATAL_REPORT_READ.sections.find((s) => s.id === sectionId)
     if (!section) {
       return { ok: false, error: { type: "not_found", message: "Section not found" } }
