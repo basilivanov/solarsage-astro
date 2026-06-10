@@ -61,7 +61,14 @@ export default function NatalReportPage({ params }: Props) {
   if (activeSection) {
     const section = report.sections.find((s) => s.id === activeSection)
     if (section) {
-      return <NatalSectionView section={section} report={report} onBack={() => setActiveSection(null)} />
+      return (
+        <NatalSectionView
+          section={section}
+          report={report}
+          onGoToSection={(id) => setActiveSection(id)}
+          onBackToTOC={() => setActiveSection(null)}
+        />
+      )
     }
   }
 
@@ -136,11 +143,13 @@ export default function NatalReportPage({ params }: Props) {
 function NatalSectionView({
   section,
   report,
-  onBack,
+  onGoToSection,
+  onBackToTOC,
 }: {
   section: ReportSection
   report: NatalReport
-  onBack: () => void
+  onGoToSection: (id: string) => void
+  onBackToTOC: () => void
 }) {
   const sectionIndex = report.sections.findIndex((s) => s.id === section.id)
   const prevSection = sectionIndex > 0 ? report.sections[sectionIndex - 1] : null
@@ -154,7 +163,7 @@ function NatalSectionView({
       >
         <button
           type="button"
-          onClick={onBack}
+          onClick={onBackToTOC}
           className="inline-flex items-center gap-1.5 text-[14px] text-muted-foreground hover:text-foreground active:scale-95 transition"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -187,7 +196,7 @@ function NatalSectionView({
           {prevSection ? (
             <button
               type="button"
-              onClick={() => onBack()}
+              onClick={() => onGoToSection(prevSection.id)}
               className="flex w-full items-center gap-2 rounded-xl border border-border/50 bg-card px-4 py-3 text-left transition active:scale-[0.99]"
             >
               <ChevronLeft className="h-4 w-4 flex-none text-muted-foreground" />
@@ -200,16 +209,25 @@ function NatalSectionView({
           {nextSection ? (
             <button
               type="button"
-              onClick={() => onBack()}
-              className="flex w-full items-center justify-between rounded-xl border border-border/50 bg-card px-4 py-3 text-left transition active:scale-[0.99]"
+              onClick={() => onGoToSection(nextSection.id)}
+              className="flex w-full items-center justify-between rounded-xl border border-primary/20 bg-primary/[0.03] px-4 py-3 text-left transition active:scale-[0.99]"
             >
               <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Следующая</div>
+                <div className="text-[10px] uppercase tracking-[0.1em] text-primary">Следующая</div>
                 <div className="text-[13px] font-medium text-foreground">{nextSection.title}</div>
               </div>
-              <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 flex-none text-primary" />
             </button>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              onClick={onBackToTOC}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/[0.05] px-4 py-3 transition active:scale-[0.99]"
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-[13px] font-medium text-primary">Вернуться к содержанию</span>
+            </button>
+          )}
         </div>
       </main>
     </div>

@@ -193,12 +193,27 @@ export function NatalGeneratingScreen({
           </div>
         </div>
 
+        {/* Telegram notification — поднят наверх, чтобы пользователь точно увидел */}
+        <div className="rounded-2xl border border-[#2AABEE]/15 bg-gradient-to-br from-[#2AABEE]/[0.05] via-background to-[#2AABEE]/[0.02] px-4 py-3.5 space-y-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2AABEE]/10">
+              <Send className="h-3.5 w-3.5 text-[#2AABEE]" />
+            </div>
+            <div className="text-[13px] font-medium text-foreground">
+              Пришлём уведомление в Telegram
+            </div>
+          </div>
+          <p className="text-[12.5px] leading-relaxed text-muted-foreground pl-[42px]">
+            Можно закрыть этот экран — когда разбор будет готов, мы пришлём
+            уведомление. Обычно это занимает 2–3 минуты.
+          </p>
+        </div>
+
         {/* Sections list */}
         <div className="space-y-1.5">
           {GENERATING_SECTIONS.map((section) => {
             const isCompleted = completedIds.has(section.id)
             const isActive = section.id === activeId && !isCompleted
-            const isPending = !isCompleted && !isActive
 
             return (
               <div
@@ -245,22 +260,6 @@ export function NatalGeneratingScreen({
               </div>
             )
           })}
-        </div>
-
-        {/* Telegram notification message */}
-        <div className="rounded-2xl border border-primary/12 bg-gradient-to-br from-primary/[0.05] via-background to-primary/[0.02] px-4 py-3.5 space-y-2">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2AABEE]/10">
-              <Send className="h-3.5 w-3.5 text-[#2AABEE]" />
-            </div>
-            <div className="text-[13px] font-medium text-foreground">
-              Пришлём уведомление в Telegram
-            </div>
-          </div>
-          <p className="text-[12.5px] leading-relaxed text-muted-foreground pl-[42px]">
-            Можно закрыть этот экран — когда разбор будет готов, мы пришлём
-            уведомление. Обычно это занимает 2–3 минуты.
-          </p>
         </div>
 
         {/* Price confirmation */}
