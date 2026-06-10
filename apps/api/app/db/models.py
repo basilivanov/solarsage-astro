@@ -97,6 +97,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -710,13 +711,14 @@ class NatalChartCache(Base):
         # Partial unique index: only active (non-invalidated) rows compete for
         # the (user_id, profile_hash, engine_version, calculation_version, house_system) slot.
         # Invalidated rows are kept for audit but don't block new inserts.
-        # Supported by both PostgreSQL (native) and SQLite (3.8+).
+        # Both PostgreSQL and SQLite 3.8+ support partial indexes with WHERE clause.
         Index(
             "ix_natal_chart_cache_active",
             "user_id", "profile_hash", "engine_version",
             "calculation_version", "house_system",
             unique=True,
-            postgresql_where=("invalidated_at IS NULL"),
+            postgresql_where=text("invalidated_at IS NULL"),
+            sqlite_where=text("invalidated_at IS NULL"),
         ),
     )
 
