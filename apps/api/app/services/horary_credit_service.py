@@ -41,8 +41,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import AccessLedger, HoraryCredit, HoraryCreditSpend, HoraryQuestion
 from app.schemas.horary import HoraryQuotaRead
 
-logger = logging.getLogger(__name__)
-
 
 class HoraryCreditService:
     def __init__(self, db: AsyncSession):

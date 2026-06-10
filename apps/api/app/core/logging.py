@@ -35,6 +35,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import json
 import logging
@@ -112,6 +113,32 @@ def clear_log_context() -> None:
     env_var.set(os.getenv("GRACE_ENV", "dev"))
 
 
+@contextlib.contextmanager
+def log_block(*, slice: str = "", module: str = "", block: str = "", operation_id: str = ""):
+    """Context manager to temporarily override slice, module, block, or operation_id log context."""
+    old_slice = slice_var.get()
+    old_module = module_var.get()
+    old_block = block_var.get()
+    old_op_id = operation_id_var.get()
+
+    if slice:
+        slice_var.set(slice)
+    if module:
+        module_var.set(module)
+    if block:
+        block_var.set(block)
+    if operation_id:
+        operation_id_var.set(operation_id)
+
+    try:
+        yield
+    finally:
+        slice_var.set(old_slice)
+        module_var.set(old_module)
+        block_var.set(old_block)
+        operation_id_var.set(old_op_id)
+
+
 # ── Service version ───────────────────────────────────────────────────────
 
 _SERVICE_VERSION: str = os.getenv("GRACE_SERVICE_VERSION", "dev")
@@ -185,7 +212,7 @@ def build_envelope(
 # ── Public API ────────────────────────────────────────────────────────────
 
 def log_event(
-    event: str,
+    event: LogEventName,
     *,
     level: str = "info",
     msg: str = "",
@@ -206,16 +233,15 @@ def log_event(
         http: HTTP context (method, route, status).
 
     Raises:
-        ValueError: If event name is not in the registry (when PYTHON_LOG_STRICT=1).
+        ValueError: If event name is not in the registry.
     """
-    strict = os.getenv("PYTHON_LOG_STRICT", "0") == "1"
-    if strict:
-        from app.core.logging_events import LogEventName
-        import typing
-        # Validate at runtime if strict mode is on
-        valid_events = typing.get_args(LogEventName)
-        if event not in valid_events:
-            raise ValueError(f"Unknown log event: {event}. Must be one of {valid_events}")
+    from app.core.logging_events import LogEventName
+    import typing
+    # Always validate at runtime to catch typos and enforce the closed registry
+    valid_events = typing.get_args(LogEventName)
+    if event not in valid_events:
+        raise ValueError(f"Unknown log event: {event}. Must be one of {valid_events}")
+
     try:
         envelope = build_envelope(
             event,
@@ -227,11 +253,15 @@ def log_event(
             http=http,
         )
 
-        # Redact payload and error
+        # Redact payload, error, msg, and http
         if "payload" in envelope:
             envelope["payload"] = redact_dict(envelope["payload"])
         if "error" in envelope:
             envelope["error"] = redact_dict(envelope["error"])
+        if "msg" in envelope:
+            envelope["msg"] = redact_dict(envelope["msg"])
+        if "http" in envelope:
+            envelope["http"] = redact_dict(envelope["http"])
 
         _emit(envelope)
     except Exception:

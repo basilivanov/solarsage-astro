@@ -16,6 +16,7 @@ import {
   selectEffectiveCurrentCity,
   selectEffectiveBirthdayCity,
 } from "@/lib/reducers/onboarding-reducer"
+import { logEvent } from "@/lib/log"
 
 type Props = {
   onComplete: () => void
@@ -33,11 +34,9 @@ export function OnboardingFlow({ onComplete }: Props) {
   const [isSaving, setIsSaving] = useState(false)
 
   const back = () => {
-    console.log('[Onboarding] Back clicked, current step:', state.step)
     dispatch({ type: "back" })
   }
   const next = () => {
-    console.log('[Onboarding] Next clicked, current step:', state.step)
     dispatch({ type: "next" })
   }
 
@@ -123,10 +122,10 @@ export function OnboardingFlow({ onComplete }: Props) {
         birthdayLocation: birthdayLocation ?? undefined,
       })
 
-      console.log('[Onboarding] Profile saved to backend')
+      logEvent("profile.updated", {}, { msg: "[Onboarding] Profile saved to backend", slice: "W-ONBOARDING", module: "M-ONBOARDING-FLOW", block: "SAVE_PROFILE" })
       onComplete()
     } catch (error) {
-      console.error('[Onboarding] Failed to save profile to backend:', error)
+      logEvent("profile.update_failed", { error: String(error) }, { msg: "[Onboarding] Failed to save profile to backend", level: "error", slice: "W-ONBOARDING", module: "M-ONBOARDING-FLOW", block: "SAVE_PROFILE" })
       // Still complete onboarding even if backend fails
       // User can retry later from profile page
       onComplete()

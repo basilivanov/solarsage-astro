@@ -7,6 +7,7 @@ import { HoraryAnswerView } from "@/components/readings/horary/horary-answer-vie
 import { HoraryProgress } from "@/components/readings/horary/horary-progress"
 import { getHoraryQuestion } from "@/lib/api/horary"
 import type { HoraryQuestionRead } from "@/packages/contracts"
+import { logEvent } from "@/lib/log"
 
 type Props = {
   params: Promise<{ id: string }>
@@ -36,7 +37,7 @@ export default function HoraryAnswerPage({ params }: Props) {
         setLoading(false)
       })
       .catch((err) => {
-        console.error("[HoraryAnswerPage] Error loading question:", err)
+        logEvent("system.error", { error: String(err) }, { msg: "[HoraryAnswerPage] Error loading question", slice: "W-HORARY", module: "M-HORARY-ANSWER-PAGE", block: "LOAD_QUESTION" })
         if ((err as Error)?.name === "HoraryApiError") {
           const apiErr = err as Error & { status: number }
           if (apiErr.status === 401 || apiErr.status === 403) {
@@ -87,7 +88,7 @@ export default function HoraryAnswerPage({ params }: Props) {
           clearInterval(interval)
         }
       } catch (err) {
-        console.error("[HoraryAnswerPage] Poll error:", err)
+        logEvent("system.error", { error: String(err) }, { msg: "[HoraryAnswerPage] Poll error", slice: "W-HORARY", module: "M-HORARY-ANSWER-PAGE", block: "POLL" })
         if ((err as Error)?.name === "HoraryApiError") {
           const pollStatus = (err as Error & { status: number }).status
           if (pollStatus === 401 || pollStatus === 403) {
@@ -129,7 +130,7 @@ export default function HoraryAnswerPage({ params }: Props) {
         setLoading(false)
       })
       .catch((err) => {
-        console.error("[HoraryAnswerPage] Retry error:", err)
+        logEvent("system.error", { error: String(err) }, { msg: "[HoraryAnswerPage] Retry error", slice: "W-HORARY", module: "M-HORARY-ANSWER-PAGE", block: "RETRY" })
         if ((err as Error)?.name === "HoraryApiError") {
           const apiErr = err as Error & { status: number }
           if (apiErr.status === 401 || apiErr.status === 403) {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { setCorrelationId } from "@/lib/log"
+import { setCorrelationId, logEvent } from "@/lib/log"
 
 /**
  * Инициализирует correlation ID для всей сессии.
@@ -18,8 +18,7 @@ export function CorrelationInit() {
     try {
       const id = crypto.randomUUID()
       setCorrelationId(id)
-      console.log(`%c📎 CORR ${id.slice(0, 8)} %c— все логи этой сессии`,
-        'color:#a78bfa', 'color:inherit')
+      logEvent("system.startup", {}, { msg: `CORR ${id.slice(0, 8)} — все логи этой сессии`, slice: "W-SYSTEM", module: "M-CORRELATION-INIT", block: "INIT" })
     } catch {
       // crypto unavailable — logger will use null
     }

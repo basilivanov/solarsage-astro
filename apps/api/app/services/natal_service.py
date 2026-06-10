@@ -33,7 +33,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import uuid
 from fastapi import HTTPException
 from sqlalchemy import and_, select
@@ -52,8 +51,6 @@ from app.schemas.natal import (
 )
 from app.services.astro_utils import find_house
 from app.services.normalization_service import NormalizationService
-
-logger = logging.getLogger(__name__)
 
 _SPHERE_TITLES = {
     "love": "Отношения",

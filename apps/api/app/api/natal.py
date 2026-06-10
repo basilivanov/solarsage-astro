@@ -40,7 +40,7 @@
 #   - no payment integration yet
 # END_MODULE_CONTRACT: M-API-NATAL
 
-import logging
+from app.core.logging import log_event, log_block
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -59,7 +59,6 @@ from app.schemas.natal import (
 from app.services.natal_service import NatalService
 from app.services.natal_report_service import NatalReportService
 
-logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -77,7 +76,16 @@ async def get_natal_preview(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(f"Natal preview failed for user {user_id}: {exc}")
+        with log_block(slice="W-NATAL-FULL", module="M-API-NATAL", block="ROUTE_PREVIEW"):
+            log_event(
+                "natal.preview_failed",
+                level="error",
+                msg=f"Natal preview failed: {type(exc).__name__}",
+                error={
+                    "kind": type(exc).__name__,
+                    "message": str(exc)[:200],
+                }
+            )
         raise HTTPException(
             status_code=500,
             detail={
@@ -111,7 +119,16 @@ async def generate_natal_report(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(f"Natal report generation failed for user {user_id}: {exc}")
+        with log_block(slice="W-NATAL-FULL", module="M-API-NATAL", block="ROUTE_GENERATE"):
+            log_event(
+                "natal.report_generation_failed",
+                level="error",
+                msg=f"Natal report generation failed: {type(exc).__name__}",
+                error={
+                    "kind": type(exc).__name__,
+                    "message": str(exc)[:200],
+                }
+            )
         raise HTTPException(
             status_code=500,
             detail={

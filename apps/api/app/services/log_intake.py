@@ -40,7 +40,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.redactor import redact_dict
 
 
-REQUIRED_FIELDS = {"ts", "level", "event", "service"}
+REQUIRED_FIELDS = {
+    "ts", "level", "env", "service", "service_version",
+    "slice", "module", "block", "event", "correlation_id"
+}
 
 
 # START_BLOCK: PROCESS_BATCH
@@ -94,17 +97,9 @@ class LogIntakeService:
         return {"accepted": accepted, "rejected": rejected}
 
     def _emit_line(self, data: dict[str, Any]) -> None:
-        """Write a JSON line directly to stdout."""
-        import json
-        import os
-        line = json.dumps(data, default=str, ensure_ascii=False)
-        fd = os.fdopen(1, "a", encoding="utf-8", closefd=False) if os.name != "nt" else None
-        if fd:
-            fd.write(line + "\n")
-            fd.flush()
-        else:
-            import sys
-            print(line, file=sys.__stdout__, flush=True)
+        """Write a JSON line directly to stdout using the centralized logger helper."""
+        from app.core.logging import _emit
+        _emit(data)
 
     def _emit_rejected(self, accepted: int, rejected: int) -> None:
         """Emit a backend-level warning about rejected envelope."""

@@ -18,6 +18,7 @@ import { HoraryQuestionCard } from "./horary-question-card"
 import { HoraryPurchaseSheet } from "./horary-purchase-sheet"
 import { HoraryProcessingCard } from "./horary-processing-card"
 import { Spinner } from "@/components/ui/spinner"
+import { logEvent } from "@/lib/log"
 
 export function HoraryScreen() {
   const { toast } = useToast()
@@ -66,7 +67,7 @@ export function HoraryScreen() {
       setQuestions(qQuestions)
       setProfile(qProfile)
     } catch (error) {
-      console.error("[HoraryScreen] Failed to load data:", error)
+      logEvent("system.error", { error: String(error) }, { msg: "[HoraryScreen] Failed to load data", slice: "W-HORARY", module: "M-HORARY-SCREEN", block: "INIT_LOAD" })
       toast({
         variant: "destructive",
         description: "Не удалось загрузить данные хорара",
@@ -173,7 +174,7 @@ export function HoraryScreen() {
         setSubmitting(false)
       }
     } catch (error) {
-      console.error("[HoraryScreen] Polling error:", error)
+      logEvent("system.error", { error: String(error) }, { msg: "[HoraryScreen] Polling error", slice: "W-HORARY", module: "M-HORARY-SCREEN", block: "POLLING" })
       pollTimeoutRef.current = setTimeout(() => {
         void pollAllProcessing()
       }, 2000)
@@ -267,7 +268,7 @@ export function HoraryScreen() {
       pollStartedAtRef.current = Date.now()
       void pollAllProcessing([q])
     } catch (error: any) {
-      console.error("[HoraryScreen] Failed to submit:", error)
+      logEvent("system.error", { error: String(error?.message ?? error) }, { msg: "[HoraryScreen] Failed to submit", slice: "W-HORARY", module: "M-HORARY-SCREEN", block: "SUBMIT" })
       setSubmitting(false)
       setActiveQuestionId(null)
       setActiveQuestionStartedAt(null)

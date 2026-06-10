@@ -6,6 +6,7 @@
 
 import { type City } from "@/lib/contracts/city"
 import { searchCities as searchGeoNames, type GeoSuggestion } from "./geo"
+import { logEvent } from "@/lib/log"
 
 export type { City }
 
@@ -43,7 +44,7 @@ export async function searchCitiesAsync(
     const suggestions = await searchGeoNames(query, limit)
     return suggestions.map(geoSuggestionToCity)
   } catch (error) {
-    console.error("Failed to search cities:", error)
+    logEvent("ui.fetch_failed", { error: String(error) }, { msg: "Failed to search cities", level: "error", slice: "W-GEO", module: "M-CITIES-API", block: "SEARCH_CITIES" })
     return []
   }
 }

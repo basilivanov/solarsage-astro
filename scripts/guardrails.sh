@@ -258,9 +258,15 @@ run_full() {
   run_prod_guard
 }
 
+run_logging_guardrails() {
+  section "logging: structured logging guardrails"
+  python3 "$ROOT/scripts/check_logging_guardrails.py"
+}
+
 run_strict() {
   run_full
   run_backend_grace
+  run_logging_guardrails
 }
 
 if [[ $# -ne 1 ]]; then

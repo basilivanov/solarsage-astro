@@ -7,6 +7,7 @@ import { getPopularCities, searchCitiesAsync } from "@/lib/api/cities"
 import { getTimezone } from "@/lib/api/geo"
 import type { City } from "@/lib/contracts/city"
 import { formatCity } from "@/lib/contracts/city"
+import { logEvent } from "@/lib/log"
 
 type Props = {
   value: City | null
@@ -58,7 +59,7 @@ export function CityPicker({
         const results = await searchCitiesAsync(inputValue, 8)
         setMatches(results)
       } catch (error) {
-        console.error("Failed to search cities:", error)
+        logEvent("system.error", { error: String(error) }, { msg: "Failed to search cities", slice: "W-ONBOARDING", module: "M-CITY-PICKER", block: "SEARCH" })
         setMatches([])
       } finally {
         setLoading(false)

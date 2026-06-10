@@ -335,6 +335,8 @@
 
     <!-- ================ chat ============================================ -->
     <event name="chat.quota_increased"    owner="W-CHAT" desc="Chat quota increased after payment/subscription." />
+    <event name="chat.thread_created"     owner="W-CHAT" desc="New chat thread created." />
+    <event name="chat.message_sent"       owner="W-CHAT" desc="Chat message sent by user or assistant." />
 
     <!-- ================ frontend ux ==================================== -->
     <event name="ui.error_boundary_tripped" owner="W-1.6">

@@ -163,3 +163,28 @@ describe('Logger — fresh state', () => {
     expect(cSpy).toHaveBeenCalledWith('[INFO ]', 'hello world', '');
   });
 });
+
+describe('Logger — frontend redaction', () => {
+  it('redacts PII keys and patterns before shipping', () => {
+    logger.info('User email test@example.com', {
+      correlation_id: 'corr-xyz',
+      extra: {
+        email: 'secret@example.com',
+        birthDate: '1990-01-15',
+      }
+    });
+
+    expect(mockEnqueue).toHaveBeenCalledTimes(1);
+    const env = mockEnqueue.mock.calls[0][0];
+
+    // msg should have email pattern redacted
+    expect(env.msg).toContain('[redacted-email]');
+    expect(env.msg).not.toContain('test@example.com');
+
+    // payload keys should be redacted
+    expect(env.payload.email).toBe('[redacted]');
+    expect(env.payload.birthDate).toBe('[redacted]');
+    // correlation_id is allowed, should not be redacted
+    expect(env.correlation_id).toBe('corr-xyz');
+  });
+});

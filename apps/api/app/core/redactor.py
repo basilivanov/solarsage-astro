@@ -37,25 +37,29 @@ from typing import Any
 
 # START_BLOCK: PII_KEYS
 # Canon §8.4 redact-keys — case-insensitive exact match at any depth
-PII_KEYS: set[str] = {
-    # user-pii
-    "note", "email", "phone", "full_name", "first_name", "last_name",
-    "display_name",
+PII_KEYS = {
+    # user-pii (snake_case + camelCase/lowercase)
+    "note", "email", "phone", "full_name", "first_name", "last_name", "display_name",
+    "fullname", "firstname", "lastname", "displayname",
     # telegram
     "tg_user_id", "telegram_id", "tg_username", "username", "init_data",
     "tg_init_data", "hash", "auth_date",
+    "tguserid", "telegramid", "tgusername", "initdata", "tginitdata", "authdate",
     # birth-data
     "birth_date", "birth_time", "birth_place", "place", "lat", "latitude",
-    "lon", "lng", "longitude", "tz", "timezone",
+    "birthdate", "birthtime", "birthplace", "lng", "longitude", "tz", "timezone",
     # auth-secrets
     "password", "password_hash", "token", "access_token", "refresh_token",
+    "passwordhash", "accesstoken", "refreshtoken",
     "session_token", "bot_token", "api_key", "secret", "authorization",
-    "cookie", "set-cookie",
+    "sessiontoken", "bottoken", "apikey", "cookie", "set-cookie", "setcookie",
     # payments
     "payment_id", "provider_payment_id", "receipt", "card", "card_number",
+    "paymentid", "providerpaymentid", "cardnumber",
     "cvv", "pan", "iban",
     # network
     "ip", "remote_addr", "x-forwarded-for", "user_agent",
+    "remoteaddr", "xforwardedfor", "useragent",
 }
 # END_BLOCK: PII_KEYS
 
