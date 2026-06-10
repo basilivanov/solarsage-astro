@@ -1,6 +1,6 @@
 import { Check, Sparkles, AlertTriangle, Info, Quote } from "lucide-react"
 
-import type { Block, CalloutTone, NatalReport } from "@/lib/readings/natal-schema"
+import type { Block, CalloutTone, NatalReport } from "@/lib/contracts/natal"
 import { SpheresWidget } from "./widgets/spheres-widget"
 import { PlanetsWidget } from "./widgets/planets-widget"
 
@@ -50,7 +50,7 @@ export function BlockRenderer({ block, report }: Props) {
       const isCheck = block.style === "check"
       return (
         <ul className="flex flex-col gap-2">
-          {block.items.map((item, i) => (
+          {block.items.map((item: string, i: number) => (
             <li
               key={i}
               className="flex items-start gap-2.5 text-[14.5px] leading-relaxed text-foreground/80"
@@ -113,7 +113,7 @@ export function BlockRenderer({ block, report }: Props) {
                 {block.prosLabel ?? "Сила"}
               </div>
               <ul className="flex flex-col gap-1.5">
-                {block.pros.map((p, i) => (
+                {block.pros.map((p: string, i: number) => (
                   <li
                     key={i}
                     className="flex items-start gap-2 text-[14px] leading-relaxed text-foreground/85"
@@ -134,7 +134,7 @@ export function BlockRenderer({ block, report }: Props) {
                 {block.consLabel ?? "Риск"}
               </div>
               <ul className="flex flex-col gap-1.5">
-                {block.cons.map((c, i) => (
+                {block.cons.map((c: string, i: number) => (
                   <li
                     key={i}
                     className="flex items-start gap-2 text-[14px] leading-relaxed text-foreground/75"
@@ -155,7 +155,7 @@ export function BlockRenderer({ block, report }: Props) {
     case "stat_grid":
       return (
         <div className="grid grid-cols-2 gap-2">
-          {block.items.map((item, i) => (
+          {block.items.map((item: { label: string; value: string }, i: number) => (
             <div
               key={i}
               className="rounded-xl border border-border/60 bg-card px-3.5 py-2.5"

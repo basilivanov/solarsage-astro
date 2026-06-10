@@ -1,4 +1,4 @@
-import type { Highlight } from "@/lib/readings/natal-schema"
+import type { Highlight } from "@/lib/contracts/natal"
 
 type Props = {
   items: Highlight[]

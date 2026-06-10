@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import subprocess
 from pathlib import Path
 
@@ -11,9 +12,8 @@ API_DIR = Path(__file__).resolve().parents[1]
 def _run(args: list[str], db_path: Path) -> None:
     env = os.environ.copy()
     env["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path}"
-    alembic_bin = API_DIR / ".venv" / "bin" / "alembic"
     subprocess.run(
-        [str(alembic_bin), *args],
+        [sys.executable, "-m", "alembic", *args],
         cwd=API_DIR,
         env=env,
         check=True,

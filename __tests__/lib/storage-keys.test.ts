@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { STORAGE_KEYS, clearAllStorage } from '../../lib/storage-keys'
 
 describe('STORAGE_KEYS', () => {

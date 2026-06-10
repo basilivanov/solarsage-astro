@@ -144,7 +144,7 @@ describe('validateNatalReport', () => {
 
   it('rejects block with invalid type', () => {
     const data = validMinimalReport()
-    data.sections[0].blocks = [{ type: 'unknown', text: '???' }]
+    data.sections[0].blocks = [{ type: 'unknown', text: '???' } as any]
     expect(() => validateNatalReport(data)).toThrow()
   })
 
@@ -156,19 +156,19 @@ describe('validateNatalReport', () => {
 
   it('rejects heading block with invalid level', () => {
     const data = validMinimalReport()
-    data.sections[0].blocks = [{ type: 'heading', level: 4, text: 'Too deep' }]
+    data.sections[0].blocks = [{ type: 'heading', level: 4, text: 'Too deep' } as any]
     expect(() => validateNatalReport(data)).toThrow()
   })
 
   it('rejects list block with empty items array', () => {
     const data = validMinimalReport()
-    data.sections[0].blocks = [{ type: 'list', items: [] }]
+    data.sections[0].blocks = [{ type: 'list', items: [] } as any]
     expect(() => validateNatalReport(data)).toThrow()
   })
 
   it('rejects pros_cons block with wrong type content', () => {
     const data = validMinimalReport()
-    data.sections[0].blocks = [{ type: 'pros_cons', pros: 'not_an_array' }]
+    data.sections[0].blocks = [{ type: 'pros_cons', pros: 'not_an_array' } as any]
     expect(() => validateNatalReport(data)).toThrow()
   })
 })

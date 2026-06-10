@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -25,6 +26,36 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i))
   const range = formatWeekRange(start)
 
+  const [statuses, setStatuses] = useState<Record<string, "supportive" | "tense" | "even">>({})
+
+  const startKey = start.getTime()
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      try {
+        const results = await Promise.all(
+          days.map(async (d) => {
+            const status = await getDayStatus(d).catch(() => "even" as const)
+            return { key: d.toDateString(), status }
+          })
+        )
+        if (!active) return
+        const map: Record<string, "supportive" | "tense" | "even"> = {}
+        for (const r of results) {
+          map[r.key] = r.status
+        }
+        setStatuses(map)
+      } catch (err) {
+        console.error("Failed to load week strip statuses:", err)
+      }
+    }
+    load()
+    return () => {
+      active = false
+    }
+  }, [startKey])
+
   return (
     <section className="px-5" aria-label="Неделя" data-testid="week-strip">
       <div className="mb-3 flex items-baseline justify-between">
@@ -38,7 +69,7 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
         {days.map((d) => {
           const active = sameDay(d, selectedDate)
           const accessible = isDayAccessible(d, access)
-          const status = getDayStatus(d)
+          const status = statuses[d.toDateString()] || "even"
           const labelIdx = mondayFirstIndex(d)
           return (
             <li key={d.toISOString()}>

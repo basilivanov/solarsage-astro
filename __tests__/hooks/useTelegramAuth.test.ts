@@ -60,7 +60,7 @@ const LONG_TIMEOUT = 15000
 describe('useTelegramAuth', () => {
 
   it('authenticates via dev auth in development mode', async () => {
-    process.env.NODE_ENV = 'development'
+    (process.env as any).NODE_ENV = 'development'
     mockDevAuthResponse(true, { userId: 1 })
 
     const { result } = renderHook(() => useTelegramAuth())
@@ -83,7 +83,7 @@ describe('useTelegramAuth', () => {
   })
 
   it('returns error when dev auth fails', async () => {
-    process.env.NODE_ENV = 'development'
+    (process.env as any).NODE_ENV = 'development'
     mockDevAuthResponse(false)
 
     const { result } = renderHook(() => useTelegramAuth())
@@ -100,7 +100,7 @@ describe('useTelegramAuth', () => {
   })
 
   it('does not authenticate in non-dev, non-TG mode', async () => {
-    process.env.NODE_ENV = 'production'
+    (process.env as any).NODE_ENV = 'production'
 
     const { result } = renderHook(() => useTelegramAuth())
 
@@ -116,7 +116,7 @@ describe('useTelegramAuth', () => {
   })
 
   it('times out after 5 seconds', async () => {
-    process.env.NODE_ENV = 'development'
+    (process.env as any).NODE_ENV = 'development'
     ;(global.fetch as any).mockImplementation(() => new Promise(() => {}))
 
     const { result } = renderHook(() => useTelegramAuth())
@@ -134,7 +134,7 @@ describe('useTelegramAuth', () => {
   }, 15000) // vitest test timeout
 
   it('authenticates via Telegram when WebApp is available', async () => {
-    process.env.NODE_ENV = 'production'
+    (process.env as any).NODE_ENV = 'production'
     setupTelegram()
     mockTelegramAuthResponse(true)
 
@@ -157,7 +157,7 @@ describe('useTelegramAuth', () => {
   })
 
   it('returns error when Telegram auth fails', async () => {
-    process.env.NODE_ENV = 'production'
+    (process.env as any).NODE_ENV = 'production'
     setupTelegram()
     mockTelegramAuthResponse(false, 'Invalid hash')
 
@@ -175,7 +175,7 @@ describe('useTelegramAuth', () => {
   })
 
   it('auto-claims referral on auth with start_param', async () => {
-    process.env.NODE_ENV = 'production'
+    (process.env as any).NODE_ENV = 'production'
     setupTelegram({
       initDataUnsafe: { start_param: 'ref123', user: { id: 1 } },
     })
@@ -198,7 +198,7 @@ describe('useTelegramAuth', () => {
   })
 
   it('skips self-referral when start_param matches own user id', async () => {
-    process.env.NODE_ENV = 'production'
+    (process.env as any).NODE_ENV = 'production'
     setupTelegram({
       initDataUnsafe: { start_param: '123', user: { id: 123 } },
     })
@@ -220,7 +220,7 @@ describe('useTelegramAuth', () => {
   })
 
   it('claims referral only once per session', async () => {
-    process.env.NODE_ENV = 'production'
+    (process.env as any).NODE_ENV = 'production'
     // Set claim key to simulate already claimed
     ;(window as any).__astro_referral_claimed = true
     setupTelegram({

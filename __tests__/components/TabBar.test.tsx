@@ -94,7 +94,7 @@ describe('TabBar', () => {
   })
 
   it('falls back to "/" when usePathname returns null', () => {
-    mockPathname.mockReturnValue(null)
+    mockPathname.mockReturnValue(null as any)
     render(<TabBar />)
     // When pathname is null, component falls back to "/" which matches "today"
     const todayLink = screen.getByText('Сегодня').closest('a')

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { X } from "lucide-react"
 import { CityPicker } from "@/components/onboarding/city-picker"
+import { type City, formatCity } from "@/lib/contracts/city"
 import { NumField, NumFieldDot } from "@/components/shared/num-field"
 import {
   isValidBirthDate,
@@ -326,17 +327,32 @@ function CityEditor({
   onSave: (v: string) => void
   onClose: () => void
 }) {
-  const [value, setValue] = useState(initial)
-  const valid = value.trim().length >= 2
+  const [city, setCity] = useState<City | null>(() => {
+    if (!initial) return null
+    const parts = initial.split(",")
+    return {
+      name: parts[0].trim(),
+      country: parts[1]?.trim() || "",
+    }
+  })
+  const valid = city !== null && city.name.trim().length >= 2
 
   return (
     <div className="space-y-8">
       <CityPicker
-        value={value}
-        onChange={setValue}
+        value={city}
+        onChange={setCity}
         placeholder="Начни вводить город"
       />
-      <SheetActions onCancel={onClose} onSave={() => onSave(value)} disabled={!valid} />
+      <SheetActions
+        onCancel={onClose}
+        onSave={() => {
+          if (city) {
+            onSave(formatCity(city))
+          }
+        }}
+        disabled={!valid}
+      />
     </div>
   )
 }

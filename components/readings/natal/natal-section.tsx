@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
 
-import type { NatalReport, ReportSection } from "@/lib/readings/natal-schema"
+import type { NatalReport, ReportSection } from "@/lib/contracts/natal"
 import { BlockRenderer } from "./block-renderer"
 
 type Props = {

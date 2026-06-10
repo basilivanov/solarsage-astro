@@ -10,7 +10,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 @pytest.fixture(autouse=True)
 def mock_solarsage_client():
     """Mock SolarSage client for integration tests."""
-    with patch("app.services.today_service.get_solarsage_client") as mock_func:
+    with patch("app.clients.solarsage_client.get_solarsage_client") as mock_func, \
+         patch("app.services.natal_context_service.get_solarsage_client", mock_func), \
+         patch("app.services.today_service.get_solarsage_client", mock_func), \
+         patch("app.services.horary_service.get_solarsage_client", mock_func):
         mock_instance = MagicMock()
 
         mock_natal_response = {
@@ -22,10 +25,18 @@ def mock_solarsage_client():
                 {"name": "Mars", "longitude": 200.0, "latitude": 0.0, "speed": 0.5, "sign": "Libra"},
             ],
             "houses": [
-                {"number": 1, "cusp": 0.0}, {"number": 2, "cusp": 30.0}, {"number": 3, "cusp": 60.0},
-                {"number": 4, "cusp": 90.0}, {"number": 5, "cusp": 120.0}, {"number": 6, "cusp": 150.0},
-                {"number": 7, "cusp": 180.0}, {"number": 8, "cusp": 210.0}, {"number": 9, "cusp": 240.0},
-                {"number": 10, "cusp": 270.0}, {"number": 11, "cusp": 300.0}, {"number": 12, "cusp": 330.0},
+                {"number": 1, "cusp": 0.0, "sign": "Aries"},
+                {"number": 2, "cusp": 30.0, "sign": "Taurus"},
+                {"number": 3, "cusp": 60.0, "sign": "Gemini"},
+                {"number": 4, "cusp": 90.0, "sign": "Cancer"},
+                {"number": 5, "cusp": 120.0, "sign": "Leo"},
+                {"number": 6, "cusp": 150.0, "sign": "Virgo"},
+                {"number": 7, "cusp": 180.0, "sign": "Libra"},
+                {"number": 8, "cusp": 210.0, "sign": "Scorpio"},
+                {"number": 9, "cusp": 240.0, "sign": "Sagittarius"},
+                {"number": 10, "cusp": 270.0, "sign": "Capricorn"},
+                {"number": 11, "cusp": 300.0, "sign": "Aquarius"},
+                {"number": 12, "cusp": 330.0, "sign": "Pisces"},
             ],
             "special_points": [],
             "house_system": "PLACIDUS",

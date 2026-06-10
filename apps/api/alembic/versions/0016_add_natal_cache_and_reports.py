@@ -140,25 +140,25 @@ def upgrade() -> None:
     # ── today_payloads_cache: add profile_hash column ──────────────────
     # W-NATAL-FULL: profile_hash ties today cache to natal context.
     # If user changes birth data, hash changes → cache miss → fresh data.
-    op.add_column(
-        "today_payloads_cache",
-        sa.Column("profile_hash", sa.String(64), nullable=False, server_default=""),
-    )
-    # Drop old unique constraint (user_id, target_date) and replace with
-    # (user_id, target_date, profile_hash) so cache key depends on natal context.
-    op.drop_constraint("uq_user_date", "today_payloads_cache", type_="unique")
-    op.create_unique_constraint(
-        "uq_user_date_profile",
-        "today_payloads_cache",
-        ["user_id", "target_date", "profile_hash"],
-    )
+    with op.batch_alter_table("today_payloads_cache") as batch_op:
+        batch_op.add_column(
+            sa.Column("profile_hash", sa.String(64), nullable=False, server_default=""),
+        )
+        # Drop old unique constraint (user_id, target_date) and replace with
+        # (user_id, target_date, profile_hash) so cache key depends on natal context.
+        batch_op.drop_constraint("uq_user_date", type_="unique")
+        batch_op.create_unique_constraint(
+            "uq_user_date_profile",
+            ["user_id", "target_date", "profile_hash"],
+        )
 
 
 def downgrade() -> None:
     # ── today_payloads_cache: revert profile_hash ──────────────────────
-    op.drop_constraint("uq_user_date_profile", "today_payloads_cache", type_="unique")
-    op.create_unique_constraint("uq_user_date", "today_payloads_cache", ["user_id", "target_date"])
-    op.drop_column("today_payloads_cache", "profile_hash")
+    with op.batch_alter_table("today_payloads_cache") as batch_op:
+        batch_op.drop_constraint("uq_user_date_profile", type_="unique")
+        batch_op.create_unique_constraint("uq_user_date", ["user_id", "target_date"])
+        batch_op.drop_column("profile_hash")
 
     # ── natal_reports ──────────────────────────────────────────────────
     op.drop_table("natal_reports")

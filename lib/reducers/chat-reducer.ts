@@ -1,55 +1,148 @@
-// AI_HEADER
-// module: M-CHAT-REDUCER
-// wave: W-2.4
-// purpose: Chat state reducer
+/**
+ * Чистый reducer для чата — вся бизнес-логика переходов без side-effects.
+ *
+ * Преимущества:
+ *  - тестируется без jsdom, RTL, таймеров;
+ *  - события соответствуют реальным бизнес-событиям (user_sent, token, done...);
+ *  - UI-хук (`useChat`) становится тонкой оболочкой, которая
+ *    конвертирует React-эффекты в события редьюсера.
+ */
 
-import { ChatMessage, ChatThread } from '@/lib/contracts/chat';
+import type { ChatMessage } from "@/lib/contracts/chat"
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
 
 export interface ChatState {
-  threads: ChatThread[];
-  activeThreadId: string | null;
-  loading: boolean;
-  error: string | null;
+  messages: ChatMessage[]
+  /** Запрос в полёте (от отправки до done/aborted/error) */
+  pending: boolean
+  /** ID сообщения, в которое сейчас докидываем токены */
+  streamingId: string | null
+  /** Данные загружены из storage */
+  hydrated: boolean
 }
 
-export type ChatAction =
-  | { type: 'SET_THREADS'; threads: ChatThread[] }
-  | { type: 'SET_ACTIVE_THREAD'; threadId: string }
-  | { type: 'ADD_MESSAGE'; threadId: string; message: ChatMessage }
-  | { type: 'SET_LOADING'; loading: boolean }
-  | { type: 'SET_ERROR'; error: string | null };
-
 export const initialChatState: ChatState = {
-  threads: [],
-  activeThreadId: null,
-  loading: false,
-  error: null,
-};
+  messages: [],
+  pending: false,
+  streamingId: null,
+  hydrated: false,
+}
 
-export function chatReducer(state: ChatState, action: ChatAction): ChatState {
-  switch (action.type) {
-    case 'SET_THREADS':
-      return { ...state, threads: action.threads };
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
 
-    case 'SET_ACTIVE_THREAD':
-      return { ...state, activeThreadId: action.threadId };
+export type ChatEvent =
+  | { type: "hydrated"; messages: ChatMessage[] }
+  | { type: "user_sent"; id: string; text: string; createdAt: number }
+  | { type: "stream_started"; id: string; createdAt: number }
+  | { type: "token"; id: string; content: string }
+  | { type: "done"; id: string }
+  | { type: "aborted"; id: string }
+  | { type: "error"; message: ChatMessage }
+  | { type: "reset" }
 
-    case 'ADD_MESSAGE': {
-      const threads = state.threads.map(thread =>
-        thread.id === action.threadId
-          ? { ...thread, messages: [...thread.messages, action.message] }
-          : thread
-      );
-      return { ...state, threads };
+// ---------------------------------------------------------------------------
+// Reducer
+// ---------------------------------------------------------------------------
+
+export function chatReducer(state: ChatState, event: ChatEvent): ChatState {
+  switch (event.type) {
+    case "hydrated":
+      return {
+        ...state,
+        messages: event.messages,
+        hydrated: true,
+      }
+
+    case "user_sent": {
+      // Игнорируем двойные send
+      if (state.pending) return state
+
+      const userMsg: ChatMessage = {
+        id: event.id,
+        role: "user",
+        content: event.text,
+        createdAt: event.createdAt,
+      }
+      return {
+        ...state,
+        messages: [...state.messages, userMsg],
+        pending: true,
+      }
     }
 
-    case 'SET_LOADING':
-      return { ...state, loading: action.loading };
+    case "stream_started": {
+      const assistantMsg: ChatMessage = {
+        id: event.id,
+        role: "assistant",
+        content: "",
+        createdAt: event.createdAt,
+      }
+      return {
+        ...state,
+        messages: [...state.messages, assistantMsg],
+        streamingId: event.id,
+      }
+    }
 
-    case 'SET_ERROR':
-      return { ...state, error: action.error };
+    case "token": {
+      // Игнорируем токены для другого стрима
+      if (state.streamingId !== event.id) return state
+
+      return {
+        ...state,
+        messages: state.messages.map((m) =>
+          m.id === event.id ? { ...m, content: event.content } : m
+        ),
+      }
+    }
+
+    case "done":
+    case "aborted": {
+      // Оставляем то, что успели налить
+      return {
+        ...state,
+        pending: false,
+        streamingId: null,
+      }
+    }
+
+    case "error": {
+      return {
+        ...state,
+        messages: [...state.messages, event.message],
+        pending: false,
+        streamingId: null,
+      }
+    }
+
+    case "reset":
+      return {
+        ...initialChatState,
+        hydrated: true, // сохраняем hydrated, чтобы не было re-hydration
+      }
 
     default:
-      return state;
+      return state
   }
+}
+
+// ---------------------------------------------------------------------------
+// Selectors (для удобства тестирования)
+// ---------------------------------------------------------------------------
+
+export function selectLastMessage(state: ChatState): ChatMessage | undefined {
+  return state.messages[state.messages.length - 1]
+}
+
+export function selectIsStreaming(state: ChatState): boolean {
+  return state.streamingId !== null
+}
+
+export function selectCanSend(state: ChatState): boolean {
+  return !state.pending
 }

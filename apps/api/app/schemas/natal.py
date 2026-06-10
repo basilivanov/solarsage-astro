@@ -364,12 +364,13 @@ class SolarSagePlanetPosition(CamelModel):
     house: int | None = None
     retrograde: bool = False
     speed: float | None = None
+    latitude: float | None = None
 
 
 class SolarSageHouseCusp(CamelModel):
     """Pydantic schema for a house cusp in SolarSage natal response."""
     number: int
-    longitude: float
+    longitude: float = Field(..., alias="cusp")
     sign: str
 
 
@@ -411,6 +412,7 @@ class SolarSageTransitPlanet(CamelModel):
     sign: str
     retrograde: bool = False
     speed: float | None = None
+    latitude: float | None = None
 
 
 class SolarSageTransitsResponse(CamelModel):

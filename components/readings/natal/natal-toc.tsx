@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, MapPin } from "lucide-react"
 
-import type { NatalReport } from "@/lib/readings/natal-schema"
+import type { NatalReport } from "@/lib/contracts/natal"
 import { HighlightsStrip } from "./highlights-strip"
 import { SpheresWidget } from "./widgets/spheres-widget"
 
