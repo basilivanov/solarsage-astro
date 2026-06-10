@@ -80,14 +80,12 @@ export function onboardingReducer(
   state: OnboardingState,
   event: OnboardingEvent
 ): OnboardingState {
-  console.log('[Reducer] Current state:', state.step, 'Event:', event.type)
 
   switch (event.type) {
     case "next": {
       const idx = STEP_ORDER.indexOf(state.step)
       const nextIdx = Math.min(idx + 1, STEP_ORDER.length - 1)
       const nextState = { ...state, step: STEP_ORDER[nextIdx] }
-      console.log('[Reducer] Next: from', state.step, 'to', nextState.step)
       return nextState
     }
 

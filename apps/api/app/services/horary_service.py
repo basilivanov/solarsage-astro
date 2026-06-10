@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import uuid
 import hashlib
 from datetime import datetime, timedelta, timezone
@@ -48,8 +47,7 @@ from app.services.horary_engine import HoraryEngine
 from app.services.llm_service import HoraryGenerationError, LLMService
 from app.services.normalization_service import NormalizationService
 from app.services.horary_credit_service import HoraryCreditService
-
-logger = logging.getLogger(__name__)
+from app.core.logging import log_event, log_block
 
 
 class HoraryTaskStageError(RuntimeError):
@@ -239,9 +237,21 @@ class HoraryService:
             if should_refund:
                 credit.used_amount = max(0, credit.used_amount - 1)
                 new_status = "refunded"
-                logger.info(f"[Horary Refund] Refunded credit {credit.id} for failed question {question_id}")
+                with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="REFUND"):
+                    log_event(
+                        "horary.credit_refunded",
+                        level="info",
+                        msg=f"[Horary Refund] Refunded credit {credit.id} for failed question {question_id}",
+                        payload={"credit_id": str(credit.id), "question_id": str(question_id)},
+                    )
             else:
-                logger.info(f"[Horary Refund] Weekly-free credit {credit.id} already expired. Not refunding for question {question_id}")
+                with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="REFUND"):
+                    log_event(
+                        "horary.credit_refunded",
+                        level="info",
+                        msg=f"[Horary Refund] Weekly-free credit {credit.id} already expired. Not refunding for question {question_id}",
+                        payload={"credit_id": str(credit.id), "question_id": str(question_id)},
+                    )
 
         await db.delete(spend)
 
@@ -256,18 +266,33 @@ class HoraryService:
                 question = (await db.execute(stmt)).scalar_one_or_none()
 
                 if not question:
-                    logger.error(f"[Horary Generator] Question {question_id} not found")
+                    with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="ANSWER_GENERATION"):
+                        log_event(
+                            "horary.generation_failed",
+                            level="error",
+                            msg=f"[Horary Generator] Question {question_id} not found",
+                        )
                     return
 
                 if question.status != "processing":
-                    logger.info(f"[Horary Generator] Question {question_id} is no longer processing (status={question.status}), skipping generation")
+                    with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="ANSWER_GENERATION"):
+                        log_event(
+                            "horary.generation_failed",
+                            level="info",
+                            msg=f"[Horary Generator] Question {question_id} is no longer processing (status={question.status}), skipping generation",
+                        )
                     return
 
                 profile = (
                     await db.execute(select(UserProfile).where(UserProfile.user_id == question.user_id))
                 ).scalar_one_or_none()
                 if not profile:
-                    logger.error(f"[Horary Generator] Profile for user {question.user_id} not found")
+                    with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="ANSWER_GENERATION"):
+                        log_event(
+                            "horary.generation_failed",
+                            level="error",
+                            msg=f"[Horary Generator] Profile for user {question.user_id} not found",
+                        )
                     question.status = "failed"
                     question.failure_stage = "profile"
                     question.failure_code = "ProfileNotFound"
@@ -342,7 +367,12 @@ class HoraryService:
                 stmt3 = select(HoraryQuestion).where(HoraryQuestion.id == question_id).with_for_update()
                 fresh_question = (await db.execute(stmt3)).scalar_one_or_none()
                 if not fresh_question or fresh_question.status != "processing":
-                    logger.info(f"[Horary Generator] Question {question_id} is no longer processing at save boundary, rolling back and skipping save")
+                    with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="ANSWER_GENERATION"):
+                        log_event(
+                            "horary.generation_failed",
+                            level="info",
+                            msg=f"[Horary Generator] Question {question_id} is no longer processing at save boundary, rolling back and skipping save",
+                        )
                     await db.rollback()
                     return
 
@@ -363,10 +393,21 @@ class HoraryService:
                 fresh_question.public_error_code = None
                 fresh_question.public_error_message = None
                 await db.commit()
-                logger.info(f"[Horary Generator] Successfully generated answer for question {question_id}")
+                with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="ANSWER_GENERATION"):
+                    log_event(
+                        "horary.generation_succeeded",
+                        level="info",
+                        msg=f"[Horary Generator] Successfully generated answer for question {question_id}",
+                        payload={"question_id": str(question_id)},
+                    )
 
             except Exception as e:
-                logger.error(f"[Horary Generator] Error generating answer for question {question_id}: {e}", exc_info=True)
+                with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="ANSWER_GENERATION"):
+                    log_event(
+                        "horary.generation_failed",
+                        level="error",
+                        msg=f"[Horary Generator] Error generating answer for question {question_id}: {type(e).__name__}",
+                    )
                 try:
                     question = (
                         await db.execute(select(HoraryQuestion).where(HoraryQuestion.id == question_id))
@@ -383,4 +424,9 @@ class HoraryService:
                         await self._refund_credit_for_failed_question(db, question_id, now)
                         await db.commit()
                 except Exception as rollback_err:
-                    logger.error(f"[Horary Generator] Rollback state update failed: {rollback_err}")
+                    with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="ANSWER_GENERATION"):
+                        log_event(
+                            "horary.generation_failed",
+                            level="error",
+                            msg=f"[Horary Generator] Rollback state update failed: {type(rollback_err).__name__}",
+                        )

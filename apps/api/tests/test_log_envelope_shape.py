@@ -141,3 +141,45 @@ def test_service_version_is_set():
     """Service version must be a non-empty string."""
     assert SERVICE_VERSION
     assert isinstance(SERVICE_VERSION, str)
+
+
+def test_msg_and_http_redaction_in_log_event():
+    """log_event() must redact msg and http fields before emitting."""
+    clear_log_context()
+    bind_log_context(
+        correlation_id="redact-test",
+        slice="W-TEST",
+        module="M-TEST",
+        block="TEST_BLOCK",
+    )
+
+    captured = []
+    def mock_emit(envelope):
+        captured.append(envelope)
+
+    with patch("app.core.logging._emit", mock_emit):
+        log_event(
+            "system.request",
+            msg="User email was test@example.com and ip was 127.0.0.1",
+            http={
+                "method": "POST",
+                "route": "/api/auth/telegram",
+                "ip": "127.0.0.1",
+                "authorization": "Bearer sk-abc123xyz",
+            }
+        )
+
+    assert len(captured) == 1
+    env = captured[0]
+    # msg should have email and IP redacted
+    assert "test@example.com" not in env["msg"]
+    assert "127.0.0.1" not in env["msg"]
+    assert "[redacted-email]" in env["msg"]
+    assert "[redacted-ip]" in env["msg"]
+
+    # http should have PII keys redacted
+    assert env["http"]["ip"] == "[redacted]"
+    assert env["http"]["authorization"] == "[redacted]"
+    # http route and method are allowed keys, so they should NOT be redacted
+    assert env["http"]["method"] == "POST"
+    assert env["http"]["route"] == "/api/auth/telegram"

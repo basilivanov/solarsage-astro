@@ -14,8 +14,7 @@ import anthropic
 import httpx
 
 from app.core.config import settings
-
-logger = logging.getLogger(__name__)
+from app.core.logging import log_event, log_block
 
 # ── Russian name mappings (no anglicisms) ─────────────────────────────
 
@@ -132,13 +131,25 @@ class LLMService:
         try:
             return await self._openrouter_generate(prompt, max_tokens)
         except Exception as e:
-            logger.warning(f"[LLM] OpenRouter failed: {e}")
+            with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="LLM_CLIENT"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=f"[LLM] OpenRouter failed: {type(e).__name__}",
+                    payload={"reason": "timeout"},
+                )
 
         # 2. Fallback: DeepSeek
         try:
             return await self._deepseek_generate(prompt, max_tokens)
         except Exception as e:
-            logger.warning(f"[LLM] DeepSeek fallback failed: {e}")
+            with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="LLM_CLIENT"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=f"[LLM] DeepSeek fallback failed: {type(e).__name__}",
+                    payload={"reason": "timeout"},
+                )
 
         return None
 
@@ -507,7 +518,13 @@ JSON:"""
 
             return sections
         except (json_lib.JSONDecodeError, KeyError, IndexError) as e:
-            logger.warning(f"[LLM] Failed to parse why-sections JSON: {text[:200]}... error={e}")
+            with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="WHY_GENERATION"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=f"[LLM] Failed to parse why-sections JSON: {type(e).__name__}",
+                    payload={"reason": "schema_invalid"},
+                )
             return None
 
     # ── Important today details ─────────────────────────────────────
@@ -574,7 +591,13 @@ JSON:"""
             data = json_lib.loads(text)
             return data.get("items", [])
         except json_lib.JSONDecodeError as e:
-            logger.warning(f"[LLM] Failed to parse important-today details JSON: {text[:200]}... error={e}")
+            with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="IMPORTANT_TODAY"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=f"[LLM] Failed to parse important-today details JSON: {type(e).__name__}",
+                    payload={"reason": "schema_invalid"},
+                )
             return None
 
     # ── Horary generation ──────────────────────────────────────────
@@ -720,11 +743,23 @@ JSON:"""
                 return data
             except (json_lib.JSONDecodeError, HoraryGenerationError) as e:
                 last_error = e
-                logger.warning(f"[Horary LLM] Attempt {attempt+1} failed: {e}")
+                with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="HORARY_GENERATION"):
+                    log_event(
+                        "llm.response_rejected",
+                        level="warn",
+                        msg=f"[Horary LLM] Attempt {attempt+1} failed: {type(e).__name__}",
+                        payload={"reason": "schema_invalid"},
+                    )
                 continue
             except Exception as e:
                 last_error = e
-                logger.warning(f"[Horary LLM] Attempt {attempt+1} error: {e}")
+                with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="HORARY_GENERATION"):
+                    log_event(
+                        "llm.response_rejected",
+                        level="warn",
+                        msg=f"[Horary LLM] Attempt {attempt+1} error: {type(e).__name__}",
+                        payload={"reason": "timeout"},
+                    )
                 continue
 
         raise HoraryGenerationError(

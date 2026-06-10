@@ -35,7 +35,7 @@ from datetime import datetime, timedelta, UTC
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.logging import logger
+from app.core.logging import log_event, log_block
 from app.db.models import MicrocopyMiss
 
 
@@ -78,7 +78,13 @@ class MicrocopyService:
         try:
             await self._track_miss(key, context)
         except Exception as e:
-            logger.error(f"Failed to track microcopy miss: {e}", extra={"key": key})
+            with log_block(slice="W-9.2", module="M-MICROCOPY-SERVICE", block="TRACK_MISS"):
+                log_event(
+                    "system.error",
+                    level="error",
+                    msg=f"Failed to track microcopy miss: {type(e).__name__}",
+                    payload={"key": key},
+                )
 
         # Return fallback
         return f"[{key}]"

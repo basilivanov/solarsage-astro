@@ -73,6 +73,8 @@ export type LogEventName =
   | "llm.response_rejected"
   // chat
   | "chat.quota_increased"
+  | "chat.thread_created"
+  | "chat.message_sent"
   // frontend ux
   | "ui.error_boundary_tripped"
   | "ui.fixtures_mode_toggled"

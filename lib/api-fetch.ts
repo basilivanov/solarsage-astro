@@ -83,15 +83,13 @@ export async function apiFetch(
         route: routeLabel,
         method: options.method ?? "GET",
         status: response.status,
-        duration_ms: durationMs,
-      }, { level: "error" });
+      }, { level: "error", duration_ms: durationMs });
     } else {
       logEvent("ui.fetch_succeeded", {
         route: routeLabel,
         method: options.method ?? "GET",
         status: response.status,
-        duration_ms: durationMs,
-      });
+      }, { duration_ms: durationMs });
     }
 
     return response;
@@ -101,9 +99,9 @@ export async function apiFetch(
     logEvent("ui.fetch_failed", {
       route: routeLabel,
       method: options.method ?? "GET",
-      duration_ms: durationMs,
     }, {
       level: "error",
+      duration_ms: durationMs,
     });
 
     throw error;

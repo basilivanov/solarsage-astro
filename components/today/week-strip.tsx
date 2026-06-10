@@ -13,6 +13,7 @@ import { addDays, sameDay } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
 import { statusLabel } from "@/lib/calendar"
 import { getDayStatus } from "@/lib/api/calendar"
+import { logEvent } from "@/lib/log"
 import { MoodIcon } from "@/components/calendar/mood-icon"
 
 type Props = {
@@ -47,7 +48,7 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
         }
         setStatuses(map)
       } catch (err) {
-        console.error("Failed to load week strip statuses:", err)
+        logEvent("system.error", { error: String(err) }, { msg: "Failed to load week strip statuses", slice: "W-DAY", module: "M-WEEK-STRIP", block: "LOAD_STATUSES" })
       }
     }
     load()

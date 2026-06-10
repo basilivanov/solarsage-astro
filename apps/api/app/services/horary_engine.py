@@ -42,7 +42,6 @@ from app.schemas.horary_analysis import (
 )
 from app.schemas.normalization import AstroSignal
 
-logger = logging.getLogger(__name__)
 
 SIGNS = [
     "Aries",

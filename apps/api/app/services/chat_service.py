@@ -42,7 +42,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
 from app.db.models import ChatMessage, ChatThread
-from app.core.logging import logger
+from app.core.logging import log_event, log_block
 from app.services.chat_quota_service import ChatQuotaService
 
 
@@ -61,14 +61,13 @@ class ChatService:
         await self.db.refresh(thread)
 
         # W-CHAT-3: Emit event
-        logger.info(
-            "chat.thread_created",
-            extra={
-                "user_id": str(user_id),
-                "thread_id": str(thread.id),
-                "event_type": "chat.thread_created",
-            },
-        )
+        with log_block(slice="W-CHAT", module="M-CHAT-SERVICE", block="CREATE_THREAD"):
+            log_event(
+                "chat.thread_created",
+                payload={
+                    "thread_id": str(thread.id),
+                },
+            )
 
         return thread
     # END_BLOCK: CREATE_THREAD
@@ -129,16 +128,15 @@ class ChatService:
         await self.db.refresh(message)
 
         # W-CHAT-3: Emit event
-        logger.info(
-            "chat.message_sent",
-            extra={
-                "user_id": str(user_id),
-                "thread_id": str(thread_id),
-                "message_id": str(message.id),
-                "role": role,
-                "event_type": "chat.message_sent",
-            },
-        )
+        with log_block(slice="W-CHAT", module="M-CHAT-SERVICE", block="ADD_MESSAGE"):
+            log_event(
+                "chat.message_sent",
+                payload={
+                    "thread_id": str(thread_id),
+                    "message_id": str(message.id),
+                    "role": role,
+                },
+            )
 
         return message
     # END_BLOCK: ADD_MESSAGE

@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchDay, ApiError } from '../api/client';
 import { useTelegramAuth } from '@/hooks/use-telegram-auth';
-import { logger } from '@/lib/log';
+import { logEvent } from '@/lib/log';
 import type { TodayPayload } from '@/packages/contracts';
 
 export interface UseDayResult {
@@ -30,17 +30,17 @@ export function useDay(date: string): UseDayResult {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useTelegramAuth();
 
-  console.log('[useDay] authLoading:', authLoading, 'isAuthenticated:', isAuthenticated, 'date:', date);
+  logEvent("day.viewed", { date }, { msg: `[useDay] Loading for ${date}`, level: "debug", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "INIT" })
 
   useEffect(() => {
-    logger.debug('[useDay] useEffect', { extra: { date, authLoading } });
+    logEvent("day.viewed", { date, authLoading }, { msg: "[useDay] useEffect", level: "debug", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "EFFECT" })
 
     if (authLoading) {
-      logger.debug('[useDay] Waiting for auth...');
+      logEvent("auth.tg_login_started", {}, { msg: "[useDay] Waiting for auth...", level: "debug", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "AUTH_WAIT" })
       return;
     }
 
-    logger.info('[useDay] Auth complete, loading day...');
+    logEvent("day.viewed", { date }, { msg: "[useDay] Auth complete, loading day...", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "LOAD" })
 
     let cancelled = false;
 
@@ -48,30 +48,30 @@ export function useDay(date: string): UseDayResult {
       try {
         setLoading(true);
         setError(null);
-        logger.debug('[useDay] Fetching day...');
+        logEvent("day.viewed", { date }, { msg: "[useDay] Fetching day...", level: "debug", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "FETCH" })
 
         await new Promise(resolve => setTimeout(resolve, 100));
 
         const payload = await fetchDay(date);
-        logger.info('[useDay] Day loaded', { extra: { date: payload.date, title: payload.title } });
+        logEvent("day.payload_built", { date: payload.date, title: payload.title }, { msg: "[useDay] Day loaded", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "LOADED" })
 
         if (!cancelled) {
           setData(payload);
           setLoading(false);
         }
       } catch (err) {
-        logger.error('[useDay] Fetch failed', { extra: { error: String(err) } });
+        logEvent("system.error", { error: String(err) }, { msg: "[useDay] Fetch failed", level: "error", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "FETCH" })
         if (!cancelled) {
           const apiError = err instanceof ApiError ? err : new ApiError('Unknown error', 500);
 
           if (apiError.status === 422 && apiError.code === 'NOT_ONBOARDED') {
-            logger.info('[useDay] NOT_ONBOARDED — redirecting to /onboarding');
+            logEvent("profile.lazy_created", {}, { msg: "[useDay] NOT_ONBOARDED — redirecting to /onboarding", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "NOT_ONBOARDED" })
             router.replace('/onboarding');
             return;
           }
 
           if (apiError.status === 401) {
-            logger.warn('[useDay] 401 — unauthorized');
+            logEvent("auth.session_expired", {}, { msg: "[useDay] 401 — unauthorized", level: "warn", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "UNAUTHORIZED" })
             apiError.message = 'Требуется авторизация. Откройте приложение через Telegram бот.';
           }
 
@@ -84,7 +84,7 @@ export function useDay(date: string): UseDayResult {
     load();
 
     return () => {
-      logger.debug('[useDay] Cleanup (cancelled)');
+      logEvent("day.viewed", {}, { msg: "[useDay] Cleanup (cancelled)", level: "debug", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "CLEANUP" })
       cancelled = true;
     };
   }, [date, router, authLoading]);

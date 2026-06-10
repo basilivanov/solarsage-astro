@@ -161,7 +161,7 @@ export function logEvent(
       const levelTag = level.toUpperCase().padEnd(5);
       console.log(
         `${tag}[${levelTag}] ${event}`,
-        meta?.msg ?? "",
+        envelope.msg ?? "",
         payload ? "(redacted)" : "",
       );
     }
@@ -264,7 +264,7 @@ class Logger {
     if (shouldConsoleLog()) {
       const tag = corrId ? `[${corrId.slice(0, 8)}]` : '';
       const levelTag = level.toUpperCase().padEnd(5);
-      console.log(`${tag}[${levelTag}]`, message, options?.extra ? "(redacted)" : "");
+      console.log(`${tag}[${levelTag}]`, envelope.msg ?? "", options?.extra ? "(redacted)" : "");
     }
 
     this.shipper.enqueue(envelope);

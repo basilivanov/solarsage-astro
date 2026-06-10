@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -66,8 +65,7 @@ from app.schemas.natal import (
 )
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
-
-logger = logging.getLogger(__name__)
+from app.core.logging import log_event, log_block
 
 # ── Versioning constants ──────────────────────────────────────────
 ENGINE_VERSION = "1"
@@ -152,7 +150,16 @@ class NatalContextService:
             cache.invalidated_at = now
 
         await self.db.commit()
-        logger.info(f"Invalidated {len(caches)} natal contexts for user {user_id}: {reason}")
+        with log_block(slice="W-NATAL-FULL", module="M-NATAL-CONTEXT-SERVICE", block="INVALIDATE_CONTEXT"):
+            log_event(
+                "natal.context_invalidated",
+                level="info",
+                msg=f"Invalidated {len(caches)} natal contexts: {reason}",
+                payload={
+                    "count": len(caches),
+                    "reason": reason,
+                }
+            )
 
     @staticmethod
     def compute_profile_hash(profile: UserProfile) -> str:
@@ -257,7 +264,12 @@ class NatalContextService:
                 birth_tz=birth_tz,
             )
         except httpx.HTTPError as exc:
-            logger.error(f"SolarSage sidecar error: {exc}")
+            with log_block(slice="W-NATAL-FULL", module="M-NATAL-CONTEXT-SERVICE", block="BUILD_CONTEXT"):
+                log_event(
+                    "natal.sidecar_failed",
+                    level="error",
+                    msg=f"SolarSage sidecar error: {type(exc).__name__}",
+                )
             raise HTTPException(
                 status_code=502,
                 detail={
@@ -271,7 +283,12 @@ class NatalContextService:
         try:
             validated = SolarSageNatalResponse.model_validate(validated_chart_dict)
         except Exception as exc:
-            logger.error(f"SolarSage natal response validation failed: {exc}")
+            with log_block(slice="W-NATAL-FULL", module="M-NATAL-CONTEXT-SERVICE", block="BUILD_CONTEXT"):
+                log_event(
+                    "natal.sidecar_failed",
+                    level="error",
+                    msg=f"SolarSage natal response validation failed: {type(exc).__name__}",
+                )
             raise HTTPException(
                 status_code=502,
                 detail={
@@ -315,10 +332,16 @@ class NatalContextService:
         await self.db.commit()
         await self.db.refresh(cache_entry)
 
-        logger.info(
-            f"Built and cached natal context for user {profile.user_id}, "
-            f"hash={profile_hash}, cache_id={cache_entry.id}"
-        )
+        with log_block(slice="W-NATAL-FULL", module="M-NATAL-CONTEXT-SERVICE", block="BUILD_CONTEXT"):
+            log_event(
+                "natal.context_cached",
+                level="info",
+                msg="Built and cached natal context",
+                payload={
+                    "hash": profile_hash,
+                    "cache_id": str(cache_entry.id),
+                },
+            )
         return context
 
     @staticmethod

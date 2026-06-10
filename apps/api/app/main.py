@@ -54,7 +54,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import _log, auth, calendar, chat, checkin, day, debug, geo, health, health_extended, horary, metrics, microcopy, natal, payment, profile, referral
 from app.core.config import settings
-from app.core.logging import logger
 from app.middleware.correlation import CorrelationMiddleware
 
 # START_BLOCK: APP_CONSTRUCTION

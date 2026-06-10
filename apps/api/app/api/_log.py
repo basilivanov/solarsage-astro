@@ -7,14 +7,17 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from typing import Annotated, Any, Literal
+
 from app.core.dependencies import require_session_optional
 from app.core.logging import log_event
+from app.core.logging_events import LogEventName
 from app.db.session import get_session
 from app.services.log_intake import LogIntakeService
 
@@ -26,13 +29,13 @@ class CanonEnvelope(BaseModel):
 
     ts: str
     level: Annotated[str, Field(pattern=r'^(debug|info|warn|error|fatal)$')]
-    env: Annotated[str, Field(min_length=1)]
-    service: Annotated[str, Field(min_length=1)]
+    env: Literal["dev", "test", "staging", "prod"]
+    service: Literal["api", "web", "solarsage", "worker"]
     service_version: Annotated[str, Field(min_length=1)]
     slice: Annotated[str, Field(min_length=1)]
     module: Annotated[str, Field(min_length=1)]
     block: Annotated[str, Field(min_length=1)]
-    event: Annotated[str, Field(min_length=1)]
+    event: LogEventName
     correlation_id: Annotated[str, Field(min_length=1)]
     msg: str | None = None
     session_id: str | None = None

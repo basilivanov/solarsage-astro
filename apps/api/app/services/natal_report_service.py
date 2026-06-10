@@ -66,8 +66,7 @@ from app.schemas.natal import (
     BulletsBlock,
 )
 from app.services.natal_context_service import NatalContextService
-
-logger = logging.getLogger(__name__)
+from app.core.logging import log_event, log_block
 
 # ── Required section IDs for this wave ────────────────────────────
 REQUIRED_SECTIONS = [
@@ -302,7 +301,13 @@ class NatalReportService:
             await self.db.commit()
             await self.db.refresh(report)
 
-            logger.info(f"Natal report generated: {report.id} for user {user_id}")
+            with log_block(slice="W-NATAL-FULL", module="M-NATAL-REPORT-SERVICE", block="GENERATE_REPORT"):
+                log_event(
+                    "natal.report_generation_succeeded",
+                    level="info",
+                    msg=f"Natal report generated: {report.id}",
+                    payload={"report_id": str(report.id)},
+                )
             return NatalGenerateResponse(
                 report_id=str(report.id),
                 status="READY",
@@ -310,7 +315,16 @@ class NatalReportService:
             )
 
         except Exception as exc:
-            logger.error(f"Natal report generation failed: {exc}")
+            with log_block(slice="W-NATAL-FULL", module="M-NATAL-REPORT-SERVICE", block="GENERATE_REPORT"):
+                log_event(
+                    "natal.report_generation_failed",
+                    level="error",
+                    msg=f"Natal report generation failed: {type(exc).__name__}",
+                    error={
+                        "kind": type(exc).__name__,
+                        "message": str(exc)[:200],
+                    }
+                )
             report.status = "FAILED_RETRYABLE"
             report.error_code = "GENERATION_FAILED"
             report.error_message_sanitized = "Не удалось сгенерировать отчёт. Попробуй ещё раз."
@@ -479,7 +493,15 @@ JSON:"""
                 raise ValueError(f"Section {section_id}: no valid blocks parsed from LLM output")
             return blocks
         except (json.JSONDecodeError, KeyError) as exc:
-            logger.warning(f"Failed to parse section {section_id} JSON: {exc}")
+            with log_block(slice="W-NATAL-FULL", module="M-NATAL-REPORT-SERVICE", block="GENERATE_SECTION"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=f"Failed to parse section {section_id} JSON: {type(exc).__name__}",
+                    payload={
+                        "reason": "schema_invalid",
+                    }
+                )
             raise ValueError(f"Section {section_id}: invalid JSON from LLM") from exc
 
     @staticmethod
@@ -822,7 +844,16 @@ JSON:"""
                         blocks=blocks,
                     ))
             except (json.JSONDecodeError, KeyError) as exc:
-                logger.error(f"Failed to parse sections_json: {exc}")
+                with log_block(slice="W-NATAL-FULL", module="M-NATAL-REPORT-SERVICE", block="REPORT_TO_READ"):
+                    log_event(
+                        "system.error",
+                        level="error",
+                        msg=f"Failed to parse sections_json: {type(exc).__name__}",
+                        error={
+                            "kind": type(exc).__name__,
+                            "message": str(exc)[:200],
+                        }
+                    )
 
         meta = NatalReportMeta(
             prompt_version=report.prompt_version,
@@ -870,5 +901,14 @@ JSON:"""
                     meta.birth_place = profile.birth_city
                     meta.house_system = cache_entry.house_system
         except Exception as exc:
-            logger.warning(f"Failed to populate report meta: {exc}")
+            with log_block(slice="W-NATAL-FULL", module="M-NATAL-REPORT-SERVICE", block="POPULATE_META"):
+                log_event(
+                    "system.error",
+                    level="warn",
+                    msg=f"Failed to populate report meta: {type(exc).__name__}",
+                    error={
+                        "kind": type(exc).__name__,
+                        "message": str(exc)[:200],
+                    }
+                )
         return meta

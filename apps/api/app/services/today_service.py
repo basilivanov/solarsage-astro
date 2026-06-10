@@ -56,7 +56,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 from datetime import UTC, date as Date, datetime, timedelta
 
 from fastapi import HTTPException
@@ -74,8 +73,7 @@ from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
 from app.services.natal_context_service import NatalContextService
-
-logger = logging.getLogger(__name__)
+from app.core.logging import log_event, log_block
 
 
 # START_BLOCK: REAL_CALCULATION
@@ -162,9 +160,25 @@ class TodayService:
             new_count = sum(1 for s in signals if s.delta_kind == "new_today")
             peak_count = sum(1 for s in signals if s.delta_kind == "peak_today")
             bg_count = sum(1 for s in signals if s.delta_kind == "background")
-            logger.info(f"[DayDelta] Computed: {len(signals)} signals, {new_count} new_today, {peak_count} peak, {bg_count} background")
+            with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="DAY_DELTA"):
+                log_event(
+                    "day.payload_built",
+                    level="info",
+                    msg=f"[DayDelta] Computed: {len(signals)} signals",
+                    payload={
+                        "signal_count": len(signals),
+                        "new_today": new_count,
+                        "peak": peak_count,
+                        "background": bg_count,
+                    },
+                )
         else:
-            logger.info("[DayDelta] No yesterday data — skipping delta computation")
+            with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="DAY_DELTA"):
+                log_event(
+                    "day.payload_built",
+                    level="info",
+                    msg="[DayDelta] No yesterday data — skipping delta computation",
+                )
 
         # W-4.2: Score signals and calculate day_status using day-specific scorer
         scoring_service = ScoringService()
@@ -462,7 +476,12 @@ class TodayService:
             y_signals = normalization_service.normalize_day(natal_context=natal_context_dict, transits=y_transits)
             return y_signals
         except Exception as e:
-            logger.info(f"[DayDelta] Could not get yesterday signals: {e}")
+            with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="DAY_DELTA"):
+                log_event(
+                    "day.payload_built",
+                    level="warn",
+                    msg=f"[DayDelta] Could not get yesterday signals: {type(e).__name__}",
+                )
             return None
 
     async def _prefetch_week(self, user_id, today: Date) -> None:
@@ -478,10 +497,20 @@ class TodayService:
             try:
                 await self.get_today_payload(user_id, day, None, skip_prefetch=True)
             except Exception:
-                logger.debug("Prefetch failed for day %s", day, exc_info=True)
+                with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="PREFETCH_WEEK"):
+                    log_event(
+                        "day.payload_built",
+                        level="warn",
+                        msg=f"Prefetch failed for day {day}",
+                    )
 
         tasks = [_calc_one(d) for d in days]
         try:
             await asyncio.gather(*tasks)
         except Exception:
-            logger.debug("Prefetch week gather failed", exc_info=True)
+            with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="PREFETCH_WEEK"):
+                log_event(
+                    "day.payload_built",
+                    level="warn",
+                    msg="Prefetch week gather failed",
+                )
