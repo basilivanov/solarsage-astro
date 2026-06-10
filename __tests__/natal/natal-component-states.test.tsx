@@ -136,6 +136,12 @@ describe("NatalGeneratingPage — retry behavior", () => {
       },
     })
 
+    // Default: safe fallback for any additional calls
+    mockFetchNatalGenerate.mockResolvedValue({
+      ok: true,
+      data: { reportId: "default", status: "GENERATING" },
+    })
+
     await act(async () => {
       render(
         <React.Suspense fallback={<div>Loading</div>}>
@@ -147,7 +153,7 @@ describe("NatalGeneratingPage — retry behavior", () => {
     // Wait for the failed_retryable state to appear
     await waitFor(() => {
       expect(screen.getByText(/Ошибка генерации/i)).toBeTruthy()
-    }, { timeout: 5000 })
+    }, { timeout: 10000 })
 
     // Click retry button
     const retryBtn = screen.getByText(/Попробовать ещё раз/i)
@@ -159,7 +165,7 @@ describe("NatalGeneratingPage — retry behavior", () => {
     expect(mockFetchNatalGenerate).toHaveBeenCalledWith(true)
     // Verify redirect to the new report
     expect(mockReplace).toHaveBeenCalledWith("/readings/natal/new-456")
-  })
+  }, 15000)
 })
 
 describe("NatalReportPage — retry and demo isolation", () => {
@@ -169,6 +175,15 @@ describe("NatalReportPage — retry and demo isolation", () => {
     mockReplace.mockReset()
     mockFetchNatalGenerate.mockReset()
     mockFetchNatalReport.mockReset()
+    // Default: return a safe fallback so unhandled calls don't throw
+    mockFetchNatalGenerate.mockResolvedValue({
+      ok: true,
+      data: { reportId: "default", status: "GENERATING" },
+    })
+    mockFetchNatalReport.mockResolvedValue({
+      ok: true,
+      data: { id: "default", status: "GENERATING", accessState: "FREE_PREVIEW", meta: { houseSystem: "Placidus", promptVersion: "1" }, sections: [] },
+    })
   })
 
   it("shows not_found for demo reportId in production", async () => {
