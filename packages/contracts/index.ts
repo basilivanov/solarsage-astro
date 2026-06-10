@@ -65,4 +65,20 @@ export type HoraryQuestionCreate = components["schemas"]["HoraryQuestionCreate"]
 export type HoraryQuestionRead = components["schemas"]["HoraryQuestionRead"];
 export type HoraryAnswerRead = components["schemas"]["HoraryAnswerRead"];
 export type HoraryQuotaRead = components["schemas"]["HoraryQuotaRead"];
+
+// W-NATAL-FULL (Wave 5): Full report schemas from lib/contracts/natal.ts
+// These types are maintained manually until contracts:generate is updated
+// to include the new natal report endpoints.
+// Source of truth: apps/api/app/schemas/natal.py (Pydantic)
+export type {
+  NatalReportRead,
+  NatalReportMeta,
+  NatalReportSectionRead,
+  NatalReportStatus,
+  NatalReportAccessState,
+  NatalGenerateResponse,
+  BackendBlock,
+  BackendCalloutTone,
+  ProsConsItem,
+} from "../../lib/contracts/natal";
 // END_BLOCK: BARREL_REEXPORT
