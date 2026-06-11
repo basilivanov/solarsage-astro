@@ -2,74 +2,84 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-
-## Baseline SHA
-- `fa2b7db`
+**Baseline SHA:** `66ce0e8`
+**JSON hash:** `55d6a21468f4`
 
 ## How audit was run
 ```bash
 python3 scripts/grace/coverage_audit.py
 ```
 
-Generated: `docs/work/solarsage_grace_slice_coverage.json` (496 files, 15 slices)
+Generated: `docs/work/solarsage_grace_slice_coverage.json`
 
 ## Coverage summary
 
 | Metric | Value |
-|--------|-------|
+|---|---|
 | Total files audited | 496 |
-| Full GRACE markers | 60 (12.1%) |
-| Partial markers | 32 (6.5%) |
+| Full GRACE markers | 41 (8.3%) |
+| Partial markers | 51 (10.3%) |
 | No markers | 404 (81.5%) |
 | Canonical logging | 1 (0.2%) |
-| Unmapped | 109 (22.0%) |
+| Unmapped | 28 (5.6%) |
 
 ## Coverage by slice
 
 | Slice | Total | Full | Partial | None | Coverage | Canonical log |
 |---|---|---|---|---|---|---|
-| SLICE-BACKEND-API-ROUTERS | 26 | 24 | 0 | 2 | 92.3% | 0 |
-| SLICE-CONTRACTS | 8 | 5 | 0 | 3 | 62.5% | 0 |
-| SLICE-ORCHESTRATOR-ADAPTER | 22 | 14 | 8 | 0 | 63.6% | 0 |
-| SLICE-GUARDRAILS-TOOLING | 7 | 6 | 0 | 1 | 85.7% | 1 |
-| SLICE-TESTS | 3 | 2 | 1 | 0 | 66.7% | 0 |
-| SLICE-DB-MODELS-MIGRATIONS | 7 | 4 | 3 | 0 | 57.1% | 0 |
-| SLICE-BACKEND-SERVICES | 14 | 3 | 5 | 6 | 21.4% | 0 |
-| SLICE-SCORING-SEMANTIC-LLM | 10 | 2 | 4 | 4 | 20.0% | 0 |
-| SLICE-SIDECAR-CALCULATION | 2 | 0 | 0 | 2 | 0.0% | 0 |
-| SLICE-SHELL-NAVIGATION | 3 | 0 | 0 | 3 | 0.0% | 0 |
-| SLICE-TODAY-CALENDAR | 19 | 0 | 0 | 19 | 0.0% | 0 |
-| SLICE-FRONTEND-API-FACADES | 12 | 0 | 0 | 12 | 0.0% | 0 |
-| SLICE-HORARY-READINGS | 2 | 0 | 0 | 2 | 0.0% | 0 |
-| SLICE-PROFILE-ONBOARDING | 3 | 0 | 0 | 3 | 0.0% | 0 |
-| SLICE-LOGGING-SPINE | 6 | 0 | 4 | 2 | 0.0% | 0 |
-| SLICE-OTHER-BACKEND | 31 | 0 | 7 | 24 | 0.0% | 0 |
-| SLICE-UNMAPPED | 109 | 0 | 0 | 109 | 0.0% | 0 |
+| SLICE-TESTS | 126 | 5 | 5 | 116 | 4.0% | 0 |
+| SLICE-BACKEND-API-ROUTERS | 41 | 10 | 17 | 14 | 24.4% | 0 |
+| SLICE-HORARY-READINGS | 40 | 0 | 0 | 40 | 0.0% | 0 |
+| SLICE-OTHER-FRONTEND | 39 | 0 | 8 | 31 | 0.0% | 0 |
+| SLICE-BACKEND-SERVICES | 35 | 11 | 14 | 10 | 31.4% | 0 |
+| SLICE-OTHER-COMPONENTS | 33 | 0 | 0 | 33 | 0.0% | 0 |
+| SLICE-UNMAPPED | 28 | 3 | 1 | 24 | 10.7% | 0 |
+| SLICE-GUARDRAILS-TOOLING | 28 | 5 | 6 | 17 | 17.9% | 1 |
+| SLICE-SIDECAR-CALCULATION | 23 | 0 | 0 | 23 | 0.0% | 0 |
+| SLICE-PROFILE-ONBOARDING | 21 | 0 | 0 | 21 | 0.0% | 0 |
+| SLICE-OTHER-BACKEND | 20 | 0 | 0 | 20 | 0.0% | 0 |
+| SLICE-FRONTEND-API-FACADES | 15 | 0 | 0 | 15 | 0.0% | 0 |
+| SLICE-TODAY-CALENDAR | 13 | 2 | 0 | 11 | 15.4% | 0 |
+| SLICE-OTHER-APP | 11 | 0 | 0 | 11 | 0.0% | 0 |
+| SLICE-CONTRACTS | 9 | 1 | 0 | 8 | 11.1% | 0 |
+| SLICE-ORCHESTRATOR-ADAPTER | 5 | 0 | 0 | 5 | 0.0% | 0 |
+| SLICE-LOGGING-SPINE | 5 | 1 | 0 | 4 | 20.0% | 0 |
+| SLICE-DB-MODELS-MIGRATIONS | 3 | 3 | 0 | 0 | 100.0% | 0 |
+| SLICE-SHELL-NAVIGATION | 1 | 0 | 0 | 1 | 0.0% | 0 |
 
-## Files with markers but no declared logging side-effects
-All 60 fully-marked files declare MODULE_CONTRACT but none declare logging in their contract. Only `grace/requirements.xml` mentions logging via `SLICE-LOGGING-SPINE`.
+## Zero-coverage product slices
 
-## Slices with zero GRACE markers (product frontend)
-These are the main product frontend slices — they need adoption waves:
-- **SLICE-SHELL-NAVIGATION**: `components/app-shell.tsx`, `components/today/tab-bar.tsx` (3 files)
-- **SLICE-TODAY-CALENDAR**: `components/today/*`, `app/(grace)/today/`, `lib/today.ts` (19 files)
-- **SLICE-FRONTEND-API-FACADES**: `lib/api/*`, `lib/access.ts` (12 files)
-- **SLICE-HORARY-READINGS**: `components/readings/` (2 files)
-- **SLICE-PROFILE-ONBOARDING**: `components/profile/`, `components/onboarding/` (3 files)
-- **SLICE-LOGGING-SPINE**: `lib/grace/` (6 files — has some markers but incomplete)
+- **SLICE-HORARY-READINGS**: 40 files, 0% coverage
+- **SLICE-OTHER-FRONTEND**: 39 files, 0% coverage
+- **SLICE-OTHER-COMPONENTS**: 33 files, 0% coverage
+- **SLICE-SIDECAR-CALCULATION**: 23 files, 0% coverage
+- **SLICE-PROFILE-ONBOARDING**: 21 files, 0% coverage
+- **SLICE-OTHER-BACKEND**: 20 files, 0% coverage
+- **SLICE-FRONTEND-API-FACADES**: 15 files, 0% coverage
+- **SLICE-OTHER-APP**: 11 files, 0% coverage
+- **SLICE-ORCHESTRATOR-ADAPTER**: 5 files, 0% coverage
+- **SLICE-SHELL-NAVIGATION**: 1 files, 0% coverage
+
+## Sentinel files
+
+- `__tests__/api/access.test.ts` — SLICE-TESTS: no markers, no logging
+- `__tests__/api/calendar.test.ts` — SLICE-TESTS: no markers, no logging
+- `__tests__/api/cities.test.ts` — SLICE-TESTS: no markers, no logging
+- `__tests__/api/geo.test.ts` — SLICE-TESTS: no markers, no logging
+- `__tests__/api/grace-client.test.ts` — SLICE-TESTS: no markers, no logging
+- `__tests__/api/natal-report.test.ts` — SLICE-TESTS: no markers, no logging
+- `__tests__/api/onboarding-payload.test.ts` — SLICE-TESTS: no markers, no logging
+- `__tests__/api/profile-meta.test.ts` — SLICE-TESTS: no markers, no logging
+  ... and more
 
 ## Recommended adoption waves
 
-| Wave | Priority | Slice | Files | Effort |
-|---|---|---|---|---|
-| W-GRACE-SLICE-P0-TODAY-CALENDAR | P0 | Today/Calendar | ~19 files | Small |
-| W-GRACE-SLICE-P0-BACKEND-API-SERVICES | P0 | Backend services | ~14 files | Medium |
-| W-GRACE-SLICE-P0-CONTRACTS | P0 | Contracts | ~8 files | Small |
-| W-GRACE-SLICE-P1-HORARY-READINGS | P1 | Horary/Readings | ~2 files | Small |
-| W-GRACE-SLICE-P1-PROFILE-ONBOARDING | P1 | Profile/Onboarding | ~3 files | Small |
-| W-GRACE-SLICE-P1-LOGGING-SPINE | P1 | Logging spine | ~6 files | Medium |
-| W-GRACE-SLICE-P2-TESTS-TOOLING | P2 | Tests + tooling | ~10 files | Medium |
-
-## Gates
-- `pnpm test:run` — not required (audit-only, no product code changed)
-- Script is deterministic (run twice produces identical JSON)
+| Wave | Priority | Slices |
+|---|---|---|
+| W-GRACE-SLICE-P0-TODAY-CALENDAR | P0 | Today/Calendar |
+| W-GRACE-SLICE-P0-BACKEND-API-SERVICES | P0 | Backend API + services |
+| W-GRACE-SLICE-P0-CONTRACTS | P0 | Contracts |
+| W-GRACE-SLICE-P1-HORARY-READINGS | P1 | Horary/Readings |
+| W-GRACE-SLICE-P1-PROFILE-ONBOARDING | P1 | Profile/Onboarding |
+| W-GRACE-SLICE-P1-LOGGING-SPINE | P1 | Logging spine |
+| W-GRACE-SLICE-P2-TESTS-TOOLING | P2 | Tests + tooling |
