@@ -203,9 +203,9 @@ def parse_markers(lines: list[str]) -> list[Marker]:
             continue
         kind = m.group("kind")
         ident = m.group("id") or ""
-        # BLOCK requires a name; MODULE_CONTRACT/MODULE_MAP accept no-id
+        # BLOCK without a name: still add it — check_pairing will emit a violation
         if kind == "BLOCK" and not ident:
-            continue
+            ident = "_unnamed_"
         found.append(
             Marker(
                 edge=m.group("edge"),
@@ -242,6 +242,17 @@ def check_pairing(
     stack: list[Marker] = []
     for mk in markers:
         if mk.kind != kind:
+            continue
+        # BLOCK without name is a violation
+        if kind == "BLOCK" and mk.ident == "_unnamed_":
+            report.violations.append(
+                Violation(
+                    file=path,
+                    line=mk.line,
+                    code="GRC004",
+                    message=f"unnamed {mk.edge}_BLOCK — use // {mk.edge}_BLOCK: NAME",
+                )
+            )
             continue
         if mk.edge == "START":
             stack.append(mk)
