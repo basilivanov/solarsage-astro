@@ -125,6 +125,7 @@ export function TabBar() {
                 href={t.href}
                 data-testid={`today-tab-${t.key}`}
                 title={t.label}
+                aria-label={isActive ? `${t.label}, текущий раздел` : t.label}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10.5px] transition ${
                   isActive
