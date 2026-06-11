@@ -33,6 +33,19 @@
 #   - no LLM integration (echo bot)
 # END_MODULE_CONTRACT: M-API-CHAT
 
+# START_MODULE_MAP: M-API-CHAT
+# public_entrypoints:
+#   - create_thread
+#   - get_thread
+#   - send_message
+#   - get_quota
+# semantic_blocks:
+#   - CREATE_THREAD_ENDPOINT: POST /api/chat/threads
+#   - GET_THREAD_ENDPOINT: GET /api/chat/threads/{thread_id}
+#   - SEND_MESSAGE_ENDPOINT: POST /api/chat/threads/{thread_id}/messages
+#   - GET_QUOTA_ENDPOINT: GET /api/chat/quota
+# END_MODULE_MAP: M-API-CHAT
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid

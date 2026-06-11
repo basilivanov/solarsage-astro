@@ -1,5 +1,4 @@
-# AI_HEADER
-# module: M-SOLARSAGE-CLIENT
+# AI_HEADER: MODULE_SOLARSAGE_CLIENT
 # wave: W-3.4
 # purpose: HTTP client for SolarSage sidecar
 
@@ -27,7 +26,7 @@
 # non_goals:
 #   - no retry logic (W-3.4)
 #   - no caching (W-3.4)
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-SOLARSAGE-CLIENT
 
 # START_MODULE_MAP: M-SOLARSAGE-CLIENT
 # public_entrypoints:
@@ -39,7 +38,7 @@
 #   - SINGLETON: module-level _client instance
 # owned_tests:
 #   - apps/api/tests/test_solarsage_client.py
-# END_MODULE_MAP
+# END_MODULE_MAP: M-SOLARSAGE-CLIENT
 
 from __future__ import annotations
 

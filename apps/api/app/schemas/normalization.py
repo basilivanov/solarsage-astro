@@ -1,7 +1,34 @@
-# AI_HEADER
-# module: M-NORMALIZATION-SCHEMA
-# wave: W-4.1
-# purpose: AstroSignal schema
+# ############################################################################
+# AI_HEADER: MODULE_NORMALIZATION_SCHEMA
+# ROLE: AstroSignal schema
+# DEPENDENCIES: pydantic, typing, enum
+# GRACE_ANCHORS: [ASTRO_SIGNAL, ASPECT_TYPE]
+# WAVE: W-4.1
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-NORMALIZATION-SCHEMA
+# purpose: Define AstroSignal and AspectType used throughout the scoring pipeline.
+# owns:
+#   - apps/api/app/schemas/normalization.py
+# inputs:
+#   - none (type definitions)
+# outputs:
+#   - AstroSignal, AspectType
+# dependencies:
+#   - pydantic.BaseModel
+#   - enum
+# side_effects:
+#   - none (type-only module)
+# END_MODULE_CONTRACT: M-NORMALIZATION-SCHEMA
+
+# START_MODULE_MAP: M-NORMALIZATION-SCHEMA
+# public_entrypoints:
+#   - AstroSignal
+#   - AspectType
+# semantic_blocks:
+#   - ASTRO_SIGNAL: signal data model
+#   - ASPECT_TYPE: aspect enum
+# END_MODULE_MAP: M-NORMALIZATION-SCHEMA
 
 from typing import Literal
 from datetime import datetime

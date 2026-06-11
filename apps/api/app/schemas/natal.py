@@ -1,4 +1,4 @@
-# AI_HEADER
+# AI_HEADER: MODULE_CONTRACTS_NATAL
 # module: M-CONTRACTS.natal
 # canon: docs/GRACE_CANON.md §6; docs/06_*.md; docs/work/2026-06-10_natal_full_report_cache_TZ.md
 # wave: W-1.1B, W-NATAL-FULL
@@ -29,6 +29,18 @@
 # emits: nothing.
 # consumes: schemas._base.CamelModel.
 # END_MODULE_CONTRACT: M-CONTRACTS.natal
+
+# START_MODULE_MAP: M-CONTRACTS.natal
+# public_entrypoints:
+#   - NatalPreviewRead, NatalReportRead, NatalReportSectionRead
+#   - NatalContextData, NatalGenerateResponse
+#   - All block types: ParagraphBlock, LeadBlock, HeadingBlock, etc.
+# semantic_blocks:
+#   - NATAL_BLOCKS: block type definitions
+#   - NATAL_PREVIEW: preview schemas
+#   - NATAL_REPORT: full report schemas
+#   - NATAL_CONTEXT: context data schemas
+# END_MODULE_MAP: M-CONTRACTS.natal
 
 # START_BLOCK: NATAL_BLOCKS
 from __future__ import annotations

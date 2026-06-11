@@ -1,3 +1,32 @@
+# ############################################################################
+# AI_HEADER: MODULE_GEO_SCHEMA
+# ROLE: Geo schemas — autocomplete suggestions and timezone.
+# DEPENDENCIES: pydantic
+# GRACE_ANCHORS: [GEO_SCHEMAS]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-GEO-SCHEMA
+# purpose: Define GeoSuggestionOut and GeoTimezoneOut Pydantic schemas.
+# owns:
+#   - apps/api/app/schemas/geo.py
+# inputs:
+#   - none (type definitions)
+# outputs:
+#   - GeoSuggestionOut, GeoTimezoneOut
+# dependencies:
+#   - pydantic.BaseModel
+# side_effects:
+#   - none (type-only module)
+# END_MODULE_CONTRACT: M-GEO-SCHEMA
+
+# START_MODULE_MAP: M-GEO-SCHEMA
+# public_entrypoints:
+#   - GeoSuggestionOut
+#   - GeoTimezoneOut
+# semantic_blocks:
+#   - GEO_SCHEMAS: Pydantic models for Geo endpoints
+# END_MODULE_MAP: M-GEO-SCHEMA
+
 from pydantic import BaseModel
 from typing import Optional
 

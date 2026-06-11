@@ -1,3 +1,23 @@
+// START_MODULE_CONTRACT
+// purpose: Library module — lib/log/redactor.ts
+// owns:
+//   - lib/log/redactor.ts
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 // ############################################################################
 // AI_HEADER: MODULE_OBSERVABILITY_REDACTOR_FRONTEND
 // ROLE: PII redaction for frontend logging — parity with backend canon §8.4.

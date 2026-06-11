@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_HOOKS_USEDAY
+// ROLE: Library module
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-LOGGING-SPINE
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Library module — lib/grace/hooks/useDay.ts
+// owns:
+//   - lib/grace/hooks/useDay.ts
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 // AI_HEADER
 // module: M-WEB-HOOKS-USE-DAY
 // wave: W-2.7

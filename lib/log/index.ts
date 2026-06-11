@@ -1,3 +1,9 @@
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 // ############################################################################
 // AI_HEADER: MODULE_LOG_FRONTEND
 // ROLE: Frontend structured logger — canonical envelope per §8.2.

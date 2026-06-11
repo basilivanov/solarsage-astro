@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_PROFILE_PROFILE_SCREEN
+// ROLE: UI component
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-PROFILE-ONBOARDING
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: UI component — components/profile/profile-screen.tsx
+// owns:
+//   - components/profile/profile-screen.tsx
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 "use client"
 
 import { useState } from "react"

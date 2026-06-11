@@ -1,3 +1,38 @@
+# ############################################################################
+# AI_HEADER: MODULE_API_GEO
+# ROLE: GeoNames autocomplete and timezone endpoints
+# DEPENDENCIES: fastapi, app.services.geonames
+# GRACE_ANCHORS: [GEO_AUTOCOMPLETE_ENDPOINT, GEO_TIMEZONE_ENDPOINT]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-API-GEO
+# purpose: Location autocomplete and timezone lookup via GeoNames.
+# owns:
+#   - apps/api/app/api/geo.py
+# inputs:
+#   - q: str (autocomplete query)
+#   - lat, lon: float (timezone lookup)
+# outputs:
+#   - List[GeoSuggestionOut] or GeoTimezoneOut
+# dependencies:
+#   - M-GEONAMES (search_geonames, get_timezone)
+# side_effects:
+#   - HTTP requests to GeoNames API
+# failure_policy:
+#   - GeoNamesError → 400
+# non_goals:
+#   - no DB writes
+# END_MODULE_CONTRACT: M-API-GEO
+
+# START_MODULE_MAP: M-API-GEO
+# public_entrypoints:
+#   - geo_autocomplete
+#   - geo_timezone
+# semantic_blocks:
+#   - GEO_AUTOCOMPLETE_ENDPOINT: GET /api/geo/autocomplete
+#   - GEO_TIMEZONE_ENDPOINT: GET /api/geo/timezone
+# END_MODULE_MAP: M-API-GEO
+
 from fastapi import APIRouter, HTTPException
 from typing import List
 

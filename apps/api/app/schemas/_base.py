@@ -1,4 +1,4 @@
-# AI_HEADER
+# AI_HEADER: MODULE_CONTRACTS_BASE
 # module: M-CONTRACTS._base
 # canon: docs/GRACE_CANON.md §6 (Backend → Frontend Contract boundary)
 # wave: W-1.1B (Option B — Pydantic is source of truth)
@@ -20,11 +20,11 @@
 #     (callers use .model_dump(by_alias=True) or response_model handling).
 # emits: nothing (pure config).
 # consumes: pydantic.BaseModel, pydantic.alias_generators.to_camel.
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-CONTRACTS._base
 
 # START_MODULE_MAP: M-CONTRACTS._base
 # - CamelModel: BaseModel subclass with shared ConfigDict for all schemas.
-# END_MODULE_MAP
+# END_MODULE_MAP: M-CONTRACTS._base
 
 # START_BLOCK: CAMEL_MODEL_BASE
 from __future__ import annotations

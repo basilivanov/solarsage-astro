@@ -1,8 +1,40 @@
 # ############################################################################
 # AI_HEADER: MODULE_API_LOG_INTAKE
 # ROLE: HTTP surface for POST /api/_log — accepts frontend log batches.
+# DEPENDENCIES: fastapi, sqlalchemy, app.services.log_intake
+# GRACE_ANCHORS: [LOG_INTAKE_ENDPOINT]
 # WAVE: W-1.7
 # ############################################################################
+
+# START_MODULE_CONTRACT: M-API-LOG-INTAKE
+# purpose: Accept log batches from frontend, forward to backend logging spine.
+# owns:
+#   - apps/api/app/api/_log.py
+# inputs:
+#   - POST /api/_log: LogBatch with canonical envelopes
+#   - optional session for user_id correlation
+# outputs:
+#   - {"accepted": int, "rejected": int}
+# dependencies:
+#   - M-LOG-INTAKE-SERVICE
+#   - M-DB-SESSION
+#   - M-AUTH-DEPENDENCIES (optional)
+# side_effects:
+#   - emits redacted envelopes to stdout
+# invariants:
+#   - invalid envelopes are counted as rejected, never crash
+# failure_policy:
+#   - 500 on unexpected errors; individual envelope errors count as rejected
+# non_goals:
+#   - no log storage (forwarding only)
+# END_MODULE_CONTRACT: M-API-LOG-INTAKE
+
+# START_MODULE_MAP: M-API-LOG-INTAKE
+# public_entrypoints:
+#   - intake_logs
+# semantic_blocks:
+#   - LOG_INTAKE_ENDPOINT: POST /api/_log handler
+# END_MODULE_MAP: M-API-LOG-INTAKE
 
 from __future__ import annotations
 

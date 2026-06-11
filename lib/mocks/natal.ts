@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_MOCKS_NATAL
+// ROLE: Library module
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-UNMAPPED
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Library module — lib/mocks/natal.ts
+// owns:
+//   - lib/mocks/natal.ts
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 /**
  * Мок глубокого разбора натальной карты в контракте `natal/v1`.
  *

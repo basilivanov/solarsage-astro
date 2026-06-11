@@ -32,6 +32,19 @@
 #   - no billing integration in this module (handled by payment_service)
 # END_MODULE_CONTRACT: M-CHAT-QUOTA-SERVICE
 
+# START_MODULE_MAP: M-CHAT-QUOTA-SERVICE
+# public_entrypoints:
+#   - get_or_create_quota
+#   - check_quota
+#   - increment_usage
+#   - increase_limit
+# semantic_blocks:
+#   - GET_OR_CREATE_QUOTA: get or create quota
+#   - CHECK_QUOTA: check quota availability
+#   - INCREMENT_USAGE: increment message count
+#   - INCREASE_LIMIT: increase quota limit
+# END_MODULE_MAP: M-CHAT-QUOTA-SERVICE
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta, UTC

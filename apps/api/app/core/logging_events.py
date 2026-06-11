@@ -2,9 +2,38 @@
 # AI_HEADER: MODULE_OBSERVABILITY_EVENTS
 # ROLE: Canonical event registry — Literal types and payload TypedDicts.
 # GENERATED FROM: grace/canon/observability.xml §8.5
+# DEPENDENCIES: typing (Literal, TypedDict)
+# GRACE_ANCHORS: [EVENT_REGISTRY]
 # WAVE: W-1.6
 # WARNING: This file MUST match the canon. Edit the XML, not this file.
 # ############################################################################
+
+# START_MODULE_CONTRACT: M-OBSERVABILITY-EVENTS
+# purpose: Define canonical LogEventName literal type for all known events.
+# owns:
+#   - apps/api/app/core/logging_events.py
+# inputs:
+#   - none (pure type definitions)
+# outputs:
+#   - LogEventName Literal type
+#   - event payload TypedDicts
+# dependencies:
+#   - standard library: typing
+# side_effects:
+#   - none (type-only module)
+# invariants:
+#   - event names must match grace/canon/observability.xml §8.5
+#   - never add runtime logic to this file
+# failure_policy:
+#   - N/A (type-only module)
+# END_MODULE_CONTRACT: M-OBSERVABILITY-EVENTS
+
+# START_MODULE_MAP: M-OBSERVABILITY-EVENTS
+# public_entrypoints:
+#   - LogEventName
+# semantic_blocks:
+#   - EVENT_REGISTRY: canonical event name literal
+# END_MODULE_MAP: M-OBSERVABILITY-EVENTS
 
 from __future__ import annotations
 

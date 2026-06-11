@@ -1,7 +1,45 @@
-# AI_HEADER
-# module: M-API-PAYMENT
-# wave: W-6.1
-# purpose: Payment endpoints
+# ############################################################################
+# AI_HEADER: MODULE_API_PAYMENT
+# ROLE: Payment endpoints — create intent and handle webhook
+# DEPENDENCIES: fastapi, sqlalchemy, app.services.payment_service
+# GRACE_ANCHORS: [CREATE_PAYMENT_ENDPOINT, PAYMENT_WEBHOOK_ENDPOINT]
+# WAVE: W-6.1, W-6.2
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-API-PAYMENT
+# purpose: Payment intent creation and webhook handling.
+# owns:
+#   - apps/api/app/api/payment.py
+# inputs:
+#   - POST /api/payment/create-intent: PaymentIntent
+#   - POST /api/payment/webhook: PaymentWebhook
+# outputs:
+#   - payment with id/status/amount/currency
+#   - {"ok": true}
+# dependencies:
+#   - M-PAYMENT-SERVICE
+#   - M-DB-SESSION
+#   - M-AUTH-DEPENDENCIES
+# side_effects:
+#   - creates/updates payment rows
+#   - creates subscription on successful webhook
+# invariants:
+#   - create-intent requires authentication
+#   - webhook is idempotent
+# failure_policy:
+#   - webhook: silently ignores unknown payments
+# non_goals:
+#   - no real payment provider (MVP stub)
+# END_MODULE_CONTRACT: M-API-PAYMENT
+
+# START_MODULE_MAP: M-API-PAYMENT
+# public_entrypoints:
+#   - create_payment_intent
+#   - payment_webhook
+# semantic_blocks:
+#   - CREATE_PAYMENT_ENDPOINT: POST /api/payment/create-intent
+#   - PAYMENT_WEBHOOK_ENDPOINT: POST /api/payment/webhook
+# END_MODULE_MAP: M-API-PAYMENT
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession

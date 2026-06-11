@@ -1,4 +1,4 @@
-# AI_HEADER
+# AI_HEADER: MODULE_CONTRACTS_CALENDAR
 # module: M-CONTRACTS.calendar
 # canon: docs/GRACE_CANON.md §6
 # wave: W-1.1B
@@ -13,14 +13,14 @@
 #   - meta.schema_version is "calendar/v1".
 # emits: nothing.
 # consumes: schemas._base.CamelModel, schemas.today.{DayStatus,ContentAccessState}.
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-CONTRACTS.calendar
 
 # START_MODULE_MAP: M-CONTRACTS.calendar
 # - CalendarDay: per-cell data.
 # - CalendarMeta: schema versioning header.
 # - AllowedRange: from/to date pair.
 # - CalendarPayload: top-level response.
-# END_MODULE_MAP
+# END_MODULE_MAP: M-CONTRACTS.calendar
 
 # START_BLOCK: CALENDAR_TYPES
 from __future__ import annotations

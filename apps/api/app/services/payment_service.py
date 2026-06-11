@@ -1,7 +1,44 @@
-# AI_HEADER
-# module: M-PAYMENT-SERVICE
-# wave: W-6.1, W-6.2
-# purpose: Payment service (Telegram Payments integration)
+# ############################################################################
+# AI_HEADER: MODULE_PAYMENT_SERVICE
+# ROLE: Payment service (Telegram Payments integration)
+# DEPENDENCIES: sqlalchemy, app.db.models, app.services.access_service
+# GRACE_ANCHORS: [CREATE_PAYMENT_INTENT, HANDLE_WEBHOOK]
+# WAVE: W-6.1, W-6.2
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-PAYMENT-SERVICE
+# purpose: Create payment intents and handle webhook callbacks.
+# owns:
+#   - apps/api/app/services/payment_service.py
+# inputs:
+#   - user_id, amount, currency, description
+#   - payment_id, status (webhook)
+# outputs:
+#   - Payment DB model
+# dependencies:
+#   - M-DB-MODELS (Payment)
+#   - M-ACCESS (AccessService)
+#   - M-CHAT-QUOTA-SERVICE (ChatQuotaService)
+# side_effects:
+#   - creates/updates payment rows
+#   - grants subscription on successful payment
+#   - increases chat quota on successful payment
+# invariants:
+#   - webhook is idempotent (silent no-op on unknown payments)
+# failure_policy:
+#   - webhook silently returns if payment not found
+# non_goals:
+#   - no real payment provider (MVP stub)
+# END_MODULE_CONTRACT: M-PAYMENT-SERVICE
+
+# START_MODULE_MAP: M-PAYMENT-SERVICE
+# public_entrypoints:
+#   - create_payment_intent
+#   - handle_webhook
+# semantic_blocks:
+#   - CREATE_PAYMENT_INTENT: create pending payment
+#   - HANDLE_WEBHOOK: process payment callback
+# END_MODULE_MAP: M-PAYMENT-SERVICE
 
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession

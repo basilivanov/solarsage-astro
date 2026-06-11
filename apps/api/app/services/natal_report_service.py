@@ -1,5 +1,4 @@
-# AI_HEADER
-# module: M-NATAL-REPORT-SERVICE
+# AI_HEADER: MODULE_NATAL_REPORT_SERVICE
 # wave: W-NATAL-FULL
 # purpose: Full natal report generation — LLM pipeline over deterministic NatalContext.
 
@@ -33,6 +32,17 @@
 #   - No payment integration (future wave)
 #   - No async job queue (MVP: synchronous generation)
 # END_MODULE_CONTRACT: M-NATAL-REPORT-SERVICE
+
+# START_MODULE_MAP: M-NATAL-REPORT-SERVICE
+# public_entrypoints:
+#   - generate_report
+#   - get_report
+#   - get_report_section
+# semantic_blocks:
+#   - REPORT_GENERATION: generate full natal report via LLM
+#   - REPORT_RETRIEVAL: get report by id or latest
+#   - REPORT_SECTION: get single section
+# END_MODULE_MAP: M-NATAL-REPORT-SERVICE
 
 from __future__ import annotations
 

@@ -100,6 +100,10 @@ async def auth_telegram(
     # START_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_telegram
     # purpose: Verify initData, upsert user, lazy-create profile row, mint
     #   server-side session, set HttpOnly cookie.
+    # inputs: body (TelegramAuthRequest), request, response, db
+    # returns: AuthSession with user_id, expires_at, is_new_user
+    # side_effects: upserts User row, creates Session row, sets cookie
+    # emitted_logs: auth.tg_login_succeeded (TODO), auth.tg_login_failed (TODO)
     # error_behavior: TelegramAuthError -> 400/401 per code mapping; commit
     #   only on success (exception bubbles before flush+commit).
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_telegram
@@ -146,6 +150,11 @@ async def auth_logout(
     # purpose: Revoke the session row keyed by the cookie token; always
     #   clear the cookie. Idempotent: missing/expired/revoked cookie still
     #   returns 204.
+    # inputs: request, response, db
+    # returns: Response with status 204
+    # side_effects: revokes session row, clears cookie
+    # emitted_logs: auth.logout (TODO)
+    # error_behavior: idempotent — missing/already-revoked cookies still return 204
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_logout
     token = request.cookies.get(settings.session_cookie_name, "")
     await revoke_session(db, token)
@@ -172,6 +181,10 @@ async def auth_dev(
     # START_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_dev
     # purpose: Dev mode authentication - creates a test user session.
     #   Only works when DEV_MODE=true in environment.
+    # inputs: request, response, db
+    # returns: AuthSession with user_id, expires_at, is_new_user
+    # side_effects: upserts test User, creates Session, sets test birth data
+    # emitted_logs: auth.dev_login (TODO)
     # error_behavior: 403 if dev_mode is disabled
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_dev
 

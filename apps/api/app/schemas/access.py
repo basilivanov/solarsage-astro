@@ -1,4 +1,4 @@
-# AI_HEADER
+# AI_HEADER: MODULE_CONTRACTS_ACCESS
 # module: M-CONTRACTS.access
 # canon: docs/GRACE_CANON.md §6
 # wave: W-1.1B
@@ -13,12 +13,12 @@
 #   - AccessSummary.access_until is an ISO-8601 string, never datetime.
 # emits: nothing.
 # consumes: schemas._base.CamelModel.
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-CONTRACTS.access
 
 # START_MODULE_MAP: M-CONTRACTS.access
 # - UserAccessState: Literal alias for the user-level state machine.
 # - AccessSummary: top-level summary returned by /api/access (future wave).
-# END_MODULE_MAP
+# END_MODULE_MAP: M-CONTRACTS.access
 
 # START_BLOCK: ACCESS_TYPES
 from __future__ import annotations

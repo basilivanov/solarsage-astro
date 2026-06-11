@@ -1,8 +1,43 @@
-# AI_HEADER
-# module: M-NORMALIZATION-SERVICE
-# wave: W-4.1, W-NATAL-FULL
-# purpose: Normalization layer (raw → AstroSignal[])
-#          W-NATAL-FULL: split into normalize_natal_only() and normalize_day()
+# ############################################################################
+# AI_HEADER: MODULE_NORMALIZATION_SERVICE
+# ROLE: Normalization layer (raw → AstroSignal[])
+# DEPENDENCIES: app.schemas.normalization, app.services.astro_utils
+# GRACE_ANCHORS: [NORMALIZE_NATAL, NORMALIZE_DAY, NORMALIZE_LEGACY]
+# WAVE: W-4.1, W-NATAL-FULL
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-NORMALIZATION-SERVICE
+# purpose: Convert raw astrological data into AstroSignal[] for scoring.
+#   W-NATAL-FULL: split into natal-only and day (natal + transits) paths.
+# owns:
+#   - apps/api/app/services/normalization_service.py
+# inputs:
+#   - natal dict with planets, houses, special_points
+#   - transits dict with planets
+# outputs:
+#   - list[AstroSignal]
+# dependencies:
+#   - M-ASTRO-UTILS (find_house)
+#   - M-CONTRACTS.normalization (AstroSignal, AspectType)
+# side_effects:
+#   - none (pure computation)
+# invariants:
+#   - normalize_natal_only never includes transit signals
+#   - normalize_day includes both natal and transit signals
+# failure_policy:
+#   - returns empty list on empty input
+# END_MODULE_CONTRACT: M-NORMALIZATION-SERVICE
+
+# START_MODULE_MAP: M-NORMALIZATION-SERVICE
+# public_entrypoints:
+#   - NormalizationService.normalize_natal_only
+#   - NormalizationService.normalize_day
+#   - NormalizationService.normalize
+# semantic_blocks:
+#   - NORMALIZE_NATAL: natal-only signal extraction
+#   - NORMALIZE_DAY: natal + transit signal extraction
+#   - NORMALIZE_LEGACY: backward-compat full normalization
+# END_MODULE_MAP: M-NORMALIZATION-SERVICE
 
 from app.services.astro_utils import find_house
 from app.schemas.normalization import AstroSignal, AspectType

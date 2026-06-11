@@ -33,6 +33,20 @@
 #   - logging errors must not crash the application
 # END_MODULE_CONTRACT: M-OBSERVABILITY-LOGGING
 
+# START_MODULE_MAP: M-OBSERVABILITY-LOGGING
+# public_entrypoints:
+#   - bind_log_context
+#   - clear_log_context
+#   - log_block
+#   - build_envelope
+#   - log_event
+#   - setup_logging
+# semantic_blocks:
+#   - LOG_EVENT: structured event emission
+#   - CONTEXT_VARS: context variable management
+#   - LOGGER_SETUP: logging infrastructure initialization
+# END_MODULE_MAP: M-OBSERVABILITY-LOGGING
+
 from __future__ import annotations
 
 import contextlib

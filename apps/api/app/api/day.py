@@ -1,4 +1,4 @@
-# AI_HEADER
+# AI_HEADER: MODULE_DAY_API
 # module: M-DAY-SERVICE.api
 # canon: docs/GRACE_CANON.md §6; docs/05_API_contracts_и_TodayPayload.md
 # wave: W-NATAL-FULL (Wave 3 — day pipeline reuse)
@@ -31,7 +31,7 @@
 #   - HTTPException with code + message in detail.
 # non_goals:
 #   - timezone-aware 'today' resolution (W-PROFILE.1)
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-DAY-SERVICE.api
 
 # START_MODULE_MAP: M-DAY-SERVICE.api
 # public_entrypoints:
@@ -40,7 +40,7 @@
 #   - ROUTE_DAY_GET: GET /api/day/:date handler
 # owned_tests:
 #   - apps/api/tests/test_day_endpoints.py (W-1.3)
-# END_MODULE_MAP
+# END_MODULE_MAP: M-DAY-SERVICE.api
 
 from __future__ import annotations
 

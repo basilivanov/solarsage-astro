@@ -1,5 +1,4 @@
-# AI_HEADER
-# module: M-DAY-SERVICE
+# AI_HEADER: MODULE_DAY_SERVICE
 # canon: docs/GRACE_CANON.md §6; docs/05_API_contracts_и_TodayPayload.md
 # wave: W-NATAL-FULL (Wave 3 — day pipeline reuse)
 # purpose: TodayService returns TodayPayload for a given user and date.
@@ -35,7 +34,7 @@
 #   - Sidecar unavailable → 502/503.
 # non_goals:
 #   - No direct natal sidecar calls (use NatalContextService).
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-DAY-SERVICE
 
 # START_MODULE_MAP: M-DAY-SERVICE
 # public_entrypoints:
@@ -50,7 +49,7 @@
 #   - apps/api/tests/test_day_no_birthday_fallback.py
 #   - apps/api/tests/test_day_endpoints.py
 #   - apps/api/tests/test_today_important.py
-# END_MODULE_MAP
+# END_MODULE_MAP: M-DAY-SERVICE
 
 from __future__ import annotations
 

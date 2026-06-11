@@ -30,6 +30,13 @@
 #   - no legacy hardcoded content (removed in W-NATAL-FULL cleanup)
 # END_MODULE_CONTRACT: M-NATAL-SERVICE
 
+# START_MODULE_MAP: M-NATAL-SERVICE
+# public_entrypoints:
+#   - NatalService.get_preview
+# semantic_blocks:
+#   - NATAL_PREVIEW: build natal preview from cached context
+# END_MODULE_MAP: M-NATAL-SERVICE
+
 from __future__ import annotations
 
 import json

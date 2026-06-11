@@ -40,6 +40,19 @@
 #   - no payment integration yet
 # END_MODULE_CONTRACT: M-API-NATAL
 
+# START_MODULE_MAP: M-API-NATAL
+# public_entrypoints:
+#   - get_natal_preview
+#   - generate_natal_report
+#   - get_natal_report_latest
+#   - get_natal_report_by_id
+#   - get_natal_report_section
+# semantic_blocks:
+#   - NATAL_PREVIEW: GET /api/natal/preview
+#   - NATAL_GENERATE: POST /api/natal/generate
+#   - NATAL_REPORT: GET /api/natal/report endpoints
+# END_MODULE_MAP: M-API-NATAL
+
 from app.core.logging import log_event, log_block
 import uuid
 

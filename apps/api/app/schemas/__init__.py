@@ -1,4 +1,4 @@
-# AI_HEADER
+# AI_HEADER: MODULE_CONTRACTS
 # module: M-CONTRACTS
 # canon: docs/GRACE_CANON.md §6
 # wave: W-1.1B (Option B — Pydantic is source of truth)
@@ -16,14 +16,14 @@
 #   - This module re-exports types only. No runtime side effects.
 # emits: nothing.
 # consumes: schemas.access, schemas.today, schemas.calendar, schemas.natal.
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-CONTRACTS
 
 # START_MODULE_MAP: M-CONTRACTS
 # - access: UserAccessState, AccessSummary
 # - today: TodayPayload + every nested model and Literal alias
 # - calendar: CalendarPayload, CalendarDay, CalendarMeta, AllowedRange
 # - natal: NatalPayload, NatalSection, every block variant
-# END_MODULE_MAP
+# END_MODULE_MAP: M-CONTRACTS
 
 # START_BLOCK: SCHEMAS_REEXPORTS
 from __future__ import annotations

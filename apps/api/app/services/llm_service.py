@@ -1,9 +1,51 @@
 # ############################################################################
 # AI_HEADER: MODULE_LLM_SERVICE
-# ROLE: LLM integration — headline, reading, notes, why-sections
+# ROLE: LLM integration — headline, reading, notes, why-sections, horary
 # DEPENDENCIES: anthropic, httpx, app.core.config
 # GRACE_ANCHORS: [HEADLINE_GENERATION, READING_GENERATION, NOTES_GENERATION, WHY_GENERATION, LLM_CLIENT]
 # ############################################################################
+
+# START_MODULE_CONTRACT: M-LLM-SERVICE
+# purpose: Generate astrological text via LLM (headline, reading, notes, why-sections, horary).
+# owns:
+#   - apps/api/app/services/llm_service.py
+# inputs:
+#   - day_status, top_signals, sphere_scores, semantic_layer, natal context
+# outputs:
+#   - str | None (headline, notes)
+#   - list[str] | None (reading paragraphs)
+#   - list[dict] | None (why-sections, important-today details)
+#   - dict (horary answer blocks)
+# dependencies:
+#   - M-CONFIG (settings)
+#   - anthropic, httpx
+# side_effects:
+#   - HTTP requests to OpenRouter / DeepSeek / Anthropic
+# invariants:
+#   - falls back through providers: OpenRouter → DeepSeek → None
+#   - horary generation has 2 retry attempts
+# failure_policy:
+#   - returns None if all providers fail
+#   - raises HoraryGenerationError if horary fails after 2 attempts
+# non_goals:
+#   - no streaming (MVP uses synchronous generation)
+# END_MODULE_CONTRACT: M-LLM-SERVICE
+
+# START_MODULE_MAP: M-LLM-SERVICE
+# public_entrypoints:
+#   - LLMService.generate_headline
+#   - LLMService.generate_reading
+#   - LLMService.generate_notes
+#   - LLMService.generate_why_sections
+#   - LLMService.generate_important_today_details
+#   - LLMService.generate_horary_answer
+# semantic_blocks:
+#   - HEADLINE_GENERATION: generate day headline
+#   - READING_GENERATION: generate day reading
+#   - NOTES_GENERATION: generate day notes
+#   - WHY_GENERATION: generate why-sections
+#   - LLM_CLIENT: HTTP client for LLM providers
+# END_MODULE_MAP: M-LLM-SERVICE
 
 from __future__ import annotations
 

@@ -1,7 +1,43 @@
-# AI_HEADER
-# module: M-SCORING-SERVICE
-# wave: W-4.2, W-4.3
-# purpose: Scoring layer v2 — canon-based sphere_scores from grace/canon/*.yml
+# ############################################################################
+# AI_HEADER: MODULE_SCORING_SERVICE
+# ROLE: Scoring layer v2 — canon-based sphere_scores from grace/canon/*.yml
+# DEPENDENCIES: yaml, app.schemas.normalization, os, pathlib
+# GRACE_ANCHORS: [SCORE_NATAL, SCORE_DAY, SCORE_LEGACY]
+# WAVE: W-4.2, W-4.3
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-SCORING-SERVICE
+# purpose: Score astrological signals into sphere_scores, top_signals, day_status.
+#   Uses canon YAML files for sphere definitions, aspect weights, dignities.
+# owns:
+#   - apps/api/app/services/scoring_service.py
+# inputs:
+#   - list[AstroSignal]
+# outputs:
+#   - dict with sphere_scores, top_signals, day_status, planet_scores
+# dependencies:
+#   - M-CONTRACTS.normalization (AstroSignal)
+#   - grace/canon/*.yml (spheres, aspect_rules, dignities)
+# side_effects:
+#   - none (pure computation with module-level canon cache)
+# invariants:
+#   - canon YAML loaded once at module level
+#   - day_status determined by positive vs negative score ratio
+#   - ant-dominance cap prevents single sphere from dominating
+# failure_policy:
+#   - returns empty scores if canon YAML not found
+# END_MODULE_CONTRACT: M-SCORING-SERVICE
+
+# START_MODULE_MAP: M-SCORING-SERVICE
+# public_entrypoints:
+#   - ScoringService.score_natal
+#   - ScoringService.score_day
+#   - ScoringService.score
+# semantic_blocks:
+#   - SCORE_NATAL: score natal-only signals
+#   - SCORE_DAY: score natal + transit signals with day_status
+#   - SCORE_LEGACY: backward-compat scoring
+# END_MODULE_MAP: M-SCORING-SERVICE
 
 import os
 from pathlib import Path

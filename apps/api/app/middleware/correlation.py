@@ -36,6 +36,13 @@
 #   - middleware errors must not block request processing
 # END_MODULE_CONTRACT: M-OBSERVABILITY-CORRELATION
 
+# START_MODULE_MAP: M-OBSERVABILITY-CORRELATION
+# public_entrypoints:
+#   - CorrelationMiddleware
+# semantic_blocks:
+#   - CORRELATION_MIDDLEWARE: correlation ID handling and log context binding
+# END_MODULE_MAP: M-OBSERVABILITY-CORRELATION
+
 from __future__ import annotations
 
 import os

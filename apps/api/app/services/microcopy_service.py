@@ -30,6 +30,17 @@
 #   - no dynamic dictionary loading (MVP uses hardcoded dict)
 # END_MODULE_CONTRACT: M-MICROCOPY-SERVICE
 
+# START_MODULE_MAP: M-MICROCOPY-SERVICE
+# public_entrypoints:
+#   - MicrocopyService.get
+#   - MicrocopyService.get_weekly_report
+# semantic_blocks:
+#   - MICROCOPY_DICTIONARY: hardcoded microcopy key-value pairs
+#   - GET_MICROCOPY: get microcopy by key with miss tracking
+#   - TRACK_MISS: track missing keys
+#   - WEEKLY_REPORT: weekly miss report
+# END_MODULE_MAP: M-MICROCOPY-SERVICE
+
 from datetime import datetime, timedelta, UTC
 
 from sqlalchemy import select

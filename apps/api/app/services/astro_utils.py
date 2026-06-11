@@ -1,8 +1,41 @@
-# AI_HEADER
-# module: M-ASTRO-UTIL
-# purpose: Shared astrological utilities — house finding, name normalization.
-#          Eliminates duplicate implementations across normalization_service,
-#          semantic_service, and today_important_service.
+# ############################################################################
+# AI_HEADER: MODULE_ASTRO_UTILS
+# ROLE: Shared astrological utilities — house finding, name normalization.
+# DEPENDENCIES: typing
+# GRACE_ANCHORS: [FIND_HOUSE, STRIP_PREFIX]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-ASTRO-UTILS
+# purpose: Shared utility functions for house finding and planet name normalization.
+# owns:
+#   - apps/api/app/services/astro_utils.py
+# inputs:
+#   - longitude: float
+#   - houses: list of dicts
+#   - name: str | None
+# outputs:
+#   - int | None (house number)
+#   - str (stripped planet name)
+# dependencies:
+#   - none (pure functions)
+# side_effects:
+#   - none (pure functions)
+# invariants:
+#   - find_house handles wraparound correctly
+#   - strip_prefix removes Transit_/Natal_ prefix
+# failure_policy:
+#   - returns None if houses list is empty
+#   - returns "" if name is None
+# END_MODULE_CONTRACT: M-ASTRO-UTILS
+
+# START_MODULE_MAP: M-ASTRO-UTILS
+# public_entrypoints:
+#   - find_house
+#   - strip_prefix
+# semantic_blocks:
+#   - FIND_HOUSE: find which house a longitude falls into
+#   - STRIP_PREFIX: strip Transit_/Natal_ prefix from planet name
+# END_MODULE_MAP: M-ASTRO-UTILS
 
 from typing import Any
 

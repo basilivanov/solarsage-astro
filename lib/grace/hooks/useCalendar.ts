@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_HOOKS_USECALENDAR
+// ROLE: Library module
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-LOGGING-SPINE
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Library module — lib/grace/hooks/useCalendar.ts
+// owns:
+//   - lib/grace/hooks/useCalendar.ts
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 // AI_HEADER
 // module: M-WEB-HOOKS-USE-CALENDAR
 // wave: W-2.1

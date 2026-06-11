@@ -1,7 +1,40 @@
-# AI_HEADER
-# module: M-SEMANTIC-SERVICE
-# wave: W-4.3
-# purpose: Semantic layer service — computes 9 WhyThisHappens section contexts
+# ############################################################################
+# AI_HEADER: MODULE_SEMANTIC_SERVICE
+# ROLE: Semantic layer service — computes 9 WhyThisHappens section contexts
+# DEPENDENCIES: app.schemas.semantic, app.services.astro_utils
+# GRACE_ANCHORS: [BUILD_SEMANTIC_LAYER, BUILD_WHY_CONTEXTS]
+# WAVE: W-4.3
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-SEMANTIC-SERVICE
+# purpose: Build semantic layer and pre-computed WhyThisHappens contexts.
+# owns:
+#   - apps/api/app/services/semantic_service.py
+# inputs:
+#   - day_status, sphere_scores, top_signals, natal, transits
+# outputs:
+#   - SemanticLayer with day_theme, sphere_themes, top_keywords
+#   - list[dict] of 9 pre-filled WhyThisHappens contexts
+# dependencies:
+#   - M-CONTRACTS.semantic (SemanticLayer, SphereTheme)
+#   - M-ASTRO-UTILS (find_house)
+# side_effects:
+#   - none (pure computation)
+# invariants:
+#   - all planet names translated to Russian
+#   - LLM only writes narrative; numbers/planets/houses pre-computed
+# failure_policy:
+#   - returns empty contexts if no data available
+# END_MODULE_CONTRACT: M-SEMANTIC-SERVICE
+
+# START_MODULE_MAP: M-SEMANTIC-SERVICE
+# public_entrypoints:
+#   - SemanticService.build_semantic_layer
+#   - SemanticService.build_why_contexts
+# semantic_blocks:
+#   - BUILD_SEMANTIC_LAYER: build SemanticLayer from day_status + sphere_scores
+#   - BUILD_WHY_CONTEXTS: build 9 pre-computed WhyThisHappens contexts
+# END_MODULE_MAP: M-SEMANTIC-SERVICE
 
 from app.schemas.semantic import SemanticLayer, SphereTheme
 from app.services.astro_utils import find_house

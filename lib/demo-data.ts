@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_LIB_DEMO_DATA
+// ROLE: Library module
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-UNMAPPED
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Library module — lib/demo-data.ts
+// owns:
+//   - lib/demo-data.ts
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 /**
  * Демо-данные для всех экранов приложения.
  * Используются когда NEXT_PUBLIC_DEMO_MODE=true (для v0.app и локальной разработки без API).

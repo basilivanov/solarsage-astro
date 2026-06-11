@@ -37,3 +37,4 @@ playwright-report/
 dist/
 build/
 .env.production
+agents/

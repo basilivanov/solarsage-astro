@@ -1,3 +1,9 @@
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 // ############################################################################
 // AI_HEADER: MODULE_LOG_SHIPPER
 // ROLE: Frontend log shipper — batches and ships logs to backend.

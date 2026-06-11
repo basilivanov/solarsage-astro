@@ -1,7 +1,32 @@
-# AI_HEADER
-# module: M-REFERRAL-SCHEMA
-# wave: W-ACCESS.2
-# purpose: Referral request/response schemas
+# ############################################################################
+# AI_HEADER: MODULE_REFERRAL_SCHEMA
+# ROLE: Referral request/response schemas
+# DEPENDENCIES: pydantic, datetime
+# GRACE_ANCHORS: [REFERRAL_SCHEMAS]
+# WAVE: W-ACCESS.2
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-REFERRAL-SCHEMA
+# purpose: Define ReferralClaimRequest and ReferralClaimResponse Pydantic schemas.
+# owns:
+#   - apps/api/app/schemas/referral.py
+# inputs:
+#   - none (type definitions)
+# outputs:
+#   - ReferralClaimRequest, ReferralClaimResponse
+# dependencies:
+#   - pydantic.BaseModel
+# side_effects:
+#   - none (type-only module)
+# END_MODULE_CONTRACT: M-REFERRAL-SCHEMA
+
+# START_MODULE_MAP: M-REFERRAL-SCHEMA
+# public_entrypoints:
+#   - ReferralClaimRequest
+#   - ReferralClaimResponse
+# semantic_blocks:
+#   - REFERRAL_SCHEMAS: Pydantic models for referral endpoints
+# END_MODULE_MAP: M-REFERRAL-SCHEMA
 
 from pydantic import BaseModel, Field
 

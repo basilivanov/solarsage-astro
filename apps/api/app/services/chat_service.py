@@ -35,6 +35,19 @@
 #   - no LLM integration (MVP echo bot)
 # END_MODULE_CONTRACT: M-CHAT-SERVICE
 
+# START_MODULE_MAP: M-CHAT-SERVICE
+# public_entrypoints:
+#   - create_thread
+#   - get_thread
+#   - add_message
+#   - get_messages
+# semantic_blocks:
+#   - CREATE_THREAD: create new chat thread
+#   - GET_THREAD: get thread with messages
+#   - ADD_MESSAGE: add message to thread
+#   - GET_MESSAGES: get all messages in thread
+# END_MODULE_MAP: M-CHAT-SERVICE
+
 from datetime import UTC, datetime
 
 from sqlalchemy import select

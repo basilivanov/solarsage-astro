@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_NATAL-PREVIEW_NATAL_GENERATING_SCREEN
+// ROLE: UI component
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-HORARY-READINGS
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: UI component — components/readings/natal-preview/natal-generating-screen.tsx
+// owns:
+//   - components/readings/natal-preview/natal-generating-screen.tsx
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"

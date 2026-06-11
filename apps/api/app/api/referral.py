@@ -1,7 +1,47 @@
-# AI_HEADER
-# module: M-REFERRAL-API
-# wave: W-ACCESS.2
-# purpose: POST /api/referral/claim endpoint
+# ############################################################################
+# AI_HEADER: MODULE_API_REFERRAL
+# ROLE: Referral info and claim endpoints
+# DEPENDENCIES: fastapi, sqlalchemy, app.services.access_service
+# GRACE_ANCHORS: [REFERRAL_INFO_ENDPOINT, REFERRAL_CLAIM_ENDPOINT]
+# WAVE: W-ACCESS.2
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-API-REFERRAL
+# purpose: Get referral info and claim referral bonuses.
+# owns:
+#   - apps/api/app/api/referral.py
+# inputs:
+#   - GET /api/referral: user session
+#   - POST /api/referral/claim: ReferralClaimRequest
+# outputs:
+#   - referral info or ReferralClaimResponse
+# dependencies:
+#   - M-ACCESS (AccessService)
+#   - M-DB-SESSION
+#   - M-AUTH-DEPENDENCIES
+# side_effects:
+#   - creates Referral rows
+#   - grants access bonuses
+# invariants:
+#   - one claim per user
+#   - cannot self-refer
+# failure_policy:
+#   - ALREADY_CLAIMED → 400
+#   - INVALID_CODE → 400
+#   - REFERRER_NOT_FOUND → 404
+#   - SELF_REFERRAL → 400
+# non_goals:
+#   - no rate limiting
+# END_MODULE_CONTRACT: M-API-REFERRAL
+
+# START_MODULE_MAP: M-API-REFERRAL
+# public_entrypoints:
+#   - get_referral_info
+#   - claim_referral
+# semantic_blocks:
+#   - REFERRAL_INFO_ENDPOINT: GET /api/referral
+#   - REFERRAL_CLAIM_ENDPOINT: POST /api/referral/claim
+# END_MODULE_MAP: M-API-REFERRAL
 
 from datetime import UTC, date as Date, datetime, timedelta
 from typing import Annotated

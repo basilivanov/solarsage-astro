@@ -1,4 +1,4 @@
-# AI_HEADER
+# AI_HEADER: MODULE_CONTRACTS_TODAY
 # module: M-CONTRACTS.today
 # canon: docs/GRACE_CANON.md §6; docs/05_API_contracts_и_TodayPayload.md
 # wave: W-1.1B
@@ -19,7 +19,7 @@
 # emits: nothing.
 # consumes: schemas._base.CamelModel, schemas.access (none directly today —
 #           ContentAccessState is local because it differs from AccessSummary).
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-CONTRACTS.today
 
 # START_MODULE_MAP: M-CONTRACTS.today
 # - DayStatus: Literal alias.
@@ -30,7 +30,7 @@
 # - MicrocopyItem, YesterdayEcho: ancillary blocks.
 # - DayQuality, TodayMeta, TodayAction, ReadingBody, WhyThisHappens: helpers.
 # - TodayPayload: top-level response.
-# END_MODULE_MAP
+# END_MODULE_MAP: M-CONTRACTS.today
 
 # START_BLOCK: TODAY_PRIMITIVES
 from __future__ import annotations

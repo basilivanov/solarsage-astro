@@ -6,6 +6,33 @@
 # WAVE: W-2.7
 # ############################################################################
 
+# START_MODULE_CONTRACT: M-API-METRICS
+# purpose: Return production metrics — user counts, onboarding rates.
+# owns:
+#   - apps/api/app/api/metrics.py
+# inputs:
+#   - db session
+# outputs:
+#   - dict with user and onboarding metrics
+# dependencies:
+#   - M-DB-SESSION
+# side_effects:
+#   - read-only; no mutations
+# invariants:
+#   - returns current UTC timestamp
+# failure_policy:
+#   - DB errors propagate as 500
+# non_goals:
+#   - no business-specific metrics
+# END_MODULE_CONTRACT: M-API-METRICS
+
+# START_MODULE_MAP: M-API-METRICS
+# public_entrypoints:
+#   - get_metrics
+# semantic_blocks:
+#   - METRICS_PAYLOAD: GET /api/metrics handler
+# END_MODULE_MAP: M-API-METRICS
+
 from datetime import UTC, datetime, timedelta
 from typing import Any
 

@@ -45,7 +45,7 @@
 #   - ACCESS_STUB: stub access state (full)
 # owned_tests:
 #   - apps/api/tests/test_calendar_endpoints.py (W-1.4)
-# END_MODULE_MAP
+# END_MODULE_MAP: M-CALENDAR-SERVICE
 
 from __future__ import annotations
 

@@ -28,6 +28,17 @@
 #   - no business logic
 # END_MODULE_CONTRACT: M-CHAT-SCHEMA
 
+# START_MODULE_MAP: M-CHAT-SCHEMA
+# public_entrypoints:
+#   - MessageCreate
+#   - MessageResponse
+#   - ThreadResponse
+# semantic_blocks:
+#   - MESSAGE_CREATE: create message schema
+#   - MESSAGE_RESPONSE: message response schema
+#   - THREAD_RESPONSE: thread response schema
+# END_MODULE_MAP: M-CHAT-SCHEMA
+
 from pydantic import BaseModel
 
 

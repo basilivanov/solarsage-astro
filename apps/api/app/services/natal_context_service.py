@@ -1,4 +1,4 @@
-# AI_HEADER
+# AI_HEADER: MODULE_NATAL_CONTEXT_SERVICE
 # module: M-NATAL-CONTEXT-SERVICE
 # wave: W-NATAL-FULL
 # purpose: Persistent natal context cache — single source of truth for all natal facts.
@@ -37,6 +37,17 @@
 #   - No report generation.
 #   - No LLM integration.
 # END_MODULE_CONTRACT: M-NATAL-CONTEXT-SERVICE
+
+# START_MODULE_MAP: M-NATAL-CONTEXT-SERVICE
+# public_entrypoints:
+#   - get_or_build_natal_context
+#   - build_natal_context
+#   - invalidate_for_user
+#   - compute_profile_hash
+# semantic_blocks:
+#   - NATAL_CONTEXT_BUILD: build and cache natal context
+#   - NATAL_CONTEXT_INVALIDATE: invalidate on profile change
+# END_MODULE_MAP: M-NATAL-CONTEXT-SERVICE
 
 from __future__ import annotations
 

@@ -1,9 +1,35 @@
 # ############################################################################
-# AI_HEADER
-# module: M-YESTERDAY-SERVICE
-# wave: W-8.2
-# purpose: Yesterday closure service
+# AI_HEADER: MODULE_YESTERDAY_SERVICE
+# ROLE: Yesterday closure service — build yesterday's signals for delta comparison.
+# DEPENDENCIES: sqlalchemy, app.services.normalization_service, app.clients.solarsage_client
+# GRACE_ANCHORS: [BUILD_CLOSURE]
+# WAVE: W-PHASE-1
 # ############################################################################
+
+# START_MODULE_CONTRACT: M-YESTERDAY-SERVICE
+# purpose: Build yesterday's normalized signals for day-over-day delta computation.
+# owns:
+#   - apps/api/app/services/yesterday_service.py
+# inputs:
+#   - user profile with birth data
+#   - target_date: date
+# outputs:
+#   - list[AstroSignal] or None
+# dependencies:
+#   - M-NORMALIZATION-SERVICE
+#   - M-SOLARSAGE-CLIENT
+# side_effects:
+#   - calls sidecar for yesterday's transits
+# failure_policy:
+#   - returns None if sidecar unavailable
+# END_MODULE_CONTRACT: M-YESTERDAY-SERVICE
+
+# START_MODULE_MAP: M-YESTERDAY-SERVICE
+# public_entrypoints:
+#   - build_closure
+# semantic_blocks:
+#   - BUILD_CLOSURE: compute yesterday's normalized signals
+# END_MODULE_MAP: M-YESTERDAY-SERVICE
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date

@@ -1,5 +1,4 @@
-# AI_HEADER
-# module: M-ACCESS
+# AI_HEADER: MODULE_ACCESS_SERVICE
 # canon: docs/GRACE_CANON.md §6
 # wave: W-1.3 (stub), W-ACCESS.1 (real)
 # purpose: Access control service for content gating.
@@ -28,7 +27,7 @@
 #   - never raises; returns preview state if access denied.
 # non_goals:
 #   - no payment processing (lives in M-PAYMENT)
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-ACCESS.service
 
 # START_MODULE_MAP: M-ACCESS.service
 # public_entrypoints:
@@ -40,7 +39,7 @@
 #   - ACCESS_GRANT: grant_referral_bonus, grant_subscription
 # owned_tests:
 #   - apps/api/tests/test_access_service.py (W-ACCESS.1)
-# END_MODULE_MAP
+# END_MODULE_MAP: M-ACCESS.service
 
 from __future__ import annotations
 

@@ -6,6 +6,34 @@
 # WAVE: W-2.7
 # ############################################################################
 
+# START_MODULE_CONTRACT: M-API-HEALTH-EXT
+# purpose: Extended health check endpoint testing DB, LLM, and GeoNames.
+# owns:
+#   - apps/api/app/api/health_extended.py
+# inputs:
+#   - db session
+# outputs:
+#   - dict with api/database/llm/geonames status
+# dependencies:
+#   - M-DB-SESSION
+#   - M-CONFIG
+# side_effects:
+#   - makes HTTP requests to OpenRouter and GeoNames
+# invariants:
+#   - non-critical checks return "not configured" instead of failing
+# failure_policy:
+#   - per-check errors are scoped; overall status reflects critical checks only
+# non_goals:
+#   - no detailed dependency debugging
+# END_MODULE_CONTRACT: M-API-HEALTH-EXT
+
+# START_MODULE_MAP: M-API-HEALTH-EXT
+# public_entrypoints:
+#   - health_check_extended
+# semantic_blocks:
+#   - HEALTH_CHECKS: per-dependency status probes
+# END_MODULE_MAP: M-API-HEALTH-EXT
+
 from typing import Any
 
 import httpx

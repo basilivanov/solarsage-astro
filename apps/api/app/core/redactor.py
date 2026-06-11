@@ -29,6 +29,18 @@
 #   - unknown types are passed through unchanged
 # END_MODULE_CONTRACT: M-OBSERVABILITY-REDACTOR
 
+# START_MODULE_MAP: M-OBSERVABILITY-REDACTOR
+# public_entrypoints:
+#   - redact_dict
+#   - _redact_string
+# semantic_blocks:
+#   - PII_KEYS: PII key set
+#   - ALLOW_KEYS: allow list
+#   - REDACT_PATTERNS: value pattern redactors
+#   - REDACT_DICT: recursive dict redaction
+#   - REDACT_STRING: value-based string redaction
+# END_MODULE_MAP: M-OBSERVABILITY-REDACTOR
+
 from __future__ import annotations
 
 import re

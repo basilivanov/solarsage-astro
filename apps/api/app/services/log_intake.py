@@ -30,6 +30,13 @@
 #   - redaction error -> rejected count incremented
 # END_MODULE_CONTRACT: M-LOG-INTAKE-SERVICE
 
+# START_MODULE_MAP: M-LOG-INTAKE-SERVICE
+# public_entrypoints:
+#   - LogIntakeService.process_batch
+# semantic_blocks:
+#   - PROCESS_BATCH: process frontend log envelopes
+# END_MODULE_MAP: M-LOG-INTAKE-SERVICE
+
 from __future__ import annotations
 
 import uuid

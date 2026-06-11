@@ -1,9 +1,46 @@
 # ############################################################################
-# AI_HEADER
-# module: M-API-CHECKIN
-# wave: W-8.1, W-8.3
-# purpose: Evening checkin endpoints
 # ############################################################################
+# AI_HEADER: MODULE_API_CHECKIN
+# ROLE: Evening checkin endpoints — create, get, send reminder.
+# DEPENDENCIES: fastapi, sqlalchemy, app.services.checkin_service
+# GRACE_ANCHORS: [CREATE_CHECKIN_ENDPOINT, GET_CHECKIN_ENDPOINT, SEND_REMINDER_ENDPOINT]
+# WAVE: W-8.1, W-8.3
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-API-CHECKIN
+# purpose: Create, get, and send reminders for evening checkins.
+# owns:
+#   - apps/api/app/api/checkin.py
+# inputs:
+#   - POST /api/checkin: checkin data
+#   - GET /api/checkin/{target_date}: date
+#   - POST /api/checkin/send-reminder: none
+# outputs:
+#   - CheckinResponse or {"checkin": None} or {"sent": bool}
+# dependencies:
+#   - M-CHECKIN-SERVICE
+#   - M-DB-SESSION
+#   - M-AUTH-DEPENDENCIES
+# side_effects:
+#   - creates/updates checkin rows
+# invariants:
+#   - requires authentication
+# failure_policy:
+#   - 401 if not authenticated
+# non_goals:
+#   - no push notification integration (MVP stub)
+# END_MODULE_CONTRACT: M-API-CHECKIN
+
+# START_MODULE_MAP: M-API-CHECKIN
+# public_entrypoints:
+#   - create_checkin
+#   - get_checkin
+#   - send_checkin_reminder
+# semantic_blocks:
+#   - CREATE_CHECKIN_ENDPOINT: POST /api/checkin
+#   - GET_CHECKIN_ENDPOINT: GET /api/checkin/{target_date}
+#   - SEND_REMINDER_ENDPOINT: POST /api/checkin/send-reminder
+# END_MODULE_MAP: M-API-CHECKIN
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession

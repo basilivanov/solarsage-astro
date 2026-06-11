@@ -1,3 +1,38 @@
+# ############################################################################
+# AI_HEADER: MODULE_API_DEBUG
+# ROLE: Debug information endpoint for troubleshooting
+# DEPENDENCIES: fastapi, sqlalchemy, app.core.config
+# GRACE_ANCHORS: [DEBUG_INFO_ENDPOINT]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-API-DEBUG
+# purpose: Expose debug info for troubleshooting auth/session state.
+# owns:
+#   - apps/api/app/api/debug.py
+# inputs:
+#   - request headers, cookies
+# outputs:
+#   - debug_info dict
+# dependencies:
+#   - M-CONFIG
+#   - M-DB-SESSION (optional)
+# side_effects:
+#   - none (read-only)
+# invariants:
+#   - works with or without auth
+# failure_policy:
+#   - returns error key in response on exception; never raises
+# non_goals:
+#   - never enabled in production
+# END_MODULE_CONTRACT: M-API-DEBUG
+
+# START_MODULE_MAP: M-API-DEBUG
+# public_entrypoints:
+#   - debug_info
+# semantic_blocks:
+#   - DEBUG_INFO_ENDPOINT: GET /api/debug
+# END_MODULE_MAP: M-API-DEBUG
+
 from fastapi import APIRouter, Request, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_session

@@ -27,6 +27,13 @@
 #   - no auth for MVP (admin endpoint, simplified)
 # END_MODULE_CONTRACT: M-API-MICROCOPY
 
+# START_MODULE_MAP: M-API-MICROCOPY
+# public_entrypoints:
+#   - get_microcopy_misses
+# semantic_blocks:
+#   - MICROCOPY_MISSES_ENDPOINT: GET /api/admin/microcopy/misses
+# END_MODULE_MAP: M-API-MICROCOPY
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

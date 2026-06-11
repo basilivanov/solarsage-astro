@@ -1,7 +1,37 @@
-# AI_HEADER
-# module: M-DAY-DELTA-SERVICE
-# wave: W-PHASE-1
-# purpose: Compare yesterday vs today signals, compute delta_kind and phase
+# ############################################################################
+# AI_HEADER: MODULE_DAY_DELTA_SERVICE
+# ROLE: Compare yesterday vs today signals, compute delta_kind and phase.
+# DEPENDENCIES: app.schemas.normalization
+# GRACE_ANCHORS: [COMPUTE_DELTAS]
+# WAVE: W-PHASE-1
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-DAY-DELTA-SERVICE
+# purpose: Compute deltas between yesterday's and today's signals.
+# owns:
+#   - apps/api/app/services/day_delta_service.py
+# inputs:
+#   - yesterday_signals: list[AstroSignal]
+#   - today_signals: list[AstroSignal]
+# outputs:
+#   - list[AstroSignal] annotated with delta_kind and phase
+# dependencies:
+#   - M-CONTRACTS.normalization (AstroSignal)
+# side_effects:
+#   - none (pure computation)
+# invariants:
+#   - signals matched by stable key (type, planet, target_planet, house, sign)
+#   - peak_today detected when strength >= yesterday's 0.95
+# failure_policy:
+#   - empty input returns empty output
+# END_MODULE_CONTRACT: M-DAY-DELTA-SERVICE
+
+# START_MODULE_MAP: M-DAY-DELTA-SERVICE
+# public_entrypoints:
+#   - DayDeltaService.compute_deltas
+# semantic_blocks:
+#   - COMPUTE_DELTAS: compute day-over-day signal deltas
+# END_MODULE_MAP: M-DAY-DELTA-SERVICE
 
 from app.schemas.normalization import AstroSignal
 

@@ -1,7 +1,34 @@
-# AI_HEADER
-# module: M-SEMANTIC-SCHEMA
-# wave: W-4.3
-# purpose: Semantic layer schemas
+# ############################################################################
+# AI_HEADER: MODULE_SEMANTIC_SCHEMA
+# ROLE: Semantic layer schemas
+# DEPENDENCIES: pydantic, typing
+# GRACE_ANCHORS: [SEMANTIC_LAYER, SPHERE_THEME]
+# WAVE: W-4.3
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-SEMANTIC-SCHEMA
+# purpose: Define SemanticLayer and SphereTheme Pydantic schemas.
+# owns:
+#   - apps/api/app/schemas/semantic.py
+# inputs:
+#   - none (type definitions)
+# outputs:
+#   - SemanticLayer, SphereTheme
+# dependencies:
+#   - pydantic.BaseModel
+#   - typing
+# side_effects:
+#   - none (type-only module)
+# END_MODULE_CONTRACT: M-SEMANTIC-SCHEMA
+
+# START_MODULE_MAP: M-SEMANTIC-SCHEMA
+# public_entrypoints:
+#   - SemanticLayer
+#   - SphereTheme
+# semantic_blocks:
+#   - SEMANTIC_LAYER: semantic layer data model
+#   - SPHERE_THEME: sphere theme data model
+# END_MODULE_MAP: M-SEMANTIC-SCHEMA
 
 from pydantic import BaseModel
 

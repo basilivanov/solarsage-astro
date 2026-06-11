@@ -5,6 +5,37 @@
 # GRACE_ANCHORS: [GEONAMES_FETCH, GEONAMES_PARSE]
 # ############################################################################
 
+# START_MODULE_CONTRACT: M-GEONAMES
+# purpose: GeoNames API integration for location autocomplete and timezone lookup.
+# owns:
+#   - apps/api/app/services/geonames.py
+# inputs:
+#   - query: str (location name)
+#   - lat, lon: float (coordinates)
+# outputs:
+#   - List[dict] of location suggestions
+#   - dict with timezone data
+# dependencies:
+#   - standard library: json, urllib, os
+# side_effects:
+#   - HTTP requests to GeoNames API
+# invariants:
+#   - GEONAMES_USERNAME must be set in environment
+#   - retries with compact query if no results
+# failure_policy:
+#   - GeoNamesError on API failure
+#   - returns empty list if no results
+# END_MODULE_CONTRACT: M-GEONAMES
+
+# START_MODULE_MAP: M-GEONAMES
+# public_entrypoints:
+#   - search_geonames
+#   - get_timezone
+# semantic_blocks:
+#   - GEONAMES_FETCH: HTTP requests to GeoNames
+#   - GEONAMES_PARSE: parse GeoNames response JSON
+# END_MODULE_MAP: M-GEONAMES
+
 import json
 import os
 import urllib.parse

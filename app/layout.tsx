@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_APP_LAYOUT
+// ROLE: Next.js page
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-UNMAPPED
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Next.js page — app/layout.tsx
+// owns:
+//   - app/layout.tsx
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 import type { Metadata, Viewport } from "next"
 import { Inter, Instrument_Serif, Lora } from "next/font/google"
 import Script from "next/script"

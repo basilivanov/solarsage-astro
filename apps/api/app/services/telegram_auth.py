@@ -151,6 +151,7 @@ def verify_init_data(raw: str) -> TelegramUser:
     # inputs: raw (str) — value of the initData payload, untouched.
     # returns: TelegramUser with at least `id` populated.
     # side_effects: none.
+    # emitted_logs: none (pure crypto, no side effects)
     # error_behavior: raises TelegramAuthError on any defect; never returns None.
     # END_FUNCTION_CONTRACT: M-AUTH-TG.service.verify_init_data
 

@@ -1,3 +1,9 @@
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 // ############################################################################
 // AI_HEADER: MODULE_API_FETCH
 // ROLE: Typed fetch wrapper with correlation ID propagation and logging.

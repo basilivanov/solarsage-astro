@@ -1,9 +1,37 @@
 # ############################################################################
-# AI_HEADER
-# module: M-CHECKIN-SERVICE
-# wave: W-8.1
-# purpose: Evening checkin service
+# AI_HEADER: MODULE_CHECKIN_SERVICE
+# ROLE: Evening checkin service — create and get checkins.
+# DEPENDENCIES: sqlalchemy, app.db.models
+# GRACE_ANCHORS: [CREATE_CHECKIN, GET_CHECKIN]
+# WAVE: W-8.1
 # ############################################################################
+
+# START_MODULE_CONTRACT: M-CHECKIN-SERVICE
+# purpose: Create and get evening checkins.
+# owns:
+#   - apps/api/app/services/checkin_service.py
+# inputs:
+#   - user_id, target_date, mood, notes
+# outputs:
+#   - EveningCheckin or None
+# dependencies:
+#   - M-DB-MODELS (EveningCheckin)
+# side_effects:
+#   - creates/updates rows in evening_checkins table
+# invariants:
+#   - one checkin per user per date (upsert)
+# failure_policy:
+#   - returns None if checkin not found
+# END_MODULE_CONTRACT: M-CHECKIN-SERVICE
+
+# START_MODULE_MAP: M-CHECKIN-SERVICE
+# public_entrypoints:
+#   - create_checkin
+#   - get_checkin
+# semantic_blocks:
+#   - CREATE_CHECKIN: create or update checkin (upsert)
+#   - GET_CHECKIN: get checkin for specific date
+# END_MODULE_MAP: M-CHECKIN-SERVICE
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
