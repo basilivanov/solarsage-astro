@@ -1,8 +1,8 @@
 # GRACE canon adoption policy for Solar Sage
-# Gate mode controls how GRACE linters are used during acceptance:
-#   - changed-files: lint only coder-touched files (safe default)
-#   - strict:       full repo lint (orchestrator-level, not recommended for product)
-#   - disabled:     skip GRACE lint entirely (use only for non-migration tasks)
+#
+# Slices describe ownership/write-scope for GRACE. They do not imply runtime
+# folder moves. Runtime structure changes require explicit business/product scope.
+
 gate_mode: changed-files
 
 # Included path globs (empty = all non-excluded paths)
@@ -23,9 +23,33 @@ exclude:
   - "package-lock.json"
   - "pnpm-lock.yaml"
 
-# Staged adoption — paths that should adopt GRACE canon first
-# These directories will have their files checked even without explicit coder changes.
+# Staged adoption — these are the first slices to bring under full GRACE canon.
+# Do not mass-apply markers across unrelated slices in one packet.
 adopt_first:
+  # P0: business-feature critical frontend surface
   - "components/today/"
+  - "components/calendar/"
   - "app/(grace)/today/"
-  - "__tests__/components/"
+  - "lib/today.ts"
+  - "lib/calendar.ts"
+  - "components/app-shell.tsx"
+  - "components/today/tab-bar.tsx"
+
+  # P0: backend API/service ownership
+  - "apps/api/app/api/"
+  - "apps/api/app/services/"
+  - "apps/api/app/core/"
+
+  # P0: contracts
+  - "apps/api/app/schemas/"
+  - "scripts/contracts/"
+  - "packages/contracts/"
+
+  # P1: logging spine and audit detector
+  - "lib/grace/"
+  - "scripts/grace/coverage_audit.py"
+
+# Slice registry source of truth.
+slice_registry: "grace/knowledge-graph.xml"
+coverage_audit: "docs/work/solarsage_grace_slice_coverage.json"
+coverage_check: "python3 scripts/grace/coverage_audit.py --check"
