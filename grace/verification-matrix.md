@@ -1,12 +1,33 @@
 # Verification Matrix
 
-GRACE §13.E. Current-state verification matrix for SolarSage Astro after profile/access/day/calendar/natal/horary and test-stack updates.
+GRACE §13.E. Current-state verification matrix for Solar Sage after legacy removal and GRACE slice coverage audit.
 
-Every row binds a use case to:
+Every row binds a use case or adoption slice to:
 
-- **Modules traversed** — runtime modules on happy path.
+- **Modules traversed** — runtime or GRACE modules on the happy path.
 - **Gates** — measurable acceptance criteria.
 - **Scenarios** — concrete proofs/tests/evidence expected before acceptance.
+
+---
+
+## GRACE slice adoption gates
+
+These gates apply before broad autonomous business-feature work.
+
+| Slice | Modules | Gates | Scenarios |
+|---|---|---|---|
+| `SLICE-SHELL-NAVIGATION` | `M-WEB-SHELL` | App shell and TabBar are mapped to Shell/Navigation; title/aria-current/accessibility behavior remains stable. | S1: `python3 scripts/grace/coverage_audit.py --check` sentinel keeps `components/today/tab-bar.tsx -> SLICE-SHELL-NAVIGATION`. S2: TabBar tests remain green after nav edits. |
+| `SLICE-TODAY-CALENDAR` | `M-WEB-TODAY-CALENDAR` | Today/Calendar files touched by a packet have AI_HEADER, MODULE_CONTRACT, MODULE_MAP, blocks where useful, and nearby tests. | S1: coverage audit JSON shows changed files in this slice. S2: Today/Calendar unit/component tests pass. S3: frontend does not calculate astrology/status logic. |
+| `SLICE-FRONTEND-API-FACADES` | `M-WEB-API` | API facades use generated contracts/barrel where applicable and keep frontend error handling thin. | S1: API facade changes have local tests or caller evidence. S2: no hand-authored server payload drift. |
+| `SLICE-CONTRACTS` | `M-CONTRACTS` | Pydantic remains source of truth; generated TS contracts are deterministic. | S1: schema changes regenerate contracts. S2: generated files are not manually edited. S3: frontend imports through `packages/contracts` for new payload types. |
+| `SLICE-BACKEND-API-ROUTERS` | `M-BACKEND-API` | Routers stay thin and delegate product decisions to services. | S1: endpoint tests cover changed routes. S2: no long business branch added to router. |
+| `SLICE-BACKEND-SERVICES` | `M-BACKEND-SERVICES` | Service logic has contracts, visible side effects, declared emitted logs where logging exists, and tests. | S1: touched service has module/function contracts. S2: service tests or endpoint integration tests pass. S3: side effects are named. |
+| `SLICE-DB-MODELS-MIGRATIONS` | `M-DB` | DB changes are explicit and isolated; migrations are not touched by unrelated UI/API packets. | S1: model/migration changes require DB slice in packet scope. S2: migration tests/manual evidence included when schema changes. |
+| `SLICE-HORARY-READINGS` | `M-WEB-HORARY-READINGS` | Readings/horary UI changes preserve block rendering and graceful unknown-block behavior. | S1: block renderer tests pass. S2: answer/progress/history UI has component or manual evidence. |
+| `SLICE-PROFILE-ONBOARDING` | `M-WEB-PROFILE-ONBOARDING` | Profile/location/onboarding flows preserve city/timezone/location contract behavior. | S1: profile/onboarding tests pass. S2: changed city/location behavior has explicit evidence. |
+| `SLICE-LOGGING-SPINE` | `M-LOGGING-SPINE` | Logging claims are reconciled with actual code and audit detection. | S1: coverage audit detects intended canonical logging patterns. S2: files with logs declare emitted logs in MODULE_CONTRACT. S3: private fields are redacted or not logged. |
+| `SLICE-GUARDRAILS-TOOLING` | `M-GUARDRAILS` | Coverage audit, GRACE linters, docs checks, and orchestrator checks remain deterministic. | S1: `coverage_audit.py --check` passes. S2: sentinel mappings pass. S3: report and JSON are generated from one data object. |
+| `SLICE-ORCHESTRATOR-ADAPTER` | `M-GRACE-PROJECT-ADAPTER` | Project adapter, roles, schema, verification profiles remain machine-readable. | S1: `pnpm guardrails:orchestrator` or equivalent check passes. S2: packet schema and role docs parse. |
 
 ---
 
@@ -14,7 +35,7 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-AUTH-TG → users → session cookie | Telegram initData HMAC validates; tampered/expired payloads rejected; user upsert is idempotent. | S1: valid initData → 200/session. S2: tampered hash → 401/no DB write. S3: stale auth_date → rejected. |
+| M-BACKEND-API → M-BACKEND-SERVICES → users/session | WebApp init data validates; invalid payloads rejected; user upsert is idempotent. | S1: valid init data → 200/session. S2: tampered payload → rejected/no DB write. S3: stale auth_date → rejected. |
 
 ---
 
@@ -22,7 +43,7 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-ONBOARDING → M-WEB-API → M-PROFILE → user_profiles | Required birth/current location fields accepted; city lat/lon/tz resolved; profile can be read after create. | S1: complete onboarding → profile row. S2: missing required field → 422. S3: birthday location omitted → accepted fallback/contract behavior. S4 E2E: onboarding flow completes and lands on `/day/today`. |
+| M-WEB-PROFILE-ONBOARDING → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES → M-DB | Required birth/current location fields accepted; city lat/lon/tz resolved; profile can be read after create. | S1: complete onboarding → profile row. S2: missing required field → 422. S3: birthday location omitted → accepted fallback/contract behavior. S4: onboarding flow lands on Today. |
 
 ---
 
@@ -30,23 +51,7 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-PROFILE → M-PROFILE → cache invalidation | Birth edits invalidate natal and downstream caches; current location edits invalidate period/daily/semantic/today, but keep natal where valid. | S1: edit birth_time → natal/period/daily/semantic/today cache rows cleared. S2: edit current location → downstream rows cleared, natal retained. |
-
----
-
-## UC-ACCESS-CHECK · Access state
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-ACCESS → access_ledger | Consumption order honored; access windows and preview states correct. | S1: referral_bonus 14d → days 0..13 full, day 14 preview. S2: referral + subscription → bonus consumed before subscription. S3: no entries → preview/expired reason. |
-
----
-
-## UC-REFERRAL · Referral reward
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-AUTH-TG → M-REFERRAL → referrals + access_ledger | Referral creates reward rows once; repeated invitee does not double grant. | S1: invitee signs up by referral link → inviter and invitee access reward. S2: same invitee repeats → no duplicate rows. |
+| M-WEB-PROFILE-ONBOARDING → M-WEB-API → M-BACKEND-SERVICES → M-DB | Birth edits invalidate natal/downstream caches; current location edits invalidate period/daily/semantic/today where relevant. | S1: edit birth_time → downstream invalidation evidence. S2: edit current location → downstream rows cleared, natal retained where valid. |
 
 ---
 
@@ -54,7 +59,7 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-DAY → M-WEB-API → M-DAY-SERVICE → M-PROFILE/M-ACCESS/M-CALC-PIPELINE/M-SEMANTIC/M-LLM as enabled | TodayPayload schema valid; access honored; cache behavior correct; frontend renders without calculating astrology. | S1: valid auth/profile/date → TodayPayload. S2: not onboarded → 422. S3: no access → preview/locked payload. S4: invalid date → error. S5: second call shows cache hit when cache layer enabled. |
+| M-WEB-TODAY-CALENDAR → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES → M-CONTRACTS | TodayPayload schema valid; access honored; cache behavior correct; frontend renders without calculating astrology. | S1: valid auth/profile/date → TodayPayload. S2: not onboarded → contract error. S3: no access → preview/locked payload. S4: invalid date → error. S5: cache hit where cache layer enabled. |
 
 ---
 
@@ -62,7 +67,7 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-DAY → router → M-WEB-API | URL/date state changes; week strip active marker and payload update; scroll behavior sane. | E2E: tap/swipe next day → URL and rendered day update. |
+| M-WEB-SHELL → M-WEB-TODAY-CALENDAR → router → M-WEB-API | URL/date state changes; active marker and payload update; scroll behavior sane. | S1: tab/day navigation preserves title/aria-current. S2: next day changes URL and rendered payload. |
 
 ---
 
@@ -70,15 +75,7 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-CALENDAR → M-CALENDAR | Allowed range enforced; day click navigates; calendar payload validates. | S1: valid month → 3-month grid. S2: out-of-range month → error. S3 E2E: tap date → `/day/:date`. |
-
----
-
-## UC-WEEK-STRIP · 7-day strip
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-DAY-SERVICE → C-TODAY-PAYLOAD.weekStrip → M-WEB-DAY | Status values come from backend; frontend only renders. | S1: weekStrip statuses are from allowed set. S2: frontend does not compute dayStatus. |
+| M-WEB-TODAY-CALENDAR → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES | Allowed range enforced; day click navigates; calendar payload validates. | S1: valid month → grid. S2: out-of-range month → error. S3: tap date → Today/date route. |
 
 ---
 
@@ -86,15 +83,15 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-READINGS → M-NATAL-READING → C-NATAL-PAYLOAD | Versioned blocks render; unknown block types gracefully skipped. | S1: overview route renders. S2: section route renders. S3: unknown block.type does not crash. |
+| M-WEB-HORARY-READINGS → M-CONTRACTS | Versioned blocks render; unknown block types gracefully skipped. | S1: overview route renders. S2: section route renders. S3: unknown block type does not crash. |
 
 ---
 
-## UC-HORARY-QUOTA · Horary balance and credit ledger
+## UC-HORARY-QUOTA · Horary balance and ledger
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-HORARY → M-HORARY-API → M-HORARY-CREDIT-SERVICE → horary_credits/horary_credit_spends | New ledger model only; no HoraryQuota/questions_used/questions_limit/left/nextInDays as primary balance. Weekly-free does not accumulate; paid persists; spend order deterministic. | S1: active access creates current subscription_weekly_free lazily only for current access week. S2: unused weekly-free expires at access_week_end. S3: paid credits persist after weekly expiry. S4: spend order weekly-free → expiring referral/gift/adjustment → paid. S5: no spendable credits → 402 NO_HORARY_CREDITS. |
+| M-WEB-HORARY-READINGS → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES → M-DB | Ledger model only; legacy quota counters are not revived; spend order deterministic. | S1: active access creates current week free unit lazily. S2: paid units persist. S3: spend order deterministic. S4: no spendable units → product error. |
 
 ---
 
@@ -102,7 +99,7 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-WEB-HORARY → M-HORARY-API → M-HORARY-SERVICE → M-HORARY-CREDIT-SERVICE → M-HORARY-ENGINE/M-LLM | Requires spendable credit and usable question place. Idempotency prevents double spend/generation. Request hash includes text/category/time/timezone/place/name. Generation starts only after commit. | S1: valid paid credit + questionLat/questionLon → 201, one spend row. S2: same idempotencyKey + same full payload → same question, no second spend, no second generator. S3: same key + changed clientLocalTime/timezone/place → 409. S4: no place coordinates → frontend submit disabled. |
+| M-WEB-HORARY-READINGS → M-WEB-API → M-BACKEND-SERVICES → M-SCORING-SEMANTIC-LLM | Requires usable question place; idempotency prevents double spend/generation; generation starts after commit. | S1: valid question/place → one question and one spend. S2: same key and same payload → existing question. S3: same key and changed time/place → conflict. S4: no place coordinates → submit disabled. |
 
 ---
 
@@ -110,23 +107,7 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-HORARY-SERVICE → M-HORARY-ENGINE → M-LLM → horary_answers → M-WEB-HORARY | Backend owns verdict/context; LLM narrates only. Late/stale generator cannot overwrite failed/refunded/answered question. Answer shows question location name when available. | S1: processing → answered with verdict/confidence/blocks. S2: generation failure refunds paid or restores weekly-free only if access-week active. S3: late generator after failed/refunded skips answer save. S4: answer UI displays place of calculation. |
-
----
-
-## UC-HORARY-UX-LOCATION · Horary time/place/category UX
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-WEB-HORARY → M-WEB-PROFILE → CityPicker/cities/geo helpers | Form shows time and place; default place may come from profile current location; user can change place; selected city timezone syncs; submit disabled without coordinates; premium progress state used. | S1: profile current city/lat/lon/tz → form shows place and can submit. S2: no coordinates → red warning and disabled CTA. S3: changing city updates timezone when city.timezone exists. S4: category chip switches love → career. S5: progress shows orbit/steps and long-running copy. |
-
----
-
-## UC-EVENING-CHECKIN · Checkin and closure
-
-| Modules | Gates | Scenarios |
-|---|---|---|
-| M-CHECKIN → evening_checkins → Today composer | Upsert by user/date; private note not leaked to logs/LLM by default; yesterdayEcho appears only when applicable. | S1: POST twice → one row updated. S2: GET today after yesterday checkin → echo present. S3: note absent from logs/prompt unless note-aware prompt_version. |
+| M-BACKEND-SERVICES → M-SCORING-SEMANTIC-LLM → M-WEB-HORARY-READINGS | Backend owns verdict/context; narration is strict and validated; late/stale generator cannot overwrite final state. | S1: processing → answered. S2: generation failure handles spend restoration/refund policy. S3: late generator skip. S4: answer UI displays place when available. |
 
 ---
 
@@ -134,15 +115,15 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-SOLARSAGE-REFERENCE-COLLECTOR → M-SIDECAR → M-SOLARSAGE-CLIENT | Sidecar outputs match golden fixtures within declared tolerances; high-latitude fallback documented. | S1: golden Vasiliy fixture parity. S2: normal-latitude fixture parity. S3: high-latitude house-system fallback behavior stable. |
+| M-SIDECAR-CALCULATION → M-BACKEND-SERVICES | Sidecar outputs match golden fixtures within declared tolerance; fallback behavior documented. | S1: golden fixture parity. S2: normal-latitude fixture parity. S3: high-latitude fallback stable. |
 
 ---
 
-## UC-SCORING-SEMANTIC-LLM · Real interpretation pipeline
+## UC-SCORING-SEMANTIC-LLM · Interpretation pipeline
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-SCORING-CANON → M-ACTIVATION-LAYER → M-SCORING → M-SEMANTIC → M-LLM | Canon YAML validates; scoring refuses hidden constants; prompt receives curated context only. | S1: changing canon YAML invalidates downstream caches. S2: convergence bonus requires multiple independent evidence sources. S3: prompt payload has semantic evidence, not raw ephemeris/internal scores. |
+| M-SCORING-SEMANTIC-LLM → M-CONTRACTS | Canon validates; prompt receives curated context only; frontend receives payload, not internals. | S1: canon change invalidates downstream. S2: prompt payload has semantic evidence only. S3: LLM output validates strict schema. |
 
 ---
 
@@ -150,84 +131,48 @@ Every row binds a use case to:
 
 | Modules | Gates | Scenarios |
 |---|---|---|
-| M-GRACE-PROJECT-ADAPTER → M-GRACE-PACKET-SCHEMA → M-GRACE-ROLES → M-GRACE-VERIFICATION-PROFILES | Project adapter and packet schema are machine-readable; roles have parseable final markers; verification profiles map to portable commands. | S1: `pnpm guardrails:orchestrator` validates. S2: packet missing Frozen/Out Of Scope rejected for new-packet mode. S3: reviewer output without final JSON marker fails parse. |
+| M-GRACE-PROJECT-ADAPTER → M-GUARDRAILS → M-TESTS | Project adapter and packet schema are machine-readable; roles parse; coverage audit remains stable. | S1: `python3 scripts/grace/coverage_audit.py --check`. S2: orchestrator guardrails pass or known pre-existing failures are isolated. S3: packet missing scope/frozen-scope rejected where required. |
 
 ---
 
-# Cross-cutting verification gates
+# Cross-cutting gates
 
 ## Contract drift
 
-- Run contracts generation/check after any Pydantic schema change.
-- `packages/contracts/_generated.ts` must be byte-stable after regeneration.
-- New frontend payload imports should use `packages/contracts` barrel unless a local runtime zod schema is intentionally needed.
+- Any Pydantic schema change must regenerate/check TypeScript contracts.
+- `packages/contracts/_generated.ts` must not be hand-edited.
+- New frontend payload imports should use `packages/contracts` unless a local runtime schema is explicitly justified.
 
 ## Layer isolation
 
 - Frontend must not import backend modules.
 - Backend must not import frontend mocks.
-- Frontend must not calculate astrology, dayStatus, scores, horary verdicts, or access/credit spend logic.
-- LLM prompt builder must not receive raw SolarSage or internal score fields.
+- Frontend must not calculate astrology, dayStatus, scores, verdicts, or access/spend logic.
+- LLM prompt builder must not receive raw sidecar output or internal score fields unless explicitly approved by the relevant slice.
 
-## Horary anti-regression grep gate
+## Logging and privacy
 
-These must not appear as live primary horary balance logic:
-
-```bash
-grep -R "HoraryQuota\|questions_used\|questions_limit\|left\|nextInDays" apps/api lib components packages/contracts \
-  --exclude-dir=.venv --exclude-dir=__pycache__ --exclude-dir=node_modules
-```
-
-Allowed hits: historical docs/work review files only.
-
-## Privacy
-
-- Telegram IDs, auth tokens, birth data, location data, and private notes must be redacted from structured logs according to observability canon.
-- Evening checkin free-text note is not sent to LLM unless prompt_version is explicitly note-aware.
+- Logging assumptions must be validated by `SLICE-LOGGING-SPINE` before claiming full coverage.
+- Files with logging should declare emitted logs in MODULE_CONTRACT.
+- Sensitive profile/location/free-text fields are not logged or sent to LLM by default.
 
 ## Performance gates
 
-| Endpoint / flow | Target |
+| Flow | Target |
 |---|---|
-| `/api/day/:date` cached | p95 &lt; 200ms when cached layer enabled |
-| `/api/day/:date` cold full pipeline | p95 &lt; 20s when real pipeline enabled |
-| `/api/calendar` | p95 &lt; 300ms |
-| Sidecar `/v1/range` 31d | p95 &lt; 3s |
-| Horary quota | p95 &lt; 300ms |
-| Horary create question | p95 &lt; 1s before async generation |
-
----
-
-# Test coverage matrix
-
-Current reported test status after horary follow-up:
-
-```text
-Backend: 237 tests green
-Frontend: 467 tests green
-```
-
-| UC | Backend Unit | Backend Integration | Frontend Unit/Component | E2E/Visual |
-|---|---|---|---|---|
-| UC-TG-AUTH | test_telegram_hmac.py | test_auth_endpoints.py | - | auth/telegram auth specs if enabled |
-| UC-PROFILE-CREATE | - | test_profile_endpoints.py | onboarding reducer/components | onboarding specs/visuals |
-| UC-PROFILE-EDIT | - | test_profile_endpoints.py | profile components | profile visual if enabled |
-| UC-ACCESS-CHECK | test_access_service.py | endpoint coverage where applicable | access hook/lib tests | locked-day specs |
-| UC-DAY-VIEW | normalization/scoring tests | test_day_endpoints.py | day components where present | day-view/visual specs |
-| UC-CAL-NAV | - | test_calendar_endpoints.py | calendar components | calendar specs/visuals |
-| UC-NATAL-VIEW | schema/block tests | readings endpoints where present | block renderer tests | readings navigation specs |
-| UC-HORARY-QUOTA | test_horary_credit_service.py | test_horary_endpoints.py | quota bar tests if present | manual/QA acceptable for MVP |
-| UC-HORARY-SUBMIT | test_horary_credit_service.py | test_horary_endpoints.py | horary form/time-place tests | manual/QA acceptable for MVP |
-| UC-HORARY-ANSWER | horary service/engine tests | test_horary_endpoints.py | answer/progress tests | manual/QA acceptable for MVP |
-| UC-EVENING-CHECKIN | yesterday/checkin tests | checkin endpoint tests | - | - |
-| UC-SOLARSAGE-PARITY | apps/solarsage/tests/test_parity.py | sidecar health/API tests | - | - |
-| UC-GRACE-ORCHESTRATOR | scripts/check_orchestrator_contracts.py | guardrails scripts | - | - |
+| `/api/day/:date` cached | p95 < 200ms when cache layer enabled |
+| `/api/day/:date` cold full pipeline | p95 < 20s when real pipeline enabled |
+| `/api/calendar` | p95 < 300ms |
+| sidecar 31d range | p95 < 3s |
+| horary quota | p95 < 300ms |
+| horary create question | p95 < 1s before async generation |
 
 ---
 
 # How to use this matrix
 
-1. Before merging a wave PR, find every UC its scope touches.
-2. For each UC row, every gate must have passing tests, grep evidence, or explicit controller acceptance.
-3. If a gate cannot be met under the wave scope, raise it as a question; do not silently expand scope.
-4. After merge, update this matrix when the runtime behavior or acceptance gates change.
+1. Map the feature to slices first.
+2. Use the slice gate table to choose mandatory checks.
+3. Use the UC rows to add product-specific evidence.
+4. Run the smallest sufficient verification profile, then escalate only if risk demands it.
+5. Update this matrix only when runtime behavior, slice ownership, or gates change.
