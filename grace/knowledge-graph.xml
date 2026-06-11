@@ -1,318 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  GRACE §13.D — Knowledge Graph
-  Current-state snapshot after horary credit-ledger + location UX acceptance.
-  This file is intentionally implementation-grounded: module ids map to current repo paths.
--->
-<knowledge-graph project="solarsage-astro" canon="docs/GRACE_CANON.md" updated="2026-06-09">
+<!-- GRACE §13.D — Current-state module/slice map. Runtime structure is not changed by this file. -->
+<knowledge-graph project="solarsage-astro" canon="docs/GRACE_CANON.md" updated="2026-06-11" audit="docs/work/REPORT_SOLARSAGE_GRACE_SLICE_COVERAGE_AUDIT.md">
 
-  <!-- =================================================================== -->
-  <!-- FRONTEND MODULES                                                     -->
-  <!-- =================================================================== -->
-  <module id="M-WEB-SHELL" layer="frontend" path="app/layout.tsx, app/(app)/*">
-    <responsibility>Next.js App Router shell, app layout, route tree, theme, safe-area handling, bottom/app navigation.</responsibility>
-    <produces>UI routes for day, calendar, readings, profile, onboarding, horary.</produces>
-  </module>
+  <slice-registry>
+    <slice id="SLICE-SHELL-NAVIGATION" priority="P0" coverage="50.0" module="M-WEB-SHELL">
+      <owns>App shell, bottom navigation, active tab state, route orientation.</owns>
+      <paths>components/app-shell.tsx; components/today/tab-bar.tsx</paths>
+    </slice>
+    <slice id="SLICE-TODAY-CALENDAR" priority="P0" coverage="8.3" module="M-WEB-TODAY-CALENDAR">
+      <owns>Today screen, week strip, calendar grid, date navigation, payload rendering.</owns>
+      <paths>components/today/; components/calendar/; app/(grace)/today/; lib/today.ts; lib/calendar.ts</paths>
+    </slice>
+    <slice id="SLICE-HORARY-READINGS" priority="P1" coverage="0.0" module="M-WEB-HORARY-READINGS">
+      <owns>Readings hub, natal blocks, horary question/answer/progress UI.</owns>
+      <paths>components/readings/; app/(grace)/readings/</paths>
+    </slice>
+    <slice id="SLICE-PROFILE-ONBOARDING" priority="P1" coverage="0.0" module="M-WEB-PROFILE-ONBOARDING">
+      <owns>Profile, onboarding, city/timezone/location capture.</owns>
+      <paths>components/profile/; components/onboarding/; app/(grace)/profile/; app/(grace)/onboarding/</paths>
+    </slice>
+    <slice id="SLICE-FRONTEND-API-FACADES" priority="P0" coverage="0.0" module="M-WEB-API">
+      <owns>Frontend API clients and typed fetch helpers.</owns>
+      <paths>lib/api/; lib/access.ts; lib/profile.ts; lib/chat.ts; lib/cities.ts</paths>
+    </slice>
+    <slice id="SLICE-CONTRACTS" priority="P0" coverage="11.1" module="M-CONTRACTS">
+      <owns>Pydantic schemas, OpenAPI export, generated TypeScript, contract barrel.</owns>
+      <paths>apps/api/app/schemas/; scripts/contracts/; packages/contracts/</paths>
+    </slice>
+    <slice id="SLICE-BACKEND-API-ROUTERS" priority="P0" coverage="24.4" module="M-BACKEND-API">
+      <owns>FastAPI routers and endpoint bindings.</owns>
+      <paths>apps/api/app/api/; apps/api/app/schemas/; fallback apps/api/app/</paths>
+    </slice>
+    <slice id="SLICE-BACKEND-SERVICES" priority="P0" coverage="31.4" module="M-BACKEND-SERVICES">
+      <owns>Backend business logic and service orchestration.</owns>
+      <paths>apps/api/app/services/; apps/api/app/core/</paths>
+    </slice>
+    <slice id="SLICE-DB-MODELS-MIGRATIONS" priority="P0" coverage="100.0" module="M-DB">
+      <owns>ORM models, DB session, migrations when explicitly in scope.</owns>
+      <paths>apps/api/app/db/; apps/api/alembic/versions/</paths>
+    </slice>
+    <slice id="SLICE-SIDECAR-CALCULATION" priority="P1" coverage="0.0" module="M-SIDECAR-CALCULATION">
+      <owns>SolarSage sidecar, calculation service, parity fixtures.</owns>
+      <paths>apps/solarsage/; apps/api/calculations/</paths>
+    </slice>
+    <slice id="SLICE-SCORING-SEMANTIC-LLM" priority="P1" coverage="unknown" module="M-SCORING-SEMANTIC-LLM">
+      <owns>Scoring canon, semantic context, strict narration policy.</owns>
+      <paths>apps/api/scoring/; apps/api/normalization/; apps/api/semantic/; related services</paths>
+    </slice>
+    <slice id="SLICE-LOGGING-SPINE" priority="P1" coverage="20.0" module="M-LOGGING-SPINE">
+      <owns>Logging helpers, correlation, redaction, emitted log naming, evidence logging policy.</owns>
+      <paths>lib/grace/; backend logging helpers when present</paths>
+      <note>Latest audit detects canonical logging in only 1 file; verify logging assumptions in a dedicated wave.</note>
+    </slice>
+    <slice id="SLICE-TESTS" priority="P2" coverage="4.0" module="M-TESTS">
+      <owns>Backend, frontend, contract, sidecar and E2E tests.</owns>
+      <paths>__tests__/; apps/api/tests/; apps/solarsage/tests/</paths>
+    </slice>
+    <slice id="SLICE-GUARDRAILS-TOOLING" priority="P2" coverage="17.9" module="M-GUARDRAILS">
+      <owns>GRACE lint, coverage audit, docs checks, guardrails scripts.</owns>
+      <paths>scripts/; .github/workflows/ when explicitly in scope</paths>
+    </slice>
+    <slice id="SLICE-ORCHESTRATOR-ADAPTER" priority="P2" coverage="0.0" module="M-GRACE-PROJECT-ADAPTER">
+      <owns>Project-local GRACE adapter, roles, packet schema, verification profiles, project docs.</owns>
+      <paths>grace/orchestrator/; grace/*.xml; grace/*.md; grace/canon.yaml</paths>
+    </slice>
+  </slice-registry>
 
-  <module id="M-WEB-DEMO-MODE" layer="frontend" path="lib/demo-mode.ts, lib/demo-data.ts">
-    <responsibility>Demo-mode switch controlled by NEXT_PUBLIC_DEMO_MODE. Demo mode returns local demo payloads; production must set it false.</responsibility>
-    <invariants-honored>Frontend demo data is not a production data source.</invariants-honored>
-  </module>
+  <modules>
+    <module id="M-WEB-SHELL" slice="SLICE-SHELL-NAVIGATION" layer="frontend" path="components/app-shell.tsx, components/today/tab-bar.tsx" />
+    <module id="M-WEB-TODAY-CALENDAR" slice="SLICE-TODAY-CALENDAR" layer="frontend" path="components/today/, components/calendar/, app/(grace)/today/, lib/today.ts, lib/calendar.ts" />
+    <module id="M-WEB-HORARY-READINGS" slice="SLICE-HORARY-READINGS" layer="frontend" path="components/readings/, app/(grace)/readings/" />
+    <module id="M-WEB-PROFILE-ONBOARDING" slice="SLICE-PROFILE-ONBOARDING" layer="frontend" path="components/profile/, components/onboarding/, app/(grace)/profile/, app/(grace)/onboarding/" />
+    <module id="M-WEB-API" slice="SLICE-FRONTEND-API-FACADES" layer="frontend" path="lib/api/, lib/access.ts, lib/profile.ts, lib/chat.ts, lib/cities.ts" />
+    <module id="M-CONTRACTS" slice="SLICE-CONTRACTS" layer="shared" path="apps/api/app/schemas/, scripts/contracts/, packages/contracts/" />
+    <module id="M-BACKEND-API" slice="SLICE-BACKEND-API-ROUTERS" layer="backend" path="apps/api/app/api/, apps/api/app/schemas/" />
+    <module id="M-BACKEND-SERVICES" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/, apps/api/app/core/" />
+    <module id="M-DB" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/, apps/api/alembic/versions/" />
+    <module id="M-SIDECAR-CALCULATION" slice="SLICE-SIDECAR-CALCULATION" layer="sidecar" path="apps/solarsage/, apps/api/calculations/" />
+    <module id="M-SCORING-SEMANTIC-LLM" slice="SLICE-SCORING-SEMANTIC-LLM" layer="backend" path="apps/api/scoring/, apps/api/normalization/, apps/api/semantic/, related services" />
+    <module id="M-LOGGING-SPINE" slice="SLICE-LOGGING-SPINE" layer="cross-cutting" path="lib/grace/, backend logging helpers" />
+    <module id="M-TESTS" slice="SLICE-TESTS" layer="tests" path="__tests__/, apps/api/tests/, apps/solarsage/tests/" />
+    <module id="M-GUARDRAILS" slice="SLICE-GUARDRAILS-TOOLING" layer="tooling" path="scripts/" />
+    <module id="M-GRACE-PROJECT-ADAPTER" slice="SLICE-ORCHESTRATOR-ADAPTER" layer="canon" path="grace/orchestrator/, grace/*.xml, grace/*.md, grace/canon.yaml" />
+  </modules>
 
-  <module id="M-WEB-API" layer="frontend" path="lib/api/*">
-    <responsibility>Typed API facades for auth, profile, day, calendar, access, readings, horary, cities/geo.</responsibility>
-    <consumes>packages/contracts generated from backend OpenAPI plus local zod UI validators where needed.</consumes>
-    <depends-on>M-CONTRACTS</depends-on>
-  </module>
-
-  <module id="M-WEB-DAY" layer="frontend" path="app/(app)/day/[date]/*, components/today/*">
-    <responsibility>Today screen: headline, top flags, reading paragraphs, why-for-me, week strip, locked/preview states.</responsibility>
-    <consumes>C-TODAY-PAYLOAD, C-ACCESS</consumes>
-    <depends-on>M-WEB-API</depends-on>
-    <invariants-honored>Frontend renders; backend owns astrology, scoring, status, interpretation.</invariants-honored>
-  </module>
-
-  <module id="M-WEB-CALENDAR" layer="frontend" path="app/(app)/calendar/*, components/calendar/*">
-    <responsibility>Calendar grid, 3-month navigation window, day selection into /day/:date.</responsibility>
-    <consumes>C-CALENDAR-PAYLOAD</consumes>
-    <depends-on>M-WEB-API</depends-on>
-  </module>
-
-  <module id="M-WEB-READINGS" layer="frontend" path="app/(app)/readings/*, components/readings/*">
-    <responsibility>Readings hub and block rendering for natal and horary answers.</responsibility>
-    <consumes>C-NATAL-PAYLOAD, C-HORARY</consumes>
-    <invariants-honored>Unknown block.type must be skipped gracefully instead of crashing.</invariants-honored>
-  </module>
-
-  <module id="M-WEB-HORARY" layer="frontend" path="app/(app)/readings/horary/*, components/readings/horary/*, lib/api/horary.ts, lib/contracts/horary.ts">
-    <responsibility>Horary question flow: quota display, category chips, time/place confirmation, credit-gated submit, polling, premium processing state, answer/history display.</responsibility>
-    <consumes>C-HORARY-QUOTA, C-HORARY-QUESTION, C-HORARY-ANSWER, C-PROFILE-PAYLOAD</consumes>
-    <depends-on>M-WEB-API, M-WEB-PROFILE, M-HORARY-API</depends-on>
-    <invariants-honored>Uses weeklyFreeAvailable/bonusCredits/paidCredits, not left/nextInDays. Shows and validates question place. Default place may come from profile current location. CTA is product/premium copy.</invariants-honored>
-  </module>
-
-  <module id="M-WEB-PROFILE" layer="frontend" path="app/(app)/profile/*, components/profile/*, lib/api/profile.ts">
-    <responsibility>Profile display/editing for birth data, birthday location, current location, and derived user state.</responsibility>
-    <consumes>C-PROFILE-PAYLOAD</consumes>
-    <depends-on>M-WEB-API, M-PROFILE</depends-on>
-  </module>
-
-  <module id="M-WEB-ONBOARDING" layer="frontend" path="app/(app)/onboarding/*, components/onboarding/*, lib/api/cities.ts, lib/api/geo.ts">
-    <responsibility>Onboarding flow, city search, timezone/location resolution, profile creation.</responsibility>
-    <consumes>C-PROFILE-PAYLOAD, city/geo helper responses</consumes>
-  </module>
-
-  <!-- =================================================================== -->
-  <!-- SHARED CONTRACTS                                                     -->
-  <!-- =================================================================== -->
-  <module id="M-CONTRACTS" layer="shared" path="apps/api/app/schemas/*, scripts/contracts/*, packages/contracts/_generated.ts, packages/contracts/index.ts">
-    <responsibility>Pydantic is the source of truth. OpenAPI is exported from backend and TypeScript contracts are generated into packages/contracts/_generated.ts and re-exported through packages/contracts/index.ts.</responsibility>
-    <produces>C-TODAY-PAYLOAD, C-CALENDAR-PAYLOAD, C-PROFILE-PAYLOAD, C-ACCESS, C-NATAL-PAYLOAD, C-HORARY, C-AUTH, C-CHECKIN</produces>
-    <invariants-honored>Do not edit packages/contracts/_generated.ts by hand. New payload shapes start in apps/api/app/schemas/*.</invariants-honored>
-  </module>
-
-  <!-- =================================================================== -->
-  <!-- BACKEND CORE                                                         -->
-  <!-- =================================================================== -->
-  <module id="M-AUTH-TG" layer="backend" path="apps/api/app/api/auth.py, apps/api/app/services/telegram_auth.py">
-    <responsibility>Telegram WebApp initData HMAC validation, users upsert, session cookie issuance.</responsibility>
-    <writes>users</writes>
-    <produces>C-AUTH</produces>
-  </module>
-
-  <module id="M-PROFILE" layer="backend" path="apps/api/app/api/profile.py, apps/api/app/services/profile_service.py, apps/api/app/schemas/profile.py">
-    <responsibility>Read/write user profile, birth data, current location, birthday location, timezone fields, and invalidation triggers.</responsibility>
-    <writes>user_profiles</writes>
-    <produces>C-PROFILE-PAYLOAD</produces>
-  </module>
-
-  <module id="M-ACCESS" layer="backend" path="apps/api/app/services/access_service.py, apps/api/app/schemas/access.py">
-    <responsibility>Access-state resolution from access_ledger. Consumes bonus/gift/subscription/adjustment according to product rules.</responsibility>
-    <reads>access_ledger</reads>
-    <produces>C-ACCESS</produces>
-  </module>
-
-  <module id="M-REFERRAL" layer="backend" path="apps/api/app/api/referrals.py, apps/api/app/services/referral_service.py">
-    <responsibility>Referral invite handling and referral_bonus access ledger writes.</responsibility>
-    <writes>referrals, access_ledger</writes>
-  </module>
-
-  <module id="M-DAY-SERVICE" layer="backend" path="apps/api/app/api/day.py, apps/api/app/services/today_service.py">
-    <responsibility>GET /api/day/:date orchestration: auth/profile/access/cache/calculation/semantic/LLM as currently enabled by phase.</responsibility>
-    <produces>C-TODAY-PAYLOAD</produces>
-    <depends-on>M-PROFILE, M-ACCESS, M-CALC-PIPELINE, M-SEMANTIC, M-LLM, M-MICROCOPY</depends-on>
-  </module>
-
-  <module id="M-CALENDAR" layer="backend" path="apps/api/app/api/calendar.py, apps/api/app/services/calendar_service.py, apps/api/app/schemas/calendar.py">
-    <responsibility>GET /api/calendar month grid with allowed range and day access/status information.</responsibility>
-    <produces>C-CALENDAR-PAYLOAD</produces>
-  </module>
-
-  <module id="M-NATAL-READING" layer="backend" path="apps/api/app/schemas/natal.py, app/(app)/readings/natal/*, components/readings/natal/*">
-    <responsibility>Natal reading contract and block-rendered frontend routes.</responsibility>
-    <produces>C-NATAL-PAYLOAD</produces>
-  </module>
-
-  <!-- =================================================================== -->
-  <!-- HORARY                                                               -->
-  <!-- =================================================================== -->
-  <module id="M-HORARY-API" layer="backend" path="apps/api/app/api/horary.py, apps/api/app/schemas/horary.py">
-    <responsibility>Horary endpoints: quota, list questions, create question, read question. Maps ORM to C-HORARY payloads.</responsibility>
-    <produces>C-HORARY-QUOTA, C-HORARY-QUESTION, C-HORARY-ANSWER</produces>
-    <depends-on>M-HORARY-SERVICE, M-HORARY-CREDIT-SERVICE</depends-on>
-  </module>
-
-  <module id="M-HORARY-CREDIT-SERVICE" layer="backend" path="apps/api/app/services/horary_credit_service.py">
-    <responsibility>Credit ledger: lazy subscription_weekly_free resolution, balance calculation, deterministic spend order, refund/restore behavior.</responsibility>
-    <writes>horary_credits, horary_credit_spends</writes>
-    <invariants-honored>subscription_weekly_free does not accumulate; paid credits persist; spend order is weekly-free → expiring referral/gift/adjustment → paid; no HoraryQuota/questions_used/questions_limit model.</invariants-honored>
-  </module>
-
-  <module id="M-HORARY-SERVICE" layer="backend" path="apps/api/app/services/horary_service.py">
-    <responsibility>Question lifecycle: idempotency, request_hash, credit spend, async generation, TTL/failure handling, late generation guard.</responsibility>
-    <writes>horary_questions, horary_answers</writes>
-    <depends-on>M-HORARY-CREDIT-SERVICE, M-HORARY-ENGINE, M-SOLARSAGE-CLIENT, M-LLM</depends-on>
-    <invariants-honored>Start generation only after spend transaction commit. Same idempotencyKey + same full payload returns existing question; changed time/place/timezone returns conflict.</invariants-honored>
-  </module>
-
-  <module id="M-HORARY-ENGINE" layer="backend" path="apps/api/app/services/horary_engine.py">
-    <responsibility>Deterministic horary verdict context. LLM explains; it does not calculate chart facts.</responsibility>
-    <consumes>question moment, question place, category, profile/location fallback</consumes>
-    <produces>verdict, confidence, planets/context for narration</produces>
-  </module>
-
-  <!-- =================================================================== -->
-  <!-- COMPUTATION PIPELINE / SIDECAR                                       -->
-  <!-- =================================================================== -->
-  <module id="M-SOLARSAGE-REFERENCE-COLLECTOR" layer="tooling" path="apps/solarsage/collect_solarsage_western_deep.py">
-    <responsibility>Golden/reference collection script for parity against the split SolarSage sidecar.</responsibility>
-    <produces>golden raw/deep JSON fixtures</produces>
-  </module>
-
-  <module id="M-SIDECAR" layer="sidecar" path="apps/solarsage/*">
-    <responsibility>SolarSage HTTP service over pyswisseph. Local-only endpoints /v1/health, /v1/natal, /v1/transits, /v1/range.</responsibility>
-    <bind>127.0.0.1:18091</bind>
-    <produces>C-SOLARSAGE</produces>
-  </module>
-
-  <module id="M-SOLARSAGE-CLIENT" layer="backend" path="apps/api/app/services/solarsage_client.py">
-    <responsibility>HTTP client from API to sidecar and calculation endpoints.</responsibility>
-    <talks-to>M-SIDECAR</talks-to>
-  </module>
-
-  <module id="M-CALC-PIPELINE" layer="backend" path="apps/api/app/services/calculation_service.py">
-    <responsibility>Builds natal, period, daily snapshots via SolarSage client and persists versioned cache rows.</responsibility>
-    <writes>natal_snapshots, period_snapshots, daily_snapshots</writes>
-  </module>
-
-  <module id="M-NORMALIZATION" layer="backend" path="apps/api/app/services/normalization_service.py">
-    <responsibility>Converts raw SolarSage output into AstroSignal[] and curated intermediate structures.</responsibility>
-    <produces>C-ASTRO-SIGNAL</produces>
-  </module>
-
-  <module id="M-SCORING-CANON" layer="canon" path="grace/canon/spheres.v1.yml, grace/canon/dignities.v1.yml, grace/canon/aspect_rules.v1.yml, grace/canon/activation_rules.v1.yml">
-    <responsibility>Versioned astrology scoring knowledge. New scoring constants belong here, not inline in Python or TypeScript.</responsibility>
-    <produces>C-SCORING-CANON</produces>
-  </module>
-
-  <module id="M-ACTIVATION-LAYER" layer="backend" path="apps/api/app/services/activation_service.py">
-    <responsibility>Builds dated activation evidence and convergence context from raw factors and scoring canon.</responsibility>
-    <consumes>C-SCORING-CANON, raw SolarSage period/daily factors</consumes>
-  </module>
-
-  <module id="M-SCORING" layer="backend" path="apps/api/app/services/scoring_service.py">
-    <responsibility>Backend-only scoring and day status mapping. Frontend never computes dayStatus.</responsibility>
-    <depends-on>M-SCORING-CANON, M-ACTIVATION-LAYER</depends-on>
-  </module>
-
-  <module id="M-FLAGS" layer="backend" path="apps/api/app/services/flags_service.py">
-    <responsibility>Top flag selection and hint preparation.</responsibility>
-    <depends-on>M-SCORING</depends-on>
-  </module>
-
-  <module id="M-SEMANTIC" layer="backend" path="apps/api/app/services/semantic_service.py">
-    <responsibility>Curated SemanticLayer assembly for LLM/payload generation.</responsibility>
-    <writes>semantic_layers</writes>
-  </module>
-
-  <module id="M-LLM" layer="backend" path="apps/api/app/services/llm_service.py">
-    <responsibility>Strict JSON narration from curated context only. LLM does not calculate astrology facts, positions, aspects, scores, or horary verdicts.</responsibility>
-    <consumes>C-SEMANTIC-LAYER, horary deterministic context</consumes>
-  </module>
-
-  <module id="M-MICROCOPY" layer="backend" path="apps/api/app/services/microcopy.py, apps/api/app/content/microcopy.v1.json">
-    <responsibility>Reusable microcopy lookup and miss tracking.</responsibility>
-    <writes>microcopy_misses</writes>
-  </module>
-
-  <module id="M-CHECKIN" layer="backend" path="apps/api/app/api/checkin.py, apps/api/app/services/yesterday_service.py">
-    <responsibility>Evening checkin and yesterdayEcho composition into TodayPayload.</responsibility>
-    <writes>evening_checkins</writes>
-    <privacy-rule>Free-text note is private and must not be sent to LLM unless prompt_version is explicitly note-aware.</privacy-rule>
-  </module>
-
-  <module id="M-WORKER" layer="backend" path="apps/api/app/workers/*">
-    <responsibility>arq/Redis background tasks: prewarm, pushes, reports as enabled by phase.</responsibility>
-  </module>
-
-  <!-- =================================================================== -->
-  <!-- GRACE ORCHESTRATION                                                  -->
-  <!-- =================================================================== -->
-  <module id="M-GRACE-ORCHESTRATOR" layer="tooling" path="external runtime + grace/orchestrator/*">
-    <responsibility>AI development orchestration: packets, roles, verification profiles, evidence, reviewer gates. Prefect is execution runtime only.</responsibility>
-    <consumes>C-GRACE-ORCHESTRATOR-PROJECT, C-GRACE-PACKET-SCHEMA, C-GRACE-VERIFICATION-PROFILES</consumes>
-  </module>
-
-  <module id="M-GRACE-PROJECT-ADAPTER" layer="canon" path="grace/orchestrator/project.yml">
-    <responsibility>Project-local adapter: paths, branch, queues, role defaults, verification policy.</responsibility>
-  </module>
-
-  <module id="M-GRACE-ROLES" layer="canon" path="grace/orchestrator/roles/*.md, grace/ROLES.md">
-    <responsibility>Role contracts/prompts for architect, planner, coder, verifier, reviewer, orchestrator.</responsibility>
-  </module>
-
-  <module id="M-GRACE-PACKET-SCHEMA" layer="canon" path="grace/orchestrator/packet.schema.json">
-    <responsibility>Machine-readable packet schema for executable work packets.</responsibility>
-  </module>
-
-  <module id="M-GRACE-VERIFICATION-PROFILES" layer="canon" path="grace/orchestrator/verification_profiles.yml">
-    <responsibility>Maps verification profiles to guardrail commands.</responsibility>
-  </module>
-
-  <!-- =================================================================== -->
-  <!-- DATA STORES                                                          -->
-  <!-- =================================================================== -->
-  <data-stores>
-    <store name="users">Telegram identity and app user row.</store>
-    <store name="user_profiles">Birth data, current location, birthday location, timezone fields.</store>
-    <store name="access_ledger">Access source of truth for trial/referral/gift/subscription/adjustment windows.</store>
-    <store name="referrals">Referral relationship and reward status.</store>
-    <store name="horary_credits">Horary credit ledger: subscription_weekly_free, referral_bonus, gift, paid, adjustment.</store>
-    <store name="horary_credit_spends">One-credit-per-question spend ledger and idempotency backstop.</store>
-    <store name="horary_questions">Question text, category, status, client time/timezone, question lat/lon/name, request_hash, spent credit.</store>
-    <store name="horary_answers">Verdict, confidence, block JSON, planets/context, generated_at.</store>
-    <store name="natal_snapshots" cache="true">Natal calculation cache.</store>
-    <store name="period_snapshots" cache="true">Period calculation cache.</store>
-    <store name="daily_snapshots" cache="true">Daily calculation cache.</store>
-    <store name="semantic_layers" cache="true">Curated semantic cache.</store>
-    <store name="today_payloads" cache="true">Rendered TodayPayload cache.</store>
-    <store name="evening_checkins">Evening checkin rows.</store>
-    <store name="microcopy_misses">Dictionary growth signals.</store>
-  </data-stores>
-
-  <!-- =================================================================== -->
-  <!-- DEPENDENCIES                                                         -->
-  <!-- =================================================================== -->
   <dependency-graph>
-    <edge from="M-WEB-API" to="M-CONTRACTS" />
-    <edge from="M-WEB-DAY" to="M-DAY-SERVICE" via="HTTP" contract="C-TODAY-PAYLOAD" />
-    <edge from="M-WEB-CALENDAR" to="M-CALENDAR" via="HTTP" contract="C-CALENDAR-PAYLOAD" />
-    <edge from="M-WEB-PROFILE" to="M-PROFILE" via="HTTP" contract="C-PROFILE-PAYLOAD" />
-    <edge from="M-WEB-ONBOARDING" to="M-PROFILE" via="HTTP" contract="C-PROFILE-PAYLOAD" />
-    <edge from="M-WEB-HORARY" to="M-HORARY-API" via="HTTP" contract="C-HORARY" />
-    <edge from="M-WEB-HORARY" to="M-WEB-PROFILE" via="profile-current-location" />
-    <edge from="M-HORARY-API" to="M-HORARY-SERVICE" />
-    <edge from="M-HORARY-SERVICE" to="M-HORARY-CREDIT-SERVICE" />
-    <edge from="M-HORARY-SERVICE" to="M-HORARY-ENGINE" />
-    <edge from="M-HORARY-SERVICE" to="M-LLM" via="narration-only" />
-    <edge from="M-HORARY-ENGINE" to="M-SOLARSAGE-CLIENT" optional="true" />
-    <edge from="M-DAY-SERVICE" to="M-PROFILE" />
-    <edge from="M-DAY-SERVICE" to="M-ACCESS" />
-    <edge from="M-DAY-SERVICE" to="M-CALC-PIPELINE" />
-    <edge from="M-DAY-SERVICE" to="M-SEMANTIC" />
-    <edge from="M-DAY-SERVICE" to="M-LLM" />
-    <edge from="M-DAY-SERVICE" to="M-MICROCOPY" />
-    <edge from="M-CALC-PIPELINE" to="M-SOLARSAGE-CLIENT" />
-    <edge from="M-SOLARSAGE-CLIENT" to="M-SIDECAR" via="HTTP" contract="C-SOLARSAGE" />
-    <edge from="M-NORMALIZATION" to="M-ACTIVATION-LAYER" />
-    <edge from="M-SCORING-CANON" to="M-ACTIVATION-LAYER" />
-    <edge from="M-ACTIVATION-LAYER" to="M-SCORING" />
-    <edge from="M-SCORING" to="M-FLAGS" />
-    <edge from="M-SCORING" to="M-SEMANTIC" />
-    <edge from="M-SEMANTIC" to="M-LLM" />
+    <edge from="M-WEB-SHELL" to="M-WEB-TODAY-CALENDAR" via="navigation" />
+    <edge from="M-WEB-TODAY-CALENDAR" to="M-WEB-API" via="frontend-fetch" />
+    <edge from="M-WEB-HORARY-READINGS" to="M-WEB-API" via="frontend-fetch" />
+    <edge from="M-WEB-PROFILE-ONBOARDING" to="M-WEB-API" via="frontend-fetch" />
+    <edge from="M-WEB-API" to="M-CONTRACTS" via="typescript-types" />
+    <edge from="M-BACKEND-API" to="M-BACKEND-SERVICES" via="service-call" />
+    <edge from="M-BACKEND-SERVICES" to="M-DB" via="SQLAlchemy" />
+    <edge from="M-BACKEND-SERVICES" to="M-SIDECAR-CALCULATION" via="HTTP" />
+    <edge from="M-BACKEND-SERVICES" to="M-SCORING-SEMANTIC-LLM" via="semantic-context" />
+    <edge from="M-GUARDRAILS" to="M-GRACE-PROJECT-ADAPTER" via="docs-orchestrator-checks" />
+    <edge from="M-GUARDRAILS" to="M-CONTRACTS" via="contract-generation-check" />
   </dependency-graph>
 
-  <!-- =================================================================== -->
-  <!-- VERSION OWNERSHIP / INVALIDATION                                     -->
-  <!-- =================================================================== -->
-  <version-ownership>
-    <owns version="contract_version" by="M-CONTRACTS and payload-owning services" />
-    <owns version="calculation_version" by="M-SIDECAR, M-CALC-PIPELINE" />
-    <owns version="normalization_version" by="M-NORMALIZATION" />
-    <owns version="scoring_version" by="M-SCORING" />
-    <owns version="scoring_canon_version" by="M-SCORING-CANON" />
-    <owns version="prompt_version" by="M-LLM" />
-    <owns version="content_version" by="M-MICROCOPY" />
-    <owns version="schema_version" by="block payload owners" />
-  </version-ownership>
-
-  <invalidation-graph>
-    <edge trigger="user_profiles.birth_*" invalidates="natal_snapshots → period_snapshots → daily_snapshots → semantic_layers → today_payloads" />
-    <edge trigger="user_profiles.current_location | birthday_location" invalidates="period_snapshots → daily_snapshots → semantic_layers → today_payloads" />
-    <edge trigger="calculation_version" invalidates="natal_snapshots + period_snapshots + daily_snapshots + downstream" />
-    <edge trigger="normalization_version | scoring_version | scoring_canon_version" invalidates="semantic_layers + today_payloads" />
-    <edge trigger="prompt_version | content_version" invalidates="today_payloads" />
-    <edge trigger="horary request_hash inputs changed under same idempotency_key" invalidates="request by returning IDEMPOTENCY_CONFLICT, not by overwriting old question" />
-  </invalidation-graph>
+  <adoption-policy>
+    <rule>Changed-files mode remains the default; full-repo GRACE canon is not expected yet.</rule>
+    <rule>Adopt headers, contracts, maps, blocks, and log declarations slice-by-slice.</rule>
+    <rule>Do not mass-add markers across unrelated slices.</rule>
+    <rule>Every adoption packet must run `python3 scripts/grace/coverage_audit.py --check`.</rule>
+    <rule>Logging adoption is not complete until `SLICE-LOGGING-SPINE` reconciles actual logging patterns with audit detection and module contracts.</rule>
+  </adoption-policy>
 
 </knowledge-graph>
