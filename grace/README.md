@@ -1,14 +1,20 @@
-# GRACE Artifact Pack
+# GRACE Artifact Pack — Solar Sage
 
-This folder contains the strict-GRACE artifact pack required by `docs/GRACE_CANON.md` §13 (Definition of Ready).
+This folder is the GRACE-project binding plan for Solar Sage.
+
+## State
+
+- **legacy/ has been physically removed** (commit `a211e86`) — frontend migration from the old snapshot is complete.
+- Legacy migration packets (W-2.x) are archived under `packets/archive/`.
+- Active development continues on current slices: shell/navigation, Today, Calendar, Horary/Readings, Profile/Onboarding, backend API, contracts, logging spine.
 
 ## Source-of-truth order
 
-1. `docs/GRACE_CANON.md` — methodology canon (portable, transferable).
-2. `docs/10_GRACE_Project_Agent_Guide.md` — local adaptation for this project.
-3. Artifacts in this folder — the binding plan.
-4. `docs/00..13_*.md` — domain truth.
-5. Code under `app/`, `apps/api/`, `apps/solarsage/`, `packages/contracts/`, etc.
+1. `docs/GRACE_CANON.md` — methodology canon (portable, transferable)
+2. `docs/10_GRACE_Project_Agent_Guide.md` — local adaptation for this project
+3. Artifacts in this folder — the binding plan
+4. `docs/00..13_*.md` — domain truth
+5. Code under `app/`, `components/`, `apps/api/app/`, `packages/contracts/`, `scripts/`
 
 If a code artifact contradicts a higher-priority artifact, the higher-priority one wins.
 
@@ -18,64 +24,64 @@ If a code artifact contradicts a higher-priority artifact, the higher-priority o
 |---|---|---|
 | `requirements.xml` | §13.A | Use cases, business rules, invariants, NFRs |
 | `technology.xml` | §13.B | Stack, boundaries, version policy, local adaptations |
-| `development-plan.xml` | §13.C | Phases, waves, write-scope, freeze-scope |
+| `development-plan.xml` | §13.C | Current slices, phases, future waves |
 | `knowledge-graph.xml` | §13.D | Modules, dependencies, contracts, versions |
 | `verification-matrix.md` | §13.E | UC ⇄ module gates ⇄ scenarios |
-| `orchestrator/project.yml` | §10, §13 | Project-local adapter for the portable orchestration runtime |
+| `canon.yaml` | §13.C | GRACE linter gate mode, exclusions, adoption path |
+| `orchestrator/project.yml` | §10, §13 | Project-adapter for the portable orchestration runtime |
 | `orchestrator/verification_profiles.yml` | §10, §13 | Named verifier profiles mapped to guardrails commands |
-| `orchestrator/packet.schema.json` | §10.7 | Machine-readable packet metadata contract for new packets |
+| `orchestrator/packet.schema.json` | §10.7 | Machine-readable packet metadata contract |
 | `orchestrator/roles/*.md` | §10 | Role contracts/prompts for multi-agent execution |
 
-## Naming conventions (semantic coordinates §6)
+## Current module families
 
-- Use cases: `UC-*` (e.g. `UC-DAY-VIEW`)
-- Modules: `M-*` (e.g. `M-DAY-SERVICE`)
-- Phases: `PHASE-N-NAME` (e.g. `PHASE-1-MOCKED-PIPELINE`)
-- Waves: `W-N.M` (e.g. `W-1.1`)
-- Contracts: `C-*` (e.g. `C-TODAY-PAYLOAD`)
-- Versions: `contract_version`, `calculation_version`, `normalization_version`, `scoring_version`, `prompt_version`, `content_version`, `schema_version`
+| Slice | Modules | Paths |
+|---|---|---|
+| Shell/Navigation | AppShell, TabBar, bottom nav | `components/app-shell.tsx`, `components/today/tab-bar.tsx` |
+| Today | TodayScreen, WeekStrip, DateHeader, DayReading | `components/today/*.tsx`, `lib/today.ts`, `packages/contracts/today.ts` |
+| Calendar | CalendarScreen, MoodIcon | `components/calendar/*.tsx` |
+| Horary/Readings | NatalSection, BlockRenderer, NatalTOC | `components/readings/natal/*`, `apps/api/app/readings/*` |
+| Profile/Onboarding | ProfileScreen, OnboardingFlow | `components/profile/*`, `components/onboarding/*` |
+| Backend API | Day, Calendar, Natal, Cities, Profile endpoints | `apps/api/app/**/*.py` |
+| Contracts | TodayPayload, CalendarPayload, NatalPayload, etc. | `packages/contracts/` |
+| Logging Spine | Envelope, correlation, redactor | `lib/grace/log.ts` |
+| Guardrails | Lint, typecheck, test, GRACE canon | `scripts/grace_lint.py`, `scripts/grace_front_lint.py`, `scripts/guardrails.sh` |
 
-## Pilot slice
+## How a business feature becomes a GRACE packet
 
-`UC-DAY-VIEW` over `M-DAY-SERVICE` returning fixture-backed `TodayPayload`. See `development-plan.xml` → `PHASE-1-MOCKED-PIPELINE` → `W-1.3`.
+1. Business-level feature request enters through the GRACE runner or architect API.
+2. Architect (LLM) generates a plan: waves, packets, write-scope, frozen-scope, gates.
+3. Context-builder (Stage 0) collects a bounded bundle of relevant source files.
+4. Coder agents run in isolated worktrees, modifying only the allowed files.
+5. Each wave passes T0 (scope + cheap checks), T1 (targeted tests), T2 (full gates).
+6. Evidence verifier confirms contract compliance.
+7. Merged into main via GRACE pipeline.
 
-## Controller packets
+## Guardrails commands
 
-Every wave has a packet under `packets/`. Each packet MUST carry YAML
-front-matter (`id`, `status`, `wave`, `last_review`) — validated by
-`scripts/check_frontmatter.py`. Status vocabulary: `active` (ready or
-merged), `planned` (decided but not implemented), `superseded`, `stale`,
-`archived`.
+```bash
+bash scripts/guardrails.sh docs          # docs manifest + frontmatter + orchestrator contracts
+bash scripts/guardrails.sh orchestrator   # orchestrator adapter/profile/schema/roles
+bash scripts/guardrails.sh frontend      # ESLint + typecheck + GRACE canon lint
+bash scripts/guardrails.sh normal        # frontend + backend lint + typecheck
+bash scripts/guardrails.sh strict        # full: lint + typecheck + test
+```
 
-Current packets:
+## Current packet backlog
 
-- `packets/W-1.1.md` — Project skeleton
-- `packets/W-1.1B.md` — Contract boundary (source of truth)
-- `packets/W-1.2.md` — Telegram auth + users + user_profiles
-- `packets/W-1.3.md` — Pilot `GET /api/day/:date`
-- `packets/W-1.4.md` — `GET /api/calendar?month=YYYY-MM`
-- `packets/W-1.5.md` — Frontend leaves fixtures mode
-- `packets/W-1.6.md` — Logging Spine (envelope · correlation · redactor)
-- `packets/W-1.7.md` — Frontend → backend log shipping
-- `packets/W-2.0.md` — Frontend GRACE conformance
-- `packets/W-2.1.md` — Frontend types reconciliation
-- `packets/W-2.2.md` — Shell + Today migration
-- `packets/W-2.3.md` — Calendar + Day pages
-- `packets/W-2.4.md` — Chat (screen + hook + reducer)
-- `packets/W-2.5.md` — Readings (general + natal + widgets)
-- `packets/W-2.6.md` — Profile + Paywall + Trial + Telegram-init
-- `packets/W-2.7.md` — Onboarding flow (5 steps)
-- `packets/W-2.8.md` — (see file)
-- `packets/W-CHAT-INTAKE.md` — AI assistant chat intake (spec-only)
-- `packets/W-CANON-LOG.md` — Canon change log
+Active and planned packets live under `packets/`. W-1.x packets describe the current baseline state. W-3.x and above describe future work. W-2.x migration packets are archived under `packets/archive/` — the legacy frontend migration is complete.
 
 ## Anti-drift gates
 
-Run locally before pushing:
-
 ```bash
-python scripts/check_frontmatter.py     # YAML front-matter on every doc/packet
-python scripts/check_docs_manifest.py   # docs/MANIFEST.md mirrors docs/
-python scripts/check_orchestrator_contracts.py # orchestrator adapter/profile/schema/roles
-python scripts/grace_lint.py            # marker contracts in apps/api/app
+python3 scripts/grace_front_lint.py <changed files>   # GRACE marker checks
+python3 scripts/grace_lint.py <changed files>          # backend marker checks
+python3 scripts/check_docs_manifest.py                  # docs/MANIFEST.md ⇄ docs/
+    python3 scripts/check_orchestrator_contracts.py     # orchestrator adapter/profile/schema/roles
 ```
+
+## Staged GRACE canon adoption
+
+See `canon.yaml`. Current gate mode: `changed-files` — GRACE linters run only on files touched by coder agents.
+First adoption targets: `components/today/`, `__tests__/components/`, `app/(grace)/today/`.
+Vendor/shime paths (`components/ui/`, `alembic/`, `migrations/`) are excluded.
