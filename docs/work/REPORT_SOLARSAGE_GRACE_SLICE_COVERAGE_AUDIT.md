@@ -2,8 +2,8 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-**Baseline SHA:** `2626cb1`
-**JSON hash:** `97c92a2fd63b`
+**Baseline SHA:** `18dade8`
+**JSON hash:** `d38a79a975b3`
 
 ## How audit was run
 ```bash
@@ -17,9 +17,9 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | Metric | Value |
 |---|---|
 | Total files audited | 497 |
-| Full GRACE markers | 359 (72.2%) |
+| Full GRACE markers | 366 (73.6%) |
 | Partial markers | 7 (1.4%) |
-| No markers | 131 (26.4%) |
+| No markers | 124 (24.9%) |
 | Canonical logging | 1 (0.2%) |
 | Unmapped | 28 (5.6%) |
 
@@ -41,7 +41,7 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | SLICE-FRONTEND-API-FACADES | 15 | 15 | 0 | 0 | 100.0% | 0 |
 | SLICE-TODAY-CALENDAR | 12 | 12 | 0 | 0 | 100.0% | 0 |
 | SLICE-OTHER-APP | 11 | 11 | 0 | 0 | 100.0% | 0 |
-| SLICE-CONTRACTS | 9 | 1 | 0 | 8 | 11.1% | 0 |
+| SLICE-CONTRACTS | 9 | 8 | 0 | 1 | 88.9% | 0 |
 | SLICE-ORCHESTRATOR-ADAPTER | 5 | 0 | 0 | 5 | 0.0% | 0 |
 | SLICE-LOGGING-SPINE | 5 | 5 | 0 | 0 | 100.0% | 0 |
 | SLICE-DB-MODELS-MIGRATIONS | 3 | 3 | 0 | 0 | 100.0% | 0 |
