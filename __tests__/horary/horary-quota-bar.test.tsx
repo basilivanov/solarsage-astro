@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_HORARY_HORARY_QUOTA_BAR_TEST
+// ROLE: Unit tests for horary-quota-bar.test.tsx
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-TESTS
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Unit tests for horary-quota-bar.test.tsx — __tests__/horary/horary-quota-bar.test.tsx
+// owns:
+//   - __tests__/horary/horary-quota-bar.test.tsx
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import React from "react"

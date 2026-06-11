@@ -2,8 +2,8 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-**Baseline SHA:** `18dade8`
-**JSON hash:** `d38a79a975b3`
+**Baseline SHA:** `d0471fa`
+**JSON hash:** `d6f78e3ca93d`
 
 ## How audit was run
 ```bash
@@ -17,9 +17,9 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | Metric | Value |
 |---|---|
 | Total files audited | 497 |
-| Full GRACE markers | 366 (73.6%) |
+| Full GRACE markers | 430 (86.5%) |
 | Partial markers | 7 (1.4%) |
-| No markers | 124 (24.9%) |
+| No markers | 60 (12.1%) |
 | Canonical logging | 1 (0.2%) |
 | Unmapped | 28 (5.6%) |
 
@@ -27,7 +27,7 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 
 | Slice | Total | Full | Partial | None | Coverage | Canonical log |
 |---|---|---|---|---|---|---|
-| SLICE-TESTS | 126 | 62 | 0 | 64 | 49.2% | 0 |
+| SLICE-TESTS | 126 | 126 | 0 | 0 | 100.0% | 0 |
 | SLICE-BACKEND-API-ROUTERS | 41 | 41 | 0 | 0 | 100.0% | 0 |
 | SLICE-HORARY-READINGS | 40 | 40 | 0 | 0 | 100.0% | 0 |
 | SLICE-OTHER-FRONTEND | 39 | 38 | 0 | 1 | 97.4% | 0 |
@@ -54,14 +54,14 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 
 ## Sentinel files
 
-- `__tests__/api/access.test.ts` — SLICE-TESTS: no markers, no logging
-- `__tests__/api/calendar.test.ts` — SLICE-TESTS: no markers, no logging
-- `__tests__/api/cities.test.ts` — SLICE-TESTS: no markers, no logging
-- `__tests__/api/geo.test.ts` — SLICE-TESTS: no markers, no logging
-- `__tests__/api/grace-client.test.ts` — SLICE-TESTS: no markers, no logging
-- `__tests__/api/natal-report.test.ts` — SLICE-TESTS: no markers, no logging
-- `__tests__/api/onboarding-payload.test.ts` — SLICE-TESTS: no markers, no logging
-- `__tests__/api/profile-meta.test.ts` — SLICE-TESTS: no markers, no logging
+- `apps/api/alembic/env.py` — SLICE-OTHER-BACKEND: no markers, no logging
+- `apps/api/alembic/versions/0000_baseline.py` — SLICE-OTHER-BACKEND: no markers, no logging
+- `apps/api/alembic/versions/0001_users.py` — SLICE-OTHER-BACKEND: no markers, no logging
+- `apps/api/alembic/versions/0002_add_access_ledger.py` — SLICE-OTHER-BACKEND: no markers, no logging
+- `apps/api/alembic/versions/0003_add_cache.py` — SLICE-OTHER-BACKEND: no markers, no logging
+- `apps/api/alembic/versions/0004_add_semantic.py` — SLICE-OTHER-BACKEND: no markers, no logging
+- `apps/api/alembic/versions/0006_add_payments.py` — SLICE-OTHER-BACKEND: no markers, no logging
+- `apps/api/alembic/versions/0007_add_evening_checkins.py` — SLICE-OTHER-BACKEND: no markers, no logging
   ... and more
 
 ## Recommended adoption waves

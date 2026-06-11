@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_HORARY_HORARY_ANSWER_VIEW_TEST
+// ROLE: Unit tests for horary-answer-view.test.tsx
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-TESTS
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Unit tests for horary-answer-view.test.tsx — __tests__/horary/horary-answer-view.test.tsx
+// owns:
+//   - __tests__/horary/horary-answer-view.test.tsx
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";

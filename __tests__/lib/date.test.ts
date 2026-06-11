@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_LIB_DATE_TEST
+// ROLE: Unit tests for date.test.ts
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-TESTS
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Unit tests for date.test.ts — __tests__/lib/date.test.ts
+// owns:
+//   - __tests__/lib/date.test.ts
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 import { describe, it, expect } from 'vitest'
 import {
   toDateParam,

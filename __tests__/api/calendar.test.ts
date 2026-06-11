@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_API_CALENDAR_TEST
+// ROLE: Unit tests for calendar.test.ts
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-TESTS
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Unit tests for calendar.test.ts — __tests__/api/calendar.test.ts
+// owns:
+//   - __tests__/api/calendar.test.ts
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getDayStatus, getMonthStatuses } from '../../lib/api/calendar'
 

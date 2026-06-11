@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_LIB_PRODUCTION_GUARD_TEST
+// ROLE: Unit tests for production-guard.test.ts
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-TESTS
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Unit tests for production-guard.test.ts — __tests__/lib/production-guard.test.ts
+// owns:
+//   - __tests__/lib/production-guard.test.ts
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { assertProductionSafety } from "../../lib/env/production-guard"
 import { fetchDay } from "../../lib/grace/api/client"

@@ -1,3 +1,32 @@
+
+// ############################################################################
+// AI_HEADER: MODULE_HORARY_HORARY_BLOCK_RENDERER_TEST
+// ROLE: Unit tests for horary-block-renderer.test.tsx
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-TESTS
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Unit tests for horary-block-renderer.test.tsx — __tests__/horary/horary-block-renderer.test.tsx
+// owns:
+//   - __tests__/horary/horary-block-renderer.test.tsx
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 // AI_HEADER
 // module: M-TEST-HORARY-QUALITY
 // wave: W-HORARY-ANSWER-QUALITY-V1
