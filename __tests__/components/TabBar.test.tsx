@@ -136,4 +136,19 @@ describe('TabBar', () => {
     expect(screen.getByTestId('today-tab-readings').getAttribute('aria-current')).toBeNull()
     expect(screen.getByTestId('today-tab-chat').getAttribute('aria-current')).toBeNull()
   })
+
+  it('has title attribute equal to visible label on every tab link', () => {
+    render(<TabBar />)
+    const expectations: Record<string, string> = {
+      'today-tab-today': 'Сегодня',
+      'today-tab-calendar': 'Календарь',
+      'today-tab-readings': 'Разборы',
+      'today-tab-chat': 'Спросить',
+      'today-tab-profile': 'Профиль',
+    }
+    for (const [testId, expectedTitle] of Object.entries(expectations)) {
+      const link = screen.getByTestId(testId)
+      expect(link.getAttribute('title')).toBe(expectedTitle)
+    }
+  })
 })
