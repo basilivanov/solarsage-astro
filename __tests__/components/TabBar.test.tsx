@@ -126,4 +126,14 @@ describe('TabBar', () => {
     const chatLink = screen.getByText('Спросить').closest('a')
     expect(chatLink?.getAttribute('aria-current')).toBeNull()
   })
+
+  it('highlights "Профиль" tab as active when pathname is /profile', () => {
+    mockPathname.mockReturnValue('/profile')
+    render(<TabBar />)
+    expect(screen.getByTestId('today-tab-profile').getAttribute('aria-current')).toBe('page')
+    expect(screen.getByTestId('today-tab-today').getAttribute('aria-current')).toBeNull()
+    expect(screen.getByTestId('today-tab-calendar').getAttribute('aria-current')).toBeNull()
+    expect(screen.getByTestId('today-tab-readings').getAttribute('aria-current')).toBeNull()
+    expect(screen.getByTestId('today-tab-chat').getAttribute('aria-current')).toBeNull()
+  })
 })
