@@ -1,4 +1,33 @@
 #!/usr/bin/env python3
+
+# ############################################################################
+# AI_HEADER: MODULE_SOLARSAGE_COLLECT_SOLARSAGE_WESTERN_DEEP
+# ROLE: Sidecar calculation
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-SIDECAR-CALCULATION
+# ############################################################################
+
+# START_MODULE_CONTRACT
+# purpose: Sidecar calculation — apps/solarsage/collect_solarsage_western_deep.py
+# owns:
+#   - apps/solarsage/collect_solarsage_western_deep.py
+# inputs: varies
+# outputs: varies
+# dependencies: local modules
+# side_effects: varies
+# emitted_logs: n/a
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 from __future__ import annotations
 
 import argparse

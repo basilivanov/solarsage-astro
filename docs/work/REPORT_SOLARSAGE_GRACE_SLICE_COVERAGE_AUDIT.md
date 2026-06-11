@@ -2,8 +2,8 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-**Baseline SHA:** `ec904b3`
-**JSON hash:** `5d53954b659e`
+**Baseline SHA:** `2626cb1`
+**JSON hash:** `97c92a2fd63b`
 
 ## How audit was run
 ```bash
@@ -17,9 +17,9 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | Metric | Value |
 |---|---|
 | Total files audited | 497 |
-| Full GRACE markers | 331 (66.6%) |
+| Full GRACE markers | 359 (72.2%) |
 | Partial markers | 7 (1.4%) |
-| No markers | 159 (32.0%) |
+| No markers | 131 (26.4%) |
 | Canonical logging | 1 (0.2%) |
 | Unmapped | 28 (5.6%) |
 
@@ -27,7 +27,7 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 
 | Slice | Total | Full | Partial | None | Coverage | Canonical log |
 |---|---|---|---|---|---|---|
-| SLICE-TESTS | 126 | 57 | 0 | 69 | 45.2% | 0 |
+| SLICE-TESTS | 126 | 62 | 0 | 64 | 49.2% | 0 |
 | SLICE-BACKEND-API-ROUTERS | 41 | 41 | 0 | 0 | 100.0% | 0 |
 | SLICE-HORARY-READINGS | 40 | 40 | 0 | 0 | 100.0% | 0 |
 | SLICE-OTHER-FRONTEND | 39 | 38 | 0 | 1 | 97.4% | 0 |
@@ -35,7 +35,7 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | SLICE-OTHER-COMPONENTS | 33 | 33 | 0 | 0 | 100.0% | 0 |
 | SLICE-GUARDRAILS-TOOLING | 29 | 6 | 6 | 17 | 20.7% | 1 |
 | SLICE-UNMAPPED | 28 | 11 | 1 | 16 | 39.3% | 0 |
-| SLICE-SIDECAR-CALCULATION | 23 | 0 | 0 | 23 | 0.0% | 0 |
+| SLICE-SIDECAR-CALCULATION | 23 | 23 | 0 | 0 | 100.0% | 0 |
 | SLICE-PROFILE-ONBOARDING | 21 | 21 | 0 | 0 | 100.0% | 0 |
 | SLICE-OTHER-BACKEND | 20 | 0 | 0 | 20 | 0.0% | 0 |
 | SLICE-FRONTEND-API-FACADES | 15 | 15 | 0 | 0 | 100.0% | 0 |
@@ -49,7 +49,6 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 
 ## Zero-coverage product slices
 
-- **SLICE-SIDECAR-CALCULATION**: 23 files, 0% coverage
 - **SLICE-OTHER-BACKEND**: 20 files, 0% coverage
 - **SLICE-ORCHESTRATOR-ADAPTER**: 5 files, 0% coverage
 
