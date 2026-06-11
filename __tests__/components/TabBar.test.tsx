@@ -2,7 +2,7 @@
 // AI_HEADER: TabBar.test — TabBar component unit tests
 // ROLE: Verifies TabBar renders all 5 navigation tabs with correct labels,
 //   hrefs, data-testid attributes, aria-current active state based on pathname,
-//   and title attributes matching visible labels. 12 tests total.
+//   and title attributes matching visible labels. 18 tests total.
 // ############################################################################
 
 // START_MODULE_CONTRACT
@@ -10,7 +10,7 @@
 //   Vitest + @testing-library/react assertions. Covers pathname matching,
 //   accessibility attributes, fallback behaviour, and all 5 tab states.
 // inputs: TabBar component from @/components/today/tab-bar.
-// returns: 12 test cases, all expect pass.
+//   returns: 18 test cases, all expect pass.
 // side_effects: Mocks next/navigation, lucide-react, @/lib/log, @/lib/today, @/lib/date.
 // emitted_logs: None (logger is mocked).
 // error_behavior: N/A (tests, not production code).
@@ -31,6 +31,12 @@
 //   - test: sets aria-current="page" on the active tab
 //   - test: highlights "Профиль" tab as active when pathname is /profile
 //   - test: has title attribute equal to visible label on every tab link
+//   - test: active tab has aria-label with "текущий раздел" suffix
+//   - test: inactive tab link has plain label as aria-label
+//   - test: all 5 tab links have aria-label attribute
+//   - test: highlights "Календарь" — aria-label changes when active
+//   - test: highlights "Спросить" — aria-label changes when active
+//   - test: highlights "Профиль" — all tabs have correct aria-label
 // END_MODULE_MAP
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
@@ -232,6 +238,74 @@ describe("TabBar", () => {
       const link = screen.getByTestId(testId)
       expect(link.getAttribute("title")).toBe(expectedTitle)
     }
+  })
+
+  // START_FUNCTION_CONTRACT
+  // name: active tab has aria-label with "текущий раздел" suffix
+  // purpose: On pathname /, the today tab aria-label includes "текущий раздел".
+  // END_FUNCTION_CONTRACT
+  it("active tab has aria-label with \"текущий раздел\" suffix", () => {
+    render(<TabBar />)
+    const todayLink = screen.getByTestId("today-tab-today")
+    expect(todayLink.getAttribute("aria-label")).toBe("Сегодня, текущий раздел")
+  })
+
+  // START_FUNCTION_CONTRACT
+  // name: inactive tab link has plain label as aria-label
+  // purpose: On pathname /, non-active tabs have plain label as aria-label.
+  // END_FUNCTION_CONTRACT
+  it("inactive tab link has plain label as aria-label", () => {
+    render(<TabBar />)
+    const calendarLink = screen.getByTestId("today-tab-calendar")
+    expect(calendarLink.getAttribute("aria-label")).toBe("Календарь")
+  })
+
+  // START_FUNCTION_CONTRACT
+  // name: all 5 tab links have aria-label attribute
+  // purpose: Ensures every tab link sets aria-label regardless of active state.
+  // END_FUNCTION_CONTRACT
+  it("all 5 tab links have aria-label attribute", () => {
+    render(<TabBar />)
+    const ids = ["today-tab-today", "today-tab-calendar", "today-tab-readings", "today-tab-chat", "today-tab-profile"]
+    for (const id of ids) {
+      expect(screen.getByTestId(id).getAttribute("aria-label")).toBeTruthy()
+    }
+  })
+
+  // START_FUNCTION_CONTRACT
+  // name: highlights "Календарь" — aria-label changes when active
+  // purpose: On /calendar, calendar tab gets suffix; today tab gets plain label.
+  // END_FUNCTION_CONTRACT
+  it("highlights \"Календарь\" — aria-label changes when active", () => {
+    mockPathname.mockReturnValue("/calendar")
+    render(<TabBar />)
+    expect(screen.getByTestId("today-tab-calendar").getAttribute("aria-label")).toBe("Календарь, текущий раздел")
+    expect(screen.getByTestId("today-tab-today").getAttribute("aria-label")).toBe("Сегодня")
+  })
+
+  // START_FUNCTION_CONTRACT
+  // name: highlights "Спросить" — aria-label changes when active
+  // purpose: On /chat, chat tab gets suffix; today tab stays plain.
+  // END_FUNCTION_CONTRACT
+  it("highlights \"Спросить\" — aria-label changes when active", () => {
+    mockPathname.mockReturnValue("/chat")
+    render(<TabBar />)
+    expect(screen.getByTestId("today-tab-chat").getAttribute("aria-label")).toBe("Спросить, текущий раздел")
+    expect(screen.getByTestId("today-tab-today").getAttribute("aria-label")).toBe("Сегодня")
+  })
+
+  // START_FUNCTION_CONTRACT
+  // name: highlights "Профиль" — all tabs have correct aria-label
+  // purpose: On /profile, only profile tab has suffix; all others plain.
+  // END_FUNCTION_CONTRACT
+  it("highlights \"Профиль\" — all tabs have correct aria-label", () => {
+    mockPathname.mockReturnValue("/profile")
+    render(<TabBar />)
+    expect(screen.getByTestId("today-tab-profile").getAttribute("aria-label")).toBe("Профиль, текущий раздел")
+    expect(screen.getByTestId("today-tab-today").getAttribute("aria-label")).toBe("Сегодня")
+    expect(screen.getByTestId("today-tab-calendar").getAttribute("aria-label")).toBe("Календарь")
+    expect(screen.getByTestId("today-tab-readings").getAttribute("aria-label")).toBe("Разборы")
+    expect(screen.getByTestId("today-tab-chat").getAttribute("aria-label")).toBe("Спросить")
   })
 })
 // END_BLOCK_TESTS
