@@ -158,5 +158,37 @@ class FunctionContractTests(unittest.TestCase):
 # END_BLOCK: FUNCTION_TESTS
 
 
+class SizeTests(unittest.TestCase):
+    def test_file_1000_lines_passes(self) -> None:
+        # Construct a clean file and pad it to exactly 1000 lines
+        lines = CLEAN_SOURCE.splitlines()
+        padding = 1000 - len(lines)
+        src = CLEAN_SOURCE + "\n" * padding
+        self.assertEqual(len(src.splitlines()), 1000)
+        self.assertEqual(_lint(src), [])
+
+    def test_file_1001_lines_fails_grc030(self) -> None:
+        lines = CLEAN_SOURCE.splitlines()
+        padding = 1001 - len(lines)
+        src = CLEAN_SOURCE + "\n" * padding
+        self.assertEqual(len(src.splitlines()), 1001)
+        self.assertIn("GRC030", _lint(src))
+
+    def test_function_normal_passes(self) -> None:
+        # CLEAN_SOURCE has a normal-sized function
+        self.assertEqual(_lint(CLEAN_SOURCE), [])
+
+    def test_function_oversized_fails_grc031(self) -> None:
+        # Create a function body with > 4000 tokens
+        # Each "    x = 1\n" has 3 tokens (x, =, 1)
+        # 1500 * 3 = 4500 tokens
+        lines = CLEAN_SOURCE.splitlines()
+        # insert before the block body
+        insert_idx = lines.index("    # START_BLOCK: BODY")
+        lines.insert(insert_idx, "    x = 1\n" * 1500)
+        src = "\n".join(lines)
+        self.assertIn("GRC031", _lint(src))
+
+
 if __name__ == "__main__":
     unittest.main()

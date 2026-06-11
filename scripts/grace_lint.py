@@ -343,6 +343,65 @@ def check_function_contracts(
 # END_BLOCK: FUNCTION_CONTRACT_CHECK
 
 
+def _collect_all_functions(
+    tree: ast.AST,
+) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Return every top-level or method `def`/`async def`."""
+    out: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            out.append(node)
+    return out
+
+
+def count_python_tokens(source: str) -> int:
+    import tokenize
+    import io
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+        ignored = {
+            tokenize.INDENT,
+            tokenize.DEDENT,
+            tokenize.NEWLINE,
+            tokenize.NL,
+            tokenize.COMMENT,
+            tokenize.ENDMARKER,
+        }
+        return sum(1 for t in tokens if t.type not in ignored)
+    except Exception:
+        # Fallback to regex if tokenizer fails for some reason
+        # Strip python comments first
+        clean_source = re.sub(r'#.*', '', source)
+        return len(re.findall(r'\w+|[^\w\s]', clean_source))
+
+
+def check_function_sizes(
+    path: Path, source: str, lines: list[str], report: FileReport
+) -> None:
+    try:
+        tree = ast.parse(source, filename=str(path))
+    except SyntaxError:
+        return
+    for func in _collect_all_functions(tree):
+        start_line = func.lineno
+        end_line = func.end_lineno or len(lines)
+        func_source = "\n".join(lines[start_line - 1 : end_line])
+        
+        token_count = count_python_tokens(func_source)
+        if token_count > 4000:
+            report.violations.append(
+                Violation(
+                    file=path,
+                    line=func.lineno,
+                    code="GRC031",
+                    message=(
+                        f"function '{func.name}' too large: "
+                        f"{token_count} tokens (max limit: 4000)"
+                    ),
+                )
+            )
+
+
 # ----------------------------------------------------------------------------
 # START_BLOCK: REPORTING
 # ----------------------------------------------------------------------------
@@ -365,6 +424,17 @@ def lint_file(path: Path) -> FileReport:
         return report
 
     check_banner(path, lines, report)
+
+    # GRC030: file too long
+    if len(lines) > 1000:
+        report.violations.append(
+            Violation(
+                file=path,
+                line=1001,
+                code="GRC030",
+                message=f"file too long: {len(lines)} lines (max limit: 1000)",
+            )
+        )
 
     markers = parse_markers([ln.rstrip("\n") for ln in lines])
     check_pairing(path, markers, "MODULE_CONTRACT", "GRC002", report)
@@ -394,6 +464,7 @@ def lint_file(path: Path) -> FileReport:
         )
 
     check_function_contracts(path, source, [ln.rstrip("\n") for ln in lines], report)
+    check_function_sizes(path, source, [ln.rstrip("\n") for ln in lines], report)
     return report
 
 

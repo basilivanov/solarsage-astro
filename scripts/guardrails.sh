@@ -27,6 +27,9 @@ Usage:
   bash scripts/guardrails.sh <command>
 
 Commands:
+  fast       Run cheap mechanical checks only (frontend/backend GRACE lint).
+  normal     Run frontend and backend checks suitable for normal acceptance.
+  strict     Run full merge gate (full + backend-grace + logging guardrails).
   docs       Validate docs/ front-matter and docs/MANIFEST.md sync.
   secrets    Run a lightweight accidental-secret scan on tracked files.
   orchestrator
@@ -36,9 +39,9 @@ Commands:
   backend-grace
              Run strict backend GRACE marker lint for canon-sync waves.
   frontend   Run eslint, TypeScript check, GRACE marker gate, negative tests.
+  domain     Run domain-specific quality checks (horary quality).
   vercel     Run the checks suitable for Vercel build: docs + secrets + frontend.
-  full       Run docs + secrets + orchestrator + contracts + backend + frontend.
-  strict     Run full + backend-grace.
+  full       Run docs + secrets + orchestrator + contracts + backend + frontend + domain + prod.
 
 Dependency setup:
   pnpm install
@@ -231,9 +234,23 @@ run_frontend() {
 
   section "frontend: GRACE negative tests"
   bash "$ROOT/scripts/grace/check-negative.sh"
+}
 
-  section "frontend: horary quality guard"
+run_domain() {
+  section "domain: check horary quality"
   bash "$ROOT/scripts/check_horary_quality.sh"
+}
+
+run_fast() {
+  section "fast: cheap mechanical checks"
+  python3 "$ROOT/scripts/grace_front_lint.py"
+  python3 "$ROOT/scripts/grace_lint.py" "$API_ROOT/app"
+  python3 "$ROOT/scripts/test_grace_lint.py"
+}
+
+run_normal() {
+  run_frontend
+  run_backend
 }
 
 run_prod_guard() {
@@ -255,6 +272,7 @@ run_full() {
   run_contracts
   run_backend
   run_frontend
+  run_domain
   run_prod_guard
 }
 
@@ -275,6 +293,8 @@ if [[ $# -ne 1 ]]; then
 fi
 
 case "$1" in
+  fast) run_fast ;;
+  normal) run_normal ;;
   docs) run_docs ;;
   secrets) run_secrets ;;
   orchestrator) run_orchestrator ;;
@@ -282,6 +302,7 @@ case "$1" in
   backend) run_backend ;;
   backend-grace) run_backend_grace ;;
   frontend) run_frontend ;;
+  domain) run_domain ;;
   prod|guardrails:prod) run_prod_guard ;;
   vercel) run_vercel ;;
   full|all) run_full ;;

@@ -43,6 +43,7 @@ cp lib/grace/log.ts                          "$WORK/lib/grace/log.ts"
 cp packages/contracts/index.ts               "$WORK/packages/contracts/index.ts"
 cp packages/contracts/_generated.ts          "$WORK/packages/contracts/_generated.ts"
 cp scripts/grace/check-markers.sh            "$WORK/scripts/grace/check-markers.sh"
+cp scripts/grace_front_lint.py               "$WORK/scripts/grace_front_lint.py"
 cp "$PATHS_FILE"                             "$WORK/$PATHS_FILE"
 cp eslint.config.mjs                         "$WORK/eslint.config.mjs"
 cp eslint-rules/grace-plugin.mjs             "$WORK/eslint-rules/grace-plugin.mjs"
@@ -77,6 +78,25 @@ report "NEG-MARK-1 (AI_HEADER removed)" \
 cp "$PILOT" "$WORK/$PILOT"
 sed -i.bak '0,/END_BLOCK: TODAY_FETCH/{/END_BLOCK: TODAY_FETCH/d;}' "$WORK/$PILOT"
 report "NEG-MARK-2 (END_BLOCK removed)" \
+  "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
+
+# ---------- NEG-MARK-3: GRC030 file too long ----------
+cp "$PILOT" "$WORK/$PILOT"
+# pad it with 1050 lines
+for i in {1..1050}; do echo "" >> "$WORK/$PILOT"; done
+report "NEG-MARK-3 (file over 1000 lines fails GRC030)" \
+  "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
+
+# ---------- NEG-MARK-4: GRC031 function too large ----------
+cp "$PILOT" "$WORK/$PILOT"
+cat >> "$WORK/$PILOT" <<'EOF'
+export const LargeComponent = () => {
+EOF
+for i in {1..1500}; do echo "  let x = 1;" >> "$WORK/$PILOT"; done
+cat >> "$WORK/$PILOT" <<'EOF'
+}
+EOF
+report "NEG-MARK-4 (function over 4000 tokens fails GRC031)" \
   "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
 
 # Restore the pilot inside WORK before running ESLint cases.
