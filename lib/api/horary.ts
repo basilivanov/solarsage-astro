@@ -17,7 +17,8 @@
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACTimport type {
+// END_MODULE_CONTRACT
+import type {
   HoraryQuestionCreate,
   HoraryQuestionRead,
   HoraryQuotaRead,

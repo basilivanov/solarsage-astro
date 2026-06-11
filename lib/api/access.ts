@@ -17,7 +17,8 @@
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT/**
+// END_MODULE_CONTRACT
+/**
  * API-фасад для подписки/доступа.
  *
  * Единая точка интеграции для компонентов и хуков.

@@ -17,7 +17,8 @@
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT/**
+// END_MODULE_CONTRACT
+/**
  * API layer configuration — canonical Telegram auth path only.
  * No fixtures, no mocks, no stubs.
  */

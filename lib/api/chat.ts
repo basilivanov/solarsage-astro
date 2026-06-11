@@ -17,7 +17,8 @@
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT/**
+// END_MODULE_CONTRACT
+/**
  * API-фасад чата.
  *
  * Единственная точка интеграции с ИИ. UI и хук `useChat` зовут только её.

@@ -17,7 +17,8 @@
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT/**
+// END_MODULE_CONTRACT
+/**
  * API-фасад для справочника городов.
  *
  * Использует реальный GeoNames API через /api/geo/autocomplete.

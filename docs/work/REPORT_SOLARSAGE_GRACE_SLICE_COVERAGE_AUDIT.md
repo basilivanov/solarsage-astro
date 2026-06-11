@@ -2,8 +2,8 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-**Baseline SHA:** `f2a6a39`
-**JSON hash:** `513f9568e236`
+**Baseline SHA:** `748ff96`
+**JSON hash:** `2d2af0b1372e`
 
 ## How audit was run
 ```bash
@@ -17,8 +17,8 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | Metric | Value |
 |---|---|
 | Total files audited | 497 |
-| Full GRACE markers | 113 (22.7%) |
-| Partial markers | 346 (69.6%) |
+| Full GRACE markers | 114 (22.9%) |
+| Partial markers | 345 (69.4%) |
 | No markers | 38 (7.6%) |
 | Canonical logging | 2 (0.4%) |
 | Unmapped | 28 (5.6%) |
@@ -38,7 +38,7 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | SLICE-SIDECAR-CALCULATION | 23 | 0 | 23 | 0 | 0.0% | 0 |
 | SLICE-PROFILE-ONBOARDING | 21 | 0 | 21 | 0 | 0.0% | 0 |
 | SLICE-OTHER-BACKEND | 20 | 0 | 0 | 20 | 0.0% | 0 |
-| SLICE-FRONTEND-API-FACADES | 15 | 0 | 15 | 0 | 0.0% | 0 |
+| SLICE-FRONTEND-API-FACADES | 15 | 1 | 14 | 0 | 6.7% | 0 |
 | SLICE-TODAY-CALENDAR | 12 | 1 | 11 | 0 | 8.3% | 0 |
 | SLICE-OTHER-APP | 11 | 0 | 11 | 0 | 0.0% | 0 |
 | SLICE-CONTRACTS | 9 | 1 | 7 | 1 | 11.1% | 0 |
@@ -54,7 +54,6 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 - **SLICE-SIDECAR-CALCULATION**: 23 files, 0% coverage
 - **SLICE-PROFILE-ONBOARDING**: 21 files, 0% coverage
 - **SLICE-OTHER-BACKEND**: 20 files, 0% coverage
-- **SLICE-FRONTEND-API-FACADES**: 15 files, 0% coverage
 - **SLICE-OTHER-APP**: 11 files, 0% coverage
 - **SLICE-ORCHESTRATOR-ADAPTER**: 5 files, 0% coverage
 

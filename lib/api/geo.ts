@@ -5,19 +5,29 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
+// ############################################################################
+
+// START_MODULE_CONTRACT
 // purpose: API client for geo
 // owns:
 //   - lib/api/geo.ts
-// inputs: Endpoint params, request body
-// outputs: Parsed response / typed data
+// inputs: Endpoint params, body
+// outputs: Parsed response
 // dependencies: local modules
 // side_effects: Network calls to API
 // emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACTexport interface GeoSuggestion {
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
+export interface GeoSuggestion {
   id: string
   name: string
   admin1: string | null
