@@ -7,7 +7,7 @@
     PHASE = thematic milestone
     WAVE  = controller-packet-sized unit, ideally one PR / one acceptance packet
 -->
-<development-plan project="solarsage-astro" canon="docs/GRACE_CANON.md" updated="2026-06-09">
+<development-plan project="solarsage-astro" canon="docs/GRACE_CANON.md" updated="2026-06-11">
 
   <!-- =================================================================== -->
   <!-- CURRENT ACCEPTED BASELINE                                            -->
