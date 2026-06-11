@@ -156,6 +156,13 @@ export function TodayScreen({
           />
         </div>
       )}
+
+      {/* Disclaimer */}
+      <footer className="px-5 pb-4 pt-2">
+        <p className="text-center font-sans text-[11px] leading-relaxed text-foreground/40">
+          Данные показаны для ознакомления. Перед принятием важных решений проверяйте информацию.
+        </p>
+      </footer>
     </div>
   )
 }
