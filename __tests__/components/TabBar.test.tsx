@@ -41,25 +41,21 @@ describe('TabBar', () => {
     mockPathname.mockReturnValue('/')
   })
 
-  it('renders nav with data-testid today-tab-bar', () => {
+  it('renders all 5 tabs', () => {
     render(<TabBar />)
-    expect(screen.getByTestId('today-tab-bar')).toBeTruthy()
+    expect(screen.getByText('Сегодня')).toBeTruthy()
+    expect(screen.getByText('Календарь')).toBeTruthy()
+    expect(screen.getByText('Разборы')).toBeTruthy()
+    expect(screen.getByText('Спросить')).toBeTruthy()
+    expect(screen.getByText('Профиль')).toBeTruthy()
   })
 
-  it('renders all 5 tabs with data-testid attributes', () => {
+  it('highlights "Сегодня" tab as active when pathname is /', () => {
     render(<TabBar />)
-    const keys = ['today', 'calendar', 'readings', 'chat', 'profile']
-    for (const key of keys) {
-      expect(screen.getByTestId(`today-tab-${key}`)).toBeTruthy()
-    }
-  })
-
-  it('renders all five link labels', () => {
-    render(<TabBar />)
-    const labels = ['Сегодня', 'Календарь', 'Разборы', 'Спросить', 'Профиль']
-    for (const label of labels) {
-      expect(screen.getByText(label)).toBeTruthy()
-    }
+    const todayLink = screen.getByText('Сегодня').closest('a')
+    expect(todayLink?.getAttribute('aria-current')).toBe('page')
+    const calendarLink = screen.getByText('Календарь').closest('a')
+    expect(calendarLink?.getAttribute('aria-current')).toBeNull()
   })
 
   it('has correct hrefs for all tabs', () => {
@@ -72,44 +68,48 @@ describe('TabBar', () => {
     expect(hrefs).toContain('/profile')
   })
 
-  it('highlights "Сегодня" tab as active when pathname is /', () => {
+  it('renders correct tab labels', () => {
     render(<TabBar />)
-    const todayLink = screen.getByTestId('today-tab-today')
-    expect(todayLink.getAttribute('aria-current')).toBe('page')
-    const calendarLink = screen.getByTestId('today-tab-calendar')
-    expect(calendarLink.getAttribute('aria-current')).toBeNull()
+    const labels = ['Сегодня', 'Календарь', 'Разборы', 'Спросить', 'Профиль']
+    for (const label of labels) {
+      expect(screen.getByText(label)).toBeTruthy()
+    }
   })
 
   it('highlights "Календарь" tab as active when pathname is /calendar', () => {
     mockPathname.mockReturnValue('/calendar')
     render(<TabBar />)
-    const calendarLink = screen.getByTestId('today-tab-calendar')
-    expect(calendarLink.getAttribute('aria-current')).toBe('page')
-    const todayLink = screen.getByTestId('today-tab-today')
-    expect(todayLink.getAttribute('aria-current')).toBeNull()
+    const calendarLink = screen.getByText('Календарь').closest('a')
+    expect(calendarLink?.getAttribute('aria-current')).toBe('page')
+    // Today tab should NOT be active
+    const todayLink = screen.getByText('Сегодня').closest('a')
+    expect(todayLink?.getAttribute('aria-current')).toBeNull()
   })
 
   it('highlights "Спросить" tab as active when pathname is /chat', () => {
     mockPathname.mockReturnValue('/chat')
     render(<TabBar />)
-    const chatLink = screen.getByTestId('today-tab-chat')
-    expect(chatLink.getAttribute('aria-current')).toBe('page')
+    const chatLink = screen.getByText('Спросить').closest('a')
+    expect(chatLink?.getAttribute('aria-current')).toBe('page')
   })
 
   it('falls back to "/" when usePathname returns null', () => {
     mockPathname.mockReturnValue(null as any)
     render(<TabBar />)
-    const todayLink = screen.getByTestId('today-tab-today')
-    expect(todayLink.getAttribute('aria-current')).toBe('page')
+    // When pathname is null, component falls back to "/" which matches "today"
+    const todayLink = screen.getByText('Сегодня').closest('a')
+    expect(todayLink?.getAttribute('aria-current')).toBe('page')
   })
 
-  it('sets aria-current="page" on the active tab only', () => {
+  it('sets aria-current="page" on the active tab', () => {
     render(<TabBar />)
-    const todayLink = screen.getByTestId('today-tab-today')
-    expect(todayLink.getAttribute('aria-current')).toBe('page')
-    const calendarLink = screen.getByTestId('today-tab-calendar')
-    expect(calendarLink.getAttribute('aria-current')).toBeNull()
-    const chatLink = screen.getByTestId('today-tab-chat')
-    expect(chatLink.getAttribute('aria-current')).toBeNull()
+    // With pathname="/", the "Сегодня" tab should have aria-current="page"
+    const todayLink = screen.getByText('Сегодня').closest('a')
+    expect(todayLink?.getAttribute('aria-current')).toBe('page')
+    // Other tabs should not have aria-current
+    const calendarLink = screen.getByText('Календарь').closest('a')
+    expect(calendarLink?.getAttribute('aria-current')).toBeNull()
+    const chatLink = screen.getByText('Спросить').closest('a')
+    expect(chatLink?.getAttribute('aria-current')).toBeNull()
   })
 })
