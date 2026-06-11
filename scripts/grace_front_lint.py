@@ -201,11 +201,15 @@ def parse_markers(lines: list[str]) -> list[Marker]:
         m = pattern.search(line)
         if not m:
             continue
+        kind = m.group("kind")
         ident = m.group("id") or ""
+        # BLOCK requires a name; MODULE_CONTRACT/MODULE_MAP accept no-id
+        if kind == "BLOCK" and not ident:
+            continue
         found.append(
             Marker(
                 edge=m.group("edge"),
-                kind=m.group("kind"),
+                kind=kind,
                 ident=ident,
                 line=idx,
             )
