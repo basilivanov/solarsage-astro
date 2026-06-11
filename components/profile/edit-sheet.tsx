@@ -24,19 +24,19 @@ type Props =
       field: "birthDate"
       initial: BirthDateParts
       onClose: () => void
-      onSave: (value: BirthDateParts) => void
+      onSave: (_value: BirthDateParts) => void
     }
   | {
       field: "birthTime"
       initial: BirthTimeParts
       onClose: () => void
-      onSave: (value: BirthTimeParts) => void
+      onSave: (_value: BirthTimeParts) => void
     }
   | {
       field: "birthPlace" | "currentCity" | "birthdayCity"
       initial: string
       onClose: () => void
-      onSave: (value: string) => void
+      onSave: (_value: string) => void
     }
 
 const TITLES: Record<EditField, { eyebrow: string; title: string; subtitle: string }> = {
@@ -165,7 +165,7 @@ function DateEditor({
   onClose,
 }: {
   initial: BirthDateParts
-  onSave: (v: BirthDateParts) => void
+  onSave: (_v: BirthDateParts) => void
   onClose: () => void
 }) {
   const [value, setValue] = useState<BirthDateParts>(initial)
@@ -228,7 +228,7 @@ function TimeEditor({
   onClose,
 }: {
   initial: BirthTimeParts
-  onSave: (v: BirthTimeParts) => void
+  onSave: (_v: BirthTimeParts) => void
   onClose: () => void
 }) {
   const [value, setValue] = useState<BirthTimeParts>(initial)
@@ -324,7 +324,7 @@ function CityEditor({
   onClose,
 }: {
   initial: string
-  onSave: (v: string) => void
+  onSave: (_v: string) => void
   onClose: () => void
 }) {
   const [city, setCity] = useState<City | null>(() => {
@@ -391,5 +391,6 @@ function SheetActions({
     </div>
   )
 }
+
 
 

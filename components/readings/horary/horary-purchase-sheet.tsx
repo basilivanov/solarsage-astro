@@ -31,7 +31,7 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
     window.setTimeout(onClose, 220)
   }
 
-  const handlePurchase = (label: string) => {
+  const handlePurchase = (_label: string) => {
     toast({
       description: "Оплата будет доступна в ближайшее время",
     })
@@ -128,3 +128,4 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
     </div>
   )
 }
+

@@ -9,8 +9,8 @@ type Props = {
   currentCity: City | null
   birthdayCity: City | null
   sameAsCurrent: boolean
-  onChangeBirthdayCity: (v: City | null) => void
-  onChangeSameAsCurrent: (v: boolean) => void
+  onChangeBirthdayCity: (_v: City | null) => void
+  onChangeSameAsCurrent: (_v: boolean) => void
   onBack: () => void
   onNext: () => void
 }
@@ -116,3 +116,4 @@ export function StepBirthday({
     </OnboardingShell>
   )
 }
+

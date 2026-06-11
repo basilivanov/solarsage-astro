@@ -20,13 +20,13 @@ type Props = {
   profileBirthLon?: number | null
   profileBirthTz?: string | null
   onSubmit: (
-    text: string,
-    category: HoraryCategory | undefined,
-    localTime: string,
-    timezone: string,
-    lat?: number,
-    lon?: number,
-    locationName?: string
+    _text: string,
+    _category: HoraryCategory | undefined,
+    _localTime: string,
+    _timezone: string,
+    _lat?: number,
+    _lon?: number,
+    _locationName?: string
   ) => void
 }
 
@@ -54,7 +54,7 @@ export function HoraryForm({
   const [questionLon, setQuestionLon] = useState<number | undefined>(undefined)
   const [questionLocationName, setQuestionLocationName] = useState<string | undefined>(undefined)
   const [blockedReason, setBlockedReason] = useState<string | null>(null)
-  const [shakeKey, setShakeKey] = useState(0)
+  const [_shakeKey, setShakeKey] = useState(0)
 
   const activeCategoryMeta = HORARY_CATEGORIES.find((c) => c.key === selectedCategory)
   const placeholder = activeCategoryMeta?.placeholder || "Сформулируй вопрос так, чтобы на него можно было ответить Да или Нет..."
@@ -272,3 +272,4 @@ export function HoraryForm({
     </motion.form>
   )
 }
+

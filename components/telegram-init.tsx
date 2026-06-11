@@ -2,14 +2,11 @@
 
 import { useEffect } from "react"
 
-let appHeightSet = false
-
 function setAppHeight() {
   try {
     const h = window.visualViewport?.height ?? window.innerHeight
     document.documentElement.style.setProperty('--app-height', `${h}px`)
-    appHeightSet = true
-  } catch {}
+  } catch { /* noop */ }
 }
 
 /**
@@ -50,21 +47,21 @@ export function TelegramInit() {
     }
 
     // Init Telegram
-    try { tg.ready() } catch {}
-    try { (tg as any).setHeaderColor?.("bg_color") } catch {}
-    try { (tg as any).setBackgroundColor?.("bg_color") } catch {}
+    try { tg.ready() } catch { /* noop */ }
+    try { (tg as any).setHeaderColor?.("bg_color") } catch { /* noop */ }
+    try { (tg as any).setBackgroundColor?.("bg_color") } catch { /* noop */ }
     if (tg.colorScheme === "dark") {
       document.documentElement.classList.add("dark")
     }
 
     // Expand — retry several times (Telegram may ignore first call during open animation)
     const expand = () => {
-      try { tg.expand() } catch {}
+      try { tg.expand() } catch { /* noop */ }
       if (isMethodSupported(tg, 'requestFullscreen')) {
-        try { (tg as any).requestFullscreen() } catch {}
+        try { (tg as any).requestFullscreen() } catch { /* noop */ }
       }
       if (isMethodSupported(tg, 'disableVerticalSwipes')) {
-        try { (tg as any).disableVerticalSwipes() } catch {}
+        try { (tg as any).disableVerticalSwipes() } catch { /* noop */ }
       }
     }
     expand()
@@ -76,10 +73,10 @@ export function TelegramInit() {
     // Re-expand on viewport change
     const onViewport = () => {
       if (!tg.isExpanded) {
-        try { tg.expand() } catch {}
+        try { tg.expand() } catch { /* noop */ }
       }
     }
-    try { tg.onEvent?.('viewportChanged', onViewport) } catch {}
+    try { tg.onEvent?.('viewportChanged', onViewport) } catch { /* noop */ }
 
     // Track real viewport height for --app-height
     setAppHeight()
@@ -91,9 +88,10 @@ export function TelegramInit() {
       window.removeEventListener('resize', setAppHeight)
       window.visualViewport?.removeEventListener('resize', setAppHeight)
       window.visualViewport?.removeEventListener('scroll', setAppHeight)
-      try { tg.offEvent?.('viewportChanged', onViewport) } catch {}
+      try { tg.offEvent?.('viewportChanged', onViewport) } catch { /* noop */ }
     }
   }, [])
 
   return null
 }
+

@@ -23,8 +23,7 @@ export function Avatar({ user }: { user: TelegramUser | null }) {
   return (
     <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-full border border-border/70 bg-accent/70 font-serif text-[22px] text-foreground/80">
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+                <img
           src={src}
           alt={name}
           className="h-full w-full object-cover"

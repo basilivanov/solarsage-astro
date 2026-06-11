@@ -17,7 +17,7 @@ const SIGN_RU: Record<string, string> = {
   Capricorn: "Козероге", Aquarius: "Водолее", Pisces: "Рыбах",
 }
 
-export function HeroSection({ name, ascSign, sunSign, moonSign, birthCity }: Props) {
+export function HeroSection({ ascSign, sunSign, moonSign, birthCity }: Props) {
   const ascLabel = ascSign ? SIGN_RU[ascSign] ?? ascSign : null
   const sunLabel = sunSign ? SIGN_RU[sunSign] ?? sunSign : null
   const moonLabel = moonSign ? SIGN_RU[moonSign] ?? moonSign : null

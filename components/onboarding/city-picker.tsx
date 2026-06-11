@@ -11,7 +11,7 @@ import { logEvent } from "@/lib/log"
 
 type Props = {
   value: City | null
-  onChange: (city: City | null) => void
+  onChange: (_city: City | null) => void
   placeholder?: string
   autoFocus?: boolean
 }
@@ -184,3 +184,4 @@ export function CityPicker({
     </div>
   )
 }
+

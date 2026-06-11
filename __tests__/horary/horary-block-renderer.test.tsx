@@ -312,7 +312,7 @@ describe("HoraryBlockRenderer — callout", () => {
         block={{ type: "callout", tone: "neutral", text: "Текст." }}
       />
     );
-    const titleDiv = container.querySelector(".uppercase.tracking-\\[0\\.14em\\]");
+    // titleDiv kept for reference (querySelector result unused)
     // The only uppercase tracking element should be from the text itself, no title div
     // Check that there's no title div before the paragraph
     const aside = container.querySelector("aside");

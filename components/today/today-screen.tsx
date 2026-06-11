@@ -18,7 +18,7 @@ type Props = {
   selectedDate: Date
   access: AccessInfo
   payload: AdaptedTodayPayload
-  onDateChange: (d: Date) => void
+  onDateChange: (_d: Date) => void
   importantToday?: TodayImportantEvent[]
 }
 
@@ -166,3 +166,4 @@ export function TodayScreen({
     </div>
   )
 }
+

@@ -6,7 +6,7 @@ type NumFieldProps = {
   label: string
   placeholder: string
   value: string
-  onChange: (v: string) => void
+  onChange: (_v: string) => void
   maxLength: number
   inputRef?: RefObject<HTMLInputElement | null>
   /** Расширенная колонка (например, год — 4 цифры). */
@@ -52,3 +52,4 @@ export function NumField({
 export function NumFieldDot() {
   return <span className="pb-2 font-serif text-[24px] text-foreground/25">·</span>
 }
+

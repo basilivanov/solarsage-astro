@@ -16,7 +16,7 @@ type Tab = {
   label: string
   href: string
   /** Префиксы путей, при которых эта вкладка считается активной. */
-  match: (pathname: string) => boolean
+  match: (_pathname: string) => boolean
 }
 
 const tabs: Tab[] = [
@@ -94,3 +94,4 @@ export function TabBar() {
     </nav>
   )
 }
+

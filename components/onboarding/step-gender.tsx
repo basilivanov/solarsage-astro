@@ -4,7 +4,7 @@ import { OnboardingShell } from "./onboarding-shell"
 
 type Props = {
   gender: "male" | "female" | null
-  onSelect: (value: "male" | "female") => void
+  onSelect: (_value: "male" | "female") => void
   onBack: () => void
 }
 
@@ -51,3 +51,4 @@ export function StepGender({ gender, onSelect, onBack }: Props) {
     </OnboardingShell>
   )
 }
+

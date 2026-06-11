@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, Clock, MapPin, Edit2 } from "lucide-react"
+import { Clock, MapPin} from "lucide-react"
 import { CityPicker } from "@/components/onboarding/city-picker"
 import type { City } from "@/lib/contracts/city"
 
@@ -14,7 +14,7 @@ type Props = {
   profileBirthLat?: number | null
   profileBirthLon?: number | null
   profileBirthTz?: string | null
-  onChange: (localTime: string, timezone: string, lat?: number, lon?: number, locationName?: string) => void
+  onChange: (_localTime: string, _timezone: string, _lat?: number, _lon?: number, _locationName?: string) => void
 }
 
 export function HoraryTimeConfirm({
@@ -193,3 +193,4 @@ export function HoraryTimeConfirm({
     </div>
   )
 }
+

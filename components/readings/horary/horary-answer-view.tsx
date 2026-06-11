@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronLeft, Sparkles, HelpCircle } from "lucide-react"
+import { ChevronLeft} from "lucide-react"
 import { motion } from "framer-motion"
 import type { HoraryQuestionRead } from "@/packages/contracts"
 import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
@@ -127,3 +127,4 @@ export function HoraryAnswerView({ question }: Props) {
     </div>
   )
 }
+

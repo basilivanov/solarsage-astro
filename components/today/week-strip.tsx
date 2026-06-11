@@ -19,7 +19,7 @@ import { MoodIcon } from "@/components/calendar/mood-icon"
 type Props = {
   selectedDate: Date
   access: AccessInfo
-  onSelect?: (d: Date) => void
+  onSelect?: (_d: Date) => void
 }
 
 export function WeekStrip({ selectedDate, access, onSelect }: Props) {
@@ -131,3 +131,4 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
     </section>
   )
 }
+

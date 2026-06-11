@@ -4,7 +4,7 @@
   const originalFetch = window.fetch;
 
   window.fetch = async function(...args) {
-    const [url, options] = args;
+    const [url] = args;
     const startTime = Date.now();
 
     try {
@@ -28,7 +28,7 @@
         try {
           const text = await response.clone().text();
           console.error('[Telemetry] Response body:', text.substring(0, 500));
-        } catch (e) {
+        } catch {
           // Ignore if can't read body
         }
       }

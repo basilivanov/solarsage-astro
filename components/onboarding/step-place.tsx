@@ -9,9 +9,9 @@ type Props = {
   birthPlace: City | null
   currentCity: City | null
   sameAsBirth: boolean
-  onChangeBirthPlace: (v: City | null) => void
-  onChangeCurrentCity: (v: City | null) => void
-  onChangeSameAsBirth: (v: boolean) => void
+  onChangeBirthPlace: (_v: City | null) => void
+  onChangeCurrentCity: (_v: City | null) => void
+  onChangeSameAsBirth: (_v: boolean) => void
   onBack: () => void
   onNext: () => void
 }
@@ -121,3 +121,4 @@ export function StepPlace({
     </OnboardingShell>
   )
 }
+

@@ -50,7 +50,7 @@ const DEV_OPTIONS: DevOption[] = [
 
 type Props = {
   currentState: AccessState
-  onChangeState: (state: AccessState) => void
+  onChangeState: (_state: AccessState) => void
   onResetOnboarding?: () => void
 }
 
@@ -147,3 +147,4 @@ export function DevModeSwitcher({
     </>
   )
 }
+
