@@ -18,12 +18,53 @@ const ENFORCED_GLOBS = [
   "packages/contracts/index.ts",
 ];
 
+// Browser/DOM/React globals used across the codebase.
+// TypeScript's lib: ["dom"] provides these at compile time; ESLint's
+// no-undef needs explicit globals to avoid false positives.
+const BROWSER_GLOBALS = {
+  // DOM / browser APIs
+  window: "readonly",
+  document: "readonly",
+  fetch: "readonly",
+  console: "readonly",
+  setTimeout: "readonly",
+  clearTimeout: "readonly",
+  setInterval: "readonly",
+  clearInterval: "readonly",
+  requestAnimationFrame: "readonly",
+  cancelAnimationFrame: "readonly",
+  localStorage: "readonly",
+  sessionStorage: "readonly",
+  crypto: "readonly",
+  URLSearchParams: "readonly",
+  TextEncoder: "readonly",
+  self: "readonly",
+  confirm: "readonly",
+  global: "readonly",
+  process: "readonly",
+  // React namespace (available via automatic JSX runtime + @types/react)
+  React: "readonly",
+  // DOM TypeScript interfaces (provided by lib: ["dom"])
+  Element: "readonly",
+  HTMLElement: "readonly",
+  HTMLDivElement: "readonly",
+  HTMLButtonElement: "readonly",
+  HTMLInputElement: "readonly",
+  HTMLTextAreaElement: "readonly",
+  HTMLAnchorElement: "readonly",
+  // DOM event types (provided by lib: ["dom"])
+  KeyboardEvent: "readonly",
+  MouseEvent: "readonly",
+  PointerEvent: "readonly",
+};
+
 export default [
   {
     ignores: [
       ".next/**",
       "node_modules/**",
       "apps/api/**",
+      "apps/solarsage/**",
       "packages/contracts/_generated.ts",
       "packages/contracts/openapi.json",
       "user_read_only_context/**",
@@ -36,7 +77,17 @@ export default [
       "legacy/**",
     ],
   },
+  // Browser/DOM globals for all files
+  { languageOptions: { globals: BROWSER_GLOBALS } },
   js.configs.recommended,
+  // Allow _-prefixed unused vars/args (TypeScript convention).
+  // ENFORCED_GLOBS block below sets no-unused-vars: "off" to let GRACE
+  // contracts-only-import do the policing instead.
+  {
+    rules: {
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    },
+  },
   // React Hooks rules — apply to ALL tsx files (catches Rules of Hooks violations early)
   {
     files: ["**/*.tsx", "**/*.jsx"],

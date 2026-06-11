@@ -14,7 +14,7 @@ vi.mock("lucide-react", () => ({
 }))
 
 vi.mock("@/components/onboarding/city-picker", () => ({
-  CityPicker: ({ value, onChange }: { value: City | null; onChange: (city: City) => void }) => (
+  CityPicker: ({ value, onChange }: { value: City | null; onChange: (_city: City) => void }) => (
     <button
       data-testid="mock-city-picker"
       onClick={() => {

@@ -12,7 +12,7 @@ import { MoodIcon } from "@/components/calendar/mood-icon"
 
 type Props = {
   access: AccessInfo
-  onOpenDay?: (date: Date) => void
+  onOpenDay?: (_date: Date) => void
 }
 
 export function CalendarScreen({ access, onOpenDay }: Props) {
@@ -252,3 +252,4 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
     </div>
   )
 }
+

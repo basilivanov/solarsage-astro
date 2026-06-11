@@ -31,7 +31,7 @@ type Props = {
   access: AccessInfo
   currentState: AccessState
   profileMeta: ProfileMeta
-  onChangeState: (s: AccessState) => void
+  onChangeState: (_s: AccessState) => void
   onResetOnboarding?: () => void
 }
 
@@ -205,7 +205,7 @@ function ProfileEditSheet({
 }: {
   field: EditField
   profile: Profile
-  onSave: (patch: Partial<Profile>) => void
+  onSave: (_patch: Partial<Profile>) => void
   onClose: () => void
 }) {
   switch (field) {
@@ -256,3 +256,4 @@ function ProfileEditSheet({
       )
   }
 }
+

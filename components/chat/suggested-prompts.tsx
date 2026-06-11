@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react"
 
 type Props = {
   prompts: string[]
-  onPick: (text: string) => void
+  onPick: (_text: string) => void
 }
 
 /**
@@ -33,3 +33,4 @@ export function SuggestedPrompts({ prompts, onPick }: Props) {
     </ul>
   )
 }
+

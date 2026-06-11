@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("lucide-react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("lucide-react")>();
-  const FakeIcon = (props: Record<string, unknown>) =>
+  const FakeIcon = (_props: Record<string, unknown>) =>
     React.createElement("span", { "data-testid": "icon" });
   return {
     ...actual,
@@ -115,3 +115,4 @@ describe("NatalReadingPage — no English signs in UI", () => {
     expect(body).toContain("Весы");
   });
 });
+

@@ -290,14 +290,14 @@ export function HoraryScreen() {
     }
   }, [])
 
-  const pollStatus = useCallback((id: string) => {
-    setActiveQuestionId(id)
-    setActiveQuestionStartedAt(Date.now())
-    if (!pollStartedAtRef.current) {
-      pollStartedAtRef.current = Date.now()
-    }
-    void pollAllProcessing()
-  }, [pollAllProcessing])
+  // const pollStatus = useCallback((id: string) => {
+  //   setActiveQuestionId(id)
+  //   setActiveQuestionStartedAt(Date.now())
+  //   if (!pollStartedAtRef.current) {
+  //     pollStartedAtRef.current = Date.now()
+  //   }
+  //   void pollAllProcessing()
+  // }, [pollAllProcessing])
 
   if (loading) {
     return (

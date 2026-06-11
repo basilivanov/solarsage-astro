@@ -19,8 +19,8 @@ export type BirthTime = BirthTimeParts
 type Props = {
   date: BirthDate
   time: BirthTime
-  onChangeDate: (v: BirthDate) => void
-  onChangeTime: (v: BirthTime) => void
+  onChangeDate: (_v: BirthDate) => void
+  onChangeTime: (_v: BirthTime) => void
   onBack: () => void
   onNext: () => void
 }
@@ -174,3 +174,4 @@ export function StepBirth({
     </OnboardingShell>
   )
 }
+

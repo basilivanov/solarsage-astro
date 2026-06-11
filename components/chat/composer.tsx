@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { ArrowUp, Square } from "lucide-react"
 
 type Props = {
-  onSend: (text: string) => void
+  onSend: (_text: string) => void
   onStop?: () => void
   disabled?: boolean
   /** True пока стрим в полёте — показываем кнопку «стоп» вместо «отправить». */
@@ -89,3 +89,4 @@ export function Composer({ onSend, onStop, disabled, streaming }: Props) {
     </form>
   )
 }
+
