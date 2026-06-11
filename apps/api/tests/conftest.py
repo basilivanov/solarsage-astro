@@ -1,3 +1,32 @@
+
+# ############################################################################
+# AI_HEADER: MODULE_TESTS_CONFTEST
+# ROLE: Module
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-TESTS
+# ############################################################################
+
+# START_MODULE_CONTRACT
+# purpose: Module — apps/api/tests/conftest.py
+# owns:
+#   - apps/api/tests/conftest.py
+# inputs: varies
+# outputs: varies
+# dependencies: local modules
+# side_effects: varies
+# emitted_logs: n/a
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 """Test fixtures for W-1.2: in-memory DB, async client, fake initData."""
 from __future__ import annotations
 

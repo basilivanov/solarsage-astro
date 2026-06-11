@@ -1,3 +1,9 @@
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 # ############################################################################
 # AI_HEADER: MODULE_TEST_MICROCOPY_MISSES
 # ROLE: Tests for microcopy miss tracking (W-9.2)

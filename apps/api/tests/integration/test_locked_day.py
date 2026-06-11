@@ -1,3 +1,32 @@
+
+# ############################################################################
+# AI_HEADER: MODULE_INTEGRATION_TEST_LOCKED_DAY
+# ROLE: Module
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-TESTS
+# ############################################################################
+
+# START_MODULE_CONTRACT
+# purpose: Module — apps/api/tests/integration/test_locked_day.py
+# owns:
+#   - apps/api/tests/integration/test_locked_day.py
+# inputs: varies
+# outputs: varies
+# dependencies: local modules
+# side_effects: varies
+# emitted_logs: n/a
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 # AI_HEADER
 # module: M-TEST-LOCKED-DAY
 # wave: W-ACCESS.3

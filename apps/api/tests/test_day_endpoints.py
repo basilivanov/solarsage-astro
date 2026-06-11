@@ -1,3 +1,18 @@
+
+# ############################################################################
+# AI_HEADER: MODULE_TESTS_TEST_DAY_ENDPOINTS
+# ROLE: Module
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-TESTS
+# ############################################################################
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 # AI_HEADER
 # module: M-DAY-SERVICE.tests
 # canon: docs/GRACE_CANON.md §6

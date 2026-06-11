@@ -1,3 +1,9 @@
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 # ############################################################################
 # AI_HEADER: MODULE_TEST_LOGGING
 # ROLE: Tests for logging spine (envelope, correlation, redactor).
