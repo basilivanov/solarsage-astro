@@ -112,7 +112,11 @@ def discover_frontend_files(root: Path) -> list[Path] | None:
 
 def expand_paths(paths: list[str], root: Path) -> list[Path]:
     files = []
-    exclude_dirs = {"node_modules", ".next", ".git"}
+    exclude_dirs = frozenset({
+        "node_modules", ".next", ".git", "__pycache__", ".venv", "venv",
+        ".mypy_cache", ".pytest_cache", ".ruff_cache",
+    })
+    exclude_prefixes = ("alembic/", "migrations/", "components/ui/")
     for p in paths:
         path_obj = Path(p)
         if not path_obj.is_absolute():
@@ -133,6 +137,8 @@ def expand_paths(paths: list[str], root: Path) -> list[Path]:
                 try:
                     rel_to_root = sub_p.relative_to(root)
                     if any(part in exclude_dirs for part in rel_to_root.parts):
+                        continue
+                    if any(str(rel_to_root).startswith(p) for p in exclude_prefixes):
                         continue
                     if sub_p.is_file() and sub_p.suffix in (".ts", ".tsx", ".js", ".jsx"):
                         files.append(rel_to_root)

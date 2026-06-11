@@ -1,0 +1,31 @@
+# GRACE canon adoption policy for Solar Sage
+# Gate mode controls how GRACE linters are used during acceptance:
+#   - changed-files: lint only coder-touched files (safe default)
+#   - strict:       full repo lint (orchestrator-level, not recommended for product)
+#   - disabled:     skip GRACE lint entirely (use only for non-migration tasks)
+gate_mode: changed-files
+
+# Included path globs (empty = all non-excluded paths)
+include: []
+
+# Excluded path globs (generated/vendor/framework artifacts)
+exclude:
+  - "node_modules/**"
+  - ".next/**"
+  - ".venv/**"
+  - "__pycache__/**"
+  - "alembic/**"
+  - "migrations/**"
+  - "components/ui/**/*.tsx"
+  - "components/ui/**/*.ts"
+  - "**/*.min.js"
+  - "**/*.min.css"
+  - "package-lock.json"
+  - "pnpm-lock.yaml"
+
+# Staged adoption — paths that should adopt GRACE canon first
+# These directories will have their files checked even without explicit coder changes.
+adopt_first:
+  - "components/today/"
+  - "app/(grace)/today/"
+  - "__tests__/components/"
