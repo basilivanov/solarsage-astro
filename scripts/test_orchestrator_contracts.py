@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-GUARDRAILS-TOOLING
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Tooling script — scripts/test_orchestrator_contracts.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for orchestrator_contracts.py behavior
 # owns:
 #   - scripts/test_orchestrator_contracts.py
-# inputs: varies
-# outputs: varies
+# inputs: Mocks, fixtures
+# outputs: Assertion results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: n/a (tests)
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 from __future__ import annotations
 
 import importlib.util

@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TESTS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Unit tests for horary-time-confirm.test.tsx — __tests__/horary/horary-time-confirm.test.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for horary-time-confirmtsx behavior
 // owns:
 //   - __tests__/horary/horary-time-confirm.test.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: React state management
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, act } from "@testing-library/react"
 import React from "react"

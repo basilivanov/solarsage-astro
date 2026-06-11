@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_LIB_DATE
-// ROLE: Library module
+// ROLE: Tests — date.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/date.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for date.ts behavior
 // owns:
 //   - lib/date.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (tests)
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 // AI_HEADER
 // module: M-LIB-DATE
 // wave: W-2.7

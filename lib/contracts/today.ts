@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_CONTRACTS_TODAY
-// ROLE: Library module
+// ROLE: UI — today
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/contracts/today.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: UI today — component
 // owns:
 //   - lib/contracts/today.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 // AI_HEADER
 // module: M-CONTRACTS-TODAY
 // wave: W-2.7

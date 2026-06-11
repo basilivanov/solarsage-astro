@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-TESTS
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Module — apps/api/tests/test_geonames_timezone.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for geonames_timezone.py behavior
 # owns:
 #   - apps/api/tests/test_geonames_timezone.py
-# inputs: varies
-# outputs: varies
+# inputs: Endpoint params, request body
+# outputs: Parsed response / typed data
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: Network calls to API
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 from __future__ import annotations
 
 import json

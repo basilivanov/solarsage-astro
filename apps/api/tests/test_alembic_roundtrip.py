@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-TESTS
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Module — apps/api/tests/test_alembic_roundtrip.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for alembic_roundtrip.py behavior
 # owns:
 #   - apps/api/tests/test_alembic_roundtrip.py
-# inputs: varies
-# outputs: varies
+# inputs: Mocks, fixtures
+# outputs: Assertion results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: n/a (tests)
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 """Alembic round-trip test: upgrade head -> downgrade base -> upgrade head."""
 from __future__ import annotations
 

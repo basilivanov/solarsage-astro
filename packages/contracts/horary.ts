@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-CONTRACTS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Contract schema — packages/contracts/horary.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: Contract: horary
 // owns:
 //   - packages/contracts/horary.ts
-// inputs: varies
-// outputs: varies
+// inputs: n/a (types)
+// outputs: n/a (types)
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import type {
   HoraryQuestionCreate as _HoraryQuestionCreate,
   HoraryQuestionRead as _HoraryQuestionRead,

@@ -40,6 +40,18 @@ WAVE_PATHS = {
     "tooling": ["scripts/", "grace/"],
 }
 
+
+def _is_excluded(path_str: str) -> bool:
+    """Check if a file path should be excluded from canon adoption."""
+    fp = path_str.replace("\\", "/")
+    for part in fp.split("/"):
+        if part in EXCLUDE_DIRS:
+            return True
+    for prefix in EXCLUDE_PREFIX:
+        if fp.startswith(prefix):
+            return True
+    return False
+
 _ARG = ""  # set by parse_args
 
 HEADER_TS = """// ############################################################################
@@ -56,42 +68,19 @@ HEADER_PY = """# ###############################################################
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: {anchors}
 # SLICE: {slice_id}
-# ############################################################################"""
-
-MODULE_CONTRACT_TS = """// START_MODULE_CONTRACT
-// purpose: {purpose}
-// owns:
-//   - {path}
-// inputs: {inputs}
-// outputs: {outputs}
-// dependencies: local modules
-// side_effects: {side_effects}
-// emitted_logs: {emitted_logs}
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT"""
-
-MODULE_CONTRACT_PY = """# START_MODULE_CONTRACT
-# purpose: {purpose}
+# ##################################################################### START_MODULE_CONTRACT
+# purpose: Tests for canon_adopt.py behavior
 # owns:
-#   - {path}
-# inputs: {inputs}
-# outputs: {outputs}
+#   - scripts/grace/canon_adopt.py
+# inputs: HTTP request, path/query params
+# outputs: HTTP response / JSON body
 # dependencies: local modules
-# side_effects: {side_effects}
-# emitted_logs: {emitted_logs}
+# side_effects: Database reads/writes; Network calls to API; Logging via v2 logging spine; React state management; Processes HTTP requests
+# emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
-# END_MODULE_CONTRACT"""
-
-MODULE_MAP_TS = """// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP"""
-
+# END_MODULE_CONTRACT
 MODULE_MAP_PY = """# START_MODULE_MAP
 # mapping:
 #   - function: main
@@ -102,13 +91,12 @@ BLOCK_TS = "// START_BLOCK: MAIN\n// END_BLOCK: MAIN"
 BLOCK_PY = "# START_BLOCK: MAIN\n# END_BLOCK: MAIN"
 
 
-# Existing marker detection (matching coverage_audit regex)
-AI_HEADER_RE = re.compile(r"(?://|#|/\*|\*)\s*AI_HEADER\s*:\s*\S+", re.MULTILINE)
-MC_RE = re.compile(r"(?://|#)\s*START_MODULE_CONTRACT")
-MM_RE = re.compile(r"(?://|#)\s*START_MODULE_MAP")
-BLOCK_RE = re.compile(r"(?://|#)\s*START_BLOCK\s*:")
+PLACEHOLDER_PATTERNS = (
+    "varies", "Library module", "Varies", "library module",
+    "n/a (pure)", "n/a (pure)",
+)
 
-# Slice detection from coverage audit
+# ── Slice classification (exact paths before prefixes) ─────────────────
 SLICE_MAP: list[tuple[tuple[str, ...], str]] = [
     (("__tests__/",), "SLICE-TESTS"),
     (("apps/api/tests/",), "SLICE-TESTS"),
@@ -137,6 +125,13 @@ SLICE_MAP: list[tuple[tuple[str, ...], str]] = [
     (("grace/",), "SLICE-ORCHESTRATOR-ADAPTER"),
 ]
 
+def _has_placeholder(text: str) -> bool:
+    """Check if existing markers contain placeholder values that need replacement."""
+    return any(p in text for p in PLACEHOLDER_PATTERNS)
+
+
+# ── Slice / module ID helpers ─────────────────────────────────────────
+
 
 def _slice(path: str) -> str:
     for prefixes, sid in SLICE_MAP:
@@ -147,7 +142,6 @@ def _slice(path: str) -> str:
 
 
 def _module_id(path: str) -> str:
-    """Derive a stable module ID from the path."""
     parts = path.replace("\\", "/").split("/")
     name = Path(path).stem.upper().replace("-", "_").replace(".", "_")
     if name.startswith("_"):
@@ -156,82 +150,183 @@ def _module_id(path: str) -> str:
     return f"{parent}_{name}" if parent else name
 
 
-def _role(path: str, ext: str) -> str:
-    if path.startswith("__tests__"):
-        return "Unit tests for " + path.split("/")[-1]
-    if path.startswith("apps/api/app/api/"):
-        return "API route handler"
-    if path.startswith("apps/api/app/services/"):
-        return "Backend service"
-    if path.startswith("apps/api/app/schemas/"):
-        return "Pydantic schema"
-    if path.startswith("apps/api/app/db/"):
-        return "Database access layer"
-    if path.startswith("apps/api/app/core/"):
-        return "Backend core"
-    if path.startswith("apps/solarsage/"):
-        return "Sidecar calculation"
-    if path.startswith("packages/contracts/"):
-        return "Contract schema"
-    if path.startswith("components/"):
-        return "UI component"
-    if path.startswith("app/"):
-        return "Next.js page"
-    if path.startswith("hooks/"):
-        return "React hook"
-    if path.startswith("lib/"):
-        return "Library module"
-    if path.startswith("scripts/"):
-        return "Tooling script"
+# ── File content analysis ──────────────────────────────────────────────
+
+
+def _analyze_file(text: str) -> dict[str, bool]:
+    info: dict[str, bool] = {}
+    info["has_react"] = "from \"react\"" in text or "from 'react'" in text
+    info["has_next"] = "next/" in text
+    info["has_log"] = any(p in text for p in ["lib/grace/log", "GraceLogger", "logEvent", "log_event", "logger."])
+    info["has_api"] = any(p in text for p in ["fetch(", "axios", "get_api", "post_api", "httpx", "requests"])
+    info["has_db"] = any(p in text for p in ["db.", "session.", "query(", "execute(", "SQL", "models."])
+    info["has_http_routes"] = any(p in text for p in ["@router.", "@app.", "def get(", "def post(", "def put("])
+    info["is_test"] = "describe(" in text or "test(" in text or "def test_" in text or "it(" in text
+    info["has_hooks"] = any(p in text for p in ["useEffect", "useState", "useCallback", "useMemo"])
+    info["has_components"] = any(p in text for p in ["export default function", "export const", "React.FC", "extends Component"])
+    return info
+
+
+def _purpose(rel_path: str, info: dict) -> str:
+    if info["is_test"]: return f"Tests for {rel_path.split('/')[-1]} behavior"
+    if info["has_http_routes"]: return f"HTTP routes for {rel_path.split('/')[-1].replace('.py','')}"
+    if info["has_db"] and info["has_api"]: return f"Data access and service for {rel_path.split('/')[-1].replace('.py','')}"
+    if info["has_db"]: return f"DB access for {rel_path.split('/')[-1].replace('.py','')}"
+    if info["has_api"]: return f"API client for {rel_path.split('/')[-1].replace('.ts','').replace('.tsx','')}"
+    if info["has_components"] or info["has_hooks"]: return f"UI {rel_path.split('/')[-1].replace('.tsx','').replace('.ts','')}"
+    if info["has_next"]: return f"Page: {rel_path.split('/')[-1].replace('.tsx','').replace('.ts','')}"
+    if rel_path.startswith("packages/contracts/"): return f"Contract: {rel_path.split('/')[-1].replace('.ts','')}"
+    if rel_path.startswith("scripts/"): return f"Tool: {rel_path.split('/')[-1].replace('.py','').replace('.sh','')}"
+    if rel_path.startswith("lib/"): return f"Library: {rel_path.split('/')[-1].replace('.ts','')}"
+    return f"Module: {rel_path.split('/')[-1]}"
+
+
+def _side_effects(rel_path: str, info: dict) -> str:
+    parts = []
+    if info["has_db"]: parts.append("Database reads/writes")
+    if info["has_api"]: parts.append("Network calls to API")
+    if info["has_log"]: parts.append("Logging via v2 spine")
+    if info["has_hooks"]: parts.append("React state management")
+    if info["has_http_routes"]: parts.append("Processes HTTP requests")
+    return "; ".join(parts) if parts else ("n/a (pure)" if not info["is_test"] else "n/a (tests)")
+
+
+def _emitted_logs(rel_path: str, info: dict) -> str:
+    if info["has_log"]: return "v2: logEvent/logStart/logSuccess (frontend) or logger.* (backend)"
+    return "n/a (pure)" if not info["is_test"] else "n/a (tests)"
+
+
+def _inputs_outputs(rel_path: str, info: dict) -> tuple[str, str]:
+    if info["has_http_routes"]: return "HTTP request, path/query", "HTTP response / JSON"
+    if info["has_components"] or info["has_hooks"]: return "Props / hook params", "TSX / return values"
+    if info["has_db"]: return "Query params, models", "Records"
+    if info["has_api"]: return "Endpoint params, body", "Parsed response"
+    if info["is_test"]: return "Mocks, fixtures", "Assertions"
+    if rel_path.startswith("packages/contracts/"): return "n/a (types)", "n/a (types)"
+    return "Function args", "Return values"
+
+
+def _role(rel_path: str, info: dict) -> str:
+    if info["is_test"]: return f"Tests — {rel_path.split('/')[-1]}"
+    if info["has_http_routes"]: return f"API — {rel_path.split('/')[-1].replace('.py','')}"
+    if info["has_db"] and info["has_api"]: return f"Service — {rel_path.split('/')[-1].replace('.py','')}"
+    if info["has_db"]: return f"DB — {rel_path.split('/')[-1].replace('.py','')}"
+    if info["has_components"] or info["has_hooks"]: return f"UI — {rel_path.split('/')[-1].replace('.tsx','').replace('.ts','')}"
+    if info["has_next"]: return f"Page — {rel_path.split('/')[-1]}"
+    if rel_path.startswith("packages/contracts/"): return f"Contract — {rel_path.split('/')[-1]}"
+    if rel_path.startswith("lib/"): return f"Lib — {rel_path.split('/')[-1]}"
+    if rel_path.startswith("scripts/"): return f"Tool — {rel_path.split('/')[-1]}"
     return "Module"
 
 
-def _is_excluded(path_str: str) -> bool:
-    fp = path_str.replace("\\", "/")
-    for part in fp.split("/"):
-        if part in EXCLUDE_DIRS:
-            return True
-    for prefix in EXCLUDE_PREFIX:
-        if fp.startswith(prefix):
-            return True
-    return False
+AI_HEADER_RE = re.compile(r"(?://|#|/\*|\*)\s*AI_HEADER\s*:\s*\S+", re.MULTILINE)
+MC_RE = re.compile(r"(?://|#)\s*START_MODULE_CONTRACT")
+MM_RE = re.compile(r"(?://|#)\s*START_MODULE_MAP")
+BLOCK_RE = re.compile(r"(?://|#)\s*START_BLOCK\s*:")
 
 
-def _needs_markers(text: str) -> tuple[bool, bool, bool, bool]:
-    """Return (needs_ai_header, needs_mc, needs_mm, needs_blocks)."""
+def _needs_update(text: str, rel_path: str) -> bool:
+    """Check if file needs any marker changes."""
     has_ai = bool(AI_HEADER_RE.search(text))
     has_mc = bool(MC_RE.search(text))
     has_mm = bool(MM_RE.search(text))
-    has_blocks = bool(BLOCK_RE.search(text))
-    return (not has_ai, not has_mc, not has_mm, not has_blocks)
+    missing = not (has_ai and has_mc and has_mm)
+    placeholders = _has_placeholder(text)
+    return missing or placeholders
+
+
+def _replace_marker_block(text: str, marker_start: str, marker_end: str,
+                           new_content: str, is_py: bool) -> str:
+    """Replace content between two markers, inclusive. If markers don't exist, append."""
+    start_idx = text.find(marker_start)
+    end_idx = text.find(marker_end, start_idx + 1) if start_idx != -1 else -1
+    if start_idx != -1 and end_idx != -1:
+        # Find end of the end marker line
+        eol = text.find("\n", end_idx)
+        if eol == -1:
+            eol = len(text)
+        return text[:start_idx] + new_content + "\n" + text[eol + 1:]
+    # Marker not found — append before imports/first code
+    lines = text.split("\n")
+    insert_at = 0
+    while insert_at < len(lines):
+        line = lines[insert_at]
+        if line.startswith("#!") or line.startswith("# -*-") or line.strip() == "":
+            insert_at += 1
+        else:
+            break
+    return "\n".join(lines[:insert_at] + [new_content] + lines[insert_at:])
+
+
+def _generate_header(is_py: bool, mod_id: str, role: str, anchors: str, slice_id: str) -> str:
+    tpl = HEADER_PY if is_py else HEADER_TS
+    return tpl.format(module_id=mod_id, role=role, anchors=anchors, slice_id=slice_id)
+
+
+def _generate_contract(is_py: bool, purpose: str, path: str, inputs_str: str,
+                       outputs_str: str, side_effects: str, emitted: str) -> str:
+    tpl = MODULE_CONTRACT_PY if is_py else MODULE_CONTRACT_TS
+    return tpl.format(purpose=purpose, path=path, inputs=inputs_str,
+                      outputs=outputs_str, side_effects=side_effects,
+                      emitted_logs=emitted)
+
+
+def _generate_mm(is_py: bool) -> str:
+    tpl = MODULE_MAP_PY if is_py else MODULE_MAP_TS
+    return tpl if "{" not in tpl else tpl.format()
 
 
 def _add_markers(text: str, rel_path: str, ext: str) -> str:
-    """Add missing markers to file text."""
-    needs_ai, needs_mc, needs_mm, needs_blocks = _needs_markers(text)
-    if not (needs_ai or needs_mc or needs_mm or needs_blocks):
-        return text  # nothing to add
+    """Surgically replace placeholder lines within existing contract blocks.
+
+    Only replaces lines containing placeholder values like 'varies' or
+    'Library module'. Does NOT overwrite hand-written contracts.
+    """
+    if not _needs_update(text, rel_path):
+        return text
 
     is_py = ext in (".py", ".pyi")
+    info = _analyze_file(text)
     slice_id = _slice(rel_path)
     mod_id = _module_id(rel_path)
-    role = _role(rel_path, ext)
+    role = _role(rel_path, info)
+    purpose = _purpose(rel_path, info)
+    side_effects = _side_effects(rel_path, info)
+    emitted = _emitted_logs(rel_path, info)
+    inputs_str, outputs_str = _inputs_outputs(rel_path, info)
     anchors = "[]"
 
-    header_tpl = HEADER_PY if is_py else HEADER_TS
-    contract_tpl = MODULE_CONTRACT_PY if is_py else MODULE_CONTRACT_TS
-    mm_tpl = MODULE_MAP_PY if is_py else MODULE_MAP_TS
-    block_tpl = BLOCK_PY if is_py else BLOCK_TS
+    # Build replacement values keyed by field name
+    replacements = {
+        "purpose:": purpose,
+        "ROLE:": role,
+        "inputs:": inputs_str if inputs_str != "varies" else "Function arguments",
+        "outputs:": outputs_str if outputs_str != "varies" else "Return values",
+        "side_effects:": side_effects,
+        "emitted_logs:": emitted,
+    }
 
-    header = header_tpl.format(module_id=mod_id, role=role, anchors=anchors, slice_id=slice_id)
-    contract = contract_tpl.format(
-        purpose=f"{role} — {rel_path}",
-        path=rel_path,
-        inputs="varies",
-        outputs="varies",
-        side_effects="varies",
-        emitted_logs="n/a",
-    )
+    lines = text.split("\n")
+    modified = False
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # Only touch comment lines inside contract or AI_HEADER blocks
+        if not stripped.startswith("#") and not stripped.startswith("//"):
+            continue
+
+        for field, new_value in replacements.items():
+            if field in stripped and any(p in stripped for p in ("varies", "n/a", "Library module", "library module",
+                                                                   "Varies", "n/a (pure)", )):
+                # Replace the value after the field label
+                marker_char = "#" if stripped.startswith("#") else "//"
+                indent = line[:len(line) - len(line.lstrip())]
+                lines[i] = f"{indent}{marker_char} {field} {new_value}"
+                modified = True
+
+    if not modified:
+        return text
+    return "\n".join(lines)
     mm_block = mm_tpl.format()
     block_block = block_tpl
 
@@ -296,9 +391,8 @@ def _collect_files(paths: list[str], exclude_existing: bool) -> list[Path]:
             continue
         if exclude_existing:
             text = f.read_text(encoding="utf-8", errors="replace")
-            needs_ai, _, _, _ = _needs_markers(text)
-            if not needs_ai:
-                continue  # already has AI_HEADER
+            if not _needs_update(text, str(f.relative_to(ROOT))):
+                continue  # already has full markers without placeholders
         result.append(f)
     return result
 

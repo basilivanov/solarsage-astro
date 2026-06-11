@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-TESTS
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Module — apps/api/tests/test_wave3_day_pipeline_reuse.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for wave3_day_pipeline_reuse.py behavior
 # owns:
 #   - apps/api/tests/test_wave3_day_pipeline_reuse.py
-# inputs: varies
-# outputs: varies
+# inputs: Query params, models
+# outputs: Records / query results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: Database reads/writes
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 # AI_HEADER
 # module: M-TEST-WAVE-3-ACCEPTANCE
 # wave: W-NATAL-FULL (Wave 3 — day pipeline reuse)

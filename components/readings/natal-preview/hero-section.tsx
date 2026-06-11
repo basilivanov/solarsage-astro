@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/readings/natal-preview/hero-section.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Module: hero-section.tsx
 // owns:
 //   - components/readings/natal-preview/hero-section.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Function args
+// outputs: Return values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 "use client"
 
 import { Sparkles } from "lucide-react"

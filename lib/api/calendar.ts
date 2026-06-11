@@ -1,33 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_API_CALENDAR
-// ROLE: Library module
+// ROLE: Tests — calendar.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-FRONTEND-API-FACADES
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/api/calendar.ts
+// ####// START_MODULE_CONTRACT
+// purpose: Tests for calendar.ts behavior
 // owns:
 //   - lib/api/calendar.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Network calls to API
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
-// AI_HEADER
+// END_MODULE_CONTRACT// AI_HEADER
 // module: M-API-CALENDAR
 // wave: W-2.7
 // purpose: Calendar API facade

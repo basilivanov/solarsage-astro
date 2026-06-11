@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_LIB_LOADER_PROGRESS
-// ROLE: Library module
+// ROLE: UI — loader-progress
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/loader-progress.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: UI loader-progress — component
 // owns:
 //   - lib/loader-progress.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 /**
  * Чистая логика CosmicLoader — вынесена из компонента, чтобы её можно было
  * тестировать в node-окружении (как остальные pure-функции проекта).

@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_CONTRACTS_HORARY
-// ROLE: Library module
+// ROLE: UI — horary
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/contracts/horary.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: UI horary — component
 // owns:
 //   - lib/contracts/horary.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import { z } from "zod"
 import {
   ParagraphBlockSchema,

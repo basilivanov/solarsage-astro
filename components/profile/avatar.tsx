@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/profile/avatar.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for avatar.tsx behavior
 // owns:
 //   - components/profile/avatar.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Mocks, fixtures
+// outputs: Assertion results
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (tests)
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import type { TelegramUser } from "@/hooks/use-telegram-user"
 
 function initials(name: string) {

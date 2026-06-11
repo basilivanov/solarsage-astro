@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_API_CLIENT
-// ROLE: Library module
+// ROLE: Lib — client.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-LOGGING-SPINE
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/grace/api/client.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: API client for client
 // owns:
 //   - lib/grace/api/client.ts
-// inputs: varies
-// outputs: varies
+// inputs: Endpoint params, request body
+// outputs: Parsed response / typed data
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Network calls to API
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 // AI_HEADER
 // module: M-WEB-API-CLIENT
 // wave: W-2.1

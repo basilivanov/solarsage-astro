@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/chat/chat-empty.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Module: chat-empty.tsx
 // owns:
 //   - components/chat/chat-empty.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Function args
+// outputs: Return values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import { Sparkles } from "lucide-react"
 import type { ReactNode } from "react"
 

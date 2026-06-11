@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/readings/natal/natal-toc.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for natal-toc.tsx behavior
 // owns:
 //   - components/readings/natal/natal-toc.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Mocks, fixtures
+// outputs: Assertion results
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (tests)
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, MapPin } from "lucide-react"
 

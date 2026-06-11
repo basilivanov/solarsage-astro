@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TESTS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Unit tests for natal-no-english.test.tsx — __tests__/natal/natal-no-english.test.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for natal-no-englishtsx behavior
 // owns:
 //   - __tests__/natal/natal-no-english.test.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Mocks, fixtures
+// outputs: Assertion results
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (tests)
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";

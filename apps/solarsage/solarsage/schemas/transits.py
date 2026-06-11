@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-SIDECAR-CALCULATION
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Sidecar calculation — apps/solarsage/solarsage/schemas/transits.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Module: transits.py
 # owns:
 #   - apps/solarsage/solarsage/schemas/transits.py
-# inputs: varies
-# outputs: varies
+# inputs: Function args
+# outputs: Return values
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: n/a (pure)
+# emitted_logs: n/a (pure)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 # AI_HEADER
 # module: M-SIDECAR-SCHEMA-TRANSITS
 # wave: W-3.3

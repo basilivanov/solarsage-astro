@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_LIB_PROFILE
-// ROLE: Library module
+// ROLE: Tests — profile.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/profile.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for profile.ts behavior
 // owns:
 //   - lib/profile.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (tests)
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 "use client"
 
 import { STORAGE_KEYS } from "@/lib/storage-keys"

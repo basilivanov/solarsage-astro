@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_HOOKS_USEDAY
-// ROLE: Library module
+// ROLE: UI — useDay
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-LOGGING-SPINE
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/grace/hooks/useDay.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: UI useDay — component
 // owns:
 //   - lib/grace/hooks/useDay.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Logging via v2 logging spine; React state management
+// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 // AI_HEADER
 // module: M-WEB-HOOKS-USE-DAY
 // wave: W-2.7

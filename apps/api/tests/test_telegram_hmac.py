@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-TESTS
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Module — apps/api/tests/test_telegram_hmac.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for telegram_hmac.py behavior
 # owns:
 #   - apps/api/tests/test_telegram_hmac.py
-# inputs: varies
-# outputs: varies
+# inputs: Mocks, fixtures
+# outputs: Assertion results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: n/a (tests)
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 """Unit tests for the HMAC verifier in app.services.telegram_auth.
 
 W-1.2 ## Decision: codes are

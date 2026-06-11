@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TESTS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Unit tests for Paywall.test.tsx — __tests__/components/Paywall.test.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for Paywalltsx behavior
 // owns:
 //   - __tests__/components/Paywall.test.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Mocks, fixtures
+// outputs: Assertion results
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (tests)
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import React from 'react'

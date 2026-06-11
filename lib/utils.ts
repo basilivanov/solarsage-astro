@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_LIB_UTILS
-// ROLE: Library module
+// ROLE: Lib — utils.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/utils.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: Library: utils
 // owns:
 //   - lib/utils.ts
-// inputs: varies
-// outputs: varies
+// inputs: Function arguments
+// outputs: Return values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 

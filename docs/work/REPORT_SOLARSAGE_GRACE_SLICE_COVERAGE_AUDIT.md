@@ -2,8 +2,8 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-**Baseline SHA:** `9738fa9`
-**JSON hash:** `bfec9b1d790e`
+**Baseline SHA:** `f2a6a39`
+**JSON hash:** `513f9568e236`
 
 ## How audit was run
 ```bash
@@ -17,39 +17,46 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | Metric | Value |
 |---|---|
 | Total files audited | 497 |
-| Full GRACE markers | 458 (92.2%) |
-| Partial markers | 1 (0.2%) |
+| Full GRACE markers | 113 (22.7%) |
+| Partial markers | 346 (69.6%) |
 | No markers | 38 (7.6%) |
-| Canonical logging | 1 (0.2%) |
+| Canonical logging | 2 (0.4%) |
 | Unmapped | 28 (5.6%) |
 
 ## Coverage by slice
 
 | Slice | Total | Full | Partial | None | Coverage | Canonical log |
 |---|---|---|---|---|---|---|
-| SLICE-TESTS | 126 | 126 | 0 | 0 | 100.0% | 0 |
-| SLICE-BACKEND-API-ROUTERS | 41 | 41 | 0 | 0 | 100.0% | 0 |
-| SLICE-HORARY-READINGS | 40 | 40 | 0 | 0 | 100.0% | 0 |
-| SLICE-OTHER-FRONTEND | 39 | 38 | 0 | 1 | 97.4% | 0 |
-| SLICE-BACKEND-SERVICES | 35 | 35 | 0 | 0 | 100.0% | 0 |
-| SLICE-OTHER-COMPONENTS | 33 | 33 | 0 | 0 | 100.0% | 0 |
-| SLICE-GUARDRAILS-TOOLING | 29 | 29 | 0 | 0 | 100.0% | 1 |
-| SLICE-UNMAPPED | 28 | 11 | 1 | 16 | 39.3% | 0 |
-| SLICE-SIDECAR-CALCULATION | 23 | 23 | 0 | 0 | 100.0% | 0 |
-| SLICE-PROFILE-ONBOARDING | 21 | 21 | 0 | 0 | 100.0% | 0 |
+| SLICE-TESTS | 126 | 10 | 116 | 0 | 7.9% | 0 |
+| SLICE-BACKEND-API-ROUTERS | 41 | 39 | 2 | 0 | 95.1% | 0 |
+| SLICE-HORARY-READINGS | 40 | 0 | 40 | 0 | 0.0% | 0 |
+| SLICE-OTHER-FRONTEND | 39 | 8 | 30 | 1 | 20.5% | 0 |
+| SLICE-BACKEND-SERVICES | 35 | 34 | 1 | 0 | 97.1% | 0 |
+| SLICE-OTHER-COMPONENTS | 33 | 0 | 33 | 0 | 0.0% | 0 |
+| SLICE-GUARDRAILS-TOOLING | 29 | 12 | 17 | 0 | 41.4% | 2 |
+| SLICE-UNMAPPED | 28 | 3 | 9 | 16 | 10.7% | 0 |
+| SLICE-SIDECAR-CALCULATION | 23 | 0 | 23 | 0 | 0.0% | 0 |
+| SLICE-PROFILE-ONBOARDING | 21 | 0 | 21 | 0 | 0.0% | 0 |
 | SLICE-OTHER-BACKEND | 20 | 0 | 0 | 20 | 0.0% | 0 |
-| SLICE-FRONTEND-API-FACADES | 15 | 15 | 0 | 0 | 100.0% | 0 |
-| SLICE-TODAY-CALENDAR | 12 | 12 | 0 | 0 | 100.0% | 0 |
-| SLICE-OTHER-APP | 11 | 11 | 0 | 0 | 100.0% | 0 |
-| SLICE-CONTRACTS | 9 | 8 | 0 | 1 | 88.9% | 0 |
-| SLICE-ORCHESTRATOR-ADAPTER | 5 | 5 | 0 | 0 | 100.0% | 0 |
-| SLICE-LOGGING-SPINE | 5 | 5 | 0 | 0 | 100.0% | 0 |
+| SLICE-FRONTEND-API-FACADES | 15 | 0 | 15 | 0 | 0.0% | 0 |
+| SLICE-TODAY-CALENDAR | 12 | 1 | 11 | 0 | 8.3% | 0 |
+| SLICE-OTHER-APP | 11 | 0 | 11 | 0 | 0.0% | 0 |
+| SLICE-CONTRACTS | 9 | 1 | 7 | 1 | 11.1% | 0 |
+| SLICE-ORCHESTRATOR-ADAPTER | 5 | 0 | 5 | 0 | 0.0% | 0 |
+| SLICE-LOGGING-SPINE | 5 | 1 | 4 | 0 | 20.0% | 0 |
 | SLICE-DB-MODELS-MIGRATIONS | 3 | 3 | 0 | 0 | 100.0% | 0 |
-| SLICE-SHELL-NAVIGATION | 2 | 2 | 0 | 0 | 100.0% | 0 |
+| SLICE-SHELL-NAVIGATION | 2 | 1 | 1 | 0 | 50.0% | 0 |
 
 ## Zero-coverage product slices
 
+- **SLICE-HORARY-READINGS**: 40 files, 0% coverage
+- **SLICE-OTHER-COMPONENTS**: 33 files, 0% coverage
+- **SLICE-SIDECAR-CALCULATION**: 23 files, 0% coverage
+- **SLICE-PROFILE-ONBOARDING**: 21 files, 0% coverage
 - **SLICE-OTHER-BACKEND**: 20 files, 0% coverage
+- **SLICE-FRONTEND-API-FACADES**: 15 files, 0% coverage
+- **SLICE-OTHER-APP**: 11 files, 0% coverage
+- **SLICE-ORCHESTRATOR-ADAPTER**: 5 files, 0% coverage
 
 ## Sentinel files
 

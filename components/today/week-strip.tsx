@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TODAY-CALENDAR
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/today/week-strip.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: UI week-strip — component
 // owns:
 //   - components/today/week-strip.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Logging via v2 logging spine; React state management
+// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 "use client"
 
 import { useEffect, useState } from "react"

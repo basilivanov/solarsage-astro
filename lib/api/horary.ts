@@ -1,33 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_API_HORARY
-// ROLE: Library module
+// ROLE: Lib — horary.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-FRONTEND-API-FACADES
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/api/horary.ts
+// ####// START_MODULE_CONTRACT
+// purpose: API client for horary
 // owns:
 //   - lib/api/horary.ts
-// inputs: varies
-// outputs: varies
+// inputs: Endpoint params, request body
+// outputs: Parsed response / typed data
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Network calls to API
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
-import type {
+// END_MODULE_CONTRACTimport type {
   HoraryQuestionCreate,
   HoraryQuestionRead,
   HoraryQuotaRead,

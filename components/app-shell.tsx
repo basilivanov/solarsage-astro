@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-SHELL-NAVIGATION
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/app-shell.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Module: app-shell.tsx
 // owns:
 //   - components/app-shell.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Function args
+// outputs: Return values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Logging via v2 logging spine
+// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 "use client"
 
 import { TabBar } from "@/components/today/tab-bar"

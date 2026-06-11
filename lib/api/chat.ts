@@ -1,33 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_API_CHAT
-// ROLE: Library module
+// ROLE: Tests — chat.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-FRONTEND-API-FACADES
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/api/chat.ts
+// ####// START_MODULE_CONTRACT
+// purpose: Tests for chat.ts behavior
 // owns:
 //   - lib/api/chat.ts
-// inputs: varies
-// outputs: varies
+// inputs: Endpoint params, request body
+// outputs: Parsed response / typed data
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Network calls to API
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
-/**
+// END_MODULE_CONTRACT/**
  * API-фасад чата.
  *
  * Единственная точка интеграции с ИИ. UI и хук `useChat` зовут только её.

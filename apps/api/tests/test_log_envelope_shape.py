@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-TESTS
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Module — apps/api/tests/test_log_envelope_shape.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for log_envelope_shape.py behavior
 # owns:
 #   - apps/api/tests/test_log_envelope_shape.py
-# inputs: varies
-# outputs: varies
+# inputs: Mocks, fixtures
+# outputs: Assertion results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: Logging via v2 logging spine
+# emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 # AI_HEADER
 # module: M-TEST-LOG-ENVELOPE
 # wave: W-1.6

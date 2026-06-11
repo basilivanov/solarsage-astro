@@ -6,28 +6,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-GUARDRAILS-TOOLING
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Tooling script — scripts/contracts/generate.sh
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tool: generate
 // owns:
 //   - scripts/contracts/generate.sh
-// inputs: varies
-// outputs: varies
+// inputs: Function args
+// outputs: Return values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 # ############################################################################
 # scripts/contracts/generate.sh
 # ROLE: One-shot regeneration pipeline for Option B (W-1.1B).

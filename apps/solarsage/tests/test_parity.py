@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-SIDECAR-CALCULATION
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Sidecar calculation — apps/solarsage/tests/test_parity.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for parity.py behavior
 # owns:
 #   - apps/solarsage/tests/test_parity.py
-# inputs: varies
-# outputs: varies
+# inputs: Mocks, fixtures
+# outputs: Assertion results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: n/a (tests)
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 """
 Parity tests for SolarSage reference collector (W-3.0).
 

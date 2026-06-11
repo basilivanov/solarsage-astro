@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TESTS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Unit tests for useDay.test.ts — __tests__/hooks/useDay.test.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for useDayts behavior
 // owns:
 //   - __tests__/hooks/useDay.test.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: React state management
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 // AI_HEADER
 // module: M-WEB-HOOKS-TESTS
 // wave: W-2.1

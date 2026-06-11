@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_LIB_ICONS
-// ROLE: Library module
+// ROLE: Lib — icons.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/icons.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: Library: icons
 // owns:
 //   - lib/icons.ts
-// inputs: varies
-// outputs: varies
+// inputs: Function arguments
+// outputs: Return values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 // AI_HEADER
 // module: M-LIB-ICONS
 // wave: W-2.7

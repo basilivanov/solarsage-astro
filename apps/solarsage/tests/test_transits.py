@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-SIDECAR-CALCULATION
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Sidecar calculation — apps/solarsage/tests/test_transits.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for transits.py behavior
 # owns:
 #   - apps/solarsage/tests/test_transits.py
-# inputs: varies
-# outputs: varies
+# inputs: Endpoint params, request body
+# outputs: Parsed response / typed data
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: Network calls to API
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 # AI_HEADER
 # module: M-SIDECAR-TEST-TRANSITS
 # wave: W-3.3

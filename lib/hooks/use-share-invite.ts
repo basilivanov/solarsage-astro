@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_HOOKS_USE_SHARE_INVITE
-// ROLE: Library module
+// ROLE: UI — use-share-invite
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/hooks/use-share-invite.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: API client for use-share-invite
 // owns:
 //   - lib/hooks/use-share-invite.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Network calls to API; React state management
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 "use client"
 
 import { useCallback, useEffect, useState } from "react"

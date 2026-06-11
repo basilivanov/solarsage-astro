@@ -1,33 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_API_PROFILE
-// ROLE: Library module
+// ROLE: Lib — profile.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-FRONTEND-API-FACADES
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/api/profile.ts
+// ####// START_MODULE_CONTRACT
+// purpose: API client for profile
 // owns:
 //   - lib/api/profile.ts
-// inputs: varies
-// outputs: varies
+// inputs: Endpoint params, request body
+// outputs: Parsed response / typed data
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Network calls to API
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
-// AI_HEADER
+// END_MODULE_CONTRACT// AI_HEADER
 // module: M-WEB-API-PROFILE
 // wave: W-2.7
 // purpose: API client for profile endpoints

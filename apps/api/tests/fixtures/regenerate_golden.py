@@ -6,28 +6,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-TESTS
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Module — apps/api/tests/fixtures/regenerate_golden.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for regenerate_golden.py behavior
 # owns:
 #   - apps/api/tests/fixtures/regenerate_golden.py
-# inputs: varies
-# outputs: varies
+# inputs: Endpoint params, request body
+# outputs: Parsed response / typed data
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: Network calls to API
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 """Regenerate golden fixture files for pipeline tests.
 
 Usage:

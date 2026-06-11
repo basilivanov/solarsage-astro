@@ -1,32 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_CONTRACTS_CHAT
-// ROLE: Library module
+// ROLE: UI — chat
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/contracts/chat.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: UI chat — component
 // owns:
 //   - lib/contracts/chat.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 /**
  * Zod-контракт для Chat (чат с ассистентом).
  *

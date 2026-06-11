@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-TESTS
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Module — apps/api/tests/test_critical_gaps.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for critical_gaps.py behavior
 # owns:
 #   - apps/api/tests/test_critical_gaps.py
-# inputs: varies
-# outputs: varies
+# inputs: Query params, models
+# outputs: Records / query results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: Database reads/writes; Network calls to API
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 # AI_HEADER
 # module: M-TEST-CRITICAL-GAPS
 # wave: W-ACCESS.2

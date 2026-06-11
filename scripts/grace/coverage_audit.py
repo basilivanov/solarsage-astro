@@ -6,28 +6,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-GUARDRAILS-TOOLING
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Tooling script — scripts/grace/coverage_audit.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for coverage_audit.py behavior
 # owns:
 #   - scripts/grace/coverage_audit.py
-# inputs: varies
-# outputs: varies
+# inputs: Query params, models
+# outputs: Records / query results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: Database reads/writes; Logging via v2 logging spine
+# emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 """GRACE slice coverage audit — inventory markers, logs, slices per file.
 
 Usage:

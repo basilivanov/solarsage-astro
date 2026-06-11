@@ -1,33 +1,23 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_API_TODAY
-// ROLE: Library module
+// ROLE: Tests — today.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-FRONTEND-API-FACADES
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Library module — lib/api/today.ts
+// ####// START_MODULE_CONTRACT
+// purpose: Tests for today.ts behavior
 // owns:
 //   - lib/api/today.ts
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: Network calls to API
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
-// END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
-// AI_HEADER
+// END_MODULE_CONTRACT// AI_HEADER
 // module: M-API-TODAY
 // wave: W-2.7
 // purpose: Today API facade

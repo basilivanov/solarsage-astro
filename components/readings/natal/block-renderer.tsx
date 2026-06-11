@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/readings/natal/block-renderer.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Module: block-renderer.tsx
 // owns:
 //   - components/readings/natal/block-renderer.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Function args
+// outputs: Return values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 import { Check, Sparkles, AlertTriangle, Info, Quote } from "lucide-react"
 
 import type { Block, CalloutTone, NatalReport } from "@/lib/contracts/natal"

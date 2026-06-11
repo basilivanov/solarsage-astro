@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/profile/profile-screen.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tests for profile-screen.tsx behavior
 // owns:
 //   - components/profile/profile-screen.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: React state management
+// emitted_logs: n/a (tests)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 "use client"
 
 import { useState } from "react"

@@ -7,28 +7,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-GUARDRAILS-TOOLING
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Tooling script — scripts/health-check.sh
+// #########################################// START_MODULE_CONTRACT
+// purpose: Tool: health-check
 // owns:
 //   - scripts/health-check.sh
-// inputs: varies
-// outputs: varies
+// inputs: Function args
+// outputs: Return values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 # ############################################################################
 # Health check script for production monitoring
 # WAVE: W-2.7

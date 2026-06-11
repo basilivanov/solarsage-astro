@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-CONTRACTS
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: Contract schema — packages/contracts/calendar.ts
+// #########################################// START_MODULE_CONTRACT
+// purpose: Contract: calendar
 // owns:
 //   - packages/contracts/calendar.ts
-// inputs: varies
-// outputs: varies
+// inputs: n/a (types)
+// outputs: n/a (types)
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 // @deprecated since W-1.1B. Do NOT add or modify shapes here.
 // Source of truth is apps/api/app/schemas/calendar.py (Pydantic).
 // New code MUST import from "@/packages/contracts" (barrel).

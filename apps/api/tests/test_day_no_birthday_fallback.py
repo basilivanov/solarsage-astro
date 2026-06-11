@@ -5,28 +5,19 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-TESTS
-# ############################################################################
-
-# START_MODULE_CONTRACT
-# purpose: Module — apps/api/tests/test_day_no_birthday_fallback.py
+# ######################################### START_MODULE_CONTRACT
+# purpose: Tests for day_no_birthday_fallback.py behavior
 # owns:
 #   - apps/api/tests/test_day_no_birthday_fallback.py
-# inputs: varies
-# outputs: varies
+# inputs: Query params, models
+# outputs: Records / query results
 # dependencies: local modules
-# side_effects: varies
-# emitted_logs: n/a
+# side_effects: Database reads/writes; Network calls to API
+# emitted_logs: n/a (tests)
 # invariants:
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-
-# START_MODULE_MAP
-# mapping:
-#   - function: main
-#     contract: main entry point
-# END_MODULE_MAP
-
 # AI_HEADER
 # module: M-TEST-DAY-NO-BIRTHDAY-FALLBACK
 # wave: W-NATAL-FULL (Wave 3 — day pipeline reuse)

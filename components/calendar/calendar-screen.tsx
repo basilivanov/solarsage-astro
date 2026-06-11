@@ -5,28 +5,19 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TODAY-CALENDAR
-// ############################################################################
-
-// START_MODULE_CONTRACT
-// purpose: UI component — components/calendar/calendar-screen.tsx
+// #########################################// START_MODULE_CONTRACT
+// purpose: UI calendar-screen — component
 // owns:
 //   - components/calendar/calendar-screen.tsx
-// inputs: varies
-// outputs: varies
+// inputs: Component props / hook params
+// outputs: TSX render / values
 // dependencies: local modules
-// side_effects: varies
-// emitted_logs: n/a
+// side_effects: React state management
+// emitted_logs: n/a (pure)
 // invariants:
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
-// START_MODULE_MAP
-// mapping:
-//   - export: default
-//     contract: main export
-// END_MODULE_MAP
-
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
