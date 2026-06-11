@@ -1,275 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  GRACE §13.C — Development Plan
-  Current-state roadmap after auth/profile/day/calendar/natal/horary/test updates.
-
-  Format:
-    PHASE = thematic milestone
-    WAVE  = controller-packet-sized unit, ideally one PR / one acceptance packet
--->
 <development-plan project="solarsage-astro" canon="docs/GRACE_CANON.md" updated="2026-06-11">
 
-  <!-- =================================================================== -->
-  <!-- CURRENT ACCEPTED BASELINE                                            -->
-  <!-- =================================================================== -->
   <phase id="PHASE-0-CURRENT-BASELINE" priority="P0" status="current">
-    <goal>Record what is already implemented/accepted so future agents do not re-plan completed foundations.</goal>
-
-    <wave id="W-BASE-AUTH-PROFILE" status="accepted">
-      <title>Telegram auth, session, profile/onboarding, city/timezone data</title>
-      <modules>M-AUTH-TG · M-PROFILE · M-WEB-ONBOARDING · M-WEB-PROFILE</modules>
-      <deliverables>Auth endpoints, profile endpoints, profile schemas, onboarding UI, city picker, profile current/birth location fields.</deliverables>
-      <accepted-evidence>Backend/profile tests green; frontend tests green per latest report.</accepted-evidence>
+    <goal>Record accepted baseline after legacy removal and GRACE slice audit.</goal>
+    <wave id="W-BASE-LEGACY-REMOVED" status="accepted">
+      <title>Legacy snapshot removed</title>
+      <evidence>Solar Sage commit a211e86; migration packets archived under grace/packets/archive/.</evidence>
     </wave>
-
-    <wave id="W-BASE-CONTRACTS" status="accepted">
-      <title>Pydantic source-of-truth contracts and generated TypeScript</title>
-      <modules>M-CONTRACTS</modules>
-      <deliverables>apps/api/app/schemas/*, scripts/contracts/export_openapi.py, packages/contracts/_generated.ts, packages/contracts/index.ts.</deliverables>
-      <exit-criteria>Any schema change regenerates TS contracts; generated artifacts are not edited manually.</exit-criteria>
-    </wave>
-
-    <wave id="W-BASE-DAY-CALENDAR" status="accepted">
-      <title>Today and Calendar product paths</title>
-      <modules>M-WEB-DAY · M-DAY-SERVICE · M-WEB-CALENDAR · M-CALENDAR · M-ACCESS</modules>
-      <deliverables>Day endpoint/UI, calendar endpoint/UI, access state integration, week strip, preview/locked states as enabled by current phase.</deliverables>
-      <exit-criteria>UC-DAY-VIEW, UC-DAY-NAV, UC-CAL-NAV gates in verification matrix pass.</exit-criteria>
-    </wave>
-
-    <wave id="W-BASE-READINGS-NATAL" status="accepted">
-      <title>Readings hub and natal block rendering</title>
-      <modules>M-WEB-READINGS · M-NATAL-READING</modules>
-      <deliverables>Natal schemas, generated contracts, frontend readings/natal routes and block renderer.</deliverables>
-      <exit-criteria>Unknown block types are skipped safely; natal overview/section routes render.</exit-criteria>
-    </wave>
-
-    <wave id="W-BASE-HORARY-CREDIT-LEDGER" status="accepted">
-      <title>Horary backend credit ledger and idempotent question lifecycle</title>
-      <modules>M-HORARY-API · M-HORARY-SERVICE · M-HORARY-CREDIT-SERVICE · M-HORARY-ENGINE</modules>
-      <write-scope>apps/api/app/api/horary.py · apps/api/app/services/horary_service.py · apps/api/app/services/horary_credit_service.py · apps/api/app/services/horary_engine.py · apps/api/app/schemas/horary.py · apps/api/app/db/models.py · apps/api/alembic/versions/*horary*</write-scope>
-      <accepted-evidence>docs/work/2026-06-09_horary_30ea0d1_review_action_plan.md · docs/work/2026-06-09_horary_location_followup_final_review.md</accepted-evidence>
-      <exit-criteria>
-        <criterion>Credit ledger uses horary_credits and horary_credit_spends.</criterion>
-        <criterion>Old HoraryQuota/questions_used/questions_limit model is removed from live logic.</criterion>
-        <criterion>same idempotencyKey + same full payload returns existing question without second spend/generation.</criterion>
-        <criterion>same idempotencyKey + changed time/timezone/place returns IDEMPOTENCY_CONFLICT.</criterion>
-        <criterion>Late generator cannot overwrite failed/refunded/answered question.</criterion>
-      </exit-criteria>
-    </wave>
-
-    <wave id="W-BASE-HORARY-UX-LOCATION" status="accepted">
-      <title>Horary form place/time/category UX and premium processing state</title>
-      <modules>M-WEB-HORARY · M-WEB-PROFILE</modules>
-      <write-scope>components/readings/horary/* · lib/api/horary.ts · lib/contracts/horary.ts</write-scope>
-      <accepted-evidence>docs/work/2026-06-09_horary_a23feb6_review_action_plan.md · docs/work/2026-06-09_horary_location_followup_final_review.md</accepted-evidence>
-      <exit-criteria>
-        <criterion>Form shows question time and place.</criterion>
-        <criterion>Default place may come from profile current location; browser/device geolocation not required for MVP.</criterion>
-        <criterion>User can change place manually with CityPicker.</criterion>
-        <criterion>Submit disabled if questionLat/questionLon are missing.</criterion>
-        <criterion>Selected city timezone syncs into submitted clientTimezone.</criterion>
-        <criterion>CTA is “Получить ответ карты”.</criterion>
-        <criterion>Progress state is branded/premium and uses long-running saved-question copy.</criterion>
-      </exit-criteria>
-    </wave>
-
-    <wave id="W-BASE-TESTS" status="accepted">
-      <title>Current automated test baseline</title>
-      <modules>M-TEST-BACKEND · M-TEST-FRONTEND · M-TEST-CONTRACTS</modules>
-      <accepted-evidence>Latest user-provided report: 237 backend tests and 467 frontend tests green.</accepted-evidence>
-      <exit-criteria>Future waves must keep backend/frontend/contract tests green or update this plan with explicit accepted deviation.</exit-criteria>
+    <wave id="W-BASE-SLICE-COVERAGE-AUDIT" status="accepted">
+      <title>Slice coverage audit accepted</title>
+      <modules>M-GUARDRAILS · M-GRACE-PROJECT-ADAPTER</modules>
+      <evidence>docs/work/REPORT_SOLARSAGE_GRACE_SLICE_COVERAGE_AUDIT.md; docs/work/solarsage_grace_slice_coverage.json</evidence>
+      <exit-criteria>coverage_audit.py --check passes with sentinel checks.</exit-criteria>
     </wave>
   </phase>
 
-  <!-- =================================================================== -->
-  <!-- NEXT HARDENING / QA                                                  -->
-  <!-- =================================================================== -->
-  <phase id="PHASE-1-HARDENING-QA" priority="P0" status="next">
-    <goal>Stabilize accepted flows with guardrails, grep gates, visual/manual QA, and production-mode environment sanity.</goal>
+  <phase id="PHASE-1-GRACE-SLICE-ADOPTION" priority="P0" status="next">
+    <goal>Adopt GRACE headers, module contracts, module maps, named blocks, function contracts, and log declarations slice-by-slice.</goal>
+    <rule>Do not move runtime files just because slice docs changed.</rule>
+    <rule>Do not mass-apply markers across unrelated slices in one packet.</rule>
 
-    <wave id="W-GRACE-DOC-SYNC" status="done">
-      <title>Sync GRACE docs to current code</title>
-      <modules>M-GRACE-PROJECT-ADAPTER · M-GRACE-PACKET-SCHEMA</modules>
-      <write-scope>grace/knowledge-graph.xml · grace/technology.xml · grace/verification-matrix.md · grace/development-plan.xml</write-scope>
-      <exit-criteria>
-        <criterion>Knowledge graph includes current frontend/backend/horary/sidecar/contract modules.</criterion>
-        <criterion>Technology doc bans old horary quota model and records profile-location MVP decision.</criterion>
-        <criterion>Verification matrix includes horary ledger, submit, answer, UX/location gates.</criterion>
-        <criterion>Development plan records accepted baseline and next waves.</criterion>
-      </exit-criteria>
+    <wave id="W-GRACE-SLICE-P0-TODAY-CALENDAR" priority="P0" status="planned">
+      <title>Adopt Today and Calendar slice</title>
+      <modules>M-WEB-TODAY-CALENDAR · M-WEB-SHELL · M-TESTS</modules>
+      <write-scope>components/today/ · components/calendar/ · app/(grace)/today/ · lib/today.ts · lib/calendar.ts · nearby tests</write-scope>
+      <exit-criteria>Changed files have GRACE markers; TabBar remains Shell/Navigation; coverage audit check passes.</exit-criteria>
     </wave>
 
-    <wave id="W-HORARY-GREP-GATES" priority="P0">
-      <title>Anti-regression grep gates for horary and contract SOT</title>
-      <modules>M-HORARY-CREDIT-SERVICE · M-CONTRACTS</modules>
-      <write-scope>scripts/guardrails/* · package.json scripts · CI workflow if present</write-scope>
-      <freeze-scope>runtime horary logic · UI behavior</freeze-scope>
-      <exit-criteria>
-        <criterion>CI fails on live `HoraryQuota`, `questions_used`, `questions_limit`, `left`, or `nextInDays` usage in apps/api/lib/components/packages/contracts, excluding docs/work historical reviews.</criterion>
-        <criterion>CI fails if packages/contracts/_generated.ts differs after contract generation.</criterion>
-        <criterion>CI fails if frontend imports generated payload types from deprecated thin files instead of packages/contracts barrel for new code.</criterion>
-      </exit-criteria>
+    <wave id="W-GRACE-SLICE-P0-BACKEND-API-SERVICES" priority="P0" status="planned">
+      <title>Adopt backend API and services slices</title>
+      <modules>M-BACKEND-API · M-BACKEND-SERVICES · M-DB · M-TESTS</modules>
+      <write-scope>apps/api/app/api/ · apps/api/app/services/ · apps/api/app/core/ · related tests</write-scope>
+      <exit-criteria>Routers stay thin; touched services declare side effects and log names where logging exists; tests pass.</exit-criteria>
     </wave>
 
-    <wave id="W-PROD-DEMO-GUARD" priority="P0">
-      <title>Production guard against demo-mode payloads</title>
-      <modules>M-WEB-DEMO-MODE · M-WEB-API</modules>
-      <write-scope>lib/demo-mode.ts · app startup/env validation · docs/env examples · tests</write-scope>
-      <exit-criteria>
-        <criterion>Production build/runtime warns or fails if NEXT_PUBLIC_DEMO_MODE=true in prod environment.</criterion>
-        <criterion>Docs clearly distinguish demo mode from real API mode.</criterion>
-        <criterion>Regression test proves demo profile/day data is not used when demo mode is false.</criterion>
-      </exit-criteria>
+    <wave id="W-GRACE-SLICE-P0-CONTRACTS" priority="P0" status="planned">
+      <title>Adopt contracts slice</title>
+      <modules>M-CONTRACTS · M-WEB-API · M-BACKEND-API</modules>
+      <write-scope>apps/api/app/schemas/ · scripts/contracts/ · packages/contracts/</write-scope>
+      <exit-criteria>Pydantic remains source of truth; generated TypeScript is deterministic; frontend uses packages/contracts for new payload types.</exit-criteria>
     </wave>
 
-    <wave id="W-HORARY-MANUAL-QA" priority="P1">
-      <title>Manual/mobile QA for horary user flow</title>
-      <modules>M-WEB-HORARY · M-HORARY-API</modules>
-      <write-scope>docs/work QA checklist only unless defects are found</write-scope>
-      <exit-criteria>
-        <criterion>Mobile QA confirms category switching, place display/change, disabled-submit warning, timezone display, submit, progress, answer, history, and no-credit state.</criterion>
-        <criterion>Any found defect becomes a separate small packet; no broad rewrite.</criterion>
-      </exit-criteria>
+    <wave id="W-GRACE-SLICE-P1-LOGGING-SPINE" priority="P1" status="planned">
+      <title>Reconcile logging implementation with GRACE contracts</title>
+      <modules>M-LOGGING-SPINE · M-GUARDRAILS</modules>
+      <write-scope>lib/grace/ · backend logging helpers · scripts/grace/coverage_audit.py if detector must be improved</write-scope>
+      <exit-criteria>Audit detector matches project logging; files with logs declare emitted log names.</exit-criteria>
     </wave>
 
-    <wave id="W-ACCESS-HORARY-BUDGET" priority="P1">
-      <title>Horary credit acquisition/payment/product admin follow-up</title>
-      <modules>M-ACCESS · M-HORARY-CREDIT-SERVICE · M-PAYMENTS</modules>
-      <write-scope>payment/admin credit creation paths when owner approves monetization details</write-scope>
-      <entry-criteria>Owner approves product/payment rules for buying/gifting horary credits.</entry-criteria>
-      <exit-criteria>
-        <criterion>Paid/gift/referral/adjustment credit creation paths are explicit and audited.</criterion>
-        <criterion>No implicit free tier introduced.</criterion>
-      </exit-criteria>
+    <wave id="W-GRACE-SLICE-P1-HORARY-READINGS" priority="P1" status="planned">
+      <title>Adopt readings slice</title>
+      <modules>M-WEB-HORARY-READINGS · M-CONTRACTS · M-TESTS</modules>
+      <write-scope>components/readings/ · app/(grace)/readings/ · related tests</write-scope>
+      <exit-criteria>Reading UI behavior remains stable.</exit-criteria>
+    </wave>
+
+    <wave id="W-GRACE-SLICE-P1-PROFILE-ONBOARDING" priority="P1" status="planned">
+      <title>Adopt profile and onboarding slice</title>
+      <modules>M-WEB-PROFILE-ONBOARDING · M-WEB-API · M-TESTS</modules>
+      <write-scope>components/profile/ · components/onboarding/ · app/(grace)/profile/ · app/(grace)/onboarding/ · related tests</write-scope>
+      <exit-criteria>Profile and onboarding flows keep existing behavior.</exit-criteria>
+    </wave>
+
+    <wave id="W-GRACE-SLICE-P2-TESTS-TOOLING" priority="P2" status="planned">
+      <title>Adopt tests and guardrails around touched slices</title>
+      <modules>M-TESTS · M-GUARDRAILS · M-GRACE-PROJECT-ADAPTER</modules>
+      <write-scope>__tests__/ · apps/api/tests/ · apps/solarsage/tests/ · scripts/</write-scope>
+      <exit-criteria>Tests are marked near their owning runtime slice; guardrails stay deterministic.</exit-criteria>
     </wave>
   </phase>
 
-  <!-- =================================================================== -->
-  <!-- SOLARSAGE REAL PIPELINE                                              -->
-  <!-- =================================================================== -->
-  <phase id="PHASE-2-SOLARSAGE-PIPELINE" priority="P0" status="active-or-next">
-    <goal>Move all astrology computation to backend/sidecar pipeline with parity, caches, semantic layer, and strict LLM narration.</goal>
-
-    <wave id="W-SOLARSAGE-PARITY">
-      <title>Golden fixture parity for SolarSage sidecar</title>
-      <modules>M-SOLARSAGE-REFERENCE-COLLECTOR · M-SIDECAR · M-SOLARSAGE-CLIENT</modules>
-      <write-scope>apps/solarsage/* · apps/solarsage/tests/* · docs/11_SolarSage_rewrite_TZ.md if behavior clarified</write-scope>
-      <exit-criteria>
-        <criterion>/v1/health returns 200 locally.</criterion>
-        <criterion>/v1/natal and /v1/range match approved golden fixtures within tolerance.</criterion>
-        <criterion>High-latitude fallback behavior is explicit and tested.</criterion>
-      </exit-criteria>
-    </wave>
-
-    <wave id="W-CALC-CACHES">
-      <title>Natal/period/daily snapshot caches and invalidation</title>
-      <modules>M-CALC-PIPELINE · M-PROFILE</modules>
-      <write-scope>apps/api/app/services/calculation_service.py · snapshot models/migrations · tests</write-scope>
-      <exit-criteria>
-        <criterion>Cold calculation writes versioned snapshot rows.</criterion>
-        <criterion>Warm call reuses compatible rows.</criterion>
-        <criterion>Birth/current-location edits invalidate the correct cache layers.</criterion>
-      </exit-criteria>
-    </wave>
-
-    <wave id="W-NORMALIZATION-SCORING">
-      <title>AstroSignal normalization, activation layer, scoring, and flags</title>
-      <modules>M-NORMALIZATION · M-SCORING-CANON · M-ACTIVATION-LAYER · M-SCORING · M-FLAGS</modules>
-      <write-scope>apps/api/app/services/{normalization,activation,scoring,flags}_service.py · grace/canon/*.v1.yml · tests</write-scope>
-      <exit-criteria>
-        <criterion>Canon YAML validates and is the only source for scoring knowledge.</criterion>
-        <criterion>Convergence evidence requires independent techniques.</criterion>
-        <criterion>Frontend receives only status/flags/payload fields, not internal scores.</criterion>
-      </exit-criteria>
-    </wave>
-
-    <wave id="W-SEMANTIC-LLM-TODAY">
-      <title>SemanticLayer and strict JSON Today narration</title>
-      <modules>M-SEMANTIC · M-LLM · M-DAY-SERVICE · M-MICROCOPY</modules>
-      <write-scope>semantic service/cache · prompt builder · llm service · validators · tests</write-scope>
-      <exit-criteria>
-        <criterion>LLM receives curated context only.</criterion>
-        <criterion>LLM strict JSON validates or deterministic fallback is used.</criterion>
-        <criterion>Banned internal tokens are not present in user-facing text.</criterion>
-      </exit-criteria>
-    </wave>
-  </phase>
-
-  <!-- =================================================================== -->
-  <!-- PRODUCT EXPANSION                                                    -->
-  <!-- =================================================================== -->
-  <phase id="PHASE-3-PRODUCT-EXPANSION" priority="P1" status="planned">
-    <goal>Extend accepted MVP surfaces after core stability.</goal>
-
-    <wave id="W-PAYMENTS">
-      <title>Payments/subscriptions and access ledger enforcement</title>
-      <modules>M-PAYMENTS · M-ACCESS</modules>
-      <entry-criteria>Owner approves payment provider and subscription/refund rules.</entry-criteria>
-      <exit-criteria>
-        <criterion>Successful payment writes subscription access ledger row.</criterion>
-        <criterion>Consumption order with referral/gift/subscription is tested.</criterion>
-        <criterion>Payment events are audited and redacted.</criterion>
-      </exit-criteria>
-    </wave>
-
-    <wave id="W-EVENING-CHECKIN">
-      <title>Evening checkin and yesterdayEcho closure</title>
-      <modules>M-CHECKIN · M-DAY-SERVICE</modules>
-      <exit-criteria>
-        <criterion>Checkin upsert by user/date works.</criterion>
-        <criterion>yesterdayEcho appears in TodayPayload when applicable.</criterion>
-        <criterion>Private note is not logged or sent to LLM by default.</criterion>
-      </exit-criteria>
-    </wave>
-
-    <wave id="W-MICROCOPY-GROWTH">
-      <title>Microcopy dictionary growth and misses report</title>
-      <modules>M-MICROCOPY · M-WORKER</modules>
-      <exit-criteria>
-        <criterion>microcopy dictionary validates in CI.</criterion>
-        <criterion>misses are tracked and reportable.</criterion>
-      </exit-criteria>
-    </wave>
-
-    <wave id="W-READINGS-EXPANSION">
-      <title>Additional readings beyond natal/horary</title>
-      <modules>M-WEB-READINGS · backend reading services</modules>
-      <entry-criteria>Owner approves reading type, contract, monetization/access rule.</entry-criteria>
-      <exit-criteria>
-        <criterion>New reading uses versioned blocks and generated contracts.</criterion>
-        <criterion>Frontend renderer handles unknown blocks gracefully.</criterion>
-      </exit-criteria>
-    </wave>
-  </phase>
-
-  <!-- =================================================================== -->
-  <!-- TESTING / CI                                                         -->
-  <!-- =================================================================== -->
-  <phase id="PHASE-TEST-CI" priority="P0" status="continuous">
-    <goal>Keep all accepted use cases executable and prevent drift.</goal>
-
-    <wave id="W-TEST-BACKEND" status="continuous">
-      <title>Backend tests</title>
-      <modules>M-TEST-BACKEND</modules>
-      <exit-criteria>pytest apps/api/tests -q stays green. Latest reported baseline: 237 tests green.</exit-criteria>
-    </wave>
-
-    <wave id="W-TEST-FRONTEND" status="continuous">
-      <title>Frontend tests/build</title>
-      <modules>M-TEST-FRONTEND</modules>
-      <exit-criteria>Frontend test suite and production Next.js build stay green. Latest reported baseline: 467 tests green.</exit-criteria>
-    </wave>
-
-    <wave id="W-TEST-CONTRACTS" status="continuous">
-      <title>Contracts and generated artifacts</title>
-      <modules>M-CONTRACTS</modules>
-      <exit-criteria>OpenAPI/TS generated contracts are deterministic and committed. Drift fails CI.</exit-criteria>
-    </wave>
-
-    <wave id="W-TEST-E2E-VISUAL" status="as-needed">
-      <title>E2E and visual coverage for critical flows</title>
-      <modules>M-WEB-DAY · M-WEB-CALENDAR · M-WEB-HORARY · M-WEB-ONBOARDING</modules>
-      <exit-criteria>Critical mobile flows have E2E or manual QA evidence before product-facing release.</exit-criteria>
+  <phase id="PHASE-2-PRODUCT-WORK" priority="P0" status="active">
+    <goal>Run future business features only after mapping them to slices, write scope, frozen scope, and gates.</goal>
+    <wave id="W-PRODUCT-SCOPED-FEATURES" status="continuous">
+      <exit-criteria>Every packet names affected slices and keeps coverage_audit.py --check green when slice docs or tooling change.</exit-criteria>
     </wave>
   </phase>
 
