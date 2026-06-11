@@ -71,9 +71,27 @@ class Marker:
     line: int
 
 
-# ----------------------------------------------------------------------------
-# START_BLOCK: DISCOVERY
-# ----------------------------------------------------------------------------
+DEFAULT_EXCLUDE_DIRS = frozenset({
+    "node_modules", ".next", ".git", "__pycache__", ".venv", "venv",
+    ".mypy_cache", ".pytest_cache", ".ruff_cache",
+})
+DEFAULT_EXCLUDE_PREFIXES = ("alembic/", "migrations/", "components/ui/")
+
+
+def _path_excluded(path: Path, root: Path) -> bool:
+    """Check if a path should be excluded based on GRACE canon exclusions."""
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        return False
+    str_rel = str(rel)
+    for part in rel.parts:
+        if part in DEFAULT_EXCLUDE_DIRS:
+            return True
+    for prefix in DEFAULT_EXCLUDE_PREFIXES:
+        if str_rel.startswith(prefix):
+            return True
+    return False
 
 def discover_frontend_files(root: Path) -> list[Path] | None:
     paths_file = root / "grace" / "frontend.paths"
@@ -93,16 +111,15 @@ def discover_frontend_files(root: Path) -> list[Path] | None:
 
     files = []
     for g in globs:
-        # Resolve path patterns relative to root
         full_pattern = str(root / g)
-        # Use glob.glob with recursive=True
         matched = glob.glob(full_pattern, recursive=True)
         for m in matched:
             p = Path(m)
             if p.is_file() and p.suffix in (".ts", ".tsx", ".js", ".jsx"):
-                # Make relative to repo root
                 try:
                     rel_p = p.relative_to(root)
+                    if _path_excluded(p, root):
+                        continue
                     files.append(rel_p)
                 except ValueError:
                     files.append(p)
@@ -112,11 +129,6 @@ def discover_frontend_files(root: Path) -> list[Path] | None:
 
 def expand_paths(paths: list[str], root: Path) -> list[Path]:
     files = []
-    exclude_dirs = frozenset({
-        "node_modules", ".next", ".git", "__pycache__", ".venv", "venv",
-        ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    })
-    exclude_prefixes = ("alembic/", "migrations/", "components/ui/")
     for p in paths:
         path_obj = Path(p)
         if not path_obj.is_absolute():
@@ -136,9 +148,7 @@ def expand_paths(paths: list[str], root: Path) -> list[Path]:
             for sub_p in resolved.rglob("*"):
                 try:
                     rel_to_root = sub_p.relative_to(root)
-                    if any(part in exclude_dirs for part in rel_to_root.parts):
-                        continue
-                    if any(str(rel_to_root).startswith(p) for p in exclude_prefixes):
+                    if _path_excluded(sub_p, root):
                         continue
                     if sub_p.is_file() and sub_p.suffix in (".ts", ".tsx", ".js", ".jsx"):
                         files.append(rel_to_root)
@@ -184,17 +194,19 @@ def check_banner(path: Path, lines: list[str], report: FileReport) -> None:
 def parse_markers(lines: list[str]) -> list[Marker]:
     found: list[Marker] = []
     pattern = re.compile(
-        r"(?://|/\*|\*)\s*(?P<edge>START|END)_(?P<kind>MODULE_CONTRACT|MODULE_MAP|BLOCK)\s*:\s*(?P<id>[^\s\*\/]+)"
+        r"(?://|/\*|\*)\s*(?P<edge>START|END)_(?P<kind>MODULE_CONTRACT|MODULE_MAP|BLOCK)"
+        r"(?:\s*:\s*(?P<id>[^\s\*\/]+))?"
     )
     for idx, line in enumerate(lines, start=1):
         m = pattern.search(line)
         if not m:
             continue
+        ident = m.group("id") or ""
         found.append(
             Marker(
                 edge=m.group("edge"),
                 kind=m.group("kind"),
-                ident=m.group("id"),
+                ident=ident,
                 line=idx,
             )
         )

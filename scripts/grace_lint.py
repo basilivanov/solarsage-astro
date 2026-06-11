@@ -64,7 +64,7 @@ BANNER_PATTERN = re.compile(r"^\s*#\s*AI_HEADER\s*:\s*\S+", re.MULTILINE)
 # Generic START/END marker:  # START_<KIND>: <ID>
 MARKER_RE = re.compile(
     r"^\s*#\s*(?P<edge>START|END)_(?P<kind>MODULE_CONTRACT|MODULE_MAP|"
-    r"FUNCTION_CONTRACT|BLOCK)\s*:\s*(?P<id>\S+)\s*$"
+    r"FUNCTION_CONTRACT|BLOCK)(?:\s*:\s*(?P<id>\S+))?\s*$"
 )
 
 # Inside a FUNCTION_CONTRACT block, we look for these field labels:
@@ -176,7 +176,7 @@ def parse_markers(lines: list[str]) -> list[Marker]:
             Marker(
                 edge=m.group("edge"),
                 kind=m.group("kind"),
-                ident=m.group("id"),
+                ident=m.group("id") or "",
                 line=idx,
             )
         )
