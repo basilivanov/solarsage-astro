@@ -41,6 +41,11 @@ describe('TabBar', () => {
     mockPathname.mockReturnValue('/')
   })
 
+  it('renders nav with today-tab-bar data-testid', () => {
+    render(<TabBar />)
+    expect(screen.getByTestId('today-tab-bar')).toBeTruthy()
+  })
+
   it('renders all 5 tabs', () => {
     render(<TabBar />)
     expect(screen.getByText('Сегодня')).toBeTruthy()
@@ -99,6 +104,15 @@ describe('TabBar', () => {
     // When pathname is null, component falls back to "/" which matches "today"
     const todayLink = screen.getByText('Сегодня').closest('a')
     expect(todayLink?.getAttribute('aria-current')).toBe('page')
+  })
+
+  it('has data-testid on each tab link', () => {
+    render(<TabBar />)
+    expect(screen.getByTestId('today-tab-today')).toBeTruthy()
+    expect(screen.getByTestId('today-tab-calendar')).toBeTruthy()
+    expect(screen.getByTestId('today-tab-readings')).toBeTruthy()
+    expect(screen.getByTestId('today-tab-chat')).toBeTruthy()
+    expect(screen.getByTestId('today-tab-profile')).toBeTruthy()
   })
 
   it('sets aria-current="page" on the active tab', () => {
