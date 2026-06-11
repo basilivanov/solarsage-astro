@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+# START_MODULE_CONTRACT
+# purpose: Tooling script — scripts/check_frontmatter.py
+# owns:
+#   - scripts/check_frontmatter.py
+# inputs: varies
+# outputs: varies
+# dependencies: local modules
+# side_effects: varies
+# emitted_logs: n/a
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 # ############################################################################
 # AI_HEADER: TOOL_DOCS_FRONTMATTER_CHECK
 # ROLE: Static gate — every doc/packet must declare YAML front-matter with

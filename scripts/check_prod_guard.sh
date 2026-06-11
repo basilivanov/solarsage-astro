@@ -1,4 +1,24 @@
 #!/usr/bin/env bash
+// START_MODULE_CONTRACT
+// purpose: Tooling script — scripts/check_prod_guard.sh
+// owns:
+//   - scripts/check_prod_guard.sh
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 # ############################################################################
 # AI_HEADER: SCRIPT_CHECK_PROD_GUARD
 # ROLE: Validate production environment config safety.

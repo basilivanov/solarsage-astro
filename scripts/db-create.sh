@@ -1,4 +1,33 @@
 #!/usr/bin/env bash
+
+// ############################################################################
+// AI_HEADER: MODULE_SCRIPTS_DB_CREATE
+// ROLE: Tooling script
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-GUARDRAILS-TOOLING
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Tooling script — scripts/db-create.sh
+// owns:
+//   - scripts/db-create.sh
+// inputs: varies
+// outputs: varies
+// dependencies: local modules
+// side_effects: varies
+// emitted_logs: n/a
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - export: default
+//     contract: main export
+// END_MODULE_MAP
+
 # Create Postgres role + database for the dev-loop.
 # Works against the docker-compose stack at infra/docker-compose.yml
 # (container: astro-dev-postgres, default user/db: astro/astro).

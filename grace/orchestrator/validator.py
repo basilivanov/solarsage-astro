@@ -1,3 +1,32 @@
+
+# ############################################################################
+# AI_HEADER: MODULE_ORCHESTRATOR_VALIDATOR
+# ROLE: Module
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-ORCHESTRATOR-ADAPTER
+# ############################################################################
+
+# START_MODULE_CONTRACT
+# purpose: Module — grace/orchestrator/validator.py
+# owns:
+#   - grace/orchestrator/validator.py
+# inputs: varies
+# outputs: varies
+# dependencies: local modules
+# side_effects: varies
+# emitted_logs: n/a
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 # AI_HEADER
 # module: M-ORCH-VALIDATOR
 # wave: W-ORCH-1

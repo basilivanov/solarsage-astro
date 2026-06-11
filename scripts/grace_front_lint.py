@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+# START_MODULE_CONTRACT
+# purpose: Tooling script — scripts/grace_front_lint.py
+# owns:
+#   - scripts/grace_front_lint.py
+# inputs: varies
+# outputs: varies
+# dependencies: local modules
+# side_effects: varies
+# emitted_logs: n/a
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 # ############################################################################
 # AI_HEADER: TOOL_GRACE_FRONT_LINT
 # ROLE: Static contract enforcer for frontend — matches backend grace_lint.py.

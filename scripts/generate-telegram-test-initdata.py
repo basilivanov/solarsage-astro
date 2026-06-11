@@ -1,4 +1,33 @@
 #!/usr/bin/env python3
+
+# ############################################################################
+# AI_HEADER: MODULE_SCRIPTS_GENERATE_TELEGRAM_TEST_INITDATA
+# ROLE: Tooling script
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-GUARDRAILS-TOOLING
+# ############################################################################
+
+# START_MODULE_CONTRACT
+# purpose: Tooling script — scripts/generate-telegram-test-initdata.py
+# owns:
+#   - scripts/generate-telegram-test-initdata.py
+# inputs: varies
+# outputs: varies
+# dependencies: local modules
+# side_effects: varies
+# emitted_logs: n/a
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 """
 Generate valid Telegram WebApp initData for E2E testing.
 Uses the real bot token to compute HMAC, producing

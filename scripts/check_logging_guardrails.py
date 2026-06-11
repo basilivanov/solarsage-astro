@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+# START_MODULE_CONTRACT
+# purpose: Tooling script — scripts/check_logging_guardrails.py
+# owns:
+#   - scripts/check_logging_guardrails.py
+# inputs: varies
+# outputs: varies
+# dependencies: local modules
+# side_effects: varies
+# emitted_logs: n/a
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
+
+# START_MODULE_MAP
+# mapping:
+#   - function: main
+#     contract: main entry point
+# END_MODULE_MAP
+
 # ############################################################################
 # AI_HEADER: TOOL_OBSERVABILITY_GUARDRAILS
 # ROLE: Static gate to ensure logging spine integrity and prevent drift.
