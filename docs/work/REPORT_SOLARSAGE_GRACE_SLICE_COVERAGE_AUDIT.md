@@ -2,8 +2,8 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-**Baseline SHA:** `66ce0e8`
-**JSON hash:** `55d6a21468f4`
+**Baseline SHA:** `cfdf93d`
+**JSON hash:** `7e36529f8ac1`
 
 ## How audit was run
 ```bash
@@ -39,13 +39,13 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | SLICE-PROFILE-ONBOARDING | 21 | 0 | 0 | 21 | 0.0% | 0 |
 | SLICE-OTHER-BACKEND | 20 | 0 | 0 | 20 | 0.0% | 0 |
 | SLICE-FRONTEND-API-FACADES | 15 | 0 | 0 | 15 | 0.0% | 0 |
-| SLICE-TODAY-CALENDAR | 13 | 2 | 0 | 11 | 15.4% | 0 |
+| SLICE-TODAY-CALENDAR | 12 | 1 | 0 | 11 | 8.3% | 0 |
 | SLICE-OTHER-APP | 11 | 0 | 0 | 11 | 0.0% | 0 |
 | SLICE-CONTRACTS | 9 | 1 | 0 | 8 | 11.1% | 0 |
 | SLICE-ORCHESTRATOR-ADAPTER | 5 | 0 | 0 | 5 | 0.0% | 0 |
 | SLICE-LOGGING-SPINE | 5 | 1 | 0 | 4 | 20.0% | 0 |
 | SLICE-DB-MODELS-MIGRATIONS | 3 | 3 | 0 | 0 | 100.0% | 0 |
-| SLICE-SHELL-NAVIGATION | 1 | 0 | 0 | 1 | 0.0% | 0 |
+| SLICE-SHELL-NAVIGATION | 2 | 1 | 0 | 1 | 50.0% | 0 |
 
 ## Zero-coverage product slices
 
@@ -58,7 +58,6 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 - **SLICE-FRONTEND-API-FACADES**: 15 files, 0% coverage
 - **SLICE-OTHER-APP**: 11 files, 0% coverage
 - **SLICE-ORCHESTRATOR-ADAPTER**: 5 files, 0% coverage
-- **SLICE-SHELL-NAVIGATION**: 1 files, 0% coverage
 
 ## Sentinel files
 

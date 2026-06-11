@@ -24,13 +24,23 @@ EXCLUDE_DIRS = frozenset({
 })
 EXCLUDE_PREFIX = ("components/ui/", "alembic/", "migrations/")
 
-# Slice classification — more specific prefixes FIRST
+# Slice classification — exact file paths FIRST, then directory prefixes
 SLICE_MAP: list[tuple[tuple[str, ...], str]] = [
-    (("packages/contracts/",), "SLICE-CONTRACTS"),
+    # Tests
     (("__tests__/",), "SLICE-TESTS"),
     (("apps/api/tests/",), "SLICE-TESTS"),
     (("apps/solarsage/tests/",), "SLICE-TESTS"),
-    # Backend — specific first
+    # Exact files — before their directory prefixes
+    (("components/today/tab-bar.tsx",), "SLICE-SHELL-NAVIGATION"),
+    (("components/app-shell.tsx",), "SLICE-SHELL-NAVIGATION"),
+    (("lib/today.ts",), "SLICE-TODAY-CALENDAR"),
+    (("lib/calendar.ts",), "SLICE-TODAY-CALENDAR"),
+    (("lib/access.ts",), "SLICE-FRONTEND-API-FACADES"),
+    (("lib/profile.ts",), "SLICE-FRONTEND-API-FACADES"),
+    (("lib/chat.ts",), "SLICE-FRONTEND-API-FACADES"),
+    (("lib/cities.ts",), "SLICE-FRONTEND-API-FACADES"),
+    (("packages/contracts/",), "SLICE-CONTRACTS"),
+    # Backend — specific subdirectories before broad ones
     (("apps/api/app/services/",), "SLICE-BACKEND-SERVICES"),
     (("apps/api/app/schemas/",), "SLICE-BACKEND-API-ROUTERS"),
     (("apps/api/app/api/",), "SLICE-BACKEND-API-ROUTERS"),
@@ -42,14 +52,10 @@ SLICE_MAP: list[tuple[tuple[str, ...], str]] = [
     (("apps/api/semantic/",), "SLICE-SCORING-SEMANTIC-LLM"),
     (("apps/api/calculations/",), "SLICE-SIDECAR-CALCULATION"),
     (("apps/solarsage/",), "SLICE-SIDECAR-CALCULATION"),
-    # Frontend slices
+    # Frontend directory prefixes
     (("components/today/",), "SLICE-TODAY-CALENDAR"),
     (("app/(grace)/today/",), "SLICE-TODAY-CALENDAR"),
-    (("lib/today.ts",), "SLICE-TODAY-CALENDAR"),
-    (("lib/calendar.ts",), "SLICE-TODAY-CALENDAR"),
     (("components/calendar/",), "SLICE-TODAY-CALENDAR"),
-    (("components/app-shell.tsx",), "SLICE-SHELL-NAVIGATION"),
-    (("components/today/tab-bar.tsx",), "SLICE-SHELL-NAVIGATION"),
     (("components/readings/",), "SLICE-HORARY-READINGS"),
     (("app/(grace)/readings/",), "SLICE-HORARY-READINGS"),
     (("components/profile/",), "SLICE-PROFILE-ONBOARDING"),
@@ -57,10 +63,6 @@ SLICE_MAP: list[tuple[tuple[str, ...], str]] = [
     (("app/(grace)/profile/",), "SLICE-PROFILE-ONBOARDING"),
     (("app/(grace)/onboarding/",), "SLICE-PROFILE-ONBOARDING"),
     (("lib/api/",), "SLICE-FRONTEND-API-FACADES"),
-    (("lib/access.ts",), "SLICE-FRONTEND-API-FACADES"),
-    (("lib/profile.ts",), "SLICE-FRONTEND-API-FACADES"),
-    (("lib/chat.ts",), "SLICE-FRONTEND-API-FACADES"),
-    (("lib/cities.ts",), "SLICE-FRONTEND-API-FACADES"),
     (("lib/grace/",), "SLICE-LOGGING-SPINE"),
     # Scripts and tooling
     (("scripts/",), "SLICE-GUARDRAILS-TOOLING"),
@@ -461,6 +463,30 @@ def main() -> None:
             print(f"FAIL: JSON not deterministic ({h1} != {h2})")
             sys.exit(1)
         print(f"OK: JSON deterministic ({h1})")
+
+        # Sentinel checks — verify specific files map to correct slices
+        sentinels: list[tuple[str, str]] = [
+            ("components/today/tab-bar.tsx", "SLICE-SHELL-NAVIGATION"),
+            ("apps/api/app/services/today_service.py", "SLICE-BACKEND-SERVICES"),
+            ("apps/api/app/api/day.py", "SLICE-BACKEND-API-ROUTERS"),
+            ("apps/api/app/db/models.py", "SLICE-DB-MODELS-MIGRATIONS"),
+            ("lib/grace/log.ts", "SLICE-LOGGING-SPINE"),
+            ("__tests__/components/TabBar.test.tsx", "SLICE-TESTS"),
+            ("packages/contracts/today.ts", "SLICE-CONTRACTS"),
+            ("scripts/grace/coverage_audit.py", "SLICE-GUARDRAILS-TOOLING"),
+            ("grace/orchestrator/cli.py", "SLICE-ORCHESTRATOR-ADAPTER"),
+        ]
+        file_map = {f["path"]: f["slice"] for f in v1["files"]}
+        all_ok = True
+        for path, expected in sentinels:
+            actual = file_map.get(path, "FILE_NOT_FOUND")
+            if actual != expected:
+                print(f"SENTINEL FAIL: {path} → {actual} (expected {expected})")
+                all_ok = False
+        if all_ok:
+            print(f"OK: {len(sentinels)} sentinel checks passed")
+        else:
+            sys.exit(1)
 
 
 if __name__ == "__main__":

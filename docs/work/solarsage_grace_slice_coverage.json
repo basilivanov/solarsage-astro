@@ -1,5 +1,5 @@
 {
-  "baseline_sha": "66ce0e8",
+  "baseline_sha": "cfdf93d",
   "summary": {
     "total_files_audited": 496,
     "markers_full": 41,
@@ -119,12 +119,12 @@
     },
     {
       "id": "SLICE-TODAY-CALENDAR",
-      "total": 13,
-      "markers_full": 2,
+      "total": 12,
+      "markers_full": 1,
       "markers_partial": 0,
       "markers_none": 11,
       "canonical_logging": 0,
-      "coverage_pct": 15.4
+      "coverage_pct": 8.3
     },
     {
       "id": "SLICE-OTHER-APP",
@@ -173,12 +173,12 @@
     },
     {
       "id": "SLICE-SHELL-NAVIGATION",
-      "total": 1,
-      "markers_full": 0,
+      "total": 2,
+      "markers_full": 1,
       "markers_partial": 0,
       "markers_none": 1,
       "canonical_logging": 0,
-      "coverage_pct": 0.0
+      "coverage_pct": 50.0
     }
   ],
   "files": [
@@ -9208,7 +9208,7 @@
     {
       "path": "components/today/tab-bar.tsx",
       "language": "typescript",
-      "slice": "SLICE-TODAY-CALENDAR",
+      "slice": "SLICE-SHELL-NAVIGATION",
       "module_id": "M-WEB-SHELL",
       "lines": 149,
       "has_AI_HEADER": true,
@@ -9228,7 +9228,7 @@
       ],
       "logging_class": "acceptable but undocumented",
       "logging_declared_in_contract": true,
-      "adoption_priority": "P0",
+      "adoption_priority": "skip",
       "notes": "logging needs declaration in MODULE_CONTRACT"
     },
     {
@@ -12265,7 +12265,7 @@
       "language": "python",
       "slice": "SLICE-GUARDRAILS-TOOLING",
       "module_id": "",
-      "lines": 468,
+      "lines": 494,
       "has_AI_HEADER": false,
       "has_MODULE_CONTRACT_START": false,
       "has_MODULE_CONTRACT_END": false,
