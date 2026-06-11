@@ -1,3 +1,27 @@
+// ############################################################################
+// AI_HEADER: tab-bar — Bottom navigation bar for SolarSage Today
+// ROLE: Renders a sticky bottom navigation bar with 5 icon+label tabs (today,
+//   calendar, readings, chat, profile). Consumed by the Today layout to provide
+//   primary navigation. Highlights active tab via aria-current based on pathname.
+// ############################################################################
+
+// START_MODULE_CONTRACT
+// purpose: Provides responsive bottom tab navigation with active-state tracking.
+//   The Today layout renders this component once at the page shell level.
+// inputs: None (reads usePathname from next/navigation internally).
+// returns: TSX <nav> element with 5 <Link> tabs, each with title, data-testid, aria-current.
+// side_effects: None.
+// emitted_logs: tab_bar_render.
+// error_behavior: Falls back pathname to "/" if usePathname returns null.
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// mapping:
+//   - function: TabBar
+//   - type: Tab
+//   - type: TabKey
+// END_MODULE_MAP
+
 "use client"
 
 import Link from "next/link"
@@ -7,6 +31,16 @@ import type { LucideIcon } from "lucide-react"
 
 import { TODAY } from "@/lib/today"
 import { toDateParam } from "@/lib/date"
+import { logger } from "@/lib/log"
+
+// START_BLOCK_TYPES
+// START_FUNCTION_CONTRACT
+// name: TabKey
+// purpose: Union of valid tab identifiers matching route segments.
+// inputs: None (type definition).
+// returns: "today" | "calendar" | "readings" | "chat" | "profile".
+// side_effects: None.
+// END_FUNCTION_CONTRACT
 
 export type TabKey = "today" | "calendar" | "readings" | "chat" | "profile"
 
@@ -15,10 +49,11 @@ type Tab = {
   icon: LucideIcon
   label: string
   href: string
-  /** Префиксы путей, при которых эта вкладка считается активной. */
-  match: (_pathname: string) => boolean
+  match: (p: string) => boolean
 }
+// END_BLOCK_TYPES
 
+// START_BLOCK_TAB_DATA
 const tabs: Tab[] = [
   {
     key: "today",
@@ -56,9 +91,23 @@ const tabs: Tab[] = [
     match: (p) => p.startsWith("/profile"),
   },
 ]
+// END_BLOCK_TAB_DATA
 
+// START_BLOCK_COMPONENT
+// START_FUNCTION_CONTRACT
+// name: TabBar
+// purpose: Renders the bottom navigation bar. Reads the current pathname and
+//   marks the matching tab with aria-current="page". Called by the Today layout.
+// inputs: None (component with no props).
+// returns: JSX nav element containing a grid of 5 tab links.
+// side_effects: None.
+// emitted_logs: tab_bar_render.
+// error_behavior: Falls back to "/" when usePathname returns null.
+// END_FUNCTION_CONTRACT
 export function TabBar() {
   const pathname = usePathname() ?? "/"
+  logger.debug("tab_bar_render", { pathname })
+
   return (
     <nav
       data-testid="today-tab-bar"
@@ -84,9 +133,7 @@ export function TabBar() {
                 }`}
               >
                 <Icon className="h-[22px] w-[22px] text-current" strokeWidth={1.6} />
-                <span
-                  className={`truncate ${isActive ? "font-medium" : ""}`}
-                >
+                <span className={`truncate ${isActive ? "font-medium" : ""}`}>
                   {t.label}
                 </span>
               </Link>
@@ -97,4 +144,4 @@ export function TabBar() {
     </nav>
   )
 }
-
+// END_BLOCK_COMPONENT
