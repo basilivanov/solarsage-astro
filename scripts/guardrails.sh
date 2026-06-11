@@ -243,9 +243,10 @@ run_domain() {
 
 run_fast() {
   section "fast: cheap mechanical checks"
-  python3 "$ROOT/scripts/grace_front_lint.py"
-  python3 "$ROOT/scripts/grace_lint.py" "$API_ROOT/app"
   python3 "$ROOT/scripts/test_grace_lint.py"
+  python3 "$ROOT/scripts/test_grace_front_lint.py"
+  python3 "$ROOT/scripts/grace_lint.py" "$API_ROOT/app"
+  python3 "$ROOT/scripts/grace_front_lint.py"
 }
 
 run_normal() {

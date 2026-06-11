@@ -75,11 +75,10 @@ class Marker:
 # START_BLOCK: DISCOVERY
 # ----------------------------------------------------------------------------
 
-def discover_frontend_files(root: Path) -> list[Path]:
+def discover_frontend_files(root: Path) -> list[Path] | None:
     paths_file = root / "grace" / "frontend.paths"
     if not paths_file.exists():
-        print(f"Error: missing paths file at {paths_file}", file=sys.stderr)
-        return []
+        return None
 
     globs = []
     try:
@@ -108,6 +107,43 @@ def discover_frontend_files(root: Path) -> list[Path]:
                 except ValueError:
                     files.append(p)
 
+    return sorted(list(set(files)))
+
+
+def expand_paths(paths: list[str], root: Path) -> list[Path]:
+    files = []
+    exclude_dirs = {"node_modules", ".next", ".git"}
+    for p in paths:
+        path_obj = Path(p)
+        if not path_obj.is_absolute():
+            resolved = path_obj.resolve()
+            if not resolved.exists():
+                resolved = (root / path_obj).resolve()
+        else:
+            resolved = path_obj.resolve()
+
+        if resolved.is_file():
+            if resolved.suffix in (".ts", ".tsx", ".js", ".jsx"):
+                try:
+                    files.append(resolved.relative_to(root))
+                except ValueError:
+                    files.append(resolved)
+        elif resolved.is_dir():
+            for sub_p in resolved.rglob("*"):
+                try:
+                    rel_to_root = sub_p.relative_to(root)
+                    if any(part in exclude_dirs for part in rel_to_root.parts):
+                        continue
+                    if sub_p.is_file() and sub_p.suffix in (".ts", ".tsx", ".js", ".jsx"):
+                        files.append(rel_to_root)
+                except ValueError:
+                    if sub_p.is_file() and sub_p.suffix in (".ts", ".tsx", ".js", ".jsx"):
+                        files.append(sub_p)
+        else:
+            try:
+                files.append(path_obj.relative_to(root))
+            except ValueError:
+                files.append(path_obj)
     return sorted(list(set(files)))
 
 # END_BLOCK: DISCOVERY
@@ -425,24 +461,16 @@ def main(argv: list[str] | None = None) -> int:
     root = script_dir.parent
 
     if args.paths:
-        files = []
-        for p in args.paths:
-            path_obj = Path(p)
-            # If absolute or relative, resolve against root or current dir
-            if path_obj.is_absolute():
-                try:
-                    rel = path_obj.relative_to(root)
-                    files.append(rel)
-                except ValueError:
-                    files.append(path_obj)
-            else:
-                files.append(path_obj)
+        files = expand_paths(args.paths, root)
     else:
         files = discover_frontend_files(root)
+        if files is None:
+            print("grace_front_lint: FAIL — GRC900: missing frontend paths file", file=sys.stderr)
+            return 1
 
     if not files:
-        print("grace_front_lint: no Frontend files found in active slice", file=sys.stderr)
-        return 0
+        print("grace_front_lint: FAIL — GRC901: no frontend files matched active frontend slice", file=sys.stderr)
+        return 1
 
     total_violations = 0
     for rel_path in files:

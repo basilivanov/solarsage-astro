@@ -19,6 +19,8 @@ Per file in the active slice (default: apps/api/app), enforces:
          purpose, inputs, returns, side_effects, emitted_logs, error_behavior
      and closed by END_FUNCTION_CONTRACT with a matching id.
   5. All START_BLOCK / END_BLOCK markers are paired and their ids match.
+  6. File too long (GRC030): max 1000 physical lines.
+  7. Function too large (GRC031): max 4000 lexical tokens.
 
 Exit code 0 on success, 1 on any violation. Writes a machine-readable report
 to stdout (one violation per line) and a human summary to stderr.
