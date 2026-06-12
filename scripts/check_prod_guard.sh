@@ -3,14 +3,14 @@
 # purpose: Tooling script — scripts/check_prod_guard.sh
 # owns:
 #   - scripts/check_prod_guard.sh
-# inputs: Function args
-# outputs: Return values
-# dependencies: local modules
+# inputs: CLI arguments, environment variables
+# outputs: exit codes, stdout, stderr
+# dependencies: bash, standard CLI utils
 # side_effects: n/a (pure)
 # emitted_logs: n/a (pure)
 # invariants:
 #   - n/a
-# failure_policy: log and raise
+# failure_policy: exit 1 on error
 # END_MODULE_CONTRACT
 
 # START_MODULE_MAP

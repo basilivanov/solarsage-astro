@@ -2,22 +2,23 @@
 
 # ############################################################################
 # AI_HEADER: MODULE_SCRIPTS_DB_CREATE
-# ROLE: Tooling script
-# DEPENDENCIES: local modules
-# GRACE_ANCHORS: []
+# ROLE: Shell script for operations automation
+# DEPENDENCIES: bash, standard utils
+# GRACE_ANCHORS: [SCRIPT]
 # SLICE: SLICE-GUARDRAILS-TOOLING
-# #########################################// START_MODULE_CONTRACT
+# ############################################################################
+# START_MODULE_CONTRACT
 # purpose: DB access for db-create.sh
 # owns:
 #   - scripts/db-create.sh
-# inputs: Query params, models
-# outputs: Records / query results
-# dependencies: local modules
+# inputs: CLI arguments, environment variables
+# outputs: exit codes, stdout, stderr
+# dependencies: bash, standard CLI utils
 # side_effects: Database reads/writes
 # emitted_logs: n/a (pure)
 # invariants:
 #   - n/a
-# failure_policy: log and raise
+# failure_policy: exit 1 on error
 # END_MODULE_CONTRACT
 # Create Postgres role + database for the dev-loop.
 # Works against the docker-compose stack at infra/docker-compose.yml

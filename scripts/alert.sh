@@ -3,25 +3,37 @@
 
 # ############################################################################
 # AI_HEADER: MODULE_SCRIPTS_ALERT
-# ROLE: Tooling script
-# DEPENDENCIES: local modules
-# GRACE_ANCHORS: []
+# ROLE: Send alert message to Telegram via bot API.
+# DEPENDENCIES: bash, curl, env (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+# GRACE_ANCHORS: [SEND_ALERT]
 # SLICE: SLICE-GUARDRAILS-TOOLING
-# #########################################// START_MODULE_CONTRACT
-# purpose: Tool: alert
+# ############################################################################
+# START_MODULE_CONTRACT: M-SCRIPTS-ALERT
+# purpose: Send an alert message to a configured Telegram chat via bot API.
 # owns:
 #   - scripts/alert.sh
-# inputs: Function args
-# outputs: Return values
-# dependencies: local modules
-# side_effects: n/a (pure)
-# emitted_logs: n/a (pure)
+# inputs:
+#   - $1: MESSAGE (string) — alert text to send
+#   - env: TELEGRAM_BOT_TOKEN — bot token
+#   - env: TELEGRAM_CHAT_ID — target chat ID
+# outputs:
+#   - stdout: "Alert sent successfully" on success
+#   - stderr: "ERROR:..." on failure
+# dependencies:
+#   - bash
+#   - curl
+# side_effects:
+#   - HTTP POST to api.telegram.org/bot{token}/sendMessage
+#   - reads env vars TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 # invariants:
-#   - n/a
-# failure_policy: log and raise
-# END_MODULE_CONTRACT
+#   - exits 1 if TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is empty
+#   - exits 1 if MESSAGE argument is empty
+#   - exits 1 if curl fails
+# failure_policy:
+#   - exits 1 with error message to stderr on missing config
+#   - exits 1 with error message on curl failure
+# END_MODULE_CONTRACT: M-SCRIPTS-ALERT
 # ############################################################################
-# Alert script - sends message to Telegram
 # WAVE: W-2.7
 # ############################################################################
 

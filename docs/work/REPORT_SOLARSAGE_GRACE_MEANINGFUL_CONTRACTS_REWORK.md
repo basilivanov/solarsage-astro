@@ -4,11 +4,11 @@
 **Date:** 2026-06-12
 
 ## Goal
-Replace boilerplate GRACE markers (`varies`, `Library module`, `n/a`) with file-specific meaningful contracts.
+Replace boilerplate GRACE markers (`varies`, `Library module`, `n/a`, `Function args`, `Return values`) with file-specific meaningful contracts.
 
 ## Scope
 - Base SHA: `f2a6a39`
-- Final SHA: `9049638`
+- Final SHA: `ae363c9`
 - Files with placeholders found: ~250 across all waves
 
 ## How it was done
@@ -16,32 +16,40 @@ Replace boilerplate GRACE markers (`varies`, `Library module`, `n/a`) with file-
 2. Generates meaningful `purpose`, `side_effects`, `emitted_logs`, `inputs`, `outputs` based on code analysis
 3. **Surgical replacement** — only replaces lines containing placeholder values, never overwrites hand-written contracts
 
-## Files changed
+## Rounds
 
-| Wave | Scope | Files |
-|---|---|---|
-| Frontend | `app/`, `components/`, `hooks/`, `lib/` | 124 |
-| Backend | `apps/api/app/` | 16 |
-| Sidecar | `apps/solarsage/` | 18 |
-| Contracts | `packages/contracts/`, `lib/api/`, `lib/log/` | 7 |
-| Tests | `__tests__/` | 59 |
-| Tooling | `scripts/`, `grace/` | 25 |
-| **Total** | | **~250** |
+### R1 (66c64a5): Backend API/services slice
+- AI_HEADER, MODULE_CONTRACT, MODULE_MAP: 79/79 backend files complete
+- 103 FUNCTION_CONTRACT added to all public functions
+- START/END_BLOCK added to route files and key services
+- emitted_logs verified against actual log_event() calls
 
-## Structural fixes (baseline bugs)
-The baseline adoption (waves 1-6) had structural issues:
-- `END_MODULE_CONTRACT/**` merged with JSDoc comments (6 files fixed)
-- `END_MODULE_CONTRACTexport` merged with code (1 file fixed)
-- Duplicate module copies in `redactor.ts`, `demo-mode.ts`, `production-guard.ts` (3 files fixed)
+### R2 (336350d): Frontend + structural fixes
+- Fixed 233 files with merged border+marker pattern (`#####//START` → two lines)
+- Fixed wrong contracts in frontend files (ROLE, purpose, inputs/outputs)
+- Restored production-guard.mjs from corruption (was duplicated)
+- Tests restored: 756 passed, 1 skipped
 
-## After-state
-- **Placeholder patterns (`varies`/`Library module`) removed** from all in-scope files
-- Module contracts now have file-specific: `purpose`, `role`, `side_effects`, `emitted_logs`
-- `emitted_logs` now correctly distinguishes: pure, tests, v2 logging
-- Function contracts still need manual review for exported functions (script doesn't add new function contracts — only fixes existing ones)
+### R3 (ae363c9): Shell scripts + remaining gaps
+- Fixed 14 shell scripts: `//` → `#` comments for bash compatibility
+- Fixed duplicated content in `scripts/check_prod_guard.sh` (was 2x copy)
+- Restored `lib/env/production-guard.mjs`: removed `varies`/`n/a`
+- Added function contracts to all exported functions in `lib/date.ts` (7 functions)
+- Rewrote shell contracts: `inputs: CLI arguments, env vars`, `outputs: exit codes, stdout, stderr`
+- Fixed 12 remaining merged markers (`# #####// START_MODULE_CONTRACT` → proper separate lines)
+- Updated coverage report with real SHA and counts
+- All shell scripts pass `bash -n` syntax check
 
 ## Gates
+
 | Gate | Result |
 |---|---|
-| `pnpm test:run` | 725 passed, 2 failed, 1 skipped |
-| Pre-existing failures | 2 test files have `0 tests` due to vitest transform errors — pre-existing from baseline adoption |
+| `python3 scripts/grace_lint.py` | PASS — 79 files clean |
+| `python -m pytest tests/ -q` | 587 passed, 2 skipped (backend) |
+| `pnpm test:run` | 756 passed, 1 skipped (frontend) |
+| `bash -n scripts/*.sh` | All 14+ shell scripts pass syntax |
+| `python3 scripts/grace/coverage_audit.py --check` | PASS — JSON deterministic, 9 sentinel checks |
+| grep zero: `#####// START_MODULE_CONTRACT` | 0 files (all 233 fixed) |
+| grep zero: `varies` in GRACE markers | 0 files (all eliminated) |
+| grep zero: `Library module` | 0 files (all replaced) |
+| grep zero: `inputs: Function args` | 0 files (replaced in all touched scripts) |

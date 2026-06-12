@@ -137,6 +137,14 @@ export function mondayFirstIndex(d: Date): number {
   return (d.getDay() + 6) % 7
 }
 
+// START_FUNCTION_CONTRACT: F-M-LIB-DATE.startOfWeek
+// purpose: Get Monday (start of week) for the given date.
+// inputs: d (Date)
+// returns: Date — Monday 00:00 of that week
+// side_effects: none (pure function)
+// emitted_logs: none
+// error_behavior: never raises
+// END_FUNCTION_CONTRACT: F-M-LIB-DATE.startOfWeek
 /** Понедельник той недели, в которую попадает дата. */
 export function startOfWeek(d: Date): Date {
   const idx = mondayFirstIndex(d)
@@ -144,6 +152,14 @@ export function startOfWeek(d: Date): Date {
   return res
 }
 
+// START_FUNCTION_CONTRACT: F-M-LIB-DATE.formatWeekRange
+// purpose: Format week range as «18 – 24 авг» or «28 июл – 3 авг».
+// inputs: start (Date) — Monday of the week
+// returns: string — formatted week range in Russian
+// side_effects: none (pure function)
+// emitted_logs: none
+// error_behavior: never raises
+// END_FUNCTION_CONTRACT: F-M-LIB-DATE.formatWeekRange
 /** Диапазон недели: «18 – 24 авг» или «28 июл – 3 авг» */
 export function formatWeekRange(start: Date): string {
   const end = new Date(start)
