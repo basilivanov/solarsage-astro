@@ -820,3 +820,91 @@ class NatalReport(Base):
     user: Mapped["User"] = relationship("User")
     natal_context: Mapped["NatalChartCache"] = relationship("NatalChartCache")
 # END_BLOCK: NATAL_REPORTS_TABLE
+
+
+# START_BLOCK: FEATURES_TABLE
+class Feature(Base):
+    """Business feature for GRACE self-evolution pipeline."""
+
+    __tablename__ = "features"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target_repo_root: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="NOT_STARTED", index=True
+    )
+    mode: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="draft_plan"
+    )
+    origin: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="business"
+    )
+    self_improvement: Mapped[bool] = mapped_column(
+        default=False, nullable=False
+    )
+    spec_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    planning_runs: Mapped[list["FeaturePlanningRun"]] = relationship(
+        "FeaturePlanningRun",
+        back_populates="feature",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+# END_BLOCK: FEATURES_TABLE
+
+
+# START_BLOCK: FEATURE_PLANNING_RUNS_TABLE
+class FeaturePlanningRun(Base):
+    """Observable planning run stage for a feature."""
+
+    __tablename__ = "feature_planning_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    feature_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("features.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    stage: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    duration_ms: Mapped[int | None] = mapped_column(nullable=True)
+    executor_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stdout_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    stderr_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    result_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    feature: Mapped["Feature"] = relationship(
+        "Feature", back_populates="planning_runs"
+    )
+# END_BLOCK: FEATURE_PLANNING_RUNS_TABLE
