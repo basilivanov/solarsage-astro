@@ -1,25 +1,25 @@
 #!/bin/bash
 
 
-// ############################################################################
-// AI_HEADER: MODULE_SCRIPTS_ALERT
-// ROLE: Tooling script
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-GUARDRAILS-TOOLING
-// #########################################// START_MODULE_CONTRACT
-// purpose: Tool: alert
-// owns:
-//   - scripts/alert.sh
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+# ############################################################################
+# AI_HEADER: MODULE_SCRIPTS_ALERT
+# ROLE: Tooling script
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-GUARDRAILS-TOOLING
+# #########################################// START_MODULE_CONTRACT
+# purpose: Tool: alert
+# owns:
+#   - scripts/alert.sh
+# inputs: Function args
+# outputs: Return values
+# dependencies: local modules
+# side_effects: n/a (pure)
+# emitted_logs: n/a (pure)
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
 # ############################################################################
 # Alert script - sends message to Telegram
 # WAVE: W-2.7

@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 
-// ############################################################################
-// AI_HEADER: MODULE_SCRIPTS_GUARDRAILS
-// ROLE: Tooling script
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-GUARDRAILS-TOOLING
-// #########################################// START_MODULE_CONTRACT
-// purpose: Tool: guardrails
-// owns:
-//   - scripts/guardrails.sh
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+# ############################################################################
+# AI_HEADER: MODULE_SCRIPTS_GUARDRAILS
+# ROLE: Tooling script
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-GUARDRAILS-TOOLING
+# #########################################// START_MODULE_CONTRACT
+# purpose: Tool: guardrails
+# owns:
+#   - scripts/guardrails.sh
+# inputs: Function args
+# outputs: Return values
+# dependencies: local modules
+# side_effects: n/a (pure)
+# emitted_logs: n/a (pure)
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
 # ############################################################################
 # Portable guardrails entrypoint.
 #

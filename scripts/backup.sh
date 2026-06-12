@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 
-// ############################################################################
-// AI_HEADER: MODULE_SCRIPTS_BACKUP
-// ROLE: Tooling script
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-GUARDRAILS-TOOLING
-// #########################################// START_MODULE_CONTRACT
-// purpose: DB access for backup.sh
-// owns:
-//   - scripts/backup.sh
-// inputs: Query params, models
-// outputs: Records / query results
-// dependencies: local modules
-// side_effects: Database reads/writes
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+# ############################################################################
+# AI_HEADER: MODULE_SCRIPTS_BACKUP
+# ROLE: Tooling script
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-GUARDRAILS-TOOLING
+# #########################################// START_MODULE_CONTRACT
+# purpose: DB access for backup.sh
+# owns:
+#   - scripts/backup.sh
+# inputs: Query params, models
+# outputs: Records / query results
+# dependencies: local modules
+# side_effects: Database reads/writes
+# emitted_logs: n/a (pure)
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
 # Ежедневный бэкап: pg_dump + копия dump.rdb. Хранит 14 дней.
 set -euo pipefail
 cd "$(dirname "$0")/.."

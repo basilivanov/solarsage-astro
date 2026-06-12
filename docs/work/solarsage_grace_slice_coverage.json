@@ -1,5 +1,5 @@
 {
-  "baseline_sha": "66c64a5",
+  "baseline_sha": "336350d",
   "summary": {
     "total_files_audited": 497,
     "markers_full": 117,
@@ -10649,14 +10649,14 @@
       "language": "typescript",
       "slice": "SLICE-OTHER-FRONTEND",
       "module_id": "",
-      "lines": 117,
+      "lines": 157,
       "has_AI_HEADER": true,
       "has_MODULE_CONTRACT_START": true,
       "has_MODULE_CONTRACT_END": true,
       "has_MODULE_MAP_START": false,
       "has_MODULE_MAP_END": false,
-      "FUNCTION_CONTRACT_START_count": 0,
-      "FUNCTION_CONTRACT_END_count": 0,
+      "FUNCTION_CONTRACT_START_count": 5,
+      "FUNCTION_CONTRACT_END_count": 5,
       "BLOCK_START_count": 0,
       "BLOCK_END_count": 0,
       "block_names": [],
@@ -10664,9 +10664,9 @@
       "pairing_status": "paired",
       "logging_patterns": [],
       "logging_class": "none",
-      "logging_declared_in_contract": false,
+      "logging_declared_in_contract": true,
       "adoption_priority": "P2",
-      "notes": "incomplete markers; no logging; logging not declared in contract"
+      "notes": "incomplete markers; no logging"
     },
     {
       "path": "lib/demo-data.ts",
@@ -10721,7 +10721,7 @@
       "language": "javascript",
       "slice": "SLICE-OTHER-FRONTEND",
       "module_id": "",
-      "lines": 56,
+      "lines": 65,
       "has_AI_HEADER": true,
       "has_MODULE_CONTRACT_START": true,
       "has_MODULE_CONTRACT_END": true,
@@ -10738,9 +10738,9 @@
         "console"
       ],
       "logging_class": "none",
-      "logging_declared_in_contract": true,
+      "logging_declared_in_contract": false,
       "adoption_priority": "skip",
-      "notes": "no logging"
+      "notes": "no logging; logging not declared in contract"
     },
     {
       "path": "lib/env/production-guard.ts",
@@ -12067,7 +12067,7 @@
       "language": "shell",
       "slice": "SLICE-GUARDRAILS-TOOLING",
       "module_id": "",
-      "lines": 108,
+      "lines": 58,
       "has_AI_HEADER": true,
       "has_MODULE_CONTRACT_START": true,
       "has_MODULE_CONTRACT_END": true,

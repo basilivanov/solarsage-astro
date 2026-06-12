@@ -25,6 +25,14 @@
 //   - fromDateParam returns null for invalid input
 // END_MODULE_CONTRACT: M-LIB-DATE
 
+// START_FUNCTION_CONTRACT: F-M-LIB-DATE.toDateParam
+// purpose: Serialize a Date to YYYY-MM-DD URL parameter (local time).
+// inputs: d (Date)
+// returns: string in YYYY-MM-DD format
+// side_effects: none (pure function)
+// emitted_logs: none
+// error_behavior: never raises
+// END_FUNCTION_CONTRACT: F-M-LIB-DATE.toDateParam
 /** Сериализация даты в URL-параметр YYYY-MM-DD (локальное время). */
 export function toDateParam(d: Date): string {
   const y = d.getFullYear()
@@ -33,6 +41,14 @@ export function toDateParam(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+// START_FUNCTION_CONTRACT: F-M-LIB-DATE.fromDateParam
+// purpose: Parse YYYY-MM-DD URL parameter string to Date.
+// inputs: s (string) — URL parameter value
+// returns: Date | null — parsed Date or null for invalid input
+// side_effects: none (pure function)
+// emitted_logs: none
+// error_behavior: returns null for invalid format; never raises
+// END_FUNCTION_CONTRACT: F-M-LIB-DATE.fromDateParam
 /** Парсинг URL-параметра YYYY-MM-DD → Date; возвращает null для мусора. */
 export function fromDateParam(s: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null
@@ -82,16 +98,40 @@ export const MONTHS_RU_GEN = [
 export const WEEKDAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 export const WEEKDAYS_MINI = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
 
+// START_FUNCTION_CONTRACT: F-M-LIB-DATE.formatDayMonth
+// purpose: Format Date as «18 августа» (day + month in genitive).
+// inputs: d (Date)
+// returns: string — formatted date
+// side_effects: none (pure function)
+// emitted_logs: none
+// error_behavior: never raises
+// END_FUNCTION_CONTRACT: F-M-LIB-DATE.formatDayMonth
 /** «18 августа» */
 export function formatDayMonth(d: Date): string {
   return `${d.getDate()} ${MONTHS_RU_GEN[d.getMonth()]}`
 }
 
+// START_FUNCTION_CONTRACT: F-M-LIB-DATE.formatLong
+// purpose: Format Date as «18 августа 2025» (full Russian date).
+// inputs: d (Date)
+// returns: string — formatted date with year
+// side_effects: none (pure function)
+// emitted_logs: none
+// error_behavior: never raises
+// END_FUNCTION_CONTRACT: F-M-LIB-DATE.formatLong
 /** «18 августа 2025» */
 export function formatLong(d: Date): string {
   return `${d.getDate()} ${MONTHS_RU_GEN[d.getMonth()]} ${d.getFullYear()}`
 }
 
+// START_FUNCTION_CONTRACT: F-M-LIB-DATE.mondayFirstIndex
+// purpose: Convert JS getDay() (0=Sun) to Monday-first index (0=Mon).
+// inputs: d (Date)
+// returns: number — 0 (Mon) to 6 (Sun)
+// side_effects: none (pure function)
+// emitted_logs: none
+// error_behavior: never raises
+// END_FUNCTION_CONTRACT: F-M-LIB-DATE.mondayFirstIndex
 /** День недели понедельник-1 … воскресенье-7 → индекс 0..6 для WEEKDAYS_* */
 export function mondayFirstIndex(d: Date): number {
   return (d.getDay() + 6) % 7

@@ -105,11 +105,11 @@ cp "$PILOT" "$WORK/$PILOT"
 # ---------- NEG-LINT-1: foreign import of payload type ----------
 NEG1="$WORK/lib/api/foreign-import.ts"
 cat > "$NEG1" <<'EOF'
-// AI_HEADER: NEG_FOREIGN_IMPORT
-// START_MODULE_CONTRACT: M-NEG.foreign
-// END_MODULE_CONTRACT: M-NEG.foreign
-// START_MODULE_MAP: M-NEG.foreign
-// END_MODULE_MAP: M-NEG.foreign
+# AI_HEADER: NEG_FOREIGN_IMPORT
+# START_MODULE_CONTRACT: M-NEG.foreign
+# END_MODULE_CONTRACT: M-NEG.foreign
+# START_MODULE_MAP: M-NEG.foreign
+# END_MODULE_MAP: M-NEG.foreign
 import type { TodayPayload } from "@/lib/types/today";
 export const _x: TodayPayload | null = null;
 EOF
@@ -120,11 +120,11 @@ rm -f "$NEG1"
 # ---------- NEG-LINT-2: local redeclare of contract type ----------
 NEG2="$WORK/lib/api/local-redeclare.ts"
 cat > "$NEG2" <<'EOF'
-// AI_HEADER: NEG_LOCAL_REDECLARE
-// START_MODULE_CONTRACT: M-NEG.redeclare
-// END_MODULE_CONTRACT: M-NEG.redeclare
-// START_MODULE_MAP: M-NEG.redeclare
-// END_MODULE_MAP: M-NEG.redeclare
+# AI_HEADER: NEG_LOCAL_REDECLARE
+# START_MODULE_CONTRACT: M-NEG.redeclare
+# END_MODULE_CONTRACT: M-NEG.redeclare
+# START_MODULE_MAP: M-NEG.redeclare
+# END_MODULE_MAP: M-NEG.redeclare
 export interface TodayPayload {
   whatever: string;
 }

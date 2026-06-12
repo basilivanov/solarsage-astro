@@ -2,8 +2,8 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-**Baseline SHA:** `66c64a5`
-**JSON hash:** `e26f9d6ff4fd`
+**Baseline SHA:** `336350d`
+**JSON hash:** `44d3112dbd21`
 
 ## How audit was run
 ```bash

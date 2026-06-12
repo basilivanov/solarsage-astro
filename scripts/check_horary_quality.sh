@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 
-// ############################################################################
-// AI_HEADER: MODULE_SCRIPTS_CHECK_HORARY_QUALITY
-// ROLE: Tooling script
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-GUARDRAILS-TOOLING
-// #########################################// START_MODULE_CONTRACT
-// purpose: Tool: check_horary_quality
-// owns:
-//   - scripts/check_horary_quality.sh
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+# ############################################################################
+# AI_HEADER: MODULE_SCRIPTS_CHECK_HORARY_QUALITY
+# ROLE: Tooling script
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-GUARDRAILS-TOOLING
+# #########################################// START_MODULE_CONTRACT
+# purpose: Tool: check_horary_quality
+# owns:
+#   - scripts/check_horary_quality.sh
+# inputs: Function args
+# outputs: Return values
+# dependencies: local modules
+# side_effects: n/a (pure)
+# emitted_logs: n/a (pure)
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
 # ############################################################################
 # Grep guard for W-HORARY-ANSWER-QUALITY-V1.
 #

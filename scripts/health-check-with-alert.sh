@@ -1,25 +1,25 @@
 #!/bin/bash
 
 
-// ############################################################################
-// AI_HEADER: MODULE_SCRIPTS_HEALTH_CHECK_WITH_ALERT
-// ROLE: Tooling script
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-GUARDRAILS-TOOLING
-// #########################################// START_MODULE_CONTRACT
-// purpose: Tool: health-check-with-alert
-// owns:
-//   - scripts/health-check-with-alert.sh
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+# ############################################################################
+# AI_HEADER: MODULE_SCRIPTS_HEALTH_CHECK_WITH_ALERT
+# ROLE: Tooling script
+# DEPENDENCIES: local modules
+# GRACE_ANCHORS: []
+# SLICE: SLICE-GUARDRAILS-TOOLING
+# #########################################// START_MODULE_CONTRACT
+# purpose: Tool: health-check-with-alert
+# owns:
+#   - scripts/health-check-with-alert.sh
+# inputs: Function args
+# outputs: Return values
+# dependencies: local modules
+# side_effects: n/a (pure)
+# emitted_logs: n/a (pure)
+# invariants:
+#   - n/a
+# failure_policy: log and raise
+# END_MODULE_CONTRACT
 # ############################################################################
 # Health check with alerting
 # WAVE: W-2.7
