@@ -109,18 +109,6 @@ LogEventName = Literal[
     "chat.quota_increased",
     "chat.thread_created",
     "chat.message_sent",
-    # feature intake / planning
-    "feature_submitted",
-    "planning_started",
-    "context_builder_started",
-    "context_builder_completed",
-    "context_builder_failed",
-    "architect_started",
-    "architect_completed",
-    "architect_failed",
-    "plan_ready",
-    "plan_materialized",
-    "feature_queued",
     # frontend ux
     "ui.error_boundary_tripped",
     "ui.fixtures_mode_toggled",
