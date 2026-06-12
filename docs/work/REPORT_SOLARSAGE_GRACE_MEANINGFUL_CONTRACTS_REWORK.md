@@ -8,7 +8,8 @@ Replace boilerplate GRACE markers (`varies`, `Library module`, `n/a`, `Function 
 
 ## Scope
 - Base SHA: `f2a6a39`
-- Final SHA: `ae363c9`
+- Tested code SHA: `6e7e5f3`
+- Report commit SHA: `6e7e5f3`
 - Files with placeholders found: ~250 across all waves
 
 ## How it was done
