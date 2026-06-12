@@ -61,6 +61,14 @@ class ChatQuotaService:
 
     # START_BLOCK: GET_OR_CREATE_QUOTA
     async def get_or_create_quota(self, user_id: uuid.UUID) -> ChatQuota:
+        # START_FUNCTION_CONTRACT: F-M-CHAT-QUOTA-SERVICE.get_or_create_quota
+        # purpose: Get or create chat quota for user.
+        # inputs: user_id (UUID)
+        # returns: ChatQuota with messages_used, messages_limit, reset_at
+        # side_effects: creates ChatQuota row if not exists
+        # emitted_logs: none
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-CHAT-QUOTA-SERVICE.get_or_create_quota
         """Get or create quota for user."""
         result = await self.db.execute(
             select(ChatQuota).where(ChatQuota.user_id == user_id)
@@ -84,6 +92,14 @@ class ChatQuotaService:
 
     # START_BLOCK: CHECK_QUOTA
     async def check_quota(self, user_id: uuid.UUID) -> bool:
+        # START_FUNCTION_CONTRACT: F-M-CHAT-QUOTA-SERVICE.check_quota
+        # purpose: Check if user has quota remaining; auto-reset if expired.
+        # inputs: user_id (UUID)
+        # returns: bool — True if messages_used < messages_limit
+        # side_effects: resets quota if expiration date passed
+        # emitted_logs: none
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-CHAT-QUOTA-SERVICE.check_quota
         """Check if user has quota remaining."""
         quota = await self.get_or_create_quota(user_id)
 
@@ -106,6 +122,14 @@ class ChatQuotaService:
 
     # START_BLOCK: INCREMENT_USAGE
     async def increment_usage(self, user_id: uuid.UUID) -> None:
+        # START_FUNCTION_CONTRACT: F-M-CHAT-QUOTA-SERVICE.increment_usage
+        # purpose: Increment message usage count by 1.
+        # inputs: user_id (UUID)
+        # returns: None
+        # side_effects: increments messages_used on ChatQuota row
+        # emitted_logs: none
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-CHAT-QUOTA-SERVICE.increment_usage
         """Increment message usage."""
         quota = await self.get_or_create_quota(user_id)
         quota.messages_used += 1
@@ -114,6 +138,14 @@ class ChatQuotaService:
 
     # START_BLOCK: INCREASE_LIMIT
     async def increase_limit(self, user_id: uuid.UUID, additional: int) -> None:
+        # START_FUNCTION_CONTRACT: F-M-CHAT-QUOTA-SERVICE.increase_limit
+        # purpose: Increase quota limit after subscription purchase.
+        # inputs: user_id (UUID), additional (int)
+        # returns: None
+        # side_effects: increases messages_limit on ChatQuota row
+        # emitted_logs: chat.quota_increased
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-CHAT-QUOTA-SERVICE.increase_limit
         """
         Increase quota limit (e.g., after subscription purchase).
 

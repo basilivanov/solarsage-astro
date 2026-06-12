@@ -46,6 +46,14 @@ async def current_user_id(
     request: Request,
     db: AsyncSession = Depends(get_session),
 ) -> uuid.UUID:
+    # START_FUNCTION_CONTRACT: F-M-CORE-DEPS.current_user_id
+    # purpose: FastAPI dependency — resolve user UUID from session cookie.
+    # inputs: request (Request), db (AsyncSession)
+    # returns: uuid.UUID of authenticated user
+    # side_effects: reads from Session table
+    # emitted_logs: auth.session_rejected (TODO)
+    # error_behavior: raises HTTPException 401 on invalid/missing/expired session
+    # END_FUNCTION_CONTRACT: F-M-CORE-DEPS.current_user_id
     """FastAPI dependency: returns the user UUID resolved from the session cookie."""
     token = request.cookies.get(settings.session_cookie_name, "")
 
@@ -70,6 +78,14 @@ async def require_session(
     request: Request,
     db: AsyncSession = Depends(get_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-CORE-DEPS.require_session
+    # purpose: FastAPI dependency — return User object with profile loaded.
+    # inputs: request (Request), db (AsyncSession)
+    # returns: User with profile relationship loaded
+    # side_effects: reads from User and UserProfile tables
+    # emitted_logs: none
+    # error_behavior: raises HTTPException 401 on invalid session or user not found
+    # END_FUNCTION_CONTRACT: F-M-CORE-DEPS.require_session
     """
     FastAPI dependency: returns the User object with profile relationship loaded.
 
@@ -98,6 +114,14 @@ async def require_session_optional(
     request: Request,
     db: AsyncSession = Depends(get_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-CORE-DEPS.require_session_optional
+    # purpose: FastAPI dependency — return User or None if not authenticated.
+    # inputs: request (Request), db (AsyncSession)
+    # returns: User with profile or None if no valid session
+    # side_effects: reads from Session and User tables
+    # emitted_logs: none
+    # error_behavior: returns None on missing/invalid session; never raises
+    # END_FUNCTION_CONTRACT: F-M-CORE-DEPS.require_session_optional
     """
     FastAPI dependency: returns the User object or None if not authenticated.
 

@@ -61,6 +61,14 @@ class DayDeltaService:
         self.today = {_signal_key(s): s for s in today_signals}
 
     def compute_deltas(self) -> list[AstroSignal]:
+        # START_FUNCTION_CONTRACT: F-M-DAY-DELTA-SERVICE.compute_deltas
+        # purpose: Compare yesterday vs today signals, annotate with delta_kind and phase.
+        # inputs: self with yesterday_signals and today_signals (from __init__)
+        # returns: list[AstroSignal] with delta_kind, phase, daily_salience set
+        # side_effects: none (pure computation)
+        # emitted_logs: none
+        # error_behavior: empty input returns empty list; never raises
+        # END_FUNCTION_CONTRACT: F-M-DAY-DELTA-SERVICE.compute_deltas
         """Return today's signals annotated with delta_kind and phase."""
         result = []
         for s in list(self.today.values()):

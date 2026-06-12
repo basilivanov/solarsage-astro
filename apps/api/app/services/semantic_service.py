@@ -108,6 +108,14 @@ class SemanticService:
         day_status: str,
         sphere_scores: dict[str, float],
     ) -> SemanticLayer:
+        # START_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.build_semantic_layer
+        # purpose: Build SemanticLayer from day_status and sphere_scores.
+        # inputs: day_status (str), sphere_scores (dict[str, float])
+        # returns: SemanticLayer with day_theme, sphere_themes, top_keywords
+        # side_effects: none (pure computation)
+        # emitted_logs: none
+        # error_behavior: returns default values on empty input
+        # END_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.build_semantic_layer
         day_theme = DAY_THEMES.get(day_status, "Обычный день")
         sphere_themes = []
         all_keywords = []
@@ -134,6 +142,14 @@ class SemanticService:
         semantic_layer: SemanticLayer,
         all_signals: list | None = None,
     ) -> list[dict]:
+        # START_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.build_why_contexts
+        # purpose: Compute pre-filled context for 9 WhyThisHappens sections.
+        # inputs: day_status, sphere_scores, top_signals, natal, transits, semantic_layer
+        # returns: list[dict] with {layer, title, context, blocks_kind}
+        # side_effects: none (pure computation)
+        # emitted_logs: none
+        # error_behavior: returns empty list on missing data
+        # END_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.build_why_contexts
         """Compute pre-filled context for each of 9 WhyThisHappens sections.
         LLM only writes narrative text — no numbers, no planet names.
         Returns list of dicts: {layer, title, context, blocks_kind}"""
@@ -147,6 +163,14 @@ class SemanticService:
             return _p(raw.replace("Transit_", "").replace("Natal_", ""))
         
         def natal_planet(name: str) -> dict | None:
+            # START_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.natal_planet
+            # purpose: Find natal planet by name from context.
+            # inputs: name (str) — may have Transit_/Natal_ prefix
+            # returns: dict | None — planet data dict or None
+            # side_effects: none (pure function)
+            # emitted_logs: none
+            # error_behavior: returns None if not found
+            # END_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.natal_planet
             clean = name.replace("Transit_", "").replace("Natal_", "")
             for p in natal_planets:
                 if p.get("name") == clean:
@@ -154,12 +178,28 @@ class SemanticService:
             return None
 
         def top_of_type(kind: str):
+            # START_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.top_of_type
+            # purpose: Find top signal of a given type from top_signals.
+            # inputs: kind (str) — signal type to find
+            # returns: AstroSignal or None
+            # side_effects: none (pure function)
+            # emitted_logs: none
+            # error_behavior: returns None if no signal of that type
+            # END_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.top_of_type
             for s in top_signals:
                 if s.type == kind:
                     return s
             return None
 
         def signal_lines(signals, kind: str | None = None) -> list[str]:
+            # START_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.signal_lines
+            # purpose: Format signals into human-readable lines with Russian translations.
+            # inputs: signals (list), kind (str | None) — optional filter by type
+            # returns: list[str] — formatted lines
+            # side_effects: none (pure function)
+            # emitted_logs: none
+            # error_behavior: returns empty list on empty input
+            # END_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.signal_lines
             lines = []
             for s in signals:
                 if kind and s.type != kind:

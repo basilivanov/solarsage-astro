@@ -67,6 +67,14 @@ async def get_day(
     user: Annotated[User, Depends(require_session)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> TodayPayload:
+    # START_FUNCTION_CONTRACT: F-M-API-DAY.get_day
+    # purpose: Get TodayPayload for a specific date.
+    # inputs: date_str (str YYYY-MM-DD or 'today'), user (User), db (AsyncSession)
+    # returns: TodayPayload with day status, signals, reading, etc.
+    # side_effects: reads from DB, calls sidecar for transits, calls LLM
+    # emitted_logs: none (TODO: W-1.6 — add day.viewed)
+    # error_behavior: 400 INVALID_DATE, 422 NOT_ONBOARDED, 401 from require_session
+    # END_FUNCTION_CONTRACT: F-M-API-DAY.get_day
     """
     Get TodayPayload for a specific date.
 

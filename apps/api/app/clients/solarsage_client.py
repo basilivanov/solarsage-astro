@@ -63,6 +63,14 @@ class SolarSageClient:
         birth_lon: float,
         birth_tz: str,
     ) -> dict:
+        # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_natal
+        # purpose: Get natal chart from SolarSage sidecar.
+        # inputs: birth_date (str YYYY-MM-DD), birth_time (str HH:MM), birth_lat, birth_lon, birth_tz
+        # returns: validated dict from SolarSageNatalResponse
+        # side_effects: HTTP POST to sidecar
+        # emitted_logs: sidecar.called, natal.sidecar_failed
+        # error_behavior: raises httpx.HTTPStatusError on non-2xx, httpx.TimeoutException on timeout
+        # END_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_natal
         """
         Get natal chart from sidecar.
 
@@ -110,6 +118,14 @@ class SolarSageClient:
         target_time: str,
         target_tz: str,
     ) -> dict:
+        # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_transits
+        # purpose: Get transit planets from SolarSage sidecar.
+        # inputs: target_date (str YYYY-MM-DD), target_time (str HH:MM), target_tz (str IANA)
+        # returns: validated dict from SolarSageTransitsResponse
+        # side_effects: HTTP POST to sidecar
+        # emitted_logs: sidecar.called, natal.sidecar_failed
+        # error_behavior: raises httpx.HTTPStatusError on non-2xx, httpx.TimeoutException on timeout
+        # END_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_transits
         """
         Get transit planets from sidecar.
 
@@ -143,6 +159,14 @@ class SolarSageClient:
         return validated.model_dump(by_alias=True)
 
     async def close(self):
+        # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.close
+        # purpose: Close the underlying HTTP client connection.
+        # inputs: self
+        # returns: None
+        # side_effects: closes httpx.AsyncClient connection pool
+        # emitted_logs: none
+        # error_behavior: ignores errors during close
+        # END_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.close
         """Close HTTP client."""
         await self.client.aclose()
 # END_BLOCK: CLIENT_CLASS
@@ -153,6 +177,14 @@ _client: SolarSageClient | None = None
 
 
 def get_solarsage_client() -> SolarSageClient:
+    # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_solarsage_client
+    # purpose: Get or create singleton SolarSage HTTP client.
+    # inputs: none (module-level _client global)
+    # returns: SolarSageClient singleton
+    # side_effects: creates SolarSageClient on first call (lazy init)
+    # emitted_logs: none
+    # error_behavior: never raises
+    # END_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_solarsage_client
     """Get singleton SolarSage client."""
     global _client
     if _client is None:

@@ -46,8 +46,17 @@ from app.db.session import get_session
 router = APIRouter()
 
 
+# START_BLOCK: HEALTH_EXTENDED_ENDPOINT
 @router.get("/api/health/extended")
 async def health_check_extended(db: AsyncSession = Depends(get_session)) -> dict[str, Any]:
+    # START_FUNCTION_CONTRACT: F-M-API-HEALTH-EXT.health_check_extended
+    # purpose: Return extended health status of API, DB, LLM, and GeoNames.
+    # inputs: db (AsyncSession)
+    # returns: dict with overall status and per-check results
+    # side_effects: makes HTTP requests to OpenRouter and GeoNames APIs
+    # emitted_logs: none
+    # error_behavior: per-check errors are scoped; critical_checks (api, db) determine overall status
+    # END_FUNCTION_CONTRACT: F-M-API-HEALTH-EXT.health_check_extended
     """
     Extended health check endpoint with dependency status.
 
@@ -130,3 +139,4 @@ async def health_check_extended(db: AsyncSession = Depends(get_session)) -> dict
         "status": "healthy" if (all_critical_ok and all_optional_ok) else "degraded",
         "checks": checks,
     }
+# END_BLOCK: HEALTH_EXTENDED_ENDPOINT

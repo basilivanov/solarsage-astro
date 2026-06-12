@@ -66,6 +66,14 @@ class CalendarService:
         self.db = db
 
     async def get_calendar(self, user_id: uuid.UUID, month: str) -> CalendarPayload:
+        # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE.get_calendar
+        # purpose: Get 3-month calendar grid with day statuses and access.
+        # inputs: user_id (UUID), month (str YYYY-MM)
+        # returns: CalendarPayload with prev/curr/next month days
+        # side_effects: reads from DB for access and semantic layer
+        # emitted_logs: calendar.viewed
+        # error_behavior: invalid month format handled by caller
+        # END_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE.get_calendar
         """
         Get 3-month calendar grid (prev/curr/next).
 

@@ -53,12 +53,21 @@ from app.db.models import User
 router = APIRouter()
 
 
+# START_BLOCK: CREATE_PAYMENT_ENDPOINT
 @router.post("/api/payment/create-intent")
 async def create_payment_intent(
     intent: PaymentIntent,
     db: AsyncSession = Depends(get_session),
     user: User = Depends(require_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-PAYMENT.create_payment_intent
+    # purpose: Create payment intent for subscription (MVP stub).
+    # inputs: intent (PaymentIntent), db session, authenticated user
+    # returns: dict with payment_id, status, amount, currency
+    # side_effects: creates Payment row in database
+    # emitted_logs: payment.intent_created
+    # error_behavior: 401 if not authenticated; DB errors propagate
+    # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.create_payment_intent
     """
     Create payment intent for subscription.
 
@@ -81,11 +90,22 @@ async def create_payment_intent(
     }
 
 
+# END_BLOCK: CREATE_PAYMENT_ENDPOINT
+
+# START_BLOCK: PAYMENT_WEBHOOK_ENDPOINT
 @router.post("/api/payment/webhook")
 async def payment_webhook(
     webhook: PaymentWebhook,
     db: AsyncSession = Depends(get_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-PAYMENT.payment_webhook
+    # purpose: Handle payment webhook callback from provider.
+    # inputs: webhook (PaymentWebhook), db session
+    # returns: {"ok": True}
+    # side_effects: updates payment status, creates subscription on success, increases chat quota
+    # emitted_logs: payment.succeeded, payment.failed
+    # error_behavior: idempotent — silently returns if payment not found
+    # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.payment_webhook
     """
     Handle payment webhook from provider.
     
@@ -99,3 +119,4 @@ async def payment_webhook(
     )
     
     return {"ok": True}
+# END_BLOCK: PAYMENT_WEBHOOK_ENDPOINT

@@ -59,11 +59,20 @@ from app.services.access_service import AccessService
 router = APIRouter(prefix="/api/referral", tags=["referral"])
 
 
+# START_BLOCK: REFERRAL_INFO_ENDPOINT
 @router.get("")
 async def get_referral_info(
     user: Annotated[User, Depends(require_session)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-REFERRAL.get_referral_info
+    # purpose: Get user's referral info: invite code, URL, stats.
+    # inputs: user (User from auth), db session
+    # returns: dict with inviteCode, inviteUrl, totalInvited, daysPerInvite
+    # side_effects: reads from Referral table
+    # emitted_logs: none
+    # error_behavior: 401 if not authenticated
+    # END_FUNCTION_CONTRACT: F-M-API-REFERRAL.get_referral_info
     """Get user's referral info: invite code, invite URL, stats."""
     # Count referrals
     result = await db.execute(
@@ -81,12 +90,23 @@ async def get_referral_info(
     }
 
 
+# END_BLOCK: REFERRAL_INFO_ENDPOINT
+
+# START_BLOCK: REFERRAL_CLAIM_ENDPOINT
 @router.post("/claim")
 async def claim_referral(
     request: ReferralClaimRequest,
     user: Annotated[User, Depends(require_session)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> ReferralClaimResponse:
+    # START_FUNCTION_CONTRACT: F-M-API-REFERRAL.claim_referral
+    # purpose: Claim referral bonus (grants 14-day access to both users).
+    # inputs: request (ReferralClaimRequest), user (User from auth), db session
+    # returns: ReferralClaimResponse with success, days_granted, access_until
+    # side_effects: creates Referral row, grants access bonuses to both users
+    # emitted_logs: referral.invite_created, referral.signup_credited
+    # error_behavior: 400 ALREADY_CLAIMED, 400 INVALID_CODE, 404 REFERRER_NOT_FOUND, 400 SELF_REFERRAL
+    # END_FUNCTION_CONTRACT: F-M-API-REFERRAL.claim_referral
     """
     Claim referral bonus.
 
@@ -155,3 +175,4 @@ async def claim_referral(
         access_until=access_until,
         message="Referral bonus granted! You have 14 days of full access.",
     )
+# END_BLOCK: REFERRAL_CLAIM_ENDPOINT

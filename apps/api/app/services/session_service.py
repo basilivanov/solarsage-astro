@@ -75,6 +75,14 @@ class InvalidSession(Exception):
 
 
 def hash_token(token: str) -> str:
+    # START_FUNCTION_CONTRACT: F-M-AUTH-TG.session.hash_token
+    # purpose: Compute SHA-256 hex digest of opaque token.
+    # inputs: token (str)
+    # returns: str (64-char lowercase hex digest)
+    # side_effects: none (pure function)
+    # emitted_logs: none
+    # error_behavior: never raises
+    # END_FUNCTION_CONTRACT: F-M-AUTH-TG.session.hash_token
     """sha256-hex of the opaque token. 64 chars, lowercase."""
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
@@ -103,6 +111,14 @@ async def create_session(
     ttl: timedelta,
     user_agent: str | None,
 ) -> tuple[str, Session]:
+    # START_FUNCTION_CONTRACT: F-M-AUTH-TG.session.create_session
+    # purpose: Mint opaque session token and insert Session row.
+    # inputs: db (AsyncSession), user_id (UUID), ttl (timedelta), user_agent (str | None)
+    # returns: tuple[str, Session] — (opaque_token, session row)
+    # side_effects: inserts Session row (caller must commit)
+    # emitted_logs: none
+    # error_behavior: DB errors propagate
+    # END_FUNCTION_CONTRACT: F-M-AUTH-TG.session.create_session
     """Mint an opaque session token and insert the matching Session row.
 
     Returns (opaque_token, session). Caller is responsible for committing
@@ -124,6 +140,14 @@ async def create_session(
 
 # START_BLOCK: SESSION_RESOLVE
 async def resolve_session(db: AsyncSession, opaque_token: str) -> Session:
+    # START_FUNCTION_CONTRACT: F-M-AUTH-TG.session.resolve_session
+    # purpose: Resolve session by opaque token with freshness and revocation checks.
+    # inputs: db (AsyncSession), opaque_token (str)
+    # returns: Session row if valid
+    # side_effects: reads from Session table
+    # emitted_logs: none
+    # error_behavior: raises InvalidSession with code: MISSING, MALFORMED, UNKNOWN, REVOKED, EXPIRED
+    # END_FUNCTION_CONTRACT: F-M-AUTH-TG.session.resolve_session
     """Look the row up by token_hash; enforce freshness and revocation."""
     if not opaque_token:
         raise InvalidSession("MISSING", "no session cookie")
@@ -150,6 +174,14 @@ async def resolve_session(db: AsyncSession, opaque_token: str) -> Session:
 
 # START_BLOCK: SESSION_REVOKE
 async def revoke_session(db: AsyncSession, opaque_token: str) -> None:
+    # START_FUNCTION_CONTRACT: F-M-AUTH-TG.session.revoke_session
+    # purpose: Mark session as revoked (idempotent).
+    # inputs: db (AsyncSession), opaque_token (str)
+    # returns: None
+    # side_effects: sets revoked_at on Session row
+    # emitted_logs: none
+    # error_behavior: idempotent — no-ops on missing/already-revoked tokens
+    # END_FUNCTION_CONTRACT: F-M-AUTH-TG.session.revoke_session
     """Mark a session as revoked. Idempotent on missing/already-revoked rows."""
     if not opaque_token or not _is_safe_opaque(opaque_token):
         return

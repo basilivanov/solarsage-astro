@@ -42,8 +42,17 @@ from app.services.geonames import search_geonames, get_timezone, GeoNamesError
 router = APIRouter(prefix="/api")
 
 
+# START_BLOCK: GEO_AUTOCOMPLETE_ENDPOINT
 @router.get("/geo/autocomplete", response_model=List[GeoSuggestionOut])
 def geo_autocomplete(q: str, limit: int = 8):
+    # START_FUNCTION_CONTRACT: F-M-API-GEO.geo_autocomplete
+    # purpose: Return GeoNames suggestions for location autocomplete.
+    # inputs: q (str), limit (int, default 8)
+    # returns: List[GeoSuggestionOut] with name, admin1, country, lat, lon
+    # side_effects: makes HTTP request to GeoNames API
+    # emitted_logs: none
+    # error_behavior: GeoNamesError → HTTPException 400
+    # END_FUNCTION_CONTRACT: F-M-API-GEO.geo_autocomplete
     """
     # PURPOSE: Return GeoNames suggestions for location autocomplete.
     # INPUT: q (query), limit.
@@ -57,8 +66,19 @@ def geo_autocomplete(q: str, limit: int = 8):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+# END_BLOCK: GEO_AUTOCOMPLETE_ENDPOINT
+
+# START_BLOCK: GEO_TIMEZONE_ENDPOINT
 @router.get("/geo/timezone", response_model=GeoTimezoneOut)
 def geo_timezone(lat: float, lon: float):
+    # START_FUNCTION_CONTRACT: F-M-API-GEO.geo_timezone
+    # purpose: Return GeoNames timezone for coordinates.
+    # inputs: lat (float), lon (float)
+    # returns: GeoTimezoneOut with timezone_id, gmt_offset, dst_offset, raw_offset
+    # side_effects: makes HTTP request to GeoNames API
+    # emitted_logs: none
+    # error_behavior: GeoNamesError → HTTPException 400
+    # END_FUNCTION_CONTRACT: F-M-API-GEO.geo_timezone
     """
     # PURPOSE: Return GeoNames timezone for coordinates.
     # INPUT: lat, lon.
@@ -70,3 +90,4 @@ def geo_timezone(lat: float, lon: float):
         return get_timezone(lat, lon)
     except GeoNamesError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+# END_BLOCK: GEO_TIMEZONE_ENDPOINT

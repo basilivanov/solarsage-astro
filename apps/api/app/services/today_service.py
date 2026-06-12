@@ -87,6 +87,14 @@ class TodayService:
         access_state: ContentAccessState | None,
         skip_prefetch: bool = False,
     ) -> TodayPayload:
+        # START_FUNCTION_CONTRACT: F-M-DAY-SERVICE.get_today_payload
+        # purpose: Get TodayPayload for user and date — the main day pipeline.
+        # inputs: user_id, target_date (Date), access_state (ContentAccessState | None), skip_prefetch (bool)
+        # returns: TodayPayload with day_status, headline, reading, top_flags, etc.
+        # side_effects: reads/writes cache, calls sidecar for transits, calls LLM for text
+        # emitted_logs: day.payload_built (TODO: W-1.6 — add day.viewed in API route)
+        # error_behavior: HTTPException 409 on incomplete profile, 502 on sidecar failure
+        # END_FUNCTION_CONTRACT: F-M-DAY-SERVICE.get_today_payload
         """
         Get TodayPayload for a user and date.
 
@@ -387,6 +395,14 @@ class TodayService:
         await self.db.commit()
 
     async def invalidate_cache(self, user_id) -> None:
+        # START_FUNCTION_CONTRACT: F-M-DAY-SERVICE.invalidate_cache
+        # purpose: Invalidate all cached today payloads for user.
+        # inputs: user_id
+        # returns: None
+        # side_effects: deletes TodayPayloadCache rows for user
+        # emitted_logs: profile.cache_invalidated
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-DAY-SERVICE.invalidate_cache
         """Invalidate all cached payloads for user (e.g., after profile edit). W-5.2."""
         await self.db.execute(
             delete(TodayPayloadCache).where(TodayPayloadCache.user_id == user_id)

@@ -43,8 +43,17 @@ from app.services.microcopy_service import MicrocopyService
 router = APIRouter()
 
 
+# START_BLOCK: MICROCOPY_MISSES_ENDPOINT
 @router.get("/api/admin/microcopy/misses")
 async def get_microcopy_misses(db: AsyncSession = Depends(get_session)):
+    # START_FUNCTION_CONTRACT: F-M-API-MICROCOPY.get_microcopy_misses
+    # purpose: Return weekly report of missing microcopy keys.
+    # inputs: db (AsyncSession)
+    # returns: {"misses": [{"key": str, "hit_count": int, "first_seen": str, "last_seen": str}]}
+    # side_effects: reads from microcopy_misses table
+    # emitted_logs: none
+    # error_behavior: 500 on DB errors
+    # END_FUNCTION_CONTRACT: F-M-API-MICROCOPY.get_microcopy_misses
     """
     Get weekly report of missed microcopy keys.
 
@@ -57,3 +66,4 @@ async def get_microcopy_misses(db: AsyncSession = Depends(get_session)):
     report = await service.get_weekly_report()
 
     return {"misses": report}
+# END_BLOCK: MICROCOPY_MISSES_ENDPOINT

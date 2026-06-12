@@ -99,6 +99,14 @@ REDACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 
 # START_BLOCK: REDACT_DICT
 def redact_dict(data: Any) -> Any:
+    # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-REDACTOR.redact_dict
+    # purpose: Recursively redact PII from dicts, lists, and strings.
+    # inputs: data (Any) — dict, list, string, or primitive
+    # returns: redacted copy with PII replaced by "[redacted]" markers
+    # side_effects: none (pure function)
+    # emitted_logs: none
+    # error_behavior: unknown types passed through unchanged; never raises
+    # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-REDACTOR.redact_dict
     """Recursively redact PII from a nested dict/list/string/primitive.
 
     Args:

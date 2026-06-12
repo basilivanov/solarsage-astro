@@ -41,6 +41,14 @@ from typing import Any
 
 
 def find_house(longitude: float, houses: list[dict[str, Any]]) -> int | None:
+    # START_FUNCTION_CONTRACT: F-M-ASTRO-UTILS.find_house
+    # purpose: Find which natal house a longitude falls into.
+    # inputs: longitude (float), houses (list of dicts with cusp, number)
+    # returns: int (house number) or None if houses list is empty
+    # side_effects: none (pure function)
+    # emitted_logs: none
+    # error_behavior: returns None on empty input; never raises
+    # END_FUNCTION_CONTRACT: F-M-ASTRO-UTILS.find_house
     """Find which natal house a longitude falls into.
 
     Houses may be in any order — sorts by cusp ascending before lookup.
@@ -70,6 +78,14 @@ def find_house(longitude: float, houses: list[dict[str, Any]]) -> int | None:
 
 
 def strip_prefix(name: str | None) -> str:
+    # START_FUNCTION_CONTRACT: F-M-ASTRO-UTILS.strip_prefix
+    # purpose: Strip Transit_/Natal_ prefix from planet name.
+    # inputs: name (str | None)
+    # returns: str with prefix removed, or "" if name is None
+    # side_effects: none (pure function)
+    # emitted_logs: none
+    # error_behavior: returns "" on None input; never raises
+    # END_FUNCTION_CONTRACT: F-M-ASTRO-UTILS.strip_prefix
     """Strip Transit_/Natal_ prefix from planet name."""
     if not name:
         return ""

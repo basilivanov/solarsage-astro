@@ -55,12 +55,21 @@ from app.db.models import User
 router = APIRouter()
 
 
+# START_BLOCK: CREATE_CHECKIN_ENDPOINT
 @router.post("/api/checkin")
 async def create_checkin(
     checkin: CheckinCreate,
     db: AsyncSession = Depends(get_session),
     user: User = Depends(require_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-CHECKIN.create_checkin
+    # purpose: Create or update evening checkin (upsert).
+    # inputs: checkin (CheckinCreate), db session, authenticated user
+    # returns: CheckinResponse with id, date, mood, notes
+    # side_effects: creates/updates row in evening_checkins table
+    # emitted_logs: none
+    # error_behavior: 401 if not authenticated (from require_session)
+    # END_FUNCTION_CONTRACT: F-M-API-CHECKIN.create_checkin
     """
     Create evening checkin.
 
@@ -84,12 +93,23 @@ async def create_checkin(
     )
 
 
+# END_BLOCK: CREATE_CHECKIN_ENDPOINT
+
+# START_BLOCK: GET_CHECKIN_ENDPOINT
 @router.get("/api/checkin/{target_date}")
 async def get_checkin(
     target_date: date,
     db: AsyncSession = Depends(get_session),
     user: User = Depends(require_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-CHECKIN.get_checkin
+    # purpose: Get checkin for specific date.
+    # inputs: target_date, db session, authenticated user
+    # returns: CheckinResponse or {"checkin": None}
+    # side_effects: reads from DB
+    # emitted_logs: none
+    # error_behavior: 401 if not authenticated (from require_session)
+    # END_FUNCTION_CONTRACT: F-M-API-CHECKIN.get_checkin
     """Get checkin for specific date."""
     service = CheckinService(db)
 
@@ -107,11 +127,22 @@ async def get_checkin(
     )
 
 
+# END_BLOCK: GET_CHECKIN_ENDPOINT
+
+# START_BLOCK: SEND_REMINDER_ENDPOINT
 @router.post("/api/checkin/send-reminder")
 async def send_checkin_reminder(
     db: AsyncSession = Depends(get_session),
     user: User = Depends(require_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-CHECKIN.send_checkin_reminder
+    # purpose: Send evening checkin reminder (MVP stub).
+    # inputs: db session, authenticated user
+    # returns: {"sent": bool, "reason": str} or {"sent": bool, "message": str}
+    # side_effects: reads from DB to check existing checkin
+    # emitted_logs: none
+    # error_behavior: 401 if not authenticated (from require_session)
+    # END_FUNCTION_CONTRACT: F-M-API-CHECKIN.send_checkin_reminder
     """
     Send evening checkin reminder.
 
@@ -131,3 +162,4 @@ async def send_checkin_reminder(
     # For MVP, just return success
 
     return {"sent": True, "message": "Reminder sent"}
+# END_BLOCK: SEND_REMINDER_ENDPOINT

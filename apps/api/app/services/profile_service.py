@@ -82,6 +82,14 @@ def _apply_location(
 async def get_or_create_user(
     db: AsyncSession, tg: TelegramUser
 ) -> tuple[User, bool]:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.service.get_or_create_user
+    # purpose: Upsert a User row by tg_user_id.
+    # inputs: db (AsyncSession), tg (TelegramUser)
+    # returns: tuple[User, bool] — (user, is_new)
+    # side_effects: creates or updates User row
+    # emitted_logs: none
+    # error_behavior: DB errors propagate
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.service.get_or_create_user
     """Insert or update a User row keyed by tg_user_id. Returns (user, is_new)."""
     existing = (
         await db.execute(select(User).where(User.tg_user_id == tg.id))
@@ -103,6 +111,14 @@ async def get_or_create_user(
 
 # START_BLOCK: PROFILE_READ
 async def read_profile(db: AsyncSession, user_id: uuid.UUID) -> UserProfile:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.service.read_profile
+    # purpose: Return user_profiles row, lazy-create if absent.
+    # inputs: db (AsyncSession), user_id (UUID)
+    # returns: UserProfile with all profile fields
+    # side_effects: creates empty UserProfile row if not exists
+    # emitted_logs: profile.lazy_created
+    # error_behavior: DB errors propagate
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.service.read_profile
     """Return the user_profiles row, creating an empty one if absent."""
     row = (
         await db.execute(
@@ -121,6 +137,14 @@ async def read_profile(db: AsyncSession, user_id: uuid.UUID) -> UserProfile:
 async def update_profile(
     db: AsyncSession, user_id: uuid.UUID, payload: ProfileWrite
 ) -> UserProfile:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.service.update_profile
+    # purpose: Apply partial profile update and mark cache as dirty.
+    # inputs: db (AsyncSession), user_id (UUID), payload (ProfileWrite)
+    # returns: updated UserProfile
+    # side_effects: updates profile row, sets is_onboarded if conditions met, marks cache dirty
+    # emitted_logs: profile.updated, profile.cache_invalidation_requested
+    # error_behavior: DB errors propagate
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.service.update_profile
     """Apply a partial profile update + mark the user as cache-dirty."""
     profile = await read_profile(db, user_id)
 
@@ -158,6 +182,14 @@ async def update_profile(
 
 # START_BLOCK: INVALIDATION_MARKER
 def mark_profile_dirty(user_id: uuid.UUID) -> None:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.service.mark_profile_dirty
+    # purpose: Mark user's cached payloads as dirty (stub).
+    # inputs: user_id (UUID)
+    # returns: None
+    # side_effects: none (stub for W-CACHE)
+    # emitted_logs: none (TODO: W-1.6)
+    # error_behavior: never raises
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.service.mark_profile_dirty
     """UC-PROFILE-EDIT invalidation hook (W-1.2 stub).
 
     When the cache layer lands (W-CACHE), this function will evict per-user

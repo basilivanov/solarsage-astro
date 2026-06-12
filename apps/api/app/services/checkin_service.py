@@ -54,6 +54,14 @@ class CheckinService:
         mood: str,
         notes: str | None,
     ) -> EveningCheckin:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.create_checkin
+        # purpose: Create or update evening checkin (upsert).
+        # inputs: user_id (UUID), target_date (date), mood (str), notes (str | None)
+        # returns: EveningCheckin with id, date, mood, notes
+        # side_effects: creates/updates row in evening_checkins table
+        # emitted_logs: none
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.create_checkin
         """
         Create evening checkin.
 
@@ -92,6 +100,14 @@ class CheckinService:
         user_id: uuid.UUID,
         target_date: date,
     ) -> EveningCheckin | None:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.get_checkin
+        # purpose: Get checkin for specific user and date.
+        # inputs: user_id (UUID), target_date (date)
+        # returns: EveningCheckin or None if not found
+        # side_effects: reads from DB
+        # emitted_logs: none
+        # error_behavior: returns None on not found; never raises
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.get_checkin
         """Get checkin for specific date."""
         result = await self.db.execute(
             select(EveningCheckin).where(

@@ -66,6 +66,14 @@ async def create_thread(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-CHAT.create_thread
+    # purpose: Create new chat thread for authenticated user.
+    # inputs: db session, authenticated current_user
+    # returns: dict with id and created_at
+    # side_effects: creates ChatThread row in database
+    # emitted_logs: chat.thread_created
+    # error_behavior: 401 if not authenticated
+    # END_FUNCTION_CONTRACT: F-M-API-CHAT.create_thread
     """Create new chat thread. W-CHAT-1."""
     service = ChatService(db)
     thread = await service.create_thread(current_user.id)
@@ -84,6 +92,14 @@ async def get_thread(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-CHAT.get_thread
+    # purpose: Get chat thread with messages.
+    # inputs: thread_id (UUID), db session, authenticated current_user
+    # returns: ThreadResponse with id, title, messages
+    # side_effects: reads from DB
+    # emitted_logs: none
+    # error_behavior: 401 if not authenticated, 404 if thread not found
+    # END_FUNCTION_CONTRACT: F-M-API-CHAT.get_thread
     """Get thread with messages. W-CHAT-1."""
     service = ChatService(db)
     thread = await service.get_thread(thread_id, current_user.id)
@@ -119,6 +135,14 @@ async def send_message(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-CHAT.send_message
+    # purpose: Send message to thread (MVP echo bot).
+    # inputs: thread_id (UUID), message (MessageCreate), db session, authenticated current_user
+    # returns: dict with user_message and assistant_message (echo)
+    # side_effects: creates ChatMessage rows, checks/uses quota
+    # emitted_logs: chat.message_sent
+    # error_behavior: 401 if not authenticated, 400 if quota exceeded, 404 if thread not found
+    # END_FUNCTION_CONTRACT: F-M-API-CHAT.send_message
     """Send message to thread. W-CHAT-1. MVP: echo bot."""
     service = ChatService(db)
 
@@ -168,6 +192,14 @@ async def get_quota(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_session),
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-CHAT.get_quota
+    # purpose: Get user's chat quota with used/limit/reset_at.
+    # inputs: db session, authenticated current_user
+    # returns: dict with messages_used, messages_limit, reset_at, remaining
+    # side_effects: reads from DB, auto-creates quota if not exists
+    # emitted_logs: none
+    # error_behavior: 401 if not authenticated
+    # END_FUNCTION_CONTRACT: F-M-API-CHAT.get_quota
     """
     Get user's chat quota.
 

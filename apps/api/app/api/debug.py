@@ -43,11 +43,20 @@ import sys
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 
+# START_BLOCK: DEBUG_INFO_ENDPOINT
 @router.get("")
 async def debug_info(
     request: Request,
     current_user = Depends(require_session_optional)
 ):
+    # START_FUNCTION_CONTRACT: F-M-API-DEBUG.debug_info
+    # purpose: Return debug info for troubleshooting auth/session state.
+    # inputs: request (Request), optional current_user
+    # returns: dict with session, cookie, user info
+    # side_effects: none (read-only)
+    # emitted_logs: none
+    # error_behavior: returns error key in response on exception; never raises
+    # END_FUNCTION_CONTRACT: F-M-API-DEBUG.debug_info
     """Debug information for troubleshooting"""
 
     try:
@@ -100,3 +109,4 @@ async def debug_info(
             "timestamp": datetime.now().isoformat(),
             "dev_mode": settings.dev_mode,
         }
+# END_BLOCK: DEBUG_INFO_ENDPOINT

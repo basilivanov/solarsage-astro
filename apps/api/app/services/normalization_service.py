@@ -68,6 +68,14 @@ class NormalizationService:
     # ── Natal-only path (no transits) ─────────────────────────────
 
     def normalize_natal_only(self, natal: dict) -> list[AstroSignal]:
+        # START_FUNCTION_CONTRACT: F-M-NORMALIZATION-SERVICE.normalize_natal_only
+        # purpose: Normalize natal-only chart data (no transit signals).
+        # inputs: natal dict with planets, houses, special_points
+        # returns: list[AstroSignal] with planet_in_house, planet_in_sign, aspect signals
+        # side_effects: none (pure computation)
+        # emitted_logs: none
+        # error_behavior: returns empty list on empty input
+        # END_FUNCTION_CONTRACT: F-M-NORMALIZATION-SERVICE.normalize_natal_only
         """Normalize natal chart data only — no transits.
 
         Used by NatalContextService to build persistent natal context.
@@ -95,6 +103,14 @@ class NormalizationService:
         natal_context: dict,
         transits: dict,
     ) -> list[AstroSignal]:
+        # START_FUNCTION_CONTRACT: F-M-NORMALIZATION-SERVICE.normalize_day
+        # purpose: Normalize day signals from cached natal context + fresh transits.
+        # inputs: natal_context (dict), transits (dict)
+        # returns: list[AstroSignal] with natal and transit signals
+        # side_effects: none (pure computation)
+        # emitted_logs: none
+        # error_behavior: returns empty list on empty input
+        # END_FUNCTION_CONTRACT: F-M-NORMALIZATION-SERVICE.normalize_day
         """Normalize day signals from cached natal context + fresh transits.
 
         W-NATAL-FULL: This replaces the old normalize(natal, transits) for day use.
@@ -140,6 +156,14 @@ class NormalizationService:
         natal: dict,
         transits: dict,
     ) -> list[AstroSignal]:
+        # START_FUNCTION_CONTRACT: F-M-NORMALIZATION-SERVICE.normalize
+        # purpose: Legacy normalization — normalize raw natal + transits data.
+        # inputs: natal dict, transits dict
+        # returns: list[AstroSignal]
+        # side_effects: none (pure computation)
+        # emitted_logs: none
+        # error_behavior: returns empty list on empty input
+        # END_FUNCTION_CONTRACT: F-M-NORMALIZATION-SERVICE.normalize
         """
         Normalize raw data into AstroSignal[].
 

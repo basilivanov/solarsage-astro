@@ -394,6 +394,14 @@ class NatalService:
         self.db = db
 
     async def get_preview(self, user_id: uuid.UUID) -> NatalPreviewRead:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-SERVICE.get_preview
+        # purpose: Build natal preview from cached NatalContext.
+        # inputs: user_id (UUID)
+        # returns: NatalPreviewRead with highlights, spheres, planets, chapters
+        # side_effects: reads/writes NatalChartCache, calls sidecar on cache miss
+        # emitted_logs: none (events emitted by API route handler in natal.py)
+        # error_behavior: HTTPException 409 on incomplete profile, 502 on sidecar failure
+        # END_FUNCTION_CONTRACT: F-M-NATAL-SERVICE.get_preview
         """Build preview from cached/buildable NatalContext.
 
         W-NATAL-FULL: Uses NatalContextService as single source of truth.

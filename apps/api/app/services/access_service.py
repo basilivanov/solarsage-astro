@@ -59,6 +59,14 @@ class AccessService:
         self.db = db
 
     async def can_access_day(self, user_id: UUID, target_date: Date) -> ContentAccessState:
+        # START_FUNCTION_CONTRACT: F-M-ACCESS.service.can_access_day
+        # purpose: Check if user can access a specific day (full/preview/locked).
+        # inputs: user_id (UUID), target_date (Date)
+        # returns: ContentAccessState with state, reason, access_until
+        # side_effects: reads from AccessLedger table
+        # emitted_logs: none (TODO: W-1.6 — add access.checked event)
+        # error_behavior: never raises; returns preview state if access denied
+        # END_FUNCTION_CONTRACT: F-M-ACCESS.service.can_access_day
         """
         Check if user can access a specific day.
 
@@ -166,6 +174,14 @@ class AccessService:
 
 # START_BLOCK: ACCESS_GRANT
     async def grant_referral_bonus(self, user_id: UUID, start_date: Date) -> None:
+        # START_FUNCTION_CONTRACT: F-M-ACCESS.service.grant_referral_bonus
+        # purpose: Grant 14-day referral bonus to user.
+        # inputs: user_id (UUID), start_date (Date)
+        # returns: None
+        # side_effects: creates AccessLedger row of type referral_bonus
+        # emitted_logs: none (TODO: W-1.6 — add referral.signup_credited event)
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-ACCESS.service.grant_referral_bonus
         """
         Grant 14-day referral bonus.
 
@@ -185,6 +201,14 @@ class AccessService:
         await self.db.commit()
 
     async def grant_subscription(self, user_id: UUID, start_date: Date, days: int = 30) -> None:
+        # START_FUNCTION_CONTRACT: F-M-ACCESS.service.grant_subscription
+        # purpose: Grant subscription access for specified days.
+        # inputs: user_id (UUID), start_date (Date), days (int, default 30)
+        # returns: None
+        # side_effects: creates AccessLedger row of type subscription
+        # emitted_logs: none (TODO: W-1.6 — add access.subscription_granted event)
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-ACCESS.service.grant_subscription
         """
         Grant subscription access.
 

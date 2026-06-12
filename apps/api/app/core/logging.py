@@ -90,6 +90,14 @@ def bind_log_context(
     service: str = "",
     env: str = "",
 ) -> None:
+    # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.bind_log_context
+    # purpose: Bind log context variables for the current scope.
+    # inputs: keyword args (str) — correlation_id, user_id_hash, slice, module, block, etc.
+    # returns: None
+    # side_effects: sets contextvars for the current execution context
+    # emitted_logs: none
+    # error_behavior: never raises (silently skips empty values)
+    # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.bind_log_context
     """Bind one or more log context variables for the current scope."""
     if correlation_id:
         correlation_id_var.set(correlation_id)
@@ -114,6 +122,14 @@ def bind_log_context(
 
 
 def clear_log_context() -> None:
+    # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.clear_log_context
+    # purpose: Reset all log context variables to defaults.
+    # inputs: none
+    # returns: None
+    # side_effects: resets all contextvars to defaults
+    # emitted_logs: none
+    # error_behavior: never raises
+    # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.clear_log_context
     """Reset all log context variables."""
     correlation_id_var.set("")
     user_id_hash_var.set("")
@@ -129,6 +145,14 @@ def clear_log_context() -> None:
 
 @contextlib.contextmanager
 def log_block(*, slice: str = "", module: str = "", block: str = "", operation_id: str = ""):
+    # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.log_block
+    # purpose: Context manager to temporarily override log context.
+    # inputs: slice (str), module (str), block (str), operation_id (str)
+    # returns: context manager generator
+    # side_effects: temporarily mutates contextvars, restores on exit
+    # emitted_logs: none (wraps log_event calls inside the block)
+    # error_behavior: restores original context on exception
+    # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.log_block
     """Context manager to temporarily override slice, module, block, or operation_id log context."""
     old_slice = slice_var.get()
     old_module = module_var.get()
@@ -172,6 +196,14 @@ def build_envelope(
     duration_ms: float | None = None,
     http: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.build_envelope
+    # purpose: Build canonical log envelope from event and context vars.
+    # inputs: event (LogEventName), level, msg, payload, error, duration_ms, http
+    # returns: dict — canonical log envelope ready for emission
+    # side_effects: reads contextvars
+    # emitted_logs: none (returns envelope dict, does not emit)
+    # error_behavior: asserts required fields are non-empty
+    # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.build_envelope
     """Build a canonical log envelope per §8.2, auto-attaching context vars."""
     now = datetime.now(UTC)
 
@@ -235,6 +267,14 @@ def log_event(
     duration_ms: float | None = None,
     http: dict[str, Any] | None = None,
 ) -> None:
+    # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.log_event
+    # purpose: Emit a structured log event with the canonical envelope.
+    # inputs: event (LogEventName), level, msg, payload, error, duration_ms, http
+    # returns: None
+    # side_effects: builds envelope, redacts PII, writes to stdout
+    # emitted_logs: any event name passed as the `event` parameter
+    # error_behavior: never raises; logs errors on failure
+    # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.log_event
     """Emit a structured log event with the canonical envelope.
 
     Args:
@@ -335,6 +375,14 @@ _log: _logging.Logger | None = None
 
 
 def setup_logging() -> _logging.Logger:
+    # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.setup_logging
+    # purpose: Setup legacy structured logging (deprecated — use log_event()).
+    # inputs: none
+    # returns: _logging.Logger — configured logger instance
+    # side_effects: configures Python logging handler
+    # emitted_logs: none
+    # error_behavior: idempotent; safe to call multiple times
+    # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.setup_logging
     """Setup legacy structured logging (deprecated — use log_event() instead).
 
     Returns:

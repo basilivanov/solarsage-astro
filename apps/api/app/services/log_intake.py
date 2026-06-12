@@ -65,6 +65,14 @@ class LogIntakeService:
         user_id: uuid.UUID,
         envelopes: list[dict[str, Any]],
     ) -> dict[str, int]:
+        # START_FUNCTION_CONTRACT: F-M-LOG-INTAKE-SERVICE.process_batch
+        # purpose: Process frontend log batch: validate, redact, forward to stdout.
+        # inputs: user_id (UUID), envelopes (list[dict])
+        # returns: {"accepted": count, "rejected": count}
+        # side_effects: writes redacted envelopes to stdout as JSON lines
+        # emitted_logs: system.error on invalid envelopes (rejected)
+        # error_behavior: never throws on individual envelope errors; counts as rejected
+        # END_FUNCTION_CONTRACT: F-M-LOG-INTAKE-SERVICE.process_batch
         """
         Process a batch of frontend log envelopes.
 

@@ -86,12 +86,21 @@ class LogBatch(BaseModel):
     envelopes: list[CanonEnvelope]
 
 
+# START_BLOCK: LOG_INTAKE_ENDPOINT
 @router.post("/api/_log")
 async def intake_logs(
     batch: LogBatch,
     db: AsyncSession = Depends(get_session),
     current_user = Depends(require_session_optional),
 ) -> dict[str, int]:
+    # START_FUNCTION_CONTRACT: F-M-API-LOG-INTAKE.intake_logs
+    # purpose: Accept log batch from frontend, validate, redact, forward to stdout.
+    # inputs: batch (LogBatch), db session, optional current_user
+    # returns: {"accepted": int, "rejected": int}
+    # side_effects: emits redacted log envelopes to stdout
+    # emitted_logs: system.error on intake failure
+    # error_behavior: HTTPException 500 on unexpected errors
+    # END_FUNCTION_CONTRACT: F-M-API-LOG-INTAKE.intake_logs
     """
     Accept log batch from frontend. Auth is optional.
     Each valid canonical envelope is redacted and forwarded to stdout
@@ -123,3 +132,4 @@ async def intake_logs(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Log intake failed",
         ) from e
+# END_BLOCK: LOG_INTAKE_ENDPOINT

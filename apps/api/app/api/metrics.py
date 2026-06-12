@@ -46,8 +46,17 @@ from app.db.models import User, UserProfile
 router = APIRouter()
 
 
+# START_BLOCK: METRICS_ENDPOINT
 @router.get("/api/metrics")
 async def get_metrics(db: AsyncSession = Depends(get_session)) -> dict[str, Any]:
+    # START_FUNCTION_CONTRACT: F-M-API-METRICS.get_metrics
+    # purpose: Return production metrics — user counts, onboarding rates.
+    # inputs: db (AsyncSession)
+    # returns: dict with users total/24h/7d and onboarding completed/rate
+    # side_effects: read-only DB queries
+    # emitted_logs: none
+    # error_behavior: DB errors propagate as 500
+    # END_FUNCTION_CONTRACT: F-M-API-METRICS.get_metrics
     """
     Production metrics for monitoring.
 
@@ -97,3 +106,4 @@ async def get_metrics(db: AsyncSession = Depends(get_session)) -> dict[str, Any]
             "rate": round(onboarding_rate, 2),
         },
     }
+# END_BLOCK: METRICS_ENDPOINT

@@ -67,6 +67,14 @@ class ChatService:
 
     # START_BLOCK: CREATE_THREAD
     async def create_thread(self, user_id: uuid.UUID) -> ChatThread:
+        # START_FUNCTION_CONTRACT: F-M-CHAT-SERVICE.create_thread
+        # purpose: Create new chat thread for user.
+        # inputs: user_id (UUID)
+        # returns: ChatThread with id, created_at
+        # side_effects: creates ChatThread row, emits chat.thread_created event
+        # emitted_logs: chat.thread_created
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-CHAT-SERVICE.create_thread
         """Create new chat thread."""
         thread = ChatThread(user_id=user_id)
         self.db.add(thread)
@@ -91,6 +99,14 @@ class ChatService:
         thread_id: uuid.UUID,
         user_id: uuid.UUID,
     ) -> ChatThread | None:
+        # START_FUNCTION_CONTRACT: F-M-CHAT-SERVICE.get_thread
+        # purpose: Get chat thread by id, verifying user ownership.
+        # inputs: thread_id (UUID), user_id (UUID)
+        # returns: ChatThread or None if not found/not owned
+        # side_effects: reads from DB
+        # emitted_logs: none
+        # error_behavior: returns None on not found; never raises
+        # END_FUNCTION_CONTRACT: F-M-CHAT-SERVICE.get_thread
         """Get thread with messages."""
         result = await self.db.execute(
             select(ChatThread)
@@ -110,6 +126,14 @@ class ChatService:
         role: str,
         content: str,
     ) -> ChatMessage:
+        # START_FUNCTION_CONTRACT: F-M-CHAT-SERVICE.add_message
+        # purpose: Add message to thread with quota check and ownership verification.
+        # inputs: thread_id (UUID), user_id (UUID), role (str), content (str)
+        # returns: ChatMessage with id, role, content, created_at
+        # side_effects: creates ChatMessage row, updates ChatThread.updated_at, checks/uses quota
+        # emitted_logs: chat.message_sent
+        # error_behavior: raises ValueError if thread not found, quota exceeded
+        # END_FUNCTION_CONTRACT: F-M-CHAT-SERVICE.add_message
         """Add message to thread."""
         # W-CHAT-4: Check quota for user messages
         if role == "user":
@@ -160,6 +184,14 @@ class ChatService:
         thread_id: uuid.UUID,
         user_id: uuid.UUID,
     ) -> list[ChatMessage]:
+        # START_FUNCTION_CONTRACT: F-M-CHAT-SERVICE.get_messages
+        # purpose: Get all messages in thread ordered by creation time.
+        # inputs: thread_id (UUID), user_id (UUID)
+        # returns: list[ChatMessage] sorted by created_at
+        # side_effects: reads from DB
+        # emitted_logs: none
+        # error_behavior: returns empty list if thread not found
+        # END_FUNCTION_CONTRACT: F-M-CHAT-SERVICE.get_messages
         """Get all messages in thread."""
         thread = await self.get_thread(thread_id, user_id)
         if not thread:

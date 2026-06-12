@@ -70,6 +70,14 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
+        # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-CORRELATION.dispatch
+        # purpose: Process request, inject correlation ID, bind log context, emit system.request.
+        # inputs: request (Request), call_next (callable)
+        # returns: Response with X-Correlation-Id header
+        # side_effects: mutates request.state, adds response header, writes system.request log event
+        # emitted_logs: system.request, system.error on unhandled exceptions
+        # error_behavior: middleware errors must not block request processing; re-raises after logging
+        # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-CORRELATION.dispatch
         """Process request and inject correlation ID.
 
         Args:

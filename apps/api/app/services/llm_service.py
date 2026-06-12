@@ -251,7 +251,16 @@ class LLMService:
 
     # ── Generation methods ──────────────────────────────────────────
 
+    # START_BLOCK: HEADLINE_GENERATION
     async def generate_headline(self, day_status: str, top_signals: list) -> str | None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_headline
+        # purpose: Generate a short headline for the day.
+        # inputs: day_status (str), top_signals (list)
+        # returns: str | None — headline text or None on failure
+        # side_effects: calls external LLM provider
+        # emitted_logs: llm.response_rejected on provider failure
+        # error_behavior: returns None if all providers fail
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_headline
         signals_desc = self._build_signal_descriptions(top_signals, limit=3)
 
         prompt = f"""Ты — астролог. Напиши короткий заголовок дня (одно предложение) для пользователя на «ты».
@@ -271,9 +280,20 @@ class LLMService:
 
         return await self._generate_text(prompt, max_tokens=120)
 
+    # END_BLOCK: HEADLINE_GENERATION
+
+    # START_BLOCK: READING_GENERATION
     async def generate_reading(
         self, day_status: str, top_signals: list, sphere_scores: dict
     ) -> list[str] | None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_reading
+        # purpose: Generate full day reading paragraphs.
+        # inputs: day_status (str), top_signals (list), sphere_scores (dict)
+        # returns: list[str] | None — paragraph texts or None on failure
+        # side_effects: calls external LLM provider
+        # emitted_logs: llm.response_rejected on provider failure
+        # error_behavior: returns None if all providers fail
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_reading
         signals_desc = self._build_signal_descriptions(top_signals, limit=5)
         spheres_desc = self._build_sphere_descriptions(sphere_scores)
 
@@ -301,12 +321,23 @@ class LLMService:
             return None
         return [p.strip() for p in text.split("\n\n") if p.strip()][:3]
 
+    # END_BLOCK: READING_GENERATION
+
+    # START_BLOCK: NOTES_GENERATION
     async def generate_notes(
         self,
         day_status: str,
         sphere_scores: dict,
         semantic_layer: dict,
     ) -> str | None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_notes
+        # purpose: Generate notes block for "что сегодня важно учесть".
+        # inputs: day_status (str), sphere_scores (dict), semantic_layer (dict)
+        # returns: str | None — notes text or None on failure
+        # side_effects: calls external LLM provider
+        # emitted_logs: llm.response_rejected on provider failure
+        # error_behavior: returns None if all providers fail
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_notes
         spheres_desc = self._build_sphere_descriptions(sphere_scores)
         sem_context = self._build_semantic_context(semantic_layer)
 
@@ -400,13 +431,24 @@ class LLMService:
 
         return "\n".join(parts)
 
+    # END_BLOCK: NOTES_GENERATION
+
     # ── Why sections generation (contexts pre-computed by SemanticService) ──
 
+    # START_BLOCK: WHY_GENERATION
     async def generate_why_sections(
         self,
         contexts: list[dict],
         semantic_layer=None,
     ) -> list[dict] | None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_why_sections
+        # purpose: LLM writes narrative text for each pre-computed WhyThisHappens context.
+        # inputs: contexts (list[dict]), semantic_layer (optional)
+        # returns: list[dict] | None — sections with LLM text or None on failure
+        # side_effects: calls external LLM provider
+        # emitted_logs: llm.response_rejected on JSON parse failure
+        # error_behavior: returns None if LLM fails or JSON parse fails
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_why_sections
         """LLM writes narrative text for each pre-computed context.
         All numbers, planets, houses are pre-computed — LLM cannot hallucinate."""
         
@@ -568,14 +610,24 @@ JSON:"""
                     payload={"reason": "schema_invalid"},
                 )
             return None
+    # END_BLOCK: WHY_GENERATION
 
     # ── Important today details ─────────────────────────────────────
 
+    # START_BLOCK: IMPORTANT_TODAY_GENERATION
     async def generate_important_today_details(
         self,
         items: list[dict],
         context: dict,
     ) -> list[dict] | None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_important_today_details
+        # purpose: LLM fills meaning/why_important/personal_context for each pre-computed item.
+        # inputs: items (list[dict]), context (dict)
+        # returns: list[dict] | None — items with LLM text or None on failure
+        # side_effects: calls external LLM provider
+        # emitted_logs: llm.response_rejected on JSON parse failure
+        # error_behavior: returns None if LLM fails or JSON parse fails
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_important_today_details
         """LLM fills meaning/why_important/personal_context for each item.
         Events, times, planets, houses are already set by code — LLM only adds text."""
 
@@ -641,6 +693,7 @@ JSON:"""
                     payload={"reason": "schema_invalid"},
                 )
             return None
+    # END_BLOCK: IMPORTANT_TODAY_GENERATION
 
     # ── Horary generation ──────────────────────────────────────────
 

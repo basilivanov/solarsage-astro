@@ -220,6 +220,14 @@ class NatalReportService:
     async def generate_report(
         self, user_id: uuid.UUID, force_regenerate: bool = False
     ) -> NatalGenerateResponse:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE.generate_report
+        # purpose: Start or return full natal report generation (idempotent).
+        # inputs: user_id (UUID), force_regenerate (bool)
+        # returns: NatalGenerateResponse with report_id, status, sections_available
+        # side_effects: creates NatalReport rows, triggers LLM generation
+        # emitted_logs: natal.report_generation_requested, natal.report_generation_succeeded, natal.report_generation_failed
+        # error_behavior: HTTPException 502 on missing context, FAILED_RETRYABLE on LLM failure, FAILED_PERMANENT after MAX_RETRY_ATTEMPTS
+        # END_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE.generate_report
         """Start or return a full natal report generation.
 
         Idempotent: returns existing READY/GENERATING report for same
@@ -351,6 +359,14 @@ class NatalReportService:
     async def get_report(
         self, user_id: uuid.UUID, report_id: str | None = None
     ) -> NatalReportRead:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE.get_report
+        # purpose: Get report by id or latest READY report for user.
+        # inputs: user_id (UUID), report_id (str | None)
+        # returns: NatalReportRead with sections, meta, status
+        # side_effects: reads from DB
+        # emitted_logs: none
+        # error_behavior: HTTPException 404 if report not found
+        # END_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE.get_report
         """Get a report by id or latest READY report for user.
 
         W-NATAL-FULL Wave 4: Populates NatalReportMeta with profile data.
@@ -389,6 +405,14 @@ class NatalReportService:
     async def get_report_section(
         self, user_id: uuid.UUID, report_id: str, section_id: str
     ) -> NatalReportSectionRead:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE.get_report_section
+        # purpose: Get a single section from a natal report.
+        # inputs: user_id (UUID), report_id (str), section_id (str)
+        # returns: NatalReportSectionRead with blocks for that section
+        # side_effects: reads from DB
+        # emitted_logs: none
+        # error_behavior: HTTPException 404 if report or section not found
+        # END_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE.get_report_section
         """Get a single section from a report."""
         report_read = await self.get_report(user_id, report_id)
         for section in report_read.sections:

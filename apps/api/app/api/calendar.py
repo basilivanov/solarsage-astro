@@ -73,6 +73,14 @@ async def get_calendar(
     user: Annotated[User, Depends(require_session)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> CalendarPayload:
+    # START_FUNCTION_CONTRACT: F-M-API-CALENDAR.get_calendar
+    # purpose: Get 3-month calendar grid with day statuses and access state.
+    # inputs: month (str YYYY-MM), user (User from auth), db (AsyncSession)
+    # returns: CalendarPayload with prev/curr/next month grid
+    # side_effects: reads from DB for access and semantic layer
+    # emitted_logs: calendar.viewed
+    # error_behavior: 400 INVALID_DATE, 422 NOT_ONBOARDED, 401 from require_session
+    # END_FUNCTION_CONTRACT: F-M-API-CALENDAR.get_calendar
     """
     Get 3-month calendar grid (prev/curr/next).
 

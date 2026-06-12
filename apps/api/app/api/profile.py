@@ -106,6 +106,14 @@ async def get_profile(
     user_id: uuid.UUID = Depends(current_user_id),
     db: AsyncSession = Depends(get_session),
 ) -> ProfileRead:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.api.get_profile
+    # purpose: Get user profile (lazy-creates empty profile if absent).
+    # inputs: user_id from session, db session
+    # returns: ProfileRead with birth data, locations, onboarding status
+    # side_effects: creates empty profile row if not exists
+    # emitted_logs: profile.viewed, profile.lazy_created
+    # error_behavior: 401 if not authenticated
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.api.get_profile
     profile = await read_profile(db, user_id)
     await db.commit()
     return _to_read(profile)
@@ -123,6 +131,14 @@ async def put_profile(
     user_id: uuid.UUID = Depends(current_user_id),
     db: AsyncSession = Depends(get_session),
 ) -> ProfileRead:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.api.put_profile
+    # purpose: Apply partial profile update and invalidate cache.
+    # inputs: body (ProfileWrite), user_id from session, db session
+    # returns: ProfileRead with updated data
+    # side_effects: updates profile row, invalidates today cache
+    # emitted_logs: profile.updated, profile.cache_invalidation_requested
+    # error_behavior: 401 if not authenticated, 422 on validation failure
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.api.put_profile
     profile = await update_profile(db, user_id, body)
 
     # W-5.2: Invalidate cache after profile edit

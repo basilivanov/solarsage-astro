@@ -140,6 +140,14 @@ def _fetch_geonames(query: str, limit: int, mode: str) -> List[dict]:
 
 
 def search_geonames(query: str, limit: int = 8) -> List[dict]:
+    # START_FUNCTION_CONTRACT: F-M-GEONAMES.search_geonames
+    # purpose: Fetch GeoNames autocomplete suggestions by query.
+    # inputs: query (str), limit (int, default 8)
+    # returns: List of dicts with id, name, lat, lon, timezone_id, label
+    # side_effects: makes HTTP requests to GeoNames API
+    # emitted_logs: none
+    # error_behavior: returns empty list if query too short (<2 chars); raises GeoNamesError on API failure
+    # END_FUNCTION_CONTRACT: F-M-GEONAMES.search_geonames
     """
     # PURPOSE: Fetch GeoNames autocomplete suggestions.
     # INPUT: query string, limit.
@@ -171,6 +179,14 @@ def search_geonames(query: str, limit: int = 8) -> List[dict]:
 
 
 def get_timezone(lat: float, lon: float) -> dict:
+    # START_FUNCTION_CONTRACT: F-M-GEONAMES.get_timezone
+    # purpose: Fetch timezone data for a coordinate pair from GeoNames.
+    # inputs: lat (float), lon (float)
+    # returns: dict with timezone_id, gmt_offset, dst_offset, raw_offset
+    # side_effects: makes HTTP request to GeoNames API
+    # emitted_logs: none
+    # error_behavior: raises GeoNamesError on API or JSON parse failure
+    # END_FUNCTION_CONTRACT: F-M-GEONAMES.get_timezone
     """
     # PURPOSE: Fetch timezone data for a coordinate pair.
     # INPUT: latitude, longitude.

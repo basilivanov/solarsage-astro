@@ -70,6 +70,14 @@ class MicrocopyService:
         }
 
     async def get(self, key: str, context: str | None = None) -> str:
+        # START_FUNCTION_CONTRACT: F-M-MICROCOPY-SERVICE.get
+        # purpose: Get microcopy by key with miss tracking.
+        # inputs: key (str), context (str | None)
+        # returns: microcopy string or fallback "[key]"
+        # side_effects: writes to microcopy_misses table if key not found
+        # emitted_logs: system.error on miss tracking failure
+        # error_behavior: returns fallback "[key]" if key not found; DB errors during tracking are logged
+        # END_FUNCTION_CONTRACT: F-M-MICROCOPY-SERVICE.get
         """
         Get microcopy by key.
 
@@ -130,6 +138,14 @@ class MicrocopyService:
         await self.db.commit()
 
     async def get_weekly_report(self) -> list[dict]:
+        # START_FUNCTION_CONTRACT: F-M-MICROCOPY-SERVICE.get_weekly_report
+        # purpose: Get weekly report of missed microcopy keys.
+        # inputs: none (uses self.db)
+        # returns: list of dicts with key, hit_count, first_seen, last_seen
+        # side_effects: reads from microcopy_misses table
+        # emitted_logs: none
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-MICROCOPY-SERVICE.get_weekly_report
         """
         Get weekly report of missed keys.
 

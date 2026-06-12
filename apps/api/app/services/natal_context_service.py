@@ -109,7 +109,16 @@ class NatalContextService:
 
     # ── Public API ────────────────────────────────────────────────
 
+    # START_BLOCK: PUBLIC_API
     async def get_or_build_natal_context(self, user_id: uuid.UUID) -> NatalContextData:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.get_or_build_natal_context
+        # purpose: Return cached natal context or build and persist a new one.
+        # inputs: user_id (UUID)
+        # returns: NatalContextData with angles, planets, houses, aspects, scores
+        # side_effects: reads/writes NatalChartCache, calls sidecar on cache miss
+        # emitted_logs: natal.context_cache_hit, natal.context_cache_miss, natal.context_cached, natal.sidecar_called
+        # error_behavior: HTTPException 404 on missing profile, 409 on incomplete profile, 502 on sidecar failure
+        # END_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.get_or_build_natal_context
         """Return cached natal context or build and persist a new one.
 
         This is the ONLY production path for natal chart facts.
@@ -134,6 +143,14 @@ class NatalContextService:
         return context
 
     async def build_natal_context(self, profile: UserProfile) -> NatalContextData:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.build_natal_context
+        # purpose: Build natal context from profile (forces recalculation, no cache check).
+        # inputs: profile (UserProfile)
+        # returns: NatalContextData
+        # side_effects: calls sidecar, normalizes, scores, persists to DB
+        # emitted_logs: natal.context_build_started, natal.context_cached, natal.sidecar_called
+        # error_behavior: HTTPException 502 on sidecar failure
+        # END_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.build_natal_context
         """Build natal context from a profile (forces recalculation, no cache check).
 
         Used internally when we know the cache is stale or missing.
@@ -142,6 +159,14 @@ class NatalContextService:
         return await self._build_natal_context(profile, profile_hash)
 
     async def invalidate_for_user(self, user_id: uuid.UUID, reason: str) -> None:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.invalidate_for_user
+        # purpose: Invalidate all active natal contexts for a user on birth data change.
+        # inputs: user_id (UUID), reason (str)
+        # returns: None
+        # side_effects: sets invalidated_at on all active NatalChartCache rows
+        # emitted_logs: natal.context_invalidated
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.invalidate_for_user
         """Invalidate all active natal contexts for a user.
 
         Called when user changes birth data.
@@ -174,6 +199,14 @@ class NatalContextService:
 
     @staticmethod
     def compute_profile_hash(profile: UserProfile) -> str:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.compute_profile_hash
+        # purpose: Compute deterministic hash of birth inputs for cache key.
+        # inputs: profile (UserProfile)
+        # returns: str — 16-char SHA-256 hex digest
+        # side_effects: none (pure function)
+        # emitted_logs: none
+        # error_behavior: never raises (defaults missing fields to "")
+        # END_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.compute_profile_hash
         """Compute deterministic hash of all birth inputs that affect natal chart.
 
         If user edits any birth field, hash changes → cache miss → rebuild.
@@ -189,6 +222,8 @@ class NatalContextService:
         ]
         raw = "|".join(parts)
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+    # END_BLOCK: PUBLIC_API
 
     # ── Private: profile loading & validation ─────────────────────
 
@@ -230,8 +265,7 @@ class NatalContextService:
                 detail={"message": "Profile is incomplete", "missingFields": ["gender"]},
             )
 
-    # ── Private: cache lookup ─────────────────────────────────────
-
+    # START_BLOCK: CACHE_LOOKUP
     async def _find_active_cache(
         self, user_id: uuid.UUID, profile_hash: str
     ) -> NatalChartCache | None:
@@ -250,8 +284,11 @@ class NatalContextService:
         )
         return result.scalar_one_or_none()
 
+    # END_BLOCK: CACHE_LOOKUP
+
     # ── Private: context building ─────────────────────────────────
 
+    # START_BLOCK: CONTEXT_BUILDING
     async def _build_natal_context(
         self, profile: UserProfile, profile_hash: str
     ) -> NatalContextData:
@@ -511,3 +548,4 @@ class NatalContextService:
         """Deserialize stored context JSON back to NatalContextData."""
         data = json.loads(json_str)
         return NatalContextData.model_validate(data)
+# END_BLOCK: CONTEXT_BUILDING

@@ -47,6 +47,14 @@ SESSION_TTL: timedelta = timedelta(seconds=settings.session_ttl_seconds)
 
 # START_BLOCK: SET_SESSION_COOKIE
 def set_session_cookie(response: Response, token: str, *, max_age: int) -> None:
+    # START_FUNCTION_CONTRACT: F-M-CORE-SECURITY.set_session_cookie
+    # purpose: Set HttpOnly+Secure+SameSite=None session cookie.
+    # inputs: response (Response), token (str), max_age (int seconds)
+    # returns: None (mutates response)
+    # side_effects: sets cookie on response object
+    # emitted_logs: none
+    # error_behavior: never raises
+    # END_FUNCTION_CONTRACT: F-M-CORE-SECURITY.set_session_cookie
     """Persist the opaque session token in an HttpOnly + Secure + None cookie.
 
     SameSite=None is REQUIRED for Telegram Web App (iframe context).
@@ -66,6 +74,14 @@ def set_session_cookie(response: Response, token: str, *, max_age: int) -> None:
 
 # START_BLOCK: CLEAR_SESSION_COOKIE
 def clear_session_cookie(response: Response) -> None:
+    # START_FUNCTION_CONTRACT: F-M-CORE-SECURITY.clear_session_cookie
+    # purpose: Clear session cookie by setting Max-Age=0.
+    # inputs: response (Response)
+    # returns: None (mutates response)
+    # side_effects: clears cookie on response object
+    # emitted_logs: none
+    # error_behavior: never raises
+    # END_FUNCTION_CONTRACT: F-M-CORE-SECURITY.clear_session_cookie
     """Tell the browser to drop the cookie (Max-Age=0, same name + Path)."""
     response.set_cookie(
         key=settings.session_cookie_name,

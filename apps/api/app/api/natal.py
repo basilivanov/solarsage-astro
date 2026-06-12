@@ -76,13 +76,21 @@ from app.services.natal_report_service import NatalReportService
 router = APIRouter()
 
 
-# ── Preview ───────────────────────────────────────────────────────
+# START_BLOCK: NATAL_PREVIEW
 
 @router.get("/api/natal/preview", response_model=NatalPreviewRead)
 async def get_natal_preview(
     db: AsyncSession = Depends(get_session),
     user_id: uuid.UUID = Depends(current_user_id),
 ) -> NatalPreviewRead:
+    # START_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_preview
+    # purpose: Return natal preview from cached NatalContext.
+    # inputs: db session, user_id from session
+    # returns: NatalPreviewRead with highlights, spheres, planets, chapters
+    # side_effects: reads from DB, may trigger sidecar call on cache miss
+    # emitted_logs: natal.preview_succeeded, natal.preview_failed
+    # error_behavior: 500 on unexpected errors
+    # END_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_preview
     service = NatalService(db)
     try:
         return await service.get_preview(user_id)
@@ -108,7 +116,9 @@ async def get_natal_preview(
         ) from exc
 
 
-# ── Full report generation ────────────────────────────────────────
+# END_BLOCK: NATAL_PREVIEW
+
+# START_BLOCK: NATAL_GENERATE
 
 @router.post("/api/natal/generate", response_model=NatalGenerateResponse)
 async def generate_natal_report(
@@ -116,6 +126,14 @@ async def generate_natal_report(
     db: AsyncSession = Depends(get_session),
     user_id: uuid.UUID = Depends(current_user_id),
 ) -> NatalGenerateResponse:
+    # START_FUNCTION_CONTRACT: F-M-API-NATAL.generate_natal_report
+    # purpose: Start or return full natal report generation (idempotent).
+    # inputs: request (NatalGenerateRequest), db session, user_id from session
+    # returns: NatalGenerateResponse with report_id, status, sections_available
+    # side_effects: creates NatalReport rows, triggers LLM generation
+    # emitted_logs: natal.report_generation_requested, natal.report_generation_succeeded, natal.report_generation_failed
+    # error_behavior: 501 if FEATURE_DISABLED, 500 on generation failure
+    # END_FUNCTION_CONTRACT: F-M-API-NATAL.generate_natal_report
     """Start or return full natal report generation.
 
     Idempotent: returns existing READY/GENERATING report unless force_regenerate=True.
@@ -151,13 +169,23 @@ async def generate_natal_report(
         ) from exc
 
 
-# ── Report retrieval ──────────────────────────────────────────────
+# END_BLOCK: NATAL_GENERATE
+
+# START_BLOCK: NATAL_REPORT
 
 @router.get("/api/natal/report", response_model=NatalReportRead)
 async def get_natal_report_latest(
     db: AsyncSession = Depends(get_session),
     user_id: uuid.UUID = Depends(current_user_id),
 ) -> NatalReportRead:
+    # START_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_report_latest
+    # purpose: Get latest READY report for current user.
+    # inputs: db session, user_id from session
+    # returns: NatalReportRead with sections, meta, status
+    # side_effects: reads from DB
+    # emitted_logs: none
+    # error_behavior: 501 if FEATURE_DISABLED, 404 if no READY report found
+    # END_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_report_latest
     """Get latest READY report for current user.
     Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.
     """
@@ -176,6 +204,14 @@ async def get_natal_report_by_id(
     db: AsyncSession = Depends(get_session),
     user_id: uuid.UUID = Depends(current_user_id),
 ) -> NatalReportRead:
+    # START_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_report_by_id
+    # purpose: Get specific natal report by report_id.
+    # inputs: report_id (str), db session, user_id from session
+    # returns: NatalReportRead with sections, meta, status
+    # side_effects: reads from DB
+    # emitted_logs: none
+    # error_behavior: 501 if FEATURE_DISABLED, 404 if report not found
+    # END_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_report_by_id
     """Get specific report by id.
     Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.
     """
@@ -195,6 +231,14 @@ async def get_natal_report_section(
     db: AsyncSession = Depends(get_session),
     user_id: uuid.UUID = Depends(current_user_id),
 ) -> NatalReportSectionRead:
+    # START_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_report_section
+    # purpose: Get single section from a specific natal report.
+    # inputs: report_id (str), section_id (str), db session, user_id from session
+    # returns: NatalReportSectionRead with blocks for that section
+    # side_effects: reads from DB
+    # emitted_logs: none
+    # error_behavior: 501 if FEATURE_DISABLED, 404 if report or section not found
+    # END_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_report_section
     """Get single section from a report.
     Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.
     """
@@ -205,3 +249,4 @@ async def get_natal_report_section(
         )
     service = NatalReportService(db)
     return await service.get_report_section(user_id, report_id, section_id)
+# END_BLOCK: NATAL_REPORT

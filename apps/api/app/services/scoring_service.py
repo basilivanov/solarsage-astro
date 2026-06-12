@@ -119,6 +119,14 @@ def _base_planet_name(name: str | None) -> str:
 class ScoringService:
 
     def score_natal(self, signals: list[AstroSignal]) -> dict:
+        # START_FUNCTION_CONTRACT: F-M-SCORING-SERVICE.score_natal
+        # purpose: Score natal-only signals, return sphere_scores, top_signals, planet_scores.
+        # inputs: signals (list[AstroSignal])
+        # returns: dict with sphere_scores, top_signals, planet_scores, natal_signals
+        # side_effects: none (pure computation)
+        # emitted_logs: none
+        # error_behavior: returns empty scores on empty input
+        # END_FUNCTION_CONTRACT: F-M-SCORING-SERVICE.score_natal
         """Score natal-only signals. No day_status (that's a day concept).
 
         Returns sphere_scores, top_signals, planet_scores, and the original
@@ -137,6 +145,14 @@ class ScoringService:
         }
 
     def score_day(self, signals: list[AstroSignal]) -> dict:
+        # START_FUNCTION_CONTRACT: F-M-SCORING-SERVICE.score_day
+        # purpose: Score day signals (natal + transit) with day_status.
+        # inputs: signals (list[AstroSignal])
+        # returns: dict with day_status, sphere_scores, top_signals
+        # side_effects: none (pure computation)
+        # emitted_logs: scoring.computed
+        # error_behavior: returns default values on empty input
+        # END_FUNCTION_CONTRACT: F-M-SCORING-SERVICE.score_day
         """Score day signals (natal + transit). Includes day_status.
 
         This is the production path for TodayService. It returns day_status
@@ -154,6 +170,14 @@ class ScoringService:
         }
 
     def score(self, signals: list[AstroSignal]) -> dict:
+        # START_FUNCTION_CONTRACT: F-M-SCORING-SERVICE.score
+        # purpose: Legacy scoring (backward compat). Returns day_status + sphere_scores + top_signals.
+        # inputs: signals (list[AstroSignal])
+        # returns: dict with day_status, sphere_scores, top_signals
+        # side_effects: none (pure computation)
+        # emitted_logs: none
+        # error_behavior: returns default values on empty input
+        # END_FUNCTION_CONTRACT: F-M-SCORING-SERVICE.score
         """Legacy scoring method. Kept for backward compatibility.
 
         Prefer score_natal() for natal-only or score_day() for day paths.

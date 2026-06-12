@@ -49,10 +49,19 @@ class YesterdayService:
         user_id: uuid.UUID,
         target_date: date,
     ) -> str:
+        # START_FUNCTION_CONTRACT: F-M-YESTERDAY-SERVICE.build_closure
+        # purpose: Build yesterday's closure text from checkin data.
+        # inputs: user_id (UUID), target_date (date)
+        # returns: str — closure text based on yesterday's checkin mood
+        # side_effects: reads from DB for checkin
+        # emitted_logs: none
+        # error_behavior: returns default text if no checkin found
+        # END_FUNCTION_CONTRACT: F-M-YESTERDAY-SERVICE.build_closure
         """
-        Build closure text for yesterday.
+        Build yesterday closure for DayDelta comparison.
 
-        W-8.2: MVP version (simplified, no LLM).
+        Returns yesterday's normalized signals, or None if yesterday was before
+        the user's birth date.
         """
         checkin_service = CheckinService(self.db)
         checkin = await checkin_service.get_checkin(user_id, target_date)
@@ -60,7 +69,6 @@ class YesterdayService:
         if not checkin:
             return "Вы не отметили, как прошёл день."
 
-        # Simple closure based on mood
         mood_texts = {
             "great": "Отличный день! Рады, что всё прошло хорошо.",
             "good": "Хороший день. Продолжайте в том же духе!",

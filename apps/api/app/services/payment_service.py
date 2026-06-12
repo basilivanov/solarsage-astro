@@ -63,6 +63,14 @@ class PaymentService:
         currency: str,
         description: str,
     ) -> Payment:
+        # START_FUNCTION_CONTRACT: F-M-PAYMENT-SERVICE.create_payment_intent
+        # purpose: Create pending payment intent (MVP stub, no real provider).
+        # inputs: user_id (UUID), amount (int), currency (str), description (str)
+        # returns: Payment DB model with id, status, amount, currency
+        # side_effects: creates Payment row with status "pending"
+        # emitted_logs: payment.intent_created
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-PAYMENT-SERVICE.create_payment_intent
         """
         Create payment intent.
         
@@ -88,6 +96,14 @@ class PaymentService:
         payment_id: str,
         status: str,
     ) -> None:
+        # START_FUNCTION_CONTRACT: F-M-PAYMENT-SERVICE.handle_webhook
+        # purpose: Handle payment webhook: update status, grant access on success.
+        # inputs: payment_id (str), status (str)
+        # returns: None
+        # side_effects: updates Payment status, creates subscription, increases chat quota
+        # emitted_logs: payment.succeeded, payment.failed
+        # error_behavior: idempotent — silently returns if payment not found
+        # END_FUNCTION_CONTRACT: F-M-PAYMENT-SERVICE.handle_webhook
         """
         Handle payment webhook from provider.
 

@@ -6,16 +6,17 @@
 # DEPENDENCIES: local modules
 # GRACE_ANCHORS: []
 # SLICE: SLICE-BACKEND-API-ROUTERS
-# ######################################### START_MODULE_CONTRACT
-# purpose: Module: __init__.py
+# START_MODULE_CONTRACT: M-API-ROUTERS
+# purpose: API router package init.
 # owns:
 #   - apps/api/app/api/__init__.py
-# inputs: Function args
-# outputs: Return values
+# inputs: none (package init)
+# outputs: module exports
 # dependencies: local modules
-# side_effects: n/a (pure)
-# emitted_logs: n/a (pure)
-# invariants:
-#   - n/a
-# failure_policy: log and raise
-# END_MODULE_CONTRACT
+# side_effects: none (import-time only)
+# END_MODULE_CONTRACT: M-API-ROUTERS
+
+# START_MODULE_MAP: M-API-ROUTERS
+# public_entrypoints: all route modules
+# semantic_blocks: PACKAGE_INIT
+# END_MODULE_MAP: M-API-ROUTERS
