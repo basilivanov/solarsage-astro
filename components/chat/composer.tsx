@@ -5,7 +5,8 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
-// #########################################// START_MODULE_CONTRACT
+// ############################################################################
+// START_MODULE_CONTRACT
 // purpose: Tests for composer.tsx behavior
 // owns:
 //   - components/chat/composer.tsx

@@ -5,7 +5,8 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TESTS
-// #########################################// START_MODULE_CONTRACT
+// ############################################################################
+// START_MODULE_CONTRACT
 // purpose: Tests for TodayScreentsx behavior
 // owns:
 //   - __tests__/components/TodayScreen.test.tsx

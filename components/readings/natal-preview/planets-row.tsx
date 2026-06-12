@@ -5,7 +5,8 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
-// #########################################// START_MODULE_CONTRACT
+// ############################################################################
+// START_MODULE_CONTRACT
 // purpose: UI planets-row — component
 // owns:
 //   - components/readings/natal-preview/planets-row.tsx

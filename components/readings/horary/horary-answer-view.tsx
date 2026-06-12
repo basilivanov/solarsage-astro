@@ -5,7 +5,8 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
-// #########################################// START_MODULE_CONTRACT
+// ############################################################################
+// START_MODULE_CONTRACT
 // purpose: Page: horary-answer-view
 // owns:
 //   - components/readings/horary/horary-answer-view.tsx

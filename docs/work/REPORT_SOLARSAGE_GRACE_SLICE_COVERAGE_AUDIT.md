@@ -2,8 +2,8 @@
 
 **Status:** PASS (audit only)
 **Date:** 2026-06-11
-**Baseline SHA:** `748ff96`
-**JSON hash:** `2d2af0b1372e`
+**Baseline SHA:** `66c64a5`
+**JSON hash:** `e26f9d6ff4fd`
 
 ## How audit was run
 ```bash
@@ -17,8 +17,8 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | Metric | Value |
 |---|---|
 | Total files audited | 497 |
-| Full GRACE markers | 114 (22.9%) |
-| Partial markers | 345 (69.4%) |
+| Full GRACE markers | 117 (23.5%) |
+| Partial markers | 342 (68.8%) |
 | No markers | 38 (7.6%) |
 | Canonical logging | 2 (0.4%) |
 | Unmapped | 28 (5.6%) |
@@ -28,10 +28,10 @@ Generated: `docs/work/solarsage_grace_slice_coverage.json`
 | Slice | Total | Full | Partial | None | Coverage | Canonical log |
 |---|---|---|---|---|---|---|
 | SLICE-TESTS | 126 | 10 | 116 | 0 | 7.9% | 0 |
-| SLICE-BACKEND-API-ROUTERS | 41 | 39 | 2 | 0 | 95.1% | 0 |
+| SLICE-BACKEND-API-ROUTERS | 41 | 41 | 0 | 0 | 100.0% | 0 |
 | SLICE-HORARY-READINGS | 40 | 0 | 40 | 0 | 0.0% | 0 |
 | SLICE-OTHER-FRONTEND | 39 | 8 | 30 | 1 | 20.5% | 0 |
-| SLICE-BACKEND-SERVICES | 35 | 34 | 1 | 0 | 97.1% | 0 |
+| SLICE-BACKEND-SERVICES | 35 | 35 | 0 | 0 | 100.0% | 0 |
 | SLICE-OTHER-COMPONENTS | 33 | 0 | 33 | 0 | 0.0% | 0 |
 | SLICE-GUARDRAILS-TOOLING | 29 | 12 | 17 | 0 | 41.4% | 2 |
 | SLICE-UNMAPPED | 28 | 3 | 9 | 16 | 10.7% | 0 |

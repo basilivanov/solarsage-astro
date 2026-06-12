@@ -5,7 +5,8 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
-// #########################################// START_MODULE_CONTRACT
+// ############################################################################
+// START_MODULE_CONTRACT
 // purpose: UI city-picker — component
 // owns:
 //   - components/onboarding/city-picker.tsx

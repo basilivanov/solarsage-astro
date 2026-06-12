@@ -1,27 +1,29 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_LIB_DATE
-// ROLE: Tests — date.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
-// #########################################// START_MODULE_CONTRACT
-// purpose: Tests for date.ts behavior
+// ROLE: Date utility functions — serialization, parsing, formatting.
+// DEPENDENCIES: none (pure functions)
+// GRACE_ANCHORS: [DATE_PARSE, DATE_FORMAT]
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-LIB-DATE
+// purpose: Pure date utility functions for serialization and formatting.
 // owns:
 //   - lib/date.ts
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: n/a (tests)
-// emitted_logs: n/a (tests)
+// inputs:
+//   - Date objects or strings
+// outputs:
+//   - formatted date strings
+// dependencies:
+//   - none (pure functions)
+// side_effects:
+//   - none (pure functions)
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-LIB-DATE
-// wave: W-2.7
-// purpose: Date utilities (migrated from legacy)
+//   - toDateParam returns YYYY-MM-DD format
+//   - fromDateParam validates regex before parsing
+// failure_policy:
+//   - fromDateParam returns null for invalid input
+// END_MODULE_CONTRACT: M-LIB-DATE
 
 /** Сериализация даты в URL-параметр YYYY-MM-DD (локальное время). */
 export function toDateParam(d: Date): string {

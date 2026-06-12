@@ -5,7 +5,8 @@
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
-// #########################################// START_MODULE_CONTRACT
+// ############################################################################
+// START_MODULE_CONTRACT
 // purpose: UI dev-mode-switcher — component
 // owns:
 //   - components/profile/dev-mode-switcher.tsx

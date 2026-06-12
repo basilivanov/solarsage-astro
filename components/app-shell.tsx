@@ -1,23 +1,30 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_COMPONENTS_APP_SHELL
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-SHELL-NAVIGATION
-// #########################################// START_MODULE_CONTRACT
-// purpose: Module: app-shell.tsx
+// ROLE: App shell layout — tab bar, auth guard, navigation shell.
+// DEPENDENCIES: react, @/components/today/tab-bar, @/hooks/use-onboarded, @/lib/log
+// GRACE_ANCHORS: [APP_SHELL]
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-APP-SHELL
+// purpose: Root layout component that wraps the app with TabBar and auth guard.
 // owns:
 //   - components/app-shell.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: Logging via v2 logging spine
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
+// inputs:
+//   - children: React.ReactNode
+// outputs:
+//   - JSX layout with TabBar
+// dependencies:
+//   - M-HOOKS-USE-ONBOARDED
+//   - M-COMPONENTS-TAB-BAR
+// side_effects:
+//   - mounts TabBar with route detection
+//   - logs render via logger.debug
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - always renders TabBar with active route detection
+// failure_policy:
+//   - logger.debug wraps render; no crash on log failure
+// END_MODULE_CONTRACT: M-COMPONENTS-APP-SHELL
 "use client"
 
 import { TabBar } from "@/components/today/tab-bar"
