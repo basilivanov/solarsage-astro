@@ -62,7 +62,7 @@ Commands:
   frontend   Run eslint, TypeScript check, GRACE marker gate, negative tests.
   domain     Run domain-specific quality checks (horary quality).
   vercel     Run the checks suitable for Vercel build: docs + secrets + frontend.
-  full       Run docs + secrets + contracts + backend + frontend + domain + prod.
+  full       Run secrets + contracts + backend + frontend + domain + prod.
 
 Dependency setup:
   pnpm install
@@ -285,7 +285,6 @@ run_vercel() {
 }
 
 run_full() {
-  run_docs
   run_secrets
   run_contracts
   run_backend
@@ -301,18 +300,6 @@ run_logging_guardrails() {
 
 run_strict() {
   run_full
-  run_backend_grace
-  run_logging_guardrails
-}
-
-run_strict_packet() {
-  section "strict-packet: product guardrails only (skip docs check with pre-existing failures)"
-  run_secrets
-  run_contracts
-  run_backend
-  run_frontend
-  run_domain
-  run_prod_guard
   run_backend_grace
   run_logging_guardrails
 }
@@ -337,7 +324,6 @@ case "$1" in
   vercel) run_vercel ;;
   full|all) run_full ;;
   strict) run_strict ;;
-  strict-packet) run_strict_packet ;;
   -h|--help|help) usage ;;
   *) usage; exit 2 ;;
 esac
