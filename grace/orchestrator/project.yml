@@ -1,18 +1,18 @@
 version: 1
 project_id: solarsage-astro
-repo_root: /opt/solarsage-astro
+repo_root: .
 default_branch: main
 packet_dir: grace/packets
 roles_dir: grace/orchestrator/roles
 packet_schema: grace/orchestrator/packet.schema.json
 verification_profiles: grace/orchestrator/verification_profiles.yml
-runtime_state_dir: /opt/solarsage-astro/.grace/runtime
-artifact_dir: /opt/solarsage-astro/artifacts/grace
-worktree_dir: /opt/solarsage-astro/.grace/worktrees
-# workflow_runtime: prefect
-# prefect_work_pool: solarsage-process
-# prefect_work_queue_live: grace-live
-# prefect_work_queue_monitoring: grace-monitoring
+runtime_state_dir: .grace/runtime
+artifact_dir: artifacts/grace
+worktree_dir: .grace/worktrees
+workflow_runtime: prefect
+prefect_work_pool: solarsage-process
+prefect_work_queue_live: grace-live
+prefect_work_queue_monitoring: grace-monitoring
 agent_executor: codex-cli
 agent_command_default: codex1
 agent_model_default: gpt-5.4
