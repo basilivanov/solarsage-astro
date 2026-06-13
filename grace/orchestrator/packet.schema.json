@@ -14,7 +14,8 @@
     "frozen_scope",
     "must_preserve",
     "verification",
-    "expected_evidence"
+    "expected_evidence",
+    "escalation_triggers"
   ],
   "properties": {
     "id": { "type": "string", "pattern": "^packet-[a-z0-9][a-z0-9.-]*$" },
