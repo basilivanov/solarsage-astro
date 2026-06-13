@@ -6,9 +6,9 @@ packet_dir: grace/packets
 roles_dir: grace/orchestrator/roles
 packet_schema: grace/orchestrator/packet.schema.json
 verification_profiles: grace/orchestrator/verification_profiles.yml
-runtime_state_dir: /opt/solarsage-astro/.grace/runtime
+runtime_state_dir: .grace/runtime
 artifact_dir: artifacts/grace
-worktree_dir: /opt/solarsage-astro/.grace/worktrees
+worktree_dir: .grace/worktrees
 workflow_runtime: prefect
 prefect_work_pool: solarsage-process
 prefect_work_queue_live: grace-live
