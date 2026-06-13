@@ -197,62 +197,8 @@ def main() -> int:
 
 # END_BLOCK: REPORT
 
-
 if __name__ == "__main__":
-    sy# START_MODULE_CONTRACT
-# purpose: Tests for check_frontmatter.py behavior
-# owns:
-#   - scripts/check_frontmatter.py
-# inputs: Mocks, fixtures
-# outputs: Assertion results
-# dependencies: local modules
-# side_effects: n/a (tests)
-# emitted_logs: n/a (tests)
-# invariants:
-#   - n/a
-# failure_policy: log and raise
-# END_MODULE_CONTRACT
-# ############################################################################
-# AI_HEADER: TOOL_DOCS_FRONTMATTER_CHECK
-# ROLE: Static gate — every doc/packet must declare YAML front-matter with
-#       id / status / wave / last_review. Stops silent doc drift.
-# DEPENDENCIES: stdlib only (pathlib, re, sys, datetime)
-# GRACE_ANCHORS: [CONFIG, PARSE, VALIDATE, REPORT]
-# ############################################################################
-"""
-Front-matter validator for docs/ and grace/packets/.
-
-Required YAML keys (between leading `---` fences):
-
-  id            non-empty kebab/word identifier (unique per scope)
-  status        one of: active | superseded | planned | stale | archived
-  wave          W-<x.y> (or "none" if not bound to a wave)
-  last_review   YYYY-MM-DD
-
-Optional:
-  supersedes    id of the document this one replaces (required if
-                status == superseded)
-  source_of_truth  path or url pointing to the canonical artifact
-
-Stale policy:
-  status == active AND last_review older than STALE_DAYS  →  FAIL
-  status == planned                                       →  warning only
-
-Exit 0 on success, 1 on any violation.
-"""
-
-
-import re
-import sys
-from dataclasses import dataclass
-from datetime import date, datetime
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-SCOPES: tuple[Path, ...] = (
-    ROOT / "docs",
-    ROOT / "grace" / "packets",
-)
+    sys.exit(main())
 EXCLUDE_NAMES: frozenset[str] = frozenset({"MANIFEST.md"})
 
 ALLOWED_STATUS: frozenset[str] = frozenset(
