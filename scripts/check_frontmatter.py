@@ -241,7 +241,6 @@ Stale policy:
 Exit 0 on success, 1 on any violation.
 """
 
-from __future__ import annotations
 
 import re
 import sys
