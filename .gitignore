@@ -38,3 +38,6 @@ dist/
 build/
 .env.production
 agents/
+
+# GRACE orchestrator runtime state
+.grace/

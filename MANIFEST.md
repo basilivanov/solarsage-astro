@@ -36,9 +36,6 @@ scripts/contracts/
 scripts/guardrails.sh           portable verification entrypoint. Used by
                                 local runs, Vercel, Prefect/GRACE verifier,
                                 and any future CI provider.
-scripts/check_orchestrator_contracts.py
-                                validates grace/orchestrator/* and packet
-                                frontmatter for GRACE-ready automation.
 
 .github/
   CODEOWNERS                    ownership metadata
@@ -71,7 +68,7 @@ bash bootstrap.sh               # full local verification (W-1.1 + W-1.1B)
 pnpm contracts:generate         # regenerate openapi.json + _generated.ts
 pnpm contracts:check            # contract drift gate
 pnpm guardrails:vercel          # docs + secrets + frontend checks for Vercel
-pnpm guardrails:orchestrator    # validates GRACE runtime adapter
+pnpm guardrails:orchestrator    (deprecated) orchestrator contract gate removed, exit 0
 pnpm guardrails:full            # full verifier profile for Prefect/GRACE
 pnpm guardrails:strict          # full + backend GRACE marker lint
 cd apps/api && pytest -q        # backend tests only

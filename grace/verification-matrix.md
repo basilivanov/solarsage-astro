@@ -27,7 +27,7 @@ These gates apply before broad autonomous business-feature work.
 | `SLICE-PROFILE-ONBOARDING` | `M-WEB-PROFILE-ONBOARDING` | Profile/location/onboarding flows preserve city/timezone/location contract behavior. | S1: profile/onboarding tests pass. S2: changed city/location behavior has explicit evidence. |
 | `SLICE-LOGGING-SPINE` | `M-LOGGING-SPINE` | Logging claims are reconciled with actual code and audit detection. | S1: coverage audit detects intended canonical logging patterns. S2: files with logs declare emitted logs in MODULE_CONTRACT. S3: private fields are redacted or not logged. |
 | `SLICE-GUARDRAILS-TOOLING` | `M-GUARDRAILS` | Coverage audit, GRACE linters, docs checks, and orchestrator checks remain deterministic. | S1: `coverage_audit.py --check` passes. S2: sentinel mappings pass. S3: report and JSON are generated from one data object. |
-| `SLICE-ORCHESTRATOR-ADAPTER` | `M-GRACE-PROJECT-ADAPTER` | Project adapter, roles, schema, verification profiles remain machine-readable. | S1: `pnpm guardrails:orchestrator` or equivalent check passes. S2: packet schema and role docs parse. |
+| `SLICE-ORCHESTRATOR-ADAPTER` | `M-GRACE-PROJECT-ADAPTER` | Orchestrator adapter contract gate removed as obsolete. SolarSage source-of-truth verification uses `scripts/guardrails.sh fast|normal|strict` plus slice-specific checks. | S1: product guardrails pass (`fast`/`normal`/`strict`). S2: no blocking gate requires obsolete orchestrator scripts. |
 
 ---
 

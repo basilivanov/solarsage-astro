@@ -117,7 +117,6 @@ Do not mass-apply headers/contracts/blocks/logs across all slices in one packet.
 python3 scripts/grace_front_lint.py <changed files>
 python3 scripts/grace_lint.py <changed files>
 python3 scripts/check_docs_manifest.py
-python3 scripts/check_orchestrator_contracts.py
 python3 scripts/grace/coverage_audit.py --check
 ```
 

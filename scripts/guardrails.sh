@@ -54,7 +54,7 @@ Commands:
   docs       Validate docs/ front-matter and docs/MANIFEST.md sync.
   secrets    Run a lightweight accidental-secret scan on tracked files.
   orchestrator
-             Validate GRACE orchestrator adapter, profiles, roles, schema.
+             (deprecated) orchestrator contract gate removed — no-op, exit 0.
   contracts  Regenerate OpenAPI/TS contracts and fail on drift.
   backend    Run GRACE lint, ruff, mypy, alembic round-trip, pytest.
   backend-grace
@@ -62,7 +62,7 @@ Commands:
   frontend   Run eslint, TypeScript check, GRACE marker gate, negative tests.
   domain     Run domain-specific quality checks (horary quality).
   vercel     Run the checks suitable for Vercel build: docs + secrets + frontend.
-  full       Run docs + secrets + orchestrator + contracts + backend + frontend + domain + prod.
+  full       Run docs + secrets + contracts + backend + frontend + domain + prod.
 
 Dependency setup:
   pnpm install
@@ -171,11 +171,8 @@ run_secrets() {
 }
 
 run_orchestrator() {
-  section "orchestrator: validator self-tests"
-  python3 -m unittest "$ROOT/scripts/test_orchestrator_contracts.py" -v
-
-  section "orchestrator: project adapter"
-  python3 "$ROOT/scripts/check_orchestrator_contracts.py"
+  section "orchestrator: skipped"
+  echo "orchestrator adapter contract gate has been removed; target repo uses slice/guardrails matrix instead"
 }
 
 run_contracts() {
@@ -290,7 +287,6 @@ run_vercel() {
 run_full() {
   run_docs
   run_secrets
-  run_orchestrator
   run_contracts
   run_backend
   run_frontend

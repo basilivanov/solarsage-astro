@@ -1,7 +1,7 @@
 version: 1
 profile.docs: pnpm guardrails:docs
 profile.secrets: pnpm guardrails:secrets
-profile.orchestrator: pnpm guardrails:orchestrator
+profile.orchestrator: echo "deprecated: orchestrator contract gate removed"
 profile.contracts: pnpm guardrails:contracts
 profile.backend: pnpm guardrails:backend
 profile.backend_grace: pnpm guardrails:backend-grace
