@@ -42,7 +42,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from app.services.llm_service import LLMService
+from app.services.llm import LLMService
 from app.schemas.normalization import AstroSignal
 
 
@@ -90,7 +90,7 @@ async def test_generate_headline(sample_signals):
         ]
     }
 
-    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+    with patch("app.services.llm.client.httpx.AsyncClient") as mock_client_class:
         # Create mock response
         mock_response = MagicMock()
         mock_response.json = MagicMock(return_value=mock_response_json)
@@ -137,7 +137,7 @@ async def test_generate_reading(sample_signals):
         ]
     }
 
-    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+    with patch("app.services.llm.client.httpx.AsyncClient") as mock_client_class:
         # Create mock response
         mock_response = MagicMock()
         mock_response.json = MagicMock(return_value=mock_response_json)
@@ -192,7 +192,7 @@ async def test_generate_reading_max_paragraphs(sample_signals):
         ]
     }
 
-    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+    with patch("app.services.llm.client.httpx.AsyncClient") as mock_client_class:
         # Create mock response
         mock_response = MagicMock()
         mock_response.json = MagicMock(return_value=mock_response_json)
@@ -234,7 +234,7 @@ async def test_why_sections_parses_markdown_wrapped_json():
     mock_client = MagicMock()
     mock_client.post = AsyncMock(return_value=mock_resp)
 
-    with patch("app.services.llm_service.httpx.AsyncClient") as mock_class:
+    with patch("app.services.llm.client.httpx.AsyncClient") as mock_class:
         mock_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -260,7 +260,7 @@ async def test_why_sections_parses_bare_json():
     mock_client = MagicMock()
     mock_client.post = AsyncMock(return_value=mock_resp)
 
-    with patch("app.services.llm_service.httpx.AsyncClient") as mock_class:
+    with patch("app.services.llm.client.httpx.AsyncClient") as mock_class:
         mock_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
         mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
 

@@ -67,7 +67,7 @@ from app.clients.solarsage_client import get_solarsage_client
 from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
-from app.services.llm_service import LLMService
+from app.services.llm import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService

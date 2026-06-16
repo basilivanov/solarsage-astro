@@ -135,7 +135,7 @@ class TestGenerateWithFlag:
         settings.natal_report_enabled = True
         try:
             with patch("app.services.natal_context_service.get_solarsage_client") as mock_factory, \
-                 patch("app.services.llm_service.LLMService") as mock_llm_class:
+                 patch("app.services.natal_report_service.LLMService") as mock_llm_class:
                 mock_client = AsyncMock()
                 mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
                 mock_factory.return_value = mock_client
@@ -170,7 +170,7 @@ class TestGenerateWithFlag:
         settings.natal_report_enabled = True
         try:
             with patch("app.services.natal_context_service.get_solarsage_client") as mock_factory, \
-                 patch("app.services.llm_service.LLMService") as mock_llm_class:
+                 patch("app.services.natal_report_service.LLMService") as mock_llm_class:
                 mock_client = AsyncMock()
                 mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
                 mock_factory.return_value = mock_client

@@ -47,7 +47,7 @@ from app.schemas.horary_analysis import (
 )
 from app.schemas.normalization import AstroSignal
 from app.services.horary_engine import HoraryEngine
-from app.services.llm_service import HoraryGenerationError, LLMService
+from app.services.llm import HoraryGenerationError, LLMService
 
 
 # 1. Engine + LLM analyze -> build prompt with structured analysis
@@ -289,7 +289,7 @@ def test_no_probability_wording_in_horary_prompt():
     """TZ 3.1: no `55% вероятность`-style wording. The label is
     low/medium/high, not a percent."""
     import inspect
-    from app.services.llm_service import LLMService
+    from app.services.llm import LLMService
     src = inspect.getsource(LLMService.generate_horary_answer)
     # No "вероятность" inside the prompt template
     assert "вероятность" not in src.lower() or "не выдумывай" in src.lower()
