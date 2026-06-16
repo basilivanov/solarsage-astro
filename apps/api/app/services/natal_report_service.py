@@ -434,7 +434,7 @@ class NatalReportService:
         If any section fails, the entire generation fails with
         FAILED_RETRYABLE — never persist a partial/fake report.
         """
-        from app.services.llm_service import LLMService
+        from app.services.llm import LLMService
 
         llm = LLMService()
         gender = profile.gender or "female"

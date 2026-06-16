@@ -741,8 +741,8 @@ class TestNoPlaceholderSections:
                 angles=[NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9)],
             )
 
-            with patch("app.services.natal_report_service.NatalContextService") as MockCtxSvc, \
-                 patch("app.services.llm_service.LLMService") as MockLLM:
+             with patch("app.services.natal_report_service.NatalContextService") as MockCtxSvc, \
+                 patch("app.services.natal_report_service.LLMService") as MockLLM:
                 mock_ctx_instance = AsyncMock()
                 mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
                 MockCtxSvc.return_value = mock_ctx_instance
@@ -818,7 +818,7 @@ class TestNoPlaceholderSections:
             )
 
             with patch("app.services.natal_report_service.NatalContextService") as MockCtxSvc, \
-                 patch("app.services.llm_service.LLMService") as MockLLM:
+                 patch("app.services.natal_report_service.LLMService") as MockLLM:
                 mock_ctx_instance = AsyncMock()
                 mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
                 MockCtxSvc.return_value = mock_ctx_instance
@@ -900,7 +900,7 @@ class TestNoPlaceholderSections:
             })
 
             with patch("app.services.natal_report_service.NatalContextService") as MockCtxSvc, \
-                 patch("app.services.llm_service.LLMService") as MockLLM:
+                 patch("app.services.natal_report_service.LLMService") as MockLLM:
                 mock_ctx_instance = AsyncMock()
                 mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
                 MockCtxSvc.return_value = mock_ctx_instance

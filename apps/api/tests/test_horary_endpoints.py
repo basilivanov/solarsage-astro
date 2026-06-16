@@ -532,7 +532,7 @@ async def test_llm_invalid_json_marks_question_failed_and_no_answer_saved(
         mock_client.get_transits.return_value = {"planets": []}
         mock_client_factory.return_value = mock_client
 
-        from app.services.llm_service import HoraryGenerationError
+        from app.services.llm import HoraryGenerationError
         mock_llm = AsyncMock()
         mock_llm.generate_horary_answer.side_effect = HoraryGenerationError("bad json")
         mock_llm_class.return_value = mock_llm
@@ -629,7 +629,7 @@ async def test_llm_unavailable_marks_question_failed_and_refunds_credit(
         mock_client.get_transits.return_value = {"planets": []}
         mock_client_factory.return_value = mock_client
 
-        from app.services.llm_service import HoraryGenerationError
+        from app.services.llm import HoraryGenerationError
         mock_llm = AsyncMock()
         mock_llm.generate_horary_answer.side_effect = HoraryGenerationError("LLM provider down")
         mock_llm_class.return_value = mock_llm
@@ -748,7 +748,7 @@ async def test_credit_refunded_true_for_paid_credit_on_failure(
         mock_client.get_transits.return_value = {"planets": []}
         mock_client_factory.return_value = mock_client
 
-        from app.services.llm_service import HoraryGenerationError
+        from app.services.llm import HoraryGenerationError
         mock_llm = AsyncMock()
         mock_llm.generate_horary_answer.side_effect = HoraryGenerationError("bad json")
         mock_llm_class.return_value = mock_llm

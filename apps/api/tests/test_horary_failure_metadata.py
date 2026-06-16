@@ -32,7 +32,7 @@ from sqlalchemy import select
 from app.db.models import HoraryAnswer, HoraryCredit, HoraryQuestion, UserProfile
 from app.schemas.horary import HoraryQuestionCreate
 from app.services.horary_service import HoraryService
-from app.services.llm_service import HoraryGenerationError
+from app.services.llm import HoraryGenerationError
 
 
 def _mock_chart() -> dict:

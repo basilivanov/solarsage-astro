@@ -44,7 +44,7 @@ from app.db.models import HoraryAnswer, HoraryQuestion, UserProfile, HoraryCredi
 from app.db.session import SessionLocal
 from app.schemas.horary import HoraryQuestionCreate
 from app.services.horary_engine import HoraryEngine
-from app.services.llm_service import HoraryGenerationError, LLMService
+from app.services.llm import HoraryGenerationError, LLMService
 from app.services.normalization_service import NormalizationService
 from app.services.horary_credit_service import HoraryCreditService
 from app.core.logging import log_event, log_block
