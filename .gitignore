@@ -42,3 +42,4 @@ agents/
 # GRACE orchestrator runtime state
 .grace/
 grace.db
+astro_dev.db
