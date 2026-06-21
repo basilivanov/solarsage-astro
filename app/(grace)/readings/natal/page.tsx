@@ -38,8 +38,10 @@ import { PlanetsRow } from "@/components/readings/natal-preview/planets-row"
 import { ProfileIncompleteCard } from "@/components/readings/natal-preview/profile-incomplete-card"
 import { SalesBullets } from "@/components/readings/natal-preview/sales-bullets"
 import { SpheresStrip } from "@/components/readings/natal-preview/spheres-strip"
+import { NatalChartWheel } from "@/components/readings/natal-chart-wheel"
 import { fetchNatalPreview } from "@/lib/api/natal"
 import type { NatalPreviewRead } from "@/lib/contracts/natal"
+import { DEMO_NATAL_RESPONSE } from "@/lib/demo-data"
 
 type State =
   | { status: "loading" }
@@ -111,6 +113,23 @@ export default function NatalReadingPage() {
 
             {/* 3. Compact highlights chips */}
             <HighlightsChips highlights={state.data.highlights} />
+
+            {/* 3b. Natal chart wheel visualization */}
+            <NatalChartWheel
+              planets={DEMO_NATAL_RESPONSE.planets.map((p: any) => ({
+                name: p.name,
+                sign: p.sign,
+                longitude: p.longitude,
+                house: p.house,
+              }))}
+              houses={DEMO_NATAL_RESPONSE.houses.map((h: any) => ({
+                number: h.number,
+                cusp: h.cusp,
+                sign: h.sign,
+              }))}
+              houseSystem={DEMO_NATAL_RESPONSE.houseSystem}
+              birthLabel={state.data.meta.birthDate}
+            />
 
             {/* 4. Глубина расчёта */}
             <CalculationDepth stats={state.data.calculationStats} />

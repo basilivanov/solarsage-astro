@@ -97,3 +97,59 @@ Unresolved issues / risks:
 - Chat replies are keyword-matched, not LLM-generated — good enough for the demo but a real backend (FastAPI + LLM provider) would be needed for production.
 - The Day Chart uses static natal houses (from `DEMO_NATAL_RESPONSE`) with day-shifted planet longitudes as a visual approximation. Real transit calculation would require the SolarSage Python sidecar.
 - Next round recommendations: (1) surface the checkin metrics in a new "Статистика" section on the Profile screen; (2) add a natal report preview using `DEMO_NATAL_PREVIEW` on the Readings screen; (3) consider adding a "Луна сегодня" (Moon today) widget showing the current moon phase + sign; (4) add dark-mode toggle wiring (the `.dark` CSS vars exist but no toggle UI in demo mode).
+
+---
+Task ID: 3
+Agent: Z.ai Code (recurring webDevReview cron, round 2)
+Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+
+Work Log:
+- Read previous worklog (Task IDs: 1, 2). Baseline: server healthy on port 3000, all routes 200, hydration-mismatch fixed in round 1, Day Chart + Energy Meter + Chat + Checkin mock API already in place. Next-round recommendations from round 2: (1) checkin metrics on Profile, (2) natal report preview on Readings, (3) Moon-phase widget, (4) dark-mode toggle.
+- QA pass: all 13 routes (10 pages + 3 API) return 200. agent-browser deep-test on Today/Calendar/Readings/Natal/Horary/Profile/Chat/Checkin — no issues badge, no console errors, no runtime errors. App is stable.
+- **Feature #1 — Moon Phase widget** (`components/today/moon-phase-widget.tsx`, ~380 LOC): New section at the top of the Today screen (after the TrialBanner). Shows:
+  - Astronomically-correct moon phase computed from a known new-moon epoch (2000-01-06 18:14 UTC) and the 29.53059-day synodic month. Identifies 8 phases: Новолуние, Растущий серп, Первая четверть, Растущая Луна, Полнолуние, Убывающая Луна, Последняя четверть, Убывающий серп.
+  - Pure SVG moon visual with radial gradients (lit side + dark side), craters on the full moon, and a glow filter. The terminator is drawn as a clipped path with correct waxing/waning geometry.
+  - Moon zodiac sign (computed by dividing the lunar cycle into 12 segments), with element color coding (Огонь/Земля/Воздух/Вода).
+  - Illumination %, phase name, and a short interpretation.
+  - Expandable detail: moon age (days), cycle phase %, next full moon estimate, and a per-sign interpretation (12 Russian descriptions).
+  - Twinkling star backdrop (6 animated dots with staggered opacity).
+  - Tested: today shows "Растущий серп 33% ♍ Дева Земля"; expand reveals "Возраст Луны 5.7 дн., Фаза цикла Растущая · 19%, Следующее полнолуние ~18 дн." + the Virgo interpretation.
+- **Feature #2 — Natal Chart Wheel** (`components/readings/natal-chart-wheel.tsx`, ~500 LOC): Full natal chart visualization added to the `/readings/natal` page (between HighlightsChips and CalculationDepth). Shows:
+  - All 10 planets (Sun–Pluto) positioned by ecliptic longitude from `DEMO_NATAL_RESPONSE`, with collision-avoidance radial offsets for close planets.
+  - 12 zodiac slices + 12 house cusps (angular houses 1/4/7/10 highlighted in plum with thicker spokes).
+  - Aspect lines between all planet pairs (conjunction/opposition/trine/square/sextile) with a toggle button to show/hide.
+  - Center disk: birth date label, house system (PLACIDUS), planet count.
+  - Click any planet → animated popover with Russian planet name, sign+house, natal description (e.g. "Луна · Лев · 11 дом — Эмоции, подсознание, привычки, мать, дом. В натальной карте — 11 дом (друзья, цели, надежды), знак Лев."), and exact longitude/degrees/minutes.
+  - Aspect summary legend with count (e.g. "Аспекты (12)").
+  - Tested: renders 10 planets, PLACIDUS label, clickable planets (tested Moon → popover with "Эмоции яркие, потребность в признании и тепле").
+- **Feature #3 — Checkin Statistics** (`components/profile/checkin-statistics.tsx`, ~230 LOC): New section on the Profile screen (between HoraryCard and "Мои данные"). Fetches `/api/checkin/metrics?from=<30d ago>&to=<today>`. Shows:
+  - 4 stat cards in a 2×2 grid: Текущая серия (with 🔥 highlight if ≥3), Лучшая серия, Всего оценок, Среднее настроение (/5).
+  - Mood distribution bar chart: 5 animated bars (😞😕😐🙂😄) with counts, colored by mood (red→amber→plum→green→gold).
+  - Top 5 tags with ranked chips, progress bars, and counts.
+  - "За последние 30 дней · данные демо-режима" footer.
+  - Loading skeleton state; hides entirely if totalCheckins === 0.
+  - Tested: shows Текущая серия 3🔥, Лучшая серия 7, Всего 12, Среднее 3.8, mood distribution, and tags (спокойный 6, продуктивный 4, напряжённый 2, творческий 3).
+- **Feature #4 — Daily Affirmation** (`components/today/daily-affirmation.tsx`, ~140 LOC): New section on Today (between Energy Meter and Day Reading). Shows:
+  - Date-seeded affirmation (deterministic — same day always shows the same primary affirmation) keyed to the day status (steady/supportive/tense), 4 affirmations per status = 12 total.
+  - Tone badge (спокойствие/действие/рефлексия) with color-coded icon (Heart/Sparkles/RefreshCw).
+  - "другая" button to cycle through alternative affirmations with animated transitions (slide x).
+  - Decorative corner glow and gradient background keyed to the tone color.
+  - Tested: steady day shows "Я доверяю ритму дня и позволяю событиям развиваться естественно." → cycling shows "Мой внутренний баланс — моя сила. Я остаюсь центрированным."
+- **Styling polish:**
+  - `DateHeader`: added a soft radial moon-glow behind the date number (oklch blue-purple, 18% opacity).
+  - `DayReading`: wrapped in a rounded card with `stardust-bg` (4-point star sprinkle pattern), gradient section dividers (from-transparent-to-border instead of solid).
+  - All new components use consistent design language: `font-serif` for headings/affirmations, `tabular-nums` for numbers, `tracking-[0.14em]` for eyebrow labels, rounded-2xl cards with border-border/50.
+  - Animations: Framer Motion entrance (opacity+y), staggered delays, spring transitions on planet clicks, animated bar growth, shimmer on energy bar — all `prefers-reduced-motion` aware.
+- Lint: all 9 new/modified files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 2 initial errors (unused `isWaxing` prop and `isWaningPhase` var in moon-phase-widget) and 3 warnings (moved `targetDate` into useMemo, moved chart geometry constants to module level in both day-chart and natal-chart-wheel).
+
+Stage Summary:
+- **Features added (4):** Moon Phase widget (astronomical computation + SVG visual), Natal Chart Wheel (full 10-planet natal chart on Readings), Checkin Statistics (4 stat cards + mood distribution + top tags on Profile), Daily Affirmation (12 date-seeded affirmations with cycle button).
+- **Styling polish:** moon-glow on DateHeader, stardust background + gradient dividers on DayReading, consistent design language across all new components, all animations reduced-motion aware.
+- **Verification:** all 13 routes return 200; agent-browser confirms all new sections render and are interactive (moon expand, natal planet click, affirmation cycle, checkin stats display); no dev-overlay issues, no console errors. Screenshots: `screenshot-today-v4.png` (131KB, full Today with all 7 sections), `screenshot-natal-v2.png`, `screenshot-profile-v2.png` (with checkin stats).
+- The Today screen now has a rich vertical flow: DateHeader (moon-glow) → TrialBanner → MoonPhaseWidget → TodayImportantAccordion → DayChart → DayEnergyMeter → DailyAffirmation → DayReading (stardust) → WhyExpanded → WeekStrip.
+
+Unresolved issues / risks:
+- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic, don't block the app.
+- Moon phase calculation is a simplified astronomical approximation (±1 day accuracy); real ephemeris would need the SolarSage Python sidecar.
+- Natal chart uses static `DEMO_NATAL_RESPONSE` data; real natal calculation would need the sidecar.
+- Next round recommendations: (1) add a "Лунный календарь" (lunar calendar) view showing moon phases for the whole month on the Calendar screen; (2) add dark-mode toggle UI (the `.dark` CSS vars exist but no toggle in demo mode); (3) add a "Совместимость" (synastry) demo on the Readings screen using two birth charts; (4) enrich the horary flow with a visual chart for the question moment; (5) add a "Сегодня в истории" (on this day in astrology history) widget.

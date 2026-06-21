@@ -41,6 +41,7 @@ import { formatBirthDate, formatBirthTime, type Profile } from "@/lib/profile"
 
 import { AccessCard } from "./access-card"
 import { Avatar } from "./avatar"
+import { CheckinStatistics } from "./checkin-statistics"
 import { DevModeSwitcher } from "./dev-mode-switcher"
 import { EditSheet, type EditField } from "./edit-sheet"
 import { HoraryCard } from "./horary-card"
@@ -122,6 +123,9 @@ export function ProfileScreen({
       <section className="px-5 pt-5">
         <HoraryCard horary={profileMeta.horary} />
       </section>
+
+      {/* Статистика оценок (check-in) */}
+      <CheckinStatistics />
 
       {/* Мои данные */}
       <section className="px-5 pt-6">

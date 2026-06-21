@@ -30,6 +30,8 @@ import { WhyExpanded } from "./why-expanded"
 import { WeekStrip } from "./week-strip"
 import { DayChart, type ChartPlanet, type ChartHouse } from "./day-chart"
 import { DayEnergyMeter, type EnergyItem } from "./day-energy-meter"
+import { MoonPhaseWidget } from "./moon-phase-widget"
+import { DailyAffirmation } from "./daily-affirmation"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
@@ -153,6 +155,9 @@ export function TodayScreen({
             <TrialBanner daysLeft={access.daysLeft} />
           ) : null}
           <div className="section-rise section-rise-1">
+            <MoonPhaseWidget date={selectedDate} />
+          </div>
+          <div className="section-rise section-rise-1">
             <TodayImportantAccordion items={importantToday || []} />
           </div>
           {!(importantToday && importantToday.length > 0) && <TodayNotes notes={payload.notes} />}
@@ -171,6 +176,13 @@ export function TodayScreen({
               <DayEnergyMeter items={energyItems} dayStatus={dayStatusLabel} />
             </div>
           )}
+          <div className="section-rise section-rise-3">
+            <DailyAffirmation
+              date={selectedDate}
+              dayStatus={dayStatusLabel}
+              dominantPlanet={energyItems[0]?.name}
+            />
+          </div>
           <div className="section-rise section-rise-4">
             <DayReading paragraphs={payload.reading.paragraphs} />
           </div>

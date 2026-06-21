@@ -38,13 +38,13 @@ export function DayReading({ paragraphs, preview = false }: Props) {
   const last = visible.length - 1
 
   return (
-    <section className="px-6" aria-label="Разбор дня">
+    <section className="stardust-bg rounded-2xl px-6 py-5" aria-label="Разбор дня">
       <div className="mb-4 flex items-center gap-3">
-        <span className="h-px flex-1 bg-border" />
+        <span className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
         <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Разбор дня
         </span>
-        <span className="h-px flex-1 bg-border" />
+        <span className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
       </div>
 
       <div className="relative">

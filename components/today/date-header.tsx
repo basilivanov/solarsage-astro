@@ -56,14 +56,26 @@ export function DateHeader({
         <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
       </button>
 
-      <div className="flex flex-col items-center gap-0.5">
-        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="relative flex flex-col items-center gap-0.5">
+        {/* soft moon-glow behind the date */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-2 left-1/2 h-16 w-16 -translate-x-1/2 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, oklch(0.85 0.04 260 / 0.18) 0%, transparent 70%)",
+          }}
+        />
+        <span className="relative flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           {locked ? (
             <Lock className="h-3 w-3" strokeWidth={1.75} />
           ) : null}
           {isToday ? "Сегодня" : "День"}
         </span>
-        <span className="font-serif text-[22px] leading-none text-foreground" data-testid="today-headline">
+        <span
+          className="relative font-serif text-[22px] leading-none text-foreground"
+          data-testid="today-headline"
+        >
           {formatDayMonth(date)}
         </span>
       </div>
