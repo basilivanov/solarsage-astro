@@ -30,6 +30,7 @@ import { isDayAccessible, type AccessInfo } from "@/lib/access"
 import { dateKey, monthMatrix, monthDiff, statusLabel } from "@/lib/calendar"
 import { getMonthStatuses } from "@/lib/api/calendar"
 import { MoodIcon } from "@/components/calendar/mood-icon"
+import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
 
 type Props = {
   access: AccessInfo
@@ -129,6 +130,9 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Lunar calendar strip — moon phases for the whole month */}
+      <LunarCalendarStrip year={cursor.getFullYear()} month={cursor.getMonth()} />
 
       <ol
         role="grid"
