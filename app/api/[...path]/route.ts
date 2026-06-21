@@ -158,17 +158,61 @@ export async function GET(
   if (path === "checkin/yesterday") {
     const d = new Date();
     d.setDate(d.getDate() - 1);
+    const yDate = d.toISOString().split("T")[0];
     return json({
-      date: d.toISOString().split("T")[0],
-      mood: "calm",
-      energy: 4,
-      note: "Вчера был спокойный день.",
-      submittedAt: d.toISOString(),
+      hadCheckin: true,
+      checkin: {
+        id: 1001,
+        targetDate: yDate,
+        mood: 4,
+        accuracy: "exact",
+        energy: 4,
+        tags: ["спокойный", "продуктивный"],
+        note: "Вчера был ровный день, удалось закончить начатое.",
+        streak: 3,
+        filledAt: d.toISOString(),
+        createdAt: d.toISOString(),
+      },
+    });
+  }
+  if (path === "checkin/metrics") {
+    const from = q.get("from");
+    const to = q.get("to");
+    return json({
+      from,
+      to,
+      totalCheckins: 12,
+      currentStreak: 3,
+      longestStreak: 7,
+      averageMood: 3.8,
+      averageAccuracy: 0.75,
+      moodDistribution: { 1: 1, 2: 2, 3: 4, 4: 3, 5: 2 },
+      tagFrequency: { "спокойный": 6, "продуктивный": 4, "напряжённый": 2, "творческий": 3 },
     });
   }
   if (path.startsWith("checkin/")) {
     const date = path.split("/")[1];
-    return json({ date, mood: null, energy: null, note: "" });
+    // For demo: return a checkin for the last 3 days, 404 for older
+    const today = new Date();
+    const target = new Date(date);
+    const diffDays = Math.floor((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 1 && diffDays <= 3) {
+      const moods = [4, 3, 5];
+      const tags = [["спокойный"], ["напряжённый"], ["продуктивный", "творческий"]];
+      return json({
+        id: 1000 - diffDays,
+        targetDate: date,
+        mood: moods[diffDays - 1],
+        accuracy: diffDays === 2 ? "approximate" : "exact",
+        energy: moods[diffDays - 1],
+        tags: tags[diffDays - 1],
+        note: diffDays === 2 ? "Немного устал, но справился." : "",
+        streak: 4 - diffDays,
+        filledAt: target.toISOString(),
+        createdAt: target.toISOString(),
+      });
+    }
+    return json(null, 404);
   }
   if (path === "checkin") {
     return json({ items: [] });
@@ -244,7 +288,18 @@ export async function POST(
 
   // ── Check-in submit ──────────────────────────────────────
   if (path === "checkin") {
-    return json({ ok: true, submittedAt: new Date().toISOString(), ...body });
+    return json({
+      id: Math.floor(Math.random() * 10000) + 1,
+      targetDate: body.targetDate || new Date().toISOString().split("T")[0],
+      mood: body.mood ?? 3,
+      accuracy: body.accuracy ?? null,
+      energy: body.energy ?? body.mood ?? 3,
+      tags: body.tags ?? [],
+      note: body.note ?? null,
+      streak: 1 + Math.floor(Math.random() * 3),
+      filledAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    });
   }
 
   // ── Horary: create question ──────────────────────────────

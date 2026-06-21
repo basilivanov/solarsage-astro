@@ -46,3 +46,54 @@ Unresolved issues / risks:
 - YooKassa payment routes return mock `confirmationUrl: /profile` — no real checkout.
 - Next steps the recurring webDevReview cron should consider: polish the demo experience (e.g. make the chat tab return a richer canned response, surface the natal report demo), tighten the hydration mismatch if feasible by guarding Telegram WebApp calls behind `typeof window` checks, and add more visual detail / micro-interactions per the recurring task mandate.
 
+
+---
+Task ID: 2
+Agent: Z.ai Code (recurring webDevReview cron, round 1)
+Task: Assess project status, QA via agent-browser, fix bugs, add features + styling polish, update worklog.
+
+Work Log:
+- Read previous worklog (Task ID: 1) to understand baseline: server live on port 3000, demo mode, all main routes 200, hydration-mismatch warning present, chat tab gated behind "Скоро" placeholder.
+- QA pass with agent-browser on all 8 page routes + 6 API routes — all return 200, no runtime errors. Identified the single dev-overlay "1 Issue" badge: a React hydration-mismatch on `<html>` (root layout) caused by the external `telegram-web-app.js` script injecting `style="--tg-viewport-height:100vh;--tg-viewport-stable-height:100vh"` after SSR.
+- **Bug fix #1 (hydration):** Added `suppressHydrationWarning` to `<html lang="ru" className="bg-background">` in `app/layout.tsx`. This is the canonical React solution for third-party DOM mutations. Verified: the "1 Issue" badge is gone and no hydration-mismatch warnings remain in console.
+- **Feature #1 — Day Chart visualization** (`components/today/day-chart.tsx`, ~500 LOC): New SVG-based astrological wheel rendered on the Today screen between the "Сегодня важно" accordion and "Разбор дня". Shows:
+  - 12 zodiac slices (♈–♓) with alternating tints on the outer ring.
+  - 12 house cusps as spokes (ASC/1st house highlighted in plum), with house numbers 1–12 in the house ring.
+  - 7 planets (Sun–Saturn) positioned by ecliptic longitude on a planet ring, each as a clickable colored disk with its traditional glyph (☉☽☿♀♂♃♄). Planet colors follow traditional astrological associations.
+  - Aspect lines drawn between planets in close orb: conjunction (plum), opposition (red), trine (green), square (amber), sextile (blue) — with a legend below.
+  - Center disk shows the date label (e.g. "21 июн") + "КАРТА ДНЯ", with a soft glow keyed to the day status color.
+  - Click a planet → animated popover with the planet's glyph, name, sign+house, and a contextual description (e.g. "Venus · ♒ Aquarius · 5 дом — любовь, удовольствие, ценности. Сегодня акцент через 5 дом — творчество и романтика.").
+  - Day-to-day variation: planet longitudes shift based on the selected date (Moon +13°/day, Sun +1°/day, others +0.3°/day) so the chart visually changes when navigating the week strip.
+- **Feature #2 — Day Energy Meter** (`components/today/day-energy-meter.tsx`, ~155 LOC): New section below the Day Chart. Shows:
+  - Status pill ("Ровный день" / "Поддерживающий день" / "Напряжённый день") with a pulsing accent dot and the dominant planet.
+  - Stacked horizontal bar with shimmer animation, segments sized by each planet's strength.
+  - Per-planet rows: glyph chip, name, individual progress bar, numeric strength (0–100). Strengths are parsed from the API `topFlags` summaries (regex on "сила: 0.94"). Sun + Moon are always included as baselines.
+  - Contextual hint paragraph keyed to the day status.
+- **Feature #3 — Chat unlocked + context-aware replies:** Replaced the `LockedFeatureCard` placeholder on `/chat` with the real `ChatScreen` (loads the demo profile via `getProfile()`, coerces API shape → local `Profile` contract). Enhanced `lib/api/chat.ts` demo mode with a `generateDemoReply()` keyword matcher (11 categories: greetings, relationships, career, money, health, evening plans, astrology meta, emotions, decisions, thanks, default) — each returns a rich, astrologically-themed Russian response referencing the day's actual aspects. Tested: sending "Что сегодня важно знать про отношения?" returns the love/relationships response about Venus-Jupiter conjunction.
+- **Mock API enrichment** (`app/api/[...path]/route.ts`):
+  - `GET /api/checkin/yesterday` now returns the full `CheckinResult` shape (`{hadCheckin, checkin:{id, targetDate, mood, accuracy, energy, tags, note, streak, filledAt, createdAt}}`) instead of the old minimal object.
+  - `GET /api/checkin/:date` returns demo checkins for the last 3 days (with varied moods/tags), 404 for older dates — so the checkin screen shows real history.
+  - `GET /api/checkin/metrics` returns aggregate stats (totalCheckins, currentStreak, longestStreak, averageMood, moodDistribution, tagFrequency) for future metrics UI.
+  - `POST /api/checkin` returns a proper `CheckinResult` with `id`, `streak`, `createdAt` so the toast ("Streak: N дней подряд 🔥") works.
+- **Styling polish** (`app/globals.css` + component classes):
+  - New keyframes: `chart-fade-in`, `chart-glow` (center disk pulses), `energy-bar-shimmer`, `status-pulse-soft`, `section-rise`.
+  - `.cosmic-header-bg` — multi-radial-gradient header backdrop (plum/amber/blue tints) on the DateHeader wrapper.
+  - `.stardust-bg` — subtle 4-point star sprinkle pattern (available for day-reading section).
+  - `.planet-chip` hover lift with plum shadow.
+  - `.energy-stacked-bar` shimmer overlay on the energy meter's stacked bar.
+  - `.section-rise-1..5` staggered entrance animations for Today screen sections (accordion → chart → energy → reading → why).
+  - All animations respect `prefers-reduced-motion`.
+- Wired the new components into `components/today/today-screen.tsx`: added `rawData` prop, `deriveChartAndEnergy()` helper that extracts planet strengths from `topFlags` and builds chart data from static natal houses + day-shifted planet longitudes. The day page (`app/(grace)/day/[date]/page.tsx`) now passes `rawData={data}` to `TodayScreen`.
+- Lint: my new/modified files pass cleanly (`npx eslint` on the 6 files → 0 errors, 0 warnings). The remaining 165 project-wide lint errors are all pre-existing in the cloned solarsage-astro codebase (browser globals `Node`/`getComputedStyle`/`module` not configured, escape-character nits) and don't affect the running app.
+
+Stage Summary:
+- **Bugs fixed:** hydration-mismatch warning eliminated via `suppressHydrationWarning` on `<html>`.
+- **Features added:** (1) Day Chart — interactive SVG astrological wheel with planets, houses, aspects, click-to-detail popover; (2) Day Energy Meter — planetary strength visualization with status pill and per-planet bars; (3) Chat tab unlocked with 11-category context-aware demo replies; (4) Checkin mock API now returns full `CheckinResult` shape + 3-day history + metrics.
+- **Styling polish:** cosmic gradient header, stardust pattern, chart glow animation, energy bar shimmer, staggered section entrance animations, planet chip hover effects — all reduced-motion aware.
+- **Verification:** all 14 routes (8 pages + 6 API) return 200; agent-browser confirms Day Chart, Energy Meter, and Chat all render and respond correctly; no dev-overlay issues remain. Screenshots: `screenshot-today-v3.png`, `screenshot-today-final.png`, `screenshot-chat-v2.png`.
+
+Unresolved issues / risks:
+- The 165 pre-existing lint errors in the cloned codebase (browser globals) — cosmetic, don't block the app. A future round could add a `globals` property to the ESLint config to resolve them, but that's a codebase-wide change.
+- Chat replies are keyword-matched, not LLM-generated — good enough for the demo but a real backend (FastAPI + LLM provider) would be needed for production.
+- The Day Chart uses static natal houses (from `DEMO_NATAL_RESPONSE`) with day-shifted planet longitudes as a visual approximation. Real transit calculation would require the SolarSage Python sidecar.
+- Next round recommendations: (1) surface the checkin metrics in a new "Статистика" section on the Profile screen; (2) add a natal report preview using `DEMO_NATAL_PREVIEW` on the Readings screen; (3) consider adding a "Луна сегодня" (Moon today) widget showing the current moon phase + sign; (4) add dark-mode toggle wiring (the `.dark` CSS vars exist but no toggle UI in demo mode).

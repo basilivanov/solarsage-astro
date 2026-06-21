@@ -171,6 +171,7 @@ export default function DayPage() {
       payload={payload}
       onDateChange={onDateChange}
       importantToday={data.importantToday || []}
+      rawData={data}
     />
   );
 }
