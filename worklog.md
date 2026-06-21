@@ -153,3 +153,51 @@ Unresolved issues / risks:
 - Moon phase calculation is a simplified astronomical approximation (±1 day accuracy); real ephemeris would need the SolarSage Python sidecar.
 - Natal chart uses static `DEMO_NATAL_RESPONSE` data; real natal calculation would need the sidecar.
 - Next round recommendations: (1) add a "Лунный календарь" (lunar calendar) view showing moon phases for the whole month on the Calendar screen; (2) add dark-mode toggle UI (the `.dark` CSS vars exist but no toggle in demo mode); (3) add a "Совместимость" (synastry) demo on the Readings screen using two birth charts; (4) enrich the horary flow with a visual chart for the question moment; (5) add a "Сегодня в истории" (on this day in astrology history) widget.
+
+---
+Task ID: 4
+Agent: Z.ai Code (recurring webDevReview cron, round 3)
+Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+
+Work Log:
+- Read previous worklog (Task IDs: 1–3). Baseline: server healthy, all routes 200, hydration fixed, Day Chart + Energy Meter + Moon Phase + Natal Chart Wheel + Checkin Statistics + Daily Affirmation + Chat all in place. Previous round's recommendations: (1) lunar calendar, (2) dark-mode toggle, (3) synastry demo, (4) horary chart, (5) astro history widget.
+- Discovered the lunar calendar feature (`lib/moon.ts` + `components/calendar/lunar-calendar-strip.tsx`) was built in a previous turn but never recorded in the worklog. Verified it's fully functional on `/calendar` — shows moon phases for all 30 days of June 2026, highlights key lunar events (Полнолуние day 1, Новолуние day 15, Первая четверть day 22), clicking a day shows phase detail popover. Extracted moon computation into shared `lib/moon.ts` (used by both MoonPhaseWidget and LunarCalendarStrip).
+- QA pass: all 11 routes (including `/readings/horary/hq-love-yes-001`) return 200. agent-browser deep-test on Today/Calendar/Profile/Horary — no issues badge, no console errors, no runtime errors.
+- **Feature #1 — Dark-mode toggle** (`components/theme-provider.tsx` + `components/theme-toggle.tsx`):
+  - Created `ThemeProvider` wrapping `next-themes` with `attribute="class"`, `defaultTheme="light"`, `enableSystem={false}` (manual control). Added to `app/layout.tsx` wrapping `{children}`.
+  - Created `ThemeToggle` — animated sun/moon button with Framer Motion scale+rotate transitions. Uses `useTheme()` from next-themes. SSR-safe (renders placeholder until mounted). Accessible aria-labels ("Включить тёмную/светлую тему").
+  - Wired into Profile screen header (top-right, next to "Профиль" label). Persists across navigation via localStorage.
+  - Added dark-mode CSS enhancements in `globals.css`: `.dark .cosmic-header-bg` (richer purple/amber/blue radial gradients for dark), `.dark .stardust-bg` (brighter star points), `.dark .moon-widget-backdrop`. Smooth `theme-transition` class for color transitions.
+  - Tested: clicking toggle switches `<html>` class from `light` to `dark`, label updates, all components re-render with dark palette. Dark mode persists across page navigation.
+- **Feature #2 — Horary chart visualization** (`components/readings/horary/horary-chart.tsx`, ~350 LOC):
+  - New "Карта момента" section on the horary answer view (`/readings/horary/[id]`), rendered after the answer blocks.
+  - Derives a deterministic astrological chart from the question's `createdAt` timestamp: planet longitudes via simplified mean motions from J2000 epoch, house cusps via sidereal time approximation (equal house system).
+  - Shows 10 planets positioned by longitude, 12 zodiac slices, 12 house cusps (ASC/1st house highlighted in plum), aspect lines between involved planets only.
+  - **Involved planets** (from `answer.planets`) are highlighted with filled disks + dashed ring; non-involved planets are outlined. Click any planet → animated popover with Russian name, sign, longitude, and "задействован в ответе" badge for involved planets.
+  - Center disk: "хорар · момент" label. Legend: involved vs background vs ASC.
+  - Tested: renders on `/readings/horary/hq-love-yes-001` with 10 planets, involved planets (Венера, Юпитер, Луна) highlighted, clickable planet popovers work.
+- **Feature #3 — Astro history widget** (`components/today/astro-history-widget.tsx`, ~200 LOC):
+  - New "В этот день в истории" section at the bottom of the Today screen (after WeekStrip).
+  - Static curated database of ~25 notable astronomical/astrological events (discoveries, missions, births, historical events) with Russian descriptions. Covers all 12 months.
+  - Smart matching: first tries exact month+day match; if none, finds events within ±3 days and labels header "Ближайшие дни" instead of "В этот день".
+  - Category color-coding: Открытие (gold), Миссия (plum), Память (green), Событие (blue). Each event shows year, category badge, title, description.
+  - Expandable: if multiple events match, shows "Ещё N события" button to reveal the rest with animated height transition.
+  - Decorative animated star pattern in the corner (category-colored, twinkling).
+  - Tested: June 22 shows "1978 · Открытие Харона — спутника Плутона". Multiple events expand correctly.
+- **Styling polish:**
+  - **TabBar**: active tab now has a glowing dot indicator above the icon (plum, with box-shadow glow), icon scales 1.05× and stroke-width increases when active, hover state on inactive tabs. Added `relative` positioning for the glow indicator.
+  - **Dark mode CSS**: `.dark .cosmic-header-bg` uses deeper purple/amber/blue radial gradients; `.dark .stardust-bg` has brighter star points; `.dark .moon-widget-backdrop` richer night-sky. `.theme-transition` class for smooth 0.3s color transitions.
+  - All new components maintain consistent design language: `font-serif` for headings, `tabular-nums` for numbers, `tracking-[0.14em]` for eyebrow labels, rounded-2xl cards with `border-border/50`.
+- Lint: all 8 new/modified files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 3 initial warnings: moved `involvedSet` into useMemo in horary-chart, wrapped `target` in its own useMemo in astro-history-widget, removed unused `MoonPhaseInfo` import in lunar-calendar-strip. (The pre-existing `no-unused-vars` error in `tab-bar.tsx:52` for the `p` parameter in the `match` function was already in the cloned codebase before my edit.)
+
+Stage Summary:
+- **Features added (3 new + 1 verified from previous turn):** (1) Lunar Calendar strip on Calendar screen (verified from previous turn — moon phases for all 30 days, key event highlights, click-for-detail), (2) Dark-mode toggle with ThemeProvider + animated sun/moon button + dark CSS enhancements, (3) Horary chart visualization on horary answer view (deterministic chart from question timestamp, involved-planet highlighting), (4) Astro history widget on Today (25 curated events, ±3 day fuzzy matching, expandable).
+- **Styling polish:** TabBar active-tab glow indicator + icon scale, dark-mode-specific CSS for cosmic header/stardust/moon backdrop, smooth theme transitions.
+- **Verification:** all 11 routes (including horary detail) return 200; agent-browser confirms all new features render and are interactive (dark toggle, lunar calendar day click, horary planet click, astro history expand); no dev-overlay issues, no console errors. Screenshots: `screenshot-today-v5.png` (132KB, 8 sections), `screenshot-calendar-v2.png`, `screenshot-profile-v3.png`, `screenshot-horary-v2.png`, `screenshot-today-dark.png`, `screenshot-profile-dark.png`.
+- The Today screen now has 8 sections: Луна сегодня → Сегодня важно → Карта дня → Энергия дня → Аффирмация дня → Разбор дня → Почему так → Неделя → В этот день в истории.
+
+Unresolved issues / risks:
+- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic.
+- Moon phase and horary chart calculations are simplified astronomical approximations; real ephemeris would need the SolarSage Python sidecar.
+- Astro history events are a static curated list (~25 events); a real backend could provide a larger database.
+- Next round recommendations: (1) add a "Совместимость" (synastry) demo on the Readings screen using two birth charts; (2) add a "Лунный день" (lunar day number) display alongside the moon phase widget — traditional astrology uses 29 lunar days with specific meanings; (3) enrich the calendar with a toggle between "день" (day-status) and "луна" (moon-phase) views; (4) add a planet transit timeline showing upcoming major transits; (5) add a "Сегодня подходит для..." (today is good for...) recommendation card based on day status + moon phase.

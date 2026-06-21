@@ -48,6 +48,7 @@ import { HoraryCard } from "./horary-card"
 import { ProfileRow } from "./profile-row"
 import { ReferralCard } from "./referral-card"
 import { ServiceRow } from "./service-row"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 type Props = {
   access: AccessInfo
@@ -92,9 +93,12 @@ export function ProfileScreen({
         className="flex-none px-5 pb-5"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1.25rem)" }}
       >
-        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          Профиль
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Профиль
+          </span>
+          <ThemeToggle />
+        </div>
         <div className="mt-3 flex items-center gap-4">
           <Avatar user={tgUser} />
           <div className="min-w-0 flex-1">

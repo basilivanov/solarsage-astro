@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Moon, CalendarDays, Info } from "lucide-react"
-import { computeMoonPhaseForDay, type MoonPhaseInfo } from "@/lib/moon"
+import { computeMoonPhaseForDay } from "@/lib/moon"
 
 /**
  * LunarCalendarStrip — moon-phase visualization for the Calendar screen.

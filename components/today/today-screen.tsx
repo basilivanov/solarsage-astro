@@ -32,6 +32,7 @@ import { DayChart, type ChartPlanet, type ChartHouse } from "./day-chart"
 import { DayEnergyMeter, type EnergyItem } from "./day-energy-meter"
 import { MoonPhaseWidget } from "./moon-phase-widget"
 import { DailyAffirmation } from "./daily-affirmation"
+import { AstroHistoryWidget } from "./astro-history-widget"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
@@ -197,6 +198,9 @@ export function TodayScreen({
             access={access}
             onSelect={onDateChange}
           />
+          <div className="section-rise section-rise-5">
+            <AstroHistoryWidget date={selectedDate} />
+          </div>
         </div>
       ) : (
         <div className="space-y-6 pb-8">

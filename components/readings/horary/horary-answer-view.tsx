@@ -27,6 +27,7 @@ import { motion } from "framer-motion"
 import type { HoraryQuestionRead } from "@/packages/contracts"
 import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
 import { HoraryBlockRenderer } from "./horary-block-renderer"
+import { HoraryChart } from "./horary-chart"
 
 type Props = {
   question: HoraryQuestionRead
@@ -116,6 +117,13 @@ export function HoraryAnswerView({ question }: Props) {
             </motion.div>
           ))}
         </div>
+
+        {/* Horary chart — visualization of the question moment */}
+        <HoraryChart
+          createdAt={createdAt}
+          locationName={questionLocationName}
+          involvedPlanets={answer.planets || []}
+        />
 
         {/* Planets involved */}
         {answer.planets && answer.planets.length > 0 && (

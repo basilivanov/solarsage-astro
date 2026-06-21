@@ -127,13 +127,24 @@ export function TabBar() {
                 title={t.label}
                 aria-label={isActive ? `${t.label}, текущий раздел` : t.label}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10.5px] transition ${
+                className={`relative flex w-full flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10.5px] transition ${
                   isActive
                     ? "text-primary"
-                    : "text-muted-foreground active:text-foreground"
+                    : "text-muted-foreground active:text-foreground hover:text-foreground/70"
                 }`}
               >
-                <Icon className="h-[22px] w-[22px] text-current" strokeWidth={1.6} />
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className="absolute -top-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary"
+                    style={{ boxShadow: "0 0 6px oklch(0.48 0.06 305 / 0.5)" }}
+                  />
+                )}
+                <Icon
+                  className="h-[22px] w-[22px] text-current transition-transform"
+                  strokeWidth={isActive ? 1.8 : 1.6}
+                  style={{ transform: isActive ? "scale(1.05)" : "scale(1)" }}
+                />
                 <span className={`truncate ${isActive ? "font-medium" : ""}`}>
                   {t.label}
                 </span>

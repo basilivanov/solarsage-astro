@@ -25,6 +25,7 @@ import Script from "next/script"
 import { Analytics } from "@vercel/analytics/next"
 import { TelegramInit } from "@/components/telegram-init"
 import { CorrelationInit } from "@/components/correlation-init"
+import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 const inter = Inter({
@@ -100,7 +101,9 @@ export default function RootLayout({
         </Script>
         <TelegramInit />
         <CorrelationInit />
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
