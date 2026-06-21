@@ -508,4 +508,78 @@ html.theme-transition * {
   }
 }
 
+/* --- Round 6 styling polish: gradient borders, soft surfaces, accents ----- */
+
+/* Gradient border wrapper — applies a subtle plum gradient border */
+.gradient-border-soft {
+  position: relative;
+  background: linear-gradient(var(--card), var(--card)) padding-box,
+              linear-gradient(135deg,
+                oklch(0.55 0.08 305 / 0.35),
+                oklch(0.55 0.08 305 / 0.05) 50%,
+                oklch(0.55 0.08 60 / 0.25)) border-box;
+  border: 1px solid transparent;
+}
+
+/* Pill toggle track (for calendar view switch) */
+.toggle-track {
+  background: linear-gradient(180deg,
+    oklch(0.95 0.005 305),
+    oklch(0.92 0.005 305));
+  box-shadow:
+    0 1px 2px oklch(0.4 0.02 305 / 0.08) inset,
+    0 1px 1px oklch(0.4 0.02 305 / 0.04);
+}
+.dark .toggle-track {
+  background: linear-gradient(180deg,
+    oklch(0.26 0.01 305),
+    oklch(0.22 0.01 305));
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 0.3) inset;
+}
+
+/* Accent corner glyph — small decorative star in card corners */
+.corner-glyph {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  color: oklch(0.55 0.06 305 / 0.25);
+  pointer-events: none;
+  letter-spacing: 0.1em;
+}
+
+/* Soft surface for secondary cards */
+.surface-soft {
+  background: linear-gradient(180deg,
+    oklch(0.99 0.002 305),
+    oklch(0.97 0.003 305));
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.5) inset,
+    0 1px 3px oklch(0.4 0.02 305 / 0.04);
+}
+.dark .surface-soft {
+  background: linear-gradient(180deg,
+    oklch(0.21 0.01 305),
+    oklch(0.18 0.01 305));
+  box-shadow:
+    0 1px 0 oklch(0.5 0.02 305 / 0.15) inset,
+    0 1px 3px oklch(0 0 0 / 0.2);
+}
+
+/* Glow ring for selected/today indicators */
+.glow-ring-primary {
+  box-shadow:
+    0 0 0 2px oklch(0.55 0.10 305 / 0.35),
+    0 0 12px oklch(0.55 0.10 305 / 0.25);
+}
+
+/* Reduced motion additions */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-sweep::before,
+  .orbit-ring {
+    animation: none !important;
+  }
+}
+
 

@@ -22,6 +22,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { motion } from "framer-motion"
 import { ChevronLeft, ChevronRight, Lock, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MONTHS_RU_NOM, WEEKDAYS_SHORT, formatLong } from "@/lib/date"
@@ -31,17 +32,24 @@ import { dateKey, monthMatrix, monthDiff, statusLabel } from "@/lib/calendar"
 import { getMonthStatuses } from "@/lib/api/calendar"
 import { MoodIcon } from "@/components/calendar/mood-icon"
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
+import { computeMoonPhaseForDay, getLunarDay } from "@/lib/moon"
 
 type Props = {
   access: AccessInfo
   onOpenDay?: (_date: Date) => void
 }
 
+type ViewMode = "day" | "moon"
+
+const PHASE_EMOJI = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
+const PHASE_NAMES_SHORT = ["новолуние", "раст. серп", "перв. четв.", "раст. Луна", "полнолуние", "убыв. Луна", "посл. четв.", "убыв. серп"]
+
 export function CalendarScreen({ access, onOpenDay }: Props) {
   const [cursor, setCursor] = useState(
     () => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
   )
   const [selected, setSelected] = useState<Date>(TODAY)
+  const [view, setView] = useState<ViewMode>("day")
 
   // Навигация по месяцам: для MVP разрешаем ±1 месяц от сегодняшнего
   const diff = monthDiff(
@@ -117,6 +125,46 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
 
       <div className="mx-5 h-px flex-none bg-border/60" />
 
+      {/* View toggle: day-status vs moon-phase */}
+      <div className="toggle-track mx-5 mt-3 flex flex-none items-center gap-1 rounded-full p-1">
+        <button
+          type="button"
+          onClick={() => setView("day")}
+          className={cn(
+            "relative flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
+            view === "day" ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+          )}
+          aria-pressed={view === "day"}
+        >
+          {view === "day" && (
+            <motion.span
+              layoutId="cal-toggle"
+              className="absolute inset-0 rounded-full bg-card shadow-sm"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span className="relative">Дни</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("moon")}
+          className={cn(
+            "relative flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
+            view === "moon" ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+          )}
+          aria-pressed={view === "moon"}
+        >
+          {view === "moon" && (
+            <motion.span
+              layoutId="cal-toggle"
+              className="absolute inset-0 rounded-full bg-card shadow-sm"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span className="relative">Луна</span>
+        </button>
+      </div>
+
       <div className="mt-4 grid flex-none grid-cols-7 px-5">
         {WEEKDAYS_SHORT.map((w, i) => (
           <div
@@ -131,8 +179,10 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
         ))}
       </div>
 
-      {/* Lunar calendar strip — moon phases for the whole month */}
-      <LunarCalendarStrip year={cursor.getFullYear()} month={cursor.getMonth()} />
+      {/* Lunar calendar strip — only shown in "day" view */}
+      {view === "day" && (
+        <LunarCalendarStrip year={cursor.getFullYear()} month={cursor.getMonth()} />
+      )}
 
       <ol
         role="grid"
@@ -144,6 +194,54 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           const accessible = isDayAccessible(date, access)
           const status = statuses[dateKey(date)] ?? "even"
 
+          // Moon-view data
+          const moon = inMonth ? computeMoonPhaseForDay(cursor.getFullYear(), cursor.getMonth(), date.getDate()) : null
+          const lunarDay = inMonth ? getLunarDay(date) : null
+
+          if (view === "moon") {
+            return (
+              <li
+                key={date.toISOString()}
+                className="flex items-center justify-center py-1"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelected(date)
+                    onOpenDay?.(date)
+                  }}
+                  aria-pressed={isSelected}
+                  aria-label={inMonth && moon ? `${formatLong(date)}, ${PHASE_NAMES_SHORT[moon.phaseIndex]}, ${lunarDay?.day} лунный день` : formatLong(date)}
+                  className={cn(
+                    "relative flex h-11 w-11 flex-col items-center justify-center rounded-full transition-all",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                    !inMonth && "opacity-30",
+                    inMonth && !isSelected && !isToday && "hover:bg-muted/60",
+                    isToday && !isSelected && "ring-1 ring-border",
+                    isSelected && "bg-primary/10 ring-2 ring-primary",
+                  )}
+                  title={inMonth && moon ? `${PHASE_NAMES_SHORT[moon.phaseIndex]} · ${lunarDay?.day} лунный день · ${moon.illumination}%` : undefined}
+                >
+                  {inMonth && moon ? (
+                    <>
+                      <span className="text-[14px] leading-none">{PHASE_EMOJI[moon.phaseIndex]}</span>
+                      <span className={cn(
+                        "mt-0.5 text-[8px] tabular-nums leading-none",
+                        isSelected ? "text-primary font-medium" : "text-muted-foreground/70"
+                      )}>
+                        {lunarDay?.day}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-serif text-[12px] leading-none text-muted-foreground/40">
+                      {date.getDate()}
+                    </span>
+                  )}
+                </button>
+              </li>
+            )
+          }
+
           return (
             <li
               key={date.toISOString()}
@@ -153,10 +251,6 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                 type="button"
                 onClick={() => {
                   setSelected(date)
-                  // Тап по дню всегда ведёт на /day/:date.
-                  // TodayScreen сам решит, показать полный разбор или
-                  // preview с paywall — календарь в этом не участвует.
-                  // Это убирает дублирование логики доступа.
                   onOpenDay?.(date)
                 }}
                 aria-pressed={isSelected}
@@ -227,27 +321,44 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
             <div className="mt-1 truncate font-serif text-[20px] leading-tight tracking-tight text-foreground">
               {formatLong(selected)}
             </div>
-            <div className="mt-1 flex items-center gap-2 text-[12px] text-muted-foreground">
-              <MoodIcon
-                status={selectedStatus}
-                className={cn(
-                  "h-3.5 w-3.5",
-                  selectedStatus === "tense"
-                    ? "text-foreground/70"
-                    : selectedStatus === "supportive"
-                      ? "text-primary"
-                      : "text-foreground/45",
-                )}
-              />
-              <span>{statusLabel(selectedStatus)}</span>
-              {!isSelectedAccessible ? (
-                <span className="inline-flex items-center gap-1 text-muted-foreground/80">
-                  <span aria-hidden>·</span>
-                  <Lock className="h-3 w-3" strokeWidth={1.75} />
-                  <span>недоступен</span>
-                </span>
-              ) : null}
-            </div>
+            {view === "moon" ? (
+              (() => {
+                const sm = computeMoonPhaseForDay(selected.getFullYear(), selected.getMonth(), selected.getDate())
+                const sld = getLunarDay(selected)
+                return (
+                  <div className="mt-1 flex items-center gap-2 text-[12px] text-muted-foreground">
+                    <span className="text-[14px] leading-none">{PHASE_EMOJI[sm.phaseIndex]}</span>
+                    <span>{PHASE_NAMES_SHORT[sm.phaseIndex]}</span>
+                    <span aria-hidden>·</span>
+                    <span className="tabular-nums">{sm.illumination}%</span>
+                    <span aria-hidden>·</span>
+                    <span>{sld.day} лунный день</span>
+                  </div>
+                )
+              })()
+            ) : (
+              <div className="mt-1 flex items-center gap-2 text-[12px] text-muted-foreground">
+                <MoodIcon
+                  status={selectedStatus}
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    selectedStatus === "tense"
+                      ? "text-foreground/70"
+                      : selectedStatus === "supportive"
+                        ? "text-primary"
+                        : "text-foreground/45",
+                  )}
+                />
+                <span>{statusLabel(selectedStatus)}</span>
+                {!isSelectedAccessible ? (
+                  <span className="inline-flex items-center gap-1 text-muted-foreground/80">
+                    <span aria-hidden>·</span>
+                    <Lock className="h-3 w-3" strokeWidth={1.75} />
+                    <span>недоступен</span>
+                  </span>
+                ) : null}
+              </div>
+            )}
           </div>
 
           <button

@@ -272,3 +272,66 @@ Unresolved issues / risks:
 - Lunar day calculation uses the simplified age-based model (day N = age N-1..N); real lunar day boundaries depend on sunrise at the observer's location and would need the SolarSage sidecar.
 - Synastry uses only the partner's Sun sign (assumes Sun=Moon=Venus=Mars=chosen sign); a full synastry would need both partners' complete birth data and the sidecar.
 - Next round recommendations: (1) add a "planet transit timeline" widget showing upcoming major transits (Saturn return, Jupiter return, etc.) on the Profile or Readings screen; (2) add a calendar toggle between "день" (day-status) and "луна" (moon-phase) views — currently the LunarCalendarStrip is always shown; (3) enrich the checkin flow with a lunar-day-aware mood prompt; (4) add a "совет дня" (tip of the day) push-style notification card based on the lunar day quality; (5) consider adding a natal chart "planetary strength" radar chart visualization on the Readings/Natal screen.
+
+---
+Task ID: 6
+Agent: Z.ai Code (recurring webDevReview cron, round 5)
+Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+
+Work Log:
+- Read previous worklog (Task IDs: 1–5). Baseline: server healthy on port 3000, all 11 routes 200, no console errors. Previous round's recommendations: (1) planet transit timeline, (2) calendar day/moon toggle, (3) lunar-day-aware checkin, (4) совет дня tip card, (5) planetary strength radar chart.
+- QA pass: all 11 routes return 200. agent-browser deep-test on Today (10 sections now), Calendar, Natal (9 sections, 25 SVGs), Profile, Horary, Chat, Checkin — no console errors, no runtime errors, all existing features render and respond correctly. App is stable.
+- **Feature #1 — Planetary Strength radar chart** (`components/readings/natal-preview/planetary-strength-radar.tsx`, ~280 LOC):
+  - New section on the Natal screen (after NatalChartWheel, before CalculationDepth).
+  - SVG radar chart with 10 axes (one per planet: Sun through Pluto), 4 concentric rings (25/50/75/100), and animated filled polygon showing each planet's strength.
+  - Strength computation (0-100) based on traditional essential dignity:
+    - Rulership (+22), exaltation (+16), detriment (−18), fall (−12), triplicity (+8).
+    - House placement: angular 1/4/7/10 (+14), succedent 2/5/8/11 (+6), cadent (+2).
+    - Aspect harmony: soft (trine/sextile) +2 each, hard (square/opposition) −2 each.
+  - Interactive: hover any data point → detail card with planet name, score, sign, house, and breakdown chips ("управитель знака (+22)", "угловой 4 дом (+14)", etc.).
+  - Summary footer: "Сильнейшая" (green) and "Слабейшая" (amber) cards with the top and bottom planets.
+  - Ring labels (25/50/75/100), axis spokes, glow filter on the polygon.
+  - Tested: renders 10 planets, hover shows detail (e.g. Jupiter 96/100 "управитель знака (+22), триплицитет (+8), угловой 10 дом (+14), гармоничные аспекты (+6)"), strongest/weakest cards populate correctly.
+- **Feature #2 — Calendar day/moon view toggle** (`components/calendar/calendar-screen.tsx`):
+  - Added a pill toggle ("Дни" / "Луна") between the month header and the weekday grid, with Framer Motion layoutId animation for the active pill background.
+  - "Дни" view (default): shows the existing day-status grid with mood icons + the LunarCalendarStrip above it.
+  - "Луна" view: replaces the grid with moon-phase emojis (🌑🌒🌓🌔🌕🌖🌗🌘) + lunar day number per day. The LunarCalendarStrip is hidden in moon view (no duplication). Selected-day footer switches to show "🌑 Растущий серп · 33% · 6 лунный день" instead of mood status.
+  - Deterministic per-day: each cell computes its moon phase via computeMoonPhaseForDay and lunar day via getLunarDay.
+  - Tested: toggling to "Луна" shows 60 moon emojis in the grid with lunar day numbers; footer updates to show phase + illumination + lunar day. Toggling back to "Дни" restores the day-status grid + LunarCalendarStrip. No console errors.
+- **Feature #3 — "Совет дня" tip card** (`components/today/day-tip-card.tsx`, ~200 LOC):
+  - New Today screen section placed between DayRecommendations and DayReading.
+  - Generates contextual tips organized by lunar day tag (светлый/нейтральный/напряжённый/тёмный) — 4 tips per tag = 16 base tips.
+  - Phase overrides for new moon (2 tips: "Загадай намерение", "Тихий ритуал") and full moon (2 tips: "Отметь кульминацию", "Прояви чувства").
+  - Tips are actionable and specific — not generic horoscope phrases. Categories: действие/рефлексия/отношения/тело/творчество, each with emoji icon and color.
+  - "Другой совет" cycle button rotates through tips with animated transitions (opacity+y). Counter shows "1 / 4", "2 / 4", etc.
+  - Decorative corner glyph (✦) and category-colored corner glow that transitions when the tip changes.
+  - Lunar day tag badge in the header.
+  - Tested: today (6 лунный день, светлый) shows "Начни важное дело" → cycling shows "Поблагодари", "Создай что-то", "Выйди в люди". Counter updates 1/4 → 2/4.
+- **Styling polish:**
+  - New CSS utilities in `app/globals.css` (Round 6 polish section):
+    - `.gradient-border-soft` — subtle plum gradient border via padding-box/border-box trick.
+    - `.toggle-track` — soft inset-shadow background for pill toggles (light + dark variants).
+    - `.corner-glyph` — decorative star in card corners.
+    - `.surface-soft` — soft gradient surface for secondary cards (light + dark).
+    - `.glow-ring-primary` — primary-colored glow ring for selected/today indicators.
+  - Applied `.gradient-border-soft` to the Planetary Strength radar container.
+  - Applied `.toggle-track` to the calendar view toggle.
+  - Applied `.corner-glyph` (✦) to the DayTipCard.
+  - Enhanced `ComingCard`: added hover bg, icon scale on hover (1.05×), dashed border on "В разработке" badge.
+  - All new animations respect `prefers-reduced-motion`.
+- Lint: all 6 new/modified TS/TSX files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 3 initial errors in day-tip-card.tsx (unused `X` import, unused `dayStatus`/`dominantPlanet` props — made optional and removed from destructuring).
+
+Stage Summary:
+- **Features added (3):** (1) Planetary Strength radar chart on Natal screen (10-axis SVG radar with essential dignity computation, hover-for-detail, strongest/weakest summary), (2) Calendar day/moon view toggle (animated pill toggle switching between day-status grid and moon-phase grid with lunar day numbers), (3) "Совет дня" tip card on Today (16+ lunar-day-tag-based tips with phase overrides, category color-coding, cycle button).
+- **Styling polish:** 5 new CSS utilities (gradient-border-soft, toggle-track, corner-glyph, surface-soft, glow-ring-primary), applied across 3 components. Enhanced ComingCard with hover effects and dashed badge.
+- **Verification:** all 11 routes return 200; agent-browser confirms all new features render and are interactive (radar hover detail, calendar toggle with 60 moon emojis in moon view, tip cycle 1/4→2/4); no console errors. Screenshots: `screenshot-today-v7.png` (10 sections), `screenshot-today-v7-tip.png`, `screenshot-natal-v7-radar.png`, `screenshot-calendar-v7-day.png`, `screenshot-calendar-v7-moon.png`.
+- The Today screen now has 10 sections: Луна сегодня (with lunar day) → Сегодня важно → Карта дня → Энергия дня → Аффирмация дня → Сегодня подходит для → Совет дня → Разбор дня → Почему так → Неделя → В этот день в истории.
+- The Natal screen now has 10 sections: Hero → PersonalHook → HighlightsChips → NatalChartWheel → PlanetaryStrengthRadar → CalculationDepth → SpheresStrip → PlanetsRow → LockedChapters → SalesBullets → CtaButton.
+- The Calendar screen now has a day/moon view toggle with animated transitions.
+
+Unresolved issues / risks:
+- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic, don't block the app.
+- Planetary strength computation uses simplified traditional dignity rules; a real calculation would use the full essential dignity table (terms, faces) from the SolarSage sidecar.
+- Calendar moon view uses date-at-midnight UTC for phase computation; real moon phases depend on the observer's location and timezone.
+- Day tips are a curated static set (16 base + 4 phase overrides); a real backend could generate personalised tips.
+- Next round recommendations: (1) add a "planet transit timeline" widget showing upcoming major transits (Saturn return, Jupiter return) on Profile; (2) enrich the checkin flow with a lunar-day-aware mood prompt; (3) add a "совместимость с celebrity" feature using famous birth charts; (4) add an onboarding enhancement showing the user's natal chart preview; (5) consider adding a "луна без курса" (void-of-course moon) indicator on the Today and Calendar screens.

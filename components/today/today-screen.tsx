@@ -33,6 +33,7 @@ import { DayEnergyMeter, type EnergyItem } from "./day-energy-meter"
 import { MoonPhaseWidget } from "./moon-phase-widget"
 import { DailyAffirmation } from "./daily-affirmation"
 import { DayRecommendations } from "./day-recommendations"
+import { DayTipCard } from "./day-tip-card"
 import { AstroHistoryWidget } from "./astro-history-widget"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
@@ -187,6 +188,13 @@ export function TodayScreen({
           </div>
           <div className="section-rise section-rise-4">
             <DayRecommendations
+              date={selectedDate}
+              dayStatus={dayStatusLabel}
+              dominantPlanet={energyItems[0]?.name}
+            />
+          </div>
+          <div className="section-rise section-rise-5">
+            <DayTipCard
               date={selectedDate}
               dayStatus={dayStatusLabel}
               dominantPlanet={energyItems[0]?.name}

@@ -36,11 +36,11 @@ export function ComingCard({ icon: Icon, title, description, onClick, isLast }: 
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-4 px-4 py-4 text-left transition active:bg-muted/40 ${
+      className={`group flex w-full items-start gap-4 px-4 py-4 text-left transition hover:bg-muted/30 active:bg-muted/40 ${
         isLast ? "" : "border-b border-border/60"
       }`}
     >
-      <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-muted/60 text-foreground/55">
+      <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-muted/60 text-foreground/55 transition-transform duration-300 group-hover:scale-105">
         <Icon className="h-[18px] w-[18px]" strokeWidth={1.6} />
       </div>
 
@@ -49,7 +49,7 @@ export function ComingCard({ icon: Icon, title, description, onClick, isLast }: 
           <h3 className="truncate font-serif text-[16px] leading-tight tracking-tight text-foreground/80">
             {title}
           </h3>
-          <span className="flex-none rounded-full border border-border/70 bg-background px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/85">
+          <span className="flex-none rounded-full border border-dashed border-border/70 bg-background px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/85">
             В разработке
           </span>
         </div>

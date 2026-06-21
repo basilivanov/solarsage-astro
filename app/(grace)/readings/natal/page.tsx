@@ -39,6 +39,7 @@ import { ProfileIncompleteCard } from "@/components/readings/natal-preview/profi
 import { SalesBullets } from "@/components/readings/natal-preview/sales-bullets"
 import { SpheresStrip } from "@/components/readings/natal-preview/spheres-strip"
 import { NatalChartWheel } from "@/components/readings/natal-chart-wheel"
+import { PlanetaryStrengthRadar } from "@/components/readings/natal-preview/planetary-strength-radar"
 import { fetchNatalPreview } from "@/lib/api/natal"
 import type { NatalPreviewRead } from "@/lib/contracts/natal"
 import { DEMO_NATAL_RESPONSE } from "@/lib/demo-data"
@@ -130,6 +131,9 @@ export default function NatalReadingPage() {
               houseSystem={DEMO_NATAL_RESPONSE.houseSystem}
               birthLabel={state.data.meta.birthDate}
             />
+
+            {/* 3c. Planetary strength radar chart */}
+            <PlanetaryStrengthRadar />
 
             {/* 4. Глубина расчёта */}
             <CalculationDepth stats={state.data.calculationStats} />
