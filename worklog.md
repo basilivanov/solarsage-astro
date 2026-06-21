@@ -201,3 +201,74 @@ Unresolved issues / risks:
 - Moon phase and horary chart calculations are simplified astronomical approximations; real ephemeris would need the SolarSage Python sidecar.
 - Astro history events are a static curated list (~25 events); a real backend could provide a larger database.
 - Next round recommendations: (1) add a "Совместимость" (synastry) demo on the Readings screen using two birth charts; (2) add a "Лунный день" (lunar day number) display alongside the moon phase widget — traditional astrology uses 29 lunar days with specific meanings; (3) enrich the calendar with a toggle between "день" (day-status) and "луна" (moon-phase) views; (4) add a planet transit timeline showing upcoming major transits; (5) add a "Сегодня подходит для..." (today is good for...) recommendation card based on day status + moon phase.
+
+---
+Task ID: 5
+Agent: Z.ai Code (recurring webDevReview cron, round 4)
+Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+
+Work Log:
+- Read previous worklog (Task IDs: 1–4). Baseline: server healthy on port 3000, all 11 routes 200, no console errors. Previous round's recommendations: (1) synastry demo, (2) lunar day number, (3) calendar toggle, (4) transit timeline, (5) "today is good for..." recommendation card.
+- QA pass: all 11 routes return 200. agent-browser deep-test on Today/Calendar/Readings/Natal/Horary/Profile/Chat/Checkin — no console errors, no runtime errors, all existing features (Day Chart, Energy Meter, Moon Phase, Natal Chart Wheel, Checkin Statistics, Daily Affirmation, Lunar Calendar, Dark Mode, Horary Chart, Astro History) render and respond correctly. App is stable.
+- **Feature #1 — "Сегодня подходит для..." recommendation card** (`components/today/day-recommendations.tsx`, ~220 LOC):
+  - New Today screen section placed between DailyAffirmation and DayReading.
+  - Generates recommended ("Хорошо") and avoided ("Лучше избегать") activities based on:
+    - Day status (steady/supportive/tense) — each has its own activity pool of 6 good + 2-3 avoid activities with emoji icons.
+    - Moon phase modifiers — new/full/quarter phases add specific activities (e.g. "Загадывать желания" on new moon, "Творческие ритуалы" on full moon, "Расхламление" on last quarter).
+    - Dominant planet — adds a planet-specific rationale line.
+  - Two-column layout (good/avoid) with green check / amber X icons, staggered entrance animations.
+  - Expandable "почему" rationale section explaining the day's energy based on moon phase + dominant planet.
+  - Deterministic selection (date + moon phase seed) so the same day always shows the same advice.
+  - Status header with pulsing dot colored by day status (plum/emerald/amber).
+  - Tested: today (steady) shows "Вести переговоры, Планировать бюджет, Рутинные дела, Чтение и учёба" as good; "Резкие перемены, Импульсивные траты" as avoid; expand reveals moon + planet rationale.
+- **Feature #2 — Lunar day number (1-30)** (`lib/moon.ts` extension + `components/today/moon-phase-widget.tsx` update):
+  - Added `LunarDayInfo` interface and `getLunarDay()` function to `lib/moon.ts` — traditional 30 lunar days, each with: day number, Russian name ("День замысла", "День активности", "День искушения" for full moon, "День пустоты" for day 30, etc.), detailed description, favorable flag, and quality tag (светлый/нейтральный/напряжённый/тёмный).
+  - MoonPhaseWidget now shows:
+    - A small engraved-badge with the lunar day number (1-30) on the moon visual (bottom-right corner).
+    - A "{N} лунный день" pill with tag-colored background in the info row.
+    - The lunar day name in the short description line.
+    - In the expanded detail: "Лунный день" row showing "{N} — {name}", plus a dedicated quality card with the day's description, favorable/осторожный indicator, and tag color coding.
+  - Color coding by tag: светлый=green, нейтральный=blue, напряжённый=amber, тёмный=plum.
+  - Tested: today shows "6 лунный день" badge, "День слова" name, expanded detail shows the full description with "благоприятный · светлый" tag.
+- **Feature #3 — Synastry (совместимость) demo** (`components/readings/synastry-demo.tsx`, ~330 LOC):
+  - Promoted synastry from the "Скоро будет" list to an interactive "Демо-разборы" section on the Readings screen.
+  - Trigger card with Users icon, "демо" badge, and hover glow.
+  - Full-screen overlay modal with:
+    - 12-sign picker grid (4×3) with element-colored zodiac symbols.
+    - Compatibility score (0-100) computed from 7 planet-pair aspects (Sun-Sun, Sun-Moon, Moon-Moon, Venus-Venus, Mars-Mars, Venus-Mars, Mars-Venus) between the user's natal chart (from DEMO_NATAL_RESPONSE) and the partner's chosen sign.
+    - Score label: Сильная (≥80), Хорошая (≥65), Средняя (≥50), Нужны усилия (≥35), Сложное (<35).
+    - Animated score bar with shimmer sweep effect.
+    - Element compatibility bonus (same element +6, complementary fire/air or earth/water +4).
+    - Key aspects list: each pair shows planet symbols (☉☽♀♂), aspect name (Соединение/Секстиль/Квадрат/Трин/Оппозиция), orb, interpretation (e.g. "Мощное притяжение, химия" for Venus-Mars trine), and tone icon (check/sparkles/warning).
+    - Element summary at the bottom ("Огонь × Воздух: Взаимное усиление — искра и ветер").
+  - Deterministic aspect computation using sign longitudes (centered at 15° per sign) with 8° orb.
+  - Tested: default (Весы) shows 73/100 "Хорошая совместимость" with 7 aspects; switching to Рак shows 46/100 with 2 aspects — score and aspect list update reactively.
+- **Styling polish:**
+  - New CSS utilities in `app/globals.css` (Round 5 polish section):
+    - `.gradient-text-cosmic` — animated multi-color gradient text (plum→pink→amber→plum) for hero headings, with 8s pan animation.
+    - `.constellation-divider` — ornamental divider with gradient lines on both sides.
+    - `.card-glow-hover` — soft plum glow + lift on hover for interactive cards.
+    - `.pulse-dot-soft` — gentle 2.4s pulse for "live" status indicators.
+    - `.shimmer-sweep` — light sweep animation for prominent CTAs/score bars (3.5s interval).
+    - `.orbit-ring` — slow 60s orbital spin for decorative chart elements.
+    - `.engraved-badge` — 3D engraved look with inset highlights/shadows (light + dark variants).
+    - All new animations respect `prefers-reduced-motion`.
+  - Applied `.gradient-text-cosmic` to the Readings screen hero heading ("Глубокие разборы").
+  - Applied `.engraved-badge` to the lunar day number badge on the Moon Phase widget.
+  - Applied `.pulse-dot-soft` to the Day Recommendations status indicator (colored by day status).
+  - Applied `.shimmer-sweep` to the Synastry score bar.
+  - Enhanced `AvailableCard`: added `.card-glow-hover`, decorative corner glow on hover, icon scale-up on hover (1.1×), arrow translate-x on hover, and subtle lift (-translate-y-0.5).
+  - Replaced the "synastry" entry in the "coming" list with "themes" (Темы периода) to avoid duplication with the new demo.
+- Lint: all 7 new/modified TS/TSX files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 1 initial error (unused `Sparkles` import in day-recommendations.tsx — replaced with the pulsing-dot indicator).
+
+Stage Summary:
+- **Features added (3):** (1) "Сегодня подходит для..." recommendation card on Today (day-status + moon-phase + planet-based activity recommendations with expandable rationale), (2) Lunar day number (1-30) with traditional Russian names and quality tags integrated into the Moon Phase widget, (3) Synastry demo on Readings (interactive compatibility calculator with 12-sign picker, score, 7 aspect pairs, element summary).
+- **Styling polish:** 7 new CSS utilities (gradient-text-cosmic, constellation-divider, card-glow-hover, pulse-dot-soft, shimmer-sweep, orbit-ring, engraved-badge), applied across 4 components (Readings heading, Moon badge, Recommendations status, Synastry score bar, AvailableCard hover). All reduced-motion aware.
+- **Verification:** all 11 routes return 200; agent-browser confirms all new features render and are interactive (lunar day badge + expand, recommendations good/avoid columns + why expand, synastry modal with dynamic score updates when switching partner sign); dark mode works with all new features; no console errors. Screenshots: `screenshot-today-v6.png` (9 sections), `screenshot-today-v6-moon-expanded.png` (lunar day detail), `screenshot-today-v6-dark.png`, `screenshot-readings-v6.png` (with Demos section), `screenshot-synastry-v6.png` (73/100 Весы), `screenshot-synastry-cancer.png` (46/100 Рак).
+- The Today screen now has 9 sections: Луна сегодня (with lunar day) → Сегодня важно → Карта дня → Энергия дня → Аффирмация дня → Сегодня подходит для → Разбор дня → Почему так → Неделя → В этот день в истории.
+
+Unresolved issues / risks:
+- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic, don't block the app.
+- Lunar day calculation uses the simplified age-based model (day N = age N-1..N); real lunar day boundaries depend on sunrise at the observer's location and would need the SolarSage sidecar.
+- Synastry uses only the partner's Sun sign (assumes Sun=Moon=Venus=Mars=chosen sign); a full synastry would need both partners' complete birth data and the sidecar.
+- Next round recommendations: (1) add a "planet transit timeline" widget showing upcoming major transits (Saturn return, Jupiter return, etc.) on the Profile or Readings screen; (2) add a calendar toggle between "день" (day-status) and "луна" (moon-phase) views — currently the LunarCalendarStrip is always shown; (3) enrich the checkin flow with a lunar-day-aware mood prompt; (4) add a "совет дня" (tip of the day) push-style notification card based on the lunar day quality; (5) consider adding a natal chart "planetary strength" radar chart visualization on the Readings/Natal screen.

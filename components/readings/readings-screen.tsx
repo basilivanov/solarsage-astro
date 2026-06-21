@@ -30,6 +30,7 @@ import type { ComingReading } from "@/lib/readings"
 import { AvailableCard } from "./available-card"
 import { ComingCard } from "./coming-card"
 import { InDevOverlay } from "./in-dev-overlay"
+import { SynastryDemo } from "./synastry-demo"
 
 export function ReadingsScreen() {
   const router = useRouter()
@@ -54,7 +55,7 @@ export function ReadingsScreen() {
         <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Разборы
         </span>
-        <h1 className="font-serif text-[26px] leading-tight tracking-tight text-foreground">
+        <h1 className="gradient-text-cosmic font-serif text-[26px] leading-tight tracking-tight">
           Глубокие разборы
         </h1>
         <p className="text-pretty text-[13.5px] leading-relaxed text-muted-foreground">
@@ -100,6 +101,23 @@ export function ReadingsScreen() {
               />
             ))}
           </div>
+        </section>
+
+        {/* Демо-блоки */}
+        <section aria-labelledby="readings-demos" className="mt-8">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2
+              id="readings-demos"
+              className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
+            >
+              Демо-разборы
+            </h2>
+            <span className="text-[11px] text-muted-foreground/70">1</span>
+          </div>
+          <SynastryDemo />
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/70">
+            Демо-форматы можно попробовать уже сейчас — полные версии откроются позже.
+          </p>
         </section>
 
         {/* Скоро будет */}

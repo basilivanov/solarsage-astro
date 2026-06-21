@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
+import { getLunarDay, type LunarDayInfo } from "@/lib/moon"
 
 /**
  * MoonPhaseWidget — shows the current moon phase, illumination %,
@@ -112,6 +113,7 @@ const ELEMENT_COLORS: Record<string, string> = {
 export function MoonPhaseWidget({ date }: MoonPhaseWidgetProps) {
   const [expanded, setExpanded] = useState(false)
   const moon = useMemo(() => computeMoonPhase(date ?? new Date()), [date])
+  const lunarDay = useMemo(() => getLunarDay(date ?? new Date()), [date])
 
   return (
     <section className="px-6" aria-label="Луна сегодня">
@@ -155,6 +157,13 @@ export function MoonPhaseWidget({ date }: MoonPhaseWidgetProps) {
           {/* Moon visual */}
           <div className="relative flex h-16 w-16 flex-none items-center justify-center">
             <MoonVisual phaseIndex={moon.phaseIndex} illumination={moon.illumination} />
+            {/* Lunar day number badge */}
+            <span
+              className="engraved-badge absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold tabular-nums text-foreground"
+              title={`Лунный день ${lunarDay.day}`}
+            >
+              {lunarDay.day}
+            </span>
           </div>
 
           {/* Phase info */}
@@ -167,7 +176,7 @@ export function MoonPhaseWidget({ date }: MoonPhaseWidgetProps) {
                 {moon.illumination}%
               </span>
             </div>
-            <div className="mt-1 flex items-center gap-2">
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <span
                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
                 style={{
@@ -177,10 +186,19 @@ export function MoonPhaseWidget({ date }: MoonPhaseWidgetProps) {
               >
                 {moon.signSymbol} {moon.signName}
               </span>
-              <span className="text-[10px] text-muted-foreground">{moon.signElement}</span>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                style={{
+                  color: LUNAR_TAG_COLORS[lunarDay.tag],
+                  background: `${LUNAR_TAG_COLORS[lunarDay.tag]}14`,
+                }}
+                title={lunarDay.name}
+              >
+                {lunarDay.day} лунный день
+              </span>
             </div>
             <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-              {moon.phaseShort}
+              {lunarDay.name}. {moon.phaseShort}
             </p>
           </div>
         </div>
@@ -193,6 +211,12 @@ export function MoonPhaseWidget({ date }: MoonPhaseWidgetProps) {
           className="overflow-hidden"
         >
           <div className="mt-3.5 space-y-2 border-t border-border/50 pt-3">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">Лунный день</span>
+              <span className="text-foreground">
+                {lunarDay.day} — {lunarDay.name}
+              </span>
+            </div>
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-muted-foreground">Возраст Луны</span>
               <span className="tabular-nums text-foreground">{moon.age.toFixed(1)} дн.</span>
@@ -209,6 +233,25 @@ export function MoonPhaseWidget({ date }: MoonPhaseWidgetProps) {
                 ~{Math.max(0, Math.round(SYNODIC_MONTH - moon.age - (moon.isWaxing ? moon.age : 0)))} дн.
               </span>
             </div>
+            {/* Lunar day quality */}
+            <div
+              className="rounded-lg px-3 py-2 text-[11px] leading-relaxed"
+              style={{
+                background: `${LUNAR_TAG_COLORS[lunarDay.tag]}10`,
+                color: LUNAR_TAG_COLORS[lunarDay.tag],
+              }}
+            >
+              <div className="mb-0.5 flex items-center gap-1.5">
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: LUNAR_TAG_COLORS[lunarDay.tag] }}
+                />
+                <span className="text-[10px] font-medium uppercase tracking-[0.1em]">
+                  {lunarDay.favorable ? "благоприятный" : "осторожный"} · {lunarDay.tag}
+                </span>
+              </div>
+              <p className="text-foreground/80">{lunarDay.description}</p>
+            </div>
             <div className="rounded-lg bg-secondary/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
               <span className="font-medium text-foreground">{moon.signSymbol} Луна в {moon.signName}.</span>{" "}
               {signInterpretation(moon.signName)}
@@ -222,6 +265,13 @@ export function MoonPhaseWidget({ date }: MoonPhaseWidgetProps) {
       </button>
     </section>
   )
+}
+
+const LUNAR_TAG_COLORS: Record<LunarDayInfo["tag"], string> = {
+  "светлый": "oklch(0.65 0.13 145)",
+  "нейтральный": "oklch(0.62 0.06 230)",
+  "напряжённый": "oklch(0.65 0.15 60)",
+  "тёмный": "oklch(0.45 0.05 295)",
 }
 
 function signInterpretation(sign: string): string {

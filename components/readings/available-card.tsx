@@ -36,13 +36,21 @@ export function AvailableCard({ icon: Icon, title, description, teaser, onClick 
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full flex-col items-start gap-4 rounded-2xl border border-border/70 bg-card p-5 text-left transition active:scale-[0.99]"
+      className="card-glow-hover group relative flex w-full flex-col items-start gap-4 overflow-hidden rounded-2xl border border-border/70 bg-card p-5 text-left transition active:scale-[0.99] hover:-translate-y-0.5"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+      {/* Decorative corner glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        style={{
+          background: "radial-gradient(circle, oklch(0.55 0.08 305 / 0.12), transparent 70%)",
+        }}
+      />
+      <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
         <Icon className="h-[22px] w-[22px]" strokeWidth={1.6} />
       </div>
 
-      <div className="flex w-full flex-col gap-1.5">
+      <div className="relative flex w-full flex-col gap-1.5">
         <h3 className="font-serif text-[20px] leading-tight tracking-tight text-foreground">
           {title}
         </h3>
@@ -54,10 +62,10 @@ export function AvailableCard({ icon: Icon, title, description, teaser, onClick 
         ) : null}
       </div>
 
-      <div className="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-primary">
+      <div className="relative mt-1 flex items-center gap-1.5 text-[13px] font-medium text-primary">
         <span>Открыть</span>
         <ArrowRight
-          className="h-4 w-4 transition-transform group-active:translate-x-0.5"
+          className="h-4 w-4 transition-transform group-hover:translate-x-1 group-active:translate-x-0.5"
           strokeWidth={1.75}
         />
       </div>

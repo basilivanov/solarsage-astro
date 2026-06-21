@@ -1,0 +1,204 @@
+     1→     1→# SolarSage Astro — Worklog / Handover Document
+     2→     2→
+     3→     3→Source repository: https://github.com/basilivanov/solarsage-astro
+     4→     4→Local clone: `/home/z/solarsage-astro`
+     5→     5→Active project: `/home/z/my-project` (Next.js 16, runs on port 3000)
+     6→     6→
+     7→     7→---
+     8→     8→
+     9→     9→## Task ID: 1
+    10→    10→Agent: Z.ai Code (main)
+    11→    11→Task: Clone the solarsage-astro repository, lift the server in the sandbox, verify it runs, and create a recurring web-dev-review cron job.
+    12→    12→
+    13→    13→Work Log:
+    14→    14→- Cloned `https://github.com/basilivanov/solarsage-astro.git` (main branch) to `/home/z/solarsage-astro` using the provided GitHub PAT.
+    15→    15→- Inspected the project: Next.js 16 (App Router) frontend + FastAPI backend (`apps/api`) + SolarSage Python sidecar (`apps/solarsage`) + PostgreSQL + Redis + Telegram WebApp auth. Canonical ports (per `AGENTS.md`): 5433 PG, 8000 API, 3000 frontend, 18091 sidecar.
+    16→    16→- Sandbox constraint: only port 3000 is externally exposed via the Caddy gateway; no Python / Postgres / Redis available. Decided to run the Next.js frontend standalone and serve mock data for the backend.
+    17→    17→- The project ships with a built-in demo mode (`NEXT_PUBLIC_DEMO_MODE=true` → `lib/demo-data.ts` fixtures, `IS_DEMO_MODE` short-circuits most `lib/api/*` and `lib/grace/api/client.ts` fetches). Used this as the primary data source.
+    18→    18→- Migrated the frontend into the active `/home/z/my-project` workspace:
+    19→    19→  - Removed the previous scaffold (`src/`, `prisma/`, `tailwind.config.ts`, etc.).
+    20→    20→  - Copied `app/`, `components/`, `lib/`, `hooks/`, `types/`, `packages/contracts/`, `public/`, `next.config.mjs`, `postcss.config.mjs`, `eslint.config.mjs`, `components.json`, `tsconfig.json`, `next-env.d.ts` from solarsage-astro.
+    21→    21→  - Rewrote `package.json`: kept bun-based scripts, added `@vercel/analytics`, **downgraded `zod` to `^3.24.1`** (solarsage uses the zod 3 API in `lib/contracts/*`; zod 4 has breaking changes), added a no-op `db:push` script (no Prisma in this project).
+    22→    22→  - `bun install` → 209 packages, zod resolved to 3.25.76.
+    23→    23→- Adapted `next.config.mjs`: removed the `rewrites()` proxy to `http://127.0.0.1:8000` (no FastAPI in sandbox) and added `allowedDevOrigins` for `127.0.0.1`, `localhost`, `*.space-z.ai`, `*.preview.chat` (without this, Next.js dev blocks the HMR websocket and fonts with cross-origin 403s → client hydration silently fails → page stuck on the "Авторизация…" spinner).
+    24→    24→- Created `.env.local` with `NEXT_PUBLIC_DEMO_MODE=true`, `ALLOW_DEMO_MODE_IN_PREVIEW=true`, `NEXT_PUBLIC_APP_ENV=dev`, `NEXT_PUBLIC_DEV_AUTH=true`, `NEXT_PUBLIC_GRACE_LOG_SHIPPING=false`.
+    25→    25→- Added a single catch-all mock API route: `app/api/[...path]/route.ts` that serves demo data for every backend endpoint the frontend calls (`/api/profile`, `/api/day/:date`, `/api/calendar`, `/api/horary/*`, `/api/natal/*`, `/api/chat/*`, `/api/geo/*`, `/api/checkin/*`, `/api/payment/*`, `/api/referral/*`, `/api/auth/dev`, `/api/auth/telegram`, `/api/_log`). This covers the code paths that bypass the demo-mode guard (e.g. `useOnboarded` polls `GET /api/profile` directly, the root layout ships `POST /api/_log`).
+    26→    26→- Hit a Turbopack hang: with the default `next dev` (Turbopack), compiling `/day/today` pegged the CPU at ~80% for 5+ minutes and never produced a response. Switched the `dev` script to `next dev -p 3000 --webpack` — `/day/today` now compiles in ~2.1 s. Webpack is more memory-stable for this project's large import graph.
+    27→    27→- Started the server via the canonical `.zscripts/dev.sh` (which `bun install` → `bun run db:push` → `bun run dev &` + `disown`, then a health check). This is the environment's expected mechanism and the process survives across tool calls.
+    28→    28→- Verified end-to-end with `agent-browser`:
+    29→    29→  - `GET /` → 200, client redirects to `/day/<today>`.
+    30→    30→  - `/day/today` renders the full Today screen: date header, trial banner ("14 дней бесплатного доступа"), "Сегодня важно" accordion (3 expandable items), "Разбор дня" reading, "Почему так у меня" section, week strip (ПН–ВС), 5-tab bottom navigation (Сегодня / Календарь / Разборы / Спросить / Профиль).
+    31→    31→  - Accordion expand/collapse works.
+    32→    32→  - `/calendar` renders June 2026 month grid with per-day status badges (ровный / поддерживающий / напряжённый).
+    33→    33→  - `/readings` renders "Глубокие разборы" landing.
+    34→    34→  - `/profile` renders "Гость" / "Telegram mini-app" / "ДОСТУП" section.
+    35→    35→  - Screenshots saved: `screenshot-today.png`, `screenshot-calendar.png`, `screenshot-readings.png`, `screenshot-profile.png`.
+    36→    36→- Known non-blocking dev warning: React hydration-mismatch on first load (the Telegram WebApp bootstrap script mutates the DOM before React hydrates). React auto-recovers; the app renders and is fully interactive. This is expected behaviour when running a Telegram-WebApp outside Telegram and does not need fixing for the demo.
+    37→    37→
+    38→    38→Stage Summary:
+    39→    39→- Server is live on port 3000, demo mode enabled, all main routes (Today / Calendar / Readings / Profile) verified interactive via agent-browser.
+    40→    40→- Architecture decision: Next.js frontend runs standalone; the FastAPI/SolarSage/Postgres backend is replaced by `app/api/[...path]/route.ts` (mock) + `lib/demo-data.ts` (fixtures). The original backend code is preserved in `/home/z/solarsage-astro/apps/` for reference but not executed.
+    41→    41→- Key config gotchas for the next agent: (1) must use `--webpack` not Turbopack, (2) `allowedDevOrigins` must include `127.0.0.1`/`localhost`, (3) `zod` must stay on v3, (4) start the server via `.zscripts/dev.sh` so the process is disowned properly.
+    42→    42→
+    43→    43→Unresolved issues / risks:
+    44→    44→- Hydration-mismatch dev warning (cosmetic, expected outside Telegram).
+    45→    45→- The "Спросить" (chat) and horary flows are mocked with static replies — real LLM/astrology engine not wired.
+    46→    46→- YooKassa payment routes return mock `confirmationUrl: /profile` — no real checkout.
+    47→    47→- Next steps the recurring webDevReview cron should consider: polish the demo experience (e.g. make the chat tab return a richer canned response, surface the natal report demo), tighten the hydration mismatch if feasible by guarding Telegram WebApp calls behind `typeof window` checks, and add more visual detail / micro-interactions per the recurring task mandate.
+    48→    48→
+    49→    49→
+    50→    50→---
+    51→    51→Task ID: 2
+    52→    52→Agent: Z.ai Code (recurring webDevReview cron, round 1)
+    53→    53→Task: Assess project status, QA via agent-browser, fix bugs, add features + styling polish, update worklog.
+    54→    54→
+    55→    55→Work Log:
+    56→    56→- Read previous worklog (Task ID: 1) to understand baseline: server live on port 3000, demo mode, all main routes 200, hydration-mismatch warning present, chat tab gated behind "Скоро" placeholder.
+    57→    57→- QA pass with agent-browser on all 8 page routes + 6 API routes — all return 200, no runtime errors. Identified the single dev-overlay "1 Issue" badge: a React hydration-mismatch on `<html>` (root layout) caused by the external `telegram-web-app.js` script injecting `style="--tg-viewport-height:100vh;--tg-viewport-stable-height:100vh"` after SSR.
+    58→    58→- **Bug fix #1 (hydration):** Added `suppressHydrationWarning` to `<html lang="ru" className="bg-background">` in `app/layout.tsx`. This is the canonical React solution for third-party DOM mutations. Verified: the "1 Issue" badge is gone and no hydration-mismatch warnings remain in console.
+    59→    59→- **Feature #1 — Day Chart visualization** (`components/today/day-chart.tsx`, ~500 LOC): New SVG-based astrological wheel rendered on the Today screen between the "Сегодня важно" accordion and "Разбор дня". Shows:
+    60→    60→  - 12 zodiac slices (♈–♓) with alternating tints on the outer ring.
+    61→    61→  - 12 house cusps as spokes (ASC/1st house highlighted in plum), with house numbers 1–12 in the house ring.
+    62→    62→  - 7 planets (Sun–Saturn) positioned by ecliptic longitude on a planet ring, each as a clickable colored disk with its traditional glyph (☉☽☿♀♂♃♄). Planet colors follow traditional astrological associations.
+    63→    63→  - Aspect lines drawn between planets in close orb: conjunction (plum), opposition (red), trine (green), square (amber), sextile (blue) — with a legend below.
+    64→    64→  - Center disk shows the date label (e.g. "21 июн") + "КАРТА ДНЯ", with a soft glow keyed to the day status color.
+    65→    65→  - Click a planet → animated popover with the planet's glyph, name, sign+house, and a contextual description (e.g. "Venus · ♒ Aquarius · 5 дом — любовь, удовольствие, ценности. Сегодня акцент через 5 дом — творчество и романтика.").
+    66→    66→  - Day-to-day variation: planet longitudes shift based on the selected date (Moon +13°/day, Sun +1°/day, others +0.3°/day) so the chart visually changes when navigating the week strip.
+    67→    67→- **Feature #2 — Day Energy Meter** (`components/today/day-energy-meter.tsx`, ~155 LOC): New section below the Day Chart. Shows:
+    68→    68→  - Status pill ("Ровный день" / "Поддерживающий день" / "Напряжённый день") with a pulsing accent dot and the dominant planet.
+    69→    69→  - Stacked horizontal bar with shimmer animation, segments sized by each planet's strength.
+    70→    70→  - Per-planet rows: glyph chip, name, individual progress bar, numeric strength (0–100). Strengths are parsed from the API `topFlags` summaries (regex on "сила: 0.94"). Sun + Moon are always included as baselines.
+    71→    71→  - Contextual hint paragraph keyed to the day status.
+    72→    72→- **Feature #3 — Chat unlocked + context-aware replies:** Replaced the `LockedFeatureCard` placeholder on `/chat` with the real `ChatScreen` (loads the demo profile via `getProfile()`, coerces API shape → local `Profile` contract). Enhanced `lib/api/chat.ts` demo mode with a `generateDemoReply()` keyword matcher (11 categories: greetings, relationships, career, money, health, evening plans, astrology meta, emotions, decisions, thanks, default) — each returns a rich, astrologically-themed Russian response referencing the day's actual aspects. Tested: sending "Что сегодня важно знать про отношения?" returns the love/relationships response about Venus-Jupiter conjunction.
+    73→    73→- **Mock API enrichment** (`app/api/[...path]/route.ts`):
+    74→    74→  - `GET /api/checkin/yesterday` now returns the full `CheckinResult` shape (`{hadCheckin, checkin:{id, targetDate, mood, accuracy, energy, tags, note, streak, filledAt, createdAt}}`) instead of the old minimal object.
+    75→    75→  - `GET /api/checkin/:date` returns demo checkins for the last 3 days (with varied moods/tags), 404 for older dates — so the checkin screen shows real history.
+    76→    76→  - `GET /api/checkin/metrics` returns aggregate stats (totalCheckins, currentStreak, longestStreak, averageMood, moodDistribution, tagFrequency) for future metrics UI.
+    77→    77→  - `POST /api/checkin` returns a proper `CheckinResult` with `id`, `streak`, `createdAt` so the toast ("Streak: N дней подряд 🔥") works.
+    78→    78→- **Styling polish** (`app/globals.css` + component classes):
+    79→    79→  - New keyframes: `chart-fade-in`, `chart-glow` (center disk pulses), `energy-bar-shimmer`, `status-pulse-soft`, `section-rise`.
+    80→    80→  - `.cosmic-header-bg` — multi-radial-gradient header backdrop (plum/amber/blue tints) on the DateHeader wrapper.
+    81→    81→  - `.stardust-bg` — subtle 4-point star sprinkle pattern (available for day-reading section).
+    82→    82→  - `.planet-chip` hover lift with plum shadow.
+    83→    83→  - `.energy-stacked-bar` shimmer overlay on the energy meter's stacked bar.
+    84→    84→  - `.section-rise-1..5` staggered entrance animations for Today screen sections (accordion → chart → energy → reading → why).
+    85→    85→  - All animations respect `prefers-reduced-motion`.
+    86→    86→- Wired the new components into `components/today/today-screen.tsx`: added `rawData` prop, `deriveChartAndEnergy()` helper that extracts planet strengths from `topFlags` and builds chart data from static natal houses + day-shifted planet longitudes. The day page (`app/(grace)/day/[date]/page.tsx`) now passes `rawData={data}` to `TodayScreen`.
+    87→    87→- Lint: my new/modified files pass cleanly (`npx eslint` on the 6 files → 0 errors, 0 warnings). The remaining 165 project-wide lint errors are all pre-existing in the cloned solarsage-astro codebase (browser globals `Node`/`getComputedStyle`/`module` not configured, escape-character nits) and don't affect the running app.
+    88→    88→
+    89→    89→Stage Summary:
+    90→    90→- **Bugs fixed:** hydration-mismatch warning eliminated via `suppressHydrationWarning` on `<html>`.
+    91→    91→- **Features added:** (1) Day Chart — interactive SVG astrological wheel with planets, houses, aspects, click-to-detail popover; (2) Day Energy Meter — planetary strength visualization with status pill and per-planet bars; (3) Chat tab unlocked with 11-category context-aware demo replies; (4) Checkin mock API now returns full `CheckinResult` shape + 3-day history + metrics.
+    92→    92→- **Styling polish:** cosmic gradient header, stardust pattern, chart glow animation, energy bar shimmer, staggered section entrance animations, planet chip hover effects — all reduced-motion aware.
+    93→    93→- **Verification:** all 14 routes (8 pages + 6 API) return 200; agent-browser confirms Day Chart, Energy Meter, and Chat all render and respond correctly; no dev-overlay issues remain. Screenshots: `screenshot-today-v3.png`, `screenshot-today-final.png`, `screenshot-chat-v2.png`.
+    94→    94→
+    95→    95→Unresolved issues / risks:
+    96→    96→- The 165 pre-existing lint errors in the cloned codebase (browser globals) — cosmetic, don't block the app. A future round could add a `globals` property to the ESLint config to resolve them, but that's a codebase-wide change.
+    97→    97→- Chat replies are keyword-matched, not LLM-generated — good enough for the demo but a real backend (FastAPI + LLM provider) would be needed for production.
+    98→    98→- The Day Chart uses static natal houses (from `DEMO_NATAL_RESPONSE`) with day-shifted planet longitudes as a visual approximation. Real transit calculation would require the SolarSage Python sidecar.
+    99→    99→- Next round recommendations: (1) surface the checkin metrics in a new "Статистика" section on the Profile screen; (2) add a natal report preview using `DEMO_NATAL_PREVIEW` on the Readings screen; (3) consider adding a "Луна сегодня" (Moon today) widget showing the current moon phase + sign; (4) add dark-mode toggle wiring (the `.dark` CSS vars exist but no toggle UI in demo mode).
+   100→   100→
+   101→   101→---
+   102→   102→Task ID: 3
+   103→   103→Agent: Z.ai Code (recurring webDevReview cron, round 2)
+   104→   104→Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+   105→   105→
+   106→   106→Work Log:
+   107→   107→- Read previous worklog (Task IDs: 1, 2). Baseline: server healthy on port 3000, all routes 200, hydration-mismatch fixed in round 1, Day Chart + Energy Meter + Chat + Checkin mock API already in place. Next-round recommendations from round 2: (1) checkin metrics on Profile, (2) natal report preview on Readings, (3) Moon-phase widget, (4) dark-mode toggle.
+   108→   108→- QA pass: all 13 routes (10 pages + 3 API) return 200. agent-browser deep-test on Today/Calendar/Readings/Natal/Horary/Profile/Chat/Checkin — no issues badge, no console errors, no runtime errors. App is stable.
+   109→   109→- **Feature #1 — Moon Phase widget** (`components/today/moon-phase-widget.tsx`, ~380 LOC): New section at the top of the Today screen (after the TrialBanner). Shows:
+   110→   110→  - Astronomically-correct moon phase computed from a known new-moon epoch (2000-01-06 18:14 UTC) and the 29.53059-day synodic month. Identifies 8 phases: Новолуние, Растущий серп, Первая четверть, Растущая Луна, Полнолуние, Убывающая Луна, Последняя четверть, Убывающий серп.
+   111→   111→  - Pure SVG moon visual with radial gradients (lit side + dark side), craters on the full moon, and a glow filter. The terminator is drawn as a clipped path with correct waxing/waning geometry.
+   112→   112→  - Moon zodiac sign (computed by dividing the lunar cycle into 12 segments), with element color coding (Огонь/Земля/Воздух/Вода).
+   113→   113→  - Illumination %, phase name, and a short interpretation.
+   114→   114→  - Expandable detail: moon age (days), cycle phase %, next full moon estimate, and a per-sign interpretation (12 Russian descriptions).
+   115→   115→  - Twinkling star backdrop (6 animated dots with staggered opacity).
+   116→   116→  - Tested: today shows "Растущий серп 33% ♍ Дева Земля"; expand reveals "Возраст Луны 5.7 дн., Фаза цикла Растущая · 19%, Следующее полнолуние ~18 дн." + the Virgo interpretation.
+   117→   117→- **Feature #2 — Natal Chart Wheel** (`components/readings/natal-chart-wheel.tsx`, ~500 LOC): Full natal chart visualization added to the `/readings/natal` page (between HighlightsChips and CalculationDepth). Shows:
+   118→   118→  - All 10 planets (Sun–Pluto) positioned by ecliptic longitude from `DEMO_NATAL_RESPONSE`, with collision-avoidance radial offsets for close planets.
+   119→   119→  - 12 zodiac slices + 12 house cusps (angular houses 1/4/7/10 highlighted in plum with thicker spokes).
+   120→   120→  - Aspect lines between all planet pairs (conjunction/opposition/trine/square/sextile) with a toggle button to show/hide.
+   121→   121→  - Center disk: birth date label, house system (PLACIDUS), planet count.
+   122→   122→  - Click any planet → animated popover with Russian planet name, sign+house, natal description (e.g. "Луна · Лев · 11 дом — Эмоции, подсознание, привычки, мать, дом. В натальной карте — 11 дом (друзья, цели, надежды), знак Лев."), and exact longitude/degrees/minutes.
+   123→   123→  - Aspect summary legend with count (e.g. "Аспекты (12)").
+   124→   124→  - Tested: renders 10 planets, PLACIDUS label, clickable planets (tested Moon → popover with "Эмоции яркие, потребность в признании и тепле").
+   125→   125→- **Feature #3 — Checkin Statistics** (`components/profile/checkin-statistics.tsx`, ~230 LOC): New section on the Profile screen (between HoraryCard and "Мои данные"). Fetches `/api/checkin/metrics?from=<30d ago>&to=<today>`. Shows:
+   126→   126→  - 4 stat cards in a 2×2 grid: Текущая серия (with 🔥 highlight if ≥3), Лучшая серия, Всего оценок, Среднее настроение (/5).
+   127→   127→  - Mood distribution bar chart: 5 animated bars (😞😕😐🙂😄) with counts, colored by mood (red→amber→plum→green→gold).
+   128→   128→  - Top 5 tags with ranked chips, progress bars, and counts.
+   129→   129→  - "За последние 30 дней · данные демо-режима" footer.
+   130→   130→  - Loading skeleton state; hides entirely if totalCheckins === 0.
+   131→   131→  - Tested: shows Текущая серия 3🔥, Лучшая серия 7, Всего 12, Среднее 3.8, mood distribution, and tags (спокойный 6, продуктивный 4, напряжённый 2, творческий 3).
+   132→   132→- **Feature #4 — Daily Affirmation** (`components/today/daily-affirmation.tsx`, ~140 LOC): New section on Today (between Energy Meter and Day Reading). Shows:
+   133→   133→  - Date-seeded affirmation (deterministic — same day always shows the same primary affirmation) keyed to the day status (steady/supportive/tense), 4 affirmations per status = 12 total.
+   134→   134→  - Tone badge (спокойствие/действие/рефлексия) with color-coded icon (Heart/Sparkles/RefreshCw).
+   135→   135→  - "другая" button to cycle through alternative affirmations with animated transitions (slide x).
+   136→   136→  - Decorative corner glow and gradient background keyed to the tone color.
+   137→   137→  - Tested: steady day shows "Я доверяю ритму дня и позволяю событиям развиваться естественно." → cycling shows "Мой внутренний баланс — моя сила. Я остаюсь центрированным."
+   138→   138→- **Styling polish:**
+   139→   139→  - `DateHeader`: added a soft radial moon-glow behind the date number (oklch blue-purple, 18% opacity).
+   140→   140→  - `DayReading`: wrapped in a rounded card with `stardust-bg` (4-point star sprinkle pattern), gradient section dividers (from-transparent-to-border instead of solid).
+   141→   141→  - All new components use consistent design language: `font-serif` for headings/affirmations, `tabular-nums` for numbers, `tracking-[0.14em]` for eyebrow labels, rounded-2xl cards with border-border/50.
+   142→   142→  - Animations: Framer Motion entrance (opacity+y), staggered delays, spring transitions on planet clicks, animated bar growth, shimmer on energy bar — all `prefers-reduced-motion` aware.
+   143→   143→- Lint: all 9 new/modified files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 2 initial errors (unused `isWaxing` prop and `isWaningPhase` var in moon-phase-widget) and 3 warnings (moved `targetDate` into useMemo, moved chart geometry constants to module level in both day-chart and natal-chart-wheel).
+   144→   144→
+   145→   145→Stage Summary:
+   146→   146→- **Features added (4):** Moon Phase widget (astronomical computation + SVG visual), Natal Chart Wheel (full 10-planet natal chart on Readings), Checkin Statistics (4 stat cards + mood distribution + top tags on Profile), Daily Affirmation (12 date-seeded affirmations with cycle button).
+   147→   147→- **Styling polish:** moon-glow on DateHeader, stardust background + gradient dividers on DayReading, consistent design language across all new components, all animations reduced-motion aware.
+   148→   148→- **Verification:** all 13 routes return 200; agent-browser confirms all new sections render and are interactive (moon expand, natal planet click, affirmation cycle, checkin stats display); no dev-overlay issues, no console errors. Screenshots: `screenshot-today-v4.png` (131KB, full Today with all 7 sections), `screenshot-natal-v2.png`, `screenshot-profile-v2.png` (with checkin stats).
+   149→   149→- The Today screen now has a rich vertical flow: DateHeader (moon-glow) → TrialBanner → MoonPhaseWidget → TodayImportantAccordion → DayChart → DayEnergyMeter → DailyAffirmation → DayReading (stardust) → WhyExpanded → WeekStrip.
+   150→   150→
+   151→   151→Unresolved issues / risks:
+   152→   152→- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic, don't block the app.
+   153→   153→- Moon phase calculation is a simplified astronomical approximation (±1 day accuracy); real ephemeris would need the SolarSage Python sidecar.
+   154→   154→- Natal chart uses static `DEMO_NATAL_RESPONSE` data; real natal calculation would need the sidecar.
+   155→   155→- Next round recommendations: (1) add a "Лунный календарь" (lunar calendar) view showing moon phases for the whole month on the Calendar screen; (2) add dark-mode toggle UI (the `.dark` CSS vars exist but no toggle in demo mode); (3) add a "Совместимость" (synastry) demo on the Readings screen using two birth charts; (4) enrich the horary flow with a visual chart for the question moment; (5) add a "Сегодня в истории" (on this day in astrology history) widget.
+   156→   156→
+   157→   157→---
+   158→   158→Task ID: 4
+   159→   159→Agent: Z.ai Code (recurring webDevReview cron, round 3)
+   160→   160→Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+   161→   161→
+   162→   162→Work Log:
+   163→   163→- Read previous worklog (Task IDs: 1–3). Baseline: server healthy, all routes 200, hydration fixed, Day Chart + Energy Meter + Moon Phase + Natal Chart Wheel + Checkin Statistics + Daily Affirmation + Chat all in place. Previous round's recommendations: (1) lunar calendar, (2) dark-mode toggle, (3) synastry demo, (4) horary chart, (5) astro history widget.
+   164→   164→- Discovered the lunar calendar feature (`lib/moon.ts` + `components/calendar/lunar-calendar-strip.tsx`) was built in a previous turn but never recorded in the worklog. Verified it's fully functional on `/calendar` — shows moon phases for all 30 days of June 2026, highlights key lunar events (Полнолуние day 1, Новолуние day 15, Первая четверть day 22), clicking a day shows phase detail popover. Extracted moon computation into shared `lib/moon.ts` (used by both MoonPhaseWidget and LunarCalendarStrip).
+   165→   165→- QA pass: all 11 routes (including `/readings/horary/hq-love-yes-001`) return 200. agent-browser deep-test on Today/Calendar/Profile/Horary — no issues badge, no console errors, no runtime errors.
+   166→   166→- **Feature #1 — Dark-mode toggle** (`components/theme-provider.tsx` + `components/theme-toggle.tsx`):
+   167→   167→  - Created `ThemeProvider` wrapping `next-themes` with `attribute="class"`, `defaultTheme="light"`, `enableSystem={false}` (manual control). Added to `app/layout.tsx` wrapping `{children}`.
+   168→   168→  - Created `ThemeToggle` — animated sun/moon button with Framer Motion scale+rotate transitions. Uses `useTheme()` from next-themes. SSR-safe (renders placeholder until mounted). Accessible aria-labels ("Включить тёмную/светлую тему").
+   169→   169→  - Wired into Profile screen header (top-right, next to "Профиль" label). Persists across navigation via localStorage.
+   170→   170→  - Added dark-mode CSS enhancements in `globals.css`: `.dark .cosmic-header-bg` (richer purple/amber/blue radial gradients for dark), `.dark .stardust-bg` (brighter star points), `.dark .moon-widget-backdrop`. Smooth `theme-transition` class for color transitions.
+   171→   171→  - Tested: clicking toggle switches `<html>` class from `light` to `dark`, label updates, all components re-render with dark palette. Dark mode persists across page navigation.
+   172→   172→- **Feature #2 — Horary chart visualization** (`components/readings/horary/horary-chart.tsx`, ~350 LOC):
+   173→   173→  - New "Карта момента" section on the horary answer view (`/readings/horary/[id]`), rendered after the answer blocks.
+   174→   174→  - Derives a deterministic astrological chart from the question's `createdAt` timestamp: planet longitudes via simplified mean motions from J2000 epoch, house cusps via sidereal time approximation (equal house system).
+   175→   175→  - Shows 10 planets positioned by longitude, 12 zodiac slices, 12 house cusps (ASC/1st house highlighted in plum), aspect lines between involved planets only.
+   176→   176→  - **Involved planets** (from `answer.planets`) are highlighted with filled disks + dashed ring; non-involved planets are outlined. Click any planet → animated popover with Russian name, sign, longitude, and "задействован в ответе" badge for involved planets.
+   177→   177→  - Center disk: "хорар · момент" label. Legend: involved vs background vs ASC.
+   178→   178→  - Tested: renders on `/readings/horary/hq-love-yes-001` with 10 planets, involved planets (Венера, Юпитер, Луна) highlighted, clickable planet popovers work.
+   179→   179→- **Feature #3 — Astro history widget** (`components/today/astro-history-widget.tsx`, ~200 LOC):
+   180→   180→  - New "В этот день в истории" section at the bottom of the Today screen (after WeekStrip).
+   181→   181→  - Static curated database of ~25 notable astronomical/astrological events (discoveries, missions, births, historical events) with Russian descriptions. Covers all 12 months.
+   182→   182→  - Smart matching: first tries exact month+day match; if none, finds events within ±3 days and labels header "Ближайшие дни" instead of "В этот день".
+   183→   183→  - Category color-coding: Открытие (gold), Миссия (plum), Память (green), Событие (blue). Each event shows year, category badge, title, description.
+   184→   184→  - Expandable: if multiple events match, shows "Ещё N события" button to reveal the rest with animated height transition.
+   185→   185→  - Decorative animated star pattern in the corner (category-colored, twinkling).
+   186→   186→  - Tested: June 22 shows "1978 · Открытие Харона — спутника Плутона". Multiple events expand correctly.
+   187→   187→- **Styling polish:**
+   188→   188→  - **TabBar**: active tab now has a glowing dot indicator above the icon (plum, with box-shadow glow), icon scales 1.05× and stroke-width increases when active, hover state on inactive tabs. Added `relative` positioning for the glow indicator.
+   189→   189→  - **Dark mode CSS**: `.dark .cosmic-header-bg` uses deeper purple/amber/blue radial gradients; `.dark .stardust-bg` has brighter star points; `.dark .moon-widget-backdrop` richer night-sky. `.theme-transition` class for smooth 0.3s color transitions.
+   190→   190→  - All new components maintain consistent design language: `font-serif` for headings, `tabular-nums` for numbers, `tracking-[0.14em]` for eyebrow labels, rounded-2xl cards with `border-border/50`.
+   191→   191→- Lint: all 8 new/modified files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 3 initial warnings: moved `involvedSet` into useMemo in horary-chart, wrapped `target` in its own useMemo in astro-history-widget, removed unused `MoonPhaseInfo` import in lunar-calendar-strip. (The pre-existing `no-unused-vars` error in `tab-bar.tsx:52` for the `p` parameter in the `match` function was already in the cloned codebase before my edit.)
+   192→   192→
+   193→   193→Stage Summary:
+   194→   194→- **Features added (3 new + 1 verified from previous turn):** (1) Lunar Calendar strip on Calendar screen (verified from previous turn — moon phases for all 30 days, key event highlights, click-for-detail), (2) Dark-mode toggle with ThemeProvider + animated sun/moon button + dark CSS enhancements, (3) Horary chart visualization on horary answer view (deterministic chart from question timestamp, involved-planet highlighting), (4) Astro history widget on Today (25 curated events, ±3 day fuzzy matching, expandable).
+   195→   195→- **Styling polish:** TabBar active-tab glow indicator + icon scale, dark-mode-specific CSS for cosmic header/stardust/moon backdrop, smooth theme transitions.
+   196→   196→- **Verification:** all 11 routes (including horary detail) return 200; agent-browser confirms all new features render and are interactive (dark toggle, lunar calendar day click, horary planet click, astro history expand); no dev-overlay issues, no console errors. Screenshots: `screenshot-today-v5.png` (132KB, 8 sections), `screenshot-calendar-v2.png`, `screenshot-profile-v3.png`, `screenshot-horary-v2.png`, `screenshot-today-dark.png`, `screenshot-profile-dark.png`.
+   197→   197→- The Today screen now has 8 sections: Луна сегодня → Сегодня важно → Карта дня → Энергия дня → Аффирмация дня → Разбор дня → Почему так → Неделя → В этот день в истории.
+   198→   198→
+   199→   199→Unresolved issues / risks:
+   200→   200→- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic.
+   201→   201→- Moon phase and horary chart calculations are simplified astronomical approximations; real ephemeris would need the SolarSage Python sidecar.
+   202→   202→- Astro history events are a static curated list (~25 events); a real backend could provide a larger database.
+   203→   203→- Next round recommendations: (1) add a "Совместимость" (synastry) demo on the Readings screen using two birth charts; (2) add a "Лунный день" (lunar day number) display alongside the moon phase widget — traditional astrology uses 29 lunar days with specific meanings; (3) enrich the calendar with a toggle between "день" (day-status) and "луна" (moon-phase) views; (4) add a planet transit timeline showing upcoming major transits; (5) add a "Сегодня подходит для..." (today is good for...) recommendation card based on day status + moon phase.
+   204→   204→

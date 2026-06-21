@@ -114,9 +114,9 @@ export function listReadings(): ReadingsCatalog {
         icon: Calendar,
       },
       {
-        key: "synastry",
-        title: "Синастрия",
-        description: "Совместимость с партнёром",
+        key: "themes",
+        title: "Темы периода",
+        description: "Сквозные темы текущего жизненного этапа",
         icon: Users,
       },
     ],

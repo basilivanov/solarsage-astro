@@ -164,3 +164,69 @@ export function getLunarEventName(date: Date): string | null {
     default: return null
   }
 }
+
+/**
+ * Traditional 29 lunar days. Each day has a specific quality and meaning
+ * in Russian astrological tradition. The 30th day is "empty" — it exists
+ * only in some months and is considered unfavorable.
+ *
+ * The lunar day starts at sunrise (in the simplified model we use the
+ * age-based computation: lunar day N spans age (N-1)..N days since the
+ * last new moon, with day 30 being the "leftover" partial day).
+ */
+export interface LunarDayInfo {
+  /** Day number 1..30 (30 is the "empty" day if present) */
+  day: number
+  /** Short Russian name/quality of the day */
+  name: string
+  /** Detailed Russian description of the day's energy */
+  description: string
+  /** Whether the day is considered favorable overall */
+  favorable: boolean
+  /** Element/quality tag for color coding */
+  tag: "светлый" | "нейтральный" | "напряжённый" | "тёмный"
+}
+
+const LUNAR_DAYS: LunarDayInfo[] = [
+  { day: 1, name: "День замысла", description: "Чистый лист. Хорошо закладывать намерения, планировать, медитировать. Не начинать важных дел сразу.", favorable: true, tag: "светлый" },
+  { day: 2, name: "День притока сил", description: "Накопление энергии. Полезны простые рутинные дела, забота о теле, питание.", favorable: true, tag: "светлый" },
+  { day: 3, name: "День активности", description: "Энергия бьёт ключом. Хорошо для спорта, путешествий, начинаний. Избегать агрессии.", favorable: true, tag: "нейтральный" },
+  { day: 4, name: "День выбора", description: "Переломный момент цикла. Решения, принятые сегодня, надолго определят путь.", favorable: true, tag: "нейтральный" },
+  { day: 5, name: "День доверия", description: "Энергия устойчива. Хорошо для работы с информацией, учёбы, наставничества.", favorable: true, tag: "светлый" },
+  { day: 6, name: "День слова", description: "Слова сегодня имеют особую силу. Хорошо для молитв, аффирмаций, обещаний.", favorable: true, tag: "светлый" },
+  { day: 7, name: "День тишины", description: "Лучше молчать и слушать. Избегать ссор, не принимать резких решений.", favorable: false, tag: "напряжённый" },
+  { day: 8, name: "День очищения", description: "Хорошо для очищения пространства, тела, мыслей. Прощение и отпускание.", favorable: true, tag: "светлый" },
+  { day: 9, name: "День очищения", description: "Продолжение очищения. Избегать конфликтов, опасных дел, резких движений.", favorable: false, tag: "напряжённый" },
+  { day: 10, name: "День традиций", description: "Связь с родом и предками. Хорошо для семейных дел, ритуалов, рукоделия.", favorable: true, tag: "светлый" },
+  { day: 11, name: "День силы", description: "Энергия мощная. Хорошо для амбициозных дел, тренировок, презентаций.", favorable: true, tag: "светлый" },
+  { day: 12, name: "День милосердия", description: "Доброта и помощь другим. Пожертвования, благотворительность, забота.", favorable: true, tag: "светлый" },
+  { day: 13, name: "День коллективного", description: "Групповая работа, сообщества, друзья. Избегать одиночных амбиций.", favorable: true, tag: "нейтральный" },
+  { day: 14, name: "День творчества", description: "Прилив вдохновения. Творчество, искусство, новые идеи. Хорошо для свиданий.", favorable: true, tag: "светлый" },
+  { day: 15, name: "День искушения", description: "Полнолуние. Эмоции на пике. Избегать ссор, импульсивных решений, алкоголя.", favorable: false, tag: "напряжённый" },
+  { day: 16, name: "День гармонии", description: "Равновесие после полнолуния. Хорошо для партнёрства, красоты, искусства.", favorable: true, tag: "светлый" },
+  { day: 17, name: "День радости", description: "Энергия радости и изобилия. Праздники, встречи, наслаждение жизнью.", favorable: true, tag: "светлый" },
+  { day: 18, name: "День зеркал", description: "Всё возвращается. Избегать зла, делать добро. Хорошо для рефлексии.", favorable: false, tag: "напряжённый" },
+  { day: 19, name: "День чистоты", description: "Очищение разума и пространства. Избегать ссор и негативных мыслей.", favorable: true, tag: "нейтральный" },
+  { day: 20, name: "День выбора пути", description: "Важные решения. Хорошо для планирования будущего, медитации.", favorable: true, tag: "нейтральный" },
+  { day: 21, name: "День прощения", description: "Очищение кармы. Прощение, отпускание обид. Избегать жадности.", favorable: true, tag: "светлый" },
+  { day: 22, name: "День знаний", description: "Хорошо для учёбы, новых знаний, открытия тайн. Мудрость доступна.", favorable: true, tag: "светлый" },
+  { day: 23, name: "День смирения", description: "Принятие и спокойствие. Избегать амбиций, спешки, насилия.", favorable: false, tag: "напряжённый" },
+  { day: 24, name: "День силы воли", description: "Сильная воля и дисциплина. Хорошо для сложных задач, тренировок.", favorable: true, tag: "нейтральный" },
+  { day: 25, name: "День тишины", description: "Спокойствие и пассивность. Хорошо для отдыха, медитации, сна.", favorable: false, tag: "напряжённый" },
+  { day: 26, name: "День намерений", description: "Планирование, загадывание желаний, работа с намерением.", favorable: true, tag: "нейтральный" },
+  { day: 27, name: "День удачи", description: "Удача и интуиция. Хорошо для новых начинаний, сделок, озарений.", favorable: true, tag: "светлый" },
+  { day: 28, name: "День воды", description: "Энергия воды и эмоций. Хорошо для отдыха у воды, прощения, медитации.", favorable: true, tag: "нейтральный" },
+  { day: 29, name: "День подведения итогов", description: "Закрытие цикла. Прощание с прошлым, благодарность, отдых.", favorable: true, tag: "нейтральный" },
+  { day: 30, name: "День пустоты", description: "Тёмный день. Избегать любых начинаний. Лучше молчать, спать, поститься.", favorable: false, tag: "тёмный" },
+]
+
+/**
+ * Compute the traditional lunar day number (1-30) for a given date.
+ * Uses the age since the last new moon: day N spans age (N-1)..N.
+ * Day 30 only exists when the synodic month is long enough to contain it.
+ */
+export function getLunarDay(date: Date): LunarDayInfo {
+  const m = computeMoonPhase(date)
+  const day = Math.min(30, Math.floor(m.age) + 1)
+  return LUNAR_DAYS[day - 1] ?? LUNAR_DAYS[0]
+}

@@ -369,4 +369,143 @@ html.theme-transition * {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease !important;
 }
 
+/* --- Round 5 styling polish: richer details + micro-interactions --------- */
+
+/* Gradient text for hero headings (uses primary palette) */
+.gradient-text-cosmic {
+  background: linear-gradient(110deg,
+    oklch(0.45 0.10 305) 0%,
+    oklch(0.55 0.12 350) 35%,
+    oklch(0.50 0.10 60) 70%,
+    oklch(0.45 0.10 305) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-pan 8s linear infinite;
+}
+
+@keyframes gradient-pan {
+  to { background-position: 200% center; }
+}
+
+/* Ornamental constellation divider — small star + line on each side */
+.constellation-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.25rem 0;
+}
+.constellation-divider::before,
+.constellation-divider::after {
+  content: "";
+  flex: 1;
+  max-width: 80px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(0.55 0.06 305 / 0.35), transparent);
+}
+.constellation-divider::before {
+  background: linear-gradient(90deg, transparent, oklch(0.55 0.06 305 / 0.35));
+}
+.constellation-divider::after {
+  background: linear-gradient(90deg, oklch(0.55 0.06 305 / 0.35), transparent);
+}
+
+/* Soft glow ring around interactive cards on hover */
+.card-glow-hover {
+  position: relative;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+.card-glow-hover::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+    oklch(0.65 0.10 305 / 0.0),
+    oklch(0.65 0.10 305 / 0.0));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+.card-glow-hover:hover {
+  border-color: oklch(0.55 0.08 305 / 0.4);
+  box-shadow:
+    0 1px 0 oklch(0.55 0.06 305 / 0.08) inset,
+    0 8px 24px -12px oklch(0.45 0.08 305 / 0.22);
+}
+
+/* Pulsing dot for "live" indicators */
+@keyframes pulse-dot-soft {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50%      { transform: scale(1.4); opacity: 0.25; }
+}
+.pulse-dot-soft {
+  animation: pulse-dot-soft 2.4s ease-in-out infinite;
+}
+
+/* Shimmer sweep for prominent CTAs / score bars */
+@keyframes shimmer-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-sweep::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(90deg,
+    transparent,
+    oklch(1 0 0 / 0.18),
+    transparent);
+  animation: shimmer-sweep 3.5s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+/* Orbital ring decoration for chart-like elements */
+@keyframes orbit-spin {
+  to { transform: rotate(360deg); }
+}
+.orbit-ring {
+  animation: orbit-spin 60s linear infinite;
+}
+
+/* Numbered badge with engraved look */
+.engraved-badge {
+  background: linear-gradient(180deg, oklch(0.96 0.01 305), oklch(0.90 0.01 305));
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.6) inset,
+    0 -1px 0 oklch(0.5 0.02 305 / 0.15) inset,
+    0 1px 2px oklch(0.4 0.02 305 / 0.1);
+}
+.dark .engraved-badge {
+  background: linear-gradient(180deg, oklch(0.30 0.02 305), oklch(0.24 0.02 305));
+  box-shadow:
+    0 1px 0 oklch(0.6 0.02 305 / 0.2) inset,
+    0 -1px 0 oklch(0.1 0 0 / 0.4) inset,
+    0 1px 2px oklch(0 0 0 / 0.4);
+}
+
+/* Reduced motion: disable all new round-5 animations */
+@media (prefers-reduced-motion: reduce) {
+  .gradient-text-cosmic,
+  .pulse-dot-soft,
+  .shimmer-sweep::before,
+  .orbit-ring {
+    animation: none !important;
+  }
+  .card-glow-hover:hover {
+    transform: none;
+  }
+}
+
 
