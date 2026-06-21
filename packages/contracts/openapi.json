@@ -1,0 +1,3015 @@
+{
+  "components": {
+    "schemas": {
+      "AccessSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "accessUntil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessuntil"
+          },
+          "referralDaysLeft": {
+            "title": "Referraldaysleft",
+            "type": "integer"
+          },
+          "subscriptionActive": {
+            "title": "Subscriptionactive",
+            "type": "boolean"
+          },
+          "user": {
+            "enum": [
+              "trial",
+              "subscription",
+              "expired",
+              "none"
+            ],
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "referralDaysLeft",
+          "subscriptionActive"
+        ],
+        "title": "AccessSummary",
+        "type": "object"
+      },
+      "ActivationEvidence": {
+        "additionalProperties": false,
+        "description": "Convergence: несколько техник указывают на одну планету/дом/сферу",
+        "properties": {
+          "convergenceLevel": {
+            "enum": [
+              "double",
+              "triple",
+              "quad",
+              "peak"
+            ],
+            "title": "Convergencelevel",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "techniques": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Techniques",
+            "type": "array"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme",
+          "convergenceLevel",
+          "techniques",
+          "summary"
+        ],
+        "title": "ActivationEvidence",
+        "type": "object"
+      },
+      "AllowedRange": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "AllowedRange",
+        "type": "object"
+      },
+      "AuthError": {
+        "additionalProperties": false,
+        "description": "Stable error envelope for 400 and 401 bodies on /api/auth/*.",
+        "properties": {
+          "code": {
+            "enum": [
+              "INVALID_HMAC",
+              "MISSING_FIELDS",
+              "MALFORMED_INITDATA",
+              "INITDATA_EXPIRED",
+              "UNAUTHORIZED"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "AuthError",
+        "type": "object"
+      },
+      "AuthSession": {
+        "additionalProperties": false,
+        "description": "POST /api/auth/telegram — 200 response body.\n\nThe opaque session token itself is NEVER in the body; it travels in the\nHttpOnly Set-Cookie header.",
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "isNewUser": {
+            "title": "Isnewuser",
+            "type": "boolean"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "expiresAt",
+          "isNewUser"
+        ],
+        "title": "AuthSession",
+        "type": "object"
+      },
+      "BirthData": {
+        "additionalProperties": false,
+        "description": "Birth-place + birth-time data. Every field is optional (incremental\nonboarding). Validators enforce per-field ranges and lat/lon co-presence.",
+        "properties": {
+          "birthCity": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthcity"
+          },
+          "birthLat": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthlat"
+          },
+          "birthLon": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthlon"
+          },
+          "birthTime": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthtime"
+          },
+          "birthTz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthtz"
+          },
+          "birthday": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthday"
+          }
+        },
+        "title": "BirthData",
+        "type": "object"
+      },
+      "BulletsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "type": {
+            "const": "bullets",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "BulletsBlock",
+        "type": "object"
+      },
+      "CalendarDay": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentAccessState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "dayNumber": {
+            "title": "Daynumber",
+            "type": "integer"
+          },
+          "dayStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supportive",
+                  "steady",
+                  "tense"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daystatus"
+          },
+          "disabled": {
+            "title": "Disabled",
+            "type": "boolean"
+          },
+          "isCurrentMonth": {
+            "title": "Iscurrentmonth",
+            "type": "boolean"
+          },
+          "isToday": {
+            "title": "Istoday",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "dayNumber",
+          "isCurrentMonth",
+          "isToday",
+          "disabled"
+        ],
+        "title": "CalendarDay",
+        "type": "object"
+      },
+      "CalendarMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "title": "Contractversion",
+            "type": "integer"
+          },
+          "generatedAt": {
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "const": "calendar/v1",
+            "title": "Schemaversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "contractVersion",
+          "generatedAt"
+        ],
+        "title": "CalendarMeta",
+        "type": "object"
+      },
+      "CalendarPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "allowedRange": {
+            "$ref": "#/components/schemas/AllowedRange"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CalendarMeta"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meta",
+          "month",
+          "title",
+          "allowedRange",
+          "days"
+        ],
+        "title": "CalendarPayload",
+        "type": "object"
+      },
+      "CalloutBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "enum": [
+                  "neutral",
+                  "strength",
+                  "risk",
+                  "insight"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          },
+          "type": {
+            "const": "callout",
+            "default": "callout",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CalloutBlock",
+        "type": "object"
+      },
+      "ContentAccessState": {
+        "additionalProperties": false,
+        "properties": {
+          "accessUntil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessuntil"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active_referral_days",
+                  "active_subscription",
+                  "expired_access",
+                  "outside_access_window"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "referralDaysLeft": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referraldaysleft"
+          },
+          "state": {
+            "enum": [
+              "full",
+              "preview",
+              "locked"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "subscriptionActive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscriptionactive"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "ContentAccessState",
+        "type": "object"
+      },
+      "DayQuality": {
+        "additionalProperties": false,
+        "properties": {
+          "frictionScore": {
+            "title": "Frictionscore",
+            "type": "number"
+          },
+          "intensityScore": {
+            "title": "Intensityscore",
+            "type": "number"
+          },
+          "supportScore": {
+            "title": "Supportscore",
+            "type": "number"
+          }
+        },
+        "required": [
+          "supportScore",
+          "frictionScore",
+          "intensityScore"
+        ],
+        "title": "DayQuality",
+        "type": "object"
+      },
+      "DividerBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "divider",
+            "default": "divider",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "DividerBlock",
+        "type": "object"
+      },
+      "HeadingBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "enum": [
+              2,
+              3
+            ],
+            "title": "Level",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "heading",
+            "default": "heading",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "text"
+        ],
+        "title": "HeadingBlock",
+        "type": "object"
+      },
+      "HighlightItem": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "text"
+        ],
+        "title": "HighlightItem",
+        "type": "object"
+      },
+      "HighlightsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HighlightItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "type": {
+            "const": "highlights",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "HighlightsBlock",
+        "type": "object"
+      },
+      "HoraryAnswerRead": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "callout": "#/components/schemas/CalloutBlock",
+                  "divider": "#/components/schemas/DividerBlock",
+                  "heading": "#/components/schemas/HeadingBlock",
+                  "lead": "#/components/schemas/LeadBlock",
+                  "list": "#/components/schemas/ListBlock",
+                  "paragraph": "#/components/schemas/app__schemas__horary__ParagraphBlock",
+                  "pros_cons": "#/components/schemas/ProsConsBlock",
+                  "quote": "#/components/schemas/app__schemas__horary__QuoteBlock",
+                  "testimonies": "#/components/schemas/TestimoniesBlock",
+                  "timing": "#/components/schemas/TimingBlock",
+                  "verdict_card": "#/components/schemas/VerdictCardBlock"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/app__schemas__horary__ParagraphBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/LeadBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/HeadingBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/ListBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/CalloutBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/ProsConsBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DividerBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__horary__QuoteBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/VerdictCardBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/TestimoniesBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/TimingBlock"
+                }
+              ]
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "confidenceExplanation": {
+            "default": "",
+            "title": "Confidenceexplanation",
+            "type": "string"
+          },
+          "confidenceLabel": {
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidencelabel",
+            "type": "string"
+          },
+          "generatedAt": {
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "planets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Planets",
+            "type": "array"
+          },
+          "verdict": {
+            "enum": [
+              "yes",
+              "no",
+              "maybe"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "confidence",
+          "blocks",
+          "planets",
+          "generatedAt"
+        ],
+        "title": "HoraryAnswerRead",
+        "type": "object"
+      },
+      "HoraryQuestionCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "love",
+                  "career",
+                  "money",
+                  "health",
+                  "travel",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "clientLocalTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clientlocaltime"
+          },
+          "clientTimezone": {
+            "maxLength": 100,
+            "title": "Clienttimezone",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Idempotencykey",
+            "type": "string"
+          },
+          "questionLat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionlat"
+          },
+          "questionLocationName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionlocationname"
+          },
+          "questionLon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionlon"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "clientTimezone",
+          "idempotencyKey"
+        ],
+        "title": "HoraryQuestionCreate",
+        "type": "object"
+      },
+      "HoraryQuestionRead": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HoraryAnswerRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "clientLocalTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clientlocaltime"
+          },
+          "clientTimezone": {
+            "title": "Clienttimezone",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "creditRefunded": {
+            "default": false,
+            "title": "Creditrefunded",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "questionLocationName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionlocationname"
+          },
+          "spentCreditSource": {
+            "anyOf": [
+              {
+                "enum": [
+                  "subscription_weekly_free",
+                  "referral_bonus",
+                  "gift",
+                  "paid",
+                  "adjustment"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spentcreditsource"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "processing",
+              "answered",
+              "failed",
+              "refunded",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "category",
+          "status",
+          "clientTimezone",
+          "clientLocalTime",
+          "createdAt"
+        ],
+        "title": "HoraryQuestionRead",
+        "type": "object"
+      },
+      "HoraryQuotaRead": {
+        "additionalProperties": false,
+        "properties": {
+          "bonusCredits": {
+            "title": "Bonuscredits",
+            "type": "integer"
+          },
+          "canPurchase": {
+            "default": true,
+            "title": "Canpurchase",
+            "type": "boolean"
+          },
+          "nextWeeklyFreeAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextweeklyfreeat"
+          },
+          "paidCredits": {
+            "title": "Paidcredits",
+            "type": "integer"
+          },
+          "weeklyFreeAvailable": {
+            "title": "Weeklyfreeavailable",
+            "type": "boolean"
+          },
+          "weeklyFreeExpiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weeklyfreeexpiresat"
+          }
+        },
+        "required": [
+          "weeklyFreeAvailable",
+          "bonusCredits",
+          "paidCredits"
+        ],
+        "title": "HoraryQuotaRead",
+        "type": "object"
+      },
+      "LeadBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "lead",
+            "default": "lead",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "LeadBlock",
+        "type": "object"
+      },
+      "ListBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "enum": [
+                  "bullet",
+                  "check"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "type": {
+            "const": "list",
+            "default": "list",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ListBlock",
+        "type": "object"
+      },
+      "LocationData": {
+        "additionalProperties": false,
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "tz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz"
+          }
+        },
+        "title": "LocationData",
+        "type": "object"
+      },
+      "ManifestationZone": {
+        "additionalProperties": false,
+        "description": "Где это проявится в жизни",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "house": {
+            "title": "House",
+            "type": "integer"
+          },
+          "intensity": {
+            "enum": [
+              "background",
+              "active",
+              "peak"
+            ],
+            "title": "Intensity",
+            "type": "string"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "house",
+          "theme",
+          "intensity",
+          "description"
+        ],
+        "title": "ManifestationZone",
+        "type": "object"
+      },
+      "MicrocopyItem": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "today",
+              "morning",
+              "evening"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "textLong": {
+            "title": "Textlong",
+            "type": "string"
+          },
+          "textShort": {
+            "title": "Textshort",
+            "type": "string"
+          },
+          "tone": {
+            "items": {
+              "enum": [
+                "bold",
+                "supportive",
+                "gentle",
+                "warning"
+              ],
+              "type": "string"
+            },
+            "title": "Tone",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "textShort",
+          "textLong",
+          "tone",
+          "scope"
+        ],
+        "title": "MicrocopyItem",
+        "type": "object"
+      },
+      "NatalMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "calculationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculationversion"
+          },
+          "contractVersion": {
+            "title": "Contractversion",
+            "type": "integer"
+          },
+          "generatedAt": {
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "interpretationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretationversion"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Person"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemaVersion": {
+            "const": "natal/v1",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "contractVersion",
+          "title",
+          "generatedAt"
+        ],
+        "title": "NatalMeta",
+        "type": "object"
+      },
+      "NatalPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/NatalMeta"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/NatalSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "meta",
+          "sections"
+        ],
+        "title": "NatalPayload",
+        "type": "object"
+      },
+      "NatalSection": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "bullets": "#/components/schemas/BulletsBlock",
+                  "highlights": "#/components/schemas/HighlightsBlock",
+                  "paragraph": "#/components/schemas/app__schemas__natal__ParagraphBlock",
+                  "quote": "#/components/schemas/app__schemas__natal__QuoteBlock"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/app__schemas__natal__ParagraphBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/BulletsBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/HighlightsBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__natal__QuoteBlock"
+                }
+              ]
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "iconName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iconname"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "blocks"
+        ],
+        "title": "NatalSection",
+        "type": "object"
+      },
+      "PeriodContext": {
+        "additionalProperties": false,
+        "description": "Почему это важно именно сейчас (фон периода)",
+        "properties": {
+          "activePeriod": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activeperiod"
+          },
+          "longTermTransit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longtermtransit"
+          },
+          "solarReturnEmphasis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Solarreturnemphasis"
+          },
+          "yearRuler": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearruler"
+          },
+          "yearTheme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yeartheme"
+          }
+        },
+        "title": "PeriodContext",
+        "type": "object"
+      },
+      "Person": {
+        "additionalProperties": false,
+        "properties": {
+          "birth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonBirth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "Person",
+        "type": "object"
+      },
+      "PersonBirth": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "PersonBirth",
+        "type": "object"
+      },
+      "ProfileRead": {
+        "additionalProperties": false,
+        "description": "Response shape for GET /api/profile. Privacy: NO tg_user_id, NO tokens.",
+        "properties": {
+          "birth": {
+            "$ref": "#/components/schemas/BirthData"
+          },
+          "birthdayLocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentLocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstname"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "birth"
+        ],
+        "title": "ProfileRead",
+        "type": "object"
+      },
+      "ProfileWrite": {
+        "additionalProperties": false,
+        "description": "Request body for PUT /api/profile.\n\nField-level partial: omitted top-level fields are 'unchanged'. The\n`birth` block is itself a BirthData (also optional fields), so callers\ncan update e.g. only `birthCity` by sending `{\"birth\": {\"birthCity\": \"...\"}}`.",
+        "properties": {
+          "birth": {
+            "$ref": "#/components/schemas/BirthData"
+          },
+          "birthdayLocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentLocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocationData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstname"
+          }
+        },
+        "title": "ProfileWrite",
+        "type": "object"
+      },
+      "ProsConsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "cons": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cons"
+          },
+          "consLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conslabel"
+          },
+          "pros": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pros"
+          },
+          "prosLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proslabel"
+          },
+          "type": {
+            "const": "pros_cons",
+            "default": "pros_cons",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "ProsConsBlock",
+        "type": "object"
+      },
+      "ReadingBody": {
+        "additionalProperties": false,
+        "properties": {
+          "paragraphs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paragraphs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "paragraphs"
+        ],
+        "title": "ReadingBody",
+        "type": "object"
+      },
+      "TelegramAuthRequest": {
+        "additionalProperties": false,
+        "description": "POST /api/auth/telegram — request body.",
+        "properties": {
+          "initData": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Initdata",
+            "type": "string"
+          }
+        },
+        "required": [
+          "initData"
+        ],
+        "title": "TelegramAuthRequest",
+        "type": "object"
+      },
+      "TestimoniesBlock": {
+        "additionalProperties": false,
+        "description": "Свидетельства «за», «против» и нейтральные факторы.",
+        "properties": {
+          "cons": {
+            "items": {
+              "$ref": "#/components/schemas/TestimonyItem"
+            },
+            "title": "Cons",
+            "type": "array"
+          },
+          "consLabel": {
+            "default": "Свидетельства «против»",
+            "title": "Conslabel",
+            "type": "string"
+          },
+          "neutral": {
+            "items": {
+              "$ref": "#/components/schemas/TestimonyItem"
+            },
+            "title": "Neutral",
+            "type": "array"
+          },
+          "neutralLabel": {
+            "default": "Нейтральные факторы",
+            "title": "Neutrallabel",
+            "type": "string"
+          },
+          "pros": {
+            "items": {
+              "$ref": "#/components/schemas/TestimonyItem"
+            },
+            "title": "Pros",
+            "type": "array"
+          },
+          "prosLabel": {
+            "default": "Свидетельства «за»",
+            "title": "Proslabel",
+            "type": "string"
+          },
+          "type": {
+            "const": "testimonies",
+            "default": "testimonies",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "TestimoniesBlock",
+        "type": "object"
+      },
+      "TestimonyItem": {
+        "additionalProperties": false,
+        "properties": {
+          "aspectType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspecttype"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "orb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orb"
+          },
+          "planets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Planets",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "title",
+          "explanation",
+          "weight"
+        ],
+        "title": "TestimonyItem",
+        "type": "object"
+      },
+      "TimingBlock": {
+        "additionalProperties": false,
+        "description": "Блок со сроками реализации.\n\nstatus=\"known\"            — есть выраженный срок, time_range обязателен.\nstatus=\"unclear\"          — карта не даёт точного срока, time_range\n                            опционален (типовая оценка по категории).\nstatus=\"not_enough_evidence\" — срок не выражен и не выводится, time_range=None.",
+        "properties": {
+          "status": {
+            "enum": [
+              "known",
+              "unclear",
+              "not_enough_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "timeRange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timerange"
+          },
+          "type": {
+            "const": "timing",
+            "default": "timing",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "text"
+        ],
+        "title": "TimingBlock",
+        "type": "object"
+      },
+      "TodayAction": {
+        "additionalProperties": false,
+        "properties": {
+          "href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Href"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "TodayAction",
+        "type": "object"
+      },
+      "TodayImportantEvent": {
+        "additionalProperties": false,
+        "description": "Today Important block event.",
+        "properties": {
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endsat"
+          },
+          "exactAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exactat"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "void_moon",
+              "new_moon",
+              "full_moon",
+              "solar_eclipse",
+              "lunar_eclipse",
+              "mercury_retrograde",
+              "mercury_station",
+              "moon_quarter",
+              "sun_ingress",
+              "fast_planet_aspect"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "localTimeLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Localtimelabel"
+          },
+          "priority": {
+            "default": 5,
+            "title": "Priority",
+            "type": "integer"
+          },
+          "startsAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startsat"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "supportive",
+              "caution",
+              "neutral_shift"
+            ],
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "tone",
+          "title",
+          "summary",
+          "timezone"
+        ],
+        "title": "TodayImportantEvent",
+        "type": "object"
+      },
+      "TodayMeta": {
+        "additionalProperties": false,
+        "properties": {
+          "activationLayerVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activationlayerversion"
+          },
+          "cached": {
+            "default": false,
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "calculationVersion": {
+            "title": "Calculationversion",
+            "type": "integer"
+          },
+          "contentVersion": {
+            "title": "Contentversion",
+            "type": "integer"
+          },
+          "contractVersion": {
+            "title": "Contractversion",
+            "type": "integer"
+          },
+          "generatedAt": {
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "normalizationVersion": {
+            "title": "Normalizationversion",
+            "type": "integer"
+          },
+          "promptVersion": {
+            "title": "Promptversion",
+            "type": "integer"
+          },
+          "schemaVersion": {
+            "const": "today/v1",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "scoringCanonVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoringcanonversion"
+          },
+          "scoringVersion": {
+            "title": "Scoringversion",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "contractVersion",
+          "calculationVersion",
+          "normalizationVersion",
+          "scoringVersion",
+          "promptVersion",
+          "contentVersion",
+          "generatedAt"
+        ],
+        "title": "TodayMeta",
+        "type": "object"
+      },
+      "TodayPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "$ref": "#/components/schemas/ContentAccessState"
+          },
+          "actions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TodayAction"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actions"
+          },
+          "activationEvidence": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ActivationEvidence"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activationevidence"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "dayQuality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayQuality"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dayStatus": {
+            "enum": [
+              "supportive",
+              "steady",
+              "tense"
+            ],
+            "title": "Daystatus",
+            "type": "string"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "importantToday": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TodayImportantEvent"
+            },
+            "title": "Importanttoday",
+            "type": "array"
+          },
+          "manifestationZones": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ManifestationZone"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifestationzones"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/TodayMeta"
+          },
+          "microcopy": {
+            "items": {
+              "$ref": "#/components/schemas/MicrocopyItem"
+            },
+            "title": "Microcopy",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "periodContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reading": {
+            "$ref": "#/components/schemas/ReadingBody"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topFlags": {
+            "items": {
+              "$ref": "#/components/schemas/TopFlag"
+            },
+            "title": "Topflags",
+            "type": "array"
+          },
+          "weekStrip": {
+            "items": {
+              "$ref": "#/components/schemas/WeekStripDay"
+            },
+            "title": "Weekstrip",
+            "type": "array"
+          },
+          "whyThisHappens": {
+            "$ref": "#/components/schemas/WhyThisHappens"
+          },
+          "yesterdayEcho": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/YesterdayEcho"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "meta",
+          "date",
+          "title",
+          "headline",
+          "access",
+          "dayStatus",
+          "topFlags",
+          "reading",
+          "whyThisHappens",
+          "weekStrip",
+          "microcopy"
+        ],
+        "title": "TodayPayload",
+        "type": "object"
+      },
+      "TopFlag": {
+        "additionalProperties": false,
+        "properties": {
+          "hint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopFlagHint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "iconName": {
+            "title": "Iconname",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "iconName",
+          "title",
+          "summary"
+        ],
+        "title": "TopFlag",
+        "type": "object"
+      },
+      "TopFlagHint": {
+        "additionalProperties": false,
+        "properties": {
+          "howItFeels": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Howitfeels"
+          },
+          "whyToday": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whytoday"
+          }
+        },
+        "title": "TopFlagHint",
+        "type": "object"
+      },
+      "VerdictCardBlock": {
+        "additionalProperties": false,
+        "description": "Крупная карточка вердикта: да/нет/возможно + label уверенности.\n\nPer W-HORARY-ANSWER-QUALITY-V1 §3.1–3.2 confidence here is shown as\na human label (low/medium/high), NOT as a probability percentage.",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "confidenceExplanation": {
+            "title": "Confidenceexplanation",
+            "type": "string"
+          },
+          "confidenceLabel": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidencelabel",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "type": {
+            "const": "verdict_card",
+            "default": "verdict_card",
+            "title": "Type",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "yes",
+              "no",
+              "maybe"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "confidence",
+          "confidenceLabel",
+          "confidenceExplanation"
+        ],
+        "title": "VerdictCardBlock",
+        "type": "object"
+      },
+      "WeekStripDay": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "dayStatus": {
+            "enum": [
+              "supportive",
+              "steady",
+              "tense"
+            ],
+            "title": "Daystatus",
+            "type": "string"
+          },
+          "isToday": {
+            "title": "Istoday",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "dayStatus",
+          "isToday"
+        ],
+        "title": "WeekStripDay",
+        "type": "object"
+      },
+      "WhyBullets": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "const": "bullets",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "items"
+        ],
+        "title": "WhyBullets",
+        "type": "object"
+      },
+      "WhyParagraph": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "paragraph",
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "WhyParagraph",
+        "type": "object"
+      },
+      "WhySection": {
+        "additionalProperties": false,
+        "properties": {
+          "aspects": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspects"
+          },
+          "blocks": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/WhyParagraph"
+                },
+                {
+                  "$ref": "#/components/schemas/WhyBullets"
+                }
+              ]
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "houses": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Houses"
+          },
+          "iconName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iconname"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "enum": [
+                  "main_theme",
+                  "daily_layer",
+                  "personal_activation",
+                  "period_background",
+                  "amplifiers",
+                  "softeners",
+                  "manifestation_zones",
+                  "astrological_meaning",
+                  "practical_meaning"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer"
+          },
+          "planets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planets"
+          },
+          "techniques": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Techniques"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "blocks"
+        ],
+        "title": "WhySection",
+        "type": "object"
+      },
+      "WhyThisHappens": {
+        "additionalProperties": false,
+        "properties": {
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/WhySection"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sections"
+        ],
+        "title": "WhyThisHappens",
+        "type": "object"
+      },
+      "YesterdayEcho": {
+        "additionalProperties": false,
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "enum": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "closureText": {
+            "title": "Closuretext",
+            "type": "string"
+          },
+          "hadCheckin": {
+            "title": "Hadcheckin",
+            "type": "boolean"
+          },
+          "mood": {
+            "anyOf": [
+              {
+                "enum": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood"
+          },
+          "transition": {
+            "enum": [
+              "released",
+              "intensified",
+              "shifted",
+              "continued"
+            ],
+            "title": "Transition",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hadCheckin",
+          "closureText",
+          "transition"
+        ],
+        "title": "YesterdayEcho",
+        "type": "object"
+      },
+      "app__schemas__horary__ParagraphBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "paragraph",
+            "default": "paragraph",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ParagraphBlock",
+        "type": "object"
+      },
+      "app__schemas__horary__QuoteBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "quote",
+            "default": "quote",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "QuoteBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__ParagraphBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "paragraph",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "ParagraphBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__QuoteBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "quote",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "QuoteBlock",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Generated by scripts/contracts/export_openapi.py. Do not edit by hand. This document is the single source of truth for packages/contracts/*.ts (Option B per W-1.1B).",
+    "title": "Astro API — contract surface",
+    "version": "0.0.0-contracts",
+    "x-generator": "scripts/contracts/export_openapi.py",
+    "x-source-of-truth": "apps/api/app/schemas/* (Pydantic v2)"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/__contracts__/accesssummary": {
+      "get": {
+        "operationId": "contracts__accesssummary___contracts___accesssummary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Accesssummary",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/autherror": {
+      "get": {
+        "operationId": "contracts__autherror___contracts___autherror_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Autherror",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/authsession": {
+      "get": {
+        "operationId": "contracts__authsession___contracts___authsession_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Authsession",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/birthdata": {
+      "get": {
+        "operationId": "contracts__birthdata___contracts___birthdata_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BirthData"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Birthdata",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/calendarpayload": {
+      "get": {
+        "operationId": "contracts__calendarpayload___contracts___calendarpayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Calendarpayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/horaryanswerread": {
+      "get": {
+        "operationId": "contracts__horaryanswerread___contracts___horaryanswerread_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraryAnswerRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Horaryanswerread",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/horaryquestioncreate": {
+      "get": {
+        "operationId": "contracts__horaryquestioncreate___contracts___horaryquestioncreate_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraryQuestionCreate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Horaryquestioncreate",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/horaryquestionread": {
+      "get": {
+        "operationId": "contracts__horaryquestionread___contracts___horaryquestionread_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraryQuestionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Horaryquestionread",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/horaryquotaread": {
+      "get": {
+        "operationId": "contracts__horaryquotaread___contracts___horaryquotaread_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoraryQuotaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Horaryquotaread",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/locationdata": {
+      "get": {
+        "operationId": "contracts__locationdata___contracts___locationdata_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationData"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Locationdata",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/natalpayload": {
+      "get": {
+        "operationId": "contracts__natalpayload___contracts___natalpayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NatalPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Natalpayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/profileread": {
+      "get": {
+        "operationId": "contracts__profileread___contracts___profileread_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Profileread",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/profilewrite": {
+      "get": {
+        "operationId": "contracts__profilewrite___contracts___profilewrite_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileWrite"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Profilewrite",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/telegramauthrequest": {
+      "get": {
+        "operationId": "contracts__telegramauthrequest___contracts___telegramauthrequest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramAuthRequest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Telegramauthrequest",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/todaypayload": {
+      "get": {
+        "operationId": "contracts__todaypayload___contracts___todaypayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Todaypayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    }
+  }
+}
