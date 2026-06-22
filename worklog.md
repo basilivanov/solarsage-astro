@@ -456,3 +456,59 @@ Unresolved issues / risks:
 - Retrograde computation uses simplified mean-motion; real Rx dates would need Swiss Ephemeris (accuracy ±2-3 days for Mercury, ±1 week for Mars).
 - Planetary hour computation uses simplified 6:00/18:00 sunrise/sunset; real computation needs actual sunrise time for the observer's latitude/longitude.
 - Next round recommendations: (1) add a "планетарный час" timeline showing all 12 hours of the current period with their rulers; (2) enrich the checkin flow with a lunar-day-aware mood prompt; (3) add an onboarding enhancement showing the user's natal chart preview; (4) add a "северный узел" (lunar node) transit widget; (5) consider adding an "астрологический свод дня" (day summary) combining all the widgets into a single concise card for quick scanning.
+
+---
+Task ID: 9
+Agent: Z.ai Code (recurring webDevReview cron, round 8)
+Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+
+Work Log:
+- Read previous worklog (Task IDs: 1–8). Baseline: server healthy on port 3000, all 11 routes 200, no console errors. Previous round's recommendations: (1) planetary hour timeline, (2) lunar-day-aware checkin, (3) onboarding natal preview, (4) lunar node transit, (5) day summary card.
+- QA pass: all 11 routes return 200. agent-browser deep-test on Today (13 sections), Calendar (VoC dots in moon view), Profile (transits), Readings (2 demos) — no console errors. App is stable.
+- **Feature #1 — Day Summary card** (`components/today/day-summary-card.tsx`, ~200 LOC):
+  - New Today screen section placed at the very top (after TrialBanner, before MoonPhaseWidget).
+  - Concise "at a glance" overview combining key info from all individual widgets into a single scannable card.
+  - Header: date + day of week + day status (emoji + label colored by status) + dominant planet (symbol + name).
+  - 3-column metrics grid: Moon phase (emoji + illumination % + phase name), Lunar day (number + name + favorable color), Day ruler (symbol + name).
+  - Status badges row: VoC badge (amber "Луна без курса" or emerald "Луна активна"), Retrograde badge (amber count or emerald "Все прямые"), Hour ruler badge (planet-colored with symbol).
+  - Decorative gradient backdrop keyed to day status color + day ruler color.
+  - Tested: shows "22 июн · Понедельник 🌊 Ровный день ☉ Солнце ☽ Луна" + moon 43% + lunar day 7 + VoC badge + hour ruler badge.
+- **Feature #2 — Planetary Hour Timeline** (`lib/planetary-day.ts` extension + `components/today/planetary-hour-timeline.tsx`, ~200 LOC total):
+  - Added `getPlanetaryHourTimeline()` to `lib/planetary-day.ts` — returns all 12 hours of the current period (day or night) with their ruling planets following the Chaldean order.
+  - New Today screen section placed after PlanetaryDayWidget. Shows:
+    - Header with current hour ruler symbol + name + time range + period label (Дневные/Ночные часы).
+    - Always-visible hour strip: 12 colored bars representing each hour, with the current hour highlighted in full color. Hour numbers below each bar.
+    - Hover any hour bar → detail card with planet symbol, name, time range, "сейчас" badge for current, and interpretation.
+    - Expandable full list: all 12 hours with symbol, name, time range, current indicator.
+  - Curated Russian interpretations for each hour ruler (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn).
+  - Tested: shows current hour ruler; expand reveals all 12 hours with interpretations; hover shows detail.
+- **Feature #3 — Lunar Node widget** (`lib/lunar-nodes.ts` + `components/profile/lunar-node-widget.tsx`, ~270 LOC total):
+  - New `lib/lunar-nodes.ts` with `getLunarNodes()` function.
+  - Computes North (Rahu ☊) and South (Ketu ☋) node positions using mean node motion (18.6-year cycle, retrograde). Reference epoch 2024-01-01 at 18° Aries.
+  - Maps node longitudes to natal house positions using DEMO_NATAL_RESPONSE house cusps.
+  - Returns `LunarNodeInfo` with sign, house, interpretations, years until sign change.
+  - Curated Russian interpretations: 12 north node by sign ("Учись быть первопроходцем" for Aries, etc.) + 12 south node by sign ("Прошлый опыт: независимость" for Aries, etc.).
+  - New Profile screen section placed after TransitTimeline. Shows:
+    - Two-column layout: North Node (Rahu, plum-themed) + South Node (Ketu, indigo-themed), each with symbol, sign, house, and short interpretation.
+    - Expandable detail with full interpretations, house context ("рост через сферу этого дома"), years until sign change, and educational note about lunar nodes.
+  - Tested: shows Rahu and Ketu signs + houses; expand reveals full interpretations + sign change timing.
+- **Styling polish:**
+  - Day Summary card: decorative gradient backdrop keyed to day status + day ruler colors. 3-column metrics grid with bordered center column. Status badges with colored dots.
+  - Planetary Hour Timeline: colored hour bars with opacity transitions (0.5 default, 0.9 hover, 1.0 current). Hover detail card with animated entrance. Current hour highlighted with full color + "сейчас" badge.
+  - Lunar Node widget: two-column with plum/indigo color themes. Decorative corner glows. Expandable detail with tinted interpretation cards.
+  - All new components maintain the established design language: `font-serif` for headings, `tabular-nums` for numbers, `tracking-[0.14em]` for eyebrow labels, rounded-2xl cards.
+  - All animations respect `prefers-reduced-motion`.
+- Lint: all 7 new/modified TS/TSX files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 1 initial error in lunar-node-widget.tsx (unused `ChevronDown` import).
+
+Stage Summary:
+- **Features added (3):** (1) Day Summary card at top of Today (combines moon phase, lunar day, day ruler, VoC, retrogrades, hour ruler into one scannable card), (2) Planetary Hour Timeline on Today (12-hour strip with Chaldean order rulers, hover detail, expandable full list), (3) Lunar Node widget on Profile (Rahu/Ketu signs + houses + interpretations, 18.6-year cycle, sign change timing).
+- **Styling polish:** Day Summary gradient backdrop + 3-column metrics + status badges. Hour Timeline colored bars with opacity/hover transitions. Lunar Node two-column plum/indigo themes. Consistent design language across all new components.
+- **Verification:** all 11 routes return 200; agent-browser confirms all new features render and are interactive (DaySummary shows all metrics, HourTimeline expand shows 12 hours, LunarNodes expand shows interpretations + sign change timing); no console errors. Screenshots: `screenshot-today-v10.png` (15 sections), `screenshot-today-v9-summary.png`, `screenshot-profile-v9-nodes.png`.
+- The Today screen now has 15 sections: Сводка дня → Луна сегодня → Луна без курса → Планетарный день → Планетарные часы → Ретрограды → Сегодня важно → Карта дня → Энергия дня → Аффирмация → Сегодня подходит для → Совет дня → Разбор дня → Почему так → Неделя → В этот день в истории.
+- The Profile screen now has 10 sections: AccessCard → ReferralCard → HoraryCard → CheckinStatistics → TransitTimeline → LunarNodeWidget → Мои данные → Сервис → ThemeToggle.
+
+Unresolved issues / risks:
+- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic, don't block the app.
+- Planetary hour timeline uses simplified 6:00/18:00 sunrise/sunset; real computation needs actual sunrise time for the observer's location.
+- Lunar node computation uses mean node; true node oscillates ±1.5° around the mean.
+- Next round recommendations: (1) add a "планетарный час" notification feature (alert when a specific planet's hour starts); (2) enrich the checkin flow with a lunar-day-aware mood prompt; (3) add an onboarding enhancement showing the user's natal chart preview; (4) add a "совместимость по узлам" (node compatibility) feature to the synastry demo; (5) consider adding a "астрологический календарь на месяц" (monthly astrological calendar) combining all the widgets into a month-view with key events.

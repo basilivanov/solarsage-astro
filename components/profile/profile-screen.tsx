@@ -49,6 +49,7 @@ import { ProfileRow } from "./profile-row"
 import { ReferralCard } from "./referral-card"
 import { ServiceRow } from "./service-row"
 import { TransitTimeline } from "./transit-timeline"
+import { LunarNodeWidget } from "./lunar-node-widget"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 type Props = {
@@ -134,6 +135,9 @@ export function ProfileScreen({
 
       {/* Транзиты — ближайшие значимые аспекты */}
       <TransitTimeline />
+
+      {/* Лунные узлы — Раху и Кету */}
+      <LunarNodeWidget />
 
       {/* Мои данные */}
       <section className="px-5 pt-6">

@@ -125,3 +125,73 @@ export function getPlanetaryDay(date: Date): PlanetaryDayInfo {
     hourType,
   }
 }
+
+export interface PlanetaryHourEntry {
+  /** Hour index within the period (0-11) */
+  index: number
+  /** Hour ruler planet (English) */
+  ruler: string
+  /** Hour ruler Russian name */
+  rulerRu: string
+  /** Hour ruler symbol */
+  rulerSymbol: string
+  /** Hour ruler color */
+  rulerColor: string
+  /** Start time as Date */
+  startsAt: Date
+  /** End time as Date */
+  endsAt: Date
+  /** Whether this is the current hour */
+  isCurrent: boolean
+  /** Whether this is a day or night hour */
+  type: "day" | "night"
+}
+
+/**
+ * Compute the full 12-hour timeline for the current planetary period
+ * (day or night). The first hour is ruled by the day ruler; subsequent
+ * hours follow the Chaldean order.
+ */
+export function getPlanetaryHourTimeline(date: Date): PlanetaryHourEntry[] {
+  const dow = date.getDay()
+  const dayRuler = DAY_RULERS[dow]
+  const dayRulerIndex = CHALDEAN_ORDER.indexOf(dayRuler.planet)
+
+  const hours = date.getHours()
+  const hourType: "day" | "night" = hours >= 6 && hours < 18 ? "day" : "night"
+  const currentHourInPeriod = hours >= 6 && hours < 18
+    ? hours - 6
+    : hours >= 18
+      ? hours - 18
+      : hours + 6
+
+  const periodStartHour = hourType === "day" ? 6 : 18
+  const entries: PlanetaryHourEntry[] = []
+
+  for (let i = 0; i < 12; i++) {
+    const rulerIndex = (dayRulerIndex + i) % 7
+    const ruler = CHALDEAN_ORDER[rulerIndex]
+    const meta = PLANET_META[ruler]
+    const startHour = (periodStartHour + i) % 24
+    const endHour = (periodStartHour + i + 1) % 24
+
+    const startDateTime = new Date(date)
+    startDateTime.setHours(startHour, 0, 0, 0)
+    const endDateTime = new Date(date)
+    endDateTime.setHours(endHour, 0, 0, 0)
+
+    entries.push({
+      index: i,
+      ruler,
+      rulerRu: meta.ru,
+      rulerSymbol: meta.symbol,
+      rulerColor: meta.color,
+      startsAt: startDateTime,
+      endsAt: endDateTime,
+      isCurrent: i === currentHourInPeriod,
+      type: hourType,
+    })
+  }
+
+  return entries
+}

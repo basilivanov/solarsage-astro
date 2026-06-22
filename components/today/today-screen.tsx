@@ -34,6 +34,8 @@ import { MoonPhaseWidget } from "./moon-phase-widget"
 import { VoidOfCourseIndicator } from "./void-of-course-indicator"
 import { RetrogradeTracker } from "./retrograde-tracker"
 import { PlanetaryDayWidget } from "./planetary-day-widget"
+import { PlanetaryHourTimeline } from "./planetary-hour-timeline"
+import { DaySummaryCard } from "./day-summary-card"
 import { DailyAffirmation } from "./daily-affirmation"
 import { DayRecommendations } from "./day-recommendations"
 import { DayTipCard } from "./day-tip-card"
@@ -161,6 +163,13 @@ export function TodayScreen({
             <TrialBanner daysLeft={access.daysLeft} />
           ) : null}
           <div className="section-rise section-rise-1">
+            <DaySummaryCard
+              date={selectedDate}
+              dayStatus={dayStatusLabel}
+              dominantPlanet={energyItems[0]?.name}
+            />
+          </div>
+          <div className="section-rise section-rise-1">
             <MoonPhaseWidget date={selectedDate} />
           </div>
           <div className="section-rise section-rise-1">
@@ -168,6 +177,9 @@ export function TodayScreen({
           </div>
           <div className="section-rise section-rise-1">
             <PlanetaryDayWidget date={selectedDate} />
+          </div>
+          <div className="section-rise section-rise-1">
+            <PlanetaryHourTimeline date={selectedDate} />
           </div>
           <div className="section-rise section-rise-1">
             <RetrogradeTracker date={selectedDate} />
