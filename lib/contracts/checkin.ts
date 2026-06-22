@@ -109,6 +109,14 @@ export const ACCURACY_OPTIONS = [
   { value: "hit", emoji: "✅", label: "Да, попал!" },
 ] as const
 
+export const ENERGY_OPTIONS = [
+  { value: 1, emoji: "🪫", label: "Истощён" },
+  { value: 2, emoji: "😴", label: "Уставший" },
+  { value: 3, emoji: "🔋", label: "Норма" },
+  { value: 4, emoji: "⚡", label: "Бодрый" },
+  { value: 5, emoji: "🚀", label: "Энергия бьёт" },
+] as const
+
 export const TAG_OPTIONS: { value: CheckinTag; emoji: string; label: string }[] = [
   { value: "work_win", emoji: "💼", label: "Работа: победа" },
   { value: "work_fail", emoji: "📉", label: "Работа: провал" },

@@ -36,6 +36,7 @@ import { RetrogradeTracker } from "./retrograde-tracker"
 import { PlanetaryDayWidget } from "./planetary-day-widget"
 import { PlanetaryHourTimeline } from "./planetary-hour-timeline"
 import { DaySummaryCard } from "./day-summary-card"
+import { EveningCheckinReminder } from "./evening-checkin-reminder"
 import { DailyAffirmation } from "./daily-affirmation"
 import { DayRecommendations } from "./day-recommendations"
 import { DayTipCard } from "./day-tip-card"
@@ -162,6 +163,7 @@ export function TodayScreen({
           {access.state === "trial" ? (
             <TrialBanner daysLeft={access.daysLeft} />
           ) : null}
+          <EveningCheckinReminder date={selectedDate} />
           <div className="section-rise section-rise-1">
             <DaySummaryCard
               date={selectedDate}

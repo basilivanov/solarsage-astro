@@ -17,7 +17,15 @@ interface CheckinMetrics {
   currentStreak: number
   longestStreak: number
   averageMood: number
+  averageEnergy?: number
   averageAccuracy: number
+  eligible?: number
+  responded?: number
+  completed?: number
+  responseRate?: number
+  completionRate?: number
+  streak7plusPct?: number
+  accuracyDistribution?: Record<string, number>
   moodDistribution: Record<number, number>
   tagFrequency: Record<string, number>
 }
@@ -215,7 +223,7 @@ export function CheckinStatistics() {
 
         {/* Top tags */}
         {sortedTags.length > 0 && (
-          <div>
+          <div className="mb-4">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Частые теги
@@ -257,6 +265,78 @@ export function CheckinStatistics() {
                 </motion.div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Accuracy + rates row */}
+        <div className="mb-4 grid grid-cols-2 gap-2.5">
+          {/* Accuracy distribution */}
+          {metrics.accuracyDistribution && (
+            <div className="rounded-xl border border-border/40 bg-background/60 p-2.5">
+              <div className="text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+                Точность прогноза
+              </div>
+              <div className="mt-1.5 space-y-1">
+                {[
+                  { key: "hit", label: "Попал", emoji: "✅", color: "oklch(0.65 0.13 145)" },
+                  { key: "partial", label: "Частично", emoji: "🤷", color: "oklch(0.70 0.13 85)" },
+                  { key: "miss", label: "Мимо", emoji: "❌", color: "oklch(0.58 0.14 27)" },
+                ].map((a) => {
+                  const count = metrics.accuracyDistribution![a.key] ?? 0
+                  const total = Object.values(metrics.accuracyDistribution!).reduce((s, n) => s + n, 0) || 1
+                  const pct = Math.round((count / total) * 100)
+                  return (
+                    <div key={a.key} className="flex items-center gap-1.5">
+                      <span className="text-[10px]">{a.emoji}</span>
+                      <span className="text-[10px] text-muted-foreground flex-1">{a.label}</span>
+                      <div className="h-1 w-12 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${pct}%`, background: a.color }}
+                        />
+                      </div>
+                      <span className="w-6 text-right text-[9px] tabular-nums text-muted-foreground">{pct}%</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Response rate + energy */}
+          <div className="rounded-xl border border-border/40 bg-background/60 p-2.5">
+            <div className="text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+              Ответляемость
+            </div>
+            <div className="mt-1.5 flex items-baseline gap-1">
+              <span className="font-serif text-[20px] leading-none text-foreground">
+                {metrics.responseRate != null ? Math.round(metrics.responseRate * 100) : "—"}
+              </span>
+              <span className="text-[10px] text-muted-foreground">%</span>
+            </div>
+            <div className="mt-1 text-[9px] text-muted-foreground">
+              {metrics.responded ?? 0} из {metrics.eligible ?? 0} дней
+            </div>
+            {metrics.averageEnergy != null && (
+              <div className="mt-1.5 flex items-center gap-1 text-[9px] text-muted-foreground">
+                <span>🔋 Ср. энергия:</span>
+                <span className="font-medium text-foreground tabular-nums">
+                  {metrics.averageEnergy.toFixed(1)}/5
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Streak 7+ badge */}
+        {metrics.streak7plusPct != null && metrics.streak7plusPct > 0 && (
+          <div className="mb-3 flex items-center justify-between rounded-lg bg-secondary/30 px-3 py-1.5">
+            <span className="text-[10px] text-muted-foreground">
+              🔥 Серий 7+ дней
+            </span>
+            <span className="text-[11px] font-medium tabular-nums text-foreground">
+              {Math.round(metrics.streak7plusPct * 100)}%
+            </span>
           </div>
         )}
 

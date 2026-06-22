@@ -11,6 +11,7 @@
 
 import { useState } from "react"
 import { MoodSelector } from "./mood-selector"
+import { EnergySelector } from "./energy-selector"
 import { AccuracySelector } from "./accuracy-selector"
 import { CheckinTags } from "./checkin-tags"
 import { createCheckin, type CheckinResult } from "@/lib/api/checkin"
@@ -19,12 +20,13 @@ import { useToast } from "@/hooks/use-toast"
 type Props = {
   targetDate: string
   dayStatusHint?: string
-  onComplete?: (result: CheckinResult) => void
+  onComplete?: (_result: CheckinResult) => void
 }
 
 export function CheckinScreen({ targetDate, dayStatusHint, onComplete }: Props) {
-  const [step, setStep] = useState<"mood" | "accuracy" | "details">("mood")
+  const [step, setStep] = useState<"mood" | "energy" | "accuracy" | "details">("mood")
   const [mood, setMood] = useState<number | null>(null)
+  const [energy, setEnergy] = useState<number | null>(null)
   const [accuracy, setAccuracy] = useState<string | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [note, setNote] = useState("")
@@ -34,21 +36,27 @@ export function CheckinScreen({ targetDate, dayStatusHint, onComplete }: Props) 
 
   const handleMoodSelect = (m: number) => {
     setMood(m)
+    setStep("energy")
+  }
+
+  const handleEnergySelect = (en: number) => {
+    setEnergy(en)
     setStep("accuracy")
   }
 
   const handleAccuracySelect = (a: string) => {
     setAccuracy(a)
-    // Submit immediately after accuracy (2-tap minimum)
-    handleSubmit(mood!, a)
+    // Submit immediately after accuracy (3-tap minimum)
+    handleSubmit(mood!, energy ?? null, a)
   }
 
-  const handleSubmit = async (m: number, a: string | null) => {
+  const handleSubmit = async (m: number, en: number | null, a: string | null) => {
     setLoading(true)
     try {
       const result = await createCheckin({
         targetDate,
         mood: m,
+        energy: en,
         accuracy: a,
         tags: tags.length > 0 ? tags : null,
         note: note || null,
@@ -57,9 +65,9 @@ export function CheckinScreen({ targetDate, dayStatusHint, onComplete }: Props) 
         description: `Спасибо! Streak: ${result.streak} ${result.streak >= 7 ? "🔥" : ""} дней подряд`,
       })
       onComplete?.(result)
-    } catch (e) {
+    } catch (err) {
       toast({
-        description: e instanceof Error ? e.message : "Ошибка",
+        description: err instanceof Error ? err.message : "Ошибка",
         variant: "destructive",
       })
     } finally {
@@ -74,15 +82,16 @@ export function CheckinScreen({ targetDate, dayStatusHint, onComplete }: Props) 
       const result = await createCheckin({
         targetDate,
         mood,
+        energy,
         accuracy,
         tags: tags.length > 0 ? tags : null,
         note: note || null,
       })
       toast({ description: `Готово! 🔥 ${result.streak} дней подряд` })
       onComplete?.(result)
-    } catch (e) {
+    } catch (err) {
       toast({
-        description: e instanceof Error ? e.message : "Ошибка",
+        description: err instanceof Error ? err.message : "Ошибка",
         variant: "destructive",
       })
     } finally {
@@ -106,6 +115,28 @@ export function CheckinScreen({ targetDate, dayStatusHint, onComplete }: Props) 
           <div className="mt-6">
             <MoodSelector value={mood} onChange={handleMoodSelect} />
           </div>
+        </div>
+      )}
+
+      {/* Energy step */}
+      {step === "energy" && (
+        <div>
+          <h2 className="font-serif text-[22px] leading-tight text-foreground">
+            🔋 Сколько энергии осталось?
+          </h2>
+          <p className="mt-1.5 text-[13px] text-muted-foreground">
+            Оцени свой ресурс на конец дня
+          </p>
+          <div className="mt-6">
+            <EnergySelector value={energy} onChange={handleEnergySelect} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setStep("accuracy")}
+            className="mt-4 text-[13px] text-muted-foreground underline"
+          >
+            Пропустить ▸
+          </button>
         </div>
       )}
 
