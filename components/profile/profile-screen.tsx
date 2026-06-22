@@ -48,6 +48,7 @@ import { HoraryCard } from "./horary-card"
 import { ProfileRow } from "./profile-row"
 import { ReferralCard } from "./referral-card"
 import { ServiceRow } from "./service-row"
+import { TransitTimeline } from "./transit-timeline"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 type Props = {
@@ -130,6 +131,9 @@ export function ProfileScreen({
 
       {/* Статистика оценок (check-in) */}
       <CheckinStatistics />
+
+      {/* Транзиты — ближайшие значимые аспекты */}
+      <TransitTimeline />
 
       {/* Мои данные */}
       <section className="px-5 pt-6">

@@ -31,6 +31,7 @@ import { AvailableCard } from "./available-card"
 import { ComingCard } from "./coming-card"
 import { InDevOverlay } from "./in-dev-overlay"
 import { SynastryDemo } from "./synastry-demo"
+import { CelebrityCompatibility } from "./celebrity-compatibility"
 
 export function ReadingsScreen() {
   const router = useRouter()
@@ -112,9 +113,12 @@ export function ReadingsScreen() {
             >
               Демо-разборы
             </h2>
-            <span className="text-[11px] text-muted-foreground/70">1</span>
+            <span className="text-[11px] text-muted-foreground/70">2</span>
           </div>
-          <SynastryDemo />
+          <div className="flex flex-col gap-3">
+            <SynastryDemo />
+            <CelebrityCompatibility />
+          </div>
           <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/70">
             Демо-форматы можно попробовать уже сейчас — полные версии откроются позже.
           </p>

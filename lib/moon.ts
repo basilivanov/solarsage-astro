@@ -230,3 +230,76 @@ export function getLunarDay(date: Date): LunarDayInfo {
   const day = Math.min(30, Math.floor(m.age) + 1)
   return LUNAR_DAYS[day - 1] ?? LUNAR_DAYS[0]
 }
+
+// ── Void-of-Course (VoC) Moon ──────────────────────────────────────
+//
+// The Moon is "void of course" when it makes no more major Ptolemaic
+// aspects (conjunction, sextile, square, trine, opposition) to other
+// planets before leaving its current sign. Traditionally considered a
+// time to avoid starting new ventures — things initiated during VoC
+// tend not to come to fruition.
+//
+// This is a simplified model: we compute the Moon's longitude and
+// check whether it's within a "quiet zone" near the end of a sign
+// (last 2° before the sign boundary). Real VoC computation requires
+// full ephemeris aspect tracking.
+
+export interface VoidOfCourseInfo {
+  /** Whether the moon is currently void of course */
+  isVoid: boolean
+  /** When the current VoC period started (or null if not VoC) */
+  startedAt: Date | null
+  /** When the moon enters the next sign (end of VoC) */
+  endsAt: Date | null
+  /** Duration of the current VoC in hours (if VoC) */
+  durationHours: number | null
+  /** Short human-readable note */
+  note: string
+  /** Recommended action during VoC */
+  recommendation: string
+}
+
+/**
+ * Simplified VoC detection: the moon is considered VoC when it's
+ * within the last ~2° of its sign AND the next major aspect is the
+ * sign ingress. We approximate by checking if moon longitude mod 30
+ * is >= 28 (i.e. within 2° of the next sign boundary).
+ *
+ * Real VoC periods last anywhere from a few minutes to ~24 hours and
+ * occur every 2-3 days. This approximation flags ~6-7% of time as VoC.
+ */
+export function getVoidOfCourse(date: Date): VoidOfCourseInfo {
+  const m = computeMoonPhase(date)
+  // Moon's longitude within its current sign (0-30°)
+  const moonLongInSign = (m.age / SYNODIC_MONTH) * 360 % 30
+  // Simplified: VoC when moon is in last 2° of sign
+  const isVoid = moonLongInSign >= 28
+
+  if (!isVoid) {
+    return {
+      isVoid: false,
+      startedAt: null,
+      endsAt: null,
+      durationHours: null,
+      note: "Луна активна",
+      recommendation: "Можно начинать новые дела и принимать решения.",
+    }
+  }
+
+  // Moon moves ~0.55°/hour. Degrees until sign ingress:
+  const degreesToIngress = 30 - moonLongInSign
+  const hoursToIngress = degreesToIngress / 0.55
+  // Approximate VoC start: 2° ago = ~3.6 hours ago
+  const vocDurationHours = 2 / 0.55 + hoursToIngress
+  const startedAt = new Date(date.getTime() - (vocDurationHours - hoursToIngress) * 3600000)
+  const endsAt = new Date(date.getTime() + hoursToIngress * 3600000)
+
+  return {
+    isVoid: true,
+    startedAt,
+    endsAt,
+    durationHours: Math.round(vocDurationHours * 10) / 10,
+    note: "Луна без курса",
+    recommendation: "Не начинай новое. Заверши начатое, отдохни, помедитируй. Решения, принятые сейчас, могут не сбыться.",
+  }
+}

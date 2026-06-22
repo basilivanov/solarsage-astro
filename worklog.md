@@ -335,3 +335,65 @@ Unresolved issues / risks:
 - Calendar moon view uses date-at-midnight UTC for phase computation; real moon phases depend on the observer's location and timezone.
 - Day tips are a curated static set (16 base + 4 phase overrides); a real backend could generate personalised tips.
 - Next round recommendations: (1) add a "planet transit timeline" widget showing upcoming major transits (Saturn return, Jupiter return) on Profile; (2) enrich the checkin flow with a lunar-day-aware mood prompt; (3) add a "совместимость с celebrity" feature using famous birth charts; (4) add an onboarding enhancement showing the user's natal chart preview; (5) consider adding a "луна без курса" (void-of-course moon) indicator on the Today and Calendar screens.
+
+---
+Task ID: 7
+Agent: Z.ai Code (recurring webDevReview cron, round 6)
+Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+
+Work Log:
+- Read previous worklog (Task IDs: 1–6). Baseline: server healthy on port 3000, all 11 routes 200, no console errors. Previous round's recommendations: (1) planet transit timeline, (2) lunar-day-aware checkin, (3) celebrity compatibility, (4) void-of-course moon indicator, (5) onboarding natal preview.
+- QA pass: all 11 routes return 200. agent-browser deep-test on Today (10 sections), Calendar (day/moon toggle), Natal (radar chart), Profile (8 sections), Readings (demos), Horary, Chat, Checkin — no console errors, no runtime errors. App is stable.
+- **Feature #1 — Void-of-Course (VoC) Moon indicator** (`components/today/void-of-course-indicator.tsx`, ~160 LOC + `lib/moon.ts` extension):
+  - Added `getVoidOfCourse()` function to `lib/moon.ts` with `VoidOfCourseInfo` interface (isVoid, startedAt, endsAt, durationHours, note, recommendation).
+  - Simplified VoC detection: moon is considered VoC when within the last ~2° of its sign (before ingress). Computes VoC start/end times and duration using moon's mean motion (0.55°/hour).
+  - New Today screen section placed after MoonPhaseWidget. Shows:
+    - Status icon (amber AlertCircle when VoC, green CheckCircle2 when active).
+    - Status text: "Луна без курса" (VoC) or "Луна активна" (active).
+    - Duration badge when VoC (e.g. "3.6ч").
+    - End time when VoC ("До 14:30") or next VoC start when active ("След. без курса 15 июн в 09:12").
+    - Expandable detail with recommendation, VoC period times, and educational note.
+    - Scans forward up to 7 days to find the next VoC period.
+  - Color-coded: amber-themed when VoC, green-themed when active.
+  - Tested: today shows "Луна активна" with next VoC prediction; expand works.
+- **Feature #2 — Planet Transit Timeline** (`components/profile/transit-timeline.tsx`, ~280 LOC):
+  - New Profile screen section placed after CheckinStatistics.
+  - Computes upcoming major transits over the next 12 months using mean-motion ephemeris from J2000 epoch. Checks transits of Jupiter, Saturn, Uranus, Neptune, Pluto to natal Sun, Moon, Mercury, Venus, Mars.
+  - Filters to significant aspects only: Saturn return/square/opposition, Jupiter conjunction/trine, Uranus square, Neptune trine, Pluto return/square.
+  - Each transit has a curated Russian interpretation (e.g. "Возвращение Сатурна — момент итогов и перестройки на ближайшие 29 лет", "Возвращение Юпитера — новый 12-летний цикл удачи и расширения").
+  - Vertical timeline UI with gradient timeline line, planet-colored dots, aspect name badges (color-coded by tone), date, and truncated interpretation.
+  - Click any transit → expandable detail with full interpretation + transiting/natal planet labels.
+  - Shows up to 8 transits, sorted by date.
+  - Tested: shows 3 transits (Jupiter→Moon conjunction Oct 29 2026, etc.); expand reveals full interpretation + planet labels.
+- **Feature #3 — Celebrity Compatibility demo** (`components/readings/celebrity-compatibility.tsx`, ~310 LOC):
+  - New demo card on the Readings screen "Демо-разборы" section (alongside SynastryDemo).
+  - Curated database of 8 famous people with their Sun/Moon/Venus/Mars signs: Эйнштейн, Фрида Кало, Моцарт, Коко Шанель, Стив Джобс, Мария Кюри, Чарли Чаплин, Агата Кристи.
+  - Horizontal scrollable celebrity picker with emoji, name, role.
+  - Computes synastry score (0-100) using 7 planet-pair aspects (Sun-Sun, Sun-Moon, Moon-Moon, Venus-Venus, Mars-Mars, Venus-Mars, Mars-Venus) + element compatibility bonus.
+  - Score label: Сильное родство (≥80), Хорошая (≥65), Средняя (≥50), Разные ритмы (≥35), Сложное (<35).
+  - Animated score bar with shimmer sweep.
+  - Aspect list with planet symbols, aspect names, orbs, and tone icons (check/sparkles/warning).
+  - Celebrity summary card showing their Sun/Moon signs.
+  - Tested: Моцарт shows 64/100; switching to Коко Шанель shows 81/100 "Сильное родство" — score and aspects update reactively.
+- **Styling polish:**
+  - Enhanced `DateHeader` navigation buttons: added `group` class, hover border-color transition to primary, hover text color to foreground, and chevron translate-x on hover (-0.5 for prev, +0.5 for next).
+  - VoC indicator uses status-colored gradients (amber for VoC, green for active) with matching icon backgrounds.
+  - Transit timeline uses a gradient timeline line (from-border via-border/50 to-transparent) and planet-colored dots with border-2.
+  - Celebrity compatibility trigger card uses `card-glow-hover` class (from round 5) for consistent hover treatment.
+  - All new components maintain the established design language: `font-serif` for headings, `tabular-nums` for numbers, `tracking-[0.14em]` for eyebrow labels, rounded-2xl cards.
+- Lint: all 7 new/modified TS/TSX files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 2 initial errors in transit-timeline.tsx (unused `X` and `Sparkles` imports).
+
+Stage Summary:
+- **Features added (3):** (1) Void-of-Course moon indicator on Today (simplified VoC detection + next-VoC prediction + expandable detail), (2) Planet transit timeline on Profile (12-month forward scan, 8 curated transit types with interpretations, expandable items), (3) Celebrity compatibility demo on Readings (8 famous people, synastry score, aspect list, reactive celebrity switching).
+- **Styling polish:** Enhanced DateHeader nav buttons with hover states and chevron micro-animations. VoC indicator with status-colored gradients. Transit timeline with gradient timeline line. Consistent design language across all new components.
+- **Verification:** all 11 routes return 200; agent-browser confirms all new features render and are interactive (VoC expand, transit expand shows interpretation + planet labels, celebrity modal with reactive score updates Моцарт 64 → Шанель 81); no console errors. Screenshots: `screenshot-today-v8.png` (11 sections), `screenshot-today-v8-voc.png`, `screenshot-profile-v8.png` (with transits), `screenshot-readings-v8.png` (2 demos), `screenshot-celebrity-v8.png`.
+- The Today screen now has 11 sections: Луна сегодня → Луна без курса → Сегодня важно → Карта дня → Энергия дня → Аффирмация → Сегодня подходит для → Совет дня → Разбор дня → Почему так → Неделя → В этот день в истории.
+- The Profile screen now has 9 sections: AccessCard → ReferralCard → HoraryCard → CheckinStatistics → TransitTimeline → Мои данные → Сервис → ThemeToggle.
+- The Readings screen now has 2 demo cards: SynastryDemo + CelebrityCompatibility.
+
+Unresolved issues / risks:
+- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic, don't block the app.
+- VoC detection is a simplified approximation (last 2° of sign); real VoC requires full ephemeris aspect tracking from the SolarSage sidecar.
+- Transit timeline uses mean-motion ephemeris; real transit dates would need Swiss Ephemeris for arc-minute precision.
+- Celebrity birth data is approximate/curated; real synastry would need verified birth times and locations.
+- Next round recommendations: (1) add a "луна без курса" indicator on the Calendar screen (moon view) for VoC days; (2) enrich the checkin flow with a lunar-day-aware mood prompt; (3) add an onboarding enhancement showing the user's natal chart preview; (4) add a "планетарный день" (planetary day ruler) widget based on the day of week; (5) consider adding a "retrograde tracker" showing which planets are currently retrograde.

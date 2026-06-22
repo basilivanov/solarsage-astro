@@ -31,6 +31,7 @@ import { WeekStrip } from "./week-strip"
 import { DayChart, type ChartPlanet, type ChartHouse } from "./day-chart"
 import { DayEnergyMeter, type EnergyItem } from "./day-energy-meter"
 import { MoonPhaseWidget } from "./moon-phase-widget"
+import { VoidOfCourseIndicator } from "./void-of-course-indicator"
 import { DailyAffirmation } from "./daily-affirmation"
 import { DayRecommendations } from "./day-recommendations"
 import { DayTipCard } from "./day-tip-card"
@@ -159,6 +160,9 @@ export function TodayScreen({
           ) : null}
           <div className="section-rise section-rise-1">
             <MoonPhaseWidget date={selectedDate} />
+          </div>
+          <div className="section-rise section-rise-1">
+            <VoidOfCourseIndicator date={selectedDate} />
           </div>
           <div className="section-rise section-rise-1">
             <TodayImportantAccordion items={importantToday || []} />

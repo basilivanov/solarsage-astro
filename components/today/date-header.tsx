@@ -51,9 +51,9 @@ export function DateHeader({
         onClick={onPrev}
         disabled={!canPrev}
         aria-label="Предыдущий день"
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+        className="group flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition hover:border-primary/40 hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
       >
-        <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
+        <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" strokeWidth={1.75} />
       </button>
 
       <div className="relative flex flex-col items-center gap-0.5">
@@ -85,9 +85,9 @@ export function DateHeader({
         onClick={onNext}
         disabled={!canNext}
         aria-label="Следующий день"
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+        className="group flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground/70 transition hover:border-primary/40 hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
       >
-        <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
+        <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
       </button>
     </header>
   )
