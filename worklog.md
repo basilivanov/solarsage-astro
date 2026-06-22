@@ -397,3 +397,62 @@ Unresolved issues / risks:
 - Transit timeline uses mean-motion ephemeris; real transit dates would need Swiss Ephemeris for arc-minute precision.
 - Celebrity birth data is approximate/curated; real synastry would need verified birth times and locations.
 - Next round recommendations: (1) add a "луна без курса" indicator on the Calendar screen (moon view) for VoC days; (2) enrich the checkin flow with a lunar-day-aware mood prompt; (3) add an onboarding enhancement showing the user's natal chart preview; (4) add a "планетарный день" (planetary day ruler) widget based on the day of week; (5) consider adding a "retrograde tracker" showing which planets are currently retrograde.
+
+---
+Task ID: 8
+Agent: Z.ai Code (recurring webDevReview cron, round 7)
+Task: Assess project status, QA via agent-browser, add features + styling polish, update worklog.
+
+Work Log:
+- Read previous worklog (Task IDs: 1–7). Baseline: server healthy on port 3000, all 11 routes 200, no console errors. Previous round's recommendations: (1) VoC on Calendar, (2) lunar-day-aware checkin, (3) planetary day ruler, (4) retrograde tracker, (5) onboarding natal preview.
+- QA pass: all 11 routes return 200. agent-browser deep-test on Today (11 sections), Calendar (day/moon toggle), Natal (radar), Profile (transits), Readings (2 demos) — no console errors. App is stable.
+- **Feature #1 — Retrograde Tracker** (`lib/retrograde.ts` + `components/today/retrograde-tracker.tsx`, ~250 LOC total):
+  - New `lib/retrograde.ts` with `getRetrograde()` and `getAllRetrogrades()` functions.
+  - Simplified retrograde detection for Mercury, Venus, Mars using mean orbital elements: Mercury (cycle ~116 days, Rx ~24 days), Venus (cycle ~576 days, Rx ~42 days), Mars (cycle ~780 days, Rx ~72 days). Reference epoch 2024-01-01 UTC with phase offsets.
+  - Returns `RetrogradeInfo` with isRetrograde, rxStartedAt, rxEndsAt, daysIntoRx, rxDurationDays, nextRXStart, note, interpretation.
+  - Curated Russian interpretations: Mercury Rx ("Пересмотры, задержки в коммуникациях..."), Venus Rx ("Пересмотр отношений и ценностей..."), Mars Rx ("Энергия направлена внутрь...").
+  - New Today screen section placed after VoC indicator. Shows:
+    - Summary header with pulsing amber dot when any planet is Rx, green dot when all direct. "N ретроградных" or "Все прямые".
+    - Planet list: each planet (☿♀♂) with symbol, "R" badge when retrograde, status pill, and timing info ("До 15 июн · 12/24 дн." or "След. R с 22 июл").
+    - Expandable detail per planet with full interpretation and Rx period start/end dates.
+    - Color-coded: amber for Rx, emerald for direct.
+  - Tested: shows 3 planets with expandable detail; clicking reveals interpretation + dates.
+- **Feature #2 — Planetary Day Ruler widget** (`lib/planetary-day.ts` + `components/today/planetary-day-widget.tsx`, ~230 LOC total):
+  - New `lib/planetary-day.ts` with `getPlanetaryDay()` function.
+  - Traditional Western planetary day system: each day of week ruled by one of 7 classical planets (Sun→Sunday, Moon→Monday, Mars→Tuesday, Mercury→Wednesday, Jupiter→Thursday, Venus→Friday, Saturn→Saturday).
+  - Also computes the current planetary HOUR ruler using the Chaldean order (Saturn→Jupiter→Mars→Sun→Venus→Mercury→Moon), with day hours (6:00-18:00) and night hours (18:00-6:00).
+  - Returns `PlanetaryDayInfo` with dayRuler, hourRuler, interpretations, hourType.
+  - Curated Russian interpretations for each day ruler (e.g. "Понедельник — День эмоций, интуиции, дома, семьи") and each hour ruler.
+  - New Today screen section placed after VoC indicator (before RetrogradeTracker). Shows:
+    - Day ruler symbol in a colored circle (border-2 + tinted background).
+    - Day of week + "День {ruler}" heading.
+    - Current hour ruler with symbol + day/night indicator (amber for day, indigo for night).
+    - Expandable detail with day ruler interpretation + hour ruler interpretation in a tinted card.
+  - Tested: today shows the correct day ruler and hour ruler; expand reveals both interpretations.
+- **Feature #3 — VoC indicator on Calendar moon view** (`components/calendar/calendar-screen.tsx` update):
+  - Calendar moon view now shows VoC days with:
+    - A small amber dot (h-1.5 w-1.5) in the top-right corner of VoC day cells.
+    - A subtle amber background tint (`bg-amber-500/5`) on VoC day cells.
+    - "Луна без курса" in the aria-label and title tooltip for VoC days.
+  - Selected-day footer in moon view now shows a "без курса" badge (amber pill with dot) when the selected day is VoC.
+  - Tested: 2 VoC dots visible in June 2026 moon view; clicking a VoC day shows the "без курса" badge in the footer.
+- **Styling polish:**
+  - Retrograde tracker: pulsing amber dot animation when any planet is Rx (scale 1→1.6→1, opacity 0.7→0→0.7). Planet symbols with opacity 0.5 when direct, full opacity when Rx. "R" badge with bounce-in animation.
+  - Planetary day widget: day ruler symbol in colored circle with border-2 + tinted background. Decorative corner glow keyed to day ruler color. Hour type color-coded (amber for day, indigo for night).
+  - Calendar VoC: subtle amber background tint + corner dot, consistent with the amber theme used in the VoC indicator on Today.
+  - All new components maintain the established design language: `font-serif` for headings, `tabular-nums` for numbers, `tracking-[0.14em]` for eyebrow labels, rounded-2xl cards.
+  - All animations respect `prefers-reduced-motion` (via Framer Motion's built-in handling and the existing CSS media query).
+- Lint: all 6 new/modified TS/TSX files pass cleanly (`npx eslint` → 0 errors, 0 warnings). Fixed 1 initial error in planetary-day-widget.tsx (unused `ChevronDown` import).
+
+Stage Summary:
+- **Features added (3):** (1) Retrograde tracker on Today (Mercury/Venus/Mars with simplified mean-motion ephemeris, pulsing Rx indicator, expandable interpretations), (2) Planetary day ruler widget on Today (7 classical planets, day + hour ruler, Chaldean order, day/night hours), (3) VoC indicator on Calendar moon view (amber dots + background tint on VoC days, "без курса" badge in selected-day footer).
+- **Styling polish:** Pulsing amber Rx indicator dot, planet symbol opacity transitions, "R" badge bounce-in animation, planetary day colored circle with corner glow, hour type color coding, calendar VoC amber theme consistency.
+- **Verification:** all 11 routes return 200; agent-browser confirms all new features render and are interactive (retrograde expand shows interpretation + dates, planetary day expand shows day + hour ruler interpretations, calendar moon view shows 2 VoC dots + footer badge on VoC day selection); no console errors. Screenshots: `screenshot-today-v9-full.png` (13 sections), `screenshot-today-v9.png`, `screenshot-calendar-v9-moon-voc.png`.
+- The Today screen now has 13 sections: Луна сегодня → Луна без курса → Планетарный день → Ретрограды → Сегодня важно → Карта дня → Энергия дня → Аффирмация → Сегодня подходит для → Совет дня → Разбор дня → Почему так → Неделя → В этот день в истории.
+- The Calendar moon view now highlights VoC days with amber dots and background tint.
+
+Unresolved issues / risks:
+- The 165 pre-existing lint errors in the cloned codebase (browser globals) remain — cosmetic, don't block the app.
+- Retrograde computation uses simplified mean-motion; real Rx dates would need Swiss Ephemeris (accuracy ±2-3 days for Mercury, ±1 week for Mars).
+- Planetary hour computation uses simplified 6:00/18:00 sunrise/sunset; real computation needs actual sunrise time for the observer's latitude/longitude.
+- Next round recommendations: (1) add a "планетарный час" timeline showing all 12 hours of the current period with their rulers; (2) enrich the checkin flow with a lunar-day-aware mood prompt; (3) add an onboarding enhancement showing the user's natal chart preview; (4) add a "северный узел" (lunar node) transit widget; (5) consider adding an "астрологический свод дня" (day summary) combining all the widgets into a single concise card for quick scanning.

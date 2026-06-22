@@ -33,6 +33,7 @@ import { getMonthStatuses } from "@/lib/api/calendar"
 import { MoodIcon } from "@/components/calendar/mood-icon"
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
 import { computeMoonPhaseForDay, getLunarDay } from "@/lib/moon"
+import { getVoidOfCourse } from "@/lib/moon"
 
 type Props = {
   access: AccessInfo
@@ -197,6 +198,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           // Moon-view data
           const moon = inMonth ? computeMoonPhaseForDay(cursor.getFullYear(), cursor.getMonth(), date.getDate()) : null
           const lunarDay = inMonth ? getLunarDay(date) : null
+          const voc = inMonth ? getVoidOfCourse(date) : null
 
           if (view === "moon") {
             return (
@@ -211,7 +213,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                     onOpenDay?.(date)
                   }}
                   aria-pressed={isSelected}
-                  aria-label={inMonth && moon ? `${formatLong(date)}, ${PHASE_NAMES_SHORT[moon.phaseIndex]}, ${lunarDay?.day} лунный день` : formatLong(date)}
+                  aria-label={inMonth && moon ? `${formatLong(date)}, ${PHASE_NAMES_SHORT[moon.phaseIndex]}, ${lunarDay?.day} лунный день${voc?.isVoid ? ", Луна без курса" : ""}` : formatLong(date)}
                   className={cn(
                     "relative flex h-11 w-11 flex-col items-center justify-center rounded-full transition-all",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
@@ -219,8 +221,9 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                     inMonth && !isSelected && !isToday && "hover:bg-muted/60",
                     isToday && !isSelected && "ring-1 ring-border",
                     isSelected && "bg-primary/10 ring-2 ring-primary",
+                    inMonth && voc?.isVoid && !isSelected && "bg-amber-500/5",
                   )}
-                  title={inMonth && moon ? `${PHASE_NAMES_SHORT[moon.phaseIndex]} · ${lunarDay?.day} лунный день · ${moon.illumination}%` : undefined}
+                  title={inMonth && moon ? `${PHASE_NAMES_SHORT[moon.phaseIndex]} · ${lunarDay?.day} лунный день · ${moon.illumination}%${voc?.isVoid ? " · Луна без курса" : ""}` : undefined}
                 >
                   {inMonth && moon ? (
                     <>
@@ -231,6 +234,13 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                       )}>
                         {lunarDay?.day}
                       </span>
+                      {voc?.isVoid && (
+                        <span
+                          className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-amber-500"
+                          title="Луна без курса"
+                          aria-hidden
+                        />
+                      )}
                     </>
                   ) : (
                     <span className="font-serif text-[12px] leading-none text-muted-foreground/40">
@@ -325,14 +335,24 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
               (() => {
                 const sm = computeMoonPhaseForDay(selected.getFullYear(), selected.getMonth(), selected.getDate())
                 const sld = getLunarDay(selected)
+                const svoc = getVoidOfCourse(selected)
                 return (
-                  <div className="mt-1 flex items-center gap-2 text-[12px] text-muted-foreground">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                     <span className="text-[14px] leading-none">{PHASE_EMOJI[sm.phaseIndex]}</span>
                     <span>{PHASE_NAMES_SHORT[sm.phaseIndex]}</span>
                     <span aria-hidden>·</span>
                     <span className="tabular-nums">{sm.illumination}%</span>
                     <span aria-hidden>·</span>
                     <span>{sld.day} лунный день</span>
+                    {svoc.isVoid && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          без курса
+                        </span>
+                      </>
+                    )}
                   </div>
                 )
               })()
