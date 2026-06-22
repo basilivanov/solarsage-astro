@@ -41,6 +41,23 @@ const STATUS_HINT: Record<string, string> = {
   tense: "Несколько напряжённых аспектов — будь осмотрителен в решениях и общении.",
 }
 
+const PLANET_RU: Record<string, string> = {
+  Sun: "Солнце",
+  Moon: "Луна",
+  Mercury: "Меркурий",
+  Venus: "Венера",
+  Mars: "Марс",
+  Jupiter: "Юпитер",
+  Saturn: "Сатурн",
+  Uranus: "Уран",
+  Neptune: "Нептун",
+  Pluto: "Плутон",
+}
+
+function planetRu(name: string): string {
+  return PLANET_RU[name] ?? name
+}
+
 export function DayEnergyMeter({ items, dayStatus }: DayEnergyMeterProps) {
   const total = items.reduce((s, i) => s + i.strength, 0) || 1
   const accent = STATUS_COLOR[dayStatus]
@@ -79,7 +96,7 @@ export function DayEnergyMeter({ items, dayStatus }: DayEnergyMeterProps) {
           <span className="text-[11px] text-muted-foreground">
             доминирует{" "}
             <span className="font-semibold" style={{ color: topPlanet.color }}>
-              {topPlanet.symbol} {topPlanet.name}
+              {topPlanet.symbol} {planetRu(topPlanet.name)}
             </span>
           </span>
         )}
@@ -104,7 +121,7 @@ export function DayEnergyMeter({ items, dayStatus }: DayEnergyMeterProps) {
               background: item.color,
               minWidth: item.strength > 0.05 ? "4px" : "0",
             }}
-            title={`${item.name}: ${Math.round(item.strength * 100)}%`}
+            title={`${planetRu(item.name)}: ${Math.round(item.strength * 100)}%`}
           />
         ))}
       </div>
@@ -129,7 +146,7 @@ export function DayEnergyMeter({ items, dayStatus }: DayEnergyMeterProps) {
               {item.symbol}
             </span>
             <span className="w-20 flex-none text-xs font-medium text-foreground">
-              {item.name}
+              {planetRu(item.name)}
             </span>
             <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
               <motion.div

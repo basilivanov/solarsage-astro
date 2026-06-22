@@ -74,6 +74,18 @@ const ZODIAC_ORDER = [
   "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 ]
 
+const PLANET_RU: Record<string, string> = {
+  Sun: "Солнце", Moon: "Луна", Mercury: "Меркурий", Venus: "Венера",
+  Mars: "Марс", Jupiter: "Юпитер", Saturn: "Сатурн",
+  Uranus: "Уран", Neptune: "Нептун", Pluto: "Плутон",
+}
+
+const SIGN_RU: Record<string, string> = {
+  Aries: "Овен", Taurus: "Телец", Gemini: "Близнецы", Cancer: "Рак",
+  Leo: "Лев", Virgo: "Дева", Libra: "Весы", Scorpio: "Скорпион",
+  Sagittarius: "Стрелец", Capricorn: "Козерог", Aquarius: "Водолей", Pisces: "Рыбы",
+}
+
 function signSymbol(sign: string): string {
   return SIGN_SYMBOLS[sign] ?? "?"
 }
@@ -425,9 +437,9 @@ export function DayChart({
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium text-foreground">{selected.name}</span>
+                  <span className="text-sm font-medium text-foreground">{PLANET_RU[selected.name] ?? selected.name}</span>
                   <span className="text-[11px] text-muted-foreground">
-                    {selected.signSymbol} {selected.sign} · {selected.house} дом
+                    {selected.signSymbol} {SIGN_RU[selected.sign] ?? selected.sign} · {selected.house} дом
                   </span>
                 </div>
                 <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">

@@ -512,3 +512,96 @@ Unresolved issues / risks:
 - Planetary hour timeline uses simplified 6:00/18:00 sunrise/sunset; real computation needs actual sunrise time for the observer's location.
 - Lunar node computation uses mean node; true node oscillates ±1.5° around the mean.
 - Next round recommendations: (1) add a "планетарный час" notification feature (alert when a specific planet's hour starts); (2) enrich the checkin flow with a lunar-day-aware mood prompt; (3) add an onboarding enhancement showing the user's natal chart preview; (4) add a "совместимость по узлам" (node compatibility) feature to the synastry demo; (5) consider adding a "астрологический календарь на месяц" (monthly astrological calendar) combining all the widgets into a month-view with key events.
+
+---
+Task ID: 10
+Agent: Z.ai Code (исправление английского текста + инструкция по бэкенду)
+Task: Перевести весь интерфейс на русский + объяснить как запустить с реальным бэкендом.
+
+Work Log:
+- Пользователь указал, что названия планет в виджете «Энергия дня» отображаются на английском (Sun, Mars, Mercury, Saturn, Moon). Нашёл проблему в `components/today/day-energy-meter.tsx` — компонент отображал `{item.name}` (English) вместо русского названия.
+- **Исправление #1 — DayEnergyMeter** (`components/today/day-energy-meter.tsx`):
+  - Добавил `PLANET_RU` маппинг (Sun→Солнце, Moon→Луна, Mercury→Меркурий, Venus→Венера, Mars→Марс, Jupiter→Юпитер, Saturn→Сатурн, Uranus→Уран, Neptune→Нептун, Pluto→Плутон).
+  - Добавил функцию `planetRu(name)`.
+  - Заменил все 3 места отображения имени планеты: «доминирует ☉ Солнце» (строка 99), title в stacked bar (строка 124), имя в individual rows (строка 149).
+- **Исправление #2 — DayChart** (`components/today/day-chart.tsx`):
+  - Добавил `PLANET_RU` и `SIGN_RU` маппинги.
+  - В поповере планеты заменил `{selected.name}` → `{PLANET_RU[selected.name]}` и `{selected.sign}` → `{SIGN_RU[selected.sign]}`. Теперь показывает «Солнце» вместо «Sun» и «Козерог» вместо «Capricorn».
+- **Исправление #3 — PlanetaryStrengthRadar** (`components/readings/natal-preview/planetary-strength-radar.tsx`):
+  - Добавил `SIGN_RU` маппинг.
+  - В hover-детали заменил `{strengths[hovered].sign}` → `{SIGN_RU[...]}`. Теперь показывает «Знак: Козерог» вместо «Знак: Capricorn».
+- **Исправление #4 — Spinner** (`components/ui/spinner.tsx`):
+  - `aria-label="Loading"` → `aria-label="Загрузка"` (для скринридеров).
+- Lint: все 4 файла прошли проверку без ошибок.
+- Проверка в браузере: Energy Meter показывает «доминирует ☉ Солнце», «♂ Марс», «☿ Меркурий», «♄ Сатурн», «☽ Луна» — английских названий нет. Radar показывает «♄ Сатурн 88», «☿ Меркурий 32» — тоже всё на русском.
+
+Stage Summary:
+- **Исправлено:** все английские названия планет и знаков в пользовательском интерфейсе переведены на русский (Energy Meter, Day Chart popover, Planetary Strength Radar).
+- **Проверка:** agent-browser подтверждает — `noEnglish: true` для виджета «Энергия дня».
+- **Инструкция по запуску с реальным бэкендом** — описана ниже.
+
+Инструкция по запуску с реальным бэкендом (без моков):
+====================================================================
+
+Архитектура оригинального проекта:
+- Frontend: Next.js 16 (порт 3000)
+- API: FastAPI (порт 8000)
+- SolarSage sidecar: FastAPI (порт 8001) — астрологический движок на pyswissePH
+- Database: PostgreSQL 15/16 (порт 5433)
+- Cache: Redis 7 (порт 6381)
+
+Шаги для запуска с реальным бэкендом:
+
+1. Клонировать оригинальный репозиторий:
+   git clone https://github.com/basilivanov/solarsage-astro.git
+   cd solarsage-astro
+
+2. Запустить инфраструктуру (PostgreSQL + Redis):
+   docker compose -f docker-compose.dev.yml up -d
+   # PostgreSQL на порту 5433, Redis на порту 6381
+
+3. Установить зависимости:
+   # Frontend
+   pnpm install  # (или npm install / bun install)
+   # Backend (Python 3.12)
+   python3 -m venv venv
+   source venv/bin/activate
+   cd apps/api && pip install -e ".[dev]" && cd ../..
+   cd apps/solarsage && pip install -e ".[dev]" && cd ../..
+
+4. Создать .env из .env.example и заполнить:
+   cp .env.example .env
+   # Обязательно: DATABASE_URL, TELEGRAM_BOT_TOKEN, LLM_PROVIDER + ключи
+
+5. Запустить миграции БД:
+   cd apps/api
+   DATABASE_URL=postgresql+asyncpg://astro:astro_dev_password@localhost:5433/astro \
+     alembic upgrade head
+
+6. ВАЖНО: отключить demo mode в .env:
+   NEXT_PUBLIC_DEMO_MODE=false
+   # И удалить (или переименовать) app/api/[...path]/route.ts — mock catch-all
+   # Включить proxy в next.config.mjs:
+   #   async rewrites() {
+   #     return [{ source: '/api/:path*', destination: 'http://localhost:8000/api/:path*' }]
+   #   }
+
+7. Запустить 3 сервиса (в отдельных терминалах):
+   # API (порт 8000)
+   cd apps/api && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   # SolarSage sidecar (порт 8001)
+   cd apps/solarsage && uvicorn solarsage.app:app --host 0.0.0.0 --port 8001 --reload
+   # Frontend (порт 3000)
+   pnpm dev
+
+8. Для dev-авторизации без Telegram:
+   DEV_MODE=true  →  /api/auth/dev создаст сессию без HMAC
+
+9. Проверка:
+   curl http://localhost:8000/api/health
+   curl http://localhost:8001/v1/health
+   curl http://localhost:3000
+
+Ключевое: NEXT_PUBLIC_DEMO_MODE=false включает реальные API-вызовы вместо
+lib/demo-data.ts фикстур. Mock catch-all (app/api/[...path]/route.ts) нужно
+удалить, а в next.config.mjs добавить rewrite proxy на FastAPI (порт 8000).

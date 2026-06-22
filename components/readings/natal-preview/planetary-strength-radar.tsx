@@ -31,6 +31,12 @@ const PLANET_META: { name: string; ru: string; symbol: string; color: string }[]
   { name: "Pluto", ru: "Плутон", symbol: "♇", color: "oklch(0.45 0.08 300)" },
 ]
 
+const SIGN_RU: Record<string, string> = {
+  Aries: "Овен", Taurus: "Телец", Gemini: "Близнецы", Cancer: "Рак",
+  Leo: "Лев", Virgo: "Дева", Libra: "Весы", Scorpio: "Скорпион",
+  Sagittarius: "Стрелец", Capricorn: "Козерог", Aquarius: "Водолей", Pisces: "Рыбы",
+}
+
 // Sign rulership + exaltation (traditional)
 const RULER: Record<string, string> = {
   Aries: "Mars", Taurus: "Venus", Gemini: "Mercury", Cancer: "Moon",
@@ -307,7 +313,7 @@ export function PlanetaryStrengthRadar() {
               </span>
             </div>
             <div className="mt-1 text-[11px] text-muted-foreground">
-              Знак: {strengths[hovered].sign} · Дом: {strengths[hovered].house}
+              Знак: {SIGN_RU[strengths[hovered].sign] ?? strengths[hovered].sign} · Дом: {strengths[hovered].house}
             </div>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {strengths[hovered].details.map((d, i) => (
