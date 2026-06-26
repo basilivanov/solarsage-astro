@@ -103,11 +103,11 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
                 }`}
                 aria-pressed={active}
                 className={cn(
-                  "relative flex w-full flex-col items-center gap-1.5 rounded-[12px] border px-0 py-2.5 text-center transition active:scale-[0.96]",
+                  "relative flex w-full flex-col items-center gap-1.5 rounded-[14px] border px-0 py-2.5 text-center transition active:scale-[0.96]",
                   active
-                    ? "border-primary/50 bg-primary text-primary-foreground shadow-[0_1px_0_0_rgba(0,0,0,0.04)]"
+                    ? "border-primary/50 bg-primary text-primary-foreground shadow-[0_2px_8px_-2px_oklch(0.55_0.10_305/0.35)]"
                     : accessible
-                      ? "border-border/70 bg-card text-foreground"
+                      ? "border-border/70 bg-card text-foreground hover:border-primary/30"
                       : "border-border/60 bg-card/60 text-foreground/55",
                 )}
               >
@@ -124,13 +124,12 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
                   {WEEKDAYS_MINI[labelIdx]}
                 </span>
                 <span className="font-serif text-[19px] leading-none">{d.getDate()}</span>
-                <span className="flex h-4 items-center justify-center">
+                <span className="flex h-6 w-6 items-center justify-center">
                   {accessible ? (
                     <MoodIcon
                       status={status}
                       className={cn(
-                        "h-4 w-4",
-                        active ? "text-primary-foreground" : "text-foreground",
+                        "h-6 w-6",
                       )}
                     />
                   ) : (
