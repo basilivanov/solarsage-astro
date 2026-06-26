@@ -4,13 +4,13 @@ import { cn } from "@/lib/utils"
 import type { DayStatus } from "@/lib/calendar"
 
 /**
- * Иконка «тона дня» — понятные с одного взгляда эмодзи для девочек.
+ * Иконка «тона дня» — нейтральные эмодзи, понятные всем.
  *
- *   supportive  → 🌟 звёздочка   — крутой день, огонь
- *   even        → 🌸 цветок      — норм, ровный день
- *   tense       → 🌧️ дождик      — так себе, напряжённый
+ *   supportive  → ⭐ звезда    — отличный день
+ *   even        → ◐ полукруг   — ровный, обычный день
+ *   tense       → ⚠ внимание   — напряжённый, осторожно
  *
- * Цвет круга-плашки соответствует тону. Мягкие пастельные тона.
+ * Цвет круга-плашки соответствует тону. Нейтральная палитра.
  * Без хинтов и тултипов — всё видно сразу.
  */
 
@@ -20,9 +20,9 @@ type Props = {
 }
 
 const STATUS_VISUAL: Record<DayStatus, { emoji: string; color: string; bg: string }> = {
-  supportive: { emoji: "🌟", color: "oklch(0.68 0.13 85)", bg: "oklch(0.68 0.13 85 / 0.18)" },
-  even: { emoji: "🌸", color: "oklch(0.70 0.12 350)", bg: "oklch(0.70 0.12 350 / 0.14)" },
-  tense: { emoji: "🌧️", color: "oklch(0.60 0.06 230)", bg: "oklch(0.60 0.06 230 / 0.14)" },
+  supportive: { emoji: "⭐", color: "oklch(0.68 0.13 85)", bg: "oklch(0.68 0.13 85 / 0.16)" },
+  even: { emoji: "◐", color: "oklch(0.55 0.04 295)", bg: "oklch(0.55 0.04 295 / 0.10)" },
+  tense: { emoji: "⚠️", color: "oklch(0.62 0.12 27)", bg: "oklch(0.62 0.12 27 / 0.12)" },
 }
 
 export function MoodIcon({ status, className }: Props) {
