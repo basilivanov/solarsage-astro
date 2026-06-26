@@ -29,7 +29,7 @@ import { DayReading } from "./day-reading"
 import { WhyExpanded } from "./why-expanded"
 import { WeekStrip } from "./week-strip"
 import { DayChart, type ChartPlanet, type ChartHouse } from "./day-chart"
-import { DayEnergyMeter, type EnergyItem } from "./day-energy-meter"
+import { type EnergyItem } from "./day-energy-meter"
 // Временно скрыты — импорты оставлены для будущего включения
 // import { MoonPhaseWidget } from "./moon-phase-widget"
 // import { VoidOfCourseIndicator } from "./void-of-course-indicator"
@@ -39,13 +39,14 @@ import { DayEnergyMeter, type EnergyItem } from "./day-energy-meter"
 import { DaySummaryCard } from "./day-summary-card"
 import { ConcreteDayAdvice } from "./concrete-day-advice"
 import { EveningCheckinReminder } from "./evening-checkin-reminder"
-import { DailyAffirmation } from "./daily-affirmation"
-import { DayRecommendations } from "./day-recommendations"
-import { DayTipCard } from "./day-tip-card"
+// import { DailyAffirmation } from "./daily-affirmation"
+// import { DayRecommendations } from "./day-recommendations"
+// import { DayTipCard } from "./day-tip-card"
+// import { DayEnergyMeter } from "./day-energy-meter"
 import { AstroHistoryWidget } from "./astro-history-widget"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
-import { TodayImportantAccordion } from "@/components/today-important-accordion"
+// import { TodayImportantAccordion } from "@/components/today-important-accordion"
 import { addDays, sameDay, TODAY, type AdaptedTodayPayload } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
 import type { TodayImportantEvent, TodayPayload } from "@/packages/contracts"
@@ -70,7 +71,7 @@ export function TodayScreen({
   access,
   payload,
   onDateChange,
-  importantToday,
+  // importantToday,  // Временно скрыто
   rawData,
 }: Props) {
   const accessible = isDayAccessible(selectedDate, access)
@@ -197,10 +198,12 @@ export function TodayScreen({
             <RetrogradeTracker date={selectedDate} />
           </div>
           */}
+          {/* Временно скрыты — компоненты оставлены в коде
           <div className="section-rise section-rise-1">
             <TodayImportantAccordion items={importantToday || []} />
           </div>
           {!(importantToday && importantToday.length > 0) && <TodayNotes notes={payload.notes} />}
+          */}
           {chartPlanets.length > 0 && (
             <div className="section-rise section-rise-2">
               <DayChart
@@ -211,6 +214,7 @@ export function TodayScreen({
               />
             </div>
           )}
+          {/* Временно скрыты — компоненты оставлены в коде
           {energyItems.length > 0 && (
             <div className="section-rise section-rise-3">
               <DayEnergyMeter items={energyItems} dayStatus={dayStatusLabel} />
@@ -237,6 +241,7 @@ export function TodayScreen({
               dominantPlanet={energyItems[0]?.name}
             />
           </div>
+          */}
           <div className="section-rise section-rise-4">
             <DayReading paragraphs={payload.reading.paragraphs} />
           </div>
