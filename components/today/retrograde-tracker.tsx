@@ -119,7 +119,7 @@ export function RetrogradeTracker({ date }: RetrogradeTrackerProps) {
                     <div className="mt-0.5 text-[10.5px] text-muted-foreground">
                       {r.isRetrograde
                         ? `До ${r.rxEndsAt ? formatDate(r.rxEndsAt) : "—"} · ${r.daysIntoRx}/${r.rxDurationDays} дн.`
-                        : `След. R с ${r.nextRXStart ? formatDate(r.nextRXStart) : "—"}`}
+                        : `След. R с ${r.nextRxStart ? formatDate(r.nextRxStart) : "—"}`}
                     </div>
                   </div>
 
