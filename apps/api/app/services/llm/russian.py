@@ -26,6 +26,7 @@ _PLANET_RU: dict[str, str] = {
     "Mercury": "Меркурий", "Venus": "Венера", "Mars": "Марс",
     "Jupiter": "Юпитер", "Saturn": "Сатурн",
     "Uranus": "Уран", "Neptune": "Нептун", "Pluto": "Плутон",
+    "Lilith": "Лилит",
 }
 
 _ASPECT_RU: dict[str, str] = {
