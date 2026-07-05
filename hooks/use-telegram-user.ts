@@ -22,6 +22,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTelegram } from "@/components/telegram-provider"
 
 /**
  * Подписчик на Telegram WebApp user.
@@ -40,11 +41,16 @@ export type TelegramUser = {
 }
 
 export function useTelegramUser(): TelegramUser | null {
+  const { webApp, loaded } = useTelegram()
   const [user, setUser] = useState<TelegramUser | null>(null)
 
   useEffect(() => {
+    // Use context webApp, falling back to window.Telegram (tests / E2E)
+    const tg = webApp ?? (typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined)
+    if (!tg && !loaded) return // SDK not ready yet
+
     try {
-      const u = window.Telegram?.WebApp?.initDataUnsafe?.user as any
+      const u = tg?.initDataUnsafe?.user as any
       if (!u) return
       setUser({
         firstName: u.first_name,
@@ -55,7 +61,7 @@ export function useTelegramUser(): TelegramUser | null {
     } catch {
       /* ignore */
     }
-  }, [])
+  }, [webApp, loaded])
 
   return user
 }

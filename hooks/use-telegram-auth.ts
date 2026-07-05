@@ -26,9 +26,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { logger } from '@/lib/log';
 import { IS_DEMO_MODE } from '@/lib/demo-mode';
+import { useTelegram } from '@/components/telegram-provider';
 
 interface TelegramAuthState {
   isLoading: boolean;
@@ -37,7 +38,19 @@ interface TelegramAuthState {
 }
 
 export function useTelegramAuth() {
+  const { webApp, loaded } = useTelegram();
   logger.debug('[TGAuth] Hook called');
+
+  // Auth-key guard: prevents duplicate auth runs while still allowing a
+  // legitimate transition (e.g. timeout decides "no Telegram", then the
+  // SDK loads with real initData later).
+  //
+  // The key is the initData string itself:
+  //   - E2E injection + provider catch-up with the same initData → skip
+  //   - Non-Telegram path uses sentinel 'none' → stays 'none'
+  //   - Late SDK load with real initData → key changes → allowed
+  const authKeyRef = useRef<string | null>(null);
+
   const [state, setState] = useState<TelegramAuthState>({
     isLoading: true,
     isAuthenticated: false,
@@ -47,6 +60,36 @@ export function useTelegramAuth() {
   logger.debug('[TGAuth] Initial state', { extra: state });
 
   useEffect(() => {
+    // Wait for Telegram SDK to load (or fail) before making auth decisions.
+    // Without this guard the hook would decide "not in Telegram" before the
+    // SDK has a chance to load, breaking the real auth flow.
+    //
+    // Fallback: when no <TelegramProvider> wraps the tree (unit tests, E2E
+    // fixtures with addInitScript), we accept window.Telegram directly.
+    const fallbackTg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
+
+    if (!loaded && !fallbackTg) {
+      logger.debug('[TGAuth] Waiting for Telegram SDK to load…');
+      return;
+    }
+
+    // Compute the effective Telegram source and derive the auth key.
+    const tg = webApp ?? fallbackTg;
+    const authKey = tg?.initData || 'none';
+
+    // Skip if we already attempted auth for exactly this initData key.
+    // This prevents a duplicate /api/auth/telegram POST when both the
+    // fallback path and the immediate context-update path fire the effect
+    // (E2E fixtures), while still allowing a late transition from
+    // no-Telegram to real-Telegram (the key changes).
+    if (authKeyRef.current === authKey) {
+      logger.debug('[TGAuth] Auth already attempted for this key — skipping duplicate', {
+        extra: { key: authKey.slice(0, 24) },
+      });
+      return;
+    }
+    authKeyRef.current = authKey;
+
     logger.debug('[TGAuth] useEffect triggered');
 
     const authenticate = async () => {
@@ -77,7 +120,8 @@ export function useTelegramAuth() {
           return;
         }
 
-        const tg = window.Telegram?.WebApp;
+        // Use context webApp, falling back to window.Telegram for tests/E2E
+        const tg = webApp ?? fallbackTg;
         logger.debug('[TGAuth] WebApp', { extra: { exists: !!tg, hasInitData: !!tg?.initData } });
 
         if (!tg || !tg.initData) {
@@ -216,7 +260,7 @@ export function useTelegramAuth() {
         error: err.message || 'Authentication failed'
       });
     });
-  }, []);
+  }, [loaded, webApp]);
 
   logger.debug('[TGAuth] Returning state', { extra: state });
   return state;

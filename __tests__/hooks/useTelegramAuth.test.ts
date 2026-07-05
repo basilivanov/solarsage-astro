@@ -26,6 +26,18 @@ vi.mock('@/lib/log', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
+// Provide a default mock for useTelegram so tests work without a
+// <TelegramProvider> wrapper. Tests that set window.Telegram directly
+// (setupTelegram) still work via the fallback path in useTelegramAuth.
+const mockUseTelegram = vi.fn(() => ({
+  webApp: null,
+  loaded: true,  // In tests there is no dynamic SDK loading; act as if loaded
+  inTelegram: false,
+}))
+vi.mock('@/components/telegram-provider', () => ({
+  useTelegram: () => mockUseTelegram(),
+}))
+
 const originalTelegram = (window as any).Telegram
 const originalEnv = { ...process.env }
 
@@ -33,6 +45,9 @@ beforeEach(() => {
   global.fetch = vi.fn()
   delete (window as any).Telegram
   delete (window as any).__astro_referral_claimed
+  // Reset mock to default (loaded: true so effect runs; webApp: null so hooks
+  // decide auth strategy by checking window.Telegram fallback)
+  mockUseTelegram.mockReturnValue({ webApp: null, loaded: true, inTelegram: false })
 })
 
 afterEach(() => {
@@ -262,5 +277,94 @@ describe('useTelegramAuth', () => {
       ([url]: [string]) => url === '/api/referral/claim',
     )
     expect(referralCalls).toHaveLength(0)
+  })
+
+  it('does not duplicate Telegram auth when provider catches up with same initData', async () => {
+    (process.env as any).NODE_ENV = 'production'
+    setupTelegram()
+
+    // Only one auth response mock — a second call would throw / hang
+    mockTelegramAuthResponse(true)
+
+    // First render: loaded=true but webApp=null → effect uses fallbackTg
+    mockUseTelegram.mockReturnValue({
+      webApp: null,
+      loaded: true,
+      inTelegram: false,
+    })
+
+    const { result, rerender } = renderHook(() => useTelegramAuth())
+
+    // Auth completes via the fallback
+    await waitFor(
+      () => expect(result.current.isAuthenticated).toBe(true),
+      { timeout: LONG_TIMEOUT },
+    )
+
+    // Now provider catches up — mock returns the same webApp (same initData key)
+    mockUseTelegram.mockReturnValue({
+      webApp: (window as any).Telegram.WebApp,
+      loaded: true,
+      inTelegram: true,
+    })
+    rerender()
+
+    // Small delay: if the guard fails, a second authenticate() would call
+    // global.fetch again and throw because no mock is set up.  The hook's
+    // catch would set error — no crash but we'd see a second auth call.
+    await new Promise((r) => setTimeout(r, 500))
+
+    // Only one call to /api/auth/telegram
+    const tgAuthCalls = (global.fetch as any).mock.calls.filter(
+      ([url]: [string]) => url === '/api/auth/telegram',
+    )
+    expect(tgAuthCalls).toHaveLength(1)
+  })
+
+  it('allows Telegram auth when SDK appears after initial non-Telegram decision', async () => {
+    (process.env as any).NODE_ENV = 'production'
+
+    // No Telegram at first — simulate non-Telegram environment
+    delete (window as any).Telegram
+    mockUseTelegram.mockReturnValue({
+      webApp: null,
+      loaded: true,
+      inTelegram: false,
+    })
+
+    const { result, rerender } = renderHook(() => useTelegramAuth())
+
+    // First decision: no Telegram → skip auth gracefully
+    await waitFor(
+      () => expect(result.current.isLoading).toBe(false),
+      { timeout: LONG_TIMEOUT },
+    )
+    expect(result.current.isAuthenticated).toBe(false)
+    expect(result.current.error).toBeNull()
+
+    // Now Telegram SDK "loads" — window.Telegram appears with real initData
+    setupTelegram()
+    mockTelegramAuthResponse(true)
+
+    mockUseTelegram.mockReturnValue({
+      webApp: (window as any).Telegram.WebApp,
+      loaded: true,
+      inTelegram: true,
+    })
+    rerender()
+
+    // Second decision: Telegram auth should fire now (key changed from 'none' to initData)
+    await waitFor(
+      () => expect(result.current.isAuthenticated).toBe(true),
+      { timeout: LONG_TIMEOUT },
+    )
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/auth/telegram',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('initData'),
+      }),
+    )
   })
 })

@@ -27,6 +27,7 @@
 'use client';
 
 import { useTelegramAuth } from '@/hooks/use-telegram-auth';
+import { useTelegram } from '@/components/telegram-provider';
 import { AppShell } from '@/components/app-shell';
 import { ProfileReset } from '@/components/profile-reset';
 import { usePathname } from 'next/navigation';
@@ -34,6 +35,7 @@ import { logger } from '@/lib/log';
 
 export default function GraceLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated, error } = useTelegramAuth();
+  const { inTelegram } = useTelegram();
   const pathname = usePathname();
 
   logger.debug('[GraceLayout] Render', { extra: { isLoading, isAuthenticated, error, pathname } });
@@ -53,7 +55,7 @@ export default function GraceLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (error && typeof window !== 'undefined' && window.Telegram?.WebApp) {
+  if (error && inTelegram) {
     logger.warn('[GraceLayout] Auth error', { extra: { error } });
     return (
       <div

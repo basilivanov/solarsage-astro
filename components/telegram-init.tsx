@@ -22,6 +22,10 @@
 "use client"
 
 import { useEffect } from "react"
+import { useTelegram } from "@/components/telegram-provider"
+
+/** Local alias resolved from the window global (recognised by ESLint). */
+type TelegramWebAppType = NonNullable<typeof window.Telegram>['WebApp'];
 
 function setAppHeight() {
   try {
@@ -34,7 +38,7 @@ function setAppHeight() {
  * Check if a Telegram WebApp method is supported in the current version.
  * Compares the running WebApp version against the minimum required version.
  */
-function isMethodSupported(tg: NonNullable<typeof window.Telegram>['WebApp'], method: string): boolean {
+function isMethodSupported(tg: TelegramWebAppType, method: string): boolean {
   try {
     const version = (tg as any).version
     if (!version) return false
@@ -52,9 +56,10 @@ function isMethodSupported(tg: NonNullable<typeof window.Telegram>['WebApp'], me
 }
 
 export function TelegramInit() {
+  const { webApp } = useTelegram()
+
   useEffect(() => {
-    const tg = window?.Telegram?.WebApp
-    if (!tg) {
+    if (!webApp) {
       // Outside Telegram: use visualViewport as --app-height
       setAppHeight()
       window.addEventListener('resize', setAppHeight)
@@ -68,21 +73,21 @@ export function TelegramInit() {
     }
 
     // Init Telegram
-    try { tg.ready() } catch { /* noop */ }
-    try { (tg as any).setHeaderColor?.("bg_color") } catch { /* noop */ }
-    try { (tg as any).setBackgroundColor?.("bg_color") } catch { /* noop */ }
-    if (tg.colorScheme === "dark") {
+    try { webApp.ready() } catch { /* noop */ }
+    try { (webApp as any).setHeaderColor?.("bg_color") } catch { /* noop */ }
+    try { (webApp as any).setBackgroundColor?.("bg_color") } catch { /* noop */ }
+    if (webApp.colorScheme === "dark") {
       document.documentElement.classList.add("dark")
     }
 
     // Expand — retry several times (Telegram may ignore first call during open animation)
     const expand = () => {
-      try { tg.expand() } catch { /* noop */ }
-      if (isMethodSupported(tg, 'requestFullscreen')) {
-        try { (tg as any).requestFullscreen() } catch { /* noop */ }
+      try { webApp.expand() } catch { /* noop */ }
+      if (isMethodSupported(webApp, 'requestFullscreen')) {
+        try { (webApp as any).requestFullscreen() } catch { /* noop */ }
       }
-      if (isMethodSupported(tg, 'disableVerticalSwipes')) {
-        try { (tg as any).disableVerticalSwipes() } catch { /* noop */ }
+      if (isMethodSupported(webApp, 'disableVerticalSwipes')) {
+        try { (webApp as any).disableVerticalSwipes() } catch { /* noop */ }
       }
     }
     expand()
@@ -93,11 +98,11 @@ export function TelegramInit() {
 
     // Re-expand on viewport change
     const onViewport = () => {
-      if (!tg.isExpanded) {
-        try { tg.expand() } catch { /* noop */ }
+      if (!webApp.isExpanded) {
+        try { webApp.expand() } catch { /* noop */ }
       }
     }
-    try { tg.onEvent?.('viewportChanged', onViewport) } catch { /* noop */ }
+    try { webApp.onEvent?.('viewportChanged', onViewport) } catch { /* noop */ }
 
     // Track real viewport height for --app-height
     setAppHeight()
@@ -109,9 +114,9 @@ export function TelegramInit() {
       window.removeEventListener('resize', setAppHeight)
       window.visualViewport?.removeEventListener('resize', setAppHeight)
       window.visualViewport?.removeEventListener('scroll', setAppHeight)
-      try { tg.offEvent?.('viewportChanged', onViewport) } catch { /* noop */ }
+      try { webApp.offEvent?.('viewportChanged', onViewport) } catch { /* noop */ }
     }
-  }, [])
+  }, [webApp])
 
   return null
 }
