@@ -136,6 +136,7 @@ git commit -m "chore: stabilize generated API contracts"
 - Modify: `lib/api/horary.ts`
 - Modify: `lib/api/profile.ts`
 - Modify: `lib/api/chat.ts`
+- Modify: `hooks/use-telegram-auth.ts`
 - Modify: `app/(grace)/readings/natal/generating/page.tsx`
 - Modify: `app/(grace)/readings/natal/[id]/page.tsx`
 - Modify: `__tests__/api/grace-client.test.ts`
@@ -208,7 +209,11 @@ Update:
 
 Tests should mock `fetch`, not runtime demo modules.
 
-- [ ] **Step 6: Remove natal page demo branches**
+- [ ] **Step 6: Remove Telegram auth demo bypass**
+
+Update `hooks/use-telegram-auth.ts` so production behavior uses Telegram HMAC auth and local development behavior uses the existing local dev-auth path. Remove `IS_DEMO_MODE` and any path that marks a session authenticated without a real backend session.
+
+- [ ] **Step 7: Remove natal page demo branches**
 
 Update:
 
@@ -217,11 +222,11 @@ Update:
 
 The generating page must use real preview data when available and render a loading/error state when it is not. It must not redirect to `/readings/natal/demo` or simulate completion from demo mode.
 
-- [ ] **Step 7: Keep production guard only for environment safety**
+- [ ] **Step 8: Keep production guard only for environment safety**
 
 Keep `lib/env/production-guard.*` and its tests if they still guard unsafe environment variables. The production guard may mention `NEXT_PUBLIC_DEMO_MODE`, but product runtime routes and API clients must not branch to demo data.
 
-- [ ] **Step 8: Verify**
+- [ ] **Step 9: Verify**
 
 Run:
 
@@ -231,7 +236,7 @@ pnpm exec vitest run __tests__/guardrails/no-runtime-mocks.test.ts __tests__/api
 
 Expected: all selected tests pass.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 Run:
 
