@@ -6,6 +6,8 @@
 import { test, expect } from './fixtures';
 
 test.describe('Onboarding Flow - Real Telegram Auth', () => {
+  test.use({ uniqueTelegramUser: true });
+
   test('should complete all steps and redirect to /day/today', async ({ page }) => {
     test.setTimeout(60000);
 
@@ -18,17 +20,13 @@ test.describe('Onboarding Flow - Real Telegram Auth', () => {
     // Navigate to onboarding directly (bypass home redirect)
     await page.goto('/onboarding');
 
-    // Wait for step 1: Welcome
-    await page.waitForTimeout(2000);
-
     // Step 1 → Step 2
-    const continueBtn = page.locator('button:has-text("Продолжить")');
+    const continueBtn = page.getByRole('button', { name: 'Продолжить' });
     await expect(continueBtn).toBeVisible({ timeout: 10000 });
     await continueBtn.click();
-    await page.waitForTimeout(1000);
 
     // Step 2: Birth date/time — should be visible
-    await expect(page.locator('text=/Дата и время рождения/i')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Дата и время рождения')).toBeVisible({ timeout: 5000 });
 
     // Fill birth fields
     const dayInput = page.getByRole('textbox', { name: 'День' });
@@ -42,54 +40,46 @@ test.describe('Onboarding Flow - Real Telegram Auth', () => {
     await yearInput.fill('1990');
     await hoursInput.fill('12');
     await minutesInput.fill('00');
-    await page.waitForTimeout(300);
 
     // Click "Далее" → Step 3
-    const step2Next = page.locator('button:has-text("Далее")').first();
+    const step2Next = page.getByRole('button', { name: 'Далее' });
     await expect(step2Next).toBeEnabled({ timeout: 5000 });
     await step2Next.click();
-    await page.waitForTimeout(1000);
 
     // Step 3: Place — select Moscow via search
-    await expect(page.locator('text=/Место рождения/i')).toBeVisible({ timeout: 5000 });
-
-    // Wait for Telegram auth to complete before API calls (city search needs auth)
-    await page.waitForTimeout(3000);
+    await expect(page.getByText('Место рождения')).toBeVisible({ timeout: 5000 });
 
     // Type city to trigger search
     const cityInput = page.locator('input[placeholder*="Например"], input[placeholder*="Начни"]').first();
     await cityInput.fill('Москва');
-    await page.waitForTimeout(2000);
 
     // Click first search result
     const cityResult = page.locator('ul li button').first();
     await expect(cityResult).toBeVisible({ timeout: 5000 });
     await cityResult.click();
-    await page.waitForTimeout(300);
 
     // Check "Сейчас живу там же" to satisfy currentCity requirement
-    const sameAsBirth = page.locator('text=/сейчас живу там же/i');
+    const sameAsBirth = page.getByText(/сейчас живу там же/i);
     await sameAsBirth.click();
-    await page.waitForTimeout(300);
 
     // Click "Далее" → Step 4
-    const step3Next = page.locator('button:has-text("Далее")').first();
+    const step3Next = page.getByRole('button', { name: 'Далее' });
     await expect(step3Next).toBeEnabled({ timeout: 5000 });
     await step3Next.click();
-    await page.waitForTimeout(1000);
 
     // Step 4: Birthday city
     await expect(page.getByRole('heading', { name: /день рождения/i })).toBeVisible({ timeout: 5000 });
-    const step4Next = page.locator('button:has-text("Далее")').first();
+    const step4Next = page.getByRole('button', { name: 'Далее' });
     await expect(step4Next).toBeEnabled({ timeout: 5000 });
     await step4Next.click();
-    await page.waitForTimeout(2000);
 
-    // Step 5: Done
-    await expect(page.locator('text=/первый день|мой день/i').first()).toBeVisible({ timeout: 5000 });
+    // Step 5: Gender
+    await expect(page.getByRole('heading', { name: /мужчина или женщина/i })).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Мужчина' }).click();
 
-    const finishBtn = page.locator('button:has-text("Открыть")');
-    await expect(finishBtn).toBeVisible({ timeout: 5000 });
+    // Step 6: Done
+    await expect(page.getByText('Готово', { exact: true })).toBeVisible({ timeout: 5000 });
+    const finishBtn = page.getByRole('button', { name: /Открыть мой день|Открыть/i });
     await expect(finishBtn).toBeEnabled({ timeout: 5000 });
     await finishBtn.click();
 

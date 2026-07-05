@@ -8,6 +8,8 @@ import { test, expect } from './fixtures';
 // ── Onboarding Edge Cases ──────────────────────────────────────
 
 test.describe('Onboarding — Validation', () => {
+  test.use({ uniqueTelegramUser: true });
+
   test('should disable Next button on empty birth date', async ({ page }) => {
     test.setTimeout(30000);
     await page.goto('/onboarding');
@@ -98,18 +100,21 @@ test.describe('Onboarding — Validation', () => {
 
     // Step 4
     await page.locator('button:has-text("Далее")').first().click();
-    await page.waitForTimeout(1000);
 
-    // Block profile save
+    // Step 5: Gender
+    await expect(page.getByRole('heading', { name: /мужчина или женщина/i })).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Женщина' }).click();
+
+    // Block profile save before finishing
     await page.route('**/api/profile', route => route.abort());
 
     // Try to finish
-    const finishBtn = page.locator('button:has-text("Открыть")');
+    const finishBtn = page.getByRole('button', { name: /Открыть мой день|Открыть/i });
     await expect(finishBtn).toBeEnabled({ timeout: 5000 });
     await finishBtn.click();
-    await page.waitForTimeout(3000);
 
     // Should still redirect to /day/ (onboarding completes despite error)
+    await page.waitForURL('**/day/**', { timeout: 15000 });
     expect(page.url()).toMatch(/\/day\/(today|\d{4}-\d{2}-\d{2})/);
   });
 });
@@ -226,6 +231,8 @@ test.describe('Profile', () => {
 // ── Reset Flow ─────────────────────────────────────────────────
 
 test.describe('Reset', () => {
+  test.use({ uniqueTelegramUser: true });
+
   test('should load reset page and show done state', async ({ page }) => {
     test.setTimeout(20000);
     await page.addInitScript(() => localStorage.setItem('lumen:onboarded', '1'));

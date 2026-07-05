@@ -25,11 +25,12 @@ test.describe('Locked Features', () => {
     test.setTimeout(20000);
     await page.addInitScript(() => localStorage.setItem('lumen:onboarded', '1'));
     await page.goto('/readings/natal');
-    await page.waitForTimeout(3000);
 
-    // Should show "Натальная карта" or "Скоро"
-    const natalText = page.locator('text=/натальная карта|скоро/i').first();
-    await expect(natalText).toBeVisible({ timeout: 5000 });
+    // Ready preview and a visible API error card are both valid non-crash states.
+    const natalState = page
+      .getByText(/натальная карта|натальную карту|не удалось построить|повторить/i)
+      .first();
+    await expect(natalState).toBeVisible({ timeout: 10000 });
 
     // Should NOT crash — page should be visible
     const url = page.url();
