@@ -26,6 +26,8 @@
 
 import { NextResponse } from 'next/server'
 
+const PROXY_ORIGIN_HEADERS = ['x-forwarded-for', 'x-real-ip', 'forwarded']
+
 export function isLocalDevHost(hostHeader: string | null): boolean {
   if (!hostHeader) {
     return false
@@ -44,6 +46,10 @@ export function isLocalDevHost(hostHeader: string | null): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
 }
 
+function hasProxyOriginHeader(headers: Headers): boolean {
+  return PROXY_ORIGIN_HEADERS.some((header) => headers.has(header))
+}
+
 export async function POST(request: Request) {
   // Only allow in development mode
   if (process.env.NODE_ENV !== 'development') {
@@ -56,6 +62,13 @@ export async function POST(request: Request) {
   if (!isLocalDevHost(request.headers.get('host'))) {
     return NextResponse.json(
       { detail: 'Dev auth is only available on localhost' },
+      { status: 403 }
+    )
+  }
+
+  if (hasProxyOriginHeader(request.headers)) {
+    return NextResponse.json(
+      { detail: 'Dev auth is only available for direct local requests' },
       { status: 403 }
     )
   }
