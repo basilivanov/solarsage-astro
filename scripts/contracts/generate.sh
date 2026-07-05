@@ -51,7 +51,8 @@ fi
 # minor versions. `--root-types` would inline schemas at the top level but
 # we deliberately keep the `components["schemas"]` namespace so per-feature
 # shims can re-export by name.
-npx --yes openapi-typescript packages/contracts/openapi.json \
+# Pin the CLI version so `npx` does not float the generated TypeScript shape.
+npx --yes openapi-typescript@7.13.0 packages/contracts/openapi.json \
   --output packages/contracts/_generated.ts \
   --alphabetize \
   >/dev/null
