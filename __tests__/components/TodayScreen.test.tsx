@@ -22,6 +22,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
+import type { AccessInfo } from '@/lib/contracts/access'
+import type { AdaptedTodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today'
 
 // Polyfill PointerEvent for jsdom (Node 20/jsdom lacks it)
 if (typeof PointerEvent === 'undefined') {
@@ -103,18 +105,48 @@ describe('TodayScreen', () => {
   const selectedDate = new Date('2026-06-01T12:00:00Z')
   const onDateChange = vi.fn()
 
-  function buildPayload(overrides: Record<string, any> = {}) {
+  const noteFixture: TodayNote = {
+    id: 'note-1',
+    iconName: 'compass',
+    title: 'Note 1',
+    description: 'Note description',
+    hint: {
+      meaning: 'Meaning',
+      whyImportant: 'Important',
+      howForMe: 'Personal context',
+    },
+  }
+
+  const whyFixture: TodayWhySection = {
+    id: 'why-1',
+    iconName: 'telescope',
+    title: 'Why',
+    paragraphs: ['Why paragraph'],
+  }
+
+  function buildPayload(overrides: Partial<AdaptedTodayPayload> = {}): AdaptedTodayPayload {
     return {
+      date: '2026-06-01',
+      headline: '',
+      dayStatus: 'steady',
+      topFlags: [],
       notes: [],
       reading: { paragraphs: [] },
       why: [],
-      keyInsight: null,
+      keyInsight: 'Данные временно недоступны',
       ...overrides,
-    } as any
+    }
   }
 
-  function buildAccess(overrides: Record<string, any> = {}) {
-    return { state: 'active', daysLeft: 0, ...overrides } as any
+  function buildAccess(overrides: Partial<AccessInfo> = {}): AccessInfo {
+    return {
+      state: 'subscription',
+      hasAccess: true,
+      accessStart: null,
+      accessEnd: null,
+      daysLeft: 0,
+      ...overrides,
+    }
   }
 
   beforeEach(() => {
@@ -130,9 +162,10 @@ describe('TodayScreen', () => {
 
   it('renders accessible content: notes, reading, why, week-strip', () => {
     const payload = buildPayload({
-      notes: [{ text: 'Note 1' }],
+      notes: [noteFixture],
       reading: { paragraphs: ['p1', 'p2'] },
-      why: [{ title: 'Why' }],
+      why: [whyFixture],
+      keyInsight: 'Why',
     })
     render(
       <TodayScreen
@@ -154,7 +187,7 @@ describe('TodayScreen', () => {
     render(
       <TodayScreen
         selectedDate={selectedDate}
-        access={buildAccess({ state: 'locked' })}
+        access={buildAccess({ state: 'none', hasAccess: false })}
         payload={buildPayload()}
         onDateChange={onDateChange}
       />,
@@ -167,7 +200,7 @@ describe('TodayScreen', () => {
     render(
       <TodayScreen
         selectedDate={selectedDate}
-        access={buildAccess({ state: 'locked' })}
+        access={buildAccess({ state: 'none', hasAccess: false })}
         payload={buildPayload()}
         onDateChange={onDateChange}
       />,
@@ -182,7 +215,7 @@ describe('TodayScreen', () => {
     render(
       <TodayScreen
         selectedDate={selectedDate}
-        access={buildAccess({ state: 'locked' })}
+        access={buildAccess({ state: 'none', hasAccess: false })}
         payload={buildPayload()}
         onDateChange={onDateChange}
       />,
@@ -210,7 +243,7 @@ describe('TodayScreen', () => {
     render(
       <TodayScreen
         selectedDate={selectedDate}
-        access={buildAccess({ state: 'locked' })}
+        access={buildAccess({ state: 'none', hasAccess: false })}
         payload={buildPayload()}
         onDateChange={onDateChange}
       />,

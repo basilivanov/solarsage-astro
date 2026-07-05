@@ -31,7 +31,7 @@ import { WeekStrip } from "./week-strip"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
-import { addDays, sameDay, TODAY, type AdaptedTodayPayload } from "@/lib/today"
+import { addDays, sameDay, TODAY, type AdaptedTodayPayload, type AdaptedTopFlag } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
 import type { TodayImportantEvent } from "@/packages/contracts"
 
@@ -136,6 +136,36 @@ export function TodayScreen({
           locked={!accessible}
         />
       </div>
+
+      {/* Headline — заголовок/инсайт дня */}
+      {payload.headline ? (
+        <div className="px-5 pt-4 pb-2">
+          <p className="text-center font-sans text-lg font-medium leading-snug text-foreground/90">
+            {payload.headline}
+          </p>
+        </div>
+      ) : null}
+
+      {/* TopFlags — карточки топ-сигналов */}
+      {payload.topFlags.length > 0 && (
+        <div className="px-5 pb-2">
+          <div className="flex flex-wrap gap-2">
+            {payload.topFlags.map((flag: AdaptedTopFlag, idx: number) => (
+              <div
+                key={idx}
+                className="flex-1 min-w-[140px] rounded-xl border border-border/40 bg-card/50 p-3"
+              >
+                <p className="text-xs font-semibold text-foreground/80 mb-0.5">
+                  {flag.title}
+                </p>
+                <p className="text-[11px] leading-tight text-foreground/50">
+                  {flag.summary}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {accessible ? (
         <div className="space-y-8 pb-8">

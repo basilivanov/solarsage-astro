@@ -35,6 +35,7 @@
 import type {
   TodayNote,
   AdaptedTodayPayload,
+  AdaptedTopFlag,
   TodayReading,
   TodayWhySection,
 } from "@/lib/contracts/today"
@@ -181,6 +182,16 @@ const MOCK_WHY: TodayWhySection[] = [
   },
 ]
 
+const MOCK_HEADLINE =
+  "Сегодня день устойчивый — опирайся на рутину, но будь внимателен к деталям в общении."
+
+const MOCK_DAY_STATUS = "steady" as const
+
+const MOCK_TOP_FLAGS: AdaptedTopFlag[] = [
+  { iconName: "moon", title: "Луна без курса", summary: "До 17:40 — пауза в потоке" },
+  { iconName: "orbit", title: "Меркурий ретрограден", summary: "Ещё 9 дней пересмотра" },
+]
+
 const KEY_INSIGHT =
   "Не форсируй ясность. Собирай её по частям — день вознаграждает внимательность, а не скорость."
 
@@ -190,6 +201,9 @@ export function buildMockTodayPayload(date: Date): AdaptedTodayPayload {
   const dd = String(date.getDate()).padStart(2, "0")
   return {
     date: `${yyyy}-${mm}-${dd}`,
+    headline: MOCK_HEADLINE,
+    dayStatus: MOCK_DAY_STATUS,
+    topFlags: MOCK_TOP_FLAGS,
     notes: MOCK_NOTES,
     reading: MOCK_READING,
     why: MOCK_WHY,

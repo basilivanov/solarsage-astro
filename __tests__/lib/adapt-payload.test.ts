@@ -1,160 +1,336 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_LIB_ADAPT_PAYLOAD_TEST
-// ROLE: Unit tests for adapt-payload.test.ts
+// ROLE: Unit tests for adaptTodayPayload — real import from lib/adapters/today-payload.ts
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TESTS
 // ############################################################################
 // START_MODULE_CONTRACT
-// purpose: Tests for adapt-payloadts behavior
+// purpose: Tests for adaptTodayPayload — verifies API data → component props mapping
 // owns:
 //   - __tests__/lib/adapt-payload.test.ts
 // inputs: Mocks, fixtures
 // outputs: Assertion results
 // dependencies: local modules
 // side_effects: n/a (tests)
-// emitted_logs: n/a (tests)
 // invariants:
-//   - n/a
+//   - No `as any` / @ts-ignore / @ts-expect-error
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-TEST-ADAPT-PAYLOAD
-// purpose: Unit tests for adaptPayload — verifies API data → component props mapping
 
 import { describe, it, expect } from 'vitest';
+import { adaptTodayPayload } from '../../lib/adapters/today-payload';
+import { isDayAccessible } from '../../lib/access';
+import { TODAY } from '../../lib/today';
+import { validateAdaptedTodayPayload } from '../../lib/contracts/today';
+import type { TodayPayload } from '../../packages/contracts';
 
-// Inline adaptPayload for testing (copied from page.tsx)
-import type { AccessInfo } from '../../lib/access';
-
-function adaptPayload(api: any, selectedDate: Date): { payload: any; access: AccessInfo } {
-  const notes: any[] = api.notes
-    ? [{ id: 'daily-note', iconName: 'compass', title: 'Заметка дня', description: api.notes, hint: { meaning: api.notes, whyImportant: '', howForMe: '' } }]
-    : [{ id: 'no-data', iconName: 'compass', title: 'Данные временно недоступны', description: 'Пожалуйста, попробуйте позже.', hint: { meaning: 'Данные временно недоступны', whyImportant: '', howForMe: '' } }];
-
-  const reading = api.reading || { paragraphs: [] };
-
-  const why: any[] = (api.whyThisHappens?.sections || []).map(
-    (s: any) => ({
-      id: s.title || String(Math.random()),
-      iconName: 'telescope',
-      title: s.title || '',
-      paragraphs: s.blocks?.filter((b: any) => b.kind === 'paragraph')?.map((b: any) => b.text) || [],
-      bullets: s.blocks?.filter((b: any) => b.kind === 'bullets')?.flatMap((b: any) => b.items) || [],
-    })
-  );
-
-  const keyInsight = api.whyThisHappens?.sections?.[0]?.title || '';
-
-  const access: AccessInfo = {
-    state: (api.access?.state === 'full' || api.access?.state === 'trial') 
-      ? 'trial' 
-      : api.access?.state === 'locked' 
-        ? 'none' 
-        : (api.access?.state === 'preview' ? 'expired' : 'none') as AccessInfo['state'],
-    hasAccess: api.access?.state === 'full' || api.access?.state === 'trial',
-    accessStart: null,
-    accessEnd: null,
-    daysLeft: api.access?.referralDaysLeft ?? api.access?.daysLeft ?? 0,
+/** Helper: builds a minimal valid TodayPayload with overrides. */
+function createBaseApi(
+  overrides?: Partial<TodayPayload>,
+): TodayPayload {
+  const base: TodayPayload = {
+    date: '2026-06-01',
+    title: '',
+    headline: 'Test headline for the day',
+    dayStatus: 'supportive',
+    topFlags: [
+      { iconName: 'sun', title: 'Sun in Aries', summary: 'Active energy' },
+      { iconName: 'moon', title: 'Moon trine Venus', summary: 'Harmony' },
+    ],
+    reading: { paragraphs: ['Test paragraph'] },
+    notes: null,
+    whyThisHappens: { sections: [] },
+    meta: {
+      schemaVersion: 'today/v1',
+      contractVersion: 1,
+      calculationVersion: 1,
+      normalizationVersion: 1,
+      scoringVersion: 1,
+      promptVersion: 1,
+      contentVersion: 1,
+      generatedAt: '2026-06-01T00:00:00Z',
+      cached: false,
+    },
+    access: { state: 'full', referralDaysLeft: 13 },
+    weekStrip: [],
+    microcopy: [],
+    importantToday: [],
   };
+  return { ...base, ...overrides };
+}
 
+/** Helper: builds a minimal ContentAccessState override. */
+function accessOverride(
+  state: TodayPayload['access']['state'],
+  extra?: Partial<TodayPayload['access']>,
+): TodayPayload['access'] {
   return {
-    payload: { date: api.date || selectedDate.toISOString().split('T')[0], notes, reading, why, keyInsight },
-    access,
+    state,
+    referralDaysLeft: null,
+    subscriptionActive: null,
+    reason: null,
+    accessUntil: null,
+    ...extra,
   };
 }
 
-import { isDayAccessible } from '../../lib/access';
-import { TODAY } from '../../lib/today';
+describe('adaptTodayPayload', () => {
+  // ── Access mapping ──
 
-describe('adaptPayload', () => {
-  const baseApi = {
-    date: '2026-06-01',
-    headline: 'Test day',
-    notes: null,
-    reading: { paragraphs: ['Test paragraph'] },
-    whyThisHappens: { sections: [] },
-  };
-
-  it('full access → hasAccess=true, isDayAccessible=true', () => {
-    const api = { ...baseApi, access: { state: 'full', referralDaysLeft: 13 } };
-    const { access } = adaptPayload(api, TODAY);
+  it('full access (referral) → hasAccess=true, access.state=trial', () => {
+    const api = createBaseApi({ access: accessOverride('full', { referralDaysLeft: 13 }) });
+    const { access } = adaptTodayPayload(api, TODAY);
 
     expect(access.hasAccess).toBe(true);
     expect(access.state).toBe('trial');
+    expect(access.daysLeft).toBe(13);
     expect(isDayAccessible(TODAY, access)).toBe(true);
   });
 
-  it('trial access → hasAccess=true', () => {
-    const api = { ...baseApi, access: { state: 'trial', referralDaysLeft: 5 } };
-    const { access } = adaptPayload(api, TODAY);
+  it('full access with subscription → hasAccess=true, access.state=subscription', () => {
+    const api = createBaseApi({
+      access: accessOverride('full', { subscriptionActive: true, referralDaysLeft: 0 }),
+    });
+    const { access } = adaptTodayPayload(api, TODAY);
 
     expect(access.hasAccess).toBe(true);
-    expect(access.daysLeft).toBe(5);
-    expect(isDayAccessible(TODAY, access)).toBe(true);
+    expect(access.state).toBe('subscription');
+  });
+
+  it('full access with reason=active_subscription → hasAccess=true, access.state=subscription', () => {
+    const api = createBaseApi({
+      access: accessOverride('full', { reason: 'active_subscription', referralDaysLeft: 0 }),
+    });
+    const { access } = adaptTodayPayload(api, TODAY);
+
+    expect(access.hasAccess).toBe(true);
+    expect(access.state).toBe('subscription');
   });
 
   it('preview → hasAccess=false, isDayAccessible=false', () => {
-    const api = { ...baseApi, access: { state: 'preview' } };
-    const { access } = adaptPayload(api, TODAY);
+    const api = createBaseApi({ access: accessOverride('preview') });
+    const { access } = adaptTodayPayload(api, TODAY);
 
     expect(access.hasAccess).toBe(false);
     expect(isDayAccessible(TODAY, access)).toBe(false);
   });
 
-  it('locked → hasAccess=false', () => {
-    const api = { ...baseApi, access: { state: 'locked' } };
-    const { access } = adaptPayload(api, TODAY);
+  it('locked → hasAccess=false, access.state=none', () => {
+    const api = createBaseApi({ access: accessOverride('locked') });
+    const { access } = adaptTodayPayload(api, TODAY);
 
     expect(access.hasAccess).toBe(false);
     expect(access.state).toBe('none');
   });
 
-  it('missing access → hasAccess=false', () => {
-    const api = { ...baseApi };
-    const { access } = adaptPayload(api, TODAY);
-
-    expect(access.hasAccess).toBe(false);
-  });
-
-  it('preserves referralDaysLeft', () => {
-    const api = { ...baseApi, access: { state: 'full', referralDaysLeft: 7 } };
-    const { access } = adaptPayload(api, TODAY);
+  it('preserves referralDaysLeft from API', () => {
+    const api = createBaseApi({ access: accessOverride('full', { referralDaysLeft: 7 }) });
+    const { access } = adaptTodayPayload(api, TODAY);
 
     expect(access.daysLeft).toBe(7);
   });
 
-  it('falls back to daysLeft', () => {
-    const api = { ...baseApi, access: { state: 'full', daysLeft: 3 } };
-    const { access } = adaptPayload(api, TODAY);
-
-    expect(access.daysLeft).toBe(3);
-  });
-
-  // ── Placeholder tests — blocks must be visible even when data is missing ──
+  // ── Notes mapping ──
 
   it('null notes → placeholder card (not empty)', () => {
-    const api = { ...baseApi, notes: null };
-    const { payload } = adaptPayload(api, TODAY);
+    const api = createBaseApi({ notes: null });
+    const { payload } = adaptTodayPayload(api, TODAY);
 
     expect(payload.notes.length).toBeGreaterThan(0);
     expect(payload.notes[0].title).toBe('Данные временно недоступны');
     expect(payload.notes[0].description).toBe('Пожалуйста, попробуйте позже.');
+    expect(payload.notes[0].hint.whyImportant).not.toBe('');
+    expect(payload.notes[0].hint.howForMe).not.toBe('');
   });
 
   it('real notes → real card (not placeholder)', () => {
-    const api = { ...baseApi, notes: 'Сегодня отличный день для общения' };
-    const { payload } = adaptPayload(api, TODAY);
+    const api = createBaseApi({ notes: 'Сегодня отличный день для общения' });
+    const { payload } = adaptTodayPayload(api, TODAY);
 
     expect(payload.notes[0].title).toBe('Заметка дня');
     expect(payload.notes[0].title).not.toBe('Данные временно недоступны');
   });
 
+  // ── Headline / topFlags / dayStatus preservation ──
+
+  it('preserves headline from API', () => {
+    const api = createBaseApi({ headline: 'Unique day insight' });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.headline).toBe('Unique day insight');
+  });
+
+  it('preserves dayStatus from API', () => {
+    const api = createBaseApi({ dayStatus: 'tense' });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.dayStatus).toBe('tense');
+  });
+
+  it('preserves topFlags from API', () => {
+    const api = createBaseApi({
+      topFlags: [
+        { iconName: 'mars', title: 'Mars square Saturn', summary: 'Conflict energy' },
+      ],
+    });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.topFlags).toHaveLength(1);
+    expect(payload.topFlags[0].title).toBe('Mars square Saturn');
+    expect(payload.topFlags[0].summary).toBe('Conflict energy');
+  });
+
+  it('topFlags defaults to empty array when undefined', () => {
+    const api = createBaseApi({ topFlags: undefined });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.topFlags).toEqual([]);
+  });
+
+  // ── Why sections ──
+
   it('empty why sections → empty array (WhyExpanded hides itself)', () => {
-    const api = { ...baseApi, whyThisHappens: { sections: [] } };
-    const { payload } = adaptPayload(api, TODAY);
+    const api = createBaseApi({ whyThisHappens: { sections: [] } });
+    const { payload } = adaptTodayPayload(api, TODAY);
 
     expect(payload.why.length).toBe(0);
+  });
+
+  it('why sections with paragraphs and bullets are mapped correctly', () => {
+    const api = createBaseApi({
+      whyThisHappens: {
+        sections: [
+          {
+            id: 's1',
+            title: 'Section 1',
+            iconName: 'moon',
+            layer: 'main_theme',
+            blocks: [
+              { kind: 'paragraph' as const, text: 'Para text' },
+              { kind: 'bullets' as const, items: ['Bullet 1'] },
+            ],
+            planets: [],
+            houses: [],
+            aspects: [],
+            techniques: [],
+          },
+        ],
+      },
+    });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.why).toHaveLength(1);
+    expect(payload.why[0].paragraphs).toEqual(['Para text']);
+    expect(payload.why[0].bullets).toEqual(['Bullet 1']);
+    expect(payload.why[0].title).toBe('Section 1');
+  });
+
+  it('why sections with bullets only are valid for the UI contract', () => {
+    const api = createBaseApi({
+      whyThisHappens: {
+        sections: [
+          {
+            id: 's1',
+            title: 'Practical steps',
+            iconName: 'list-checks',
+            layer: 'practical_meaning',
+            blocks: [{ kind: 'bullets' as const, items: ['Step 1', 'Step 2'] }],
+            planets: [],
+            houses: [],
+            aspects: [],
+            techniques: [],
+          },
+        ],
+      },
+    });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.why[0].paragraphs).toEqual([]);
+    expect(payload.why[0].bullets).toEqual(['Step 1', 'Step 2']);
+    expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
+  });
+
+  // ── Reading ──
+
+  it('reading with paragraphs is mapped correctly', () => {
+    const api = createBaseApi({ reading: { paragraphs: ['P1', 'P2'] } });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.reading.paragraphs).toEqual(['P1', 'P2']);
+  });
+
+  // ── keyInsight ──
+
+  it('keyInsight is first why section title', () => {
+    const api = createBaseApi({
+      whyThisHappens: {
+        sections: [
+          {
+            id: 's1', title: 'First Insight', iconName: 'sun',
+            blocks: [{ kind: 'paragraph' as const, text: 'text' }],
+            planets: [], houses: [], aspects: [], techniques: [],
+          },
+          {
+            id: 's2', title: 'Second Insight', iconName: 'moon',
+            blocks: [{ kind: 'paragraph' as const, text: 'text' }],
+            planets: [], houses: [], aspects: [], techniques: [],
+          },
+        ],
+      },
+    });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.keyInsight).toBe('First Insight');
+  });
+
+  it('empty why → keyInsight falls back to non-empty placeholder', () => {
+    const api = createBaseApi({ whyThisHappens: { sections: [] } });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.keyInsight).toBe('Данные временно недоступны');
+    expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
+  });
+
+  it('empty reading paragraphs fall back to a non-empty paragraph', () => {
+    const api = createBaseApi({ reading: { paragraphs: [] } });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.reading.paragraphs).toEqual(['Пожалуйста, попробуйте позже.']);
+    expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
+  });
+
+  it('no placeholder for real notes', () => {
+    const api = createBaseApi({ notes: 'Реальная заметка' });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.notes[0].title).toBe('Заметка дня');
+    expect(payload.notes[0].description).toBe('Реальная заметка');
+    expect(payload.notes[0].description).not.toBe('Пожалуйста, попробуйте позже.');
+    expect(payload.notes[0].description).not.toBe('Данные временно недоступны');
+  });
+
+  it('adapted payload validates against the UI TodayPayloadSchema', () => {
+    const api = createBaseApi({
+      notes: 'Реальная заметка',
+      whyThisHappens: {
+        sections: [
+          {
+            id: 's1',
+            title: 'First Insight',
+            iconName: 'sun',
+            blocks: [{ kind: 'paragraph' as const, text: 'text' }],
+            planets: [],
+            houses: [],
+            aspects: [],
+            techniques: [],
+          },
+        ],
+      },
+    });
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
   });
 });

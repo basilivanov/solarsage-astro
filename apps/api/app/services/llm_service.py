@@ -58,6 +58,18 @@ import httpx
 from app.core.config import settings
 from app.core.logging import log_event, log_block
 
+# ── Astrological boundary rules ─────────────────────────────────────
+# LLM must NOT compute astrology — only interpret pre-computed backend data.
+
+_ASTRO_BOUNDARY_RULES = """
+КРИТИЧЕСКИЕ ПРАВИЛА:
+- ТЫ НЕ ВЫЧИСЛЯЕШЬ астрологические данные. Ты ТОЛЬКО интерпретируешь готовые расчёты, которые тебе переданы.
+- НЕ рассчитывай положения планет, дома, аспекты, орбы, даты и время.
+- НЕ придумывай астрологические факты — используй ТОЛЬКО переданные данные.
+- Если факта нет во входных данных — не добавляй его.
+- Твоя роль — интерпретировать, а не вычислять.
+"""
+
 # ── Russian name mappings (no anglicisms) ─────────────────────────────
 
 _PLANET_RU: dict[str, str] = {
@@ -263,7 +275,9 @@ class LLMService:
         # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_headline
         signals_desc = self._build_signal_descriptions(top_signals, limit=3)
 
-        prompt = f"""Ты — астролог. Напиши короткий заголовок дня (одно предложение) для пользователя на «ты».
+        prompt = f"""{_ASTRO_BOUNDARY_RULES}
+
+Ты — астролог. Напиши короткий заголовок дня (одно предложение) для пользователя на «ты».
 
 Статус дня: {day_status}
 
@@ -297,7 +311,9 @@ class LLMService:
         signals_desc = self._build_signal_descriptions(top_signals, limit=5)
         spheres_desc = self._build_sphere_descriptions(sphere_scores)
 
-        prompt = f"""Ты — астролог. Напиши интерпретацию дня для пользователя на «ты».
+        prompt = f"""{_ASTRO_BOUNDARY_RULES}
+
+Ты — астролог. Напиши интерпретацию дня для пользователя на «ты».
 
 Статус дня: {day_status}
 
@@ -341,7 +357,9 @@ class LLMService:
         spheres_desc = self._build_sphere_descriptions(sphere_scores)
         sem_context = self._build_semantic_context(semantic_layer)
 
-        prompt = f"""Ты — астролог. Напиши блок «Сегодня важно учесть» для пользователя на «ты».
+        prompt = f"""{_ASTRO_BOUNDARY_RULES}
+
+Ты — астролог. Напиши блок «Сегодня важно учесть» для пользователя на «ты».
 
 Статус дня: {day_status}
 
@@ -458,7 +476,9 @@ class LLMService:
             for i, c in enumerate(contexts)
         )
 
-        prompt = f"""Ты — астролог. Напиши блок «Почему так у меня?».
+        prompt = f"""{_ASTRO_BOUNDARY_RULES}
+
+Ты — астролог. Напиши блок «Почему так у меня?».
 
 Это НЕ второй прогноз. Это ТЕХНИЧЕСКАЯ расшифровка: транзит → натальная точка → дом → орб → сила → смысл.
 
@@ -634,7 +654,9 @@ JSON:"""
         items_json = json_lib.dumps(items, ensure_ascii=False, indent=2)
         context_json = json_lib.dumps(context, ensure_ascii=False, indent=2)
 
-        prompt = f"""Ты пишешь раскрытие для блока «Сегодня важно учесть».
+        prompt = f"""{_ASTRO_BOUNDARY_RULES}
+
+Ты пишешь раскрытие для блока «Сегодня важно учесть».
 
 События уже рассчитаны кодом. Нельзя добавлять новые события, менять время, планеты, дома, орбы или количество дней.
 
@@ -742,6 +764,7 @@ JSON:"""
         warnings = list(analysis.calculation_warnings)
 
         system_prompt = (
+            f"{_ASTRO_BOUNDARY_RULES}\n\n"
             "Ты — астролог, отвечающий на хорарный вопрос. Стиль: разговорный, "
             "на «ты», без англицизмов. Планеты и дома называй по-русски.\n\n"
             "КРИТИЧЕСКИ ВАЖНО:\n"

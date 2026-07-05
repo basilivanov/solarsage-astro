@@ -62,6 +62,7 @@ export default [
   {
     ignores: [
       ".next/**",
+      ".grace/**",
       "node_modules/**",
       "apps/api/**",
       "apps/solarsage/**",

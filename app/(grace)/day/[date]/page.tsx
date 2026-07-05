@@ -29,80 +29,8 @@ import { ErrorBoundary } from '@/components/grace/ErrorBoundary';
 import { useDay } from '@/lib/grace/hooks/useDay';
 import { useOnboarded } from '@/hooks/use-onboarded';
 import { fromDateParam, toDateParam } from '@/lib/date';
-import { TODAY, type AdaptedTodayPayload, type TodayNote, type TodayWhySection } from '@/lib/today';
-import type { TodayPayload } from '@/packages/contracts';
-import type { AccessInfo } from '@/lib/access';
-
-function adaptPayload(api: TodayPayload, selectedDate: Date): {
-  payload: AdaptedTodayPayload;
-  access: AccessInfo;
-} {
-  const notes: TodayNote[] = api.notes
-    ? [{
-        id: 'daily-note',
-        iconName: 'compass',
-        title: 'Заметка дня',
-        description: api.notes,
-        hint: {
-          meaning: api.notes,
-          whyImportant: '',
-          howForMe: '',
-        },
-      }]
-    : [{
-        id: 'no-data',
-        iconName: 'compass',
-        title: 'Данные временно недоступны',
-        description: 'Пожалуйста, попробуйте позже.',
-        hint: {
-          meaning: 'Данные временно недоступны',
-          whyImportant: '',
-          howForMe: '',
-        },
-      }];
-
-  const reading = api.reading || { paragraphs: [] };
-
-  const why: TodayWhySection[] = (api.whyThisHappens?.sections || []).map(
-    (s: any) => ({
-      id: s.id || s.title || String(Math.random()),
-      iconName: s.iconName || s.icon_name || s.layer || 'telescope',
-      title: s.title || '',
-      layer: s.layer || null,
-      paragraphs: s.blocks
-        ?.filter((b: any) => b.kind === 'paragraph')
-        ?.map((b: any) => b.text) || s.paragraphs || [],
-      bullets: s.blocks
-        ?.filter((b: any) => b.kind === 'bullets')
-        ?.flatMap((b: any) => b.items) || s.bullets || [],
-    })
-  );
-
-  const keyInsight = why[0]?.title || '';
-
-  const access: AccessInfo = {
-    state: (api.access?.state === 'full') 
-      ? 'trial' 
-      : api.access?.state === 'locked' 
-        ? 'none' 
-        : (api.access?.state === 'preview' ? 'expired' : 'none') as AccessInfo['state'],
-    hasAccess: api.access?.state === 'full',
-    accessStart: null,
-    accessEnd: null,
-    daysLeft: api.access?.referralDaysLeft ?? 0,
-  };
-
-  return {
-    payload: {
-      date: api.date || selectedDate.toISOString().split('T')[0],
-      notes,
-      reading,
-      why,
-      keyInsight,
-    },
-    access,
-  };
-}
+import { TODAY } from '@/lib/today';
+import { adaptTodayPayload } from '@/lib/adapters/today-payload';
 
 export default function DayPage() {
   const params = useParams();
@@ -162,7 +90,7 @@ export default function DayPage() {
 
   if (!data) return null;
 
-  const { payload, access } = adaptPayload(data, selectedDate);
+  const { payload, access } = adaptTodayPayload(data, selectedDate);
 
   return (
     <TodayScreen

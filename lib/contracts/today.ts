@@ -32,6 +32,21 @@
 
 import { z } from "zod"
 
+export const DayStatusSchema = z.enum(["supportive", "steady", "tense"]);
+
+export type DayStatus = z.infer<typeof DayStatusSchema>;
+
+export const AdaptedTopFlagSchema = z.object({
+  /** Имя иконки для отображения */
+  iconName: z.string().min(1),
+  /** Короткий заголовок флага */
+  title: z.string().min(1),
+  /** Краткое описание-подпись */
+  summary: z.string().min(1),
+});
+
+export type AdaptedTopFlag = z.infer<typeof AdaptedTopFlagSchema>;
+
 export const IconNameSchema = z.enum([
   "moon",
   "orbit",
@@ -74,13 +89,22 @@ export const TodayWhySectionSchema = z.object({
   id: z.string().min(1),
   iconName: z.string().min(1),
   title: z.string().min(1),
-  paragraphs: z.array(z.string().min(1)).min(1),
-  bullets: z.array(z.string()).optional(),
-})
+  paragraphs: z.array(z.string().min(1)),
+  bullets: z.array(z.string().min(1)).optional(),
+}).refine(
+  (section) => section.paragraphs.length > 0 || (section.bullets?.length ?? 0) > 0,
+  { message: "why section must contain paragraphs or bullets" },
+)
 
 export const TodayPayloadSchema = z.object({
   /** ISO yyyy-mm-dd — для кэша, deeplink'ов, инвалидации SWR. */
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** Заголовок дня от LLM */
+  headline: z.string(),
+  /** Общий статус дня */
+  dayStatus: DayStatusSchema,
+  /** Флаги / карточки дня (топ-сигналы) */
+  topFlags: z.array(AdaptedTopFlagSchema),
   notes: z.array(TodayNoteSchema),
   reading: TodayReadingSchema,
   why: z.array(TodayWhySectionSchema),

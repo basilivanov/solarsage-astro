@@ -35,6 +35,17 @@
 from app.services.llm.russian import _planet, _HOUSE_RU, _ASPECT_RU, _SPHERE_RU
 
 
+# LLM must NOT compute astrology — only interpret pre-computed backend data.
+ASTRO_BOUNDARY_RULES = """
+КРИТИЧЕСКИЕ ПРАВИЛА:
+- ТЫ НЕ ВЫЧИСЛЯЕШЬ астрологические данные. Ты ТОЛЬКО интерпретируешь готовые расчёты, которые тебе переданы.
+- НЕ рассчитывай положения планет, дома, аспекты, орбы, даты и время.
+- НЕ придумывай астрологические факты — используй ТОЛЬКО переданные данные.
+- Если факта нет во входных данных — не добавляй его.
+- Твоя роль — интерпретировать, а не вычислять.
+"""
+
+
 def _build_signal_descriptions(signals: list, limit: int = 5) -> str:
     lines = []
     for s in signals[:limit]:

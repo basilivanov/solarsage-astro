@@ -61,6 +61,7 @@ from app.core.config import settings
 from app.core.logging import log_event, log_block
 from app.services.llm.client import LLMClient, HoraryGenerationError
 from app.services.llm.prompts import (
+    ASTRO_BOUNDARY_RULES,
     _build_signal_descriptions,
     _build_sphere_descriptions,
     _build_semantic_context,
@@ -92,7 +93,9 @@ class LLMService:
         # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_headline
         signals_desc = _build_signal_descriptions(top_signals, limit=3)
 
-        prompt = f"""Ты — астролог. Напиши короткий заголовок дня (одно предложение) для пользователя на «ты».
+        prompt = f"""{ASTRO_BOUNDARY_RULES}
+
+Ты — астролог. Напиши короткий заголовок дня (одно предложение) для пользователя на «ты».
 
 Статус дня: {day_status}
 
@@ -126,7 +129,9 @@ class LLMService:
         signals_desc = _build_signal_descriptions(top_signals, limit=5)
         spheres_desc = _build_sphere_descriptions(sphere_scores)
 
-        prompt = f"""Ты — астролог. Напиши интерпретацию дня для пользователя на «ты».
+        prompt = f"""{ASTRO_BOUNDARY_RULES}
+
+Ты — астролог. Напиши интерпретацию дня для пользователя на «ты».
 
 Статус дня: {day_status}
 
@@ -170,7 +175,9 @@ class LLMService:
         spheres_desc = _build_sphere_descriptions(sphere_scores)
         sem_context = _build_semantic_context(semantic_layer)
 
-        prompt = f"""Ты — астролог. Напиши блок «Сегодня важно учесть» для пользователя на «ты».
+        prompt = f"""{ASTRO_BOUNDARY_RULES}
+
+Ты — астролог. Напиши блок «Сегодня важно учесть» для пользователя на «ты».
 
 Статус дня: {day_status}
 
@@ -216,7 +223,9 @@ class LLMService:
             for i, c in enumerate(contexts)
         )
 
-        prompt = f"""Ты — астролог. Напиши блок «Почему так у меня?».
+        prompt = f"""{ASTRO_BOUNDARY_RULES}
+
+Ты — астролог. Напиши блок «Почему так у меня?».
 
 Это НЕ второй прогноз. Это ТЕХНИЧЕСКАЯ расшифровка: транзит → натальная точка → дом → орб → сила → смысл.
 
@@ -390,7 +399,9 @@ JSON:"""
         items_json = json_lib.dumps(items, ensure_ascii=False, indent=2)
         context_json = json_lib.dumps(context, ensure_ascii=False, indent=2)
 
-        prompt = f"""Ты пишешь раскрытие для блока «Сегодня важно учесть».
+        prompt = f"""{ASTRO_BOUNDARY_RULES}
+
+Ты пишешь раскрытие для блока «Сегодня важно учесть».
 
 События уже рассчитаны кодом. Нельзя добавлять новые события, менять время, планеты, дома, орбы или количество дней.
 
@@ -497,6 +508,7 @@ JSON:"""
         warnings = list(analysis.calculation_warnings)
 
         system_prompt = (
+            f"{ASTRO_BOUNDARY_RULES}\n\n"
             "Ты — астролог, отвечающий на хорарный вопрос. Стиль: разговорный, "
             "на «ты», без англицизмов. Планеты и дома называй по-русски.\n\n"
             "КРИТИЧЕСКИ ВАЖНО:\n"

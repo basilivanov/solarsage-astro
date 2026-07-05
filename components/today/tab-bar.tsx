@@ -49,7 +49,7 @@ type Tab = {
   icon: LucideIcon
   label: string
   href: string
-  match: (p: string) => boolean
+  match: (_pathname: string) => boolean
 }
 // END_BLOCK_TYPES
 
@@ -106,7 +106,7 @@ const tabs: Tab[] = [
 // END_FUNCTION_CONTRACT
 export function TabBar() {
   const pathname = usePathname() ?? "/"
-  logger.debug("tab_bar_render", { pathname })
+  logger.debug("tab_bar_render", { extra: { pathname } })
 
   return (
     <nav

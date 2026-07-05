@@ -246,6 +246,9 @@ async def test_why_sections_parses_markdown_wrapped_json():
         assert len(sections) == 1
         assert sections[0]["id"] == "why-1"
         assert sections[0]["layer"] == "main_theme"
+        prompt = mock_client.post.call_args.kwargs["json"]["messages"][0]["content"]
+        assert "НЕ ВЫЧИСЛЯЕШЬ" in prompt
+        assert "ТОЛЬКО интерпретируешь" in prompt
 
 
 @pytest.mark.asyncio
@@ -271,3 +274,118 @@ async def test_why_sections_parses_bare_json():
         assert sections is not None, "Should parse bare JSON"
         assert len(sections) == 1
 # END_BLOCK: TEST_WHY_SECTIONS_PARSING
+
+
+# START_BLOCK: TEST_PROMPT_BOUNDARY
+@pytest.mark.asyncio
+async def test_generate_headline_prompt_contains_astro_boundary_rules(sample_signals):
+    """LLM prompt for headline must include astro boundary rules."""
+    mock_response_json = {
+        "choices": [{"message": {"content": "Test headline"}}]
+    }
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value=mock_response_json)
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        service = LLMService()
+        await service.generate_headline("supportive", sample_signals)
+
+        call_args = mock_client.post.call_args
+        prompt = call_args.kwargs["json"]["messages"][0]["content"]
+
+        # Verify boundary rules are present
+        assert "НЕ ВЫЧИСЛЯЕШЬ" in prompt
+        assert "ТОЛЬКО интерпретируешь" in prompt
+        assert "НЕ рассчитывай" in prompt
+        assert "не добавляй" in prompt
+
+
+@pytest.mark.asyncio
+async def test_generate_reading_prompt_contains_astro_boundary_rules(sample_signals):
+    """LLM prompt for reading must include astro boundary rules."""
+    mock_response_json = {
+        "choices": [{"message": {"content": "P1.\n\nP2."}}]
+    }
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value=mock_response_json)
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        service = LLMService()
+        await service.generate_reading("supportive", sample_signals, {"career": 2})
+
+        call_args = mock_client.post.call_args
+        prompt = call_args.kwargs["json"]["messages"][0]["content"]
+
+        # Verify boundary rules are present
+        assert "НЕ ВЫЧИСЛЯЕШЬ" in prompt
+        assert "ТОЛЬКО интерпретируешь" in prompt
+
+
+@pytest.mark.asyncio
+async def test_generate_notes_prompt_contains_astro_boundary_rules():
+    """LLM prompt for notes must include astro boundary rules."""
+    mock_response_json = {
+        "choices": [{"message": {"content": "Test notes"}}]
+    }
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value=mock_response_json)
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        service = LLMService()
+        await service.generate_notes("supportive", {}, {})
+
+        call_args = mock_client.post.call_args
+        prompt = call_args.kwargs["json"]["messages"][0]["content"]
+
+        # Verify boundary rules are present
+        assert "НЕ ВЫЧИСЛЯЕШЬ" in prompt
+        assert "ТОЛЬКО интерпретируешь" in prompt
+
+
+@pytest.mark.asyncio
+async def test_generate_important_today_details_prompt_contains_astro_boundary_rules():
+    """LLM prompt for important-today details must include astro boundary rules."""
+    mock_response_json = {
+        "choices": [{"message": {"content": '{"items": []}'}}]
+    }
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value=mock_response_json)
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        service = LLMService()
+        await service.generate_important_today_details([], {})
+
+        call_args = mock_client.post.call_args
+        prompt = call_args.kwargs["json"]["messages"][0]["content"]
+
+        assert "НЕ ВЫЧИСЛЯЕШЬ" in prompt
+        assert "ТОЛЬКО интерпретируешь" in prompt
+# END_BLOCK: TEST_PROMPT_BOUNDARY

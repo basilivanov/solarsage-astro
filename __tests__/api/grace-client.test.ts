@@ -20,6 +20,13 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Mock demo-mode as false so tests exercise real fetch path
+vi.mock('@/lib/demo-mode', () => ({
+  IS_DEMO_MODE: false,
+  resolveDemoMode: () => false,
+}))
+
 import { fetchDay, fetchCalendar, ApiError } from '../../lib/grace/api/client'
 
 describe('ApiError', () => {
@@ -43,7 +50,7 @@ describe('fetchDay', () => {
     vi.clearAllMocks()
   })
 
-  it('returns payload on success', async () => {
+  it('returns payload on success and calls real API endpoint (not demo data)', async () => {
     const payload = { date: '2025-06-01', headline: 'Test', dayStatus: 'supportive' as const }
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -52,6 +59,11 @@ describe('fetchDay', () => {
 
     const result = await fetchDay('2025-06-01')
     expect(result).toEqual(payload)
+    // Verify it calls the real /api/day endpoint, not returning demo data
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/day/2025-06-01'),
+      expect.objectContaining({ credentials: 'include' }),
+    )
   })
 
   it('throws ApiError on 404', async () => {
@@ -142,7 +154,7 @@ describe('fetchCalendar', () => {
     vi.clearAllMocks()
   })
 
-  it('returns payload on success', async () => {
+  it('returns payload on success and calls real API endpoint (not demo data)', async () => {
     const payload = { days: [{ date: '2025-06-01', dayStatus: 'supportive' }] }
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -151,6 +163,11 @@ describe('fetchCalendar', () => {
 
     const result = await fetchCalendar('2025-06')
     expect(result).toEqual(payload)
+    // Verify it calls the real /api/calendar endpoint, not returning demo data
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/calendar?month=2025-06'),
+      expect.objectContaining({ credentials: 'include' }),
+    )
   })
 
   it('throws ApiError on error response', async () => {

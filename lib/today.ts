@@ -36,7 +36,10 @@ export type {
   TodayNote,
   TodayReading,
   TodayWhySection,
+  TodayWhySection as TodayWhySectionUI,
   AdaptedTodayPayload,
+  AdaptedTopFlag,
+  DayStatus,
 } from "@/lib/contracts/today"
 
 /**

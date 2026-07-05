@@ -24,6 +24,11 @@ import { validateAdaptedTodayPayload, TodayPayloadSchema } from '../../lib/contr
 
 const validTodayPayload = {
   date: '2026-06-01',
+  headline: 'Test headline',
+  dayStatus: 'supportive' as const,
+  topFlags: [
+    { iconName: 'sun', title: 'Sun in Aries', summary: 'Active energy' },
+  ],
   notes: [
     {
       id: 'note-1',
@@ -124,6 +129,38 @@ describe('validateAdaptedTodayPayload', () => {
           iconName: 'compass',
           title: 'Direction',
           paragraphs: [],
+        },
+      ],
+    }
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
+  })
+
+  it('accepts why section with bullets and no paragraphs', () => {
+    const data = {
+      ...validTodayPayload,
+      why: [
+        {
+          id: 'w1',
+          iconName: 'list-checks',
+          title: 'Practical steps',
+          paragraphs: [],
+          bullets: ['Check details', 'Move slowly'],
+        },
+      ],
+    }
+    expect(() => validateAdaptedTodayPayload(data)).not.toThrow()
+  })
+
+  it('rejects why section with empty bullets only', () => {
+    const data = {
+      ...validTodayPayload,
+      why: [
+        {
+          id: 'w1',
+          iconName: 'list-checks',
+          title: 'Practical steps',
+          paragraphs: [],
+          bullets: [],
         },
       ],
     }

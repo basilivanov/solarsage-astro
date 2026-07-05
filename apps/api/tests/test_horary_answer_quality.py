@@ -295,3 +295,50 @@ def test_no_probability_wording_in_horary_prompt():
     assert "вероятность" not in src.lower() or "не выдумывай" in src.lower()
     # Must include the label vocabulary
     assert "low|medium|high" in src
+
+
+@pytest.mark.asyncio
+async def test_horary_prompt_contains_astro_boundary_rules(monkeypatch):
+    monkeypatch.setattr(LLMService, "__init__", lambda self: None)
+    svc = LLMService()
+    analysis = HoraryAnalysis(
+        verdict="yes",
+        confidence_score=70,
+        confidence_label="medium",
+        confidence_explanation="test",
+        involved_planets=["Venus"],
+        testimonies_for=[],
+        testimonies_against=[],
+        neutral_factors=[],
+        timing=TimingInfo(status="known", time_range="1 неделя", text="ок"),
+    )
+    valid_response = {
+        "blocks": [
+            {"type": "verdict_card", "verdict": "yes", "confidence": 0.5,
+             "label": "Да", "confidenceLabel": "medium", "confidenceExplanation": "Данных достаточно для умеренной уверенности, потому что карта показывает согласованные указания без критичных противоречий."},
+            {"type": "lead", "text": "Ответ скорее положительный, потому что карта показывает больше поддерживающих факторов, чем ослабляющих указаний."},
+            {"type": "paragraph", "text": "Сигнификаторы пользователя и вопроса описывают ситуацию без явных противоречий и позволяют рассматривать развитие как рабочее и реалистичное."},
+            {"type": "testimonies",
+             "prosLabel": "За", "consLabel": "Против", "neutralLabel": "Нейтр",
+             "pros": [], "cons": [], "neutral": []},
+            {"type": "paragraph", "text": "Исход может измениться, если появятся новые сдерживающие факторы или если участники начнут действовать менее последовательно, чем сейчас."},
+            {"type": "timing", "status": "known", "timeRange": "1 неделя", "text": "Вероятное проявление видно в течение недели, потому что карта показывает достаточно ясный и относительно близкий временной ориентир."},
+            {"type": "callout", "tone": "insight", "title": "Совет", "text": "Действуй спокойно и не форсируй процесс: лучше закрепить уже имеющиеся преимущества, проверить детали и дать ситуации раскрыться естественным образом."},
+            {"type": "paragraph", "text": "Итог указывает на благоприятное развитие при сохранении текущего курса, особенно если не создавать лишнего давления и не торопить события."},
+        ]
+    }
+    captured = {}
+
+    async def fake_gen(prompt, max_tokens):
+        captured["prompt"] = prompt
+        return json.dumps(valid_response, ensure_ascii=False)
+
+    monkeypatch.setattr(svc, "_generate_text", fake_gen)
+    await svc.generate_horary_answer(
+        question_text="Q",
+        category=None,
+        analysis=analysis,
+    )
+
+    assert "НЕ ВЫЧИСЛЯЕШЬ" in captured["prompt"]
+    assert "ТОЛЬКО интерпретируешь" in captured["prompt"]
