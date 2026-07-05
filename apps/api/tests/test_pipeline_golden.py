@@ -28,7 +28,6 @@
 import asyncio
 import json
 import os
-from datetime import date
 
 import httpx
 import pytest
@@ -80,7 +79,7 @@ async def golden_and_live(request):
         tr = await client.post("http://127.0.0.1:18091/v1/transits", json={
             "birth_date": BIRTH, "birth_time": BIRTH_TIME,
             "birth_lat": prof["lat"], "birth_lon": prof["lon"], "birth_tz": prof["tz"],
-            "target_date": str(date.today()), "target_time": "12:00", "target_tz": prof["tz"],
+            "target_date": golden["transit_date"], "target_time": "12:00", "target_tz": prof["tz"],
         }, timeout=30)
         transits = tr.json()
 
