@@ -74,7 +74,7 @@ export function ProfileScreen({
   onResetOnboarding,
 }: Props) {
   const tgUser = useTelegramUser()
-  const { profile, update } = useProfile()
+  const { profile, update, saving, error } = useProfile()
   const [editField, setEditField] = useState<EditField | null>(null)
 
   const closeEdit = () => setEditField(null)
@@ -189,20 +189,24 @@ export function ProfileScreen({
         </div>
       </section>
 
-      <section className="px-5 pt-6 pb-10">
-        <DevModeSwitcher
-          currentState={currentState}
-          onChangeState={onChangeState}
-          onResetOnboarding={onResetOnboarding}
-        />
-      </section>
+      {process.env.NODE_ENV === "development" ? (
+        <section className="px-5 pt-6 pb-10">
+          <DevModeSwitcher
+            currentState={currentState}
+            onChangeState={onChangeState}
+            onResetOnboarding={onResetOnboarding}
+          />
+        </section>
+      ) : null}
 
       {editField ? (
         <ProfileEditSheet
           field={editField}
           profile={profile}
-          onSave={(patch) => {
-            update(patch)
+          saving={saving}
+          error={error}
+          onSave={async (patch) => {
+            await update(patch)
             closeEdit()
           }}
           onClose={closeEdit}
@@ -223,11 +227,15 @@ function ProfileEditSheet({
   profile,
   onSave,
   onClose,
+  saving,
+  error,
 }: {
   field: EditField
   profile: Profile
-  onSave: (_patch: Partial<Profile>) => void
+  onSave: (_patch: Partial<Profile>) => void | Promise<void>
   onClose: () => void
+  saving?: boolean
+  error?: string | null
 }) {
   switch (field) {
     case "birthDate":
@@ -237,6 +245,8 @@ function ProfileEditSheet({
           initial={profile.birthDate}
           onClose={onClose}
           onSave={(v) => onSave({ birthDate: v })}
+          saving={saving}
+          error={error}
         />
       )
     case "birthTime":
@@ -246,35 +256,42 @@ function ProfileEditSheet({
           initial={profile.birthTime}
           onClose={onClose}
           onSave={(v) => onSave({ birthTime: v })}
+          saving={saving}
+          error={error}
         />
       )
     case "birthPlace":
       return (
         <EditSheet
           field="birthPlace"
-          initial={profile.birthPlace}
+          initial={profile.birthLocation}
           onClose={onClose}
-          onSave={(v) => onSave({ birthPlace: v })}
+          onSave={(v) => onSave({ birthPlace: v.city, birthLocation: v })}
+          saving={saving}
+          error={error}
         />
       )
     case "currentCity":
       return (
         <EditSheet
           field="currentCity"
-          initial={profile.currentCity}
+          initial={profile.currentLocation}
           onClose={onClose}
-          onSave={(v) => onSave({ currentCity: v })}
+          onSave={(v) => onSave({ currentCity: v.city, currentLocation: v })}
+          saving={saving}
+          error={error}
         />
       )
     case "birthdayCity":
       return (
         <EditSheet
           field="birthdayCity"
-          initial={profile.birthdayCity}
+          initial={profile.birthdayLocation}
           onClose={onClose}
-          onSave={(v) => onSave({ birthdayCity: v })}
+          onSave={(v) => onSave({ birthdayCity: v.city, birthdayLocation: v })}
+          saving={saving}
+          error={error}
         />
       )
   }
 }
-

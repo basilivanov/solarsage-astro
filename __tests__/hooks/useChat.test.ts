@@ -104,6 +104,7 @@ vi.mock('@/lib/api/chat', () => ({
 }))
 
 import { useChat } from '@/hooks/use-chat'
+import { DEFAULT_PROFILE } from '@/lib/profile'
 import type { ChatContext } from '@/lib/chat'
 
 // localStorage mock
@@ -121,6 +122,7 @@ beforeEach(() => {
 
 const context: ChatContext = {
   profile: {
+    ...DEFAULT_PROFILE,
     birthDate: { day: '14', month: '07', year: '1995' },
     birthTime: { hours: '08', minutes: '42', unknown: false },
     birthPlace: 'Киев, Украина',

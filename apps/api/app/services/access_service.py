@@ -50,7 +50,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AccessLedger
-from app.schemas.access import ContentAccessState
+from app.schemas.access import AccessSummary, ContentAccessState
 
 
 # START_BLOCK: ACCESS_CHECK
@@ -169,6 +169,57 @@ class AccessService:
                 subscription_active=None,
                 access_until=last_entry.end_date.isoformat(),
             )
+
+    async def get_summary(
+        self, user_id: UUID, target_date: Date | None = None
+    ) -> AccessSummary:
+        today = target_date or datetime.now(UTC).date()
+        result = await self.db.execute(
+            select(AccessLedger)
+            .where(AccessLedger.user_id == user_id)
+            .order_by(AccessLedger.start_date, AccessLedger.end_date)
+        )
+        entries = list(result.scalars().all())
+        active_entries = [
+            entry for entry in entries if entry.start_date <= today <= entry.end_date
+        ]
+        active_entries.sort(
+            key=lambda entry: 0 if entry.entry_type == "referral_bonus" else 1
+        )
+
+        if active_entries:
+            active = active_entries[0]
+            if active.entry_type == "referral_bonus":
+                return AccessSummary(
+                    user="trial",
+                    referral_days_left=(active.end_date - today).days + 1,
+                    subscription_active=False,
+                    access_start=active.start_date.isoformat(),
+                    access_until=active.end_date.isoformat(),
+                )
+            return AccessSummary(
+                user="subscription",
+                referral_days_left=0,
+                subscription_active=True,
+                access_start=active.start_date.isoformat(),
+                access_until=active.end_date.isoformat(),
+            )
+
+        if not entries:
+            return AccessSummary(
+                user="none",
+                referral_days_left=0,
+                subscription_active=False,
+            )
+
+        last_entry = max(entries, key=lambda entry: entry.end_date)
+        return AccessSummary(
+            user="expired",
+            referral_days_left=0,
+            subscription_active=False,
+            access_start=last_entry.start_date.isoformat(),
+            access_until=last_entry.end_date.isoformat(),
+        )
 # END_BLOCK: ACCESS_CHECK
 
 

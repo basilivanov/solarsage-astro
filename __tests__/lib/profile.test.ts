@@ -21,13 +21,15 @@
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi } from 'vitest'
 import {
+  apiProfileToProfile,
+  EMPTY_PROFILE,
   formatBirthDate,
   formatBirthTime,
   isValidBirthDate,
   isValidBirthTime,
   loadProfile,
+  profileToApiWrite,
   saveProfile,
-  DEFAULT_PROFILE,
   type BirthDateParts,
   type BirthTimeParts,
 } from '../../lib/profile'
@@ -166,7 +168,7 @@ describe('isValidBirthTime', () => {
 })
 
 describe('loadProfile and saveProfile', () => {
-  it('saveProfile stores profile JSON in localStorage', () => {
+  it('saveProfile marks cached profiles as API-sourced', () => {
     const store: Record<string, string> = {}
     const mockLocalStorage = {
       getItem: (key: string) => store[key] ?? null,
@@ -175,13 +177,16 @@ describe('loadProfile and saveProfile', () => {
     }
     vi.stubGlobal('window', { localStorage: mockLocalStorage })
 
-    saveProfile(DEFAULT_PROFILE)
+    saveProfile(EMPTY_PROFILE)
 
     expect(store['lumen:profile']).toBeDefined()
-    expect(JSON.parse(store['lumen:profile']).birthPlace).toBe('Киев, Украина')
+    expect(JSON.parse(store['lumen:profile'])).toEqual({
+      source: 'api',
+      profile: EMPTY_PROFILE,
+    })
   })
 
-  it('loadProfile returns DEFAULT_PROFILE when localStorage is empty', () => {
+  it('loadProfile returns EMPTY_PROFILE when localStorage is empty', () => {
     const store: Record<string, string> = {}
     const mockLocalStorage = {
       getItem: (key: string) => store[key] ?? null,
@@ -192,12 +197,7 @@ describe('loadProfile and saveProfile', () => {
 
     const result = loadProfile()
 
-    expect(result.birthDate.day).toBe('14')
-    expect(result.birthDate.month).toBe('07')
-    expect(result.birthDate.year).toBe('1995')
-    expect(result.birthTime.hours).toBe('08')
-    expect(result.birthTime.minutes).toBe('42')
-    expect(result.birthTime.unknown).toBe(false)
+    expect(result).toEqual(EMPTY_PROFILE)
   })
 
   it('loadProfile returns DEFAULT_PROFILE when stored JSON is corrupted', () => {
@@ -211,16 +211,12 @@ describe('loadProfile and saveProfile', () => {
 
     const result = loadProfile()
 
-    expect(result.birthDate.day).toBe('14')
-    expect(result.birthTime.unknown).toBe(false)
+    expect(result).toEqual(EMPTY_PROFILE)
   })
 
-  it('loadProfile merges stored data with DEFAULT_PROFILE', () => {
+  it('loadProfile ignores legacy unmarked profile data', () => {
     const store: Record<string, string> = {
-      'lumen:profile': JSON.stringify({
-        birthPlace: 'Москва, Россия',
-        birthDate: { day: '22' },
-      }),
+      'lumen:profile': JSON.stringify({ birthPlace: 'Москва, Россия' }),
     }
     const mockLocalStorage = {
       getItem: (key: string) => store[key] ?? null,
@@ -231,8 +227,116 @@ describe('loadProfile and saveProfile', () => {
 
     const result = loadProfile()
 
-    expect(result.birthPlace).toBe('Москва, Россия')
-    expect(result.birthDate.day).toBe('22')
-    expect(result.birthDate.month).toBe('07')
+    expect(result).toEqual(EMPTY_PROFILE)
+  })
+
+  it('loadProfile restores a marked API profile', () => {
+    const cached = {
+      ...EMPTY_PROFILE,
+      birthPlace: 'Москва, Россия',
+      birthLocation: {
+        city: 'Москва, Россия',
+        lat: 55.7558,
+        lon: 37.6173,
+        timezone: 'Europe/Moscow',
+      },
+    }
+    const store: Record<string, string> = {
+      'lumen:profile': JSON.stringify({ source: 'api', profile: cached }),
+    }
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => store[key] ?? null,
+        setItem: (key: string, value: string) => { store[key] = value },
+        removeItem: (key: string) => { delete store[key] },
+      },
+    })
+
+    expect(loadProfile()).toEqual(cached)
+  })
+})
+
+describe('profile API mapping', () => {
+  const apiProfile = {
+    userId: '64c31e3a-a7db-4a35-b12a-cd75fc8156d6',
+    firstName: 'Ada',
+    gender: 'female' as const,
+    isOnboarded: true,
+    birth: {
+      birthday: '1985-12-10',
+      birthTime: '12:05:00',
+      birthCity: 'London, UK',
+      birthLat: 51.5074,
+      birthLon: -0.1278,
+      birthTz: 'Europe/London',
+    },
+    currentLocation: {
+      city: 'Lisbon, Portugal',
+      lat: 38.7223,
+      lon: -9.1393,
+      tz: 'Europe/Lisbon',
+    },
+    birthdayLocation: {
+      city: 'Tokyo, Japan',
+      lat: 35.6762,
+      lon: 139.6503,
+      tz: 'Asia/Tokyo',
+    },
+  }
+
+  it('maps backend profile fields and location metadata into the UI model', () => {
+    const profile = apiProfileToProfile(apiProfile)
+
+    expect(profile.firstName).toBe('Ada')
+    expect(profile.gender).toBe('female')
+    expect(profile.birthDate).toEqual({ day: '10', month: '12', year: '1985' })
+    expect(profile.birthTime).toEqual({ hours: '12', minutes: '05', unknown: false })
+    expect(profile.birthLocation).toEqual({
+      city: 'London, UK',
+      lat: 51.5074,
+      lon: -0.1278,
+      timezone: 'Europe/London',
+    })
+    expect(profile.currentLocation?.timezone).toBe('Europe/Lisbon')
+    expect(profile.birthdayLocation?.timezone).toBe('Asia/Tokyo')
+  })
+
+  it('maps an empty backend profile to EMPTY_PROFILE', () => {
+    expect(apiProfileToProfile({
+      ...apiProfile,
+      firstName: null,
+      gender: null,
+      isOnboarded: false,
+      birth: {},
+      currentLocation: null,
+      birthdayLocation: null,
+    })).toEqual(EMPTY_PROFILE)
+  })
+
+  it('serializes the full profile without dropping coordinates or timezones', () => {
+    expect(profileToApiWrite(apiProfileToProfile(apiProfile))).toEqual({
+      firstName: 'Ada',
+      gender: 'female',
+      birth: {
+        birthday: '1985-12-10',
+        birthTime: '12:05:00',
+        birthCity: 'London, UK',
+        birthLat: 51.5074,
+        birthLon: -0.1278,
+        birthTz: 'Europe/London',
+      },
+      currentLocation: {
+        city: 'Lisbon, Portugal',
+        lat: 38.7223,
+        lon: -9.1393,
+        tz: 'Europe/Lisbon',
+      },
+      birthdayLocation: {
+        city: 'Tokyo, Japan',
+        lat: 35.6762,
+        lon: 139.6503,
+        tz: 'Asia/Tokyo',
+      },
+    })
   })
 })

@@ -269,6 +269,8 @@ export interface components {
     schemas: {
         /** AccessSummary */
         AccessSummary: {
+            /** Accessstart */
+            accessStart?: string | null;
             /** Accessuntil */
             accessUntil?: string | null;
             /** Referraldaysleft */

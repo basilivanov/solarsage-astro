@@ -31,6 +31,7 @@ import {
   isValidBirthTime,
   type BirthDateParts,
   type BirthTimeParts,
+  type ProfileLocation,
 } from "@/lib/profile"
 
 export type EditField =
@@ -45,19 +46,25 @@ type Props =
       field: "birthDate"
       initial: BirthDateParts
       onClose: () => void
-      onSave: (_value: BirthDateParts) => void
+      onSave: (_value: BirthDateParts) => void | Promise<void>
+      saving?: boolean
+      error?: string | null
     }
   | {
       field: "birthTime"
       initial: BirthTimeParts
       onClose: () => void
-      onSave: (_value: BirthTimeParts) => void
+      onSave: (_value: BirthTimeParts) => void | Promise<void>
+      saving?: boolean
+      error?: string | null
     }
   | {
       field: "birthPlace" | "currentCity" | "birthdayCity"
-      initial: string
+      initial: ProfileLocation | null
       onClose: () => void
-      onSave: (_value: string) => void
+      onSave: (_value: ProfileLocation) => void | Promise<void>
+      saving?: boolean
+      error?: string | null
     }
 
 const TITLES: Record<EditField, { eyebrow: string; title: string; subtitle: string }> = {
@@ -157,10 +164,22 @@ export function EditSheet(props: Props) {
 
         <div className="flex-1 overflow-y-auto px-5 pb-6 pt-6">
           {props.field === "birthDate" ? (
-            <DateEditor initial={props.initial} onSave={props.onSave} onClose={close} />
+            <DateEditor
+              initial={props.initial}
+              onSave={props.onSave}
+              onClose={close}
+              saving={props.saving}
+              error={props.error}
+            />
           ) : null}
           {props.field === "birthTime" ? (
-            <TimeEditor initial={props.initial} onSave={props.onSave} onClose={close} />
+            <TimeEditor
+              initial={props.initial}
+              onSave={props.onSave}
+              onClose={close}
+              saving={props.saving}
+              error={props.error}
+            />
           ) : null}
           {props.field === "birthPlace" ||
           props.field === "currentCity" ||
@@ -169,6 +188,8 @@ export function EditSheet(props: Props) {
               initial={props.initial}
               onSave={props.onSave}
               onClose={close}
+              saving={props.saving}
+              error={props.error}
             />
           ) : null}
         </div>
@@ -184,10 +205,14 @@ function DateEditor({
   initial,
   onSave,
   onClose,
+  saving,
+  error,
 }: {
   initial: BirthDateParts
-  onSave: (_v: BirthDateParts) => void
+  onSave: (_v: BirthDateParts) => void | Promise<void>
   onClose: () => void
+  saving?: boolean
+  error?: string | null
 }) {
   const [value, setValue] = useState<BirthDateParts>(initial)
   const monthRef = useRef<HTMLInputElement>(null)
@@ -236,7 +261,13 @@ function DateEditor({
         </div>
       </div>
 
-      <SheetActions onCancel={onClose} onSave={() => onSave(value)} disabled={!valid} />
+      <SheetActions
+        onCancel={onClose}
+        onSave={() => onSave(value)}
+        disabled={!valid}
+        saving={saving}
+        error={error}
+      />
     </div>
   )
 }
@@ -247,10 +278,14 @@ function TimeEditor({
   initial,
   onSave,
   onClose,
+  saving,
+  error,
 }: {
   initial: BirthTimeParts
-  onSave: (_v: BirthTimeParts) => void
+  onSave: (_v: BirthTimeParts) => void | Promise<void>
   onClose: () => void
+  saving?: boolean
+  error?: string | null
 }) {
   const [value, setValue] = useState<BirthTimeParts>(initial)
   const minutesRef = useRef<HTMLInputElement>(null)
@@ -332,7 +367,13 @@ function TimeEditor({
         </label>
       </div>
 
-      <SheetActions onCancel={onClose} onSave={() => onSave(value)} disabled={!valid} />
+      <SheetActions
+        onCancel={onClose}
+        onSave={() => onSave(value)}
+        disabled={!valid}
+        saving={saving}
+        error={error}
+      />
     </div>
   )
 }
@@ -343,17 +384,24 @@ function CityEditor({
   initial,
   onSave,
   onClose,
+  saving,
+  error,
 }: {
-  initial: string
-  onSave: (_v: string) => void
+  initial: ProfileLocation | null
+  onSave: (_v: ProfileLocation) => void | Promise<void>
   onClose: () => void
+  saving?: boolean
+  error?: string | null
 }) {
   const [city, setCity] = useState<City | null>(() => {
     if (!initial) return null
-    const parts = initial.split(",")
+    const parts = initial.city.split(",")
     return {
       name: parts[0].trim(),
       country: parts[1]?.trim() || "",
+      lat: initial.lat ?? undefined,
+      lon: initial.lon ?? undefined,
+      timezone: initial.timezone ?? undefined,
     }
   })
   const valid = city !== null && city.name.trim().length >= 2
@@ -369,10 +417,17 @@ function CityEditor({
         onCancel={onClose}
         onSave={() => {
           if (city) {
-            onSave(formatCity(city))
+            onSave({
+              city: formatCity(city),
+              lat: city.lat ?? null,
+              lon: city.lon ?? null,
+              timezone: city.timezone ?? null,
+            })
           }
         }}
         disabled={!valid}
+        saving={saving}
+        error={error}
       />
     </div>
   )
@@ -384,34 +439,44 @@ function SheetActions({
   onCancel,
   onSave,
   disabled,
+  saving,
+  error,
 }: {
   onCancel: () => void
-  onSave: () => void
+  onSave: () => void | Promise<void>
   disabled?: boolean
+  saving?: boolean
+  error?: string | null
 }) {
   return (
     <div
-      className="flex gap-3 pt-2"
+      className="space-y-3 pt-2"
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
     >
-      <button
-        type="button"
-        onClick={onCancel}
-        className="flex h-12 flex-1 items-center justify-center rounded-full border border-border/70 bg-card text-[14px] font-medium text-foreground/75 transition active:scale-[0.99]"
-      >
-        Отменить
-      </button>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={disabled}
-        className="flex h-12 flex-[1.4] items-center justify-center rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99] disabled:opacity-40"
-      >
-        Сохранить
-      </button>
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] leading-snug text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="flex h-12 flex-1 items-center justify-center rounded-full border border-border/70 bg-card text-[14px] font-medium text-foreground/75 transition active:scale-[0.99] disabled:opacity-50"
+        >
+          Отменить
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={disabled || saving}
+          className="flex h-12 flex-[1.4] items-center justify-center rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99] disabled:opacity-40"
+        >
+          {saving ? "Сохраняю..." : "Сохранить"}
+        </button>
+      </div>
     </div>
   )
 }
-
-
 

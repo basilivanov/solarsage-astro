@@ -1,31 +1,11 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_API_ACCESS
-// ROLE: Lib — access.ts
+// ROLE: Authenticated access API client and UI mapping
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
-// purpose: Library: access
-// owns:
-//   - lib/api/access.ts
-// inputs: Function arguments
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-/**
- * API-фасад для подписки/доступа.
- *
- * Единая точка интеграции для компонентов и хуков.
- * Синхронная версия возвращает дефолтное состояние,
- * async-версия резолвится через fetchAccess (будущий бэкенд-эндпоинт).
- */
-
+// ############################################################################
+import type { AccessSummary } from "@/packages/contracts"
 import {
   type AccessInfo,
   type AccessState,
@@ -34,24 +14,38 @@ import {
 
 export type { AccessInfo, AccessState }
 
-function computeAccess(state: AccessState): AccessInfo {
-  const now = new Date()
-  const hasAccess = state === "trial" || state === "subscription"
-  const daysLeft = state === "trial" ? 14 : state === "subscription" ? 30 : 0
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null
+  return new Date(`${value}T00:00:00`)
+}
+
+function toAccessInfo(summary: AccessSummary): AccessInfo {
   return validateAccessInfo({
-    state,
-    hasAccess,
-    accessStart: hasAccess ? now : null,
-    accessEnd: hasAccess ? new Date(now.getTime() + daysLeft * 86400000) : null,
-    daysLeft,
+    state: summary.user,
+    hasAccess: summary.user === "trial" || summary.user === "subscription",
+    accessStart: parseDate(summary.accessStart),
+    accessEnd: parseDate(summary.accessUntil),
+    daysLeft: summary.user === "trial" ? summary.referralDaysLeft : 0,
   })
 }
 
-export function getAccess(state: AccessState): AccessInfo {
-  return computeAccess(state)
-}
+export async function getAccess(): Promise<AccessInfo> {
+  const res = await fetch(`${API_BASE}/api/access`, {
+    credentials: "include",
+    headers: { Accept: "application/json" },
+  })
 
-export async function getAccessAsync(state: AccessState): Promise<AccessInfo> {
-  return computeAccess(state)
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null)
+    const detail = payload?.detail
+    if (typeof detail === "string") throw new Error(detail)
+    if (detail && typeof detail.message === "string") {
+      throw new Error(detail.message)
+    }
+    throw new Error("Failed to get access")
+  }
+
+  return toAccessInfo(await res.json())
 }

@@ -62,9 +62,9 @@ describe('ProfileSchema', () => {
     expect(() => validateProfile(data)).toThrow()
   })
 
-  it('rejects Profile with empty birthPlace', () => {
+  it('accepts empty birthPlace for an incomplete backend profile', () => {
     const data = { ...validProfile, birthPlace: '' }
-    expect(() => validateProfile(data)).toThrow()
+    expect(validateProfile(data).birthPlace).toBe('')
   })
 
   it('rejects Profile with missing unknown field in birthTime', () => {
@@ -75,9 +75,9 @@ describe('ProfileSchema', () => {
     expect(() => validateProfile(data)).toThrow()
   })
 
-  it('rejects Profile with empty currentCity', () => {
+  it('accepts empty currentCity for an incomplete backend profile', () => {
     const data = { ...validProfile, currentCity: '' }
-    expect(() => validateProfile(data)).toThrow()
+    expect(validateProfile(data).currentCity).toBe('')
   })
 
   it('rejects Profile with non-boolean sameAsBirth', () => {

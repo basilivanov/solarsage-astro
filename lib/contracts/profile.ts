@@ -28,9 +28,9 @@
 import { z } from "zod"
 
 export const BirthDatePartsSchema = z.object({
-  day: z.string().regex(/^\d{1,2}$/),
-  month: z.string().regex(/^\d{1,2}$/),
-  year: z.string().regex(/^\d{4}$/),
+  day: z.union([z.literal(""), z.string().regex(/^\d{1,2}$/)]),
+  month: z.union([z.literal(""), z.string().regex(/^\d{1,2}$/)]),
+  year: z.union([z.literal(""), z.string().regex(/^\d{4}$/)]),
 })
 
 export const BirthTimePartsSchema = z.object({
@@ -39,13 +39,25 @@ export const BirthTimePartsSchema = z.object({
   unknown: z.boolean(),
 })
 
+export const ProfileLocationSchema = z.object({
+  city: z.string(),
+  lat: z.number().nullable(),
+  lon: z.number().nullable(),
+  timezone: z.string().nullable(),
+})
+
 export const ProfileSchema = z.object({
+  firstName: z.string().default(""),
   birthDate: BirthDatePartsSchema,
   birthTime: BirthTimePartsSchema,
-  birthPlace: z.string().min(1),
-  currentCity: z.string().min(1),
-  birthdayCity: z.string().min(1),
-  gender: z.enum(["male", "female"]),
+  birthPlace: z.string(),
+  currentCity: z.string(),
+  birthdayCity: z.string(),
+  birthLocation: ProfileLocationSchema.nullable().default(null),
+  currentLocation: ProfileLocationSchema.nullable().default(null),
+  birthdayLocation: ProfileLocationSchema.nullable().default(null),
+  gender: z.enum(["male", "female"]).nullable().default(null),
+  isOnboarded: z.boolean().default(false),
   /** birthPlace == currentCity (чекбокс «сейчас живу там же») */
   sameAsBirth: z.boolean(),
   /** currentCity == birthdayCity (чекбокс «ДР проведу там же») */
@@ -54,6 +66,7 @@ export const ProfileSchema = z.object({
 
 export type BirthDateParts = z.infer<typeof BirthDatePartsSchema>
 export type BirthTimeParts = z.infer<typeof BirthTimePartsSchema>
+export type ProfileLocation = z.infer<typeof ProfileLocationSchema>
 export type Profile = z.infer<typeof ProfileSchema>
 
 /**

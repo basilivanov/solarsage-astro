@@ -29,7 +29,7 @@ import { StepPlace } from "./step-place"
 import { StepBirthday } from "./step-birthday"
 import { StepGender } from "./step-gender"
 import { StepDone } from "./step-done"
-import { saveProfile, type Profile } from "@/lib/profile"
+import { apiProfileToProfile, saveProfile } from "@/lib/profile"
 import { updateProfile } from "@/lib/api/profile"
 import {
   onboardingReducer,
@@ -88,28 +88,14 @@ export function OnboardingFlow({ onComplete }: Props) {
       ? `${effectiveBirthdayCity.name}, ${effectiveBirthdayCity.country}`
       : ''
 
-    const profile: Profile = {
-      birthDate: state.birthDate,
-      birthTime: state.birthTime,
-      birthPlace: birthPlaceStr,
-      currentCity: currentCityStr,
-      sameAsBirth: state.sameAsBirth,
-      birthdayCity: birthdayCityStr,
-      birthdaySameAsCurrent: state.birthdaySameAsCurrent,
-      gender,
-    }
-
-    // Save to localStorage first (for immediate access)
-    saveProfile(profile)
-
     // Send to backend
     setIsSaving(true)
     try {
       // Convert profile to API format
-      const birthday = `${profile.birthDate.year}-${profile.birthDate.month.padStart(2, '0')}-${profile.birthDate.day.padStart(2, '0')}`
-      const birthTime = profile.birthTime.unknown
+      const birthday = `${state.birthDate.year}-${state.birthDate.month.padStart(2, '0')}-${state.birthDate.day.padStart(2, '0')}`
+      const birthTime = state.birthTime.unknown
         ? undefined
-        : `${profile.birthTime.hours.padStart(2, '0')}:${profile.birthTime.minutes.padStart(2, '0')}`
+        : `${state.birthTime.hours.padStart(2, '0')}:${state.birthTime.minutes.padStart(2, '0')}`
 
       const currentLocation = effectiveCurrentCity
         ? {
@@ -129,8 +115,8 @@ export function OnboardingFlow({ onComplete }: Props) {
           }
         : undefined
 
-      await updateProfile({
-        gender: profile.gender,
+      const saved = await updateProfile({
+        gender,
         birth: {
           birthday,
           birthTime,
@@ -142,6 +128,7 @@ export function OnboardingFlow({ onComplete }: Props) {
         currentLocation: currentLocation ?? undefined,
         birthdayLocation: birthdayLocation ?? undefined,
       })
+      saveProfile(apiProfileToProfile(saved))
 
       logEvent("profile.updated", {}, { msg: "[Onboarding] Profile saved to backend", slice: "W-ONBOARDING", module: "M-ONBOARDING-FLOW", block: "SAVE_PROFILE" })
       onComplete()

@@ -1,4 +1,3 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_HOOKS_USE_PROFILE
 // ROLE: React hook
@@ -6,45 +5,74 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI use-profile — component
-// owns:
-//   - hooks/use-profile.ts
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { getProfile, updateProfile } from "@/lib/api/profile"
 import {
-  DEFAULT_PROFILE,
+  apiProfileToProfile,
   loadProfile,
+  profileToApiWrite,
   saveProfile,
   type Profile,
 } from "@/lib/profile"
 
 export function useProfile() {
-  const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE)
+  const [profile, setProfile] = useState<Profile>(() => loadProfile())
   const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const profileRef = useRef(profile)
+
+  const applyProfile = useCallback((next: Profile) => {
+    profileRef.current = next
+    setProfile(next)
+    saveProfile(next)
+  }, [])
 
   useEffect(() => {
-    setProfile(loadProfile())
-    setLoaded(true)
-  }, [])
+    let active = true
+    getProfile()
+      .then((value) => {
+        if (!active) return
+        applyProfile(apiProfileToProfile(value))
+        setError(null)
+      })
+      .catch((reason: unknown) => {
+        if (!active) return
+        setError(reason instanceof Error ? reason.message : "Failed to get profile")
+      })
+      .finally(() => {
+        if (active) setLoaded(true)
+      })
 
-  const update = useCallback((patch: Partial<Profile>) => {
-    setProfile((prev) => {
-      const next = { ...prev, ...patch }
-      saveProfile(next)
-      return next
-    })
-  }, [])
+    return () => {
+      active = false
+    }
+  }, [applyProfile])
 
-  return { profile, update, loaded }
+  const update = useCallback(
+    async (patch: Partial<Profile>): Promise<Profile> => {
+      const next = { ...profileRef.current, ...patch }
+      setSaving(true)
+      setError(null)
+      try {
+        const saved = apiProfileToProfile(
+          await updateProfile(profileToApiWrite(next)),
+        )
+        applyProfile(saved)
+        return saved
+      } catch (reason) {
+        const message =
+          reason instanceof Error ? reason.message : "Failed to update profile"
+        setError(message)
+        throw reason
+      } finally {
+        setSaving(false)
+      }
+    },
+    [applyProfile],
+  )
+
+  return { profile, update, loaded, saving, error }
 }

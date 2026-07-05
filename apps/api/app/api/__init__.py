@@ -20,3 +20,5 @@
 # public_entrypoints: all route modules
 # semantic_blocks: PACKAGE_INIT
 # END_MODULE_MAP: M-API-ROUTERS
+
+from . import access as access

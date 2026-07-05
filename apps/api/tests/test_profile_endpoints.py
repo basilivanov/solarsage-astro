@@ -21,8 +21,14 @@
 """Endpoint tests for /api/profile (W-1.2)."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+
+from app.db.models import User
+from app.services.access_service import AccessService
 
 
 _BANNED_KEYS = frozenset(
@@ -378,3 +384,51 @@ async def test_put_profile_same_as_birth_copies_tz(
     assert body["birth"]["birthTz"] == "Asia/Tokyo"
     assert body["currentLocation"]["tz"] == "Asia/Tokyo"
     assert body["currentLocation"]["city"] == "Tokyo, Japan"
+
+
+@pytest.mark.asyncio
+async def test_access_requires_session(async_client: AsyncClient) -> None:
+    r = await async_client.get("/api/access")
+    assert r.status_code == 401
+    assert r.json()["detail"]["code"] == "MISSING"
+
+
+@pytest.mark.asyncio
+async def test_access_returns_none_without_ledger_entries(
+    async_client: AsyncClient, make_initdata
+) -> None:
+    await _login(async_client, make_initdata, user_id=501)
+
+    r = await async_client.get("/api/access")
+
+    assert r.status_code == 200
+    assert r.json() == {
+        "user": "none",
+        "referralDaysLeft": 0,
+        "subscriptionActive": False,
+        "accessStart": None,
+        "accessUntil": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_access_returns_active_referral_summary(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    await _login(async_client, make_initdata, user_id=502)
+    user = (
+        await db_session.execute(select(User).where(User.tg_user_id == 502))
+    ).scalar_one()
+    await AccessService(db_session).grant_referral_bonus(
+        user.id, datetime.now(UTC).date()
+    )
+
+    r = await async_client.get("/api/access")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["user"] == "trial"
+    assert body["referralDaysLeft"] == 14
+    assert body["subscriptionActive"] is False
+    assert body["accessStart"] is not None
+    assert body["accessUntil"] is not None

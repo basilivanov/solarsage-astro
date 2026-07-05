@@ -27,6 +27,20 @@ export type { BirthData, ProfileRead, ProfileWrite }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
 
+async function responseError(res: Response, fallback: string): Promise<Error> {
+  const payload = await res.json().catch(() => null)
+  const detail = payload?.detail
+  if (typeof detail === 'string') return new Error(detail)
+  if (detail && typeof detail.message === 'string') return new Error(detail.message)
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => item?.msg)
+      .filter((message): message is string => typeof message === 'string')
+    if (messages.length > 0) return new Error(messages.join('. '))
+  }
+  return new Error(fallback)
+}
+
 /**
  * Get user profile
  * @returns ProfileRead
@@ -41,8 +55,7 @@ export async function getProfile(): Promise<ProfileRead> {
   })
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: 'Failed to get profile' }))
-    throw new Error(error.detail?.message || error.detail || 'Failed to get profile')
+    throw await responseError(res, 'Failed to get profile')
   }
 
   return res.json()
@@ -66,8 +79,7 @@ export async function updateProfile(data: ProfileWrite): Promise<ProfileRead> {
   })
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: 'Failed to update profile' }))
-    throw new Error(error.detail?.message || error.detail || 'Failed to update profile')
+    throw await responseError(res, 'Failed to update profile')
   }
 
   return res.json()

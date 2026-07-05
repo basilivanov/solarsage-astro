@@ -52,7 +52,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import _log, auth, calendar, chat, checkin, day, debug, geo, health, health_extended, horary, metrics, microcopy, natal, payment, profile, referral
+from app.api import _log, access, auth, calendar, chat, checkin, day, debug, geo, health, health_extended, horary, metrics, microcopy, natal, payment, profile, referral
 from app.core.config import settings
 from app.middleware.correlation import CorrelationMiddleware
 
@@ -86,6 +86,7 @@ app.include_router(metrics.router)  # W-2.7 production metrics
 app.include_router(debug.router)  # Debug endpoint for troubleshooting
 app.include_router(auth.router)
 app.include_router(profile.router)
+app.include_router(access.router)
 app.include_router(day.router)  # W-1.3
 app.include_router(calendar.router)  # W-1.4
 app.include_router(referral.router)  # W-ACCESS.2

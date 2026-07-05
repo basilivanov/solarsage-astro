@@ -4,6 +4,17 @@
       "AccessSummary": {
         "additionalProperties": false,
         "properties": {
+          "accessStart": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessstart"
+          },
           "accessUntil": {
             "anyOf": [
               {

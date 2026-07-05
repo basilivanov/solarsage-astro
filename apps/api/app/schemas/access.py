@@ -34,6 +34,7 @@ class AccessSummary(CamelModel):
     user: UserAccessState
     referral_days_left: int
     subscription_active: bool
+    access_start: str | None = None
     access_until: str | None = None
 
 

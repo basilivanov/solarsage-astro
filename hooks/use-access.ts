@@ -1,4 +1,3 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_HOOKS_USE_ACCESS
 // ROLE: React hook
@@ -6,56 +5,56 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI use-access — component
-// owns:
-//   - hooks/use-access.ts
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import type { AccessInfo, AccessState } from "@/lib/api/access"
-import { getAccess } from "@/lib/api/access"
-import { STORAGE_KEYS } from "@/lib/storage-keys"
+import {
+  getAccess,
+  type AccessInfo,
+  type AccessState,
+} from "@/lib/api/access"
 
-const VALID: AccessState[] = ["trial", "subscription", "expired", "none"]
-
-function readState(): AccessState {
-  if (typeof window === "undefined") return "trial"
-  try {
-    const saved = window.localStorage.getItem(
-      STORAGE_KEYS.accessState,
-    ) as AccessState | null
-    if (saved && VALID.includes(saved)) return saved
-  } catch {}
-  return "trial"
+const CLOSED_ACCESS: AccessInfo = {
+  state: "none",
+  hasAccess: false,
+  accessStart: null,
+  accessEnd: null,
+  daysLeft: 0,
 }
 
 export function useAccess(): {
   state: AccessState
   access: AccessInfo
-  setState: (s: AccessState) => void
+  loaded: boolean
+  error: string | null
+  refresh: () => Promise<void>
+  setState: (_state: AccessState) => void
 } {
-  const [state, setStateInternal] = useState<AccessState>("trial")
+  const [access, setAccess] = useState<AccessInfo>(CLOSED_ACCESS)
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    setLoaded(false)
+    setError(null)
+    try {
+      setAccess(await getAccess())
+    } catch (reason) {
+      setAccess(CLOSED_ACCESS)
+      setError(reason instanceof Error ? reason.message : "Failed to get access")
+    } finally {
+      setLoaded(true)
+    }
+  }, [])
 
   useEffect(() => {
-    setStateInternal(readState())
+    void refresh()
+  }, [refresh])
+
+  const setState = useCallback((_state: AccessState) => {
+    // Real access is backend-owned. The old localStorage-backed setter is kept
+    // as a compatibility no-op for dev-only controls.
   }, [])
 
-  const setState = useCallback((s: AccessState) => {
-    setStateInternal(s)
-    try {
-      window.localStorage.setItem(STORAGE_KEYS.accessState, s)
-    } catch {}
-  }, [])
-
-  return { state, access: getAccess(state), setState }
+  return { state: access.state, access, loaded, error, refresh, setState }
 }

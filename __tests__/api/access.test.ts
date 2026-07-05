@@ -1,4 +1,3 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_API_ACCESS_TEST
 // ROLE: Unit tests for access.test.ts
@@ -6,72 +5,83 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TESTS
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for accessts behavior
-// owns:
-//   - __tests__/api/access.test.ts
-// inputs: Mocks, fixtures
-// outputs: Assertion results
-// dependencies: local modules
-// side_effects: n/a (tests)
-// emitted_logs: n/a (tests)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getAccess, getAccessAsync } from '../../lib/api/access'
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { getAccess } from "../../lib/api/access"
 
-describe('getAccess', () => {
+describe("getAccess", () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("fetches the authenticated backend access summary", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        user: "trial",
+        referralDaysLeft: 8,
+        subscriptionActive: false,
+        accessStart: "2026-07-01",
+        accessUntil: "2026-07-08",
+      }),
+    })
+
+    const info = await getAccess()
+
+    expect(fetch).toHaveBeenCalledWith("/api/access", {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    })
+    expect(info).toEqual({
+      state: "trial",
+      hasAccess: true,
+      accessStart: new Date("2026-07-01T00:00:00"),
+      accessEnd: new Date("2026-07-08T00:00:00"),
+      daysLeft: 8,
+    })
+  })
+
+  it("maps subscription and expired summaries without synthetic durations", async () => {
     global.fetch = vi.fn()
-    vi.clearAllMocks()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          user: "subscription",
+          referralDaysLeft: 0,
+          subscriptionActive: true,
+          accessStart: "2026-07-01",
+          accessUntil: "2026-07-30",
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          user: "expired",
+          referralDaysLeft: 0,
+          subscriptionActive: false,
+          accessStart: "2026-05-01",
+          accessUntil: "2026-05-30",
+        }),
+      })
+
+    const subscription = await getAccess()
+    const expired = await getAccess()
+
+    expect(subscription.state).toBe("subscription")
+    expect(subscription.daysLeft).toBe(0)
+    expect(subscription.accessEnd).toEqual(new Date("2026-07-30T00:00:00"))
+    expect(expired).toMatchObject({
+      state: "expired",
+      hasAccess: false,
+      daysLeft: 0,
+    })
   })
 
-  it('returns trial access with 14 days left', () => {
-    const info = getAccess('trial')
-    expect(info.hasAccess).toBe(true)
-    expect(info.state).toBe('trial')
-    expect(info.daysLeft).toBe(14)
-    expect(info.accessStart).toBeInstanceOf(Date)
-    expect(info.accessEnd).toBeInstanceOf(Date)
-  })
+  it("throws the backend detail on HTTP errors", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ detail: { message: "Session expired" } }),
+    })
 
-  it('returns subscription access with 30 days left', () => {
-    const info = getAccess('subscription')
-    expect(info.hasAccess).toBe(true)
-    expect(info.state).toBe('subscription')
-    expect(info.daysLeft).toBe(30)
-  })
-
-  it('returns no access for expired state', () => {
-    const info = getAccess('expired')
-    expect(info.hasAccess).toBe(false)
-    expect(info.state).toBe('expired')
-    expect(info.daysLeft).toBe(0)
-    expect(info.accessStart).toBeNull()
-    expect(info.accessEnd).toBeNull()
-  })
-
-  it('returns no access for none state', () => {
-    const info = getAccess('none')
-    expect(info.hasAccess).toBe(false)
-    expect(info.daysLeft).toBe(0)
-  })
-
-  it('getAccessAsync returns same result as getAccess', async () => {
-    const sync = getAccess('trial')
-    const asyncResult = await getAccessAsync('trial')
-    expect(asyncResult.state).toBe(sync.state)
-    expect(asyncResult.hasAccess).toBe(sync.hasAccess)
-    expect(asyncResult.daysLeft).toBe(sync.daysLeft)
-    expect(asyncResult.accessStart).toBeInstanceOf(Date)
-    expect(asyncResult.accessEnd).toBeInstanceOf(Date)
-  })
-
-  it('computes accessEnd as start + daysLeft days', () => {
-    const info = getAccess('trial')
-    const expected = new Date(info.accessStart!.getTime() + 14 * 86400000)
-    expect(info.accessEnd!.getTime()).toBe(expected.getTime())
+    await expect(getAccess()).rejects.toThrow("Session expired")
   })
 })
