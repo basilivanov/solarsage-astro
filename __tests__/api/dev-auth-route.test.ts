@@ -18,7 +18,7 @@ describe("dev auth route host guard", () => {
     expect(isLocalDevHost("test.astro.vasiliy-ivanov.ru")).toBe(false)
   })
 
-  it.each(["x-forwarded-for", "x-real-ip", "forwarded"])(
+  it.each(["x-forwarded-for", "x-forwarded-host", "x-real-ip", "forwarded"])(
     "rejects %s before proxying to the backend",
     async (headerName) => {
       vi.stubEnv("NODE_ENV", "development")

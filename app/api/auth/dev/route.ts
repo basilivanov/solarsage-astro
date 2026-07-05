@@ -26,7 +26,8 @@
 
 import { NextResponse } from 'next/server'
 
-const PROXY_ORIGIN_HEADERS = ['x-forwarded-for', 'x-real-ip', 'forwarded']
+const PROXY_ORIGIN_HEADER_NAMES = ['forwarded', 'x-real-ip']
+const PROXY_ORIGIN_HEADER_PREFIX = 'x-forwarded-'
 
 export function isLocalDevHost(hostHeader: string | null): boolean {
   if (!hostHeader) {
@@ -47,7 +48,17 @@ export function isLocalDevHost(hostHeader: string | null): boolean {
 }
 
 function hasProxyOriginHeader(headers: Headers): boolean {
-  return PROXY_ORIGIN_HEADERS.some((header) => headers.has(header))
+  for (const header of headers.keys()) {
+    const name = header.toLowerCase()
+    if (
+      PROXY_ORIGIN_HEADER_NAMES.includes(name) ||
+      name.startsWith(PROXY_ORIGIN_HEADER_PREFIX)
+    ) {
+      return true
+    }
+  }
+
+  return false
 }
 
 export async function POST(request: Request) {

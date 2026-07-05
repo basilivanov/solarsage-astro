@@ -235,6 +235,26 @@ async def test_dev_auth_denies_spoofed_local_host_through_proxy(
 
 
 @pytest.mark.asyncio
+async def test_dev_auth_denies_spoofed_local_host_with_forwarded_host(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "app_env", "development")
+
+    r = await async_client.post(
+        "/api/auth/dev",
+        headers={
+            "host": "127.0.0.1:8000",
+            "x-forwarded-host": "dev.astro.vasiliy-ivanov.ru",
+        },
+    )
+
+    assert r.status_code == 403
+    assert r.json()["detail"]["code"] == "DEV_MODE_DISABLED"
+
+
+@pytest.mark.asyncio
 async def test_dev_auth_allows_localhost_when_dev_mode_disabled(
     async_client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,

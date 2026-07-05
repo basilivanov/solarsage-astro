@@ -71,13 +71,8 @@ _BAD_REQUEST_CODES = frozenset(
     {"INVALID_HMAC", "MISSING_FIELDS", "MALFORMED_INITDATA"}
 )
 _LOCAL_DEV_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
-_PROXY_ORIGIN_HEADERS = frozenset(
-    {
-        "forwarded",
-        "x-forwarded-for",
-        "x-real-ip",
-    }
-)
+_PROXY_ORIGIN_HEADER_NAMES = frozenset({"forwarded", "x-real-ip"})
+_PROXY_ORIGIN_HEADER_PREFIX = "x-forwarded-"
 
 
 def _telegram_error_to_http(exc: TelegramAuthError) -> HTTPException:
@@ -114,6 +109,17 @@ def _is_loopback_client(request: Request) -> bool:
         return request.client.host == "localhost"
 
 
+def _has_proxy_origin_header(request: Request) -> bool:
+    for header in request.headers.keys():
+        name = header.lower()
+        if (
+            name in _PROXY_ORIGIN_HEADER_NAMES
+            or name.startswith(_PROXY_ORIGIN_HEADER_PREFIX)
+        ):
+            return True
+    return False
+
+
 def _is_local_dev_auth_request(request: Request) -> bool:
     if settings.app_env == "production":
         return False
@@ -121,7 +127,7 @@ def _is_local_dev_auth_request(request: Request) -> bool:
         return False
     if _host_header_name(request.headers.get("host")) not in _LOCAL_DEV_HOSTS:
         return False
-    return all(header not in request.headers for header in _PROXY_ORIGIN_HEADERS)
+    return not _has_proxy_origin_header(request)
 
 
 # START_BLOCK: ROUTE_AUTH_TG
