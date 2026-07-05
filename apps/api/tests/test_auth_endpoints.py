@@ -195,3 +195,60 @@ async def test_revoked_token_is_explicitly_revoked(
     r3 = await async_client.get("/api/profile")
     assert r3.status_code == 401
     assert r3.json()["detail"]["code"] == "REVOKED"
+
+
+@pytest.mark.asyncio
+async def test_dev_auth_denies_public_host_when_dev_mode_disabled(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "app_env", "development")
+
+    r = await async_client.post(
+        "/api/auth/dev",
+        headers={"host": "dev.astro.vasiliy-ivanov.ru"},
+    )
+
+    assert r.status_code == 403
+    assert r.json()["detail"]["code"] == "DEV_MODE_DISABLED"
+
+
+@pytest.mark.asyncio
+async def test_dev_auth_denies_spoofed_local_host_through_proxy(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "app_env", "development")
+
+    r = await async_client.post(
+        "/api/auth/dev",
+        headers={
+            "host": "127.0.0.1:8000",
+            "x-forwarded-for": "203.0.113.10",
+        },
+    )
+
+    assert r.status_code == 403
+    assert r.json()["detail"]["code"] == "DEV_MODE_DISABLED"
+
+
+@pytest.mark.asyncio
+async def test_dev_auth_allows_localhost_when_dev_mode_disabled(
+    async_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "app_env", "development")
+
+    r = await async_client.post(
+        "/api/auth/dev",
+        headers={"host": "127.0.0.1:8000"},
+    )
+
+    assert r.status_code == 200, r.text
+    assert settings.session_cookie_name in r.headers.get("set-cookie", "")
+
+    profile = await async_client.get("/api/profile")
+    assert profile.status_code == 200, profile.text

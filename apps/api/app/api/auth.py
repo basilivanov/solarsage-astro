@@ -48,6 +48,7 @@
 from __future__ import annotations
 
 from datetime import timezone
+from ipaddress import ip_address
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,6 +70,14 @@ router = APIRouter()
 _BAD_REQUEST_CODES = frozenset(
     {"INVALID_HMAC", "MISSING_FIELDS", "MALFORMED_INITDATA"}
 )
+_LOCAL_DEV_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+_PROXY_ORIGIN_HEADERS = frozenset(
+    {
+        "forwarded",
+        "x-forwarded-for",
+        "x-real-ip",
+    }
+)
 
 
 def _telegram_error_to_http(exc: TelegramAuthError) -> HTTPException:
@@ -80,6 +89,39 @@ def _telegram_error_to_http(exc: TelegramAuthError) -> HTTPException:
         status_code=http_status,
         detail={"code": exc.code, "message": exc.message},
     )
+
+
+def _host_header_name(host_header: str | None) -> str:
+    if not host_header:
+        return ""
+
+    host = host_header.strip().lower()
+    if host.startswith("["):
+        end_bracket = host.find("]")
+        return host[1:end_bracket] if end_bracket != -1 else host
+    if host != "::1":
+        return host.split(":", 1)[0]
+    return host
+
+
+def _is_loopback_client(request: Request) -> bool:
+    if request.client is None:
+        return False
+
+    try:
+        return ip_address(request.client.host).is_loopback
+    except ValueError:
+        return request.client.host == "localhost"
+
+
+def _is_local_dev_auth_request(request: Request) -> bool:
+    if settings.app_env == "production":
+        return False
+    if not _is_loopback_client(request):
+        return False
+    if _host_header_name(request.headers.get("host")) not in _LOCAL_DEV_HOSTS:
+        return False
+    return all(header not in request.headers for header in _PROXY_ORIGIN_HEADERS)
 
 
 # START_BLOCK: ROUTE_AUTH_TG
@@ -188,7 +230,7 @@ async def auth_dev(
     # error_behavior: 403 if dev_mode is disabled
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_dev
 
-    if not settings.dev_mode:
+    if not settings.dev_mode and not _is_local_dev_auth_request(request):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "DEV_MODE_DISABLED", "message": "Dev mode not enabled"},

@@ -26,7 +26,25 @@
 
 import { NextResponse } from 'next/server'
 
-export async function POST() {
+export function isLocalDevHost(hostHeader: string | null): boolean {
+  if (!hostHeader) {
+    return false
+  }
+
+  const host = hostHeader.trim().toLowerCase()
+  let hostname = host
+
+  if (host.startsWith('[')) {
+    const endBracket = host.indexOf(']')
+    hostname = endBracket === -1 ? host : host.slice(1, endBracket)
+  } else if (host !== '::1') {
+    hostname = host.split(':', 1)[0]
+  }
+
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+}
+
+export async function POST(request: Request) {
   // Only allow in development mode
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json(
@@ -35,32 +53,30 @@ export async function POST() {
     )
   }
 
-  // Create a mock dev user session
-  // In production, this would be handled by the Telegram auth flow
-  const devUser = {
-    userId: 'dev-user-001',
-    username: 'dev_preview',
-    firstName: 'Dev',
-    lastName: 'Preview',
-    isPremium: false,
+  if (!isLocalDevHost(request.headers.get('host'))) {
+    return NextResponse.json(
+      { detail: 'Dev auth is only available on localhost' },
+      { status: 403 }
+    )
   }
 
-  const response = NextResponse.json({
-    ok: true,
-    userId: devUser.userId,
-    username: devUser.username,
-    firstName: devUser.firstName,
-    lastName: devUser.lastName,
+  const backendResponse = await fetch('http://127.0.0.1:8000/api/auth/dev', {
+    method: 'POST',
   })
 
-  // Set a simple dev cookie so the app recognizes the session
-  response.cookies.set('dev_auth', 'true', {
-    httpOnly: false,
-    secure: false,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24, // 24 hours
-  })
+  const headers = new Headers()
+  const contentType = backendResponse.headers.get('content-type')
+  const setCookie = backendResponse.headers.get('set-cookie')
 
-  return response
+  if (contentType) {
+    headers.set('content-type', contentType)
+  }
+  if (setCookie) {
+    headers.set('set-cookie', setCookie)
+  }
+
+  return new NextResponse(await backendResponse.text(), {
+    status: backendResponse.status,
+    headers,
+  })
 }
