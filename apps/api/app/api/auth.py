@@ -274,7 +274,7 @@ async def auth_dev(
         profile.is_onboarded = True
         should_flush_profile = True
 
-    if profile.gender is None:
+    if profile.gender not in {"female", "male"}:
         profile.gender = "female"
         should_flush_profile = True
 
