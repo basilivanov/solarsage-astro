@@ -26,8 +26,18 @@
 
 import { NextResponse } from 'next/server'
 
-const PROXY_ORIGIN_HEADER_NAMES = ['forwarded', 'x-real-ip']
-const PROXY_ORIGIN_HEADER_PREFIX = 'x-forwarded-'
+const NEXT_FORWARDED_HEADERS = new Set([
+  'x-forwarded-for',
+  'x-forwarded-host',
+  'x-forwarded-port',
+  'x-forwarded-proto',
+])
+const LOCAL_FORWARDED_ADDRESSES = new Set([
+  '127.0.0.1',
+  '::1',
+  '::ffff:127.0.0.1',
+  'localhost',
+])
 
 export function isLocalDevHost(hostHeader: string | null): boolean {
   if (!hostHeader) {
@@ -47,12 +57,75 @@ export function isLocalDevHost(hostHeader: string | null): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
 }
 
-function hasProxyOriginHeader(headers: Headers): boolean {
+function hostPort(hostHeader: string): string | null {
+  const host = hostHeader.trim()
+
+  if (host.startsWith('[')) {
+    const endBracket = host.indexOf(']')
+    const suffix = endBracket === -1 ? '' : host.slice(endBracket + 1)
+    return suffix.startsWith(':') ? suffix.slice(1) : null
+  }
+
+  if (host === '::1') {
+    return null
+  }
+
+  const separator = host.lastIndexOf(':')
+  return separator === -1 ? null : host.slice(separator + 1)
+}
+
+function hasUnsafeProxyOriginHeaders(request: Request): boolean {
+  const headers = request.headers
+
+  if (headers.has('forwarded') || headers.has('x-real-ip')) {
+    return true
+  }
+
   for (const header of headers.keys()) {
     const name = header.toLowerCase()
+    if (name.startsWith('x-forwarded-') && !NEXT_FORWARDED_HEADERS.has(name)) {
+      return true
+    }
+  }
+
+  const host = headers.get('host')?.trim().toLowerCase()
+  const forwardedHost = headers.get('x-forwarded-host')?.trim().toLowerCase()
+  if (
+    forwardedHost !== undefined &&
+    (!host || forwardedHost !== host || !isLocalDevHost(forwardedHost))
+  ) {
+    return true
+  }
+
+  const forwardedPort = headers.get('x-forwarded-port')?.trim()
+  if (
+    forwardedPort !== undefined &&
+    (!host || !/^\d+$/.test(forwardedPort) || forwardedPort !== hostPort(host))
+  ) {
+    return true
+  }
+
+  const forwardedProto = headers.get('x-forwarded-proto')?.trim().toLowerCase()
+  if (forwardedProto !== undefined) {
+    const requestProto = new URL(request.url).protocol.slice(0, -1).toLowerCase()
     if (
-      PROXY_ORIGIN_HEADER_NAMES.includes(name) ||
-      name.startsWith(PROXY_ORIGIN_HEADER_PREFIX)
+      !['http', 'https'].includes(requestProto) ||
+      forwardedProto !== requestProto
+    ) {
+      return true
+    }
+  }
+
+  const forwardedFor = headers.get('x-forwarded-for')
+  if (forwardedFor !== null) {
+    const addresses = forwardedFor
+      .split(',')
+      .map((address) => address.trim().toLowerCase())
+    if (
+      addresses.length === 0 ||
+      addresses.some(
+        (address) => !address || !LOCAL_FORWARDED_ADDRESSES.has(address),
+      )
     ) {
       return true
     }
@@ -77,7 +150,7 @@ export async function POST(request: Request) {
     )
   }
 
-  if (hasProxyOriginHeader(request.headers)) {
+  if (hasUnsafeProxyOriginHeaders(request)) {
     return NextResponse.json(
       { detail: 'Dev auth is only available for direct local requests' },
       { status: 403 }
