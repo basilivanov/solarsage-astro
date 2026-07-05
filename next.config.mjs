@@ -1,10 +1,12 @@
 import { assertProductionSafety } from "./lib/env/production-guard.mjs";
+import { resolveNextDistDir } from "./lib/env/next-dist-dir.mjs";
 
 // Build-time production environment check (fixes W-PROD-DEMO-GUARD)
 assertProductionSafety();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: resolveNextDistDir(),
   typescript: {
     ignoreBuildErrors: true,
   },
