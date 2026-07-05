@@ -76,8 +76,6 @@ export default function DayPage() {
     [router]
   );
 
-  if (showLoader || !data) return <CosmicLoader done={ready} />;
-
   if (error) {
     return (
       <ErrorBoundary
@@ -87,6 +85,8 @@ export default function DayPage() {
       />
     );
   }
+
+  if (showLoader || !data) return <CosmicLoader done={ready} />;
 
   if (!data) return null;
 

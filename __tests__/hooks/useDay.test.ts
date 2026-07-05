@@ -159,6 +159,52 @@ describe('useDay', () => {
     expect(result.current.error?.status).toBe(500);
   });
 
+  it('should redirect to onboarding for profile-incomplete responses', async () => {
+    mockFetchDay.mockRejectedValueOnce(
+      new ApiError('Profile is incomplete', 409)
+    );
+
+    const { result } = renderHook(() => useDay('2026-05-30'));
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/onboarding');
+    });
+
+    expect(result.current.data).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it('should redirect to onboarding for NOT_ONBOARDED responses', async () => {
+    mockFetchDay.mockRejectedValueOnce(
+      new ApiError('User not onboarded', 422, 'NOT_ONBOARDED')
+    );
+
+    const { result } = renderHook(() => useDay('2026-05-30'));
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/onboarding');
+    });
+
+    expect(result.current.data).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it('should surface non-onboarding errors without redirecting', async () => {
+    mockFetchDay.mockRejectedValueOnce(
+      new ApiError('Service unavailable', 503)
+    );
+
+    const { result } = renderHook(() => useDay('2026-05-30'));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    expect(result.current.error?.message).toBe('Service unavailable');
+    expect(result.current.error?.status).toBe(503);
+  });
+
   it('should handle network errors', async () => {
     mockFetchDay.mockRejectedValueOnce(new Error('Network error'));
 

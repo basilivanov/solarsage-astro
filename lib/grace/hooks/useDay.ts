@@ -85,8 +85,12 @@ export function useDay(date: string): UseDayResult {
         if (!cancelled) {
           const apiError = err instanceof ApiError ? err : new ApiError('Unknown error', 500);
 
-          if (apiError.status === 422 && apiError.code === 'NOT_ONBOARDED') {
-            logEvent("profile.lazy_created", {}, { msg: "[useDay] NOT_ONBOARDED — redirecting to /onboarding", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "NOT_ONBOARDED" })
+          const needsOnboarding =
+            (apiError.status === 422 && apiError.code === 'NOT_ONBOARDED') ||
+            (apiError.status === 409 && apiError.message === 'Profile is incomplete');
+
+          if (needsOnboarding) {
+            logEvent("profile.lazy_created", {}, { msg: "[useDay] Incomplete profile — redirecting to /onboarding", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "NOT_ONBOARDED" })
             router.replace('/onboarding');
             return;
           }

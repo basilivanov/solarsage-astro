@@ -27,7 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.models import Session as SessionRow, User
+from app.db.models import Session as SessionRow, User, UserProfile
 
 
 @pytest.mark.asyncio
@@ -272,3 +272,68 @@ async def test_dev_auth_allows_localhost_when_dev_mode_disabled(
 
     profile = await async_client.get("/api/profile")
     assert profile.status_code == 200, profile.text
+
+
+@pytest.mark.asyncio
+async def test_dev_auth_seeds_complete_profile_for_day_route(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "app_env", "development")
+
+    r = await async_client.post(
+        "/api/auth/dev",
+        headers={"host": "127.0.0.1:8000"},
+    )
+
+    assert r.status_code == 200, r.text
+    user = (
+        await db_session.execute(select(User).where(User.tg_user_id == 999999999))
+    ).scalar_one()
+    profile = (
+        await db_session.execute(
+            select(UserProfile).where(UserProfile.user_id == user.id)
+        )
+    ).scalar_one()
+    assert profile.is_onboarded is True
+    assert profile.gender in {"female", "male"}
+
+
+@pytest.mark.asyncio
+async def test_dev_auth_repairs_existing_onboarded_profile_missing_gender(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "app_env", "development")
+
+    r1 = await async_client.post(
+        "/api/auth/dev",
+        headers={"host": "127.0.0.1:8000"},
+    )
+    assert r1.status_code == 200, r1.text
+
+    user = (
+        await db_session.execute(select(User).where(User.tg_user_id == 999999999))
+    ).scalar_one()
+    profile = (
+        await db_session.execute(
+            select(UserProfile).where(UserProfile.user_id == user.id)
+        )
+    ).scalar_one()
+    profile.is_onboarded = True
+    profile.gender = None
+    await db_session.flush()
+
+    r2 = await async_client.post(
+        "/api/auth/dev",
+        headers={"host": "127.0.0.1:8000"},
+    )
+
+    assert r2.status_code == 200, r2.text
+    await db_session.refresh(profile)
+    assert profile.is_onboarded is True
+    assert profile.gender in {"female", "male"}

@@ -258,11 +258,13 @@ async def auth_dev(
     profile = await read_profile(db, user.id)
 
     # If new user or profile not onboarded, set up test birth data
+    should_flush_profile = False
     if is_new or not profile.is_onboarded:
         from datetime import date, time
         from decimal import Decimal
 
         profile.first_name = "Dev"
+        profile.gender = profile.gender or "female"
         profile.birthday = date(1990, 1, 1)
         profile.birth_time = time(12, 0, 0)
         profile.birth_city = "Moscow, Russia"
@@ -270,6 +272,13 @@ async def auth_dev(
         profile.birth_lon = Decimal("37.61730")
         profile.birth_tz = "Europe/Moscow"
         profile.is_onboarded = True
+        should_flush_profile = True
+
+    if profile.gender is None:
+        profile.gender = "female"
+        should_flush_profile = True
+
+    if should_flush_profile:
         await db.flush()
 
     # Create session
