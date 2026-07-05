@@ -378,54 +378,6 @@
         "title": "CalendarPayload",
         "type": "object"
       },
-      "CalloutBlock": {
-        "additionalProperties": false,
-        "properties": {
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "tone": {
-            "anyOf": [
-              {
-                "enum": [
-                  "neutral",
-                  "strength",
-                  "risk",
-                  "insight"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tone"
-          },
-          "type": {
-            "const": "callout",
-            "default": "callout",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "title": "CalloutBlock",
-        "type": "object"
-      },
       "ContentAccessState": {
         "additionalProperties": false,
         "properties": {
@@ -519,48 +471,6 @@
         "title": "DayQuality",
         "type": "object"
       },
-      "DividerBlock": {
-        "additionalProperties": false,
-        "properties": {
-          "type": {
-            "const": "divider",
-            "default": "divider",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "title": "DividerBlock",
-        "type": "object"
-      },
-      "HeadingBlock": {
-        "additionalProperties": false,
-        "properties": {
-          "level": {
-            "enum": [
-              2,
-              3
-            ],
-            "title": "Level",
-            "type": "integer"
-          },
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "type": {
-            "const": "heading",
-            "default": "heading",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "level",
-          "text"
-        ],
-        "title": "HeadingBlock",
-        "type": "object"
-      },
       "HighlightItem": {
         "additionalProperties": false,
         "properties": {
@@ -626,13 +536,13 @@
             "items": {
               "discriminator": {
                 "mapping": {
-                  "callout": "#/components/schemas/CalloutBlock",
-                  "divider": "#/components/schemas/DividerBlock",
-                  "heading": "#/components/schemas/HeadingBlock",
-                  "lead": "#/components/schemas/LeadBlock",
-                  "list": "#/components/schemas/ListBlock",
+                  "callout": "#/components/schemas/app__schemas__horary__CalloutBlock",
+                  "divider": "#/components/schemas/app__schemas__horary__DividerBlock",
+                  "heading": "#/components/schemas/app__schemas__horary__HeadingBlock",
+                  "lead": "#/components/schemas/app__schemas__horary__LeadBlock",
+                  "list": "#/components/schemas/app__schemas__horary__ListBlock",
                   "paragraph": "#/components/schemas/app__schemas__horary__ParagraphBlock",
-                  "pros_cons": "#/components/schemas/ProsConsBlock",
+                  "pros_cons": "#/components/schemas/app__schemas__horary__ProsConsBlock",
                   "quote": "#/components/schemas/app__schemas__horary__QuoteBlock",
                   "testimonies": "#/components/schemas/TestimoniesBlock",
                   "timing": "#/components/schemas/TimingBlock",
@@ -645,22 +555,22 @@
                   "$ref": "#/components/schemas/app__schemas__horary__ParagraphBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/LeadBlock"
+                  "$ref": "#/components/schemas/app__schemas__horary__LeadBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/HeadingBlock"
+                  "$ref": "#/components/schemas/app__schemas__horary__HeadingBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/ListBlock"
+                  "$ref": "#/components/schemas/app__schemas__horary__ListBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/CalloutBlock"
+                  "$ref": "#/components/schemas/app__schemas__horary__CalloutBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/ProsConsBlock"
+                  "$ref": "#/components/schemas/app__schemas__horary__ProsConsBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/DividerBlock"
+                  "$ref": "#/components/schemas/app__schemas__horary__DividerBlock"
                 },
                 {
                   "$ref": "#/components/schemas/app__schemas__horary__QuoteBlock"
@@ -869,9 +779,42 @@
             "title": "Creditrefunded",
             "type": "boolean"
           },
+          "failureStage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failurestage"
+          },
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "publicErrorCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicerrorcode"
+          },
+          "publicErrorMessage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicerrormessage"
           },
           "questionLocationName": {
             "anyOf": [
@@ -980,64 +923,6 @@
           "paidCredits"
         ],
         "title": "HoraryQuotaRead",
-        "type": "object"
-      },
-      "LeadBlock": {
-        "additionalProperties": false,
-        "properties": {
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "type": {
-            "const": "lead",
-            "default": "lead",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "title": "LeadBlock",
-        "type": "object"
-      },
-      "ListBlock": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "style": {
-            "anyOf": [
-              {
-                "enum": [
-                  "bullet",
-                  "check"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Style"
-          },
-          "type": {
-            "const": "list",
-            "default": "list",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "ListBlock",
         "type": "object"
       },
       "LocationData": {
@@ -1281,8 +1166,14 @@
               "discriminator": {
                 "mapping": {
                   "bullets": "#/components/schemas/BulletsBlock",
+                  "callout": "#/components/schemas/app__schemas__natal__CalloutBlock",
+                  "divider": "#/components/schemas/app__schemas__natal__DividerBlock",
+                  "heading": "#/components/schemas/app__schemas__natal__HeadingBlock",
                   "highlights": "#/components/schemas/HighlightsBlock",
+                  "lead": "#/components/schemas/app__schemas__natal__LeadBlock",
+                  "list": "#/components/schemas/app__schemas__natal__ListBlock",
                   "paragraph": "#/components/schemas/app__schemas__natal__ParagraphBlock",
+                  "pros_cons": "#/components/schemas/app__schemas__natal__ProsConsBlock",
                   "quote": "#/components/schemas/app__schemas__natal__QuoteBlock"
                 },
                 "propertyName": "type"
@@ -1292,13 +1183,31 @@
                   "$ref": "#/components/schemas/app__schemas__natal__ParagraphBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/BulletsBlock"
+                  "$ref": "#/components/schemas/app__schemas__natal__LeadBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__natal__HeadingBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__natal__ListBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__natal__CalloutBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__natal__ProsConsBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__natal__QuoteBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/app__schemas__natal__DividerBlock"
                 },
                 {
                   "$ref": "#/components/schemas/HighlightsBlock"
                 },
                 {
-                  "$ref": "#/components/schemas/app__schemas__natal__QuoteBlock"
+                  "$ref": "#/components/schemas/BulletsBlock"
                 }
               ]
             },
@@ -1319,6 +1228,17 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
           },
           "title": {
             "title": "Title",
@@ -1498,6 +1418,26 @@
             ],
             "title": "Firstname"
           },
+          "gender": {
+            "anyOf": [
+              {
+                "enum": [
+                  "male",
+                  "female"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "isOnboarded": {
+            "default": false,
+            "title": "Isonboarded",
+            "type": "boolean"
+          },
           "userId": {
             "format": "uuid",
             "title": "Userid",
@@ -1549,72 +1489,43 @@
               }
             ],
             "title": "Firstname"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "enum": [
+                  "male",
+                  "female"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
           }
         },
         "title": "ProfileWrite",
         "type": "object"
       },
-      "ProsConsBlock": {
+      "ProsConsItem": {
         "additionalProperties": false,
         "properties": {
-          "cons": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cons"
+          "text": {
+            "title": "Text",
+            "type": "string"
           },
-          "consLabel": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Conslabel"
-          },
-          "pros": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pros"
-          },
-          "prosLabel": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Proslabel"
-          },
-          "type": {
-            "const": "pros_cons",
-            "default": "pros_cons",
-            "title": "Type",
+          "title": {
+            "title": "Title",
             "type": "string"
           }
         },
-        "title": "ProsConsBlock",
+        "required": [
+          "title",
+          "text"
+        ],
+        "title": "ProsConsItem",
         "type": "object"
       },
       "ReadingBody": {
@@ -1756,7 +1667,6 @@
       },
       "TimingBlock": {
         "additionalProperties": false,
-        "description": "Блок со сроками реализации.\n\nstatus=\"known\"            — есть выраженный срок, time_range обязателен.\nstatus=\"unclear\"          — карта не даёт точного срока, time_range\n                            опционален (типовая оценка по категории).\nstatus=\"not_enough_evidence\" — срок не выражен и не выводится, time_range=None.",
         "properties": {
           "status": {
             "enum": [
@@ -2250,7 +2160,6 @@
       },
       "VerdictCardBlock": {
         "additionalProperties": false,
-        "description": "Крупная карточка вердикта: да/нет/возможно + label уверенности.\n\nPer W-HORARY-ANSWER-QUALITY-V1 §3.1–3.2 confidence here is shown as\na human label (low/medium/high), NOT as a probability percentage.",
         "properties": {
           "confidence": {
             "title": "Confidence",
@@ -2583,6 +2492,154 @@
         "title": "YesterdayEcho",
         "type": "object"
       },
+      "app__schemas__horary__CalloutBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "tone": {
+            "anyOf": [
+              {
+                "enum": [
+                  "neutral",
+                  "strength",
+                  "risk",
+                  "insight"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone"
+          },
+          "type": {
+            "const": "callout",
+            "default": "callout",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CalloutBlock",
+        "type": "object"
+      },
+      "app__schemas__horary__DividerBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "divider",
+            "default": "divider",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "DividerBlock",
+        "type": "object"
+      },
+      "app__schemas__horary__HeadingBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "enum": [
+              2,
+              3
+            ],
+            "title": "Level",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "heading",
+            "default": "heading",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "text"
+        ],
+        "title": "HeadingBlock",
+        "type": "object"
+      },
+      "app__schemas__horary__LeadBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "lead",
+            "default": "lead",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "LeadBlock",
+        "type": "object"
+      },
+      "app__schemas__horary__ListBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "enum": [
+                  "bullet",
+                  "check"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "type": {
+            "const": "list",
+            "default": "list",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ListBlock",
+        "type": "object"
+      },
       "app__schemas__horary__ParagraphBlock": {
         "additionalProperties": false,
         "properties": {
@@ -2601,6 +2658,69 @@
           "text"
         ],
         "title": "ParagraphBlock",
+        "type": "object"
+      },
+      "app__schemas__horary__ProsConsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "cons": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cons"
+          },
+          "consLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conslabel"
+          },
+          "pros": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pros"
+          },
+          "prosLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proslabel"
+          },
+          "type": {
+            "const": "pros_cons",
+            "default": "pros_cons",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "ProsConsBlock",
         "type": "object"
       },
       "app__schemas__horary__QuoteBlock": {
@@ -2634,6 +2754,136 @@
         "title": "QuoteBlock",
         "type": "object"
       },
+      "app__schemas__natal__CalloutBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "tone": {
+            "default": "info",
+            "enum": [
+              "info",
+              "warning",
+              "insight",
+              "positive"
+            ],
+            "title": "Tone",
+            "type": "string"
+          },
+          "type": {
+            "const": "callout",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "CalloutBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__DividerBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "divider",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "DividerBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__HeadingBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "default": 2,
+            "title": "Level",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "heading",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "HeadingBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__LeadBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "lead",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "LeadBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__ListBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ordered": {
+            "default": false,
+            "title": "Ordered",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "list",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "items"
+        ],
+        "title": "ListBlock",
+        "type": "object"
+      },
       "app__schemas__natal__ParagraphBlock": {
         "additionalProperties": false,
         "properties": {
@@ -2652,6 +2902,47 @@
           "text"
         ],
         "title": "ParagraphBlock",
+        "type": "object"
+      },
+      "app__schemas__natal__ProsConsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "cons": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProsConsItem"
+            },
+            "title": "Cons",
+            "type": "array"
+          },
+          "consLabel": {
+            "default": "Зоны роста",
+            "title": "Conslabel",
+            "type": "string"
+          },
+          "pros": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProsConsItem"
+            },
+            "title": "Pros",
+            "type": "array"
+          },
+          "prosLabel": {
+            "default": "Сильные стороны",
+            "title": "Proslabel",
+            "type": "string"
+          },
+          "type": {
+            "const": "pros_cons",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ProsConsBlock",
         "type": "object"
       },
       "app__schemas__natal__QuoteBlock": {

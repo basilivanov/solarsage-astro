@@ -39,3 +39,4 @@ dist/
 build/
 .env.production
 agents/
+.superpowers/

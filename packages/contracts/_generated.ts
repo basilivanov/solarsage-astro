@@ -305,6 +305,65 @@ export interface components {
             /** To */
             to: string;
         };
+        /** CalloutBlock */
+        app__schemas__horary__CalloutBlock: {
+            /** Text */
+            text: string;
+            /** Title */
+            title?: string | null;
+            /** Tone */
+            tone?: ("neutral" | "strength" | "risk" | "insight") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "callout";
+        };
+        /** DividerBlock */
+        app__schemas__horary__DividerBlock: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "divider";
+        };
+        /** HeadingBlock */
+        app__schemas__horary__HeadingBlock: {
+            /**
+             * Level
+             * @enum {integer}
+             */
+            level: 2 | 3;
+            /** Text */
+            text: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "heading";
+        };
+        /** LeadBlock */
+        app__schemas__horary__LeadBlock: {
+            /** Text */
+            text: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "lead";
+        };
+        /** ListBlock */
+        app__schemas__horary__ListBlock: {
+            /** Items */
+            items: string[];
+            /** Style */
+            style?: ("bullet" | "check") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "list";
+        };
         /** ParagraphBlock */
         app__schemas__horary__ParagraphBlock: {
             /** Text */
@@ -314,6 +373,22 @@ export interface components {
              * @enum {string}
              */
             type: "paragraph";
+        };
+        /** ProsConsBlock */
+        app__schemas__horary__ProsConsBlock: {
+            /** Cons */
+            cons?: string[] | null;
+            /** Conslabel */
+            consLabel?: string | null;
+            /** Pros */
+            pros?: string[] | null;
+            /** Proslabel */
+            prosLabel?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "pros_cons";
         };
         /** QuoteBlock */
         app__schemas__horary__QuoteBlock: {
@@ -327,6 +402,72 @@ export interface components {
              */
             type: "quote";
         };
+        /** CalloutBlock */
+        app__schemas__natal__CalloutBlock: {
+            /** Text */
+            text: string;
+            /** Title */
+            title?: string | null;
+            /**
+             * Tone
+             * @default info
+             * @enum {string}
+             */
+            tone: "info" | "warning" | "insight" | "positive";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "callout";
+        };
+        /** DividerBlock */
+        app__schemas__natal__DividerBlock: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "divider";
+        };
+        /** HeadingBlock */
+        app__schemas__natal__HeadingBlock: {
+            /**
+             * Level
+             * @default 2
+             */
+            level: number;
+            /** Text */
+            text: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "heading";
+        };
+        /** LeadBlock */
+        app__schemas__natal__LeadBlock: {
+            /** Text */
+            text: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "lead";
+        };
+        /** ListBlock */
+        app__schemas__natal__ListBlock: {
+            /** Items */
+            items: string[];
+            /**
+             * Ordered
+             * @default false
+             */
+            ordered: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "list";
+        };
         /** ParagraphBlock */
         app__schemas__natal__ParagraphBlock: {
             /** Text */
@@ -336,6 +477,34 @@ export interface components {
              * @enum {string}
              */
             type: "paragraph";
+        };
+        /** ProsConsBlock */
+        app__schemas__natal__ProsConsBlock: {
+            /**
+             * Cons
+             * @default []
+             */
+            cons: components["schemas"]["ProsConsItem"][];
+            /**
+             * Conslabel
+             * @default Зоны роста
+             */
+            consLabel: string;
+            /**
+             * Pros
+             * @default []
+             */
+            pros: components["schemas"]["ProsConsItem"][];
+            /**
+             * Proslabel
+             * @default Сильные стороны
+             */
+            prosLabel: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "pros_cons";
         };
         /** QuoteBlock */
         app__schemas__natal__QuoteBlock: {
@@ -451,20 +620,6 @@ export interface components {
             /** Title */
             title: string;
         };
-        /** CalloutBlock */
-        CalloutBlock: {
-            /** Text */
-            text: string;
-            /** Title */
-            title?: string | null;
-            /** Tone */
-            tone?: ("neutral" | "strength" | "risk" | "insight") | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "callout";
-        };
         /** ContentAccessState */
         ContentAccessState: {
             /** Accessuntil */
@@ -490,29 +645,6 @@ export interface components {
             /** Supportscore */
             supportScore: number;
         };
-        /** DividerBlock */
-        DividerBlock: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "divider";
-        };
-        /** HeadingBlock */
-        HeadingBlock: {
-            /**
-             * Level
-             * @enum {integer}
-             */
-            level: 2 | 3;
-            /** Text */
-            text: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "heading";
-        };
         /** HighlightItem */
         HighlightItem: {
             /** Id */
@@ -537,7 +669,7 @@ export interface components {
         /** HoraryAnswerRead */
         HoraryAnswerRead: {
             /** Blocks */
-            blocks: (components["schemas"]["app__schemas__horary__ParagraphBlock"] | components["schemas"]["LeadBlock"] | components["schemas"]["HeadingBlock"] | components["schemas"]["ListBlock"] | components["schemas"]["CalloutBlock"] | components["schemas"]["ProsConsBlock"] | components["schemas"]["DividerBlock"] | components["schemas"]["app__schemas__horary__QuoteBlock"] | components["schemas"]["VerdictCardBlock"] | components["schemas"]["TestimoniesBlock"] | components["schemas"]["TimingBlock"])[];
+            blocks: (components["schemas"]["app__schemas__horary__ParagraphBlock"] | components["schemas"]["app__schemas__horary__LeadBlock"] | components["schemas"]["app__schemas__horary__HeadingBlock"] | components["schemas"]["app__schemas__horary__ListBlock"] | components["schemas"]["app__schemas__horary__CalloutBlock"] | components["schemas"]["app__schemas__horary__ProsConsBlock"] | components["schemas"]["app__schemas__horary__DividerBlock"] | components["schemas"]["app__schemas__horary__QuoteBlock"] | components["schemas"]["VerdictCardBlock"] | components["schemas"]["TestimoniesBlock"] | components["schemas"]["TimingBlock"])[];
             /** Confidence */
             confidence: number;
             /**
@@ -634,28 +766,6 @@ export interface components {
             /** Weeklyfreeexpiresat */
             weeklyFreeExpiresAt?: string | null;
         };
-        /** LeadBlock */
-        LeadBlock: {
-            /** Text */
-            text: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "lead";
-        };
-        /** ListBlock */
-        ListBlock: {
-            /** Items */
-            items: string[];
-            /** Style */
-            style?: ("bullet" | "check") | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "list";
-        };
         /** LocationData */
         LocationData: {
             /** City */
@@ -730,11 +840,13 @@ export interface components {
         /** NatalSection */
         NatalSection: {
             /** Blocks */
-            blocks: (components["schemas"]["app__schemas__natal__ParagraphBlock"] | components["schemas"]["BulletsBlock"] | components["schemas"]["HighlightsBlock"] | components["schemas"]["app__schemas__natal__QuoteBlock"])[];
+            blocks: (components["schemas"]["app__schemas__natal__ParagraphBlock"] | components["schemas"]["app__schemas__natal__LeadBlock"] | components["schemas"]["app__schemas__natal__HeadingBlock"] | components["schemas"]["app__schemas__natal__ListBlock"] | components["schemas"]["app__schemas__natal__CalloutBlock"] | components["schemas"]["app__schemas__natal__ProsConsBlock"] | components["schemas"]["app__schemas__natal__QuoteBlock"] | components["schemas"]["app__schemas__natal__DividerBlock"] | components["schemas"]["HighlightsBlock"] | components["schemas"]["BulletsBlock"])[];
             /** Iconname */
             iconName?: string | null;
             /** Id */
             id: string;
+            /** Summary */
+            summary?: string | null;
             /** Title */
             title: string;
         };
@@ -780,9 +892,12 @@ export interface components {
             /** Firstname */
             firstName?: string | null;
             /** Gender */
-            gender?: string | null;
-            /** Isonboarded */
-            isOnboarded?: boolean;
+            gender?: ("male" | "female") | null;
+            /**
+             * Isonboarded
+             * @default false
+             */
+            isOnboarded: boolean;
             /**
              * Userid
              * Format: uuid
@@ -804,23 +919,14 @@ export interface components {
             /** Firstname */
             firstName?: string | null;
             /** Gender */
-            gender?: "male" | "female" | null;
+            gender?: ("male" | "female") | null;
         };
-        /** ProsConsBlock */
-        ProsConsBlock: {
-            /** Cons */
-            cons?: string[] | null;
-            /** Conslabel */
-            consLabel?: string | null;
-            /** Pros */
-            pros?: string[] | null;
-            /** Proslabel */
-            prosLabel?: string | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "pros_cons";
+        /** ProsConsItem */
+        ProsConsItem: {
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
         };
         /** ReadingBody */
         ReadingBody: {
@@ -882,15 +988,7 @@ export interface components {
             /** Weight */
             weight: number;
         };
-        /**
-         * TimingBlock
-         * @description Блок со сроками реализации.
-         *
-         *     status="known"            — есть выраженный срок, time_range обязателен.
-         *     status="unclear"          — карта не даёт точного срока, time_range
-         *                                 опционален (типовая оценка по категории).
-         *     status="not_enough_evidence" — срок не выражен и не выводится, time_range=None.
-         */
+        /** TimingBlock */
         TimingBlock: {
             /**
              * Status
@@ -1043,13 +1141,7 @@ export interface components {
             /** Whytoday */
             whyToday?: string | null;
         };
-        /**
-         * VerdictCardBlock
-         * @description Крупная карточка вердикта: да/нет/возможно + label уверенности.
-         *
-         *     Per W-HORARY-ANSWER-QUALITY-V1 §3.1–3.2 confidence here is shown as
-         *     a human label (low/medium/high), NOT as a probability percentage.
-         */
+        /** VerdictCardBlock */
         VerdictCardBlock: {
             /** Confidence */
             confidence: number;
