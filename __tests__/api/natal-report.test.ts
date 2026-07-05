@@ -20,55 +20,10 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 /**
- * Wave 5 fix tests + follow-up: natal API client — retry, demo isolation, Zod validation.
- *
- * Tests cover:
- * - Blocker 1: generating-page retry calls fetchNatalGenerate(true)
- * - Blocker 2: production /readings/natal/demo does not serve mock
- * - Blocker 3: report-page retry handles GENERATING/PENDING
- * - Risk 1: API client uses Zod schemas for runtime validation
- * - Risk 2: fetchNatalReportSection has demo-mode handling
- * - Follow-up Note 2: fetchNatalPreview uses Zod schema for runtime validation
- * - Follow-up Note 3: fetchNatalReportSection validates reportId in demo mode
+ * Natal API client tests for backend routing, retry behavior, and Zod validation.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-
-// We test the API client functions directly by mocking fetch and IS_DEMO_MODE.
-
-// Mock IS_DEMO_MODE — default to false (production)
-let mockDemoMode = false
-
-vi.mock("@/lib/demo-mode", () => ({
-  get IS_DEMO_MODE() {
-    return mockDemoMode
-  },
-}))
-
-vi.mock("@/lib/demo-data", () => ({
-  DEMO_NATAL_PREVIEW: {
-    meta: { name: "Test", birthDate: "2000-01-01", gender: "female" },
-    highlights: [],
-    spheres: [],
-    planets: [],
-    chapters: [],
-    personalHook: "test",
-    calculationStats: {
-      planetsCount: 1,
-      housesCount: 12,
-      aspectsCount: 0,
-      spheresCount: 1,
-      specialPointsCount: 0,
-      scoringFactorsCount: 0,
-      dignityFactorsCount: 0,
-      totalFactorsCount: 14,
-      displayLabel: "14 факторов",
-    },
-    salesBullets: [],
-    fullReportAvailable: false,
-    fullReportPriceKopecks: 99900,
-  },
-}))
+import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // Mock data for Zod validation tests
 const VALID_GENERATE_RESPONSE = {
@@ -106,27 +61,19 @@ const VALID_SECTION_READ = {
   ],
 }
 
-describe("fetchNatalReport — demo isolation", () => {
+describe("fetchNatalReport — backend routing", () => {
   beforeEach(() => {
-    mockDemoMode = false
     vi.restoreAllMocks()
   })
 
-  it("returns mock data in demo mode (IS_DEMO_MODE=true)", async () => {
-    mockDemoMode = true
+  it("treats 'demo' as a normal report id and returns backend not_found", async () => {
     const { fetchNatalReport } = await import("@/lib/api/natal")
 
-    const result = await fetchNatalReport("demo")
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.data.id).toBe("demo")
-      expect(result.data.status).toBe("READY")
-    }
-  })
-
-  it("returns not_found for 'demo' reportId in production (IS_DEMO_MODE=false)", async () => {
-    mockDemoMode = false
-    const { fetchNatalReport } = await import("@/lib/api/natal")
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ detail: "Report not found" }),
+    })
 
     const result = await fetchNatalReport("demo")
     expect(result.ok).toBe(false)
@@ -134,22 +81,13 @@ describe("fetchNatalReport — demo isolation", () => {
       expect(result.error.type).toBe("not_found")
       expect(result.error.message).toContain("not found")
     }
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/natal/report/demo"),
+      expect.any(Object)
+    )
   })
 
-  it("does not return MOCK_NATAL_REPORT_READ for 'demo' id when not in demo mode", async () => {
-    mockDemoMode = false
-    const { fetchNatalReport } = await import("@/lib/api/natal")
-
-    const result = await fetchNatalReport("demo")
-    // Must NOT return mock data
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.error.type).not.toBe(undefined)
-    }
-  })
-
-  it("calls backend for real report ids in production", async () => {
-    mockDemoMode = false
+  it("calls backend for real report ids", async () => {
     const { fetchNatalReport } = await import("@/lib/api/natal")
 
     global.fetch = vi.fn().mockResolvedValue({
@@ -167,59 +105,32 @@ describe("fetchNatalReport — demo isolation", () => {
   })
 })
 
-describe("fetchNatalReportSection — demo-mode handling", () => {
+describe("fetchNatalReportSection — backend routing", () => {
   beforeEach(() => {
-    mockDemoMode = false
     vi.restoreAllMocks()
   })
 
-  it("returns section from mock in demo mode (reportId must be 'demo')", async () => {
-    mockDemoMode = true
+  it("treats 'demo' as a normal report id and returns backend not_found", async () => {
     const { fetchNatalReportSection } = await import("@/lib/api/natal")
 
-    // Demo mode only returns mock data when reportId === "demo"
-    const result = await fetchNatalReportSection("demo", "portrait")
-    // Section "portrait" exists in MOCK_NATAL_REPORT_READ
-    if (result.ok) {
-      expect(result.data.id).toBe("portrait")
-    } else {
-      // Section might not be found — that's acceptable as long as it's not a network call
-      expect(result.error.type).toBe("not_found")
-    }
-  })
-
-  it("calls backend for non-demo reportId in demo mode", async () => {
-    mockDemoMode = true
-    const { fetchNatalReportSection } = await import("@/lib/api/natal")
-
-    // In demo mode with a non-demo reportId, the function should call backend
     global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => VALID_SECTION_READ,
+      ok: false,
+      status: 404,
+      json: async () => ({ detail: "Section not found" }),
     })
-
-    const result = await fetchNatalReportSection("real-id", "portrait")
-    expect(result.ok).toBe(true)
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/natal/report/real-id/section/portrait"),
-      expect.any(Object)
-    )
-  })
-
-  it("returns not_found for 'demo' reportId in production", async () => {
-    mockDemoMode = false
-    const { fetchNatalReportSection } = await import("@/lib/api/natal")
 
     const result = await fetchNatalReportSection("demo", "portrait")
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.error.type).toBe("not_found")
     }
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/natal/report/demo/section/portrait"),
+      expect.any(Object)
+    )
   })
 
-  it("calls backend for real report ids in production", async () => {
-    mockDemoMode = false
+  it("calls backend for real report ids", async () => {
     const { fetchNatalReportSection } = await import("@/lib/api/natal")
 
     global.fetch = vi.fn().mockResolvedValue({
@@ -239,7 +150,6 @@ describe("fetchNatalReportSection — demo-mode handling", () => {
 
 describe("fetchNatalGenerate — Zod validation", () => {
   beforeEach(() => {
-    mockDemoMode = false
     vi.restoreAllMocks()
   })
 
@@ -280,7 +190,6 @@ describe("fetchNatalGenerate — Zod validation", () => {
 
 describe("fetchNatalReport — Zod validation", () => {
   beforeEach(() => {
-    mockDemoMode = false
     vi.restoreAllMocks()
   })
 
@@ -322,7 +231,6 @@ describe("fetchNatalReport — Zod validation", () => {
 
 describe("fetchNatalReportSection — Zod validation", () => {
   beforeEach(() => {
-    mockDemoMode = false
     vi.restoreAllMocks()
   })
 
@@ -370,7 +278,6 @@ describe("retry behavior — generating page calls fetchNatalGenerate(true)", ()
    */
 
   beforeEach(() => {
-    mockDemoMode = false
     vi.restoreAllMocks()
   })
 
@@ -436,7 +343,6 @@ describe("error states — backend returns GENERATING/PENDING", () => {
    */
 
   beforeEach(() => {
-    mockDemoMode = false
     vi.restoreAllMocks()
   })
 
@@ -586,7 +492,6 @@ const VALID_PREVIEW_RESPONSE = {
 
 describe("fetchNatalPreview — Zod validation", () => {
   beforeEach(() => {
-    mockDemoMode = false
     vi.restoreAllMocks()
   })
 

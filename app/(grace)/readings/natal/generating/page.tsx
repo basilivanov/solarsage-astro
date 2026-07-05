@@ -21,14 +21,11 @@
 // END_MODULE_CONTRACT
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { NatalGeneratingScreen } from "@/components/readings/natal-preview/natal-generating-screen"
-import { IS_DEMO_MODE } from "@/lib/demo-mode"
-import { DEMO_NATAL_PREVIEW } from "@/lib/demo-data"
-import { fetchNatalGenerate, fetchNatalReport } from "@/lib/api/natal"
-import type { NatalGenerateResponse } from "@/lib/contracts/natal"
+import { fetchNatalGenerate, fetchNatalPreview, fetchNatalReport } from "@/lib/api/natal"
+import type { NatalPreviewRead } from "@/lib/contracts/natal"
 
 /** Poll interval for report status when backend is generating (ms). */
 const POLL_INTERVAL_MS = 3_000
@@ -43,6 +40,11 @@ type GenState =
   | { status: "failed_permanent"; message: string }
   | { status: "error"; message: string }
 
+type PreviewState =
+  | { status: "loading" }
+  | { status: "ready"; data: NatalPreviewRead }
+  | { status: "error"; message: string }
+
 /**
  * /readings/natal/generating
  *
@@ -53,22 +55,40 @@ type GenState =
  * - On READY → redirect to /readings/natal/{reportId}
  * - On FAILED_RETRYABLE → show retry button
  * - On FAILED_PERMANENT → show error
- * - In demo mode → simulated progress → redirect to /readings/natal/demo
- *
- * Production mode NEVER routes to /readings/natal/demo.
  */
 export default function NatalGeneratingPage() {
   const router = useRouter()
+  const [previewState, setPreviewState] = useState<PreviewState>({ status: "loading" })
   const [genState, setGenState] = useState<GenState>({ status: "starting" })
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const isLive = !IS_DEMO_MODE
-  const name = useMemo(() => DEMO_NATAL_PREVIEW.meta.name, [])
-  const priceKopecks = useMemo(() => DEMO_NATAL_PREVIEW.fullReportPriceKopecks, [])
+  // ---- Load real preview context before starting generation ----
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadPreview() {
+      const result = await fetchNatalPreview()
+
+      if (cancelled) return
+
+      if (!result.ok) {
+        setPreviewState({ status: "error", message: result.error.message })
+        return
+      }
+
+      setPreviewState({ status: "ready", data: result.data })
+    }
+
+    void loadPreview()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // ---- Start generation on mount ----
   useEffect(() => {
-    if (IS_DEMO_MODE) return // demo mode uses simulated progress in NatalGeneratingScreen
+    if (previewState.status !== "ready") return
 
     let cancelled = false
 
@@ -111,12 +131,11 @@ export default function NatalGeneratingPage() {
     return () => {
       cancelled = true
     }
-  }, [router])
+  }, [previewState.status, router])
 
   // ---- Poll for status when generating ----
   useEffect(() => {
     if (genState.status !== "generating") return
-    if (IS_DEMO_MODE) return
 
     const { reportId, attempt } = genState
 
@@ -155,12 +174,6 @@ export default function NatalGeneratingPage() {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
     }
   }, [genState, router])
-
-  // ---- Demo completion handler ----
-  const handleDemoComplete = useCallback(() => {
-    // In demo mode only — route to demo report
-    router.push("/readings/natal/demo")
-  }, [router])
 
   // ---- Retry handler ----
   const handleRetry = useCallback(async () => {
@@ -201,18 +214,6 @@ export default function NatalGeneratingPage() {
     router.push("/readings/natal")
   }, [router])
 
-  // ---- Demo mode: use the original animated screen ----
-  if (IS_DEMO_MODE) {
-    return (
-      <NatalGeneratingScreen
-        name={name}
-        priceKopecks={priceKopecks}
-        onComplete={handleDemoComplete}
-        isLive={false}
-      />
-    )
-  }
-
   // ---- Production: show status/errors ----
   const sectionNames = [
     "Психологический портрет",
@@ -236,6 +237,12 @@ export default function NatalGeneratingPage() {
   const completedCount = genState.status === "generating"
     ? Math.min(Math.floor(progress / (100 / sectionNames.length)), sectionNames.length - 1)
     : 0
+  const previewName = previewState.status === "ready" ? previewState.data.meta.name : null
+  const isLoadingPreview = previewState.status === "loading"
+  const visibleState: GenState =
+    previewState.status === "error"
+      ? { status: "error", message: previewState.message }
+      : genState
 
   return (
     <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
@@ -267,25 +274,27 @@ export default function NatalGeneratingPage() {
           </div>
 
           <h1 className="font-serif text-[24px] leading-tight tracking-tight text-foreground">
-            {genState.status === "failed_permanent"
+            {visibleState.status === "failed_permanent"
               ? "Не удалось создать разбор"
-              : genState.status === "failed_retryable"
+              : visibleState.status === "failed_retryable"
                 ? "Ошибка генерации"
                 : "Собираем твой разбор"}
           </h1>
           <p className="text-[14px] leading-relaxed text-muted-foreground">
-            {genState.status === "failed_permanent"
-              ? genState.message
-              : genState.status === "failed_retryable"
-                ? genState.message
-                : genState.status === "error"
-                  ? genState.message
-                  : "Анализируем каждый фактор твоей натальной карты"}
+            {visibleState.status === "failed_permanent"
+              ? visibleState.message
+              : visibleState.status === "failed_retryable"
+                ? visibleState.message
+                : visibleState.status === "error"
+                  ? visibleState.message
+                  : previewName
+                    ? `${previewName}, анализируем каждый фактор твоей натальной карты`
+                    : "Анализируем каждый фактор твоей натальной карты"}
           </p>
         </div>
 
         {/* Progress bar (only when generating) */}
-        {genState.status === "generating" && (
+        {visibleState.status === "generating" && (
           <div className="space-y-2">
             <div className="h-2.5 overflow-hidden rounded-full bg-primary/8">
               <div
@@ -305,16 +314,16 @@ export default function NatalGeneratingPage() {
         )}
 
         {/* Error states */}
-        {(genState.status === "failed_retryable" || genState.status === "failed_permanent" || genState.status === "error") && (
+        {(visibleState.status === "failed_retryable" || visibleState.status === "failed_permanent" || visibleState.status === "error") && (
           <div className="space-y-3">
             <div className="rounded-2xl border border-rose-500/15 bg-rose-500/[0.04] px-4 py-3.5 space-y-2">
               <p className="text-[13px] text-foreground/80">
-                {genState.message}
+                {visibleState.message}
               </p>
             </div>
 
             <div className="flex gap-3">
-              {genState.status === "failed_retryable" && (
+              {visibleState.status === "failed_retryable" && (
                 <button
                   type="button"
                   onClick={handleRetry}
@@ -335,14 +344,14 @@ export default function NatalGeneratingPage() {
         )}
 
         {/* Starting state */}
-        {genState.status === "starting" && (
+        {(isLoadingPreview || visibleState.status === "starting") && (
           <div className="flex items-center justify-center py-8">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         )}
 
         {/* Notification note */}
-        {genState.status === "generating" && (
+        {visibleState.status === "generating" && (
           <div className="rounded-2xl border border-primary/10 bg-primary/[0.02] px-4 py-3 space-y-1">
             <p className="text-[12.5px] text-muted-foreground">
               Можно закрыть этот экран — когда разбор будет готов, мы пришлём уведомление в Telegram.

@@ -26,7 +26,6 @@ import Link from "next/link"
 import { ChevronLeft, ChevronRight, Sparkles, AlertTriangle, RefreshCw } from "lucide-react"
 import { motion } from "framer-motion"
 
-import { IS_DEMO_MODE } from "@/lib/demo-mode"
 import { fetchNatalReport } from "@/lib/api/natal"
 import type {
   NatalReportRead,
@@ -34,7 +33,7 @@ import type {
   BackendBlock,
   BackendCalloutTone,
   ProsConsItem,
-} from "@/lib/contracts/natal"
+} from "@/packages/contracts"
 import { mapCalloutTone } from "@/lib/contracts/natal"
 
 type Props = {

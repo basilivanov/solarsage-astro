@@ -22,8 +22,6 @@
 // wave: W-2.7
 // purpose: API client for profile endpoints
 
-import { IS_DEMO_MODE } from '@/lib/demo-mode'
-import { DEMO_PROFILE } from '@/lib/demo-data'
 import type { BirthData, ProfileRead, ProfileWrite } from '@/packages/contracts'
 export type { BirthData, ProfileRead, ProfileWrite }
 
@@ -35,8 +33,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
  * @throws Error on HTTP errors
  */
 export async function getProfile(): Promise<ProfileRead> {
-  if (IS_DEMO_MODE) return DEMO_PROFILE as unknown as ProfileRead;
-
   const res = await fetch(`${API_BASE}/api/profile`, {
     credentials: 'include',
     headers: {

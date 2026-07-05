@@ -21,12 +21,6 @@
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock demo-mode as false so tests exercise real fetch path
-vi.mock('@/lib/demo-mode', () => ({
-  IS_DEMO_MODE: false,
-  resolveDemoMode: () => false,
-}))
-
 import { fetchDay, fetchCalendar, ApiError } from '../../lib/grace/api/client'
 
 describe('ApiError', () => {

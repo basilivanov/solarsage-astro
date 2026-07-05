@@ -20,15 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 /**
- * Wave 5 follow-up: component render tests for retry, demo, and error states.
- *
- * Non-blocking Note 1 from Wave 5 acceptance review:
- * "Component click behavior is still not tested directly."
- *
- * Tests cover:
- * - Generating page: retry button calls fetchNatalGenerate(true)
- * - Report page: retry button handles GENERATING/PENDING from backend
- * - Report page: production /readings/natal/demo shows not_found
+ * Component render tests for real preview, retry, and backend error states.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
@@ -39,48 +31,31 @@ import React from "react"
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
+const mockRouter = {
+  push: mockPush,
+  replace: mockReplace,
+  back: vi.fn(),
+  forward: vi.fn(),
+  refresh: vi.fn(),
+  prefetch: vi.fn(),
+}
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace,
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    prefetch: vi.fn(),
-  }),
+  useRouter: () => mockRouter,
   usePathname: () => "/readings/natal",
   useSearchParams: () => new URLSearchParams(),
-}))
-
-// ---- Mock IS_DEMO_MODE ----
-
-let mockDemoMode = false
-
-vi.mock("@/lib/demo-mode", () => ({
-  get IS_DEMO_MODE() {
-    return mockDemoMode
-  },
 }))
 
 // ---- Mock API client ----
 
 const mockFetchNatalGenerate = vi.fn()
 const mockFetchNatalReport = vi.fn()
+const mockFetchNatalPreview = vi.fn()
 
 vi.mock("@/lib/api/natal", () => ({
   fetchNatalGenerate: (...args: unknown[]) => mockFetchNatalGenerate(...args),
   fetchNatalReport: (...args: unknown[]) => mockFetchNatalReport(...args),
-  fetchNatalPreview: vi.fn(),
-}))
-
-// ---- Mock demo-data ----
-
-vi.mock("@/lib/demo-data", () => ({
-  DEMO_NATAL_PREVIEW: {
-    meta: { name: "Test", birthDate: "2000-01-01", gender: "female" },
-    fullReportPriceKopecks: 99900,
-  },
+  fetchNatalPreview: (...args: unknown[]) => mockFetchNatalPreview(...args),
 }))
 
 // ---- Mock lucide-react with all needed icons ----
@@ -128,17 +103,54 @@ vi.mock("@/components/readings/natal-preview/natal-generating-screen", () => ({
 
 describe("NatalGeneratingPage — retry behavior", () => {
   beforeEach(() => {
-    mockDemoMode = false
     mockPush.mockReset()
     mockReplace.mockReset()
     mockFetchNatalGenerate.mockReset()
     mockFetchNatalReport.mockReset()
+    mockFetchNatalPreview.mockReset()
+    mockFetchNatalPreview.mockResolvedValue({
+      ok: true,
+      data: {
+        meta: { name: "Backend User", birthDate: "2000-01-01", gender: "female" },
+        fullReportPriceKopecks: 99900,
+      },
+    })
   })
 
-  // known jsdom flake — async useEffect state transitions (starting→failed_retryable)
-  // don't flush reliably in jsdom; the stale-closure fix in the component is valid,
-  // but the test itself cannot reliably await the intermediate UI state.
-  it.skip("retry button calls fetchNatalGenerate(true) after FAILED_RETRYABLE", async () => {
+  it("loads real preview data before starting generation", async () => {
+    const NatalGeneratingPage = (await import("@/app/(grace)/readings/natal/generating/page")).default
+
+    mockFetchNatalGenerate.mockResolvedValue({
+      ok: true,
+      data: { reportId: "gen-123", status: "GENERATING" },
+    })
+
+    render(<NatalGeneratingPage />)
+
+    await waitFor(() => {
+      expect(mockFetchNatalPreview).toHaveBeenCalledTimes(1)
+      expect(mockFetchNatalGenerate).toHaveBeenCalledWith(false)
+    })
+    expect(screen.getByText(/Backend User/)).toBeTruthy()
+  })
+
+  it("renders an error when real preview data is unavailable", async () => {
+    const NatalGeneratingPage = (await import("@/app/(grace)/readings/natal/generating/page")).default
+
+    mockFetchNatalPreview.mockResolvedValueOnce({
+      ok: false,
+      error: { type: "error", message: "Preview unavailable" },
+    })
+
+    render(<NatalGeneratingPage />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Preview unavailable/).length).toBeGreaterThan(0)
+    })
+    expect(mockFetchNatalGenerate).not.toHaveBeenCalled()
+  })
+
+  it("retry button calls fetchNatalGenerate(true) after FAILED_RETRYABLE", async () => {
     const NatalGeneratingPage = (await import("@/app/(grace)/readings/natal/generating/page")).default
 
     // First call: initial generation returns FAILED_RETRYABLE
@@ -166,13 +178,7 @@ describe("NatalGeneratingPage — retry behavior", () => {
       data: { reportId: "default", status: "GENERATING" },
     })
 
-    await act(async () => {
-      render(
-        <React.Suspense fallback={<div>Loading</div>}>
-          <NatalGeneratingPage />
-        </React.Suspense>
-      )
-    })
+    render(<NatalGeneratingPage />)
 
     // Wait for the failed_retryable state to appear
     await waitFor(() => {
@@ -194,7 +200,6 @@ describe("NatalGeneratingPage — retry behavior", () => {
 
 describe("NatalReportPage — retry and demo isolation", () => {
   beforeEach(() => {
-    mockDemoMode = false
     mockPush.mockReset()
     mockReplace.mockReset()
     mockFetchNatalGenerate.mockReset()

@@ -151,6 +151,23 @@ describe('useTelegramAuth', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('does not bypass backend auth when NEXT_PUBLIC_DEMO_MODE is true', async () => {
+    (process.env as any).NODE_ENV = 'production'
+    ;(process.env as any).NEXT_PUBLIC_DEMO_MODE = 'true'
+
+    const { result } = renderHook(() => useTelegramAuth())
+
+    await waitFor(
+      () => {
+        expect(result.current.isLoading).toBe(false)
+      },
+      { timeout: LONG_TIMEOUT },
+    )
+
+    expect(result.current.isAuthenticated).toBe(false)
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
   it('times out after 5 seconds', async () => {
     (process.env as any).NODE_ENV = 'development'
     ;(global.fetch as any).mockImplementation(() => new Promise(() => {}))

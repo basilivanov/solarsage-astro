@@ -36,9 +36,6 @@ import {
   NatalGenerateResponseSchema,
   NatalReportSectionReadSchema,
 } from "@/lib/contracts/natal"
-import { IS_DEMO_MODE } from "@/lib/demo-mode"
-import { DEMO_NATAL_PREVIEW } from "@/lib/demo-data"
-import { MOCK_NATAL_REPORT_READ } from "@/lib/mocks/natal"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
@@ -80,10 +77,6 @@ function parseErrorBody(res: Response): Promise<ErrorBody> {
 export async function fetchNatalPreview(): Promise<
   { ok: true; data: NatalPreviewRead } | { ok: false; error: NatalPreviewError }
 > {
-  if (IS_DEMO_MODE) {
-    return { ok: true, data: DEMO_NATAL_PREVIEW as unknown as NatalPreviewRead }
-  }
-
   try {
     const res = await fetch(`${API_BASE}/api/natal/preview`, {
       credentials: "include",
@@ -123,18 +116,6 @@ export async function fetchNatalPreview(): Promise<
 export async function fetchNatalGenerate(forceRegenerate = false): Promise<
   { ok: true; data: NatalGenerateResponse } | { ok: false; error: NatalGenerateError }
 > {
-  if (IS_DEMO_MODE) {
-    // In demo mode, simulate a successful generation with mock data
-    return {
-      ok: true,
-      data: {
-        reportId: "demo",
-        status: "READY",
-        sectionsAvailable: true,
-      },
-    }
-  }
-
   try {
     const res = await fetch(`${API_BASE}/api/natal/generate`, {
       method: "POST",
@@ -202,14 +183,6 @@ export async function fetchNatalGenerate(forceRegenerate = false): Promise<
 export async function fetchNatalReport(reportId?: string): Promise<
   { ok: true; data: NatalReportRead } | { ok: false; error: NatalReportError }
 > {
-  if (IS_DEMO_MODE) {
-    return { ok: true, data: MOCK_NATAL_REPORT_READ }
-  }
-  if (reportId === "demo") {
-    // Production must not serve mock data — "demo" is not a real report id
-    return { ok: false, error: { type: "not_found", message: "Report not found" } }
-  }
-
   try {
     const url = reportId
       ? `${API_BASE}/api/natal/report/${reportId}`
@@ -267,19 +240,6 @@ export async function fetchNatalReportSection(
 ): Promise<
   { ok: true; data: NatalReportRead["sections"][number] } | { ok: false; error: NatalReportError }
 > {
-  // Demo mode: return section from mock report (only for "demo" reportId)
-  if (IS_DEMO_MODE && reportId === "demo") {
-    const section = MOCK_NATAL_REPORT_READ.sections.find((s) => s.id === sectionId)
-    if (!section) {
-      return { ok: false, error: { type: "not_found", message: "Section not found" } }
-    }
-    return { ok: true, data: section }
-  }
-  // Production: "demo" is not a real report id
-  if (reportId === "demo") {
-    return { ok: false, error: { type: "not_found", message: "Report not found" } }
-  }
-
   try {
     const res = await fetch(
       `${API_BASE}/api/natal/report/${reportId}/section/${sectionId}`,
