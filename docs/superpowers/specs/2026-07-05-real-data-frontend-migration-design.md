@@ -310,3 +310,14 @@ The migration is complete when:
 ## Review Notes
 
 The key architectural rule is stricter than "copy the new frontend": presentation may move from mock-preview, but all facts must come from real contracts. This means some mock-preview UI should be delayed until backend read models exist. That delay is intentional because otherwise `3002` would show polished fake data as production truth.
+
+## Final Preview Runtime Acceptance Notes
+
+Task 10 adds the real-data preview runtime artifact for final integration acceptance:
+
+- `infra/systemd/solarsage-frontend-preview-3001.service` is the repo-tracked template for running `/opt/solarsage-astro-real-data-preview` on `127.0.0.1:3001`.
+- The preview unit runs `npm run build` before `next start`, with `NODE_ENV=production`, `PORT=3001`, and `HOSTNAME=127.0.0.1`.
+- `/api/*` remains owned by the application `next.config.mjs` rewrite to `http://127.0.0.1:8000/api/:path*`; the preview unit does not introduce mock API routes or point at port `8001`.
+- `scripts/preview-3001-smoke.sh` is the final local runtime smoke. It checks `/day/2026-07-05`, `/calendar`, referenced `/_next/static/*` assets, and `/api/health` through `3001`, failing if the health payload is mock/demo.
+
+Final acceptance for this branch requires the full local suite plus real-HMAC Playwright against `E2E_BASE_URL=http://127.0.0.1:3001`. Port `3002` remains production and must not be touched during preview acceptance.
