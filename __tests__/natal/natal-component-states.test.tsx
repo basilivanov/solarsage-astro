@@ -27,6 +27,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import React from "react"
 
+import type { NatalPreviewRead } from "@/lib/contracts/natal"
+
 // ---- Mock next/navigation ----
 
 const mockPush = vi.fn()
@@ -100,6 +102,107 @@ vi.mock("@/components/readings/natal-preview/natal-generating-screen", () => ({
 // ============================================================
 // Tests
 // ============================================================
+
+const VALID_PREVIEW_WITH_CHART: NatalPreviewRead = {
+  meta: {
+    name: "Backend User",
+    birthDate: "2000-01-01",
+    birthCity: "Moscow",
+    houseSystem: "Placidus",
+    ascSign: "Aries",
+    gender: "female",
+  },
+  chart: {
+    houseSystem: "Placidus",
+    planets: [
+      { name: "Sun", sign: "Aries", degree: 10, house: 1, retrograde: false, longitude: 10 },
+      { name: "Moon", sign: "Leo", degree: 10, house: 5, retrograde: false, longitude: 130 },
+    ],
+    houses: [
+      { number: 1, sign: "Aries", degree: 0, longitude: 0 },
+      { number: 2, sign: "Taurus", degree: 0, longitude: 30 },
+    ],
+    aspects: [
+      { planetA: "Sun", planetB: "Moon", aspectType: "trine", orb: 1.2, applying: null },
+    ],
+    angles: [
+      { name: "ASC", sign: "Aries", degree: 15, longitude: 15 },
+    ],
+  },
+  highlights: [
+    { id: "sun", title: "Солнце", value: "Овен", description: "Ядро личности" },
+    { id: "moon", title: "Луна", value: "Лев", description: "Эмоциональный тон" },
+  ],
+  spheres: [
+    { id: "self", title: "Личность", score: 4.5, rank: 1, description: "Сильная сфера" },
+  ],
+  planets: [
+    { id: "sun", name: "Солнце", sign: "Овен", house: 1, score: null, description: "Солнце в Овне" },
+  ],
+  chapters: [
+    { id: "portrait", eyebrow: "Полный разбор", title: "Портрет", locked: true, description: "Описание" },
+  ],
+  personalHook: "Ты собрана",
+  calculationStats: {
+    planetsCount: 2,
+    housesCount: 2,
+    aspectsCount: 1,
+    spheresCount: 1,
+    specialPointsCount: 0,
+    scoringFactorsCount: 0,
+    dignityFactorsCount: 0,
+    totalFactorsCount: 6,
+    displayLabel: "6 факторов",
+  },
+  salesBullets: ["Поймёшь себя"],
+  fullReportAvailable: false,
+  fullReportPriceKopecks: 99900,
+}
+
+describe("NatalChartWheel — supplied chart rendering", () => {
+  it("renders SVG content from supplied backend chart only", async () => {
+    const { NatalChartWheel } = await import("@/components/readings/natal-chart-wheel")
+
+    render(<NatalChartWheel chart={VALID_PREVIEW_WITH_CHART.chart} birthLabel="2000-01-01" />)
+
+    const chart = screen.getByTestId("natal-chart")
+    expect(chart.querySelector("svg")).toBeTruthy()
+    expect(chart.textContent).toContain("☉")
+    expect(chart.textContent).toContain("Placidus")
+    expect(chart.querySelectorAll("line").length).toBeGreaterThan(0)
+  })
+
+  it("renders an unavailable state when chart is absent", async () => {
+    const { NatalChartWheel } = await import("@/components/readings/natal-chart-wheel")
+
+    render(<NatalChartWheel chart={null} />)
+
+    expect(screen.getByTestId("natal-chart-unavailable").textContent).toContain("Натальная карта недоступна")
+  })
+})
+
+describe("NatalReadingPage — natal chart preview", () => {
+  beforeEach(() => {
+    mockPush.mockReset()
+    mockReplace.mockReset()
+    mockFetchNatalPreview.mockReset()
+  })
+
+  it("renders the chart wheel from real preview.chart data", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+
+    mockFetchNatalPreview.mockResolvedValue({
+      ok: true,
+      data: VALID_PREVIEW_WITH_CHART,
+    })
+
+    render(<NatalReadingPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("natal-chart")).toBeTruthy()
+    })
+  })
+})
 
 describe("NatalGeneratingPage — retry behavior", () => {
   beforeEach(() => {

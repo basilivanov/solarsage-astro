@@ -52,6 +52,11 @@ from app.schemas.natal import (
     NatalContextData,
     NatalHighlight,
     NatalPlanetPreview,
+    NatalPreviewChart,
+    NatalPreviewChartAngle,
+    NatalPreviewChartAspect,
+    NatalPreviewChartHouse,
+    NatalPreviewChartPlanet,
     NatalPreviewMeta,
     NatalPreviewRead,
     NatalSpherePreview,
@@ -488,6 +493,7 @@ class NatalService:
 
         return NatalPreviewRead(
             meta=meta,
+            chart=self._build_chart_from_context(natal_context),
             highlights=highlights,
             spheres=spheres,
             planets=planets,
@@ -497,6 +503,29 @@ class NatalService:
             sales_bullets=sales_bullets,
             full_report_available=full_report_available,
             full_report_price_kopecks=99900,
+        )
+
+    @staticmethod
+    def _build_chart_from_context(context: NatalContextData) -> NatalPreviewChart:
+        """Expose the deterministic natal chart exactly from NatalContextData."""
+        return NatalPreviewChart(
+            planets=[
+                NatalPreviewChartPlanet(**planet.model_dump())
+                for planet in context.planets
+            ],
+            houses=[
+                NatalPreviewChartHouse(**house.model_dump())
+                for house in context.houses
+            ],
+            aspects=[
+                NatalPreviewChartAspect(**aspect.model_dump())
+                for aspect in context.aspects
+            ],
+            angles=[
+                NatalPreviewChartAngle(**angle.model_dump())
+                for angle in context.angles
+            ],
+            house_system=context.house_system,
         )
 
     @staticmethod

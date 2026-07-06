@@ -26,6 +26,7 @@ import {
   HighlightSchema,
   SphereScoreSchema,
   PlanetScoreSchema,
+  NatalPreviewReadSchema,
 } from '../../lib/contracts/natal'
 
 function validMinimalReport() {
@@ -225,5 +226,88 @@ describe('PlanetScoreSchema', () => {
 
   it('rejects planet with empty sign', () => {
     expect(() => PlanetScoreSchema.parse({ id: 'p1', name: 'Sun', sign: '' })).toThrow()
+  })
+})
+
+describe('NatalPreviewReadSchema chart contract', () => {
+  it('parses backend preview chart data and preserves all chart sections', () => {
+    const preview = NatalPreviewReadSchema.parse({
+      meta: {
+        birthDate: '2000-01-01',
+        gender: 'female',
+        houseSystem: 'Placidus',
+      },
+      chart: {
+        houseSystem: 'Placidus',
+        planets: [
+          { name: 'Sun', sign: 'Aries', degree: 10, house: 1, retrograde: false, longitude: 10 },
+        ],
+        houses: [
+          { number: 1, sign: 'Aries', degree: 0, longitude: 0 },
+        ],
+        aspects: [
+          { planetA: 'Sun', planetB: 'Moon', aspectType: 'trine', orb: 1.2, applying: null },
+        ],
+        angles: [
+          { name: 'ASC', sign: 'Aries', degree: 15, longitude: 15 },
+        ],
+      },
+      highlights: [],
+      spheres: [],
+      planets: [],
+      chapters: [],
+      personalHook: 'Ты собрана',
+      calculationStats: {
+        planetsCount: 1,
+        housesCount: 1,
+        aspectsCount: 1,
+        spheresCount: 0,
+        specialPointsCount: 0,
+        scoringFactorsCount: 0,
+        dignityFactorsCount: 0,
+        totalFactorsCount: 3,
+        displayLabel: '3 фактора',
+      },
+      salesBullets: [],
+      fullReportAvailable: false,
+      fullReportPriceKopecks: 99900,
+    })
+
+    expect(preview.chart?.houseSystem).toBe('Placidus')
+    expect(preview.chart?.planets[0].name).toBe('Sun')
+    expect(preview.chart?.houses[0].number).toBe(1)
+    expect(preview.chart?.aspects[0].planetA).toBe('Sun')
+    expect(preview.chart?.angles[0].name).toBe('ASC')
+  })
+
+  it('allows chart to be null for unavailable preview states', () => {
+    const preview = NatalPreviewReadSchema.parse({
+      meta: {
+        birthDate: '2000-01-01',
+        gender: 'female',
+      },
+      chart: null,
+      highlights: [],
+      spheres: [],
+      planets: [],
+      chapters: [],
+      personalHook: 'Ты собрана',
+      calculationStats: {
+        planetsCount: 0,
+        housesCount: 0,
+        aspectsCount: 0,
+        spheresCount: 0,
+        specialPointsCount: 0,
+        scoringFactorsCount: 0,
+        dignityFactorsCount: 0,
+        totalFactorsCount: 0,
+        displayLabel: '0 факторов',
+      },
+      salesBullets: [],
+      fullReportAvailable: false,
+      fullReportPriceKopecks: 99900,
+    })
+
+    expect(preview.chart).toBeNull()
   })
 })

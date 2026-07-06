@@ -372,10 +372,11 @@ class NatalReportService:
         W-NATAL-FULL Wave 4: Populates NatalReportMeta with profile data.
         """
         if report_id:
+            report_uuid = self._parse_report_uuid(report_id)
             result = await self.db.execute(
                 select(NatalReport).where(
                     and_(
-                        NatalReport.id == uuid.UUID(report_id),
+                        NatalReport.id == report_uuid,
                         NatalReport.user_id == user_id,
                     )
                 )
@@ -401,6 +402,16 @@ class NatalReportService:
         # Populate meta with profile data
         report_read.meta = await self._populate_report_meta(report, report_read.meta)
         return report_read
+
+    @staticmethod
+    def _parse_report_uuid(report_id: str) -> uuid.UUID:
+        try:
+            return uuid.UUID(report_id)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "REPORT_NOT_FOUND", "message": "Отчёт не найден."},
+            ) from exc
 
     async def get_report_section(
         self, user_id: uuid.UUID, report_id: str, section_id: str

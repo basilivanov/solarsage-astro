@@ -26,6 +26,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft } from "lucide-react"
 
+import { NatalChartWheel } from "@/components/readings/natal-chart-wheel"
 import { CalculationDepth } from "@/components/readings/natal-preview/calculation-depth"
 import { CtaButton } from "@/components/readings/natal-preview/cta-button"
 import { ErrorCard } from "@/components/readings/natal-preview/error-card"
@@ -115,19 +116,22 @@ export default function NatalReadingPage() {
             {/* 4. Глубина расчёта */}
             <CalculationDepth stats={state.data.calculationStats} />
 
-            {/* 5. Сферы (топ-3 по умолчанию) */}
+            {/* 5. Натальная карта */}
+            <NatalChartWheel chart={state.data.chart} birthLabel={state.data.meta.birthDate} />
+
+            {/* 6. Сферы (топ-3 по умолчанию) */}
             <SpheresStrip spheres={state.data.spheres} />
 
-            {/* 6. Планеты (топ-3 по умолчанию) */}
+            {/* 7. Планеты (топ-3 по умолчанию) */}
             <PlanetsRow planets={state.data.planets} />
 
-            {/* 7. Что войдёт в полный отчёт */}
+            {/* 8. Что войдёт в полный отчёт */}
             <LockedChapters chapters={state.data.chapters} />
 
-            {/* 8. Value bullets */}
+            {/* 9. Value bullets */}
             <SalesBullets bullets={state.data.salesBullets} />
 
-            {/* 9. CTA */}
+            {/* 10. CTA */}
             <CtaButton
               priceKopecks={state.data.fullReportPriceKopecks}
               onClick={handleOpenReport}

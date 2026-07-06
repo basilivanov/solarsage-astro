@@ -461,6 +461,21 @@ const VALID_PREVIEW_RESPONSE = {
     birthDate: "2000-01-01",
     gender: "female",
   },
+  chart: {
+    houseSystem: "Placidus",
+    planets: [
+      { name: "Sun", sign: "Aries", degree: 10, house: 1, retrograde: false, longitude: 10 },
+    ],
+    houses: [
+      { number: 1, sign: "Aries", degree: 0, longitude: 0 },
+    ],
+    aspects: [
+      { planetA: "Sun", planetB: "Moon", aspectType: "trine", orb: 1.2, applying: null },
+    ],
+    angles: [
+      { name: "ASC", sign: "Aries", degree: 15, longitude: 15 },
+    ],
+  },
   highlights: [
     { id: "sun", title: "Солнце", value: "Лев", description: "Ядро личности" },
   ],
@@ -508,6 +523,8 @@ describe("fetchNatalPreview — Zod validation", () => {
     expect(result.ok).toBe(true)
     if (result.ok) {
       expect(result.data.meta.birthDate).toBe("2000-01-01")
+      expect(result.data.chart?.houseSystem).toBe("Placidus")
+      expect(result.data.chart?.planets[0].longitude).toBe(10)
       expect(result.data.highlights).toHaveLength(1)
       expect(result.data.personalHook).toBe("Ты собрана")
       expect(result.data.fullReportAvailable).toBe(true)

@@ -228,8 +228,48 @@ class NatalPreviewMeta(CamelModel):
     gender: Literal["male", "female"]
 
 
+class NatalPreviewChartPlanet(CamelModel):
+    name: str
+    sign: str
+    degree: float
+    house: int | None = None
+    retrograde: bool = False
+    longitude: float
+
+
+class NatalPreviewChartHouse(CamelModel):
+    number: int
+    sign: str
+    degree: float
+    longitude: float
+
+
+class NatalPreviewChartAspect(CamelModel):
+    planet_a: str
+    planet_b: str
+    aspect_type: str
+    orb: float
+    applying: bool | None = None
+
+
+class NatalPreviewChartAngle(CamelModel):
+    name: str
+    sign: str
+    degree: float
+    longitude: float
+
+
+class NatalPreviewChart(CamelModel):
+    planets: list[NatalPreviewChartPlanet] = []
+    houses: list[NatalPreviewChartHouse] = []
+    aspects: list[NatalPreviewChartAspect] = []
+    angles: list[NatalPreviewChartAngle] = []
+    house_system: str
+
+
 class NatalPreviewRead(CamelModel):
     meta: NatalPreviewMeta
+    chart: NatalPreviewChart | None = None
     highlights: list[NatalHighlight] = []
     spheres: list[NatalSpherePreview] = []
     planets: list[NatalPlanetPreview] = []

@@ -210,7 +210,7 @@ async def get_natal_report_by_id(
     # returns: NatalReportRead with sections, meta, status
     # side_effects: reads from DB
     # emitted_logs: none
-    # error_behavior: 501 if FEATURE_DISABLED, 404 if report not found
+    # error_behavior: 501 if FEATURE_DISABLED, 404 if report not found or report_id is malformed
     # END_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_report_by_id
     """Get specific report by id.
     Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.
@@ -237,7 +237,7 @@ async def get_natal_report_section(
     # returns: NatalReportSectionRead with blocks for that section
     # side_effects: reads from DB
     # emitted_logs: none
-    # error_behavior: 501 if FEATURE_DISABLED, 404 if report or section not found
+    # error_behavior: 501 if FEATURE_DISABLED, 404 if report/section not found or report_id is malformed
     # END_FUNCTION_CONTRACT: F-M-API-NATAL.get_natal_report_section
     """Get single section from a report.
     Wave 4 feature — gated by NATAL_REPORT_ENABLED flag.

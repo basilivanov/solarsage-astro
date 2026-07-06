@@ -251,6 +251,45 @@ export const NatalPreviewPlanetSchema = z.object({
   description: z.string().min(1),
 })
 
+export const NatalPreviewChartPlanetSchema = z.object({
+  name: z.string().min(1),
+  sign: z.string().min(1),
+  degree: z.number(),
+  house: z.number().nullable().optional(),
+  retrograde: z.boolean(),
+  longitude: z.number(),
+})
+
+export const NatalPreviewChartHouseSchema = z.object({
+  number: z.number(),
+  sign: z.string().min(1),
+  degree: z.number(),
+  longitude: z.number(),
+})
+
+export const NatalPreviewChartAspectSchema = z.object({
+  planetA: z.string().min(1),
+  planetB: z.string().min(1),
+  aspectType: z.string().min(1),
+  orb: z.number(),
+  applying: z.boolean().nullable().optional(),
+})
+
+export const NatalPreviewChartAngleSchema = z.object({
+  name: z.string().min(1),
+  sign: z.string().min(1),
+  degree: z.number(),
+  longitude: z.number(),
+})
+
+export const NatalPreviewChartSchema = z.object({
+  planets: z.array(NatalPreviewChartPlanetSchema),
+  houses: z.array(NatalPreviewChartHouseSchema),
+  aspects: z.array(NatalPreviewChartAspectSchema),
+  angles: z.array(NatalPreviewChartAngleSchema),
+  houseSystem: z.string().min(1),
+})
+
 export const NatalPreviewChapterSchema = z.object({
   id: z.string().min(1),
   eyebrow: z.string().min(1),
@@ -273,6 +312,7 @@ export const NatalCalculationStatsSchema = z.object({
 
 export const NatalPreviewReadSchema = z.object({
   meta: NatalPreviewMetaSchema,
+  chart: NatalPreviewChartSchema.nullable(),
   highlights: z.array(NatalPreviewHighlightSchema),
   spheres: z.array(NatalPreviewSphereSchema),
   planets: z.array(NatalPreviewPlanetSchema),
@@ -290,6 +330,11 @@ export type NatalPreviewMeta = z.infer<typeof NatalPreviewMetaSchema>
 export type NatalPreviewHighlight = z.infer<typeof NatalPreviewHighlightSchema>
 export type NatalPreviewSphere = z.infer<typeof NatalPreviewSphereSchema>
 export type NatalPreviewPlanet = z.infer<typeof NatalPreviewPlanetSchema>
+export type NatalPreviewChartPlanet = z.infer<typeof NatalPreviewChartPlanetSchema>
+export type NatalPreviewChartHouse = z.infer<typeof NatalPreviewChartHouseSchema>
+export type NatalPreviewChartAspect = z.infer<typeof NatalPreviewChartAspectSchema>
+export type NatalPreviewChartAngle = z.infer<typeof NatalPreviewChartAngleSchema>
+export type NatalPreviewChart = z.infer<typeof NatalPreviewChartSchema>
 export type NatalPreviewChapter = z.infer<typeof NatalPreviewChapterSchema>
 export type NatalCalculationStats = z.infer<typeof NatalCalculationStatsSchema>
 export type NatalPreviewRead = z.infer<typeof NatalPreviewReadSchema>

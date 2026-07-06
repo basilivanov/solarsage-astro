@@ -71,6 +71,7 @@ const russianPreview: NatalPreviewRead = {
     ascDegree: 12.5,
     gender: "female",
   },
+  chart: null,
   highlights: [
     { id: "asc", title: "Асцендент", value: "Раке", description: "Как ты входишь в контакт и проявляешься внешне." },
     { id: "sun-sign", title: "Солнце", value: "Скорпионе", description: "Твой базовый вектор личности." },
@@ -122,7 +123,7 @@ describe("NatalReadingPage — no English signs in UI", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/натальная карта/i)).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Твоя натальная карта" })).toBeTruthy();
     }, { timeout: 3000 });
 
     const body = document.body.textContent || "";
@@ -136,4 +137,3 @@ describe("NatalReadingPage — no English signs in UI", () => {
     expect(body).toContain("Весы");
   });
 });
-
