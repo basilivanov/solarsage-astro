@@ -105,6 +105,16 @@ function calendarPayload(overrides: Partial<CalendarPayloadReadModel> = {}): Cal
   }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 describe('CalendarScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -185,6 +195,51 @@ describe('CalendarScreen', () => {
     expect(screen.queryByTestId('calendar-grid')).toBeNull()
   })
 
+  it('shows a real loading state while the first calendar request is in flight', async () => {
+    const pending = deferred<CalendarPayloadReadModel>()
+    mockGetMonthCalendar.mockReturnValue(pending.promise)
+
+    render(<CalendarScreen access={fullAccess} />)
+
+    expect(screen.getByTestId('calendar-loading').textContent).toContain('Загружаем календарь')
+    expect(screen.queryByTestId('calendar-unavailable')).toBeNull()
+    expect(screen.queryByTestId('calendar-grid')).toBeNull()
+
+    pending.resolve(calendarPayload())
+    await waitFor(() => expect(screen.getByTestId('calendar-grid')).toBeTruthy())
+  })
+
+  it('clears stale month days and shows loading while the next month request is pending', async () => {
+    const nextMonthPending = deferred<CalendarPayloadReadModel>()
+    mockGetMonthCalendar
+      .mockResolvedValueOnce(calendarPayload())
+      .mockReturnValueOnce(nextMonthPending.promise)
+
+    render(<CalendarScreen access={fullAccess} />)
+
+    await waitFor(() => expect(screen.getByTestId('calendar-day-2026-07-06')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Следующий месяц' }))
+
+    expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 7)
+    expect(screen.getByTestId('calendar-loading')).toBeTruthy()
+    expect(screen.queryByTestId('calendar-day-2026-07-06')).toBeNull()
+    expect(screen.queryByTestId('calendar-grid')).toBeNull()
+
+    nextMonthPending.resolve(calendarPayload({
+      month: '2026-08',
+      title: 'Август 2026',
+      days: [
+        day('2026-08-03', {
+          dayStatus: 'supportive',
+          isCurrentMonth: true,
+          isToday: false,
+        }),
+      ],
+    }))
+
+    await waitFor(() => expect(screen.getByTestId('calendar-day-2026-08-03')).toBeTruthy())
+  })
+
   it('does not fall back to Gregorian date number when lunar day is absent', async () => {
     mockGetMonthCalendar.mockResolvedValue(calendarPayload({
       days: [
@@ -206,5 +261,23 @@ describe('CalendarScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Луна' }))
 
     expect(screen.getByTestId('calendar-moon-day-2026-07-06').textContent).toBe('—')
+  })
+
+  it('renders unknown backend day status as unavailable instead of synthesizing an even day', async () => {
+    mockGetMonthCalendar.mockResolvedValue(calendarPayload({
+      days: [
+        day('2026-07-06', {
+          dayStatus: null,
+        }),
+      ],
+    }))
+
+    render(<CalendarScreen access={fullAccess} />)
+
+    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
+
+    expect(screen.getByLabelText(/6 июля 2026, статус недоступен/i)).toBeTruthy()
+    expect(screen.queryByText('ровный')).toBeNull()
+    expect(screen.getByText('Статус недоступен')).toBeTruthy()
   })
 })

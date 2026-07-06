@@ -250,3 +250,79 @@ Results:
 - Confirmed moon-mode cells render empty/unavailable when lunar day is absent instead of falling back to Gregorian day numbers
 - Confirmed no frontend astrology calculations or mock fallbacks were introduced
 - Confirmed the subscription/payment CTA is explicitly disabled pending real fulfillment
+
+## Review Fixes, Round 2
+
+### Scope
+
+Addressed the second review pass without touching unrelated files:
+
+- added an explicit loading state for the initial calendar request
+- cleared stale month payload immediately on month navigation and rendered loading instead of the previous month grid
+- stopped treating null/absent backend `dayStatus` as computed `even`
+- hardened calendar Playwright so it waits for loading completion before accepting either a ready grid or a terminal API error state
+
+### RED evidence before implementation
+
+I encoded the new regressions in `__tests__/components/CalendarScreen.test.tsx` first and ran the focused suite before changing production code:
+
+```bash
+pnpm exec vitest run __tests__/components/CalendarScreen.test.tsx
+```
+
+Observed failures matched the review findings:
+
+- no `calendar-loading` state existed during the initial in-flight request
+- old month cells stayed visible while the next month request was pending
+- null backend `dayStatus` still rendered as `ровный`
+
+### Covering verification
+
+Required verification:
+
+```bash
+pnpm exec vitest run __tests__/components/CalendarScreen.test.tsx __tests__/components/TodayScreen.test.tsx __tests__/lib/adapt-payload.test.ts __tests__/api/calendar.test.ts
+pnpm exec tsc --noEmit
+```
+
+Results:
+
+- Vitest: 55/55 tests passed across the required 4 files
+- TypeScript: `tsc --noEmit` exited 0
+
+### Playwright smoke verification
+
+Used the same non-production preview flow on a free dev port:
+
+```bash
+ln -s /opt/solarsage-astro/.env.production /opt/solarsage-astro-real-data-preview/.env.production
+pnpm exec next dev -p 3003
+E2E_BASE_URL=http://localhost:3003 pnpm exec playwright test e2e/today.spec.ts e2e/calendar.spec.ts --project=chromium
+```
+
+Results:
+
+- Playwright: 5/5 tests passed
+- `e2e/calendar.spec.ts` now waits for `data-load-state="ready|error"` and rejects premature initial loading as a terminal unavailable state
+
+### Cleanup after local preview
+
+Stopped the local preview server and removed the temporary env artifact:
+
+```bash
+rm -f /opt/solarsage-astro-real-data-preview/.env.production
+ss -ltnp | rg ':3003\b' || true
+test -e /opt/solarsage-astro-real-data-preview/.env.production && echo present || echo absent
+```
+
+Results:
+
+- no listener remained on `:3003`
+- temporary `.env.production` symlink was absent after cleanup
+
+### Self-review
+
+- confirmed `payload=null` plus `isLoading=true` no longer renders the terminal unavailable state
+- confirmed month navigation clears the old backend days until the next month payload arrives
+- confirmed unknown backend day tone is labeled `Статус недоступен` in aria and footer text rather than `ровный`
+- confirmed the stricter calendar E2E checks loading completion before accepting terminal states

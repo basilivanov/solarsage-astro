@@ -21,7 +21,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, ChevronLeft, ChevronRight, Lock, Moon } from "lucide-react"
+import { ArrowRight, ChevronLeft, ChevronRight, Lock, Minus, Moon } from "lucide-react"
 
 import { MoodIcon } from "@/components/calendar/mood-icon"
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
@@ -44,10 +44,20 @@ type Props = {
 }
 
 type ViewMode = "day" | "moon"
+type CalendarTone = DayStatus | "unknown"
 
-function normalizeStatus(status: BackendDayStatus | null | undefined): DayStatus {
+function normalizeStatus(status: BackendDayStatus | null | undefined): CalendarTone {
   if (status === "supportive" || status === "tense") return status
-  return "even"
+  if (status === "steady") return "even"
+  return "unknown"
+}
+
+function statusText(status: CalendarTone): string {
+  return status === "unknown" ? "Статус недоступен" : statusLabel(status)
+}
+
+function statusAriaText(status: CalendarTone): string {
+  return status === "unknown" ? "статус недоступен" : statusLabel(status)
 }
 
 function accessAllowed(day: CalendarDayReadModel | undefined): boolean {
@@ -103,22 +113,28 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
   )
   const [selected, setSelected] = useState<Date>(TODAY)
   const [payload, setPayload] = useState<CalendarPayloadReadModel | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [payloadError, setPayloadError] = useState(false)
   const [view, setView] = useState<ViewMode>("day")
 
   useEffect(() => {
     let alive = true
+    setIsLoading(true)
+    setPayload(null)
+    setPayloadError(false)
     getMonthCalendar(cursor.getFullYear(), cursor.getMonth())
       .then((next) => {
         if (alive) {
           setPayload(next)
           setPayloadError(false)
+          setIsLoading(false)
         }
       })
       .catch(() => {
         if (alive) {
           setPayload(null)
           setPayloadError(true)
+          setIsLoading(false)
         }
       })
     return () => {
@@ -137,7 +153,8 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
   const selectedStatus = normalizeStatus(selectedDay?.dayStatus)
   const isSelectedAccessible = accessAllowed(selectedDay)
   const selectedCanOpen = canOpen(selectedDay)
-  const hasTerminalUnavailable = payloadError || days.length === 0
+  const hasTerminalUnavailable = !isLoading && (payloadError || days.length === 0)
+  const loadState = isLoading ? "loading" : hasTerminalUnavailable ? "error" : "ready"
 
   const minMonth = allowedBoundary(payload, "from")
   const maxMonth = allowedBoundary(payload, "to")
@@ -151,6 +168,9 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
     next.setMonth(cursor.getMonth() + delta)
     if (delta < 0 && !canPrev) return
     if (delta > 0 && !canNext) return
+    setIsLoading(true)
+    setPayload(null)
+    setPayloadError(false)
     setCursor(next)
   }
 
@@ -176,8 +196,29 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
     )
   }
 
+  function renderLoadingState() {
+    return (
+      <section
+        className="px-5 py-6"
+        aria-label="Загрузка календаря"
+        data-testid="calendar-loading"
+      >
+        <div className="rounded-lg border border-border/60 bg-card/70 px-4 py-5 text-center">
+          <p className="text-sm font-medium text-foreground">Загружаем календарь</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Ждём реальные данные месяца от backend.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
   return (
-    <div className="flex h-full w-full flex-col">
+    <div
+      className="flex h-full w-full flex-col"
+      data-load-state={loadState}
+      data-testid="calendar-screen"
+    >
       <header
         className="flex flex-none items-center justify-between px-5 pb-4"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1.25rem)" }}
@@ -253,7 +294,9 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
         ))}
       </div>
 
-      {hasTerminalUnavailable ? (
+      {isLoading ? (
+        renderLoadingState()
+      ) : hasTerminalUnavailable ? (
         renderUnavailableState()
       ) : (
         <>
@@ -283,7 +326,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                     aria-label={
                       view === "moon"
                         ? lunarAria(date, day)
-                        : `${formatLong(date)}, ${statusLabel(status)}${accessible ? "" : ", требуется подписка"}`
+                        : `${formatLong(date)}, ${statusAriaText(status)}${accessible ? "" : ", требуется подписка"}`
                     }
                     data-testid={`calendar-day-${day.date}`}
                     className={cn(
@@ -332,7 +375,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                           {day.dayNumber}
                         </span>
 
-                        {day.isCurrentMonth && accessible && (
+                        {day.isCurrentMonth && accessible && status !== "unknown" ? (
                           <MoodIcon
                             status={status}
                             className={cn(
@@ -346,7 +389,18 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                                     : "text-foreground/40",
                             )}
                           />
-                        )}
+                        ) : null}
+
+                        {day.isCurrentMonth && accessible && status === "unknown" ? (
+                          <Minus
+                            aria-hidden
+                            className={cn(
+                              "mt-0.5 h-3 w-3",
+                              isSelected ? "text-primary-foreground/85" : "text-muted-foreground/45",
+                            )}
+                            strokeWidth={1.75}
+                          />
+                        ) : null}
 
                         {day.isCurrentMonth && !accessible && !isSelected && (
                           <Lock
@@ -395,17 +449,26 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                 ) : selectedDay ? (
                   <div className="mt-1 flex items-center gap-2 text-[12px] text-muted-foreground">
                     <MoodIcon
-                      status={selectedStatus}
+                      status={selectedStatus === "unknown" ? "even" : selectedStatus}
                       className={cn(
                         "h-3.5 w-3.5",
-                        selectedStatus === "tense"
-                          ? "text-foreground/70"
-                          : selectedStatus === "supportive"
-                            ? "text-primary"
-                            : "text-foreground/45",
+                        selectedStatus === "unknown"
+                          ? "hidden"
+                          : selectedStatus === "tense"
+                            ? "text-foreground/70"
+                            : selectedStatus === "supportive"
+                              ? "text-primary"
+                              : "text-foreground/45",
                       )}
                     />
-                    <span>{statusLabel(selectedStatus)}</span>
+                    {selectedStatus === "unknown" ? (
+                      <Minus
+                        aria-hidden
+                        className="h-3.5 w-3.5 text-muted-foreground/45"
+                        strokeWidth={1.75}
+                      />
+                    ) : null}
+                    <span>{statusText(selectedStatus)}</span>
                     {!isSelectedAccessible ? (
                       <span className="inline-flex items-center gap-1 text-muted-foreground/80">
                         <span aria-hidden>·</span>

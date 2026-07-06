@@ -24,8 +24,12 @@ test.describe('Calendar Screen - Real Auth', () => {
     }
 
     await page.goto('/calendar');
+    const screenRoot = page.getByTestId('calendar-screen');
     const grid = page.getByTestId('calendar-grid');
+    const loading = page.getByTestId('calendar-loading');
     const unavailable = page.getByTestId('calendar-unavailable');
+    await expect(screenRoot).toHaveAttribute('data-load-state', /ready|error/, { timeout: 15000 });
+    await expect(loading).toBeHidden();
     await expect(grid.or(unavailable)).toBeVisible({ timeout: 15000 });
 
     if (await unavailable.isVisible()) {
