@@ -371,7 +371,11 @@ async def test_generated_horary_chart_snapshot_is_persisted_and_returned(
     ):
         mock_client = AsyncMock()
         mock_client.get_natal.return_value = sidecar_chart
-        mock_client.get_transits.return_value = {"planets": []}
+        mock_client.get_transits.return_value = {
+            "planets": [
+                {"name": "Moon", "longitude": 90.0, "latitude": 0.0, "speed": 13.0, "sign": "Cancer"},
+            ]
+        }
         mock_client_factory.return_value = mock_client
 
         mock_llm = AsyncMock()
@@ -411,7 +415,7 @@ async def test_generated_horary_chart_snapshot_is_persisted_and_returned(
     assert q_row.chart_snapshot_json is not None
     stored_chart = json.loads(q_row.chart_snapshot_json)
     assert stored_chart["source"] == "solarsage"
-    assert stored_chart["castAt"] == "2026-06-08T15:00:00"
+    assert stored_chart["castAt"] == "2026-06-08T15:00:00+03:00"
     assert stored_chart["timezone"] == "Europe/Moscow"
     assert stored_chart["latitude"] == 55.75
     assert stored_chart["longitude"] == 37.62
@@ -425,6 +429,12 @@ async def test_generated_horary_chart_snapshot_is_persisted_and_returned(
         "planet": "Sun",
         "targetPlanet": "Moon",
         "aspectType": "sextile",
+        "orb": 0.0,
+    } in stored_chart["aspects"]
+    assert {
+        "planet": "Moon",
+        "targetPlanet": "Saturn",
+        "aspectType": "square",
         "orb": 0.0,
     } in stored_chart["aspects"]
 

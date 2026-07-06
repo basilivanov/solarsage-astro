@@ -171,7 +171,7 @@ describe("HoraryAnswerView", () => {
         question={makeQuestion({
           chart: {
             source: "solarsage",
-            castAt: "2026-01-15T12:00:00",
+            castAt: "2026-01-15T12:00:00+03:00",
             timezone: "Europe/Moscow",
             latitude: 55.75,
             longitude: 37.62,
@@ -196,6 +196,7 @@ describe("HoraryAnswerView", () => {
     const chart = screen.getByLabelText("Карта момента вопроса");
     expect(chart).toBeTruthy();
     expect(within(chart).getByText("Карта момента")).toBeTruthy();
+    expect(within(chart).getByText(/12:00/)).toBeTruthy();
     expect(within(chart).getByText("Москва")).toBeTruthy();
     expect(within(chart).getByText("Луна")).toBeTruthy();
     expect(within(chart).getByText(/тригон/i)).toBeTruthy();

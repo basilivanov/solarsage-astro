@@ -143,6 +143,7 @@ describe('generated horary contracts', () => {
       answer: null,
       chart: null,
     })
+    expect(HoraryQuestionSchema.parse(failedQuestion).chart).toBeNull()
   })
 
   it('keeps persisted horary chart snapshots in generated and local contracts', () => {
@@ -163,5 +164,12 @@ describe('generated horary contracts', () => {
       aspects: [{ planet: 'Moon', targetPlanet: 'Saturn', aspectType: 'trine', orb: 1.2 }],
     })
     expect(HoraryQuestionSchema.parse(chartQuestion).chart).toEqual(chartQuestion.chart)
+  })
+
+  it('requires chart on question payloads while allowing null for legacy rows', () => {
+    const { chart: _chart, ...missingChart } = failedQuestion
+
+    expect(HoraryQuestionSchema.safeParse(missingChart).success).toBe(false)
+    expect(HoraryQuestionSchema.safeParse({ ...failedQuestion, chart: null }).success).toBe(true)
   })
 })

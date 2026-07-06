@@ -163,7 +163,7 @@ export const HoraryQuestionSchema = z.object({
   questionLocationName: z.string().optional().nullable(),
   createdAt: z.string(),
   answer: HoraryAnswerSchema.optional().nullable(),
-  chart: HoraryChartSnapshotSchema.optional().nullable(),
+  chart: HoraryChartSnapshotSchema.nullable(),
 })
 
 export const HoraryQuotaSchema = z.object({

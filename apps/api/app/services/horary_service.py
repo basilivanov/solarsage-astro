@@ -34,6 +34,7 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import selectinload
@@ -66,6 +67,33 @@ def _float_or_none(value: Any) -> float | None:
         return None
 
 
+def _strip_chart_planet_prefix(name: Any) -> str:
+    normalized = str(name)
+    changed = True
+    while changed:
+        changed = False
+        for prefix in ("Transit_", "Natal_"):
+            if normalized.startswith(prefix):
+                normalized = normalized[len(prefix):]
+                changed = True
+    return normalized
+
+
+def _resolve_chart_datetime(client_local_time: str | None, timezone_name: str) -> datetime:
+    chart_zone = ZoneInfo(timezone_name)
+    if client_local_time:
+        try:
+            parsed = datetime.fromisoformat(client_local_time)
+        except ValueError:
+            parsed = datetime.now(timezone.utc)
+    else:
+        parsed = datetime.now(timezone.utc)
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=chart_zone)
+    return parsed.astimezone(chart_zone)
+
+
 def _build_horary_chart_snapshot(
     horary_chart: dict[str, Any],
     signals: list[Any],
@@ -92,6 +120,7 @@ def _build_horary_chart_snapshot(
                 "speed": _float_or_none(planet.get("speed")),
             }
         )
+    chart_planet_names = {planet["name"] for planet in planets}
 
     houses: list[dict[str, Any]] = []
     for house in horary_chart.get("houses") or []:
@@ -118,12 +147,14 @@ def _build_horary_chart_snapshot(
         orb = getattr(signal, "orb", None)
         if not planet or not target_planet or not aspect_type or orb is None:
             continue
-        if str(planet).startswith("Transit_") or str(target_planet).startswith("Transit_"):
+        normalized_planet = _strip_chart_planet_prefix(planet)
+        normalized_target = _strip_chart_planet_prefix(target_planet)
+        if normalized_planet not in chart_planet_names or normalized_target not in chart_planet_names:
             continue
         aspects.append(
             {
-                "planet": str(planet),
-                "targetPlanet": str(target_planet),
+                "planet": normalized_planet,
+                "targetPlanet": normalized_target,
                 "aspectType": str(aspect_type),
                 "orb": float(orb),
             }
@@ -392,16 +423,13 @@ class HoraryService:
                 lat = float(question.question_lat) if question.question_lat is not None else float(profile.current_lat or profile.birth_lat or profile.birthday_lat or 0.0)
                 lon = float(question.question_lon) if question.question_lon is not None else float(profile.current_lon or profile.birth_lon or profile.birthday_lon or 0.0)
 
-                if question.client_local_time:
-                    try:
-                        dt = datetime.fromisoformat(question.client_local_time)
-                    except ValueError:
-                        dt = datetime.now(timezone.utc)
-                else:
-                    dt = datetime.now(timezone.utc)
+                chart_dt = _resolve_chart_datetime(
+                    question.client_local_time,
+                    question.client_timezone,
+                )
 
-                date_str = dt.date().isoformat()
-                time_str = dt.time().strftime("%H:%M")
+                date_str = chart_dt.date().isoformat()
+                time_str = chart_dt.time().strftime("%H:%M")
 
                 client = get_solarsage_client()
                 try:
@@ -426,7 +454,7 @@ class HoraryService:
                 chart_snapshot = _build_horary_chart_snapshot(
                     horary_chart,
                     signals,
-                    cast_at=dt.isoformat(),
+                    cast_at=chart_dt.isoformat(),
                     timezone_name=question.client_timezone,
                     latitude=lat,
                     longitude=lon,

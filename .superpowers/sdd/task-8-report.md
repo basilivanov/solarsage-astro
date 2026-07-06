@@ -43,3 +43,22 @@ GREEN:
 
 - Vitest prints the existing Vite CJS API deprecation warning. Tests pass.
 - `next-env.d.ts` was dirty before this task and was not staged or committed.
+
+## Review Fixes: 2026-07-06
+
+Addressed Needs Fixes review findings:
+
+- Critical: `_build_horary_chart_snapshot` now strips known `Transit_` / `Natal_` prefixes from normalized aspect signal endpoints, then keeps only aspects whose normalized endpoints both exist in the persisted chart planet set. No aspects are fabricated.
+- Important: local Zod `HoraryQuestionSchema.chart` now matches generated/OpenAPI contract as required-but-nullable. A missing `chart` property fails validation; `chart: null` remains valid for legacy rows.
+- Important: horary generation now resolves chart datetime through `ZoneInfo(question.client_timezone)`. Naive local times are serialized with the chart timezone offset, and aware inputs are converted to the chart timezone before sidecar calls and snapshot persistence.
+
+Additional RED/GREEN evidence:
+
+- Backend regression was first changed to use a non-empty transit response that generates a prefixed `Transit_Moon` aspect and to expect offset-aware `castAt`; it failed against the reviewed implementation.
+- Contract regression was added to require the `chart` property; it failed while local Zod still treated `chart` as optional.
+- Component regression now checks that an offset-aware `castAt` displays the intended chart-local time in `chart.timezone`.
+
+Verification after fixes:
+
+- `cd apps/api && source .venv/bin/activate && python -m pytest tests/test_horary_endpoints.py -q`: passed, `17 passed`.
+- `pnpm exec vitest run __tests__/contracts/horary.test.ts __tests__/horary/horary-answer-view.test.tsx`: passed, `21 passed`.
