@@ -1,13 +1,13 @@
 # ############################################################################
 # AI_HEADER: MODULE_PAYMENT_SERVICE
-# ROLE: Payment service (Telegram Payments integration)
-# DEPENDENCIES: sqlalchemy, app.db.models, app.services.access_service
+# ROLE: Disabled payment fulfillment boundary
+# DEPENDENCIES: sqlalchemy, app.db.models
 # GRACE_ANCHORS: [CREATE_PAYMENT_INTENT, HANDLE_WEBHOOK]
 # WAVE: W-6.1, W-6.2
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-PAYMENT-SERVICE
-# purpose: Create payment intents and handle webhook callbacks.
+# purpose: Reject payment intents and webhooks until real fulfillment exists.
 # owns:
 #   - apps/api/app/services/payment_service.py
 # inputs:
@@ -20,15 +20,13 @@
 #   - M-ACCESS (AccessService)
 #   - M-CHAT-QUOTA-SERVICE (ChatQuotaService)
 # side_effects:
-#   - creates/updates payment rows
-#   - grants subscription on successful payment
-#   - increases chat quota on successful payment
+#   - none
 # invariants:
-#   - webhook is idempotent (silent no-op on unknown payments)
+#   - no payment row, subscription, access, or quota is created
 # failure_policy:
-#   - webhook silently returns if payment not found
+#   - all operations raise PaymentUnavailableError
 # non_goals:
-#   - no real payment provider (MVP stub)
+#   - partial provider integration
 # END_MODULE_CONTRACT: M-PAYMENT-SERVICE
 
 # START_MODULE_MAP: M-PAYMENT-SERVICE
@@ -41,17 +39,17 @@
 # END_MODULE_MAP: M-PAYMENT-SERVICE
 
 import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from datetime import datetime, UTC, date
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Payment
-from app.services.access_service import AccessService
-from app.services.chat_quota_service import ChatQuotaService
+
+
+class PaymentUnavailableError(RuntimeError):
+    """Raised while payment fulfillment is intentionally disabled."""
 
 
 class PaymentService:
-    """Payment service for Telegram Payments."""
+    """Disabled boundary for payment operations."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -64,32 +62,16 @@ class PaymentService:
         description: str,
     ) -> Payment:
         # START_FUNCTION_CONTRACT: F-M-PAYMENT-SERVICE.create_payment_intent
-        # purpose: Create pending payment intent (MVP stub, no real provider).
+        # purpose: Reject payment intent creation while fulfillment is unavailable.
         # inputs: user_id (UUID), amount (int), currency (str), description (str)
-        # returns: Payment DB model with id, status, amount, currency
-        # side_effects: creates Payment row with status "pending"
-        # emitted_logs: payment.intent_created
-        # error_behavior: DB errors propagate
+        # returns: never
+        # side_effects: none
+        # emitted_logs: none
+        # error_behavior: always raises PaymentUnavailableError
         # END_FUNCTION_CONTRACT: F-M-PAYMENT-SERVICE.create_payment_intent
-        """
-        Create payment intent.
-        
-        W-6.1: Simplified for MVP (no real provider call).
-        """
-        payment = Payment(
-            user_id=user_id,
-            amount=amount,
-            currency=currency,
-            status="pending",
-            provider="telegram",
-            description=description,
+        raise PaymentUnavailableError(
+            "Payment intent creation is disabled until real provider fulfillment exists."
         )
-        
-        self.db.add(payment)
-        await self.db.commit()
-        await self.db.refresh(payment)
-        
-        return payment
     
     async def handle_webhook(
         self,
@@ -97,46 +79,13 @@ class PaymentService:
         status: str,
     ) -> None:
         # START_FUNCTION_CONTRACT: F-M-PAYMENT-SERVICE.handle_webhook
-        # purpose: Handle payment webhook: update status, grant access on success.
+        # purpose: Reject webhook handling while provider verification is unavailable.
         # inputs: payment_id (str), status (str)
         # returns: None
-        # side_effects: updates Payment status, creates subscription, increases chat quota
-        # emitted_logs: payment.succeeded, payment.failed
-        # error_behavior: idempotent — silently returns if payment not found
+        # side_effects: none
+        # emitted_logs: none
+        # error_behavior: always raises PaymentUnavailableError
         # END_FUNCTION_CONTRACT: F-M-PAYMENT-SERVICE.handle_webhook
-        """
-        Handle payment webhook from provider.
-
-        W-6.1: Updates payment status.
-        W-6.2: Creates subscription entry on success.
-        """
-        # Find payment by ID
-        result = await self.db.execute(
-            select(Payment).where(Payment.id == int(payment_id))
+        raise PaymentUnavailableError(
+            "Payment webhook handling is disabled until provider verification exists."
         )
-        payment = result.scalar_one_or_none()
-
-        if not payment:
-            return
-
-        # Update status
-        payment.status = status
-        if status == "succeeded":
-            payment.completed_at = datetime.now(UTC)
-
-            # W-6.2: Create subscription entry
-            access_service = AccessService(self.db)
-            await access_service.grant_subscription(
-                user_id=payment.user_id,
-                start_date=date.today(),
-                days=30,  # 1 month subscription
-            )
-
-            # W-CHAT-4: Increase chat quota
-            quota_service = ChatQuotaService(self.db)
-            await quota_service.increase_limit(
-                user_id=payment.user_id,
-                additional=100,  # Subscription adds 100 messages
-            )
-
-        await self.db.commit()

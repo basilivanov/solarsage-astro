@@ -49,14 +49,18 @@ YOOKASSA_SUBSCRIPTION_CURRENCY=RUB
 # --- YooKassa ---
 YOOKASSA_ENABLED=true
 YOOKASSA_MODE=live
-YOOKASSA_LIVE_SHOP_ID=1317569
-YOOKASSA_LIVE_SECRET_KEY=live_K_jp1ZvDWs89sdwLCMlvxbWIywx1Hz_mZyxPF3EjFiw
+YOOKASSA_LIVE_SHOP_ID=<set-in-secret-store>
+YOOKASSA_LIVE_SECRET_KEY=<set-in-secret-store>
 YOOKASSA_RETURN_URL=https://astro.vasiliy-ivanov.ru/profile
 YOOKASSA_WEBHOOK_SECRET=
 YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS=19900
 YOOKASSA_SUBSCRIPTION_CURRENCY=RUB
 YOOKASSA_RECURRENT_ENABLED=false
 ```
+
+Tracked documentation must not contain live YooKassa credentials. If the
+previous values were copied from a real shop, rotate them in YooKassa before
+enabling production payments.
 
 `YOOKASSA_RECURRENT_ENABLED=false` — флаг-killswitch для автоплатежей. Пока `false`, рекуррент не списывается. Переключим на `true` после тестирования первого платежа вручную.
 

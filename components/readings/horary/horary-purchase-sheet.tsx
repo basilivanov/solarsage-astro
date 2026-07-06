@@ -23,7 +23,6 @@
 
 import { useState, useEffect } from "react"
 import { X, Coins } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 
 type Props = {
   onClose: () => void
@@ -31,7 +30,6 @@ type Props = {
 
 export function HoraryPurchaseSheet({ onClose }: Props) {
   const [mounted, setMounted] = useState(false)
-  const { toast } = useToast()
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true))
@@ -51,19 +49,6 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
     setMounted(false)
     window.setTimeout(onClose, 220)
   }
-
-  const handlePurchase = (_label: string) => {
-    toast({
-      description: "Оплата будет доступна в ближайшее время",
-    })
-  }
-
-  const options = [
-    { qty: "1 вопрос", price: "50 ★", discount: null },
-    { qty: "3 вопроса", price: "120 ★", discount: "−20%" },
-    { qty: "5 вопросов", price: "180 ★", discount: "−28%" },
-    { qty: "10 вопросов", price: "300 ★", discount: "−40%" },
-  ]
 
   return (
     <div className="fixed inset-0 z-50" aria-modal="true" role="dialog" data-testid="horary-purchase-sheet">
@@ -90,13 +75,13 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
           <div className="flex items-start justify-between px-5 pt-4">
             <div className="min-w-0 pr-3">
               <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Пополнение баланса
+                Платные вопросы
               </div>
               <h2 className="mt-1 font-serif text-[24px] leading-tight tracking-tight text-foreground">
                 Хорарные вопросы
               </h2>
               <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">
-                Выберите пакет вопросов. Оплата производится через Telegram Stars.
+                Оплата и пополнение баланса пока недоступны: сначала подключим реальное подтверждение платежа и выдачу вопросов.
               </p>
             </div>
             <button
@@ -111,37 +96,20 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 pb-8 pt-6">
-            <div className="grid gap-3">
-              {options.map((opt, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  data-testid={`horary-purchase-option-${i}`}
-                  onClick={() => handlePurchase(opt.qty)}
-                  className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-4 transition active:bg-foreground/5 text-left w-full"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Coins className="h-[18px] w-[18px]" />
-                    </div>
-                    <div>
-                      <span className="block font-sans text-[15px] font-medium text-foreground">
-                        {opt.qty}
-                      </span>
-                      {opt.discount && (
-                        <span className="inline-block mt-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
-                          Скидка {opt.discount}
-                        </span>
-                      )}
-                    </div>
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Coins className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <div className="text-[15px] font-medium text-foreground">
+                    Пополнение скоро появится
                   </div>
-                  <div className="text-right">
-                    <span className="block font-serif text-[18px] font-semibold text-foreground">
-                      {opt.price}
-                    </span>
-                  </div>
-                </button>
-              ))}
+                  <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+                    Сейчас можно использовать еженедельный бесплатный вопрос и бонусы за приглашения.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -149,4 +117,3 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
     </div>
   )
 }
-

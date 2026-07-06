@@ -1,33 +1,31 @@
 # ############################################################################
 # AI_HEADER: MODULE_API_PAYMENT
-# ROLE: Payment endpoints — create intent and handle webhook
+# ROLE: Disabled payment endpoints
 # DEPENDENCIES: fastapi, sqlalchemy, app.services.payment_service
 # GRACE_ANCHORS: [CREATE_PAYMENT_ENDPOINT, PAYMENT_WEBHOOK_ENDPOINT]
 # WAVE: W-6.1, W-6.2
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-API-PAYMENT
-# purpose: Payment intent creation and webhook handling.
+# purpose: Reject payment requests until real fulfillment exists.
 # owns:
 #   - apps/api/app/api/payment.py
 # inputs:
 #   - POST /api/payment/create-intent: PaymentIntent
 #   - POST /api/payment/webhook: PaymentWebhook
 # outputs:
-#   - payment with id/status/amount/currency
-#   - {"ok": true}
+#   - HTTP 503 PAYMENT_UNAVAILABLE
 # dependencies:
 #   - M-PAYMENT-SERVICE
 #   - M-DB-SESSION
 #   - M-AUTH-DEPENDENCIES
 # side_effects:
-#   - creates/updates payment rows
-#   - creates subscription on successful webhook
+#   - none
 # invariants:
 #   - create-intent requires authentication
-#   - webhook is idempotent
+#   - neither endpoint creates or grants anything
 # failure_policy:
-#   - webhook: silently ignores unknown payments
+#   - both endpoints return explicit 503 unavailable responses
 # non_goals:
 #   - no real payment provider (MVP stub)
 # END_MODULE_CONTRACT: M-API-PAYMENT
@@ -41,16 +39,29 @@
 #   - PAYMENT_WEBHOOK_ENDPOINT: POST /api/payment/webhook
 # END_MODULE_MAP: M-API-PAYMENT
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.core.dependencies import require_session
-from app.services.payment_service import PaymentService
+from app.services.payment_service import PaymentService, PaymentUnavailableError
 from app.schemas.payment import PaymentIntent, PaymentWebhook
 from app.db.models import User
 
 router = APIRouter()
+
+
+def _payment_unavailable() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "code": "PAYMENT_UNAVAILABLE",
+            "message": (
+                "Payment fulfillment is disabled until a real provider catalog, "
+                "provider confirmation, verified webhook, and idempotent grant exist."
+            ),
+        },
+    )
 
 
 # START_BLOCK: CREATE_PAYMENT_ENDPOINT
@@ -61,27 +72,28 @@ async def create_payment_intent(
     user: User = Depends(require_session),
 ):
     # START_FUNCTION_CONTRACT: F-M-API-PAYMENT.create_payment_intent
-    # purpose: Create payment intent for subscription (MVP stub).
+    # purpose: Reject payment intent creation until real fulfillment exists.
     # inputs: intent (PaymentIntent), db session, authenticated user
-    # returns: dict with payment_id, status, amount, currency
-    # side_effects: creates Payment row in database
-    # emitted_logs: payment.intent_created
-    # error_behavior: 401 if not authenticated; DB errors propagate
+    # returns: HTTP 503 PAYMENT_UNAVAILABLE
+    # side_effects: none
+    # emitted_logs: none
+    # error_behavior: 401 if not authenticated; otherwise 503
     # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.create_payment_intent
     """
-    Create payment intent for subscription.
-
-    W-6.1: Simplified for MVP (test mode).
+    Reject payment intent creation until real provider fulfillment exists.
     """
     service = PaymentService(db)
 
-    payment = await service.create_payment_intent(
-        user_id=user.id,
-        amount=intent.amount,
-        currency=intent.currency,
-        description=intent.description,
-    )
-    
+    try:
+        payment = await service.create_payment_intent(
+            user_id=user.id,
+            amount=intent.amount,
+            currency=intent.currency,
+            description=intent.description,
+        )
+    except PaymentUnavailableError:
+        raise _payment_unavailable()
+
     return {
         "payment_id": payment.id,
         "status": payment.status,
@@ -99,24 +111,25 @@ async def payment_webhook(
     db: AsyncSession = Depends(get_session),
 ):
     # START_FUNCTION_CONTRACT: F-M-API-PAYMENT.payment_webhook
-    # purpose: Handle payment webhook callback from provider.
+    # purpose: Reject webhook payloads until provider verification exists.
     # inputs: webhook (PaymentWebhook), db session
-    # returns: {"ok": True}
-    # side_effects: updates payment status, creates subscription on success, increases chat quota
-    # emitted_logs: payment.succeeded, payment.failed
-    # error_behavior: idempotent — silently returns if payment not found
+    # returns: HTTP 503 PAYMENT_UNAVAILABLE
+    # side_effects: none
+    # emitted_logs: none
+    # error_behavior: always 503
     # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.payment_webhook
     """
-    Handle payment webhook from provider.
-    
-    W-6.1: Updates payment status.
+    Reject payment webhooks until provider verification and fulfillment exist.
     """
     service = PaymentService(db)
     
-    await service.handle_webhook(
-        payment_id=webhook.payment_id,
-        status=webhook.status,
-    )
+    try:
+        await service.handle_webhook(
+            payment_id=webhook.payment_id,
+            status=webhook.status,
+        )
+    except PaymentUnavailableError:
+        raise _payment_unavailable()
     
     return {"ok": True}
 # END_BLOCK: PAYMENT_WEBHOOK_ENDPOINT

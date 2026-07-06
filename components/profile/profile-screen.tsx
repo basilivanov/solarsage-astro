@@ -189,13 +189,10 @@ export function ProfileScreen({
           />
           <ServiceRow
             icon={CreditCard}
-            label="Управление подпиской"
-            hint={
-              currentState === "subscription"
-                ? "Автопродление включено"
-                : "Подписка не оформлена"
-            }
+            label="Платежи"
+            hint="Оплата и управление подпиской скоро появятся"
             onClick={noop}
+            disabled
             isLast
           />
         </div>

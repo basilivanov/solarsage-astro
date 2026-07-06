@@ -94,8 +94,8 @@ async def test_quota_enforcement(async_client: AsyncClient, make_initdata):
 
 # START_BLOCK: TEST_SUBSCRIPTION_INCREASES_QUOTA
 @pytest.mark.asyncio
-async def test_subscription_increases_quota(async_client: AsyncClient, make_initdata):
-    """Subscription purchase increases quota. W-CHAT-4."""
+async def test_subscription_payment_stub_does_not_increase_quota(async_client: AsyncClient, make_initdata):
+    """Disabled payment stubs must not increase quota."""
     user_raw = make_initdata(user_id=12361, username="quotauser3")
     await async_client.post("/api/auth/telegram", json={"initData": user_raw})
 
@@ -103,7 +103,7 @@ async def test_subscription_increases_quota(async_client: AsyncClient, make_init
     quota_response = await async_client.get("/api/chat/quota")
     assert quota_response.json()["messages_limit"] == 10
 
-    # Purchase subscription
+    # Attempt subscription purchase while payment fulfillment is disabled.
     payment_response = await async_client.post(
         "/api/payment/create-intent",
         json={
@@ -112,20 +112,20 @@ async def test_subscription_increases_quota(async_client: AsyncClient, make_init
             "description": "Подписка",
         }
     )
-    payment_id = payment_response.json()["payment_id"]
+    assert payment_response.status_code == 503
 
-    # Webhook (success)
-    await async_client.post(
+    webhook_response = await async_client.post(
         "/api/payment/webhook",
         json={
             "event_type": "payment.succeeded",
-            "payment_id": str(payment_id),
+            "payment_id": "1",
             "status": "succeeded",
         }
     )
+    assert webhook_response.status_code == 503
 
-    # Check quota increased
+    # Check quota did not increase.
     quota_response = await async_client.get("/api/chat/quota")
-    assert quota_response.json()["messages_limit"] == 110  # 10 + 100
-    assert quota_response.json()["remaining"] == 110
+    assert quota_response.json()["messages_limit"] == 10
+    assert quota_response.json()["remaining"] == 10
 # END_BLOCK: TEST_SUBSCRIPTION_INCREASES_QUOTA

@@ -218,7 +218,7 @@ class HoraryCreditService:
             next_weekly_free_at=next_weekly_free_at,
             bonus_credits=bonus_credits,
             paid_credits=paid_credits,
-            can_purchase=True,
+            can_purchase=False,
         )
 
     async def select_spendable_credit(self, user_id: uuid.UUID, now: datetime, lock: bool = False) -> HoraryCredit | None:

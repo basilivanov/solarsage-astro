@@ -39,6 +39,7 @@ export function HoraryQuotaBar({ quota, onBuy }: Props) {
   } = quota
 
   const totalCredits = (weeklyFreeAvailable ? 1 : 0) + bonusCredits + paidCredits
+  const canPurchase = quota.canPurchase === true
 
   const formatDate = (isoStr?: string | null) => {
     if (!isoStr) return ""
@@ -68,17 +69,19 @@ export function HoraryQuotaBar({ quota, onBuy }: Props) {
             </p>
           ) : (
             <p className="text-[12.5px] text-muted-foreground mt-0.5">
-              Оформи подписку или пригласи друга, чтобы получить новые вопросы.
+              Платное пополнение пока недоступно. Используй еженедельный бесплатный вопрос или бонусы за приглашения.
             </p>
           )}
         </div>
         <button
           type="button"
-          onClick={onBuy}
-          className="flex-none rounded-full bg-destructive text-destructive-foreground px-4 py-2 text-[13px] font-medium transition active:scale-[0.98]"
+          onClick={canPurchase ? onBuy : undefined}
+          disabled={!canPurchase}
+          aria-disabled={!canPurchase}
+          className="flex-none rounded-full bg-destructive px-4 py-2 text-[13px] font-medium text-destructive-foreground transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100"
           data-testid="horary-buy-btn"
         >
-          Докупить
+          {canPurchase ? "Докупить" : "Скоро"}
         </button>
       </div>
     )
@@ -119,11 +122,13 @@ export function HoraryQuotaBar({ quota, onBuy }: Props) {
         </div>
         <button
           type="button"
-          onClick={onBuy}
-          className="rounded-full border border-border/70 bg-card px-3.5 py-1.5 text-[12.5px] font-medium text-foreground transition active:scale-[0.98]"
+          onClick={canPurchase ? onBuy : undefined}
+          disabled={!canPurchase}
+          aria-disabled={!canPurchase}
+          className="rounded-full border border-border/70 bg-card px-3.5 py-1.5 text-[12.5px] font-medium text-foreground transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100"
           data-testid="horary-buy-btn"
         >
-          Докупить
+          {canPurchase ? "Докупить" : "Скоро"}
         </button>
       </div>
     </div>

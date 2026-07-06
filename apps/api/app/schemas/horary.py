@@ -224,4 +224,4 @@ class HoraryQuotaRead(CamelModel):
     next_weekly_free_at: str | None = None
     bonus_credits: int
     paid_credits: int
-    can_purchase: bool = True
+    can_purchase: bool = False

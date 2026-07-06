@@ -48,7 +48,7 @@ const emptyQuota: HoraryQuotaRead = {
   nextWeeklyFreeAt: null,
   bonusCredits: 0,
   paidCredits: 0,
-  canPurchase: true,
+  canPurchase: false,
 }
 
 /** Quota with totalCredits > 0 (normal state) */
@@ -58,7 +58,7 @@ const normalQuota: HoraryQuotaRead = {
   nextWeeklyFreeAt: null,
   bonusCredits: 0,
   paidCredits: 0,
-  canPurchase: true,
+  canPurchase: false,
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -88,12 +88,12 @@ describe("HoraryQuotaBar", () => {
     expect(screen.getByText(/Новый бесплатный вопрос начислится/)).toBeTruthy()
   })
 
-  // ── 3. totalCredits=0 + no nextWeeklyFreeAt: "Оформи подписку или пригласи друга..."
-  it("shows subscribe/invite fallback when totalCredits=0 and nextWeeklyFreeAt is missing", () => {
+  // ── 3. totalCredits=0 + no nextWeeklyFreeAt: no paid fallback
+  it("shows unavailable fallback when totalCredits=0 and nextWeeklyFreeAt is missing", () => {
     renderBar(emptyQuota)
 
     expect(
-      screen.getByText(/Оформи подписку или пригласи друга/)
+      screen.getByText(/Платное пополнение пока недоступно/)
     ).toBeTruthy()
   })
 
@@ -182,23 +182,25 @@ describe("HoraryQuotaBar", () => {
   })
 
   // ── 13. onBuy click in empty state
-  it("calls onBuy when buy button is clicked in empty state", () => {
+  it("does not call onBuy when buy button is disabled in empty state", () => {
     renderBar(emptyQuota)
 
     const btn = screen.getByTestId("horary-buy-btn")
     fireEvent.click(btn)
 
-    expect(onBuy).toHaveBeenCalledTimes(1)
+    expect((btn as HTMLButtonElement).disabled).toBe(true)
+    expect(onBuy).not.toHaveBeenCalled()
   })
 
   // ── 14. onBuy click in normal state
-  it("calls onBuy when buy button is clicked in normal state", () => {
+  it("does not call onBuy when buy button is disabled in normal state", () => {
     renderBar(normalQuota)
 
     const btn = screen.getByTestId("horary-buy-btn")
     fireEvent.click(btn)
 
-    expect(onBuy).toHaveBeenCalledTimes(1)
+    expect((btn as HTMLButtonElement).disabled).toBe(true)
+    expect(onBuy).not.toHaveBeenCalled()
   })
 
   // ── 15. Total credits calculation: (weeklyFreeAvailable ? 1 : 0) + bonusCredits + paidCredits
@@ -208,7 +210,7 @@ describe("HoraryQuotaBar", () => {
         weeklyFreeAvailable: true,
         bonusCredits: 0,
         paidCredits: 0,
-        canPurchase: true,
+        canPurchase: false,
       })
 
       expect(screen.getByText("1")).toBeTruthy()
@@ -219,7 +221,7 @@ describe("HoraryQuotaBar", () => {
         weeklyFreeAvailable: false,
         bonusCredits: 2,
         paidCredits: 0,
-        canPurchase: true,
+        canPurchase: false,
       })
 
       // totalCredits = 0 + 2 + 0 = 2 — appears in "Доступно вопросов: <strong>2</strong>"
@@ -233,7 +235,7 @@ describe("HoraryQuotaBar", () => {
         weeklyFreeAvailable: true,
         bonusCredits: 3,
         paidCredits: 5,
-        canPurchase: true,
+        canPurchase: false,
       })
 
       // totalCredits = 1 + 3 + 5 = 9
@@ -245,7 +247,7 @@ describe("HoraryQuotaBar", () => {
         weeklyFreeAvailable: false,
         bonusCredits: 0,
         paidCredits: 0,
-        canPurchase: true,
+        canPurchase: false,
       })
 
       // Empty state does NOT show "Доступно вопросов:"
@@ -274,6 +276,16 @@ describe("HoraryQuotaBar", () => {
   it("has data-testid='horary-buy-btn' in normal state", () => {
     renderBar(normalQuota)
     expect(screen.getByTestId("horary-buy-btn")).toBeTruthy()
+  })
+
+  it("enables buy button only when quota explicitly says purchases are available", () => {
+    renderBar({ ...normalQuota, canPurchase: true })
+
+    const btn = screen.getByTestId("horary-buy-btn")
+    fireEvent.click(btn)
+
+    expect((btn as HTMLButtonElement).disabled).toBe(false)
+    expect(onBuy).toHaveBeenCalledTimes(1)
   })
 
   // ── 18. formatDate with invalid date → returns iso string

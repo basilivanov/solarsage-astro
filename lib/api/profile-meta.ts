@@ -30,7 +30,7 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
   let nextWeeklyFreeAt: string | null = null
   let bonusCredits = 0
   let paidCredits = 0
-  let canPurchase = true
+  let canPurchase = false
 
   let referralCount = 0
   let referralUrl = ""
@@ -54,7 +54,7 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
       nextWeeklyFreeAt = quota.nextWeeklyFreeAt || null
       bonusCredits = quota.bonusCredits || 0
       paidCredits = quota.paidCredits || 0
-      canPurchase = quota.canPurchase !== undefined ? quota.canPurchase : true
+      canPurchase = quota.canPurchase === true
     }
 
     if (referralRes.ok) {

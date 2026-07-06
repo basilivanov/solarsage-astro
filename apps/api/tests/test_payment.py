@@ -29,7 +29,7 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_create_payment_intent(async_client: AsyncClient, make_initdata):
-    """Create payment intent."""
+    """Payment intent is disabled until a real provider is wired."""
     user_raw = make_initdata(user_id=12345, username="payuser")
     await async_client.post("/api/auth/telegram", json={"initData": user_raw})
 
@@ -42,38 +42,21 @@ async def test_create_payment_intent(async_client: AsyncClient, make_initdata):
         }
     )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "pending"
-    assert data["amount"] == 29900
-    assert data["currency"] == "RUB"
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "PAYMENT_UNAVAILABLE"
 
 
 @pytest.mark.asyncio
 async def test_payment_webhook_updates_status(async_client: AsyncClient, make_initdata):
-    """Webhook updates payment status."""
-    # Create user + payment
-    user_raw = make_initdata(user_id=12346, username="webhookuser")
-    await async_client.post("/api/auth/telegram", json={"initData": user_raw})
-
-    create_response = await async_client.post(
-        "/api/payment/create-intent",
-        json={
-            "amount": 29900,
-            "currency": "RUB",
-            "description": "Test",
-        }
-    )
-    payment_id = create_response.json()["payment_id"]
-
-    # Send webhook
+    """Webhook is disabled until provider verification exists."""
     webhook_response = await async_client.post(
         "/api/payment/webhook",
         json={
             "event_type": "payment.succeeded",
-            "payment_id": str(payment_id),
+            "payment_id": "1",
             "status": "succeeded",
         }
     )
 
-    assert webhook_response.status_code == 200
+    assert webhook_response.status_code == 503
+    assert webhook_response.json()["detail"]["code"] == "PAYMENT_UNAVAILABLE"

@@ -63,7 +63,7 @@ async def test_get_quota_initial_state_no_access(
     assert body["weeklyFreeExpiresAt"] is None
     assert body["bonusCredits"] == 0
     assert body["paidCredits"] == 0
-    assert body["canPurchase"] is True
+    assert body["canPurchase"] is False
 
 
 @pytest.mark.asyncio

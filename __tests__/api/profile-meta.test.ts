@@ -34,6 +34,7 @@ describe('getProfileMeta', () => {
     expect(result.horary.weeklyFreeAvailable).toBe(false)
     expect(result.horary.bonusCredits).toBe(0)
     expect(result.horary.paidCredits).toBe(0)
+    expect(result.horary.canPurchase).toBe(false)
     expect(result.referral.count).toBe(0)
     expect(result.referral.inviteUrl).toBe('')
   })
@@ -58,6 +59,7 @@ describe('getProfileMeta', () => {
     expect(result.horary.weeklyFreeExpiresAt).toBe('2026-12-31T00:00:00Z')
     expect(result.horary.bonusCredits).toBe(2)
     expect(result.horary.paidCredits).toBe(3)
+    expect(result.horary.canPurchase).toBe(false)
     expect(result.referral.count).toBe(0)
   })
 
@@ -80,6 +82,7 @@ describe('getProfileMeta', () => {
     expect(result.horary.bonusCredits).toBe(1)
     expect(result.horary.paidCredits).toBe(0)
     expect(result.horary.weeklyFreeExpiresAt).toBeNull()
+    expect(result.horary.canPurchase).toBe(false)
   })
 
   it('returns referral data on success', async () => {

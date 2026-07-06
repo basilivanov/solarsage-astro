@@ -47,7 +47,7 @@ export default function ProfilePage() {
       nextWeeklyFreeAt: null,
       bonusCredits: 0,
       paidCredits: 0,
-      canPurchase: true,
+      canPurchase: false,
     },
     referral: { count: 0, bonusDays: 0, rewardDays: 7, inviteUrl: "" },
   })

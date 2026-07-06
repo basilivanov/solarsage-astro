@@ -23,6 +23,10 @@
  *
  * Wave 5: added generate, report, and section fetch functions
  * aligned with backend routes in apps/api/app/api/natal.py.
+ *
+ * Payment clients intentionally do not live here. Full-report payment remains
+ * disabled until the backend has a real catalog, provider confirmation,
+ * verified webhook, idempotent fulfillment, and access grant.
  */
 
 import type {

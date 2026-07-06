@@ -23,6 +23,7 @@
 
 import { Lock, Crown, UserPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useShareInvite } from "@/lib/hooks/use-share-invite"
 
 type Props = {
   /** Заголовок блока. По умолчанию — «Твой персональный разбор уже готов». */
@@ -40,6 +41,8 @@ export function Paywall({
   compact = false,
   className,
 }: Props) {
+  const share = useShareInvite()
+
   return (
     <section
       aria-label="Открыть доступ"
@@ -66,13 +69,16 @@ export function Paywall({
       <div className="mt-5 flex flex-col gap-2">
         <button
           type="button"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[13px] font-medium text-background transition active:scale-[0.99]"
+          disabled
+          aria-disabled="true"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-foreground/40 px-5 text-[13px] font-medium text-background/80 transition disabled:cursor-not-allowed disabled:opacity-100"
         >
           <Crown className="h-4 w-4" strokeWidth={1.75} />
-          Оформить подписку
+          Подписка скоро появится
         </button>
         <button
           type="button"
+          onClick={share}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border/70 bg-card px-5 text-[13px] font-medium text-foreground transition active:scale-[0.99]"
         >
           <UserPlus className="h-4 w-4" strokeWidth={1.75} />

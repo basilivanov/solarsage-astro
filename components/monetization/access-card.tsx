@@ -41,8 +41,8 @@ type Variant = {
   title: string
   subtitle: string
   footnote: string
-  primary: { label: string; onClick?: () => void; icon?: LucideIcon }
-  secondary: { label: string; onClick?: () => void; icon?: LucideIcon }
+  primary: { label: string; onClick?: () => void; icon?: LucideIcon; disabled?: boolean }
+  secondary: { label: string; onClick?: () => void; icon?: LucideIcon; disabled?: boolean }
 }
 
 function buildVariant(
@@ -62,8 +62,8 @@ function buildVariant(
       title: "Доступ активен",
       subtitle: `Осталось ${days} ${pluralDays(days)}${ending ? ` · ${ending}` : ""}`,
       footnote:
-        "Сначала расходуются бонусные дни, затем начнёт действовать подписка. После окончания доступ закроется.",
-      primary: { label: "Оформить подписку", onClick: onSubscribe, icon: ArrowRight },
+        "Сначала расходуются бонусные дни. Оплата и подписка появятся после подключения реального платежного подтверждения.",
+      primary: { label: "Подписка скоро появится", icon: ArrowRight, disabled: true },
       secondary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
     }
   }
@@ -77,9 +77,9 @@ function buildVariant(
       title: "Подписка активна",
       subtitle: ending || "Доступ к прошлому и будущему",
       footnote:
-        "Автопродление включено. Отменить можно в любой момент — доступ останется до конца периода.",
+        "Доступ активен. Управление платежами появится после подключения реального платежного провайдера.",
       primary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
-      secondary: { label: "Управление подпиской", onClick: onSubscribe },
+      secondary: { label: "Управление подпиской скоро появится", disabled: true },
     }
   }
 
@@ -93,8 +93,8 @@ function buildVariant(
         ? `Окно закрылось ${formatLong(access.accessEnd)}`
         : "Окно доступа завершилось",
       footnote:
-        "Оформи подписку, чтобы снова открыть разборы прошлых и будущих дней.",
-      primary: { label: "Оформить подписку", onClick: onSubscribe, icon: ArrowRight },
+        "Платная подписка пока недоступна. Можно пригласить друга и получить бонусные дни.",
+      primary: { label: "Подписка скоро появится", icon: ArrowRight, disabled: true },
       secondary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
     }
   }
@@ -106,8 +106,8 @@ function buildVariant(
     title: "Нет доступа",
     subtitle: "Разборы дней закрыты",
     footnote:
-      "Оформи подписку или пригласи друга — вы оба получите 14 дней бесплатно.",
-    primary: { label: "Оформить подписку", onClick: onSubscribe, icon: ArrowRight },
+      "Платная подписка пока недоступна. Пригласи друга — вы оба получите 14 дней бесплатно.",
+    primary: { label: "Подписка скоро появится", icon: ArrowRight, disabled: true },
     secondary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
   }
 }
@@ -164,8 +164,10 @@ export function AccessCard({ access, currentState, onSubscribe, onInvite }: Prop
       <div className="mt-4 flex flex-col gap-2">
         <button
           type="button"
-          onClick={v.primary.onClick}
-          className="flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[14px] font-medium text-primary-foreground transition active:scale-[0.99]"
+          onClick={v.primary.disabled ? undefined : v.primary.onClick}
+          disabled={v.primary.disabled}
+          aria-disabled={v.primary.disabled}
+          className="flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[14px] font-medium text-primary-foreground transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100"
         >
           {v.primary.label}
           {PrimaryIcon ? (
@@ -174,8 +176,10 @@ export function AccessCard({ access, currentState, onSubscribe, onInvite }: Prop
         </button>
         <button
           type="button"
-          onClick={v.secondary.onClick}
-          className="flex h-11 items-center justify-center gap-2 rounded-full border border-border/70 bg-card px-5 text-[13.5px] font-medium text-foreground/85 transition active:scale-[0.99]"
+          onClick={v.secondary.disabled ? undefined : v.secondary.onClick}
+          disabled={v.secondary.disabled}
+          aria-disabled={v.secondary.disabled}
+          className="flex h-11 items-center justify-center gap-2 rounded-full border border-border/70 bg-card px-5 text-[13.5px] font-medium text-foreground/85 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100"
         >
           {SecondaryIcon ? (
             <SecondaryIcon className="h-4 w-4" strokeWidth={1.75} />

@@ -80,9 +80,9 @@ describe("HoraryPurchaseSheet", () => {
   })
 
   // 4. Header label
-  it("renders header label 'Пополнение баланса'", () => {
+  it("renders header label for unavailable paid questions", () => {
     renderSheet()
-    expect(screen.getByText("Пополнение баланса")).toBeTruthy()
+    expect(screen.getByText("Платные вопросы")).toBeTruthy()
   })
 
   // 5. Title
@@ -92,44 +92,43 @@ describe("HoraryPurchaseSheet", () => {
   })
 
   // 6. Description
-  it("renders description starting with 'Выберите пакет вопросов'", () => {
+  it("renders unavailable description without promising Telegram Stars payment", () => {
     renderSheet()
-    expect(screen.getByText(/Выберите пакет вопросов/)).toBeTruthy()
+    expect(screen.getByText(/Оплата и пополнение баланса пока недоступны/)).toBeTruthy()
+    expect(screen.queryByText(/Telegram Stars/)).toBeNull()
   })
 
-  // 7. All 4 purchase options rendered
-  it("renders all 4 purchase options", () => {
+  // 7. Purchase options hidden
+  it("does not render paid packages while fulfillment is unavailable", () => {
     renderSheet()
-    expect(screen.getByTestId("horary-purchase-option-0")).toBeTruthy()
-    expect(screen.getByTestId("horary-purchase-option-1")).toBeTruthy()
-    expect(screen.getByTestId("horary-purchase-option-2")).toBeTruthy()
-    expect(screen.getByTestId("horary-purchase-option-3")).toBeTruthy()
+    expect(screen.queryByTestId("horary-purchase-option-0")).toBeNull()
+    expect(screen.queryByTestId("horary-purchase-option-1")).toBeNull()
+    expect(screen.queryByTestId("horary-purchase-option-2")).toBeNull()
+    expect(screen.queryByTestId("horary-purchase-option-3")).toBeNull()
   })
 
-  // 8. Discount badges on options 1-3
-  it("renders discount badges on options 1, 2, 3", () => {
+  // 8. No discount badges
+  it("does not render discount badges while fulfillment is unavailable", () => {
     renderSheet()
-    expect(screen.getByText(/Скидка −20%/)).toBeTruthy()
-    expect(screen.getByText(/Скидка −28%/)).toBeTruthy()
-    expect(screen.getByText(/Скидка −40%/)).toBeTruthy()
+    expect(screen.queryByText(/Скидка/)).toBeNull()
   })
 
-  // 9. First option has no discount badge
-  it("does not render a discount badge on the first option", () => {
+  // 9. No package quantities
+  it("does not render package quantities while fulfillment is unavailable", () => {
     renderSheet()
-    const option0 = screen.getByTestId("horary-purchase-option-0")
-    // No element with "Скидка" inside option 0
-    expect(option0.querySelector("[class*='emerald']")).toBeNull()
-    expect(option0.textContent).not.toContain("Скидка")
+    expect(screen.queryByText("1 вопрос")).toBeNull()
+    expect(screen.queryByText("3 вопроса")).toBeNull()
+    expect(screen.queryByText("5 вопросов")).toBeNull()
+    expect(screen.queryByText("10 вопросов")).toBeNull()
   })
 
   // 10. Prices
-  it("renders all 4 prices", () => {
+  it("does not render Telegram Stars prices", () => {
     renderSheet()
-    expect(screen.getByText("50 ★")).toBeTruthy()
-    expect(screen.getByText("120 ★")).toBeTruthy()
-    expect(screen.getByText("180 ★")).toBeTruthy()
-    expect(screen.getByText("300 ★")).toBeTruthy()
+    expect(screen.queryByText("50 ★")).toBeNull()
+    expect(screen.queryByText("120 ★")).toBeNull()
+    expect(screen.queryByText("180 ★")).toBeNull()
+    expect(screen.queryByText("300 ★")).toBeNull()
   })
 
   // 11. Close button click calls onClose after 220 ms delay
@@ -189,16 +188,11 @@ describe("HoraryPurchaseSheet", () => {
     expect(closeButtons).toHaveLength(2)
   })
 
-  // 15. Purchase option click calls toast
-  it("calls toast with payment message when a purchase option is clicked", () => {
+  // 15. No purchase action
+  it("does not expose a purchase action while fulfillment is unavailable", () => {
     renderSheet()
-    const option0 = screen.getByTestId("horary-purchase-option-0")
-    fireEvent.click(option0)
-
-    expect(mockToast).toHaveBeenCalledTimes(1)
-    expect(mockToast).toHaveBeenCalledWith({
-      description: "Оплата будет доступна в ближайшее время",
-    })
+    expect(screen.queryByTestId("horary-purchase-option-0")).toBeNull()
+    expect(mockToast).not.toHaveBeenCalled()
   })
 
   // 16. Body scroll lock applied on mount
