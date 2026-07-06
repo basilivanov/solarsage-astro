@@ -28,6 +28,9 @@ import { TodayNotes } from "./today-notes"
 import { DayReading } from "./day-reading"
 import { WhyExpanded } from "./why-expanded"
 import { WeekStrip } from "./week-strip"
+import { DayChart } from "./day-chart"
+import { DayEnergyMeter } from "./day-energy-meter"
+import { DaySummaryCard } from "./day-summary-card"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
@@ -173,7 +176,29 @@ export function TodayScreen({
             <TrialBanner daysLeft={access.daysLeft} />
           ) : null}
           <TodayImportantAccordion items={importantToday || []} />
+          <div className="section-rise section-rise-1">
+            <DaySummaryCard
+              date={selectedDate}
+              dayStatus={payload.dayStatus}
+              planetInfluences={payload.planetInfluences}
+              sphereScores={payload.sphereScores}
+            />
+          </div>
           {!(importantToday && importantToday.length > 0) && <TodayNotes notes={payload.notes} />}
+          <div className="section-rise section-rise-2">
+            <DayChart
+              chart={payload.dayChart}
+              dateLabel={formatDateLabel(selectedDate)}
+              dayStatus={payload.dayStatus}
+            />
+          </div>
+          <div className="section-rise section-rise-3">
+            <DayEnergyMeter
+              planetInfluences={payload.planetInfluences}
+              sphereScores={payload.sphereScores}
+              dayStatus={payload.dayStatus}
+            />
+          </div>
           <DayReading paragraphs={payload.reading.paragraphs} />
           <WhyExpanded
             sections={payload.why}
@@ -218,3 +243,7 @@ export function TodayScreen({
   )
 }
 
+function formatDateLabel(d: Date): string {
+  const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
+  return `${d.getDate()} ${months[d.getMonth()]}`
+}

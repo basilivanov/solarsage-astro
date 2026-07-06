@@ -226,3 +226,116 @@
     animation: none !important;
   }
 }
+
+/* --- Day/calendar real-data presentation components ---------------------- */
+
+@keyframes chart-fade-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes chart-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px oklch(0.48 0.06 305 / 0.15)); }
+  50%      { filter: drop-shadow(0 0 10px oklch(0.48 0.06 305 / 0.28)); }
+}
+
+.day-chart-surface,
+.day-energy-surface,
+.day-summary-surface {
+  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in oklch, var(--card) 82%, var(--secondary) 18%);
+  padding: 0.875rem;
+}
+
+.day-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-rise {
+  animation: section-rise 220ms ease-out both;
+}
+
+.section-rise-1 {
+  animation-delay: 20ms;
+}
+
+.section-rise-2 {
+  animation-delay: 50ms;
+}
+
+.section-rise-3 {
+  animation-delay: 80ms;
+}
+
+.chart-svg-root {
+  animation: chart-fade-in 0.5s ease-out;
+}
+
+.chart-svg-root circle[data-chart-center] {
+  animation: chart-glow 4s ease-in-out infinite;
+}
+
+.cosmic-header-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, oklch(0.93 0.025 305 / 0.5), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 20% 30%, oklch(0.90 0.03 60 / 0.24), transparent 60%),
+    linear-gradient(180deg, oklch(0.97 0.012 305) 0%, var(--background) 100%);
+}
+
+.planet-chip {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.planet-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(0.48 0.06 305 / 0.16);
+}
+
+@keyframes section-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toggle-track {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--muted) 78%, white 22%),
+    var(--muted)
+  );
+  box-shadow:
+    0 1px 2px oklch(0.4 0.02 305 / 0.08) inset,
+    0 1px 1px oklch(0.4 0.02 305 / 0.04);
+}
+
+.dark .toggle-track {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--muted) 80%, white 4%),
+    var(--muted)
+  );
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.3) inset;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-svg-root,
+  .chart-svg-root circle[data-chart-center],
+  .section-rise {
+    animation: none !important;
+  }
+}

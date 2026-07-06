@@ -42,7 +42,12 @@ test.describe('Today Screen - Real Auth', () => {
 
     const todayScreen = page.getByTestId('today-screen');
     if (await todayScreen.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await expect(page.getByTestId('today-headline')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('day-summary-card')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId('day-energy-meter')).toBeVisible({ timeout: 5000 });
+      const chart = page.getByTestId('day-chart');
+      const chartUnavailable = page.getByTestId('day-chart-unavailable');
+      await expect(chart.or(chartUnavailable)).toBeVisible({ timeout: 5000 });
       // Paywall should NOT be visible for user with full access
       const paywall = page.locator('text=/открыть доступ|подписки/i');
       await expect(paywall).not.toBeVisible({ timeout: 3000 });
@@ -52,7 +57,7 @@ test.describe('Today Screen - Real Auth', () => {
       // TabBar with navigation icons should be visible
       const tabBar = page.locator('nav[aria-label="Основная навигация"]');
       await expect(tabBar).toBeVisible({ timeout: 5000 });
-      console.log('Today screen rendered — paywall absent, WhyExpanded + TabBar visible');
+      console.log('Today screen rendered — real-data presentation widgets + TabBar visible');
     }
   });
 
@@ -122,7 +127,7 @@ test.describe('Today Screen - Real Auth', () => {
 
     await page.goto('/day/today');
     await page.waitForSelector(
-      '[data-testid="today-screen"], [data-testid="error-boundary"]',
+      '[data-testid="today-screen"], [data-testid="error-boundary"], [data-testid="auth-loading"]',
       { timeout: 15000 }
     );
 

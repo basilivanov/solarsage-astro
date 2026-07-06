@@ -24,6 +24,9 @@ import { render, screen } from '@testing-library/react'
 import React from 'react'
 import type { AccessInfo } from '@/lib/contracts/access'
 import type { AdaptedTodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today'
+import { DayChart } from '@/components/today/day-chart'
+import { DayEnergyMeter } from '@/components/today/day-energy-meter'
+import { DaySummaryCard } from '@/components/today/day-summary-card'
 
 // Polyfill PointerEvent for jsdom (Node 20/jsdom lacks it)
 if (typeof PointerEvent === 'undefined') {
@@ -185,6 +188,66 @@ describe('TodayScreen', () => {
     expect(screen.queryByTestId('paywall')).toBeNull()
   })
 
+  it('renders real day chart, summary, and influence widgets from adapted payload fields', () => {
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess()}
+        payload={buildPayload({
+          dayStatus: 'supportive',
+          dayChart: {
+            source: 'solarsage',
+            houses: [
+              { number: 1, cuspLongitude: 0, sign: 'Aries' },
+              { number: 2, cuspLongitude: 30, sign: 'Taurus' },
+            ],
+            transitPlanets: [
+              {
+                name: 'Moon',
+                longitude: 42,
+                sign: 'Taurus',
+                retrograde: false,
+                motion: 'direct',
+                house: 2,
+              },
+              {
+                name: 'Saturn',
+                longitude: 132,
+                sign: 'Leo',
+                retrograde: true,
+                motion: 'retrograde',
+                house: 5,
+              },
+            ],
+            aspects: [
+              {
+                planet: 'Moon',
+                targetPlanet: 'Saturn',
+                aspectType: 'square',
+                orb: 1.4,
+                strength: 0.83,
+              },
+            ],
+          },
+          planetInfluences: [
+            { name: 'Moon', score: 1.25, rank: 1 },
+            { name: 'Saturn', score: -0.5, rank: 2 },
+          ],
+          sphereScores: [{ key: 'relationships', score: 2.5, rank: 1 }],
+          reading: { paragraphs: ['p1'] },
+          why: [whyFixture],
+          keyInsight: 'Why',
+        })}
+        onDateChange={onDateChange}
+      />,
+    )
+
+    expect(screen.getByTestId('day-summary-card').textContent).toContain('Поддерживающий день')
+    expect(screen.getByTestId('day-chart').querySelectorAll('svg circle').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('day-energy-meter').textContent).toContain('Moon')
+    expect(screen.getByTestId('day-energy-meter').textContent).toContain('relationships')
+  })
+
   it('renders locked state with Paywall', () => {
     mockIsDayAccessible.mockReturnValue(false)
     render(
@@ -286,5 +349,103 @@ describe('TodayScreen', () => {
     el.dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, clientY: 100, pointerId: 1, bubbles: true }))
     el.dispatchEvent(new PointerEvent('pointerup', { clientX: 200, clientY: 110, pointerId: 1, bubbles: true }))
     expect(onDateChange).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('real-data day presentation components', () => {
+  it('DayChart renders non-empty SVG content from supplied real chart props', () => {
+    render(
+      <DayChart
+        chart={{
+          source: 'solarsage',
+          houses: [
+            { number: 1, cuspLongitude: 0, sign: 'Aries' },
+            { number: 2, cuspLongitude: 30, sign: 'Taurus' },
+            { number: 3, cuspLongitude: 60, sign: 'Gemini' },
+          ],
+          transitPlanets: [
+            {
+              name: 'Moon',
+              longitude: 35,
+              sign: 'Taurus',
+              retrograde: false,
+              speed: 12.5,
+              motion: 'direct',
+              house: 2,
+            },
+            {
+              name: 'Sun',
+              longitude: 125,
+              sign: 'Leo',
+              retrograde: false,
+              motion: 'direct',
+              house: 5,
+            },
+          ],
+          aspects: [
+            { planet: 'Moon', targetPlanet: 'Sun', aspectType: 'square', orb: 0.8, strength: 0.91 },
+          ],
+        }}
+        dateLabel="1 июн"
+        dayStatus="tense"
+      />,
+    )
+
+    const chart = screen.getByTestId('day-chart')
+    expect(chart.querySelector('svg')).toBeTruthy()
+    expect(chart.querySelectorAll('circle').length).toBeGreaterThan(3)
+    expect(chart.textContent).toContain('☽')
+  })
+
+  it('DayChart renders an unavailable state when chart data is absent', () => {
+    render(<DayChart chart={null} />)
+    expect(screen.getByTestId('day-chart-unavailable').textContent).toContain('Карта дня недоступна')
+  })
+
+  it('DayEnergyMeter renders supplied structured influence scores', () => {
+    render(
+      <DayEnergyMeter
+        planetInfluences={[
+          { name: 'Moon', score: 1.25, rank: 1 },
+          { name: 'Mars', score: -0.4, rank: 2 },
+        ]}
+        sphereScores={[
+          { key: 'career', score: 2.75, rank: 1 },
+          { key: 'relationships', score: -1.2, rank: 2 },
+        ]}
+        dayStatus="steady"
+      />,
+    )
+
+    expect(screen.getByTestId('day-energy-meter').textContent).toContain('Moon')
+    expect(screen.getByTestId('day-energy-meter').textContent).toContain('1.25')
+    expect(screen.getByTestId('day-energy-meter').textContent).toContain('career')
+    expect(screen.getByTestId('day-energy-meter').textContent).toContain('2.75')
+  })
+
+  it('DaySummaryCard renders supplied backend lunar and summary facts without local calculation', () => {
+    render(
+      <DaySummaryCard
+        date={new Date('2026-06-01T12:00:00Z')}
+        dayStatus="tense"
+        lunar={{
+          phase: 'Полнолуние',
+          illumination: 97,
+          moonSign: 'Sagittarius',
+          lunarDay: 15,
+          voidOfCourse: true,
+        }}
+        planetInfluences={[{ name: 'Saturn', score: -1.75, rank: 1 }]}
+        sphereScores={[{ key: 'career', score: -2, rank: 1 }]}
+      />,
+    )
+
+    const summary = screen.getByTestId('day-summary-card')
+    expect(summary.textContent).toContain('Полнолуние')
+    expect(summary.textContent).toContain('97%')
+    expect(summary.textContent).toContain('15 лунный день')
+    expect(summary.textContent).toContain('Saturn')
+    expect(summary.textContent).toContain('career')
+    expect(summary.textContent).toContain('без курса')
   })
 })
