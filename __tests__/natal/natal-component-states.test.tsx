@@ -127,6 +127,7 @@ const VALID_PREVIEW_WITH_CHART: NatalPreviewRead = {
     ],
     angles: [
       { name: "ASC", sign: "Aries", degree: 15, longitude: 15 },
+      { name: "MC", sign: "Capricorn", degree: 10, longitude: 280 },
     ],
   },
   highlights: [
@@ -172,6 +173,31 @@ describe("NatalChartWheel — supplied chart rendering", () => {
     expect(chart.querySelectorAll("line").length).toBeGreaterThan(0)
   })
 
+  it("renders supplied angle markers for ASC and MC", async () => {
+    const { NatalChartWheel } = await import("@/components/readings/natal-chart-wheel")
+
+    render(<NatalChartWheel chart={VALID_PREVIEW_WITH_CHART.chart} birthLabel="2000-01-01" />)
+
+    expect(screen.getByTestId("natal-angle-ASC").textContent).toContain("ASC")
+    expect(screen.getByTestId("natal-angle-MC").textContent).toContain("MC")
+  })
+
+  it("does not fabricate angle markers when they are absent from the payload", async () => {
+    const { NatalChartWheel } = await import("@/components/readings/natal-chart-wheel")
+
+    render(
+      <NatalChartWheel
+        chart={{
+          ...VALID_PREVIEW_WITH_CHART.chart!,
+          angles: [{ name: "ASC", sign: "Aries", degree: 15, longitude: 15 }],
+        }}
+      />,
+    )
+
+    expect(screen.getByTestId("natal-angle-ASC").textContent).toContain("ASC")
+    expect(screen.queryByTestId("natal-angle-MC")).toBeNull()
+  })
+
   it("renders an unavailable state when chart is absent", async () => {
     const { NatalChartWheel } = await import("@/components/readings/natal-chart-wheel")
 
@@ -201,6 +227,23 @@ describe("NatalReadingPage — natal chart preview", () => {
     await waitFor(() => {
       expect(screen.getByTestId("natal-chart")).toBeTruthy()
     })
+  })
+
+  it("keeps the full report CTA disabled while fulfillment is unavailable", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+
+    mockFetchNatalPreview.mockResolvedValue({
+      ok: true,
+      data: VALID_PREVIEW_WITH_CHART,
+    })
+
+    render(<NatalReadingPage />)
+
+    const button = await screen.findByRole("button", { name: "Полный отчёт скоро появится" })
+    expect((button as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.click(button)
+    expect(mockPush).not.toHaveBeenCalled()
   })
 })
 

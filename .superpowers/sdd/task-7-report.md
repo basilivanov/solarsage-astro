@@ -56,3 +56,21 @@ After fixing the affected test fixtures/assertion, I reran typecheck and the ver
 ## Notes
 - Production paths contain no `DEMO_NATAL_RESPONSE`, demo report ids, or frontend-generated fake natal chart data.
 - The wheel keeps the planetary strength radar absent, matching the brief.
+
+## Fixes after review
+### Review findings addressed
+1. `NatalChartWheel` now consumes `preview.chart.angles` directly from the backend payload and visibly renders supplied angle markers/labels. It does not infer `ASC`/`MC` from houses and does not fabricate missing angles.
+2. The natal preview payment CTA is no longer an enabled purchase/generation action. The preview now renders a disabled non-payment CTA (`"Полный отчёт скоро появится"`) while leaving the real generation route and backend flow intact for later fulfillment work.
+
+### Additional TDD evidence
+- RED:
+  - Added failing component/page tests for:
+    - supplied `ASC`/`MC` angle markers rendering;
+    - absent angles not being fabricated;
+    - preview CTA being disabled and unable to trigger navigation/generation.
+  - Verified failure with:
+    - `pnpm exec vitest run __tests__/natal/natal-component-states.test.tsx`
+- GREEN:
+  - Implemented direct angle rendering in `components/readings/natal-chart-wheel.tsx`.
+  - Disabled the natal preview CTA in `app/(grace)/readings/natal/page.tsx` via `components/readings/natal-preview/cta-button.tsx` with non-payment copy.
+  - Re-ran the same test file and confirmed it passed.

@@ -23,7 +23,6 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { ChevronLeft } from "lucide-react"
 
 import { NatalChartWheel } from "@/components/readings/natal-chart-wheel"
@@ -50,7 +49,6 @@ type State =
 
 export default function NatalReadingPage() {
   const [state, setState] = useState<State>({ status: "loading" })
-  const router = useRouter()
 
   const load = useCallback(async () => {
     setState({ status: "loading" })
@@ -69,13 +67,6 @@ export default function NatalReadingPage() {
   useEffect(() => {
     void load()
   }, [load])
-
-  const handleOpenReport = useCallback(() => {
-    // Wave 5: Route to generating page, which handles both cases:
-    // - If a READY report exists, backend returns it immediately and we redirect
-    // - If not, generation starts. Backend idempotency ensures no duplicate work.
-    router.push("/readings/natal/generating")
-  }, [router])
 
   return (
     <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
@@ -134,7 +125,7 @@ export default function NatalReadingPage() {
             {/* 10. CTA */}
             <CtaButton
               priceKopecks={state.data.fullReportPriceKopecks}
-              onClick={handleOpenReport}
+              disabled
             />
           </>
         ) : null}

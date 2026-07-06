@@ -80,6 +80,9 @@ const ZODIAC_LABEL_RADIUS = 154
 const HOUSE_RADIUS = 128
 const HOUSE_LABEL_RADIUS = 114
 const PLANET_RADIUS = 86
+const ANGLE_MARKER_INNER_RADIUS = 134
+const ANGLE_MARKER_OUTER_RADIUS = 168
+const ANGLE_LABEL_RADIUS = 146
 
 function pointAt(longitude: number, radius: number) {
   const angle = ((180 - longitude) * Math.PI) / 180
@@ -201,6 +204,45 @@ export function NatalChartWheel({ chart, birthLabel }: Props) {
                   fill="var(--muted-foreground)"
                 >
                   {house.number}
+                </text>
+              </g>
+            )
+          })}
+
+          {chart.angles.map((angle) => {
+            const markerStart = pointAt(angle.longitude, ANGLE_MARKER_INNER_RADIUS)
+            const markerEnd = pointAt(angle.longitude, ANGLE_MARKER_OUTER_RADIUS)
+            const label = pointAt(angle.longitude, ANGLE_LABEL_RADIUS)
+            const isPrimaryAngle = angle.name === "ASC" || angle.name === "MC"
+
+            return (
+              <g key={`${angle.name}-${angle.longitude}`} data-testid={`natal-angle-${angle.name}`}>
+                <line
+                  x1={markerStart.x}
+                  y1={markerStart.y}
+                  x2={markerEnd.x}
+                  y2={markerEnd.y}
+                  stroke={isPrimaryAngle ? "oklch(0.48 0.06 305)" : "var(--muted-foreground)"}
+                  strokeWidth={isPrimaryAngle ? 1.6 : 0.9}
+                  strokeOpacity={0.8}
+                />
+                <circle
+                  cx={markerEnd.x}
+                  cy={markerEnd.y}
+                  r={isPrimaryAngle ? 3.5 : 2.5}
+                  fill={isPrimaryAngle ? "oklch(0.48 0.06 305)" : "var(--muted-foreground)"}
+                  fillOpacity={0.9}
+                />
+                <text
+                  x={label.x}
+                  y={label.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={10}
+                  fontWeight={700}
+                  fill={isPrimaryAngle ? "var(--foreground)" : "var(--muted-foreground)"}
+                >
+                  {angle.name}
                 </text>
               </g>
             )
