@@ -30,7 +30,7 @@ from decimal import Decimal
 import pytest
 from httpx import AsyncClient
 
-from app.db.models import HoraryQuestion, HoraryCredit, UserProfile
+from app.db.models import HoraryAnswer, HoraryQuestion, HoraryCredit, UserProfile
 from app.services.horary_service import HoraryService
 
 
@@ -38,6 +38,11 @@ async def _login(async_client: AsyncClient, make_initdata, *, user_id: int = 42)
     raw = make_initdata(user_id=user_id, username="ada")
     r = await async_client.post("/api/auth/telegram", json={"initData": raw})
     assert r.status_code == 200, r.text
+
+
+def _close_background_task(coro):
+    coro.close()
+    return None
 
 
 @pytest.mark.asyncio
@@ -292,6 +297,7 @@ async def test_get_questions_list_and_details(
     assert len(list_body) == 1
     assert list_body[0]["id"] == str(question.id)
     assert list_body[0]["answer"]["verdict"] == "yes"
+    assert list_body[0]["chart"] is None
 
     # Details
     r_det = await async_client.get(f"/api/horary/questions/{question.id}")
@@ -300,6 +306,137 @@ async def test_get_questions_list_and_details(
     assert det_body["text"] == "Will my project succeed?"
     assert len(det_body["answer"]["blocks"]) == 1
     assert det_body["answer"]["blocks"][0]["text"] == "Everything looks great!"
+    assert det_body["chart"] is None
+
+
+@pytest.mark.asyncio
+async def test_generated_horary_chart_snapshot_is_persisted_and_returned(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    await _login(async_client, make_initdata, user_id=65)
+
+    from app.services.telegram_auth import TelegramUser
+    from app.services.profile_service import get_or_create_user
+    tg = TelegramUser(id=65, username="ada", first_name="Ada")
+    user, _ = await get_or_create_user(db_session, tg)
+
+    profile = (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    profile.current_city = "Москва"
+    profile.current_lat = Decimal("55.75")
+    profile.current_lon = Decimal("37.62")
+
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=1, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _test_session_local():
+        yield db_session
+
+    sidecar_chart = {
+        "planets": [
+            {"name": "Sun", "longitude": 0.0, "latitude": 0.0, "speed": 1.0, "sign": "Aries"},
+            {"name": "Moon", "longitude": 60.0, "latitude": 0.0, "speed": 13.0, "sign": "Gemini"},
+            {"name": "Venus", "longitude": 120.0, "latitude": 0.0, "speed": 1.2, "sign": "Leo"},
+            {"name": "Saturn", "longitude": 180.0, "latitude": 0.0, "speed": 0.04, "sign": "Libra"},
+        ],
+        "houses": [
+            {"number": 1, "cusp": 11.0, "sign": "Aries"},
+            {"number": 2, "cusp": 41.0, "sign": "Taurus"},
+            {"number": 3, "cusp": 71.0, "sign": "Gemini"},
+            {"number": 4, "cusp": 101.0, "sign": "Cancer"},
+            {"number": 5, "cusp": 131.0, "sign": "Leo"},
+            {"number": 6, "cusp": 161.0, "sign": "Virgo"},
+            {"number": 7, "cusp": 191.0, "sign": "Libra"},
+            {"number": 8, "cusp": 221.0, "sign": "Scorpio"},
+            {"number": 9, "cusp": 251.0, "sign": "Sagittarius"},
+            {"number": 10, "cusp": 281.0, "sign": "Capricorn"},
+            {"number": 11, "cusp": 311.0, "sign": "Aquarius"},
+            {"number": 12, "cusp": 341.0, "sign": "Pisces"},
+        ],
+        "special_points": [{"name": "ASC", "longitude": 11.0, "sign": "Aries"}],
+        "house_system": "PLACIDUS",
+    }
+
+    with patch(
+        "app.services.horary_service.get_solarsage_client"
+    ) as mock_client_factory, patch(
+        "app.services.horary_service.LLMService"
+    ) as mock_llm_class, patch(
+        "app.services.horary_service.SessionLocal", _test_session_local
+    ), patch(
+        "app.api.horary.asyncio.create_task", side_effect=_close_background_task
+    ):
+        mock_client = AsyncMock()
+        mock_client.get_natal.return_value = sidecar_chart
+        mock_client.get_transits.return_value = {"planets": []}
+        mock_client_factory.return_value = mock_client
+
+        mock_llm = AsyncMock()
+        mock_llm.generate_horary_answer.return_value = {
+            "blocks": [
+                {
+                    "type": "verdict_card",
+                    "verdict": "yes",
+                    "confidence": 0.8,
+                    "label": "Да",
+                    "confidenceLabel": "high",
+                    "confidenceExplanation": "Main aspect is supportive.",
+                }
+            ]
+        }
+        mock_llm_class.return_value = mock_llm
+
+        payload = {
+            "text": "Will the agreement be signed?",
+            "category": "career",
+            "clientTimezone": "Europe/Moscow",
+            "clientLocalTime": "2026-06-08T15:00:00",
+            "questionLat": 55.75,
+            "questionLon": 37.62,
+            "questionLocationName": "Москва",
+            "idempotencyKey": "key-chart-snapshot",
+        }
+        r = await async_client.post("/api/horary/questions", json=payload)
+        assert r.status_code == 201
+        qid = uuid.UUID(r.json()["id"])
+
+        svc = HoraryService(db_session)
+        await svc._generate_answer_task(qid)
+
+    q_row = (await db_session.execute(select(HoraryQuestion).where(HoraryQuestion.id == qid))).scalar_one()
+    assert q_row.status == "answered"
+    assert q_row.chart_snapshot_json is not None
+    stored_chart = json.loads(q_row.chart_snapshot_json)
+    assert stored_chart["source"] == "solarsage"
+    assert stored_chart["castAt"] == "2026-06-08T15:00:00"
+    assert stored_chart["timezone"] == "Europe/Moscow"
+    assert stored_chart["latitude"] == 55.75
+    assert stored_chart["longitude"] == 37.62
+    assert stored_chart["locationName"] == "Москва"
+    assert stored_chart["houseSystem"] == "PLACIDUS"
+    assert stored_chart["houses"][0] == {"number": 1, "cusp": 11.0, "sign": "Aries"}
+    assert stored_chart["planets"][1]["name"] == "Moon"
+    assert stored_chart["planets"][1]["longitude"] == 60.0
+    assert stored_chart["aspects"]
+    assert {
+        "planet": "Sun",
+        "targetPlanet": "Moon",
+        "aspectType": "sextile",
+        "orb": 0.0,
+    } in stored_chart["aspects"]
+
+    r_detail = await async_client.get(f"/api/horary/questions/{qid}")
+    assert r_detail.status_code == 200
+    detail_chart = r_detail.json()["chart"]
+    assert detail_chart == stored_chart
+
+    r_list = await async_client.get("/api/horary/questions")
+    assert r_list.status_code == 200
+    list_chart = r_list.json()[0]["chart"]
+    assert list_chart == stored_chart
 
 
 @pytest.mark.asyncio
@@ -363,7 +500,7 @@ async def test_duplicate_same_payload_returns_existing_and_does_not_enqueue_twic
     }
 
     # Patch create_task
-    with patch("app.api.horary.asyncio.create_task") as mock_create_task:
+    with patch("app.api.horary.asyncio.create_task", side_effect=_close_background_task) as mock_create_task:
         r1 = await async_client.post("/api/horary/questions", json=payload)
         assert r1.status_code == 201
         body1 = r1.json()
@@ -509,7 +646,7 @@ async def test_llm_invalid_json_marks_question_failed_and_no_answer_saved(
     ) as mock_llm_class, patch(
         "app.services.horary_service.SessionLocal", _test_session_local
     ), patch(
-        "app.api.horary.asyncio.create_task"
+        "app.api.horary.asyncio.create_task", side_effect=_close_background_task
     ):
         mock_client = AsyncMock()
         mock_client.get_natal.return_value = {
@@ -606,7 +743,7 @@ async def test_llm_unavailable_marks_question_failed_and_refunds_credit(
     ) as mock_llm_class, patch(
         "app.services.horary_service.SessionLocal", _test_session_local
     ), patch(
-        "app.api.horary.asyncio.create_task"
+        "app.api.horary.asyncio.create_task", side_effect=_close_background_task
     ):
         mock_client = AsyncMock()
         mock_client.get_natal.return_value = {
@@ -725,7 +862,7 @@ async def test_credit_refunded_true_for_paid_credit_on_failure(
     ) as mock_llm_class, patch(
         "app.services.horary_service.SessionLocal", _test_session_local
     ), patch(
-        "app.api.horary.asyncio.create_task"
+        "app.api.horary.asyncio.create_task", side_effect=_close_background_task
     ):
         mock_client = AsyncMock()
         mock_client.get_natal.return_value = {

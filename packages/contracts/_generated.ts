@@ -907,6 +907,65 @@ export interface components {
              */
             verdict: "yes" | "no" | "maybe";
         };
+        /** HoraryChartAspect */
+        HoraryChartAspect: {
+            /** Aspecttype */
+            aspectType: string;
+            /** Orb */
+            orb: number;
+            /** Planet */
+            planet: string;
+            /** Targetplanet */
+            targetPlanet: string;
+        };
+        /** HoraryChartHouse */
+        HoraryChartHouse: {
+            /** Cusp */
+            cusp: number;
+            /** Number */
+            number: number;
+            /** Sign */
+            sign?: string | null;
+        };
+        /** HoraryChartPlanet */
+        HoraryChartPlanet: {
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude: number;
+            /** Name */
+            name: string;
+            /** Sign */
+            sign?: string | null;
+            /** Speed */
+            speed?: number | null;
+        };
+        /** HoraryChartSnapshot */
+        HoraryChartSnapshot: {
+            /** Aspects */
+            aspects: components["schemas"]["HoraryChartAspect"][];
+            /** Castat */
+            castAt: string;
+            /** Houses */
+            houses: components["schemas"]["HoraryChartHouse"][];
+            /** Housesystem */
+            houseSystem?: string | null;
+            /** Latitude */
+            latitude: number;
+            /** Locationname */
+            locationName?: string | null;
+            /** Longitude */
+            longitude: number;
+            /** Planets */
+            planets: components["schemas"]["HoraryChartPlanet"][];
+            /**
+             * Source
+             * @constant
+             */
+            source: "solarsage";
+            /** Timezone */
+            timezone: string;
+        };
         /** HoraryQuestionCreate */
         HoraryQuestionCreate: {
             /** Category */
@@ -931,6 +990,7 @@ export interface components {
             answer?: components["schemas"]["HoraryAnswerRead"] | null;
             /** Category */
             category: string | null;
+            chart: components["schemas"]["HoraryChartSnapshot"] | null;
             /** Clientlocaltime */
             clientLocalTime: string | null;
             /** Clienttimezone */

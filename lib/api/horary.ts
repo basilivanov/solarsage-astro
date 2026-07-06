@@ -23,6 +23,10 @@ import type {
   HoraryQuestionRead,
   HoraryQuotaRead,
 } from "@/packages/contracts"
+import {
+  HoraryQuestionSchema,
+  HoraryQuotaSchema,
+} from "@/lib/contracts/horary"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
@@ -84,7 +88,7 @@ async function buildHoraryApiError(res: Response): Promise<HoraryApiError> {
 export async function getHoraryQuota(): Promise<HoraryQuotaRead> {
   const res = await fetch(`${API_BASE}/api/horary/quota`, { credentials: "include" })
   if (!res.ok) throw new Error("Failed to fetch horary quota")
-  return res.json()
+  return HoraryQuotaSchema.parse(await res.json())
 }
 
 export async function listHoraryQuestions(
@@ -100,7 +104,7 @@ export async function listHoraryQuestions(
     throw await buildHoraryApiError(res)
   }
 
-  return res.json()
+  return HoraryQuestionSchema.array().parse(await res.json()) as HoraryQuestionRead[]
 }
 
 export async function getHoraryQuestion(id: string): Promise<HoraryQuestionRead | null> {
@@ -116,7 +120,7 @@ export async function getHoraryQuestion(id: string): Promise<HoraryQuestionRead 
     throw await buildHoraryApiError(res)
   }
 
-  return res.json()
+  return HoraryQuestionSchema.parse(await res.json()) as HoraryQuestionRead
 }
 
 export async function createHoraryQuestion(
@@ -133,5 +137,5 @@ export async function createHoraryQuestion(
     throw await buildHoraryApiError(res)
   }
 
-  return res.json()
+  return HoraryQuestionSchema.parse(await res.json()) as HoraryQuestionRead
 }

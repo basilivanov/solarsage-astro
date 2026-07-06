@@ -27,6 +27,7 @@ import { motion } from "framer-motion"
 import type { HoraryQuestionRead } from "@/packages/contracts"
 import { HORARY_CATEGORIES } from "@/lib/contracts/horary"
 import { HoraryBlockRenderer } from "./horary-block-renderer"
+import { HoraryChart } from "./horary-chart"
 
 type Props = {
   question: HoraryQuestionRead
@@ -46,7 +47,7 @@ const PLANET_RU: Record<string, string> = {
 }
 
 export function HoraryAnswerView({ question }: Props) {
-  const { text, category, createdAt, answer, questionLocationName } = question
+  const { text, category, createdAt, answer, questionLocationName, chart } = question
 
   if (!answer) return null
 
@@ -108,6 +109,12 @@ export function HoraryAnswerView({ question }: Props) {
           )}
         </motion.div>
 
+        {chart && (
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05, duration: 0.35 }}>
+            <HoraryChart chart={chart} involvedPlanets={answer.planets} />
+          </motion.div>
+        )}
+
         {/* Blocks rendering (contains verdict_card as the first block in spec, but let's render blocks sequentially) */}
         <div className="space-y-5">
           {answer.blocks.map((block: any, i: number) => (
@@ -148,4 +155,3 @@ export function HoraryAnswerView({ question }: Props) {
     </div>
   )
 }
-

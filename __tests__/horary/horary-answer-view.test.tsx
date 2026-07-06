@@ -20,7 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import React from "react";
 import { HoraryAnswerView } from "@/components/readings/horary/horary-answer-view";
 
@@ -163,6 +163,42 @@ describe("HoraryAnswerView", () => {
     expect(rendered).toHaveLength(2);
     expect(rendered[0].getAttribute("data-block-type")).toBe("paragraph");
     expect(rendered[1].getAttribute("data-block-type")).toBe("verdict_card");
+  });
+
+  it("renders the persisted chart snapshot when chart data is present", () => {
+    render(
+      <HoraryAnswerView
+        question={makeQuestion({
+          chart: {
+            source: "solarsage",
+            castAt: "2026-01-15T12:00:00",
+            timezone: "Europe/Moscow",
+            latitude: 55.75,
+            longitude: 37.62,
+            locationName: "Москва",
+            houseSystem: "PLACIDUS",
+            houses: [
+              { number: 1, cusp: 11, sign: "Aries" },
+              { number: 2, cusp: 41, sign: "Taurus" },
+            ],
+            planets: [
+              { name: "Moon", longitude: 60, sign: "Gemini", latitude: 0, speed: 13 },
+              { name: "Saturn", longitude: 180, sign: "Libra", latitude: 0, speed: 0.04 },
+            ],
+            aspects: [
+              { planet: "Moon", targetPlanet: "Saturn", aspectType: "trine", orb: 1.2 },
+            ],
+          },
+        })}
+      />
+    );
+
+    const chart = screen.getByLabelText("Карта момента вопроса");
+    expect(chart).toBeTruthy();
+    expect(within(chart).getByText("Карта момента")).toBeTruthy();
+    expect(within(chart).getByText("Москва")).toBeTruthy();
+    expect(within(chart).getByText("Луна")).toBeTruthy();
+    expect(within(chart).getByText(/тригон/i)).toBeTruthy();
   });
 
   // 9. Empty answer.blocks array → no block divs

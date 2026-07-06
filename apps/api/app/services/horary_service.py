@@ -57,6 +57,92 @@ class HoraryTaskStageError(RuntimeError):
         self.cause = cause
 
 
+def _float_or_none(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_horary_chart_snapshot(
+    horary_chart: dict[str, Any],
+    signals: list[Any],
+    *,
+    cast_at: str,
+    timezone_name: str,
+    latitude: float,
+    longitude: float,
+    location_name: str | None,
+) -> dict[str, Any]:
+    planets: list[dict[str, Any]] = []
+    for planet in horary_chart.get("planets") or []:
+        if not isinstance(planet, dict) or not planet.get("name"):
+            continue
+        longitude_value = _float_or_none(planet.get("longitude"))
+        if longitude_value is None:
+            continue
+        planets.append(
+            {
+                "name": str(planet["name"]),
+                "longitude": longitude_value,
+                "sign": planet.get("sign"),
+                "latitude": _float_or_none(planet.get("latitude")),
+                "speed": _float_or_none(planet.get("speed")),
+            }
+        )
+
+    houses: list[dict[str, Any]] = []
+    for house in horary_chart.get("houses") or []:
+        if not isinstance(house, dict) or house.get("number") is None:
+            continue
+        cusp_value = _float_or_none(house.get("cusp"))
+        if cusp_value is None:
+            continue
+        houses.append(
+            {
+                "number": int(house["number"]),
+                "cusp": cusp_value,
+                "sign": house.get("sign"),
+            }
+        )
+
+    aspects: list[dict[str, Any]] = []
+    for signal in signals:
+        if getattr(signal, "type", None) != "aspect":
+            continue
+        planet = getattr(signal, "planet", None)
+        target_planet = getattr(signal, "target_planet", None)
+        aspect_type = getattr(signal, "aspect_type", None)
+        orb = getattr(signal, "orb", None)
+        if not planet or not target_planet or not aspect_type or orb is None:
+            continue
+        if str(planet).startswith("Transit_") or str(target_planet).startswith("Transit_"):
+            continue
+        aspects.append(
+            {
+                "planet": str(planet),
+                "targetPlanet": str(target_planet),
+                "aspectType": str(aspect_type),
+                "orb": float(orb),
+            }
+        )
+
+    return {
+        "source": "solarsage",
+        "castAt": cast_at,
+        "timezone": timezone_name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "locationName": location_name,
+        "houseSystem": horary_chart.get("house_system"),
+        "houses": houses,
+        "planets": planets,
+        "aspects": aspects,
+    }
+
+
 class HoraryService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -337,6 +423,22 @@ class HoraryService:
 
                 normalization_service = NormalizationService()
                 signals = normalization_service.normalize(horary_chart, transits)
+                chart_snapshot = _build_horary_chart_snapshot(
+                    horary_chart,
+                    signals,
+                    cast_at=dt.isoformat(),
+                    timezone_name=question.client_timezone,
+                    latitude=lat,
+                    longitude=lon,
+                    location_name=(
+                        question.question_location_name
+                        or profile.current_city
+                        or profile.birth_city
+                        or profile.birthday_city
+                    ),
+                )
+                if question.chart_snapshot_json is None:
+                    question.chart_snapshot_json = json.dumps(chart_snapshot, ensure_ascii=False)
 
                 try:
                     analysis = HoraryEngine.analyze(
@@ -386,6 +488,8 @@ class HoraryService:
                     planets_json=json.dumps(analysis.involved_planets, ensure_ascii=False),
                 )
                 db.add(answer)
+                if fresh_question.chart_snapshot_json is None:
+                    fresh_question.chart_snapshot_json = question.chart_snapshot_json
                 fresh_question.status = "answered"
                 fresh_question.failure_stage = None
                 fresh_question.failure_code = None

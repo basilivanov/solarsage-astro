@@ -25,6 +25,7 @@ import type {
   HoraryAnswerRead,
   HoraryQuestionRead,
 } from '../../packages/contracts/horary'
+import { HoraryQuestionSchema } from '../../lib/contracts/horary'
 
 const answer = {
   verdict: 'yes',
@@ -71,6 +72,33 @@ const failedQuestion = {
   publicErrorMessage: 'The interpretation could not be completed.',
   createdAt: '2026-07-05T19:59:00Z',
   answer: null,
+  chart: null,
+} satisfies HoraryQuestionRead
+
+const chartQuestion = {
+  id: 'horary-question-2',
+  text: 'Will the contract be signed?',
+  category: 'career',
+  status: 'answered',
+  spentCreditSource: 'paid',
+  creditRefunded: false,
+  clientTimezone: 'Europe/Moscow',
+  clientLocalTime: '2026-07-05T19:59:00',
+  questionLocationName: 'Moscow',
+  createdAt: '2026-07-05T19:59:00Z',
+  answer,
+  chart: {
+    source: 'solarsage',
+    castAt: '2026-07-05T19:59:00',
+    timezone: 'Europe/Moscow',
+    latitude: 55.75,
+    longitude: 37.62,
+    locationName: 'Moscow',
+    houseSystem: 'PLACIDUS',
+    houses: [{ number: 1, cusp: 11.2, sign: 'Aries' }],
+    planets: [{ name: 'Moon', longitude: 60.5, sign: 'Gemini', latitude: 0, speed: 13.1 }],
+    aspects: [{ planet: 'Moon', targetPlanet: 'Saturn', aspectType: 'trine', orb: 1.2 }],
+  },
 } satisfies HoraryQuestionRead
 
 describe('generated horary contracts', () => {
@@ -106,12 +134,34 @@ describe('generated horary contracts', () => {
     expect(questionSchema.properties).toHaveProperty('failureStage')
     expect(questionSchema.properties).toHaveProperty('publicErrorCode')
     expect(questionSchema.properties).toHaveProperty('publicErrorMessage')
+    expect(questionSchema.properties).toHaveProperty('chart')
     expect(failedQuestion).toMatchObject({
       status: 'failed',
       creditRefunded: true,
       failureStage: 'interpretation',
       publicErrorCode: 'HORARY_INTERPRETATION_FAILED',
       answer: null,
+      chart: null,
     })
+  })
+
+  it('keeps persisted horary chart snapshots in generated and local contracts', () => {
+    const chartSchema = openapi.components.schemas.HoraryChartSnapshot
+
+    expect(chartSchema.properties).toMatchObject({
+      source: expect.any(Object),
+      castAt: expect.any(Object),
+      timezone: expect.any(Object),
+      houses: expect.any(Object),
+      planets: expect.any(Object),
+      aspects: expect.any(Object),
+    })
+    expect(chartQuestion.chart).toMatchObject({
+      source: 'solarsage',
+      latitude: 55.75,
+      planets: [{ name: 'Moon', longitude: 60.5, sign: 'Gemini' }],
+      aspects: [{ planet: 'Moon', targetPlanet: 'Saturn', aspectType: 'trine', orb: 1.2 }],
+    })
+    expect(HoraryQuestionSchema.parse(chartQuestion).chart).toEqual(chartQuestion.chart)
   })
 })

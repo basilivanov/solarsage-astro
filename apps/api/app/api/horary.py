@@ -30,6 +30,7 @@ from __future__ import annotations
 import uuid
 import math
 import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Any, List
 
@@ -40,6 +41,7 @@ from app.core.dependencies import current_user_id
 from app.db.session import get_session
 from app.schemas.horary import (
     HoraryAnswerRead,
+    HoraryChartSnapshot,
     HoraryQuestionCreate,
     HoraryQuestionRead,
     HoraryQuotaRead,
@@ -83,7 +85,6 @@ def _normalize_horary_blocks(blocks: list[dict[str, Any]]) -> list[dict[str, Any
 def _to_question_read(q) -> HoraryQuestionRead:
     answer_read = None
     if q.status == "answered" and q.answer:
-        import json
         try:
             blocks = _normalize_horary_blocks(json.loads(q.answer.blocks_json))
         except Exception:
@@ -118,6 +119,14 @@ def _to_question_read(q) -> HoraryQuestionRead:
 
     credit_refunded = getattr(q, "refund_status", None) == "refunded"
 
+    chart = None
+    chart_snapshot_json = getattr(q, "chart_snapshot_json", None)
+    if chart_snapshot_json:
+        try:
+            chart = HoraryChartSnapshot.model_validate(json.loads(chart_snapshot_json))
+        except Exception:
+            chart = None
+
     return HoraryQuestionRead(
         id=str(q.id),
         text=q.text,
@@ -133,6 +142,7 @@ def _to_question_read(q) -> HoraryQuestionRead:
         public_error_message=getattr(q, "public_error_message", None),
         created_at=q.created_at.isoformat(),
         answer=answer_read,
+        chart=chart,
     )
 
 

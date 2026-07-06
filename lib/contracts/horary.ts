@@ -117,6 +117,40 @@ export const HoraryAnswerSchema = z.object({
   generatedAt: z.string(),
 })
 
+export const HoraryChartPlanetSchema = z.object({
+  name: z.string().min(1),
+  longitude: z.number(),
+  sign: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  speed: z.number().optional().nullable(),
+})
+
+export const HoraryChartHouseSchema = z.object({
+  number: z.number().int(),
+  cusp: z.number(),
+  sign: z.string().optional().nullable(),
+})
+
+export const HoraryChartAspectSchema = z.object({
+  planet: z.string().min(1),
+  targetPlanet: z.string().min(1),
+  aspectType: z.string().min(1),
+  orb: z.number(),
+})
+
+export const HoraryChartSnapshotSchema = z.object({
+  source: z.literal("solarsage"),
+  castAt: z.string().min(1),
+  timezone: z.string().min(1),
+  latitude: z.number(),
+  longitude: z.number(),
+  locationName: z.string().optional().nullable(),
+  houseSystem: z.string().optional().nullable(),
+  houses: z.array(HoraryChartHouseSchema),
+  planets: z.array(HoraryChartPlanetSchema),
+  aspects: z.array(HoraryChartAspectSchema),
+})
+
 export const HoraryQuestionSchema = z.object({
   id: z.string(),
   text: z.string(),
@@ -129,6 +163,7 @@ export const HoraryQuestionSchema = z.object({
   questionLocationName: z.string().optional().nullable(),
   createdAt: z.string(),
   answer: HoraryAnswerSchema.optional().nullable(),
+  chart: HoraryChartSnapshotSchema.optional().nullable(),
 })
 
 export const HoraryQuotaSchema = z.object({
@@ -148,6 +183,10 @@ export type HoraryBlock = z.infer<typeof HoraryBlockSchema>
 export type VerdictCardBlock = z.infer<typeof VerdictCardBlockSchema>
 export type TimingBlock = z.infer<typeof TimingBlockSchema>
 export type HoraryAnswer = z.infer<typeof HoraryAnswerSchema>
+export type HoraryChartPlanet = z.infer<typeof HoraryChartPlanetSchema>
+export type HoraryChartHouse = z.infer<typeof HoraryChartHouseSchema>
+export type HoraryChartAspect = z.infer<typeof HoraryChartAspectSchema>
+export type HoraryChartSnapshot = z.infer<typeof HoraryChartSnapshotSchema>
 export type HoraryQuestion = z.infer<typeof HoraryQuestionSchema>
 export type HoraryQuota = z.infer<typeof HoraryQuotaSchema>
 

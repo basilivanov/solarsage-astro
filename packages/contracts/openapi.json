@@ -1167,6 +1167,198 @@
         "title": "HoraryAnswerRead",
         "type": "object"
       },
+      "HoraryChartAspect": {
+        "additionalProperties": false,
+        "properties": {
+          "aspectType": {
+            "title": "Aspecttype",
+            "type": "string"
+          },
+          "orb": {
+            "title": "Orb",
+            "type": "number"
+          },
+          "planet": {
+            "title": "Planet",
+            "type": "string"
+          },
+          "targetPlanet": {
+            "title": "Targetplanet",
+            "type": "string"
+          }
+        },
+        "required": [
+          "planet",
+          "targetPlanet",
+          "aspectType",
+          "orb"
+        ],
+        "title": "HoraryChartAspect",
+        "type": "object"
+      },
+      "HoraryChartHouse": {
+        "additionalProperties": false,
+        "properties": {
+          "cusp": {
+            "title": "Cusp",
+            "type": "number"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign"
+          }
+        },
+        "required": [
+          "number",
+          "cusp"
+        ],
+        "title": "HoraryChartHouse",
+        "type": "object"
+      },
+      "HoraryChartPlanet": {
+        "additionalProperties": false,
+        "properties": {
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign"
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed"
+          }
+        },
+        "required": [
+          "name",
+          "longitude"
+        ],
+        "title": "HoraryChartPlanet",
+        "type": "object"
+      },
+      "HoraryChartSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "aspects": {
+            "items": {
+              "$ref": "#/components/schemas/HoraryChartAspect"
+            },
+            "title": "Aspects",
+            "type": "array"
+          },
+          "castAt": {
+            "title": "Castat",
+            "type": "string"
+          },
+          "houseSystem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Housesystem"
+          },
+          "houses": {
+            "items": {
+              "$ref": "#/components/schemas/HoraryChartHouse"
+            },
+            "title": "Houses",
+            "type": "array"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "locationName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locationname"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "planets": {
+            "items": {
+              "$ref": "#/components/schemas/HoraryChartPlanet"
+            },
+            "title": "Planets",
+            "type": "array"
+          },
+          "source": {
+            "const": "solarsage",
+            "title": "Source",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "castAt",
+          "timezone",
+          "latitude",
+          "longitude",
+          "houses",
+          "planets",
+          "aspects"
+        ],
+        "title": "HoraryChartSnapshot",
+        "type": "object"
+      },
       "HoraryQuestionCreate": {
         "additionalProperties": false,
         "properties": {
@@ -1283,6 +1475,16 @@
             ],
             "title": "Category"
           },
+          "chart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HoraryChartSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "clientLocalTime": {
             "anyOf": [
               {
@@ -1397,7 +1599,8 @@
           "status",
           "clientTimezone",
           "clientLocalTime",
-          "createdAt"
+          "createdAt",
+          "chart"
         ],
         "title": "HoraryQuestionRead",
         "type": "object"

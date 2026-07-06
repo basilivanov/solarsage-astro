@@ -166,6 +166,40 @@ class HoraryAnswerRead(CamelModel):
     generated_at: str
 
 
+class HoraryChartPlanet(CamelModel):
+    name: str
+    longitude: float
+    sign: str | None = None
+    latitude: float | None = None
+    speed: float | None = None
+
+
+class HoraryChartHouse(CamelModel):
+    number: int
+    cusp: float
+    sign: str | None = None
+
+
+class HoraryChartAspect(CamelModel):
+    planet: str
+    target_planet: str
+    aspect_type: str
+    orb: float
+
+
+class HoraryChartSnapshot(CamelModel):
+    source: Literal["solarsage"]
+    cast_at: str
+    timezone: str
+    latitude: float
+    longitude: float
+    location_name: str | None = None
+    house_system: str | None = None
+    houses: list[HoraryChartHouse]
+    planets: list[HoraryChartPlanet]
+    aspects: list[HoraryChartAspect]
+
+
 class HoraryQuestionRead(CamelModel):
     id: str
     text: str
@@ -181,6 +215,7 @@ class HoraryQuestionRead(CamelModel):
     public_error_message: str | None = None
     created_at: str
     answer: HoraryAnswerRead | None = None
+    chart: HoraryChartSnapshot | None
 
 
 class HoraryQuotaRead(CamelModel):
