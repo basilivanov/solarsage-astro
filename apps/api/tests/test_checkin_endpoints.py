@@ -263,6 +263,42 @@ async def test_metrics_returns_real_aggregates_and_streaks(
 
 
 @pytest.mark.asyncio
+async def test_metrics_current_streak_is_zero_when_latest_checkin_is_before_to_date(
+    async_client: AsyncClient,
+    make_initdata,
+):
+    await _login(
+        async_client,
+        make_initdata,
+        user_id=223008,
+        username="checkin_stale_streak",
+    )
+    for target_date in ("2026-07-01", "2026-07-02"):
+        response = await async_client.post(
+            "/api/checkin",
+            json={
+                "targetDate": target_date,
+                "mood": 4,
+                "accuracy": 2,
+                "energy": 3,
+                "tags": [],
+                "note": None,
+            },
+        )
+        assert response.status_code == 200
+
+    response = await async_client.get(
+        "/api/checkin/metrics?from=2026-07-01&to=2026-07-06",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["totalCheckins"] == 2
+    assert data["longestStreak"] == 2
+    assert data["currentStreak"] == 0
+
+
+@pytest.mark.asyncio
 async def test_legacy_string_mood_and_notes_remain_readable(
     async_client: AsyncClient,
     db_session: AsyncSession,

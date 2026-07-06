@@ -47,6 +47,30 @@ export function formatDateInTimeZone(
   return `${byType.year}-${byType.month}-${byType.day}`
 }
 
+function shiftDateKey(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day + days, 12))
+  const shiftedYear = date.getUTCFullYear()
+  const shiftedMonth = String(date.getUTCMonth() + 1).padStart(2, "0")
+  const shiftedDay = String(date.getUTCDate()).padStart(2, "0")
+  return `${shiftedYear}-${shiftedMonth}-${shiftedDay}`
+}
+
+export function resolveCheckinTargetDate(
+  now: Date,
+  timeZone?: string | null,
+  target?: string | null,
+): string {
+  if (target && /^\d{4}-\d{2}-\d{2}$/.test(target)) {
+    return target
+  }
+  const localToday = formatDateInTimeZone(now, timeZone)
+  if (target === "yesterday") {
+    return shiftDateKey(localToday, -1)
+  }
+  return localToday
+}
+
 export async function createCheckin(
   payload: CheckinCreate,
 ): Promise<CheckinResponse> {

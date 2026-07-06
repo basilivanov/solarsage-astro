@@ -1,21 +1,23 @@
 "use client"
 
 import { useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
 import { CheckinScreen } from "@/components/checkin/checkin-screen"
 import { useProfile } from "@/hooks/use-profile"
-import { formatDateInTimeZone } from "@/lib/api/checkin"
+import { resolveCheckinTargetDate } from "@/lib/api/checkin"
 
 export default function CheckinPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { profile } = useProfile()
   const timeZone =
     profile.currentLocation?.timezone || profile.birthLocation?.timezone || null
+  const target = searchParams.get("target") || searchParams.get("date")
   const targetDate = useMemo(
-    () => formatDateInTimeZone(new Date(), timeZone),
-    [timeZone],
+    () => resolveCheckinTargetDate(new Date(), timeZone, target),
+    [timeZone, target],
   )
 
   return (

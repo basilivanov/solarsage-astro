@@ -1,7 +1,9 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
+import { getYesterdayCheckin } from "@/lib/api/checkin"
 import type { YesterdayCheckinResponse } from "@/packages/contracts"
 
 const MOOD_EMOJI: Record<number, string> = {
@@ -42,7 +44,7 @@ export function YesterdayEchoBlock({ echo }: Props) {
           </div>
           <button
             type="button"
-            onClick={() => router.push("/checkin")}
+            onClick={() => router.push("/checkin?target=yesterday")}
             className="flex-none rounded-full bg-foreground px-4 py-2 text-[12px] font-medium text-background"
           >
             Оценить
@@ -83,4 +85,53 @@ export function YesterdayEchoBlock({ echo }: Props) {
       </div>
     </div>
   )
+}
+
+export function YesterdayEchoLoader() {
+  const [echo, setEcho] = useState<YesterdayCheckinResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError(null)
+    getYesterdayCheckin()
+      .then((value) => {
+        if (active) setEcho(value)
+      })
+      .catch((reason: unknown) => {
+        if (!active) return
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Не удалось загрузить вчерашнюю оценку",
+        )
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card p-4 text-[13px] text-muted-foreground">
+        Загружаем вчерашнюю оценку...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card p-4 text-[13px] text-muted-foreground">
+        {error}
+      </div>
+    )
+  }
+
+  return <YesterdayEchoBlock echo={echo} />
 }

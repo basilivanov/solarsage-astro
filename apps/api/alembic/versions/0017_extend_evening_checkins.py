@@ -67,15 +67,8 @@ def upgrade() -> None:
         WHERE mood_score IS NULL
         """
     )
-    op.create_index(
-        "ix_evening_checkins_user_date",
-        "evening_checkins",
-        ["user_id", "target_date"],
-    )
-
 
 def downgrade() -> None:
-    op.drop_index("ix_evening_checkins_user_date", table_name="evening_checkins")
     with op.batch_alter_table("evening_checkins") as batch_op:
         batch_op.drop_constraint("ck_evening_checkins_energy_range", type_="check")
         batch_op.drop_constraint("ck_evening_checkins_accuracy_range", type_="check")

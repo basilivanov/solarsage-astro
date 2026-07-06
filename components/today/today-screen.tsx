@@ -34,6 +34,7 @@ import { DaySummaryCard } from "./day-summary-card"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
+import { YesterdayEchoLoader } from "@/components/checkin/yesterday-echo"
 import { addDays, sameDay, TODAY, type AdaptedTodayPayload, type AdaptedTopFlag } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
 import type { CalendarLunarFields, TodayImportantEvent } from "@/packages/contracts"
@@ -176,6 +177,11 @@ export function TodayScreen({
         <div className="space-y-8 pb-8">
           {access.state === "trial" ? (
             <TrialBanner daysLeft={access.daysLeft} />
+          ) : null}
+          {isToday ? (
+            <div className="px-5">
+              <YesterdayEchoLoader />
+            </div>
           ) : null}
           <TodayImportantAccordion items={importantToday || []} />
           <div className="section-rise section-rise-1">

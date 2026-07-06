@@ -188,7 +188,7 @@ class CheckinService:
         all_dates = [row.target_date for row in rows]
         return CheckinMetrics(
             total_checkins=total,
-            current_streak=self._current_streak_from_dates(all_dates),
+            current_streak=self._current_streak_from_dates(all_dates, upper),
             longest_streak=self._longest_streak_from_dates(all_dates),
             average_mood=(sum(moods) / total) if total else 0,
             average_energy=(sum(energies) / len(energies)) if energies else None,
@@ -239,12 +239,15 @@ class CheckinService:
         return profile.current_tz or profile.birth_tz
 
     @staticmethod
-    def _current_streak_from_dates(dates: list[date]) -> int:
+    def _current_streak_from_dates(dates: list[date], anchor_date: date) -> int:
         if not dates:
             return 0
-        ordered = sorted(set(dates), reverse=True)
+        unique_dates = set(dates)
+        if anchor_date not in unique_dates:
+            return 0
+        ordered = sorted(unique_dates, reverse=True)
         streak = 1
-        cursor = ordered[0] - timedelta(days=1)
+        cursor = anchor_date - timedelta(days=1)
         for item in ordered[1:]:
             if item == cursor:
                 streak += 1

@@ -6,6 +6,7 @@ import {
   getCheckin,
   getCheckinMetrics,
   getYesterdayCheckin,
+  resolveCheckinTargetDate,
 } from "@/lib/api/checkin"
 
 describe("check-in API client", () => {
@@ -63,6 +64,17 @@ describe("check-in API client", () => {
     expect(instant.toISOString().split("T")[0]).toBe("2026-01-01")
     expect(formatDateInTimeZone(instant, "Pacific/Kiritimati")).toBe("2026-01-02")
     expect(formatDateInTimeZone(instant, "America/Los_Angeles")).toBe("2026-01-01")
+  })
+
+  it("resolves yesterday relative to the profile timezone", () => {
+    const instant = new Date("2026-01-01T10:30:00.000Z")
+
+    expect(
+      resolveCheckinTargetDate(instant, "Pacific/Kiritimati", "yesterday"),
+    ).toBe("2026-01-01")
+    expect(
+      resolveCheckinTargetDate(instant, "America/Los_Angeles", "yesterday"),
+    ).toBe("2025-12-31")
   })
 
   it("returns null from GET when backend sends the null wrapper", async () => {

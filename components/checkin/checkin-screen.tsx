@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { useToast } from "@/hooks/use-toast"
-import { createCheckin } from "@/lib/api/checkin"
+import { createCheckin, getCheckin } from "@/lib/api/checkin"
 import type { CheckinResponse } from "@/packages/contracts"
 import type {
   CheckinAccuracy,
@@ -36,8 +36,52 @@ export function CheckinScreen({
   const [tags, setTags] = useState<string[]>([])
   const [note, setNote] = useState("")
   const [showDetails, setShowDetails] = useState(false)
+  const [existing, setExisting] = useState<CheckinResponse | null>(null)
+  const [loadingExisting, setLoadingExisting] = useState(true)
+  const [readError, setReadError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+
+  useEffect(() => {
+    let active = true
+    setLoadingExisting(true)
+    setReadError(null)
+    setExisting(null)
+    setEditing(false)
+
+    getCheckin(targetDate)
+      .then((value) => {
+        if (!active) return
+        setExisting(value)
+        if (value) {
+          setMood(value.mood as CheckinMood)
+          setEnergy((value.energy ?? null) as CheckinEnergy | null)
+          setAccuracy((value.accuracy ?? null) as CheckinAccuracy | null)
+          setTags(value.tags)
+          setNote(value.note ?? "")
+        } else {
+          setMood(null)
+          setEnergy(null)
+          setAccuracy(null)
+          setTags([])
+          setNote("")
+        }
+      })
+      .catch((reason: unknown) => {
+        if (!active) return
+        setReadError(
+          reason instanceof Error ? reason.message : "Не удалось загрузить оценку",
+        )
+      })
+      .finally(() => {
+        if (active) setLoadingExisting(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [targetDate])
 
   const submit = async (selectedAccuracy: CheckinAccuracy | null) => {
     if (mood === null) return
@@ -54,6 +98,8 @@ export function CheckinScreen({
       toast({
         description: `Сохранено. Серия: ${result.streak}`,
       })
+      setExisting(result)
+      setEditing(false)
       onComplete?.(result)
     } catch (reason) {
       toast({
@@ -78,6 +124,47 @@ export function CheckinScreen({
       className="mx-auto w-full max-w-md px-5 pb-10 pt-8"
       data-testid="checkin-screen"
     >
+      {loadingExisting ? (
+        <p className="text-[13px] text-muted-foreground">
+          Загружаем оценку...
+        </p>
+      ) : null}
+
+      {!loadingExisting && readError ? (
+        <section>
+          <h2 className="font-serif text-[22px] leading-tight text-foreground">
+            Не удалось загрузить оценку
+          </h2>
+          <p className="mt-3 text-[13px] text-muted-foreground">{readError}</p>
+        </section>
+      ) : null}
+
+      {!loadingExisting && !readError && existing && !editing ? (
+        <section className="rounded-2xl border border-border/70 bg-card p-4">
+          <h2 className="font-serif text-[22px] leading-tight text-foreground">
+            Оценка уже сохранена
+          </h2>
+          <div className="mt-3 space-y-1 text-[13px] text-muted-foreground">
+            <p>Настроение: {existing.mood} / 5</p>
+            {existing.energy ? <p>Энергия: {existing.energy} / 5</p> : null}
+            {existing.accuracy ? <p>Точность: {existing.accuracy} / 3</p> : null}
+            {existing.note ? <p className="text-foreground">{existing.note}</p> : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(true)
+              setStep("mood")
+            }}
+            className="mt-4 rounded-full bg-foreground px-4 py-2 text-[12px] font-medium text-background"
+          >
+            Изменить
+          </button>
+        </section>
+      ) : null}
+
+      {!loadingExisting && !readError && (!existing || editing) ? (
+        <>
       {step === "mood" ? (
         <section>
           <h2 className="font-serif text-[24px] leading-tight text-foreground">
@@ -186,6 +273,8 @@ export function CheckinScreen({
             </p>
           ) : null}
         </section>
+      ) : null}
+        </>
       ) : null}
     </div>
   )

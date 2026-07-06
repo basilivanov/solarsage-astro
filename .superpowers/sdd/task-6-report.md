@@ -182,9 +182,130 @@ git diff --cached --check
 
 Result: exit code 0.
 
+Command:
+
+```bash
+git diff --cached --check
+```
+
+Result: exit code 0.
+
 ## Notes And Concerns
 
 - `scripts/contracts/export_openapi.py` was changed and staged because otherwise regenerated check-in contracts would not be reproducible.
 - `next-env.d.ts` was dirty before this task and remains unstaged.
 - Payment/paywall behavior was not touched.
 - Production service on port 3002 was not touched.
+
+## Review Fixes
+
+### Important Finding 1: Read Flow And Yesterday Echo
+
+Fixed:
+
+- `CheckinScreen` now calls real `getCheckin(targetDate)` before rendering the form.
+- Existing check-ins render a saved state with the persisted values and an edit action.
+- Read loading and read error states render explicitly and do not fall back to empty mock/demo data.
+- `YesterdayEchoLoader` now calls real `getYesterdayCheckin()` and renders loading/error/empty/saved states through `YesterdayEchoBlock`.
+- `TodayScreen` wires `YesterdayEchoLoader` only for local today.
+
+RED evidence:
+
+```text
+CheckinScreen tests failed because loading/existing/error states and YesterdayEchoLoader did not exist.
+```
+
+GREEN evidence:
+
+```text
+pnpm exec vitest run __tests__/api/checkin.test.ts __tests__/components/CheckinScreen.test.tsx
+2 passed, 11 passed tests
+```
+
+### Important Finding 2: Yesterday CTA Target Date
+
+Fixed:
+
+- Yesterday CTA now routes to `/checkin?target=yesterday`.
+- `/checkin` resolves `target=yesterday` with `resolveCheckinTargetDate(new Date(), profileTimezone, target)`.
+- Date resolution uses local/profile timezone formatting, not UTC `toISOString().split("T")[0]`.
+- Added tests for timezone-relative yesterday resolution and CTA routing.
+
+### Important Finding 3: Current Streak Anchor
+
+Fixed:
+
+- `CheckinService.metrics()` now computes `currentStreak` relative to the query `to` date or local today fallback.
+- If the latest check-in is older than the anchor date, current streak is `0`.
+- Added backend regression test `test_metrics_current_streak_is_zero_when_latest_checkin_is_before_to_date`.
+
+RED evidence:
+
+```text
+Expected currentStreak 0, got 2.
+```
+
+GREEN evidence:
+
+```text
+cd apps/api && source .venv/bin/activate && python -m pytest tests/test_checkin_endpoints.py::test_metrics_current_streak_is_zero_when_latest_checkin_is_before_to_date -q
+1 passed
+```
+
+### Minor Finding: Redundant Index
+
+Fixed:
+
+- Removed the redundant non-unique `(user_id, target_date)` index from `0017_extend_evening_checkins.py`.
+- The existing unique constraint still supports the same lookup shape.
+
+### Required Fix Verification
+
+Command:
+
+```bash
+cd apps/api && source .venv/bin/activate && python -m pytest tests/test_checkin_endpoints.py tests/test_checkin.py -q
+```
+
+Result:
+
+```text
+11 passed in 1.14s
+```
+
+Command:
+
+```bash
+pnpm exec vitest run __tests__/api/checkin.test.ts __tests__/components/CheckinScreen.test.tsx __tests__/components/ProfileScreen.test.tsx __tests__/hooks/useProfile.test.ts
+```
+
+Result:
+
+```text
+4 passed, 22 passed tests
+```
+
+Vitest also printed the existing Vite CJS deprecation warning.
+
+Command:
+
+```bash
+npm run contracts:check
+```
+
+Result:
+
+```text
+wrote packages/contracts/openapi.json (99204 bytes)
+contracts: regenerated openapi.json + _generated.ts
+```
+
+Exit code: 0.
+
+Command:
+
+```bash
+pnpm exec tsc --noEmit
+```
+
+Result: exit code 0.
