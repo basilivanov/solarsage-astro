@@ -1,50 +1,52 @@
-# ############################################################################
-# AI_HEADER: MODULE_CHECKIN_SCHEMA
-# ROLE: Evening checkin schemas
-# DEPENDENCIES: pydantic, datetime
-# GRACE_ANCHORS: [CHECKIN_SCHEMAS]
-# WAVE: W-8.1
-# ############################################################################
+from __future__ import annotations
 
-# START_MODULE_CONTRACT: M-CHECKIN-SCHEMA
-# purpose: Define CheckinCreate and CheckinResponse Pydantic schemas.
-# owns:
-#   - apps/api/app/schemas/checkin.py
-# inputs:
-#   - none (type definitions)
-# outputs:
-#   - CheckinCreate, CheckinResponse
-# dependencies:
-#   - standard library: datetime, uuid
-#   - pydantic.BaseModel
-# side_effects:
-#   - none (type-only module)
-# END_MODULE_CONTRACT: M-CHECKIN-SCHEMA
+from datetime import date, datetime
+from typing import Literal
 
-# START_MODULE_MAP: M-CHECKIN-SCHEMA
-# public_entrypoints:
-#   - CheckinCreate
-#   - CheckinResponse
-# semantic_blocks:
-#   - CHECKIN_SCHEMAS: Pydantic models for checkin endpoints
-# END_MODULE_MAP: M-CHECKIN-SCHEMA
-# ############################################################################
+from pydantic import Field
 
-from pydantic import BaseModel
-from datetime import date
+from app.schemas._base import CamelModel
 
 
-class CheckinCreate(BaseModel):
-    """Create evening checkin."""
+CheckinMood = Literal[1, 2, 3, 4, 5]
+CheckinAccuracy = Literal[1, 2, 3]
+CheckinEnergy = Literal[1, 2, 3, 4, 5]
+
+
+class CheckinCreate(CamelModel):
     target_date: date
-    mood: str  # "great", "good", "neutral", "bad"
-    notes: str | None = None
+    mood: CheckinMood
+    accuracy: CheckinAccuracy | None = None
+    energy: CheckinEnergy | None = None
+    tags: list[str] = Field(default_factory=list)
+    note: str | None = Field(None, max_length=500)
 
 
-class CheckinResponse(BaseModel):
-    """Evening checkin response."""
+class CheckinResponse(CamelModel):
     id: int
     target_date: date
-    mood: str
-    notes: str | None
-    created_at: str
+    mood: int = Field(ge=1, le=5)
+    accuracy: int | None = Field(None, ge=1, le=3)
+    energy: int | None = Field(None, ge=1, le=5)
+    tags: list[str]
+    note: str | None
+    streak: int = Field(ge=1)
+    filled_at: datetime | None
+    created_at: datetime
+
+
+class YesterdayCheckinResponse(CamelModel):
+    had_checkin: bool
+    checkin: CheckinResponse | None
+
+
+class CheckinMetrics(CamelModel):
+    total_checkins: int = Field(ge=0)
+    current_streak: int = Field(ge=0)
+    longest_streak: int = Field(ge=0)
+    average_mood: float
+    average_energy: float | None
+    average_accuracy: float | None
+    mood_distribution: dict[str, int]
+    accuracy_distribution: dict[str, int]
+    tag_frequency: dict[str, int]

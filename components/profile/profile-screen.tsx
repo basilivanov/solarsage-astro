@@ -41,6 +41,7 @@ import { formatBirthDate, formatBirthTime, type Profile } from "@/lib/profile"
 
 import { AccessCard } from "./access-card"
 import { Avatar } from "./avatar"
+import { CheckinStatistics } from "./checkin-statistics"
 import { EditSheet, type EditField } from "./edit-sheet"
 import { HoraryCard } from "./horary-card"
 import { ProfileRow } from "./profile-row"
@@ -117,6 +118,12 @@ export function ProfileScreen({
       <section className="px-5 pt-5">
         <HoraryCard horary={profileMeta.horary} />
       </section>
+
+      <CheckinStatistics
+        timeZone={
+          profile.currentLocation?.timezone || profile.birthLocation?.timezone || null
+        }
+      />
 
       {/* Мои данные */}
       <section className="px-5 pt-6">

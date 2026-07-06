@@ -59,6 +59,10 @@ export type PlanetInfluence = components["schemas"]["PlanetInfluence"];
 export type SphereScore = components["schemas"]["SphereScore"];
 export type CalendarDay = components["schemas"]["CalendarDay"];
 export type CalendarLunarFields = components["schemas"]["CalendarLunarFields"];
+export type CheckinCreate = components["schemas"]["CheckinCreate"];
+export type CheckinResponse = components["schemas"]["CheckinResponse"];
+export type CheckinMetrics = components["schemas"]["CheckinMetrics"];
+export type YesterdayCheckinResponse = components["schemas"]["YesterdayCheckinResponse"];
 
 // W-1.2: auth + profile surface.
 export type TelegramAuthRequest = components["schemas"]["TelegramAuthRequest"];

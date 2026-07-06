@@ -45,6 +45,9 @@ vi.mock("@/components/profile/referral-card", () => ({
 vi.mock("@/components/profile/horary-card", () => ({
   HoraryCard: () => <div />,
 }))
+vi.mock("@/components/profile/checkin-statistics", () => ({
+  CheckinStatistics: () => <section>Статистика оценок</section>,
+}))
 
 import { ProfileScreen } from "@/components/profile/profile-screen"
 
@@ -98,5 +101,18 @@ describe("ProfileScreen hydration gate", () => {
     fireEvent.click(screen.getByText("Дата рождения"))
 
     expect(screen.getByRole("dialog")).toBeTruthy()
+  })
+
+  it("includes check-in statistics sourced by the real metrics component", () => {
+    loaded = true
+    render(
+      <ProfileScreen
+        access={access}
+        currentState="none"
+        profileMeta={profileMeta}
+      />,
+    )
+
+    expect(screen.getByText("Статистика оценок")).toBeTruthy()
   })
 })

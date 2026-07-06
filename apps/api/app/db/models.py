@@ -91,6 +91,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Numeric,
+    SmallInteger,
     String,
     Text,
     Time,
@@ -442,6 +443,18 @@ class EveningCheckin(Base):
     __tablename__ = "evening_checkins"
     __table_args__ = (
         UniqueConstraint('user_id', 'target_date', name='uq_checkin_user_date'),
+        CheckConstraint(
+            "mood_score IS NULL OR (mood_score >= 1 AND mood_score <= 5)",
+            name="ck_evening_checkins_mood_score_range",
+        ),
+        CheckConstraint(
+            "accuracy IS NULL OR (accuracy >= 1 AND accuracy <= 3)",
+            name="ck_evening_checkins_accuracy_range",
+        ),
+        CheckConstraint(
+            "energy IS NULL OR (energy >= 1 AND energy <= 5)",
+            name="ck_evening_checkins_energy_range",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -454,8 +467,21 @@ class EveningCheckin(Base):
     target_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     mood: Mapped[str] = mapped_column(String(50), nullable=False)  # "great", "good", "neutral", "bad"
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mood_score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    accuracy: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    energy: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False, server_default="[]")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    streak: Mapped[int] = mapped_column(nullable=False, server_default="0")
+    filled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 # END_BLOCK: EVENING_CHECKINS_TABLE
 

@@ -39,16 +39,22 @@ async def test_create_checkin(async_client: AsyncClient, make_initdata):
     response = await async_client.post(
         "/api/checkin",
         json={
-            "target_date": date.today().isoformat(),
-            "mood": "great",
-            "notes": "Отличный день!",
+            "targetDate": date.today().isoformat(),
+            "mood": 5,
+            "accuracy": 3,
+            "energy": 4,
+            "tags": ["calm"],
+            "note": "Отличный день!",
         }
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["mood"] == "great"
-    assert data["notes"] == "Отличный день!"
+    assert data["mood"] == 5
+    assert data["accuracy"] == 3
+    assert data["energy"] == 4
+    assert data["tags"] == ["calm"]
+    assert data["note"] == "Отличный день!"
 
 
 @pytest.mark.asyncio
@@ -62,9 +68,12 @@ async def test_get_checkin(async_client: AsyncClient, make_initdata):
     await async_client.post(
         "/api/checkin",
         json={
-            "target_date": today.isoformat(),
-            "mood": "good",
-            "notes": None,
+            "targetDate": today.isoformat(),
+            "mood": 4,
+            "accuracy": 2,
+            "energy": 3,
+            "tags": [],
+            "note": None,
         }
     )
 
@@ -73,7 +82,8 @@ async def test_get_checkin(async_client: AsyncClient, make_initdata):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["mood"] == "good"
+    assert data["mood"] == 4
+    assert data["accuracy"] == 2
 
 
 @pytest.mark.asyncio
@@ -87,16 +97,32 @@ async def test_upsert_checkin(async_client: AsyncClient, make_initdata):
     # Create
     await async_client.post(
         "/api/checkin",
-        json={"target_date": today.isoformat(), "mood": "neutral", "notes": None}
+        json={
+            "targetDate": today.isoformat(),
+            "mood": 3,
+            "accuracy": 1,
+            "energy": 2,
+            "tags": [],
+            "note": None,
+        }
     )
 
     # Update
     response = await async_client.post(
         "/api/checkin",
-        json={"target_date": today.isoformat(), "mood": "great", "notes": "Стало лучше!"}
+        json={
+            "targetDate": today.isoformat(),
+            "mood": 5,
+            "accuracy": 3,
+            "energy": 4,
+            "tags": ["support"],
+            "note": "Стало лучше!",
+        }
     )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["mood"] == "great"
-    assert data["notes"] == "Стало лучше!"
+    assert data["mood"] == 5
+    assert data["accuracy"] == 3
+    assert data["tags"] == ["support"]
+    assert data["note"] == "Стало лучше!"

@@ -93,6 +93,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/checkincreate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Checkincreate */
+        get: operations["contracts__checkincreate___contracts___checkincreate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/checkinmetrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Checkinmetrics */
+        get: operations["contracts__checkinmetrics___contracts___checkinmetrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/checkinresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Checkinresponse */
+        get: operations["contracts__checkinresponse___contracts___checkinresponse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/horaryanswerread": {
         parameters: {
             query?: never;
@@ -255,6 +306,23 @@ export interface paths {
         };
         /** Contracts  Todaypayload */
         get: operations["contracts__todaypayload___contracts___todaypayload_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/yesterdaycheckinresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Yesterdaycheckinresponse */
+        get: operations["contracts__yesterdaycheckinresponse___contracts___yesterdaycheckinresponse_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -635,6 +703,83 @@ export interface components {
             month: string;
             /** Title */
             title: string;
+        };
+        /** CheckinCreate */
+        CheckinCreate: {
+            /** Accuracy */
+            accuracy?: (1 | 2 | 3) | null;
+            /** Energy */
+            energy?: (1 | 2 | 3 | 4 | 5) | null;
+            /**
+             * Mood
+             * @enum {integer}
+             */
+            mood: 1 | 2 | 3 | 4 | 5;
+            /** Note */
+            note?: string | null;
+            /** Tags */
+            tags?: string[];
+            /**
+             * Targetdate
+             * Format: date
+             */
+            targetDate: string;
+        };
+        /** CheckinMetrics */
+        CheckinMetrics: {
+            /** Accuracydistribution */
+            accuracyDistribution: {
+                [key: string]: number;
+            };
+            /** Averageaccuracy */
+            averageAccuracy: number | null;
+            /** Averageenergy */
+            averageEnergy: number | null;
+            /** Averagemood */
+            averageMood: number;
+            /** Currentstreak */
+            currentStreak: number;
+            /** Longeststreak */
+            longestStreak: number;
+            /** Mooddistribution */
+            moodDistribution: {
+                [key: string]: number;
+            };
+            /** Tagfrequency */
+            tagFrequency: {
+                [key: string]: number;
+            };
+            /** Totalcheckins */
+            totalCheckins: number;
+        };
+        /** CheckinResponse */
+        CheckinResponse: {
+            /** Accuracy */
+            accuracy?: number | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Energy */
+            energy?: number | null;
+            /** Filledat */
+            filledAt: string | null;
+            /** Id */
+            id: number;
+            /** Mood */
+            mood: number;
+            /** Note */
+            note: string | null;
+            /** Streak */
+            streak: number;
+            /** Tags */
+            tags: string[];
+            /**
+             * Targetdate
+             * Format: date
+             */
+            targetDate: string;
         };
         /** ContentAccessState */
         ContentAccessState: {
@@ -1315,6 +1460,12 @@ export interface components {
             /** Sections */
             sections: components["schemas"]["WhySection"][];
         };
+        /** YesterdayCheckinResponse */
+        YesterdayCheckinResponse: {
+            checkin: components["schemas"]["CheckinResponse"] | null;
+            /** Hadcheckin */
+            hadCheckin: boolean;
+        };
         /** YesterdayEcho */
         YesterdayEcho: {
             /** Accuracy */
@@ -1436,6 +1587,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalendarPayload"];
+                };
+            };
+        };
+    };
+    contracts__checkincreate___contracts___checkincreate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinCreate"];
+                };
+            };
+        };
+    };
+    contracts__checkinmetrics___contracts___checkinmetrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinMetrics"];
+                };
+            };
+        };
+    };
+    contracts__checkinresponse___contracts___checkinresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinResponse"];
                 };
             };
         };
@@ -1636,6 +1847,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayPayload"];
+                };
+            };
+        };
+    };
+    contracts__yesterdaycheckinresponse___contracts___yesterdaycheckinresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["YesterdayCheckinResponse"];
                 };
             };
         };

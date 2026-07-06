@@ -454,6 +454,264 @@
         "title": "CalendarPayload",
         "type": "object"
       },
+      "CheckinCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "enum": [
+                  1,
+                  2,
+                  3
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "energy": {
+            "anyOf": [
+              {
+                "enum": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy"
+          },
+          "mood": {
+            "enum": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "title": "Mood",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "targetDate": {
+            "format": "date",
+            "title": "Targetdate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetDate",
+          "mood"
+        ],
+        "title": "CheckinCreate",
+        "type": "object"
+      },
+      "CheckinMetrics": {
+        "additionalProperties": false,
+        "properties": {
+          "accuracyDistribution": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Accuracydistribution",
+            "type": "object"
+          },
+          "averageAccuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Averageaccuracy"
+          },
+          "averageEnergy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Averageenergy"
+          },
+          "averageMood": {
+            "title": "Averagemood",
+            "type": "number"
+          },
+          "currentStreak": {
+            "minimum": 0.0,
+            "title": "Currentstreak",
+            "type": "integer"
+          },
+          "longestStreak": {
+            "minimum": 0.0,
+            "title": "Longeststreak",
+            "type": "integer"
+          },
+          "moodDistribution": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Mooddistribution",
+            "type": "object"
+          },
+          "tagFrequency": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Tagfrequency",
+            "type": "object"
+          },
+          "totalCheckins": {
+            "minimum": 0.0,
+            "title": "Totalcheckins",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "totalCheckins",
+          "currentStreak",
+          "longestStreak",
+          "averageMood",
+          "averageEnergy",
+          "averageAccuracy",
+          "moodDistribution",
+          "accuracyDistribution",
+          "tagFrequency"
+        ],
+        "title": "CheckinMetrics",
+        "type": "object"
+      },
+      "CheckinResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "maximum": 3.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "energy": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Energy"
+          },
+          "filledAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filledat"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mood": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Mood",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "streak": {
+            "minimum": 1.0,
+            "title": "Streak",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "targetDate": {
+            "format": "date",
+            "title": "Targetdate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "targetDate",
+          "mood",
+          "tags",
+          "note",
+          "streak",
+          "filledAt",
+          "createdAt"
+        ],
+        "title": "CheckinResponse",
+        "type": "object"
+      },
       "ContentAccessState": {
         "additionalProperties": false,
         "properties": {
@@ -2782,6 +3040,31 @@
         "title": "WhyThisHappens",
         "type": "object"
       },
+      "YesterdayCheckinResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "checkin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckinResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hadCheckin": {
+            "title": "Hadcheckin",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hadCheckin",
+          "checkin"
+        ],
+        "title": "YesterdayCheckinResponse",
+        "type": "object"
+      },
       "YesterdayEcho": {
         "additionalProperties": false,
         "properties": {
@@ -3448,6 +3731,69 @@
         ]
       }
     },
+    "/__contracts__/checkincreate": {
+      "get": {
+        "operationId": "contracts__checkincreate___contracts___checkincreate_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinCreate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Checkincreate",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/checkinmetrics": {
+      "get": {
+        "operationId": "contracts__checkinmetrics___contracts___checkinmetrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinMetrics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Checkinmetrics",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/checkinresponse": {
+      "get": {
+        "operationId": "contracts__checkinresponse___contracts___checkinresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckinResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Checkinresponse",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
     "/__contracts__/horaryanswerread": {
       "get": {
         "operationId": "contracts__horaryanswerread___contracts___horaryanswerread_get",
@@ -3653,6 +3999,27 @@
           }
         },
         "summary": "Contracts  Todaypayload",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/yesterdaycheckinresponse": {
+      "get": {
+        "operationId": "contracts__yesterdaycheckinresponse___contracts___yesterdaycheckinresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YesterdayCheckinResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Yesterdaycheckinresponse",
         "tags": [
           "__contracts__"
         ]

@@ -67,6 +67,9 @@ _TOP_LEVEL_NAMES: tuple[str, ...] = (
     "AuthSession",
     "BirthData",
     "CalendarPayload",
+    "CheckinCreate",
+    "CheckinMetrics",
+    "CheckinResponse",
     "HoraryAnswerRead",
     "HoraryQuestionCreate",
     "HoraryQuestionRead",
@@ -77,6 +80,7 @@ _TOP_LEVEL_NAMES: tuple[str, ...] = (
     "ProfileWrite",
     "TelegramAuthRequest",
     "TodayPayload",
+    "YesterdayCheckinResponse",
 )
 
 

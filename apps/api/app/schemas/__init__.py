@@ -31,6 +31,12 @@ from __future__ import annotations
 from .access import AccessSummary, UserAccessState
 from .auth import AuthError, AuthSession, TelegramAuthRequest
 from .calendar import AllowedRange, CalendarDay, CalendarMeta, CalendarPayload
+from .checkin import (
+    CheckinCreate,
+    CheckinMetrics,
+    CheckinResponse,
+    YesterdayCheckinResponse,
+)
 from .profile import BirthData, LocationData, ProfileRead, ProfileWrite
 from .horary import (
     HoraryQuestionCreate,
@@ -84,6 +90,11 @@ __all__ = [
     "AuthError",
     "AuthSession",
     "TelegramAuthRequest",
+    # check-in
+    "CheckinCreate",
+    "CheckinMetrics",
+    "CheckinResponse",
+    "YesterdayCheckinResponse",
     # profile (W-1.2)
     "BirthData",
     "LocationData",
