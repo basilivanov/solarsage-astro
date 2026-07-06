@@ -36,12 +36,13 @@ import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
 import { addDays, sameDay, TODAY, type AdaptedTodayPayload, type AdaptedTopFlag } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
-import type { TodayImportantEvent } from "@/packages/contracts"
+import type { CalendarLunarFields, TodayImportantEvent } from "@/packages/contracts"
 
 type Props = {
   selectedDate: Date
   access: AccessInfo
   payload: AdaptedTodayPayload
+  calendarLunar?: CalendarLunarFields | null
   onDateChange: (_d: Date) => void
   importantToday?: TodayImportantEvent[]
 }
@@ -55,6 +56,7 @@ export function TodayScreen({
   selectedDate,
   access,
   payload,
+  calendarLunar,
   onDateChange,
   importantToday,
 }: Props) {
@@ -180,6 +182,7 @@ export function TodayScreen({
             <DaySummaryCard
               date={selectedDate}
               dayStatus={payload.dayStatus}
+              lunar={calendarLunar}
               planetInfluences={payload.planetInfluences}
               sphereScores={payload.sphereScores}
             />

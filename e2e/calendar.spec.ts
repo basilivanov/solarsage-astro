@@ -24,17 +24,18 @@ test.describe('Calendar Screen - Real Auth', () => {
     }
 
     await page.goto('/calendar');
-    await page.waitForSelector(
-      '[data-testid="calendar-grid"], [data-testid="error-boundary"], [data-testid="auth-loading"]',
-      { timeout: 15000 },
-    );
-
     const grid = page.getByTestId('calendar-grid');
-    if (await grid.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await expect(page.locator('[data-testid^="calendar-day-"]').first()).toBeVisible({ timeout: 5000 });
-      await expect(page.locator('[data-testid="lunar-calendar-strip"], [data-testid="lunar-calendar-unavailable"]')).toBeVisible({ timeout: 5000 });
-      await page.getByRole('button', { name: 'Луна' }).click();
-      await expect(page.getByTestId('calendar-grid')).toBeVisible({ timeout: 5000 });
+    const unavailable = page.getByTestId('calendar-unavailable');
+    await expect(grid.or(unavailable)).toBeVisible({ timeout: 15000 });
+
+    if (await unavailable.isVisible()) {
+      await expect(unavailable).toContainText('Календарь недоступен');
+      return;
     }
+
+    await expect(page.locator('[data-testid^="calendar-day-"]').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[data-testid="lunar-calendar-strip"], [data-testid="lunar-calendar-unavailable"]')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Луна' }).click();
+    await expect(page.getByTestId('calendar-grid')).toBeVisible({ timeout: 5000 });
   });
 });

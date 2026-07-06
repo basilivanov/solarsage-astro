@@ -23,6 +23,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 import type { AccessInfo } from '@/lib/contracts/access'
+import type { CalendarLunarFields } from '@/packages/contracts'
 import type { AdaptedTodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today'
 import { DayChart } from '@/components/today/day-chart'
 import { DayEnergyMeter } from '@/components/today/day-energy-meter'
@@ -193,6 +194,13 @@ describe('TodayScreen', () => {
       <TodayScreen
         selectedDate={selectedDate}
         access={buildAccess()}
+        calendarLunar={{
+          phase: 'Полнолуние',
+          illumination: 97,
+          moonSign: 'Sagittarius',
+          lunarDay: 15,
+          voidOfCourse: true,
+        }}
         payload={buildPayload({
           dayStatus: 'supportive',
           dayChart: {
@@ -243,9 +251,41 @@ describe('TodayScreen', () => {
     )
 
     expect(screen.getByTestId('day-summary-card').textContent).toContain('Поддерживающий день')
+    expect(screen.getByTestId('day-summary-card').textContent).toContain('Полнолуние')
     expect(screen.getByTestId('day-chart').querySelectorAll('svg circle').length).toBeGreaterThan(0)
     expect(screen.getByTestId('day-energy-meter').textContent).toContain('Moon')
     expect(screen.getByTestId('day-energy-meter').textContent).toContain('relationships')
+  })
+
+  it('passes backend lunar fields through to day summary when provided', () => {
+    const lunar: CalendarLunarFields = {
+      phase: 'Убывающая Луна',
+      illumination: 22,
+      moonSign: 'Pisces',
+      lunarDay: 26,
+      voidOfCourse: false,
+    }
+
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess()}
+        calendarLunar={lunar}
+        payload={buildPayload({
+          planetInfluences: [{ name: 'Moon', score: 1.2, rank: 1 }],
+          sphereScores: [{ key: 'rest', score: 2.1, rank: 1 }],
+          reading: { paragraphs: ['p1'] },
+          why: [whyFixture],
+          keyInsight: 'Why',
+        })}
+        onDateChange={onDateChange}
+      />,
+    )
+
+    const summary = screen.getByTestId('day-summary-card')
+    expect(summary.textContent).toContain('Убывающая Луна')
+    expect(summary.textContent).toContain('22%')
+    expect(summary.textContent).toContain('26 лунный день')
   })
 
   it('renders locked state with Paywall', () => {

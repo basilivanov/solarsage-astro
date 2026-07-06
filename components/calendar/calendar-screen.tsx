@@ -25,16 +25,16 @@ import { ArrowRight, ChevronLeft, ChevronRight, Lock, Moon } from "lucide-react"
 
 import { MoodIcon } from "@/components/calendar/mood-icon"
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
-import { isDayAccessible, type AccessInfo } from "@/lib/access"
+import type { AccessInfo } from "@/lib/access"
 import { getMonthCalendar } from "@/lib/api/calendar"
-import { dateKey, monthDiff, monthMatrix, statusLabel } from "@/lib/calendar"
+import { monthDiff, statusLabel } from "@/lib/calendar"
 import type {
   BackendDayStatus,
   CalendarDayReadModel,
   CalendarPayloadReadModel,
   DayStatus,
 } from "@/lib/contracts/calendar"
-import { formatLong, MONTHS_RU_NOM, WEEKDAYS_SHORT } from "@/lib/date"
+import { formatLong, fromDateParam, MONTHS_RU_NOM, WEEKDAYS_SHORT } from "@/lib/date"
 import { TODAY, sameDay } from "@/lib/today"
 import { cn } from "@/lib/utils"
 
@@ -50,14 +50,13 @@ function normalizeStatus(status: BackendDayStatus | null | undefined): DayStatus
   return "even"
 }
 
-function accessAllowed(day: CalendarDayReadModel | undefined, date: Date, fallback: AccessInfo): boolean {
-  if (day?.disabled) return false
-  if (day?.access) return day.access.state === "full"
-  return isDayAccessible(date, fallback)
+function accessAllowed(day: CalendarDayReadModel | undefined): boolean {
+  if (!day || day.disabled) return false
+  return day.access?.state === "full"
 }
 
 function canOpen(day: CalendarDayReadModel | undefined): boolean {
-  return !day?.disabled
+  return Boolean(day) && day?.disabled !== true
 }
 
 function hasLunarData(day: CalendarDayReadModel | undefined): boolean {
@@ -87,6 +86,10 @@ function lunarAria(date: Date, day: CalendarDayReadModel | undefined): string {
   return parts.join(", ")
 }
 
+function parseCalendarDayDate(raw: string): Date | null {
+  return fromDateParam(raw)
+}
+
 function allowedBoundary(payload: CalendarPayloadReadModel | null, edge: "from" | "to"): Date | null {
   if (!payload) return null
   const value = payload.allowedRange[edge]
@@ -100,36 +103,41 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
   )
   const [selected, setSelected] = useState<Date>(TODAY)
   const [payload, setPayload] = useState<CalendarPayloadReadModel | null>(null)
+  const [payloadError, setPayloadError] = useState(false)
   const [view, setView] = useState<ViewMode>("day")
-
-  const cells = useMemo(
-    () => monthMatrix(cursor.getFullYear(), cursor.getMonth()),
-    [cursor],
-  )
 
   useEffect(() => {
     let alive = true
     getMonthCalendar(cursor.getFullYear(), cursor.getMonth())
       .then((next) => {
-        if (alive) setPayload(next)
+        if (alive) {
+          setPayload(next)
+          setPayloadError(false)
+        }
       })
       .catch(() => {
-        if (alive) setPayload(null)
+        if (alive) {
+          setPayload(null)
+          setPayloadError(true)
+        }
       })
     return () => {
       alive = false
     }
   }, [cursor])
 
-  const daysByDate = useMemo(() => {
-    const entries = (payload?.days ?? []).map((day) => [day.date, day] as const)
-    return new Map(entries)
-  }, [payload])
-
-  const selectedDay = daysByDate.get(dateKey(selected))
+  const days = payload?.days ?? []
+  const selectedDay = useMemo(
+    () => days.find((day) => {
+      const dayDate = parseCalendarDayDate(day.date)
+      return dayDate ? sameDay(dayDate, selected) : false
+    }),
+    [days, selected],
+  )
   const selectedStatus = normalizeStatus(selectedDay?.dayStatus)
-  const isSelectedAccessible = accessAllowed(selectedDay, selected, access)
+  const isSelectedAccessible = accessAllowed(selectedDay)
   const selectedCanOpen = canOpen(selectedDay)
+  const hasTerminalUnavailable = payloadError || days.length === 0
 
   const minMonth = allowedBoundary(payload, "from")
   const maxMonth = allowedBoundary(payload, "to")
@@ -149,6 +157,23 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
   function selectDay(date: Date, day: CalendarDayReadModel | undefined) {
     setSelected(date)
     if (canOpen(day)) onOpenDay?.(date)
+  }
+
+  function renderUnavailableState() {
+    return (
+      <section
+        className="px-5 py-6"
+        aria-label="Календарь недоступен"
+        data-testid="calendar-unavailable"
+      >
+        <div className="rounded-lg border border-border/60 bg-card/70 px-4 py-5 text-center">
+          <p className="text-sm font-medium text-foreground">Календарь недоступен</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Backend не вернул полные данные месяца. Открытие дней временно недоступно.
+          </p>
+        </div>
+      </section>
+    )
   }
 
   return (
@@ -228,190 +253,203 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
         ))}
       </div>
 
-      {view === "day" ? <LunarCalendarStrip days={payload?.days ?? []} /> : null}
+      {hasTerminalUnavailable ? (
+        renderUnavailableState()
+      ) : (
+        <>
+          {view === "day" ? <LunarCalendarStrip days={days} /> : null}
 
-      <ol
-        role="grid"
-        className="mt-2 grid flex-1 grid-cols-7 gap-y-1 px-3 pb-2"
-        data-testid="calendar-grid"
-      >
-        {cells.map(({ date, inMonth }) => {
-          const key = dateKey(date)
-          const day = daysByDate.get(key)
-          const isToday = day?.isToday ?? sameDay(date, TODAY)
-          const isSelected = sameDay(date, selected)
-          const accessible = accessAllowed(day, date, access)
-          const status = normalizeStatus(day?.dayStatus)
-          const disabled = !inMonth || day?.disabled === true
+          <ol
+            role="grid"
+            className="mt-2 grid flex-1 grid-cols-7 gap-y-1 px-3 pb-2"
+            data-testid="calendar-grid"
+          >
+            {days.map((day) => {
+              const date = parseCalendarDayDate(day.date)
+              if (!date) return null
+              const isToday = day.isToday || sameDay(date, TODAY)
+              const isSelected = sameDay(date, selected)
+              const accessible = accessAllowed(day)
+              const status = normalizeStatus(day.dayStatus)
+              const disabled = day.disabled === true
 
-          return (
-            <li key={key} className="flex items-center justify-center py-1">
+              return (
+                <li key={day.date} className="flex items-center justify-center py-1">
+                  <button
+                    type="button"
+                    onClick={() => selectDay(date, day)}
+                    disabled={disabled}
+                    aria-pressed={isSelected}
+                    aria-label={
+                      view === "moon"
+                        ? lunarAria(date, day)
+                        : `${formatLong(date)}, ${statusLabel(status)}${accessible ? "" : ", требуется подписка"}`
+                    }
+                    data-testid={`calendar-day-${day.date}`}
+                    className={cn(
+                      "relative flex h-11 w-11 flex-col items-center justify-center rounded-full transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                      !day.isCurrentMonth && "text-muted-foreground/35",
+                      day.isCurrentMonth && !isSelected && !isToday && "text-foreground/85 hover:bg-muted/60",
+                      isToday && !isSelected && "text-foreground ring-1 ring-border",
+                      isSelected && view === "day" && "bg-primary text-primary-foreground shadow-[0_1px_0_rgba(0,0,0,0.04)]",
+                      isSelected && view === "moon" && "bg-primary/10 text-foreground ring-2 ring-primary/50",
+                      day.isCurrentMonth && !accessible && !isSelected && "opacity-65",
+                      disabled && "cursor-not-allowed opacity-35",
+                    )}
+                  >
+                    {view === "moon" ? (
+                      <>
+                        <Moon
+                          aria-hidden
+                          className={cn(
+                            "h-4 w-4",
+                            hasLunarData(day) ? "text-primary" : "text-muted-foreground/35",
+                          )}
+                          strokeWidth={1.75}
+                        />
+                        <span
+                          className="mt-0.5 text-[9px] tabular-nums leading-none"
+                          data-testid={`calendar-moon-day-${day.date}`}
+                        >
+                          {day.lunar.lunarDay != null ? day.lunar.lunarDay : "—"}
+                        </span>
+                        {day.lunar.voidOfCourse === true ? (
+                          <span
+                            className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-500"
+                            aria-hidden
+                          />
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          className={cn(
+                            "font-serif leading-none",
+                            isSelected ? "text-[16px]" : "text-[15px]",
+                          )}
+                        >
+                          {day.dayNumber}
+                        </span>
+
+                        {day.isCurrentMonth && accessible && (
+                          <MoodIcon
+                            status={status}
+                            className={cn(
+                              "mt-0.5 h-3 w-3",
+                              isSelected
+                                ? "text-primary-foreground"
+                                : status === "tense"
+                                  ? "text-foreground/65"
+                                  : status === "supportive"
+                                    ? "text-primary"
+                                    : "text-foreground/40",
+                            )}
+                          />
+                        )}
+
+                        {day.isCurrentMonth && !accessible && !isSelected && (
+                          <Lock
+                            aria-hidden
+                            className="absolute right-1.5 top-1.5 h-[9px] w-[9px] text-muted-foreground/50"
+                            strokeWidth={1.75}
+                          />
+                        )}
+                      </>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+
+          <div
+            className="flex-none border-t border-border/60 bg-card/60 px-5 pt-4"
+            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                  {sameDay(selected, TODAY) ? "Сегодня" : "Выбранный день"}
+                </div>
+                <div className="mt-1 truncate font-serif text-[20px] leading-tight tracking-tight text-foreground">
+                  {formatLong(selected)}
+                </div>
+                {view === "moon" ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
+                    {hasLunarData(selectedDay) ? (
+                      <>
+                        {selectedDay?.lunar.phase ? <span>{selectedDay.lunar.phase}</span> : null}
+                        {selectedDay?.lunar.illumination != null ? (
+                          <span className="tabular-nums">{selectedDay.lunar.illumination}%</span>
+                        ) : null}
+                        {selectedDay?.lunar.lunarDay != null ? (
+                          <span>{selectedDay.lunar.lunarDay} лунный день</span>
+                        ) : null}
+                        {selectedDay?.lunar.voidOfCourse === true ? <span>Луна без курса</span> : null}
+                      </>
+                    ) : (
+                      <span>Лунные данные недоступны</span>
+                    )}
+                  </div>
+                ) : selectedDay ? (
+                  <div className="mt-1 flex items-center gap-2 text-[12px] text-muted-foreground">
+                    <MoodIcon
+                      status={selectedStatus}
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        selectedStatus === "tense"
+                          ? "text-foreground/70"
+                          : selectedStatus === "supportive"
+                            ? "text-primary"
+                            : "text-foreground/45",
+                      )}
+                    />
+                    <span>{statusLabel(selectedStatus)}</span>
+                    {!isSelectedAccessible ? (
+                      <span className="inline-flex items-center gap-1 text-muted-foreground/80">
+                        <span aria-hidden>·</span>
+                        <Lock className="h-3 w-3" strokeWidth={1.75} />
+                        <span>недоступен</span>
+                      </span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-1 text-[12px] text-muted-foreground">
+                    Данные дня недоступны
+                  </div>
+                )}
+              </div>
+
               <button
                 type="button"
-                onClick={() => selectDay(date, day)}
-                disabled={disabled}
-                aria-pressed={isSelected}
-                aria-label={
-                  view === "moon"
-                    ? lunarAria(date, day)
-                    : `${formatLong(date)}, ${statusLabel(status)}${accessible ? "" : ", требуется подписка"}`
-                }
-                data-testid={`calendar-day-${key}`}
+                disabled={!selectedCanOpen}
+                onClick={() => {
+                  if (selectedCanOpen) onOpenDay?.(selected)
+                }}
                 className={cn(
-                  "relative flex h-11 w-11 flex-col items-center justify-center rounded-full transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                  !inMonth && "text-muted-foreground/35",
-                  inMonth && !isSelected && !isToday && "text-foreground/85 hover:bg-muted/60",
-                  isToday && !isSelected && "text-foreground ring-1 ring-border",
-                  isSelected && view === "day" && "bg-primary text-primary-foreground shadow-[0_1px_0_rgba(0,0,0,0.04)]",
-                  isSelected && view === "moon" && "bg-primary/10 text-foreground ring-2 ring-primary/50",
-                  inMonth && !accessible && !isSelected && "opacity-65",
-                  disabled && "cursor-not-allowed opacity-35",
+                  "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                  isSelectedAccessible
+                    ? "border-foreground/85 bg-foreground text-background hover:bg-foreground/90"
+                    : "border-border/70 bg-card text-foreground",
                 )}
               >
-                {view === "moon" ? (
+                {isSelectedAccessible ? (
                   <>
-                    <Moon
-                      aria-hidden
-                      className={cn(
-                        "h-4 w-4",
-                        hasLunarData(day) ? "text-primary" : "text-muted-foreground/35",
-                      )}
-                      strokeWidth={1.75}
-                    />
-                    <span className="mt-0.5 text-[9px] tabular-nums leading-none">
-                      {day?.lunar.lunarDay ?? date.getDate()}
-                    </span>
-                    {day?.lunar.voidOfCourse === true ? (
-                      <span
-                        className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-500"
-                        aria-hidden
-                      />
-                    ) : null}
+                    <span>Открыть день</span>
+                    <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.8} />
                   </>
                 ) : (
                   <>
-                    <span
-                      className={cn(
-                        "font-serif leading-none",
-                        isSelected ? "text-[16px]" : "text-[15px]",
-                      )}
-                    >
-                      {day?.dayNumber ?? date.getDate()}
-                    </span>
-
-                    {inMonth && accessible && (
-                      <MoodIcon
-                        status={status}
-                        className={cn(
-                          "mt-0.5 h-3 w-3",
-                          isSelected
-                            ? "text-primary-foreground"
-                            : status === "tense"
-                              ? "text-foreground/65"
-                              : status === "supportive"
-                                ? "text-primary"
-                                : "text-foreground/40",
-                        )}
-                      />
-                    )}
-
-                    {inMonth && !accessible && !isSelected && (
-                      <Lock
-                        aria-hidden
-                        className="absolute right-1.5 top-1.5 h-[9px] w-[9px] text-muted-foreground/50"
-                        strokeWidth={1.75}
-                      />
-                    )}
+                    <Lock className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    <span>{selectedDay ? "Открыть превью" : "Недоступно"}</span>
                   </>
                 )}
               </button>
-            </li>
-          )
-        })}
-      </ol>
-
-      <div
-        className="flex-none border-t border-border/60 bg-card/60 px-5 pt-4"
-        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              {sameDay(selected, TODAY) ? "Сегодня" : "Выбранный день"}
             </div>
-            <div className="mt-1 truncate font-serif text-[20px] leading-tight tracking-tight text-foreground">
-              {formatLong(selected)}
-            </div>
-            {view === "moon" ? (
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
-                {hasLunarData(selectedDay) ? (
-                  <>
-                    {selectedDay?.lunar.phase ? <span>{selectedDay.lunar.phase}</span> : null}
-                    {selectedDay?.lunar.illumination != null ? (
-                      <span className="tabular-nums">{selectedDay.lunar.illumination}%</span>
-                    ) : null}
-                    {selectedDay?.lunar.lunarDay != null ? (
-                      <span>{selectedDay.lunar.lunarDay} лунный день</span>
-                    ) : null}
-                    {selectedDay?.lunar.voidOfCourse === true ? <span>Луна без курса</span> : null}
-                  </>
-                ) : (
-                  <span>Лунные данные недоступны</span>
-                )}
-              </div>
-            ) : (
-              <div className="mt-1 flex items-center gap-2 text-[12px] text-muted-foreground">
-                <MoodIcon
-                  status={selectedStatus}
-                  className={cn(
-                    "h-3.5 w-3.5",
-                    selectedStatus === "tense"
-                      ? "text-foreground/70"
-                      : selectedStatus === "supportive"
-                        ? "text-primary"
-                        : "text-foreground/45",
-                  )}
-                />
-                <span>{statusLabel(selectedStatus)}</span>
-                {!isSelectedAccessible ? (
-                  <span className="inline-flex items-center gap-1 text-muted-foreground/80">
-                    <span aria-hidden>·</span>
-                    <Lock className="h-3 w-3" strokeWidth={1.75} />
-                    <span>недоступен</span>
-                  </span>
-                ) : null}
-              </div>
-            )}
           </div>
-
-          <button
-            type="button"
-            disabled={!selectedCanOpen}
-            onClick={() => {
-              if (selectedCanOpen) onOpenDay?.(selected)
-            }}
-            className={cn(
-              "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-              isSelectedAccessible
-                ? "border-foreground/85 bg-foreground text-background hover:bg-foreground/90"
-                : "border-border/70 bg-card text-foreground",
-            )}
-          >
-            {isSelectedAccessible ? (
-              <>
-                <span>Открыть день</span>
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-              </>
-            ) : (
-              <>
-                <Lock className="h-3.5 w-3.5" strokeWidth={1.8} />
-                <span>Открыть превью</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   )
 }

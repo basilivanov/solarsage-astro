@@ -158,4 +158,53 @@ describe('CalendarScreen', () => {
 
     expect(screen.getByLabelText(/10 июля 2026, Полнолуние, 15 лунный день, Луна без курса/i)).toBeTruthy()
   })
+
+  it('does not synthesize missing month cells from local calendar math', async () => {
+    mockGetMonthCalendar.mockResolvedValue(calendarPayload({
+      days: [
+        day('2026-07-06'),
+        day('2026-07-10'),
+      ],
+    }))
+
+    render(<CalendarScreen access={fullAccess} />)
+
+    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
+    expect(screen.getByTestId('calendar-day-2026-07-06')).toBeTruthy()
+    expect(screen.getByTestId('calendar-day-2026-07-10')).toBeTruthy()
+    expect(screen.queryByTestId('calendar-day-2026-07-07')).toBeNull()
+  })
+
+  it('renders an explicit unavailable state when calendar payload fails', async () => {
+    mockGetMonthCalendar.mockRejectedValue(new Error('calendar backend failed'))
+
+    render(<CalendarScreen access={fullAccess} />)
+
+    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
+    expect(screen.getByTestId('calendar-unavailable').textContent).toContain('Календарь недоступен')
+    expect(screen.queryByTestId('calendar-grid')).toBeNull()
+  })
+
+  it('does not fall back to Gregorian date number when lunar day is absent', async () => {
+    mockGetMonthCalendar.mockResolvedValue(calendarPayload({
+      days: [
+        day('2026-07-06', {
+          lunar: {
+            phase: 'Растущая Луна',
+            illumination: 64,
+            moonSign: 'Libra',
+            lunarDay: null,
+            voidOfCourse: false,
+          },
+        }),
+      ],
+    }))
+
+    render(<CalendarScreen access={fullAccess} />)
+
+    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
+    fireEvent.click(screen.getByRole('button', { name: 'Луна' }))
+
+    expect(screen.getByTestId('calendar-moon-day-2026-07-06').textContent).toBe('—')
+  })
 })

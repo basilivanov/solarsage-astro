@@ -18,16 +18,6 @@ function hasLunarFacts(day: CalendarDayReadModel): boolean {
     || lunar.voidOfCourse != null
 }
 
-function phaseGlyph(phase: string | null | undefined): string {
-  const value = phase?.toLowerCase() ?? ""
-  if (value.includes("new") || value.includes("нов")) return "●"
-  if (value.includes("full") || value.includes("полн")) return "○"
-  if (value.includes("wan") || value.includes("убыв")) return "◐"
-  if (value.includes("wax") || value.includes("раст")) return "◑"
-  if (value.includes("quarter") || value.includes("четвер")) return "◒"
-  return "◌"
-}
-
 export function LunarCalendarStrip({ days }: Props) {
   const lunarDays = days.filter((day) => day.isCurrentMonth && hasLunarFacts(day))
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -85,7 +75,7 @@ export function LunarCalendarStrip({ days }: Props) {
                   ].filter(Boolean).join(", ")}
                 >
                   <span className="text-[9px] tabular-nums text-muted-foreground">{day.dayNumber}</span>
-                  <span className="text-xl leading-none text-foreground" aria-hidden>{phaseGlyph(lunar.phase)}</span>
+                  <Moon className="h-5 w-5 text-foreground" strokeWidth={1.75} aria-hidden />
                   <span className="max-w-full truncate text-[9px] leading-tight text-muted-foreground">
                     {lunar.phase ?? "Луна"}
                   </span>
@@ -107,7 +97,7 @@ export function LunarCalendarStrip({ days }: Props) {
         {selected ? (
           <div className="mt-3 rounded-md border border-border/50 bg-background/60 p-3">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              <span className="text-base leading-none" aria-hidden>{phaseGlyph(selected.lunar.phase)}</span>
+              <Moon className="h-4 w-4 text-foreground" strokeWidth={1.75} aria-hidden />
               {selected.lunar.phase ? <span className="font-medium text-foreground">{selected.lunar.phase}</span> : null}
               {typeof selected.lunar.illumination === "number" ? (
                 <span className="text-muted-foreground">{Math.round(selected.lunar.illumination)}%</span>

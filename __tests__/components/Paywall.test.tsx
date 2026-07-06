@@ -69,9 +69,16 @@ describe('Paywall', () => {
     expect(screen.getByText('Custom paywall title')).toBeTruthy()
   })
 
-  it('renders subscribe button', () => {
+  it('renders disabled subscribe button copy', () => {
     render(<Paywall />)
-    expect(screen.getByText('Оформить подписку')).toBeTruthy()
+    expect(screen.getByText('Подписка скоро появится')).toBeTruthy()
+  })
+
+  it('keeps subscribe CTA disabled until real payment fulfillment exists', () => {
+    render(<Paywall />)
+    expect(
+      (screen.getByRole('button', { name: 'Подписка скоро появится' }) as HTMLButtonElement).disabled,
+    ).toBe(true)
   })
 
   it('renders invite button', () => {

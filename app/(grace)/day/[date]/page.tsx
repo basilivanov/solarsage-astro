@@ -31,6 +31,8 @@ import { useOnboarded } from '@/hooks/use-onboarded';
 import { fromDateParam, toDateParam } from '@/lib/date';
 import { TODAY } from '@/lib/today';
 import { adaptTodayPayload } from '@/lib/adapters/today-payload';
+import { getMonthCalendar } from '@/lib/api/calendar';
+import type { CalendarLunarFields } from '@/packages/contracts';
 
 export default function DayPage() {
   const params = useParams();
@@ -47,6 +49,7 @@ export default function DayPage() {
   }, [dateStr, router]);
 
   const { data, loading, error } = useDay(dateStr);
+  const [calendarLunar, setCalendarLunar] = useState<CalendarLunarFields | null>(null);
 
   // Cosmic loader state: show while loading, dismiss with delay when done
   const [showLoader, setShowLoader] = useState(true);
@@ -70,6 +73,33 @@ export default function DayPage() {
       setOnboarded(true);
     }
   }, [data, setOnboarded]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCalendarLunar() {
+      try {
+        const payload = await getMonthCalendar(
+          selectedDate.getFullYear(),
+          selectedDate.getMonth(),
+        );
+        const day = payload.days.find((item) => item.date === toDateParam(selectedDate));
+        if (!cancelled) {
+          setCalendarLunar(day?.lunar ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setCalendarLunar(null);
+        }
+      }
+    }
+
+    loadCalendarLunar();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
 
   const onDateChange = useCallback(
     (d: Date) => router.push(`/day/${toDateParam(d)}`),
@@ -97,6 +127,7 @@ export default function DayPage() {
       selectedDate={selectedDate}
       access={access}
       payload={payload}
+      calendarLunar={calendarLunar}
       onDateChange={onDateChange}
       importantToday={data.importantToday || []}
     />

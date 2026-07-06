@@ -149,3 +149,104 @@ rm /opt/solarsage-astro-real-data-preview/.env.production
 
 - Commit message: `feat: port day and calendar UI to real data`
 - Commit SHA: recorded in git history for this branch (`git rev-parse HEAD` after the final amend)
+
+## Review Fixes
+
+### Scope
+
+Addressed every review finding from the follow-up pass:
+
+- wired real lunar facts into `TodayScreen` and sourced them from the existing real calendar read model for the selected date when `TodayPayload` does not carry lunar fields
+- removed synthetic calendar month fallback rendering and fallback access/openability derived from local date math
+- removed Gregorian fallback for missing lunar day values
+- stopped `LunarCalendarStrip` from inferring moon glyphs by parsing display text
+- hardened Playwright smokes so auth-loading alone cannot satisfy the assertions
+- disabled the paywall subscription CTA until real payment fulfillment exists, while keeping referral sharing intact
+
+### RED evidence before implementation
+
+I first extended the focused tests to encode the reported regressions, then ran the relevant subset and confirmed failures against the pre-fix code:
+
+```bash
+pnpm exec vitest run __tests__/components/TodayScreen.test.tsx __tests__/components/CalendarScreen.test.tsx __tests__/app/day-page.test.tsx __tests__/components/Paywall.test.tsx
+```
+
+Observed failures covered the intended review items:
+
+- `TodayScreen` did not surface backend lunar facts in the day summary
+- `CalendarScreen` still synthesized missing month cells / fallback states and fell back to Gregorian day numbers in moon mode
+- day page did not fetch and forward calendar lunar data for the selected date
+- paywall subscription CTA remained enabled without fulfillment
+
+### Fix verification
+
+Required review verification:
+
+```bash
+pnpm exec vitest run __tests__/components/TodayScreen.test.tsx __tests__/components/CalendarScreen.test.tsx __tests__/lib/adapt-payload.test.ts __tests__/api/calendar.test.ts
+pnpm exec tsc --noEmit
+```
+
+Results:
+
+- Vitest: 52/52 tests passed across the required 4 files
+- TypeScript: `tsc --noEmit` exited 0
+
+Additional focused verification for the new day-page lunar wiring and paywall safeguard:
+
+```bash
+pnpm exec vitest run __tests__/app/day-page.test.tsx __tests__/components/Paywall.test.tsx
+```
+
+Results:
+
+- Vitest: 11/11 tests passed
+- Note: `Paywall.test.tsx` logs React `act(...)` warnings from existing hook side effects, but the suite passes and assertions are deterministic
+
+### Playwright smoke verification
+
+Used a free local preview port and the existing real Telegram initData flow. I did not touch the production frontend on `3002`.
+
+Temporary setup:
+
+```bash
+ln -s /opt/solarsage-astro/.env.production /opt/solarsage-astro-real-data-preview/.env.production
+pnpm exec next dev -p 3003
+```
+
+Initial strict smoke against `127.0.0.1` exposed an auth-origin issue and did not leave auth-loading, so I kept the test hardening and re-ran against the working localhost origin instead of weakening assertions:
+
+```bash
+E2E_BASE_URL=http://127.0.0.1:3003 pnpm exec playwright test e2e/today.spec.ts e2e/calendar.spec.ts --project=chromium
+E2E_BASE_URL=http://localhost:3003 pnpm exec playwright test e2e/today.spec.ts e2e/calendar.spec.ts --project=chromium
+```
+
+Results:
+
+- `127.0.0.1`: strict smokes failed because auth never progressed beyond the loading state for that origin
+- `localhost`: 5/5 Playwright tests passed
+
+The hardened specs now require either the target Today/Calendar UI or a meaningful terminal error surface after auth completion; they no longer pass on `[data-testid="auth-loading"]`, and they no longer use optional `if (count)` assertions.
+
+### Cleanup after local preview
+
+Stopped the local preview process and removed the temporary environment artifact:
+
+```bash
+rm -f /opt/solarsage-astro-real-data-preview/.env.production
+ss -ltnp | rg ':3003\b' || true
+test -e /opt/solarsage-astro-real-data-preview/.env.production && echo present || echo absent
+```
+
+Results:
+
+- no listener remained on `:3003`
+- temporary `.env.production` symlink was absent after cleanup
+
+### Self-review
+
+- Confirmed `TodayScreen` receives actual lunar fields instead of defaulting the summary to unavailable
+- Confirmed `CalendarScreen` renders only backend-provided day records and treats missing payload/day records as unavailable/non-openable
+- Confirmed moon-mode cells render empty/unavailable when lunar day is absent instead of falling back to Gregorian day numbers
+- Confirmed no frontend astrology calculations or mock fallbacks were introduced
+- Confirmed the subscription/payment CTA is explicitly disabled pending real fulfillment
