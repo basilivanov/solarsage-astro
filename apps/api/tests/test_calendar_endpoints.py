@@ -49,6 +49,9 @@
 
 from __future__ import annotations
 
+import json
+from datetime import date as Date
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,7 +63,7 @@ async def _onboard_user(
     db_session: AsyncSession,
     make_initdata,
     user_id: int
-) -> None:
+):
     """Login and create onboarded profile."""
     from app.db.models import User, UserProfile
     from sqlalchemy import select, update
@@ -94,6 +97,8 @@ async def _onboard_user(
         stmt = update(UserProfile).where(UserProfile.user_id == user.id).values(is_onboarded=True)
         await db_session.execute(stmt)
         await db_session.commit()
+
+    return user
 
 
 # START_BLOCK: AUTH_REQUIRED
@@ -224,9 +229,36 @@ async def test_calendar_structure(
     db_session: AsyncSession,
     make_initdata,
 ) -> None:
-    """Verify CalendarDay structure and neutral status rotation."""
+    """Calendar days preserve real access, scored status, and nullable lunar fields."""
     # Login + onboard
-    await _onboard_user(async_client, db_session, make_initdata, user_id=7781)
+    user = await _onboard_user(async_client, db_session, make_initdata, user_id=7781)
+
+    from app.db.models import SemanticLayerCache
+    from app.services.access_service import AccessService
+
+    await AccessService(db_session).grant_subscription(
+        user.id,
+        start_date=Date(2026, 5, 1),
+        days=1,
+    )
+
+    for month in (4, 5, 6):
+        from calendar import monthrange
+
+        for day_number in range(1, monthrange(2026, month)[1] + 1):
+            target_date = Date(2026, month, day_number)
+            day_status = "supportive" if target_date == Date(2026, 5, 1) else "steady"
+            db_session.add(SemanticLayerCache(
+                user_id=user.id,
+                target_date=target_date,
+                semantic_json=json.dumps({
+                    "day_status": day_status,
+                    "day_theme": "Test",
+                    "sphere_themes": [],
+                    "top_keywords": [],
+                }),
+            ))
+    await db_session.commit()
 
     # Get calendar
     r = await async_client.get("/api/calendar?month=2026-05")
@@ -234,7 +266,7 @@ async def test_calendar_structure(
 
     payload = r.json()
 
-    # Verify each day has required fields
+    # Verify each day has required real read-model fields.
     for day in payload["days"]:
         assert "date" in day
         assert "dayNumber" in day
@@ -247,15 +279,21 @@ async def test_calendar_structure(
         # Verify status is one of the allowed values
         assert day["dayStatus"] in ["supportive", "steady", "tense"]
 
-        # Verify access structure (W-1.4 stub)
-        assert day["access"]["state"] == "full"
-        assert day["access"]["reason"] == "active_referral_days"
-        assert day["access"]["referralDaysLeft"] == 14
-        assert day["access"]["subscriptionActive"] is False
+        assert day["lunar"] == {
+            "phase": None,
+            "illumination": None,
+            "moonSign": None,
+            "lunarDay": None,
+            "voidOfCourse": None,
+        }
 
-    # Verify we have all 3 statuses in the rotation
-    statuses = {day["dayStatus"] for day in payload["days"]}
-    assert "supportive" in statuses
-    assert "steady" in statuses
-    assert "tense" in statuses
+    may_first = next(day for day in payload["days"] if day["date"] == "2026-05-01")
+    assert may_first["dayStatus"] == "supportive"
+    assert may_first["access"]["state"] == "full"
+    assert may_first["access"]["reason"] == "active_subscription"
+    assert may_first["access"]["subscriptionActive"] is True
+
+    may_second = next(day for day in payload["days"] if day["date"] == "2026-05-02")
+    assert may_second["access"]["state"] == "preview"
+    assert may_second["access"]["reason"] == "expired_access"
 # END_BLOCK: STRUCTURE_VALIDATION

@@ -20,7 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getDayStatus, getMonthStatuses } from '../../lib/api/calendar'
+import { getDayStatus, getMonthCalendar, getMonthStatuses } from '../../lib/api/calendar'
 
 describe('getDayStatus', () => {
   beforeEach(() => {
@@ -115,5 +115,55 @@ describe('getMonthStatuses', () => {
     })
 
     await expect(getMonthStatuses(2025, 5)).rejects.toThrow('API error 404')
+  })
+})
+
+describe('getMonthCalendar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('preserves typed per-day access and lunar read models', async () => {
+    const payload = {
+      meta: {
+        schemaVersion: 'calendar/v1',
+        contractVersion: 1,
+        generatedAt: '2026-05-01T00:00:00Z',
+      },
+      month: '2026-05',
+      title: 'May 2026',
+      allowedRange: { from: '2024-01-01', to: '2028-12-31' },
+      days: [{
+        date: '2026-05-01',
+        dayNumber: 1,
+        isCurrentMonth: true,
+        isToday: false,
+        disabled: false,
+        dayStatus: 'supportive',
+        access: {
+          state: 'full',
+          reason: 'active_subscription',
+          referralDaysLeft: null,
+          subscriptionActive: true,
+          accessUntil: '2026-05-01',
+        },
+        lunar: {
+          phase: null,
+          illumination: null,
+          moonSign: null,
+          lunarDay: null,
+          voidOfCourse: null,
+        },
+      }],
+    }
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => payload,
+    })
+
+    const result = await getMonthCalendar(2026, 4)
+    expect(result.days[0].access?.state).toBe('full')
+    expect(result.days[0].lunar?.phase).toBeNull()
+    expect(result.days[0].dayStatus).toBe('supportive')
   })
 })

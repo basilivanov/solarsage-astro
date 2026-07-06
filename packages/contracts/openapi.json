@@ -317,6 +317,9 @@
           "isToday": {
             "title": "Istoday",
             "type": "boolean"
+          },
+          "lunar": {
+            "$ref": "#/components/schemas/CalendarLunarFields"
           }
         },
         "required": [
@@ -327,6 +330,68 @@
           "disabled"
         ],
         "title": "CalendarDay",
+        "type": "object"
+      },
+      "CalendarLunarFields": {
+        "additionalProperties": false,
+        "properties": {
+          "illumination": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illumination"
+          },
+          "lunarDay": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lunarday"
+          },
+          "moonSign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moonsign"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "voidOfCourse": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voidofcourse"
+          }
+        },
+        "title": "CalendarLunarFields",
         "type": "object"
       },
       "CalendarMeta": {
@@ -456,6 +521,200 @@
           "state"
         ],
         "title": "ContentAccessState",
+        "type": "object"
+      },
+      "DayChart": {
+        "additionalProperties": false,
+        "properties": {
+          "aspects": {
+            "items": {
+              "$ref": "#/components/schemas/DayChartAspect"
+            },
+            "title": "Aspects",
+            "type": "array"
+          },
+          "houses": {
+            "items": {
+              "$ref": "#/components/schemas/DayChartHouse"
+            },
+            "title": "Houses",
+            "type": "array"
+          },
+          "source": {
+            "const": "solarsage",
+            "title": "Source",
+            "type": "string"
+          },
+          "transitPlanets": {
+            "items": {
+              "$ref": "#/components/schemas/DayChartTransitPlanet"
+            },
+            "title": "Transitplanets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "source",
+          "houses",
+          "transitPlanets",
+          "aspects"
+        ],
+        "title": "DayChart",
+        "type": "object"
+      },
+      "DayChartAspect": {
+        "additionalProperties": false,
+        "properties": {
+          "aspectType": {
+            "title": "Aspecttype",
+            "type": "string"
+          },
+          "orb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orb"
+          },
+          "planet": {
+            "title": "Planet",
+            "type": "string"
+          },
+          "strength": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength"
+          },
+          "targetPlanet": {
+            "title": "Targetplanet",
+            "type": "string"
+          }
+        },
+        "required": [
+          "planet",
+          "targetPlanet",
+          "aspectType"
+        ],
+        "title": "DayChartAspect",
+        "type": "object"
+      },
+      "DayChartHouse": {
+        "additionalProperties": false,
+        "properties": {
+          "cuspLongitude": {
+            "title": "Cusplongitude",
+            "type": "number"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign"
+          }
+        },
+        "required": [
+          "number",
+          "cuspLongitude"
+        ],
+        "title": "DayChartHouse",
+        "type": "object"
+      },
+      "DayChartTransitPlanet": {
+        "additionalProperties": false,
+        "properties": {
+          "house": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "motion": {
+            "anyOf": [
+              {
+                "enum": [
+                  "direct",
+                  "retrograde",
+                  "stationary"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motion"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "retrograde": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrograde"
+          },
+          "sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign"
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed"
+          }
+        },
+        "required": [
+          "name",
+          "longitude"
+        ],
+        "title": "DayChartTransitPlanet",
         "type": "object"
       },
       "DayQuality": {
@@ -1391,6 +1650,30 @@
         "title": "PersonBirth",
         "type": "object"
       },
+      "PlanetInfluence": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "score",
+          "rank"
+        ],
+        "title": "PlanetInfluence",
+        "type": "object"
+      },
       "ProfileRead": {
         "additionalProperties": false,
         "description": "Response shape for GET /api/profile. Privacy: NO tg_user_id, NO tokens.",
@@ -1554,6 +1837,30 @@
           "paragraphs"
         ],
         "title": "ReadingBody",
+        "type": "object"
+      },
+      "SphereScore": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "score",
+          "rank"
+        ],
+        "title": "SphereScore",
         "type": "object"
       },
       "TelegramAuthRequest": {
@@ -1968,6 +2275,16 @@
             "title": "Date",
             "type": "string"
           },
+          "dayChart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayChart"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "dayQuality": {
             "anyOf": [
               {
@@ -2044,8 +2361,36 @@
               }
             ]
           },
+          "planetInfluences": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PlanetInfluence"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planetinfluences"
+          },
           "reading": {
             "$ref": "#/components/schemas/ReadingBody"
+          },
+          "sphereScores": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SphereScore"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spherescores"
           },
           "subtitle": {
             "anyOf": [

@@ -162,6 +162,50 @@ class ReadingBody(CamelModel):
     paragraphs: list[str]
 # END_BLOCK: TODAY_AUX
 
+
+class DayChartHouse(CamelModel):
+    number: int
+    cusp_longitude: float
+    sign: str | None = None
+
+
+class DayChartTransitPlanet(CamelModel):
+    name: str
+    longitude: float
+    sign: str | None = None
+    retrograde: bool | None = None
+    speed: float | None = None
+    motion: Literal["direct", "retrograde", "stationary"] | None = None
+    house: int | None = None
+
+
+class DayChartAspect(CamelModel):
+    planet: str
+    target_planet: str
+    aspect_type: str
+    orb: float | None = None
+    strength: float | None = None
+
+
+class DayChart(CamelModel):
+    source: Literal["solarsage"]
+    houses: list[DayChartHouse]
+    transit_planets: list[DayChartTransitPlanet]
+    aspects: list[DayChartAspect]
+
+
+class PlanetInfluence(CamelModel):
+    name: str
+    score: float
+    rank: int
+
+
+class SphereScore(CamelModel):
+    key: str
+    score: float
+    rank: int
+# END_BLOCK: TODAY_READ_MODELS
+
 # START_BLOCK: CONVERGENCE_EVIDENCE
 # AI_HEADER
 # wave: W-4.0
@@ -275,6 +319,9 @@ class TodayPayload(CamelModel):
     microcopy: list[MicrocopyItem]
     yesterday_echo: YesterdayEcho | None = None
     actions: list[TodayAction] | None = None
+    day_chart: DayChart | None = None
+    planet_influences: list[PlanetInfluence] | None = None
+    sphere_scores: list[SphereScore] | None = None
 
     # W-4.0: convergence evidence
     activation_evidence: list[ActivationEvidence] | None = None

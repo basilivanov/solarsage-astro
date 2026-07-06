@@ -51,6 +51,14 @@ export type ContentAccessState = components["schemas"]["ContentAccessState"];
 export type TopFlag = components["schemas"]["TopFlag"];
 export type WeekStripDay = components["schemas"]["WeekStripDay"];
 export type TodayImportantEvent = components["schemas"]["TodayImportantEvent"];
+export type DayChart = components["schemas"]["DayChart"];
+export type DayChartHouse = components["schemas"]["DayChartHouse"];
+export type DayChartTransitPlanet = components["schemas"]["DayChartTransitPlanet"];
+export type DayChartAspect = components["schemas"]["DayChartAspect"];
+export type PlanetInfluence = components["schemas"]["PlanetInfluence"];
+export type SphereScore = components["schemas"]["SphereScore"];
+export type CalendarDay = components["schemas"]["CalendarDay"];
+export type CalendarLunarFields = components["schemas"]["CalendarLunarFields"];
 
 // W-1.2: auth + profile surface.
 export type TelegramAuthRequest = components["schemas"]["TelegramAuthRequest"];

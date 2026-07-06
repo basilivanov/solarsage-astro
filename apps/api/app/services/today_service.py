@@ -62,9 +62,20 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.access import ContentAccessState
-from app.schemas.today import TodayPayload, TodayMeta, TopFlag
+from app.schemas.today import (
+    DayChart,
+    DayChartAspect,
+    DayChartHouse,
+    DayChartTransitPlanet,
+    PlanetInfluence,
+    SphereScore,
+    TodayMeta,
+    TodayPayload,
+    TopFlag,
+)
 from app.clients.solarsage_client import get_solarsage_client
 from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
+from app.services.astro_utils import find_house, strip_prefix
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
 from app.services.llm_service import LLMService
@@ -287,6 +298,9 @@ class TodayService:
             scoring_result=scoring_result,
             semantic_layer=semantic_layer,
         )
+        day_chart = self._build_day_chart(natal_context_dict, transits, signals)
+        planet_influences = self._build_planet_influences(signals)
+        sphere_scores = self._build_sphere_scores(scoring_result["sphere_scores"])
 
         payload = TodayPayload(
             meta=TodayMeta(
@@ -323,6 +337,9 @@ class TodayService:
             yesterday_echo=None,
             important_today=important_items,
             actions=None,
+            day_chart=day_chart,
+            planet_influences=planet_influences,
+            sphere_scores=sphere_scores,
         )
 
         # W-5.2: Cache payload (with profile_hash in key)
@@ -333,6 +350,100 @@ class TodayService:
             asyncio.ensure_future(self._prefetch_week(user_id, target_date))
 
         return payload
+
+    @staticmethod
+    def _build_day_chart(
+        natal_context: dict,
+        transits: dict,
+        signals: list,
+    ) -> DayChart | None:
+        houses_raw = natal_context.get("houses") or []
+        transit_planets_raw = transits.get("planets") or []
+        if not houses_raw and not transit_planets_raw:
+            return None
+
+        houses = [
+            DayChartHouse(
+                number=int(house["number"]),
+                cusp_longitude=round(
+                    float(house.get("longitude", house.get("cusp", 0.0))),
+                    4,
+                ),
+                sign=house.get("sign"),
+            )
+            for house in houses_raw
+            if house.get("number") is not None
+        ]
+
+        transit_planets = []
+        for planet in transit_planets_raw:
+            longitude = float(planet["longitude"])
+            speed = planet.get("speed")
+            retrograde = planet.get("retrograde")
+            motion = None
+            if speed is not None and abs(float(speed)) < 0.01:
+                motion = "stationary"
+            elif retrograde is True or (speed is not None and float(speed) < 0):
+                motion = "retrograde"
+            elif speed is not None or retrograde is False:
+                motion = "direct"
+
+            transit_planets.append(DayChartTransitPlanet(
+                name=strip_prefix(planet.get("name")),
+                longitude=round(longitude, 4),
+                sign=planet.get("sign"),
+                retrograde=retrograde,
+                speed=float(speed) if speed is not None else None,
+                motion=motion,
+                house=planet.get("house") or find_house(longitude, houses_raw),
+            ))
+
+        aspects = [
+            DayChartAspect(
+                planet=strip_prefix(signal.planet),
+                target_planet=strip_prefix(signal.target_planet),
+                aspect_type=signal.aspect_type or "",
+                orb=round(signal.orb, 4) if signal.orb is not None else None,
+                strength=round(signal.strength, 4),
+            )
+            for signal in signals
+            if signal.type == "aspect"
+            and signal.aspect_type
+            and signal.target_planet
+            and (signal.planet or "").startswith("Transit_")
+        ]
+
+        return DayChart(
+            source="solarsage",
+            houses=houses,
+            transit_planets=transit_planets,
+            aspects=aspects,
+        )
+
+    @staticmethod
+    def _build_planet_influences(signals: list) -> list[PlanetInfluence]:
+        scores: dict[str, float] = {}
+        for signal in signals:
+            planet = strip_prefix(signal.planet)
+            if planet:
+                scores[planet] = scores.get(planet, 0.0) + float(signal.strength)
+            target = strip_prefix(signal.target_planet)
+            if target:
+                scores[target] = scores.get(target, 0.0) + float(signal.strength) * 0.5
+
+        ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+        return [
+            PlanetInfluence(name=name, score=round(score, 4), rank=index)
+            for index, (name, score) in enumerate(ranked, start=1)
+        ]
+
+    @staticmethod
+    def _build_sphere_scores(scores: dict[str, float]) -> list[SphereScore]:
+        ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+        return [
+            SphereScore(key=key, score=round(float(score), 4), rank=index)
+            for index, (key, score) in enumerate(ranked, start=1)
+        ]
 
     async def _get_cached_payload(self, user_id, target_date: Date, profile_hash: str) -> TodayPayload | None:
         """Get cached payload if exists. W-5.2.

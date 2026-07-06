@@ -57,6 +57,28 @@ function createBaseApi(
     weekStrip: [],
     microcopy: [],
     importantToday: [],
+    dayChart: {
+      source: 'solarsage',
+      houses: [{ number: 1, cuspLongitude: 0, sign: 'Aries' }],
+      transitPlanets: [{
+        name: 'Moon',
+        longitude: 35,
+        sign: 'Taurus',
+        retrograde: false,
+        speed: 12.5,
+        motion: 'direct',
+        house: 2,
+      }],
+      aspects: [{
+        planet: 'Moon',
+        targetPlanet: 'Sun',
+        aspectType: 'square',
+        orb: 1.2,
+        strength: 0.8,
+      }],
+    },
+    planetInfluences: [{ name: 'Moon', score: 1.25, rank: 1 }],
+    sphereScores: [{ key: 'relationships', score: 2.5, rank: 1 }],
   };
   return { ...base, ...overrides };
 }
@@ -180,6 +202,26 @@ describe('adaptTodayPayload', () => {
     expect(payload.topFlags).toHaveLength(1);
     expect(payload.topFlags[0].title).toBe('Mars square Saturn');
     expect(payload.topFlags[0].summary).toBe('Conflict energy');
+  });
+
+  it('preserves backend day chart and influence read models', () => {
+    const api = createBaseApi();
+    const { payload } = adaptTodayPayload(api, TODAY);
+
+    expect(payload.dayChart?.source).toBe('solarsage');
+    expect(payload.dayChart?.houses[0].cuspLongitude).toBe(0);
+    expect(payload.dayChart?.transitPlanets[0]).toMatchObject({
+      name: 'Moon',
+      motion: 'direct',
+      house: 2,
+    });
+    expect(payload.dayChart?.aspects[0]).toMatchObject({
+      planet: 'Moon',
+      targetPlanet: 'Sun',
+      aspectType: 'square',
+    });
+    expect(payload.planetInfluences).toEqual([{ name: 'Moon', score: 1.25, rank: 1 }]);
+    expect(payload.sphereScores).toEqual([{ key: 'relationships', score: 2.5, rank: 1 }]);
   });
 
   it('topFlags defaults to empty array when undefined', () => {

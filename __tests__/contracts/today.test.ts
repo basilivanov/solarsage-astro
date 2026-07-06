@@ -55,6 +55,28 @@ const validTodayPayload = {
     },
   ],
   keyInsight: 'Today is a day of transformation.',
+  dayChart: {
+    source: 'solarsage' as const,
+    houses: [{ number: 1, cuspLongitude: 0, sign: 'Aries' }],
+    transitPlanets: [{
+      name: 'Moon',
+      longitude: 35,
+      sign: 'Taurus',
+      retrograde: false,
+      speed: 12.5,
+      motion: 'direct' as const,
+      house: 2,
+    }],
+    aspects: [{
+      planet: 'Moon',
+      targetPlanet: 'Sun',
+      aspectType: 'square',
+      orb: 1.2,
+      strength: 0.8,
+    }],
+  },
+  planetInfluences: [{ name: 'Moon', score: 1.25, rank: 1 }],
+  sphereScores: [{ key: 'relationships', score: 2.5, rank: 1 }],
 }
 
 describe('validateAdaptedTodayPayload', () => {
@@ -185,6 +207,22 @@ describe('validateAdaptedTodayPayload', () => {
     const data = {
       ...validTodayPayload,
       why: [{ ...validTodayPayload.why[0], id: '' }],
+    }
+    expect(() => validateAdaptedTodayPayload(data)).toThrow()
+  })
+
+  it('validates backend day chart and influence read models', () => {
+    const result = validateAdaptedTodayPayload(validTodayPayload)
+    expect(result.dayChart?.source).toBe('solarsage')
+    expect(result.dayChart?.transitPlanets[0].motion).toBe('direct')
+    expect(result.planetInfluences[0].name).toBe('Moon')
+    expect(result.sphereScores[0].key).toBe('relationships')
+  })
+
+  it('rejects invalid day chart source', () => {
+    const data = {
+      ...validTodayPayload,
+      dayChart: { ...validTodayPayload.dayChart, source: 'mock' },
     }
     expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })

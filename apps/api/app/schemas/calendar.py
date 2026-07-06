@@ -27,8 +27,18 @@ from __future__ import annotations
 
 from typing import Literal
 
+from pydantic import Field
+
 from ._base import CamelModel
 from .today import ContentAccessState, DayStatus
+
+
+class CalendarLunarFields(CamelModel):
+    phase: str | None = None
+    illumination: float | None = None
+    moon_sign: str | None = None
+    lunar_day: int | None = None
+    void_of_course: bool | None = None
 
 
 class CalendarDay(CamelModel):
@@ -39,6 +49,7 @@ class CalendarDay(CamelModel):
     disabled: bool
     day_status: DayStatus | None = None
     access: ContentAccessState | None = None
+    lunar: CalendarLunarFields = Field(default_factory=CalendarLunarFields)
 
 
 class CalendarMeta(CamelModel):

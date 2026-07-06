@@ -59,12 +59,16 @@ def find_house(longitude: float, houses: list[dict[str, Any]]) -> int | None:
     if not houses:
         return None
 
-    sorted_houses = sorted(houses, key=lambda h: float(h.get("cusp", 0)))
+    def _house_cusp(house: dict[str, Any]) -> float:
+        raw = house.get("cusp", house.get("longitude", 0))
+        return float(raw or 0)
+
+    sorted_houses = sorted(houses, key=_house_cusp)
 
     for i, h in enumerate(sorted_houses):
         next_h = sorted_houses[(i + 1) % len(sorted_houses)]
-        cusp = float(h.get("cusp", 0))
-        next_cusp = float(next_h.get("cusp", 0))
+        cusp = _house_cusp(h)
+        next_cusp = _house_cusp(next_h)
 
         if next_cusp > cusp:
             if cusp <= longitude < next_cusp:

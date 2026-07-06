@@ -598,6 +598,20 @@ export interface components {
             isCurrentMonth: boolean;
             /** Istoday */
             isToday: boolean;
+            lunar?: components["schemas"]["CalendarLunarFields"];
+        };
+        /** CalendarLunarFields */
+        CalendarLunarFields: {
+            /** Illumination */
+            illumination?: number | null;
+            /** Lunarday */
+            lunarDay?: number | null;
+            /** Moonsign */
+            moonSign?: string | null;
+            /** Phase */
+            phase?: string | null;
+            /** Voidofcourse */
+            voidOfCourse?: boolean | null;
         };
         /** CalendarMeta */
         CalendarMeta: {
@@ -637,6 +651,59 @@ export interface components {
             state: "full" | "preview" | "locked";
             /** Subscriptionactive */
             subscriptionActive?: boolean | null;
+        };
+        /** DayChart */
+        DayChart: {
+            /** Aspects */
+            aspects: components["schemas"]["DayChartAspect"][];
+            /** Houses */
+            houses: components["schemas"]["DayChartHouse"][];
+            /**
+             * Source
+             * @constant
+             */
+            source: "solarsage";
+            /** Transitplanets */
+            transitPlanets: components["schemas"]["DayChartTransitPlanet"][];
+        };
+        /** DayChartAspect */
+        DayChartAspect: {
+            /** Aspecttype */
+            aspectType: string;
+            /** Orb */
+            orb?: number | null;
+            /** Planet */
+            planet: string;
+            /** Strength */
+            strength?: number | null;
+            /** Targetplanet */
+            targetPlanet: string;
+        };
+        /** DayChartHouse */
+        DayChartHouse: {
+            /** Cusplongitude */
+            cuspLongitude: number;
+            /** Number */
+            number: number;
+            /** Sign */
+            sign?: string | null;
+        };
+        /** DayChartTransitPlanet */
+        DayChartTransitPlanet: {
+            /** House */
+            house?: number | null;
+            /** Longitude */
+            longitude: number;
+            /** Motion */
+            motion?: ("direct" | "retrograde" | "stationary") | null;
+            /** Name */
+            name: string;
+            /** Retrograde */
+            retrograde?: boolean | null;
+            /** Sign */
+            sign?: string | null;
+            /** Speed */
+            speed?: number | null;
         };
         /** DayQuality */
         DayQuality: {
@@ -883,6 +950,15 @@ export interface components {
             /** Time */
             time?: string | null;
         };
+        /** PlanetInfluence */
+        PlanetInfluence: {
+            /** Name */
+            name: string;
+            /** Rank */
+            rank: number;
+            /** Score */
+            score: number;
+        };
         /**
          * ProfileRead
          * @description Response shape for GET /api/profile. Privacy: NO tg_user_id, NO tokens.
@@ -934,6 +1010,15 @@ export interface components {
         ReadingBody: {
             /** Paragraphs */
             paragraphs: string[];
+        };
+        /** SphereScore */
+        SphereScore: {
+            /** Key */
+            key: string;
+            /** Rank */
+            rank: number;
+            /** Score */
+            score: number;
         };
         /**
          * TelegramAuthRequest
@@ -1093,6 +1178,7 @@ export interface components {
             activationEvidence?: components["schemas"]["ActivationEvidence"][] | null;
             /** Date */
             date: string;
+            dayChart?: components["schemas"]["DayChart"] | null;
             dayQuality?: components["schemas"]["DayQuality"] | null;
             /**
              * Daystatus
@@ -1114,7 +1200,11 @@ export interface components {
             /** Notes */
             notes?: string | null;
             periodContext?: components["schemas"]["PeriodContext"] | null;
+            /** Planetinfluences */
+            planetInfluences?: components["schemas"]["PlanetInfluence"][] | null;
             reading: components["schemas"]["ReadingBody"];
+            /** Spherescores */
+            sphereScores?: components["schemas"]["SphereScore"][] | null;
             /** Subtitle */
             subtitle?: string | null;
             /** Title */

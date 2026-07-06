@@ -85,6 +85,49 @@ export const TodayReadingSchema = z.object({
   paragraphs: z.array(z.string().min(1)).min(1),
 })
 
+export const DayChartHouseSchema = z.object({
+  number: z.number().int(),
+  cuspLongitude: z.number(),
+  sign: z.string().nullable().optional(),
+})
+
+export const DayChartTransitPlanetSchema = z.object({
+  name: z.string().min(1),
+  longitude: z.number(),
+  sign: z.string().nullable().optional(),
+  retrograde: z.boolean().nullable().optional(),
+  speed: z.number().nullable().optional(),
+  motion: z.enum(["direct", "retrograde", "stationary"]).nullable().optional(),
+  house: z.number().int().nullable().optional(),
+})
+
+export const DayChartAspectSchema = z.object({
+  planet: z.string().min(1),
+  targetPlanet: z.string().min(1),
+  aspectType: z.string().min(1),
+  orb: z.number().nullable().optional(),
+  strength: z.number().nullable().optional(),
+})
+
+export const DayChartSchema = z.object({
+  source: z.literal("solarsage"),
+  houses: z.array(DayChartHouseSchema),
+  transitPlanets: z.array(DayChartTransitPlanetSchema),
+  aspects: z.array(DayChartAspectSchema),
+})
+
+export const PlanetInfluenceSchema = z.object({
+  name: z.string().min(1),
+  score: z.number(),
+  rank: z.number().int(),
+})
+
+export const SphereScoreSchema = z.object({
+  key: z.string().min(1),
+  score: z.number(),
+  rank: z.number().int(),
+})
+
 export const TodayWhySectionSchema = z.object({
   id: z.string().min(1),
   iconName: z.string().min(1),
@@ -110,11 +153,17 @@ export const TodayPayloadSchema = z.object({
   why: z.array(TodayWhySectionSchema),
   /** Короткий «ключ дня», закрывающий блок «Почему так у меня». */
   keyInsight: z.string().min(1),
+  dayChart: DayChartSchema.nullable().default(null),
+  planetInfluences: z.array(PlanetInfluenceSchema).default([]),
+  sphereScores: z.array(SphereScoreSchema).default([]),
 })
 
 export type IconName = z.infer<typeof IconNameSchema>
 export type TodayNote = z.infer<typeof TodayNoteSchema>
 export type TodayReading = z.infer<typeof TodayReadingSchema>
+export type DayChart = z.infer<typeof DayChartSchema>
+export type PlanetInfluence = z.infer<typeof PlanetInfluenceSchema>
+export type SphereScore = z.infer<typeof SphereScoreSchema>
 export type TodayWhySection = z.infer<typeof TodayWhySectionSchema>
 export type AdaptedTodayPayload = z.infer<typeof TodayPayloadSchema>
 

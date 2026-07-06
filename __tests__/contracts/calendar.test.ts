@@ -23,6 +23,7 @@ import { describe, it, expect } from 'vitest'
 import {
   validateDayStatus,
   validateDayStatusMap,
+  validateCalendarPayloadReadModel,
   DayStatusSchema,
   DayStatusMapSchema,
 } from '../../lib/contracts/calendar'
@@ -76,11 +77,61 @@ describe('validateDayStatusMap', () => {
   })
 
   it('rejects map with invalid status value', () => {
-    const map = { '2026-06-01': 'bad' as any }
+    const map = { '2026-06-01': 'bad' }
     expect(() => validateDayStatusMap(map)).toThrow()
   })
 
   it('rejects non-record input', () => {
     expect(() => validateDayStatusMap('tense')).toThrow()
+  })
+})
+
+describe('validateCalendarPayloadReadModel', () => {
+  const payload = {
+    meta: {
+      schemaVersion: 'calendar/v1',
+      contractVersion: 1,
+      generatedAt: '2026-05-01T00:00:00Z',
+    },
+    month: '2026-05',
+    title: 'May 2026',
+    allowedRange: { from: '2024-01-01', to: '2028-12-31' },
+    days: [{
+      date: '2026-05-01',
+      dayNumber: 1,
+      isCurrentMonth: true,
+      isToday: false,
+      disabled: false,
+      dayStatus: 'steady' as const,
+      access: {
+        state: 'full' as const,
+        reason: 'active_subscription' as const,
+        referralDaysLeft: null,
+        subscriptionActive: true,
+        accessUntil: '2026-05-01',
+      },
+      lunar: {
+        phase: null,
+        illumination: null,
+        moonSign: null,
+        lunarDay: null,
+        voidOfCourse: null,
+      },
+    }],
+  }
+
+  it('validates full backend calendar payload with access and lunar fields', () => {
+    const result = validateCalendarPayloadReadModel(payload)
+    expect(result.days[0].dayStatus).toBe('steady')
+    expect(result.days[0].access?.state).toBe('full')
+    expect(result.days[0].lunar.moonSign).toBeNull()
+  })
+
+  it('rejects the legacy UI-only "even" status in backend read models', () => {
+    const data = {
+      ...payload,
+      days: [{ ...payload.days[0], dayStatus: 'even' }],
+    }
+    expect(() => validateCalendarPayloadReadModel(data)).toThrow()
   })
 })
