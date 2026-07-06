@@ -33,6 +33,7 @@ type Props = {
   onClick?: () => void
   className?: string
   isLast?: boolean
+  disabled?: boolean
 }
 
 export function ProfileRow({
@@ -43,14 +44,17 @@ export function ProfileRow({
   onClick,
   className,
   isLast = false,
+  disabled = false,
 }: Props) {
   const filled = Boolean(value)
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       className={cn(
         "flex w-full items-center gap-4 px-4 py-3.5 text-left transition active:bg-muted/50",
+        disabled && "cursor-not-allowed opacity-60 active:bg-transparent",
         !isLast && "border-b border-border/55",
         className,
       )}
@@ -72,7 +76,10 @@ export function ProfileRow({
         </div>
       </div>
       <ChevronRight
-        className="h-4 w-4 flex-none text-muted-foreground/60"
+        className={cn(
+          "h-4 w-4 flex-none text-muted-foreground/60",
+          disabled && "opacity-30",
+        )}
         strokeWidth={1.75}
       />
     </button>

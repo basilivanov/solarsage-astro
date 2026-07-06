@@ -395,28 +395,35 @@ function CityEditor({
 }) {
   const [city, setCity] = useState<City | null>(() => {
     if (!initial) return null
-    const parts = initial.city.split(",")
     return {
-      name: parts[0].trim(),
-      country: parts[1]?.trim() || "",
+      name: initial.city,
+      country: "",
       lat: initial.lat ?? undefined,
       lon: initial.lon ?? undefined,
       timezone: initial.timezone ?? undefined,
     }
   })
-  const valid = city !== null && city.name.trim().length >= 2
+  const [touched, setTouched] = useState(false)
+  const valid = touched
+    ? city !== null && city.name.trim().length >= 2
+    : initial !== null && initial.city.trim().length >= 2
 
   return (
     <div className="space-y-8">
       <CityPicker
         value={city}
-        onChange={setCity}
+        onChange={(next) => {
+          setTouched(true)
+          setCity(next)
+        }}
         placeholder="Начни вводить город"
       />
       <SheetActions
         onCancel={onClose}
         onSave={() => {
-          if (city) {
+          if (!touched && initial) {
+            onSave(initial)
+          } else if (city) {
             onSave({
               city: formatCity(city),
               lat: city.lat ?? null,
@@ -479,4 +486,3 @@ function SheetActions({
     </div>
   )
 }
-

@@ -53,6 +53,7 @@ type Props = {
 export function OnboardingFlow({ onComplete }: Props) {
   const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState)
   const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const back = () => {
     dispatch({ type: "back" })
@@ -90,6 +91,7 @@ export function OnboardingFlow({ onComplete }: Props) {
 
     // Send to backend
     setIsSaving(true)
+    setSaveError(null)
     try {
       // Convert profile to API format
       const birthday = `${state.birthDate.year}-${state.birthDate.month.padStart(2, '0')}-${state.birthDate.day.padStart(2, '0')}`
@@ -133,10 +135,10 @@ export function OnboardingFlow({ onComplete }: Props) {
       logEvent("profile.updated", {}, { msg: "[Onboarding] Profile saved to backend", slice: "W-ONBOARDING", module: "M-ONBOARDING-FLOW", block: "SAVE_PROFILE" })
       onComplete()
     } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Не удалось сохранить профиль"
+      setSaveError(message)
       logEvent("profile.update_failed", { error: String(error) }, { msg: "[Onboarding] Failed to save profile to backend", level: "error", slice: "W-ONBOARDING", module: "M-ONBOARDING-FLOW", block: "SAVE_PROFILE" })
-      // Still complete onboarding even if backend fails
-      // User can retry later from profile page
-      onComplete()
     } finally {
       setIsSaving(false)
     }
@@ -146,7 +148,7 @@ export function OnboardingFlow({ onComplete }: Props) {
     <main className="h-[var(--app-height)] bg-background overflow-hidden">
       <div className="mx-auto flex h-[var(--app-height)] max-w-md flex-col border-x border-border/50 bg-background">
         {state.step === "welcome" ? (
-          <StepWelcome onNext={next} onSkip={onComplete} />
+          <StepWelcome onNext={next} />
         ) : state.step === "birth" ? (
           <StepBirth
             date={state.birthDate}
@@ -197,7 +199,11 @@ export function OnboardingFlow({ onComplete }: Props) {
             onBack={back}
           />
         ) : (
-          <StepDone onFinish={finish} />
+          <StepDone
+            onFinish={finish}
+            saving={isSaving}
+            error={saveError}
+          />
         )}
       </div>
     </main>

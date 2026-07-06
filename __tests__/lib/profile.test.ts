@@ -339,4 +339,21 @@ describe('profile API mapping', () => {
       },
     })
   })
+
+  it('serializes empty UI profile without synthetic nullable locations', () => {
+    expect(profileToApiWrite(EMPTY_PROFILE)).toEqual({
+      firstName: null,
+      gender: null,
+      birth: {
+        birthday: null,
+        birthTime: null,
+        birthCity: null,
+        birthLat: null,
+        birthLon: null,
+        birthTz: null,
+      },
+      currentLocation: null,
+      birthdayLocation: null,
+    })
+  })
 })

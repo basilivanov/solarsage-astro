@@ -26,6 +26,8 @@ import { PrimaryCta } from "./primary-cta"
 
 type Props = {
   onFinish: () => void
+  saving?: boolean
+  error?: string | null
 }
 
 const PREPARE_STAGES = [
@@ -34,7 +36,7 @@ const PREPARE_STAGES = [
   "Собираем первый разбор дня",
 ]
 
-export function StepDone({ onFinish }: Props) {
+export function StepDone({ onFinish, saving = false, error = null }: Props) {
   const [stage, setStage] = useState(0)
   const [ready, setReady] = useState(false)
 
@@ -127,10 +129,15 @@ export function StepDone({ onFinish }: Props) {
       </div>
 
       <div className="px-5">
+        {error ? (
+          <p className="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] leading-snug text-destructive">
+            {error}
+          </p>
+        ) : null}
         <PrimaryCta
-          label={ready ? "Открыть мой день" : "Ещё секунду…"}
+          label={saving ? "Сохраняем..." : ready ? "Открыть мой день" : "Ещё секунду…"}
           onClick={onFinish}
-          disabled={!ready}
+          disabled={!ready || saving}
         />
       </div>
     </div>

@@ -21,12 +21,10 @@
 // END_MODULE_CONTRACT
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 import { ProfileScreen } from "@/components/profile/profile-screen"
 import { useAccess } from "@/hooks/use-access"
-import { useOnboarded } from "@/hooks/use-onboarded"
 import { getProfileMeta } from "@/lib/api/profile-meta"
 import type { ProfileMeta } from "@/lib/profile-meta"
 
@@ -40,9 +38,7 @@ import type { ProfileMeta } from "@/lib/profile-meta"
  * где показывается OnboardingFlow.
  */
 export default function ProfilePage() {
-  const router = useRouter()
-  const { state, access, setState } = useAccess()
-  const { resetOnboarded } = useOnboarded()
+  const { state, access } = useAccess()
 
   const [profileMeta, setProfileMeta] = useState<ProfileMeta>({
     horary: {
@@ -60,18 +56,11 @@ export default function ProfilePage() {
     getProfileMeta().then(setProfileMeta).catch(() => {})
   }, [])
 
-  const onResetOnboarding = useCallback(() => {
-    resetOnboarded()
-    router.replace("/")
-  }, [router, resetOnboarded])
-
   return (
     <ProfileScreen
       access={access}
       currentState={state}
-      onChangeState={setState}
       profileMeta={profileMeta}
-      onResetOnboarding={onResetOnboarding}
     />
   )
 }

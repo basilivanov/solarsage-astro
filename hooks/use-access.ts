@@ -28,7 +28,6 @@ export function useAccess(): {
   loaded: boolean
   error: string | null
   refresh: () => Promise<void>
-  setState: (_state: AccessState) => void
 } {
   const [access, setAccess] = useState<AccessInfo>(CLOSED_ACCESS)
   const [loaded, setLoaded] = useState(false)
@@ -51,10 +50,5 @@ export function useAccess(): {
     void refresh()
   }, [refresh])
 
-  const setState = useCallback((_state: AccessState) => {
-    // Real access is backend-owned. The old localStorage-backed setter is kept
-    // as a compatibility no-op for dev-only controls.
-  }, [])
-
-  return { state: access.state, access, loaded, error, refresh, setState }
+  return { state: access.state, access, loaded, error, refresh }
 }

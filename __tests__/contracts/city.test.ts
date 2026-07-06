@@ -95,4 +95,8 @@ describe('formatCity', () => {
   it('returns the string itself when given a string', () => {
     expect(formatCity('Moscow, Russia')).toBe('Moscow, Russia')
   })
+
+  it('formats a City without country as the exact name', () => {
+    expect(formatCity({ name: 'Washington, DC, USA', country: '' })).toBe('Washington, DC, USA')
+  })
 })

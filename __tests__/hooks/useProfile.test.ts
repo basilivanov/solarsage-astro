@@ -199,6 +199,48 @@ describe("useProfile", () => {
     expect(result.current.profile.birthDate.day).toBe("11")
   })
 
+  it("rejects update attempts before backend hydration", async () => {
+    getProfile.mockReturnValue(new Promise(() => {}))
+    const { result } = renderHook(() => useProfile())
+
+    let thrown: unknown
+    await act(async () => {
+      try {
+        await result.current.update({
+          birthDate: { day: "11", month: "12", year: "1985" },
+        })
+      } catch (error) {
+        thrown = error
+      }
+    })
+
+    expect(thrown).toEqual(new Error("Profile is still loading"))
+    expect(updateProfile).not.toHaveBeenCalled()
+    expect(result.current.error).toBe("Profile is still loading")
+  })
+
+  it("keeps updates blocked when backend hydration fails", async () => {
+    getProfile.mockRejectedValue(new Error("Profile load failed"))
+    const { result } = renderHook(() => useProfile())
+
+    await waitFor(() => {
+      expect(result.current.error).toBe("Profile load failed")
+    })
+    expect(result.current.loaded).toBe(false)
+
+    let thrown: unknown
+    await act(async () => {
+      try {
+        await result.current.update({ currentCity: "Berlin, Germany" })
+      } catch (error) {
+        thrown = error
+      }
+    })
+
+    expect(thrown).toEqual(new Error("Profile is still loading"))
+    expect(updateProfile).not.toHaveBeenCalled()
+  })
+
   it("surfaces backend validation errors without closing over a fake success", async () => {
     updateProfile.mockRejectedValue(new Error("birthTz is invalid"))
     const { result } = renderHook(() => useProfile())

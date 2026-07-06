@@ -41,7 +41,6 @@ import { formatBirthDate, formatBirthTime, type Profile } from "@/lib/profile"
 
 import { AccessCard } from "./access-card"
 import { Avatar } from "./avatar"
-import { DevModeSwitcher } from "./dev-mode-switcher"
 import { EditSheet, type EditField } from "./edit-sheet"
 import { HoraryCard } from "./horary-card"
 import { ProfileRow } from "./profile-row"
@@ -52,8 +51,6 @@ type Props = {
   access: AccessInfo
   currentState: AccessState
   profileMeta: ProfileMeta
-  onChangeState: (_s: AccessState) => void
-  onResetOnboarding?: () => void
 }
 
 const noop = () => {
@@ -70,11 +67,9 @@ export function ProfileScreen({
   access,
   currentState,
   profileMeta,
-  onChangeState,
-  onResetOnboarding,
 }: Props) {
   const tgUser = useTelegramUser()
-  const { profile, update, saving, error } = useProfile()
+  const { profile, update, loaded, saving, error } = useProfile()
   const [editField, setEditField] = useState<EditField | null>(null)
 
   const closeEdit = () => setEditField(null)
@@ -128,36 +123,46 @@ export function ProfileScreen({
         <h2 className="mb-2 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Мои данные
         </h2>
+        {!loaded ? (
+          <p className="mb-2 px-1 text-[12px] text-muted-foreground">
+            {error ? `Не удалось загрузить профиль: ${error}` : "Загружаем данные профиля..."}
+          </p>
+        ) : null}
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
           <ProfileRow
             icon={Calendar}
             label="Дата рождения"
             value={formatBirthDate(profile.birthDate)}
             onClick={() => setEditField("birthDate")}
+            disabled={!loaded}
           />
           <ProfileRow
             icon={Clock}
             label="Время рождения"
             value={formatBirthTime(profile.birthTime)}
             onClick={() => setEditField("birthTime")}
+            disabled={!loaded}
           />
           <ProfileRow
             icon={MapPin}
             label="Место рождения"
             value={profile.birthPlace}
             onClick={() => setEditField("birthPlace")}
+            disabled={!loaded}
           />
           <ProfileRow
             icon={Home}
             label="Где живу сейчас"
             value={profile.currentCity}
             onClick={() => setEditField("currentCity")}
+            disabled={!loaded}
           />
           <ProfileRow
             icon={PartyPopper}
             label="Где проведу день рождения"
             value={profile.birthdayCity}
             onClick={() => setEditField("birthdayCity")}
+            disabled={!loaded}
             isLast
           />
         </div>
@@ -189,17 +194,7 @@ export function ProfileScreen({
         </div>
       </section>
 
-      {process.env.NODE_ENV === "development" ? (
-        <section className="px-5 pt-6 pb-10">
-          <DevModeSwitcher
-            currentState={currentState}
-            onChangeState={onChangeState}
-            onResetOnboarding={onResetOnboarding}
-          />
-        </section>
-      ) : null}
-
-      {editField ? (
+      {editField && loaded ? (
         <ProfileEditSheet
           field={editField}
           profile={profile}

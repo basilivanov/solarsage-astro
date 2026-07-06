@@ -45,6 +45,7 @@ export type City = z.infer<typeof CitySchema>
  */
 export function formatCity(city: City | string): string {
   if (typeof city === 'string') return city
+  if (!city.country) return city.name
   return `${city.name}, ${city.country}`
 }
 

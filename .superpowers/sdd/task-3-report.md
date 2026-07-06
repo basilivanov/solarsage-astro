@@ -32,4 +32,34 @@ Implemented and verified on branch `codex/real-data-frontend-migration`.
 
 ## Concerns
 
-- `useAccess().setState` is now a compatibility no-op because real access is backend-owned and no backend mutation endpoint exists for dev switching.
+- No known concerns from the initial implementation remained before review.
+
+## Fix Review
+
+### Review Findings Addressed
+
+- Blocked profile editing in `ProfileScreen` until `GET /api/profile` hydration succeeds, and added a hook-level guard that rejects updates before hydration without issuing `PUT /api/profile`.
+- Preserved the exact backend city display string and metadata when a city edit is untouched. A newly selected city now persists its formatted display, latitude, longitude, and timezone.
+- Changed onboarding so completion occurs only after a successful profile `PUT`. Failed persistence remains on the completion step, shows a retryable error, and does not set the onboarded state or route onward. The welcome-step bypass was removed.
+- Removed the non-functional development access switcher and the no-op `useAccess().setState` API. Access remains backend-owned with no localStorage override.
+
+### Test Evidence
+
+The following command completed successfully:
+
+```bash
+pnpm exec vitest run __tests__/hooks/useProfile.test.ts __tests__/lib/profile.test.ts __tests__/api/access.test.ts __tests__/contracts/profile.test.ts __tests__/contracts/access.test.ts __tests__/components/EditSheet.test.tsx __tests__/components/ProfileScreen.test.tsx __tests__/components/OnboardingFlow.test.tsx __tests__/components/OnboardingWelcome.test.tsx __tests__/hooks/useAccess.test.ts __tests__/api/onboarding-payload.test.ts __tests__/contracts/city.test.ts && cd apps/api && source .venv/bin/activate && python -m pytest tests/test_profile_endpoints.py -q && cd ../.. && npm run contracts:check && pnpm exec tsc --noEmit && git diff --check
+```
+
+Results:
+
+- Vitest: 12 test files passed, 92 tests passed.
+- Backend pytest: 18 tests passed in 1.11 seconds.
+- `npm run contracts:check`: passed; generated contracts remained unchanged.
+- `pnpm exec tsc --noEmit`: passed with no output.
+- `git diff --check`: passed with no output.
+- Runtime demo/mock import check: no product runtime imports found; the sole text match is an existing comment in `lib/profile-meta.ts`.
+
+### Remaining Concerns
+
+- None for the review findings. Vitest still emits the repository's existing Vite CommonJS deprecation warning.

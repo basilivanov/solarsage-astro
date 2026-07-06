@@ -37,13 +37,11 @@ export function useProfile() {
         if (!active) return
         applyProfile(apiProfileToProfile(value))
         setError(null)
+        setLoaded(true)
       })
       .catch((reason: unknown) => {
         if (!active) return
         setError(reason instanceof Error ? reason.message : "Failed to get profile")
-      })
-      .finally(() => {
-        if (active) setLoaded(true)
       })
 
     return () => {
@@ -53,6 +51,11 @@ export function useProfile() {
 
   const update = useCallback(
     async (patch: Partial<Profile>): Promise<Profile> => {
+      if (!loaded) {
+        const reason = new Error("Profile is still loading")
+        setError(reason.message)
+        throw reason
+      }
       const next = { ...profileRef.current, ...patch }
       setSaving(true)
       setError(null)
@@ -71,7 +74,7 @@ export function useProfile() {
         setSaving(false)
       }
     },
-    [applyProfile],
+    [applyProfile, loaded],
   )
 
   return { profile, update, loaded, saving, error }
