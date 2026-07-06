@@ -149,6 +149,39 @@ describe("HoraryScreen — happy path create flow", () => {
   });
 });
 
+describe("HoraryScreen — no-credit copy", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMocks();
+  });
+
+  it("does not tell users to buy questions while payment is disabled", async () => {
+    mockQuota.mockResolvedValue({
+      weeklyFreeAvailable: false,
+      weeklyFreeExpiresAt: null,
+      nextWeeklyFreeAt: "2026-07-13T00:00:00Z",
+      bonusCredits: 0,
+      paidCredits: 0,
+      canPurchase: false,
+    });
+
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Хорарный оракул/)).toBeTruthy();
+    }, { timeout: 2000 });
+
+    expect(screen.queryByText(/докупите вопросы/i)).toBeNull();
+    expect(
+      screen.getByText(/Дождитесь следующего бесплатного вопроса или пригласите друга/)
+    ).toBeTruthy();
+  });
+});
+
 describe("HoraryScreen — hooks stability across loading states", () => {
   beforeEach(() => {
     vi.clearAllMocks();

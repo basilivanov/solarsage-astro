@@ -21,126 +21,97 @@
 # AI_HEADER
 # module: M-TEST-SUBSCRIPTION-LEDGER
 # wave: W-6.2
-# purpose: Subscription ledger tests
+# purpose: Disabled payment boundary and direct subscription ledger tests
 
+from datetime import date, timedelta
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from app.db.models import AccessLedger
+from app.db.models import AccessLedger, ChatQuota, Payment, User
+from app.services.access_service import AccessService
 
 
 @pytest.mark.asyncio
-async def test_successful_payment_creates_subscription(async_client: AsyncClient, make_initdata, db_session):
-    """Successful payment creates subscription entry."""
-    # Create user + payment
+async def test_payment_intent_unavailable_without_ledger_side_effects(
+    async_client: AsyncClient,
+    make_initdata,
+    db_session,
+):
+    """Disabled payment intent creates no payment, access, or chat quota rows."""
     user_raw = make_initdata(user_id=12347, username="subuser")
     await async_client.post("/api/auth/telegram", json={"initData": user_raw})
 
-    create_response = await async_client.post(
+    response = await async_client.post(
         "/api/payment/create-intent",
         json={
             "amount": 29900,
             "currency": "RUB",
             "description": "Подписка на 1 месяц",
-        }
+        },
     )
-    payment_id = create_response.json()["payment_id"]
 
-    # Send webhook (success)
-    await async_client.post(
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "PAYMENT_UNAVAILABLE"
+
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    access_entries = (await db_session.execute(select(AccessLedger))).scalars().all()
+    chat_quotas = (await db_session.execute(select(ChatQuota))).scalars().all()
+
+    assert payments == []
+    assert access_entries == []
+    assert chat_quotas == []
+
+
+@pytest.mark.asyncio
+async def test_payment_webhook_unavailable_without_ledger_side_effects(
+    async_client: AsyncClient,
+    db_session,
+):
+    """Unverified webhook creates no payment, access, or chat quota rows."""
+    response = await async_client.post(
         "/api/payment/webhook",
         json={
             "event_type": "payment.succeeded",
-            "payment_id": str(payment_id),
+            "payment_id": "1",
             "status": "succeeded",
-        }
+        },
     )
 
-    # Check subscription entry created
-    result = await db_session.execute(
-        select(AccessLedger).where(AccessLedger.entry_type == "subscription")
-    )
-    entries = result.scalars().all()
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "PAYMENT_UNAVAILABLE"
 
-    assert len(entries) == 1
-    assert entries[0].days_granted == 30
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    access_entries = (await db_session.execute(select(AccessLedger))).scalars().all()
+    chat_quotas = (await db_session.execute(select(ChatQuota))).scalars().all()
+
+    assert payments == []
+    assert access_entries == []
+    assert chat_quotas == []
 
 
 @pytest.mark.asyncio
-async def test_failed_payment_no_subscription(async_client: AsyncClient, make_initdata, db_session):
-    """Failed payment does not create subscription."""
-    # Create user + payment
-    user_raw = make_initdata(user_id=12348, username="failuser")
-    await async_client.post("/api/auth/telegram", json={"initData": user_raw})
-
-    create_response = await async_client.post(
-        "/api/payment/create-intent",
-        json={
-            "amount": 29900,
-            "currency": "RUB",
-            "description": "Test",
-        }
-    )
-    payment_id = create_response.json()["payment_id"]
-
-    # Send webhook (failed)
-    await async_client.post(
-        "/api/payment/webhook",
-        json={
-            "event_type": "payment.failed",
-            "payment_id": str(payment_id),
-            "status": "failed",
-        }
-    )
-
-    # Check no subscription entry
-    result = await db_session.execute(
-        select(AccessLedger).where(AccessLedger.entry_type == "subscription")
-    )
-    entries = result.scalars().all()
-
-    assert len(entries) == 0
-
-
-@pytest.mark.asyncio
-async def test_subscription_grants_access(async_client: AsyncClient, make_initdata, db_session):
-    """Subscription entry grants access to days."""
-    from datetime import date, timedelta
-    from sqlalchemy import select
-    from app.db.models import User
-
-    # Create user
+async def test_direct_subscription_grant_covers_requested_days(
+    async_client: AsyncClient,
+    make_initdata,
+    db_session,
+):
+    """AccessService subscription grants remain independently testable."""
     user_raw = make_initdata(user_id=12349, username="accessuser")
     await async_client.post("/api/auth/telegram", json={"initData": user_raw})
 
-    # Get user
     result = await db_session.execute(
         select(User).where(User.tg_user_id == 12349)
     )
     user = result.scalar_one()
 
-    # Create payment + subscription
-    create_response = await async_client.post(
-        "/api/payment/create-intent",
-        json={
-            "amount": 29900,
-            "currency": "RUB",
-            "description": "Test",
-        }
-    )
-    payment_id = create_response.json()["payment_id"]
-
-    await async_client.post(
-        "/api/payment/webhook",
-        json={
-            "event_type": "payment.succeeded",
-            "payment_id": str(payment_id),
-            "status": "succeeded",
-        }
+    start_date = date.today()
+    await AccessService(db_session).grant_subscription(
+        user_id=user.id,
+        start_date=start_date,
+        days=30,
     )
 
-    # Check subscription entry created and covers today + future
     result = await db_session.execute(
         select(AccessLedger).where(
             AccessLedger.user_id == user.id,
@@ -153,10 +124,6 @@ async def test_subscription_grants_access(async_client: AsyncClient, make_initda
     entry = entries[0]
     assert entry.days_granted == 30
 
-    # Check that subscription covers today
-    today = date.today()
-    assert entry.start_date <= today <= entry.end_date
-
-    # Check that subscription covers future (15 days from now)
-    future = today + timedelta(days=15)
+    assert entry.start_date <= start_date <= entry.end_date
+    future = start_date + timedelta(days=15)
     assert entry.start_date <= future <= entry.end_date

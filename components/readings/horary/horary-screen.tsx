@@ -395,7 +395,7 @@ export function HoraryScreen() {
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 flex gap-3 text-muted-foreground text-[13.5px]">
             <AlertCircle className="h-5 w-5 flex-none" />
             <span>
-              Пожалуйста, докупите вопросы, чтобы задать новый хорарный вопрос.
+              Дождитесь следующего бесплатного вопроса или пригласите друга, чтобы получить бонус.
             </span>
           </div>
         )}
@@ -440,4 +440,3 @@ export function HoraryScreen() {
     </div>
   )
 }
-
