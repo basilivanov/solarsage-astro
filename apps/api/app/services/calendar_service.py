@@ -55,6 +55,7 @@ from calendar import monthrange
 from datetime import UTC, date as Date, datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.calendar import AllowedRange, CalendarDay, CalendarMeta, CalendarPayload
@@ -255,12 +256,16 @@ class CalendarService:
                 status,
                 scoring["sphere_scores"],
             )
-            self.db.add(SemanticLayerCache(
-                user_id=user_id,
-                target_date=target_date,
-                semantic_json=semantic_layer.model_dump_json(),
-            ))
-            await self.db.commit()
+            try:
+                self.db.add(SemanticLayerCache(
+                    user_id=user_id,
+                    target_date=target_date,
+                    semantic_json=semantic_layer.model_dump_json(),
+                ))
+                await self.db.commit()
+            except IntegrityError:
+                await self.db.rollback()
+                return await self._get_cached_day_status(user_id, target_date)
             return status
         except Exception:
             await self.db.rollback()

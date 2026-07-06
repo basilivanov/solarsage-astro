@@ -25,6 +25,8 @@
 import {
   type DayStatus,
   type DayStatusMap,
+  type CalendarPayloadReadModel,
+  validateCalendarPayloadReadModel,
 } from "@/lib/contracts/calendar"
 import type { CalendarPayload } from "@/packages/contracts"
 
@@ -58,7 +60,7 @@ export async function getMonthStatuses(year: number, month: number): Promise<Day
   return map
 }
 
-export async function getMonthCalendar(year: number, month: number): Promise<CalendarPayload> {
+export async function getMonthCalendar(year: number, month: number): Promise<CalendarPayloadReadModel> {
   const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`
   const res = await fetch(`/api/calendar?month=${monthStr}`, {
     credentials: "include",
@@ -67,7 +69,7 @@ export async function getMonthCalendar(year: number, month: number): Promise<Cal
   if (!res.ok) {
     throw new Error(`API error ${res.status}`)
   }
-  return res.json() as Promise<CalendarPayload>
+  return validateCalendarPayloadReadModel(await res.json())
 }
 
 export const getDayStatusAsync = getDayStatus

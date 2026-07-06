@@ -27,7 +27,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from app.db.models import User
+from app.db.models import SemanticLayerCache, User
 from app.services.access_service import AccessService
 
 
@@ -116,6 +116,44 @@ async def test_put_profile_round_trip(
     assert r2.status_code == 200
     assert r2.json()["currentLocation"]["city"] == "Lisbon, Portugal"
     assert r2.json()["birthdayLocation"]["city"] == "London, UK"
+
+
+@pytest.mark.asyncio
+async def test_put_profile_invalidates_semantic_calendar_cache(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    await _login(async_client, make_initdata, user_id=425)
+    user = (
+        await db_session.execute(select(User).where(User.tg_user_id == 425))
+    ).scalar_one()
+    db_session.add(SemanticLayerCache(
+        user_id=user.id,
+        target_date=datetime(2026, 5, 1).date(),
+        semantic_json='{"day_status":"supportive","day_theme":"stale","sphere_themes":[],"top_keywords":[]}',
+    ))
+    await db_session.commit()
+
+    r = await async_client.put(
+        "/api/profile",
+        json={
+            "birth": {
+                "birthday": "1985-12-10",
+                "birthTime": "12:00:00",
+                "birthCity": "London",
+                "birthLat": 51.5074,
+                "birthLon": -0.1278,
+                "birthTz": "Europe/London",
+            },
+        },
+    )
+
+    assert r.status_code == 200, r.text
+    remaining = (
+        await db_session.execute(
+            select(SemanticLayerCache).where(SemanticLayerCache.user_id == user.id)
+        )
+    ).scalars().all()
+    assert remaining == []
 
 
 @pytest.mark.asyncio

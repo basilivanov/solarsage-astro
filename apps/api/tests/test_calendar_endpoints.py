@@ -51,9 +51,11 @@ from __future__ import annotations
 
 import json
 from datetime import date as Date
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -297,3 +299,61 @@ async def test_calendar_structure(
     assert may_second["access"]["state"] == "preview"
     assert may_second["access"]["reason"] == "expired_access"
 # END_BLOCK: STRUCTURE_VALIDATION
+
+
+@pytest.mark.asyncio
+async def test_calendar_status_cache_duplicate_rereads_winning_row(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+) -> None:
+    user = await _onboard_user(async_client, db_session, make_initdata, user_id=7782)
+
+    from app.db.models import SemanticLayerCache, UserProfile
+    from app.services.calendar_service import CalendarService
+
+    target_date = Date(2026, 5, 3)
+    db_session.add(SemanticLayerCache(
+        user_id=user.id,
+        target_date=target_date,
+        semantic_json=json.dumps({
+            "day_status": "tense",
+            "day_theme": "winner",
+            "sphere_themes": [],
+            "top_keywords": [],
+        }),
+    ))
+    await db_session.commit()
+
+    profile = (
+        await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    ).scalar_one()
+    service = CalendarService(db_session)
+    service._request_profile = profile
+    service._request_natal_context = {"planets": [], "houses": []}
+
+    mock_client = AsyncMock()
+    mock_client.get_transits.return_value = {"planets": [{"name": "Moon", "longitude": 0.0, "sign": "Aries"}]}
+    mock_semantic_layer = Mock()
+    mock_semantic_layer.model_dump_json.return_value = json.dumps({
+        "day_status": "supportive",
+        "day_theme": "loser",
+        "sphere_themes": [],
+        "top_keywords": [],
+    })
+
+    with patch("app.services.calendar_service.get_solarsage_client", return_value=mock_client), \
+         patch("app.services.calendar_service.NormalizationService") as normalization, \
+         patch("app.services.calendar_service.ScoringService") as scoring, \
+         patch("app.services.calendar_service.SemanticService") as semantic:
+        normalization.return_value.normalize_day.return_value = []
+        scoring.return_value.score_day.return_value = {
+            "day_status": "supportive",
+            "sphere_scores": {},
+            "top_signals": [],
+        }
+        semantic.return_value.build_semantic_layer.return_value = mock_semantic_layer
+
+        status = await service._compute_and_cache_day_status(user.id, target_date)
+
+    assert status == "tense"

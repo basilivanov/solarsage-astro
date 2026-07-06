@@ -134,6 +134,9 @@ describe('TodayScreen', () => {
       reading: { paragraphs: [] },
       why: [],
       keyInsight: 'Данные временно недоступны',
+      dayChart: null,
+      planetInfluences: [],
+      sphereScores: [],
       ...overrides,
     }
   }

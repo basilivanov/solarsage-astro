@@ -208,5 +208,8 @@ export function buildMockTodayPayload(date: Date): AdaptedTodayPayload {
     reading: MOCK_READING,
     why: MOCK_WHY,
     keyInsight: KEY_INSIGHT,
+    dayChart: null,
+    planetInfluences: [],
+    sphereScores: [],
   }
 }

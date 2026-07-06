@@ -518,6 +518,9 @@ class TodayService:
         await self.db.execute(
             delete(TodayPayloadCache).where(TodayPayloadCache.user_id == user_id)
         )
+        await self.db.execute(
+            delete(SemanticLayerCache).where(SemanticLayerCache.user_id == user_id)
+        )
         await self.db.commit()
 
     async def _cache_semantic_layer(self, user_id, target_date: Date, semantic_layer) -> None:

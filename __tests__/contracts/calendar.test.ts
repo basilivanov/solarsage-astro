@@ -134,4 +134,9 @@ describe('validateCalendarPayloadReadModel', () => {
     }
     expect(() => validateCalendarPayloadReadModel(data)).toThrow()
   })
+
+  it('rejects incomplete backend calendar payloads', () => {
+    const { meta, ...incomplete } = payload
+    expect(() => validateCalendarPayloadReadModel(incomplete)).toThrow()
+  })
 })
