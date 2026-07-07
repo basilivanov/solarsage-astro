@@ -46,10 +46,11 @@ export function ReadingsScreen() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col" data-testid="readings-screen" data-state="ready">
       <header
         className="flex flex-none flex-col gap-1 px-5 pb-5 pt-5"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1.25rem)" }}
+        data-testid="readings-header"
       >
         <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Разборы
@@ -64,7 +65,7 @@ export function ReadingsScreen() {
 
       <div className="flex-1 overflow-y-auto px-5 pb-8">
         {/* Инфо-плашка */}
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-border/60 bg-muted/40 px-4 py-3">
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-border/60 bg-muted/40 px-4 py-3" data-testid="readings-info-banner">
           <Info
             className="mt-0.5 h-4 w-4 flex-none text-muted-foreground/90"
             strokeWidth={1.6}
@@ -75,7 +76,7 @@ export function ReadingsScreen() {
         </div>
 
         {/* Доступно сейчас */}
-        <section aria-labelledby="readings-available">
+        <section aria-labelledby="readings-available" data-testid="readings-available-section">
           <div className="mb-3 flex items-baseline justify-between">
             <h2
               id="readings-available"
@@ -88,7 +89,7 @@ export function ReadingsScreen() {
             </span>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3" data-testid="readings-available-list">
             {available.map((r) => (
               <AvailableCard
                 key={r.key}
@@ -96,6 +97,7 @@ export function ReadingsScreen() {
                 title={r.title}
                 description={r.description}
                 teaser={r.teaser}
+                route={r.key === "natal" ? "/readings/natal" : "/readings/horary"}
                 onClick={r.key === "natal" ? openNatal : openHorary}
               />
             ))}
@@ -103,7 +105,7 @@ export function ReadingsScreen() {
         </section>
 
         {/* Скоро будет */}
-        <section aria-labelledby="readings-coming" className="mt-8">
+        <section aria-labelledby="readings-coming" className="mt-8" data-testid="readings-coming-section">
           <div className="mb-3 flex items-baseline justify-between">
             <h2
               id="readings-coming"
@@ -116,7 +118,7 @@ export function ReadingsScreen() {
             </span>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+          <div className="overflow-hidden rounded-2xl border border-border/70 bg-card" data-testid="readings-coming-list">
             {coming.map((r, i) => (
               <ComingCard
                 key={r.key}

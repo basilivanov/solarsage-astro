@@ -29,13 +29,17 @@ type Props = {
   description: string
   teaser?: string
   onClick: () => void
+  route?: string
 }
 
-export function AvailableCard({ icon: Icon, title, description, teaser, onClick }: Props) {
+export function AvailableCard({ icon: Icon, title, description, teaser, onClick, route }: Props) {
+  const key = route?.replace("/readings/", "") ?? ""
   return (
     <button
       type="button"
       onClick={onClick}
+      data-testid={`readings-card-${key}`}
+      data-href={route}
       className="group flex w-full flex-col items-start gap-4 rounded-2xl border border-border/70 bg-card p-5 text-left transition active:scale-[0.99]"
     >
       <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">

@@ -45,7 +45,7 @@ export function InDevOverlay({ icon: Icon, title, description, onClose }: Props)
   }
 
   return (
-    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog">
+    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog" data-testid="readings-in-dev-overlay">
       <button
         type="button"
         aria-label="Закрыть"
