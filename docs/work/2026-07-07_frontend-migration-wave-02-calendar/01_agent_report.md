@@ -82,6 +82,11 @@ Test Files  84 passed (84)
 ```
 
 ### `git diff --check main..HEAD`
+
+### `git diff --check`
+```
+Exit code: 0
+```
 ```
 Exit code: 0
 ```

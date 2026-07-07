@@ -8,8 +8,8 @@
 // purpose: Verify the /calendar screen matches the visual/structural contract
 //          on stable API payloads. Exercise ready state, day/moon modes, and
 //          overflow. Asserts no missing fixtures via MissingRequestsTracker.
-//          All date-dependent assertions explicitly select the target day
-//          to remain deterministic regardless of machine date.
+//          Moon-mode assertions freeze browser time to 2026-07-05 via
+//          page.clock.install() so assertions are deterministic regardless of machine date.
 // owns:
 //   - e2e/mock-visual/calendar.spec.ts
 // inputs: Playwright test runner, E2E_BASE_URL env
@@ -23,7 +23,7 @@
 //   - No product path imports mocks or demo data
 //   - Fixtures represent valid API response shapes
 //   - All API calls have fixture coverage (fails on missing)
-//   - Moon-mode assertions are deterministic (explicit day selection, not date-dependent)
+//   - Moon-mode assertions freeze browser time to 2026-07-05 via page.clock.install()
 // failure_policy: Tests fail on missing fixture or assertion failure
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-SPEC
 

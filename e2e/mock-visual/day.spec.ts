@@ -9,7 +9,7 @@
 // START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-DAY-SPEC
 // purpose: Verify the /day/[date] screen matches the visual/structural contract
 //          on stable API payloads. Exercise ready, locked, and overflow states.
-//          Asserts no missing fixtures via MissingRequestsTracker after a quiet
+//          Asserts no missing fixtures via expectNoMissingApiFixtures after a quiet
 //          wait so late React effects have time to fire.
 // owns:
 //   - e2e/mock-visual/day.spec.ts
@@ -17,7 +17,7 @@
 // outputs: Test pass/fail with assertions on DOM contract and visual structure
 // dependencies:
 //   - @playwright/test
-//   - ./route-interception (installMockApiRoutes, MissingRequestsTracker)
+//   - ./route-interception (installMockApiRoutes, expectNoMissingApiFixtures, MissingRequestsTracker)
 //   - ./fixtures/day-2026-07-05 (dayPayload, dayPayloadLocked)
 //   - ./fixtures/calendar-2026-07 (calendarPayload)
 // side_effects: None (all API calls intercepted)
