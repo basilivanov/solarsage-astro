@@ -64,6 +64,7 @@ from app.services.natal_context_service import NatalContextService
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
 from app.services.semantic_service import SemanticService
+from app.services.today_service import TODAY_CONTENT_VERSION
 
 
 # START_BLOCK: CALENDAR_GENERATION
@@ -220,6 +221,11 @@ class CalendarService:
             return None
 
         data = json.loads(payload_entry.payload_json)
+        meta = data.get("meta") or {}
+        content_version = meta.get("contentVersion", meta.get("content_version"))
+        if content_version != TODAY_CONTENT_VERSION:
+            return None
+
         status = data.get("dayStatus") or data.get("day_status")
         if status in ("supportive", "steady", "tense"):
             return status

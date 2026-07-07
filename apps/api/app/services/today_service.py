@@ -86,6 +86,35 @@ from app.services.natal_context_service import NatalContextService
 from app.core.logging import log_event, log_block
 
 
+TODAY_CONTENT_VERSION = 2
+
+PLANET_LABELS_RU = {
+    "Sun": "Солнце",
+    "Moon": "Луна",
+    "Mercury": "Меркурий",
+    "Venus": "Венера",
+    "Mars": "Марс",
+    "Jupiter": "Юпитер",
+    "Saturn": "Сатурн",
+    "Uranus": "Уран",
+    "Neptune": "Нептун",
+    "Pluto": "Плутон",
+    "Node": "Узел",
+    "Chiron": "Хирон",
+}
+
+ASPECT_LABELS_RU = {
+    "conjunction": "соединение",
+    "sextile": "секстиль",
+    "square": "квадратура",
+    "trine": "тригон",
+    "opposition": "оппозиция",
+}
+
+SOFT_ASPECTS = {"sextile", "trine"}
+TENSE_ASPECTS = {"square", "opposition"}
+
+
 # START_BLOCK: REAL_CALCULATION
 class TodayService:
     def __init__(self, db: AsyncSession):
@@ -249,24 +278,7 @@ class TodayService:
         )
 
         # W-4.2: Build top_flags from top signals
-        top_flags = []
-        for signal in scoring_result["top_signals"][:3]:  # Top 3
-            planet = (signal.planet or "").replace("Transit_", "").replace("Natal_", "")
-            if signal.type == "aspect":
-                target = (signal.target_planet or "").replace("Transit_", "").replace("Natal_", "")
-                top_flags.append(TopFlag(
-                    icon_name=f"{planet}-{signal.aspect_type}",
-                    title=f"{planet} {signal.aspect_type} {target}",
-                    summary=f"Orb: {signal.orb:.1f}°, Strength: {signal.strength:.2f}",
-                    hint=None,
-                ))
-            elif signal.type == "planet_in_house":
-                top_flags.append(TopFlag(
-                    icon_name=f"{planet}-house",
-                    title=f"{planet} в {signal.house} доме",
-                    summary=f"Strength: {signal.strength:.2f}",
-                    hint=None,
-                ))
+        top_flags = self._build_top_flags(scoring_result["top_signals"])
 
         # W-3.4: Build minimal TodayPayload from raw data
         # W-4.2: Add scoring layer
@@ -310,7 +322,7 @@ class TodayService:
                 normalization_version=1,
                 scoring_version=1,
                 prompt_version=1,
-                content_version=1,
+                content_version=TODAY_CONTENT_VERSION,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
             ),
@@ -350,6 +362,54 @@ class TodayService:
             asyncio.ensure_future(self._prefetch_week(user_id, target_date))
 
         return payload
+
+    @staticmethod
+    def _build_top_flags(signals: list) -> list[TopFlag]:
+        return [
+            flag
+            for signal in signals[:3]
+            if (flag := TodayService._build_top_flag(signal)) is not None
+        ]
+
+    @staticmethod
+    def _build_top_flag(signal) -> TopFlag | None:
+        planet = TodayService._planet_label(signal.planet)
+        icon_planet = strip_prefix(signal.planet) or "planet"
+
+        if signal.type == "aspect" and signal.aspect_type and signal.target_planet:
+            target = TodayService._planet_label(signal.target_planet)
+            aspect = ASPECT_LABELS_RU.get(signal.aspect_type, "аспект")
+            return TopFlag(
+                icon_name=f"{icon_planet}-{signal.aspect_type}",
+                title=f"{planet} {aspect} {target}",
+                summary=TodayService._top_flag_aspect_summary(signal.aspect_type),
+                hint=None,
+            )
+
+        if signal.type == "planet_in_house" and signal.house:
+            return TopFlag(
+                icon_name=f"{icon_planet}-house",
+                title=f"{planet} в {signal.house} доме",
+                summary="Акцент дня: эта тема заметнее обычного, полезно выбрать один практический шаг.",
+                hint=None,
+            )
+
+        return None
+
+    @staticmethod
+    def _planet_label(name: str | None) -> str:
+        stripped = strip_prefix(name)
+        if not stripped:
+            return "Планета"
+        return PLANET_LABELS_RU.get(stripped, "Планета")
+
+    @staticmethod
+    def _top_flag_aspect_summary(aspect_type: str) -> str:
+        if aspect_type in SOFT_ASPECTS:
+            return "Поддерживающий аспект: легче договориться, связать идеи и действия."
+        if aspect_type in TENSE_ASPECTS:
+            return "Напряжённый аспект: лучше снизить резкость и перепроверить реакцию."
+        return "Заметный аспект: тема дня может звучать сильнее обычного, лучше действовать без спешки."
 
     @staticmethod
     def _build_day_chart(
@@ -466,6 +526,11 @@ class TodayService:
 
         # Deserialize JSON
         payload_dict = json.loads(cache_entry.payload_json)
+        meta = payload_dict.get("meta") or {}
+        content_version = meta.get("contentVersion", meta.get("content_version"))
+        if content_version != TODAY_CONTENT_VERSION:
+            return None
+
         payload = TodayPayload(**payload_dict)
 
         # Mark as cached
@@ -563,7 +628,7 @@ class TodayService:
                 normalization_version=1,
                 scoring_version=1,
                 prompt_version=1,
-                content_version=1,
+                content_version=TODAY_CONTENT_VERSION,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,
             ),

@@ -30,18 +30,21 @@
 #   - M-CONTRACTS.today
 # END_MODULE_CONTRACT
 
-import pytest
+import json
 from datetime import date as Date
+from unittest.mock import AsyncMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import AsyncMock, patch
 
-from app.db.models import User, UserProfile
+from app.db.models import TodayPayloadCache, User, UserProfile
 from app.main import app
+from app.schemas.normalization import AstroSignal
 from app.services.access_service import AccessService
-from app.services.today_service import TodayService
+from app.services.today_service import TODAY_CONTENT_VERSION, TodayService
 
 client = TestClient(app)
 
@@ -69,6 +72,197 @@ MOCK_TRANSITS = {
         {"name": "Mars", "longitude": 100.0, "sign": "Cancer", "retrograde": True, "speed": -0.4},
     ],
 }
+
+
+def test_today_service_formats_top_flags_for_users() -> None:
+    """TopFlags should be localized user text, not raw technical signal labels."""
+    top_flags = TodayService._build_top_flags([
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Sun",
+            target_planet="Natal_Mercury",
+            aspect_type="trine",
+            orb=0.4,
+            strength=0.95,
+        ),
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Mars",
+            target_planet="Natal_Saturn",
+            aspect_type="square",
+            orb=1.2,
+            strength=0.88,
+        ),
+        AstroSignal(
+            type="planet_in_house",
+            planet="Natal_Moon",
+            house=4,
+            strength=0.7,
+        ),
+    ])
+
+    assert [flag.title for flag in top_flags] == [
+        "Солнце тригон Меркурий",
+        "Марс квадратура Сатурн",
+        "Луна в 4 доме",
+    ]
+    for flag in top_flags:
+        assert "Transit_" not in flag.title
+        assert "Natal_" not in flag.title
+        assert "Sun trine Mercury" not in flag.title
+        assert "Orb:" not in flag.summary
+        assert "Strength:" not in flag.summary
+        assert "0.4" not in flag.summary
+        assert "0.95" not in flag.summary
+
+
+@pytest.mark.asyncio
+async def test_today_service_ignores_cached_payload_with_old_content_version(db_session: AsyncSession) -> None:
+    service = TodayService(db_session)
+    assert TODAY_CONTENT_VERSION == 2
+
+    user = User(tg_user_id=919191)
+    db_session.add(user)
+    await db_session.flush()
+
+    old_payload = {
+        "meta": {
+            "schemaVersion": "today/v1",
+            "contractVersion": 2,
+            "calculationVersion": 1,
+            "normalizationVersion": 1,
+            "scoringVersion": 1,
+            "promptVersion": 1,
+            "contentVersion": 1,
+            "generatedAt": "2026-07-05T18:53:25Z",
+            "cached": False,
+        },
+        "date": "2026-07-07",
+        "title": "Сегодня",
+        "subtitle": None,
+        "headline": "Old payload",
+        "access": {
+            "state": "full",
+            "reason": "active_subscription",
+            "referralDaysLeft": None,
+            "subscriptionActive": True,
+            "accessUntil": None,
+        },
+        "dayStatus": "steady",
+        "dayQuality": None,
+        "topFlags": [
+            {
+                "iconName": "Sun-trine",
+                "title": "Sun trine Mercury",
+                "summary": "Orb: 0.4°, Strength: 0.95",
+                "hint": None,
+            }
+        ],
+        "reading": {"paragraphs": ["old"]},
+        "notes": "old",
+        "whyThisHappens": {"sections": []},
+        "weekStrip": [],
+        "microcopy": [],
+        "yesterdayEcho": None,
+        "actions": None,
+    }
+    db_session.add(TodayPayloadCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 7),
+        profile_hash="profile-hash",
+        payload_json=json.dumps(old_payload),
+    ))
+    await db_session.commit()
+
+    cached = await service._get_cached_payload(user.id, Date(2026, 7, 7), "profile-hash")
+
+    assert cached is None
+
+
+@pytest.mark.asyncio
+async def test_today_service_ignores_cached_payload_with_old_snake_case_content_version(db_session: AsyncSession) -> None:
+    service = TodayService(db_session)
+
+    user = User(tg_user_id=919192)
+    db_session.add(user)
+    await db_session.flush()
+
+    old_payload = {
+        "meta": {
+            "schema_version": "today/v1",
+            "contract_version": 2,
+            "calculation_version": 1,
+            "normalization_version": 1,
+            "scoring_version": 1,
+            "prompt_version": 1,
+            "content_version": 1,
+            "generated_at": "2026-07-05T18:53:25Z",
+            "cached": False,
+        },
+        "date": "2026-07-07",
+        "title": "Сегодня",
+        "subtitle": None,
+        "headline": "Old payload",
+        "access": {
+            "state": "full",
+            "reason": "active_subscription",
+            "referral_days_left": None,
+            "subscription_active": True,
+            "access_until": None,
+        },
+        "day_status": "steady",
+        "day_quality": None,
+        "top_flags": [
+            {
+                "icon_name": "Sun-trine",
+                "title": "Sun trine Mercury",
+                "summary": "Orb: 0.4°, Strength: 0.95",
+                "hint": None,
+            }
+        ],
+        "reading": {"paragraphs": ["old"]},
+        "notes": "old",
+        "why_this_happens": {"sections": []},
+        "week_strip": [],
+        "microcopy": [],
+        "yesterday_echo": None,
+        "actions": None,
+    }
+    db_session.add(TodayPayloadCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 7),
+        profile_hash="profile-hash",
+        payload_json=json.dumps(old_payload),
+    ))
+    await db_session.commit()
+
+    cached = await service._get_cached_payload(user.id, Date(2026, 7, 7), "profile-hash")
+
+    assert cached is None
+
+
+@pytest.mark.asyncio
+async def test_today_service_ignores_malformed_cached_payload_with_old_content_version(db_session: AsyncSession) -> None:
+    service = TodayService(db_session)
+
+    user = User(tg_user_id=919193)
+    db_session.add(user)
+    await db_session.flush()
+
+    db_session.add(TodayPayloadCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 7),
+        profile_hash="profile-hash",
+        payload_json=json.dumps({
+            "meta": {"contentVersion": 1},
+            "topFlags": [{"title": "Sun trine Mercury", "summary": "Orb: 0.4°, Strength: 0.95"}],
+        }),
+    ))
+    await db_session.commit()
+
+    cached = await service._get_cached_payload(user.id, Date(2026, 7, 7), "profile-hash")
+
+    assert cached is None
 
 
 async def _login_onboarded_user(async_client: AsyncClient, db_session: AsyncSession, make_initdata, user_id: int) -> User:

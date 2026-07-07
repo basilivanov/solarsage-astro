@@ -357,3 +357,94 @@ async def test_calendar_status_cache_duplicate_rereads_winning_row(
         status = await service._compute_and_cache_day_status(user.id, target_date)
 
     assert status == "tense"
+
+
+@pytest.mark.asyncio
+async def test_calendar_cached_day_status_ignores_old_today_payload_content_version(
+    db_session: AsyncSession,
+) -> None:
+    from app.db.models import TodayPayloadCache, User
+    from app.services.calendar_service import CalendarService
+
+    user = User(tg_user_id=7783)
+    db_session.add(user)
+    await db_session.flush()
+
+    db_session.add(TodayPayloadCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 7),
+        profile_hash="profile-hash",
+        payload_json=json.dumps({
+            "meta": {"contentVersion": 1},
+            "dayStatus": "tense",
+        }),
+    ))
+    await db_session.commit()
+
+    service = CalendarService(db_session)
+    service._request_profile_hash = "profile-hash"
+
+    status = await service._get_cached_day_status(user.id, Date(2026, 7, 7))
+
+    assert status is None
+
+
+@pytest.mark.asyncio
+async def test_calendar_cached_day_status_ignores_old_today_payload_snake_case_content_version(
+    db_session: AsyncSession,
+) -> None:
+    from app.db.models import TodayPayloadCache, User
+    from app.services.calendar_service import CalendarService
+
+    user = User(tg_user_id=7785)
+    db_session.add(user)
+    await db_session.flush()
+
+    db_session.add(TodayPayloadCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 7),
+        profile_hash="profile-hash",
+        payload_json=json.dumps({
+            "meta": {"content_version": 1},
+            "day_status": "tense",
+        }),
+    ))
+    await db_session.commit()
+
+    service = CalendarService(db_session)
+    service._request_profile_hash = "profile-hash"
+
+    status = await service._get_cached_day_status(user.id, Date(2026, 7, 7))
+
+    assert status is None
+
+
+@pytest.mark.asyncio
+async def test_calendar_cached_day_status_reads_current_today_payload_content_version(
+    db_session: AsyncSession,
+) -> None:
+    from app.db.models import TodayPayloadCache, User
+    from app.services.calendar_service import CalendarService
+    from app.services.today_service import TODAY_CONTENT_VERSION
+
+    user = User(tg_user_id=7784)
+    db_session.add(user)
+    await db_session.flush()
+
+    db_session.add(TodayPayloadCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 7),
+        profile_hash="profile-hash",
+        payload_json=json.dumps({
+            "meta": {"contentVersion": TODAY_CONTENT_VERSION},
+            "dayStatus": "supportive",
+        }),
+    ))
+    await db_session.commit()
+
+    service = CalendarService(db_session)
+    service._request_profile_hash = "profile-hash"
+
+    status = await service._get_cached_day_status(user.id, Date(2026, 7, 7))
+
+    assert status == "supportive"
