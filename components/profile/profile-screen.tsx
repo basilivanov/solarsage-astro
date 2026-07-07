@@ -80,7 +80,8 @@ export function ProfileScreen({
     : "Гость"
   const handle = tgUser?.username ? `@${tgUser.username}` : "Telegram mini-app"
 
-  const screenState = error ? "error" : loaded ? "ready" : "loading"
+  // Hydration-first: loaded → "ready" even if error contains a later save error
+  const screenState = loaded ? "ready" : error ? "error" : "loading"
 
   return (
     <div
@@ -139,7 +140,10 @@ export function ProfileScreen({
           Мои данные
         </h2>
         {!loaded ? (
-          <p className="mb-2 px-1 text-[12px] text-muted-foreground">
+          <p
+            className="mb-2 px-1 text-[12px] text-muted-foreground"
+            role={error ? "alert" : "status"}
+          >
             {error ? `Не удалось загрузить профиль: ${error}` : "Загружаем данные профиля..."}
           </p>
         ) : null}

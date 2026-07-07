@@ -5,6 +5,29 @@
 //       referral, CheckinMetrics.
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-FIXTURE-PROFILE
+// purpose: Provide contract-valid fixture payloads for profile mock visual e2e.
+// owns:
+//   - e2e/mock-visual/fixtures/profile.ts
+// inputs: none (static fixtures)
+// outputs: Named exports: profilePayload, accessPayload, horaryQuotaPayload,
+//          referralPayload, checkinMetricsPayload
+// dependencies: none (pure data)
+// side_effects: none
+// invariants: Shapes match _generated.ts contract types
+// END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-FIXTURE-PROFILE
+
+// START_MODULE_MAP: M-E2E-MOCK-VISUAL-FIXTURE-PROFILE
+// public_entrypoints:
+//   - profilePayload
+//   - accessPayload
+//   - horaryQuotaPayload
+//   - referralPayload
+//   - checkinMetricsPayload
+// owned_tests:
+//   - e2e/mock-visual/profile.spec.ts
+// END_MODULE_MAP: M-E2E-MOCK-VISUAL-FIXTURE-PROFILE
+
 import type { components } from "../../../packages/contracts/_generated";
 
 export const profilePayload: components["schemas"]["ProfileRead"] = {

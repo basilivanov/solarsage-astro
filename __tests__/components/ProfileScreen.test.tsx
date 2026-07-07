@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import type { Profile } from "@/lib/profile"
 
-const update = vi.fn()
 let loaded = false
+let mockError: string | null = null
 
 vi.mock("@/hooks/use-profile", () => ({
   useProfile: () => ({
@@ -22,10 +22,10 @@ vi.mock("@/hooks/use-profile", () => ({
       sameAsBirth: false,
       birthdaySameAsCurrent: false,
     } satisfies Profile,
-    update,
+    update: vi.fn(),
     loaded,
     saving: false,
-    error: null,
+    error: mockError,
   }),
 }))
 
@@ -68,11 +68,13 @@ const profileMeta = {
     paidCredits: 0,
     canPurchase: true,
   },
-  referral: { count: 0, bonusDays: 0, rewardDays: 7, inviteUrl: "" },
+  referral: { count: 0, bonusDays: 0, rewardDays: 14, inviteUrl: "" },
 }
 
 describe("ProfileScreen hydration gate", () => {
   it("does not open profile editors before backend hydration completes", () => {
+    loaded = false
+    mockError = null
     loaded = false
     render(
       <ProfileScreen
@@ -114,5 +116,77 @@ describe("ProfileScreen hydration gate", () => {
     )
 
     expect(screen.getByText("Статистика оценок")).toBeTruthy()
+  })
+
+  it("root data-state is loading before profile hydration", () => {
+    loaded = false
+    mockError = null
+    render(
+      <ProfileScreen
+        access={access}
+        currentState="none"
+        profileMeta={profileMeta}
+      />,
+    )
+
+    expect(screen.getByTestId("profile-screen").getAttribute("data-state")).toBe("loading")
+  })
+
+  it("root data-state is error when hydration fails", () => {
+    loaded = false
+    mockError = "Network error"
+    render(
+      <ProfileScreen
+        access={access}
+        currentState="none"
+        profileMeta={profileMeta}
+      />,
+    )
+
+    expect(screen.getByTestId("profile-screen").getAttribute("data-state")).toBe("error")
+  })
+
+  it("root data-state is ready after hydration even when save error exists", () => {
+    loaded = true
+    mockError = "Save failed"
+    render(
+      <ProfileScreen
+        access={access}
+        currentState="none"
+        profileMeta={profileMeta}
+      />,
+    )
+
+    // Hydration succeeded → data-state="ready" regardless of save error
+    expect(screen.getByTestId("profile-screen").getAttribute("data-state")).toBe("ready")
+  })
+
+  it("loading hint has role=status", () => {
+    loaded = false
+    mockError = null
+    render(
+      <ProfileScreen
+        access={access}
+        currentState="none"
+        profileMeta={profileMeta}
+      />,
+    )
+
+    expect(screen.getByText("Загружаем данные профиля...").getAttribute("role")).toBe("status")
+  })
+
+  it("load error has role=alert", () => {
+    loaded = false
+    mockError = "Network error"
+    render(
+      <ProfileScreen
+        access={access}
+        currentState="none"
+        profileMeta={profileMeta}
+      />,
+    )
+
+    const el = screen.getByText(/Не удалось загрузить профиль/)
+    expect(el.getAttribute("role")).toBe("alert")
   })
 })

@@ -72,7 +72,7 @@ export function CheckinStatistics({ timeZone }: Props) {
 
   if (loading) {
     return (
-      <section className="px-5 pt-5">
+      <section className="px-5 pt-5" role="status" aria-busy="true">
         <div className="rounded-2xl border border-border/60 bg-card p-4">
           <div className="mb-4 h-3 w-36 animate-pulse rounded bg-muted" />
           <div className="grid grid-cols-2 gap-3">
@@ -87,7 +87,7 @@ export function CheckinStatistics({ timeZone }: Props) {
   if (error) {
     return (
       <section className="px-5 pt-5">
-        <p className="px-1 text-[12px] text-muted-foreground">
+        <p className="px-1 text-[12px] text-muted-foreground" role="alert">
           Статистика оценок недоступна: {error}
         </p>
       </section>

@@ -4,6 +4,34 @@
 //       interception with contract-valid fixtures. No MSW, no runtime mocks.
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-PROFILE-SPEC
+// purpose: Verify the /profile screen matches the visual/structural contract
+//          on stable API payloads. Exercise ready state, edit-sheet, overflow,
+//          and negative-proof scenarios.
+// owns:
+//   - e2e/mock-visual/profile.spec.ts
+// inputs: Playwright test runner, E2E_BASE_URL env
+// outputs: Test pass/fail with assertions on DOM contract and visual structure
+// dependencies:
+//   - @playwright/test
+//   - ./route-interception (installMockApiRoutes, expectNoMissingApiFixtures)
+//   - ./fixtures/profile (profilePayload, accessPayload, etc.)
+// side_effects: None (all API calls intercepted)
+// invariants:
+//   - No product path imports mocks or demo data
+//   - Fixtures represent valid API response shapes
+//   - All API calls have fixture coverage (fails on missing)
+// END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-PROFILE-SPEC
+
+// START_MODULE_MAP: M-E2E-MOCK-VISUAL-PROFILE-SPEC
+// public_entrypoints: (none — test file)
+// semantic_blocks:
+//   - READY_STATE: ready-state test with all sections
+//   - EDIT_SHEET: edit-sheet visibility
+//   - OVERFLOW: no horizontal overflow
+//   - NEGATIVE_PROOF: missing fixture tracking
+// END_MODULE_MAP: M-E2E-MOCK-VISUAL-PROFILE-SPEC
+
 import { expect, test } from "@playwright/test";
 import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
 import {
@@ -48,8 +76,9 @@ test.describe("Mock Visual — /profile", () => {
     // Access card visible
     await expect(page.getByTestId("profile-access-card")).toBeVisible();
 
-    // Referral card visible
+    // Referral card visible with fixture-backed reward days (14)
     await expect(page.getByTestId("profile-referral-card")).toBeVisible();
+    await expect(page.getByTestId("profile-referral-card")).toContainText("14 дней доступа");
 
     // Horary card visible
     await expect(page.getByTestId("profile-horary-card")).toBeVisible();

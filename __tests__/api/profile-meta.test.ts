@@ -102,6 +102,33 @@ describe('getProfileMeta', () => {
     expect(result.referral.bonusDays).toBe(42)
   })
 
+  it('maps daysPerInvite from backend to rewardDays and computes bonusDays', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ totalInvited: 3, daysPerInvite: 21, inviteUrl: 'url' }),
+      })
+
+    const result = await getProfileMeta()
+    expect(result.referral.rewardDays).toBe(21)
+    expect(result.referral.bonusDays).toBe(63) // 3 * 21
+    expect(result.referral.count).toBe(3)
+  })
+
+  it('defaults rewardDays to 14 when daysPerInvite is missing', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ totalInvited: 1, inviteUrl: 'url' }),
+      })
+
+    const result = await getProfileMeta()
+    expect(result.referral.rewardDays).toBe(14)
+    expect(result.referral.bonusDays).toBe(14) // 1 * 14
+  })
+
   it('returns both when both endpoints succeed', async () => {
     global.fetch = vi.fn()
       .mockResolvedValueOnce({
