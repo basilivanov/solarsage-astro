@@ -8,26 +8,28 @@
 // purpose: Verify the /calendar screen matches the visual/structural contract
 //          on stable API payloads. Exercise ready state, day/moon modes, and
 //          overflow. Asserts no missing fixtures via MissingRequestsTracker.
+//          All date-dependent assertions explicitly select the target day
+//          to remain deterministic regardless of machine date.
 // owns:
 //   - e2e/mock-visual/calendar.spec.ts
 // inputs: Playwright test runner, E2E_BASE_URL env
 // outputs: Test pass/fail with assertions on DOM contract and visual structure
 // dependencies:
 //   - @playwright/test
-//   - ./route-interception (installMockApiRoutes, MissingRequestsTracker)
+//   - ./route-interception (installMockApiRoutes, MissingRequestsTracker, expectNoMissingApiFixtures)
 //   - ./fixtures/calendar-2026-07 (calendarPayload, accessPayload)
 // side_effects: None (all API calls intercepted)
 // invariants:
 //   - No product path imports mocks or demo data
 //   - Fixtures represent valid API response shapes
 //   - All API calls have fixture coverage (fails on missing)
+//   - Moon-mode assertions are deterministic (explicit day selection, not date-dependent)
 // failure_policy: Tests fail on missing fixture or assertion failure
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-SPEC
 
 import { expect, test } from "@playwright/test";
-import { installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
+import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
 import { calendarPayload, accessPayload } from "./fixtures/calendar-2026-07";
-import { expectNoMissingApiFixtures } from "./route-interception";
 
 function buildCalendarFixtures(): MockApiRouteFixtures {
   return {
@@ -41,7 +43,7 @@ function buildCalendarFixtures(): MockApiRouteFixtures {
 }
 
 test.describe("Mock Visual — /calendar", () => {
-  test("calendar screen renders in ready state with all major sections", async ({ page }) => {
+  test("calendar screen renders in ready state with month header, grid, lunar strip, and summary", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, buildCalendarFixtures());
 
     await page.addInitScript(() => {
@@ -56,22 +58,33 @@ test.describe("Mock Visual — /calendar", () => {
     await expect(screen).toBeVisible({ timeout: 10000 });
     await expect(screen).toHaveAttribute("data-load-state", "ready");
 
-    // Header and grid are visible
+    // Month header is visible
+    await expect(page.getByTestId("calendar-month-header")).toBeVisible();
+    await expect(page.getByTestId("calendar-month-header")).toContainText("2026");
+
+    // Grid is visible
     await expect(page.getByTestId("calendar-grid")).toBeVisible();
 
     // Bottom selected summary is visible
     await expect(page.getByTestId("calendar-selected-summary")).toBeVisible();
 
-    // Lunar strip or unavailable state is visible
-    const lunarStrip = page.locator('[data-testid="lunar-calendar-strip"], [data-testid="lunar-calendar-unavailable"]');
-    await expect(lunarStrip).toBeVisible();
+    // Positive fixture contains lunar data — assert exact strip, not unavailable fallback
+    await expect(page.getByTestId("lunar-calendar-strip")).toBeVisible();
+
+    // Segmented controls are present
+    await expect(page.getByTestId("calendar-view-day")).toBeVisible();
+    await expect(page.getByTestId("calendar-view-moon")).toBeVisible();
 
     // No missing API fixtures after quiet wait
     await expectNoMissingApiFixtures(page, tracker);
   });
 
-  test("moon mode displays backend lunar values", async ({ page }) => {
+  test("moon mode displays backend lunar values deterministically", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, buildCalendarFixtures());
+
+    // Freeze time to 2026-07-05 so CalendarScreen selects that day initially
+    // and clicking a day does not navigate away (the day won't be TODAY in frozen time)
+    await page.clock.install({ time: new Date("2026-07-05T12:00:00Z") });
 
     await page.addInitScript(() => {
       localStorage.setItem("lumen:onboarded", "1");
@@ -80,22 +93,23 @@ test.describe("Mock Visual — /calendar", () => {
     await page.goto("/calendar");
     await page.waitForLoadState("networkidle");
 
-    // Switch to moon mode
-    await page.getByRole("button", { name: "Луна" }).click();
+    // Switch to moon mode first (no navigation since we haven't clicked any day button)
+    await page.getByTestId("calendar-view-moon").click();
     await page.waitForTimeout(300);
 
     // Grid is still visible in moon mode
     await expect(page.getByTestId("calendar-grid")).toBeVisible();
 
-    // A day with known lunar data should show lunar day number
-    // 2026-07-05 has lunarDay=20, 63%, Убывающая Луна
+    // The selected day (2026-07-05 in frozen time) moon cell shows backend lunar day number
     const moonDay = page.getByTestId("calendar-moon-day-2026-07-05");
     await expect(moonDay).toBeVisible();
     await expect(moonDay).toContainText("20");
 
-    // Selected summary shows lunar info in moon mode
-    await expect(page.getByTestId("calendar-selected-summary")).toContainText("Убывающая Луна");
-    await expect(page.getByTestId("calendar-selected-summary")).toContainText("63%");
+    // Selected summary shows deterministic lunar values for 2026-07-05
+    const summary = page.getByTestId("calendar-selected-summary");
+    await expect(summary).toContainText("Убывающая Луна");
+    await expect(summary).toContainText("63%");
+    await expect(summary).toContainText("20 лунный день");
 
     // No missing API fixtures after quiet wait
     await expectNoMissingApiFixtures(page, tracker);

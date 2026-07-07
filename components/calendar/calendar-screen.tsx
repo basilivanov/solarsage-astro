@@ -237,7 +237,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
             Календарь
           </span>
-          <h1 className="font-serif text-[22px] leading-none tracking-tight text-foreground">
+          <h1 className="font-serif text-[22px] leading-none tracking-tight text-foreground" data-testid="calendar-month-header">
             {payload?.title || `${MONTHS_RU_NOM[cursor.getMonth()]} ${cursor.getFullYear()}`}
           </h1>
         </div>
@@ -261,6 +261,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           onClick={() => setView("day")}
           aria-pressed={view === "day"}
           aria-label="Дни"
+          data-testid="calendar-view-day"
           className={cn(
             "flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
             view === "day" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
@@ -273,6 +274,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           onClick={() => setView("moon")}
           aria-pressed={view === "moon"}
           aria-label="Луна"
+          data-testid="calendar-view-moon"
           className={cn(
             "flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
             view === "moon" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",

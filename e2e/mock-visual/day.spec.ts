@@ -29,8 +29,8 @@
 // failure_policy: Tests fail on missing fixture or assertion failure
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-DAY-SPEC
 
-import { expect, type Page, test } from "@playwright/test";
-import { installMockApiRoutes, type MockApiRouteFixtures, type MissingRequestsTracker } from "./route-interception";
+import { expect, test } from "@playwright/test";
+import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
 import { dayPayload, dayPayloadLocked, referralPayload } from "./fixtures/day-2026-07-05";
 import { calendarPayload } from "./fixtures/calendar-2026-07";
 
@@ -57,23 +57,6 @@ const WEEK_STRIP_MIN_DATES = [
 // ############################################################################
 // Helpers
 // ############################################################################
-
-/**
- * Wait for a quiet period to let late React effects (week strip, referral, etc.)
- * fire API requests before asserting fixture coverage.
- */
-async function expectNoMissingApiFixtures(
-  page: Page,
-  tracker: MissingRequestsTracker,
-): Promise<void> {
-  // Wait for any late effects to settle
-  await page.waitForTimeout(800);
-  // Check network has been idle
-  await page.waitForLoadState("networkidle");
-  // One more short pause for any setTimeout-based effects
-  await page.waitForTimeout(300);
-  expect(tracker.all).toEqual([]);
-}
 
 /**
  * Build the common fixture map for all tests.

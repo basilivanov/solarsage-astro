@@ -25,6 +25,7 @@
 // public_entrypoints:
 //   - installMockApiRoutes
 //   - MissingRequestsTracker
+//   - expectNoMissingApiFixtures
 // semantic_blocks:
 //   - TYPES: test fixture shape for route interception.
 //   - MISSING_TRACKER: missing-request recorder.
