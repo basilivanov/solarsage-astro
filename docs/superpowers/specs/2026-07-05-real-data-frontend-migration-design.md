@@ -24,13 +24,15 @@ The operational target is an atomic cutover:
 
 ## Current State
 
-Production-like runtime:
+Canonical app runtime:
 
 - Frontend: `solarsage-frontend.service` on port `3002`.
 - API: FastAPI `solarsage-api.service` on port `8000`.
 - Sidecar: `solarsage-sidecar.service` on port `18091`.
 - Nginx: `/api/*` routes to port `8000`, all other paths route to port `3002`.
 - Telegram WebApp auth is the canonical production auth path.
+
+This runtime may still be a dev/staging environment operationally, but architecturally it is the canonical app runtime. It must not behave like a sandbox with runtime mock fallbacks.
 
 Mock-preview runtime:
 
@@ -58,7 +60,7 @@ Use a contract-first migration.
 
 SolarSage sidecar owns deterministic astronomical calculation. The FastAPI backend owns orchestration, normalization, scoring, access control, persistence, and read-model shaping. The LLM may phrase or interpret already-computed facts, but it must not be the source of deterministic facts. The frontend owns rendering, navigation, loading states, and user interactions.
 
-Frontend production code must consume real HTTP contracts only. If sample data is needed for tests, it belongs in test fixtures, not runtime app modules.
+Frontend code in the canonical app runtime must consume real HTTP contracts only. If sample data is needed for tests, it belongs in test fixtures, not runtime app modules.
 
 ## Frontend Layering
 
@@ -87,7 +89,7 @@ Required contract practice:
 
 ## Error Handling
 
-No production error path may fall back to mock/demo data.
+No canonical app runtime error path may fall back to mock/demo data.
 
 Frontend behavior:
 
@@ -226,22 +228,23 @@ Until this exists, paywall/payment UI may be present only as disabled or hidden 
 ## Preview And Cutover Plan
 
 1. Create an integration branch from current `main`.
-2. Point port `3001` at that integration branch as real-data preview.
-3. Keep port `3002` on stable `main`.
-4. Remove the mock-preview Next catch-all API from the runtime path.
-5. Build each product area as a vertical slice:
+2. Use the old `3001` mock-preview only as a temporary visual oracle while the UI is being ported.
+3. Point port `3001` at the integration branch as real-data preview before final acceptance.
+4. Keep port `3002` on stable `main`.
+5. Remove the mock-preview Next catch-all API from the runtime path.
+6. Build each product area as a vertical slice:
    - backend schema/contract,
    - backend service logic,
    - generated contracts,
    - frontend adapter tests,
    - presentation port,
    - Playwright smoke against real auth/API.
-6. Run the full acceptance suite on `3001`.
-7. Merge the integration branch into `main`.
-8. Build and restart `solarsage-frontend.service` on `3002`.
-9. Keep rollback as reverting the merge and restarting `3002` from the previous known-good build.
+7. Run the full acceptance suite on `3001`.
+8. Merge the integration branch into `main`.
+9. Build and restart `solarsage-frontend.service` on `3002`.
+10. Keep rollback as reverting the merge and restarting `3002` from the previous known-good build.
 
-The old mock-preview worktree remains a visual reference only. It must not remain the source of any production runtime.
+The old mock-preview worktree remains a temporary visual reference only. It must not remain the source of any canonical app runtime. Once fixture-backed visual baselines and real e2e cover the migrated surfaces, `3001` mock-preview should be disabled or kept only as an archived historical reference.
 
 Manual Telegram WebView testing before cutover requires a separate preview web_app URL routed to `3001` through HTTPS, or a separate preview bot/button. The canonical public Telegram URL must not be repointed from stable `3002` during preview validation. If no preview Telegram URL exists, pre-cutover Telegram coverage is limited to generated real-HMAC initData E2E against `3001`, and one manual Telegram smoke must run immediately after `3002` cutover with rollback ready.
 
@@ -268,10 +271,15 @@ Required test layers:
 - Frontend unit tests for API clients and adapters.
 - Backend pytest for every new schema/service/endpoint.
 - Guardrail tests proving product paths do not import runtime demo/mock modules.
-- Playwright smoke for Telegram-authenticated routes on `3001`.
+- Mock visual/structural e2e using Playwright `page.route('/api/**', ...)` and contract-valid fixtures.
+- Playwright smoke for Telegram-authenticated routes on the real-data preview `3001`.
 - Visual smoke for chart renderers with non-empty SVG/canvas output.
 - Payment tests for webhook signature verification, idempotency, and fulfillment before live UI.
 - Production smoke after cutover on `3002` before declaring the Telegram issue fixed.
+
+MSW is intentionally not part of this migration strategy. The e2e mock layer is test-only Playwright route interception, not a service worker or runtime mode in the app.
+
+Mock visual e2e proves visual and structural parity on known data. It does not prove Telegram auth, backend contracts, cache behavior, nginx/systemd, or SolarSage integration. Those remain covered by real-HMAC Playwright and backend tests.
 
 Minimum route smoke set:
 

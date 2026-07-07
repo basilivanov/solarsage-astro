@@ -1,321 +1,272 @@
 ---
 id: adr-001
 title: Headless Testing Strategy
-status: accepted
+status: active
+wave: W-TEST
 date: 2026-05-30
+last_review: 2026-07-07
 ---
 
 # ADR-001: Headless Testing Strategy
 
 ## Status
-Accepted
+
+Accepted. Updated on 2026-07-07 after the real-data frontend migration discussion.
 
 ## Context
 
-### Problem
-Нужна стратегия тестирования для MVP, которая:
-- Покрывает критичные user flows (UC из verification-matrix.md)
-- Работает в CI без GUI
-- Позволяет Sonnet видеть результаты (screenshots)
-- Интегрируется с GRACE verification gates
-- Поддерживает auth-first подход (все через Telegram WebApp)
+SolarSage Astro is currently operated as a dev/staging product, but it already has a canonical app runtime:
 
-### Current State
-- ✅ Backend: pytest с fixtures для Telegram auth
-- ✅ Verification matrix: детальные UC с scenarios
-- ❌ Frontend: нет unit тестов (vitest)
-- ❌ E2E: нет Playwright тестов
-- ❌ Visual regression: нет baseline screenshots
+- `main` branch.
+- `solarsage-frontend.service` on port `3002`.
+- Nginx public entrypoint.
+- FastAPI on port `8000`.
+- Telegram WebApp auth via HMAC.
 
-### Requirements
-1. **Auth-first**: все endpoint тесты через Telegram auth
-2. **3 уровня**: unit (изолированные) / integration (с auth) / e2e (full flow)
-3. **Visual regression**: baseline screenshots в git, diff в CI
-4. **Verification matrix mapping**: каждый UC → минимум 1 executable test
-5. **CI gates**: блокируют merge при падении тестов
+This canonical runtime is not a mock sandbox. It must behave like the future tagged release runtime even before a production tag exists.
+
+The migration goal is to make the canonical frontend look like the old mock-preview frontend while keeping all product facts backed by real backend/SolarSage contracts.
 
 ## Decision
 
-### 1. Three-Level Testing Pyramid
+Use a layered headless testing strategy:
 
-#### Level 1: Unit Tests (быстрые, много)
-**Backend (pytest):**
-- Изолированные функции/сервисы БЕЗ auth
-- Примеры: scoring canon validation, normalization logic, HMAC validation
-- Расположение: `apps/api/tests/test_*.py`
-- Coverage target: 80%+ для критичных модулей
+1. Unit/component tests for local logic and presentation.
+2. Contract tests to keep frontend fixtures and adapters aligned with backend schemas.
+3. Mock e2e/visual tests using Playwright route interception.
+4. Real e2e tests using real Telegram HMAC auth and real API calls.
+5. Guardrail tests proving canonical app runtime does not import runtime mocks.
 
-**Frontend (vitest):**
-- Hooks, reducers, utils БЕЗ UI
-- Примеры: useAccess, chatReducer, date formatters
-- Расположение: `apps/web/__tests__/**/*.test.ts`
-- Coverage target: 60%+ для логики
+MSW is not part of this strategy. We do not add a service-worker-style mock runtime for this migration. Mocking for e2e is test-only and lives in Playwright `page.route('/api/**', ...)` handlers.
 
-#### Level 2: Integration Tests (средние, меньше)
-**Backend (pytest):**
-- Все endpoint тесты С auth через `authenticated_client` fixture
-- Примеры: GET /api/day/:date, POST /api/profile, cache invalidation
-- Расположение: `apps/api/tests/test_*_endpoints.py`
-- Каждый endpoint: happy path + error cases
+## Testing Layers
 
-**Fixture pattern:**
-```python
-@pytest.fixture
-async def authenticated_client(async_client, make_initdata, db_session):
-    # 1. Login через fake Telegram initData
-    raw = make_initdata(user_id=7777, username="testuser")
-    await async_client.post("/api/auth/telegram", json={"initData": raw})
-    
-    # 2. Onboarding (создание профиля)
-    await async_client.post("/api/profile", json={...})
-    
-    # 3. Возвращаем клиент с session cookie
-    return async_client
+### 1. Unit And Component Tests
+
+Tools:
+
+- Vitest for frontend logic/components.
+- Pytest for backend services/endpoints.
+
+Purpose:
+
+- Pure functions, adapters, reducers, hooks.
+- Component states with stable props.
+- Backend service behavior and endpoint contracts.
+
+Mocking boundary:
+
+- Use `vi.mock(...)`, `global.fetch = vi.fn()`, pytest fixtures, and service mocks only inside tests.
+- Do not import runtime demo data into product paths.
+
+### 2. Contract Tests
+
+Purpose:
+
+- Prove generated contracts and frontend adapters match backend schemas.
+- Prove mock fixtures used by e2e represent real contract shapes.
+
+Required checks:
+
+- `pnpm contracts:check` when contracts change.
+- Vitest contract tests under `__tests__/contracts/`.
+- Adapter tests for any API shape converted into view models.
+- Backend pytest for schema/service changes.
+
+Rule:
+
+Mock fixtures are allowed only if they validate against the same contract shape expected from the real API.
+
+### 3. Mock E2E / Visual Parity Tests
+
+Tool:
+
+- Playwright with `page.route('/api/**', ...)`.
+
+Purpose:
+
+- Validate frontend presentation on stable API payloads.
+- Catch missing migrated UI blocks.
+- Exercise hard-to-reproduce states: loading, error, empty, locked, quota exhausted, report generating.
+- Produce stable visual regression baselines.
+
+Non-purpose:
+
+- Does not prove Telegram auth works.
+- Does not prove backend/sidecar/API integration works.
+- Does not prove cache, systemd, nginx, or database behavior.
+
+Recommended Playwright project name:
+
+- `mock-visual` or `mock-parity`.
+
+Implementation rules:
+
+- Route handlers live under `e2e/` or test-only fixtures.
+- Do not use MSW.
+- Do not add mock branches to `lib/api/*`.
+- Keep dynamic text masked or asserted structurally.
+
+Example:
+
+```ts
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/**", async (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname === "/api/day/2026-07-05") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(dayFixture),
+      })
+    }
+    return route.fallback()
+  })
+})
 ```
 
-#### Level 3: E2E Tests (медленные, критичные)
-**Playwright:**
-- Full user flows через Telegram WebApp auth
-- Примеры: auth → onboarding → day view → navigation
-- Расположение: `apps/web/e2e/**/*.spec.ts`
-- Каждый UC из verification-matrix → минимум 1 e2e тест
+### 4. Real E2E Tests
 
-**Auth helper pattern:**
-```typescript
-// apps/web/e2e/helpers/auth.ts
-async function authenticateAndOnboard(page, context, userData) {
-  // 1. Inject Telegram WebApp API
-  await page.addInitScript((data) => {
-    window.Telegram = { WebApp: { initData: data, ... } };
-  }, generateFakeInitData(userData));
-  
-  // 2. Open app → auto auth
-  await page.goto('/');
-  
-  // 3. Complete onboarding
-  await fillOnboardingForm(page, userData);
-  
-  // 4. Wait for redirect to /day/today
-  await page.waitForURL('/day/today');
-}
+Tool:
+
+- Playwright with the existing real Telegram auth fixtures.
+
+Purpose:
+
+- Prove canonical runtime works end to end.
+- Exercise Telegram HMAC initData, session cookies, API, backend read models, and frontend rendering.
+
+Current pattern:
+
+- `e2e/fixtures.ts` generates signed Telegram initData via `scripts/generate-telegram-test-initdata.py`.
+- Tests run against `E2E_BASE_URL`, defaulting to `http://localhost:3002`.
+
+Rule:
+
+Real e2e must not use route interception for `/api/**`.
+
+### 5. Visual Regression
+
+Visual regression is required but scoped.
+
+Use it for key screens and states:
+
+- `/day/:date`
+- `/calendar`
+- `/profile`
+- `/readings`
+- `/readings/horary`
+- `/readings/natal`
+- locked
+- empty
+- loading/error
+- generating
+
+Avoid pixel-perfect coverage for every component and every dynamic text variant.
+
+Dynamic regions should be:
+
+- masked;
+- replaced by stable fixtures in mock e2e;
+- or asserted structurally with roles/test ids instead of screenshot pixels.
+
+### 6. Runtime Mock Guardrail
+
+Canonical app runtime means:
+
+- `main`.
+- `3002`.
+- Telegram WebApp public URL.
+- Future production tag/runtime.
+
+This runtime must not import or execute runtime mocks:
+
+- no `lib/mocks/*` imports from product paths;
+- no `lib/demo-data.ts` fallback in product paths;
+- no mock Next catch-all API in the canonical app;
+- no "if API fails, show demo data" behavior.
+
+Mocks may exist only in:
+
+- tests;
+- Playwright route handlers;
+- test fixtures;
+- archived visual reference worktrees.
+
+## Temporary Visual Oracle
+
+`/opt/solarsage-astro-mock-preview` on port `3001` may be used temporarily as a visual oracle while migrating UI to `main`.
+
+This is a migration aid only.
+
+It is not:
+
+- a product runtime;
+- a merge target;
+- a source of API behavior;
+- an acceptance gate after visual baselines exist.
+
+After migration, the source of truth becomes:
+
+- contract-valid fixtures;
+- visual snapshots;
+- real e2e;
+- no-runtime-mocks guardrails.
+
+## UI Semantic/Test Contract
+
+Frontend must expose a stable DOM/accessibility contract:
+
+- stable root `data-testid` per major screen;
+- `data-state` for loading/ready/empty/error/locked states;
+- `data-status` for domain status enums;
+- `aria-current`, `aria-expanded`, `aria-busy`, `aria-invalid`, `aria-pressed`;
+- `role="status"`, `role="alert"`, `role="dialog"` where appropriate;
+- accessible names for icon-only buttons.
+
+Tests should prefer roles and public DOM attributes over CSS classes or React internals.
+
+## Merge Gate For Frontend Migration
+
+Minimum gate for merging visual migration into `main`:
+
+```text
+unit/component tests
++ contract tests
++ mock visual/structural e2e
++ real e2e
++ no-runtime-mocks guardrail
 ```
 
-### 2. Visual Regression Strategy
-
-**Tool:** Playwright built-in screenshots (не percy.io, не chromatic)
-
-**Baseline storage:** Git repository в `apps/web/e2e/visual/__screenshots__/`
-
-**Workflow:**
-1. Первый запуск → генерирует baseline
-2. Последующие запуски → сравнивает с baseline
-3. Diff > 0.1% → тест падает, артефакты в CI
-4. Обновление baseline → коммит новых screenshots
-
-**Example:**
-```typescript
-// apps/web/e2e/visual/today-screen.spec.ts
-test('Today screen - supportive day', async ({ page }) => {
-  await authenticateAndOnboard(page, context, testUser);
-  await page.goto('/day/2026-05-30');
-  await page.waitForSelector('[data-testid="today-headline"]');
-  
-  // Full screen screenshot
-  await expect(page).toHaveScreenshot('today-supportive.png');
-  
-  // Component screenshot
-  const weekStrip = page.locator('[data-testid="week-strip"]');
-  await expect(weekStrip).toHaveScreenshot('week-strip.png');
-});
-```
-
-**Coverage:**
-- Today screen: supportive / steady / tense days
-- Calendar: 3-month grid
-- Locked day: preview + soft lock
-- Onboarding: all 5 steps
-- Profile: edit form
-
-### 3. Verification Matrix Integration
-
-**Mapping rule:** Каждый UC → минимум 1 executable test
-
-**Example mapping:**
-
-| UC | Test File | Test Name |
-|---|---|---|
-| UC-TG-AUTH | `e2e/auth.spec.ts` | `test('valid initData → session set')` |
-| UC-DAY-VIEW | `test_day_endpoints.py` | `test_get_day_today()` |
-| UC-DAY-VIEW | `e2e/day-view.spec.ts` | `test('renders headline, flags, reading')` |
-| UC-DAY-NAV | `e2e/day-view.spec.ts` | `test('tap arrow → URL updates')` |
-| UC-CAL-NAV | `e2e/calendar.spec.ts` | `test('tap day → navigates to /day/:date')` |
-| UC-ACCESS-CHECK | `test_access_service.py` | `test_referral_bonus_14_days()` |
-| UC-LOCKED-DAY | `e2e/locked-day.spec.ts` | `test('no access → preview + soft lock')` |
-
-**Scenario coverage:**
-- Каждый Scenario (S1, S2, S3) → отдельный test case
-- Каждый Gate → минимум 1 assertion
-
-### 4. CI Pipeline
-
-**GitHub Actions workflow:**
-```yaml
-name: Test
-
-on: [push, pull_request]
-
-jobs:
-  backend-unit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: cd apps/api && pytest tests/ -v
-  
-  frontend-unit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: pnpm test:unit
-  
-  e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: pnpm install
-      - run: pnpm playwright install --with-deps
-      - run: pnpm test:e2e
-      - uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: playwright-report
-          path: apps/web/playwright-report/
-      - uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: visual-diffs
-          path: apps/web/e2e/visual/__screenshots__/__diff_output__/
-  
-  contracts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: pnpm contracts:check
-```
-
-**Gates:**
-- ✅ All pytest tests pass
-- ✅ All vitest tests pass
-- ✅ All Playwright tests pass
-- ✅ Visual regression diffs < 0.1%
-- ✅ Contracts drift check passes
-
-### 5. Test Data Strategy
-
-**Backend:**
-- Fixtures: `apps/api/tests/fixtures/*.json`
-- Golden JSON: SolarSage parity fixtures (Vasiliy chart)
-- In-memory DB: SQLite for fast tests
-
-**Frontend:**
-- MSW mocks: `apps/web/__mocks__/handlers.ts`
-- Fixture mode: `NEXT_PUBLIC_USE_FIXTURES=true`
-
-**E2E:**
-- Real backend in test mode (fixture-backed services)
-- Fake Telegram initData через helper
-- Test users: user_id 7777, 8888, 9999
-
-### 6. Auth-First Approach
-
-**Principle:** Все тесты идут через Telegram auth, как реальный пользователь.
-
-**Backend:**
-- Unit tests: БЕЗ auth (изолированные функции)
-- Integration tests: С auth через `authenticated_client` fixture
-- Каждый endpoint test: login → onboarding → request
-
-**Frontend:**
-- Unit tests: БЕЗ auth (hooks/reducers)
-- E2E tests: С auth через `authenticateAndOnboard` helper
-- Каждый e2e test: inject Telegram WebApp API → auto auth
-
-**No backdoors:** Нет "test mode" без auth, нет admin endpoints для тестов.
+The mock e2e layer can prove the frontend looks correct on known data. The real e2e layer proves the product works on real data.
 
 ## Consequences
 
-### Positive
-- ✅ Executable verification matrix (UC → tests)
-- ✅ Visual regression ловит UI поломки
-- ✅ Sonnet видит screenshots → понимает правильность UI
-- ✅ Auth-first → тесты близки к production
-- ✅ CI gates блокируют поломки до merge
+Positive:
 
-### Negative
-- ❌ Baseline screenshots занимают ~5-10MB в git
-- ❌ E2E тесты медленные (~2-5 мин в CI)
-- ❌ Visual regression требует обновления baseline при UI changes
-- ❌ Auth setup в каждом тесте добавляет overhead
+- Visual migration can be tested deterministically.
+- Mock data remains isolated from canonical runtime.
+- Real e2e remains close to how users open the Telegram Mini App.
+- Regression failures are easier to classify: presentation vs contract vs runtime.
 
-### Mitigations
-- Baseline screenshots: git LFS (опционально)
-- E2E скорость: параллельный запуск (Playwright workers)
-- Baseline updates: автоматический PR при UI changes
-- Auth overhead: shared fixture, переиспользование session
+Negative:
 
-## Implementation Plan
+- There are two e2e modes to maintain.
+- Visual baselines require review when UI changes intentionally.
+- Fixtures must be kept contract-valid.
 
-### Wave W-TEST-1: Backend integration tests
-**Scope:**
-- `test_day_endpoints.py` (UC-DAY-VIEW)
-- `test_calendar_endpoints.py` (UC-CAL-NAV)
-- `test_access_service.py` (UC-ACCESS-CHECK)
-- `authenticated_client` fixture
+Mitigations:
 
-**Exit criteria:**
-- Все UC-DAY-VIEW scenarios (S1-S5) покрыты
-- Cache hit/miss assertions
-- Performance: p95 < 500ms (cached)
-
-### Wave W-TEST-2: Frontend unit tests
-**Scope:**
-- `vitest.config.ts`
-- `useAccess.test.ts`
-- `chatReducer.test.ts`
-- `onboardingReducer.test.ts`
-
-**Exit criteria:**
-- Coverage 60%+ для lib/grace/**
-- CI gate: vitest в GitHub Actions
-
-### Wave W-TEST-3: E2E + Visual regression
-**Scope:**
-- `playwright.config.ts`
-- `e2e/helpers/auth.ts` (authenticateAndOnboard)
-- `e2e/auth.spec.ts` (UC-TG-AUTH)
-- `e2e/day-view.spec.ts` (UC-DAY-VIEW, UC-DAY-NAV)
-- `e2e/calendar.spec.ts` (UC-CAL-NAV)
-- `e2e/visual/today-screen.spec.ts` (baseline screenshots)
-
-**Exit criteria:**
-- Все критичные UC покрыты e2e
-- Baseline screenshots committed
-- CI gate: Playwright в GitHub Actions
-
-### Wave W-TEST-4: CI integration
-**Scope:**
-- `.github/workflows/test.yml`
-- Visual diff artifacts upload
-- contracts:check gate
-- Performance monitoring
-
-**Exit criteria:**
-- All gates в CI
-- PR блокируется при падении тестов
-- Visual diffs доступны в artifacts
+- Keep fixtures small and route-specific.
+- Validate fixture shapes in contract tests.
+- Use masks for dynamic text.
+- Keep mock e2e as visual/structural, not as the final product gate.
 
 ## References
-- `grace/verification-matrix.md` — UC definitions
-- `grace/development-plan.xml` — wave dependencies
-- `apps/api/tests/conftest.py` — auth fixtures
-- Playwright docs: https://playwright.dev/
+
+- `playwright.config.ts`
+- `e2e/fixtures.ts`
+- `scripts/generate-telegram-test-initdata.py`
+- `__tests__/guardrails/no-runtime-mocks.test.ts`
+- `docs/visual-regression-testing.md`
+- `docs/superpowers/specs/2026-07-05-real-data-frontend-migration-design.md`

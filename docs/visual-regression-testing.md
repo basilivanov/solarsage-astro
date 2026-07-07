@@ -1,152 +1,168 @@
+---
+id: visual-regression-testing
+status: active
+wave: W-TEST
+last_review: 2026-07-07
+---
+
 # Visual Regression Testing
 
-## Что это?
+## Назначение
 
-Visual Regression Testing автоматически обнаруживает визуальные изменения (CSS, layout, rendering) путём сравнения скриншотов.
+Visual regression tests защищают внешний вид ключевых экранов от случайных изменений. В SolarSage Astro они являются частью frontend migration gate, но не заменяют real e2e.
 
-## Как работает?
+Главное разделение:
 
-1. **Baseline** — первый запуск создаёт эталонные скриншоты
-2. **Comparison** — последующие запуски сравнивают новые скриншоты с baseline
-3. **Diff** — если есть разница > threshold, тест падает
+- **Mock visual e2e** проверяет внешний вид и структуру на стабильных fixture payload'ах.
+- **Real e2e** проверяет Telegram auth, backend/API, cache, sidecar/read-model integration.
+
+## Текущая архитектура
+
+Используем Playwright screenshots. MSW не используем.
+
+Для mock visual режима API перехватывается в тесте:
+
+```ts
+await page.route("**/api/**", async (route) => {
+  const url = new URL(route.request().url())
+  if (url.pathname === "/api/day/2026-07-05") {
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(dayFixture),
+    })
+  }
+  return route.fallback()
+})
+```
+
+Route interception должен жить только в `e2e/` test harness. Product code не должен знать о mock mode.
+
+## Что покрываем скриншотами
+
+Минимальный набор для миграции UI:
+
+- `/day/:date`
+- `/calendar`
+- `/profile`
+- `/readings`
+- `/readings/horary`
+- `/readings/natal`
+- locked state
+- empty state
+- loading/error state
+- generating/report processing state
+
+Не покрываем pixel-perfect всем подряд:
+
+- длинные LLM/API-тексты;
+- случайные даты без фиксации;
+- каждый мелкий компонент;
+- состояния, которые лучше проверять DOM/assertions.
+
+## Baseline Policy
+
+Baseline screenshots коммитятся только для стабильных mock fixtures и фиксированных viewport'ов.
+
+Правила:
+
+- Изменение baseline требует review как изменение UI.
+- Если текст или данные динамические, область маскируется или проверяется структурно.
+- Если изменение намеренное, baseline обновляется вместе с PR.
+- Если изменение не намеренное, фиксится UI.
+
+## Селекторы и DOM Contract
+
+Тесты должны опираться на публичный DOM/accessibility contract:
+
+- `data-testid` для крупных экранов и блоков;
+- `data-state` для loading/ready/empty/error/locked;
+- `data-status` для domain status;
+- `aria-current`, `aria-expanded`, `aria-busy`, `aria-invalid`;
+- `role="status"`, `role="alert"`, `role="dialog"`;
+- `getByRole(...)` и accessible names для кнопок/ссылок.
+
+Не использовать CSS-классы как основной selector.
+
+Пример:
+
+```ts
+await expect(page.getByTestId("today-screen")).toBeVisible()
+await expect(page.getByTestId("today-summary")).toHaveAttribute("data-status", "calm")
+await expect(page.getByRole("button", { name: "Подробнее" })).toHaveAttribute("aria-expanded", "false")
+```
+
+## 3001 Mock Preview
+
+`/opt/solarsage-astro-mock-preview` на port `3001` может использоваться временно как visual oracle во время переноса UI.
+
+Это не постоянная архитектура.
+
+После переноса внешний вид должен фиксироваться в:
+
+- contract-valid fixtures;
+- Playwright screenshots;
+- structural assertions;
+- real e2e.
+
+`3001 mock-preview` можно выключить после того, как baseline и real e2e покрывают перенесённые экраны.
 
 ## Команды
 
-### Запустить тесты
+Текущий Playwright config использует `E2E_BASE_URL` и проекты `chromium` / `mobile`.
+
+Реальный e2e:
+
 ```bash
-npm run test:visual
+E2E_BASE_URL=http://localhost:3002 pnpm exec playwright test --project=chromium
 ```
 
-### Обновить baseline (после намеренных изменений)
+Mock visual/parity e2e должен быть добавлен как отдельный Playwright project/spec. До появления отдельного package script запускать его напрямую:
+
 ```bash
-npm run test:visual:update
+E2E_BASE_URL=http://localhost:3002 pnpm exec playwright test e2e/mock-visual.spec.ts --project=chromium
 ```
 
-### Запустить в UI mode (для отладки)
+Обновление snapshots после намеренного UI-изменения:
+
 ```bash
-npm run test:visual:ui
+E2E_BASE_URL=http://localhost:3002 pnpm exec playwright test e2e/mock-visual.spec.ts --project=chromium --update-snapshots
 ```
-
-## Когда обновлять baseline?
-
-- После намеренных изменений дизайна
-- После обновления UI библиотек
-- После изменения layout
-
-## Workflow
-
-1. Делаешь изменения в CSS/компонентах
-2. Запускаешь `npm run test:visual`
-3. Если тест падает:
-   - Проверяешь diff в `e2e/**/*-diff.png`
-   - Если изменения намеренные → `npm run test:visual:update`
-   - Если изменения НЕ намеренные → исправляешь код
-
-## Примеры
-
-### Тест падает из-за изменения цвета кнопки
-```
-Expected: button color #3B82F6
-Actual: button color #EF4444
-Diff: 150 pixels (threshold: 100)
-```
-
-→ Проверяешь diff → если намеренно изменил цвет → обновляешь baseline
-
-### Тест падает из-за бага (CSS не загрузился)
-```
-Expected: styled page
-Actual: unstyled page (no CSS)
-Diff: 5000 pixels
-```
-
-→ Исправляешь баг → тест проходит
-
-## Покрытие тестами
-
-### Homepage
-- Loading state (авторизация)
-
-### Onboarding
-- Step 1: Welcome screen
-- Step 2: Birth date input
-- Step 3: Birth place picker
-
-### Day View
-- Locked state (paywall)
-- Unlocked state (content visible)
-
-### Monetization
-- Trial banner
-
-## Конфигурация
-
-### Viewport
-- iPhone SE (375x667) — основной мобильный viewport
-
-### Thresholds
-- `maxDiffPixels: 100` — максимум 100 пикселей разницы
-- `threshold: 0.2` — 20% допустимой разницы
-
-### Screenshot Storage
-- Baseline: `e2e/**/*.spec.ts-snapshots/`
-- Diffs: `e2e/**/*-diff.png` (только при падении теста)
-
-## CI/CD Integration
-
-Visual regression тесты запускаются автоматически на каждом PR:
-- `.github/workflows/visual-regression.yml`
-- При падении теста diff-изображения загружаются как artifacts
 
 ## Troubleshooting
 
-### Тест падает из-за шрифтов
-Убедись, что шрифты загружены перед скриншотом:
-```typescript
-await page.waitForLoadState('networkidle')
+### Шрифты или ассеты не успели загрузиться
+
+```ts
+await page.waitForLoadState("networkidle")
 ```
 
-### Тест падает из-за анимаций
-Отключи анимации в тесте:
-```typescript
+### Анимации дают шум
+
+```ts
 await page.addStyleTag({
-  content: '* { animation: none !important; transition: none !important; }'
+  content: "* { animation: none !important; transition: none !important; }",
 })
 ```
 
-### Тест падает из-за динамического контента
-Замокай динамический контент (даты, случайные данные):
-```typescript
-await page.route('**/api/data', route => {
-  route.fulfill({ body: JSON.stringify({ date: '2026-06-01' }) })
+### Динамический контент ломает diff
+
+Использовать mock fixture, mask или structural assertion.
+
+```ts
+await expect(page).toHaveScreenshot("today.png", {
+  mask: [page.getByTestId("today-reading-text")],
 })
 ```
 
-## Best Practices
+## Acceptance Rule
 
-1. **Стабильные селекторы** — используй `data-testid` вместо текста
-2. **Фиксированные данные** — мокай API для предсказуемых результатов
-3. **Ожидание загрузки** — всегда жди `networkidle` перед скриншотом
-4. **Минимальные thresholds** — держи `maxDiffPixels` как можно ниже
-5. **Регулярное обновление** — обновляй baseline после каждого дизайн-изменения
+Visual regression считается достаточным только вместе с другими gates:
 
-## Расширение покрытия
-
-Чтобы добавить новый visual regression тест:
-
-1. Добавь тест в `e2e/visual-regression.spec.ts`
-2. Запусти `npm run test:visual:update` для создания baseline
-3. Проверь скриншот в `e2e/**/*.spec.ts-snapshots/`
-4. Закоммить baseline в git
-
-Пример:
-```typescript
-test('new feature - initial state', async ({ page }) => {
-  await page.goto('/new-feature')
-  await page.waitForLoadState('networkidle')
-  
-  await expect(page).toHaveScreenshot('new-feature-initial.png', {
-    maxDiffPixels: 100,
-  })
-})
+```text
+unit/component tests
++ contract tests
++ mock visual/structural e2e
++ real e2e
++ no-runtime-mocks guardrail
 ```

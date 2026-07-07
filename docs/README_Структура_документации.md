@@ -47,6 +47,12 @@ last_review: 2026-05-25
 - **09 Project transfer context** — общий контекст для переноса проекта
   в другой чат / нового агента.
 - **10 GRACE Project Agent Guide** — onboarding для агента в новом чате.
+- **ADR-001 Headless Testing** — актуальная стратегия тестов:
+  unit/component, contract, mock visual e2e через Playwright `page.route`,
+  real Telegram e2e и no-runtime-mocks guardrail.
+- **Visual Regression Testing** — правила baseline screenshots, временный
+  `3001` mock-preview как visual oracle и DOM/accessibility contract для
+  headless-тестов.
 - **GRACE_CANON** — methodology canon (transferable operating model).
 
 ## Запланированные ТЗ (binding waves)
