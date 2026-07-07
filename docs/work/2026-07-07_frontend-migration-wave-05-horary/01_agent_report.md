@@ -134,7 +134,7 @@ Canonical port `3002`, systemd, nginx, and bot config were **not** changed. Runt
 
 ## Rework 02
 
-Commit: `d267373`
+Commit: `fa8215c`
 
 ### Fixes
 | File | Change |
@@ -148,4 +148,22 @@ Commit: `d267373`
 - `pnpm exec tsc --noEmit --pretty false`: exit 0
 - `npx vitest run __tests__/horary/`: 10 files / 192 tests passed
 - `npx vitest run` (full): 85 files / 891 tests passed
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 20 passed
+
+## Rework 03
+
+Commit: `3cbbf6b`
+
+### Fixes
+| File | Change |
+|------|--------|
+| `__tests__/horary/horary-screen-flow.test.tsx` | Stabilized retry test: mocks reject until `allowSuccess=true`, then resolve — prevents early ready state |
+| `docs/work/2026-07-07_frontend-migration-wave-05-horary/01_agent_report.md` | Fixed Rework 02 SHA to `fa8215c`; added Rework 03 section |
+
+### Gates
+- `git diff --check main..HEAD`: exit 0
+- `git diff --check`: exit 0
+- `pnpm exec tsc --noEmit --pretty false`: exit 0
+- `npx vitest run __tests__/horary/`: 10 files / 192 tests passed
+- `npx vitest run` (full): 85 files / 891 tests passed (only pre-existing YooKassa fails)
 - `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 20 passed

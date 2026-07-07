@@ -354,7 +354,9 @@ describe("HoraryScreen — load error and retry", () => {
   });
 
   it("retry button re-calls loadData and recovers to ready state", async () => {
-    // Setup: first call rejects, subsequent calls resolve
+    // Gate: mocks reject until allowSuccess=true, then resolve
+    let allowSuccess = false
+
     const successPayload = {
       weeklyFreeAvailable: true,
       weeklyFreeExpiresAt: null,
@@ -373,13 +375,18 @@ describe("HoraryScreen — load error and retry", () => {
       birthdayLocation: null,
     };
 
-    // Use mockImplementationOnce for first-call rejection
-    mockQuota.mockImplementationOnce(() => Promise.reject(new Error("API error")))
-             .mockImplementation(() => Promise.resolve(successPayload));
-    mockList.mockImplementationOnce(() => Promise.reject(new Error("API error")))
-            .mockImplementation(() => Promise.resolve([]));
-    mockProfile.mockImplementationOnce(() => Promise.reject(new Error("API error")))
-              .mockImplementation(() => Promise.resolve(profilePayload));
+    mockQuota.mockImplementation(() => {
+      if (!allowSuccess) return Promise.reject(new Error("API error"));
+      return Promise.resolve(successPayload);
+    });
+    mockList.mockImplementation(() => {
+      if (!allowSuccess) return Promise.reject(new Error("API error"));
+      return Promise.resolve([]);
+    });
+    mockProfile.mockImplementation(() => {
+      if (!allowSuccess) return Promise.reject(new Error("API error"));
+      return Promise.resolve(profilePayload);
+    });
 
     render(
       <React.Suspense fallback={<div>loading</div>}>
@@ -387,13 +394,16 @@ describe("HoraryScreen — load error and retry", () => {
       </React.Suspense>
     );
 
-    // Wait for error state
+    // Wait for visible error state
     await waitFor(() => {
       expect(screen.getByTestId("horary-screen").getAttribute("data-state")).toBe("error");
     }, { timeout: 5000 });
 
-    // Click retry button
+    // Retry button is present in error state
     const retryBtn = screen.getByRole("button", { name: /Попробовать снова/ });
+
+    // Allow retry to succeed
+    allowSuccess = true;
     fireEvent.click(retryBtn);
 
     // Wait for ready state after retry
