@@ -22,7 +22,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Lock } from "lucide-react"
+import { Lock, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   WEEKDAYS_MINI,
@@ -33,7 +33,7 @@ import {
 import { addDays, sameDay } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
 import { statusLabel } from "@/lib/calendar"
-import { getDayStatus } from "@/lib/api/calendar"
+import { getDayStatus, type DayStatus } from "@/lib/api/calendar"
 import { logEvent } from "@/lib/log"
 import { MoodIcon } from "@/components/calendar/mood-icon"
 
@@ -43,12 +43,14 @@ type Props = {
   onSelect?: (_d: Date) => void
 }
 
+type WeekStatus = DayStatus | "unknown"
+
 export function WeekStrip({ selectedDate, access, onSelect }: Props) {
   const start = startOfWeek(selectedDate)
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i))
   const range = formatWeekRange(start)
 
-  const [statuses, setStatuses] = useState<Record<string, "supportive" | "tense" | "even">>({})
+  const [statuses, setStatuses] = useState<Record<string, WeekStatus>>({})
 
   const startKey = start.getTime()
 
@@ -58,12 +60,14 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
       try {
         const results = await Promise.all(
           days.map(async (d) => {
-            const status = await getDayStatus(d).catch(() => "even" as const)
+            const status = await getDayStatus(d)
+              .then((value) => value ?? "unknown" as const)
+              .catch(() => "unknown" as const)
             return { key: d.toDateString(), status }
           })
         )
         if (!active) return
-        const map: Record<string, "supportive" | "tense" | "even"> = {}
+        const map: Record<string, WeekStatus> = {}
         for (const r of results) {
           map[r.key] = r.status
         }
@@ -91,14 +95,15 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
         {days.map((d) => {
           const active = sameDay(d, selectedDate)
           const accessible = isDayAccessible(d, access)
-          const status = statuses[d.toDateString()] || "even"
+          const status = statuses[d.toDateString()] ?? "unknown"
+          const statusText = status === "unknown" ? "статус недоступен" : `${statusLabel(status)} день`
           const labelIdx = mondayFirstIndex(d)
           return (
             <li key={d.toISOString()}>
               <button
                 type="button"
                 onClick={() => onSelect?.(d)}
-                aria-label={`${WEEKDAYS_MINI[labelIdx]} ${d.getDate()}, ${statusLabel(status)} день${
+                aria-label={`${WEEKDAYS_MINI[labelIdx]} ${d.getDate()}, ${statusText}${
                   accessible ? "" : ", требуется доступ"
                 }`}
                 aria-pressed={active}
@@ -125,13 +130,22 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
                 </span>
                 <span className="font-serif text-[19px] leading-none">{d.getDate()}</span>
                 <span className="flex h-4 items-center justify-center">
-                  {accessible ? (
+                  {accessible && status !== "unknown" ? (
                     <MoodIcon
                       status={status}
                       className={cn(
                         "h-4 w-4",
                         active ? "text-primary-foreground" : "text-foreground",
                       )}
+                    />
+                  ) : accessible ? (
+                    <Minus
+                      aria-hidden
+                      className={cn(
+                        "h-4 w-4",
+                        active ? "text-primary-foreground/75" : "text-muted-foreground/70",
+                      )}
+                      strokeWidth={1.75}
                     />
                   ) : (
                     <Lock
@@ -152,4 +166,3 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
     </section>
   )
 }
-

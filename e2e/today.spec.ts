@@ -35,15 +35,8 @@ test.describe('Today Screen - Real Auth', () => {
     }
 
     const todayScreen = page.getByTestId('today-screen');
-    const errorBoundary = page.getByTestId('error-boundary');
-    await expect(todayScreen.or(errorBoundary)).toBeVisible({ timeout: 15000 });
-
-    if (await errorBoundary.isVisible()) {
-      await expect(page.getByTestId('error-message')).toBeVisible({ timeout: 5000 });
-      return;
-    }
-
-    await expect(todayScreen).toBeVisible({ timeout: 5000 });
+    await expect(todayScreen).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('error-boundary')).toBeHidden();
     await expect(page.getByTestId('day-summary-card')).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('day-energy-meter')).toBeVisible({ timeout: 5000 });
     const chart = page.getByTestId('day-chart');

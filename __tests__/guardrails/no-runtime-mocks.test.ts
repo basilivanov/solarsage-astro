@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { readdirSync, readFileSync, statSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join, normalize } from "node:path"
 
 const roots = ["app/(grace)", "components", "hooks", "lib/api", "lib/adapters", "lib/grace"]
 const forbidden = [
@@ -17,9 +17,32 @@ function isSourceFile(path: string) {
 }
 
 function importedPaths(source: string) {
-  return Array.from(
-    source.matchAll(/(?:from\s+|import\s*(?:\(\s*)?)["']([^"']+)["']/g),
-    (match) => match[1]
+  return [
+    ...source.matchAll(/(?:from\s+|import\s*(?:\(\s*)?)["']([^"']+)["']/g),
+    ...source.matchAll(/require\s*\(\s*["']([^"']+)["']\s*\)/g),
+  ].map((match) => match[1])
+}
+
+function stripExtension(path: string) {
+  return path.replace(/\.(tsx?|jsx?)$/, "")
+}
+
+function normalizedImportPath(file: string, importPath: string) {
+  if (importPath.startsWith("@/")) {
+    return stripExtension(importPath.slice(2))
+  }
+  if (importPath.startsWith(".")) {
+    return stripExtension(normalize(join(dirname(file), importPath)))
+  }
+  return stripExtension(importPath)
+}
+
+function isForbiddenImport(file: string, importPath: string) {
+  const candidates = [importPath, normalizedImportPath(file, importPath)].map(
+    stripExtension,
+  )
+  return candidates.some((candidate) =>
+    forbidden.some((path) => candidate === path || candidate.startsWith(`${path}/`)),
   )
 }
 
@@ -51,7 +74,7 @@ describe("runtime mock imports", () => {
       .flatMap((file) => {
         const source = readFileSync(file, "utf8")
         return importedPaths(source)
-          .filter((importPath) => forbidden.some((path) => importPath === path || importPath.startsWith(`${path}/`)))
+          .filter((importPath) => isForbiddenImport(file, importPath))
           .map((importPath) => `${file}: imports ${importPath}`)
       })
 

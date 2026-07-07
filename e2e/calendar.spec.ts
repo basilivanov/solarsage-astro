@@ -27,15 +27,10 @@ test.describe('Calendar Screen - Real Auth', () => {
     const screenRoot = page.getByTestId('calendar-screen');
     const grid = page.getByTestId('calendar-grid');
     const loading = page.getByTestId('calendar-loading');
-    const unavailable = page.getByTestId('calendar-unavailable');
-    await expect(screenRoot).toHaveAttribute('data-load-state', /ready|error/, { timeout: 15000 });
+    await expect(screenRoot).toHaveAttribute('data-load-state', 'ready', { timeout: 15000 });
     await expect(loading).toBeHidden();
-    await expect(grid.or(unavailable)).toBeVisible({ timeout: 15000 });
-
-    if (await unavailable.isVisible()) {
-      await expect(unavailable).toContainText('Календарь недоступен');
-      return;
-    }
+    await expect(grid).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('calendar-unavailable')).toBeHidden();
 
     await expect(page.locator('[data-testid^="calendar-day-"]').first()).toBeVisible({ timeout: 5000 });
     await expect(page.locator('[data-testid="lunar-calendar-strip"], [data-testid="lunar-calendar-unavailable"]')).toBeVisible({ timeout: 5000 });

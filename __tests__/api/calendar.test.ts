@@ -90,14 +90,24 @@ describe('getDayStatus', () => {
     expect(status).toBe('even')
   })
 
-  it('normalizes missing dayStatus to even', async () => {
+  it('returns null when dayStatus is missing', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({}),
     })
 
     const status = await getDayStatus(new Date('2025-06-15'))
-    expect(status).toBe('even')
+    expect(status).toBeNull()
+  })
+
+  it('returns null when dayStatus is invalid', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ dayStatus: 'unknown' }),
+    })
+
+    const status = await getDayStatus(new Date('2025-06-15'))
+    expect(status).toBeNull()
   })
 
   it('throws on error response', async () => {
@@ -140,6 +150,26 @@ describe('getMonthStatuses', () => {
       '2025-06-01': 'supportive',
       '2025-06-02': 'tense',
       '2025-06-03': 'even',
+    })
+  })
+
+  it('omits days with missing or invalid statuses', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ...calendarPayload,
+        month: '2025-06',
+        days: [
+          { ...calendarPayload.days[0], date: '2025-06-01', dayStatus: 'supportive' },
+          { ...calendarPayload.days[0], date: '2025-06-02', dayStatus: null },
+          { ...calendarPayload.days[0], date: '2025-06-03', dayStatus: undefined },
+        ],
+      }),
+    })
+
+    const map = await getMonthStatuses(2025, 5)
+    expect(map).toEqual({
+      '2025-06-01': 'supportive',
     })
   })
 

@@ -1,15 +1,13 @@
 # ############################################################################
 # AI_HEADER: MODULE_CALENDAR_SERVICE
-# ROLE: CalendarService — generates 3-month calendar grid with neutral statuses.
+# ROLE: CalendarService — generates 3-month calendar grid with real statuses and access.
 # DEPENDENCIES: sqlalchemy, app.schemas.calendar, app.schemas.access
-# GRACE_ANCHORS: [CALENDAR_GENERATION, NEUTRAL_STATUS_ROTATION, ACCESS_STUB]
+# GRACE_ANCHORS: [CALENDAR_GENERATION, REAL_STATUS_LOOKUP, REAL_ACCESS]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-CALENDAR-SERVICE
-# purpose: Generate CalendarPayload for prev/current/next month grid.
-#   W-1.4: neutral statuses (5-day rotation pattern).
-#   W-4.3: real statuses from semantic_layers.
-#   W-ACCESS.1: real access logic.
+# purpose: Generate CalendarPayload for prev/current/next month grid with
+#   cached/computed real day statuses and real access decisions.
 # owns:
 #   - apps/api/app/services/calendar_service.py
 # inputs:
@@ -22,18 +20,17 @@
 #   - M-DB-SESSION (AsyncSession)
 #   - M-CONTRACTS.calendar (CalendarPayload, CalendarDay, CalendarMeta, AllowedRange)
 #   - M-CONTRACTS.access (ContentAccessState)
-#   - M-ACCESS (AccessService stub)
+#   - M-ACCESS (AccessService)
 # invariants:
 #   - Returns exactly 3 months: prev, current, next
-#   - Each day has neutral status in W-1.4 (5-day cycle)
-#   - Access state is stub (state=full) in W-1.4
+#   - Full-access days use cached/computed real status when available
+#   - Locked/preview days may return no day status
 #   - Allowed range is ±2 years from current date
 # failure_policy:
 #   - Invalid month format handled by caller (calendar.py)
 #   - Out of range handled by caller
 # non_goals:
-#   - no real status calculation (W-4.3)
-#   - no real access logic (W-ACCESS.1)
+#   - no calendar UI rendering
 # END_MODULE_CONTRACT: M-CALENDAR-SERVICE
 
 # START_MODULE_MAP: M-CALENDAR-SERVICE
@@ -41,8 +38,8 @@
 #   - CalendarService.get_calendar
 # semantic_blocks:
 #   - CALENDAR_GENERATION: generate 3-month grid
-#   - NEUTRAL_STATUS_ROTATION: 5-day cycle pattern
-#   - ACCESS_STUB: stub access state (full)
+#   - REAL_STATUS_LOOKUP: cache-backed day status lookup/computation
+#   - REAL_ACCESS: access state from AccessService
 # owned_tests:
 #   - apps/api/tests/test_calendar_endpoints.py (W-1.4)
 # END_MODULE_MAP: M-CALENDAR-SERVICE
@@ -89,9 +86,8 @@ class CalendarService:
         """
         Get 3-month calendar grid (prev/curr/next).
 
-        W-1.4: neutral statuses (rotation pattern), access stub.
-        W-4.3: real statuses from semantic_layers.
-        W-ACCESS.1: real access logic.
+        Uses real access decisions. Full-access days return a cached or
+        computed real status when the pipeline can produce one.
         """
         # Parse requested month
         requested_date = datetime.strptime(month, "%Y-%m")

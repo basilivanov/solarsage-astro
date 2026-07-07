@@ -33,12 +33,13 @@ import type { CalendarPayload } from "@/packages/contracts"
 export type { DayStatus, DayStatusMap }
 export type { CalendarPayload }
 
-function normalizeDayStatus(raw: string | null | undefined): DayStatus {
+function normalizeDayStatus(raw: string | null | undefined): DayStatus | null {
   if (raw === "supportive" || raw === "tense") return raw
-  return "even"
+  if (raw === "steady") return "even"
+  return null
 }
 
-export async function getDayStatus(date: Date): Promise<DayStatus> {
+export async function getDayStatus(date: Date): Promise<DayStatus | null> {
   const dateStr = date.toISOString().split("T")[0]
   const res = await fetch(`/api/day/${dateStr}`, {
     credentials: "include",
@@ -55,7 +56,10 @@ export async function getMonthStatuses(year: number, month: number): Promise<Day
   const body = await getMonthCalendar(year, month)
   const map: DayStatusMap = {}
   for (const day of body.days ?? []) {
-    map[day.date] = normalizeDayStatus(day.dayStatus)
+    const status = normalizeDayStatus(day.dayStatus)
+    if (status !== null) {
+      map[day.date] = status
+    }
   }
   return map
 }

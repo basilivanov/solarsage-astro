@@ -38,7 +38,7 @@ export default function CheckinPage() {
         </div>
         <CheckinScreen
           targetDate={targetDate}
-          onComplete={() => router.push("/today")}
+          onComplete={() => router.push(`/day/${targetDate}`)}
         />
       </div>
     </main>
