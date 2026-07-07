@@ -34,6 +34,7 @@ type Props = {
   className?: string
   isLast?: boolean
   disabled?: boolean
+  testId?: string
 }
 
 export function ProfileRow({
@@ -45,6 +46,7 @@ export function ProfileRow({
   className,
   isLast = false,
   disabled = false,
+  testId,
 }: Props) {
   const filled = Boolean(value)
   return (
@@ -52,6 +54,7 @@ export function ProfileRow({
       type="button"
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
+      data-testid={testId}
       className={cn(
         "flex w-full items-center gap-4 px-4 py-3.5 text-left transition active:bg-muted/50",
         disabled && "cursor-not-allowed opacity-60 active:bg-transparent",

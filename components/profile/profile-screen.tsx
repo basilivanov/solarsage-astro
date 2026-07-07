@@ -80,12 +80,20 @@ export function ProfileScreen({
     : "Гость"
   const handle = tgUser?.username ? `@${tgUser.username}` : "Telegram mini-app"
 
+  const screenState = error ? "error" : loaded ? "ready" : "loading"
+
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-background">
+    <div
+      className="flex h-full w-full flex-col overflow-y-auto bg-background"
+      data-testid="profile-screen"
+      data-state={screenState}
+      data-access-state={currentState}
+    >
       {/* Header */}
       <header
         className="flex-none px-5 pb-5"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1.25rem)" }}
+        data-testid="profile-header"
       >
         <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Профиль
@@ -103,7 +111,7 @@ export function ProfileScreen({
         </div>
       </header>
 
-      <section className="px-5">
+      <section className="px-5" data-testid="profile-access-card">
         <AccessCard
           access={access}
           currentState={currentState}
@@ -111,11 +119,11 @@ export function ProfileScreen({
         />
       </section>
 
-      <section className="px-5 pt-5">
+      <section className="px-5 pt-5" data-testid="profile-referral-card">
         <ReferralCard referral={profileMeta.referral} />
       </section>
 
-      <section className="px-5 pt-5">
+      <section className="px-5 pt-5" data-testid="profile-horary-card">
         <HoraryCard horary={profileMeta.horary} />
       </section>
 
@@ -126,7 +134,7 @@ export function ProfileScreen({
       />
 
       {/* Мои данные */}
-      <section className="px-5 pt-6">
+      <section className="px-5 pt-6" data-testid="profile-data-section">
         <h2 className="mb-2 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Мои данные
         </h2>
@@ -142,6 +150,7 @@ export function ProfileScreen({
             value={formatBirthDate(profile.birthDate)}
             onClick={() => setEditField("birthDate")}
             disabled={!loaded}
+            testId="profile-data-row-birth-date"
           />
           <ProfileRow
             icon={Clock}
@@ -149,6 +158,7 @@ export function ProfileScreen({
             value={formatBirthTime(profile.birthTime)}
             onClick={() => setEditField("birthTime")}
             disabled={!loaded}
+            testId="profile-data-row-birth-time"
           />
           <ProfileRow
             icon={MapPin}
@@ -156,6 +166,7 @@ export function ProfileScreen({
             value={profile.birthPlace}
             onClick={() => setEditField("birthPlace")}
             disabled={!loaded}
+            testId="profile-data-row-birth-place"
           />
           <ProfileRow
             icon={Home}
@@ -163,6 +174,7 @@ export function ProfileScreen({
             value={profile.currentCity}
             onClick={() => setEditField("currentCity")}
             disabled={!loaded}
+            testId="profile-data-row-current-city"
           />
           <ProfileRow
             icon={PartyPopper}
@@ -171,12 +183,13 @@ export function ProfileScreen({
             onClick={() => setEditField("birthdayCity")}
             disabled={!loaded}
             isLast
+            testId="profile-data-row-birthday-city"
           />
         </div>
       </section>
 
       {/* Сервис */}
-      <section className="px-5 pt-6">
+      <section className="px-5 pt-6" data-testid="profile-service-section">
         <h2 className="mb-2 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Сервис
         </h2>

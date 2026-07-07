@@ -139,7 +139,7 @@ export function CheckinStatistics({ timeZone }: Props) {
   ]
 
   return (
-    <section className="px-5 pt-5">
+    <section className="px-5 pt-5" data-testid="profile-checkin-statistics">
       <div className="rounded-2xl border border-border/60 bg-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <BarChart3

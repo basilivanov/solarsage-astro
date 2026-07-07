@@ -120,7 +120,7 @@ export function EditSheet(props: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog">
+    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog" data-testid="profile-edit-sheet">
       {/* Backdrop — на всю ширину экрана */}
       <button
         type="button"

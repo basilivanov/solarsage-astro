@@ -49,7 +49,7 @@ export default function ProfilePage() {
       paidCredits: 0,
       canPurchase: false,
     },
-    referral: { count: 0, bonusDays: 0, rewardDays: 7, inviteUrl: "" },
+    referral: { count: 0, bonusDays: 0, rewardDays: 14, inviteUrl: "" },
   })
 
   useEffect(() => {

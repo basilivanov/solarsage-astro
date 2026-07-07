@@ -34,6 +34,7 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
 
   let referralCount = 0
   let referralUrl = ""
+  let rewardDays = 14
 
   try {
     const [quotaRes, referralRes] = await Promise.all([
@@ -60,6 +61,7 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
     if (referralRes.ok) {
       const referral = await referralRes.json()
       referralCount = referral.totalInvited || 0
+      if (typeof referral.daysPerInvite === "number") rewardDays = referral.daysPerInvite
       referralUrl = referral.inviteUrl || ""
     }
   } catch {
@@ -77,9 +79,9 @@ export async function getProfileMeta(): Promise<ProfileMeta> {
     },
     referral: {
       count: referralCount,
-      bonusDays: referralCount * 14,
+      bonusDays: referralCount * rewardDays,
       inviteUrl: referralUrl,
-      rewardDays: 14,
+      rewardDays,
     },
   }
 }
