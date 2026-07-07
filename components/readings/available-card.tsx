@@ -40,9 +40,10 @@ export function AvailableCard({ icon: Icon, title, description, teaser, onClick,
       onClick={onClick}
       data-testid={`readings-card-${key}`}
       data-href={route}
-      className="group flex w-full flex-col items-start gap-4 rounded-2xl border border-border/70 bg-card p-5 text-left transition active:scale-[0.99]"
+      className="group relative flex w-full flex-col items-start gap-4 overflow-hidden rounded-2xl border border-border/70 bg-card p-5 text-left transition hover:border-border active:scale-[0.99] readings-card-surface"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <div aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/5 opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-60" />
+      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-105">
         <Icon className="h-[22px] w-[22px]" strokeWidth={1.6} />
       </div>
 

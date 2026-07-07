@@ -1,3 +1,31 @@
+// ############################################################################
+// AI_HEADER: MODULE_TESTS_READINGS_SCREEN
+// ROLE: Unit tests for ReadingsScreen component — DOM contract, navigation,
+//       coming card overlay.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-TESTS-READINGS-SCREEN
+// purpose: Verify ReadingsScreen renders stable testids, navigates horary/natal
+//          on click, and opens/dismisses the in-dev overlay for coming cards.
+// owns:
+//   - __tests__/components/ReadingsScreen.test.tsx
+// inputs: Mocks for next/navigation and child components
+// outputs: Assertion results
+// dependencies: @/components/readings/readings-screen
+// side_effects: none
+// invariants:
+//   - Testids use stable product keys, not localized copy
+//   - Navigation calls router.push with correct real routes
+// END_MODULE_CONTRACT: M-TESTS-READINGS-SCREEN
+
+// START_MODULE_MAP: M-TESTS-READINGS-SCREEN
+// semantic_blocks:
+//   - ROOT_TESTID: root data-testid and data-state
+//   - SECTIONS: header, banner, available/coming sections
+//   - NAVIGATION: horary/natal route targets and router.push
+//   - COMING_OVERLAY: coming card opens and dismisses overlay
+// END_MODULE_MAP: M-TESTS-READINGS-SCREEN
+
 import { describe, expect, it, vi } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import React from "react"
@@ -15,8 +43,8 @@ vi.mock("@/components/readings/available-card", () => ({
   ),
 }))
 vi.mock("@/components/readings/coming-card", () => ({
-  ComingCard: ({ title, onClick }: { title: string; onClick: () => void }) => (
-    <button data-testid={`readings-card-${title.toLowerCase().replace(/\s+/g, "-")}`} onClick={onClick}>
+  ComingCard: ({ title, onClick, cardKey }: { title: string; onClick: () => void; cardKey: string }) => (
+    <button data-testid={`readings-card-${cardKey}`} onClick={onClick}>
       {title}
     </button>
   ),
@@ -75,15 +103,16 @@ describe("ReadingsScreen", () => {
 
   it("clicking coming card opens in-dev-overlay", () => {
     render(<ReadingsScreen />)
-    const firstComing = screen.getByTestId("readings-card-прогноз-на-месяц")
-    expect(firstComing).toBeTruthy()
-    fireEvent.click(firstComing)
+    // Stable product key "month" from listReadings()
+    const comingCard = screen.getByTestId("readings-card-month")
+    expect(comingCard).toBeTruthy()
+    fireEvent.click(comingCard)
     expect(screen.getByTestId("readings-in-dev-overlay")).toBeTruthy()
   })
 
   it("in-dev-overlay is dismissible", () => {
     render(<ReadingsScreen />)
-    fireEvent.click(screen.getByTestId("readings-card-прогноз-на-месяц"))
+    fireEvent.click(screen.getByTestId("readings-card-month"))
     expect(screen.getByTestId("readings-in-dev-overlay")).toBeTruthy()
     fireEvent.click(screen.getByText("close"))
     expect(screen.queryByTestId("readings-in-dev-overlay")).toBeNull()

@@ -97,3 +97,29 @@ Test Files  85 passed (85)
 ## Runtime Mock / MSW Statement
 
 **No runtime mocks, MSW, mock-preview API routes, or demo data were ported to the product path.**
+
+## Rework 01
+
+Commit: `[this commit]`
+
+### Changes
+
+| Finding | Fix |
+|---------|-----|
+| Coming-card testids from localized title | Added `cardKey` prop to `ComingCard`; testids use stable product keys (`readings-card-month`, `readings-card-year`, `readings-card-synastry`) |
+| Missing GRACE in ReadingsScreen.test.tsx | Added `AI_HEADER`, `START_MODULE_CONTRACT`, `START_MODULE_MAP` |
+| No visible presentation delta | Added gradient heading to hero title (`bg-gradient-to-r` + `readings-gradient` class); added subtle glow hover/active effect to available cards (`readings-card-surface` CSS helper) |
+| Report missing no-op statement | Explicit statement added below |
+
+### Gates (all pass)
+
+- `git diff --check main..HEAD`: exit 0
+- `git diff --check`: exit 0
+- `pnpm exec tsc --noEmit`: exit 0
+- `npx vitest run` (targeted): 3 files / 15 tests passed
+- `npx vitest run` (full): 85 files / 882 tests passed
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 16 passed (1 worker)
+
+### No-Op Statement
+
+Canonical port `3002`, systemd, nginx, and bot config were **not** changed in this wave or rework. Runtime mocks, MSW, mock-preview API routes, demo calculators, `SynastryDemo`, `CelebrityCompatibility`, and `DEMO_NATAL_RESPONSE` remain **not ported**.

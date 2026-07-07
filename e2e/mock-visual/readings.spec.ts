@@ -92,8 +92,8 @@ test.describe("Mock Visual — /readings", () => {
     await page.goto("/readings");
     await page.waitForLoadState("networkidle");
 
-    // Click first coming card
-    await page.getByTestId("readings-card-прогноз-на-месяц").click();
+    // Click first coming card by stable product key
+    await page.getByTestId("readings-card-month").click();
 
     // In-dev overlay is visible with dialog role
     const overlay = page.getByTestId("readings-in-dev-overlay");

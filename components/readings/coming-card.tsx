@@ -29,15 +29,15 @@ type Props = {
   description: string
   onClick: () => void
   isLast?: boolean
+  cardKey: string
 }
 
-export function ComingCard({ icon: Icon, title, description, onClick, isLast }: Props) {
-  const key = title.toLowerCase().replace(/\s+/g, "-")
+export function ComingCard({ icon: Icon, title, description, onClick, isLast, cardKey }: Props) {
   return (
     <button
       type="button"
       onClick={onClick}
-      data-testid={`readings-card-${key}`}
+      data-testid={`readings-card-${cardKey}`}
       data-state="disabled"
       className={`flex w-full items-start gap-4 px-4 py-4 text-left transition active:bg-muted/40 ${
         isLast ? "" : "border-b border-border/60"

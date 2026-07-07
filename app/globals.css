@@ -332,6 +332,16 @@
   box-shadow: 0 1px 2px oklch(0 0 0 / 0.3) inset;
 }
 
+/* ---- /readings presentation helpers (Wave 04) ---- */
+.readings-gradient {
+  -webkit-text-fill-color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .readings-card-surface [aria-hidden] {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chart-svg-root,
   .chart-svg-root circle[data-chart-center],

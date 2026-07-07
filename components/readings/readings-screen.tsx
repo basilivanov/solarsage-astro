@@ -55,7 +55,7 @@ export function ReadingsScreen() {
         <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Разборы
         </span>
-        <h1 className="font-serif text-[26px] leading-tight tracking-tight text-foreground">
+        <h1 className="font-serif text-[26px] leading-tight tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/60 bg-clip-text text-transparent readings-gradient">
           Глубокие разборы
         </h1>
         <p className="text-pretty text-[13.5px] leading-relaxed text-muted-foreground">
@@ -125,6 +125,7 @@ export function ReadingsScreen() {
                 icon={r.icon}
                 title={r.title}
                 description={r.description}
+                cardKey={r.key}
                 isLast={i === coming.length - 1}
                 onClick={() => setDevCard(r)}
               />
