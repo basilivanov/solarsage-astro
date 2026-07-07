@@ -1,0 +1,68 @@
+{
+  "capturedAt": "2026-07-07",
+  "sourceBaseUrl": "http://127.0.0.1:3001",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "browser": "playwright-chromium",
+  "captureMethod": "Playwright page screenshots from the locally available mock-preview with Next.js dev-only overlay selectors hidden before capture.",
+  "excludedDevUi": [
+    "nextjs-portal",
+    "next-route-announcer",
+    "[data-nextjs-dev-tools-button]",
+    "[data-nextjs-toast]",
+    "[data-nextjs-dialog-overlay]",
+    "[data-nextjs-dialog]",
+    "#__next-build-watcher",
+    ".__next-dev-overlay",
+    ".nextjs-toast",
+    ".nextjs-portal"
+  ],
+  "routes": [
+    {
+      "route": "/day/2026-07-05",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "artifact": "day-2026-07-05.png"
+    },
+    {
+      "route": "/calendar",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "artifact": "calendar.png",
+      "notes": "Oracle screenshot shows right-edge horizontal overflow on mobile; do not reproduce overflow as a requirement."
+    },
+    {
+      "route": "/profile",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "artifact": "profile.png"
+    },
+    {
+      "route": "/readings",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "artifact": "readings.png"
+    },
+    {
+      "route": "/readings/natal",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "artifact": "readings-natal.png",
+      "notes": "Contains mock-preview demo natal facts; visual reference only."
+    },
+    {
+      "route": "/readings/horary",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "artifact": "readings-horary.png"
+    }
+  ],
+  "secretReview": "Visual inspection found no Telegram initData, cookies, bot tokens, raw credentials, or Next.js dev indicator overlay.",
+  "nonGoals": [
+    "No mock API route is portable from mock-preview.",
+    "No product runtime behavior changes are included in this package.",
+    "No MSW or runtime mock mode is introduced."
+  ]
+}
