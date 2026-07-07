@@ -6,9 +6,10 @@
 
 // START_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 // purpose: Renders the full /day/[date] screen with oracle-matched layout.
-//          Composes DateHeader, DayOverviewCard, TodayPracticalList, reading,
-//          chart, energy meter, why-expanded, and week strip. All data flows
-//          through adaptTodayPayload — no fabricated astrology.
+//          Composes DateHeader, access card, check-in reminder, DaySummaryCard,
+//          ConcreteDayAdvice, DayChart, reading, why-expanded, week strip, and
+//          bottom disclaimer. All data flows through adaptTodayPayload — no
+//          fabricated astrology.
 // owns:
 //   - components/today/today-screen.tsx
 // inputs:
@@ -39,12 +40,12 @@ import { WhyExpanded } from "./why-expanded"
 import { WeekStrip } from "./week-strip"
 import { DayChart } from "./day-chart"
 import { DaySummaryCard } from "./day-summary-card"
-import { TodayPracticalList } from "./today-practical-list"
+import { ConcreteDayAdvice } from "./concrete-day-advice"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
 import { YesterdayEchoLoader } from "@/components/checkin/yesterday-echo"
-import { addDays, sameDay, TODAY, type AdaptedTodayPayload, type AdaptedTopFlag } from "@/lib/today"
+import { addDays, sameDay, TODAY, type AdaptedTodayPayload } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
 import type { CalendarLunarFields, TodayImportantEvent } from "@/packages/contracts"
 
@@ -160,15 +161,6 @@ export function TodayScreen({
 
       {accessible ? (
         <div className="space-y-5 pb-8">
-          {/* Headline — compact, subtle */}
-          {payload.headline ? (
-            <div className="px-5">
-              <p className="font-serif text-[17px] leading-snug text-foreground/90">
-                {payload.headline}
-              </p>
-            </div>
-          ) : null}
-
           {/* Access / trial card */}
           {access.state === "trial" || access.state === "subscription" ? (
             <div data-testid="access-card">
@@ -176,12 +168,9 @@ export function TodayScreen({
             </div>
           ) : null}
 
-          {/* Yesterday echo (only for today) */}
-          {isToday ? (
-            <div className="px-5">
-              <YesterdayEchoLoader />
-            </div>
-          ) : null}
+          <div className="px-5" data-testid="evening-checkin-reminder">
+            {isToday ? <YesterdayEchoLoader /> : <DayCheckinReminder />}
+          </div>
 
           {/* Compact day summary card */}
           <DaySummaryCard
@@ -192,25 +181,21 @@ export function TodayScreen({
             planetInfluences={payload.planetInfluences}
           />
 
-          {/* "Конкретно сегодня" — practical list */}
-          {(payload.topFlags.length > 0 ||
-            payload.sphereScores.length > 0 ||
-            payload.notes.length > 0) ? (
-            <TodayPracticalList
-              topFlags={payload.topFlags}
-              notes={payload.notes}
-              sphereScores={payload.sphereScores}
-            />
-          ) : null}
+          <ConcreteDayAdvice
+            topFlags={payload.topFlags}
+            notes={payload.notes}
+            sphereScores={payload.sphereScores}
+          />
+
+          <DayChart
+            chart={payload.dayChart}
+            dateLabel={formatDateLabel(selectedDate)}
+            dayStatus={payload.dayStatus}
+          />
 
           {/* Important events accordion */}
           {importantToday && importantToday.length > 0 ? (
             <TodayImportantAccordion items={importantToday} />
-          ) : null}
-
-          {/* Notes (only if no important events shown) */}
-          {!(importantToday && importantToday.length > 0) ? (
-            <TodayNotes notes={payload.notes} />
           ) : null}
 
           {/* Day reading */}
@@ -262,11 +247,31 @@ export function TodayScreen({
       )}
 
       {/* Footer disclaimer — stable across all states */}
-      <footer className="px-5 pb-4 pt-2">
+      <footer className="px-5 pb-4 pt-2" data-testid="today-bottom-disclaimer">
         <p className="text-center font-sans text-[11px] leading-relaxed text-foreground/40">
           Данные показаны для ознакомления. Перед принятием важных решений проверяйте информацию.
         </p>
       </footer>
+    </div>
+  )
+}
+
+function DayCheckinReminder() {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-4" data-testid="yesterday-echo-cta">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium text-foreground">
+            Вечерний чек-ин
+          </div>
+          <div className="mt-0.5 text-[12px] text-muted-foreground">
+            Отметка доступна в актуальный день.
+          </div>
+        </div>
+        <span className="flex-none rounded-full bg-secondary px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
+          позже
+        </span>
+      </div>
     </div>
   )
 }

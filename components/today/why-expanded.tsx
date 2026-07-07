@@ -42,7 +42,7 @@ export function WhyExpanded({ sections, keyInsight }: Props) {
   if (sections.length === 0) return null
 
   return (
-    <section className="px-5" aria-label="Почему так у меня">
+    <section className="px-5" aria-label="Почему так у меня" data-testid="why-expanded">
       <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
         <button
           type="button"

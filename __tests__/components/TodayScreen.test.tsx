@@ -26,7 +26,6 @@ import type { AccessInfo } from '@/lib/contracts/access'
 import type { CalendarLunarFields } from '@/packages/contracts'
 import type { AdaptedTodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today'
 import { DayChart } from '@/components/today/day-chart'
-import { DayEnergyMeter } from '@/components/today/day-energy-meter'
 import { DaySummaryCard } from '@/components/today/day-summary-card'
 
 // Polyfill PointerEvent for jsdom (Node 20/jsdom lacks it)
@@ -85,6 +84,9 @@ vi.mock('@/components/trial-banner', () => ({
   TrialBanner: (props: any) => (
     <div data-testid="trial-banner">daysLeft:{props.daysLeft}</div>
   ),
+}))
+vi.mock('@/components/checkin/yesterday-echo', () => ({
+  YesterdayEchoLoader: () => <div data-testid="yesterday-echo-cta">check-in</div>,
 }))
 
 const { mockAddDays, mockSameDay, mockIsDayAccessible } = vi.hoisted(() => ({
@@ -167,8 +169,13 @@ describe('TodayScreen', () => {
     })
   })
 
-  it('renders accessible content: notes, reading, why, week-strip', () => {
+  it('renders accessible content in oracle section order without a standalone top headline', () => {
     const payload = buildPayload({
+      headline: 'Standalone headline should not be in the top flow',
+      sphereScores: [
+        { key: 'thinking_speech_learning', score: 8.5, rank: 1 },
+        { key: 'money_security_resources', score: 7.2, rank: 2 },
+      ],
       notes: [noteFixture],
       reading: { paragraphs: ['p1', 'p2'] },
       why: [whyFixture],
@@ -182,14 +189,45 @@ describe('TodayScreen', () => {
         onDateChange={onDateChange}
       />,
     )
-    expect(screen.getByTestId('today-notes')).toBeTruthy()
+
+    const orderedIds = Array.from(screen.getByTestId('today-screen').querySelectorAll('[data-testid]'))
+      .map((node) => node.getAttribute('data-testid'))
+      .filter((id) =>
+        [
+          'day-header',
+          'access-card',
+          'evening-checkin-reminder',
+          'day-summary-card',
+          'concrete-day-advice',
+          'day-chart-unavailable',
+          'day-reading',
+          'why-expanded',
+          'week-strip',
+          'today-bottom-disclaimer',
+        ].includes(id ?? ''),
+      )
+
+    expect(orderedIds).toEqual([
+      'day-header',
+      'access-card',
+      'evening-checkin-reminder',
+      'day-summary-card',
+      'concrete-day-advice',
+      'day-chart-unavailable',
+      'day-reading',
+      'why-expanded',
+      'week-strip',
+      'today-bottom-disclaimer',
+    ])
+    expect(screen.queryByText('Standalone headline should not be in the top flow')).toBeNull()
+    expect(screen.queryByTestId('today-notes')).toBeNull()
     expect(screen.getByTestId('day-reading')).toBeTruthy()
     expect(screen.getByTestId('why-expanded')).toBeTruthy()
     expect(screen.getByTestId('week-strip')).toBeTruthy()
     expect(screen.queryByTestId('paywall')).toBeNull()
   })
 
-  it('renders real day chart, summary, and influence widgets from adapted payload fields', () => {
+  it('renders real day chart, summary, and concrete advice from adapted payload fields', () => {
     render(
       <TodayScreen
         selectedDate={selectedDate}
@@ -252,7 +290,8 @@ describe('TodayScreen', () => {
 
     expect(screen.getByTestId('day-summary-card').textContent).toContain('Поддерживающий')
     expect(screen.getByTestId('day-summary-card').textContent).toContain('Полнолуние')
-    expect(screen.getByTestId('practical-list')).toBeTruthy()
+    expect(screen.getByTestId('concrete-day-advice')).toBeTruthy()
+    expect(screen.getByTestId('concrete-day-advice').textContent).toContain('Отношения')
     expect(screen.getByTestId('day-reading')).toBeTruthy()
   })
 
@@ -438,27 +477,6 @@ describe('real-data day presentation components', () => {
   it('DayChart renders an unavailable state when chart data is absent', () => {
     render(<DayChart chart={null} />)
     expect(screen.getByTestId('day-chart-unavailable').textContent).toContain('Карта дня недоступна')
-  })
-
-  it('DayEnergyMeter renders supplied structured influence scores', () => {
-    render(
-      <DayEnergyMeter
-        planetInfluences={[
-          { name: 'Moon', score: 1.25, rank: 1 },
-          { name: 'Mars', score: -0.4, rank: 2 },
-        ]}
-        sphereScores={[
-          { key: 'career', score: 2.75, rank: 1 },
-          { key: 'relationships', score: -1.2, rank: 2 },
-        ]}
-        dayStatus="steady"
-      />,
-    )
-
-    expect(screen.getByTestId('day-energy-meter').textContent).toContain('Moon')
-    expect(screen.getByTestId('day-energy-meter').textContent).toContain('1.25')
-    expect(screen.getByTestId('day-energy-meter').textContent).toContain('Career')
-    expect(screen.getByTestId('day-energy-meter').textContent).toContain('2.75')
   })
 
   it('DaySummaryCard renders supplied backend lunar and summary facts without local calculation', () => {

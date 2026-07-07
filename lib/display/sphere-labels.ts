@@ -32,6 +32,9 @@ const KNOWN_SPHERE_LABELS: Record<string, string> = {
   body_energy_health: "Энергия и здоровье",
 
   // Legacy / transitional keys
+  relationships: "Отношения",
+  career: "Карьера",
+  rest: "Отдых и восстановление",
   finance_money: "Финансы",
   creativity_self_expression: "Творчество и самовыражение",
   home_family: "Дом и семья",

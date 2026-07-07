@@ -121,6 +121,47 @@ function buildLockedFixtures(): MockApiRouteFixtures {
   return fixtures;
 }
 
+async function sectionOrder(page: import("@playwright/test").Page): Promise<string[]> {
+  return page.getByTestId("today-screen").evaluate((screen) => {
+    const wanted = new Set([
+      "day-header",
+      "access-card",
+      "evening-checkin-reminder",
+      "day-summary-card",
+      "concrete-day-advice",
+      "day-chart",
+      "day-chart-unavailable",
+      "day-reading",
+      "why-expanded",
+      "week-strip",
+      "today-bottom-disclaimer",
+    ]);
+    return Array.from(screen.querySelectorAll("[data-testid]"))
+      .map((node) => node.getAttribute("data-testid"))
+      .filter((id): id is string => Boolean(id && wanted.has(id)));
+  });
+}
+
+async function internalScrollMetrics(page: import("@playwright/test").Page) {
+  return page.getByTestId("today-screen").evaluate((screen) => {
+    const scroller = screen.parentElement;
+    if (!scroller) return { scrollHeight: 0, clientHeight: 0, maxScroll: 0 };
+    return {
+      scrollHeight: scroller.scrollHeight,
+      clientHeight: scroller.clientHeight,
+      maxScroll: scroller.scrollHeight - scroller.clientHeight,
+    };
+  });
+}
+
+async function scrollInternalTo(page: import("@playwright/test").Page, top: number): Promise<void> {
+  await page.getByTestId("today-screen").evaluate((screen, nextTop) => {
+    const scroller = screen.parentElement;
+    if (scroller) scroller.scrollTop = nextTop;
+  }, top);
+  await page.waitForTimeout(250);
+}
+
 // ############################################################################
 // Tests
 // ############################################################################
@@ -143,22 +184,39 @@ test.describe("Mock Visual — /day/[date]", () => {
 
     // Major sections are present
     await expect(page.getByTestId("day-header")).toBeVisible();
-    await expect(page.getByTestId("day-overview-card")).toBeVisible();
-    await expect(page.getByTestId("practical-list")).toBeVisible();
-    await expect(page.getByTestId("today-reading")).toBeVisible();
+    await expect(page.getByTestId("access-card")).toBeVisible();
+    await expect(page.getByTestId("evening-checkin-reminder")).toBeVisible();
+    await expect(page.getByTestId("day-summary-card")).toBeVisible();
+    await expect(page.getByTestId("concrete-day-advice")).toBeVisible();
+    await expect(page.getByTestId("day-chart-unavailable")).toBeVisible();
+    await expect(page.getByTestId("day-reading")).toBeVisible();
+    await expect(page.getByTestId("why-expanded")).toBeVisible();
 
     // Week strip is visible
     await expect(page.getByTestId("week-strip")).toBeVisible();
 
-    // Day overview card has correct status and renders real lunar data
-    await expect(page.getByTestId("day-overview-card")).toHaveAttribute("data-status", "supportive");
-    await expect(page.getByTestId("day-overview-card")).toContainText("Убывающая Луна");
-    await expect(page.getByTestId("day-overview-card")).toContainText("63%");
+    expect(await sectionOrder(page)).toEqual([
+      "day-header",
+      "access-card",
+      "evening-checkin-reminder",
+      "day-summary-card",
+      "concrete-day-advice",
+      "day-chart-unavailable",
+      "day-reading",
+      "why-expanded",
+      "week-strip",
+      "today-bottom-disclaimer",
+    ]);
 
-    // Practical list renders sphere labels via getSphereLabel, not raw keys
-    const practicalList = page.getByTestId("practical-list");
-    await expect(practicalList).toContainText("Мышление, речь, обучение");
-    await expect(practicalList).toContainText("Деньги, безопасность, ресурсы");
+    // Day summary card renders real lunar data
+    await expect(page.getByTestId("day-summary-card")).toContainText("Поддерживающий");
+    await expect(page.getByTestId("day-summary-card")).toContainText("Убывающая Луна");
+
+    // Concrete advice renders sphere labels via getSphereLabel, not raw keys
+    const concreteAdvice = page.getByTestId("concrete-day-advice");
+    await expect(concreteAdvice).toContainText("Мышление, речь, обучение");
+    await expect(concreteAdvice).toContainText("Деньги, безопасность, ресурсы");
+    await expect(concreteAdvice.getByRole("button", { name: /все 12 сфер/i })).toHaveAttribute("aria-expanded", "false");
 
     // Tab bar navigation is present
     const tabBar = page.locator('nav[aria-label="Основная навигация"]');
@@ -166,6 +224,23 @@ test.describe("Mock Visual — /day/[date]", () => {
 
     // Assert no missing API fixtures — after a quiet wait for late effects
     await expectNoMissingApiFixtures(page, tracker);
+
+    const metrics = await internalScrollMetrics(page);
+    expect(metrics.maxScroll).toBeGreaterThan(100);
+
+    const firstViewportBottom = metrics.clientHeight;
+    const concreteTop = await page.getByTestId("concrete-day-advice").evaluate((node) => node.getBoundingClientRect().top);
+    expect(concreteTop).toBeGreaterThan(firstViewportBottom * 0.45);
+
+    await scrollInternalTo(page, Math.floor(metrics.maxScroll * 0.48));
+    await expect(page.getByTestId("concrete-day-advice")).toBeVisible();
+    await expect(page.getByTestId("day-chart-unavailable")).toBeVisible();
+
+    await scrollInternalTo(page, metrics.maxScroll);
+    await expect(page.getByTestId("day-reading")).toBeVisible();
+    await expect(page.getByTestId("why-expanded")).toBeVisible();
+    await expect(page.getByTestId("week-strip")).toBeVisible();
+    await expect(page.getByTestId("today-bottom-disclaimer")).toBeVisible();
   });
 
   test("day screen renders in locked state for inaccessible dates and no missing API fixtures", async ({ page }) => {
@@ -187,7 +262,7 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(page.getByTestId("access-card")).toBeVisible();
 
     // Only preview content in locked state
-    await expect(page.getByTestId("today-reading")).toBeVisible();
+    await expect(page.getByTestId("day-reading")).toBeVisible();
 
     // Assert no missing API fixtures — after a quiet wait for late effects
     await expectNoMissingApiFixtures(page, tracker);
