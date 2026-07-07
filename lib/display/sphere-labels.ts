@@ -23,9 +23,15 @@
 // END_MODULE_CONTRACT: M-LIB-DISPLAY-SPHERE-LABELS
 
 const KNOWN_SPHERE_LABELS: Record<string, string> = {
-  work_status_achievement: "Карьера и достижения",
+  // Canon / active keys (Wave 4+ backend)
+  thinking_speech_learning: "Мышление, речь, обучение",
+  money_security_resources: "Деньги, безопасность, ресурсы",
+  home_family_roots: "Дом, семья, корни",
+  work_status_achievement: "Работа, статус, достижения",
   relationships_partnership: "Отношения и партнёрство",
   body_energy_health: "Энергия и здоровье",
+
+  // Legacy / transitional keys
   finance_money: "Финансы",
   creativity_self_expression: "Творчество и самовыражение",
   home_family: "Дом и семья",

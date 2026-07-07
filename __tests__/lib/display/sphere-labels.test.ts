@@ -7,22 +7,24 @@ import { describe, it, expect } from "vitest";
 import { getSphereLabel } from "../../../lib/display/sphere-labels";
 
 describe("getSphereLabel", () => {
-  it("maps known technical keys to human-readable Russian labels", () => {
-    expect(getSphereLabel("work_status_achievement")).toBe("Карьера и достижения");
+  it("maps canon-shaped technical keys to human-readable Russian labels", () => {
+    expect(getSphereLabel("thinking_speech_learning")).toBe("Мышление, речь, обучение");
+    expect(getSphereLabel("money_security_resources")).toBe("Деньги, безопасность, ресурсы");
+    expect(getSphereLabel("home_family_roots")).toBe("Дом, семья, корни");
+    expect(getSphereLabel("work_status_achievement")).toBe("Работа, статус, достижения");
     expect(getSphereLabel("relationships_partnership")).toBe("Отношения и партнёрство");
     expect(getSphereLabel("body_energy_health")).toBe("Энергия и здоровье");
-    expect(getSphereLabel("home_family")).toBe("Дом и семья");
-  });
-
-  it("maps creativity_self_expression correctly", () => {
-    expect(getSphereLabel("creativity_self_expression")).toBe("Творчество и самовыражение");
   });
 
   it("does not display raw technical keys to the user", () => {
-    // The raw key "work_status_achievement" must NOT appear in the label
     const label = getSphereLabel("work_status_achievement");
     expect(label).not.toContain("work_status_achievement");
     expect(label).not.toContain("_");
+  });
+
+  it("maps legacy keys as fallback when canon key is absent", () => {
+    expect(getSphereLabel("creativity_self_expression")).toBe("Творчество и самовыражение");
+    expect(getSphereLabel("home_family")).toBe("Дом и семья");
   });
 
   it("formats unknown keys as readable text", () => {

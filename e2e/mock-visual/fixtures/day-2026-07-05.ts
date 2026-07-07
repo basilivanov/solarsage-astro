@@ -147,17 +147,24 @@ export const dayPayload: components["schemas"]["TodayPayload"] = {
     { name: "Марс", score: 6.5, rank: 2 },
     { name: "Юпитер", score: 5.8, rank: 3 },
   ],
-  // Technical backend keys — not pre-localized labels
+  // Canon-shaped backend keys (Wave 4+) — not pre-localized labels
   sphereScores: [
-    { key: "home_family", score: 8.5, rank: 1 },
-    { key: "creativity_self_expression", score: 7.2, rank: 2 },
-    { key: "communication_learning", score: 6.0, rank: 3 },
+    { key: "thinking_speech_learning", score: 8.5, rank: 1 },
+    { key: "money_security_resources", score: 7.2, rank: 2 },
+    { key: "home_family_roots", score: 6.0, rank: 3 },
     { key: "work_status_achievement", score: 4.5, rank: 4 },
+    { key: "relationships_partnership", score: 3.0, rank: 5 },
+    { key: "body_energy_health", score: 2.0, rank: 6 },
   ],
   activationEvidence: null,
   manifestationZones: null,
   periodContext: null,
   importantToday: [],
+};
+
+export const referralPayload = {
+  inviteUrl: "https://t.me/vi_astro_bot?start=invite_mock",
+  totalInvited: 0,
 };
 
 export const dayPayloadLocked: components["schemas"]["TodayPayload"] = {

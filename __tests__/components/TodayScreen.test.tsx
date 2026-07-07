@@ -254,7 +254,7 @@ describe('TodayScreen', () => {
     expect(screen.getByTestId('day-overview-card').textContent).toContain('Полнолуние')
     expect(screen.getByTestId('day-chart').querySelectorAll('svg circle').length).toBeGreaterThan(0)
     expect(screen.getByTestId('day-energy-meter').textContent).toContain('Moon')
-    expect(screen.getByTestId('day-energy-meter').textContent).toContain('relationships')
+    expect(screen.getByTestId('day-energy-meter').textContent).toContain('Relationships')
   })
 
   it('passes backend lunar fields through to day summary when provided', () => {
@@ -459,7 +459,7 @@ describe('real-data day presentation components', () => {
 
     expect(screen.getByTestId('day-energy-meter').textContent).toContain('Moon')
     expect(screen.getByTestId('day-energy-meter').textContent).toContain('1.25')
-    expect(screen.getByTestId('day-energy-meter').textContent).toContain('career')
+    expect(screen.getByTestId('day-energy-meter').textContent).toContain('Career')
     expect(screen.getByTestId('day-energy-meter').textContent).toContain('2.75')
   })
 

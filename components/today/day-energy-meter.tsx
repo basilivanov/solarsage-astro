@@ -1,4 +1,5 @@
 import type { DayStatus, PlanetInfluence, SphereScore } from "@/lib/contracts/today"
+import { getSphereLabel } from "@/lib/display/sphere-labels"
 
 type Props = {
   planetInfluences: PlanetInfluence[]
@@ -83,7 +84,7 @@ export function DayEnergyMeter({ planetInfluences, sphereScores, dayStatus }: Pr
                     .map((item) => (
                       <ScoreRow
                         key={`${item.rank}-${item.key}`}
-                        label={item.key}
+                        label={getSphereLabel(item.key)}
                         score={item.score}
                         rank={item.rank}
                       />
