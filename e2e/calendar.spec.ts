@@ -15,14 +15,7 @@ test.describe('Calendar Screen - Real Auth', () => {
       localStorage.setItem('lumen:onboarded', '1');
     });
 
-    await page.goto('/');
-    await page.waitForTimeout(3000);
-
-    if (page.url().includes('/onboarding')) {
-      console.log('Skipping calendar — user needs onboarding');
-      return;
-    }
-
+    // Navigate directly to /calendar to avoid home-page redirect racing with calendar navigation
     await page.goto('/calendar');
     const screenRoot = page.getByTestId('calendar-screen');
     const grid = page.getByTestId('calendar-grid');

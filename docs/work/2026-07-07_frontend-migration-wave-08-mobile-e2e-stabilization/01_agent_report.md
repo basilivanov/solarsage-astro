@@ -116,3 +116,44 @@ e2e/mock-visual/calendar.spec.ts:46 → ✓ (mock-visual calendar)
 | Mock-visual mobile gate green | done | 25 passed |
 | Guardrail check clean | done | No product-path mock imports |
 | `3002`, systemd, nginx, bot config untouched | done | No changes to those files |
+
+## Rework 01
+
+Commit: `7825fb9`
+
+### Fixes
+
+| Finding | Fix |
+|---------|-----|
+| `e2e/calendar.spec.ts:11` navigation race | Removed initial `/` navigation (which redirects to `/day/today`); now navigates directly to `/calendar` |
+| Dirty `next-env.d.ts` | Restored to committed reference via `git checkout -- next-env.d.ts` |
+
+### Root cause
+The calendar test went to `/` first (intentionally redirected to `/day/today`), waited 3s, then went to `/calendar`. Under parallel Playwright workers, the redirect could interrupt the second navigation. Fix: navigate directly to `/calendar`.
+
+### Verification (default 2 workers)
+
+```
+E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test --project=mobile
+49 passed (2.4m)
+```
+
+### Clean working tree
+```
+git status --short --branch
+## main...origin/main [ahead 46]
+```
+No uncommitted tracked files.
+
+### Gates
+- `git status --short --branch`: clean
+- `git diff --check origin/main..HEAD`: exit 0
+- `git diff --check`: exit 0
+- `pnpm exec tsc --noEmit --pretty false`: exit 0
+- `npx vitest run`: 85 files, 896 tests passed
+- `cd apps/api && pytest`: 626 passed, 2 skipped
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/calendar.spec.ts:11 --project=mobile`: ✓
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 25 passed
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test --project=mobile`: 49 passed (2 workers)
+
+Push remains NOT_ATTEMPTED.
