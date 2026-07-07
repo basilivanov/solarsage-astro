@@ -153,7 +153,7 @@ export function HoraryForm({
   }
 
   return (
-    <motion.form initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} onSubmit={handleSubmit} className="space-y-5">
+    <motion.form data-testid="horary-form" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} onSubmit={handleSubmit} className="space-y-5">
       {/* Category Selection */}
       <div className="space-y-2.5">
         <label className="block text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -167,6 +167,7 @@ export function HoraryForm({
                 key={cat.key}
                 type="button"
                 data-testid={`horary-category-${cat.key}`}
+                aria-pressed={isSelected}
                 onClick={() => handleCategoryClick(cat.key)}
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -247,6 +248,7 @@ export function HoraryForm({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-[13px] text-destructive/90"
+          role="alert"
           data-testid="horary-submit-error"
         >
           {submitError}
@@ -259,6 +261,7 @@ export function HoraryForm({
       <button
         type="submit"
         data-testid="horary-submit-btn"
+        aria-disabled={!isValid || submitting}
         className={`flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99] ${
           !isValid || submitting
             ? "opacity-40 cursor-not-allowed"

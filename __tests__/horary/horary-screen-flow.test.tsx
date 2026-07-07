@@ -246,6 +246,84 @@ describe("HoraryScreen — hooks stability across loading states", () => {
   });
 });
 
+describe("HoraryScreen — DOM contract", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMocks();
+  });
+
+  it("loading state has data-testid and role=status", async () => {
+    // Delay API so we see loading state
+    mockQuota.mockReturnValue(new Promise(() => {}));
+    mockList.mockReturnValue(new Promise(() => {}));
+    mockProfile.mockReturnValue(new Promise(() => {}));
+
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    const loading = screen.getByTestId("horary-loading");
+    expect(loading).toBeTruthy();
+    expect(loading.getAttribute("role")).toBe("status");
+  });
+
+  it("ready state has data-testid, data-state, and data-has-credit", async () => {
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("horary-screen")).toBeTruthy();
+    }, { timeout: 2000 });
+
+    const screen_ = screen.getByTestId("horary-screen");
+    expect(screen_.getAttribute("data-state")).toBe("ready");
+    expect(screen_.getAttribute("data-has-credit")).toBe("true");
+  });
+
+  it("empty history renders horary-empty-history", async () => {
+    mockList.mockResolvedValue([]);
+
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("horary-empty-history")).toBeTruthy();
+    }, { timeout: 2000 });
+  });
+
+  it("no-credit state renders horary-no-credit-card", async () => {
+    mockQuota.mockResolvedValue({
+      weeklyFreeAvailable: false,
+      weeklyFreeExpiresAt: null,
+      nextWeeklyFreeAt: null,
+      bonusCredits: 0,
+      paidCredits: 0,
+      canPurchase: false,
+    });
+
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("horary-no-credit-card")).toBeTruthy();
+    }, { timeout: 2000 });
+
+    const card = screen.getByTestId("horary-no-credit-card");
+    expect(card.textContent).not.toContain("докупите");
+  });
+});
+
 describe("HoraryScreen — polling starts after create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
