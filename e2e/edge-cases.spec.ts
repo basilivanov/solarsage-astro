@@ -113,9 +113,11 @@ test.describe('Onboarding — Validation', () => {
     await expect(finishBtn).toBeEnabled({ timeout: 5000 });
     await finishBtn.click();
 
-    // Should still redirect to /day/ (onboarding completes despite error)
-    await page.waitForURL('**/day/**', { timeout: 15000 });
-    expect(page.url()).toMatch(/\/day\/(today|\d{4}-\d{2}-\d{2})/);
+    await expect(page.locator('text=/Failed to update profile|Failed to fetch|Не удалось сохранить профиль/i')).toBeVisible({ timeout: 10000 });
+    await expect(page).toHaveURL(/\/onboarding/);
+    await page.waitForTimeout(2000);
+    expect(page.url()).toContain('/onboarding');
+    await expect(finishBtn).toBeEnabled({ timeout: 5000 });
   });
 });
 
@@ -188,12 +190,31 @@ test.describe('Calendar', () => {
     await page.goto('/calendar');
     await page.waitForTimeout(4000);
 
-    const dayCell = page.locator('[data-testid^="calendar-day-"]').first();
-    if (await dayCell.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await dayCell.click();
+    const screenRoot = page.getByTestId('calendar-screen');
+    const grid = page.getByTestId('calendar-grid');
+    const unavailable = page.getByTestId('calendar-unavailable');
+    await expect(screenRoot).toHaveAttribute('data-load-state', /ready|error/, { timeout: 15000 });
+    await expect(grid.or(unavailable)).toBeVisible({ timeout: 15000 });
+
+    if (await unavailable.isVisible()) {
+      await expect(unavailable).toContainText('Календарь недоступен');
+      return;
+    }
+
+    const dayCells = page.locator('[data-testid^="calendar-day-"]');
+    await expect(dayCells.first()).toBeVisible({ timeout: 5000 });
+    expect(await dayCells.count()).toBeGreaterThan(0);
+
+    const openableDay = page.locator('[data-testid^="calendar-day-"]:not([disabled])').first();
+    if (await openableDay.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await openableDay.click();
       await page.waitForTimeout(2000);
       expect(page.url()).toMatch(/\/day\/\d{4}-\d{2}-\d{2}/);
+      return;
     }
+
+    await expect(page.locator('[data-testid^="calendar-day-"][disabled]').first()).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('text=/недоступен|Недоступно|Открыть превью/i').first()).toBeVisible({ timeout: 3000 });
   });
 });
 

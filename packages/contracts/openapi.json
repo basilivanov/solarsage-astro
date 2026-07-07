@@ -1613,7 +1613,7 @@
             "type": "integer"
           },
           "canPurchase": {
-            "default": true,
+            "default": false,
             "title": "Canpurchase",
             "type": "boolean"
           },

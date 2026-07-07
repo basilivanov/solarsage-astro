@@ -1028,7 +1028,7 @@ export interface components {
             bonusCredits: number;
             /**
              * Canpurchase
-             * @default true
+             * @default false
              */
             canPurchase: boolean;
             /** Nextweeklyfreeat */
