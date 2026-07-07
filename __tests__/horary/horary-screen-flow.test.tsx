@@ -19,7 +19,7 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import React from "react";
 import { HoraryScreen } from "@/components/readings/horary/horary-screen";
@@ -354,38 +354,32 @@ describe("HoraryScreen — load error and retry", () => {
   });
 
   it("retry button re-calls loadData and recovers to ready state", async () => {
-    // Track how many times apis have been called
-    let quotaCalled = false;
-    let listCalled = false;
-    let profileCalled = false;
+    // Setup: first call rejects, subsequent calls resolve
+    const successPayload = {
+      weeklyFreeAvailable: true,
+      weeklyFreeExpiresAt: null,
+      nextWeeklyFreeAt: null,
+      bonusCredits: 2,
+      paidCredits: 0,
+      canPurchase: false,
+    };
+    const profilePayload = {
+      userId: "test",
+      firstName: "Test",
+      gender: null as string | null,
+      isOnboarded: true,
+      birth: { birthday: "1990-01-01", birthTime: null as string | null, birthCity: null as string | null, birthLat: null as number | null, birthLon: null as number | null, birthTz: null as string | null },
+      currentLocation: null,
+      birthdayLocation: null,
+    };
 
-    mockQuota.mockImplementation(() => {
-      if (!quotaCalled) { quotaCalled = true; return Promise.reject(new Error("API error")); }
-      return Promise.resolve({
-        weeklyFreeAvailable: true,
-        weeklyFreeExpiresAt: null,
-        nextWeeklyFreeAt: null,
-        bonusCredits: 2,
-        paidCredits: 0,
-        canPurchase: false,
-      });
-    });
-    mockList.mockImplementation(() => {
-      if (!listCalled) { listCalled = true; return Promise.reject(new Error("API error")); }
-      return Promise.resolve([]);
-    });
-    mockProfile.mockImplementation(() => {
-      if (!profileCalled) { profileCalled = true; return Promise.reject(new Error("API error")); }
-      return Promise.resolve({
-        userId: "test",
-        firstName: "Test",
-        gender: null,
-        isOnboarded: true,
-        birth: { birthday: "1990-01-01", birthTime: null, birthCity: null, birthLat: null, birthLon: null, birthTz: null },
-        currentLocation: null,
-        birthdayLocation: null,
-      });
-    });
+    // Use mockImplementationOnce for first-call rejection
+    mockQuota.mockImplementationOnce(() => Promise.reject(new Error("API error")))
+             .mockImplementation(() => Promise.resolve(successPayload));
+    mockList.mockImplementationOnce(() => Promise.reject(new Error("API error")))
+            .mockImplementation(() => Promise.resolve([]));
+    mockProfile.mockImplementationOnce(() => Promise.reject(new Error("API error")))
+              .mockImplementation(() => Promise.resolve(profilePayload));
 
     render(
       <React.Suspense fallback={<div>loading</div>}>
@@ -398,14 +392,14 @@ describe("HoraryScreen — load error and retry", () => {
       expect(screen.getByTestId("horary-screen").getAttribute("data-state")).toBe("error");
     }, { timeout: 5000 });
 
-    // Find retry button and click it
+    // Click retry button
     const retryBtn = screen.getByRole("button", { name: /Попробовать снова/ });
     fireEvent.click(retryBtn);
 
     // Wait for ready state after retry
     await waitFor(() => {
       expect(screen.getByTestId("horary-screen").getAttribute("data-state")).toBe("ready");
-    }, { timeout: 8000 });
+    }, { timeout: 5000 });
   });
 });
 

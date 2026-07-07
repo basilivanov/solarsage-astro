@@ -98,7 +98,7 @@ Submit/polling/idempotency/location real API flow was **preserved**.
 
 ## Rework 01
 
-Commit: `[this commit]`
+Commit: `c304a71`
 
 ### Changes
 
@@ -128,6 +128,24 @@ Canonical port `3002`, systemd, nginx, and bot config were **not** changed. Runt
 - `git diff --check main..HEAD`: exit 0
 - `git diff --check`: exit 0
 - `pnpm exec tsc --noEmit`: exit 0
+- `npx vitest run __tests__/horary/`: 10 files / 192 tests passed
+- `npx vitest run` (full): 85 files / 891 tests passed
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 20 passed
+
+## Rework 02
+
+Commit: `d267373`
+
+### Fixes
+| File | Change |
+|------|--------|
+| `__tests__/horary/horary-screen-flow.test.tsx` | Added `afterEach` to vitest imports (TypeScript gate fix) |
+| `docs/work/2026-07-07_frontend-migration-wave-05-horary/01_agent_report.md` | Replaced `[this commit]` with `c304a71`; added Rework 02 section |
+
+### Gates
+- `git diff --check main..HEAD`: exit 0
+- `git diff --check`: exit 0
+- `pnpm exec tsc --noEmit --pretty false`: exit 0
 - `npx vitest run __tests__/horary/`: 10 files / 192 tests passed
 - `npx vitest run` (full): 85 files / 891 tests passed
 - `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 20 passed
