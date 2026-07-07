@@ -94,7 +94,7 @@ Result: No product-path runtime imports of mocks or demo data were found. Matche
 
 ## Rework 01
 
-- Rework commit SHA: `931f848`
+- Rework commit SHA: `4329d02`
 - Files changed: `docs/work/2026-07-07_frontend-migration-wave-07-main-integration/01_agent_report.md`
 - Rerun gates:
   - `git diff --check origin/main..HEAD` -> Exit code: 0
