@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { isLocalDevHost, POST } from "@/app/api/auth/dev/route"
+import { POST } from "@/app/api/auth/dev/route"
+import { isLocalDevHost } from "@/lib/api/dev-auth-guard"
 
 afterEach(() => {
   vi.unstubAllEnvs()
