@@ -123,6 +123,34 @@ test.describe("Mock Visual — /readings/natal", () => {
     await expectNoMissingApiFixtures(page, tracker);
   });
 
+  test("profile-incomplete state renders natal-profile-incomplete with role=alert", async ({ page }) => {
+    const tracker = await installMockApiRoutes(page, {
+      "/api/auth/dev": { status: 200, body: { status: "ok", userId: "mock-user-id" } },
+      "/api/natal/preview": {
+        status: 409,
+        body: {
+          detail: {
+            message: "Profile incomplete",
+            missingFields: ["birthDate", "birthCity"],
+          },
+        },
+      },
+    });
+
+    await page.addInitScript(() => {
+      localStorage.setItem("lumen:onboarded", "1");
+    });
+
+    await page.goto("/readings/natal");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByTestId("natal-preview-screen")).toHaveAttribute("data-state", "profile_incomplete");
+    await expect(page.getByTestId("natal-profile-incomplete")).toBeVisible();
+    await expect(page.getByTestId("natal-profile-incomplete")).toHaveAttribute("role", "alert");
+
+    await expectNoMissingApiFixtures(page, tracker);
+  });
+
   test("missing API fixture is recorded by the tracker (negative proof)", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, {
       "/api/auth/dev": { status: 200, body: { status: "ok", userId: "mock-user-id" } },

@@ -100,3 +100,28 @@ Reference screenshot: `docs/superpowers/specs/assets/2026-07-07-mock-preview/rea
 ## No-Op Statement
 
 Canonical port `3002`, systemd, nginx, and bot config were **not** changed. Runtime mocks, MSW, mock-preview API routes, static natal charts/reports, `DEMO_NATAL_RESPONSE`, and demo data remain **not ported**. `fetchNatalPreview()` and `NatalPreviewRead` real-data flow was **preserved**. CTA fulfillment/payment remains disabled.
+
+## Rework 01
+
+Commit: `a865cfc`
+
+### Changes
+
+| Finding | Fix |
+|---------|-----|
+| `data-full-report-available` hardcoded to `"false"` | Now derived from `state.data.fullReportAvailable` when `ready`; `"true"` when backend says available |
+| `natal-hero-badges` missing | Added `data-testid="natal-hero-badges"` to badges container in `hero-section.tsx` |
+| Missing component tests | Added 5 tests: loading state, ready state with `data-full-report-available`, error+retry with `allowSuccess` gate, profile-incomplete, chart-unavailable |
+| Missing profile-incomplete e2e | Added e2e test: 409 fixture → `data-state="profile_incomplete"` + `natal-profile-incomplete` visible with `role="alert"` |
+
+### No-Op Statement
+
+CTA fulfillment/payment remains disabled. `fetchNatalPreview()` and `NatalPreviewRead` real-data flow preserved. Runtime mocks, MSW, mock-preview API, static natal charts/reports, `DEMO_NATAL_RESPONSE`, and demo data remain not ported. Port `3002`, systemd, nginx, and bot config not changed.
+
+### Gates
+- `git diff --check main..HEAD`: exit 0
+- `git diff --check`: exit 0
+- `pnpm exec tsc --noEmit`: exit 0
+- `npx vitest run __tests__/natal/`: 4 files / 63 tests passed
+- `npx vitest run` (full): 85 files / 896 tests passed
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 25 passed

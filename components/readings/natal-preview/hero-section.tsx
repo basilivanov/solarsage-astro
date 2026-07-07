@@ -66,7 +66,7 @@ export function HeroSection({ ascSign, sunSign, moonSign, birthCity }: Props) {
       </div>
 
       {badges.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2" data-testid="natal-hero-badges">
           {badges.map((badge) => (
             <span
               key={badge.label}

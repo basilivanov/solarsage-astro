@@ -69,9 +69,10 @@ export default function NatalReadingPage() {
   }, [load])
 
   const statusAttr = state.status
+  const fullReportAvailable = state.status === "ready" ? String(state.data.fullReportAvailable) : undefined
 
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-y-auto" data-testid="natal-preview-screen" data-state={statusAttr} data-full-report-available={statusAttr === "ready" ? "false" : undefined}>
+    <div className="flex h-full w-full flex-col bg-background overflow-y-auto" data-testid="natal-preview-screen" data-state={statusAttr} data-full-report-available={fullReportAvailable}>
       <header
         className="flex-none px-4 pb-4 border-b border-border/40"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)" }}

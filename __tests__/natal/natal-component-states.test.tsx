@@ -245,6 +245,107 @@ describe("NatalReadingPage — natal chart preview", () => {
     fireEvent.click(button)
     expect(mockPush).not.toHaveBeenCalled()
   })
+
+  it("loading state has data-state=loading and natal-preview-loading role=status", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+
+    // Keep promise pending to stay in loading state
+    mockFetchNatalPreview.mockReturnValue(new Promise(() => {}))
+
+    render(<NatalReadingPage />)
+
+    expect(screen.getByTestId("natal-preview-screen").getAttribute("data-state")).toBe("loading")
+    expect(screen.getByTestId("natal-preview-loading").getAttribute("role")).toBe("status")
+  })
+
+  it("ready state exposes data-full-report-available from real data", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+
+    mockFetchNatalPreview.mockResolvedValue({
+      ok: true,
+      data: { ...VALID_PREVIEW_WITH_CHART, fullReportAvailable: true },
+    })
+
+    render(<NatalReadingPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("natal-preview-screen").getAttribute("data-state")).toBe("ready")
+    })
+
+    const root = screen.getByTestId("natal-preview-screen")
+    expect(root.getAttribute("data-full-report-available")).toBe("true")
+    expect(screen.getByTestId("natal-preview-content")).toBeTruthy()
+
+    // CTA should still be disabled even when fullReportAvailable is true
+    const cta = screen.getByTestId("natal-full-report-cta")
+    expect(cta).toBeTruthy()
+  })
+
+  it("error state renders natal-preview-error role=alert and retry recovers", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+
+    let allowSuccess = false
+    mockFetchNatalPreview.mockImplementation(() => {
+      if (!allowSuccess) return Promise.resolve({
+        ok: false,
+        error: { type: "error", message: "API failure" },
+      })
+      return Promise.resolve({
+        ok: true,
+        data: VALID_PREVIEW_WITH_CHART,
+      })
+    })
+
+    render(<NatalReadingPage />)
+
+    // Wait for error state
+    await waitFor(() => {
+      expect(screen.getByTestId("natal-preview-screen").getAttribute("data-state")).toBe("error")
+    })
+
+    const errorEl = screen.getByTestId("natal-preview-error")
+    expect(errorEl.getAttribute("role")).toBe("alert")
+
+    // Retry
+    allowSuccess = true
+    const retryBtn = screen.getByRole("button", { name: /Повторить/i })
+    fireEvent.click(retryBtn)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("natal-preview-screen").getAttribute("data-state")).toBe("ready")
+    })
+  })
+
+  it("profile-incomplete state renders natal-profile-incomplete", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+
+    mockFetchNatalPreview.mockResolvedValue({
+      ok: false,
+      error: { type: "profile_incomplete", message: "Profile incomplete", missingFields: ["birthDate"] },
+    })
+
+    render(<NatalReadingPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("natal-preview-screen").getAttribute("data-state")).toBe("profile_incomplete")
+    })
+
+    const incomplete = screen.getByTestId("natal-profile-incomplete")
+    expect(incomplete.getAttribute("role")).toBe("alert")
+  })
+
+  it("chart-unavailable renders when chart is null", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+
+    const noChart = { ...VALID_PREVIEW_WITH_CHART, chart: null }
+    mockFetchNatalPreview.mockResolvedValue({ ok: true, data: noChart })
+
+    render(<NatalReadingPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("natal-chart-unavailable")).toBeTruthy()
+    })
+  })
 })
 
 describe("NatalGeneratingPage — retry behavior", () => {
