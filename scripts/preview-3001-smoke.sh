@@ -96,13 +96,21 @@ try:
 except json.JSONDecodeError as exc:
     raise SystemExit(f"/api/health did not return JSON: {exc}")
 
+if not isinstance(payload, dict):
+    raise SystemExit("/api/health payload is not a JSON object")
+
 serialized = json.dumps(payload, sort_keys=True).lower()
 if payload.get("demo") is True or payload.get("mock") is True or "mock-preview" in serialized:
     raise SystemExit("/api/health returned mock/demo health payload")
 
-status = str(payload.get("status") or payload.get("ok") or payload.get("healthy") or "").lower()
-if not status and "database" not in serialized and "api" not in serialized:
-    raise SystemExit("/api/health payload does not look like FastAPI health")
+if payload.get("status") != "ok":
+    raise SystemExit('/api/health payload missing status "ok"')
+
+if not isinstance(payload.get("version"), str) or not payload["version"]:
+    raise SystemExit("/api/health payload missing backend version")
+
+if not isinstance(payload.get("git_sha"), str) or not payload["git_sha"]:
+    raise SystemExit("/api/health payload missing backend git_sha")
 
 print("OK API health: FastAPI response through preview route")
 PY
