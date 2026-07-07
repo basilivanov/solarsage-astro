@@ -38,8 +38,7 @@ import { DayReading } from "./day-reading"
 import { WhyExpanded } from "./why-expanded"
 import { WeekStrip } from "./week-strip"
 import { DayChart } from "./day-chart"
-import { DayEnergyMeter } from "./day-energy-meter"
-import { DayOverviewCard } from "./day-overview-card"
+import { DaySummaryCard } from "./day-summary-card"
 import { TodayPracticalList } from "./today-practical-list"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
@@ -159,17 +158,17 @@ export function TodayScreen({
         />
       </div>
 
-      {/* Headline — заголовок/инсайт дня */}
-      {payload.headline ? (
-        <div className="px-5 pt-4 pb-2">
-          <p className="text-center font-sans text-lg font-medium leading-snug text-foreground/90">
-            {payload.headline}
-          </p>
-        </div>
-      ) : null}
-
       {accessible ? (
-        <div className="space-y-6 pb-8">
+        <div className="space-y-5 pb-8">
+          {/* Headline — compact, subtle */}
+          {payload.headline ? (
+            <div className="px-5">
+              <p className="font-serif text-[17px] leading-snug text-foreground/90">
+                {payload.headline}
+              </p>
+            </div>
+          ) : null}
+
           {/* Access / trial card */}
           {access.state === "trial" || access.state === "subscription" ? (
             <div data-testid="access-card">
@@ -184,20 +183,16 @@ export function TodayScreen({
             </div>
           ) : null}
 
-          {/* Day Overview Card — large calm day card composition */}
-          <DayOverviewCard
+          {/* Compact day summary card */}
+          <DaySummaryCard
+            date={selectedDate}
             dayStatus={payload.dayStatus}
             lunar={calendarLunar}
+            topFlags={payload.topFlags}
             planetInfluences={payload.planetInfluences}
-            sphereScores={payload.sphereScores}
           />
 
-          {/* Important events accordion */}
-          {importantToday && importantToday.length > 0 ? (
-            <TodayImportantAccordion items={importantToday} />
-          ) : null}
-
-          {/* Practical list — "Concretely today" */}
+          {/* "Конкретно сегодня" — practical list */}
           {(payload.topFlags.length > 0 ||
             payload.sphereScores.length > 0 ||
             payload.notes.length > 0) ? (
@@ -208,28 +203,15 @@ export function TodayScreen({
             />
           ) : null}
 
+          {/* Important events accordion */}
+          {importantToday && importantToday.length > 0 ? (
+            <TodayImportantAccordion items={importantToday} />
+          ) : null}
+
           {/* Notes (only if no important events shown) */}
           {!(importantToday && importantToday.length > 0) ? (
             <TodayNotes notes={payload.notes} />
           ) : null}
-
-          {/* Day chart */}
-          <div className="section-rise section-rise-1">
-            <DayChart
-              chart={payload.dayChart}
-              dateLabel={formatDateLabel(selectedDate)}
-              dayStatus={payload.dayStatus}
-            />
-          </div>
-
-          {/* Energy meter */}
-          <div className="section-rise section-rise-2">
-            <DayEnergyMeter
-              planetInfluences={payload.planetInfluences}
-              sphereScores={payload.sphereScores}
-              dayStatus={payload.dayStatus}
-            />
-          </div>
 
           {/* Day reading */}
           <DayReading paragraphs={payload.reading.paragraphs} />

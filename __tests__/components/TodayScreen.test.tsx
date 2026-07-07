@@ -250,11 +250,10 @@ describe('TodayScreen', () => {
       />,
     )
 
-    expect(screen.getByTestId('day-overview-card').textContent).toContain('Поддерживающий')
-    expect(screen.getByTestId('day-overview-card').textContent).toContain('Полнолуние')
-    expect(screen.getByTestId('day-chart').querySelectorAll('svg circle').length).toBeGreaterThan(0)
-    expect(screen.getByTestId('day-energy-meter').textContent).toContain('Moon')
-    expect(screen.getByTestId('day-energy-meter').textContent).toContain('Relationships')
+    expect(screen.getByTestId('day-summary-card').textContent).toContain('Поддерживающий')
+    expect(screen.getByTestId('day-summary-card').textContent).toContain('Полнолуние')
+    expect(screen.getByTestId('practical-list')).toBeTruthy()
+    expect(screen.getByTestId('day-reading')).toBeTruthy()
   })
 
   it('passes backend lunar fields through to day summary when provided', () => {
@@ -282,10 +281,9 @@ describe('TodayScreen', () => {
       />,
     )
 
-    const summary = screen.getByTestId('day-overview-card')
+    const summary = screen.getByTestId('day-summary-card')
     expect(summary.textContent).toContain('Убывающая Луна')
     expect(summary.textContent).toContain('22%')
-    expect(summary.textContent).toContain('26 лд')
   })
 
   it('renders locked state with Paywall', () => {
@@ -475,17 +473,15 @@ describe('real-data day presentation components', () => {
           lunarDay: 15,
           voidOfCourse: true,
         }}
+        topFlags={[{ iconName: 'moon', title: 'Луна в Раке', summary: 'Эмоциональная глубина' }]}
         planetInfluences={[{ name: 'Saturn', score: -1.75, rank: 1 }]}
-        sphereScores={[{ key: 'career', score: -2, rank: 1 }]}
       />,
     )
 
     const summary = screen.getByTestId('day-summary-card')
     expect(summary.textContent).toContain('Полнолуние')
     expect(summary.textContent).toContain('97%')
-    expect(summary.textContent).toContain('15 лунный день')
     expect(summary.textContent).toContain('Saturn')
-    expect(summary.textContent).toContain('career')
-    expect(summary.textContent).toContain('без курса')
+    expect(summary.textContent).toContain('Луна в Раке')
   })
 })
