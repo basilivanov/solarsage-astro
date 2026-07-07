@@ -6,10 +6,10 @@
 
 // START_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 // purpose: Renders the full /day/[date] screen with oracle-matched layout.
-//          Composes DateHeader, access card, check-in reminder, DaySummaryCard,
-//          ConcreteDayAdvice, DayChart, reading, why-expanded, week strip, and
-//          bottom disclaimer. All data flows through adaptTodayPayload — no
-//          fabricated astrology.
+//          Composes DateHeader, access card, today-only check-in reminder,
+//          DaySummaryCard, ConcreteDayAdvice, DayChart, reading, why-expanded,
+//          week strip, AstroHistoryWidget, and bottom disclaimer. All data
+//          flows through adaptTodayPayload — no fabricated astrology.
 // owns:
 //   - components/today/today-screen.tsx
 // inputs:
@@ -41,6 +41,7 @@ import { WeekStrip } from "./week-strip"
 import { DayChart } from "./day-chart"
 import { DaySummaryCard } from "./day-summary-card"
 import { ConcreteDayAdvice } from "./concrete-day-advice"
+import { AstroHistoryWidget } from "./astro-history-widget"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
@@ -168,9 +169,11 @@ export function TodayScreen({
             </div>
           ) : null}
 
-          <div className="px-5" data-testid="evening-checkin-reminder">
-            {isToday ? <YesterdayEchoLoader /> : <DayCheckinReminder />}
-          </div>
+          {isToday ? (
+            <div className="px-5" data-testid="evening-checkin-reminder">
+              <YesterdayEchoLoader />
+            </div>
+          ) : null}
 
           {/* Compact day summary card */}
           <DaySummaryCard
@@ -213,6 +216,8 @@ export function TodayScreen({
             access={access}
             onSelect={onDateChange}
           />
+
+          <AstroHistoryWidget date={selectedDate} />
         </div>
       ) : (
         <div className="space-y-6 pb-8">
@@ -243,6 +248,8 @@ export function TodayScreen({
             access={access}
             onSelect={onDateChange}
           />
+
+          <AstroHistoryWidget date={selectedDate} />
         </div>
       )}
 
@@ -252,26 +259,6 @@ export function TodayScreen({
           Данные показаны для ознакомления. Перед принятием важных решений проверяйте информацию.
         </p>
       </footer>
-    </div>
-  )
-}
-
-function DayCheckinReminder() {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card p-4" data-testid="yesterday-echo-cta">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[13px] font-medium text-foreground">
-            Вечерний чек-ин
-          </div>
-          <div className="mt-0.5 text-[12px] text-muted-foreground">
-            Отметка доступна в актуальный день.
-          </div>
-        </div>
-        <span className="flex-none rounded-full bg-secondary px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-          позже
-        </span>
-      </div>
     </div>
   )
 }

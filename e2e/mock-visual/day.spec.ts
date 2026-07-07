@@ -134,6 +134,7 @@ async function sectionOrder(page: import("@playwright/test").Page): Promise<stri
       "day-reading",
       "why-expanded",
       "week-strip",
+      "astro-history-widget",
       "today-bottom-disclaimer",
     ]);
     return Array.from(screen.querySelectorAll("[data-testid]"))
@@ -185,7 +186,7 @@ test.describe("Mock Visual — /day/[date]", () => {
     // Major sections are present
     await expect(page.getByTestId("day-header")).toBeVisible();
     await expect(page.getByTestId("access-card")).toBeVisible();
-    await expect(page.getByTestId("evening-checkin-reminder")).toBeVisible();
+    await expect(page.getByTestId("evening-checkin-reminder")).toHaveCount(0);
     await expect(page.getByTestId("day-summary-card")).toBeVisible();
     await expect(page.getByTestId("concrete-day-advice")).toBeVisible();
     await expect(page.getByTestId("day-chart-unavailable")).toBeVisible();
@@ -194,17 +195,18 @@ test.describe("Mock Visual — /day/[date]", () => {
 
     // Week strip is visible
     await expect(page.getByTestId("week-strip")).toBeVisible();
+    await expect(page.getByTestId("astro-history-widget")).toBeVisible();
 
     expect(await sectionOrder(page)).toEqual([
       "day-header",
       "access-card",
-      "evening-checkin-reminder",
       "day-summary-card",
       "concrete-day-advice",
       "day-chart-unavailable",
       "day-reading",
       "why-expanded",
       "week-strip",
+      "astro-history-widget",
       "today-bottom-disclaimer",
     ]);
 
@@ -240,6 +242,7 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(page.getByTestId("day-reading")).toBeVisible();
     await expect(page.getByTestId("why-expanded")).toBeVisible();
     await expect(page.getByTestId("week-strip")).toBeVisible();
+    await expect(page.getByTestId("astro-history-widget")).toBeVisible();
     await expect(page.getByTestId("today-bottom-disclaimer")).toBeVisible();
   });
 

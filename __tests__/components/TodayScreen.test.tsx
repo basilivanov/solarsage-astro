@@ -77,6 +77,9 @@ vi.mock('@/components/today/why-expanded', () => ({
 vi.mock('@/components/today/week-strip', () => ({
   WeekStrip: () => <div data-testid="week-strip" />,
 }))
+vi.mock('@/components/today/astro-history-widget', () => ({
+  AstroHistoryWidget: () => <div data-testid="astro-history-widget">history</div>,
+}))
 vi.mock('@/components/paywall', () => ({
   Paywall: (props: any) => <div data-testid="paywall">{props.title}</div>,
 }))
@@ -203,6 +206,7 @@ describe('TodayScreen', () => {
           'day-reading',
           'why-expanded',
           'week-strip',
+          'astro-history-widget',
           'today-bottom-disclaimer',
         ].includes(id ?? ''),
       )
@@ -217,6 +221,7 @@ describe('TodayScreen', () => {
       'day-reading',
       'why-expanded',
       'week-strip',
+      'astro-history-widget',
       'today-bottom-disclaimer',
     ])
     expect(screen.queryByText('Standalone headline should not be in the top flow')).toBeNull()
@@ -224,7 +229,60 @@ describe('TodayScreen', () => {
     expect(screen.getByTestId('day-reading')).toBeTruthy()
     expect(screen.getByTestId('why-expanded')).toBeTruthy()
     expect(screen.getByTestId('week-strip')).toBeTruthy()
+    expect(screen.getByTestId('astro-history-widget')).toBeTruthy()
     expect(screen.queryByTestId('paywall')).toBeNull()
+  })
+
+  it('omits check-in on non-today routes and keeps history before disclaimer', () => {
+    mockSameDay.mockReturnValue(false)
+    const payload = buildPayload({
+      sphereScores: [{ key: 'thinking_speech_learning', score: 8.5, rank: 1 }],
+      reading: { paragraphs: ['p1'] },
+      why: [whyFixture],
+      keyInsight: 'Why',
+    })
+
+    render(
+      <TodayScreen
+        selectedDate={new Date('2026-07-05T12:00:00Z')}
+        access={buildAccess()}
+        payload={payload}
+        onDateChange={onDateChange}
+      />,
+    )
+
+    const orderedIds = Array.from(screen.getByTestId('today-screen').querySelectorAll('[data-testid]'))
+      .map((node) => node.getAttribute('data-testid'))
+      .filter((id) =>
+        [
+          'day-header',
+          'access-card',
+          'evening-checkin-reminder',
+          'day-summary-card',
+          'concrete-day-advice',
+          'day-chart-unavailable',
+          'day-reading',
+          'why-expanded',
+          'week-strip',
+          'astro-history-widget',
+          'today-bottom-disclaimer',
+        ].includes(id ?? ''),
+      )
+
+    expect(screen.queryByTestId('evening-checkin-reminder')).toBeNull()
+    expect(screen.queryByTestId('yesterday-echo-cta')).toBeNull()
+    expect(orderedIds).toEqual([
+      'day-header',
+      'access-card',
+      'day-summary-card',
+      'concrete-day-advice',
+      'day-chart-unavailable',
+      'day-reading',
+      'why-expanded',
+      'week-strip',
+      'astro-history-widget',
+      'today-bottom-disclaimer',
+    ])
   })
 
   it('renders real day chart, summary, and concrete advice from adapted payload fields', () => {

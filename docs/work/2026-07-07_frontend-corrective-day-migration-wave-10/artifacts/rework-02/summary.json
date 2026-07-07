@@ -1,0 +1,92 @@
+{
+  "route": "/day/2026-07-05",
+  "baseUrls": {
+    "oracle3001": "http://localhost:3001",
+    "main4444": "http://localhost:4444"
+  },
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "scrollPositions": {
+    "3001": {
+      "top": 0,
+      "middle": 957,
+      "bottom": 1993,
+      "scrollHeight": 2762,
+      "clientHeight": 769
+    },
+    "main": {
+      "top": 0,
+      "middle": 557,
+      "bottom": 1161,
+      "scrollHeight": 1930,
+      "clientHeight": 769
+    }
+  },
+  "sectionOrder": {
+    "3001": [
+      "today-screen",
+      "today-headline",
+      "week-strip",
+      "today-tab-bar",
+      "today-tab-today",
+      "today-tab-calendar",
+      "today-tab-readings",
+      "today-tab-chat",
+      "today-tab-profile"
+    ],
+    "main": [
+      "today-screen",
+      "day-header",
+      "today-headline",
+      "access-card",
+      "day-summary-card",
+      "concrete-day-advice",
+      "concrete-day-advice-row",
+      "concrete-day-advice-row",
+      "concrete-day-advice-row",
+      "concrete-day-advice-row",
+      "concrete-day-advice-row",
+      "concrete-day-advice-row",
+      "day-chart-unavailable",
+      "day-reading",
+      "why-expanded",
+      "week-strip",
+      "astro-history-widget",
+      "today-bottom-disclaimer",
+      "today-tab-bar",
+      "today-tab-today",
+      "today-tab-calendar",
+      "today-tab-readings",
+      "today-tab-chat",
+      "today-tab-profile"
+    ]
+  },
+  "visibleChecks": {
+    "3001": {
+      "hasCheckin": false,
+      "hasHistory": false
+    },
+    "main": {
+      "hasCheckin": false,
+      "hasHistory": true
+    }
+  },
+  "screenshots": {
+    "3001.top": "/opt/solarsage-astro/docs/work/2026-07-07_frontend-corrective-day-migration-wave-10/artifacts/rework-02/3001-day-2026-07-05-top.png",
+    "3001.middle": "/opt/solarsage-astro/docs/work/2026-07-07_frontend-corrective-day-migration-wave-10/artifacts/rework-02/3001-day-2026-07-05-middle.png",
+    "3001.bottom": "/opt/solarsage-astro/docs/work/2026-07-07_frontend-corrective-day-migration-wave-10/artifacts/rework-02/3001-day-2026-07-05-bottom.png",
+    "main.top": "/opt/solarsage-astro/docs/work/2026-07-07_frontend-corrective-day-migration-wave-10/artifacts/rework-02/main-day-2026-07-05-top.png",
+    "main.middle": "/opt/solarsage-astro/docs/work/2026-07-07_frontend-corrective-day-migration-wave-10/artifacts/rework-02/main-day-2026-07-05-middle.png",
+    "main.bottom": "/opt/solarsage-astro/docs/work/2026-07-07_frontend-corrective-day-migration-wave-10/artifacts/rework-02/main-day-2026-07-05-bottom.png"
+  },
+  "hashes": {
+    "3001.top": "6d00ad188d42794af8761410809282bb496ae011669f1f255c74a14ca11684aa",
+    "3001.middle": "f5ed103df57ced008fddab5b8938bfef078edba95958321986f9397092da2610",
+    "3001.bottom": "8877aa4c6571ae23e456a27cd66b5db57c5d836e523c5cf5903e671b71b7fc05",
+    "main.top": "9f32429f54d2f5d0deba433e3c5d3d1208854857daa0b17575139dd4428428bd",
+    "main.middle": "59366b81ff66f994577ab74918e5578bee0a8a3e6855b3b3840b3601c47b2270",
+    "main.bottom": "4e561868db78cf3bc8eabeb3bc48fcd1cfaf2569c58a29e4c54257edf9ac3010"
+  }
+}
