@@ -1,0 +1,233 @@
+=== PREFLIGHT ===
+http://127.0.0.1:8000/api/health: HTTP 200
+http://127.0.0.1:3001/: HTTP 200
+http://127.0.0.1:3002/: HTTP 200
+
+=== 3001/day/2026-07-05 ===
+  authL=false authE=false authT=false sentinel=true
+  body: ДЕНЬ
+5 июля
+14 дней бесплатного доступа
+Осталось 0 дней
+Подписка
+Вечер — время оценить день
+Как прошёл день? 30 секунд —
+  scroll: sh=3115 ch=857 max=2258 docSH=932
+  viewport: 3001-day-2026-07-05-viewport.png
+  fullPage: 3001-day-2026-07-05-fullpage.png (144217 bytes)
+  scroll-0: 3001-day-2026-07-05-scroll-00.png (top=0)
+  scroll-1: 3001-day-2026-07-05-scroll-01.png (top=932)
+  scroll-2: 3001-day-2026-07-05-scroll-02.png (top=1864)
+  scroll-3: 3001-day-2026-07-05-scroll-03.png (top=2258)
+  scroll-bottom: 3001-day-2026-07-05-scroll-bottom.png
+  ✅ VALID: 3001/day/2026-07-05
+
+=== 3001/calendar ===
+  authL=false authE=false authT=false sentinel=true
+  body: КАЛЕНДАРЬ
+Июль 2026
+Дни
+Луна
+ПН
+ВТ
+СР
+ЧТ
+ПТ
+СБ
+ВС
+ЛУННЫЙ КАЛЕНДАРЬ
+31 дней
+Полнолуние
+1
+Последняя четверть
+7
+Полнолуние
+
+  scroll: sh=44 ch=41 max=3 docSH=932
+  viewport: 3001-calendar-viewport.png
+  fullPage: 3001-calendar-fullpage.png (82714 bytes)
+  scroll-0: 3001-calendar-scroll-00.png (top=0)
+  scroll-bottom: 3001-calendar-scroll-bottom.png
+  ✅ VALID: 3001/calendar
+
+=== 3001/profile ===
+  authL=false authE=false authT=false sentinel=true
+  body: ПРОФИЛЬ
+Г
+Гость
+Telegram mini-app
+ДОСТУП
+Доступ активен
+Осталось 14 дней · до 21 июля 2026
+
+Сначала расходуются бонусные
+  scroll: sh=2646 ch=857 max=1789 docSH=932
+  viewport: 3001-profile-viewport.png
+  fullPage: 3001-profile-fullpage.png (58178 bytes)
+  scroll-0: 3001-profile-scroll-00.png (top=0)
+  scroll-1: 3001-profile-scroll-01.png (top=932)
+  scroll-2: 3001-profile-scroll-02.png (top=1789)
+  scroll-bottom: 3001-profile-scroll-bottom.png
+  ✅ VALID: 3001/profile
+
+=== 3001/readings ===
+  authL=false authE=false authT=false sentinel=true
+  body: РАЗБОРЫ
+Глубокие разборы
+
+Персональные форматы по твоей карте и текущему периоду.
+
+Не все форматы уже открыты — раздел б
+  scroll: sh=1297 ch=716 max=581 docSH=932
+  viewport: 3001-readings-viewport.png
+  fullPage: 3001-readings-fullpage.png (62519 bytes)
+  scroll-0: 3001-readings-scroll-00.png (top=0)
+  scroll-1: 3001-readings-scroll-01.png (top=581)
+  scroll-bottom: 3001-readings-scroll-bottom.png
+  ✅ VALID: 3001/readings
+
+=== 3001/readings/horary ===
+  authL=false authE=false authT=false sentinel=true
+  body: Разборы
+РАЗДЕЛ
+Хорарный оракул
+
+Задай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и
+  scroll: sh=2105 ch=857 max=1248 docSH=932
+  viewport: 3001-horary-viewport.png
+  fullPage: 3001-horary-fullpage.png (63109 bytes)
+  scroll-0: 3001-horary-scroll-00.png (top=0)
+  scroll-1: 3001-horary-scroll-01.png (top=932)
+  scroll-2: 3001-horary-scroll-02.png (top=1248)
+  scroll-bottom: 3001-horary-scroll-bottom.png
+  ✅ VALID: 3001/readings/horary
+
+=== 3001/readings/natal ===
+  authL=false authE=false authT=false sentinel=true
+  body: Разборы
+Твоя натальная карта
+
+Твой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождени
+  scroll: sh=3692 ch=857 max=2835 docSH=932
+  viewport: 3001-natal-viewport.png
+  fullPage: 3001-natal-fullpage.png (101361 bytes)
+  scroll-0: 3001-natal-scroll-00.png (top=0)
+  scroll-1: 3001-natal-scroll-01.png (top=932)
+  scroll-2: 3001-natal-scroll-02.png (top=1864)
+  scroll-3: 3001-natal-scroll-03.png (top=2796)
+  scroll-bottom: 3001-natal-scroll-bottom.png
+  ✅ VALID: 3001/readings/natal
+
+=== 3002/day/2026-07-05 ===
+  authL=false authE=false authT=false sentinel=true
+  body: ДЕНЬ
+5 июля
+
+Сегодня уверенно проявляй свои идеи и следуй за желаниями!
+
+14 дней бесплатного доступа
+Осталось 6 дней
+Под
+  scroll: sh=3978 ch=857 max=3121 docSH=932
+  viewport: 3002-day-2026-07-05-viewport.png
+  fullPage: 3002-day-2026-07-05-fullpage.png (63185 bytes)
+  scroll-0: 3002-day-2026-07-05-scroll-00.png (top=0)
+  scroll-1: 3002-day-2026-07-05-scroll-01.png (top=932)
+  scroll-2: 3002-day-2026-07-05-scroll-02.png (top=1864)
+  scroll-3: 3002-day-2026-07-05-scroll-03.png (top=2796)
+  scroll-4: 3002-day-2026-07-05-scroll-04.png (top=3121)
+  scroll-bottom: 3002-day-2026-07-05-scroll-bottom.png
+  ✅ VALID: 3002/day/2026-07-05
+
+=== 3002/calendar ===
+  authL=false authE=false authT=false sentinel=true
+  body: КАЛЕНДАРЬ
+July 2026
+Дни
+Луна
+ПН
+ВТ
+СР
+ЧТ
+ПТ
+СБ
+ВС
+
+Лунные данные недоступны
+
+Для этого месяца backend пока не вернул лун
+  scroll: sh=1173 ch=857 max=316 docSH=932
+  viewport: 3002-calendar-viewport.png
+  fullPage: 3002-calendar-fullpage.png (36036 bytes)
+  scroll-0: 3002-calendar-scroll-00.png (top=0)
+  scroll-1: 3002-calendar-scroll-01.png (top=316)
+  scroll-bottom: 3002-calendar-scroll-bottom.png
+  ✅ VALID: 3002/calendar
+
+=== 3002/profile ===
+  authL=false authE=false authT=false sentinel=true
+  body: ПРОФИЛЬ
+Г
+Гость
+Telegram mini-app
+ДОСТУП
+Доступ активен
+Осталось 5 дней · до 11 июля 2026
+
+Сначала расходуются бонусные 
+  scroll: sh=1436 ch=857 max=579 docSH=932
+  viewport: 3002-profile-viewport.png
+  fullPage: 3002-profile-fullpage.png (52351 bytes)
+  scroll-0: 3002-profile-scroll-00.png (top=0)
+  scroll-1: 3002-profile-scroll-01.png (top=579)
+  scroll-bottom: 3002-profile-scroll-bottom.png
+  ✅ VALID: 3002/profile
+
+=== 3002/readings ===
+  authL=false authE=false authT=false sentinel=true
+  body: РАЗБОРЫ
+Глубокие разборы
+
+Персональные форматы по твоей карте и текущему периоду.
+
+Не все форматы уже открыты — раздел б
+  scroll: sh=1005 ch=716 max=289 docSH=932
+  viewport: 3002-readings-viewport.png
+  fullPage: 3002-readings-fullpage.png (50689 bytes)
+  scroll-0: 3002-readings-scroll-00.png (top=0)
+  scroll-1: 3002-readings-scroll-01.png (top=289)
+  scroll-bottom: 3002-readings-scroll-bottom.png
+  ✅ VALID: 3002/readings
+
+=== 3002/readings/horary ===
+  authL=false authE=false authT=false sentinel=true
+  body: Разборы
+РАЗДЕЛ
+Хорарный оракул
+
+Задай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и
+  scroll: sh=3436 ch=857 max=2579 docSH=932
+  viewport: 3002-horary-viewport.png
+  fullPage: 3002-horary-fullpage.png (58961 bytes)
+  scroll-0: 3002-horary-scroll-00.png (top=0)
+  scroll-1: 3002-horary-scroll-01.png (top=932)
+  scroll-2: 3002-horary-scroll-02.png (top=1864)
+  scroll-3: 3002-horary-scroll-03.png (top=2579)
+  scroll-bottom: 3002-horary-scroll-bottom.png
+  ✅ VALID: 3002/readings/horary
+
+=== 3002/readings/natal ===
+  authL=false authE=false authT=false sentinel=true
+  body: Разборы
+Твоя натальная карта
+
+Твой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождени
+  scroll: sh=2817 ch=857 max=1960 docSH=932
+  viewport: 3002-natal-viewport.png
+  fullPage: 3002-natal-fullpage.png (87468 bytes)
+  scroll-0: 3002-natal-scroll-00.png (top=0)
+  scroll-1: 3002-natal-scroll-01.png (top=932)
+  scroll-2: 3002-natal-scroll-02.png (top=1864)
+  scroll-3: 3002-natal-scroll-03.png (top=1960)
+  scroll-bottom: 3002-natal-scroll-bottom.png
+  ✅ VALID: 3002/readings/natal
