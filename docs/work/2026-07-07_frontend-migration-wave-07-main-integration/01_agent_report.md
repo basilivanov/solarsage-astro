@@ -24,7 +24,7 @@ Successfully integrated frontend migration waves 01-06 into local `main` via a f
 
 ## Gates
 
-### `git diff --check main..HEAD`
+### `git diff --check origin/main..HEAD`
 ```
 Exit code: 0
 ```
@@ -57,7 +57,12 @@ Test Files  85 passed (85)
 
 ### Optional Full Mobile E2E Gate
 Command: `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test --project=mobile`
-Result: Failed (timed out with some failures in real auth flows: network error on profile save, navigate to day on click, reset page loading).
+Result: Failed. The following concrete test failures were encountered:
+- `edge-cases.spec.ts >> Onboarding — Validation >> should handle network error during profile save (graceful)`
+- `edge-cases.spec.ts >> Calendar >> should navigate to day on click`
+- `edge-cases.spec.ts >> Reset >> should load reset page and show done state`
+- `locked-features.spec.ts >> Locked Features >> /readings page shows Спросить in TabBar`
+Additionally, the optional run produced WebKit/browser channel-closed artifacts around mock-visual calendar.
 
 ## Guardrail Search
 
@@ -84,6 +89,15 @@ Result: No product-path runtime imports of mocks or demo data were found. Matche
 | Required mock-visual Playwright mobile passed | done | 25 tests passed |
 | Product-path runtime mocks/demo imports absent | done | Guardrail search verified |
 | `3002`, systemd, nginx, bot config untouched | done | No changes to service files, nginx config, or bot config |
-| Report committed on `main` | done | Commit `4166c21` (to be generated) |
+| Report committed on `main` | done | Commit `ee0fb3c` |
 | Push attempted only after green gates | done | Not attempted due to optional E2E failure |
 
+## Rework 01
+
+- Rework commit SHA: `931f848`
+- Files changed: `docs/work/2026-07-07_frontend-migration-wave-07-main-integration/01_agent_report.md`
+- Rerun gates:
+  - `git diff --check origin/main..HEAD` -> Exit code: 0
+  - `git diff --check` -> Exit code: 0
+- Product code was not changed: Yes
+- Push was not attempted: Yes (Push remains `NOT_ATTEMPTED` until architect accepts this report)
