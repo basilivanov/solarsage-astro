@@ -95,7 +95,7 @@ export function LunarCalendarStrip({ days }: Props) {
         </div>
 
         {selected ? (
-          <div className="mt-3 rounded-md border border-border/50 bg-background/60 p-3">
+          <div className="mt-3 rounded-md border border-border/50 bg-background/60 p-3" data-testid="lunar-calendar-selected-detail">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
               <Moon className="h-4 w-4 text-foreground" strokeWidth={1.75} aria-hidden />
               {selected.lunar.phase ? <span className="font-medium text-foreground">{selected.lunar.phase}</span> : null}

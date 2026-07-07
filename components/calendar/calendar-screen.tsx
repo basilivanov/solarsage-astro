@@ -260,6 +260,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           type="button"
           onClick={() => setView("day")}
           aria-pressed={view === "day"}
+          aria-label="Дни"
           className={cn(
             "flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
             view === "day" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
@@ -271,6 +272,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           type="button"
           onClick={() => setView("moon")}
           aria-pressed={view === "moon"}
+          aria-label="Луна"
           className={cn(
             "flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
             view === "moon" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
@@ -420,6 +422,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           <div
             className="flex-none border-t border-border/60 bg-card/60 px-5 pt-4"
             style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
+            data-testid="calendar-selected-summary"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">

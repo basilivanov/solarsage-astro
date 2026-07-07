@@ -7,6 +7,14 @@
 
 import type { components } from "../../../packages/contracts/_generated";
 
+export const accessPayload: components["schemas"]["AccessSummary"] = {
+  user: "trial",
+  referralDaysLeft: 8,
+  subscriptionActive: false,
+  accessStart: "2026-07-01",
+  accessUntil: "2026-07-08",
+};
+
 export const calendarPayload: components["schemas"]["CalendarPayload"] = {
   meta: {
     schemaVersion: "calendar/v1",

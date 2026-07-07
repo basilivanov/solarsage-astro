@@ -33,7 +33,7 @@
 //   - e2e/mock-visual/*.spec.ts
 // END_MODULE_MAP: M-E2E-MOCK-VISUAL-ROUTES
 
-import type { Page, Request } from "@playwright/test";
+import { expect, type Page, type Request } from "@playwright/test";
 
 // START_BLOCK: TYPES
 export type MockApiRouteFixture = {
@@ -85,6 +85,20 @@ export class MissingRequestsTracker {
   }
 }
 // END_BLOCK: MISSING_TRACKER
+
+/**
+ * Assert no missing API fixtures after waiting for late React effects.
+ * Use at the end of each mock visual test, after all screen assertions.
+ */
+export async function expectNoMissingApiFixtures(
+  page: Page,
+  tracker: MissingRequestsTracker,
+): Promise<void> {
+  await page.waitForTimeout(800);
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(300);
+  expect(tracker.all).toEqual([]);
+}
 
 function serializeFixture(fixture: MockApiRouteFixture): {
   status: number;
