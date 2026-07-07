@@ -322,31 +322,6 @@ export function HoraryScreen() {
 
   const loadError = !loading && !quota && !profile
 
-  if (loading) {
-    return (
-      <div className="flex h-[80dvh] items-center justify-center" data-testid="horary-loading" role="status">
-        <Spinner className="h-8 w-8 text-primary" />
-      </div>
-    )
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-5" data-testid="horary-load-error" role="alert">
-        <AlertCircle className="h-8 w-8 text-destructive" />
-        <p className="text-center text-[15px] text-foreground">Не удалось загрузить данные хорара</p>
-        <p className="text-center text-[13px] text-muted-foreground">Проверьте подключение и попробуйте снова.</p>
-        <button
-          type="button"
-          onClick={loadData}
-          className="mt-2 rounded-full bg-foreground px-6 py-2 text-[14px] font-medium text-background"
-        >
-          Попробовать снова
-        </button>
-      </div>
-    )
-  }
-
   const hasSpendableCredit = quota
     ? (quota.weeklyFreeAvailable || quota.bonusCredits > 0 || quota.paidCredits > 0)
     : false
@@ -359,10 +334,27 @@ export function HoraryScreen() {
     ? questions.filter((q) => q.id !== activeQuestionId)
     : questions
 
-  const screenState = loadError ? "error" : "ready"
-
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-y-auto" data-testid="horary-screen" data-state={screenState} data-has-credit={hasSpendableCredit ? "true" : "false"}>
+    <div className="flex h-full w-full flex-col bg-background overflow-y-auto" data-testid="horary-screen" data-state={loading ? "loading" : loadError ? "error" : "ready"} data-has-credit={loading || loadError ? undefined : hasSpendableCredit ? "true" : "false"}>
+      {loading ? (
+        <div className="flex h-[80dvh] items-center justify-center" data-testid="horary-loading" role="status">
+          <Spinner className="h-8 w-8 text-primary" />
+        </div>
+      ) : loadError ? (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-5" data-testid="horary-load-error" role="alert">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+          <p className="text-center text-[15px] text-foreground">Не удалось загрузить данные хорара</p>
+          <p className="text-center text-[13px] text-muted-foreground">Проверьте подключение и попробуйте снова.</p>
+          <button
+            type="button"
+            onClick={() => { setLoading(true); loadData(); }}
+            className="mt-2 rounded-full bg-foreground px-6 py-2 text-[14px] font-medium text-background"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      ) : (
+      <>
       <header
         className="flex-none px-4 pb-4 border-b border-border/40"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)" }}
@@ -460,6 +452,8 @@ export function HoraryScreen() {
           <HoraryPurchaseSheet onClose={() => setShowPurchase(false)} />
         )}
       </AnimatePresence>
+      </>
+      )}
     </div>
   )
 }

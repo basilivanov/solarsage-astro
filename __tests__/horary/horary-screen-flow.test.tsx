@@ -324,6 +324,91 @@ describe("HoraryScreen — DOM contract", () => {
   });
 });
 
+describe("HoraryScreen — load error and retry", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("renders load error with data-state=error and role=alert when API fails", async () => {
+    mockQuota.mockRejectedValue(new Error("API error"));
+    mockList.mockRejectedValue(new Error("API error"));
+    mockProfile.mockRejectedValue(new Error("API error"));
+
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("horary-screen")).toBeTruthy();
+    }, { timeout: 2000 });
+
+    expect(screen.getByTestId("horary-screen").getAttribute("data-state")).toBe("error");
+    const errorEl = screen.getByTestId("horary-load-error");
+    expect(errorEl.getAttribute("role")).toBe("alert");
+  });
+
+  it("retry button re-calls loadData and recovers to ready state", async () => {
+    // Track how many times apis have been called
+    let quotaCalled = false;
+    let listCalled = false;
+    let profileCalled = false;
+
+    mockQuota.mockImplementation(() => {
+      if (!quotaCalled) { quotaCalled = true; return Promise.reject(new Error("API error")); }
+      return Promise.resolve({
+        weeklyFreeAvailable: true,
+        weeklyFreeExpiresAt: null,
+        nextWeeklyFreeAt: null,
+        bonusCredits: 2,
+        paidCredits: 0,
+        canPurchase: false,
+      });
+    });
+    mockList.mockImplementation(() => {
+      if (!listCalled) { listCalled = true; return Promise.reject(new Error("API error")); }
+      return Promise.resolve([]);
+    });
+    mockProfile.mockImplementation(() => {
+      if (!profileCalled) { profileCalled = true; return Promise.reject(new Error("API error")); }
+      return Promise.resolve({
+        userId: "test",
+        firstName: "Test",
+        gender: null,
+        isOnboarded: true,
+        birth: { birthday: "1990-01-01", birthTime: null, birthCity: null, birthLat: null, birthLon: null, birthTz: null },
+        currentLocation: null,
+        birthdayLocation: null,
+      });
+    });
+
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    // Wait for error state
+    await waitFor(() => {
+      expect(screen.getByTestId("horary-screen").getAttribute("data-state")).toBe("error");
+    }, { timeout: 5000 });
+
+    // Find retry button and click it
+    const retryBtn = screen.getByRole("button", { name: /Попробовать снова/ });
+    fireEvent.click(retryBtn);
+
+    // Wait for ready state after retry
+    await waitFor(() => {
+      expect(screen.getByTestId("horary-screen").getAttribute("data-state")).toBe("ready");
+    }, { timeout: 8000 });
+  });
+});
+
 describe("HoraryScreen — polling starts after create", () => {
   beforeEach(() => {
     vi.clearAllMocks();

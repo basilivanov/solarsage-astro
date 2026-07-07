@@ -79,6 +79,41 @@ describe("HoraryForm — blocked reason on invalid submit", () => {
   });
 });
 
+describe("HoraryForm — submit accessibility contract", () => {
+  it("invalid submit button has aria-disabled=true but is not natively disabled", () => {
+    renderForm();
+    const button = screen.getByTestId("horary-submit-btn");
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("invalid button click shows blocked reason with role=alert", () => {
+    renderForm();
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "ab" } });
+    const button = screen.getByTestId("horary-submit-btn");
+    fireEvent.click(button);
+    const reason = screen.getByTestId("horary-blocked-reason");
+    expect(reason.getAttribute("role")).toBe("alert");
+  });
+
+  it("submitting button is natively disabled", () => {
+    renderForm({
+      hasSpendableCredit: true,
+      submitting: true,
+      profileCurrentCity: "Москва",
+      profileCurrentLat: 55.75,
+      profileCurrentLon: 37.62,
+      profileCurrentTz: "Europe/Moscow",
+    });
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "Выйду ли я замуж в этом году?" } });
+    const button = screen.getByTestId("horary-submit-btn");
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.hasAttribute("disabled")).toBe(true);
+  });
+});
+
 describe("HoraryForm — submit API error", () => {
   it("shows submit error when submitError prop is set", () => {
     renderForm({ submitError: "Недостаточно хорарных вопросов" });

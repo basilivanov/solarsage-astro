@@ -232,6 +232,7 @@ export function HoraryForm({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-[13px] text-destructive/90 animate-in slide-in-from-top-1"
+          role="alert"
           data-testid="horary-blocked-reason"
         >
           {blockedReason}
@@ -262,6 +263,7 @@ export function HoraryForm({
         type="submit"
         data-testid="horary-submit-btn"
         aria-disabled={!isValid || submitting}
+        disabled={submitting}
         className={`flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition active:scale-[0.99] ${
           !isValid || submitting
             ? "opacity-40 cursor-not-allowed"

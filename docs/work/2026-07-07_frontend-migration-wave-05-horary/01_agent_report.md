@@ -95,3 +95,39 @@ Test Files  85 passed (85)
 Canonical port `3002`, systemd, nginx, and bot config were **not** changed. Runtime mocks, MSW, mock-preview API routes, static horary charts/answers, demo data, `SynastryDemo`, and `CelebrityCompatibility` remain **not ported**.
 
 Submit/polling/idempotency/location real API flow was **preserved**.
+
+## Rework 01
+
+Commit: `[this commit]`
+
+### Changes
+
+| Finding | Fix |
+|---------|-----|
+| `horary-screen` root missing in loading/error states | Wrapped all three states in a single `data-testid="horary-screen"` root with correct `data-state` (`loading`/`error`/`ready`). Loading has child `horary-loading` + `role="status"`. Error has child `horary-load-error` + `role="alert"` + retry button |
+| No load-error + retry unit coverage | Added 2 tests: error state with `data-state="error"` and `role="alert"`; retry recovers to `data-state="ready"` |
+| Submit accessibility incomplete | Invalid: `aria-disabled="true"` + clickable (blocked reason UX). Submitting: native `disabled`. Blocked reason: `role="alert"`. 3 new tests verify this contract |
+| Report missing visual comparison note | Oracle used: `docs/superpowers/specs/assets/2026-07-07-mock-preview/readings-horary.png`. No local screenshot captured |
+
+### Submit accessibility decision
+
+Per architect decision:
+- **Invalid state**: `aria-disabled="true"` (not natively disabled) — user can click to see blocked reason via `horary-blocked-reason` with `role="alert"`
+- **Submitting state**: native `disabled` — prevents duplicate POST while create is in flight
+
+### Visual oracle
+
+Reference screenshot: `docs/superpowers/specs/assets/2026-07-07-mock-preview/readings-horary.png`
+
+### No-Op Statement
+
+Canonical port `3002`, systemd, nginx, and bot config were **not** changed. Runtime mocks, MSW, mock-preview API routes, static horary charts/answers, and demo data remain **not ported**.
+
+### Gates
+
+- `git diff --check main..HEAD`: exit 0
+- `git diff --check`: exit 0
+- `pnpm exec tsc --noEmit`: exit 0
+- `npx vitest run __tests__/horary/`: 10 files / 192 tests passed
+- `npx vitest run` (full): 85 files / 891 tests passed
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 20 passed
