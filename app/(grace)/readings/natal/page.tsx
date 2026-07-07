@@ -68,15 +68,19 @@ export default function NatalReadingPage() {
     void load()
   }, [load])
 
+  const statusAttr = state.status
+
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
+    <div className="flex h-full w-full flex-col bg-background overflow-y-auto" data-testid="natal-preview-screen" data-state={statusAttr} data-full-report-available={statusAttr === "ready" ? "false" : undefined}>
       <header
         className="flex-none px-4 pb-4 border-b border-border/40"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)" }}
+        data-testid="natal-preview-header"
       >
         <Link
           href="/readings"
           className="inline-flex items-center gap-1.5 text-[14px] text-muted-foreground hover:text-foreground active:scale-95 transition"
+          data-testid="natal-preview-back-link"
         >
           <ChevronLeft className="h-4 w-4" />
           <span>Разборы</span>
@@ -84,50 +88,52 @@ export default function NatalReadingPage() {
       </header>
 
       <main className="flex-1 px-5 py-6 space-y-5 max-w-md mx-auto w-full">
-        {state.status === "loading" ? <LoadingSkeleton /> : null}
-        {state.status === "profile_incomplete" ? <ProfileIncompleteCard missingFields={state.missingFields} /> : null}
-        {state.status === "error" ? <ErrorCard message={state.message} onRetry={() => void load()} /> : null}
+        {state.status === "loading" ? <div data-testid="natal-preview-loading" role="status"><LoadingSkeleton /></div> : null}
+        {state.status === "profile_incomplete" ? <div data-testid="natal-profile-incomplete" role="alert"><ProfileIncompleteCard missingFields={state.missingFields} /></div> : null}
+        {state.status === "error" ? <div data-testid="natal-preview-error" role="alert"><ErrorCard message={state.message} onRetry={() => void load()} /></div> : null}
         {state.status === "ready" ? (
+          <div data-testid="natal-preview-content">
           <>
             {/* 1. Hero */}
-            <HeroSection
+            <div data-testid="natal-hero"><HeroSection
               name={state.data.meta.name}
               ascSign={state.data.meta.ascSign}
               sunSign={state.data.highlights.find((h) => h.title === "Солнце")?.value ?? null}
               moonSign={state.data.highlights.find((h) => h.title === "Луна")?.value ?? null}
               birthCity={state.data.meta.birthCity}
-            />
+            /></div>
 
             {/* 2. «Это про тебя» insight */}
-            <PersonalHook text={state.data.personalHook} />
+            <div data-testid="natal-personal-hook"><PersonalHook text={state.data.personalHook} /></div>
 
             {/* 3. Compact highlights chips */}
-            <HighlightsChips highlights={state.data.highlights} />
+            <div data-testid="natal-highlights"><HighlightsChips highlights={state.data.highlights} /></div>
 
             {/* 4. Глубина расчёта */}
-            <CalculationDepth stats={state.data.calculationStats} />
+            <div data-testid="natal-calculation-depth"><CalculationDepth stats={state.data.calculationStats} /></div>
 
             {/* 5. Натальная карта */}
             <NatalChartWheel chart={state.data.chart} birthLabel={state.data.meta.birthDate} />
 
             {/* 6. Сферы (топ-3 по умолчанию) */}
-            <SpheresStrip spheres={state.data.spheres} />
+            <div data-testid="natal-spheres"><SpheresStrip spheres={state.data.spheres} /></div>
 
             {/* 7. Планеты (топ-3 по умолчанию) */}
-            <PlanetsRow planets={state.data.planets} />
+            <div data-testid="natal-planets"><PlanetsRow planets={state.data.planets} /></div>
 
             {/* 8. Что войдёт в полный отчёт */}
-            <LockedChapters chapters={state.data.chapters} />
+            <div data-testid="natal-locked-chapters"><LockedChapters chapters={state.data.chapters} /></div>
 
             {/* 9. Value bullets */}
-            <SalesBullets bullets={state.data.salesBullets} />
+            <div data-testid="natal-sales-bullets"><SalesBullets bullets={state.data.salesBullets} /></div>
 
             {/* 10. CTA */}
-            <CtaButton
+            <div data-testid="natal-full-report-cta"><CtaButton
               priceKopecks={state.data.fullReportPriceKopecks}
               disabled
-            />
+            /></div>
           </>
+          </div>
         ) : null}
       </main>
     </div>
