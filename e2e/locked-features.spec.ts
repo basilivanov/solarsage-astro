@@ -40,10 +40,8 @@ test.describe('Locked Features', () => {
   test('/readings page shows Спросить in TabBar', async ({ page }) => {
     test.setTimeout(20000);
     await page.addInitScript(() => localStorage.setItem('lumen:onboarded', '1'));
-    await page.goto('/');
-    await page.waitForTimeout(5000);
 
-    // Navigate to readings to verify TabBar
+    // Navigate directly to readings to avoid auth redirect racing with TabBar hydration
     await page.goto('/readings');
     await page.waitForTimeout(3000);
 

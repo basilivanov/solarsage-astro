@@ -75,6 +75,7 @@ test.describe('Onboarding — Validation', () => {
 
   test('should handle network error during profile save (graceful)', async ({ page }) => {
     test.setTimeout(40000);
+
     await page.goto('/onboarding');
 
     // Step 1 → 2
@@ -105,15 +106,21 @@ test.describe('Onboarding — Validation', () => {
     await expect(page.getByRole('heading', { name: /мужчина или женщина/i })).toBeVisible({ timeout: 5000 });
     await page.getByRole('button', { name: 'Женщина' }).click();
 
-    // Block profile save before finishing
-    await page.route('**/api/profile', route => route.abort());
+    // Block profile save before finishing — method-aware to avoid interfering with GET requests
+    await page.route('**/api/profile', (route) => {
+      const method = route.request().method();
+      if (method === 'PUT' || method === 'PATCH' || method === 'POST') {
+        return route.abort();
+      }
+      return route.continue();
+    });
 
     // Try to finish
     const finishBtn = page.getByRole('button', { name: /Открыть мой день|Открыть/i });
     await expect(finishBtn).toBeEnabled({ timeout: 5000 });
     await finishBtn.click();
 
-    await expect(page.locator('text=/Failed to update profile|Failed to fetch|Не удалось сохранить профиль/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/Failed to update profile|Load failed|Failed to fetch|Не удалось сохранить профиль/i')).toBeVisible({ timeout: 10000 });
     await expect(page).toHaveURL(/\/onboarding/);
     await page.waitForTimeout(2000);
     expect(page.url()).toContain('/onboarding');
@@ -188,7 +195,7 @@ test.describe('Calendar', () => {
     test.setTimeout(30000);
     await page.addInitScript(() => localStorage.setItem('lumen:onboarded', '1'));
     await page.goto('/calendar');
-    await page.waitForTimeout(4000);
+    await page.waitForLoadState('networkidle');
 
     const screenRoot = page.getByTestId('calendar-screen');
     const grid = page.getByTestId('calendar-grid');
@@ -258,7 +265,7 @@ test.describe('Reset', () => {
     test.setTimeout(20000);
     await page.addInitScript(() => localStorage.setItem('lumen:onboarded', '1'));
     await page.goto('/reset');
-    await page.waitForTimeout(3000);
+    await page.waitForLoadState('networkidle');
 
     const done = page.locator('text=/Готово|готово/i');
     await expect(done).toBeVisible({ timeout: 10000 });
