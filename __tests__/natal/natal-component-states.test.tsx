@@ -24,7 +24,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent, act, within } from "@testing-library/react"
 import React from "react"
 
 import type { NatalPreviewRead } from "@/lib/contracts/natal"
@@ -276,9 +276,14 @@ describe("NatalReadingPage — natal chart preview", () => {
     expect(root.getAttribute("data-full-report-available")).toBe("true")
     expect(screen.getByTestId("natal-preview-content")).toBeTruthy()
 
-    // CTA should still be disabled even when fullReportAvailable is true
+    // Hero badges are present when badge data exists
+    expect(screen.getByTestId("natal-hero-badges")).toBeTruthy()
+
+    // CTA button is still disabled and aria-disabled even when fullReportAvailable is true
     const cta = screen.getByTestId("natal-full-report-cta")
-    expect(cta).toBeTruthy()
+    const button = within(cta).getByRole("button", { name: "Полный отчёт скоро появится" }) as HTMLButtonElement
+    expect(button.disabled).toBe(true)
+    expect(button.getAttribute("aria-disabled")).toBe("true")
   })
 
   it("error state renders natal-preview-error role=alert and retry recovers", async () => {

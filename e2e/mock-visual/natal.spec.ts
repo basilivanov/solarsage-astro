@@ -46,8 +46,9 @@ test.describe("Mock Visual — /readings/natal", () => {
     await expect(page.getByTestId("natal-preview-header")).toBeVisible();
     await expect(page.getByTestId("natal-preview-back-link")).toBeVisible();
 
-    // Hero
+    // Hero with badges
     await expect(page.getByTestId("natal-hero")).toBeVisible();
+    await expect(page.getByTestId("natal-hero-badges")).toBeVisible();
 
     // Personal hook
     await expect(page.getByTestId("natal-personal-hook")).toBeVisible();

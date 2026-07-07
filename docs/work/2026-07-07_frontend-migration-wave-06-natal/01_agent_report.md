@@ -48,6 +48,7 @@ No backend contracts were changed. No runtime mocks, MSW, `DEMO_NATAL_RESPONSE`,
 | `data-testid="natal-preview-back-link"` | ✅ | Back link |
 | `data-testid="natal-preview-content"` | ✅ | Ready content |
 | `data-testid="natal-hero"` | ✅ | Hero section |
+| `data-testid="natal-hero-badges"` | ✅ | Hero badges container |
 | `data-testid="natal-personal-hook"` | ✅ | Personal hook |
 | `data-testid="natal-highlights"` | ✅ | Highlights chips |
 | `data-testid="natal-calculation-depth"` | ✅ | Calculation depth |
@@ -103,7 +104,7 @@ Canonical port `3002`, systemd, nginx, and bot config were **not** changed. Runt
 
 ## Rework 01
 
-Commit: `a865cfc`
+Commit: `e4101d8`
 
 ### Changes
 
@@ -125,3 +126,24 @@ CTA fulfillment/payment remains disabled. `fetchNatalPreview()` and `NatalPrevie
 - `npx vitest run __tests__/natal/`: 4 files / 63 tests passed
 - `npx vitest run` (full): 85 files / 896 tests passed
 - `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 25 passed
+
+## Rework 02
+
+Commit: `2198b39`
+
+### Changes
+| Finding | Fix |
+|---------|-----|
+| `fullReportAvailable=true` test missing CTA disabled/aria-disabled | Added `within(cta).getByRole("button")` assertions: `disabled=true`, `aria-disabled=true` |
+| `natal-hero-badges` not asserted | Added component test assertion (`screen.getByTestId`) and e2e assertion (`toBeVisible`) |
+| Report SHA wrong, table incomplete | Fixed Rework 01 SHA to `e4101d8`; added `natal-hero-badges` to contract table; added this section |
+
+### Gates
+- `git diff --check main..HEAD`: exit 0
+- `git diff --check`: exit 0
+- `pnpm exec tsc --noEmit`: exit 0
+- `npx vitest run __tests__/natal/`: 4 files / 63 tests passed
+- `npx vitest run` (full): 85 files / 896 tests passed
+- `E2E_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/mock-visual --project=mobile`: 25 passed
+
+`fetchNatalPreview()` and `NatalPreviewRead` real-data flow preserved. CTA fulfillment/payment remains disabled. Runtime mocks/MSW/mock-preview API/static natal charts/reports/`DEMO_NATAL_RESPONSE`/demo data remain not ported. `3002`, systemd, nginx, bot config not changed.
