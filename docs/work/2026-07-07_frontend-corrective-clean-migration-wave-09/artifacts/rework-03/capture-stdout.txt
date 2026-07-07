@@ -1,0 +1,169 @@
+=== PREFLIGHT ===
+Port 8000: HTTP 404
+Port 3001: HTTP 200
+Port 3002: HTTP 200
+
+=== 3001/day/2026-07-05 ===
+  authL=false authE=false authT=false sentinel=true
+  body: ДЕНЬ
+5 июля
+14 дней бесплатного доступа
+Осталось 0 дней
+Подписка
+Вечер — время оценить день
+Как прошёл день? 30 секунд —
+  viewport: 3001-day-2026-07-05-viewport.png
+  fullPage: 3001-day-2026-07-05-fullpage.png
+  ✅ VALID
+
+=== 3001/calendar ===
+  authL=false authE=false authT=false sentinel=false
+  body: КАЛЕНДАРЬ
+Июль 2026
+Дни
+Луна
+ПН
+ВТ
+СР
+ЧТ
+ПТ
+СБ
+ВС
+ЛУННЫЙ КАЛЕНДАРЬ
+31 дней
+Полнолуние
+1
+Последняя четверть
+7
+Полнолуние
+
+  ❌ BLOCKED: no_sentinel
+
+=== 3001/profile ===
+  authL=false authE=false authT=false sentinel=false
+  body: ПРОФИЛЬ
+Г
+Гость
+Telegram mini-app
+ДОСТУП
+Доступ активен
+Осталось 14 дней · до 21 июля 2026
+
+Сначала расходуются бонусные
+  ❌ BLOCKED: no_sentinel
+
+=== 3001/readings ===
+  authL=false authE=false authT=false sentinel=true
+  body: РАЗБОРЫ
+Глубокие разборы
+
+Персональные форматы по твоей карте и текущему периоду.
+
+Не все форматы уже открыты — раздел б
+  viewport: 3001-readings-viewport.png
+  fullPage: 3001-readings-fullpage.png
+  ✅ VALID
+
+=== 3001/readings/horary ===
+  authL=false authE=false authT=false sentinel=true
+  body: Разборы
+РАЗДЕЛ
+Хорарный оракул
+
+Задай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и
+  viewport: 3001-horary-viewport.png
+  fullPage: 3001-horary-fullpage.png
+  ✅ VALID
+
+=== 3001/readings/natal ===
+  authL=false authE=false authT=false sentinel=true
+  body: Разборы
+Твоя натальная карта
+
+Твой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождени
+  viewport: 3001-natal-viewport.png
+  fullPage: 3001-natal-fullpage.png
+  ✅ VALID
+
+=== 3002/day/2026-07-05 ===
+  authL=false authE=false authT=false sentinel=true
+  body: ДЕНЬ
+5 июля
+
+Сегодня уверенно проявляй свои идеи и следуй за желаниями!
+
+14 дней бесплатного доступа
+Осталось 6 дней
+Под
+  viewport: 3002-day-2026-07-05-viewport.png
+  fullPage: 3002-day-2026-07-05-fullpage.png
+  ✅ VALID
+
+=== 3002/calendar ===
+  authL=false authE=false authT=false sentinel=true
+  body: КАЛЕНДАРЬ
+July 2026
+Дни
+Луна
+ПН
+ВТ
+СР
+ЧТ
+ПТ
+СБ
+ВС
+
+Лунные данные недоступны
+
+Для этого месяца backend пока не вернул лун
+  viewport: 3002-calendar-viewport.png
+  fullPage: 3002-calendar-fullpage.png
+  ✅ VALID
+
+=== 3002/profile ===
+  authL=false authE=false authT=false sentinel=true
+  body: ПРОФИЛЬ
+Г
+Гость
+Telegram mini-app
+ДОСТУП
+Доступ активен
+Осталось 5 дней · до 11 июля 2026
+
+Сначала расходуются бонусные 
+  viewport: 3002-profile-viewport.png
+  fullPage: 3002-profile-fullpage.png
+  ✅ VALID
+
+=== 3002/readings ===
+  authL=false authE=false authT=false sentinel=true
+  body: РАЗБОРЫ
+Глубокие разборы
+
+Персональные форматы по твоей карте и текущему периоду.
+
+Не все форматы уже открыты — раздел б
+  viewport: 3002-readings-viewport.png
+  fullPage: 3002-readings-fullpage.png
+  ✅ VALID
+
+=== 3002/readings/horary ===
+  authL=false authE=false authT=false sentinel=true
+  body: Разборы
+РАЗДЕЛ
+Хорарный оракул
+
+Задай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и
+  viewport: 3002-horary-viewport.png
+  fullPage: 3002-horary-fullpage.png
+  ✅ VALID
+
+=== 3002/readings/natal ===
+  authL=false authE=false authT=false sentinel=true
+  body: Разборы
+Твоя натальная карта
+
+Твой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождени
+  viewport: 3002-natal-viewport.png
+  fullPage: 3002-natal-fullpage.png
+  ✅ VALID

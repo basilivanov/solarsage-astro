@@ -1,0 +1,218 @@
+[
+  {
+    "port": 3001,
+    "route": "/day/2026-07-05",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-day-2026-07-05-viewport.png",
+    "fullPageArtifact": "3001-day-2026-07-05-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "ДЕНЬ\n5 июля\n14 дней бесплатного доступа\nОсталось 0 дней\nПодписка\nВечер — время оценить день\nКак прошёл день? 30 секунд — и прогноз станет точнее.\nОценить\n5 ИЮЛ · ВОСКРЕСЕНЬЕ\n🌊\nРовный день\n\nбез взлётов — занимайся рутиной\n\n☉\nтема дня — проявись\n🌖\nУбывающая 76%\n→ подводи итоги\n☉\nСолнце управитель\n→ ",
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/calendar",
+    "valid": false,
+    "blocker": "no_sentinel",
+    "viewportArtifact": null,
+    "fullPageArtifact": null,
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": false
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "КАЛЕНДАРЬ\nИюль 2026\nДни\nЛуна\nПН\nВТ\nСР\nЧТ\nПТ\nСБ\nВС\nЛУННЫЙ КАЛЕНДАРЬ\n31 дней\nПолнолуние\n1\nПоследняя четверть\n7\nПолнолуние\n14\nНоволуние\n15\nПолнолуние\n28\n1\n98%\n2\n93%\n3\n87%\n4\n79%\n5\n70%\n6\n60%\n7\n49%\n8\n39%\n9\n28%\n10\n19%\n11\n12%\n12\n6%\n13\n2%\n14\n0%\n15\n1%\n16\n3%\n17\n8%\n18\n15%\n19\n23%\n20\n33%\n21\n43%\n22\n53%\n23\n64%\n24\n7",
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/profile",
+    "valid": false,
+    "blocker": "no_sentinel",
+    "viewportArtifact": null,
+    "fullPageArtifact": null,
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": false
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "ПРОФИЛЬ\nГ\nГость\nTelegram mini-app\nДОСТУП\nДоступ активен\nОсталось 14 дней · до 21 июля 2026\n\nСначала расходуются бонусные дни, затем начнёт действовать подписка. После окончания доступ закроется.\n\nОформить подписку\nПригласить друга\nРЕФЕРАЛКА\nПригласи друга\nВы оба получите 14 дней доступа\nПригласить\nХ",
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/readings",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-readings-viewport.png",
+    "fullPageArtifact": "3001-readings-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "РАЗБОРЫ\nГлубокие разборы\n\nПерсональные форматы по твоей карте и текущему периоду.\n\nНе все форматы уже открыты — раздел будет постепенно расширяться.\n\nДОСТУПНО СЕЙЧАС\n2\nХорар\n\nЗадай точный вопрос и получи ответ карты\n\nКонкретный вопрос — конкретный ответ по моменту вопроса\n\nОткрыть\nНатальная карта\n\nГ",
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/readings/horary",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-horary-viewport.png",
+    "fullPageArtifact": "3001-horary-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "Разборы\nРАЗДЕЛ\nХорарный оракул\n\nЗадай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и практическим выводом.\n\nДоступно вопросов: 6\n• Еженедельный бесплатный: доступен (сгорит 9 июн., 03:00)\n• Купленные: 3 (не сгорают)\n• Бонусные: 2\nДокупить\nКАТЕГОРИЯ ВОПРОСА\n💕\nОтно",
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/readings/natal",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-natal-viewport.png",
+    "fullPageArtifact": "3001-natal-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "Разборы\nТвоя натальная карта\n\nТвой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождения.\n\nASC в Раке\nСолнце в Козерог\nЛуна в Лев\nМосква\n\nТы считываешь мир глубоко и тонко. В карте заметно сочетание чувствительности, внутренней силы и выраженной личной воли. Сильнее ",
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/day/2026-07-05",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-day-2026-07-05-viewport.png",
+    "fullPageArtifact": "3002-day-2026-07-05-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "ДЕНЬ\n5 июля\n\nСегодня уверенно проявляй свои идеи и следуй за желаниями!\n\n14 дней бесплатного доступа\nОсталось 6 дней\nПодписка\nПОДДЕРЖИВАЮЩИЙ\n\nДоброе утро\n\nЛунные данные загружаются\n\nПЛАНЕТА\n\nJupiter\n\nвлияние 7.2152\n\nСФЕРА\n\nЭнергия и здоровье\n\nактивность 5.54\n\nСЕГОДНЯ ВАЖНО\nМеркурий ретроградный\nМерк",
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/calendar",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-calendar-viewport.png",
+    "fullPageArtifact": "3002-calendar-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "КАЛЕНДАРЬ\nJuly 2026\nДни\nЛуна\nПН\nВТ\nСР\nЧТ\nПТ\nСБ\nВС\n\nЛунные данные недоступны\n\nДля этого месяца backend пока не вернул лунные поля.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n1\n2\n",
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/profile",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-profile-viewport.png",
+    "fullPageArtifact": "3002-profile-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "ПРОФИЛЬ\nГ\nГость\nTelegram mini-app\nДОСТУП\nДоступ активен\nОсталось 5 дней · до 11 июля 2026\n\nСначала расходуются бонусные дни. Оплата и подписка появятся после подключения реального платежного подтверждения.\n\nПодписка скоро появится\nПригласить друга\nРЕФЕРАЛКА\nПригласи друга\nВы оба получите 14 дней дос",
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/readings",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-readings-viewport.png",
+    "fullPageArtifact": "3002-readings-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "РАЗБОРЫ\nГлубокие разборы\n\nПерсональные форматы по твоей карте и текущему периоду.\n\nНе все форматы уже открыты — раздел будет постепенно расширяться.\n\nДОСТУПНО СЕЙЧАС\n2\nХорар\n\nЗадай точный вопрос и получи ответ карты\n\nКонкретный вопрос — конкретный ответ по моменту вопроса\n\nОткрыть\nНатальная карта\n\nГ",
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/readings/horary",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-horary-viewport.png",
+    "fullPageArtifact": "3002-horary-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "Разборы\nРАЗДЕЛ\nХорарный оракул\n\nЗадай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и практическим выводом.\n\nДоступно вопросов: 1\n• Еженедельный бесплатный: доступен (сгорит 12 июл., 03:00)\nСкоро\nКАТЕГОРИЯ ВОПРОСА\n💕\nОтношения\n💼\nРабота\n💰\nДеньги\n🏥\nЗдоровье\n✈️\nПер",
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/readings/natal",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-natal-viewport.png",
+    "fullPageArtifact": "3002-natal-fullpage.png",
+    "scrollArtifacts": [],
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "missingSentinels": {},
+    "bodyTextSample": "Разборы\nТвоя натальная карта\n\nТвой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождения.\n\nASC в Раке\nСолнце в Скорпионе\nЛуна в Льве\nМончегорск\n\nты собран: с ASC в Раке и Солнцем в Скорпионе у тебя особенно заметна тема «Home Family Roots», через неё ярче всего читае",
+    "notes": ""
+  }
+]
