@@ -1,0 +1,161 @@
+=== PREFLIGHT ===
+http://127.0.0.1:8000/api/health: HTTP 200
+http://127.0.0.1:3001/: HTTP 200
+http://127.0.0.1:3002/: HTTP 200
+
+=== 3001/day/2026-07-05 ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=2981 ch=857 max=2124
+  container: .flex-1.overflow-y-auto.overscroll-contain
+  viewport: 3001-day-2026-07-05-viewport.png hash=0c005a0fe6f28c4e size=430x932
+  fullPage: 3001-day-2026-07-05-fullpage.png hash=0c005a0fe6f28c4e size=430x932
+  scroll-0: 3001-day-2026-07-05-scroll-00.png req=0 actual=0 hash=0c005a0fe6f28c4e
+  scroll-1: 3001-day-2026-07-05-scroll-01.png req=857 actual=857 hash=19b976ed893aea42
+  scroll-2: 3001-day-2026-07-05-scroll-02.png req=1714 actual=1714 hash=7e9d0ff24a7ef434
+  scroll-3: 3001-day-2026-07-05-scroll-03.png req=2124 actual=2124 hash=74a340ef8ccaf5a8
+  scroll-bottom: 3001-day-2026-07-05-scroll-bottom.png req=2124 actual=2124 hash=6889548ac2397a4c
+  scroll hashes: 5 unique among 5 files
+  ✅ VALID: 3001/day/2026-07-05
+
+=== 3001/calendar ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=932 ch=932 max=0
+  container: .bg-background.light
+  viewport: 3001-calendar-viewport.png hash=f933a88fb3b6810a size=430x932
+  fullPage: 3001-calendar-fullpage.png hash=f933a88fb3b6810a size=430x932
+  no scroll needed (maxScrollTop=0)
+  ✅ VALID: 3001/calendar
+
+=== 3001/profile ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=2646 ch=857 max=1789
+  container: .flex.h-full.w-full.flex-col.overflow-y-auto.bg-background
+  viewport: 3001-profile-viewport.png hash=55cbfd4309495fda size=430x932
+  fullPage: 3001-profile-fullpage.png hash=55cbfd4309495fda size=430x932
+  scroll-0: 3001-profile-scroll-00.png req=0 actual=0 hash=55cbfd4309495fda
+  scroll-1: 3001-profile-scroll-01.png req=857 actual=857 hash=a8d33effbcef8017
+  scroll-2: 3001-profile-scroll-02.png req=1714 actual=1714 hash=f18acb0b09c4597d
+  scroll-3: 3001-profile-scroll-03.png req=1789 actual=1789 hash=c4f52bd6cba86d36
+  scroll-bottom: 3001-profile-scroll-bottom.png req=1789 actual=1789 hash=c4f52bd6cba86d36
+  scroll hashes: 4 unique among 5 files
+  ✅ VALID: 3001/profile
+
+=== 3001/readings ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=1297 ch=716 max=581
+  container: .flex-1.overflow-y-auto.px-5.pb-8
+  viewport: 3001-readings-viewport.png hash=8575a6c3fea3f038 size=430x932
+  fullPage: 3001-readings-fullpage.png hash=4b76eb6ffc606d01 size=430x932
+  scroll-0: 3001-readings-scroll-00.png req=0 actual=0 hash=b9dd9c63d0bf4291
+  scroll-1: 3001-readings-scroll-01.png req=581 actual=581 hash=976cac17470fa06a
+  scroll-bottom: 3001-readings-scroll-bottom.png req=581 actual=581 hash=4887917f607937e9
+  scroll hashes: 3 unique among 3 files
+  ✅ VALID: 3001/readings
+
+=== 3001/readings/horary ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=2105 ch=857 max=1248
+  container: .flex.h-full.w-full.flex-col.bg-background.overflow-y-auto
+  viewport: 3001-horary-viewport.png hash=633a2cb70ad736ac size=430x932
+  fullPage: 3001-horary-fullpage.png hash=633a2cb70ad736ac size=430x932
+  scroll-0: 3001-horary-scroll-00.png req=0 actual=0 hash=633a2cb70ad736ac
+  scroll-1: 3001-horary-scroll-01.png req=857 actual=857 hash=b6df1f376f281aec
+  scroll-2: 3001-horary-scroll-02.png req=1248 actual=1248 hash=3e42e9434ac8121d
+  scroll-bottom: 3001-horary-scroll-bottom.png req=1248 actual=1248 hash=3e42e9434ac8121d
+  scroll hashes: 3 unique among 4 files
+  ✅ VALID: 3001/readings/horary
+
+=== 3001/readings/natal ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=3692 ch=857 max=2835
+  container: .flex.h-full.w-full.flex-col.bg-background.overflow-y-auto
+  viewport: 3001-natal-viewport.png hash=daabcfe119a6010b size=430x932
+  fullPage: 3001-natal-fullpage.png hash=daabcfe119a6010b size=430x932
+  scroll-0: 3001-natal-scroll-00.png req=0 actual=0 hash=daabcfe119a6010b
+  scroll-1: 3001-natal-scroll-01.png req=857 actual=857 hash=1f340fd23c93ead4
+  scroll-2: 3001-natal-scroll-02.png req=1714 actual=1714 hash=1652729c22a6323f
+  scroll-3: 3001-natal-scroll-03.png req=2571 actual=2571 hash=2b46297d4b29bf42
+  scroll-4: 3001-natal-scroll-04.png req=2835 actual=2835 hash=0fe0f986eb3fd217
+  scroll-bottom: 3001-natal-scroll-bottom.png req=2835 actual=2835 hash=0fe0f986eb3fd217
+  scroll hashes: 5 unique among 6 files
+  ✅ VALID: 3001/readings/natal
+
+=== 3002/day/2026-07-05 ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=3978 ch=857 max=3121
+  container: .flex-1.overflow-y-auto.overscroll-contain
+  viewport: 3002-day-2026-07-05-viewport.png hash=fef0af43a96191f9 size=430x932
+  fullPage: 3002-day-2026-07-05-fullpage.png hash=fef0af43a96191f9 size=430x932
+  scroll-0: 3002-day-2026-07-05-scroll-00.png req=0 actual=0 hash=fef0af43a96191f9
+  scroll-1: 3002-day-2026-07-05-scroll-01.png req=857 actual=857 hash=99d0861a4f5d01fd
+  scroll-2: 3002-day-2026-07-05-scroll-02.png req=1714 actual=1714 hash=f9e0839701b12df6
+  scroll-3: 3002-day-2026-07-05-scroll-03.png req=2571 actual=2571 hash=71a2f76bb3a3af31
+  scroll-4: 3002-day-2026-07-05-scroll-04.png req=3121 actual=3121 hash=feee43ac01e2ece8
+  scroll-bottom: 3002-day-2026-07-05-scroll-bottom.png req=3121 actual=3121 hash=feee43ac01e2ece8
+  scroll hashes: 5 unique among 6 files
+  ✅ VALID: 3002/day/2026-07-05
+
+=== 3002/calendar ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=1173 ch=857 max=316
+  container: .flex-1.overflow-y-auto.overscroll-contain
+  viewport: 3002-calendar-viewport.png hash=9b2e2a7eefbc7a90 size=430x932
+  fullPage: 3002-calendar-fullpage.png hash=9b2e2a7eefbc7a90 size=430x932
+  scroll-0: 3002-calendar-scroll-00.png req=0 actual=0 hash=9b2e2a7eefbc7a90
+  scroll-1: 3002-calendar-scroll-01.png req=316 actual=316 hash=7a6f204d41f9839e
+  scroll-bottom: 3002-calendar-scroll-bottom.png req=316 actual=316 hash=7a6f204d41f9839e
+  scroll hashes: 2 unique among 3 files
+  ✅ VALID: 3002/calendar
+
+=== 3002/profile ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=1436 ch=857 max=579
+  container: .flex.h-full.w-full.flex-col.overflow-y-auto.bg-background
+  viewport: 3002-profile-viewport.png hash=8b99719cf3041351 size=430x932
+  fullPage: 3002-profile-fullpage.png hash=8b99719cf3041351 size=430x932
+  scroll-0: 3002-profile-scroll-00.png req=0 actual=0 hash=8b99719cf3041351
+  scroll-1: 3002-profile-scroll-01.png req=579 actual=579 hash=ff919bf574b527c3
+  scroll-bottom: 3002-profile-scroll-bottom.png req=579 actual=579 hash=ff919bf574b527c3
+  scroll hashes: 2 unique among 3 files
+  ✅ VALID: 3002/profile
+
+=== 3002/readings ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=1005 ch=716 max=289
+  container: .flex-1.overflow-y-auto.px-5.pb-8
+  viewport: 3002-readings-viewport.png hash=45f98a9a60f82a02 size=430x932
+  fullPage: 3002-readings-fullpage.png hash=45f98a9a60f82a02 size=430x932
+  scroll-0: 3002-readings-scroll-00.png req=0 actual=0 hash=45f98a9a60f82a02
+  scroll-1: 3002-readings-scroll-01.png req=289 actual=289 hash=4df0ebb936dd67ea
+  scroll-bottom: 3002-readings-scroll-bottom.png req=289 actual=289 hash=4df0ebb936dd67ea
+  scroll hashes: 2 unique among 3 files
+  ✅ VALID: 3002/readings
+
+=== 3002/readings/horary ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=3436 ch=857 max=2579
+  container: .flex.h-full.w-full.flex-col.bg-background.overflow-y-auto
+  viewport: 3002-horary-viewport.png hash=8e47b3fa2182d5b6 size=430x932
+  fullPage: 3002-horary-fullpage.png hash=8e47b3fa2182d5b6 size=430x932
+  scroll-0: 3002-horary-scroll-00.png req=0 actual=0 hash=8e47b3fa2182d5b6
+  scroll-1: 3002-horary-scroll-01.png req=857 actual=857 hash=1b54273c1179cceb
+  scroll-2: 3002-horary-scroll-02.png req=1714 actual=1714 hash=29a029df79897275
+  scroll-3: 3002-horary-scroll-03.png req=2571 actual=2571 hash=9330a8d49c24c9e4
+  scroll-4: 3002-horary-scroll-04.png req=2579 actual=2579 hash=f43ebe7160ae6f5e
+  scroll-bottom: 3002-horary-scroll-bottom.png req=2579 actual=2579 hash=f43ebe7160ae6f5e
+  scroll hashes: 5 unique among 6 files
+  ✅ VALID: 3002/readings/horary
+
+=== 3002/readings/natal ===
+  authL=false authE=false authT=false sentinel=true
+  scroll: sh=2817 ch=857 max=1960
+  container: .flex.h-full.w-full.flex-col.bg-background.overflow-y-auto
+  viewport: 3002-natal-viewport.png hash=9d877a0afb58030b size=430x932
+  fullPage: 3002-natal-fullpage.png hash=9d877a0afb58030b size=430x932
+  scroll-0: 3002-natal-scroll-00.png req=0 actual=0 hash=9d877a0afb58030b
+  scroll-1: 3002-natal-scroll-01.png req=857 actual=857 hash=1f683742f5ae996e
+  scroll-2: 3002-natal-scroll-02.png req=1714 actual=1714 hash=7cbfecc39912c703
+  scroll-3: 3002-natal-scroll-03.png req=1960 actual=1960 hash=bcd71765b41b2f48
+  scroll-bottom: 3002-natal-scroll-bottom.png req=1960 actual=1960 hash=bcd71765b41b2f48
+  scroll hashes: 4 unique among 5 files
+  ✅ VALID: 3002/readings/natal

@@ -1,0 +1,688 @@
+[
+  {
+    "port": 3001,
+    "route": "/day/2026-07-05",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-day-2026-07-05-viewport.png",
+    "fullPageArtifact": "3001-day-2026-07-05-fullpage.png",
+    "scrollArtifacts": [
+      "3001-day-2026-07-05-scroll-00.png",
+      "3001-day-2026-07-05-scroll-01.png",
+      "3001-day-2026-07-05-scroll-02.png",
+      "3001-day-2026-07-05-scroll-03.png",
+      "3001-day-2026-07-05-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3001-day-2026-07-05-viewport.png": "0c005a0fe6f28c4e",
+      "3001-day-2026-07-05-fullpage.png": "0c005a0fe6f28c4e",
+      "3001-day-2026-07-05-scroll-00.png": "0c005a0fe6f28c4e",
+      "3001-day-2026-07-05-scroll-01.png": "19b976ed893aea42",
+      "3001-day-2026-07-05-scroll-02.png": "7e9d0ff24a7ef434",
+      "3001-day-2026-07-05-scroll-03.png": "74a340ef8ccaf5a8",
+      "3001-day-2026-07-05-scroll-bottom.png": "6889548ac2397a4c"
+    },
+    "artifactImageSizes": {
+      "3001-day-2026-07-05-viewport.png": "430x932",
+      "3001-day-2026-07-05-fullpage.png": "430x932",
+      "3001-day-2026-07-05-scroll-00.png": "430x932",
+      "3001-day-2026-07-05-scroll-01.png": "430x932",
+      "3001-day-2026-07-05-scroll-02.png": "430x932",
+      "3001-day-2026-07-05-scroll-03.png": "430x932",
+      "3001-day-2026-07-05-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      857,
+      1714,
+      2124,
+      2124
+    ],
+    "actualScrollTops": [
+      0,
+      857,
+      1714,
+      2124,
+      2124
+    ],
+    "uniqueScrollHashCount": 5,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "ДЕНЬ\n5 июля\n14 дней бесплатного доступа\nОсталось 0 дней\nПодписка\n5 ИЮЛ · ВОСКРЕСЕНЬЕ\n🌊\nРовный день\n\nбез взлётов — занимайся рутиной\n\n☉\nтема дня — проявись\n🌖\nУбывающая 76%\n→ подводи итоги\n☉\nСолнце управитель\n→ день самовыражения\n♂\nчас Марс\n→ действуй быстро\n🟡\nЛуна без курса\n→ не подписывай и не начинай\nКОНКРЕТНО СЕГОДНЯ\n4 благоприятно\n6 осторожно\nвсе 12 сфер\n💼\nРабота\nДела идут со скрипом — не торопись, дойдёт к вечеру\n💰\nДеньги\nСократи траты — день для финансовой дисциплины\n📝\nДокументы\nЛуна ",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex-1.overflow-y-auto.overscroll-contain",
+    "scrollContainerScrollHeight": 2981,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 2124,
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/calendar",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-calendar-viewport.png",
+    "fullPageArtifact": "3001-calendar-fullpage.png",
+    "scrollArtifacts": [],
+    "artifactHashes": {
+      "3001-calendar-viewport.png": "f933a88fb3b6810a",
+      "3001-calendar-fullpage.png": "f933a88fb3b6810a"
+    },
+    "artifactImageSizes": {
+      "3001-calendar-viewport.png": "430x932",
+      "3001-calendar-fullpage.png": "430x932"
+    },
+    "requestedScrollTops": [],
+    "actualScrollTops": [],
+    "uniqueScrollHashCount": 0,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "КАЛЕНДАРЬ\nИюль 2026\nДни\nЛуна\nПН\nВТ\nСР\nЧТ\nПТ\nСБ\nВС\nЛУННЫЙ КАЛЕНДАРЬ\n31 дней\nПолнолуние\n1\nПоследняя четверть\n7\nПолнолуние\n14\nНоволуние\n15\nПолнолуние\n28\n1\n98%\n2\n93%\n3\n87%\n4\n79%\n5\n70%\n6\n60%\n7\n49%\n8\n39%\n9\n28%\n10\n19%\n11\n12%\n12\n6%\n13\n2%\n14\n0%\n15\n1%\n16\n3%\n17\n8%\n18\n15%\n19\n23%\n20\n33%\n21\n43%\n22\n53%\n23\n64%\n24\n74%\n25\n82%\n26\n90%\n27\n95%\n28\n99%\n29\n100%\n30\n99%\n31\n96%\nноволуние\nполнолуние\nчетверть\n±1 день\n29\n30\n1\n2\n3\n4\n5\n6\n7\n8\n◐\n9\n◐\n10\n◐\n11\n◐\n12\n◐\n13\n◐\n14\n◐\n15\n◐\n16\n◐\n17\n◐\n18\n◐\n19\n◐\n20\n◐\n21\n◐\n22\n◐\n23\n24\n25\n26\n27\n2",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".bg-background.light",
+    "scrollContainerScrollHeight": 932,
+    "scrollContainerClientHeight": 932,
+    "scrollContainerMaxScrollTop": 0,
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/profile",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-profile-viewport.png",
+    "fullPageArtifact": "3001-profile-fullpage.png",
+    "scrollArtifacts": [
+      "3001-profile-scroll-00.png",
+      "3001-profile-scroll-01.png",
+      "3001-profile-scroll-02.png",
+      "3001-profile-scroll-03.png",
+      "3001-profile-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3001-profile-viewport.png": "55cbfd4309495fda",
+      "3001-profile-fullpage.png": "55cbfd4309495fda",
+      "3001-profile-scroll-00.png": "55cbfd4309495fda",
+      "3001-profile-scroll-01.png": "a8d33effbcef8017",
+      "3001-profile-scroll-02.png": "f18acb0b09c4597d",
+      "3001-profile-scroll-03.png": "c4f52bd6cba86d36",
+      "3001-profile-scroll-bottom.png": "c4f52bd6cba86d36"
+    },
+    "artifactImageSizes": {
+      "3001-profile-viewport.png": "430x932",
+      "3001-profile-fullpage.png": "430x932",
+      "3001-profile-scroll-00.png": "430x932",
+      "3001-profile-scroll-01.png": "430x932",
+      "3001-profile-scroll-02.png": "430x932",
+      "3001-profile-scroll-03.png": "430x932",
+      "3001-profile-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      857,
+      1714,
+      1789,
+      1789
+    ],
+    "actualScrollTops": [
+      0,
+      857,
+      1714,
+      1789,
+      1789
+    ],
+    "uniqueScrollHashCount": 4,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "ПРОФИЛЬ\nГ\nГость\nTelegram mini-app\nДОСТУП\nДоступ активен\nОсталось 14 дней · до 22 июля 2026\n\nСначала расходуются бонусные дни, затем начнёт действовать подписка. После окончания доступ закроется.\n\nОформить подписку\nПригласить друга\nРЕФЕРАЛКА\nПригласи друга\nВы оба получите 14 дней доступа\nПригласить\nХОРАРНЫЕ ВОПРОСЫ\nДоступно 6 вопросов\n• Еженедельный бесплатный: активен (до 9 июн.)\n• Платные/бонусные: 5 шт.\nСТАТИСТИКА ОЦЕНОК\nТекущая серия\n3\nдня\n🔥\nЛучшая серия\n7\nдней\nВсего оценок\n12\nСреднее настро",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex.h-full.w-full.flex-col.overflow-y-auto.bg-background",
+    "scrollContainerScrollHeight": 2646,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 1789,
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/readings",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-readings-viewport.png",
+    "fullPageArtifact": "3001-readings-fullpage.png",
+    "scrollArtifacts": [
+      "3001-readings-scroll-00.png",
+      "3001-readings-scroll-01.png",
+      "3001-readings-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3001-readings-viewport.png": "8575a6c3fea3f038",
+      "3001-readings-fullpage.png": "4b76eb6ffc606d01",
+      "3001-readings-scroll-00.png": "b9dd9c63d0bf4291",
+      "3001-readings-scroll-01.png": "976cac17470fa06a",
+      "3001-readings-scroll-bottom.png": "4887917f607937e9"
+    },
+    "artifactImageSizes": {
+      "3001-readings-viewport.png": "430x932",
+      "3001-readings-fullpage.png": "430x932",
+      "3001-readings-scroll-00.png": "430x932",
+      "3001-readings-scroll-01.png": "430x932",
+      "3001-readings-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      581,
+      581
+    ],
+    "actualScrollTops": [
+      0,
+      581,
+      581
+    ],
+    "uniqueScrollHashCount": 3,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "РАЗБОРЫ\nГлубокие разборы\n\nПерсональные форматы по твоей карте и текущему периоду.\n\nНе все форматы уже открыты — раздел будет постепенно расширяться.\n\nДОСТУПНО СЕЙЧАС\n2\nХорар\n\nЗадай точный вопрос и получи ответ карты\n\nКонкретный вопрос — конкретный ответ по моменту вопроса\n\nОткрыть\nНатальная карта\n\nГлубокий разбор карты рождения\n\nПланеты, дома, аспекты — всё о тебе по данным рождения\n\nОткрыть\nДЕМО-РАЗБОРЫ\n2\nСинастрия\nДЕМО\n\nСовместимость с партнёром по знаку\n\nСовместимость с известными людьми\nДЕМО",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex-1.overflow-y-auto.px-5.pb-8",
+    "scrollContainerScrollHeight": 1297,
+    "scrollContainerClientHeight": 716,
+    "scrollContainerMaxScrollTop": 581,
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/readings/horary",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-horary-viewport.png",
+    "fullPageArtifact": "3001-horary-fullpage.png",
+    "scrollArtifacts": [
+      "3001-horary-scroll-00.png",
+      "3001-horary-scroll-01.png",
+      "3001-horary-scroll-02.png",
+      "3001-horary-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3001-horary-viewport.png": "633a2cb70ad736ac",
+      "3001-horary-fullpage.png": "633a2cb70ad736ac",
+      "3001-horary-scroll-00.png": "633a2cb70ad736ac",
+      "3001-horary-scroll-01.png": "b6df1f376f281aec",
+      "3001-horary-scroll-02.png": "3e42e9434ac8121d",
+      "3001-horary-scroll-bottom.png": "3e42e9434ac8121d"
+    },
+    "artifactImageSizes": {
+      "3001-horary-viewport.png": "430x932",
+      "3001-horary-fullpage.png": "430x932",
+      "3001-horary-scroll-00.png": "430x932",
+      "3001-horary-scroll-01.png": "430x932",
+      "3001-horary-scroll-02.png": "430x932",
+      "3001-horary-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      857,
+      1248,
+      1248
+    ],
+    "actualScrollTops": [
+      0,
+      857,
+      1248,
+      1248
+    ],
+    "uniqueScrollHashCount": 3,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "Разборы\nРАЗДЕЛ\nХорарный оракул\n\nЗадай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и практическим выводом.\n\nДоступно вопросов: 6\n• Еженедельный бесплатный: доступен (сгорит 9 июн., 03:00)\n• Купленные: 3 (не сгорают)\n• Бонусные: 2\nДокупить\nКАТЕГОРИЯ ВОПРОСА\n💕\nОтношения\n💼\nРабота\n💰\nДеньги\n🏥\nЗдоровье\n✈️\nПереезд\n⚡\nДругое\nТВОЙ ВОПРОС\n0/500\nМОМЕНТ ВОПРОСА — ВАЖНО ДЛЯ РАСЧЁТА КАРТЫ\nВремя: 8 июля 2026 г. в 00:10 (Europe/Moscow)\nИзменить время\nМесто: не определено\nУ",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex.h-full.w-full.flex-col.bg-background.overflow-y-auto",
+    "scrollContainerScrollHeight": 2105,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 1248,
+    "notes": ""
+  },
+  {
+    "port": 3001,
+    "route": "/readings/natal",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3001-natal-viewport.png",
+    "fullPageArtifact": "3001-natal-fullpage.png",
+    "scrollArtifacts": [
+      "3001-natal-scroll-00.png",
+      "3001-natal-scroll-01.png",
+      "3001-natal-scroll-02.png",
+      "3001-natal-scroll-03.png",
+      "3001-natal-scroll-04.png",
+      "3001-natal-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3001-natal-viewport.png": "daabcfe119a6010b",
+      "3001-natal-fullpage.png": "daabcfe119a6010b",
+      "3001-natal-scroll-00.png": "daabcfe119a6010b",
+      "3001-natal-scroll-01.png": "1f340fd23c93ead4",
+      "3001-natal-scroll-02.png": "1652729c22a6323f",
+      "3001-natal-scroll-03.png": "2b46297d4b29bf42",
+      "3001-natal-scroll-04.png": "0fe0f986eb3fd217",
+      "3001-natal-scroll-bottom.png": "0fe0f986eb3fd217"
+    },
+    "artifactImageSizes": {
+      "3001-natal-viewport.png": "430x932",
+      "3001-natal-fullpage.png": "430x932",
+      "3001-natal-scroll-00.png": "430x932",
+      "3001-natal-scroll-01.png": "430x932",
+      "3001-natal-scroll-02.png": "430x932",
+      "3001-natal-scroll-03.png": "430x932",
+      "3001-natal-scroll-04.png": "430x932",
+      "3001-natal-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      857,
+      1714,
+      2571,
+      2835,
+      2835
+    ],
+    "actualScrollTops": [
+      0,
+      857,
+      1714,
+      2571,
+      2835,
+      2835
+    ],
+    "uniqueScrollHashCount": 5,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "Разборы\nТвоя натальная карта\n\nТвой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождения.\n\nASC в Раке\nСолнце в Козерог\nЛуна в Лев\nМосква\n\nТы считываешь мир глубоко и тонко. В карте заметно сочетание чувствительности, внутренней силы и выраженной личной воли. Сильнее всего у тебя читаются темы тела, ресурса и личного проявления.\n\nЧТО УЖЕ ВИДНО ПО КАРТЕ\nАСЦЕНДЕНТ\nРак\n\nКак ты входишь в контакт с миром\n\nСОЛНЦЕ\nКозерог\n\nТвой базовый вектор и мотивация\n\nЛУНА\nЛев\n\nТвой ",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex.h-full.w-full.flex-col.bg-background.overflow-y-auto",
+    "scrollContainerScrollHeight": 3692,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 2835,
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/day/2026-07-05",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-day-2026-07-05-viewport.png",
+    "fullPageArtifact": "3002-day-2026-07-05-fullpage.png",
+    "scrollArtifacts": [
+      "3002-day-2026-07-05-scroll-00.png",
+      "3002-day-2026-07-05-scroll-01.png",
+      "3002-day-2026-07-05-scroll-02.png",
+      "3002-day-2026-07-05-scroll-03.png",
+      "3002-day-2026-07-05-scroll-04.png",
+      "3002-day-2026-07-05-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3002-day-2026-07-05-viewport.png": "fef0af43a96191f9",
+      "3002-day-2026-07-05-fullpage.png": "fef0af43a96191f9",
+      "3002-day-2026-07-05-scroll-00.png": "fef0af43a96191f9",
+      "3002-day-2026-07-05-scroll-01.png": "99d0861a4f5d01fd",
+      "3002-day-2026-07-05-scroll-02.png": "f9e0839701b12df6",
+      "3002-day-2026-07-05-scroll-03.png": "71a2f76bb3a3af31",
+      "3002-day-2026-07-05-scroll-04.png": "feee43ac01e2ece8",
+      "3002-day-2026-07-05-scroll-bottom.png": "feee43ac01e2ece8"
+    },
+    "artifactImageSizes": {
+      "3002-day-2026-07-05-viewport.png": "430x932",
+      "3002-day-2026-07-05-fullpage.png": "430x932",
+      "3002-day-2026-07-05-scroll-00.png": "430x932",
+      "3002-day-2026-07-05-scroll-01.png": "430x932",
+      "3002-day-2026-07-05-scroll-02.png": "430x932",
+      "3002-day-2026-07-05-scroll-03.png": "430x932",
+      "3002-day-2026-07-05-scroll-04.png": "430x932",
+      "3002-day-2026-07-05-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      857,
+      1714,
+      2571,
+      3121,
+      3121
+    ],
+    "actualScrollTops": [
+      0,
+      857,
+      1714,
+      2571,
+      3121,
+      3121
+    ],
+    "uniqueScrollHashCount": 5,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "ДЕНЬ\n5 июля\n\nСегодня уверенно проявляй свои идеи и следуй за желаниями!\n\n14 дней бесплатного доступа\nОсталось 6 дней\nПодписка\nПОДДЕРЖИВАЮЩИЙ\n\nДоброе утро\n\nЛунные данные загружаются\n\nПЛАНЕТА\n\nJupiter\n\nвлияние 7.2152\n\nСФЕРА\n\nЭнергия и здоровье\n\nактивность 5.54\n\nСЕГОДНЯ ВАЖНО\nМеркурий ретроградный\nМеркурий секстиль Юпитер\nМарс трин Юпитер\nКонкретно сегодня\n\nЛуна квадратура Марс\n\nНапряжённый аспект: лучше снизить резкость и перепроверить реакцию.\n\nМарс тригон Сатурн\n\nПоддерживающий аспект: легче дог",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex-1.overflow-y-auto.overscroll-contain",
+    "scrollContainerScrollHeight": 3978,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 3121,
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/calendar",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-calendar-viewport.png",
+    "fullPageArtifact": "3002-calendar-fullpage.png",
+    "scrollArtifacts": [
+      "3002-calendar-scroll-00.png",
+      "3002-calendar-scroll-01.png",
+      "3002-calendar-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3002-calendar-viewport.png": "9b2e2a7eefbc7a90",
+      "3002-calendar-fullpage.png": "9b2e2a7eefbc7a90",
+      "3002-calendar-scroll-00.png": "9b2e2a7eefbc7a90",
+      "3002-calendar-scroll-01.png": "7a6f204d41f9839e",
+      "3002-calendar-scroll-bottom.png": "7a6f204d41f9839e"
+    },
+    "artifactImageSizes": {
+      "3002-calendar-viewport.png": "430x932",
+      "3002-calendar-fullpage.png": "430x932",
+      "3002-calendar-scroll-00.png": "430x932",
+      "3002-calendar-scroll-01.png": "430x932",
+      "3002-calendar-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      316,
+      316
+    ],
+    "actualScrollTops": [
+      0,
+      316,
+      316
+    ],
+    "uniqueScrollHashCount": 2,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "КАЛЕНДАРЬ\nJuly 2026\nДни\nЛуна\nПН\nВТ\nСР\nЧТ\nПТ\nСБ\nВС\n\nЛунные данные недоступны\n\nДля этого месяца backend пока не вернул лунные поля.\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\nСЕГОДНЯ\n8 июля 2026\nровный\nОткрыть день\nСегодня\nКалендарь\nРазборы\nСпросить\nПрофиль",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex-1.overflow-y-auto.overscroll-contain",
+    "scrollContainerScrollHeight": 1173,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 316,
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/profile",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-profile-viewport.png",
+    "fullPageArtifact": "3002-profile-fullpage.png",
+    "scrollArtifacts": [
+      "3002-profile-scroll-00.png",
+      "3002-profile-scroll-01.png",
+      "3002-profile-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3002-profile-viewport.png": "8b99719cf3041351",
+      "3002-profile-fullpage.png": "8b99719cf3041351",
+      "3002-profile-scroll-00.png": "8b99719cf3041351",
+      "3002-profile-scroll-01.png": "ff919bf574b527c3",
+      "3002-profile-scroll-bottom.png": "ff919bf574b527c3"
+    },
+    "artifactImageSizes": {
+      "3002-profile-viewport.png": "430x932",
+      "3002-profile-fullpage.png": "430x932",
+      "3002-profile-scroll-00.png": "430x932",
+      "3002-profile-scroll-01.png": "430x932",
+      "3002-profile-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      579,
+      579
+    ],
+    "actualScrollTops": [
+      0,
+      579,
+      579
+    ],
+    "uniqueScrollHashCount": 2,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "ПРОФИЛЬ\nГ\nГость\nTelegram mini-app\nДОСТУП\nДоступ активен\nОсталось 5 дней · до 11 июля 2026\n\nСначала расходуются бонусные дни. Оплата и подписка появятся после подключения реального платежного подтверждения.\n\nПодписка скоро появится\nПригласить друга\nРЕФЕРАЛКА\nПригласи друга\nВы оба получите 14 дней доступа\nПриглашено: 2 · начислено 28 дн.\nПригласить\nХОРАРНЫЕ ВОПРОСЫ\nДоступно 1 вопрос\n• Еженедельный бесплатный: активен (до 12 июл.)\nМОИ ДАННЫЕ\nДАТА РОЖДЕНИЯ\n30 октября 1980\nВРЕМЯ РОЖДЕНИЯ\n19:50\nМЕСТО ",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex.h-full.w-full.flex-col.overflow-y-auto.bg-background",
+    "scrollContainerScrollHeight": 1436,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 579,
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/readings",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-readings-viewport.png",
+    "fullPageArtifact": "3002-readings-fullpage.png",
+    "scrollArtifacts": [
+      "3002-readings-scroll-00.png",
+      "3002-readings-scroll-01.png",
+      "3002-readings-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3002-readings-viewport.png": "45f98a9a60f82a02",
+      "3002-readings-fullpage.png": "45f98a9a60f82a02",
+      "3002-readings-scroll-00.png": "45f98a9a60f82a02",
+      "3002-readings-scroll-01.png": "4df0ebb936dd67ea",
+      "3002-readings-scroll-bottom.png": "4df0ebb936dd67ea"
+    },
+    "artifactImageSizes": {
+      "3002-readings-viewport.png": "430x932",
+      "3002-readings-fullpage.png": "430x932",
+      "3002-readings-scroll-00.png": "430x932",
+      "3002-readings-scroll-01.png": "430x932",
+      "3002-readings-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      289,
+      289
+    ],
+    "actualScrollTops": [
+      0,
+      289,
+      289
+    ],
+    "uniqueScrollHashCount": 2,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "РАЗБОРЫ\nГлубокие разборы\n\nПерсональные форматы по твоей карте и текущему периоду.\n\nНе все форматы уже открыты — раздел будет постепенно расширяться.\n\nДОСТУПНО СЕЙЧАС\n2\nХорар\n\nЗадай точный вопрос и получи ответ карты\n\nКонкретный вопрос — конкретный ответ по моменту вопроса\n\nОткрыть\nНатальная карта\n\nГлубокий разбор карты рождения\n\nПланеты, дома, аспекты — всё о тебе по данным рождения\n\nОткрыть\nСКОРО БУДЕТ\n3\nПрогноз на месяц\nВ РАЗРАБОТКЕ\n\nЧто готовит ближайший месяц\n\nПрогноз на год\nВ РАЗРАБОТКЕ\n\nГл",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex-1.overflow-y-auto.px-5.pb-8",
+    "scrollContainerScrollHeight": 1005,
+    "scrollContainerClientHeight": 716,
+    "scrollContainerMaxScrollTop": 289,
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/readings/horary",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-horary-viewport.png",
+    "fullPageArtifact": "3002-horary-fullpage.png",
+    "scrollArtifacts": [
+      "3002-horary-scroll-00.png",
+      "3002-horary-scroll-01.png",
+      "3002-horary-scroll-02.png",
+      "3002-horary-scroll-03.png",
+      "3002-horary-scroll-04.png",
+      "3002-horary-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3002-horary-viewport.png": "8e47b3fa2182d5b6",
+      "3002-horary-fullpage.png": "8e47b3fa2182d5b6",
+      "3002-horary-scroll-00.png": "8e47b3fa2182d5b6",
+      "3002-horary-scroll-01.png": "1b54273c1179cceb",
+      "3002-horary-scroll-02.png": "29a029df79897275",
+      "3002-horary-scroll-03.png": "9330a8d49c24c9e4",
+      "3002-horary-scroll-04.png": "f43ebe7160ae6f5e",
+      "3002-horary-scroll-bottom.png": "f43ebe7160ae6f5e"
+    },
+    "artifactImageSizes": {
+      "3002-horary-viewport.png": "430x932",
+      "3002-horary-fullpage.png": "430x932",
+      "3002-horary-scroll-00.png": "430x932",
+      "3002-horary-scroll-01.png": "430x932",
+      "3002-horary-scroll-02.png": "430x932",
+      "3002-horary-scroll-03.png": "430x932",
+      "3002-horary-scroll-04.png": "430x932",
+      "3002-horary-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      857,
+      1714,
+      2571,
+      2579,
+      2579
+    ],
+    "actualScrollTops": [
+      0,
+      857,
+      1714,
+      2571,
+      2579,
+      2579
+    ],
+    "uniqueScrollHashCount": 5,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "Разборы\nРАЗДЕЛ\nХорарный оракул\n\nЗадай конкретный вопрос и получи ответ карты на момент вопроса — с пояснением, сроками и практическим выводом.\n\nДоступно вопросов: 1\n• Еженедельный бесплатный: доступен (сгорит 12 июл., 03:00)\nСкоро\nКАТЕГОРИЯ ВОПРОСА\n💕\nОтношения\n💼\nРабота\n💰\nДеньги\n🏥\nЗдоровье\n✈️\nПереезд\n⚡\nДругое\nТВОЙ ВОПРОС\n0/500\nМОМЕНТ ВОПРОСА — ВАЖНО ДЛЯ РАСЧЁТА КАРТЫ\nВремя: 8 июля 2026 г. в 00:10 (Europe/Moscow)\nИзменить время\nМесто: Сочи, Россия\nИзменить место\nПолучить ответ карты\nИСТОРИЯ ВО",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex.h-full.w-full.flex-col.bg-background.overflow-y-auto",
+    "scrollContainerScrollHeight": 3436,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 2579,
+    "notes": ""
+  },
+  {
+    "port": 3002,
+    "route": "/readings/natal",
+    "valid": true,
+    "blocker": null,
+    "viewportArtifact": "3002-natal-viewport.png",
+    "fullPageArtifact": "3002-natal-fullpage.png",
+    "scrollArtifacts": [
+      "3002-natal-scroll-00.png",
+      "3002-natal-scroll-01.png",
+      "3002-natal-scroll-02.png",
+      "3002-natal-scroll-03.png",
+      "3002-natal-scroll-bottom.png"
+    ],
+    "artifactHashes": {
+      "3002-natal-viewport.png": "9d877a0afb58030b",
+      "3002-natal-fullpage.png": "9d877a0afb58030b",
+      "3002-natal-scroll-00.png": "9d877a0afb58030b",
+      "3002-natal-scroll-01.png": "1f683742f5ae996e",
+      "3002-natal-scroll-02.png": "7cbfecc39912c703",
+      "3002-natal-scroll-03.png": "bcd71765b41b2f48",
+      "3002-natal-scroll-bottom.png": "bcd71765b41b2f48"
+    },
+    "artifactImageSizes": {
+      "3002-natal-viewport.png": "430x932",
+      "3002-natal-fullpage.png": "430x932",
+      "3002-natal-scroll-00.png": "430x932",
+      "3002-natal-scroll-01.png": "430x932",
+      "3002-natal-scroll-02.png": "430x932",
+      "3002-natal-scroll-03.png": "430x932",
+      "3002-natal-scroll-bottom.png": "430x932"
+    },
+    "requestedScrollTops": [
+      0,
+      857,
+      1714,
+      1960,
+      1960
+    ],
+    "actualScrollTops": [
+      0,
+      857,
+      1714,
+      1960,
+      1960
+    ],
+    "uniqueScrollHashCount": 4,
+    "readySentinels": {
+      "authLoadingSeen": false,
+      "authErrorSeen": false,
+      "authTextSeen": false,
+      "routeReady": true
+    },
+    "bodyTextSample": "Разборы\nТвоя натальная карта\n\nТвой характер, отношения, сильные стороны и внутренние сценарии — по точным данным рождения.\n\nASC в Раке\nСолнце в Скорпионе\nЛуна в Льве\nМончегорск\n\nты собран: с ASC в Раке и Солнцем в Скорпионе у тебя особенно заметна тема «Home Family Roots», через неё ярче всего читается твой личный стиль.\n\nЧТО УЖЕ ВИДНО ПО КАРТЕ\nАСЦЕНДЕНТ\nРаке\n\nКак ты входишь в контакт и проявляешься внешне.\n\nСОЛНЦЕ\nСкорпионе\n\nТвой базовый вектор личности: через что проявлен сильнее всего.\n\nЛУНА\n",
+    "documentScrollHeight": 932,
+    "documentClientHeight": 932,
+    "scrollContainerDescription": ".flex.h-full.w-full.flex-col.bg-background.overflow-y-auto",
+    "scrollContainerScrollHeight": 2817,
+    "scrollContainerClientHeight": 857,
+    "scrollContainerMaxScrollTop": 1960,
+    "notes": ""
+  }
+]

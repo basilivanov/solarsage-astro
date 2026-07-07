@@ -1,10 +1,11 @@
 const { chromium, request } = require('/opt/solarsage-astro/node_modules/.pnpm/@playwright+test@1.60.0/node_modules/@playwright/test/index.js');
 const { execFileSync } = require('child_process');
-const { mkdirSync, writeFileSync } = require('fs');
+const { createHash } = require('crypto');
+const { mkdirSync, writeFileSync, readFileSync, statSync } = require('fs');
 const { resolve } = require('path');
 
 const PROJ = '/opt/solarsage-astro';
-const ARTIFACTS = resolve(PROJ, 'docs/work/2026-07-07_frontend-corrective-clean-migration-wave-09/artifacts/rework-04');
+const ARTIFACTS = resolve(PROJ, 'docs/work/2026-07-07_frontend-corrective-clean-migration-wave-09/artifacts/rework-05');
 const SCRIPT_PATH = resolve(PROJ, 'scripts/generate-telegram-test-initdata.py');
 const VIEWPORT = { width: 430, height: 932 };
 const API_BASE = 'http://127.0.0.1:8000';
@@ -16,6 +17,15 @@ function genInitData() {
     if (t.includes('=')) return t;
   }
   throw new Error('Failed to parse initData');
+}
+
+function sha256(buf) { return createHash('sha256').update(buf).digest('hex').substring(0, 16); }
+
+function pngSize(buf) {
+  // PNG header has width/height at offset 16 (IHDR chunk)
+  if (buf.length < 24) return null;
+  const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+  return `${w}x${h}`;
 }
 
 async function seedAuth(context, initData) {
@@ -32,22 +42,21 @@ async function seedAuth(context, initData) {
 
 async function detectScrollContainer(page) {
   return page.evaluate(() => {
-    // Find the main scrollable container
     const all = document.querySelectorAll('*');
     let best = null, bestDiff = 0;
     for (const el of all) {
       const sh = el.scrollHeight, ch = el.clientHeight;
       const diff = sh - ch;
-      if (diff > bestDiff) { bestDiff = diff; best = el; }
+      if (diff > bestDiff && ch > 100) { bestDiff = diff; best = el; }
     }
     if (!best) best = document.scrollingElement || document.documentElement;
-    // Build selector
+    // Mark the element
+    best.setAttribute('data-evidence-scroll-root', 'true');
     const tag = best.tagName.toLowerCase();
     const id = best.id ? `#${best.id}` : '';
     const cls = best.className && typeof best.className === 'string' ? `.${best.className.split(' ').filter(Boolean).join('.')}` : '';
-    const desc = id || cls || tag;
     return {
-      selector: desc,
+      selector: id || cls || tag,
       scrollHeight: best.scrollHeight,
       clientHeight: best.clientHeight,
       maxScrollTop: best.scrollHeight - best.clientHeight,
@@ -58,59 +67,24 @@ async function detectScrollContainer(page) {
 }
 
 const ROUTES = [
-  { port: 3001, route: '/day/2026-07-05', name: 'day-2026-07-05',
-    check: async (p) => {
-      const testid = await p.getByTestId('today-screen').isVisible().catch(() => false);
-      const text = testid ? false : await p.getByText(/14 дней бесплатного доступа/).isVisible().catch(() => false);
-      return testid || text;
-    },
-  },
-  { port: 3001, route: '/calendar', name: 'calendar',
-    check: async (p) => {
-      const body = await p.evaluate(() => document.body?.innerText || '');
-      return body.includes('КАЛЕНДАРЬ') && body.includes('Июль 2026');
-    },
-  },
-  { port: 3001, route: '/profile', name: 'profile',
-    check: async (p) => {
-      const body = await p.evaluate(() => document.body?.innerText || '');
-      return body.includes('ПРОФИЛЬ') && (body.includes('ДОСТУП') || body.includes('Доступ активен'));
-    },
-  },
-  { port: 3001, route: '/readings', name: 'readings',
-    check: async (p) => (await p.getByText(/ДОСТУПНО СЕЙЧАС|Доступно сейчас/).isVisible().catch(() => false)),
-  },
-  { port: 3001, route: '/readings/horary', name: 'horary',
-    check: async (p) => p.getByText('Хорарный оракул').isVisible().catch(() => false),
-  },
-  { port: 3001, route: '/readings/natal', name: 'natal',
-    check: async (p) => p.getByText('Твоя натальная карта').isVisible().catch(() => false),
-  },
-  { port: 3002, route: '/day/2026-07-05', name: 'day-2026-07-05',
-    check: async (p) => { const s = await p.getByTestId('today-screen').isVisible().catch(() => false); const a = await p.getByText('14 дней бесплатного доступа').isVisible().catch(() => false); return s && a; },
-  },
-  { port: 3002, route: '/calendar', name: 'calendar',
-    check: async (p) => { const s = await p.getByTestId('calendar-screen').isVisible().catch(() => false); const l = await p.getByTestId('calendar-loading').isVisible().catch(() => false); const g = await p.getByTestId('calendar-grid').isVisible().catch(() => false); const u = await p.getByTestId('calendar-unavailable').isVisible().catch(() => false); return s && !l && (g || u); },
-  },
-  { port: 3002, route: '/profile', name: 'profile',
-    check: async (p) => { const s = await p.getByTestId('profile-screen').isVisible().catch(() => false); const a = await p.getByTestId('profile-access-card').isVisible().catch(() => false); return s && a; },
-  },
-  { port: 3002, route: '/readings', name: 'readings',
-    check: async (p) => { const s = await p.getByTestId('readings-screen').isVisible().catch(() => false); const a = await p.getByTestId('readings-available-section').isVisible().catch(() => false); return s && a; },
-  },
-  { port: 3002, route: '/readings/horary', name: 'horary',
-    check: async (p) => { const s = await p.locator('[data-testid="horary-screen"][data-state="ready"]').isVisible().catch(() => false); const f = await p.getByTestId('horary-form').isVisible().catch(() => false); const q = await p.getByTestId('horary-quota-section').isVisible().catch(() => false); return s && (f || q); },
-  },
-  { port: 3002, route: '/readings/natal', name: 'natal',
-    check: async (p) => { const s = await p.locator('[data-testid="natal-preview-screen"][data-state="ready"]').isVisible().catch(() => false); const c = await p.getByTestId('natal-preview-content').isVisible().catch(() => false); return s && c; },
-  },
+  { port: 3001, route: '/day/2026-07-05', name: 'day-2026-07-05', check: async (p) => (await p.getByTestId('today-screen').isVisible().catch(()=>false)) || (await p.getByText(/14 дней бесплатного доступа/).isVisible().catch(()=>false)) },
+  { port: 3001, route: '/calendar', name: 'calendar', check: async (p) => { const b = await p.evaluate(() => document.body?.innerText || ''); return b.includes('КАЛЕНДАРЬ') && b.includes('Июль 2026'); } },
+  { port: 3001, route: '/profile', name: 'profile', check: async (p) => { const b = await p.evaluate(() => document.body?.innerText || ''); return b.includes('ПРОФИЛЬ') && (b.includes('ДОСТУП') || b.includes('Доступ активен')); } },
+  { port: 3001, route: '/readings', name: 'readings', check: async (p) => (await p.getByText(/ДОСТУПНО СЕЙЧАС|Доступно сейчас/).isVisible().catch(()=>false)) },
+  { port: 3001, route: '/readings/horary', name: 'horary', check: async (p) => p.getByText('Хорарный оракул').isVisible().catch(()=>false) },
+  { port: 3001, route: '/readings/natal', name: 'natal', check: async (p) => p.getByText('Твоя натальная карта').isVisible().catch(()=>false) },
+  { port: 3002, route: '/day/2026-07-05', name: 'day-2026-07-05', check: async (p) => { const s = await p.getByTestId('today-screen').isVisible().catch(()=>false); const a = await p.getByText('14 дней бесплатного доступа').isVisible().catch(()=>false); return s && a; } },
+  { port: 3002, route: '/calendar', name: 'calendar', check: async (p) => { const s = await p.getByTestId('calendar-screen').isVisible().catch(()=>false); const l = await p.getByTestId('calendar-loading').isVisible().catch(()=>false); const g = await p.getByTestId('calendar-grid').isVisible().catch(()=>false); const u = await p.getByTestId('calendar-unavailable').isVisible().catch(()=>false); return s && !l && (g || u); } },
+  { port: 3002, route: '/profile', name: 'profile', check: async (p) => { const s = await p.getByTestId('profile-screen').isVisible().catch(()=>false); const a = await p.getByTestId('profile-access-card').isVisible().catch(()=>false); return s && a; } },
+  { port: 3002, route: '/readings', name: 'readings', check: async (p) => { const s = await p.getByTestId('readings-screen').isVisible().catch(()=>false); const a = await p.getByTestId('readings-available-section').isVisible().catch(()=>false); return s && a; } },
+  { port: 3002, route: '/readings/horary', name: 'horary', check: async (p) => { const s = await p.locator('[data-testid="horary-screen"][data-state="ready"]').isVisible().catch(()=>false); const f = await p.getByTestId('horary-form').isVisible().catch(()=>false); const q = await p.getByTestId('horary-quota-section').isVisible().catch(()=>false); return s && (f || q); } },
+  { port: 3002, route: '/readings/natal', name: 'natal', check: async (p) => { const s = await p.locator('[data-testid="natal-preview-screen"][data-state="ready"]').isVisible().catch(()=>false); const c = await p.getByTestId('natal-preview-content').isVisible().catch(()=>false); return s && c; } },
 ];
 
 async function main() {
   mkdirSync(ARTIFACTS, { recursive: true });
   const results = []; const lines = [];
 
-  // Preflight
   lines.push('=== PREFLIGHT ===');
   for (const url of ['http://127.0.0.1:8000/api/health', 'http://127.0.0.1:3001/', 'http://127.0.0.1:3002/']) {
     try { const r = await fetch(url); lines.push(`${url}: HTTP ${r.status}`); }
@@ -125,9 +99,10 @@ async function main() {
     const result = {
       port: entry.port, route: entry.route, valid: false, blocker: null,
       viewportArtifact: null, fullPageArtifact: null, scrollArtifacts: [],
+      artifactHashes: {}, artifactImageSizes: {},
+      requestedScrollTops: [], actualScrollTops: [], uniqueScrollHashCount: 0,
       readySentinels: {}, bodyTextSample: '',
       documentScrollHeight: 0, documentClientHeight: 0,
-      fullPageImageSize: null,
       scrollContainerDescription: '', scrollContainerScrollHeight: 0,
       scrollContainerClientHeight: 0, scrollContainerMaxScrollTop: 0,
       notes: '',
@@ -140,15 +115,8 @@ async function main() {
 
       await seedAuth(context, initData);
       await page.addInitScript((data) => {
-        window.Telegram = { WebApp: { initData: data, initDataUnsafe: {}, ready: () => {}, expand: () => {},
-          close: () => {}, platform: 'web', version: '9.5', colorScheme: 'light', themeParams: {},
-          isExpanded: true, viewportHeight: 932, viewportStableHeight: 932,
-          headerColor: '#ffffff', backgroundColor: '#ffffff',
-          MainButton: { text: '', color: '', textColor: '', isVisible: false, isActive: true,
-            isProgressVisible: false, setText: () => {}, onClick: () => {}, offClick: () => {},
-            show: () => {}, hide: () => {}, enable: () => {}, disable: () => {},
-            showProgress: () => {}, hideProgress: () => {},
-          },
+        window.Telegram = { WebApp: { initData: data, initDataUnsafe: {}, ready: () => {}, expand: () => {}, close: () => {}, platform: 'web', version: '9.5', colorScheme: 'light', themeParams: {}, isExpanded: true, viewportHeight: 932, viewportStableHeight: 932, headerColor: '#ffffff', backgroundColor: '#ffffff',
+          MainButton: { text: '', color: '', textColor: '', isVisible: false, isActive: true, isProgressVisible: false, setText: () => {}, onClick: () => {}, offClick: () => {}, show: () => {}, hide: () => {}, enable: () => {}, disable: () => {}, showProgress: () => {}, hideProgress: () => {} },
           BackButton: { isVisible: false, onClick: () => {}, offClick: () => {}, show: () => {}, hide: () => {} },
           HapticFeedback: { impactOccurred: () => {}, notificationOccurred: () => {}, selectionOccurred: () => {} },
           onEvent: () => {}, offEvent: () => {}, sendData: () => {}, switchInlineQuery: () => {},
@@ -168,10 +136,8 @@ async function main() {
 
       const sentinelOk = await entry.check(page);
       const isBlocked = authLoading || authError || authText;
-
       result.readySentinels = { authLoadingSeen: authLoading, authErrorSeen: authError, authTextSeen: authText, routeReady: sentinelOk };
 
-      // Detect scroll container
       const scrollInfo = await detectScrollContainer(page);
       result.documentScrollHeight = scrollInfo.documentScrollHeight;
       result.documentClientHeight = scrollInfo.documentClientHeight;
@@ -181,8 +147,8 @@ async function main() {
       result.scrollContainerMaxScrollTop = scrollInfo.maxScrollTop;
 
       lines.push(`  authL=${authLoading} authE=${authError} authT=${authText} sentinel=${sentinelOk}`);
-      lines.push(`  body: ${bodyText.substring(0, 120)}`);
-      lines.push(`  scroll: sh=${scrollInfo.scrollHeight} ch=${scrollInfo.clientHeight} max=${scrollInfo.maxScrollTop} docSH=${scrollInfo.documentScrollHeight}`);
+      lines.push(`  scroll: sh=${scrollInfo.scrollHeight} ch=${scrollInfo.clientHeight} max=${scrollInfo.maxScrollTop}`);
+      lines.push(`  container: ${scrollInfo.selector}`);
 
       const vpName = `${entry.port}-${entry.name}-viewport.png`;
       const fpName = `${entry.port}-${entry.name}-fullpage.png`;
@@ -196,54 +162,93 @@ async function main() {
 
         // Viewport screenshot
         await page.screenshot({ path: vpPath, fullPage: false });
-        lines.push(`  viewport: ${vpName}`);
+        result.artifactHashes[vpName] = sha256(readFileSync(vpPath));
+        result.artifactImageSizes[vpName] = pngSize(readFileSync(vpPath));
+        lines.push(`  viewport: ${vpName} hash=${result.artifactHashes[vpName]} size=${result.artifactImageSizes[vpName]}`);
 
         // FullPage screenshot
         try {
           await page.screenshot({ path: fpPath, fullPage: true });
-          // Check the actual size
-          const stat = require('fs').statSync(fpPath);
-          lines.push(`  fullPage: ${fpName} (${stat.size} bytes)`);
+          result.artifactHashes[fpName] = sha256(readFileSync(fpPath));
+          result.artifactImageSizes[fpName] = pngSize(readFileSync(fpPath));
+          lines.push(`  fullPage: ${fpName} hash=${result.artifactHashes[fpName]} size=${result.artifactImageSizes[fpName]}`);
         } catch (e) {
           result.notes = `fullPage error: ${e.message}`;
           lines.push(`  fullPage error: ${e.message}`);
         }
 
-        // Scroll container captures (if scrollable)
+        // Scroll the detected container, not window
         if (scrollInfo.maxScrollTop > 0) {
-          const viewportH = VIEWPORT.height;
-          const totalSlices = Math.ceil((scrollInfo.maxScrollTop + viewportH) / viewportH);
+          const viewH = scrollInfo.clientHeight;
+          const slices = Math.ceil(scrollInfo.maxScrollTop / viewH) + 1;
           const seen = new Set();
 
-          for (let i = 0; i < totalSlices; i++) {
-            const scrollTop = Math.min(i * viewportH, scrollInfo.maxScrollTop);
-            if (seen.has(Math.round(scrollTop / 100))) continue; // dedup
-            seen.add(Math.round(scrollTop / 100));
+          for (let i = 0; i < slices; i++) {
+            const targetTop = Math.min(i * viewH, scrollInfo.maxScrollTop);
+            const approx = Math.round(targetTop / 50);
+            if (seen.has(approx)) continue;
+            seen.add(approx);
 
-            await page.evaluate((st) => {
-              const el = document.querySelector('*')?.scrollTop !== undefined ? document.querySelector('*') : window;
-              window.scrollTo(0, st);
-            }, scrollTop);
+            result.requestedScrollTops.push(targetTop);
+
+            const actualTop = await page.evaluate((top) => {
+              const el = document.querySelector('[data-evidence-scroll-root="true"]');
+              if (!el) return -1;
+              el.scrollTop = top;
+              el.dispatchEvent(new Event('scroll', { bubbles: true }));
+              return el.scrollTop;
+            }, targetTop);
+            result.actualScrollTops.push(actualTop);
             await page.waitForTimeout(200);
 
             const sn = `${entry.port}-${entry.name}-scroll-${String(i).padStart(2, '0')}.png`;
-            await page.screenshot({ path: resolve(ARTIFACTS, sn), fullPage: false });
+            const sp = resolve(ARTIFACTS, sn);
+            await page.screenshot({ path: sp, fullPage: false });
             result.scrollArtifacts.push(sn);
-            lines.push(`  scroll-${i}: ${sn} (top=${scrollTop})`);
+            result.artifactHashes[sn] = sha256(readFileSync(sp));
+            result.artifactImageSizes[sn] = pngSize(readFileSync(sp));
+            lines.push(`  scroll-${i}: ${sn} req=${targetTop} actual=${actualTop} hash=${result.artifactHashes[sn]}`);
           }
 
           // Bottom capture
-          if (scrollInfo.maxScrollTop > 0) {
-            const bottomSn = `${entry.port}-${entry.name}-scroll-bottom.png`;
-            await page.evaluate(() => window.scrollTo(0, document.body?.scrollHeight || document.documentElement.scrollHeight));
+          {
+            const bSn = `${entry.port}-${entry.name}-scroll-bottom.png`;
+            const bSp = resolve(ARTIFACTS, bSn);
+            result.requestedScrollTops.push(scrollInfo.maxScrollTop);
+            const actualTop = await page.evaluate((top) => {
+              const el = document.querySelector('[data-evidence-scroll-root="true"]');
+              if (!el) return -1;
+              el.scrollTop = top;
+              el.dispatchEvent(new Event('scroll', { bubbles: true }));
+              return el.scrollTop;
+            }, scrollInfo.maxScrollTop);
+            result.actualScrollTops.push(actualTop);
             await page.waitForTimeout(200);
-            await page.screenshot({ path: resolve(ARTIFACTS, bottomSn), fullPage: false });
-            result.scrollArtifacts.push(bottomSn);
-            lines.push(`  scroll-bottom: ${bottomSn}`);
+            await page.screenshot({ path: bSp, fullPage: false });
+            result.scrollArtifacts.push(bSn);
+            result.artifactHashes[bSn] = sha256(readFileSync(bSp));
+            result.artifactImageSizes[bSn] = pngSize(readFileSync(bSp));
+            lines.push(`  scroll-bottom: ${bSn} req=${scrollInfo.maxScrollTop} actual=${actualTop} hash=${result.artifactHashes[bSn]}`);
           }
 
-          // Restore scroll position
-          await page.evaluate(() => window.scrollTo(0, 0));
+          // Restore top
+          await page.evaluate(() => {
+            const el = document.querySelector('[data-evidence-scroll-root="true"]');
+            if (el) { el.scrollTop = 0; el.dispatchEvent(new Event('scroll', { bubbles: true })); }
+          });
+
+          // Compute unique scroll hashes
+          const scrollHashes = result.scrollArtifacts.map((a) => result.artifactHashes[a]).filter(Boolean);
+          result.uniqueScrollHashCount = new Set(scrollHashes).size;
+          lines.push(`  scroll hashes: ${result.uniqueScrollHashCount} unique among ${result.scrollArtifacts.length} files`);
+
+          // Validate
+          const bottomHash = result.artifactHashes[result.scrollArtifacts[result.scrollArtifacts.length - 1]];
+          const vpH = result.artifactHashes[vpName];
+          if (scrollInfo.maxScrollTop > 100 && bottomHash === vpH) {
+            result.notes = 'WARNING: bottom scroll hash equals viewport hash — content may not have scrolled';
+            lines.push(`  ⚠️  WARNING: bottom hash matches viewport hash`);
+          }
         } else {
           lines.push(`  no scroll needed (maxScrollTop=${scrollInfo.maxScrollTop})`);
         }
@@ -254,13 +259,13 @@ async function main() {
         if (isBlocked) result.blocker.push('auth_blocked');
         if (!sentinelOk) result.blocker.push('no_sentinel');
         result.blocker = result.blocker.join(',');
-        // Still capture viewport for diagnostic
         await page.screenshot({ path: vpPath, fullPage: false });
         lines.push(`  ❌ BLOCKED: ${result.blocker}`);
       }
 
       await browser.close();
     } catch (e) {
+      result.valid = false;
       result.blocker = `exception: ${e.message}`;
       lines.push(`  ❌ EXCEPTION: ${e.message}`);
     }
@@ -272,6 +277,10 @@ async function main() {
   writeFileSync(resolve(ARTIFACTS, 'capture-stdout.txt'), lines.join('\n') + '\n');
   console.log(lines.join('\n'));
   console.log(`\nDone. Artifacts in ${ARTIFACTS}`);
+
+  // Exit non-zero if any route is invalid
+  const anyInvalid = results.some(r => !r.valid);
+  if (anyInvalid) { console.error('Some routes invalid'); process.exit(1); }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
