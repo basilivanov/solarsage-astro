@@ -1,24 +1,33 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_TODAY_TODAY_SCREEN
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-TODAY-CALENDAR
+// ROLE: UI component — Reworked /day/[date] screen matching the mock-preview
+//       visual oracle while keeping real SolarSage/API data.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: today-screen.tsx
+
+// START_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
+// purpose: Renders the full /day/[date] screen with oracle-matched layout.
+//          Composes DateHeader, DayOverviewCard, TodayPracticalList, reading,
+//          chart, energy meter, why-expanded, and week strip. All data flows
+//          through adaptTodayPayload — no fabricated astrology.
 // owns:
 //   - components/today/today-screen.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs:
+//   - selectedDate, access, payload (AdaptedTodayPayload), calendarLunar,
+//     onDateChange, importantToday
+// outputs:
+//   - TSX layout with data-testid="today-screen" and data-state="ready|locked"
+// dependencies:
+//   - today/* components
+//   - @/components/paywall, @/components/trial-banner
+//   - @/lib/today, @/lib/access
+// side_effects: Pointer/touch swipe handlers for day navigation
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - data-state reflects the real access state (ready=accessible, locked=inaccessible)
+//   - data-testid attributes present on all major sections
+//   - Loading/error states handled by the parent page
+// failure_policy: renders gracefully; missing data hides sections silently
+// END_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
+
 "use client"
 
 import { useRef } from "react"
@@ -30,7 +39,8 @@ import { WhyExpanded } from "./why-expanded"
 import { WeekStrip } from "./week-strip"
 import { DayChart } from "./day-chart"
 import { DayEnergyMeter } from "./day-energy-meter"
-import { DaySummaryCard } from "./day-summary-card"
+import { DayOverviewCard } from "./day-overview-card"
+import { TodayPracticalList } from "./today-practical-list"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { TodayImportantAccordion } from "@/components/today-important-accordion"
@@ -70,6 +80,9 @@ export function TodayScreen({
   )
   const canPrev = dayDiff > -180
   const canNext = dayDiff < 180
+
+  // Screen state for test contract
+  const screenState = accessible ? "ready" : "locked"
 
   // --- Свайпы (pointer + touch fallback для iOS WKWebView) ---------------
   const start = useRef<{ x: number; y: number; id: number } | null>(null)
@@ -128,10 +141,13 @@ export function TodayScreen({
       }}
       className="touch-pan-y"
       data-testid="today-screen"
+      data-state={screenState}
     >
+      {/* Date Header with prev/next controls */}
       <div
         className="flex-none"
         style={{ paddingTop: "max(env(safe-area-inset-top), 0.5rem)" }}
+        data-testid="day-header"
       >
         <DateHeader
           date={selectedDate}
@@ -152,67 +168,79 @@ export function TodayScreen({
         </div>
       ) : null}
 
-      {/* TopFlags — карточки топ-сигналов */}
-      {payload.topFlags.length > 0 && (
-        <div className="px-5 pb-2">
-          <div className="flex flex-wrap gap-2">
-            {payload.topFlags.map((flag: AdaptedTopFlag, idx: number) => (
-              <div
-                key={idx}
-                className="flex-1 min-w-[140px] rounded-xl border border-border/40 bg-card/50 p-3"
-              >
-                <p className="text-xs font-semibold text-foreground/80 mb-0.5">
-                  {flag.title}
-                </p>
-                <p className="text-[11px] leading-tight text-foreground/50">
-                  {flag.summary}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {accessible ? (
-        <div className="space-y-8 pb-8">
-          {access.state === "trial" ? (
-            <TrialBanner daysLeft={access.daysLeft} />
+        <div className="space-y-6 pb-8">
+          {/* Access / trial card */}
+          {access.state === "trial" || access.state === "subscription" ? (
+            <div data-testid="access-card">
+              <TrialBanner daysLeft={access.daysLeft} />
+            </div>
           ) : null}
+
+          {/* Yesterday echo (only for today) */}
           {isToday ? (
             <div className="px-5">
               <YesterdayEchoLoader />
             </div>
           ) : null}
-          <TodayImportantAccordion items={importantToday || []} />
-          <div className="section-rise section-rise-1">
-            <DaySummaryCard
-              date={selectedDate}
-              dayStatus={payload.dayStatus}
-              lunar={calendarLunar}
-              planetInfluences={payload.planetInfluences}
+
+          {/* Day Overview Card — large calm day card composition */}
+          <DayOverviewCard
+            dayStatus={payload.dayStatus}
+            lunar={calendarLunar}
+            planetInfluences={payload.planetInfluences}
+            sphereScores={payload.sphereScores}
+          />
+
+          {/* Important events accordion */}
+          {importantToday && importantToday.length > 0 ? (
+            <TodayImportantAccordion items={importantToday} />
+          ) : null}
+
+          {/* Practical list — "Concretely today" */}
+          {(payload.topFlags.length > 0 ||
+            payload.sphereScores.length > 0 ||
+            payload.notes.length > 0) ? (
+            <TodayPracticalList
+              topFlags={payload.topFlags}
+              notes={payload.notes}
               sphereScores={payload.sphereScores}
             />
-          </div>
-          {!(importantToday && importantToday.length > 0) && <TodayNotes notes={payload.notes} />}
-          <div className="section-rise section-rise-2">
+          ) : null}
+
+          {/* Notes (only if no important events shown) */}
+          {!(importantToday && importantToday.length > 0) ? (
+            <TodayNotes notes={payload.notes} />
+          ) : null}
+
+          {/* Day chart */}
+          <div className="section-rise section-rise-1">
             <DayChart
               chart={payload.dayChart}
               dateLabel={formatDateLabel(selectedDate)}
               dayStatus={payload.dayStatus}
             />
           </div>
-          <div className="section-rise section-rise-3">
+
+          {/* Energy meter */}
+          <div className="section-rise section-rise-2">
             <DayEnergyMeter
               planetInfluences={payload.planetInfluences}
               sphereScores={payload.sphereScores}
               dayStatus={payload.dayStatus}
             />
           </div>
+
+          {/* Day reading */}
           <DayReading paragraphs={payload.reading.paragraphs} />
+
+          {/* Why expanded */}
           <WhyExpanded
             sections={payload.why}
             keyInsight={payload.keyInsight}
           />
+
+          {/* Week strip navigation */}
           <WeekStrip
             selectedDate={selectedDate}
             access={access}
@@ -221,19 +249,28 @@ export function TodayScreen({
         </div>
       ) : (
         <div className="space-y-6 pb-8">
+          {/* Access / paywall card */}
+          <div data-testid="access-card">
+            <Paywall
+              title={
+                isToday
+                  ? "Твой персональный разбор на сегодня уже готов"
+                  : "Этот день уже рассчитан для тебя"
+              }
+            />
+          </div>
+
+          {/* Preview notes */}
           <TodayNotes
             notes={payload.notes}
             limit={2}
             heading="Главное на этот день"
           />
+
+          {/* Preview reading */}
           <DayReading paragraphs={payload.reading.paragraphs} preview />
-          <Paywall
-            title={
-              isToday
-                ? "Твой персональный разбор на сегодня уже готов"
-                : "Этот день уже рассчитан для тебя"
-            }
-          />
+
+          {/* Week strip */}
           <WeekStrip
             selectedDate={selectedDate}
             access={access}
@@ -242,7 +279,7 @@ export function TodayScreen({
         </div>
       )}
 
-      {/* Disclaimer */}
+      {/* Footer disclaimer — stable across all states */}
       <footer className="px-5 pb-4 pt-2">
         <p className="text-center font-sans text-[11px] leading-relaxed text-foreground/40">
           Данные показаны для ознакомления. Перед принятием важных решений проверяйте информацию.

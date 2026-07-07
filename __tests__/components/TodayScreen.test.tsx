@@ -250,8 +250,8 @@ describe('TodayScreen', () => {
       />,
     )
 
-    expect(screen.getByTestId('day-summary-card').textContent).toContain('Поддерживающий день')
-    expect(screen.getByTestId('day-summary-card').textContent).toContain('Полнолуние')
+    expect(screen.getByTestId('day-overview-card').textContent).toContain('Поддерживающий')
+    expect(screen.getByTestId('day-overview-card').textContent).toContain('Полнолуние')
     expect(screen.getByTestId('day-chart').querySelectorAll('svg circle').length).toBeGreaterThan(0)
     expect(screen.getByTestId('day-energy-meter').textContent).toContain('Moon')
     expect(screen.getByTestId('day-energy-meter').textContent).toContain('relationships')
@@ -282,10 +282,10 @@ describe('TodayScreen', () => {
       />,
     )
 
-    const summary = screen.getByTestId('day-summary-card')
+    const summary = screen.getByTestId('day-overview-card')
     expect(summary.textContent).toContain('Убывающая Луна')
     expect(summary.textContent).toContain('22%')
-    expect(summary.textContent).toContain('26 лунный день')
+    expect(summary.textContent).toContain('26 лд')
   })
 
   it('renders locked state with Paywall', () => {
