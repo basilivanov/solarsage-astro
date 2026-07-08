@@ -278,15 +278,14 @@ def test_audit_default_fails_fast_on_invalid_baseline(tmp_path: Path):
     assert len(existing) == 1 and existing[0].name == "11_final_today_payload.json"
 
 def test_audit_live_isolates_output(tmp_path: Path):
-    """Live mode must write only under live/<timestamp>/ and not to canonical root."""
+    """Live mode must write only under live/<timestamp>/ and not to canonical root.
+    Must fail when subprocess fails (detects regression in live execution)."""
     import subprocess, sys
     from pathlib import Path
     script = Path(__file__).resolve().parents[3] / "scripts" / "audit_today.py"
-    # Use a real baseline from the committed artifacts
     real_baseline = Path(__file__).resolve().parents[3] / "artifacts" / "audit" / "2026-07-08" / "11_final_today_payload.json"
     out = tmp_path / "out"
     out.mkdir()
-    # Copy the real baseline
     import shutil
     shutil.copy2(real_baseline, out / "11_final_today_payload.json")
     res = subprocess.run(
@@ -294,13 +293,41 @@ def test_audit_live_isolates_output(tmp_path: Path):
          "--date", "2026-07-08", "--out", str(out), "--live-llm-sample"],
         capture_output=True, timeout=120,
     )
-    # The live sample might fail if sidecar is unavailable, but if it succeeds:
-    if res.returncode == 0:
-        # No files directly in out/ (only live/ subdirectory and baseline)
-        for child in out.iterdir():
-            assert child.name in ("11_final_today_payload.json", "live", "debug"), f"Unexpected: {child.name}"
-        if (out / "live").exists():
-            live_items = list((out / "live").iterdir())
-            assert len(live_items) > 0, "live/ should contain at least one timestamped run"
-    # If it fails due to sidecar, that's OK — the test is about isolation,
-    # but we can't test full isolation without a running system.
+    # Must fail on subprocess failure — live execution regression must be caught
+    assert res.returncode == 0, f"live audit subprocess failed: {res.stderr.decode()}"
+    # No canonical root debug/ directory in live mode
+    assert not (out / "debug").exists(), "live mode must not create canonical root debug/"
+    # No root 00_* through 15_* files outside the timestamped live directory
+    for child in out.iterdir():
+        name = child.name
+        if name == "11_final_today_payload.json":
+            continue  # baseline fixture is allowed
+        if name == "live":
+            continue  # live output directory is allowed
+        assert False, f"Unexpected file/dir in canonical root during live mode: {name}"
+    # Live output must exist inside live/<timestamp>/
+    live_items = list((out / "live").iterdir()) if (out / "live").exists() else []
+    assert len(live_items) > 0, "live/ should contain at least one timestamped run"
+
+def test_audit_resolve_output_dirs_default():
+    """Default mode: root_dir == out_dir, debug_dir == out_dir/debug."""
+    from pathlib import Path
+    from scripts.audit_today import resolve_audit_output_dirs
+    base = Path("/tmp/test_audit")
+    dirs = resolve_audit_output_dirs(base, is_live=False)
+    assert dirs.root_dir == base
+    assert dirs.debug_dir == base / "debug"
+    assert not dirs.is_live
+
+def test_audit_resolve_output_dirs_live():
+    """Live mode: root_dir == out_dir/live/<timestamp>, debug_dir == root_dir/debug.
+    Canonical root debug/ must NOT be set as debug_dir."""
+    from pathlib import Path
+    from scripts.audit_today import resolve_audit_output_dirs
+    base = Path("/tmp/test_audit")
+    ts = "20260708T120000"
+    dirs = resolve_audit_output_dirs(base, is_live=True, timestamp=ts)
+    assert dirs.root_dir == base / "live" / ts
+    assert dirs.debug_dir == base / "live" / ts / "debug"
+    assert dirs.debug_dir != base / "debug"
+    assert dirs.is_live

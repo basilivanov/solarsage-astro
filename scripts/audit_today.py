@@ -47,7 +47,36 @@ from datetime import date as Date
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+from typing import Any, NamedTuple
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class AuditOutputDirs:
+    """Pure data: resolved output directories for an audit run.
+    Never creates directories — only resolves paths."""
+    root_dir: Path
+    debug_dir: Path
+    is_live: bool
+
+
+def resolve_audit_output_dirs(out_dir: Path, is_live: bool,
+                              timestamp: str | None = None) -> AuditOutputDirs:
+    """Pure function: resolve output directories based on mode.
+    Does not create directories, does not access filesystem beyond Path operations."""
+    if is_live:
+        import datetime as _dt
+        ts = timestamp or _dt.datetime.now().strftime("%Y%m%dT%H%M%S")
+        root_dir = out_dir / "live" / ts
+        debug_dir = root_dir / "debug"
+    else:
+        root_dir = out_dir
+        debug_dir = out_dir / "debug"
+    return AuditOutputDirs(root_dir=root_dir, debug_dir=debug_dir, is_live=is_live)
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = _REPO_ROOT  # alias for existing references
 API_ROOT = REPO_ROOT / "apps" / "api"
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
@@ -352,14 +381,12 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
 
     # Determine output directories based on mode
     is_live = getattr(args, 'live_llm_sample', False)
+    dirs = resolve_audit_output_dirs(out_dir, is_live)
+    root_dir = dirs.root_dir
+    debug_dir = dirs.debug_dir
 
     if is_live:
-        # Live sample mode: all output goes to live/<timestamp>/
-        import datetime as _dt
-        ts = _dt.datetime.now().strftime("%Y%m%dT%H%M%S")
-        root_dir = out_dir / "live" / ts
         root_dir.mkdir(parents=True, exist_ok=True)
-        debug_dir = root_dir / "debug"
         debug_dir.mkdir(parents=True, exist_ok=True)
     else:
         # Canonical mode: output goes to standard out_dir
