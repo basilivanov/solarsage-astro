@@ -99,6 +99,7 @@ export const DayChartTransitPlanetSchema = z.object({
   speed: z.number().nullable().optional(),
   motion: z.enum(["direct", "retrograde", "stationary"]).nullable().optional(),
   house: z.number().int().nullable().optional(),
+  interpretation: z.string().nullable().optional(),
 })
 
 export const DayChartAspectSchema = z.object({
@@ -139,6 +140,57 @@ export const TodayWhySectionSchema = z.object({
   { message: "why section must contain paragraphs or bullets" },
 )
 
+export const ConcreteAdviceEvidenceSchema = z.object({
+  kind: z.enum(["sphere_score", "aspect", "planet_in_house", "day_status", "lunar", "important_today"]),
+  title: z.string().min(1),
+  weight: z.number().nullable().optional(),
+  planet: z.string().nullable().optional(),
+  targetPlanet: z.string().nullable().optional(),
+  aspectType: z.string().nullable().optional(),
+  orb: z.number().nullable().optional(),
+  strength: z.number().nullable().optional(),
+  sphereKey: z.string().nullable().optional(),
+})
+
+export const ConcreteAdviceRowSchema = z.object({
+  key: z.enum([
+    "work", "money", "documents", "relationships", "sport", "communication",
+    "health", "decisions", "travel", "creativity", "study", "shopping"
+  ]),
+  label: z.string().min(1),
+  iconName: z.string().min(1),
+  rank: z.number().int(),
+  verdict: z.enum(["good", "caution", "avoid", "neutral"]),
+  confidence: z.enum(["high", "medium", "low"]),
+  text: z.string().min(1),
+  evidence: z.array(ConcreteAdviceEvidenceSchema),
+})
+
+export const ConcreteAdviceCountsSchema = z.object({
+  good: z.number().int(),
+  caution: z.number().int(),
+  avoid: z.number().int(),
+  neutral: z.number().int(),
+})
+
+export const ConcreteAdviceBlockSchema = z.object({
+  rows: z.array(ConcreteAdviceRowSchema),
+  counts: ConcreteAdviceCountsSchema,
+})
+
+export const DaySummaryFactSchema = z.object({
+  kind: z.enum(["top_planet", "lunar_phase", "void_moon", "top_flag"]),
+  iconName: z.string().min(1),
+  title: z.string().min(1),
+  summary: z.string().nullable().optional(),
+})
+
+export const DaySummaryBlockSchema = z.object({
+  statusLabel: z.string().min(1),
+  statusLine: z.string().min(1),
+  facts: z.array(DaySummaryFactSchema),
+})
+
 export const TodayPayloadSchema = z.object({
   /** ISO yyyy-mm-dd — для кэша, deeplink'ов, инвалидации SWR. */
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -146,6 +198,8 @@ export const TodayPayloadSchema = z.object({
   headline: z.string(),
   /** Общий статус дня */
   dayStatus: DayStatusSchema,
+  daySummary: DaySummaryBlockSchema,
+  concreteAdvice: ConcreteAdviceBlockSchema,
   /** Флаги / карточки дня (топ-сигналы) */
   topFlags: z.array(AdaptedTopFlagSchema),
   notes: z.array(TodayNoteSchema),
@@ -165,6 +219,9 @@ export type DayChart = z.infer<typeof DayChartSchema>
 export type PlanetInfluence = z.infer<typeof PlanetInfluenceSchema>
 export type SphereScore = z.infer<typeof SphereScoreSchema>
 export type TodayWhySection = z.infer<typeof TodayWhySectionSchema>
+export type ConcreteAdviceBlock = z.infer<typeof ConcreteAdviceBlockSchema>
+export type ConcreteAdviceRow = z.infer<typeof ConcreteAdviceRowSchema>
+export type DaySummaryBlock = z.infer<typeof DaySummaryBlockSchema>
 export type AdaptedTodayPayload = z.infer<typeof TodayPayloadSchema>
 
 export function validateAdaptedTodayPayload(data: unknown): AdaptedTodayPayload {

@@ -18,6 +18,7 @@ interface ChartPlanet {
   signSymbol: string
   longitude: number
   house: number
+  interpretation?: string | null
 }
 
 interface ChartHouse {
@@ -119,38 +120,6 @@ function describeArc(
   ].join(" ")
 }
 
-function planetDescription(name: string, house: number): string {
-  const houseThemes: Record<number, string> = {
-    1: "личность и самовыражение",
-    2: "ценности и ресурсы",
-    3: "общение и ближние поездки",
-    4: "дом и семья",
-    5: "творчество и романтика",
-    6: "работа и здоровье",
-    7: "партнёрство",
-    8: "трансформация и общие ресурсы",
-    9: "мировоззрение и дальние поездки",
-    10: "карьера и статус",
-    11: "друзья и цели",
-    12: "внутренний мир и уединение",
-  }
-  const planetThemes: Record<string, string> = {
-    Sun: "Я-энергия, воля, сознание",
-    Moon: "эмоции, инстинкты, подсознание",
-    Mercury: "мышление, общение, обучение",
-    Venus: "любовь, удовольствие, ценности",
-    Mars: "действие, страсть, инициатива",
-    Jupiter: "рост, удача, мудрость",
-    Saturn: "дисциплина, ответственность, ограничения",
-    Uranus: "перемены, озарения, свобода",
-    Neptune: "мечты, иллюзии, духовность",
-    Pluto: "трансформация, власть, глубина",
-  }
-  const pt = planetThemes[name] ?? ""
-  const ht = houseThemes[house] ?? ""
-  return `${pt}. Сегодня акцент через ${house} дом — ${ht}.`
-}
-
 export function DayChart({ chart, dateLabel, dayStatus = "steady" }: Props) {
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
 
@@ -163,6 +132,7 @@ export function DayChart({ chart, dateLabel, dayStatus = "steady" }: Props) {
       signSymbol: p.sign ? (SIGN_SYMBOLS[p.sign] || "") : "",
       longitude: p.longitude,
       house: p.house || 1,
+      interpretation: p.interpretation,
     }))
   }, [chart])
 
@@ -464,7 +434,7 @@ export function DayChart({ chart, dateLabel, dayStatus = "steady" }: Props) {
                   </span>
                 </div>
                 <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                  {planetDescription(selected.name, selected.house)}
+                  {selected.interpretation || "Интерпретация временно недоступна."}
                 </p>
               </div>
             </div>

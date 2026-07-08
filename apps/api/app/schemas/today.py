@@ -177,6 +177,7 @@ class DayChartTransitPlanet(CamelModel):
     speed: float | None = None
     motion: Literal["direct", "retrograde", "stationary"] | None = None
     house: int | None = None
+    interpretation: str | None = None
 
 
 class DayChartAspect(CamelModel):
@@ -302,10 +303,94 @@ class TodayImportantEvent(CamelModel):
 # END_BLOCK: TODAY_IMPORTANT_EVENTS
 
 
+# START_BLOCK: CONCRETE_ADVICE_SCHEMAS
+ConcreteAdviceVerdict = Literal["good", "caution", "avoid", "neutral"]
+ConcreteAdviceConfidence = Literal["high", "medium", "low"]
+ConcreteAdviceEvidenceKind = Literal[
+    "sphere_score",
+    "aspect",
+    "planet_in_house",
+    "day_status",
+    "lunar",
+    "important_today",
+]
+
+class ConcreteAdviceEvidence(CamelModel):
+    kind: ConcreteAdviceEvidenceKind
+    title: str
+    weight: float | None = None
+    planet: str | None = None
+    target_planet: str | None = None
+    aspect_type: str | None = None
+    orb: float | None = None
+    strength: float | None = None
+    sphere_key: str | None = None
+
+class ConcreteAdviceRow(CamelModel):
+    key: Literal[
+        "work",
+        "money",
+        "documents",
+        "relationships",
+        "sport",
+        "communication",
+        "health",
+        "decisions",
+        "travel",
+        "creativity",
+        "study",
+        "shopping",
+    ]
+    label: str
+    icon_name: str
+    rank: int
+    verdict: ConcreteAdviceVerdict
+    confidence: ConcreteAdviceConfidence
+    text: str
+    evidence: list[ConcreteAdviceEvidence]
+
+class ConcreteAdviceCounts(CamelModel):
+    good: int
+    caution: int
+    avoid: int
+    neutral: int
+
+class ConcreteAdviceBlock(CamelModel):
+    rows: list[ConcreteAdviceRow]
+    counts: ConcreteAdviceCounts
+# END_BLOCK: CONCRETE_ADVICE_SCHEMAS
+
+# START_BLOCK: DAY_SUMMARY_SCHEMAS
+DaySummaryFactKind = Literal[
+    "top_planet",
+    "lunar_phase",
+    "void_moon",
+    "top_flag",
+]
+
+class DaySummaryFact(CamelModel):
+    kind: DaySummaryFactKind
+    icon_name: str
+    title: str
+    summary: str | None = None
+
+class DaySummaryBlock(CamelModel):
+    status_label: str
+    status_line: str
+    facts: list[DaySummaryFact]
+# END_BLOCK: DAY_SUMMARY_SCHEMAS
+
+
 class TodayPayload(CamelModel):
     meta: TodayMeta
     date: str
     title: str
+    subtitle: str | None = None
+    headline: str
+    access: ContentAccessState
+    day_status: DayStatus
+    day_summary: DaySummaryBlock
+    concrete_advice: ConcreteAdviceBlock
     subtitle: str | None = None
     headline: str
     access: ContentAccessState

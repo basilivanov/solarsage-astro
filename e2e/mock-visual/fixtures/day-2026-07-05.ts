@@ -158,13 +158,13 @@ export const dayPayload: components["schemas"]["TodayPayload"] = {
       { number: 12, cuspLongitude: 60 },
     ],
     transitPlanets: [
-      { name: "Sun", longitude: 105, sign: "Cancer", house: 1, retrograde: false, speed: 0.98, motion: "direct" },
-      { name: "Moon", longitude: 195, sign: "Libra", house: 4, retrograde: false, speed: 13.2, motion: "direct" },
-      { name: "Mercury", longitude: 125, sign: "Leo", house: 2, retrograde: false, speed: 1.2, motion: "direct" },
-      { name: "Venus", longitude: 85, sign: "Gemini", house: 12, retrograde: false, speed: 1.15, motion: "direct" },
-      { name: "Mars", longitude: 5, sign: "Aries", house: 10, retrograde: false, speed: 0.72, motion: "direct" },
-      { name: "Jupiter", longitude: 65, sign: "Gemini", house: 11, retrograde: false, speed: 0.18, motion: "direct" },
-      { name: "Saturn", longitude: 185, sign: "Libra", house: 4, retrograde: true, speed: -0.05, motion: "retrograde" },
+      { name: "Sun", longitude: 105, sign: "Cancer", house: 1, retrograde: false, speed: 0.98, motion: "direct", interpretation: "Солнце в первом доме усиливает личность." },
+      { name: "Moon", longitude: 195, sign: "Libra", house: 4, retrograde: false, speed: 13.2, motion: "direct", interpretation: "Луна в четвертом доме обращает внимание на дом." },
+      { name: "Mercury", longitude: 125, sign: "Leo", house: 2, retrograde: false, speed: 1.2, motion: "direct", interpretation: "Меркурий во втором доме активирует финансовые мысли." },
+      { name: "Venus", longitude: 85, sign: "Gemini", house: 12, retrograde: false, speed: 1.15, motion: "direct", interpretation: "Венера в двенадцатом доме приносит уединение." },
+      { name: "Mars", longitude: 5, sign: "Aries", house: 10, retrograde: false, speed: 0.72, motion: "direct", interpretation: "Марс в десятом доме дает энергию для карьеры." },
+      { name: "Jupiter", longitude: 65, sign: "Gemini", house: 11, retrograde: false, speed: 0.18, motion: "direct", interpretation: "Юпитер в одиннадцатом доме приносит удачу с друзьями." },
+      { name: "Saturn", longitude: 185, sign: "Libra", house: 4, retrograde: true, speed: -0.05, motion: "retrograde", interpretation: "Сатурн в четвертом доме напоминает об ответственности." },
     ],
     aspects: [
       { planet: "Sun", targetPlanet: "Mars", aspectType: "square", orb: 2.1, strength: 0.8 },
@@ -188,6 +188,32 @@ export const dayPayload: components["schemas"]["TodayPayload"] = {
     { key: "crisis_transformation_control", score: 4.0, rank: 7 },
     { key: "inner_background_unconscious", score: 5.5, rank: 8 },
   ],
+  concreteAdvice: {
+    rows: [
+      { key: "work", label: "Работа", iconName: "💼", rank: 1, verdict: "neutral", confidence: "low", text: "Ровный рабочий день — без сюрпризов, без прорывов", evidence: [] },
+      { key: "money", label: "Деньги", iconName: "💰", rank: 2, verdict: "good", confidence: "high", text: "Хороший день для вложений в себя и дом", evidence: [] },
+      { key: "documents", label: "Документы", iconName: "📝", rank: 3, verdict: "good", confidence: "high", text: "Хорошее время для договоров — читай спокойно, подписывай", evidence: [] },
+      { key: "relationships", label: "Отношения", iconName: "💖", rank: 4, verdict: "good", confidence: "high", text: "Свидания пройдут отлично — будь открыт и смел", evidence: [] },
+      { key: "sport", label: "Спорт", iconName: "🏃", rank: 5, verdict: "avoid", confidence: "high", text: "Снизь нагрузку — риск травм выше, работай на технику", evidence: [] },
+      { key: "communication", label: "Общение", iconName: "💬", rank: 6, verdict: "good", confidence: "high", text: "Переговоры пройдут гладко — проси что хочешь", evidence: [] },
+      { key: "health", label: "Здоровье", iconName: "🌿", rank: 7, verdict: "neutral", confidence: "low", text: "Стабильно — поддерживай режим, ничего особого", evidence: [] },
+      { key: "decisions", label: "Решения", iconName: "🎯", rank: 8, verdict: "neutral", confidence: "low", text: "Обычная ясность — решения принимаются ровно", evidence: [] },
+      { key: "travel", label: "Поездки", iconName: "✈️", rank: 9, verdict: "good", confidence: "medium", text: "Дорога будет лёгкой — хороший день для отправления", evidence: [] },
+      { key: "creativity", label: "Творчество", iconName: "🎨", rank: 10, verdict: "good", confidence: "medium", text: "Вдохновение бьёт ключом — садись за работу", evidence: [] },
+      { key: "study", label: "Учёба", iconName: "📚", rank: 11, verdict: "good", confidence: "medium", text: "Память цепкая — учи сложное, оно задержится", evidence: [] },
+      { key: "shopping", label: "Покупки", iconName: "🛍️", rank: 12, verdict: "good", confidence: "medium", text: "Вкус работает — выберешь правильное, не пожалеешь", evidence: [] },
+    ],
+    counts: { good: 8, caution: 0, avoid: 1, neutral: 3 }
+  },
+  daySummary: {
+    statusLabel: "Поддерживающий день",
+    statusLine: "день на твоей стороне — действуй",
+    facts: [
+      { kind: "top_planet", iconName: "Moon", title: "Влияние Луны", summary: "тема дня — Луна: фокус на чувствах" },
+      { kind: "lunar_phase", iconName: "moon", title: "Убывающая Луна 76%", summary: "подводи итоги" },
+      { kind: "top_flag", iconName: "flag", title: "Марс трин Юпитер", summary: "особое влияние дня" }
+    ]
+  },
   activationEvidence: null,
   manifestationZones: null,
   periodContext: null,

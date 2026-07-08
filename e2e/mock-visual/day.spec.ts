@@ -220,7 +220,7 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(concreteAdvice).toContainText("Отношения");
     await expect(concreteAdvice).toContainText("Спорт");
     await expect(concreteAdvice).toContainText("Общение");
-    
+
     const expandBtn = concreteAdvice.locator('button[aria-controls="concrete-day-advice-rows"]');
     await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
 
@@ -250,7 +250,20 @@ test.describe("Mock Visual — /day/[date]", () => {
       const row = rows.nth(i);
       await expect(row).toContainText(expectedEmojis[i]);
       await expect(row).toContainText(expectedLabels[i]);
+
+      // Assert no row has data-status="unavailable"
+      await expect(row).not.toHaveAttribute("data-status", "unavailable");
     }
+
+    // Assert that backend-provided text is rendered verbatim
+    await expect(concreteAdvice).toContainText("Хороший день для вложений в себя и дом");
+
+    // Assert that placeholder texts are absent
+    await expect(concreteAdvice).not.toContainText("Нет отдельного сигнала");
+    await expect(concreteAdvice).not.toContainText("Данные появятся");
+
+    // Assert that good count is greater than zero
+    await expect(concreteAdvice).toContainText("8 благоприятно");
 
     // Assert page does not contain raw/debug leaks
     const bodyText = await page.innerText("body");
@@ -258,7 +271,7 @@ test.describe("Mock Visual — /day/[date]", () => {
     expect(bodyText).not.toContain("Inner Background Unconscious");
     expect(bodyText).not.toContain("Cancer");
     expect(bodyText).not.toContain("thinking_speech_learning");
-    
+
     // Assert no visible score suffixes or Latin characters in concrete advice rows
     const firstRowText = await rows.first().innerText();
     expect(firstRowText).not.toMatch(/\d\.\d/);
@@ -277,9 +290,9 @@ test.describe("Mock Visual — /day/[date]", () => {
     const ariaLabel = await firstPlanet.getAttribute("aria-label");
     expect(ariaLabel).toContain("Марс в Овне, 10 дом");
     expect(ariaLabel).not.toContain("Aries");
-    
+
     await firstPlanet.click();
-    
+
     // Assert no visible focus outline is left on the planet target after click/tap
     const outline = await firstPlanet.evaluate((el) => window.getComputedStyle(el).outlineStyle);
     expect(outline === "none" || outline === "").toBe(true);

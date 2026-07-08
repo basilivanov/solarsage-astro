@@ -139,6 +139,15 @@ describe('TodayScreen', () => {
       date: '2026-06-01',
       headline: '',
       dayStatus: 'steady',
+      concreteAdvice: {
+        rows: [],
+        counts: { good: 0, caution: 0, avoid: 0, neutral: 0 }
+      },
+      daySummary: {
+        statusLabel: 'Ровный день',
+        statusLine: 'без взлётов — занимайся рутиной',
+        facts: []
+      },
       topFlags: [],
       notes: [],
       reading: { paragraphs: [] },
@@ -339,6 +348,19 @@ describe('TodayScreen', () => {
             { name: 'Saturn', score: -0.5, rank: 2 },
           ],
           sphereScores: [{ key: 'relationships', score: 2.5, rank: 1 }],
+          concreteAdvice: {
+            rows: [
+              { key: 'relationships', label: 'Отношения', iconName: '💖', rank: 4, verdict: 'caution', confidence: 'medium', text: 'Свидания пройдут отлично', evidence: [] }
+            ],
+            counts: { good: 0, caution: 1, avoid: 0, neutral: 0 }
+          },
+          daySummary: {
+            statusLabel: 'Поддерживающий день',
+            statusLine: 'день на твоей стороне — действуй',
+            facts: [
+              { kind: 'lunar_phase', iconName: 'moon', title: 'Полнолуние', summary: '97%' }
+            ]
+          },
           reading: { paragraphs: ['p1'] },
           why: [whyFixture],
           keyInsight: 'Why',
@@ -371,6 +393,13 @@ describe('TodayScreen', () => {
         payload={buildPayload({
           planetInfluences: [{ name: 'Moon', score: 1.2, rank: 1 }],
           sphereScores: [{ key: 'rest', score: 2.1, rank: 1 }],
+          daySummary: {
+            statusLabel: 'Ровный день',
+            statusLine: 'без взлётов — занимайся рутиной',
+            facts: [
+              { kind: 'lunar_phase', iconName: 'moon', title: 'Убывающая Луна', summary: '22%' }
+            ]
+          },
           reading: { paragraphs: ['p1'] },
           why: [whyFixture],
           keyInsight: 'Why',
@@ -543,15 +572,15 @@ describe('real-data day presentation components', () => {
       <DaySummaryCard
         date={new Date('2026-06-01T12:00:00Z')}
         dayStatus="tense"
-        lunar={{
-          phase: 'Полнолуние',
-          illumination: 97,
-          moonSign: 'Sagittarius',
-          lunarDay: 15,
-          voidOfCourse: true,
+        daySummary={{
+          statusLabel: 'Напряжённый день',
+          statusLine: 'не решай на эмоциях — доводи начатое',
+          facts: [
+            { kind: 'lunar_phase', iconName: 'moon', title: 'Полнолуние', summary: '97%' },
+            { kind: 'top_planet', iconName: 'Saturn', title: 'Влияние Сатурн', summary: 'тема дня — Сатурн: дисциплина и итоги' },
+            { kind: 'top_flag', iconName: 'moon', title: 'Луна в Раке', summary: 'Эмоциональная глубина' }
+          ]
         }}
-        topFlags={[{ iconName: 'moon', title: 'Луна в Раке', summary: 'Эмоциональная глубина' }]}
-        planetInfluences={[{ name: 'Saturn', score: -1.75, rank: 1 }]}
       />,
     )
 
@@ -560,24 +589,5 @@ describe('real-data day presentation components', () => {
     expect(summary.textContent).toContain('97%')
     expect(summary.textContent).toContain('Сатурн')
     expect(summary.textContent).toContain('Луна в Раке')
-  })
-
-  it('buildConcreteAdviceRows maps sparse scores and context to canonical 12 rows without unavailable status', () => {
-    const rows = buildConcreteAdviceRows(
-      'supportive',
-      [{ name: 'Moon', score: 8.5, rank: 1 }],
-      [{ iconName: 'moon', title: 'Луна тригон Меркурий', summary: 'Гармония ума и эмоций' }],
-      [{ key: 'work_status_achievement', score: 4.5, rank: 1 }]
-    )
-    expect(rows.length).toBe(12)
-    rows.forEach(r => {
-      expect(r.verdict).not.toBe('unavailable')
-      expect(r.text).not.toContain('Нет отдельного сигнала')
-      expect(r.text).not.toContain('Данные появятся')
-      expect(r.text).not.toMatch(/[A-Za-z]/)
-    })
-    // Supportive day should yield good rows
-    const goodCount = rows.filter(r => r.verdict === 'good').length
-    expect(goodCount).toBeGreaterThan(0)
   })
 })

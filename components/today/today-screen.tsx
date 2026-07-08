@@ -178,17 +178,11 @@ export function TodayScreen({
           <DaySummaryCard
             date={selectedDate}
             dayStatus={payload.dayStatus}
-            lunar={calendarLunar}
-            topFlags={payload.topFlags}
-            planetInfluences={payload.planetInfluences}
+            daySummary={payload.daySummary}
           />
 
           <ConcreteDayAdvice
-            topFlags={payload.topFlags}
-            notes={payload.notes}
-            sphereScores={payload.sphereScores}
-            dayStatus={payload.dayStatus}
-            planetInfluences={payload.planetInfluences}
+            concreteAdvice={payload.concreteAdvice}
           />
 
           <DayChart

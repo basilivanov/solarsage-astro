@@ -712,6 +712,237 @@
         "title": "CheckinResponse",
         "type": "object"
       },
+      "ConcreteAdviceBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/ConcreteAdviceCounts"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ConcreteAdviceRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows",
+          "counts"
+        ],
+        "title": "ConcreteAdviceBlock",
+        "type": "object"
+      },
+      "ConcreteAdviceCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "avoid": {
+            "title": "Avoid",
+            "type": "integer"
+          },
+          "caution": {
+            "title": "Caution",
+            "type": "integer"
+          },
+          "good": {
+            "title": "Good",
+            "type": "integer"
+          },
+          "neutral": {
+            "title": "Neutral",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "good",
+          "caution",
+          "avoid",
+          "neutral"
+        ],
+        "title": "ConcreteAdviceCounts",
+        "type": "object"
+      },
+      "ConcreteAdviceEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "aspectType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspecttype"
+          },
+          "kind": {
+            "enum": [
+              "sphere_score",
+              "aspect",
+              "planet_in_house",
+              "day_status",
+              "lunar",
+              "important_today"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "orb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orb"
+          },
+          "planet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planet"
+          },
+          "sphereKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spherekey"
+          },
+          "strength": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength"
+          },
+          "targetPlanet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetplanet"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "required": [
+          "kind",
+          "title"
+        ],
+        "title": "ConcreteAdviceEvidence",
+        "type": "object"
+      },
+      "ConcreteAdviceRow": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ConcreteAdviceEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "iconName": {
+            "title": "Iconname",
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "good",
+              "caution",
+              "avoid",
+              "neutral"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "iconName",
+          "rank",
+          "verdict",
+          "confidence",
+          "text",
+          "evidence"
+        ],
+        "title": "ConcreteAdviceRow",
+        "type": "object"
+      },
       "ContentAccessState": {
         "additionalProperties": false,
         "properties": {
@@ -910,6 +1141,17 @@
             ],
             "title": "House"
           },
+          "interpretation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretation"
+          },
           "longitude": {
             "title": "Longitude",
             "type": "number"
@@ -997,6 +1239,74 @@
           "intensityScore"
         ],
         "title": "DayQuality",
+        "type": "object"
+      },
+      "DaySummaryBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/DaySummaryFact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "statusLabel": {
+            "title": "Statuslabel",
+            "type": "string"
+          },
+          "statusLine": {
+            "title": "Statusline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "statusLabel",
+          "statusLine",
+          "facts"
+        ],
+        "title": "DaySummaryBlock",
+        "type": "object"
+      },
+      "DaySummaryFact": {
+        "additionalProperties": false,
+        "properties": {
+          "iconName": {
+            "title": "Iconname",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "top_planet",
+              "lunar_phase",
+              "void_moon",
+              "top_flag"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "iconName",
+          "title"
+        ],
+        "title": "DaySummaryFact",
         "type": "object"
       },
       "HighlightItem": {
@@ -2732,6 +3042,9 @@
             ],
             "title": "Activationevidence"
           },
+          "concreteAdvice": {
+            "$ref": "#/components/schemas/ConcreteAdviceBlock"
+          },
           "date": {
             "title": "Date",
             "type": "string"
@@ -2764,6 +3077,9 @@
             ],
             "title": "Daystatus",
             "type": "string"
+          },
+          "daySummary": {
+            "$ref": "#/components/schemas/DaySummaryBlock"
           },
           "headline": {
             "title": "Headline",
@@ -2903,6 +3219,8 @@
           "headline",
           "access",
           "dayStatus",
+          "daySummary",
+          "concreteAdvice",
           "topFlags",
           "reading",
           "whyThisHappens",

@@ -781,6 +781,75 @@ export interface components {
              */
             targetDate: string;
         };
+        /** ConcreteAdviceBlock */
+        ConcreteAdviceBlock: {
+            counts: components["schemas"]["ConcreteAdviceCounts"];
+            /** Rows */
+            rows: components["schemas"]["ConcreteAdviceRow"][];
+        };
+        /** ConcreteAdviceCounts */
+        ConcreteAdviceCounts: {
+            /** Avoid */
+            avoid: number;
+            /** Caution */
+            caution: number;
+            /** Good */
+            good: number;
+            /** Neutral */
+            neutral: number;
+        };
+        /** ConcreteAdviceEvidence */
+        ConcreteAdviceEvidence: {
+            /** Aspecttype */
+            aspectType?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "sphere_score" | "aspect" | "planet_in_house" | "day_status" | "lunar" | "important_today";
+            /** Orb */
+            orb?: number | null;
+            /** Planet */
+            planet?: string | null;
+            /** Spherekey */
+            sphereKey?: string | null;
+            /** Strength */
+            strength?: number | null;
+            /** Targetplanet */
+            targetPlanet?: string | null;
+            /** Title */
+            title: string;
+            /** Weight */
+            weight?: number | null;
+        };
+        /** ConcreteAdviceRow */
+        ConcreteAdviceRow: {
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "low";
+            /** Evidence */
+            evidence: components["schemas"]["ConcreteAdviceEvidence"][];
+            /** Iconname */
+            iconName: string;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            /** Label */
+            label: string;
+            /** Rank */
+            rank: number;
+            /** Text */
+            text: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "good" | "caution" | "avoid" | "neutral";
+        };
         /** ContentAccessState */
         ContentAccessState: {
             /** Accessuntil */
@@ -837,6 +906,8 @@ export interface components {
         DayChartTransitPlanet: {
             /** House */
             house?: number | null;
+            /** Interpretation */
+            interpretation?: string | null;
             /** Longitude */
             longitude: number;
             /** Motion */
@@ -858,6 +929,29 @@ export interface components {
             intensityScore: number;
             /** Supportscore */
             supportScore: number;
+        };
+        /** DaySummaryBlock */
+        DaySummaryBlock: {
+            /** Facts */
+            facts: components["schemas"]["DaySummaryFact"][];
+            /** Statuslabel */
+            statusLabel: string;
+            /** Statusline */
+            statusLine: string;
+        };
+        /** DaySummaryFact */
+        DaySummaryFact: {
+            /** Iconname */
+            iconName: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "top_planet" | "lunar_phase" | "void_moon" | "top_flag";
+            /** Summary */
+            summary?: string | null;
+            /** Title */
+            title: string;
         };
         /** HighlightItem */
         HighlightItem: {
@@ -1381,6 +1475,7 @@ export interface components {
             actions?: components["schemas"]["TodayAction"][] | null;
             /** Activationevidence */
             activationEvidence?: components["schemas"]["ActivationEvidence"][] | null;
+            concreteAdvice: components["schemas"]["ConcreteAdviceBlock"];
             /** Date */
             date: string;
             dayChart?: components["schemas"]["DayChart"] | null;
@@ -1390,6 +1485,7 @@ export interface components {
              * @enum {string}
              */
             dayStatus: "supportive" | "steady" | "tense";
+            daySummary: components["schemas"]["DaySummaryBlock"];
             /** Headline */
             headline: string;
             /**

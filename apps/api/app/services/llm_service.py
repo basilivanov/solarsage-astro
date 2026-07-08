@@ -981,3 +981,150 @@ JSON:"""
         if paragraph_count < 2:
             raise HoraryGenerationError("LLM response must contain at least 2 paragraph blocks")
         return True
+
+    # START_BLOCK: CONCRETE_ADVICE_GENERATION
+    async def generate_concrete_advice(
+        self,
+        contexts: list[dict],
+    ) -> dict[str, str] | None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_concrete_advice
+        # purpose: Generate Russian text recommendations for 12 canonical spheres.
+        # inputs: contexts (list[dict])
+        # returns: dict[str, str] | None — map of product key -> recommendation text
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_concrete_advice
+        context_lines = []
+        for ctx in contexts:
+            key = ctx.get("key")
+            label = ctx.get("label")
+            verdict = ctx.get("verdict")
+            evidence_desc = []
+            for ev in ctx.get("evidence", []):
+                evidence_desc.append(f"{ev.get('kind')}: {ev.get('title')}")
+            evidence_str = "; ".join(evidence_desc) if evidence_desc else "нет"
+            context_lines.append(
+                f"- Сфера: {label} (ключ: {key}), Вердикт: {verdict}, Доказательства: {evidence_str}"
+            )
+
+        prompt = f"""{_ASTRO_BOUNDARY_RULES}
+
+Ты — профессиональный астрологический копирайтер. Напиши краткие практичные рекомендации на русском языке на «ты» для пользователя на основе переданных астрологических данных.
+
+Данные по 12 сферам жизни:
+{"\n".join(context_lines)}
+
+Правила:
+1. Твой ответ должен быть строго валидным JSON-объектом, содержащим ровно те же 12 ключей сфер, которые переданы во входных данных.
+2. Значение для каждого ключа должно быть одной емкой строкой-рекомендацией на русском языке.
+3. Каждое предложение должно содержать от 7 до 18 слов.
+4. Используй обращение на «ты» (например, «действуй», «сократи», «перепроверь»).
+5. Не используй латиницу (английские слова) в рекомендациях.
+6. Не выдумывай планеты, аспекты или дома, которых нет в доказательствах для конкретной сферы.
+7. Не добавляй никаких других символов или текста вокруг JSON.
+
+Пример ответа:
+{{
+  "work": "Новые проекты буксуют — не запускай, дорабатывай текущее",
+  "money": "Сократи траты — день для финансовой дисциплины",
+  "documents": "Луна без курса — не подписывай важное до завтра",
+  "relationships": "Спокойный день для близких — без драмы, без озарений",
+  "sport": "Энергия бьёт ключом — иди на максимум",
+  "communication": "Переговоры пройдут гладко — проси что хочешь",
+  "health": "Тело полно сил — хороший день для очищения и процедур",
+  "decisions": "Не принимай важных решений — отложи до завтра",
+  "travel": "Поездки по необходимости — не планируй новое",
+  "creativity": "Спокойный фон для творчества — без искр, но ровно",
+  "study": "Память цепкая — учи сложное, оно задержится",
+  "shopping": "Только необходимое — крупные покупки разочаруют"
+}}
+
+Твой JSON-ответ:"""
+
+        response_text = await self._generate_text(prompt, max_tokens=1500)
+        if not response_text:
+            return None
+
+        cleaned = response_text.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+
+        try:
+            return json_lib.loads(cleaned)
+        except Exception as e:
+            with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="CONCRETE_ADVICE"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=f"[LLM] Failed to parse concrete advice JSON: {type(e).__name__}",
+                    payload={"response": response_text},
+                )
+            return None
+    # END_BLOCK: CONCRETE_ADVICE_GENERATION
+
+    # START_BLOCK: PLANET_INTERPRETATION_GENERATION
+    async def generate_planet_interpretations(
+        self,
+        planets_context: list[dict],
+    ) -> dict[str, str] | None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_planet_interpretations
+        # purpose: Generate Russian text interpretations for transit planets.
+        # inputs: planets_context (list[dict])
+        # returns: dict[str, str] | None — map of planet name -> interpretation text
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_planet_interpretations
+        context_lines = []
+        for ctx in planets_context:
+            name = ctx.get("name")
+            sign = ctx.get("sign")
+            house = ctx.get("house")
+            aspects = ", ".join(ctx.get("aspects", [])) or "нет"
+            context_lines.append(
+                f"- Планета: {name}, Положение: в знаке {sign}, в {house} доме, Аспекты: {aspects}"
+            )
+
+        prompt = f"""{_ASTRO_BOUNDARY_RULES}
+
+Ты — профессиональный астролог. Напиши краткие емкие интерпретации положения планет на сегодня на русском языке на «ты» для пользователя.
+
+Положения планет и их аспекты:
+{"\n".join(context_lines)}
+
+Правила:
+1. Твой ответ должен быть строго валидным JSON-объектом, содержащим ключи — названия планет на английском (например, "Sun", "Moon", "Mercury", и т.д.), которые переданы во входных данных.
+2. Значение для каждого ключа должно быть короткой интерпретацией на русском языке (1-2 предложения, до 25 слов).
+3. Не используй латиницу (английские слова) в текстах описаний. Все названия знаков, планет и аспектов переводи на русский.
+4. Опиши характер влияния планеты в этом доме/знаке и её аспектов на сегодняшний день.
+5. Не добавляй никаких других символов или текста вокруг JSON.
+
+Пример ответа:
+{{
+  "Sun": "Солнце в первом доме усиливает твою личность и витальность. Квадратура к Марсу предупреждает об излишней импульсивности — направь энергию в спорт.",
+  "Moon": "Луна в четвертом доме обращает твое внимание на дом и семью. Гармоничные аспекты помогают наладить уют и душевный контакт с близкими."
+}}
+
+Твой JSON-ответ:"""
+
+        response_text = await self._generate_text(prompt, max_tokens=2000)
+        if not response_text:
+            return None
+
+        cleaned = response_text.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+
+        try:
+            return json_lib.loads(cleaned)
+        except Exception as e:
+            with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="PLANET_INTERPRETATION"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=f"[LLM] Failed to parse planet interpretations JSON: {type(e).__name__}",
+                    payload={"response": response_text},
+                )
+            return None
+    # END_BLOCK: PLANET_INTERPRETATION_GENERATION

@@ -175,6 +175,8 @@ export function adaptTodayPayload(
       dayChart: api.dayChart ?? null,
       planetInfluences: api.planetInfluences ?? [],
       sphereScores: api.sphereScores ?? [],
+      concreteAdvice: api.concreteAdvice,
+      daySummary: api.daySummary,
     },
     access: buildAccess(api.access),
   };

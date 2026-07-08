@@ -86,7 +86,7 @@ from app.services.natal_context_service import NatalContextService
 from app.core.logging import log_event, log_block
 
 
-TODAY_CONTENT_VERSION = 2
+TODAY_CONTENT_VERSION = 3
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",
@@ -314,14 +314,30 @@ class TodayService:
         planet_influences = self._build_planet_influences(signals)
         sphere_scores = self._build_sphere_scores(scoring_result["sphere_scores"])
 
+        # Call interpretation service to build concrete advice and summary facts
+        from app.services.today_interpretation_service import TodayInterpretationService
+        interpretation_service = TodayInterpretationService()
+        concrete_advice, day_summary, updated_day_chart = await interpretation_service.build(
+            target_date=target_date,
+            day_status=scoring_result["day_status"],
+            scoring_result=scoring_result,
+            signals=signals,
+            semantic_layer=semantic_layer,
+            day_chart=day_chart,
+            planet_influences=planet_influences,
+            sphere_scores=sphere_scores,
+            important_items=important_items,
+            lunar=None,
+        )
+
         payload = TodayPayload(
             meta=TodayMeta(
                 schema_version="today/v1",
-                contract_version=2,
+                contract_version=3,
                 calculation_version=1,
                 normalization_version=1,
                 scoring_version=1,
-                prompt_version=1,
+                prompt_version=2,
                 content_version=TODAY_CONTENT_VERSION,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
@@ -332,6 +348,8 @@ class TodayService:
             headline=headline,
             access=access_state.model_dump(by_alias=True),
             day_status=scoring_result["day_status"],
+            day_summary=day_summary,
+            concrete_advice=concrete_advice,
             day_quality=None,
             top_flags=top_flags,
             notes=notes_text,
@@ -349,7 +367,7 @@ class TodayService:
             yesterday_echo=None,
             important_today=important_items,
             actions=None,
-            day_chart=day_chart,
+            day_chart=updated_day_chart,
             planet_influences=planet_influences,
             sphere_scores=sphere_scores,
         )
@@ -620,14 +638,15 @@ class TodayService:
         access_state: ContentAccessState,
     ) -> TodayPayload:
         """Build preview payload for locked day. W-ACCESS.3."""
+        from app.schemas.today import ConcreteAdviceBlock, ConcreteAdviceCounts, DaySummaryBlock
         return TodayPayload(
             meta=TodayMeta(
                 schema_version="today/v1",
-                contract_version=2,
+                contract_version=3,
                 calculation_version=1,
                 normalization_version=1,
                 scoring_version=1,
-                prompt_version=1,
+                prompt_version=2,
                 content_version=TODAY_CONTENT_VERSION,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,
@@ -638,6 +657,15 @@ class TodayService:
             headline="Этот день доступен по подписке",
             access=access_state.model_dump(by_alias=True),
             day_status="steady",  # Neutral for preview
+            day_summary=DaySummaryBlock(
+                status_label="День заблокирован",
+                status_line="Подпишитесь, чтобы увидеть разбор",
+                facts=[]
+            ),
+            concrete_advice=ConcreteAdviceBlock(
+                rows=[],
+                counts=ConcreteAdviceCounts(good=0, caution=0, avoid=0, neutral=0)
+            ),
             day_quality=None,
             top_flags=[],
             reading={"paragraphs": ["Подпишитесь, чтобы увидеть полный прогноз."]},
