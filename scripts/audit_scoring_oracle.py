@@ -410,7 +410,9 @@ def compare_outputs(
     prod_day_status = None
     prod_scores: dict[str, float] = {}
     prod_top: list[dict[str, Any]] = []
+    has_prod = False
     if production_scoring:
+        has_prod = True
         prod_day_status = production_scoring.get("day_status")
         prod_scores = {
             key: float(value)
@@ -418,6 +420,7 @@ def compare_outputs(
         }
         prod_top = production_scoring.get("top_signals") or []
     if production_payload:
+        has_prod = True
         prod_day_status = prod_day_status or production_payload.get("day_status")
         prod_scores = prod_scores or sphere_scores_from_payload(production_payload)
 
@@ -425,28 +428,42 @@ def compare_outputs(
     all_keys = sorted(set(oracle["sphere_scores"]) | set(prod_scores))
     for key in all_keys:
         oracle_value = float(oracle["sphere_scores"].get(key, 0.0))
-        prod_value = float(prod_scores.get(key, 0.0))
-        delta = round(oracle_value - prod_value, 6)
+        prod_value = float(prod_scores.get(key, 0.0)) if key in prod_scores else None
+
+        passed = True
+        if prod_value is not None:
+            passed = math.isclose(oracle_value, prod_value, abs_tol=TOLERANCE)
+
+        delta = round(oracle_value - prod_value, 6) if prod_value is not None else None
         sphere_comparison[key] = {
             "oracle": oracle_value,
             "production": prod_value,
             "delta": delta,
-            "pass": math.isclose(oracle_value, prod_value, abs_tol=TOLERANCE),
+            "pass": passed,
         }
 
     oracle_top = [signal_identity(signal) for signal in oracle.get("top_signals", [])]
     prod_top_identity = [signal_identity(signal) for signal in prod_top]
+
+    day_status_pass = True
+    if has_prod and prod_day_status is not None:
+        day_status_pass = (oracle["day_status"] == prod_day_status)
+
+    top_signals_pass = True
+    if has_prod and prod_top_identity:
+        top_signals_pass = (oracle_top == prod_top_identity)
+
     return {
         "day_status": {
             "oracle": oracle["day_status"],
             "production": prod_day_status,
-            "pass": oracle["day_status"] == prod_day_status,
+            "pass": day_status_pass,
         },
         "sphere_scores": sphere_comparison,
         "top_signals": {
             "oracle": oracle_top,
             "production": prod_top_identity,
-            "pass": oracle_top == prod_top_identity if prod_top_identity else None,
+            "pass": top_signals_pass,
         },
     }
 # END_BLOCK: COMPARISON
@@ -458,7 +475,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         path.write_text("", encoding="utf-8")
         return
     with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -549,7 +566,18 @@ def main() -> None:
         production_payload_path=args.production_payload,
         out_dir=args.out,
     )
-    print(json.dumps(result["comparison"], ensure_ascii=False, indent=2))
+    comp = result["comparison"]
+    print(json.dumps(comp, ensure_ascii=False, indent=2))
+
+    # Propagate failures
+    has_failed = not comp["day_status"]["pass"]
+    for key, val in comp["sphere_scores"].items():
+        if not val["pass"]:
+            has_failed = True
+
+    if has_failed:
+        import sys
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,10 @@
 import pytest
+import subprocess
+import sys
+import json
+from datetime import date
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 from app.clients.solarsage_client import SolarSageClient
 
 @pytest.mark.asyncio
@@ -11,7 +17,7 @@ async def test_retrograde_flags_2026_07_08():
             target_tz="Europe/Moscow"
         )
         planets = {p["name"]: p for p in res["planets"]}
-        
+
         assert planets["Mercury"]["retrograde"] is True
         assert planets["Neptune"]["retrograde"] is True
         assert planets["Pluto"]["retrograde"] is True
@@ -30,11 +36,115 @@ async def test_moon_phase_illumination_2026_07_08():
         planets = {p["name"]: p for p in res["planets"]}
         sun_lon = planets["Sun"]["longitude"]
         moon_lon = planets["Moon"]["longitude"]
-        
+
         from math import radians, cos
         angle = (moon_lon - sun_lon) % 360
         illumination = (1 - cos(radians(angle))) / 2 * 100
-        
+
         assert abs(illumination - 43.792) <= 0.5
     finally:
         await client.client.aclose()
+
+def test_scoring_oracle_failure_exits_non_zero(tmp_path: Path):
+    signals_file = tmp_path / "signal_trace.csv"
+    signals_file.write_text(
+        "included_in_day_scoring,type,planet,target_planet,aspect_type,orb,strength,house,sign,daily_salience\n"
+        "true,aspect,Transit_Mars,Saturn,square,1.0,0.9,,,\n",
+        encoding="utf-8"
+    )
+
+    prod_file = tmp_path / "production_scoring.json"
+    prod_file.write_text(json.dumps({"day_status": "supportive", "sphere_scores": {}, "top_signals": []}), encoding="utf-8")
+
+    repo_root = Path(__file__).resolve().parents[3]
+    script_path = repo_root / "scripts" / "audit_scoring_oracle.py"
+    canon_dir = repo_root / "grace" / "canon"
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(script_path),
+            "--canon-dir", str(canon_dir),
+            "--signals", str(signals_file),
+            "--production-scoring", str(prod_file),
+            "--out", str(tmp_path / "out"),
+        ],
+        capture_output=True,
+    )
+    assert res.returncode != 0
+
+def test_api_schema_retrograde_validation():
+    from pydantic import ValidationError
+    from app.schemas.natal import SolarSageTransitPlanet, SolarSagePlanetPosition
+
+    # 1. Validation succeeds if retrograde is present
+    p1 = SolarSageTransitPlanet.model_validate({
+        "name": "Mercury",
+        "longitude": 120.0,
+        "sign": "Leo",
+        "retrograde": True
+    })
+    assert p1.retrograde is True
+
+    # 2. Validation succeeds and derives retrograde if speed is present
+    p2 = SolarSageTransitPlanet.model_validate({
+        "name": "Mercury",
+        "longitude": 120.0,
+        "sign": "Leo",
+        "speed": -0.05
+    })
+    assert p2.retrograde is True
+
+    p3 = SolarSageTransitPlanet.model_validate({
+        "name": "Mercury",
+        "longitude": 120.0,
+        "sign": "Leo",
+        "speed": 0.05
+    })
+    assert p3.retrograde is False
+
+    # 3. Validation fails if both are missing
+    with pytest.raises(ValidationError):
+        SolarSageTransitPlanet.model_validate({
+            "name": "Mercury",
+            "longitude": 120.0,
+            "sign": "Leo",
+        })
+
+@pytest.mark.asyncio
+async def test_today_interpretation_service_moon_phase_rounding():
+    from app.schemas.today import DayChart, DayChartTransitPlanet
+    from app.services.today_interpretation_service import TodayInterpretationService
+
+    # 2026-07-08 12:00 Moscow longitudes: Sun=106.2336, Moon=23.3659
+    day_chart = DayChart(
+        source="solarsage",
+        houses=[],
+        transit_planets=[
+            DayChartTransitPlanet(name="Sun", longitude=106.233642, sign="Cancer", speed=0.95, house=1),
+            DayChartTransitPlanet(name="Moon", longitude=23.365864, sign="Aries", speed=13.1, house=10),
+        ],
+        aspects=[],
+    )
+
+    service = TodayInterpretationService()
+
+    with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = {k: "СЕНТИНЕЛ РЕКОМЕНДАЦИЯ" for k in ["work", "money", "documents", "relationships", "sport", "communication", "health", "decisions", "travel", "creativity", "study", "shopping"]}
+
+        _, day_summary, _ = await service.build(
+            target_date=date(2026, 7, 8),
+            day_status="supportive",
+            scoring_result={"day_status": "supportive", "sphere_scores": {}},
+            signals=[],
+            semantic_layer=None,
+            day_chart=day_chart,
+            planet_influences=[],
+            sphere_scores=[],
+            important_items=[],
+        )
+
+    lunar_fact = next((f for f in day_summary.facts if f.kind == "lunar_phase"), None)
+    assert lunar_fact is not None
+    # Verify the correctly rounded value is displayed (44%, not truncated 43%)
+    assert lunar_fact.title == "Убывающая Луна 44%"

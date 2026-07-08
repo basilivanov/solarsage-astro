@@ -10,7 +10,7 @@ def test_concrete_advice_consistency_avoid():
         rank=4,
         verdict="avoid",
         confidence="high",
-        text="Общайся с близкими для улучшения отношений",
+        text="",
         evidence=[
             ConcreteAdviceEvidence(
                 kind="aspect",
@@ -21,11 +21,15 @@ def test_concrete_advice_consistency_avoid():
             )
         ],
     )
-    
-    # Active advice under avoid should fail
+
+    # 1. Active advice under avoid should fail
     assert validate_row_text(row, "Общайся с близкими для улучшения отношений") is False
     assert validate_row_text(row, "Начни новые переговоры сегодня") is False
-    
-    # Negative/cautionary advice under avoid should pass
+
+    # 2. Negative/cautionary advice under avoid should pass
     assert validate_row_text(row, "Избегай активного общения сегодня") is True
     assert validate_row_text(row, "Не начинай новых разговоров") is True
+
+    # 3. Spec allowed mitigation example must pass
+    spec_example = "Если нужно общаться с близкими — выбирай короткий, спокойный формат и не разбирай острые темы."
+    assert validate_row_text(row, spec_example) is True

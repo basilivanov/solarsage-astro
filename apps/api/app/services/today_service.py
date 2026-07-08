@@ -87,7 +87,7 @@ from app.services.natal_context_service import NatalContextService
 from app.core.logging import log_event, log_block
 
 
-TODAY_CONTENT_VERSION = 5
+TODAY_CONTENT_VERSION = 6
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",

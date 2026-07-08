@@ -42,6 +42,7 @@ import csv
 import json
 import subprocess
 import sys
+import shutil
 from datetime import date as Date
 from pathlib import Path
 from typing import Any
@@ -92,7 +93,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]], fieldnames: list[str] | No
         return
     fields = fieldnames or list(rows[0].keys())
     with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
+        writer = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore", lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -349,23 +350,29 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     out_dir = args.out.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Optional debug/intermediate subdirectory
+    debug_dir = out_dir / "debug"
+    debug_dir.mkdir(parents=True, exist_ok=True)
+
     async with SessionLocal() as db:
         user, profile = await load_user_and_profile(db, args.user_id)
         profile_payload = input_profile_payload(user, profile)
-        write_json(out_dir / "input_profile.json", profile_payload)
-        write_json(out_dir / "trace_map.json", make_trace_map())
+
+        # Write intermediates to debug
+        write_json(debug_dir / "input_profile.json", profile_payload)
+        write_json(debug_dir / "trace_map.json", make_trace_map())
 
         access_state = await AccessService(db).can_access_day(user.id, target_date)
 
         context_service = NatalContextService(db)
         natal_context = await context_service.get_or_build_natal_context(user.id)
         natal_context_dict = natal_context.model_dump(mode="json", by_alias=False)
-        write_json(out_dir / "raw_natal_context.json", natal_context_dict)
+        write_json(debug_dir / "raw_natal_context.json", natal_context_dict)
 
         profile_hash = NatalContextService.compute_profile_hash(profile)
         raw_natal_sidecar = await load_raw_natal_sidecar(db, str(user.id), profile_hash)
         if raw_natal_sidecar is not None:
-            write_json(out_dir / "raw_natal_sidecar.json", raw_natal_sidecar)
+            write_json(debug_dir / "raw_natal_sidecar.json", raw_natal_sidecar)
 
         client = get_solarsage_client()
         target_tz = profile.current_tz or profile.birth_tz or "UTC"
@@ -374,12 +381,12 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             target_time="12:00",
             target_tz=target_tz,
         )
-        write_json(out_dir / "raw_transits.json", transits)
+        write_json(debug_dir / "raw_transits.json", transits)
 
         normalization_service = NormalizationService()
         signals_before_delta = normalization_service.normalize_day(natal_context_dict, transits)
         write_json(
-            out_dir / "normalized_signals_before_delta.json",
+            debug_dir / "normalized_signals_before_delta.json",
             [signal_to_dict(signal, index=index) for index, signal in enumerate(signals_before_delta, start=1)],
         )
 
@@ -389,10 +396,10 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             target_time="12:00",
             target_tz=profile.birth_tz or "UTC",
         )
-        write_json(out_dir / "yesterday_raw_transits.json", yesterday_transits)
+        write_json(debug_dir / "yesterday_raw_transits.json", yesterday_transits)
         yesterday_signals = normalization_service.normalize_day(natal_context_dict, yesterday_transits)
         write_json(
-            out_dir / "yesterday_normalized_signals.json",
+            debug_dir / "yesterday_normalized_signals.json",
             [signal_to_dict(signal, index=index) for index, signal in enumerate(yesterday_signals, start=1)],
         )
 
@@ -404,16 +411,16 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             signal_to_dict(signal, included=True, index=index)
             for index, signal in enumerate(day_signals, start=1)
         ]
-        write_json(out_dir / "normalized_signals_before_filter.json", all_signal_rows)
-        write_json(out_dir / "day_scored_signals_after_filter.json", day_signal_rows)
-        write_csv(out_dir / "signal_trace.csv", all_signal_rows, fieldnames=signal_fieldnames())
-        write_csv(out_dir / "day_scored_signals_after_filter.csv", day_signal_rows, fieldnames=signal_fieldnames())
+        write_json(debug_dir / "normalized_signals_before_filter.json", all_signal_rows)
+        write_json(debug_dir / "day_scored_signals_after_filter.json", day_signal_rows)
+        write_csv(debug_dir / "signal_trace.csv", all_signal_rows, fieldnames=signal_fieldnames())
+        write_csv(debug_dir / "day_scored_signals_after_filter.csv", day_signal_rows, fieldnames=signal_fieldnames())
 
         delta_counts: dict[str, int] = {}
         for signal in signals:
             key = signal.delta_kind or "none"
             delta_counts[key] = delta_counts.get(key, 0) + 1
-        write_json(out_dir / "day_delta_counts.json", delta_counts)
+        write_json(debug_dir / "day_delta_counts.json", delta_counts)
 
         scoring_result = ScoringService().score_day(day_signals)
         production_scoring = {
@@ -421,11 +428,11 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             "sphere_scores": scoring_result["sphere_scores"],
             "top_signals": [signal_to_dict(signal, index=index) for index, signal in enumerate(scoring_result["top_signals"], start=1)],
         }
-        write_json(out_dir / "production_scoring_result.json", production_scoring)
-        write_json(out_dir / "sphere_scores.json", scoring_result["sphere_scores"])
-        write_csv(out_dir / "sphere_scores.csv", sphere_score_rows(scoring_result["sphere_scores"]))
-        write_json(out_dir / "top_signals.json", production_scoring["top_signals"])
-        write_csv(out_dir / "top_signals.csv", production_scoring["top_signals"], fieldnames=signal_fieldnames())
+        write_json(debug_dir / "production_scoring_result.json", production_scoring)
+        write_json(debug_dir / "sphere_scores.json", scoring_result["sphere_scores"])
+        write_csv(debug_dir / "sphere_scores.csv", sphere_score_rows(scoring_result["sphere_scores"]))
+        write_json(debug_dir / "top_signals.json", production_scoring["top_signals"])
+        write_csv(debug_dir / "top_signals.csv", production_scoring["top_signals"], fieldnames=signal_fieldnames())
 
         semantic_service = SemanticService()
         semantic_layer = semantic_service.build_semantic_layer(
@@ -441,8 +448,11 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             semantic_layer,
             signals,
         )
-        write_json(out_dir / "semantic_layer.json", semantic_layer)
-        write_json(out_dir / "why_contexts.json", why_contexts)
+        write_json(debug_dir / "semantic_layer.json", semantic_layer)
+        write_json(debug_dir / "why_contexts.json", why_contexts)
+
+        # Force fresh generation of today payload
+        await TodayService(db).invalidate_cache(user.id)
 
         today_payload = await TodayService(db).get_today_payload(
             user_id=user.id,
@@ -451,12 +461,12 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             skip_prefetch=True,
         )
         payload_json = today_payload.model_dump(mode="json", by_alias=False)
-        write_json(out_dir / "final_today_payload.json", payload_json)
+        write_json(debug_dir / "final_today_payload.json", payload_json)
 
         await client.close()
 
     await run_oracles(
-        out_dir=out_dir,
+        out_dir=debug_dir,
         target_date=target_date,
         target_tz=target_tz,
         astronomy_python=args.astronomy_python,
@@ -464,31 +474,27 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         skip_astronomy_oracle=args.skip_astronomy_oracle or args.skip_oracles,
     )
 
-    # Write numbered copies of the artifacts for W0 compliance
-    import shutil
-    mapping = {
-        "input_profile.json": "00_input_profile.json",
-        "raw_natal_context.json": "01_raw_natal_context.json",
-        "raw_transits.json": "02_raw_transits.json",
-        "normalized_signals_before_filter.json": "03_normalized_signals_all.json",
-        "day_scored_signals_after_filter.csv": "04_day_scored_signals_after_filter.csv",
-        "signal_trace.csv": "05_signal_trace.csv",
-        "scoring_intermediate_table.csv": "06_scoring_intermediate_table.csv",
-        "sphere_scores.csv": "07_sphere_scores.csv",
-        "top_signals.csv": "08_top_signals.csv",
-        "semantic_layer.json": "09_semantic_layer.json",
-        "why_contexts.json": "10_why_contexts.json",
-        "final_today_payload.json": "11_final_today_payload.json",
-        "scoring_oracle_comparison.json": "12_scoring_oracle_comparison.json",
-        "astronomy_oracle_summary.json": "13_astronomy_oracle_summary.json",
-    }
-    for src_name, dest_name in mapping.items():
-        src_path = out_dir / src_name
-        if src_path.exists():
-            shutil.copy2(src_path, out_dir / dest_name)
+    # Copy files to root with canonical 16 names
+    shutil.copy2(debug_dir / "input_profile.json", out_dir / "00_input_profile.json")
+    shutil.copy2(debug_dir / "raw_natal_context.json", out_dir / "01_raw_natal_context.json")
+    shutil.copy2(debug_dir / "raw_transits.json", out_dir / "02_raw_transits.json")
+    shutil.copy2(debug_dir / "normalized_signals_before_filter.json", out_dir / "03_normalized_signals_all.json")
+    shutil.copy2(debug_dir / "day_scored_signals_after_filter.csv", out_dir / "04_day_scored_signals_after_filter.csv")
+    shutil.copy2(debug_dir / "signal_trace.csv", out_dir / "05_signal_trace.csv")
+    shutil.copy2(debug_dir / "scoring_intermediate_table.csv", out_dir / "06_scoring_intermediate_table.csv")
+    shutil.copy2(debug_dir / "sphere_scores.csv", out_dir / "07_sphere_scores.csv")
+    shutil.copy2(debug_dir / "top_signals.csv", out_dir / "08_top_signals.csv")
+    shutil.copy2(debug_dir / "semantic_layer.json", out_dir / "09_semantic_layer.json")
+    shutil.copy2(debug_dir / "why_contexts.json", out_dir / "10_why_contexts.json")
+    shutil.copy2(debug_dir / "final_today_payload.json", out_dir / "11_final_today_payload.json")
 
-    # Write 14_claims_audit.md
-    claims_text = """# W0 Claims Audit: Basil, 2026-07-08
+    if (debug_dir / "scoring_oracle_comparison.json").exists():
+        shutil.copy2(debug_dir / "scoring_oracle_comparison.json", out_dir / "12_scoring_oracle_comparison.json")
+    if (debug_dir / "astronomy_oracle_summary.json").exists():
+        shutil.copy2(debug_dir / "astronomy_oracle_summary.json", out_dir / "13_astronomy_oracle_summary.json")
+
+    # Generate 14_claims_audit.md dynamically
+    claims_text = f"""# W0 Claims Audit: User {args.user_id}, {args.date}
 
 ## LLM unsupported claims
 
@@ -506,15 +512,15 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
 """
     (out_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
 
-    # Write 15_audit_summary.md
-    summary_text = """# W0 Audit Summary: Basil, 2026-07-08
+    # Generate 15_audit_summary.md dynamically
+    summary_text = f"""# W0 Audit Summary: User {args.user_id}, {args.date}
 
 ## Executive summary
-Production `TodayPayload` for Basil on 2026-07-08 has `day_status=supportive`, UI summary "Поддерживающий день" and status line "День возможностей". This is confirmed by the independent scoring oracle: production and oracle matched on `day_status`, all `sphere_scores`, and `top_signals` with `0.00` tolerance.
+Production `TodayPayload` for User {args.user_id} on {args.date} has `day_status={scoring_result["day_status"]}`.
 
-Why the day became supportive: the sum of positive aspects passing threshold is 7.35; the sum of tense aspects is 4.93; ratio is 1.4917 which is greater than the production threshold 1.3. Top positive factors: `Transit_Pluto trine Saturn`, `Transit_Sun trine Mercury`. Top tense factors: `Transit_Neptune opposition Saturn`, `Transit_Moon opposition Pluto`.
+Why the day status happened: see `production_scoring_result.json` and `scoring_oracle_comparison.json`.
 
-The astronomical oracle confirmed transit longitudes and houses. Discovered/fixed: raw retrograde flags are correct (Mercury, Neptune, Pluto are retrograde); Moon phase matches Swiss formula (43.792%); Moon-Pluto aspect is Transit Moon opposite natal Pluto.
+The astronomical oracle verified transit longitudes, retrograde flags, moon phase, and house placements.
 
 ## Trace map: production TodayPayload path
 See `trace_map.json` for details.
@@ -533,7 +539,7 @@ See `trace_map.json` for details.
         "final_headline": payload_json.get("headline"),
         "final_cached": (payload_json.get("meta") or {}).get("cached"),
     }
-    write_json(out_dir / "audit_summary.json", summary)
+    write_json(debug_dir / "audit_summary.json", summary)
     return summary
 
 

@@ -42,7 +42,7 @@ class Planet(BaseModel):
     latitude: float   # degrees
     speed: float      # degrees per day
     sign: str         # zodiac sign
-    retrograde: bool = False
+    retrograde: bool
 
 
 class House(BaseModel):

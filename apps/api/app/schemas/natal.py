@@ -414,9 +414,17 @@ class SolarSagePlanetPosition(CamelModel):
     longitude: float
     sign: str
     house: int | None = None
-    retrograde: bool = False
+    retrograde: bool | None = None
     speed: float | None = None
     latitude: float | None = None
+
+    @model_validator(mode="after")
+    def _validate_retrograde(self) -> "SolarSagePlanetPosition":
+        if self.retrograde is None:
+            if self.speed is None:
+                raise ValueError("Both retrograde and speed are missing")
+            self.retrograde = bool(self.speed < 0)
+        return self
 
 
 class SolarSageHouseCusp(CamelModel):
@@ -462,9 +470,17 @@ class SolarSageTransitPlanet(CamelModel):
     name: str
     longitude: float
     sign: str
-    retrograde: bool = False
+    retrograde: bool | None = None
     speed: float | None = None
     latitude: float | None = None
+
+    @model_validator(mode="after")
+    def _validate_retrograde(self) -> "SolarSageTransitPlanet":
+        if self.retrograde is None:
+            if self.speed is None:
+                raise ValueError("Both retrograde and speed are missing")
+            self.retrograde = bool(self.speed < 0)
+        return self
 
 
 class SolarSageTransitsResponse(CamelModel):

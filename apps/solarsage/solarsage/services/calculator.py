@@ -95,6 +95,7 @@ def calculate_planets(jd: float) -> list[dict]:
             "latitude": lat,
             "speed": speed_lon,
             "sign": get_sign(lon),
+            "retrograde": bool(speed_lon < 0),
         })
 
     return planets

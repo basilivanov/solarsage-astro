@@ -184,11 +184,11 @@ def signal_rank(signal: AstroSignal) -> tuple[float, float]:
 def aspect_evidence(signal: AstroSignal) -> ConcreteAdviceEvidence:
     planet = strip_prefix(signal.planet)
     target = strip_prefix(signal.target_planet) if signal.target_planet else ""
-    
+
     p_frame = "Transit" if signal.planet.startswith("Transit_") else "natal"
     t_frame = "Transit" if (signal.target_planet and signal.target_planet.startswith("Transit_")) else "natal"
     title = f"{p_frame} {planet} {signal.aspect_type} {t_frame} {target}"
-    
+
     return ConcreteAdviceEvidence(
         kind="aspect",
         title=title,
@@ -293,20 +293,21 @@ def validate_row_text(row: ConcreteAdviceRow, text: str) -> bool:
 
     # 4. Advice consistency guard (prevents active advice contradicting avoid)
     if row.verdict == "avoid":
-        prohibited = [
-            "начни", "начинать", "начинай",
-            "покупай", "покупать", "покупка",
-            "инвестировать", "инвестируй", "инвестиции",
-            "договариваться", "договаривайся", "договор",
-            "общаться", "общайся",
-            "активно", "активность",
-            "инициировать", "инициируй",
-        ]
-        for stem in prohibited:
-            if stem in t:
-                idx = t.find(stem)
-                prefix = t[max(0, idx-15):idx]
-                if not any(neg in prefix for neg in ["не ", "избега", "отложи", "огранич", "не стоит"]):
+        mitigation_markers = ["если нужно", "только", "короткий формат", "короткий, спокойный", "избегай", "не ", "не стоит", "отложи", "огранич"]
+        if any(marker in t for marker in mitigation_markers):
+            pass
+        else:
+            prohibited = [
+                "начни", "начинать", "начинай",
+                "покупай", "покупать", "покупка",
+                "инвестировать", "инвестируй", "инвестиции",
+                "договариваться", "договаривайся", "договор",
+                "общаться", "общайся", "общение",
+                "активно", "активность",
+                "инициировать", "инициируй",
+            ]
+            for stem in prohibited:
+                if stem in t:
                     return False
 
     return True
@@ -539,10 +540,10 @@ class TodayInterpretationService:
                     lunar_phase_title = "Полнолуние"
                     lunar_phase_summary = "полнолуние"
                 elif d >= 22.5 and d < 157.5:
-                    lunar_phase_title = f"Растущая Луна {int(illumination)}%"
+                    lunar_phase_title = f"Растущая Луна {int(round(illumination))}%"
                     lunar_phase_summary = "растущая фаза"
                 else:
-                    lunar_phase_title = f"Убывающая Луна {int(illumination)}%"
+                    lunar_phase_title = f"Убывающая Луна {int(round(illumination))}%"
                     lunar_phase_summary = "убывающая фаза"
 
         if lunar_phase_title:

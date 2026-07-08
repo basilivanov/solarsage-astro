@@ -85,7 +85,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         path.write_text("", encoding="utf-8")
         return
     with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -306,7 +306,7 @@ def run_astronomy_oracle(
             "oracle_percent": round(moon_phase, 4),
             "production_percent": prod_phase,
             "delta_percent": round(moon_phase - prod_phase, 4) if prod_phase is not None else None,
-            "pass": abs(moon_phase - prod_phase) <= 1.0 if prod_phase is not None else None,
+            "pass": abs(moon_phase - prod_phase) <= 0.5 if prod_phase is not None else None,
         },
         "moon_opposite_pluto": {
             "transit_moon_to_transit_pluto_orb": round(transit_moon_pluto_orb, 4),
@@ -358,6 +358,19 @@ def main() -> None:
         ephemeris_path=args.ephemeris_path,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
+
+    # Propagate failures
+    has_failed = (
+        not summary["longitude_pass"]
+        or not summary["retrograde_flag_pass"]
+        or not summary["house_pass"]
+    )
+    if summary["moon_phase"]["pass"] is False:
+        has_failed = True
+
+    if has_failed:
+        import sys
+        sys.exit(1)
 
 
 if __name__ == "__main__":

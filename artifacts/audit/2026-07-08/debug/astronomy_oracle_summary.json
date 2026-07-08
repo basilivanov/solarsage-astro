@@ -10,9 +10,9 @@
   "house_pass": true,
   "moon_phase": {
     "oracle_percent": 43.792,
-    "production_percent": 46,
-    "delta_percent": -2.208,
-    "pass": false
+    "production_percent": 44,
+    "delta_percent": -0.208,
+    "pass": true
   },
   "moon_opposite_pluto": {
     "transit_moon_to_transit_pluto_orb": 101.3532,
