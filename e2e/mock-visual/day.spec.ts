@@ -224,11 +224,33 @@ test.describe("Mock Visual — /day/[date]", () => {
     const expandBtn = concreteAdvice.locator('button[aria-controls="concrete-day-advice-rows"]');
     await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
 
+    // Collapsed state shows exactly 6 rows
+    const rows = concreteAdvice.locator("[data-testid=\"concrete-day-advice-row\"]");
+    await expect(rows).toHaveCount(6);
+
     // Expand advice and assert 12 rows
     await expandBtn.click();
     await expect(expandBtn).toHaveAttribute("aria-expanded", "true");
-    const rows = concreteAdvice.locator("[data-testid=\"concrete-day-advice-row\"]");
     await expect(rows).toHaveCount(12);
+
+    // Collapse advice back to 6 rows
+    await expandBtn.click();
+    await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
+    await expect(rows).toHaveCount(6);
+
+    // Expand again for detail checks
+    await expandBtn.click();
+    await expect(expandBtn).toHaveAttribute("aria-expanded", "true");
+    await expect(rows).toHaveCount(12);
+
+    // Verify 12 emojis and labels in canonical order
+    const expectedEmojis = ["💼", "💰", "📝", "💖", "🏃", "💬", "🌿", "🎯", "✈️", "🎨", "📚", "🛍️"];
+    const expectedLabels = ["Работа", "Деньги", "Документы", "Отношения", "Спорт", "Общение", "Здоровье", "Решения", "Поездки", "Творчество", "Учёба", "Покупки"];
+    for (let i = 0; i < 12; i++) {
+      const row = rows.nth(i);
+      await expect(row).toContainText(expectedEmojis[i]);
+      await expect(row).toContainText(expectedLabels[i]);
+    }
 
     // Assert page does not contain raw/debug leaks
     const bodyText = await page.innerText("body");
@@ -252,13 +274,17 @@ test.describe("Mock Visual — /day/[date]", () => {
     // Click the first day-chart-planet, assert popover appears and contains Russian sign/house format
     const firstPlanet = page.getByTestId("day-chart-planet").first();
     const ariaLabel = await firstPlanet.getAttribute("aria-label");
-    expect(ariaLabel).toContain("Солнце в Раке, 1 дом");
-    expect(ariaLabel).not.toContain("Cancer");
+    expect(ariaLabel).toContain("Марс в Овне, 10 дом");
+    expect(ariaLabel).not.toContain("Aries");
     
     await firstPlanet.click();
+    
+    // Assert no visible focus outline is left on the planet target after click/tap
+    const outline = await firstPlanet.evaluate((el) => window.getComputedStyle(el).outlineStyle);
+    expect(outline === "none" || outline === "").toBe(true);
     const popover = page.getByTestId("day-chart-planet-popover");
     await expect(popover).toBeVisible();
-    await expect(popover).toContainText("Рак · 1 дом");
+    await expect(popover).toContainText("Овен · 10 дом");
 
     // Assert history widget shows БЛИЖАЙШИЕ ДНИ
     const historyWidget = page.getByTestId("astro-history-widget");

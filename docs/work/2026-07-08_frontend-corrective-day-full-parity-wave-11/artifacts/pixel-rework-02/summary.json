@@ -1,0 +1,60 @@
+{
+  "date": "2026-07-05",
+  "oracle": {
+    "sphereIcons": [
+      "💼",
+      "💰",
+      "📝",
+      "💖",
+      "🏃",
+      "💬",
+      "🌿",
+      "🎯",
+      "✈️",
+      "🎨",
+      "📚"
+    ],
+    "collapsedRowCount": 6,
+    "expandedRowCount": 12,
+    "headerCounts": "4 благоприятно",
+    "toggleTextBefore": "все 12 сфер",
+    "toggleTextAfter": "свернуть",
+    "legendLabels": [
+      "соединение",
+      "оппозиция",
+      "тригон",
+      "квадратура",
+      "секстиль"
+    ],
+    "popoverTitle": "Сатурн"
+  },
+  "candidate": {
+    "sphereIcons": [
+      "💼",
+      "💰",
+      "📝",
+      "💖",
+      "🏃",
+      "💬",
+      "🌿",
+      "🎯",
+      "✈️",
+      "🎨",
+      "📚"
+    ],
+    "collapsedRowCount": 6,
+    "expandedRowCount": 12,
+    "headerCounts": "5 ИЮЛ · ВОСКРЕСЕНЬЕ",
+    "toggleTextBefore": "все 12 сфер",
+    "toggleTextAfter": "свернуть",
+    "legendLabels": [
+      "соединение",
+      "оппозиция",
+      "тригон",
+      "квадратура",
+      "секстиль"
+    ],
+    "popoverTitle": "Нептун",
+    "hasFocusOutline": false
+  }
+}

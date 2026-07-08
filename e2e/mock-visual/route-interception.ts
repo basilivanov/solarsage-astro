@@ -152,6 +152,15 @@ export async function installMockApiRoutes(
       return route.fulfill(serializeFixture(fixture));
     }
 
+    // Gracefully ignore telemetry/log posts
+    if (pathname === "/api/_log") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true }),
+      });
+    }
+
     if (!strict) {
       return route.fallback();
     }
