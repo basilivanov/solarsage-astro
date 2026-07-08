@@ -122,14 +122,14 @@ def test_relationships_bullet_avoided_when_score_is_low():
     """Supportive day with relationships_partnership below avoid threshold must not
     emit the relationship outreach practical bullet."""
     service = SemanticService()
-    
+
     semantic_layer = SemanticLayer(
         day_status="supportive",
         day_theme="День возможностей",
         sphere_themes=[],
         top_keywords=[],
     )
-    
+
     # relationships_partnership=1.0 is below the 2.0 avoid threshold
     contexts = service.build_why_contexts(
         day_status="supportive",
@@ -139,7 +139,7 @@ def test_relationships_bullet_avoided_when_score_is_low():
         transits={"planets": []},
         semantic_layer=semantic_layer,
     )
-    
+
     practical_context = contexts[8]["context"]
     # Must NOT contain the relationship outreach bullet
     assert "Общайся с близкими" not in practical_context
