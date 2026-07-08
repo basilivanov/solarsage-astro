@@ -34,7 +34,7 @@ export function DaySummaryCard({ date, dayStatus, daySummary }: Props) {
   const dateStr = `${date.getDate()} ${monthStr} · ${weekdayStr}`
 
   const statusLabel = daySummary?.statusLabel || "Ровный день"
-  const statusLine = daySummary?.statusLine || "без взлётов — занимайся рутиной"
+  const statusLine = daySummary?.statusLine || "Сводка временно недоступна."
   const facts = daySummary?.facts || []
 
   // Helper to map backend icons/planet names to symbols

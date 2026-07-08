@@ -46,6 +46,21 @@ const VERDICT_META: Record<Verdict, { label: string; color: string; bg: string }
   neutral: { label: "ровно", color: "oklch(0.55 0.06 295)", bg: "oklch(0.55 0.06 295 / 0.05)" },
 }
 
+const ICON_MAP: Record<string, string> = {
+  briefcase: "💼",
+  building: "💰",
+  "list-checks": "📝",
+  sparkle: "💖",
+  leaf: "🏃",
+  telescope: "💬",
+  compass: "🌿",
+  target: "🎯",
+  hourglass: "✈️",
+  grid: "🎨",
+  layers: "📚",
+  zap: "🛍️",
+}
+
 export function ConcreteDayAdvice({ concreteAdvice }: Props) {
   const [expanded, setExpanded] = useState(false)
 
@@ -112,7 +127,7 @@ export function ConcreteDayAdvice({ concreteAdvice }: Props) {
                 data-testid="concrete-day-advice-row"
                 data-status={row.verdict}
               >
-                <span className="mt-0.5 text-[14px] leading-none flex-none">{row.iconName}</span>
+                <span className="mt-0.5 text-[14px] leading-none flex-none">{ICON_MAP[row.iconName] || row.iconName}</span>
                 <span className="w-[68px] flex-none text-[11px] font-medium text-muted-foreground">
                   {row.label}
                 </span>

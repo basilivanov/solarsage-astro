@@ -67,9 +67,6 @@ async def test_llm_concrete_advice_validation_and_fallback():
         "shopping": "Покупки принесут радость и прослужат долго."
     }
 
-    # Case 2: LLM returns text with Latin characters (should be rejected)
-    invalid_mock_texts = {k: f"{v} English" for k, v in valid_mock_texts.items()}
-
     # Test valid case under patch
     with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm:
         mock_llm.return_value = valid_mock_texts
@@ -89,21 +86,48 @@ async def test_llm_concrete_advice_validation_and_fallback():
         for row in concrete_advice.rows:
             assert row.text == valid_mock_texts[row.key]
 
-    # Test invalid case: should trigger fallback/ValueError since keys are invalid
-    with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm:
-        mock_llm.return_value = invalid_mock_texts
+    # Helper to assert validation failure (raises ValueError)
+    async def assert_fails(mock_output):
+        with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = mock_output
+            with patch("app.core.config.settings.openrouter_api_key", "fake_key"):
+                with pytest.raises(ValueError):
+                    await service.build(
+                        target_date=date(2026, 7, 5),
+                        day_status="supportive",
+                        scoring_result={"day_status": "supportive", "sphere_scores": {}},
+                        signals=[],
+                        semantic_layer=None,
+                        day_chart=None,
+                        planet_influences=[],
+                        sphere_scores=[],
+                        important_items=[],
+                    )
 
-        # When has_llm_keys is True (simulated), it should raise ValueError
-        with patch("app.core.config.settings.openrouter_api_key", "fake_key"):
-            with pytest.raises(ValueError):
-                await service.build(
-                    target_date=date(2026, 7, 5),
-                    day_status="supportive",
-                    scoring_result={"day_status": "supportive", "sphere_scores": {}},
-                    signals=[],
-                    semantic_layer=None,
-                    day_chart=None,
-                    planet_influences=[],
-                    sphere_scores=[],
-                    important_items=[],
-                )
+    # 1. Latin text fails (invalidate 4 keys)
+    invalid_latin = valid_mock_texts.copy()
+    for k in ["work", "money", "documents", "relationships"]:
+        invalid_latin[k] = "Хороший день для work задач."
+    await assert_fails(invalid_latin)
+
+    # 2. Transit_ / Natal_ fails (invalidate 4 keys)
+    invalid_prefix = valid_mock_texts.copy()
+    for k in ["work", "money", "documents", "relationships"]:
+        invalid_prefix[k] = "Сократи траты — Transit_Moon в Раке."
+    await assert_fails(invalid_prefix)
+
+    # 3. Missing key fails (deleting even 1 key fails expected_keys == actual_keys)
+    invalid_missing = valid_mock_texts.copy()
+    del invalid_missing["work"]
+    await assert_fails(invalid_missing)
+
+    # 4. Extra key fails
+    invalid_extra = valid_mock_texts.copy()
+    invalid_extra["extra_key"] = "Лишний текст."
+    await assert_fails(invalid_extra)
+
+    # 5. Hallucinated planet fails (invalidate 4 keys)
+    invalid_hallucination = valid_mock_texts.copy()
+    for k in ["work", "money", "documents", "relationships"]:
+        invalid_hallucination[k] = "Работа сегодня подсвечена Ураном."
+    await assert_fails(invalid_hallucination)

@@ -41,6 +41,46 @@ BOT_TOKEN = "123456:test-bot-token"
 
 
 @pytest.fixture(autouse=True)
+def _mock_llm_interpretations(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Automatically mock LLM interpretations for all tests to prevent real API calls."""
+    from app.services.llm_service import LLMService
+    from unittest.mock import AsyncMock
+
+    mock_advice = AsyncMock()
+    mock_advice.return_value = {
+        "work": "Хороший день для новых рабочих задач.",
+        "money": "Сократи траты — день для финансовой дисциплины.",
+        "documents": "Подходящее время для оформления договоров.",
+        "relationships": "Удачный день для сближения и свиданий.",
+        "sport": "Энергия на пике, можно потренироваться.",
+        "communication": "Переговоры пройдут гладко и продуктивно.",
+        "health": "Тело полно сил, позаботься о себе.",
+        "decisions": "Решения даются легко, интуиция работает.",
+        "travel": "Дорога будет легкой, планируй поездку.",
+        "creativity": "Вдохновение бьет ключом, садись за работу.",
+        "study": "Память цепкая, учи сложную информацию.",
+        "shopping": "Покупки принесут радость и прослужат долго."
+    }
+
+    mock_planets = AsyncMock()
+    mock_planets.return_value = {
+        "Sun": "Солнце усиливает личность.",
+        "Moon": "Луна обращает внимание на дом.",
+        "Mercury": "Меркурий активирует мысли.",
+        "Venus": "Венера приносит уединение.",
+        "Mars": "Марс дает энергию для карьеры.",
+        "Jupiter": "Юпитер приносит удачу с друзьями.",
+        "Saturn": "Сатурн напоминает об ответственности.",
+        "Uranus": "Уран приносит перемены.",
+        "Neptune": "Нептун дарит мечты.",
+        "Pluto": "Плутон трансформирует глубину."
+    }
+
+    monkeypatch.setattr(LLMService, "generate_concrete_advice", mock_advice)
+    monkeypatch.setattr(LLMService, "generate_planet_interpretations", mock_planets)
+
+
+@pytest.fixture(autouse=True)
 def _force_test_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     """Real bot token + insecure cookies so HMAC is enforced and httpx
     keeps the cookie across requests under http://testserver."""

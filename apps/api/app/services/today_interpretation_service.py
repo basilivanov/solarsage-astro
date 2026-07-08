@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 import asyncio
+import re
 from datetime import date as Date
 
 from app.schemas.normalization import AstroSignal
@@ -35,6 +36,7 @@ from app.schemas.today import (
     TodayImportantEvent,
 )
 from app.services.llm_service import LLMService
+from app.services.astro_utils import strip_prefix
 
 BACKEND_TO_PRODUCT_KEY_MAP = {
     "work_status_achievement": "work",
@@ -115,81 +117,6 @@ ASPECT_LABELS_RU = {
     "trine": "трин", "square": "квадратура", "sextile": "секстиль",
 }
 
-SPHERE_ADVICE_TEXTS = {
-    "work": {
-        "good": "Новые задачи идут легко, не упускай момент",
-        "caution": "Дела идут со скрипом — не торопись, дойдёт к вечеру",
-        "avoid": "Новые проекты буксуют — не запускай, дорабатывай текущее",
-        "neutral": "Ровный рабочий день — без сюрпризов, без прорывов",
-    },
-    "money": {
-        "good": "Хороший день для вложений в себя и дом",
-        "caution": "Сократи траты — день для финансовой дисциплины",
-        "avoid": "Не делай крупных покупок — перепроверь цену завтра",
-        "neutral": "Стабильно, без неожиданностей — можно планировать бюджет",
-    },
-    "documents": {
-        "good": "Хорошее время для договоров — читай спокойно, подписывай",
-        "caution": "Не подписывай контракты — перечитай через 3 дня",
-        "avoid": "Луна без курса — не подписывай важное до завтра",
-        "neutral": "Обычный день для бумаг — ничего не мешает, но и не помогает",
-    },
-    "relationships": {
-        "good": "Свидания пройдут отлично — будь открыт и смел",
-        "caution": "Легко поссориться на пустом — держи паузу перед ответом",
-        "avoid": "Не начинай новый роман — старые чувства могут вернуться",
-        "neutral": "Спокойный день для близких — без драмы, без озарений",
-    },
-    "sport": {
-        "good": "Энергия бьёт ключом — иди на максимум",
-        "caution": "Дисциплинированная тренировка — без рекордов, на выносливость",
-        "avoid": "Снизь нагрузку — риск травм выше, работай на технику",
-        "neutral": "Обычная нагрузка — не перегружай, но и не пропускай",
-    },
-    "communication": {
-        "good": "Переговоры пройдут гладко — проси что хочешь",
-        "caution": "Разговоры путаются — подтверждай всё письменно",
-        "avoid": "Не назначай важные встречи — решения будут нетвёрдыми",
-        "neutral": "Обычные разговоры — без конфликтов, но и без прорывов",
-    },
-    "health": {
-        "good": "Тело полно сил — хороший день для очищения и процедур",
-        "caution": "Береги суставы и кости — не переохлаждайся",
-        "avoid": "Чувствительность повышена — береги нервы и сон",
-        "neutral": "Стабильно — поддерживай режим, ничего особого",
-    },
-    "decisions": {
-        "good": "Решения даются легко — интуиция работает чётко",
-        "caution": "Запиши решение — перечитай через 2 дня, потом действуй",
-        "avoid": "Не принимай важных решений — отложи до завтра",
-        "neutral": "Обычная ясность — решения принимаются ровно",
-    },
-    "travel": {
-        "good": "Дорога будет лёгкой — хороший день для отправления",
-        "caution": "Поездки по необходимости — не планируй новое",
-        "avoid": "Задержки вероятны — закладывай время на форс-мажор",
-        "neutral": "Обычный день в дороге — без приключений",
-    },
-    "creativity": {
-        "good": "Вдохновение бьёт ключом — садись за работу",
-        "caution": "Спокойный фон для творчества — без искр, но ровно",
-        "avoid": "Вдохновение спит — не форсируй, сделай заготовки",
-        "neutral": "Спокойный фон для творчества — без искр, но ровно",
-    },
-    "study": {
-        "good": "Память цепкая — учи сложное, оно задержится",
-        "caution": "Повторяй старое — новое плохо усваивается",
-        "avoid": "Концентрация снижена — сделай перерыв",
-        "neutral": "Обычный темп — учи понемногу, без рывков",
-    },
-    "shopping": {
-        "good": "Вкус работает — выберешь правильное, не пожалеешь",
-        "caution": "Только необходимое — крупные покупки разочаруют",
-        "avoid": "Не покупай электронику и технику — могут быть дефекты",
-        "neutral": "Обычный день — покупай что нужно, без импульсов",
-    },
-}
-
 def verdict_for_score(score: float) -> ConcreteAdviceVerdict:
     if score >= 6.0:
         return "good"
@@ -198,6 +125,77 @@ def verdict_for_score(score: float) -> ConcreteAdviceVerdict:
     if score <= 3.5:
         return "caution"
     return "neutral"
+
+def validate_row_text(row: ConcreteAdviceRow, text: str) -> bool:
+    t = text.lower()
+
+    # 1. No Latin words
+    if re.search(r'[A-Za-z]', text):
+        return False
+
+    # 2. No Transit_ or Natal_
+    if "transit_" in t or "natal_" in t:
+        return False
+
+    # 3. Build allowed sets
+    allowed_planets = set()
+    allowed_aspects = set()
+    allowed_houses = set()
+
+    # Add default planets associated with this sphere
+    for planet_name, spheres in PLANET_TO_SPHERES_MAP.items():
+        if row.key in spheres:
+            allowed_planets.add(PLANET_LABELS_RU.get(planet_name, planet_name).lower())
+
+    # Add planets, aspects, and houses from evidence
+    for ev in row.evidence:
+        if ev.planet:
+            p_clean = strip_prefix(ev.planet)
+            allowed_planets.add(PLANET_LABELS_RU.get(p_clean, p_clean).lower())
+        if ev.target_planet:
+            tp_clean = strip_prefix(ev.target_planet)
+            allowed_planets.add(PLANET_LABELS_RU.get(tp_clean, tp_clean).lower())
+        if ev.aspect_type:
+            allowed_aspects.add(ASPECT_LABELS_RU.get(ev.aspect_type, ev.aspect_type).lower())
+            if ev.aspect_type.lower() == "trine":
+                allowed_aspects.add("трин")
+                allowed_aspects.add("тригон")
+            if ev.aspect_type.lower() == "conjunction":
+                allowed_aspects.add("соединение")
+            if ev.aspect_type.lower() == "opposition":
+                allowed_aspects.add("оппозиция")
+            if ev.aspect_type.lower() == "square":
+                allowed_aspects.add("квадрат")
+                allowed_aspects.add("квадратура")
+            if ev.aspect_type.lower() == "sextile":
+                allowed_aspects.add("секстиль")
+        if ev.title:
+            match = re.search(r'\b(\d+)\s+дом', ev.title.lower())
+            if match:
+                allowed_houses.add(int(match.group(1)))
+
+    # Check for unauthorized planets
+    all_planets_ru = [PLANET_LABELS_RU[p].lower() for p in PLANET_LABELS_RU]
+    for p_ru in all_planets_ru:
+        if p_ru in t:
+            if p_ru not in allowed_planets:
+                return False
+
+    # Check for unauthorized aspects
+    all_aspects_ru = ["соединение", "оппозиция", "трин", "тригон", "квадрат", "квадратура", "секстиль"]
+    for a_ru in all_aspects_ru:
+        if a_ru in t:
+            if a_ru not in allowed_aspects:
+                return False
+
+    # Check for unauthorized houses
+    house_matches = re.findall(r'\b(\d+)\s+дом', t)
+    for h_str in house_matches:
+        h_num = int(h_str)
+        if h_num not in allowed_houses:
+            return False
+
+    return True
 
 class TodayInterpretationService:
     async def build(
@@ -228,8 +226,8 @@ class TodayInterpretationService:
                 is_good = t in ("trine", "sextile")
                 is_bad = t in ("square", "opposition")
                 verdict = "good" if is_good else ("caution" if is_bad else "neutral")
-                planet_aspect_verdicts[s.planet] = verdict
-                planet_aspect_verdicts[s.target_planet] = verdict
+                planet_aspect_verdicts[strip_prefix(s.planet)] = verdict
+                planet_aspect_verdicts[strip_prefix(s.target_planet)] = verdict
 
         for rank, canon in enumerate(CANONICAL_PRODUCT_SPHERES, 1):
             key = canon["key"]
@@ -340,37 +338,36 @@ class TodayInterpretationService:
                 )
             )
 
-        # Check if we have LLM keys configured and not in test environment (unless mocked)
-        import sys
-        from app.core.config import settings
-        is_test_env = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
-        is_mocked = hasattr(llm_service.generate_concrete_advice, "mock") or hasattr(llm_service.generate_concrete_advice, "assert_called")
-        has_llm_keys = (bool(settings.openrouter_api_key or settings.anthropic_api_key) and not is_test_env) or is_mocked
-
-        # Call LLM to generate concrete advice texts in one go
+        # Check if we have LLM keys configured and not mocked
         llm_texts = None
+        is_mocked = hasattr(llm_service.generate_concrete_advice, "mock") or hasattr(llm_service.generate_concrete_advice, "assert_called")
+        from app.core.config import settings
+        has_llm_keys = bool(settings.openrouter_api_key or settings.anthropic_api_key) or is_mocked
+
         if has_llm_keys:
             llm_texts = await llm_service.generate_concrete_advice(advice_contexts)
 
         valid_llm_count = 0
         if llm_texts and isinstance(llm_texts, dict):
-            for row in rows:
-                text = llm_texts.get(row.key)
-                if text and isinstance(text, str) and text.strip():
-                    # Validate: no Latin words
-                    import re
-                    if not re.search(r'[A-Za-z]', text):
-                        row.text = text.strip()
-                        valid_llm_count += 1
+            # Check exactly canonical 12 keys
+            expected_keys = {c["key"] for c in CANONICAL_PRODUCT_SPHERES}
+            actual_keys = set(llm_texts.keys())
+
+            if expected_keys == actual_keys:
+                for row in rows:
+                    text = llm_texts.get(row.key)
+                    if text and isinstance(text, str) and text.strip():
+                        if validate_row_text(row, text):
+                            row.text = text.strip()
+                            valid_llm_count += 1
 
         # Fallback check: if fewer than 9 rows are valid
         if valid_llm_count < 9:
             if has_llm_keys:
                 raise ValueError(f"LLM generated only {valid_llm_count}/12 valid recommendations.")
             else:
-                # In test environment / local dev without keys, use high-quality Russian templates
-                for row in rows:
-                    row.text = SPHERE_ADVICE_TEXTS[row.key][row.verdict]
+                # Bypassed / no keys: texts remain "Рекомендация временно недоступна."
+                pass
 
         # Compute row counts
         good_count = sum(1 for r in rows if r.verdict == "good")
@@ -394,8 +391,7 @@ class TodayInterpretationService:
         }
         status_label = status_label_map.get(day_status, "Ровный день")
 
-        # Generate summary status line from LLM headline
-        status_line = semantic_layer.day_theme if semantic_layer else "Обычный день, занимайся текущими делами"
+        status_line = semantic_layer.day_theme if semantic_layer else "Сводка временно недоступна."
         if semantic_layer and semantic_layer.day_theme:
             status_line = semantic_layer.day_theme
 
@@ -403,12 +399,13 @@ class TodayInterpretationService:
         # Add Top Planet fact
         if planet_influences:
             top_p = sorted(planet_influences, key=lambda x: x.rank)[0]
+            p_clean = strip_prefix(top_p.name)
             summary_facts.append(
                 DaySummaryFact(
                     kind="top_planet",
-                    icon_name=top_p.name,
-                    title=f"Влияние {PLANET_LABELS_RU.get(top_p.name, top_p.name)}",
-                    summary=f"тема дня — {PLANET_LABELS_RU.get(top_p.name, top_p.name)}: фокус на активности",
+                    icon_name=p_clean,
+                    title=f"Влияние {PLANET_LABELS_RU.get(p_clean, p_clean)}",
+                    summary="особая тема дня",
                 )
             )
 
@@ -424,16 +421,16 @@ class TodayInterpretationService:
 
                 if d < 22.5 or d > 337.5:
                     lunar_phase_title = "Новолуние"
-                    lunar_phase_summary = "планируй дела"
+                    lunar_phase_summary = "новолуние"
                 elif d >= 157.5 and d < 202.5:
                     lunar_phase_title = "Полнолуние"
-                    lunar_phase_summary = "будь сдержаннее"
+                    lunar_phase_summary = "полнолуние"
                 elif d >= 22.5 and d < 157.5:
                     lunar_phase_title = f"Растущая Луна {int(illumination)}%"
-                    lunar_phase_summary = "накапливай силы"
+                    lunar_phase_summary = "растущая фаза"
                 else:
                     lunar_phase_title = f"Убывающая Луна {int(illumination)}%"
-                    lunar_phase_summary = "подводи итоги"
+                    lunar_phase_summary = "убывающая фаза"
 
         if lunar_phase_title:
             summary_facts.append(
@@ -453,18 +450,20 @@ class TodayInterpretationService:
                     kind="void_moon",
                     icon_name="void_moon",
                     title="Луна без курса",
-                    summary="не подписывай и не начинай",
+                    summary="период затишья",
                 )
             )
 
         # Add Top Flag fact
         if signals:
             top_sig = signals[0]
+            p_clean = strip_prefix(top_sig.planet)
+            tp_clean = strip_prefix(top_sig.target_planet) if top_sig.target_planet else ""
             summary_facts.append(
                 DaySummaryFact(
                     kind="top_flag",
                     icon_name="flag",
-                    title=f"Аспект: {PLANET_LABELS_RU.get(top_sig.planet, top_sig.planet)} {ASPECT_LABELS_RU.get(top_sig.aspect_type, top_sig.aspect_type)} {PLANET_LABELS_RU.get(top_sig.target_planet, top_sig.target_planet)}" if top_sig.type == "aspect" else "Аспект дня",
+                    title=f"Аспект: {PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(top_sig.aspect_type, top_sig.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}" if top_sig.type == "aspect" else "Аспект дня",
                     summary="особое влияние дня",
                 )
             )
@@ -504,16 +503,12 @@ class TodayInterpretationService:
                 for p in day_chart.transit_planets:
                     text = llm_interpretations.get(p.name)
                     if text and isinstance(text, str) and text.strip():
-                        import re
                         if not re.search(r'[A-Za-z]', text):
                             p.interpretation = text.strip()
                     if not p.interpretation:
                         p.interpretation = "Интерпретация временно недоступна."
             else:
                 for p in day_chart.transit_planets:
-                    if has_chart_keys:
-                        p.interpretation = "Интерпретация временно недоступна."
-                    else:
-                        p.interpretation = f"Интерпретация для {PLANET_LABELS_RU.get(p.name, p.name)} в доме {p.house}."
+                    p.interpretation = "Интерпретация временно недоступна."
 
         return concrete_advice, day_summary, day_chart
