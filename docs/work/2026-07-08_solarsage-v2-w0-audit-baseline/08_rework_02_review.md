@@ -100,4 +100,3 @@ Required:
 - Remove trailing whitespace from the final tree.
 - Verify `git diff 2f9173f..HEAD --check` passes, not only `git show --check HEAD`.
 - Keep `git show --check HEAD` passing too.
-
