@@ -140,4 +140,3 @@ skills/
 - W0 intentionally does not introduce production V2 activation logic.
 - `--live-llm-sample` emitted a non-fatal structured logging error: `log_event failed`. The audit command still exited 0 and preserved artifact isolation. This is not a W0 acceptance blocker, but observability can be handled in a later hardening pass if it repeats outside audit runs.
 - Next wave is W1: typed activation/scoring contracts, canon, and versioning skeleton.
-

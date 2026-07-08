@@ -1,0 +1,20 @@
+schema_version: scoring_v2.v1
+description: "SolarSage V2 scoring configuration — contract skeleton for W1+"
+
+status_thresholds:
+  positive_ratio: 1.3
+  positive_min_score: 1.0
+  negative_ratio: 1.3
+  negative_min_score: 1.0
+
+convergence:
+  enabled: true
+  technique_family_bonus:
+    min_count: 2
+    base_bonus: 0.3
+    per_additional: 0.15
+    max_bonus: 1.0
+
+dominance_cap:
+  enabled: true
+  threshold: 0.65

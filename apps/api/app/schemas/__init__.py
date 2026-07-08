@@ -81,6 +81,18 @@ from .today import (
     YesterdayTransition,
     TodayImportantEvent,
 )
+from .activation import (
+    ActivationEvidence,
+    ActivationLayer,
+    ActivationTargetType,
+    ActivationPolarity,
+    ActivationPhase,
+)
+from .scoring_v2 import (
+    ScoringV2Result,
+    SphereScoreV2,
+    SphereContribution,
+)
 
 __all__ = [
     # access
@@ -128,5 +140,15 @@ __all__ = [
     "YesterdayEcho",
     "YesterdayTransition",
     "TodayImportantEvent",
+    # activation (W1)
+    "ActivationEvidence",
+    "ActivationLayer",
+    "ActivationTargetType",
+    "ActivationPolarity",
+    "ActivationPhase",
+    # scoring v2 (W1 contract skeleton)
+    "ScoringV2Result",
+    "SphereScoreV2",
+    "SphereContribution",
 ]
 # END_BLOCK: SCHEMAS_REEXPORTS

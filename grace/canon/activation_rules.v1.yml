@@ -1,6 +1,38 @@
 schema_version: activation_rules.v1
 description: "Правила активации: какие техники активируют планеты, дома, лоты."
 
+technique_families:
+  transit:
+    members: [transit_to_natal, transit_to_angle, transit_to_lot]
+    independence_weight: 1.0
+  profection:
+    members: [annual_profection, monthly_profection]
+    independence_weight: 0.8
+  firdar:
+    members: [firdar_major, firdar_minor]
+    independence_weight: 0.8
+  return:
+    members: [solar_return, lunar_return]
+    independence_weight: 0.9
+  progression:
+    members: [secondary_progression, solar_arc]
+    independence_weight: 1.0
+  eclipse:
+    members: [eclipse_window]
+    independence_weight: 0.7
+
+activation_strength:
+  exact_orb_curve:
+    0.0: 1.0
+    0.5: 0.85
+    1.0: 0.70
+    2.0: 0.45
+  period_base:
+    annual_profection: 0.75
+    monthly_profection: 0.45
+    firdar_major: 0.65
+    firdar_minor: 0.40
+
 techniques:
   annual_profection:
     activates:

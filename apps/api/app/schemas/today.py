@@ -256,17 +256,21 @@ class PeriodContext(CamelModel):
 class TodayMeta(CamelModel):
     schema_version: Literal["today/v1"]
     contract_version: int
-    calculation_version: int
+    calculation_version: int | str
     normalization_version: int
-    scoring_version: int
+    scoring_version: int | str
     prompt_version: int
     content_version: int
     generated_at: str
     cached: bool = False  # W-5.2: true if returned from cache
 
-    # W-4.0: версии canon файлов
-    scoring_canon_version: int | None = None  # версия grace/canon/*.yml
-    activation_layer_version: int | None = None  # версия activation logic
+    # W-4.0: legacy canon/activation version fields (int, for backward compat)
+    scoring_canon_version: int | None = None
+    activation_layer_version: int | str | None = None
+
+    # W1+: V2 string version fields
+    canon_versions: dict[str, str] | None = None
+    audit_trace_id: str | None = None
 
 
 # START_BLOCK: TODAY_IMPORTANT_EVENTS
