@@ -11,18 +11,21 @@
 //   - playwright.config.ts
 // inputs:
 //   - playwright CLI invocation
+//   - E2E_BASE_URL optional base URL override
+//   - E2E_WORKERS optional positive integer worker override for local runs
 // outputs:
 //   - E2E test runner configuration
 // dependencies:
 //   - @playwright/test
-//   - nginx proxy (https://dev.astro.vasiliy-ivanov.ru)
+//   - local or deployed frontend selected by E2E_BASE_URL
 // side_effects:
-//   - none (tests run against deployed environment)
+//   - none
 // invariants:
-//   - baseURL MUST be https://dev.astro.vasiliy-ivanov.ru
-//   - API endpoints accessible through nginx proxy
+//   - default e2e worker count is 1 for deterministic visual/readiness gates
+//   - CI worker count is always 1
+//   - E2E_WORKERS must be a positive integer when provided outside CI
 // failure_policy:
-//   - invalid config -> playwright exits with error
+//   - invalid config or invalid E2E_WORKERS -> playwright exits with error
 // non_goals:
 //   - unit tests, backend tests
 // END_MODULE_CONTRACT: M-TEST-E2E-CONFIG
@@ -39,12 +42,28 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // START_BLOCK: E2E_CONFIG
+function configuredWorkers(): number {
+  if (process.env.CI) return 1;
+
+  const raw = process.env.E2E_WORKERS;
+  if (raw == null || raw === '') return 1;
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error('E2E_WORKERS must be a positive integer when set');
+  }
+
+  return parsed;
+}
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // E2E visual/readiness specs share one app server and auth/runtime setup.
+  // Keep the default deterministic; opt into local parallelism explicitly.
+  workers: configuredWorkers(),
   reporter: [
     ['html'],
     ['json', { outputFile: 'test-results/results.json' }],
