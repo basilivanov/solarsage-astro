@@ -23,9 +23,9 @@
 // side_effects: local expand/collapse state only
 // invariants:
 //   - rows are derived from real sphereScores, topFlags, or notes
-//   - unknown sphere keys are labeled through getSphereLabel
-//   - missing sphere rows produce at most one graceful unavailable row
-// failure_policy: renders a graceful unavailable row instead of inventing data
+//   - unknown sphere keys are mapped to safe Russian generic text
+//   - missing sphere rows fall back to dayStatus and planetInfluences signals
+// failure_policy: falls back to neutral product advice instead of inventing data or placeholders
 // END_MODULE_CONTRACT: M-TODAY-CONCRETE-DAY-ADVICE
 
 "use client"
@@ -71,7 +71,7 @@ const SPHERE_ADVICE_TEXTS: Record<ProductSphereKey, Record<Verdict, string>> = {
   },
   money: {
     good: "Хороший день для вложений в себя и дом",
-    caution: "Сократи траты — день для financial discipline",
+    caution: "Сократи траты — день для финансовой дисциплины",
     avoid: "Не делай крупных покупок — перепроверь цену завтра",
     neutral: "Стабильно, без неожиданностей — можно планировать бюджет",
   },

@@ -574,6 +574,7 @@ describe('real-data day presentation components', () => {
       expect(r.verdict).not.toBe('unavailable')
       expect(r.text).not.toContain('Нет отдельного сигнала')
       expect(r.text).not.toContain('Данные появятся')
+      expect(r.text).not.toMatch(/[A-Za-z]/)
     })
     // Supportive day should yield good rows
     const goodCount = rows.filter(r => r.verdict === 'good').length

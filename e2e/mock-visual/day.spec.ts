@@ -259,9 +259,10 @@ test.describe("Mock Visual — /day/[date]", () => {
     expect(bodyText).not.toContain("Cancer");
     expect(bodyText).not.toContain("thinking_speech_learning");
     
-    // Assert no visible score suffixes in concrete advice rows
+    // Assert no visible score suffixes or Latin characters in concrete advice rows
     const firstRowText = await rows.first().innerText();
     expect(firstRowText).not.toMatch(/\d\.\d/);
+    expect(firstRowText).not.toMatch(/[A-Za-z]/);
 
     // Assert chart legend contains Russian aspect labels
     const chart = page.getByTestId("day-chart");
