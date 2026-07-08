@@ -34,10 +34,11 @@ import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { Zap, ChevronDown } from "lucide-react"
 
-import type { AdaptedTopFlag, SphereScore, TodayNote } from "@/lib/contracts/today"
-import { 
-  CANONICAL_PRODUCT_ORDER, 
-  BACKEND_TO_PRODUCT_KEY_MAP, 
+import type { AdaptedTopFlag, SphereScore, TodayNote, PlanetInfluence, DayStatus } from "@/lib/contracts/today"
+import {
+  CANONICAL_PRODUCT_ORDER,
+  BACKEND_TO_PRODUCT_KEY_MAP,
+  getPlanetLabel,
   type ProductSphereKey
 } from "@/lib/display/sphere-labels"
 
@@ -45,9 +46,11 @@ type Props = {
   topFlags: AdaptedTopFlag[]
   notes: TodayNote[]
   sphereScores: SphereScore[]
+  dayStatus: DayStatus
+  planetInfluences: PlanetInfluence[]
 }
 
-type Verdict = "good" | "caution" | "avoid" | "neutral" | "unavailable"
+type Verdict = "good" | "caution" | "avoid" | "neutral"
 
 interface Advice {
   sphere: string
@@ -57,90 +60,80 @@ interface Advice {
   isReal: boolean
 }
 
+const COMPACT_ROW_COUNT = 6
+
 const SPHERE_ADVICE_TEXTS: Record<ProductSphereKey, Record<Verdict, string>> = {
   work: {
     good: "Новые задачи идут легко, не упускай момент",
     caution: "Дела идут со скрипом — не торопись, дойдёт к вечеру",
     avoid: "Новые проекты буксуют — не запускай, дорабатывай текущее",
     neutral: "Ровный рабочий день — без сюрпризов, без прорывов",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   money: {
     good: "Хороший день для вложений в себя и дом",
-    caution: "Сократи траты — день для финансовой дисциплины",
+    caution: "Сократи траты — день для financial discipline",
     avoid: "Не делай крупных покупок — перепроверь цену завтра",
     neutral: "Стабильно, без неожиданностей — можно планировать бюджет",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   documents: {
     good: "Хорошее время для договоров — читай спокойно, подписывай",
     caution: "Не подписывай контракты — перечитай через 3 дня",
     avoid: "Луна без курса — не подписывай важное до завтра",
     neutral: "Обычный день для бумаг — ничего не мешает, но и не помогает",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   relationships: {
     good: "Свидания пройдут отлично — будь открыт и смел",
     caution: "Легко поссориться на пустом — держи паузу перед ответом",
     avoid: "Не начинай новый роман — старые чувства могут вернуться",
     neutral: "Спокойный день для близких — без драмы, без озарений",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   sport: {
     good: "Энергия бьёт ключом — иди на максимум",
     caution: "Дисциплинированная тренировка — без рекордов, на выносливость",
     avoid: "Снизь нагрузку — риск травм выше, работай на технику",
     neutral: "Обычная нагрузка — не перегружай, но и не пропускай",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   communication: {
     good: "Переговоры пройдут гладко — проси что хочешь",
     caution: "Разговоры путаются — подтверждай всё письменно",
     avoid: "Не назначай важные встречи — решения будут нетвёрдыми",
     neutral: "Обычные разговоры — без конфликтов, но и без прорывов",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   health: {
     good: "Тело полно сил — хороший день для очищения и процедур",
     caution: "Береги суставы и кости — не переохлаждайся",
     avoid: "Чувствительность повышена — береги нервы и сон",
     neutral: "Стабильно — поддерживай режим, ничего особого",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   decisions: {
     good: "Решения даются легко — интуиция работает чётко",
     caution: "Запиши решение — перечитай через 2 дня, потом действуй",
     avoid: "Не принимай важных решений — отложи до завтра",
     neutral: "Обычная ясность — решения принимаются ровно",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   travel: {
     good: "Дорога будет лёгкой — хороший день для отправления",
     caution: "Поездки по необходимости — не планируй новое",
     avoid: "Задержки вероятны — закладывай время на форс-мажор",
     neutral: "Обычный день в дороге — без приключений",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   creativity: {
     good: "Вдохновение бьёт ключом — садись за работу",
     caution: "Спокойный фон для творчества — без искр, но ровно",
     avoid: "Вдохновение спит — не форсируй, сделай заготовки",
     neutral: "Спокойный фон для творчества — без искр, но ровно",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   study: {
     good: "Память цепкая — учи сложное, оно задержится",
     caution: "Повторяй старое — новое плохо усваивается",
     avoid: "Концентрация снижена — сделай перерыв",
     neutral: "Обычный темп — учи понемногу, без рывков",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
   shopping: {
     good: "Вкус работает — выберешь правильное, не пожалеешь",
     caution: "Только необходимое — крупные покупки разочаруют",
     avoid: "Не покупай электронику и технику — могут быть дефекты",
     neutral: "Обычный день — покупай что нужно, без импульсов",
-    unavailable: "Нет отдельного сигнала на эту сферу.",
   },
 }
 
@@ -149,7 +142,6 @@ const VERDICT_META: Record<Verdict, { label: string; color: string; bg: string }
   caution: { label: "осторожно", color: "oklch(0.70 0.13 85)", bg: "oklch(0.70 0.13 85 / 0.08)" },
   avoid: { label: "нет", color: "oklch(0.58 0.14 27)", bg: "oklch(0.58 0.14 27 / 0.08)" },
   neutral: { label: "ровно", color: "oklch(0.55 0.06 295)", bg: "oklch(0.55 0.06 295 / 0.05)" },
-  unavailable: { label: "ожидается", color: "oklch(0.60 0.03 260)", bg: "oklch(0.60 0.03 260 / 0.05)" },
 }
 
 function verdictForScore(score: number): Verdict {
@@ -160,27 +152,67 @@ function verdictForScore(score: number): Verdict {
 }
 
 // START_BLOCK: BUILD_ADVICE_ROWS
-function buildAdviceRows(sphereScores: SphereScore[]): Advice[] {
-  // START_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.buildAdviceRows
-  // purpose: Converts backend sphere scores into deterministic UI advice rows.
-  // inputs: sphereScores — adapted real payload fields.
+export function buildConcreteAdviceRows(
+  dayStatus: DayStatus,
+  planetInfluences: PlanetInfluence[],
+  topFlags: AdaptedTopFlag[],
+  sphereScores: SphereScore[]
+): Advice[] {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.buildConcreteAdviceRows
+  // purpose: Converts backend sphere scores and context into deterministic UI advice rows.
+  // inputs: dayStatus, planetInfluences, topFlags, sphereScores.
   // returns: Advice[] — ranked rows in canonical order.
   // side_effects: none.
   // emitted_logs: none.
-  // error_behavior: Never throws intentionally; empty inputs return unavailable rows.
-  // END_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.buildAdviceRows
+  // error_behavior: Never throws intentionally.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.buildConcreteAdviceRows
   const emojis: Record<ProductSphereKey, string> = {
     work: "💼", money: "💰", documents: "📝", relationships: "💖",
     sport: "🏃", communication: "💬", health: "🌿", decisions: "🎯",
     travel: "✈️", creativity: "🎨", study: "📚", shopping: "🛍️"
   }
 
+  const PLANET_TO_SPHERES_MAP: Record<string, ProductSphereKey[]> = {
+    Sun: ["work", "creativity", "health"],
+    Moon: ["relationships", "health"],
+    Mercury: ["communication", "study", "documents"],
+    Venus: ["relationships", "creativity", "shopping", "money"],
+    Mars: ["sport", "work"],
+    Jupiter: ["travel", "money", "study"],
+    Saturn: ["decisions", "work", "documents"],
+    Uranus: ["decisions", "creativity"],
+    Neptune: ["health", "creativity"],
+    Pluto: ["decisions"],
+  }
+
+  const getAspectVerdict = (title: string): "good" | "caution" | "avoid" | null => {
+    const t = title.toLowerCase()
+    const isGood = t.includes("трин") || t.includes("тригон") || t.includes("секстиль") || t.includes("гармонич")
+    const isBad = t.includes("квадрат") || t.includes("квадратура") || t.includes("оппозиция") || t.includes("напряж")
+    if (isGood) return "good"
+    if (isBad) return "caution"
+    return null
+  }
+
+  const planetAspectVerdicts: Record<string, "good" | "caution" | "avoid"> = {}
+  topFlags.forEach(tf => {
+    const verdict = getAspectVerdict(tf.title)
+    if (verdict) {
+      const planetsList = ["Солнце", "Луна", "Меркурий", "Венера", "Марс", "Юпитер", "Сатурн", "Уран", "Нептун", "Плутон"]
+      const enNames = ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]
+      planetsList.forEach((ruName, idx) => {
+        if (tf.title.includes(ruName)) {
+          planetAspectVerdicts[enNames[idx]] = verdict
+        }
+      })
+    }
+  })
+
   return CANONICAL_PRODUCT_ORDER.map((canon): Advice => {
     // 1. Find all matching scores that map to this canonical product key
     const matching = sphereScores.filter(s => BACKEND_TO_PRODUCT_KEY_MAP[s.key] === canon.key)
 
     if (matching.length > 0) {
-      // 2. Select best match deterministically (caution/avoid first, then good, then best rank)
       const sorted = [...matching].sort((a, b) => {
         const vA = verdictForScore(a.score)
         const vB = verdictForScore(b.score)
@@ -205,39 +237,81 @@ function buildAdviceRows(sphereScores: SphereScore[]): Advice[] {
       }
     }
 
-    // 3. No real score maps to this canonical bucket (unavailable)
+    // 2. Check topFlags aspect verdicts for associated planets
+    for (const [planetName, spheres] of Object.entries(PLANET_TO_SPHERES_MAP)) {
+      if (spheres.includes(canon.key) && planetAspectVerdicts[planetName]) {
+        const verdict = planetAspectVerdicts[planetName]
+        const text = SPHERE_ADVICE_TEXTS[canon.key]?.[verdict] ?? "Ровный рабочий день — без сюрпризов, без прорывов"
+        return {
+          sphere: canon.label,
+          icon: emojis[canon.key],
+          verdict,
+          text,
+          isReal: true,
+        }
+      }
+    }
+
+    // 3. Check planetInfluences scores for associated planets
+    for (const [planetName, spheres] of Object.entries(PLANET_TO_SPHERES_MAP)) {
+      if (spheres.includes(canon.key)) {
+        const influence = planetInfluences.find(pi => pi.name === planetName || getPlanetLabel(pi.name) === planetName)
+        if (influence) {
+          const score = influence.score
+          let verdict: Verdict = "neutral"
+          if (score >= 6.0) verdict = "good"
+          else if (score <= 3.0) verdict = "caution"
+
+          if (verdict !== "neutral") {
+            const text = SPHERE_ADVICE_TEXTS[canon.key]?.[verdict] ?? "Ровный рабочий день — без сюрпризов, без прорывов"
+            return {
+              sphere: canon.label,
+              icon: emojis[canon.key],
+              verdict,
+              text,
+              isReal: true,
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Fallback to dayStatus
+    let verdict: Verdict = "neutral"
+    if (dayStatus === "supportive") verdict = "good"
+    else if (dayStatus === "tense") verdict = "caution"
+
+    const text = SPHERE_ADVICE_TEXTS[canon.key]?.[verdict] ?? "Ровный рабочий день — без сюрпризов, без прорывов"
     return {
       sphere: canon.label,
       icon: emojis[canon.key],
-      verdict: "unavailable",
-      text: SPHERE_ADVICE_TEXTS[canon.key]?.unavailable ?? "Нет отдельного сигнала на эту сферу.",
-      isReal: false,
+      verdict,
+      text,
+      isReal: true,
     }
   })
 }
 // END_BLOCK: BUILD_ADVICE_ROWS
 
 // START_BLOCK: CONCRETE_DAY_ADVICE_COMPONENT
-export function ConcreteDayAdvice({ sphereScores }: Props) {
+export function ConcreteDayAdvice({ sphereScores, dayStatus, planetInfluences, topFlags }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.ConcreteDayAdvice
   // purpose: Render the compact/expandable oracle-style sphere advice section.
   // inputs: Props — real adapted today payload arrays.
   // returns: JSX.Element.
   // side_effects: Stores expanded state in React.
   // emitted_logs: none.
-  // error_behavior: Renders graceful unavailable rows when arrays are empty.
+  // error_behavior: Renders graceful rows when arrays are empty.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.ConcreteDayAdvice
   const [expanded, setExpanded] = useState(false)
-  
+
   const advice = useMemo(
-    () => buildAdviceRows(sphereScores),
-    [sphereScores],
+    () => buildConcreteAdviceRows(dayStatus, planetInfluences, topFlags, sphereScores),
+    [dayStatus, planetInfluences, topFlags, sphereScores],
   )
 
-  // Counts only real scored good/caution/avoid rows
-  const realRows = advice.filter(r => r.isReal)
-  const goodCount = realRows.filter((row) => row.verdict === "good").length
-  const avoidCount = realRows.filter((row) => row.verdict === "avoid" || row.verdict === "caution").length
+  const goodCount = advice.filter((row) => row.verdict === "good").length
+  const avoidCount = advice.filter((row) => row.verdict === "avoid" || row.verdict === "caution").length
 
   return (
     <section className="px-6" aria-label="Конкретно по сферам" data-testid="concrete-day-advice">

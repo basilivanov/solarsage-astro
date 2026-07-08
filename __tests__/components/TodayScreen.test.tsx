@@ -27,6 +27,7 @@ import type { CalendarLunarFields } from '@/packages/contracts'
 import type { AdaptedTodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today'
 import { DayChart } from '@/components/today/day-chart'
 import { DaySummaryCard } from '@/components/today/day-summary-card'
+import { buildConcreteAdviceRows } from '@/components/today/concrete-day-advice'
 
 // Polyfill PointerEvent for jsdom (Node 20/jsdom lacks it)
 if (typeof PointerEvent === 'undefined') {
@@ -559,5 +560,23 @@ describe('real-data day presentation components', () => {
     expect(summary.textContent).toContain('97%')
     expect(summary.textContent).toContain('Сатурн')
     expect(summary.textContent).toContain('Луна в Раке')
+  })
+
+  it('buildConcreteAdviceRows maps sparse scores and context to canonical 12 rows without unavailable status', () => {
+    const rows = buildConcreteAdviceRows(
+      'supportive',
+      [{ name: 'Moon', score: 8.5, rank: 1 }],
+      [{ iconName: 'moon', title: 'Луна тригон Меркурий', summary: 'Гармония ума и эмоций' }],
+      [{ key: 'work_status_achievement', score: 4.5, rank: 1 }]
+    )
+    expect(rows.length).toBe(12)
+    rows.forEach(r => {
+      expect(r.verdict).not.toBe('unavailable')
+      expect(r.text).not.toContain('Нет отдельного сигнала')
+      expect(r.text).not.toContain('Данные появятся')
+    })
+    // Supportive day should yield good rows
+    const goodCount = rows.filter(r => r.verdict === 'good').length
+    expect(goodCount).toBeGreaterThan(0)
   })
 })

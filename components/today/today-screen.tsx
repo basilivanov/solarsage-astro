@@ -187,6 +187,8 @@ export function TodayScreen({
             topFlags={payload.topFlags}
             notes={payload.notes}
             sphereScores={payload.sphereScores}
+            dayStatus={payload.dayStatus}
+            planetInfluences={payload.planetInfluences}
           />
 
           <DayChart
