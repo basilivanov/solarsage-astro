@@ -29,12 +29,13 @@
 
 import { expect, test } from "@playwright/test";
 import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
-import { calendarPayload, accessPayload } from "./fixtures/calendar-2026-07";
+import { calendarPayload, accessPayload, dayPayload } from "./fixtures/calendar-2026-07";
 
 function buildCalendarFixtures(): MockApiRouteFixtures {
   return {
     "/api/calendar": { body: calendarPayload },
     "/api/access": { body: accessPayload },
+    "/api/day/2026-07-10": { body: dayPayload },
     "/api/auth/dev": {
       status: 200,
       body: { status: "ok", userId: "mock-user-id" },
@@ -58,9 +59,9 @@ test.describe("Mock Visual — /calendar", () => {
     await expect(screen).toBeVisible({ timeout: 10000 });
     await expect(screen).toHaveAttribute("data-load-state", "ready");
 
-    // Month header is visible
+    // Month header is visible and localized by the frontend from payload.month
     await expect(page.getByTestId("calendar-month-header")).toBeVisible();
-    await expect(page.getByTestId("calendar-month-header")).toContainText("2026");
+    await expect(page.getByTestId("calendar-month-header")).toHaveText("Июль 2026");
 
     // Grid is visible
     await expect(page.getByTestId("calendar-grid")).toBeVisible();
@@ -70,12 +71,39 @@ test.describe("Mock Visual — /calendar", () => {
 
     // Positive fixture contains lunar data — assert exact strip, not unavailable fallback
     await expect(page.getByTestId("lunar-calendar-strip")).toBeVisible();
+    await expect(page.getByTestId("lunar-calendar-unavailable")).toBeHidden();
 
     // Segmented controls are present
     await expect(page.getByTestId("calendar-view-day")).toBeVisible();
     await expect(page.getByTestId("calendar-view-moon")).toBeVisible();
 
     // No missing API fixtures after quiet wait
+    await expectNoMissingApiFixtures(page, tracker);
+  });
+
+  test("day tap selects locally and footer CTA is the only navigation path", async ({ page }) => {
+    const tracker = await installMockApiRoutes(page, buildCalendarFixtures());
+
+    await page.clock.install({ time: new Date("2026-07-05T12:00:00Z") });
+    await page.addInitScript(() => {
+      localStorage.setItem("lumen:onboarded", "1");
+    });
+
+    await page.goto("/calendar");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByTestId("calendar-day-2026-07-10").click();
+    await expect(page).toHaveURL(/\/calendar$/);
+    await expect(page.getByTestId("calendar-selected-summary")).toContainText("10 июля 2026");
+
+    const cta = page.getByRole("button", { name: /Открыть день/i });
+    await expect(cta).toBeEnabled();
+    await cta.scrollIntoViewIfNeeded();
+    await Promise.all([
+      page.waitForURL(/\/day\/2026-07-10/, { timeout: 10000 }),
+      cta.click(),
+    ]);
+
     await expectNoMissingApiFixtures(page, tracker);
   });
 
@@ -107,9 +135,10 @@ test.describe("Mock Visual — /calendar", () => {
 
     // Selected summary shows deterministic lunar values for 2026-07-05
     const summary = page.getByTestId("calendar-selected-summary");
-    await expect(summary).toContainText("Убывающая Луна");
+    await expect(summary).toContainText("убыв. Луна");
     await expect(summary).toContainText("63%");
     await expect(summary).toContainText("20 лунный день");
+    await expect(page.getByTestId("calendar-moon-glyph-2026-07-05")).toContainText("🌖");
 
     // No missing API fixtures after quiet wait
     await expectNoMissingApiFixtures(page, tracker);
@@ -160,12 +189,8 @@ test.describe("Mock Visual — /calendar", () => {
 
     await page.goto("/calendar");
     await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(1500);
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(500);
-
     // The tracker should have recorded the missing /api/calendar request
-    expect(tracker.count).toBeGreaterThan(0);
+    await expect.poll(() => tracker.count, { timeout: 10000 }).toBeGreaterThan(0);
 
     const missingPaths = tracker.all;
     expect(missingPaths.some((p) => p.startsWith("/api/calendar"))).toBe(true);

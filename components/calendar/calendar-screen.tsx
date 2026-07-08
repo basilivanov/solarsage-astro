@@ -21,13 +21,13 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, ChevronLeft, ChevronRight, Lock, Minus, Moon } from "lucide-react"
+import { ArrowRight, ChevronLeft, ChevronRight, Lock, Minus } from "lucide-react"
 
 import { MoodIcon } from "@/components/calendar/mood-icon"
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
 import type { AccessInfo } from "@/lib/access"
 import { getMonthCalendar } from "@/lib/api/calendar"
-import { monthDiff, statusLabel } from "@/lib/calendar"
+import { dateKey, monthDiff, monthMatrix, statusLabel } from "@/lib/calendar"
 import type {
   BackendDayStatus,
   CalendarDayReadModel,
@@ -35,6 +35,7 @@ import type {
   DayStatus,
 } from "@/lib/contracts/calendar"
 import { formatLong, fromDateParam, MONTHS_RU_NOM, WEEKDAYS_SHORT } from "@/lib/date"
+import { lunarPhaseGlyph, lunarPhaseLabel } from "@/lib/lunar-presentation"
 import { TODAY, sameDay } from "@/lib/today"
 import { cn } from "@/lib/utils"
 
@@ -75,8 +76,11 @@ function hasLunarData(day: CalendarDayReadModel | undefined): boolean {
     lunar
     && (
       lunar.phase
+      || lunar.phaseIndex != null
+      || lunar.phaseLabel
       || lunar.illumination != null
       || lunar.moonSign
+      || lunar.moonSignLabel
       || lunar.lunarDay != null
       || lunar.voidOfCourse != null
     ),
@@ -88,7 +92,7 @@ function lunarAria(date: Date, day: CalendarDayReadModel | undefined): string {
 
   const parts = [
     formatLong(date),
-    day?.lunar.phase,
+    lunarPhaseLabel(day?.lunar),
     day?.lunar.lunarDay != null ? `${day.lunar.lunarDay} лунный день` : null,
     day?.lunar.voidOfCourse === true ? "Луна без курса" : null,
   ].filter(Boolean)
@@ -105,6 +109,16 @@ function allowedBoundary(payload: CalendarPayloadReadModel | null, edge: "from" 
   const value = payload.allowedRange[edge]
   const [year, month] = value.split("-").map(Number)
   return new Date(year, month - 1, 1)
+}
+
+function monthTitle(month: string | null | undefined, fallback: Date): string {
+  if (month) {
+    const [year, monthNumber] = month.split("-").map(Number)
+    if (Number.isInteger(year) && Number.isInteger(monthNumber) && monthNumber >= 1 && monthNumber <= 12) {
+      return `${MONTHS_RU_NOM[monthNumber - 1]} ${year}`
+    }
+  }
+  return `${MONTHS_RU_NOM[fallback.getMonth()]} ${fallback.getFullYear()}`
 }
 
 export function CalendarScreen({ access, onOpenDay }: Props) {
@@ -143,6 +157,18 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
   }, [cursor])
 
   const days = payload?.days ?? []
+  const dayByDate = useMemo(() => new Map(days.map((day) => [day.date, day])), [days])
+  const displayDays = useMemo(() => {
+    const sourceMonth = payload?.month
+    if (!sourceMonth) return days
+    const [year, monthNumber] = sourceMonth.split("-").map(Number)
+    if (!Number.isInteger(year) || !Number.isInteger(monthNumber)) {
+      return days.filter((day) => day.isCurrentMonth)
+    }
+    return monthMatrix(year, monthNumber - 1)
+      .map(({ date }) => dayByDate.get(dateKey(date)) ?? null)
+      .filter((day): day is CalendarDayReadModel => day !== null)
+  }, [dayByDate, days, payload?.month])
   const selectedDay = useMemo(
     () => days.find((day) => {
       const dayDate = parseCalendarDayDate(day.date)
@@ -175,8 +201,8 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
   }
 
   function selectDay(date: Date, day: CalendarDayReadModel | undefined) {
+    if (!day || day.disabled) return
     setSelected(date)
-    if (canOpen(day)) onOpenDay?.(date)
   }
 
   function renderUnavailableState() {
@@ -238,7 +264,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
             Календарь
           </span>
           <h1 className="font-serif text-[22px] leading-none tracking-tight text-foreground" data-testid="calendar-month-header">
-            {payload?.title || `${MONTHS_RU_NOM[cursor.getMonth()]} ${cursor.getFullYear()}`}
+            {monthTitle(payload?.month, cursor)}
           </h1>
         </div>
 
@@ -311,7 +337,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
             className="mt-2 grid flex-1 grid-cols-7 gap-y-1 px-3 pb-2"
             data-testid="calendar-grid"
           >
-            {days.map((day) => {
+            {displayDays.map((day) => {
               const date = parseCalendarDayDate(day.date)
               if (!date) return null
               const isToday = day.isToday || sameDay(date, TODAY)
@@ -347,14 +373,16 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                   >
                     {view === "moon" ? (
                       <>
-                        <Moon
-                          aria-hidden
+                        <span
                           className={cn(
-                            "h-4 w-4",
+                            "text-[15px] leading-none",
                             hasLunarData(day) ? "text-primary" : "text-muted-foreground/35",
                           )}
-                          strokeWidth={1.75}
-                        />
+                          data-testid={`calendar-moon-glyph-${day.date}`}
+                          aria-hidden
+                        >
+                          {lunarPhaseGlyph(day.lunar)}
+                        </span>
                         <span
                           className="mt-0.5 text-[9px] tabular-nums leading-none"
                           data-testid={`calendar-moon-day-${day.date}`}
@@ -364,6 +392,12 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                         {day.lunar.voidOfCourse === true ? (
                           <span
                             className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-500"
+                            aria-hidden
+                          />
+                        ) : null}
+                        {isToday ? (
+                          <span
+                            className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-amber-500"
                             aria-hidden
                           />
                         ) : null}
@@ -438,7 +472,8 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                     {hasLunarData(selectedDay) ? (
                       <>
-                        {selectedDay?.lunar.phase ? <span>{selectedDay.lunar.phase}</span> : null}
+                        <span className="text-[14px] leading-none" aria-hidden>{lunarPhaseGlyph(selectedDay?.lunar)}</span>
+                        {lunarPhaseLabel(selectedDay?.lunar) ? <span>{lunarPhaseLabel(selectedDay?.lunar)}</span> : null}
                         {selectedDay?.lunar.illumination != null ? (
                           <span className="tabular-nums">{selectedDay.lunar.illumination}%</span>
                         ) : null}

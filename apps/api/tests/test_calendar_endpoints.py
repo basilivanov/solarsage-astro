@@ -200,7 +200,7 @@ async def test_calendar_happy_path(
 
     # Verify meta
     assert payload["meta"]["schemaVersion"] == "calendar/v1"
-    assert payload["meta"]["contractVersion"] == 1
+    assert payload["meta"]["contractVersion"] == 2
     assert "generatedAt" in payload["meta"]
 
     # Verify month
@@ -231,7 +231,7 @@ async def test_calendar_structure(
     db_session: AsyncSession,
     make_initdata,
 ) -> None:
-    """Calendar days preserve real access, scored status, and nullable lunar fields."""
+    """Calendar days preserve real access, scored status, and populated lunar fields."""
     # Login + onboard
     user = await _onboard_user(async_client, db_session, make_initdata, user_id=7781)
 
@@ -292,13 +292,33 @@ async def test_calendar_structure(
         # Verify status is one of the allowed values
         assert day["dayStatus"] in ["supportive", "steady", "tense"]
 
-        assert day["lunar"] == {
-            "phase": None,
-            "illumination": None,
-            "moonSign": None,
-            "lunarDay": None,
-            "voidOfCourse": None,
+        assert set(day["lunar"]) == {
+            "phase",
+            "phaseIndex",
+            "phaseLabel",
+            "illumination",
+            "moonSign",
+            "moonSignLabel",
+            "lunarDay",
+            "voidOfCourse",
         }
+        assert day["lunar"]["phase"] in {
+            "new_moon",
+            "waxing_crescent",
+            "first_quarter",
+            "waxing_gibbous",
+            "full_moon",
+            "waning_gibbous",
+            "last_quarter",
+            "waning_crescent",
+        }
+        assert 0 <= day["lunar"]["phaseIndex"] <= 7
+        assert isinstance(day["lunar"]["phaseLabel"], str)
+        assert 0 <= day["lunar"]["illumination"] <= 100
+        assert isinstance(day["lunar"]["moonSign"], str)
+        assert isinstance(day["lunar"]["moonSignLabel"], str)
+        assert 1 <= day["lunar"]["lunarDay"] <= 30
+        assert day["lunar"]["voidOfCourse"] in (True, False)
 
     may_first = next(day for day in payload["days"] if day["date"] == "2026-05-01")
     assert may_first["dayStatus"] == "supportive"

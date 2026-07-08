@@ -49,9 +49,21 @@ export const CalendarAccessSchema = z.object({
 })
 
 export const CalendarLunarFieldsSchema = z.object({
-  phase: z.string().nullable().optional(),
+  phase: z.enum([
+    "new_moon",
+    "waxing_crescent",
+    "first_quarter",
+    "waxing_gibbous",
+    "full_moon",
+    "waning_gibbous",
+    "last_quarter",
+    "waning_crescent",
+  ]).nullable().optional(),
+  phaseIndex: z.number().int().min(0).max(7).nullable().optional(),
+  phaseLabel: z.string().nullable().optional(),
   illumination: z.number().nullable().optional(),
   moonSign: z.string().nullable().optional(),
+  moonSignLabel: z.string().nullable().optional(),
   lunarDay: z.number().int().nullable().optional(),
   voidOfCourse: z.boolean().nullable().optional(),
 })

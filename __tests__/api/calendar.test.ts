@@ -25,7 +25,7 @@ import { getDayStatus, getMonthCalendar, getMonthStatuses } from '../../lib/api/
 const calendarPayload = {
   meta: {
     schemaVersion: 'calendar/v1',
-    contractVersion: 1,
+    contractVersion: 2,
     generatedAt: '2026-05-01T00:00:00Z',
   },
   month: '2026-05',
@@ -46,11 +46,14 @@ const calendarPayload = {
       accessUntil: '2026-05-01',
     },
     lunar: {
-      phase: null,
-      illumination: null,
-      moonSign: null,
-      lunarDay: null,
-      voidOfCourse: null,
+      phase: 'waxing_crescent',
+      phaseIndex: 1,
+      phaseLabel: 'раст. серп',
+      illumination: 28,
+      moonSign: 'Taurus',
+      moonSignLabel: 'Телец',
+      lunarDay: 5,
+      voidOfCourse: false,
     },
   }],
 }
@@ -196,7 +199,11 @@ describe('getMonthCalendar', () => {
 
     const result = await getMonthCalendar(2026, 4)
     expect(result.days[0].access?.state).toBe('full')
-    expect(result.days[0].lunar?.phase).toBeNull()
+    expect(result.days[0].lunar?.phase).toBe('waxing_crescent')
+    expect(result.days[0].lunar?.phaseIndex).toBe(1)
+    expect(result.days[0].lunar?.phaseLabel).toBe('раст. серп')
+    expect(result.days[0].lunar?.moonSignLabel).toBe('Телец')
+    expect(result.days[0].lunar?.voidOfCourse).toBe(false)
     expect(result.days[0].dayStatus).toBe('supportive')
   })
 

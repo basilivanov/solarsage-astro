@@ -676,8 +676,14 @@ export interface components {
             lunarDay?: number | null;
             /** Moonsign */
             moonSign?: string | null;
+            /** Moonsignlabel */
+            moonSignLabel?: string | null;
             /** Phase */
-            phase?: string | null;
+            phase?: ("new_moon" | "waxing_crescent" | "first_quarter" | "waxing_gibbous" | "full_moon" | "waning_gibbous" | "last_quarter" | "waning_crescent") | null;
+            /** Phaseindex */
+            phaseIndex?: number | null;
+            /** Phaselabel */
+            phaseLabel?: string | null;
             /** Voidofcourse */
             voidOfCourse?: boolean | null;
         };

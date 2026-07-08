@@ -68,7 +68,7 @@ describe('useCalendar', () => {
     const mockPayload: CalendarPayload = {
       meta: {
         schemaVersion: 'calendar/v1',
-        contractVersion: 1,
+        contractVersion: 2,
         generatedAt: '2026-05-30T12:00:00Z',
       },
       month: '2026-05',
@@ -79,6 +79,16 @@ describe('useCalendar', () => {
         isCurrentMonth: true, isToday: false, disabled: false,
         dayStatus: 'supportive',
         access: { state: 'full', reason: null, referralDaysLeft: null, subscriptionActive: null, accessUntil: null },
+        lunar: {
+          phase: 'waxing_crescent',
+          phaseIndex: 1,
+          phaseLabel: 'раст. серп',
+          illumination: 28,
+          moonSign: 'Taurus',
+          moonSignLabel: 'Телец',
+          lunarDay: 5,
+          voidOfCourse: false,
+        },
       }],
     };
 

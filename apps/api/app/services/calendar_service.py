@@ -66,6 +66,7 @@ from app.services.scoring_service import ScoringService
 from app.services.semantic_service import SemanticService
 from app.services.today_service import TODAY_CONTENT_VERSION
 from app.services.day_scoring_signals import filter_day_scored_signals
+from app.services.lunar_facts_service import LunarFactsService
 
 
 # START_BLOCK: CALENDAR_GENERATION
@@ -75,6 +76,7 @@ class CalendarService:
         self._request_profile: UserProfile | None = None
         self._request_profile_hash: str | None = None
         self._request_natal_context: dict | None = None
+        self._lunar_facts = LunarFactsService()
 
     async def get_calendar(self, user_id: uuid.UUID, month: str) -> CalendarPayload:
         # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE.get_calendar
@@ -117,7 +119,7 @@ class CalendarService:
         return CalendarPayload(
             meta=CalendarMeta(
                 schema_version="calendar/v1",
-                contract_version=1,
+                contract_version=2,
                 generated_at=datetime.now(UTC).isoformat() + "Z",
             ),
             month=month,
@@ -149,6 +151,7 @@ class CalendarService:
 
             access = await AccessService(self.db).can_access_day(user_id, date)
             status = await self._get_day_status(user_id, date, access.state)
+            lunar = self._lunar_facts.facts_for_date(date)
 
             # Disabled if outside current month (for UI purposes)
             disabled = not is_current_month
@@ -161,6 +164,7 @@ class CalendarService:
                 disabled=disabled,
                 day_status=status,
                 access=access.model_dump(by_alias=True),  # Convert to dict for Pydantic
+                lunar=lunar,
             ))
 
         return days

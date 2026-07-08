@@ -368,7 +368,7 @@
             ],
             "title": "Moonsign"
           },
-          "phase": {
+          "moonSignLabel": {
             "anyOf": [
               {
                 "type": "string"
@@ -377,7 +377,52 @@
                 "type": "null"
               }
             ],
+            "title": "Moonsignlabel"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "enum": [
+                  "new_moon",
+                  "waxing_crescent",
+                  "first_quarter",
+                  "waxing_gibbous",
+                  "full_moon",
+                  "waning_gibbous",
+                  "last_quarter",
+                  "waning_crescent"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Phase"
+          },
+          "phaseIndex": {
+            "anyOf": [
+              {
+                "maximum": 7.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phaseindex"
+          },
+          "phaseLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phaselabel"
           },
           "voidOfCourse": {
             "anyOf": [

@@ -53,11 +53,14 @@ function day(
     },
     lunar: {
       phase: null,
+      phaseIndex: null,
+      phaseLabel: null,
       illumination: null,
       moonSign: null,
+      moonSignLabel: null,
       lunarDay: null,
       voidOfCourse: null,
-    },
+    } as any,
     ...overrides,
   }
 }
@@ -66,22 +69,25 @@ function calendarPayload(overrides: Partial<CalendarPayloadReadModel> = {}): Cal
   return {
     meta: {
       schemaVersion: 'calendar/v1',
-      contractVersion: 1,
+      contractVersion: 2,
       generatedAt: '2026-07-01T00:00:00Z',
     },
     month: '2026-07',
-    title: 'Июль 2026',
+    title: 'July 2026',
     allowedRange: { from: '2026-06-01', to: '2026-08-31' },
     days: [
       day('2026-07-06', {
         dayStatus: 'supportive',
         lunar: {
-          phase: 'Растущая Луна',
+          phase: 'waxing_gibbous',
+          phaseIndex: 3,
+          phaseLabel: 'раст. Луна',
           illumination: 64,
           moonSign: 'Libra',
+          moonSignLabel: 'Весы',
           lunarDay: 11,
           voidOfCourse: false,
-        },
+        } as any,
       }),
       day('2026-07-10', {
         dayStatus: 'tense',
@@ -93,12 +99,15 @@ function calendarPayload(overrides: Partial<CalendarPayloadReadModel> = {}): Cal
           accessUntil: null,
         },
         lunar: {
-          phase: 'Полнолуние',
+          phase: 'full_moon',
+          phaseIndex: 4,
+          phaseLabel: 'полнолуние',
           illumination: 99,
           moonSign: 'Capricorn',
+          moonSignLabel: 'Козерог',
           lunarDay: 15,
           voidOfCourse: true,
-        },
+        } as any,
       }),
     ],
     ...overrides,
@@ -132,8 +141,9 @@ describe('CalendarScreen', () => {
 
     expect(screen.getByTestId('calendar-grid')).toBeTruthy()
     expect(screen.getByLabelText(/10 июля 2026, напряжённый, требуется подписка/i)).toBeTruthy()
-    expect(screen.getByText('Полнолуние')).toBeTruthy()
-    expect(screen.getByText('99%')).toBeTruthy()
+    expect(screen.getAllByText('полнолуние').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: /полнолуние 10/i }))
+    expect(screen.getAllByText('99%').length).toBeGreaterThan(0)
     expect(screen.getByText('15 лунный день')).toBeTruthy()
     expect(screen.getByText(/без курса/i)).toBeTruthy()
   })
@@ -166,23 +176,54 @@ describe('CalendarScreen', () => {
     await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
     fireEvent.click(screen.getByRole('button', { name: 'Луна' }))
 
-    expect(screen.getByLabelText(/10 июля 2026, Полнолуние, 15 лунный день, Луна без курса/i)).toBeTruthy()
+    expect(screen.getByLabelText(/10 июля 2026, полнолуние, 15 лунный день, Луна без курса/i)).toBeTruthy()
+    expect(screen.getByTestId('calendar-moon-glyph-2026-07-10').textContent).toContain('🌕')
   })
 
-  it('does not synthesize missing month cells from local calendar math', async () => {
+  it('renders a compact current-month visual window from the backend three-month payload', async () => {
     mockGetMonthCalendar.mockResolvedValue(calendarPayload({
       days: [
-        day('2026-07-06'),
+        day('2026-06-01', { isCurrentMonth: false, disabled: true }),
+        day('2026-06-29', { isCurrentMonth: false, disabled: true }),
+        day('2026-06-30', { isCurrentMonth: false, disabled: true }),
         day('2026-07-10'),
+        day('2026-08-01', { isCurrentMonth: false, disabled: true }),
+        day('2026-08-02', { isCurrentMonth: false, disabled: true }),
+        day('2026-08-31', { isCurrentMonth: false, disabled: true }),
       ],
     }))
 
     render(<CalendarScreen access={fullAccess} />)
 
     await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
-    expect(screen.getByTestId('calendar-day-2026-07-06')).toBeTruthy()
     expect(screen.getByTestId('calendar-day-2026-07-10')).toBeTruthy()
-    expect(screen.queryByTestId('calendar-day-2026-07-07')).toBeNull()
+    expect(screen.getByTestId('calendar-day-2026-06-29')).toBeTruthy()
+    expect(screen.getByTestId('calendar-day-2026-08-02')).toBeTruthy()
+    expect(screen.queryByTestId('calendar-day-2026-06-01')).toBeNull()
+    expect(screen.queryByTestId('calendar-day-2026-08-31')).toBeNull()
+  })
+
+  it('uses Russian month title derived from payload month instead of backend English title', async () => {
+    render(<CalendarScreen access={fullAccess} />)
+
+    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
+    expect(screen.getByTestId('calendar-month-header').textContent).toBe('Июль 2026')
+    expect(screen.queryByText('July 2026')).toBeNull()
+  })
+
+  it('selects a day locally and opens it only from the footer CTA', async () => {
+    const onOpenDay = vi.fn()
+    render(<CalendarScreen access={fullAccess} onOpenDay={onOpenDay} />)
+
+    await waitFor(() => expect(mockGetMonthCalendar).toHaveBeenCalledWith(2026, 6))
+    fireEvent.click(screen.getByTestId('calendar-day-2026-07-10'))
+
+    expect(onOpenDay).not.toHaveBeenCalled()
+    expect(screen.getByTestId('calendar-selected-summary').textContent).toContain('10 июля 2026')
+
+    fireEvent.click(screen.getByRole('button', { name: /Открыть превью/i }))
+    expect(onOpenDay).toHaveBeenCalledTimes(1)
+    expect(onOpenDay.mock.calls[0][0]).toEqual(new Date(2026, 6, 10))
   })
 
   it('renders an explicit unavailable state when calendar payload fails', async () => {
@@ -245,12 +286,15 @@ describe('CalendarScreen', () => {
       days: [
         day('2026-07-06', {
           lunar: {
-            phase: 'Растущая Луна',
+            phase: 'waxing_gibbous',
+            phaseIndex: 3,
+            phaseLabel: 'раст. Луна',
             illumination: 64,
             moonSign: 'Libra',
+            moonSignLabel: 'Весы',
             lunarDay: null,
             voidOfCourse: false,
-          },
+          } as any,
         }),
       ],
     }))

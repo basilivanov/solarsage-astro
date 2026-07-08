@@ -34,9 +34,21 @@ from .today import ContentAccessState, DayStatus
 
 
 class CalendarLunarFields(CamelModel):
-    phase: str | None = None
+    phase: Literal[
+        "new_moon",
+        "waxing_crescent",
+        "first_quarter",
+        "waxing_gibbous",
+        "full_moon",
+        "waning_gibbous",
+        "last_quarter",
+        "waning_crescent",
+    ] | None = None
+    phase_index: int | None = Field(default=None, ge=0, le=7)
+    phase_label: str | None = None
     illumination: float | None = None
     moon_sign: str | None = None
+    moon_sign_label: str | None = None
     lunar_day: int | None = None
     void_of_course: bool | None = None
 

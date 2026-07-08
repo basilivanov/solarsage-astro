@@ -90,7 +90,7 @@ describe('validateCalendarPayloadReadModel', () => {
   const payload = {
     meta: {
       schemaVersion: 'calendar/v1',
-      contractVersion: 1,
+      contractVersion: 2,
       generatedAt: '2026-05-01T00:00:00Z',
     },
     month: '2026-05',
@@ -111,11 +111,14 @@ describe('validateCalendarPayloadReadModel', () => {
         accessUntil: '2026-05-01',
       },
       lunar: {
-        phase: null,
-        illumination: null,
-        moonSign: null,
-        lunarDay: null,
-        voidOfCourse: null,
+        phase: 'waning_crescent',
+        phaseIndex: 7,
+        phaseLabel: 'убыв. серп',
+        illumination: 39,
+        moonSign: 'Cancer',
+        moonSignLabel: 'Рак',
+        lunarDay: 24,
+        voidOfCourse: false,
       },
     }],
   }
@@ -124,7 +127,48 @@ describe('validateCalendarPayloadReadModel', () => {
     const result = validateCalendarPayloadReadModel(payload)
     expect(result.days[0].dayStatus).toBe('steady')
     expect(result.days[0].access?.state).toBe('full')
-    expect(result.days[0].lunar.moonSign).toBeNull()
+    expect(result.days[0].lunar.phase).toBe('waning_crescent')
+    expect(result.days[0].lunar.phaseIndex).toBe(7)
+    expect(result.days[0].lunar.phaseLabel).toBe('убыв. серп')
+    expect(result.days[0].lunar.moonSign).toBe('Cancer')
+    expect(result.days[0].lunar.moonSignLabel).toBe('Рак')
+    expect(result.days[0].lunar.voidOfCourse).toBe(false)
+  })
+
+  it('preserves null as unknown for optional lunar facts', () => {
+    const result = validateCalendarPayloadReadModel({
+      ...payload,
+      days: [{
+        ...payload.days[0],
+        lunar: {
+          phase: null,
+          phaseIndex: null,
+          phaseLabel: null,
+          illumination: null,
+          moonSign: null,
+          moonSignLabel: null,
+          lunarDay: null,
+          voidOfCourse: null,
+        },
+      }],
+    })
+
+    expect(result.days[0].lunar.voidOfCourse).toBeNull()
+  })
+
+  it('rejects lunar phase indexes outside the stable 0..7 range', () => {
+    const data = {
+      ...payload,
+      days: [{
+        ...payload.days[0],
+        lunar: {
+          ...payload.days[0].lunar,
+          phaseIndex: 8,
+        },
+      }],
+    }
+
+    expect(() => validateCalendarPayloadReadModel(data)).toThrow()
   })
 
   it('rejects the legacy UI-only "even" status in backend read models', () => {
