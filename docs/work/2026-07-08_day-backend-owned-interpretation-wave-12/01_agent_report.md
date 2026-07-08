@@ -13,6 +13,7 @@
     *   Added the `DaySummaryBlock` and `DaySummaryFact` schemas.
     *   Added `concrete_advice: ConcreteAdviceBlock` and `day_summary: DaySummaryBlock` as required fields to `TodayPayload`.
     *   Added `interpretation: str | None = None` to `DayChartTransitPlanet`.
+    *   Updated `ConcreteAdviceEvidence` to include `house: int | None = None` and `sign: str | None = None` to support detailed dynamic evidence.
 
 ---
 
@@ -27,7 +28,7 @@
 
 *   **`lib/contracts/today.ts`**: Updated Zod schemas and exports for the new payload structure.
 *   **`lib/adapters/today-payload.ts`**: Passed through the new backend-owned fields and updated chart transit planet interpretation mapping.
-*   **`components/today/concrete-day-advice.tsx`**: Renders exact backend-owned `concreteAdvice` block. Removed local templates and verdict logic. Added semantic `iconName` to emoji `ICON_MAP`.
+*   **`components/today/concrete-day-advice.tsx`**: Renders exact backend-owned `concreteAdvice` block. Removed local templates and verdict logic. Added semantic `iconName` to emoji `ICON_MAP` with a safe `"•"` fallback.
 *   **`components/today/day-summary-card.tsx`**: Renders `daySummary` status label, status line, and facts. Removed hardcoded recommendations.
 *   **`components/today/day-chart.tsx`**: Removed `planetDescription` and renders backend-owned planet `interpretation` in the popover.
 *   **`components/today/today-screen.tsx`**: Wired the new payload fields.
@@ -40,10 +41,10 @@
 
 ## 4. Cache & Version Behavior
 
-*   **`TODAY_CONTENT_VERSION`**: Bumped from `2` to `3`.
+*   **`TODAY_CONTENT_VERSION`**: Bumped from `2` to `4` (Rework 02).
 *   **`meta.contract_version`**: Bumped from `2` to `3`.
 *   **`prompt_version`**: Bumped from `1` to `2` to reflect new LLM prompts for concrete advice and planet interpretations.
-*   Old v2 cache records are automatically ignored because `_get_cached_payload()` filters by `TODAY_CONTENT_VERSION`.
+*   Old cached payloads with content_version `3` or lower are automatically ignored and regenerated because `_get_cached_payload()` filters by `TODAY_CONTENT_VERSION`.
 
 ---
 
@@ -69,8 +70,15 @@
 
 ---
 
-## 7. Rework 03 Fixes (2026-07-08)
+## 7. Rework 02 Fixes (2026-07-08)
 
-*   **Removed test-aware key checks**: Deleted `is_real_key` checks from `today_interpretation_service.py`. Checked keys only using explicit non-empty configuration: `has_llm_keys = any(bool((key or "").strip()) for key in (settings.openrouter_api_key, settings.anthropic_api_key, getattr(settings, "deepseek_api_key", "")))`.
-*   **Removed old forecast templates from tests**: Replaced all instances of `Сократи траты...` and `без взлётов...` in backend tests, TodayScreen unit tests, and E2E visual tests with sentinel strings (e.g. `СЕНТИНЕЛ ДЕНЬГИ`, `Сводка временно недоступна.`).
-*   **Added test-key verification test**: Added `test_today_interpretation_service_test_key_enables_llm` in `test_today_concrete_advice.py` proving a fake key containing `"test"`, e.g. `"test-key"`, still enables the patched LLM path.
+*   **Removed mock checks**: Deleted all mock/assert/is_mocked checks from `today_interpretation_service.py`. Product code only runs the LLM based on explicit non-empty configuration checks.
+*   **Factual Day Summary Card**: Replaced hardcoded action advice in summary facts with factual, non-forecast summaries. Omitted the forecast summary from top flag facts, using `"транзитный аспект"` instead.
+*   **Cleaned LLM Prompt**: Removed hardcoded product templates from prompt examples in `llm_service.py`.
+*   **Semantic Icon Names Fallback**: Used a neutral `"•"` fallback in `concrete-day-advice.tsx` if `ICON_MAP` does not resolve the semantic icon name, completely preventing raw text leaks.
+*   **Strict Allowed Evidence Planets/Aspects Validator**: Derives the allowed planets/aspects/houses in `validate_row_text()` strictly from `row.evidence` only (no static planet maps). Mentioning any planet/aspect/house not in the evidence rejects the row.
+*   **Mocked LLM explicitly in tests**: Set the API keys to empty in `conftest.py` so cache/endpoints tests verify the true no-LLM fallback path (`"Рекомендация временно недоступна."`).
+*   **Updated E2E mock fixtures**: Restored contract/prompt version numbers to `3` and `2`, used semantic icon names, and filled text fields with backend-owned sentinel strings (e.g. `СЕНТИНЕЛ ОТНОШЕНИЯ`).
+*   **Cleaned up visual artifacts**: Restored the `artifacts/pixel-rework-03` directory to its state before commit `e0e1832`.
+*   **Access window alignment**: Added `+ 1` to `can_access_day()` so it matches `get_summary()` inclusive access logic, resolving the off-by-one error.
+*   **Recalculation check**: Verified that the day payload for `basil_me` on `2026-07-08` correctly generates with v4 metadata, includes factual summaries, includes dynamic transit-based evidence (e.g. `Transit_Sun`), and access for `2026-07-12` is locked.
