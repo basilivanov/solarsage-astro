@@ -312,6 +312,10 @@ def test_audit_live_isolates_output(tmp_path: Path):
 def test_audit_resolve_output_dirs_default():
     """Default mode: root_dir == out_dir, debug_dir == out_dir/debug."""
     from pathlib import Path
+    import sys, importlib
+    _root = Path(__file__).resolve().parents[3]
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
     from scripts.audit_today import resolve_audit_output_dirs
     base = Path("/tmp/test_audit")
     dirs = resolve_audit_output_dirs(base, is_live=False)
@@ -323,6 +327,10 @@ def test_audit_resolve_output_dirs_live():
     """Live mode: root_dir == out_dir/live/<timestamp>, debug_dir == root_dir/debug.
     Canonical root debug/ must NOT be set as debug_dir."""
     from pathlib import Path
+    import sys, importlib
+    _root = Path(__file__).resolve().parents[3]
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
     from scripts.audit_today import resolve_audit_output_dirs
     base = Path("/tmp/test_audit")
     ts = "20260708T120000"

@@ -313,14 +313,14 @@ class TestSidecarValidation:
         with pytest.raises(ValidationError, match="at least one house"):
             SolarSageNatalResponse(
                 house_system="Placidus",
-                planets=[{"name": "Sun", "longitude": 0.0, "sign": "Aries"}],
+                planets=[{"name": "Sun", "longitude": 0.0, "sign": "Aries", "retrograde": False}],
                 houses=[],
             )
 
     def test_solar_sage_natal_accepts_valid_response(self):
         resp = SolarSageNatalResponse(
             house_system="Placidus",
-            planets=[{"name": "Sun", "longitude": 0.0, "sign": "Aries"}],
+            planets=[{"name": "Sun", "longitude": 0.0, "sign": "Aries", "retrograde": False}],
             houses=[{"number": 1, "longitude": 0.0, "sign": "Aries"}],
         )
         assert len(resp.planets) == 1
@@ -335,7 +335,7 @@ class TestSidecarValidation:
     def test_solar_sage_transits_accepts_valid_response(self):
         from app.schemas.natal import SolarSageTransitsResponse
         resp = SolarSageTransitsResponse(
-            planets=[{"name": "Sun", "longitude": 0.0, "sign": "Aries"}],
+            planets=[{"name": "Sun", "longitude": 0.0, "sign": "Aries", "retrograde": False}],
         )
         assert len(resp.planets) == 1
 

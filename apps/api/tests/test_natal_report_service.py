@@ -71,13 +71,13 @@ def sample_context() -> NatalContextData:
             NatalChartAngle(name="MC", sign="Sagittarius", degree=20.5, longitude=260.5),
         ],
         planets=[
-            NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
-            NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
-            NatalChartPlanet(name="Mercury", sign="Capricorn", degree=7.1, house=10, longitude=277.1),
-            NatalChartPlanet(name="Venus", sign="Pisces", degree=3.6, house=12, longitude=333.6),
+            NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9, retrograde=False),
+            NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6, retrograde=False),
+            NatalChartPlanet(name="Mercury", sign="Capricorn", degree=7.1, house=10, longitude=277.1, retrograde=False),
+            NatalChartPlanet(name="Venus", sign="Pisces", degree=3.6, house=12, longitude=333.6, retrograde=False),
             NatalChartPlanet(name="Mars", sign="Cancer", degree=17.9, house=5, longitude=137.9, retrograde=True),
-            NatalChartPlanet(name="Jupiter", sign="Libra", degree=14.0, house=7, longitude=194.0),
-            NatalChartPlanet(name="Saturn", sign="Aquarius", degree=17.0, house=12, longitude=327.0),
+            NatalChartPlanet(name="Jupiter", sign="Libra", degree=14.0, house=7, longitude=194.0, retrograde=False),
+            NatalChartPlanet(name="Saturn", sign="Aquarius", degree=17.0, house=12, longitude=327.0, retrograde=False),
         ],
         houses=[
             NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30))
@@ -104,8 +104,8 @@ def context_with_special_points() -> NatalContextData:
             NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9),
         ],
         planets=[
-            NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
-            NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
+            NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9, retrograde=False),
+            NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6, retrograde=False),
         ],
         houses=[
             NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30))
@@ -730,8 +730,8 @@ class TestNoPlaceholderSections:
             # Mock: NatalContextService returns a valid context
             mock_context = NatalContextData(
                 planets=[
-                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
-                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9, retrograde=False),
+                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6, retrograde=False),
                 ],
                 houses=[
                     NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
@@ -806,8 +806,8 @@ class TestNoPlaceholderSections:
 
             mock_context = NatalContextData(
                 planets=[
-                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
-                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9, retrograde=False),
+                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6, retrograde=False),
                 ],
                 houses=[
                     NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
@@ -881,8 +881,8 @@ class TestNoPlaceholderSections:
 
             mock_context = NatalContextData(
                 planets=[
-                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
-                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6),
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9, retrograde=False),
+                    NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6, retrograde=False),
                 ],
                 houses=[
                     NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
@@ -1098,7 +1098,7 @@ class TestFullReportAvailability:
             # Mock NatalContextService to return context for current profile
             mock_context = NatalContextData(
                 planets=[
-                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9, retrograde=False),
                 ],
                 houses=[
                     NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
@@ -1180,7 +1180,7 @@ class TestFullReportAvailability:
 
             mock_context = NatalContextData(
                 planets=[
-                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9),
+                    NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9, retrograde=False),
                 ],
                 houses=[
                     NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i-1)*30))
