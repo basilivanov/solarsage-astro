@@ -156,7 +156,6 @@ Concrete advice primary-evidence polarity was checked for all 12 rows; contradic
 ## Commit / push / deploy status
 
 - Branch: `main`
-- Implementation commit present before final report/typecheck follow-up: `70cc05f`
-- Final HEAD is reported in the callback and final assistant response after the last commit is created.
+- Commit SHA: see callback HEAD.
 - Push: `NOT_ATTEMPTED`
 - Deploy: `NOT_ATTEMPTED`
