@@ -494,19 +494,29 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         shutil.copy2(debug_dir / "astronomy_oracle_summary.json", out_dir / "13_astronomy_oracle_summary.json")
 
     # Generate 14_claims_audit.md dynamically
+    # Support both snake_case (by_alias=False) and camelCase (by_alias=True) defensively
+    def _get_field(obj, *keys):
+        for k in keys:
+            v = obj.get(k) if isinstance(obj, dict) else None
+            if v is not None:
+                return v
+        return None
+
     headline = payload_json.get("headline", "N/A")
-    day_status_val = payload_json.get("dayStatus") or payload_json.get("day_status") or "N/A"
-    
+    day_status_val = _get_field(payload_json, "day_status", "dayStatus") or "N/A"
+
     lunar_phase_title = "N/A"
-    day_summary_facts = (payload_json.get("daySummary") or {}).get("facts", [])
-    for fact in day_summary_facts:
+    day_summary = _get_field(payload_json, "day_summary", "daySummary") or {}
+    for fact in day_summary.get("facts", []):
         if fact.get("kind") == "lunar_phase":
             lunar_phase_title = fact.get("title", "N/A")
-            
-    top_flags_titles = [f.get("title", "") for f in payload_json.get("topFlags", [])]
+
+    top_flags = _get_field(payload_json, "top_flags", "topFlags") or []
+    top_flags_titles = [f.get("title", "") for f in top_flags]
     top_flags_str = ", ".join(top_flags_titles) if top_flags_titles else "N/A"
-    
-    advice_rows = (payload_json.get("concreteAdvice") or {}).get("rows", [])
+
+    concrete_advice = _get_field(payload_json, "concrete_advice", "concreteAdvice") or {}
+    advice_rows = concrete_advice.get("rows", [])
     advice_lines = []
     for r in advice_rows:
         advice_lines.append(f"| {r.get('label', '')} | {r.get('verdict', '')} | {r.get('text', '')} |")

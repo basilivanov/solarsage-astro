@@ -172,4 +172,3 @@ Required:
 - Regenerate and commit the intended artifact state, or restore them to the committed artifact state.
 - Final `git status --short --branch` must show only known unrelated untracked files:
   `.grace/`, `grace.db`, `skills/`, and `docs/superpowers/...`.
-

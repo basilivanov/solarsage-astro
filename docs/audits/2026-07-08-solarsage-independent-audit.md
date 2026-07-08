@@ -4,9 +4,9 @@
 > Post-W0 fixes have resolved these mismatches (including retrograde flags, Moon phase rounding, and day/natal signal separation).
 > Please refer to the numbered canonical artifacts under `artifacts/audit/2026-07-08/` for the current post-fix audit results.
 
-Дата аудита: 2026-07-08  
-Пользователь: `basil_ivanov`, `eb3876be-e1b4-43d6-b887-1f8554e33150`  
-Production target: `2026-07-08 12:00 Europe/Moscow`  
+Дата аудита: 2026-07-08
+Пользователь: `basil_ivanov`, `eb3876be-e1b4-43d6-b887-1f8554e33150`
+Production target: `2026-07-08 12:00 Europe/Moscow`
 Артефакты: `artifacts/audit/2026-07-08/`
 
 ## Executive summary
@@ -94,9 +94,9 @@ Top signals also match:
 
 Production status logic uses aspect polarity only. It does not use `sphere_scores` directly for `day_status`.
 
-Positive score: `7.3468`  
-Negative score: `4.9252`  
-Threshold: `positive > negative * 1.3` and `positive >= 1.0`  
+Positive score: `7.3468`
+Negative score: `4.9252`
+Threshold: `positive > negative * 1.3` and `positive >= 1.0`
 Actual: `7.3468 > 6.4028`, so `supportive`.
 
 ### Why "Документы" are green
