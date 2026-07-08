@@ -469,6 +469,54 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         meta["generated_at"] = f"{target_date.isoformat()}T12:00:00Z"
         meta["cached"] = False
 
+        # Determine live-LLM sample output path (non-destructive to canonical root)
+        live_dir = None
+        if getattr(args, 'live_llm_sample', False):
+            import datetime
+            ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+            live_dir = out_dir / "live" / ts
+            live_dir.mkdir(parents=True, exist_ok=True)
+
+        # Default baseline mode: freeze volatile LLM fields from committed canonical baseline.
+        # This makes the baseline deterministic even without a pre-existing DB cache row.
+        if not getattr(args, 'live_llm_sample', False):
+            baseline_path = out_dir / "11_final_today_payload.json"
+            if baseline_path.exists():
+                import json as _json
+                baseline_raw = baseline_path.read_text(encoding="utf-8")
+                baseline = _json.loads(baseline_raw)
+                # Freeze headline
+                payload_json["headline"] = baseline.get("headline", payload_json["headline"])
+                # Freeze reading paragraphs
+                payload_json["reading"] = baseline.get("reading", payload_json["reading"])
+                # Freeze notes
+                payload_json["notes"] = baseline.get("notes", payload_json["notes"])
+                # Freeze why_this_happens sections
+                if "why_this_happens" in baseline:
+                    payload_json["why_this_happens"] = baseline["why_this_happens"]
+                # Freeze concrete_advice row texts
+                baseline_advice = {}
+                base_ca = baseline.get("concrete_advice") or baseline.get("concreteAdvice") or {}
+                if isinstance(base_ca, dict):
+                    for r in base_ca.get("rows", []):
+                        baseline_advice[r.get("key")] = r.get("text", "")
+                live_ca = payload_json.get("concrete_advice") or payload_json.get("concreteAdvice") or {}
+                if isinstance(live_ca, dict):
+                    for r in live_ca.get("rows", []):
+                        if r.get("key") in baseline_advice:
+                            r["text"] = baseline_advice[r["key"]]
+                # Freeze planet interpretations
+                baseline_planets = {}
+                base_chart = baseline.get("day_chart") or baseline.get("dayChart") or {}
+                if isinstance(base_chart, dict):
+                    for p in base_chart.get("transit_planets", []):
+                        baseline_planets[p.get("name")] = p.get("interpretation", "")
+                live_chart = payload_json.get("day_chart") or payload_json.get("dayChart") or {}
+                if isinstance(live_chart, dict):
+                    for p in live_chart.get("transit_planets", []):
+                        if p.get("name") in baseline_planets:
+                            p["interpretation"] = baseline_planets[p["name"]]
+
         write_json(debug_dir / "final_today_payload.json", payload_json)
 
         await client.close()
@@ -494,7 +542,12 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     shutil.copy2(debug_dir / "top_signals.csv", out_dir / "08_top_signals.csv")
     shutil.copy2(debug_dir / "semantic_layer.json", out_dir / "09_semantic_layer.json")
     shutil.copy2(debug_dir / "why_contexts.json", out_dir / "10_why_contexts.json")
-    shutil.copy2(debug_dir / "final_today_payload.json", out_dir / "11_final_today_payload.json")
+    # 11_final_today_payload.json: in default mode copy to canonical root;
+    # in live-LLM mode write to live/ subdirectory and do not touch canonical root.
+    if getattr(args, 'live_llm_sample', False) and live_dir is not None:
+        write_json(live_dir / "final_today_payload.json", payload_json)
+    else:
+        shutil.copy2(debug_dir / "final_today_payload.json", out_dir / "11_final_today_payload.json")
 
     if (debug_dir / "scoring_oracle_comparison.json").exists():
         shutil.copy2(debug_dir / "scoring_oracle_comparison.json", out_dir / "12_scoring_oracle_comparison.json")
@@ -557,6 +610,10 @@ This document contains actual production payload excerpts generated for manual r
 - **Stale Advice Contradiction**: "Общайся с близкими для улучшения отношений" under "avoid" verdict.
 """
     (out_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
+
+    # Also write claims to live directory in live-LLM mode
+    if live_dir is not None:
+        (live_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
 
     # Generate 15_audit_summary.md dynamically
     summary_text = f"""# W0 Audit Summary: User {args.user_id}, {args.date}

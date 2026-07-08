@@ -402,7 +402,11 @@ class SemanticService:
         # 09 practical_meaning
         practical_items = []
         if day_status == "supportive":
-            practical_items = ["Действуй — сегодня энергии планет поддерживают начинания.", "Общайся с близкими — аспекты благоприятствуют отношениям.", "Заверши отложенные задачи — день даёт импульс."]
+            practical_items = ["Действуй — сегодня энергии планет поддерживают начинания.", "Заверши отложенные задачи — день даёт импульс."]
+            # Check if relationships sphere score indicates avoid (score < 2.0) to avoid contradiction
+            relationships_score = sphere_scores.get("relationships_partnership", 5.0)
+            if relationships_score >= 2.0:
+                practical_items.insert(1, "Общайся с близкими — аспекты благоприятствуют отношениям.")
         elif day_status == "tense":
             practical_items = ["Отложи важные решения — день с высоким напряжением.", "Сфокусируйся на рутине, избегай конфликтов.", "Дай себе паузу перед реакцией — эмоции могут зашкаливать."]
         else:
