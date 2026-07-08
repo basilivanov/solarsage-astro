@@ -13,6 +13,7 @@
       "astro-history-widget",
       "today-bottom-disclaimer"
     ],
+    "daySummaryStructureFacts": "5 ИЮЛ · ВОСКРЕСЕНЬЕ\n✨\nПоддерживающий день\n\nдень на твоей стороне — действуй\n\n♃\nтема дня — Юпитер: удача и масштаб\n📌\nЛуна квадратура Марс\n→ Напряжённый аспект: лучше снизить резкость и перепроверить реакцию.",
     "concreteAdviceLabels": [
       "Работа",
       "Деньги",
@@ -28,7 +29,21 @@
       "Покупки"
     ],
     "concreteAdviceRowCountAfterExpand": 12,
+    "concreteAdviceRealRowCount": 8,
+    "concreteAdviceUnavailableRowCount": 4,
     "rawDebugStringsFound": [],
+    "chartPlanetAriaLabels": [
+      "Солнце в Раке, 1 дом",
+      "Луна в Рыбах, 9 дом",
+      "Меркурий в Раке, 1 дом",
+      "Венера в Льве, 2 дом",
+      "Марс в Близнецах, 12 дом",
+      "Юпитер в Льве, 2 дом",
+      "Сатурн в Овне, 10 дом",
+      "Уран в Близнецах, 12 дом",
+      "Нептун в Овне, 10 дом",
+      "Плутон в Водолее, 8 дом"
+    ],
     "chartLegendLabels": [
       "соединение",
       "оппозиция",

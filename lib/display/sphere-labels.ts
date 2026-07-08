@@ -22,16 +22,123 @@
 // failure_policy: never throws; returns fallback "Сфера {key}" for truly unknown
 // END_MODULE_CONTRACT: M-LIB-DISPLAY-SPHERE-LABELS
 
+export type ProductSphereKey =
+  | "work"
+  | "money"
+  | "documents"
+  | "relationships"
+  | "sport"
+  | "communication"
+  | "health"
+  | "decisions"
+  | "travel"
+  | "creativity"
+  | "study"
+  | "shopping"
+
+/** Canonical product sphere list and order */
+export const CANONICAL_PRODUCT_ORDER: { key: ProductSphereKey; label: string; iconName: string }[] = [
+  { key: "work", label: "Работа", iconName: "briefcase" },
+  { key: "money", label: "Деньги", iconName: "building" },
+  { key: "documents", label: "Документы", iconName: "list-checks" },
+  { key: "relationships", label: "Отношения", iconName: "sparkle" },
+  { key: "sport", label: "Спорт", iconName: "leaf" },
+  { key: "communication", label: "Общение", iconName: "telescope" },
+  { key: "health", label: "Здоровье", iconName: "compass" },
+  { key: "decisions", label: "Решения", iconName: "target" },
+  { key: "travel", label: "Поездки", iconName: "hourglass" },
+  { key: "creativity", label: "Творчество", iconName: "grid" },
+  { key: "study", label: "Учёба", iconName: "layers" },
+  { key: "shopping", label: "Покупки", iconName: "zap" },
+]
+
+/** Maps backend sphere keys directly to canonical ProductSphereKey */
+export const BACKEND_TO_PRODUCT_KEY_MAP: Record<string, ProductSphereKey> = {
+  // 1. Работа
+  work_status_achievement: "work",
+  career: "work",
+  career_social_status: "work",
+  public_image: "work",
+  technology_innovation: "work",
+
+  // 2. Деньги
+  finance_money: "money",
+  money_security_resources: "money",
+
+  // 3. Документы
+  legal_affairs: "documents",
+  partnerships_contracts: "documents",
+
+  // 4. Отношения (includes family/home keys per architect instruction)
+  relationships_partnership: "relationships",
+  relationships: "relationships",
+  home_family_roots: "relationships",
+  home_family: "relationships",
+  inheritance: "relationships",
+
+  // 5. Спорт
+  body_energy_health: "sport",
+  daily_routine: "sport",
+  service_routine: "sport",
+
+  // 6. Общение
+  communication_learning: "communication",
+  thinking_speech_learning: "communication",
+  friendship_social: "communication",
+
+  // 7. Здоровье
+  spirituality_inner_growth: "health",
+  inner_background_unconscious: "health",
+  healing: "health",
+  hidden_matters: "health",
+
+  // 8. Решения
+  career_ambition: "decisions",
+  crisis_transformation: "decisions",
+  crisis_transformation_control: "decisions",
+  philosophy: "decisions",
+
+  // 9. Поездки
+  travel_adventure: "travel",
+  long_distance: "travel",
+  meaning_expansion_vector: "travel",
+
+  // 10. Творчество
+  creativity_self_expression: "creativity",
+
+  // 11. Учёба
+  education: "study",
+  higher_education: "study",
+
+  // 12. Покупки
+  joint_finance: "shopping",
+  debts: "shopping",
+  investment: "shopping",
+}
+
+/** Product key -> label/icon map */
+export const PRODUCT_SPHERE_META: Record<ProductSphereKey, { label: string; icon: string }> = {
+  work: { label: "Работа", icon: "💼" },
+  money: { label: "Деньги", icon: "💰" },
+  documents: { label: "Документы", icon: "📝" },
+  relationships: { label: "Отношения", icon: "💖" },
+  sport: { label: "Спорт", icon: "🏃" },
+  communication: { label: "Общение", icon: "💬" },
+  health: { label: "Здоровье", icon: "🌿" },
+  decisions: { label: "Решения", icon: "🎯" },
+  travel: { label: "Поездки", icon: "✈️" },
+  creativity: { label: "Творчество", icon: "🎨" },
+  study: { label: "Учёба", icon: "📚" },
+  shopping: { label: "Покупки", icon: "🛍️" },
+}
+
 const KNOWN_SPHERE_LABELS: Record<string, string> = {
-  // Canon / active keys (Wave 4+ backend)
   thinking_speech_learning: "Мышление, речь, обучение",
   money_security_resources: "Деньги, безопасность, ресурсы",
   home_family_roots: "Дом, семья, корни",
   work_status_achievement: "Работа, статус, достижения",
   relationships_partnership: "Отношения и партнёрство",
   body_energy_health: "Энергия и здоровье",
-
-  // Legacy / transitional keys
   relationships: "Отношения",
   career: "Карьера",
   rest: "Отдых и восстановление",
@@ -63,25 +170,17 @@ const KNOWN_SPHERE_LABELS: Record<string, string> = {
   debts: "Долги и обязательства",
 }
 
-/**
- * Convert a snake_case string to a readable Russian approximation.
- * This is the fallback for unknown keys — prefer adding to KNOWN_SPHERE_LABELS.
- */
-function snakeToReadable(key: string): string {
-  return key
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
+/** Legacy map - kept for backward compatibility */
+export const SPHERE_PRODUCT_MAP = PRODUCT_SPHERE_META
 
 /**
  * Return a human-readable Russian label for the given sphere score key.
- * Uses the known mapping if available, otherwise formats the raw key.
+ * Safe Russian fallback generic text, never English or snake_case.
  */
 export function getSphereLabel(key: string): string {
   const trimmed = key.trim()
   if (trimmed.length === 0) return "Сфера"
-  return KNOWN_SPHERE_LABELS[trimmed] ?? snakeToReadable(trimmed)
+  return KNOWN_SPHERE_LABELS[trimmed] ?? "Другая сфера"
 }
 
 /** Map English planet names to Russian product labels */
@@ -100,70 +199,4 @@ export const PLANET_LABELS: Record<string, string> = {
 
 export function getPlanetLabel(name: string): string {
   return PLANET_LABELS[name] ?? name
-}
-
-/** Maps backend sphere keys to product-facing short labels and icons */
-export const SPHERE_PRODUCT_MAP: Record<string, { label: string; icon: string }> = {
-  // 1. Работа
-  work_status_achievement: { label: "Работа", icon: "💼" },
-  career: { label: "Работа", icon: "💼" },
-  career_social_status: { label: "Работа", icon: "💼" },
-  public_image: { label: "Работа", icon: "💼" },
-  technology_innovation: { label: "Работа", icon: "💼" },
-
-  // 2. Деньги
-  finance_money: { label: "Деньги", icon: "💰" },
-  money_security_resources: { label: "Деньги", icon: "💰" },
-
-  // 3. Документы
-  legal_affairs: { label: "Документы", icon: "📝" },
-  partnerships_contracts: { label: "Документы", icon: "📝" },
-
-  // 4. Отношения
-  relationships_partnership: { label: "Отношения", icon: "💖" },
-  relationships: { label: "Отношения", icon: "💖" },
-
-  // 5. Спорт
-  body_energy_health: { label: "Спорт", icon: "🏃" },
-  daily_routine: { label: "Спорт", icon: "🏃" },
-  service_routine: { label: "Спорт", icon: "🏃" },
-
-  // 6. Общение
-  communication_learning: { label: "Общение", icon: "💬" },
-  thinking_speech_learning: { label: "Общение", icon: "💬" },
-  friendship_social: { label: "Общение", icon: "💬" },
-
-  // 7. Здоровье
-  spirituality_inner_growth: { label: "Здоровье", icon: "🌿" },
-  inner_background_unconscious: { label: "Здоровье", icon: "🌿" },
-  healing: { label: "Здоровье", icon: "🌿" },
-  philosophy: { label: "Здоровье", icon: "🌿" },
-  hidden_matters: { label: "Здоровье", icon: "🌿" },
-
-  // 8. Решения
-  career_ambition: { label: "Решения", icon: "🎯" },
-  crisis_transformation: { label: "Решения", icon: "🎯" },
-  crisis_transformation_control: { label: "Решения", icon: "🎯" },
-
-  // 9. Поездки
-  travel_adventure: { label: "Поездки", icon: "✈️" },
-  long_distance: { label: "Поездки", icon: "✈️" },
-  meaning_expansion_vector: { label: "Поездки", icon: "✈️" },
-
-  // 10. Творчество
-  creativity_self_expression: { label: "Творчество", icon: "🎨" },
-
-  // 11. Учёба
-  education: { label: "Учёба", icon: "📚" },
-  higher_education: { label: "Учёба", icon: "📚" },
-
-  // 12. Покупки
-  joint_finance: { label: "Покупки", icon: "🛍️" },
-  debts: { label: "Покупки", icon: "🛍️" },
-  investment: { label: "Покупки", icon: "🛍️" },
-  inheritance: { label: "Покупки", icon: "🛍️" },
-
-  // Семья / Roots (transitional / fallback)
-  home_family_roots: { label: "Семья", icon: "🏠" },
-  home_family: { label: "Семья", icon: "🏠" },
 }

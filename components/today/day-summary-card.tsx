@@ -20,7 +20,6 @@ const STATUS_META: Record<DayStatus, { emoji: string; label: string; line: strin
   tense: { emoji: "⚡", label: "Напряжённый день", line: "не решай на эмоциях — доводи начатое", color: "oklch(0.65 0.15 27)" },
 }
 
-const MONTHS = ["ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК", "ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН"]
 const WEEKDAYS = ["ВОСКРЕСЕНЬЕ", "ПОНЕДЕЛЬНИК", "ВТОРНИК", "СРЕДА", "ЧЕТВЕРГ", "ПЯТНИЦА", "СУББОТА"]
 
 const PLANET_SYMBOLS: Record<string, string> = {
@@ -38,23 +37,19 @@ const PLANET_THEME: Record<string, string> = {
   Saturn: "дисциплина и итоги",
 }
 
-const WEEKDAY_RULERS = [
-  { planet: "Sun", symbol: "☉", label: "Солнце управитель", advice: "день самовыражения" },
-  { planet: "Moon", symbol: "☽", label: "Луна управитель", advice: "день эмоций и заботы" },
-  { planet: "Mars", symbol: "♂", label: "Марс управитель", advice: "день активности и борьбы" },
-  { planet: "Mercury", symbol: "☿", label: "Меркурий управитель", advice: "день контактов и информации" },
-  { planet: "Jupiter", symbol: "♃", label: "Юпитер управитель", advice: "день масштаба и удачи" },
-  { planet: "Venus", symbol: "♀", label: "Венера управитель", advice: "день красоты и выбора" },
-  { planet: "Saturn", symbol: "♄", label: "Сатурн управитель", advice: "день дисциплины и порядка" },
-]
-
 function getRussianMonth(d: Date): string {
   const m = d.getMonth()
   const map: Record<number, string> = {
+    0: "ИЮЛ", 1: "ФЕВ", 2: "МАР", 3: "АПР", 4: "МАЙ", 5: "ИЮН",
+    6: "ИЮЛ", 7: "АВГ", 8: "СЕН", 9: "ОКТ", 10: "НОЯ", 11: "ДЕК"
+  }
+  // Standard Russian calendar months. July is 6. The previous code mapped 0 to ИЮЛ by mistake in static list,
+  // but let us map all months correctly for calendar correctness.
+  const correctMap: Record<number, string> = {
     0: "ЯНВ", 1: "ФЕВ", 2: "МАР", 3: "АПР", 4: "МАЙ", 5: "ИЮН",
     6: "ИЮЛ", 7: "АВГ", 8: "СЕН", 9: "ОКТ", 10: "НОЯ", 11: "ДЕК"
   }
-  return map[m] || "ИЮЛ"
+  return correctMap[m] || "ИЮЛ"
 }
 
 export function DaySummaryCard({ date, dayStatus, lunar, topFlags, planetInfluences }: Props) {
@@ -68,26 +63,29 @@ export function DaySummaryCard({ date, dayStatus, lunar, topFlags, planetInfluen
   const weekdayStr = WEEKDAYS[date.getDay()]
   const dateStr = `${date.getDate()} ${monthStr} · ${weekdayStr}`
 
-  // Ruler info
-  const ruler = WEEKDAY_RULERS[date.getDay()]
-
   return (
-    <section className="px-5 space-y-3" aria-label="Сводка дня" data-testid="day-summary-card">
-      {/* Date Header outside the card */}
-      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80 pl-1">
-        {dateStr}
-      </div>
-
+    <section className="px-5" aria-label="Сводка дня" data-testid="day-summary-card">
       <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-secondary/20 p-4">
-        {/* Large Status Emoji */}
-        <div className="text-[28px] mb-1.5">{meta.emoji}</div>
-        
-        {/* Title & One-line status */}
-        <h2 className="text-[17px] font-bold text-foreground">{meta.label}</h2>
-        <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{meta.line}</p>
+        {/* Card Header matching 3001 visual shell: date/weekday on left, status emoji/label on right */}
+        <div className="relative flex items-center justify-between border-b border-border/40 pb-2.5">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+            {dateStr}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[14px]">{meta.emoji}</span>
+            <span className="text-[12.5px] font-bold" style={{ color: meta.color }}>
+              {meta.label}
+            </span>
+          </div>
+        </div>
 
-        {/* Fact Rows */}
-        <div className="mt-4 space-y-3 border-t border-border/40 pt-4">
+        {/* One-line status line */}
+        <p className="relative mt-2.5 text-[13px] leading-snug text-foreground/85">
+          {meta.line}
+        </p>
+
+        {/* Fact Rows (only if there is real data) */}
+        <div className="relative mt-3.5 space-y-3 border-t border-border/30 pt-3.5">
           {/* 1. Top Planet Theme */}
           {topPlanet ? (
             <div className="flex items-start gap-2.5">
@@ -113,16 +111,7 @@ export function DaySummaryCard({ date, dayStatus, lunar, topFlags, planetInfluen
             </div>
           ) : null}
 
-          {/* 3. Weekday Ruler */}
-          <div className="flex items-start gap-2.5">
-            <span className="text-[14px] font-semibold w-5 text-center flex-none mt-0.5">{ruler.symbol}</span>
-            <div className="text-[12px] leading-snug text-foreground">
-              <span>{ruler.label}</span>
-              <span className="text-muted-foreground block mt-0.5">→ {ruler.advice}</span>
-            </div>
-          </div>
-
-          {/* 4. Lunar Void of Course */}
+          {/* 3. Lunar Void of Course */}
           {lunar && lunar.voidOfCourse ? (
             <div className="flex items-start gap-2.5">
               <span className="text-[14px] font-semibold w-5 text-center flex-none mt-0.5">🟡</span>
@@ -133,7 +122,7 @@ export function DaySummaryCard({ date, dayStatus, lunar, topFlags, planetInfluen
             </div>
           ) : null}
 
-          {/* 5. Top Flag (Transit aspect) */}
+          {/* 4. Top Flag (Transit aspect) */}
           {topFlag ? (
             <div className="flex items-start gap-2.5">
               <span className="text-[14px] font-semibold w-5 text-center flex-none mt-0.5">📌</span>

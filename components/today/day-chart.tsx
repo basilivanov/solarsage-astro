@@ -22,6 +22,11 @@ const SIGN_RU: Record<string, string> = {
   Libra: "Весы", Scorpio: "Скорпион", Sagittarius: "Стрелец", Capricorn: "Козерог", Aquarius: "Водолей", Pisces: "Рыбы",
 }
 
+const SIGN_PREPOSITIONAL: Record<string, string> = {
+  Aries: "Овне", Taurus: "Тельце", Gemini: "Близнецах", Cancer: "Раке", Leo: "Льве", Virgo: "Деве",
+  Libra: "Весах", Scorpio: "Скорпионе", Sagittarius: "Стрельце", Capricorn: "Козероге", Aquarius: "Водолее", Pisces: "Рыбах",
+}
+
 const SIGN_SYMBOLS: Record<string, string> = {
   Aries: "♈", Taurus: "♉", Gemini: "♊", Cancer: "♋", Leo: "♌", Virgo: "♍",
   Libra: "♎", Scorpio: "♏", Sagittarius: "♐", Capricorn: "♑", Aquarius: "♒", Pisces: "♓",
@@ -166,7 +171,7 @@ export function DayChart({ chart, dateLabel, dayStatus = "steady" }: Props) {
                   onClick={() => selectPlanet(planet.name)}
                   onKeyDown={(e) => handleKeyDown(planet.name, e)}
                   role="button" tabIndex={0}
-                  aria-label={`${getPlanetLabel(planet.name)}${planet.sign ? ` в ${planet.sign}` : ""}${planet.house ? `, ${planet.house} дом` : ""}`}
+                  aria-label={`${getPlanetLabel(planet.name)}${planet.sign ? ` в ${SIGN_PREPOSITIONAL[planet.sign] || planet.sign}` : ""}${planet.house ? `, ${planet.house} дом` : ""}`}
                   data-testid="day-chart-planet"
                 />
               </g>

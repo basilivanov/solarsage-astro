@@ -251,6 +251,10 @@ test.describe("Mock Visual — /day/[date]", () => {
 
     // Click the first day-chart-planet, assert popover appears and contains Russian sign/house format
     const firstPlanet = page.getByTestId("day-chart-planet").first();
+    const ariaLabel = await firstPlanet.getAttribute("aria-label");
+    expect(ariaLabel).toContain("Солнце в Раке, 1 дом");
+    expect(ariaLabel).not.toContain("Cancer");
+    
     await firstPlanet.click();
     const popover = page.getByTestId("day-chart-planet-popover");
     await expect(popover).toBeVisible();

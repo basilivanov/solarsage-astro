@@ -4,7 +4,12 @@
 // ############################################################################
 
 import { describe, it, expect } from "vitest";
-import { getSphereLabel } from "../../../lib/display/sphere-labels";
+import { 
+  getSphereLabel, 
+  BACKEND_TO_PRODUCT_KEY_MAP, 
+  PRODUCT_SPHERE_META,
+  CANONICAL_PRODUCT_ORDER
+} from "../../../lib/display/sphere-labels";
 
 describe("getSphereLabel", () => {
   it("maps canon-shaped technical keys to human-readable Russian labels", () => {
@@ -27,9 +32,9 @@ describe("getSphereLabel", () => {
     expect(getSphereLabel("home_family")).toBe("Дом и семья");
   });
 
-  it("formats unknown keys as readable text", () => {
+  it("formats unknown keys as safe generic Russian text", () => {
     const label = getSphereLabel("some_unknown_key");
-    expect(label).toBe("Some Unknown Key");
+    expect(label).toBe("Другая сфера");
     expect(label).not.toContain("_");
   });
 
@@ -39,5 +44,27 @@ describe("getSphereLabel", () => {
 
   it("handles whitespace-only key with fallback", () => {
     expect(getSphereLabel("  ")).toBe("Сфера");
+  });
+
+  it("asserts every backend mapping resolves to one of the 12 canonical product buckets", () => {
+    const canonicalKeys = new Set(CANONICAL_PRODUCT_ORDER.map(c => c.key));
+    
+    Object.keys(BACKEND_TO_PRODUCT_KEY_MAP).forEach(key => {
+      const productKey = BACKEND_TO_PRODUCT_KEY_MAP[key];
+      expect(canonicalKeys.has(productKey)).toBe(true);
+      
+      const meta = PRODUCT_SPHERE_META[productKey];
+      expect(meta).toBeDefined();
+      expect(meta.label).toBeDefined();
+      expect(meta.icon).toBeDefined();
+    });
+  });
+
+  it("asserts key mappings for complex keys resolve into canonical product buckets", () => {
+    expect(BACKEND_TO_PRODUCT_KEY_MAP["home_family_roots"]).toBe("relationships");
+    expect(BACKEND_TO_PRODUCT_KEY_MAP["home_family"]).toBe("relationships");
+    expect(BACKEND_TO_PRODUCT_KEY_MAP["crisis_transformation_control"]).toBe("decisions");
+    expect(BACKEND_TO_PRODUCT_KEY_MAP["inner_background_unconscious"]).toBe("health");
+    expect(BACKEND_TO_PRODUCT_KEY_MAP["meaning_expansion_vector"]).toBe("travel");
   });
 });

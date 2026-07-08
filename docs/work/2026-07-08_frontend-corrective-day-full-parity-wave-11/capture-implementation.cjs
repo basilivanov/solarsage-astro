@@ -66,6 +66,10 @@ async function main() {
 
   // Scroll helper
   const scrollToText = async (textPatterns) => {
+    // Wait for the first text pattern to be visible in the DOM
+    const firstPattern = textPatterns[0];
+    await page.locator(`text="${firstPattern}"`).first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+    
     await page.evaluate((patterns) => {
       const scrollRoot = document.querySelector('.flex-1.overflow-y-auto.overscroll-contain');
       if (!scrollRoot) return;
@@ -94,10 +98,10 @@ async function main() {
   };
 
   // Expand concrete advice first to capture it expanded
-  await page.evaluate(() => {
-    const btn = document.querySelector('button[aria-controls="concrete-day-advice-rows"]');
-    if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  });
+  const concreteExpandBtn = page.locator('button[aria-controls="concrete-day-advice-rows"]');
+  if (await concreteExpandBtn.isVisible().catch(() => false)) {
+    await concreteExpandBtn.click();
+  }
   await page.waitForTimeout(500);
 
   // 2. Concrete Today: candidate-02-concrete-today-expanded.png
@@ -121,20 +125,26 @@ async function main() {
   });
   await page.screenshot({ path: resolve(ARTIFACTS, 'candidate-04-chart-after-click.png'), fullPage: false });
 
-  // Reload to clear click state
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
-  await page.waitForTimeout(3000);
+  // Click the same planet again to deselect it and close popover
+  await page.evaluate(() => {
+    const planet = document.querySelector('[data-testid="day-chart-planet"]');
+    if (planet) planet.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+  await page.waitForTimeout(500);
 
   // 5. Reading/Why/Week/History: candidate-05-reading-why-week-history.png
   await scrollToText(['РАЗБОР ДНЯ', 'Почему так у меня', 'БЛИЖАЙШИЕ ДНИ', 'В этот день']);
   await page.screenshot({ path: resolve(ARTIFACTS, 'candidate-05-reading-why-week-history.png'), fullPage: false });
 
   // 6. Full scroll stitched: candidate-00-full-scroll.png
-  // Expand concrete advice again to capture all 12 spheres in full scroll
-  await page.evaluate(() => {
-    const btn = document.querySelector('button[aria-controls="concrete-day-advice-rows"]');
-    if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  });
+  // Expand concrete advice if not already expanded to capture all 12 spheres in full scroll
+  const concreteExpandBtn2 = page.locator('button[aria-controls="concrete-day-advice-rows"]');
+  if (await concreteExpandBtn2.isVisible().catch(() => false)) {
+    const isExpanded = await concreteExpandBtn2.getAttribute('aria-expanded');
+    if (isExpanded !== 'true') {
+      await concreteExpandBtn2.click();
+    }
+  }
   await page.waitForTimeout(500);
 
   await page.evaluate(() => {
@@ -183,6 +193,37 @@ async function main() {
     return Array.from(new Set(labels));
   });
 
+  // Concrete advice row status counts
+  const adviceCounts = await page.evaluate(() => {
+    const rows = document.querySelectorAll('[data-testid="concrete-day-advice-row"]');
+    let real = 0;
+    let unavailable = 0;
+    rows.forEach(r => {
+      if (r.getAttribute('data-status') === 'unavailable') {
+        unavailable++;
+      } else {
+        real++;
+      }
+    });
+    return { real, unavailable, total: rows.length };
+  });
+
+  // Day summary structure facts
+  const daySummaryText = await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="day-summary-card"]');
+    return el ? el.innerText.trim() : "";
+  });
+
+  // Chart planet aria-labels
+  const chartPlanetAriaLabels = await page.evaluate(() => {
+    const labels = [];
+    document.querySelectorAll('[data-testid="day-chart-planet"]').forEach(el => {
+      const aria = el.getAttribute('aria-label');
+      if (aria) labels.push(aria);
+    });
+    return labels;
+  });
+
   // Chart legend labels
   const legendLabels = await page.evaluate(() => {
     const labels = [];
@@ -225,9 +266,13 @@ async function main() {
     date: "2026-07-05",
     candidate: {
       sectionOrder,
+      daySummaryStructureFacts: daySummaryText,
       concreteAdviceLabels: adviceLabels,
       concreteAdviceRowCountAfterExpand: adviceLabels.length,
+      concreteAdviceRealRowCount: adviceCounts.real,
+      concreteAdviceUnavailableRowCount: adviceCounts.unavailable,
       rawDebugStringsFound: rawDebugStrings,
+      chartPlanetAriaLabels,
       chartLegendLabels: legendLabels,
       chartPopoverTextAfterClick: chartPopoverText,
       historyHeadingAndCardText: historyText
