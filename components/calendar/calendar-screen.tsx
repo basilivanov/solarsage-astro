@@ -22,6 +22,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, ChevronLeft, ChevronRight, Lock, Minus } from "lucide-react"
+import { motion } from "framer-motion"
 
 import { MoodIcon } from "@/components/calendar/mood-icon"
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
@@ -290,11 +291,18 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           aria-label="Дни"
           data-testid="calendar-view-day"
           className={cn(
-            "flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
-            view === "day" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+            "relative flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
+            view === "day" ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
           )}
         >
-          Дни
+          {view === "day" && (
+            <motion.span
+              layoutId="cal-toggle"
+              className="absolute inset-0 rounded-full bg-card shadow-sm"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span className="relative">Дни</span>
         </button>
         <button
           type="button"
@@ -303,11 +311,18 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
           aria-label="Луна"
           data-testid="calendar-view-moon"
           className={cn(
-            "flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
-            view === "moon" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+            "relative flex-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
+            view === "moon" ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
           )}
         >
-          Луна
+          {view === "moon" && (
+            <motion.span
+              layoutId="cal-toggle"
+              className="absolute inset-0 rounded-full bg-card shadow-sm"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span className="relative">Луна</span>
         </button>
       </div>
 
@@ -363,11 +378,11 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                     className={cn(
                       "relative flex h-11 w-11 flex-col items-center justify-center rounded-full transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                      !day.isCurrentMonth && "text-muted-foreground/35",
+                      !day.isCurrentMonth && "opacity-30",
                       day.isCurrentMonth && !isSelected && !isToday && "text-foreground/85 hover:bg-muted/60",
                       isToday && !isSelected && "text-foreground ring-1 ring-border",
                       isSelected && view === "day" && "bg-primary text-primary-foreground shadow-[0_1px_0_rgba(0,0,0,0.04)]",
-                      isSelected && view === "moon" && "bg-primary/10 text-foreground ring-2 ring-primary/50",
+                      isSelected && view === "moon" && "bg-primary/10 text-foreground ring-2 ring-primary",
                       day.isCurrentMonth && !accessible && !isSelected && "opacity-65",
                       disabled && "cursor-not-allowed opacity-35",
                     )}
@@ -391,12 +406,6 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                           {day.lunar.lunarDay != null ? day.lunar.lunarDay : "—"}
                         </span>
                         {day.lunar.voidOfCourse === true ? (
-                          <span
-                            className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-500"
-                            aria-hidden
-                          />
-                        ) : null}
-                        {isToday ? (
                           <span
                             className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-amber-500"
                             aria-hidden
@@ -474,14 +483,30 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                     {hasLunarData(selectedDay) ? (
                       <>
                         <PhaseGlyph phaseIndex={selectedDay?.lunar.phaseIndex} size={16} />
-                        {lunarPhaseLabel(selectedDay?.lunar) ? <span>{lunarPhaseLabel(selectedDay?.lunar)}</span> : null}
+                        {lunarPhaseLabel(selectedDay?.lunar) ? (
+                          <span>{lunarPhaseLabel(selectedDay?.lunar)}</span>
+                        ) : null}
                         {selectedDay?.lunar.illumination != null ? (
-                          <span className="tabular-nums">{selectedDay.lunar.illumination}%</span>
+                          <>
+                            <span aria-hidden>·</span>
+                            <span className="tabular-nums">{selectedDay.lunar.illumination}%</span>
+                          </>
                         ) : null}
                         {selectedDay?.lunar.lunarDay != null ? (
-                          <span>{selectedDay.lunar.lunarDay} лунный день</span>
+                          <>
+                            <span aria-hidden>·</span>
+                            <span>{selectedDay.lunar.lunarDay} лунный день</span>
+                          </>
                         ) : null}
-                        {selectedDay?.lunar.voidOfCourse === true ? <span>Луна без курса</span> : null}
+                        {selectedDay?.lunar.voidOfCourse === true ? (
+                          <>
+                            <span aria-hidden>·</span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              без курса
+                            </span>
+                          </>
+                        ) : null}
                       </>
                     ) : (
                       <span>Лунные данные недоступны</span>

@@ -24,23 +24,48 @@
 // wave: W-2.7
 // purpose: MoodIcon component (migrated from legacy)
 
-import { Flame, Minus, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { DayStatus } from "@/lib/calendar"
 
 /**
- * Иконка «тона дня». Не погодные: Flame / Minus / Sparkles —
- * это градация «интенсивности» (напряжённый / ровный / поддерживающий),
- * а не реальная атмосфера. Используется в календаре и недельной полосе.
+ * Иконка «тона дня» — нейтральные эмодзи, понятные всем.
+ *
+ *   supportive  → ⭐ звезда    — отличный день
+ *   even        → ◐ полукруг   — ровный, обычный день
+ *   tense       → ⚠️ внимание   — напряжённый, осторожно
+ *
+ * Цвет круга-плашки соответствует тону. Нейтральная палитра.
+ * Без хинтов и тултипов — всё видно сразу.
  */
 type Props = {
   status: DayStatus
   className?: string
-  strokeWidth?: number
+  strokeWidth?: number // Kept for compatibility
 }
 
-export function MoodIcon({ status, className, strokeWidth = 1.75 }: Props) {
-  const Icon =
-    status === "tense" ? Flame : status === "supportive" ? Sparkles : Minus
-  return <Icon aria-hidden className={cn(className)} strokeWidth={strokeWidth} />
+const STATUS_VISUAL: Record<DayStatus, { emoji: string; color: string; bg: string }> = {
+  supportive: { emoji: "⭐", color: "oklch(0.68 0.13 85)", bg: "oklch(0.68 0.13 85 / 0.16)" },
+  even: { emoji: "◐", color: "oklch(0.55 0.04 295)", bg: "oklch(0.55 0.04 295 / 0.10)" },
+  tense: { emoji: "⚠️", color: "oklch(0.62 0.12 27)", bg: "oklch(0.62 0.12 27 / 0.12)" },
+}
+
+export function MoodIcon({ status, className }: Props) {
+  const visual = STATUS_VISUAL[status] ?? STATUS_VISUAL.even
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-flex items-center justify-center rounded-full",
+        className,
+      )}
+      style={{ background: visual.bg }}
+    >
+      <span
+        className="leading-none"
+        style={{ fontSize: "0.875em" }}
+      >
+        {visual.emoji}
+      </span>
+    </span>
+  )
 }
