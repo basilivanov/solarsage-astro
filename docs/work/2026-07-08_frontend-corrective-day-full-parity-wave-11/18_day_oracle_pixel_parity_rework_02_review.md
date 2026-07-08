@@ -142,4 +142,3 @@ Rework 02 is not accepted. Continue with a narrow Rework 03 focused on:
 4. whitespace hygiene.
 
 Do not rework unrelated day sections.
-

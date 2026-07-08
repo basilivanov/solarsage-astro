@@ -172,4 +172,3 @@ curl -X POST http://127.0.0.1:18765/trigger \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Wave 11 Day Oracle Pixel Parity Rework 03 ready for architect review. Report: docs/work/2026-07-08_frontend-corrective-day-full-parity-wave-11/20_day_oracle_pixel_parity_rework_03_report.md. Artifacts: docs/work/2026-07-08_frontend-corrective-day-full-parity-wave-11/artifacts/pixel-rework-03/. Branch: main. Commit: <SHA>."}'
 ```
-

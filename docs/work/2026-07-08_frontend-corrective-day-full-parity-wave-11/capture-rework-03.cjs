@@ -106,8 +106,8 @@ async function capturePort(port, label) {
   await page.screenshot({ path: resolve(ARTIFACTS, `${label}-concrete-collapsed.png`), fullPage: false });
 
   const collapsedRowCount = await page.evaluate((oracle) => {
-    const selector = oracle 
-      ? 'section div.divide-y > div' 
+    const selector = oracle
+      ? 'section div.divide-y > div'
       : '[data-testid="concrete-day-advice-row"]';
     // Only find the section that belongs to Concrete Advice
     const section = oracle
@@ -137,8 +137,8 @@ async function capturePort(port, label) {
   await page.screenshot({ path: resolve(ARTIFACTS, `${label}-concrete-expanded.png`), fullPage: false });
 
   const expandedRowCount = await page.evaluate((oracle) => {
-    const selector = oracle 
-      ? 'section div.divide-y > div' 
+    const selector = oracle
+      ? 'section div.divide-y > div'
       : '[data-testid="concrete-day-advice-row"]';
     const section = oracle
       ? Array.from(document.querySelectorAll('section')).find(s => /конкретно сегодня/i.test(s.textContent || ""))
@@ -160,8 +160,8 @@ async function capturePort(port, label) {
   // Extract exactly 12 row objects in expanded state
   const rows = await page.evaluate((oracle) => {
     const list = [];
-    const selector = oracle 
-      ? 'section div.divide-y > div' 
+    const selector = oracle
+      ? 'section div.divide-y > div'
       : '[data-testid="concrete-day-advice-row"]';
     const section = oracle
       ? Array.from(document.querySelectorAll('section')).find(s => /конкретно сегодня/i.test(s.textContent || ""))
@@ -194,7 +194,7 @@ async function capturePort(port, label) {
 
   // 3. Chart Before (scroll to chart and wait)
   await scrollToText(['КАРТА ДНЯ', 'карта дня']);
-  
+
   // Aspect legend labels
   const legendLabels = await page.evaluate(() => {
     const labels = [];
