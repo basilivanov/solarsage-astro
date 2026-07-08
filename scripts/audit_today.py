@@ -609,11 +609,12 @@ This document contains actual production payload excerpts generated for manual r
 - **Stale Moon Phase**: "Убывающая Луна 46%" (deviated from Swiss Ephemeris 43.792% by 2.208pp)
 - **Stale Advice Contradiction**: "Общайся с близкими для улучшения отношений" under "avoid" verdict.
 """
-    (out_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
-
-    # Also write claims to live directory in live-LLM mode
+    # Write claims audit report
+    # In live-LLM mode, write only to the live directory (not to canonical root).
     if live_dir is not None:
         (live_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
+    else:
+        (out_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
 
     # Generate 15_audit_summary.md dynamically
     summary_text = f"""# W0 Audit Summary: User {args.user_id}, {args.date}
