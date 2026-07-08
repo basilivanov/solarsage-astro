@@ -1,0 +1,264 @@
+{
+  "oracle": {
+    "day_status": "supportive",
+    "sphere_scores": {
+      "thinking_speech_learning": 1.42,
+      "work_status_achievement": 3.46,
+      "relationships_partnership": 0.89,
+      "money_security_resources": 2.54,
+      "body_energy_health": 3.79,
+      "home_family_roots": 1.97,
+      "inner_background_unconscious": 4.45,
+      "crisis_transformation_control": 5.26,
+      "meaning_expansion_vector": 0.46
+    },
+    "top_signals": [
+      {
+        "type": "aspect",
+        "planet": "Transit_Moon",
+        "target_planet": "Pluto",
+        "aspect_type": "opposition",
+        "orb": 1.0453647052696624,
+        "strength": 0.8693294118412922,
+        "house": null,
+        "sign": "",
+        "daily_salience": 1.13012823539368,
+        "technique": "",
+        "technique_family": "",
+        "delta_kind": "new_today",
+        "phase": "entering"
+      },
+      {
+        "type": "aspect",
+        "planet": "Transit_Mars",
+        "target_planet": "Moon",
+        "aspect_type": "sextile",
+        "orb": 0.7876395094207993,
+        "strength": 0.8687267484298667,
+        "house": null,
+        "sign": "",
+        "daily_salience": 0.9990357606943466,
+        "technique": "",
+        "technique_family": "",
+        "delta_kind": "stronger_than_yesterday",
+        "phase": "applying"
+      },
+      {
+        "type": "aspect",
+        "planet": "Transit_Moon",
+        "target_planet": "Neptune",
+        "aspect_type": "trine",
+        "orb": 2.5314647052696557,
+        "strength": 0.683566911841293,
+        "house": null,
+        "sign": "",
+        "daily_salience": 0.888636985393681,
+        "technique": "",
+        "technique_family": "",
+        "delta_kind": "new_today",
+        "phase": "entering"
+      },
+      {
+        "type": "aspect",
+        "planet": "Transit_Mars",
+        "target_planet": "Saturn",
+        "aspect_type": "trine",
+        "orb": 2.0644604905791937,
+        "strength": 0.7419424386776008,
+        "house": null,
+        "sign": "",
+        "daily_salience": 0.6677481948098407,
+        "technique": "",
+        "technique_family": "",
+        "delta_kind": "weaker_than_yesterday",
+        "phase": "separating"
+      },
+      {
+        "type": "planet_in_house",
+        "planet": "Transit_Sun",
+        "target_planet": "",
+        "aspect_type": "",
+        "orb": null,
+        "strength": 1.0,
+        "house": 1,
+        "sign": "Cancer",
+        "daily_salience": 0.55,
+        "technique": "",
+        "technique_family": "",
+        "delta_kind": "background",
+        "phase": "background"
+      }
+    ],
+    "convergence": {
+      "by_planet": {
+        "MERCURY": 1,
+        "PLUTO": 1,
+        "NEPTUNE": 1,
+        "URANUS": 1,
+        "MOON": 1,
+        "VENUS": 1,
+        "MARS": 1,
+        "JUPITER": 1,
+        "SATURN": 1,
+        "SUN": 1,
+        "TRANSIT_SUN": 1,
+        "TRANSIT_MOON": 1,
+        "TRANSIT_MERCURY": 1,
+        "TRANSIT_VENUS": 1,
+        "TRANSIT_MARS": 1,
+        "TRANSIT_JUPITER": 1,
+        "TRANSIT_SATURN": 1,
+        "TRANSIT_URANUS": 1,
+        "TRANSIT_NEPTUNE": 1,
+        "TRANSIT_PLUTO": 1
+      },
+      "by_house": {
+        "1": 1,
+        "10": 1,
+        "2": 1,
+        "12": 1,
+        "8": 1
+      }
+    }
+  },
+  "comparison": {
+    "day_status": {
+      "oracle": "supportive",
+      "production": "supportive",
+      "pass": true
+    },
+    "sphere_scores": {
+      "body_energy_health": {
+        "oracle": 3.79,
+        "production": 3.79,
+        "delta": 0.0,
+        "pass": true
+      },
+      "crisis_transformation_control": {
+        "oracle": 5.26,
+        "production": 5.26,
+        "delta": 0.0,
+        "pass": true
+      },
+      "home_family_roots": {
+        "oracle": 1.97,
+        "production": 1.97,
+        "delta": 0.0,
+        "pass": true
+      },
+      "inner_background_unconscious": {
+        "oracle": 4.45,
+        "production": 4.45,
+        "delta": 0.0,
+        "pass": true
+      },
+      "meaning_expansion_vector": {
+        "oracle": 0.46,
+        "production": 0.46,
+        "delta": 0.0,
+        "pass": true
+      },
+      "money_security_resources": {
+        "oracle": 2.54,
+        "production": 2.54,
+        "delta": 0.0,
+        "pass": true
+      },
+      "relationships_partnership": {
+        "oracle": 0.89,
+        "production": 0.89,
+        "delta": 0.0,
+        "pass": true
+      },
+      "thinking_speech_learning": {
+        "oracle": 1.42,
+        "production": 1.42,
+        "delta": 0.0,
+        "pass": true
+      },
+      "work_status_achievement": {
+        "oracle": 3.46,
+        "production": 3.46,
+        "delta": 0.0,
+        "pass": true
+      }
+    },
+    "top_signals": {
+      "oracle": [
+        {
+          "type": "aspect",
+          "planet": "Transit_Moon",
+          "target_planet": "Pluto",
+          "aspect_type": "opposition",
+          "house": null
+        },
+        {
+          "type": "aspect",
+          "planet": "Transit_Mars",
+          "target_planet": "Moon",
+          "aspect_type": "sextile",
+          "house": null
+        },
+        {
+          "type": "aspect",
+          "planet": "Transit_Moon",
+          "target_planet": "Neptune",
+          "aspect_type": "trine",
+          "house": null
+        },
+        {
+          "type": "aspect",
+          "planet": "Transit_Mars",
+          "target_planet": "Saturn",
+          "aspect_type": "trine",
+          "house": null
+        },
+        {
+          "type": "planet_in_house",
+          "planet": "Transit_Sun",
+          "target_planet": null,
+          "aspect_type": null,
+          "house": 1
+        }
+      ],
+      "production": [
+        {
+          "type": "aspect",
+          "planet": "Transit_Moon",
+          "target_planet": "Pluto",
+          "aspect_type": "opposition",
+          "house": null
+        },
+        {
+          "type": "aspect",
+          "planet": "Transit_Mars",
+          "target_planet": "Moon",
+          "aspect_type": "sextile",
+          "house": null
+        },
+        {
+          "type": "aspect",
+          "planet": "Transit_Moon",
+          "target_planet": "Neptune",
+          "aspect_type": "trine",
+          "house": null
+        },
+        {
+          "type": "aspect",
+          "planet": "Transit_Mars",
+          "target_planet": "Saturn",
+          "aspect_type": "trine",
+          "house": null
+        },
+        {
+          "type": "planet_in_house",
+          "planet": "Transit_Sun",
+          "target_planet": null,
+          "aspect_type": null,
+          "house": 1
+        }
+      ],
+      "pass": true
+    }
+  }
+}

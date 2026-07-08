@@ -68,3 +68,6 @@ solarsage:
 	@echo "ERROR: SolarSage is an external service and runs in its own docker."
 	@echo "Set SOLARSAGE_BASE_URL in .env and start it from the SolarSage repo."
 	@exit 1
+
+audit-day:
+	apps/api/.venv/bin/python scripts/audit_today.py --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)

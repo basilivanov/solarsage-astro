@@ -184,9 +184,14 @@ def signal_rank(signal: AstroSignal) -> tuple[float, float]:
 def aspect_evidence(signal: AstroSignal) -> ConcreteAdviceEvidence:
     planet = strip_prefix(signal.planet)
     target = strip_prefix(signal.target_planet) if signal.target_planet else ""
+    
+    p_frame = "Transit" if signal.planet.startswith("Transit_") else "natal"
+    t_frame = "Transit" if (signal.target_planet and signal.target_planet.startswith("Transit_")) else "natal"
+    title = f"{p_frame} {planet} {signal.aspect_type} {t_frame} {target}"
+    
     return ConcreteAdviceEvidence(
         kind="aspect",
-        title=f"{PLANET_LABELS_RU.get(planet, planet)} {ASPECT_LABELS_RU.get(signal.aspect_type, signal.aspect_type)} {PLANET_LABELS_RU.get(target, target)}",
+        title=title,
         planet=signal.planet,
         target_planet=signal.target_planet,
         aspect_type=signal.aspect_type,
@@ -284,6 +289,24 @@ def validate_row_text(row: ConcreteAdviceRow, text: str) -> bool:
             for h_str in house_matches:
                 h_num = int(h_str)
                 if h_num not in allowed_houses:
+                    return False
+
+    # 4. Advice consistency guard (prevents active advice contradicting avoid)
+    if row.verdict == "avoid":
+        prohibited = [
+            "начни", "начинать", "начинай",
+            "покупай", "покупать", "покупка",
+            "инвестировать", "инвестируй", "инвестиции",
+            "договариваться", "договаривайся", "договор",
+            "общаться", "общайся",
+            "активно", "активность",
+            "инициировать", "инициируй",
+        ]
+        for stem in prohibited:
+            if stem in t:
+                idx = t.find(stem)
+                prefix = t[max(0, idx-15):idx]
+                if not any(neg in prefix for neg in ["не ", "избега", "отложи", "огранич", "не стоит"]):
                     return False
 
     return True
@@ -505,8 +528,9 @@ class TodayInterpretationService:
             sun = next((p for p in day_chart.transit_planets if p.name == "Sun"), None)
             moon = next((p for p in day_chart.transit_planets if p.name == "Moon"), None)
             if sun and moon:
+                from math import radians, cos
                 d = (moon.longitude - sun.longitude) % 360
-                illumination = abs(180 - abs(180 - d)) / 180.0 * 100.0
+                illumination = (1 - cos(radians(d))) / 2 * 100
 
                 if d < 22.5 or d > 337.5:
                     lunar_phase_title = "Новолуние"

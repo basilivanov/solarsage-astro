@@ -1,0 +1,1144 @@
+{
+  "meta": {
+    "schema_version": "today/v1",
+    "contract_version": 3,
+    "calculation_version": 1,
+    "normalization_version": 1,
+    "scoring_version": 1,
+    "prompt_version": 2,
+    "content_version": 5,
+    "generated_at": "2026-07-08T15:03:38.013371+00:00",
+    "cached": true,
+    "scoring_canon_version": null,
+    "activation_layer_version": null
+  },
+  "date": "2026-07-08",
+  "title": "Сегодня",
+  "subtitle": null,
+  "headline": "Сегодня ощути поддержку в глубоких чувствах и творческих порывах.",
+  "access": {
+    "state": "full",
+    "reason": "active_referral_days",
+    "referral_days_left": 4,
+    "subscription_active": null,
+    "access_until": "2026-07-11"
+  },
+  "day_status": "supportive",
+  "day_summary": {
+    "status_label": "Поддерживающий день",
+    "status_line": "День возможностей",
+    "facts": [
+      {
+        "kind": "top_planet",
+        "icon_name": "Pluto",
+        "title": "Влияние Плутон",
+        "summary": null
+      },
+      {
+        "kind": "lunar_phase",
+        "icon_name": "moon",
+        "title": "Убывающая Луна 46%",
+        "summary": "убывающая фаза"
+      },
+      {
+        "kind": "top_flag",
+        "icon_name": "flag",
+        "title": "Луна оппозиция Плутон",
+        "summary": "напряжённый аспект"
+      }
+    ]
+  },
+  "concrete_advice": {
+    "rows": [
+      {
+        "key": "work",
+        "label": "Работа",
+        "icon_name": "briefcase",
+        "rank": 1,
+        "verdict": "caution",
+        "confidence": "high",
+        "text": "Осторожно подходи к вопросам работы, возможны трудности и недопонимания.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Нептун оппозиция Сатурн",
+            "weight": null,
+            "planet": "Transit_Neptune",
+            "target_planet": "Saturn",
+            "aspect_type": "opposition",
+            "orb": 0.2922602521763622,
+            "strength": 0.9634674684779547,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "money",
+        "label": "Деньги",
+        "icon_name": "building",
+        "rank": 2,
+        "verdict": "caution",
+        "confidence": "high",
+        "text": "Будь внимателен с финансами, обходи ненадежные предложения и рисковые инвестиции.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Венера квадратура Уран",
+            "weight": null,
+            "planet": "Transit_Venus",
+            "target_planet": "Uranus",
+            "aspect_type": "square",
+            "orb": 3.762139038477244,
+            "strength": 0.46255156593182234,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "documents",
+        "label": "Документы",
+        "icon_name": "list-checks",
+        "rank": 3,
+        "verdict": "good",
+        "confidence": "medium",
+        "text": "Теперь удастся решить вопросы с документами, действуй уверенно и целенаправленно.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Марс трин Сатурн",
+            "weight": null,
+            "planet": "Transit_Mars",
+            "target_planet": "Saturn",
+            "aspect_type": "trine",
+            "orb": 2.0644604905791937,
+            "strength": 0.7419424386776008,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "relationships",
+        "label": "Отношения",
+        "icon_name": "sparkle",
+        "rank": 4,
+        "verdict": "avoid",
+        "confidence": "high",
+        "text": "Избегай конфликтов в отношениях, осторожно общайся и не накалять обстановку.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Луна оппозиция Плутон",
+            "weight": null,
+            "planet": "Transit_Moon",
+            "target_planet": "Pluto",
+            "aspect_type": "opposition",
+            "orb": 1.0453647052696624,
+            "strength": 0.8693294118412922,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "sport",
+        "label": "Спорт",
+        "icon_name": "leaf",
+        "rank": 5,
+        "verdict": "neutral",
+        "confidence": "medium",
+        "text": "Сейчас неплохое время для уединенных занятий спортом, фокусируйся на своих целях.",
+        "evidence": [
+          {
+            "kind": "planet_in_house",
+            "title": "Марс в 12 доме",
+            "weight": null,
+            "planet": "Transit_Mars",
+            "target_planet": null,
+            "aspect_type": null,
+            "orb": null,
+            "strength": 1.0,
+            "sphere_key": null,
+            "house": 12,
+            "sign": "Gemini"
+          }
+        ]
+      },
+      {
+        "key": "communication",
+        "label": "Общение",
+        "icon_name": "telescope",
+        "rank": 6,
+        "verdict": "avoid",
+        "confidence": "high",
+        "text": "Не вовлекайся в серьезные обсуждения, могут возникнуть недопонимания и конфликты.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Меркурий квадратура Плутон",
+            "weight": null,
+            "planet": "Transit_Mercury",
+            "target_planet": "Pluto",
+            "aspect_type": "square",
+            "orb": 1.2905994233051103,
+            "strength": 0.8156286538135556,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "health",
+        "label": "Здоровье",
+        "icon_name": "compass",
+        "rank": 7,
+        "verdict": "neutral",
+        "confidence": "medium",
+        "text": "Пора следить за своим состоянием, однако глобальных проблем со здоровьем не предвидится.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Юпитер соединение Луна",
+            "weight": null,
+            "planet": "Transit_Jupiter",
+            "target_planet": "Moon",
+            "aspect_type": "conjunction",
+            "orb": 5.807769352527302,
+            "strength": 0.27402883093408725,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "decisions",
+        "label": "Решения",
+        "icon_name": "target",
+        "rank": 8,
+        "verdict": "neutral",
+        "confidence": "medium",
+        "text": "Задумайся над тем, как продвигаешься к целям, пора действовать осознанно и планомерно.",
+        "evidence": [
+          {
+            "kind": "planet_in_house",
+            "title": "Сатурн в 10 доме",
+            "weight": null,
+            "planet": "Transit_Saturn",
+            "target_planet": null,
+            "aspect_type": null,
+            "orb": null,
+            "strength": 1.0,
+            "sphere_key": null,
+            "house": 10,
+            "sign": "Aries"
+          }
+        ]
+      },
+      {
+        "key": "travel",
+        "label": "Поездки",
+        "icon_name": "hourglass",
+        "rank": 9,
+        "verdict": "avoid",
+        "confidence": "high",
+        "text": "Избегай путешествий сейчас, неблагоприятные аспекты могут привести к неприятностям в дороге.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Нептун оппозиция Юпитер",
+            "weight": null,
+            "planet": "Transit_Neptune",
+            "target_planet": "Jupiter",
+            "aspect_type": "opposition",
+            "orb": 3.7792397478236524,
+            "strength": 0.5275950315220435,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "creativity",
+        "label": "Творчество",
+        "icon_name": "grid",
+        "rank": 10,
+        "verdict": "good",
+        "confidence": "medium",
+        "text": "Творческий потенциал на подъеме, используй вдохновение для новых идей и проектов.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Луна трин Нептун",
+            "weight": null,
+            "planet": "Transit_Moon",
+            "target_planet": "Neptune",
+            "aspect_type": "trine",
+            "orb": 2.5314647052696557,
+            "strength": 0.683566911841293,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "study",
+        "label": "Учёба",
+        "icon_name": "layers",
+        "rank": 11,
+        "verdict": "good",
+        "confidence": "medium",
+        "text": "Отличное время для учебы, используй возможности для расширения знаний и навыков.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Солнце трин Меркурий",
+            "weight": null,
+            "planet": "Transit_Sun",
+            "target_planet": "Mercury",
+            "aspect_type": "trine",
+            "orb": 0.5290421924152184,
+            "strength": 0.9338697259480977,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      },
+      {
+        "key": "shopping",
+        "label": "Покупки",
+        "icon_name": "zap",
+        "rank": 12,
+        "verdict": "good",
+        "confidence": "medium",
+        "text": "Сделай покупки с уверенностью, удачи в приобретении необходимых вещей и подарков.",
+        "evidence": [
+          {
+            "kind": "aspect",
+            "title": "Юпитер секстиль Венера",
+            "weight": null,
+            "planet": "Transit_Jupiter",
+            "target_planet": "Venus",
+            "aspect_type": "sextile",
+            "orb": 1.4436306474727019,
+            "strength": 0.759394892087883,
+            "sphere_key": null,
+            "house": null,
+            "sign": null
+          }
+        ]
+      }
+    ],
+    "counts": {
+      "good": 4,
+      "caution": 2,
+      "avoid": 3,
+      "neutral": 3
+    }
+  },
+  "day_quality": null,
+  "top_flags": [
+    {
+      "icon_name": "Moon-opposition",
+      "title": "Луна оппозиция Плутон",
+      "summary": "Напряжённый аспект: лучше снизить резкость и перепроверить реакцию.",
+      "hint": null
+    },
+    {
+      "icon_name": "Mars-sextile",
+      "title": "Марс секстиль Луна",
+      "summary": "Поддерживающий аспект: легче договориться, связать идеи и действия.",
+      "hint": null
+    },
+    {
+      "icon_name": "Moon-trine",
+      "title": "Луна тригон Нептун",
+      "summary": "Поддерживающий аспект: легче договориться, связать идеи и действия.",
+      "hint": null
+    }
+  ],
+  "reading": {
+    "paragraphs": [
+      "Сегодняшний день обещает быть поддерживающим и полным возможностей. На горизонте находятся сильные астрологические сигналы, особенно в сфере личной трансформации и внутреннего самопознания. Оппозиция Луны с Плутоном может вызвать внутренние конфликты и мощные эмоции, но они помогут тебе глубже разобраться в своих желаниях и страхах. Это хороший момент для того, чтобы заняться самоанализом и, возможно, выписать мысли в дневник.",
+      "Секспектиль Марса с Луной придаст тебе энергии и мотивации. Используй это время для активных действий, особенно тех, которые связаны с заботой о себе и укреплением здоровья. Подумай, какие физические активности тебе нравятся, или просто отправься на прогулку, чтобы очистить разум. Трин Луны с Нептуном подсказывает, что интуиция сейчас на высоте, так что доверься своим внутренним ощущениям в плане новых идей и вдохновения.",
+      "Также стоит обратить внимание на положение Солнца в твоем первом доме. Это указывает на сильное влияние на твою личность и самовыражение, что идеально подходит для работы над собой и своим имиджем. Удели время для визуализации своих целей и мечт. Направь свою энергию на то, чтобы создать позитивное окружение и окружить себя поддерживающими людьми. Этот день шикарно подходит для проявления себя и активного участия в собственных инициативах!"
+    ]
+  },
+  "notes": "Сегодня день возможностей, и это отличный момент, чтобы сосредоточиться на личной трансформации и внутреннем росте — твои подсознательные процессы на пике, так что не бойся заглянуть внутрь себя и разобраться в своих эмоциях. Энергия твоего тела также будет поддерживать тебя, так что постарайся уделить внимание своему здоровью: занятия спортом или прогулка на свежем воздухе принесут массу пользы. Хотя вопросы финансов и отношений сейчас не так важны, используй этот день для выявления внутренних ресурсов, которые помогут тебе двигаться вперёд уже сегодня.",
+  "why_this_happens": {
+    "sections": [
+      {
+        "id": "why-1",
+        "title": "Главная тема дня",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Сегодня ты на волне возможностей благодаря гармоничному аспекту между Плутоном и Сатурном. Это поддерживает твои начинания и помогает в реализации целей."
+          }
+        ],
+        "layer": "main_theme",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      },
+      {
+        "id": "why-2",
+        "title": "Быстрый слой дня",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Сегодня Луна в Овне проходит твой 10 дом карьеры и репутации, создавая активные эмоции в сфере твоей профессиональной жизни. Она также в оппозиции с твоим натальным Плутоном в Весах, 4 дом, что акцентирует внимание на трансформации в семейных делах (орб 1.0°, сила 0.87) и в трине с твоим натальным Нептуном в Стрельце, 6 дом, что добавляет вдохновения к работе и здоровью (орб 2.5°, сила 0.68)."
+          }
+        ],
+        "layer": "daily_layer",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      },
+      {
+        "id": "why-3",
+        "title": "Почему это задевает именно тебя",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Плутон в трине с твоим Сатурном в Весах, 4 дом, способствует глубокой трансформации и укреплению внутренней уверенности (орб 0.0°). К тому же, квадратура Солнца с твоей Луной в Льве, 2 дом, создает напряжение, подчеркивая темы эмоционального баланса и самооценки (орб 0.1°)."
+          }
+        ],
+        "layer": "personal_activation",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      },
+      {
+        "id": "why-4",
+        "title": "Фон периода",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Фон дня выстраивается по длительным транзитам, где акценты приходятся на дома 5 и 2, подтверждая важность творчества, радости и финансов. Это усиливает общую тему возможностей."
+          }
+        ],
+        "layer": "period_background",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      },
+      {
+        "id": "why-5",
+        "title": "Что усиливает этот день",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Сегодня наблюдаются усиливающие факторы, такие как квадратура Солнца с Луной (орб 0.1°, сила 0.98), что создает внутреннее напряжение и борьбу между желаниями и эмоциями. Также Нептун в оппозиции с Сатурном (орб 0.3°, сила 0.96) усиливает это ощущение, а Луна в оппозиции с Плутоном (орб 1.0°, сила 0.87) добавляет трудности в принятии решений."
+          }
+        ],
+        "layer": "amplifiers",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      },
+      {
+        "id": "why-6",
+        "title": "Что смягчает этот день",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Тем не менее, смягчающие факторы тоже присутствуют: Плутон в трине с Сатурном (орб 0.0°, сила 1.00) помогает сбалансировать эмоции и дает поддержку, а Солнце в трине с Меркурием (орб 0.5°, сила 0.93) облегчает общение. Уран в трине с Сатурном (орб 0.6°, сила 0.92) также приносит возможность для прорывов и свежих идей."
+          }
+        ],
+        "layer": "softeners",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      },
+      {
+        "id": "why-7",
+        "title": "Через какие сферы это проявляется",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Основные сферы, через которые проявляются эти энергии, — 5 дом творчества и радости, а также 2 дом денег и самооценки. Это акцентирует внимание на том, как ты реализуешь свои идеи и как они влияют на твою финансовую стабильность."
+            ]
+          }
+        ],
+        "layer": "manifestation_zones",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      },
+      {
+        "id": "why-8",
+        "title": "Астрологический смысл дня",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Сегодня все аспекты взаимодействуют, подчеркивая важность действий на перспективу в сфере карьеры и внутренней уверенности. Плутон и Сатурн дают поддержку в продуктивных начинаниях, особенно когда речь идет о творчестве и материальных ценностях."
+          }
+        ],
+        "layer": "astrological_meaning",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      },
+      {
+        "id": "why-9",
+        "title": "Что это значит практически",
+        "icon_name": null,
+        "blocks": [
+          {
+            "kind": "bullets",
+            "items": [
+              "Действуй — настраивайся на новые начинания",
+              "Общайся с близкими для улучшения отношений",
+              "Заверши те задачи, которые понервничали раньше",
+              "Прояви инициативу в профессиональных делах"
+            ]
+          }
+        ],
+        "layer": "practical_meaning",
+        "planets": null,
+        "houses": null,
+        "aspects": null,
+        "techniques": null
+      }
+    ]
+  },
+  "week_strip": [
+    {
+      "date": "2026-07-05",
+      "day_status": "steady",
+      "is_today": false
+    },
+    {
+      "date": "2026-07-06",
+      "day_status": "steady",
+      "is_today": false
+    },
+    {
+      "date": "2026-07-07",
+      "day_status": "steady",
+      "is_today": false
+    },
+    {
+      "date": "2026-07-08",
+      "day_status": "steady",
+      "is_today": true
+    },
+    {
+      "date": "2026-07-09",
+      "day_status": "steady",
+      "is_today": false
+    },
+    {
+      "date": "2026-07-10",
+      "day_status": "steady",
+      "is_today": false
+    },
+    {
+      "date": "2026-07-11",
+      "day_status": "steady",
+      "is_today": false
+    }
+  ],
+  "microcopy": [],
+  "yesterday_echo": null,
+  "actions": null,
+  "day_chart": {
+    "source": "solarsage",
+    "houses": [
+      {
+        "number": 1,
+        "cusp_longitude": 90.0,
+        "sign": "Cancer"
+      },
+      {
+        "number": 2,
+        "cusp_longitude": 120.0,
+        "sign": "Leo"
+      },
+      {
+        "number": 3,
+        "cusp_longitude": 150.0,
+        "sign": "Virgo"
+      },
+      {
+        "number": 4,
+        "cusp_longitude": 180.0,
+        "sign": "Libra"
+      },
+      {
+        "number": 5,
+        "cusp_longitude": 210.0,
+        "sign": "Scorpio"
+      },
+      {
+        "number": 6,
+        "cusp_longitude": 240.0,
+        "sign": "Sagittarius"
+      },
+      {
+        "number": 7,
+        "cusp_longitude": 270.0,
+        "sign": "Capricorn"
+      },
+      {
+        "number": 8,
+        "cusp_longitude": 300.0,
+        "sign": "Aquarius"
+      },
+      {
+        "number": 9,
+        "cusp_longitude": 330.0,
+        "sign": "Pisces"
+      },
+      {
+        "number": 10,
+        "cusp_longitude": 0.0,
+        "sign": "Aries"
+      },
+      {
+        "number": 11,
+        "cusp_longitude": 30.0,
+        "sign": "Taurus"
+      },
+      {
+        "number": 12,
+        "cusp_longitude": 60.0,
+        "sign": "Gemini"
+      }
+    ],
+    "transit_planets": [
+      {
+        "name": "Sun",
+        "longitude": 106.2336,
+        "sign": "Cancer",
+        "retrograde": false,
+        "speed": 0.953596345090284,
+        "motion": "direct",
+        "house": 1,
+        "interpretation": "Солнце в Раке в первом доме акцентирует на твоей эмоциональной выразительности. Квадратуры с Плутоном и Юпитером создают внутренние напряжения — будь осторожен с перегибами в эмоциях."
+      },
+      {
+        "name": "Moon",
+        "longitude": 23.3659,
+        "sign": "Aries",
+        "retrograde": false,
+        "speed": 13.731556479109154,
+        "motion": "direct",
+        "house": 10,
+        "interpretation": "Луна в Овне в десятом доме активизирует стремление к достижению целей. Соединение с Юпитером приносит удачу, но оппозиция с Плутоном требует внимательности к внутренним конфликтам."
+      },
+      {
+        "name": "Mercury",
+        "longitude": 113.6111,
+        "sign": "Cancer",
+        "retrograde": false,
+        "speed": -0.560803350158497,
+        "motion": "retrograde",
+        "house": 1,
+        "interpretation": "Меркурий в Раке усиливает интуитивное мышление. Трин с Солнцем способствует успешной коммуникации, но квадратура с Плутоном предупреждает о возможных манипуляциях."
+      },
+      {
+        "name": "Venus",
+        "longitude": 148.4953,
+        "sign": "Leo",
+        "retrograde": false,
+        "speed": 1.1172571709985748,
+        "motion": "direct",
+        "house": 2,
+        "interpretation": "Венера в Льве во втором доме привносит креативность в финансовые дела. Квадратура с Ураном может вызвать неожиданные расходы — проверяй свои вложения."
+      },
+      {
+        "name": "Mars",
+        "longitude": 66.7745,
+        "sign": "Gemini",
+        "retrograde": false,
+        "speed": 0.7033331382063063,
+        "motion": "direct",
+        "house": 12,
+        "interpretation": "Марс в Близнецах в двенадцатом доме подчеркивает скрытую энергию. Секстиль с Луной помогает направить её в конструктивное русло, но оппозиция с собой требует контроля."
+      },
+      {
+        "name": "Jupiter",
+        "longitude": 121.7543,
+        "sign": "Leo",
+        "retrograde": false,
+        "speed": 0.21759326605127732,
+        "motion": "direct",
+        "house": 2,
+        "interpretation": "Юпитер в Льве во втором доме поддерживает рост финансовых возможностей. Но квадратура с Солнцем может создавать чрезмерные ожидания — оставайся реалистичным."
+      },
+      {
+        "name": "Saturn",
+        "longitude": 14.4606,
+        "sign": "Aries",
+        "retrograde": false,
+        "speed": 0.03117685073646245,
+        "motion": "direct",
+        "house": 10,
+        "interpretation": "Сатурн в Овне в десятом доме акцентирует ответственность в карьере. Трины с Луной и Марсом указывают на успех через трудности — не избегай обязательств."
+      },
+      {
+        "name": "Uranus",
+        "longitude": 64.0643,
+        "sign": "Gemini",
+        "retrograde": false,
+        "speed": 0.04665653478855669,
+        "motion": "direct",
+        "house": 12,
+        "interpretation": "Уран в Близнецах в двенадцатом доме усиливает интуитивные прозорливости. Трины с Меркурием помогают открыть новые идеи, но квадратура с Венерой предостерегает от конфузов в отношениях."
+      },
+      {
+        "name": "Neptune",
+        "longitude": 4.4177,
+        "sign": "Aries",
+        "retrograde": false,
+        "speed": -0.0004911322446523909,
+        "motion": "stationary",
+        "house": 10,
+        "interpretation": "Нептун в Овне в десятом доме вдохновляет на творческие амбиции. Оппозиции с Венерой и Юпитером предостерегают о возможных иллюзиях в карьерных планах."
+      },
+      {
+        "name": "Pluto",
+        "longitude": 304.7191,
+        "sign": "Aquarius",
+        "retrograde": false,
+        "speed": -0.021930265804833933,
+        "motion": "retrograde",
+        "house": 8,
+        "interpretation": "Плутон в Водолее в восьмом доме акцентирует на трансформациях и внутренних изменениях. Квадратуры с Солнцем и Меркурием могут вызывать конфликты в общении — будь готов к испытаниям."
+      }
+    ],
+    "aspects": [
+      {
+        "planet": "Sun",
+        "target_planet": "Mercury",
+        "aspect_type": "trine",
+        "orb": 0.529,
+        "strength": 0.9339
+      },
+      {
+        "planet": "Sun",
+        "target_planet": "Pluto",
+        "aspect_type": "square",
+        "orb": 6.0869,
+        "strength": 0.1304
+      },
+      {
+        "planet": "Moon",
+        "target_planet": "Neptune",
+        "aspect_type": "trine",
+        "orb": 2.5315,
+        "strength": 0.6836
+      },
+      {
+        "planet": "Moon",
+        "target_planet": "Pluto",
+        "aspect_type": "opposition",
+        "orb": 1.0454,
+        "strength": 0.8693
+      },
+      {
+        "planet": "Mercury",
+        "target_planet": "Mercury",
+        "aspect_type": "trine",
+        "orb": 7.9065,
+        "strength": 0.0117
+      },
+      {
+        "planet": "Mercury",
+        "target_planet": "Uranus",
+        "aspect_type": "trine",
+        "orb": 1.1221,
+        "strength": 0.8597
+      },
+      {
+        "planet": "Mercury",
+        "target_planet": "Pluto",
+        "aspect_type": "square",
+        "orb": 1.2906,
+        "strength": 0.8156
+      },
+      {
+        "planet": "Venus",
+        "target_planet": "Uranus",
+        "aspect_type": "square",
+        "orb": 3.7621,
+        "strength": 0.4626
+      },
+      {
+        "planet": "Venus",
+        "target_planet": "Neptune",
+        "aspect_type": "trine",
+        "orb": 7.6609,
+        "strength": 0.0424
+      },
+      {
+        "planet": "Mars",
+        "target_planet": "Moon",
+        "aspect_type": "sextile",
+        "orb": 0.7876,
+        "strength": 0.8687
+      },
+      {
+        "planet": "Mars",
+        "target_planet": "Venus",
+        "aspect_type": "trine",
+        "orb": 6.4638,
+        "strength": 0.192
+      },
+      {
+        "planet": "Mars",
+        "target_planet": "Mars",
+        "aspect_type": "opposition",
+        "orb": 6.5469,
+        "strength": 0.1816
+      },
+      {
+        "planet": "Mars",
+        "target_planet": "Jupiter",
+        "aspect_type": "trine",
+        "orb": 6.136,
+        "strength": 0.233
+      },
+      {
+        "planet": "Mars",
+        "target_planet": "Saturn",
+        "aspect_type": "trine",
+        "orb": 2.0645,
+        "strength": 0.7419
+      },
+      {
+        "planet": "Jupiter",
+        "target_planet": "Sun",
+        "aspect_type": "square",
+        "orb": 5.6682,
+        "strength": 0.1903
+      },
+      {
+        "planet": "Jupiter",
+        "target_planet": "Moon",
+        "aspect_type": "conjunction",
+        "orb": 5.8078,
+        "strength": 0.274
+      },
+      {
+        "planet": "Jupiter",
+        "target_planet": "Venus",
+        "aspect_type": "sextile",
+        "orb": 1.4436,
+        "strength": 0.7594
+      },
+      {
+        "planet": "Jupiter",
+        "target_planet": "Jupiter",
+        "aspect_type": "sextile",
+        "orb": 1.1158,
+        "strength": 0.814
+      },
+      {
+        "planet": "Jupiter",
+        "target_planet": "Saturn",
+        "aspect_type": "sextile",
+        "orb": 2.9557,
+        "strength": 0.5074
+      },
+      {
+        "planet": "Jupiter",
+        "target_planet": "Uranus",
+        "aspect_type": "trine",
+        "orb": 7.0211,
+        "strength": 0.1224
+      },
+      {
+        "planet": "Saturn",
+        "target_planet": "Moon",
+        "aspect_type": "trine",
+        "orb": 6.8985,
+        "strength": 0.1377
+      },
+      {
+        "planet": "Saturn",
+        "target_planet": "Mars",
+        "aspect_type": "trine",
+        "orb": 1.1392,
+        "strength": 0.8576
+      },
+      {
+        "planet": "Saturn",
+        "target_planet": "Neptune",
+        "aspect_type": "trine",
+        "orb": 6.3738,
+        "strength": 0.2033
+      },
+      {
+        "planet": "Saturn",
+        "target_planet": "Pluto",
+        "aspect_type": "opposition",
+        "orb": 7.8599,
+        "strength": 0.0175
+      },
+      {
+        "planet": "Uranus",
+        "target_planet": "Moon",
+        "aspect_type": "sextile",
+        "orb": 3.4978,
+        "strength": 0.417
+      },
+      {
+        "planet": "Uranus",
+        "target_planet": "Venus",
+        "aspect_type": "trine",
+        "orb": 3.7536,
+        "strength": 0.5308
+      },
+      {
+        "planet": "Uranus",
+        "target_planet": "Jupiter",
+        "aspect_type": "trine",
+        "orb": 3.4258,
+        "strength": 0.5718
+      },
+      {
+        "planet": "Uranus",
+        "target_planet": "Saturn",
+        "aspect_type": "trine",
+        "orb": 0.6457,
+        "strength": 0.9193
+      },
+      {
+        "planet": "Neptune",
+        "target_planet": "Moon",
+        "aspect_type": "trine",
+        "orb": 3.1444,
+        "strength": 0.607
+      },
+      {
+        "planet": "Neptune",
+        "target_planet": "Venus",
+        "aspect_type": "opposition",
+        "orb": 4.107,
+        "strength": 0.4866
+      },
+      {
+        "planet": "Neptune",
+        "target_planet": "Jupiter",
+        "aspect_type": "opposition",
+        "orb": 3.7792,
+        "strength": 0.5276
+      },
+      {
+        "planet": "Neptune",
+        "target_planet": "Saturn",
+        "aspect_type": "opposition",
+        "orb": 0.2923,
+        "strength": 0.9635
+      },
+      {
+        "planet": "Pluto",
+        "target_planet": "Sun",
+        "aspect_type": "square",
+        "orb": 2.7034,
+        "strength": 0.6138
+      },
+      {
+        "planet": "Pluto",
+        "target_planet": "Moon",
+        "aspect_type": "opposition",
+        "orb": 2.843,
+        "strength": 0.6446
+      },
+      {
+        "planet": "Pluto",
+        "target_planet": "Venus",
+        "aspect_type": "trine",
+        "orb": 4.4084,
+        "strength": 0.449
+      },
+      {
+        "planet": "Pluto",
+        "target_planet": "Jupiter",
+        "aspect_type": "trine",
+        "orb": 4.0806,
+        "strength": 0.4899
+      },
+      {
+        "planet": "Pluto",
+        "target_planet": "Saturn",
+        "aspect_type": "trine",
+        "orb": 0.0091,
+        "strength": 0.9989
+      }
+    ]
+  },
+  "planet_influences": [
+    {
+      "name": "Pluto",
+      "score": 5.1126,
+      "rank": 1
+    },
+    {
+      "name": "Jupiter",
+      "score": 4.9856,
+      "rank": 2
+    },
+    {
+      "name": "Saturn",
+      "score": 4.2815,
+      "rank": 3
+    },
+    {
+      "name": "Uranus",
+      "score": 4.1612,
+      "rank": 4
+    },
+    {
+      "name": "Neptune",
+      "score": 4.0492,
+      "rank": 5
+    },
+    {
+      "name": "Moon",
+      "score": 4.0274,
+      "rank": 6
+    },
+    {
+      "name": "Mars",
+      "score": 3.737,
+      "rank": 7
+    },
+    {
+      "name": "Mercury",
+      "score": 3.1598,
+      "rank": 8
+    },
+    {
+      "name": "Venus",
+      "score": 2.7138,
+      "rank": 9
+    },
+    {
+      "name": "Sun",
+      "score": 2.4663,
+      "rank": 10
+    }
+  ],
+  "sphere_scores": [
+    {
+      "key": "crisis_transformation_control",
+      "score": 5.26,
+      "rank": 1
+    },
+    {
+      "key": "inner_background_unconscious",
+      "score": 4.45,
+      "rank": 2
+    },
+    {
+      "key": "body_energy_health",
+      "score": 3.79,
+      "rank": 3
+    },
+    {
+      "key": "work_status_achievement",
+      "score": 3.46,
+      "rank": 4
+    },
+    {
+      "key": "money_security_resources",
+      "score": 2.54,
+      "rank": 5
+    },
+    {
+      "key": "home_family_roots",
+      "score": 1.97,
+      "rank": 6
+    },
+    {
+      "key": "thinking_speech_learning",
+      "score": 1.42,
+      "rank": 7
+    },
+    {
+      "key": "relationships_partnership",
+      "score": 0.89,
+      "rank": 8
+    },
+    {
+      "key": "meaning_expansion_vector",
+      "score": 0.46,
+      "rank": 9
+    }
+  ],
+  "activation_evidence": null,
+  "manifestation_zones": null,
+  "period_context": null,
+  "important_today": [
+    {
+      "id": "mercury_retrograde",
+      "kind": "mercury_retrograde",
+      "tone": "caution",
+      "title": "Меркурий ретроградный",
+      "summary": "Проверяй договорённости, документы, технику и сообщения. Лучше перепроверить детали.",
+      "starts_at": null,
+      "ends_at": null,
+      "exact_at": null,
+      "local_time_label": null,
+      "timezone": "Europe/Moscow",
+      "priority": 75
+    },
+    {
+      "id": "aspect_mars_jupiter",
+      "kind": "fast_planet_aspect",
+      "tone": "supportive",
+      "title": "Марс трин Юпитер",
+      "summary": "Хорошее окно для переговоров, поддержки, знакомств, денег или продвижения дел.",
+      "starts_at": null,
+      "ends_at": null,
+      "exact_at": null,
+      "local_time_label": null,
+      "timezone": "Europe/Moscow",
+      "priority": 65
+    },
+    {
+      "id": "aspect_jupiter_venus",
+      "kind": "fast_planet_aspect",
+      "tone": "supportive",
+      "title": "Юпитер секстиль Венера",
+      "summary": "Хорошее окно для переговоров, поддержки, знакомств, денег или продвижения дел.",
+      "starts_at": null,
+      "ends_at": null,
+      "exact_at": null,
+      "local_time_label": null,
+      "timezone": "Europe/Moscow",
+      "priority": 65
+    }
+  ]
+}

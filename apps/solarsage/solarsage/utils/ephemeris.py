@@ -108,6 +108,7 @@ def calculate_positions(jd: float) -> List[Dict[str, Any]]:
             "latitude": lat,
             "speed": speed_lon,
             "sign": get_sign(lon),
+            "retrograde": bool(speed_lon < 0),
         })
 
     return planets

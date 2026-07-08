@@ -1,0 +1,85 @@
+{
+  "targetJd": 2461228.875,
+  "planets": [
+    {
+      "name": "Sun",
+      "longitude": 105.28010406715687,
+      "sign": "Cancer",
+      "retrograde": false,
+      "speed": 0.9534808648927586,
+      "latitude": 0.0001342883867080739
+    },
+    {
+      "name": "Moon",
+      "longitude": 9.834796553064129,
+      "sign": "Aries",
+      "retrograde": false,
+      "speed": 13.33590883009565,
+      "latitude": 3.2577622830218815
+    },
+    {
+      "name": "Mercury",
+      "longitude": 114.1502165770078,
+      "sign": "Cancer",
+      "retrograde": true,
+      "speed": -0.5160738815296796,
+      "latitude": -4.036544767850353
+    },
+    {
+      "name": "Venus",
+      "longitude": 147.3768976281244,
+      "sign": "Leo",
+      "retrograde": false,
+      "speed": 1.1196187607501193,
+      "latitude": 1.5516497751947549
+    },
+    {
+      "name": "Mars",
+      "longitude": 66.07059579338375,
+      "sign": "Gemini",
+      "retrograde": false,
+      "speed": 0.7043944438612009,
+      "latitude": -0.22336783195596038
+    },
+    {
+      "name": "Jupiter",
+      "longitude": 121.5369465120227,
+      "sign": "Leo",
+      "retrograde": false,
+      "speed": 0.2171723151467733,
+      "latitude": 0.44587982908196094
+    },
+    {
+      "name": "Saturn",
+      "longitude": 14.42859952345276,
+      "sign": "Aries",
+      "retrograde": false,
+      "speed": 0.032801720102890064,
+      "latitude": -2.4114066737453297
+    },
+    {
+      "name": "Uranus",
+      "longitude": 64.01737659328478,
+      "sign": "Gemini",
+      "retrograde": false,
+      "speed": 0.047129906650930316,
+      "latitude": -0.15594556725925696
+    },
+    {
+      "name": "Neptune",
+      "longitude": 4.417964399450129,
+      "sign": "Aries",
+      "retrograde": false,
+      "speed": 4.278482914065297e-05,
+      "latitude": -1.371944807587514
+    },
+    {
+      "name": "Pluto",
+      "longitude": 304.7409125019437,
+      "sign": "Aquarius",
+      "retrograde": true,
+      "speed": -0.021774898293164216,
+      "latitude": -4.2378984738604135
+    }
+  ]
+}

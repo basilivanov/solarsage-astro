@@ -1,0 +1,21 @@
+{
+  "user_id": "eb3876be-e1b4-43d6-b887-1f8554e33150",
+  "tg_user_id": 833478509,
+  "tg_username": "basil_ivanov",
+  "is_onboarded": true,
+  "gender": "male",
+  "birth": {
+    "date": "1980-10-30",
+    "time": "19:50",
+    "city": "Мончегорск",
+    "lat": 67.9394,
+    "lon": 32.8144,
+    "tz": "Europe/Moscow"
+  },
+  "current": {
+    "city": "Сочи, Россия",
+    "lat": 43.59699,
+    "lon": 39.72477,
+    "tz": "Europe/Moscow"
+  }
+}

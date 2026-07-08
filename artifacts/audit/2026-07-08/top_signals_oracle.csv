@@ -1,0 +1,6 @@
+type,planet,target_planet,aspect_type,house,strength,orb,daily_salience
+aspect,Transit_Moon,Pluto,opposition,,0.8693294118412922,1.0453647052696624,1.13012823539368
+aspect,Transit_Mars,Moon,sextile,,0.8687267484298667,0.7876395094207993,0.9990357606943466
+aspect,Transit_Moon,Neptune,trine,,0.683566911841293,2.5314647052696557,0.888636985393681
+aspect,Transit_Mars,Saturn,trine,,0.7419424386776008,2.0644604905791937,0.6677481948098407
+planet_in_house,Transit_Sun,,,1,1.0,,0.55

@@ -1,0 +1,183 @@
+{
+  "houseSystem": "WHOLE_SIGN",
+  "planets": [
+    {
+      "name": "Sun",
+      "longitude": 217.4225135638594,
+      "sign": "Scorpio",
+      "house": null,
+      "retrograde": false,
+      "speed": 0.9999821494693508,
+      "latitude": -3.302466720503422e-05
+    },
+    {
+      "name": "Moon",
+      "longitude": 127.56207916983162,
+      "sign": "Leo",
+      "house": null,
+      "retrograde": false,
+      "speed": 12.674080323582313,
+      "latitude": -0.7889293098378887
+    },
+    {
+      "name": "Mercury",
+      "longitude": 225.7046040297704,
+      "sign": "Scorpio",
+      "house": null,
+      "retrograde": false,
+      "speed": -1.094834191778563,
+      "latitude": -1.604369844652105
+    },
+    {
+      "name": "Venus",
+      "longitude": 180.31074549806863,
+      "sign": "Libra",
+      "house": null,
+      "retrograde": false,
+      "speed": 1.2026648161077933,
+      "latitude": 1.5083421567412822
+    },
+    {
+      "name": "Mars",
+      "longitude": 253.32138727470087,
+      "sign": "Sagittarius",
+      "house": null,
+      "retrograde": false,
+      "speed": 0.7334849118644425,
+      "latitude": -0.9301161737348843
+    },
+    {
+      "name": "Jupiter",
+      "longitude": 180.6385110566346,
+      "sign": "Libra",
+      "house": null,
+      "retrograde": false,
+      "speed": 0.19313016051468712,
+      "latitude": 1.1013127736073416
+    },
+    {
+      "name": "Saturn",
+      "longitude": 184.71000532846813,
+      "sign": "Libra",
+      "house": null,
+      "retrograde": false,
+      "speed": 0.11109682349318677,
+      "latitude": 2.1218439435965157
+    },
+    {
+      "name": "Uranus",
+      "longitude": 234.73320507431413,
+      "sign": "Scorpio",
+      "house": null,
+      "retrograde": false,
+      "speed": 0.059955195681299284,
+      "latitude": 0.2314185233433417
+    },
+    {
+      "name": "Neptune",
+      "longitude": 260.83437797265566,
+      "sign": "Sagittarius",
+      "house": null,
+      "retrograde": false,
+      "speed": 0.029334491473793644,
+      "latitude": 1.3153594480500475
+    },
+    {
+      "name": "Pluto",
+      "longitude": 202.3205138517244,
+      "sign": "Libra",
+      "house": null,
+      "retrograde": false,
+      "speed": 0.03890735458008748,
+      "latitude": 16.608076179430633
+    }
+  ],
+  "houses": [
+    {
+      "number": 1,
+      "cusp": 90.0,
+      "sign": "Cancer"
+    },
+    {
+      "number": 2,
+      "cusp": 120.0,
+      "sign": "Leo"
+    },
+    {
+      "number": 3,
+      "cusp": 150.0,
+      "sign": "Virgo"
+    },
+    {
+      "number": 4,
+      "cusp": 180.0,
+      "sign": "Libra"
+    },
+    {
+      "number": 5,
+      "cusp": 210.0,
+      "sign": "Scorpio"
+    },
+    {
+      "number": 6,
+      "cusp": 240.0,
+      "sign": "Sagittarius"
+    },
+    {
+      "number": 7,
+      "cusp": 270.0,
+      "sign": "Capricorn"
+    },
+    {
+      "number": 8,
+      "cusp": 300.0,
+      "sign": "Aquarius"
+    },
+    {
+      "number": 9,
+      "cusp": 330.0,
+      "sign": "Pisces"
+    },
+    {
+      "number": 10,
+      "cusp": 0.0,
+      "sign": "Aries"
+    },
+    {
+      "number": 11,
+      "cusp": 30.0,
+      "sign": "Taurus"
+    },
+    {
+      "number": 12,
+      "cusp": 60.0,
+      "sign": "Gemini"
+    }
+  ],
+  "specialPoints": [
+    {
+      "name": "ASC",
+      "longitude": 118.85295772782517,
+      "sign": "Cancer",
+      "house": null
+    },
+    {
+      "name": "MC",
+      "longitude": 322.1031731420778,
+      "sign": "Aquarius",
+      "house": null
+    },
+    {
+      "name": "ARMC",
+      "longitude": 324.46728093265534,
+      "sign": "Aquarius",
+      "house": null
+    },
+    {
+      "name": "Vertex",
+      "longitude": 229.52534465514475,
+      "sign": "Scorpio",
+      "house": null
+    }
+  ]
+}

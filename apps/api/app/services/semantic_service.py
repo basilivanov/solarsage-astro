@@ -36,8 +36,9 @@
 #   - BUILD_WHY_CONTEXTS: build 9 pre-computed WhyThisHappens contexts
 # END_MODULE_MAP: M-SEMANTIC-SERVICE
 
+from typing import Any
 from app.schemas.semantic import SemanticLayer, SphereTheme
-from app.services.astro_utils import find_house
+from app.services.astro_utils import find_house, strip_prefix
 
 # ── Transliterations ──────────────────────────────────────────────
 
@@ -141,6 +142,9 @@ class SemanticService:
         transits: dict,
         semantic_layer: SemanticLayer,
         all_signals: list | None = None,
+        day_scored_signals: list | None = None,
+        natal_background_signals: list | None = None,
+        activation_layer: Any = None,
     ) -> list[dict]:
         # START_FUNCTION_CONTRACT: F-M-SEMANTIC-SERVICE.build_why_contexts
         # purpose: Compute pre-filled context for 9 WhyThisHappens sections.
@@ -208,10 +212,19 @@ class SemanticService:
                 if s.type == "planet_in_house":
                     lines.append(f"- {p} в {s.house} доме (сила {s.strength:.2f})")
                 elif s.type == "aspect" and s.aspect_type and s.target_planet:
-                    a = _a(s.aspect_type)
-                    t = _p(s.target_planet)
-                    lines.append(f"- {p} в {a} с {t} (орб {s.orb:.1f}°, сила {s.strength:.2f})")
+                    p_frame = "Transit" if s.planet.startswith("Transit_") else "natal"
+                    t_frame = "Transit" if (s.target_planet and s.target_planet.startswith("Transit_")) else "natal"
+                    p_name = strip_prefix(s.planet)
+                    t_name = strip_prefix(s.target_planet)
+                    lines.append(f"- {p_frame} {p_name} {s.aspect_type} {t_frame} {t_name} (orb {s.orb:.1f}°, strength {s.strength:.2f})")
             return lines
+
+        if day_scored_signals is None:
+            from app.services.day_scoring_signals import filter_day_scored_signals
+            day_scored_signals = filter_day_scored_signals(all_signals or [])
+        if natal_background_signals is None:
+            day_ids = {id(s) for s in (day_scored_signals or [])}
+            natal_background_signals = [s for s in (all_signals or []) if id(s) not in day_ids]
 
         # Use ALL signals (not just top_signals) for context building — top_signals
         # may exclude aspects due to velocity ranking of planet_in_house signals.
@@ -219,6 +232,7 @@ class SemanticService:
         src_sorted = sorted(src, key=lambda s: s.strength, reverse=True)
         aspects = [s for s in src_sorted if s.type == "aspect"]
         houses = [s for s in src_sorted if s.type == "planet_in_house"]
+        transit_houses = [s for s in src_sorted if s.type == "planet_in_house" and s.planet.startswith("Transit_")]
         top_aspect = aspects[0] if aspects else None
         top_house = houses[0] if houses else None
 
@@ -228,7 +242,11 @@ class SemanticService:
         # 01 main_theme
         main_parts = [f"Статус дня: {DAY_THEMES.get(day_status, 'Обычный день')}."]
         if top_aspect:
-            main_parts.append(f"Доминирующий аспект: транзитный {_p(top_aspect.planet)} в {_a(top_aspect.aspect_type)} с твоим натальным {_pi(top_aspect.target_planet or '')} (сила {top_aspect.strength:.2f}).")
+            p_frame = "Transit" if top_aspect.planet.startswith("Transit_") else "natal"
+            t_frame = "Transit" if (top_aspect.target_planet and top_aspect.target_planet.startswith("Transit_")) else "natal"
+            p_name = strip_prefix(top_aspect.planet)
+            t_name = strip_prefix(top_aspect.target_planet) if top_aspect.target_planet else ""
+            main_parts.append(f"Доминирующий аспект: {p_frame} {p_name} {top_aspect.aspect_type} {t_frame} {t_name} (сила {top_aspect.strength:.2f}).")
         if top_house:
             main_parts.append(f"Ведущий транзит: {_p(top_house.planet)} в твоём {top_house.house} доме.")
         if houses:
@@ -256,17 +274,13 @@ class SemanticService:
                 if s.planet and "Moon" in s.planet and s.type == "aspect"
             ]
             for s in moon_aspects[:3]:
-                np = natal_planet(s.target_planet or "")
-                if np:
-                    n_sign = _s(np.get('sign', '?'))
-                    n_lon = np.get('longitude', 0)
-                    nh = find_house(n_lon, natal_houses)
-                    nh_str = f", {nh} дом" if nh else ""
-                    daily_parts.append(
-                        f"Луна в {_a(s.aspect_type)} с твоим натальным "
-                        f"{_pi(s.target_planet or '')} в {n_sign}{nh_str} "
-                        f"(орб {s.orb:.1f}°, сила {s.strength:.2f})."
-                    )
+                p_frame = "Transit" if s.planet.startswith("Transit_") else "natal"
+                t_frame = "Transit" if (s.target_planet and s.target_planet.startswith("Transit_")) else "natal"
+                p_name = strip_prefix(s.planet)
+                t_name = strip_prefix(s.target_planet) if s.target_planet else ""
+                daily_parts.append(
+                    f"{p_frame} {p_name} {s.aspect_type} {t_frame} {t_name} (orb {s.orb:.1f}°, strength {s.strength:.2f})."
+                )
 
         contexts.append({"layer": "daily_layer", "title": "Быстрый слой дня", "context": " ".join(daily_parts) or "Данные по быстрым транзитам.", "blocks_kind": "paragraph"})
 
@@ -275,18 +289,13 @@ class SemanticService:
         # 03 personal_activation
         pers_parts = []
         for s in aspects[:3]:
-            np = natal_planet(s.target_planet or "")
-            if np:
-                lon = np.get('longitude', 0)
-                sign = _s(np.get('sign', '?'))
-                deg = lon % 30
-                nh = find_house(lon, natal_houses_all)
-                nh_str = f", {nh} дом" if nh else ""
-                pers_parts.append(
-                    f"Сегодня {_p(s.planet)} в {_a(s.aspect_type or '')} "
-                    f"с ТВОИМ натальным {_pi(s.target_planet or '')} "
-                    f"(твой {_p(s.target_planet or '')} в натале: {sign} {deg:.1f}°{nh_str}) — орб {s.orb:.1f}°."
-                )
+            p_frame = "Transit" if s.planet.startswith("Transit_") else "natal"
+            t_frame = "Transit" if (s.target_planet and s.target_planet.startswith("Transit_")) else "natal"
+            p_name = strip_prefix(s.planet)
+            t_name = strip_prefix(s.target_planet) if s.target_planet else ""
+            pers_parts.append(
+                f"Сегодня {p_frame} {p_name} {s.aspect_type} {t_frame} {t_name} (orb {s.orb:.1f}°, strength {s.strength:.2f})."
+            )
         # Also show transit planets in houses that match natal house positions
         for s in houses[:2]:
             np = natal_planet(s.planet)
@@ -310,23 +319,31 @@ class SemanticService:
         contexts.append({"layer": "personal_activation", "title": "Почему это задевает именно тебя", "context": " ".join(pers_parts) or "Нет ярко выраженных личных активаций.", "blocks_kind": "paragraph"})
 
         # 04 period_background
-        contexts.append({"layer": "period_background", "title": "Фон периода", "context": f"Солярный акцент: дома {', '.join(str(s.house) for s in houses[:3] if s.house)}. Тема периода: {semantic_layer.day_theme}.", "blocks_kind": "paragraph"})
+        contexts.append({"layer": "period_background", "title": "Фон периода", "context": f"Солярный акцент: дома {', '.join(str(s.house) for s in transit_houses[:3] if s.house)}. Тема периода: {semantic_layer.day_theme}.", "blocks_kind": "paragraph"})
 
         # 05 amplifiers — explain WHY they amplify
         tense_aspects = [s for s in aspects if s.aspect_type in ("square", "opposition")]
         amp_lines = []
         for s in tense_aspects[:3]:
+            p_frame = "Transit" if s.planet.startswith("Transit_") else "natal"
+            t_frame = "Transit" if (s.target_planet and s.target_planet.startswith("Transit_")) else "natal"
+            p_name = strip_prefix(s.planet)
+            t_name = strip_prefix(s.target_planet) if s.target_planet else ""
             amp_lines.append(
-                f"Сегодня {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
-                f"(орб {s.orb:.1f}°, сила {s.strength:.2f}). Это создаёт напряжение — "
+                f"Сегодня {p_frame} {p_name} {s.aspect_type} {t_frame} {t_name} "
+                f"(orb {s.orb:.1f}°, strength {s.strength:.2f}). Это создаёт напряжение — "
                 f"день ощущается плотнее, реакции острее, решения труднее."
             )
         if not amp_lines:
             # Fallback: any strong aspect
             for s in aspects[:2]:
+                p_frame = "Transit" if s.planet.startswith("Transit_") else "natal"
+                t_frame = "Transit" if (s.target_planet and s.target_planet.startswith("Transit_")) else "natal"
+                p_name = strip_prefix(s.planet)
+                t_name = strip_prefix(s.target_planet) if s.target_planet else ""
                 amp_lines.append(
-                    f"Сегодня {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
-                    f"(орб {s.orb:.1f}°, сила {s.strength:.2f})."
+                    f"Сегодня {p_frame} {p_name} {s.aspect_type} {t_frame} {t_name} "
+                    f"(orb {s.orb:.1f}°, strength {s.strength:.2f})."
                 )
         amp_text = "\n".join(amp_lines) if amp_lines else "Нет выраженных усилителей."
         contexts.append({"layer": "amplifiers", "title": "Что усиливает этот день", "context": amp_text, "blocks_kind": "paragraph"})
@@ -335,9 +352,13 @@ class SemanticService:
         harmony_signals = [s for s in aspects if s.aspect_type in ("trine", "sextile")]
         soft_lines = []
         for s in harmony_signals[:3]:
+            p_frame = "Transit" if s.planet.startswith("Transit_") else "natal"
+            t_frame = "Transit" if (s.target_planet and s.target_planet.startswith("Transit_")) else "natal"
+            p_name = strip_prefix(s.planet)
+            t_name = strip_prefix(s.target_planet) if s.target_planet else ""
             soft_lines.append(
-                f"Сегодня {_p(s.planet)} в {_a(s.aspect_type)} с {_pi(s.target_planet or '')} "
-                f"(орб {s.orb:.1f}°, сила {s.strength:.2f}). Гармоничный аспект — "
+                f"Сегодня {p_frame} {p_name} {s.aspect_type} {t_frame} {t_name} "
+                f"(orb {s.orb:.1f}°, strength {s.strength:.2f}). Гармоничный аспект — "
                 f"сглаживает острые углы, даёт пространство для манёвра, снижает давление."
             )
         soft_text = "\n".join(soft_lines) if soft_lines else "Нет выраженных смягчающих аспектов."
@@ -345,7 +366,7 @@ class SemanticService:
 
         # 07 manifestation_zones
         zone_items = []
-        for s in houses[:5]:
+        for s in transit_houses[:5]:
             zone_items.append(f"{s.house} дом — {_p(s.planet)} (сила {s.strength:.2f})")
         contexts.append({"layer": "manifestation_zones", "title": "Через какие сферы это проявляется", "context": "\n".join(zone_items) or "Через основные сферы жизни.", "blocks_kind": "bullets"})
 

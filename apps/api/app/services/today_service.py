@@ -240,6 +240,10 @@ class TodayService:
             scoring_result["sphere_scores"],
         )
 
+        # Calculate natal background signals
+        day_ids = {id(s) for s in day_signals}
+        natal_background_signals = [s for s in signals if id(s) not in day_ids]
+
         # W-4.3: Compute WhyThisHappens section contexts (pre-computed, no LLM)
         why_contexts = semantic_service.build_why_contexts(
             scoring_result["day_status"],
@@ -248,7 +252,10 @@ class TodayService:
             natal_context_dict,
             transits,
             semantic_layer,
-            signals,
+            all_signals=signals,
+            day_scored_signals=day_signals,
+            natal_background_signals=natal_background_signals,
+            activation_layer=None,
         )
 
         # W-4.3: Cache semantic layer
