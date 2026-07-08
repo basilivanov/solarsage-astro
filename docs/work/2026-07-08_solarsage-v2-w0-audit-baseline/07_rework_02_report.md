@@ -32,5 +32,5 @@
 | `git status --short --branch` | Only known unrelated untracked files remain |
 
 ## Commit SHA
-- **Implementation commit**: `a8767392e811121eacfdf75dc99f379269872f19`
-- **Report commit**: Committed as a separate commit immediately after the implementation commit, so the implementation SHA is stable and the report does not contain its own commit ID.
+- **Implementation commit**: `886bd601e42b850d106efc819a07d3e1a88d922b`
+- **Note**: The final commit for architect review (this report commit) is intentionally not embedded here to avoid self-reference within the same document. The callback payload conveys the actual HEAD SHA.
