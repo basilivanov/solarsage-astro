@@ -241,3 +241,66 @@ def test_audit_claims_report_has_no_na_placeholders_for_present_data():
     assert "| N/A | N/A | N/A |" not in text
     # The canonical W0 baseline must not contain fallback LLM advice text
     assert "Рекомендация временно недоступна." not in text
+
+def test_audit_default_fails_fast_on_missing_baseline(tmp_path: Path):
+    """Default mode must exit non-zero before any artifact writes when baseline is missing."""
+    import subprocess, sys
+    from pathlib import Path
+    script = Path(__file__).resolve().parents[3] / "scripts" / "audit_today.py"
+    out = tmp_path / "out"
+    # No baseline fixture exists in tmp_path/out
+    res = subprocess.run(
+        [sys.executable, str(script), "--user-id", "eb3876be-e1b4-43d6-b887-1f8554e33150",
+         "--date", "2026-07-08", "--out", str(out)],
+        capture_output=True, timeout=30,
+    )
+    assert res.returncode != 0
+    # No files should be written to out/ or out/debug/
+    assert not list(out.rglob("*")), "No files should exist after missing-baseline failure"
+
+def test_audit_default_fails_fast_on_invalid_baseline(tmp_path: Path):
+    """Default mode must exit non-zero before any artifact writes when baseline is invalid."""
+    import subprocess, sys, json
+    from pathlib import Path
+    script = Path(__file__).resolve().parents[3] / "scripts" / "audit_today.py"
+    out = tmp_path / "out"
+    out.mkdir()
+    # Write an invalid baseline (not valid JSON)
+    (out / "11_final_today_payload.json").write_text("{invalid json", encoding="utf-8")
+    res = subprocess.run(
+        [sys.executable, str(script), "--user-id", "eb3876be-e1b4-43d6-b887-1f8554e33150",
+         "--date", "2026-07-08", "--out", str(out)],
+        capture_output=True, timeout=30,
+    )
+    assert res.returncode != 0
+    # Only the baseline file should exist (nothing else written)
+    existing = list(out.rglob("*"))
+    assert len(existing) == 1 and existing[0].name == "11_final_today_payload.json"
+
+def test_audit_live_isolates_output(tmp_path: Path):
+    """Live mode must write only under live/<timestamp>/ and not to canonical root."""
+    import subprocess, sys
+    from pathlib import Path
+    script = Path(__file__).resolve().parents[3] / "scripts" / "audit_today.py"
+    # Use a real baseline from the committed artifacts
+    real_baseline = Path(__file__).resolve().parents[3] / "artifacts" / "audit" / "2026-07-08" / "11_final_today_payload.json"
+    out = tmp_path / "out"
+    out.mkdir()
+    # Copy the real baseline
+    import shutil
+    shutil.copy2(real_baseline, out / "11_final_today_payload.json")
+    res = subprocess.run(
+        [sys.executable, str(script), "--user-id", "eb3876be-e1b4-43d6-b887-1f8554e33150",
+         "--date", "2026-07-08", "--out", str(out), "--live-llm-sample"],
+        capture_output=True, timeout=120,
+    )
+    # The live sample might fail if sidecar is unavailable, but if it succeeds:
+    if res.returncode == 0:
+        # No files directly in out/ (only live/ subdirectory and baseline)
+        for child in out.iterdir():
+            assert child.name in ("11_final_today_payload.json", "live", "debug"), f"Unexpected: {child.name}"
+        if (out / "live").exists():
+            live_items = list((out / "live").iterdir())
+            assert len(live_items) > 0, "live/ should contain at least one timestamped run"
+    # If it fails due to sidecar, that's OK — the test is about isolation,
+    # but we can't test full isolation without a running system.

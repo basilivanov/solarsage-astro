@@ -33,4 +33,4 @@ This document contains actual production payload excerpts generated for manual r
 
 - **Stale Headline**: "поддержку в глубоких чувствах и творческих порывах" (unsupported by transit signals)
 - **Stale Moon Phase**: "Убывающая Луна 46%" (deviated from Swiss Ephemeris 43.792% by 2.208pp)
-- **Stale Advice Contradiction**: "Общайся с близкими для улучшения отношений" under "avoid" verdict.
+- **Stale Advice Contradiction**: active relationship outreach advised (с общением с близкими) under "avoid" verdict.

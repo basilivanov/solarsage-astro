@@ -117,3 +117,33 @@ def test_day_contexts_do_not_use_natal_aspects_as_day_evidence():
 
     assert "Transit Moon opposition natal Pluto" in amplifiers
     assert "natal Sun square natal Saturn" not in amplifiers
+
+def test_relationships_bullet_avoided_when_score_is_low():
+    """Supportive day with relationships_partnership below avoid threshold must not
+    emit the relationship outreach practical bullet."""
+    service = SemanticService()
+    
+    semantic_layer = SemanticLayer(
+        day_status="supportive",
+        day_theme="День возможностей",
+        sphere_themes=[],
+        top_keywords=[],
+    )
+    
+    # relationships_partnership=1.0 is below the 2.0 avoid threshold
+    contexts = service.build_why_contexts(
+        day_status="supportive",
+        sphere_scores={"relationships_partnership": 1.0, "work_status_achievement": 3.0},
+        top_signals=[],
+        natal={"planets": [], "houses": []},
+        transits={"planets": []},
+        semantic_layer=semantic_layer,
+    )
+    
+    practical_context = contexts[8]["context"]
+    # Must NOT contain the relationship outreach bullet
+    assert "Общайся с близкими" not in practical_context
+    assert "близкими" not in practical_context
+    # Must contain the two generic supportive bullets
+    assert "Действуй" in practical_context
+    assert "Заверши отложенные задачи" in practical_context

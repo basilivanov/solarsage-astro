@@ -365,16 +365,30 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         # Canonical mode: output goes to standard out_dir
         root_dir = out_dir
         debug_dir = out_dir / "debug"
-        debug_dir.mkdir(parents=True, exist_ok=True)
 
-        # Default mode: fail fast if committed baseline fixture is missing.
-        # This prevents silent LLM generation from bootstrapping the canonical baseline.
+        # Default mode: fail fast if committed baseline fixture is missing or invalid.
+        # Do this BEFORE creating debug_dir or writing any files, so a missing/invalid
+        # baseline does not even create an empty debug/ directory.
         baseline_path = out_dir / "11_final_today_payload.json"
         if not baseline_path.exists():
             print(f"ERROR: Baseline fixture {baseline_path} not found.", file=sys.stderr)
             print("Default make audit-day requires an existing committed baseline.", file=sys.stderr)
             print("Run with --live-llm-sample first to create the initial baseline, then commit it.", file=sys.stderr)
             sys.exit(1)
+        import json as _json
+        try:
+            baseline_raw = baseline_path.read_text(encoding="utf-8")
+            _baseline = _json.loads(baseline_raw)
+            if "meta" not in _baseline:
+                raise ValueError("missing 'meta' key")
+            if "headline" not in _baseline:
+                raise ValueError("missing 'headline' key")
+        except Exception as exc:
+            print(f"ERROR: Invalid baseline fixture {baseline_path}: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+        # Now create directories (after baseline validation succeeds)
+        debug_dir.mkdir(parents=True, exist_ok=True)
 
     async with SessionLocal() as db:
         user, profile = await load_user_and_profile(db, args.user_id)
@@ -490,10 +504,8 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             meta["cached"] = False
             write_json(debug_dir / "final_today_payload.json", payload_json)
         else:
-            # Canonical mode: load frozen baseline payload
-            baseline_path = out_dir / "11_final_today_payload.json"
-            import json as _json
-            payload_json = _json.loads(baseline_path.read_text(encoding="utf-8"))
+            # Canonical mode: use frozen baseline payload (already loaded and validated)
+            payload_json = _baseline
 
         await client.close()
 
@@ -582,7 +594,7 @@ This document contains actual production payload excerpts generated for manual r
 
 - **Stale Headline**: "поддержку в глубоких чувствах и творческих порывах" (unsupported by transit signals)
 - **Stale Moon Phase**: "Убывающая Луна 46%" (deviated from Swiss Ephemeris 43.792% by 2.208pp)
-- **Stale Advice Contradiction**: "Общайся с близкими для улучшения отношений" under "avoid" verdict.
+- **Stale Advice Contradiction**: active relationship outreach advised (с общением с близкими) under "avoid" verdict.
 """
         (root_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
     # else: 14_claims_audit.md is frozen from baseline in canonical mode
