@@ -8,8 +8,8 @@
 // purpose: Verify the /calendar screen matches the visual/structural contract
 //          on stable API payloads. Exercise ready state, day/moon modes, and
 //          overflow. Asserts no missing fixtures via MissingRequestsTracker.
-//          Moon-mode assertions freeze browser time to 2026-07-08 via
-//          page.clock.install() so assertions are deterministic regardless of machine date.
+//          Mock-visual runtime fixes Date to 2026-07-08 via addInitScript
+//          while keeping browser timers real.
 // owns:
 //   - e2e/mock-visual/calendar.spec.ts
 // inputs: Playwright test runner, E2E_BASE_URL env
@@ -23,7 +23,7 @@
 //   - No product path imports mocks or demo data
 //   - Fixtures represent valid API response shapes
 //   - All API calls have fixture coverage (fails on missing)
-//   - Moon-mode assertions freeze browser time to 2026-07-08 via page.clock.install()
+//   - Date.now()/new Date() resolve to 2026-07-08 without fake timers
 // failure_policy: Tests fail on missing fixture or assertion failure
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-SPEC
 
@@ -152,6 +152,8 @@ async function setupCalendarPage(
 }
 
 test.describe("Mock Visual — /calendar", () => {
+  test.describe.configure({ mode: "serial" });
+
   test("fixture lunar facts match backend oracle sentinel days", () => {
     const sentinels = {
       "2026-07-05": {
@@ -225,15 +227,14 @@ test.describe("Mock Visual — /calendar", () => {
 
     await page.getByTestId("calendar-day-2026-07-10").click();
     await expect(page).toHaveURL(/\/calendar$/);
-    await expect(page.getByTestId("calendar-selected-summary")).toContainText("10 июля 2026");
+    const summary = page.getByTestId("calendar-selected-summary");
+    await expect(summary).toContainText("10 июля 2026");
 
-    const cta = page.getByRole("button", { name: /Открыть день/i });
+    const cta = summary.getByRole("button", { name: /Открыть день/i });
     await expect(cta).toBeEnabled();
     await cta.scrollIntoViewIfNeeded();
-    await Promise.all([
-      page.waitForURL(/\/day\/2026-07-10/, { timeout: 10000 }),
-      cta.click(),
-    ]);
+    await cta.click();
+    await expect(page).toHaveURL(/\/day\/2026-07-10/, { timeout: 10000 });
 
     await expectNoMissingApiFixtures(page, tracker);
   });
