@@ -350,9 +350,31 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     out_dir = args.out.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Optional debug/intermediate subdirectory
-    debug_dir = out_dir / "debug"
-    debug_dir.mkdir(parents=True, exist_ok=True)
+    # Determine output directories based on mode
+    is_live = getattr(args, 'live_llm_sample', False)
+
+    if is_live:
+        # Live sample mode: all output goes to live/<timestamp>/
+        import datetime as _dt
+        ts = _dt.datetime.now().strftime("%Y%m%dT%H%M%S")
+        root_dir = out_dir / "live" / ts
+        root_dir.mkdir(parents=True, exist_ok=True)
+        debug_dir = root_dir / "debug"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        # Canonical mode: output goes to standard out_dir
+        root_dir = out_dir
+        debug_dir = out_dir / "debug"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+
+        # Default mode: fail fast if committed baseline fixture is missing.
+        # This prevents silent LLM generation from bootstrapping the canonical baseline.
+        baseline_path = out_dir / "11_final_today_payload.json"
+        if not baseline_path.exists():
+            print(f"ERROR: Baseline fixture {baseline_path} not found.", file=sys.stderr)
+            print("Default make audit-day requires an existing committed baseline.", file=sys.stderr)
+            print("Run with --live-llm-sample first to create the initial baseline, then commit it.", file=sys.stderr)
+            sys.exit(1)
 
     async with SessionLocal() as db:
         user, profile = await load_user_and_profile(db, args.user_id)
@@ -451,73 +473,27 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         write_json(debug_dir / "semantic_layer.json", semantic_layer)
         write_json(debug_dir / "why_contexts.json", why_contexts)
 
-        # Default: use cached payload (deterministic baseline).
-        # Only invalidate and regenerate fresh LLM text when --live-llm-sample is set.
-        if getattr(args, 'live_llm_sample', False):
+        # TodayService/payload generation: only in live-LLM mode.
+        # In default (canonical) mode, the payload is frozen from the committed baseline fixture.
+        payload_json = None
+        if is_live:
             await TodayService(db).invalidate_cache(user.id)
-
-        today_payload = await TodayService(db).get_today_payload(
-            user_id=user.id,
-            target_date=target_date,
-            access_state=access_state,
-            skip_prefetch=True,
-        )
-        payload_json = today_payload.model_dump(mode="json", by_alias=False)
-
-        # Normalize volatile fields so canonical artifacts are deterministic
-        meta = payload_json.get("meta", payload_json.get("Meta", {}))
-        meta["generated_at"] = f"{target_date.isoformat()}T12:00:00Z"
-        meta["cached"] = False
-
-        # Determine live-LLM sample output path (non-destructive to canonical root)
-        live_dir = None
-        if getattr(args, 'live_llm_sample', False):
-            import datetime
-            ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-            live_dir = out_dir / "live" / ts
-            live_dir.mkdir(parents=True, exist_ok=True)
-
-        # Default baseline mode: freeze volatile LLM fields from committed canonical baseline.
-        # This makes the baseline deterministic even without a pre-existing DB cache row.
-        if not getattr(args, 'live_llm_sample', False):
+            today_payload = await TodayService(db).get_today_payload(
+                user_id=user.id,
+                target_date=target_date,
+                access_state=access_state,
+                skip_prefetch=True,
+            )
+            payload_json = today_payload.model_dump(mode="json", by_alias=False)
+            meta = payload_json.get("meta", payload_json.get("Meta", {}))
+            meta["generated_at"] = f"{target_date.isoformat()}T12:00:00Z"
+            meta["cached"] = False
+            write_json(debug_dir / "final_today_payload.json", payload_json)
+        else:
+            # Canonical mode: load frozen baseline payload
             baseline_path = out_dir / "11_final_today_payload.json"
-            if baseline_path.exists():
-                import json as _json
-                baseline_raw = baseline_path.read_text(encoding="utf-8")
-                baseline = _json.loads(baseline_raw)
-                # Freeze headline
-                payload_json["headline"] = baseline.get("headline", payload_json["headline"])
-                # Freeze reading paragraphs
-                payload_json["reading"] = baseline.get("reading", payload_json["reading"])
-                # Freeze notes
-                payload_json["notes"] = baseline.get("notes", payload_json["notes"])
-                # Freeze why_this_happens sections
-                if "why_this_happens" in baseline:
-                    payload_json["why_this_happens"] = baseline["why_this_happens"]
-                # Freeze concrete_advice row texts
-                baseline_advice = {}
-                base_ca = baseline.get("concrete_advice") or baseline.get("concreteAdvice") or {}
-                if isinstance(base_ca, dict):
-                    for r in base_ca.get("rows", []):
-                        baseline_advice[r.get("key")] = r.get("text", "")
-                live_ca = payload_json.get("concrete_advice") or payload_json.get("concreteAdvice") or {}
-                if isinstance(live_ca, dict):
-                    for r in live_ca.get("rows", []):
-                        if r.get("key") in baseline_advice:
-                            r["text"] = baseline_advice[r["key"]]
-                # Freeze planet interpretations
-                baseline_planets = {}
-                base_chart = baseline.get("day_chart") or baseline.get("dayChart") or {}
-                if isinstance(base_chart, dict):
-                    for p in base_chart.get("transit_planets", []):
-                        baseline_planets[p.get("name")] = p.get("interpretation", "")
-                live_chart = payload_json.get("day_chart") or payload_json.get("dayChart") or {}
-                if isinstance(live_chart, dict):
-                    for p in live_chart.get("transit_planets", []):
-                        if p.get("name") in baseline_planets:
-                            p["interpretation"] = baseline_planets[p["name"]]
-
-        write_json(debug_dir / "final_today_payload.json", payload_json)
+            import json as _json
+            payload_json = _json.loads(baseline_path.read_text(encoding="utf-8"))
 
         await client.close()
 
@@ -531,59 +507,58 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     )
 
     # Copy files to root with canonical 16 names
-    shutil.copy2(debug_dir / "input_profile.json", out_dir / "00_input_profile.json")
-    shutil.copy2(debug_dir / "raw_natal_context.json", out_dir / "01_raw_natal_context.json")
-    shutil.copy2(debug_dir / "raw_transits.json", out_dir / "02_raw_transits.json")
-    shutil.copy2(debug_dir / "normalized_signals_before_filter.json", out_dir / "03_normalized_signals_all.json")
-    shutil.copy2(debug_dir / "day_scored_signals_after_filter.csv", out_dir / "04_day_scored_signals_after_filter.csv")
-    shutil.copy2(debug_dir / "signal_trace.csv", out_dir / "05_signal_trace.csv")
-    shutil.copy2(debug_dir / "scoring_intermediate_table.csv", out_dir / "06_scoring_intermediate_table.csv")
-    shutil.copy2(debug_dir / "sphere_scores.csv", out_dir / "07_sphere_scores.csv")
-    shutil.copy2(debug_dir / "top_signals.csv", out_dir / "08_top_signals.csv")
-    shutil.copy2(debug_dir / "semantic_layer.json", out_dir / "09_semantic_layer.json")
-    shutil.copy2(debug_dir / "why_contexts.json", out_dir / "10_why_contexts.json")
-    # 11_final_today_payload.json: in default mode copy to canonical root;
-    # in live-LLM mode write to live/ subdirectory and do not touch canonical root.
-    if getattr(args, 'live_llm_sample', False) and live_dir is not None:
-        write_json(live_dir / "final_today_payload.json", payload_json)
-    else:
-        shutil.copy2(debug_dir / "final_today_payload.json", out_dir / "11_final_today_payload.json")
+    shutil.copy2(debug_dir / "input_profile.json", root_dir / "00_input_profile.json")
+    shutil.copy2(debug_dir / "raw_natal_context.json", root_dir / "01_raw_natal_context.json")
+    shutil.copy2(debug_dir / "raw_transits.json", root_dir / "02_raw_transits.json")
+    shutil.copy2(debug_dir / "normalized_signals_before_filter.json", root_dir / "03_normalized_signals_all.json")
+    shutil.copy2(debug_dir / "day_scored_signals_after_filter.csv", root_dir / "04_day_scored_signals_after_filter.csv")
+    shutil.copy2(debug_dir / "signal_trace.csv", root_dir / "05_signal_trace.csv")
+    shutil.copy2(debug_dir / "scoring_intermediate_table.csv", root_dir / "06_scoring_intermediate_table.csv")
+    shutil.copy2(debug_dir / "sphere_scores.csv", root_dir / "07_sphere_scores.csv")
+    shutil.copy2(debug_dir / "top_signals.csv", root_dir / "08_top_signals.csv")
+    shutil.copy2(debug_dir / "semantic_layer.json", root_dir / "09_semantic_layer.json")
+    shutil.copy2(debug_dir / "why_contexts.json", root_dir / "10_why_contexts.json")
+    # 11: in live mode, write the live payload; in default mode, keep the frozen baseline
+    if is_live:
+        write_json(root_dir / "11_final_today_payload.json", payload_json)
+    # else: 11_final_today_payload.json already exists in out_dir (baseline fixture), don't touch it
 
     if (debug_dir / "scoring_oracle_comparison.json").exists():
-        shutil.copy2(debug_dir / "scoring_oracle_comparison.json", out_dir / "12_scoring_oracle_comparison.json")
+        shutil.copy2(debug_dir / "scoring_oracle_comparison.json", root_dir / "12_scoring_oracle_comparison.json")
     if (debug_dir / "astronomy_oracle_summary.json").exists():
-        shutil.copy2(debug_dir / "astronomy_oracle_summary.json", out_dir / "13_astronomy_oracle_summary.json")
+        shutil.copy2(debug_dir / "astronomy_oracle_summary.json", root_dir / "13_astronomy_oracle_summary.json")
 
-    # Generate 14_claims_audit.md dynamically
-    # Support both snake_case (by_alias=False) and camelCase (by_alias=True) defensively
-    def _get_field(obj, *keys):
-        for k in keys:
-            v = obj.get(k) if isinstance(obj, dict) else None
-            if v is not None:
-                return v
-        return None
+    # Generate 14_claims_audit.md only in live mode; in default mode keep frozen from baseline
+    if is_live:
+        # Support both snake_case (by_alias=False) and camelCase (by_alias=True) defensively
+        def _get_field(obj, *keys):
+            for k in keys:
+                v = obj.get(k) if isinstance(obj, dict) else None
+                if v is not None:
+                    return v
+            return None
 
-    headline = payload_json.get("headline", "N/A")
-    day_status_val = _get_field(payload_json, "day_status", "dayStatus") or "N/A"
+        headline = payload_json.get("headline", "N/A")
+        day_status_val = _get_field(payload_json, "day_status", "dayStatus") or "N/A"
 
-    lunar_phase_title = "N/A"
-    day_summary = _get_field(payload_json, "day_summary", "daySummary") or {}
-    for fact in day_summary.get("facts", []):
-        if fact.get("kind") == "lunar_phase":
-            lunar_phase_title = fact.get("title", "N/A")
+        lunar_phase_title = "N/A"
+        day_summary = _get_field(payload_json, "day_summary", "daySummary") or {}
+        for fact in day_summary.get("facts", []):
+            if fact.get("kind") == "lunar_phase":
+                lunar_phase_title = fact.get("title", "N/A")
 
-    top_flags = _get_field(payload_json, "top_flags", "topFlags") or []
-    top_flags_titles = [f.get("title", "") for f in top_flags]
-    top_flags_str = ", ".join(top_flags_titles) if top_flags_titles else "N/A"
+        top_flags = _get_field(payload_json, "top_flags", "topFlags") or []
+        top_flags_titles = [f.get("title", "") for f in top_flags]
+        top_flags_str = ", ".join(top_flags_titles) if top_flags_titles else "N/A"
 
-    concrete_advice = _get_field(payload_json, "concrete_advice", "concreteAdvice") or {}
-    advice_rows = concrete_advice.get("rows", [])
-    advice_lines = []
-    for r in advice_rows:
-        advice_lines.append(f"| {r.get('label', '')} | {r.get('verdict', '')} | {r.get('text', '')} |")
-    advice_table = "\n".join(advice_lines) if advice_lines else "| N/A | N/A | N/A |"
+        concrete_advice = _get_field(payload_json, "concrete_advice", "concreteAdvice") or {}
+        advice_rows = concrete_advice.get("rows", [])
+        advice_lines = []
+        for r in advice_rows:
+            advice_lines.append(f"| {r.get('label', '')} | {r.get('verdict', '')} | {r.get('text', '')} |")
+        advice_table = "\n".join(advice_lines) if advice_lines else "| N/A | N/A | N/A |"
 
-    claims_text = f"""# W0 Claims Audit: User {args.user_id}, {args.date}
+        claims_text = f"""# W0 Claims Audit: User {args.user_id}, {args.date}
 
 This document contains actual production payload excerpts generated for manual review and claims verification.
 
@@ -609,14 +584,10 @@ This document contains actual production payload excerpts generated for manual r
 - **Stale Moon Phase**: "Убывающая Луна 46%" (deviated from Swiss Ephemeris 43.792% by 2.208pp)
 - **Stale Advice Contradiction**: "Общайся с близкими для улучшения отношений" under "avoid" verdict.
 """
-    # Write claims audit report
-    # In live-LLM mode, write only to the live directory (not to canonical root).
-    if live_dir is not None:
-        (live_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
-    else:
-        (out_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
+        (root_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
+    # else: 14_claims_audit.md is frozen from baseline in canonical mode
 
-    # Generate 15_audit_summary.md dynamically
+    # Generate 15_audit_summary.md (deterministic, same in both modes)
     summary_text = f"""# W0 Audit Summary: User {args.user_id}, {args.date}
 
 ## Executive summary
@@ -629,7 +600,7 @@ The astronomical oracle verified transit longitudes, retrograde flags, moon phas
 ## Trace map: production TodayPayload path
 See `trace_map.json` for details.
 """
-    (out_dir / "15_audit_summary.md").write_text(summary_text, encoding="utf-8")
+    (root_dir / "15_audit_summary.md").write_text(summary_text, encoding="utf-8")
 
     summary = {
         "user_id": args.user_id,
