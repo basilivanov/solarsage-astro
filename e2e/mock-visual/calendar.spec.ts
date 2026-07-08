@@ -37,15 +37,26 @@ import {
 import { calendarPayload, accessPayload, dayPayload } from "./fixtures/calendar-2026-07";
 
 function buildCalendarFixtures(): MockApiRouteFixtures {
-  return {
+  const fixtures: MockApiRouteFixtures = {
     "/api/calendar": { body: calendarPayload },
     "/api/access": { body: accessPayload },
-    "/api/day/2026-07-10": { body: dayPayload },
     "/api/auth/dev": {
       status: 200,
       body: { status: "ok", userId: "mock-user-id" },
     },
   };
+
+  for (let day = 1; day <= 31; day += 1) {
+    const date = `2026-07-${String(day).padStart(2, "0")}`;
+    fixtures[`/api/day/${date}`] = {
+      body: {
+        ...dayPayload,
+        date,
+      },
+    };
+  }
+
+  return fixtures;
 }
 
 async function installMockVisualRuntime(page: Page): Promise<void> {
