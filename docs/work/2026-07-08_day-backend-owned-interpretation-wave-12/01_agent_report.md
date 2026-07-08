@@ -50,8 +50,8 @@
 ## 5. Verification Commands & Results
 
 *   **Pytest (backend)**:
-    *   `cd apps/api && .venv/bin/pytest tests/test_today_concrete_advice.py` (2 passed)
-    *   `cd apps/api && .venv/bin/pytest tests/test_day_endpoints.py tests/integration/test_cache.py tests/integration/test_locked_day.py tests/integration/test_user_flow.py` (18 passed)
+    *   `cd apps/api && .venv/bin/pytest tests/test_today_concrete_advice.py` (4 passed)
+    *   `cd apps/api && .venv/bin/pytest tests/test_day_endpoints.py tests/integration/test_cache.py tests/integration/test_locked_day.py tests/integration/test_user_flow.py` (16 passed)
 *   **Vitest (unit)**:
     *   `npx vitest run TodayScreen.test.tsx` (14 passed)
     *   `npx vitest run sphere-labels.test.ts` (8 passed)
@@ -69,12 +69,13 @@
 
 ---
 
-## 7. Rework 01 Fixes (2026-07-08)
+## 7. Rework 02 Fixes (2026-07-08)
 
-*   **Removed old advice templates**: Deleted `SPHERE_ADVICE_TEXTS` and all hardcoded advice templates from `apps/api/app/services/today_interpretation_service.py`. If LLM fails/absent, row texts now default to `"Рекомендация временно недоступна."`.
-*   **Removed pytest environment check**: Removed `sys` checks from the interpretation service. Instead, the service now checks if `generate_concrete_advice` / `generate_planet_interpretations` are mocked in tests, and falls back to `"Рекомендация временно недоступна."` when no LLM keys are configured.
-*   **Mocked LLM in tests**: Configured `_mock_llm_interpretations` in `apps/api/tests/conftest.py` as a global autouse fixture returning valid Russian texts for all 12 keys, so all integration tests pass cleanly without network calls.
-*   **Strengthened LLM validation**: Checked that the keys returned by LLM match exactly the 12 canonical product keys, the values are non-empty Russian strings, contain no Latin words, no `Transit_`/`Natal_` prefixes, and no hallucinated planet/aspect/house facts.
-*   **Cleaned LLM Prompt**: Removed hardcoded product templates from the prompt examples in `apps/api/app/services/llm_service.py`.
-*   **Factual Day Summary Card**: Replaced hardcoded action advice in summary facts with factual, non-forecast summaries like `"убывающая фаза"`, `"растущая фаза"`, `"новолуние"`, `"полнолуние"`. Cleaned out all `Transit_`/`Natal_` prefixes from the visible facts using `strip_prefix()`.
-*   **Mapped Semantic Icon Names**: Mapped `iconName` semantic keys (like `"briefcase"`, `"building"`) to visible emojis using `ICON_MAP` in `components/today/concrete-day-advice.tsx` so they render as icons instead of raw text.
+*   **Removed mock checks**: Deleted all mock introspection (`is_mocked`, `is_chart_mocked`, etc.) from `today_interpretation_service.py`. Product code only runs the LLM when real keys are configured.
+*   **Factual Day Summary Card**: Replaced hardcoded action advice in summary facts with factual, non-forecast summaries. Omitted the forecast summary from top flag facts, using `"транзитный аспект"` instead.
+*   **Cleaned LLM Prompt**: Removed hardcoded product templates from prompt examples in `llm_service.py`.
+*   **Semantic Icon Names Fallback**: Used a neutral `"•"` fallback in `concrete-day-advice.tsx` if `ICON_MAP` does not resolve the semantic icon name, completely preventing raw text leaks.
+*   **Strict Allowed Evidence Planets/Aspects Validator**: Derives the allowed planets/aspects/houses in `validate_row_text()` strictly from `row.evidence` only (no static planet maps). Mentioning any planet/aspect/house not in the evidence rejects the row.
+*   **Mocked LLM explicitly in tests**: Set the API keys to empty in `conftest.py` so cache/endpoints tests verify the true no-LLM fallback path (`"Рекомендация временно недоступна."`).
+*   **Updated E2E mock fixtures**: Restored contract/prompt version numbers to `3` and `2`, used semantic icon names, and filled text fields with backend-owned sentinel strings (e.g. `СЕНТИНЕЛ ОТНОШЕНИЯ`).
+*   **Cleaned up visual artifacts**: Restored the `artifacts/pixel-rework-03` directory to its state before commit `e0e1832`.

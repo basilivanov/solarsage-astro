@@ -127,7 +127,7 @@ export function ConcreteDayAdvice({ concreteAdvice }: Props) {
                 data-testid="concrete-day-advice-row"
                 data-status={row.verdict}
               >
-                <span className="mt-0.5 text-[14px] leading-none flex-none">{ICON_MAP[row.iconName] || row.iconName}</span>
+                <span className="mt-0.5 text-[14px] leading-none flex-none">{ICON_MAP[row.iconName] || "•"}</span>
                 <span className="w-[68px] flex-none text-[11px] font-medium text-muted-foreground">
                   {row.label}
                 </span>

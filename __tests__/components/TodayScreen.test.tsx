@@ -350,13 +350,13 @@ describe('TodayScreen', () => {
           sphereScores: [{ key: 'relationships', score: 2.5, rank: 1 }],
           concreteAdvice: {
             rows: [
-              { key: 'relationships', label: 'Отношения', iconName: '💖', rank: 4, verdict: 'caution', confidence: 'medium', text: 'Свидания пройдут отлично', evidence: [] }
+              { key: 'relationships', label: 'Отношения', iconName: 'sparkle', rank: 4, verdict: 'caution', confidence: 'medium', text: 'СЕНТИНЕЛ ОТНОШЕНИЯ', evidence: [] }
             ],
             counts: { good: 0, caution: 1, avoid: 0, neutral: 0 }
           },
           daySummary: {
             statusLabel: 'Поддерживающий день',
-            statusLine: 'день на твоей стороне — действуй',
+            statusLine: 'СЕНТИНЕЛ СТАТУС ЛАЙН',
             facts: [
               { kind: 'lunar_phase', iconName: 'moon', title: 'Полнолуние', summary: '97%' }
             ]
@@ -369,10 +369,16 @@ describe('TodayScreen', () => {
       />,
     )
 
-    expect(screen.getByTestId('day-summary-card').textContent).toContain('Поддерживающий')
-    expect(screen.getByTestId('day-summary-card').textContent).toContain('Полнолуние')
-    expect(screen.getByTestId('concrete-day-advice')).toBeTruthy()
-    expect(screen.getByTestId('concrete-day-advice').textContent).toContain('Отношения')
+    const summaryCard = screen.getByTestId('day-summary-card')
+    expect(summaryCard.textContent).toContain('Поддерживающий')
+    expect(summaryCard.textContent).toContain('Полнолуние')
+    expect(summaryCard.textContent).toContain('СЕНТИНЕЛ СТАТУС ЛАЙН')
+
+    const adviceSection = screen.getByTestId('concrete-day-advice')
+    expect(adviceSection).toBeTruthy()
+    expect(adviceSection.textContent).toContain('Отношения')
+    expect(adviceSection.textContent).toContain('СЕНТИНЕЛ ОТНОШЕНИЯ')
+    expect(adviceSection.textContent).not.toContain('sparkle')
     expect(screen.getByTestId('day-reading')).toBeTruthy()
   })
 
@@ -395,7 +401,7 @@ describe('TodayScreen', () => {
           sphereScores: [{ key: 'rest', score: 2.1, rank: 1 }],
           daySummary: {
             statusLabel: 'Ровный день',
-            statusLine: 'без взлётов — занимайся рутиной',
+            statusLine: 'СЕНТИНЕЛ СТАТУС ЛАЙН 2',
             facts: [
               { kind: 'lunar_phase', iconName: 'moon', title: 'Убывающая Луна', summary: '22%' }
             ]

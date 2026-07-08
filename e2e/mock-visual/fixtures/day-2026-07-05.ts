@@ -27,12 +27,12 @@ import type { components } from "../../../packages/contracts/_generated";
 export const dayPayload: components["schemas"]["TodayPayload"] = {
   meta: {
     schemaVersion: "today/v1",
-    contractVersion: 1,
+    contractVersion: 3,
     calculationVersion: 1,
     normalizationVersion: 1,
     scoringVersion: 1,
-    promptVersion: 1,
-    contentVersion: 1,
+    promptVersion: 2,
+    contentVersion: 3,
     generatedAt: "2026-07-05T06:00:00Z",
     cached: false,
   },
@@ -190,28 +190,28 @@ export const dayPayload: components["schemas"]["TodayPayload"] = {
   ],
   concreteAdvice: {
     rows: [
-      { key: "work", label: "Работа", iconName: "💼", rank: 1, verdict: "neutral", confidence: "low", text: "Ровный рабочий день — без сюрпризов, без прорывов", evidence: [] },
-      { key: "money", label: "Деньги", iconName: "💰", rank: 2, verdict: "good", confidence: "high", text: "Хороший день для вложений в себя и дом", evidence: [] },
-      { key: "documents", label: "Документы", iconName: "📝", rank: 3, verdict: "good", confidence: "high", text: "Хорошее время для договоров — читай спокойно, подписывай", evidence: [] },
-      { key: "relationships", label: "Отношения", iconName: "💖", rank: 4, verdict: "good", confidence: "high", text: "Свидания пройдут отлично — будь открыт и смел", evidence: [] },
-      { key: "sport", label: "Спорт", iconName: "🏃", rank: 5, verdict: "avoid", confidence: "high", text: "Снизь нагрузку — риск травм выше, работай на технику", evidence: [] },
-      { key: "communication", label: "Общение", iconName: "💬", rank: 6, verdict: "good", confidence: "high", text: "Переговоры пройдут гладко — проси что хочешь", evidence: [] },
-      { key: "health", label: "Здоровье", iconName: "🌿", rank: 7, verdict: "neutral", confidence: "low", text: "Стабильно — поддерживай режим, ничего особого", evidence: [] },
-      { key: "decisions", label: "Решения", iconName: "🎯", rank: 8, verdict: "neutral", confidence: "low", text: "Обычная ясность — решения принимаются ровно", evidence: [] },
-      { key: "travel", label: "Поездки", iconName: "✈️", rank: 9, verdict: "good", confidence: "medium", text: "Дорога будет лёгкой — хороший день для отправления", evidence: [] },
-      { key: "creativity", label: "Творчество", iconName: "🎨", rank: 10, verdict: "good", confidence: "medium", text: "Вдохновение бьёт ключом — садись за работу", evidence: [] },
-      { key: "study", label: "Учёба", iconName: "📚", rank: 11, verdict: "good", confidence: "medium", text: "Память цепкая — учи сложное, оно задержится", evidence: [] },
-      { key: "shopping", label: "Покупки", iconName: "🛍️", rank: 12, verdict: "good", confidence: "medium", text: "Вкус работает — выберешь правильное, не пожалеешь", evidence: [] },
+      { key: "work", label: "Работа", iconName: "briefcase", rank: 1, verdict: "neutral", confidence: "low", text: "СЕНТИНЕЛ РАБОТА", evidence: [] },
+      { key: "money", label: "Деньги", iconName: "building", rank: 2, verdict: "good", confidence: "high", text: "СЕНТИНЕЛ ДЕНЬГИ", evidence: [] },
+      { key: "documents", label: "Документы", iconName: "list-checks", rank: 3, verdict: "good", confidence: "high", text: "СЕНТИНЕЛ ДОКУМЕНТЫ", evidence: [] },
+      { key: "relationships", label: "Отношения", iconName: "sparkle", rank: 4, verdict: "good", confidence: "high", text: "СЕНТИНЕЛ ОТНОШЕНИЯ", evidence: [] },
+      { key: "sport", label: "Спорт", iconName: "leaf", rank: 5, verdict: "avoid", confidence: "high", text: "СЕНТИНЕЛ СПОРТ", evidence: [] },
+      { key: "communication", label: "Общение", iconName: "telescope", rank: 6, verdict: "good", confidence: "high", text: "СЕНТИНЕЛ ОБЩЕНИЕ", evidence: [] },
+      { key: "health", label: "Здоровье", iconName: "compass", rank: 7, verdict: "neutral", confidence: "low", text: "СЕНТИНЕЛ ЗДОРОВЬЕ", evidence: [] },
+      { key: "decisions", label: "Решения", iconName: "target", rank: 8, verdict: "neutral", confidence: "low", text: "СЕНТИНЕЛ РЕШЕНИЯ", evidence: [] },
+      { key: "travel", label: "Поездки", iconName: "hourglass", rank: 9, verdict: "good", confidence: "medium", text: "СЕНТИНЕЛ ПОЕЗДКИ", evidence: [] },
+      { key: "creativity", label: "Творчество", iconName: "grid", rank: 10, verdict: "good", confidence: "medium", text: "СЕНТИНЕЛ ТВОРЧЕСТВО", evidence: [] },
+      { key: "study", label: "Учёба", iconName: "layers", rank: 11, verdict: "good", confidence: "medium", text: "СЕНТИНЕЛ УЧЁБА", evidence: [] },
+      { key: "shopping", label: "Покупки", iconName: "zap", rank: 12, verdict: "good", confidence: "medium", text: "СЕНТИНЕЛ ПОКУПКИ", evidence: [] },
     ],
     counts: { good: 8, caution: 0, avoid: 1, neutral: 3 }
   },
   daySummary: {
     statusLabel: "Поддерживающий день",
-    statusLine: "день на твоей стороне — действуй",
+    statusLine: "СЕНТИНЕЛ СТАТУС ЛАЙН",
     facts: [
-      { kind: "top_planet", iconName: "Moon", title: "Влияние Луны", summary: "тема дня — Луна: фокус на чувствах" },
-      { kind: "lunar_phase", iconName: "moon", title: "Убывающая Луна 76%", summary: "подводи итоги" },
-      { kind: "top_flag", iconName: "flag", title: "Марс трин Юпитер", summary: "особое влияние дня" }
+      { kind: "top_planet", iconName: "Moon", title: "Влияние Луны", summary: "фокус на чувствах" },
+      { kind: "lunar_phase", iconName: "moon", title: "Убывающая Луна 76%", summary: "убывающая фаза" },
+      { kind: "top_flag", iconName: "flag", title: "Марс трин Юпитер", summary: "транзитный аспект" }
     ]
   },
   activationEvidence: null,

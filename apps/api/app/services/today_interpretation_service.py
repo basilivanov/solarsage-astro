@@ -1,6 +1,6 @@
 # ############################################################################
 # AI_HEADER: MODULE_TODAY_INTERPRETATION_SERVICE
-# ROLE: Interpretation service — build backend-owned forecast texts.
+# ROLE: Z-INTERPRETATION — build backend-owned forecast texts.
 # DEPENDENCIES: app.schemas.today, app.services.llm_service, app.core.config
 # ############################################################################
 
@@ -12,7 +12,6 @@
 # END_MODULE_CONTRACT: M-TODAY-INTERPRETATION-SERVICE
 
 from __future__ import annotations
-import asyncio
 import re
 from datetime import date as Date
 
@@ -117,6 +116,27 @@ ASPECT_LABELS_RU = {
     "trine": "трин", "square": "квадратура", "sextile": "секстиль",
 }
 
+PLANET_STEMS = {
+    "Sun": ["солнц", "солнеч"],
+    "Moon": ["лун"],
+    "Mercury": ["меркур"],
+    "Venus": ["венер"],
+    "Mars": ["марс"],
+    "Jupiter": ["юпитер"],
+    "Saturn": ["сатурн"],
+    "Uranus": ["уран"],
+    "Neptune": ["нептун"],
+    "Pluto": ["плутон"],
+}
+
+ASPECT_STEMS = {
+    "conjunction": ["соедин"],
+    "opposition": ["оппозиц"],
+    "trine": ["трин", "тригон"],
+    "square": ["квадрат", "квадратур"],
+    "sextile": ["секстил"],
+}
+
 def verdict_for_score(score: float) -> ConcreteAdviceVerdict:
     if score >= 6.0:
         return "good"
@@ -137,63 +157,48 @@ def validate_row_text(row: ConcreteAdviceRow, text: str) -> bool:
     if "transit_" in t or "natal_" in t:
         return False
 
-    # 3. Build allowed sets
+    # 3. Build allowed sets from evidence only
     allowed_planets = set()
     allowed_aspects = set()
     allowed_houses = set()
 
-    # Add default planets associated with this sphere
-    for planet_name, spheres in PLANET_TO_SPHERES_MAP.items():
-        if row.key in spheres:
-            allowed_planets.add(PLANET_LABELS_RU.get(planet_name, planet_name).lower())
-
-    # Add planets, aspects, and houses from evidence
     for ev in row.evidence:
         if ev.planet:
-            p_clean = strip_prefix(ev.planet)
-            allowed_planets.add(PLANET_LABELS_RU.get(p_clean, p_clean).lower())
+            allowed_planets.add(strip_prefix(ev.planet))
         if ev.target_planet:
-            tp_clean = strip_prefix(ev.target_planet)
-            allowed_planets.add(PLANET_LABELS_RU.get(tp_clean, tp_clean).lower())
+            allowed_planets.add(strip_prefix(ev.target_planet))
         if ev.aspect_type:
-            allowed_aspects.add(ASPECT_LABELS_RU.get(ev.aspect_type, ev.aspect_type).lower())
-            if ev.aspect_type.lower() == "trine":
-                allowed_aspects.add("трин")
-                allowed_aspects.add("тригон")
-            if ev.aspect_type.lower() == "conjunction":
-                allowed_aspects.add("соединение")
-            if ev.aspect_type.lower() == "opposition":
-                allowed_aspects.add("оппозиция")
-            if ev.aspect_type.lower() == "square":
-                allowed_aspects.add("квадрат")
-                allowed_aspects.add("квадратура")
-            if ev.aspect_type.lower() == "sextile":
-                allowed_aspects.add("секстиль")
+            allowed_aspects.add(ev.aspect_type.lower())
         if ev.title:
             match = re.search(r'\b(\d+)\s+дом', ev.title.lower())
             if match:
                 allowed_houses.add(int(match.group(1)))
 
     # Check for unauthorized planets
-    all_planets_ru = [PLANET_LABELS_RU[p].lower() for p in PLANET_LABELS_RU]
-    for p_ru in all_planets_ru:
-        if p_ru in t:
-            if p_ru not in allowed_planets:
+    for p_name, stems in PLANET_STEMS.items():
+        if any(stem in t for stem in stems):
+            if p_name not in allowed_planets:
                 return False
 
     # Check for unauthorized aspects
-    all_aspects_ru = ["соединение", "оппозиция", "трин", "тригон", "квадрат", "квадратура", "секстиль"]
-    for a_ru in all_aspects_ru:
-        if a_ru in t:
-            if a_ru not in allowed_aspects:
+    for a_name, stems in ASPECT_STEMS.items():
+        if any(stem in t for stem in stems):
+            if a_name not in allowed_aspects:
                 return False
 
     # Check for unauthorized houses
-    house_matches = re.findall(r'\b(\d+)\s+дом', t)
-    for h_str in house_matches:
-        h_num = int(h_str)
-        if h_num not in allowed_houses:
-            return False
+    if "дом" in t:
+        house_matches = re.findall(r'\b(\d+)\s+дом', t)
+        if not house_matches:
+            # Word "дом" is mentioned but no specific house number was parsed.
+            # If allowed_houses is empty, this general mention is not allowed.
+            if not allowed_houses:
+                return False
+        else:
+            for h_str in house_matches:
+                h_num = int(h_str)
+                if h_num not in allowed_houses:
+                    return False
 
     return True
 
@@ -338,11 +343,21 @@ class TodayInterpretationService:
                 )
             )
 
-        # Check if we have LLM keys configured and not mocked
+        # Check if we have LLM keys configured (no test branching)
         llm_texts = None
-        is_mocked = hasattr(llm_service.generate_concrete_advice, "mock") or hasattr(llm_service.generate_concrete_advice, "assert_called")
         from app.core.config import settings
-        has_llm_keys = bool(settings.openrouter_api_key or settings.anthropic_api_key) or is_mocked
+
+        def is_real_key(key: str | None) -> bool:
+            if not key:
+                return False
+            k = key.strip().lower()
+            return len(k) > 0 and "mock" not in k and "test" not in k
+
+        has_llm_keys = (
+            is_real_key(settings.openrouter_api_key)
+            or is_real_key(settings.anthropic_api_key)
+            or is_real_key(getattr(settings, "deepseek_api_key", None))
+        )
 
         if has_llm_keys:
             llm_texts = await llm_service.generate_concrete_advice(advice_contexts)
@@ -361,13 +376,14 @@ class TodayInterpretationService:
                             row.text = text.strip()
                             valid_llm_count += 1
 
-        # Fallback check: if fewer than 9 rows are valid
+        # Fallback check: if fewer than 9 rows are valid, raise in prod/dev with keys
         if valid_llm_count < 9:
             if has_llm_keys:
                 raise ValueError(f"LLM generated only {valid_llm_count}/12 valid recommendations.")
             else:
-                # Bypassed / no keys: texts remain "Рекомендация временно недоступна."
-                pass
+                # Fallback on LLM failure / missing keys
+                for row in rows:
+                    row.text = "Рекомендация временно недоступна."
 
         # Compute row counts
         good_count = sum(1 for r in rows if r.verdict == "good")
@@ -464,7 +480,7 @@ class TodayInterpretationService:
                     kind="top_flag",
                     icon_name="flag",
                     title=f"Аспект: {PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(top_sig.aspect_type, top_sig.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}" if top_sig.type == "aspect" else "Аспект дня",
-                    summary="особое влияние дня",
+                    summary="транзитный аспект",
                 )
             )
 
@@ -492,11 +508,8 @@ class TodayInterpretationService:
                     "aspects": p_aspects,
                 })
 
-            is_chart_mocked = hasattr(llm_service.generate_planet_interpretations, "mock") or hasattr(llm_service.generate_planet_interpretations, "assert_called")
-            has_chart_keys = has_llm_keys or is_chart_mocked
-
             llm_interpretations = None
-            if has_chart_keys:
+            if has_llm_keys:
                 llm_interpretations = await llm_service.generate_planet_interpretations(planets_context)
 
             if llm_interpretations and isinstance(llm_interpretations, dict):

@@ -208,9 +208,10 @@ test.describe("Mock Visual — /day/[date]", () => {
       "astro-history-widget",
     ]);
 
-    // Day summary card renders real lunar data
+    // Day summary card renders real lunar data and sentinel status line
     await expect(page.getByTestId("day-summary-card")).toContainText("Поддерживающий");
     await expect(page.getByTestId("day-summary-card")).toContainText("Убывающая");
+    await expect(page.getByTestId("day-summary-card")).toContainText("СЕНТИНЕЛ СТАТУС ЛАЙН");
 
     // Concrete advice renders sphere labels, not raw keys
     const concreteAdvice = page.getByTestId("concrete-day-advice");
@@ -256,21 +257,26 @@ test.describe("Mock Visual — /day/[date]", () => {
     }
 
     // Assert that backend-provided text is rendered verbatim
-    await expect(concreteAdvice).toContainText("Хороший день для вложений в себя и дом");
+    await expect(concreteAdvice).toContainText("СЕНТИНЕЛ ДЕНЬГИ");
 
-    // Assert that placeholder texts are absent
+    // Assert that placeholder texts and raw semantic icon names are absent
     await expect(concreteAdvice).not.toContainText("Нет отдельного сигнала");
     await expect(concreteAdvice).not.toContainText("Данные появятся");
+    await expect(concreteAdvice).not.toContainText("briefcase");
+    await expect(concreteAdvice).not.toContainText("building");
 
     // Assert that good count is greater than zero
     await expect(concreteAdvice).toContainText("8 благоприятно");
 
-    // Assert page does not contain raw/debug leaks
+    // Assert page does not contain raw/debug leaks or old hardcoded summary/fact text
     const bodyText = await page.innerText("body");
     expect(bodyText).not.toContain("Crisis Transformation Control");
     expect(bodyText).not.toContain("Inner Background Unconscious");
     expect(bodyText).not.toContain("Cancer");
     expect(bodyText).not.toContain("thinking_speech_learning");
+    expect(bodyText).not.toContain("день на твоей стороне");
+    expect(bodyText).not.toContain("подводи итоги");
+    expect(bodyText).not.toContain("особое влияние дня");
 
     // Assert no visible score suffixes or Latin characters in concrete advice rows
     const firstRowText = await rows.first().innerText();
