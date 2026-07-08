@@ -101,3 +101,69 @@ export const PLANET_LABELS: Record<string, string> = {
 export function getPlanetLabel(name: string): string {
   return PLANET_LABELS[name] ?? name
 }
+
+/** Maps backend sphere keys to product-facing short labels and icons */
+export const SPHERE_PRODUCT_MAP: Record<string, { label: string; icon: string }> = {
+  // 1. Работа
+  work_status_achievement: { label: "Работа", icon: "💼" },
+  career: { label: "Работа", icon: "💼" },
+  career_social_status: { label: "Работа", icon: "💼" },
+  public_image: { label: "Работа", icon: "💼" },
+  technology_innovation: { label: "Работа", icon: "💼" },
+
+  // 2. Деньги
+  finance_money: { label: "Деньги", icon: "💰" },
+  money_security_resources: { label: "Деньги", icon: "💰" },
+
+  // 3. Документы
+  legal_affairs: { label: "Документы", icon: "📝" },
+  partnerships_contracts: { label: "Документы", icon: "📝" },
+
+  // 4. Отношения
+  relationships_partnership: { label: "Отношения", icon: "💖" },
+  relationships: { label: "Отношения", icon: "💖" },
+
+  // 5. Спорт
+  body_energy_health: { label: "Спорт", icon: "🏃" },
+  daily_routine: { label: "Спорт", icon: "🏃" },
+  service_routine: { label: "Спорт", icon: "🏃" },
+
+  // 6. Общение
+  communication_learning: { label: "Общение", icon: "💬" },
+  thinking_speech_learning: { label: "Общение", icon: "💬" },
+  friendship_social: { label: "Общение", icon: "💬" },
+
+  // 7. Здоровье
+  spirituality_inner_growth: { label: "Здоровье", icon: "🌿" },
+  inner_background_unconscious: { label: "Здоровье", icon: "🌿" },
+  healing: { label: "Здоровье", icon: "🌿" },
+  philosophy: { label: "Здоровье", icon: "🌿" },
+  hidden_matters: { label: "Здоровье", icon: "🌿" },
+
+  // 8. Решения
+  career_ambition: { label: "Решения", icon: "🎯" },
+  crisis_transformation: { label: "Решения", icon: "🎯" },
+  crisis_transformation_control: { label: "Решения", icon: "🎯" },
+
+  // 9. Поездки
+  travel_adventure: { label: "Поездки", icon: "✈️" },
+  long_distance: { label: "Поездки", icon: "✈️" },
+  meaning_expansion_vector: { label: "Поездки", icon: "✈️" },
+
+  // 10. Творчество
+  creativity_self_expression: { label: "Творчество", icon: "🎨" },
+
+  // 11. Учёба
+  education: { label: "Учёба", icon: "📚" },
+  higher_education: { label: "Учёба", icon: "📚" },
+
+  // 12. Покупки
+  joint_finance: { label: "Покупки", icon: "🛍️" },
+  debts: { label: "Покупки", icon: "🛍️" },
+  investment: { label: "Покупки", icon: "🛍️" },
+  inheritance: { label: "Покупки", icon: "🛍️" },
+
+  // Семья / Roots (transitional / fallback)
+  home_family_roots: { label: "Семья", icon: "🏠" },
+  home_family: { label: "Семья", icon: "🏠" },
+}

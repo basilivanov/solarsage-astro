@@ -1,0 +1,42 @@
+{
+  "date": "2026-07-05",
+  "candidate": {
+    "sectionOrder": [
+      "day-header",
+      "access-card",
+      "day-summary-card",
+      "concrete-day-advice",
+      "day-chart",
+      "day-reading",
+      "why-expanded",
+      "week-strip",
+      "astro-history-widget",
+      "today-bottom-disclaimer"
+    ],
+    "concreteAdviceLabels": [
+      "Работа",
+      "Деньги",
+      "Документы",
+      "Отношения",
+      "Спорт",
+      "Общение",
+      "Здоровье",
+      "Решения",
+      "Поездки",
+      "Творчество",
+      "Учёба",
+      "Покупки"
+    ],
+    "concreteAdviceRowCountAfterExpand": 12,
+    "rawDebugStringsFound": [],
+    "chartLegendLabels": [
+      "соединение",
+      "оппозиция",
+      "тригон",
+      "квадратура",
+      "секстиль"
+    ],
+    "chartPopoverTextAfterClick": "☉\nСолнце\n♋ Рак · 1 дом\n\nличность, самовыражение, витальность. Сегодня акцент через 1 дом — личность, внешность, инициатива.",
+    "historyHeadingAndCardText": "БЛИЖАЙШИЕ ДНИ\n1997\nМИССИЯ\n«Марс Пасфайндер» на Марсе\n\nАмериканский зонд «Марс Пасфайндер» успешно посадил марсоход «Соджорнер» — первый rover на Марсе."
+  }
+}

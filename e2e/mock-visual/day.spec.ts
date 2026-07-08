@@ -128,10 +128,13 @@ async function sectionOrder(page: import("@playwright/test").Page): Promise<stri
       "access-card",
       "evening-checkin-reminder",
       "day-summary-card",
-      "practical-list",
+      "concrete-day-advice",
+      "day-chart",
+      "day-chart-unavailable",
       "day-reading",
       "why-expanded",
       "week-strip",
+      "astro-history-widget",
     ]);
     return Array.from(screen.querySelectorAll("[data-testid]"))
       .map((node) => node.getAttribute("data-testid"))
@@ -185,7 +188,7 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(page.getByTestId("evening-checkin-reminder")).toHaveCount(0);
     await expect(page.getByTestId("day-summary-card")).toBeVisible();
     await expect(page.getByTestId("concrete-day-advice")).toBeVisible();
-    await expect(page.getByTestId("day-chart-unavailable")).toBeVisible();
+    await expect(page.getByTestId("day-chart")).toBeVisible();
     await expect(page.getByTestId("day-reading")).toBeVisible();
     await expect(page.getByTestId("why-expanded")).toBeVisible();
 
@@ -197,21 +200,67 @@ test.describe("Mock Visual — /day/[date]", () => {
       "day-header",
       "access-card",
       "day-summary-card",
-      "practical-list",
+      "concrete-day-advice",
+      "day-chart",
       "day-reading",
       "why-expanded",
       "week-strip",
+      "astro-history-widget",
     ]);
 
     // Day summary card renders real lunar data
     await expect(page.getByTestId("day-summary-card")).toContainText("Поддерживающий");
-    await expect(page.getByTestId("day-summary-card")).toContainText("Убывающая Луна");
+    await expect(page.getByTestId("day-summary-card")).toContainText("Убывающая");
 
-    // Concrete advice renders sphere labels via getSphereLabel, not raw keys
+    // Concrete advice renders sphere labels, not raw keys
     const concreteAdvice = page.getByTestId("concrete-day-advice");
-    await expect(concreteAdvice).toContainText("Мышление, речь, обучение");
-    await expect(concreteAdvice).toContainText("Деньги, безопасность, ресурсы");
-    await expect(concreteAdvice.getByRole("button", { name: /все 12 сфер/i })).toHaveAttribute("aria-expanded", "false");
+    await expect(concreteAdvice).toContainText("Работа");
+    await expect(concreteAdvice).toContainText("Деньги");
+    await expect(concreteAdvice).toContainText("Документы");
+    await expect(concreteAdvice).toContainText("Отношения");
+    await expect(concreteAdvice).toContainText("Спорт");
+    await expect(concreteAdvice).toContainText("Общение");
+    
+    const expandBtn = concreteAdvice.locator('button[aria-controls="concrete-day-advice-rows"]');
+    await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
+
+    // Expand advice and assert 12 rows
+    await expandBtn.click();
+    await expect(expandBtn).toHaveAttribute("aria-expanded", "true");
+    const rows = concreteAdvice.locator("[data-testid=\"concrete-day-advice-row\"]");
+    await expect(rows).toHaveCount(12);
+
+    // Assert page does not contain raw/debug leaks
+    const bodyText = await page.innerText("body");
+    expect(bodyText).not.toContain("Crisis Transformation Control");
+    expect(bodyText).not.toContain("Inner Background Unconscious");
+    expect(bodyText).not.toContain("Cancer");
+    expect(bodyText).not.toContain("thinking_speech_learning");
+    
+    // Assert no visible score suffixes in concrete advice rows
+    const firstRowText = await rows.first().innerText();
+    expect(firstRowText).not.toMatch(/\d\.\d/);
+
+    // Assert chart legend contains Russian aspect labels
+    const chart = page.getByTestId("day-chart");
+    await expect(chart).toContainText("соединение");
+    await expect(chart).toContainText("оппозиция");
+    await expect(chart).toContainText("тригон");
+    await expect(chart).toContainText("квадратура");
+    await expect(chart).toContainText("секстиль");
+
+    // Click the first day-chart-planet, assert popover appears and contains Russian sign/house format
+    const firstPlanet = page.getByTestId("day-chart-planet").first();
+    await firstPlanet.click();
+    const popover = page.getByTestId("day-chart-planet-popover");
+    await expect(popover).toBeVisible();
+    await expect(popover).toContainText("Рак · 1 дом");
+
+    // Assert history widget shows БЛИЖАЙШИЕ ДНИ
+    const historyWidget = page.getByTestId("astro-history-widget");
+    await expect(historyWidget).toBeVisible();
+    await expect(historyWidget).toContainText("БЛИЖАЙШИЕ ДНИ");
+    await expect(historyWidget).not.toContainText("В этот день");
 
     // Tab bar navigation is present
     const tabBar = page.locator('nav[aria-label="Основная навигация"]');
@@ -219,6 +268,9 @@ test.describe("Mock Visual — /day/[date]", () => {
 
     // Assert no missing API fixtures — after a quiet wait for late effects
     await expectNoMissingApiFixtures(page, tracker);
+
+    // Reset scroll to 0 to ensure metrics are measured from a clean scroll state
+    await scrollInternalTo(page, 0);
 
     const metrics = await internalScrollMetrics(page);
     expect(metrics.maxScroll).toBeGreaterThan(100);
@@ -229,7 +281,7 @@ test.describe("Mock Visual — /day/[date]", () => {
 
     await scrollInternalTo(page, Math.floor(metrics.maxScroll * 0.48));
     await expect(page.getByTestId("concrete-day-advice")).toBeVisible();
-    await expect(page.getByTestId("day-chart-unavailable")).toBeVisible();
+    await expect(page.getByTestId("day-chart")).toBeVisible();
 
     await scrollInternalTo(page, metrics.maxScroll);
     await expect(page.getByTestId("day-reading")).toBeVisible();

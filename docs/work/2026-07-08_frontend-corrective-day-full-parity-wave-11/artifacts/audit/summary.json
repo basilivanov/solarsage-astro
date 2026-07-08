@@ -1,0 +1,58 @@
+{
+  "baseUrls": {
+    "oracle": "http://127.0.0.1:3001",
+    "candidate": "http://127.0.0.1:7777"
+  },
+  "viewport": {
+    "width": 430,
+    "height": 932
+  },
+  "oracle": {
+    "sectionOrder": [
+      "week-strip"
+    ],
+    "importantExists": false,
+    "historyExists": false,
+    "planetCount": 0,
+    "popoverText": "",
+    "hashes": {
+      "top": "0c005a0fe6f28c4e",
+      "middle": "2ab74440b1f7b62d",
+      "bottom": "d8525a78609c5900",
+      "chartBefore": "0c005a0fe6f28c4e",
+      "chartAfter": "0c005a0fe6f28c4e"
+    }
+  },
+  "candidate": {
+    "sectionOrder": [
+      "day-header",
+      "access-card",
+      "day-summary-card",
+      "concrete-day-advice",
+      "day-chart",
+      "day-reading",
+      "why-expanded",
+      "week-strip",
+      "astro-history-widget",
+      "today-bottom-disclaimer"
+    ],
+    "importantExists": false,
+    "historyExists": false,
+    "planetCount": 10,
+    "popoverText": "",
+    "hashes": {
+      "top": "4dc6170cfd8fc07e",
+      "middle": "b7d8c5df5656fc22",
+      "bottom": "1f61a82b1e533581",
+      "chartBefore": "cfb716d314ed5420",
+      "chartAfter": "79fa441789e92b96"
+    }
+  },
+  "rawDebugStringsFound": {
+    "crisisControl": false,
+    "innerBackground": false,
+    "sunList": false,
+    "moonList": false,
+    "scoresSuffix": false
+  }
+}

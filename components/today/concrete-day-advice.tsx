@@ -21,7 +21,6 @@
 //   - @/lib/display/sphere-labels
 //   - @/lib/icons
 // side_effects: local expand/collapse state only
-// emitted_logs: none
 // invariants:
 //   - rows are derived from real sphereScores, topFlags, or notes
 //   - unknown sphere keys are labeled through getSphereLabel
@@ -36,7 +35,7 @@ import { ChevronDown, Zap } from "lucide-react"
 
 import { getIcon } from "@/lib/icons"
 import type { AdaptedTopFlag, SphereScore, TodayNote } from "@/lib/contracts/today"
-import { getSphereLabel } from "@/lib/display/sphere-labels"
+import { SPHERE_PRODUCT_MAP } from "@/lib/display/sphere-labels"
 
 type Props = {
   topFlags: AdaptedTopFlag[]
@@ -56,6 +55,96 @@ type AdviceRow = {
 }
 
 const COMPACT_ROW_COUNT = 6
+
+const CANONICAL_PRODUCT_ORDER = [
+  { key: "work", label: "Работа", iconName: "briefcase" },
+  { key: "money", label: "Деньги", iconName: "building" },
+  { key: "documents", label: "Документы", iconName: "list-checks" },
+  { key: "relationships", label: "Отношения", iconName: "sparkle" },
+  { key: "sport", label: "Спорт", iconName: "leaf" },
+  { key: "communication", label: "Общение", iconName: "telescope" },
+  { key: "health", label: "Здоровье", iconName: "compass" },
+  { key: "decisions", label: "Решения", iconName: "target" },
+  { key: "travel", label: "Поездки", iconName: "hourglass" },
+  { key: "creativity", label: "Творчество", iconName: "grid" },
+  { key: "study", label: "Учёба", iconName: "layers" },
+  { key: "shopping", label: "Покупки", iconName: "zap" },
+]
+
+const SPHERE_ADVICE_TEXTS: Record<string, Record<Verdict, string>> = {
+  work: {
+    good: "Благоприятный день для активной работы, карьерных шагов и новых задач.",
+    caution: "Дела идут со скрипом: не торопись, проверяй все детали и не начинай новое.",
+    neutral: "Рабочий фон ровный: занимайся текущими задачами без лишней спешки.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  money: {
+    good: "Финансовые возможности открыты: удачное время для планирования и покупок.",
+    caution: "Сократи траты: день требует финансовой дисциплины и осторожности.",
+    neutral: "Обычный день для финансов: воздержись от импульсивных трат.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  documents: {
+    good: "Отличное время для подписания договоров, оформления бумаг и сделок.",
+    caution: "Не подписывай важные бумаги: высок риск ошибок или задержек.",
+    neutral: "День подходит для рутинной работы с документами и архивами.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  relationships: {
+    good: "Благоприятный фон для общения, сближения и гармонии в паре.",
+    caution: "Возможна эмоциональная напряжённость: избегай споров и выяснения отношений.",
+    neutral: "Спокойный день для близких: без драмы и без озарений.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  sport: {
+    good: "Энергия на пике: отличный день для интенсивных тренировок и активности.",
+    caution: "Снизь физические нагрузки: побереги силы и избегай травм.",
+    neutral: "Поддерживай умеренную активность: прогулки и лёгкая разминка будут полезны.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  communication: {
+    good: "Переговоры и встречи пройдут успешно: открыто выражай свои идеи.",
+    caution: "В общении возможны недопонимания: будь сдержаннее и следи за словами.",
+    neutral: "Обычный день для контактов: держи комфортную дистанцию.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  health: {
+    good: "Тело полно сил: хороший день для оздоровления и заботы о себе.",
+    caution: "Организм уязвим: больше отдыхай, выспись и избегай стресса.",
+    neutral: "Стабильное самочувствие: прислушивайся к потребностям тела.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  decisions: {
+    good: "Удачный момент для принятия важных решений и выбора пути.",
+    caution: "Не принимай судьбоносных решений: отложи выбор на более ясный день.",
+    neutral: "Действуй по намеченному плану, не совершая резких поворотов.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  travel: {
+    good: "Дорога будет лёгкой: отличное время для поездок и путешествий.",
+    caution: "Поездки по необходимости: будь внимателен в пути и проверяй билеты.",
+    neutral: "Благоприятное время для коротких перемещений и прогулок.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  creativity: {
+    good: "Вдохновение рядом: прекрасный день для реализации творческих идей.",
+    caution: "Творческий застой: не насилуй музу, просто наблюдай и копи идеи.",
+    neutral: "Спокойный фон для творчества: без ярких искр, но работа спорится.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  study: {
+    good: "Память цепкая: идеальное время для усвоения сложной информации.",
+    caution: "Концентрация снижена: делай паузы и не перегружай мозг учёбой.",
+    neutral: "Подходящий день для повторения пройденного и чтения.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+  shopping: {
+    good: "Удачные приобретения: покупки принесут радость и прослужат долго.",
+    caution: "Только необходимое: крупные траты и спонтанные покупки разочаруют.",
+    neutral: "Нейтральный день для шопинга: покупай то, что планировал заранее.",
+    unavailable: "Данные появятся после расчёта.",
+  },
+}
 
 const VERDICT_META: Record<Verdict, { label: string; color: string; bg: string }> = {
   good: {
@@ -86,64 +175,55 @@ function verdictForScore(score: number): Verdict {
   return "neutral"
 }
 
-function adviceTextFor(score: number, topFlag: AdaptedTopFlag | undefined, note: TodayNote | undefined): string {
-  if (topFlag?.summary) return topFlag.summary
-  if (note && note.id !== "no-data") return note.description
-  if (score >= 6) return "Сфера поддержана: можно действовать спокойно и последовательно."
-  if (score <= 3) return "Сфера требует осторожности: снизь темп и проверь детали."
-  return "Ровный фон: держи обычный темп без лишнего давления."
-}
-
-function iconForSphere(key: string, verdict: Verdict): string {
-  if (key.includes("money") || key.includes("finance")) return "building"
-  if (key.includes("work") || key.includes("career") || key.includes("status")) return "briefcase"
-  if (key.includes("relationship") || key.includes("partnership")) return "sparkle"
-  if (key.includes("body") || key.includes("health")) return "leaf"
-  if (key.includes("thinking") || key.includes("learning") || key.includes("communication")) return "telescope"
-  if (key.includes("home") || key.includes("family")) return "layers"
-  return verdict === "good" ? "trending-up" : "compass"
-}
-
 // START_BLOCK: BUILD_ADVICE_ROWS
-function buildAdviceRows(topFlags: AdaptedTopFlag[], notes: TodayNote[], sphereScores: SphereScore[]): AdviceRow[] {
+function buildAdviceRows(sphereScores: SphereScore[]): AdviceRow[] {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.buildAdviceRows
   // purpose: Converts backend sphere scores into deterministic UI advice rows.
-  // inputs: topFlags, notes, sphereScores — adapted real payload fields.
+  // inputs: sphereScores — adapted real payload fields.
   // returns: AdviceRow[] — ranked rows plus one graceful unavailable row if needed.
   // side_effects: none.
   // emitted_logs: none.
   // error_behavior: Never throws intentionally; empty inputs return unavailable row.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.buildAdviceRows
-  const rows = [...sphereScores]
-    .sort((a, b) => a.rank - b.rank)
-    .map((sphere, index): AdviceRow => {
-      const verdict = verdictForScore(sphere.score)
+  return CANONICAL_PRODUCT_ORDER.map((canon): AdviceRow => {
+    // Find matching scores that map to this product label
+    const matching = sphereScores.filter(s => {
+      const mapped = SPHERE_PRODUCT_MAP[s.key]
+      return mapped && mapped.label === canon.label
+    })
+
+    if (matching.length > 0) {
+      // Take the first matching score
+      const best = matching[0]
+      const verdict = verdictForScore(best.score)
+      const text = SPHERE_ADVICE_TEXTS[canon.key]?.[verdict] ?? "Ровный фон: держи обычный темп без лишнего давления."
       return {
-        id: `sphere-${sphere.key}`,
-        iconName: iconForSphere(sphere.key, verdict),
-        label: getSphereLabel(sphere.key),
-        text: adviceTextFor(sphere.score, topFlags[index], notes[index]),
+        id: `sphere-${canon.key}`,
+        iconName: canon.iconName,
+        label: canon.label,
+        text,
         verdict,
-        score: sphere.score,
+        score: best.score,
       }
-    })
+    }
 
-  if (rows.length < 12) {
-    rows.push({
-      id: "sphere-data-pending",
-      iconName: "hourglass",
-      label: "Остальные сферы",
-      text: "Данные появятся после расчёта.",
-      verdict: "unavailable",
-    })
-  }
-
-  return rows
+    // Default to neutral/unavailable if no score exists
+    const verdict: Verdict = sphereScores.length === 0 ? "unavailable" : "neutral"
+    const text = SPHERE_ADVICE_TEXTS[canon.key]?.[verdict] ?? "Данные появятся после расчёта."
+    return {
+      id: `sphere-${canon.key}`,
+      iconName: canon.iconName,
+      label: canon.label,
+      text,
+      verdict,
+      score: 5.0,
+    }
+  })
 }
 // END_BLOCK: BUILD_ADVICE_ROWS
 
 // START_BLOCK: CONCRETE_DAY_ADVICE_COMPONENT
-export function ConcreteDayAdvice({ topFlags, notes, sphereScores }: Props) {
+export function ConcreteDayAdvice({ sphereScores }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.ConcreteDayAdvice
   // purpose: Render the compact/expandable oracle-style sphere advice section.
   // inputs: Props — real adapted today payload arrays.
@@ -154,8 +234,8 @@ export function ConcreteDayAdvice({ topFlags, notes, sphereScores }: Props) {
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.ConcreteDayAdvice
   const [expanded, setExpanded] = useState(false)
   const rows = useMemo(
-    () => buildAdviceRows(topFlags, notes, sphereScores),
-    [topFlags, notes, sphereScores],
+    () => buildAdviceRows(sphereScores),
+    [sphereScores],
   )
   const visibleRows = expanded ? rows : rows.slice(0, COMPACT_ROW_COUNT)
   const hiddenCount = Math.max(rows.length - COMPACT_ROW_COUNT, 0)
@@ -221,11 +301,6 @@ export function ConcreteDayAdvice({ topFlags, notes, sphereScores }: Props) {
                 </span>
                 <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground">
                   {row.text}
-                  {row.score != null ? (
-                    <span className="ml-1 whitespace-nowrap text-[11px] text-muted-foreground">
-                      {row.score.toFixed(1)}
-                    </span>
-                  ) : null}
                 </span>
                 <span
                   className="mt-1 h-1.5 w-1.5 flex-none rounded-full"

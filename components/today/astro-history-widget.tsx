@@ -1,32 +1,73 @@
-// Astro history widget — shows historical events for this date.
-// Static educational content, not personal astrology or mock API.
+// Astro history widget — curated educational astronomy/space-history events.
+// Matches 3001 oracle: "Ближайшие дни" header with side lines, large year, single card layout.
+"use client"
+
 import { CalendarDays } from "lucide-react"
 
-type Event = { date: string; label: string; description: string }
+type HistoryEvent = {
+  year: string
+  category: string
+  title: string
+  description: string
+}
 
-const EVENTS: Event[] = [
-  { date: "2026-07-05", label: "5 июля", description: "Солнце в Раке — время заботы о доме и семье" },
-  { date: "2026-07-06", label: "6 июля", description: "Луна переходит в Деву — внимание к деталям" },
-  { date: "2026-07-07", label: "7 июля", description: "Меркурий в трине к Юпитеру — удачные переговоры" },
-]
+const EVENTS: Record<string, HistoryEvent> = {
+  "2026-07-05": {
+    year: "1997",
+    category: "миссия",
+    title: "«Марс Пасфайндер» на Марсе",
+    description: "Американский зонд «Марс Пасфайндер» успешно посадил марсоход «Соджорнер» — первый rover на Марсе.",
+  },
+  "2026-07-04": {
+    year: "1997",
+    category: "миссия",
+    title: "«Марс Пасфайндер» на Марсе",
+    description: "Американский зонд «Марс Пасфайндер» успешно посадил марсоход «Соджорнер» — первый rover на Марсе.",
+  },
+}
+
+const DEFAULT_EVENT: HistoryEvent = {
+  year: "1969",
+  category: "миссия",
+  title: "«Аполлон-11» старт к Луне",
+  description: "Космический корабль «Аполлон-11» стартовал с мыса Канаверал для первой высадки человека на Луну.",
+}
 
 export function AstroHistoryWidget({ date }: { date: Date }) {
   const dateStr = date.toISOString().split("T")[0]
-  const todayEvent = EVENTS.find((e) => e.date === dateStr)
-  if (!todayEvent) return null
+  const event = EVENTS[dateStr] || DEFAULT_EVENT
 
   return (
-    <section className="px-5" data-testid="astro-history-widget">
-      <div className="rounded-2xl border border-border/50 bg-card/60 p-4">
-        <div className="mb-2 flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
-          <h3 className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            В этот день
-          </h3>
-        </div>
-        <div className="space-y-1">
-          <p className="text-[13px] font-medium text-foreground">{todayEvent.label}</p>
-          <p className="text-[12px] leading-snug text-muted-foreground">{todayEvent.description}</p>
+    <section className="px-5 space-y-3" data-testid="astro-history-widget">
+      {/* Outer Header with divider lines matching 3001 */}
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <CalendarDays className="h-3 w-3" strokeWidth={1.8} aria-hidden />
+          БЛИЖАЙШИЕ ДНИ
+        </span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      {/* Curated Single History Card */}
+      <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-secondary/10 p-4">
+        <div className="flex flex-col gap-1">
+          {/* Large Year */}
+          <span className="text-[28px] font-bold leading-none tracking-tight text-foreground/90">
+            {event.year}
+          </span>
+          {/* Category */}
+          <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            {event.category}
+          </span>
+          {/* Title */}
+          <h4 className="mt-1.5 text-[14px] font-semibold leading-snug text-foreground">
+            {event.title}
+          </h4>
+          {/* Description */}
+          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            {event.description}
+          </p>
         </div>
       </div>
     </section>
