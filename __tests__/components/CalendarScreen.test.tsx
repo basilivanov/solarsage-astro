@@ -177,7 +177,9 @@ describe('CalendarScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Луна' }))
 
     expect(screen.getByLabelText(/10 июля 2026, полнолуние, 15 лунный день, Луна без курса/i)).toBeTruthy()
-    expect(screen.getByTestId('calendar-moon-glyph-2026-07-10').textContent).toContain('🌕')
+    const glyph = screen.getByTestId('calendar-moon-glyph-2026-07-10')
+    expect(glyph.querySelector('svg')).toBeTruthy()
+    expect(glyph.textContent).not.toContain('🌕')
   })
 
   it('renders a compact current-month visual window from the backend three-month payload', async () => {

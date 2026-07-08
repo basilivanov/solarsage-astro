@@ -3,8 +3,9 @@
 import { useState } from "react"
 import { CalendarDays, Moon } from "lucide-react"
 
+import { PhaseGlyph, phaseColor } from "@/components/calendar/phase-glyph"
 import type { CalendarDayReadModel } from "@/lib/contracts/calendar"
-import { lunarPhaseGlyph, lunarPhaseLabel } from "@/lib/lunar-presentation"
+import { lunarPhaseLabel } from "@/lib/lunar-presentation"
 
 type Props = {
   days: CalendarDayReadModel[]
@@ -67,15 +68,21 @@ export function LunarCalendarStrip({ days }: Props) {
           <div className="mb-3 flex flex-wrap gap-1.5">
             {keyEvents.map((day) => {
               const label = lunarPhaseLabel(day.lunar) ?? "Луна"
+              const color = phaseColor(day.lunar.phaseIndex)
               return (
                 <button
                   key={day.date}
                   type="button"
                   onClick={() => setSelectedDate(day.date)}
-                  className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-1 text-[10px] font-medium text-primary transition active:scale-95"
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium transition active:scale-95"
+                  style={{
+                    borderColor: `${color}30`,
+                    background: `${color}0d`,
+                    color,
+                  }}
                   aria-label={`${label} ${day.dayNumber}`}
                 >
-                  <span aria-hidden>{lunarPhaseGlyph(day.lunar)}</span>
+                  <PhaseGlyph phaseIndex={day.lunar.phaseIndex} size={10} />
                   <span>{label}</span>
                   <span className="tabular-nums opacity-70">{day.dayNumber}</span>
                 </button>
@@ -90,6 +97,8 @@ export function LunarCalendarStrip({ days }: Props) {
               const lunar = day.lunar
               const isSelected = day.date === selected?.date
               const label = lunarPhaseLabel(lunar) ?? "Луна"
+              const color = phaseColor(lunar.phaseIndex)
+              const isEvent = [0, 2, 4, 6].includes(lunar.phaseIndex ?? -1)
               return (
                 <button
                   key={day.date}
@@ -97,8 +106,8 @@ export function LunarCalendarStrip({ days }: Props) {
                   onClick={() => setSelectedDate(day.date)}
                   className="flex w-9 flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-center transition active:scale-95"
                   style={{
-                    outline: isSelected ? "1px solid var(--primary)" : "none",
-                    background: isSelected ? "var(--secondary)" : "transparent",
+                    outline: isSelected || isEvent ? `1px solid ${color}30` : "none",
+                    background: isSelected ? `${color}14` : "transparent",
                   }}
                   aria-label={[
                     day.dayNumber,
@@ -107,9 +116,14 @@ export function LunarCalendarStrip({ days }: Props) {
                   ].filter(Boolean).join(", ")}
                 >
                   <span className="text-[9px] tabular-nums text-muted-foreground">{day.dayNumber}</span>
-                  <span className="text-[20px] leading-none" aria-hidden>{lunarPhaseGlyph(lunar)}</span>
+                  <PhaseGlyph phaseIndex={lunar.phaseIndex} size={20} />
                   {typeof lunar.illumination === "number" ? (
-                    <span className="text-[8px] tabular-nums leading-none text-muted-foreground">{Math.round(lunar.illumination)}%</span>
+                    <span
+                      className="text-[8px] tabular-nums leading-none"
+                      style={{ color: isEvent ? color : "oklch(0.55 0.02 295)" }}
+                    >
+                      {Math.round(lunar.illumination)}%
+                    </span>
                   ) : null}
                 </button>
               )
@@ -120,7 +134,7 @@ export function LunarCalendarStrip({ days }: Props) {
         {selected ? (
           <div className="mt-3 rounded-md border border-border/50 bg-background/60 p-3" data-testid="lunar-calendar-selected-detail">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              <span className="text-[18px] leading-none" aria-hidden>{lunarPhaseGlyph(selected.lunar)}</span>
+              <PhaseGlyph phaseIndex={selected.lunar.phaseIndex} size={24} />
               {lunarPhaseLabel(selected.lunar) ? (
                 <span className="font-medium text-foreground">{lunarPhaseLabel(selected.lunar)}</span>
               ) : null}
@@ -143,9 +157,9 @@ export function LunarCalendarStrip({ days }: Props) {
         ) : null}
 
         <div className="mt-2.5 flex items-center justify-center gap-3 text-[9px] text-muted-foreground/70">
-          <span className="inline-flex items-center gap-1"><span aria-hidden>🌑</span> новолуние</span>
-          <span className="inline-flex items-center gap-1"><span aria-hidden>🌕</span> полнолуние</span>
-          <span className="inline-flex items-center gap-1"><span aria-hidden>🌓</span> четверть</span>
+          <span className="inline-flex items-center gap-1"><PhaseGlyph phaseIndex={0} size={9} /> новолуние</span>
+          <span className="inline-flex items-center gap-1"><PhaseGlyph phaseIndex={4} size={9} /> полнолуние</span>
+          <span className="inline-flex items-center gap-1"><PhaseGlyph phaseIndex={2} size={9} /> четверть</span>
         </div>
       </div>
     </section>

@@ -8,7 +8,7 @@
 // purpose: Verify the /calendar screen matches the visual/structural contract
 //          on stable API payloads. Exercise ready state, day/moon modes, and
 //          overflow. Asserts no missing fixtures via MissingRequestsTracker.
-//          Moon-mode assertions freeze browser time to 2026-07-05 via
+//          Moon-mode assertions freeze browser time to 2026-07-08 via
 //          page.clock.install() so assertions are deterministic regardless of machine date.
 // owns:
 //   - e2e/mock-visual/calendar.spec.ts
@@ -23,7 +23,7 @@
 //   - No product path imports mocks or demo data
 //   - Fixtures represent valid API response shapes
 //   - All API calls have fixture coverage (fails on missing)
-//   - Moon-mode assertions freeze browser time to 2026-07-05 via page.clock.install()
+//   - Moon-mode assertions freeze browser time to 2026-07-08 via page.clock.install()
 // failure_policy: Tests fail on missing fixture or assertion failure
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-CALENDAR-SPEC
 
@@ -44,6 +44,44 @@ function buildCalendarFixtures(): MockApiRouteFixtures {
 }
 
 test.describe("Mock Visual — /calendar", () => {
+  test("fixture lunar facts match backend oracle sentinel days", () => {
+    const sentinels = {
+      "2026-07-05": {
+        phase: "waning_gibbous",
+        phaseIndex: 5,
+        phaseLabel: "убыв. Луна",
+        illumination: 70,
+        lunarDay: 21,
+      },
+      "2026-07-08": {
+        phase: "waning_crescent",
+        phaseIndex: 7,
+        phaseLabel: "убыв. серп",
+        illumination: 39,
+        lunarDay: 24,
+      },
+      "2026-07-11": {
+        phase: "waning_crescent",
+        phaseIndex: 7,
+        phaseLabel: "убыв. серп",
+        illumination: 12,
+        lunarDay: 27,
+      },
+      "2026-07-23": {
+        phase: "waxing_gibbous",
+        phaseIndex: 3,
+        phaseLabel: "раст. Луна",
+        illumination: 64,
+        lunarDay: 9,
+      },
+    } as const;
+
+    for (const [date, expected] of Object.entries(sentinels)) {
+      const day = calendarPayload.days.find((item) => item.date === date);
+      expect(day?.lunar).toMatchObject(expected);
+    }
+  });
+
   test("calendar screen renders in ready state with month header, grid, lunar strip, and summary", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, buildCalendarFixtures());
 
@@ -84,7 +122,7 @@ test.describe("Mock Visual — /calendar", () => {
   test("day tap selects locally and footer CTA is the only navigation path", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, buildCalendarFixtures());
 
-    await page.clock.install({ time: new Date("2026-07-05T12:00:00Z") });
+    await page.clock.install({ time: new Date("2026-07-08T12:00:00Z") });
     await page.addInitScript(() => {
       localStorage.setItem("lumen:onboarded", "1");
     });
@@ -110,9 +148,9 @@ test.describe("Mock Visual — /calendar", () => {
   test("moon mode displays backend lunar values deterministically", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, buildCalendarFixtures());
 
-    // Freeze time to 2026-07-05 so CalendarScreen selects that day initially
+    // Freeze time to 2026-07-08 so CalendarScreen selects that day initially
     // and clicking a day does not navigate away (the day won't be TODAY in frozen time)
-    await page.clock.install({ time: new Date("2026-07-05T12:00:00Z") });
+    await page.clock.install({ time: new Date("2026-07-08T12:00:00Z") });
 
     await page.addInitScript(() => {
       localStorage.setItem("lumen:onboarded", "1");
@@ -128,17 +166,19 @@ test.describe("Mock Visual — /calendar", () => {
     // Grid is still visible in moon mode
     await expect(page.getByTestId("calendar-grid")).toBeVisible();
 
-    // The selected day (2026-07-05 in frozen time) moon cell shows backend lunar day number
-    const moonDay = page.getByTestId("calendar-moon-day-2026-07-05");
+    // The selected day (2026-07-08 in frozen time) moon cell shows backend lunar day number
+    const moonDay = page.getByTestId("calendar-moon-day-2026-07-08");
     await expect(moonDay).toBeVisible();
-    await expect(moonDay).toContainText("20");
+    await expect(moonDay).toContainText("24");
 
-    // Selected summary shows deterministic lunar values for 2026-07-05
+    // Selected summary shows deterministic lunar values for 2026-07-08
     const summary = page.getByTestId("calendar-selected-summary");
-    await expect(summary).toContainText("убыв. Луна");
-    await expect(summary).toContainText("63%");
-    await expect(summary).toContainText("20 лунный день");
-    await expect(page.getByTestId("calendar-moon-glyph-2026-07-05")).toContainText("🌖");
+    await expect(summary).toContainText("Сегодня");
+    await expect(summary).toContainText("8 июля 2026");
+    await expect(summary).toContainText("убыв. серп");
+    await expect(summary).toContainText("39%");
+    await expect(summary).toContainText("24 лунный день");
+    await expect(page.getByTestId("calendar-moon-glyph-2026-07-08").locator("svg")).toBeVisible();
 
     // No missing API fixtures after quiet wait
     await expectNoMissingApiFixtures(page, tracker);

@@ -300,7 +300,8 @@ describe('TodayScreen', () => {
         selectedDate={selectedDate}
         access={buildAccess()}
         calendarLunar={{
-          phase: 'Полнолуние',
+          phase: 'full_moon',
+          phaseLabel: 'Полнолуние',
           illumination: 97,
           moonSign: 'Sagittarius',
           lunarDay: 15,
@@ -383,7 +384,8 @@ describe('TodayScreen', () => {
 
   it('passes backend lunar fields through to day summary when provided', () => {
     const lunar: CalendarLunarFields = {
-      phase: 'Убывающая Луна',
+      phase: 'waning_gibbous',
+      phaseLabel: 'Убывающая Луна',
       illumination: 22,
       moonSign: 'Pisces',
       lunarDay: 26,

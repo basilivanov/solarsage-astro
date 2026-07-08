@@ -25,6 +25,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Lock, Minus } from "lucide-react
 
 import { MoodIcon } from "@/components/calendar/mood-icon"
 import { LunarCalendarStrip } from "@/components/calendar/lunar-calendar-strip"
+import { PhaseGlyph } from "@/components/calendar/phase-glyph"
 import type { AccessInfo } from "@/lib/access"
 import { getMonthCalendar } from "@/lib/api/calendar"
 import { dateKey, monthDiff, monthMatrix, statusLabel } from "@/lib/calendar"
@@ -35,7 +36,7 @@ import type {
   DayStatus,
 } from "@/lib/contracts/calendar"
 import { formatLong, fromDateParam, MONTHS_RU_NOM, WEEKDAYS_SHORT } from "@/lib/date"
-import { lunarPhaseGlyph, lunarPhaseLabel } from "@/lib/lunar-presentation"
+import { lunarPhaseLabel } from "@/lib/lunar-presentation"
 import { TODAY, sameDay } from "@/lib/today"
 import { cn } from "@/lib/utils"
 
@@ -375,13 +376,13 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                       <>
                         <span
                           className={cn(
-                            "text-[15px] leading-none",
-                            hasLunarData(day) ? "text-primary" : "text-muted-foreground/35",
+                            "flex h-5 w-5 items-center justify-center leading-none",
+                            !hasLunarData(day) && "opacity-35",
                           )}
                           data-testid={`calendar-moon-glyph-${day.date}`}
                           aria-hidden
                         >
-                          {lunarPhaseGlyph(day.lunar)}
+                          <PhaseGlyph phaseIndex={day.lunar.phaseIndex} size={18} />
                         </span>
                         <span
                           className="mt-0.5 text-[9px] tabular-nums leading-none"
@@ -472,7 +473,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                     {hasLunarData(selectedDay) ? (
                       <>
-                        <span className="text-[14px] leading-none" aria-hidden>{lunarPhaseGlyph(selectedDay?.lunar)}</span>
+                        <PhaseGlyph phaseIndex={selectedDay?.lunar.phaseIndex} size={16} />
                         {lunarPhaseLabel(selectedDay?.lunar) ? <span>{lunarPhaseLabel(selectedDay?.lunar)}</span> : null}
                         {selectedDay?.lunar.illumination != null ? (
                           <span className="tabular-nums">{selectedDay.lunar.illumination}%</span>
