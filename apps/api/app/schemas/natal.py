@@ -233,7 +233,7 @@ class NatalPreviewChartPlanet(CamelModel):
     sign: str
     degree: float
     house: int | None = None
-    retrograde: bool = False
+    retrograde: bool
     longitude: float
 
 
@@ -335,7 +335,7 @@ class NatalChartPlanet(CamelModel):
     sign: str
     degree: float
     house: int | None = None
-    retrograde: bool = False
+    retrograde: bool
     longitude: float
 
 

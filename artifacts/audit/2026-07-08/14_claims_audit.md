@@ -1,15 +1,25 @@
 # W0 Claims Audit: User eb3876be-e1b4-43d6-b887-1f8554e33150, 2026-07-08
 
-## LLM unsupported claims
+This document contains actual production payload excerpts generated for manual review and claims verification.
 
-| UI text area | Claim | Evidence result |
+## Production Payload Excerpts
+
+- **Headline**: "Сегодня твои эмоции могут сыграть на руку в делах."
+- **Day Status**: supportive
+- **Moon Phase Fact**: "N/A"
+- **Top Flags**: N/A
+
+## Concrete Advice Recommendations
+
+| Sphere | Verdict | Advice Text |
 |---|---|---|
-| Headline | "поддержку в глубоких чувствах и творческих порывах" | partial. Supportive status is proven; "deep feelings" is supported by Pluto/Moon/inner-background scores; "creative impulses" relies on static 5th-house/natal context rather than day-scored transit evidence. |
-| Day summary | "Поддерживающий день", "День возможностей" | supported by `day_status=supportive`. |
-| Day summary fact | "Луна оппозиция Плутон" | supported only as transit Moon opposite natal Pluto, not transit Pluto. UI label hides that distinction. |
-| Reading | "Секспектиль Марса с Луной" | supported signal is `Transit_Mars sextile natal Moon`; text has typo and should be "секстиль". |
-| Reading | "Солнце в твоем первом доме" | supported by final day chart and house oracle. |
-| Notes | "финансы и отношения сейчас не так важны" | weak/partial. Money score is rank 5 with caution; relationships rank 8/avoid. "Not important" is not the same as "caution/avoid". |
-| Why #4 | "длительные транзиты... дома 5 и 2" | unsupported as day evidence. Those houses come from static natal `planet_in_house` signals included in `all_signals`, not from day-scored transit house placements. |
-| Why #7 | "5 дом творчества... 2 дом денег..." | unsupported as current-day manifestation for the same reason. |
-| Why #9 | "Общайся с близкими для улучшения отношений" | unsupported/contradicts `relationships=avoid` with `Moon opposition Pluto`. |
+| N/A | N/A | N/A |
+
+---
+
+## Historical Snapshot (Basil, 2026-07-08 pre-fix baseline)
+*This is kept for reference to document the original trust issues identified before W0 fixes:*
+
+- **Stale Headline**: "поддержку в глубоких чувствах и творческих порывах" (unsupported by transit signals)
+- **Stale Moon Phase**: "Убывающая Луна 46%" (deviated from Swiss Ephemeris 43.792% by 2.208pp)
+- **Stale Advice Contradiction**: "Общайся с близкими для улучшения отношений" under "avoid" verdict.

@@ -570,7 +570,7 @@ def main() -> None:
     print(json.dumps(comp, ensure_ascii=False, indent=2))
 
     # Propagate failures
-    has_failed = not comp["day_status"]["pass"]
+    has_failed = not comp["day_status"]["pass"] or not comp["top_signals"]["pass"]
     for key, val in comp["sphere_scores"].items():
         if not val["pass"]:
             has_failed = True

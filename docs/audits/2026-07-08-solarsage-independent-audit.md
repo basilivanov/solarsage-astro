@@ -1,4 +1,8 @@
-# SolarSage Independent Audit: Basil, 2026-07-08
+# [HISTORICAL PRE-FIX SNAPSHOT] SolarSage Independent Audit: Basil, 2026-07-08
+
+> **NOTE**: This document describes the historical pre-fix state of the SolarSage TodayPayload and calculates the baseline mismatches before Wave W0 trust fixes were applied.
+> Post-W0 fixes have resolved these mismatches (including retrograde flags, Moon phase rounding, and day/natal signal separation).
+> Please refer to the numbered canonical artifacts under `artifacts/audit/2026-07-08/` for the current post-fix audit results.
 
 Дата аудита: 2026-07-08  
 Пользователь: `basil_ivanov`, `eb3876be-e1b4-43d6-b887-1f8554e33150`  

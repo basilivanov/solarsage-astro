@@ -494,21 +494,49 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         shutil.copy2(debug_dir / "astronomy_oracle_summary.json", out_dir / "13_astronomy_oracle_summary.json")
 
     # Generate 14_claims_audit.md dynamically
+    headline = payload_json.get("headline", "N/A")
+    day_status_val = payload_json.get("dayStatus") or payload_json.get("day_status") or "N/A"
+    
+    lunar_phase_title = "N/A"
+    day_summary_facts = (payload_json.get("daySummary") or {}).get("facts", [])
+    for fact in day_summary_facts:
+        if fact.get("kind") == "lunar_phase":
+            lunar_phase_title = fact.get("title", "N/A")
+            
+    top_flags_titles = [f.get("title", "") for f in payload_json.get("topFlags", [])]
+    top_flags_str = ", ".join(top_flags_titles) if top_flags_titles else "N/A"
+    
+    advice_rows = (payload_json.get("concreteAdvice") or {}).get("rows", [])
+    advice_lines = []
+    for r in advice_rows:
+        advice_lines.append(f"| {r.get('label', '')} | {r.get('verdict', '')} | {r.get('text', '')} |")
+    advice_table = "\n".join(advice_lines) if advice_lines else "| N/A | N/A | N/A |"
+
     claims_text = f"""# W0 Claims Audit: User {args.user_id}, {args.date}
 
-## LLM unsupported claims
+This document contains actual production payload excerpts generated for manual review and claims verification.
 
-| UI text area | Claim | Evidence result |
+## Production Payload Excerpts
+
+- **Headline**: "{headline}"
+- **Day Status**: {day_status_val}
+- **Moon Phase Fact**: "{lunar_phase_title}"
+- **Top Flags**: {top_flags_str}
+
+## Concrete Advice Recommendations
+
+| Sphere | Verdict | Advice Text |
 |---|---|---|
-| Headline | "поддержку в глубоких чувствах и творческих порывах" | partial. Supportive status is proven; "deep feelings" is supported by Pluto/Moon/inner-background scores; "creative impulses" relies on static 5th-house/natal context rather than day-scored transit evidence. |
-| Day summary | "Поддерживающий день", "День возможностей" | supported by `day_status=supportive`. |
-| Day summary fact | "Луна оппозиция Плутон" | supported only as transit Moon opposite natal Pluto, not transit Pluto. UI label hides that distinction. |
-| Reading | "Секспектиль Марса с Луной" | supported signal is `Transit_Mars sextile natal Moon`; text has typo and should be "секстиль". |
-| Reading | "Солнце в твоем первом доме" | supported by final day chart and house oracle. |
-| Notes | "финансы и отношения сейчас не так важны" | weak/partial. Money score is rank 5 with caution; relationships rank 8/avoid. "Not important" is not the same as "caution/avoid". |
-| Why #4 | "длительные транзиты... дома 5 и 2" | unsupported as day evidence. Those houses come from static natal `planet_in_house` signals included in `all_signals`, not from day-scored transit house placements. |
-| Why #7 | "5 дом творчества... 2 дом денег..." | unsupported as current-day manifestation for the same reason. |
-| Why #9 | "Общайся с близкими для улучшения отношений" | unsupported/contradicts `relationships=avoid` with `Moon opposition Pluto`. |
+{advice_table}
+
+---
+
+## Historical Snapshot (Basil, 2026-07-08 pre-fix baseline)
+*This is kept for reference to document the original trust issues identified before W0 fixes:*
+
+- **Stale Headline**: "поддержку в глубоких чувствах и творческих порывах" (unsupported by transit signals)
+- **Stale Moon Phase**: "Убывающая Луна 46%" (deviated from Swiss Ephemeris 43.792% by 2.208pp)
+- **Stale Advice Contradiction**: "Общайся с близкими для улучшения отношений" under "avoid" verdict.
 """
     (out_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
 

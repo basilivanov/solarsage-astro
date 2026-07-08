@@ -24,11 +24,11 @@ This command executes `scripts/audit_today.py` which:
 5. Computes semantic contexts for LLM.
 6. Calls `TodayService` to fetch the final TodayPayload.
 7. Executes the independent scoring and astronomy oracles.
-8. Outputs 18 canonical numbered JSON, CSV, and Markdown files under `artifacts/audit/<DATE>/`.
+8. Outputs 16 canonical numbered JSON, CSV, and Markdown files directly under `artifacts/audit/<DATE>/`, and places intermediate/unprefixed debug logs and oracle details in a `debug/` subdirectory.
 
 ## How to Interpret the Audit Artifacts
 
-Under `artifacts/audit/<DATE>/`, you will find:
+Directly under `artifacts/audit/<DATE>/`, you will find the 16 canonical files:
 
 - **`00_input_profile.json`**: The input user profile details (birth date, time, location, tz, current tz).
 - **`01_raw_natal_context.json`**: The validated raw natal chart context returned by sidecar/cache.
