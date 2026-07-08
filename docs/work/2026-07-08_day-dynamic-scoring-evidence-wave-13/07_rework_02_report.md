@@ -19,15 +19,15 @@ npx vitest run __tests__/components/TodayScreen.test.tsx __tests__/hooks/useDay.
 ```
  RUN  v2.1.9 /opt/solarsage-astro
 
- ✓ __tests__/lib/adapt-payload.test.ts (22 tests) 18ms
- ✓ __tests__/contracts/today.test.ts (16 tests) 11ms
- ✓ __tests__/components/TodayScreen.test.tsx (14 tests) 276ms
- ✓ __tests__/hooks/useDay.test.ts (9 tests) 1339ms
+ ✓ __tests__/lib/adapt-payload.test.ts (22 tests) 30ms
+ ✓ __tests__/components/TodayScreen.test.tsx (14 tests) 350ms
+ ✓ __tests__/contracts/today.test.ts (16 tests) 9ms
+ ✓ __tests__/hooks/useDay.test.ts (9 tests) 1290ms
 
  Test Files  4 passed (4)
       Tests  61 passed (61)
-   Start at  18:12:30
-   Duration  3.06s
+   Start at  18:15:58
+   Duration  2.90s
 ```
 
 ### 2. Trailing Whitespace check
@@ -42,7 +42,7 @@ git status --short --branch
 ```
 **Output**:
 ```
-## main...origin/main [ahead 8]
+## main...origin/main [ahead 11]
 ?? .grace/
 ?? docs/superpowers/plans/2026-07-05-fix-day-route-auth-build.md
 ?? grace.db
