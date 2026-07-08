@@ -26,6 +26,7 @@
 
 import asyncio
 import json
+import os
 
 import pytest
 import httpx
@@ -215,14 +216,16 @@ def test_why_contexts_have_no_english_planet_names_in_russian_text(pipeline_data
 # ══════════════════════════════════════════════════════════════════════
 
 async def _get_api_today() -> dict:
-    """Get today's payload via the actual API. Requires running API server."""
+    """Get today's payload via an explicitly configured remote API smoke target."""
     import hashlib, hmac, time, json as _json
     import urllib.request
 
-    bot_token = "8542033508:AAHltQZNnRBKZ8ks4RtXk7oGVZVZsxXEt6Q"
-    uid = 833478509
+    bot_token = os.environ["PIPELINE_INTEGRATION_BOT_TOKEN"]
+    uid = int(os.environ["PIPELINE_INTEGRATION_TG_USER_ID"])
+    base_url = os.environ["PIPELINE_INTEGRATION_BASE_URL"].rstrip("/")
+    username = os.environ.get("PIPELINE_INTEGRATION_TG_USERNAME", "remote_smoke_user")
     auth_date = int(time.time())
-    user = {"id": uid, "first_name": "Basil", "username": "basil_ivanov"}
+    user = {"id": uid, "first_name": "Remote", "username": username}
     params = dict(
         query_id=f"AAFt360xAAAAAG3frTEu{uid%1000:03d}",
         user=_json.dumps(user, separators=(",", ":")),
@@ -235,7 +238,7 @@ async def _get_api_today() -> dict:
     init_data = "&".join(f"{k}={v}" for k, v in params.items())
 
     req = urllib.request.Request(
-        "https://dev.astro.vasiliy-ivanov.ru/api/auth/telegram",
+        f"{base_url}/api/auth/telegram",
         data=_json.dumps({"initData": init_data}).encode(),
         headers={"Content-Type": "application/json"},
     )
@@ -243,7 +246,7 @@ async def _get_api_today() -> dict:
     cookie = "; ".join(c.split(";")[0] for c in resp.headers.get_all("Set-Cookie"))
 
     req2 = urllib.request.Request(
-        "https://dev.astro.vasiliy-ivanov.ru/api/day/today",
+        f"{base_url}/api/day/today",
         headers={"Cookie": cookie},
     )
     return _json.loads(urllib.request.urlopen(req2).read())
@@ -251,6 +254,11 @@ async def _get_api_today() -> dict:
 
 def test_topflags_have_no_transit_prefix():
     """TopFlag titles in API response must not contain Transit_ prefix."""
+    if os.environ.get("RUN_PIPELINE_INTEGRATION_REMOTE") != "1":
+        pytest.skip("Remote pipeline integration tests disabled by default. Set RUN_PIPELINE_INTEGRATION_REMOTE=1 to run.")
+    for var in ("PIPELINE_INTEGRATION_BOT_TOKEN", "PIPELINE_INTEGRATION_TG_USER_ID", "PIPELINE_INTEGRATION_BASE_URL"):
+        if not os.environ.get(var):
+            pytest.skip(f"{var} is required for explicit remote smoke")
     try:
         day = asyncio.run(_get_api_today())
     except Exception as e:
@@ -268,6 +276,11 @@ def test_topflags_have_no_transit_prefix():
 
 def test_api_contract_version_is_two():
     """TodayPayload must have contract_version=2."""
+    if os.environ.get("RUN_PIPELINE_INTEGRATION_REMOTE") != "1":
+        pytest.skip("Remote pipeline integration tests disabled by default. Set RUN_PIPELINE_INTEGRATION_REMOTE=1 to run.")
+    for var in ("PIPELINE_INTEGRATION_BOT_TOKEN", "PIPELINE_INTEGRATION_TG_USER_ID", "PIPELINE_INTEGRATION_BASE_URL"):
+        if not os.environ.get(var):
+            pytest.skip(f"{var} is required for explicit remote smoke")
     try:
         day = asyncio.run(_get_api_today())
     except Exception as e:

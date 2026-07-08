@@ -36,15 +36,15 @@ async def test_today_interpretation_service_deterministic_builder():
     expected_order = ["work", "money", "documents", "relationships", "sport", "communication", "health", "decisions", "travel", "creativity", "study", "shopping"]
     for idx, row in enumerate(concrete_advice.rows):
         assert row.key == expected_order[idx]
-        assert row.verdict == "good"  # Fallback to day_status supportive
+        assert row.verdict == "neutral"  # Fallback to neutral because no direct scores or aspect signals
         assert len(row.evidence) == 1
         assert row.evidence[0].kind == "day_status"
 
     # Verify counts match row verdicts
-    assert concrete_advice.counts.good == 12
+    assert concrete_advice.counts.good == 0
     assert concrete_advice.counts.caution == 0
     assert concrete_advice.counts.avoid == 0
-    assert concrete_advice.counts.neutral == 0
+    assert concrete_advice.counts.neutral == 12
 
 
 @pytest.mark.asyncio
@@ -248,3 +248,113 @@ async def test_today_interpretation_service_test_key_enables_llm():
 
         assert mock_llm.called
         assert concrete_advice.rows[0].text == "СЕНТИНЕЛ"
+
+
+@pytest.mark.asyncio
+async def test_concrete_advice_contradiction_prevention():
+    """Ensure that rows do not have verdict/evidence contradictions.
+    - No 'good' row with primary square/opposition evidence.
+    - No 'caution'/'avoid' row with only soft-aspect primary evidence.
+    """
+    service = TodayInterpretationService()
+
+    # 1. Test direct score sphere with good verdict but only tense aspect signals
+    # It should fall back to sphere_score or house, but NOT select the tense aspect.
+    signals = [
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Mars",
+            target_planet="Saturn",
+            aspect_type="square",
+            orb=1.5,
+            strength=0.9,
+        )
+    ]
+    sphere_scores = [
+        SphereScore(key="career_ambition", score=7.5, rank=1)  # Mapped to 'decisions' via BACKEND_TO_PRODUCT_KEY_MAP
+    ]
+
+    concrete_advice, _, _ = await service.build(
+        target_date=date(2026, 7, 5),
+        day_status="supportive",
+        scoring_result={"day_status": "supportive", "sphere_scores": {"career_ambition": 7.5}},
+        signals=signals,
+        semantic_layer=None,
+        day_chart=None,
+        planet_influences=[],
+        sphere_scores=sphere_scores,
+        important_items=[],
+    )
+
+    # Find the row for decisions
+    decisions_row = next(r for r in concrete_advice.rows if r.key == "decisions")
+    assert decisions_row.verdict == "good"
+    assert len(decisions_row.evidence) > 0
+    # The primary evidence must NOT be the square aspect
+    assert decisions_row.evidence[0].kind != "aspect"
+    assert decisions_row.evidence[0].kind == "sphere_score"
+
+    # 2. Test direct score sphere with caution verdict but only soft aspect signals
+    # It should fall back to sphere_score or house, but NOT select the soft aspect.
+    signals = [
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Mars",
+            target_planet="Saturn",
+            aspect_type="trine",
+            orb=1.5,
+            strength=0.9,
+        )
+    ]
+    sphere_scores = [
+        SphereScore(key="career_ambition", score=2.5, rank=1)  # Mapped to 'decisions'
+    ]
+
+    concrete_advice, _, _ = await service.build(
+        target_date=date(2026, 7, 5),
+        day_status="supportive",
+        scoring_result={"day_status": "supportive", "sphere_scores": {"career_ambition": 2.5}},
+        signals=signals,
+        semantic_layer=None,
+        day_chart=None,
+        planet_influences=[],
+        sphere_scores=sphere_scores,
+        important_items=[],
+    )
+
+    decisions_row = next(r for r in concrete_advice.rows if r.key == "decisions")
+    assert decisions_row.verdict == "caution"
+    assert len(decisions_row.evidence) > 0
+    # The primary evidence must NOT be the trine aspect
+    assert decisions_row.evidence[0].kind != "aspect"
+    assert decisions_row.evidence[0].kind == "sphere_score"
+
+    # 3. Test no-direct-score sphere (e.g. shopping, Venus maps to shopping)
+    # If Venus has only a square aspect, verdict must be caution and evidence must be that aspect.
+    signals = [
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Venus",
+            target_planet="Uranus",
+            aspect_type="square",
+            orb=1.0,
+            strength=0.8,
+        )
+    ]
+    concrete_advice, _, _ = await service.build(
+        target_date=date(2026, 7, 5),
+        day_status="supportive",
+        scoring_result={"day_status": "supportive", "sphere_scores": {}},
+        signals=signals,
+        semantic_layer=None,
+        day_chart=None,
+        planet_influences=[],
+        sphere_scores=[],
+        important_items=[],
+    )
+
+    shopping_row = next(r for r in concrete_advice.rows if r.key == "shopping")
+    assert shopping_row.verdict == "caution"
+    assert len(shopping_row.evidence) == 1
+    assert shopping_row.evidence[0].kind == "aspect"
+    assert shopping_row.evidence[0].aspect_type == "square"

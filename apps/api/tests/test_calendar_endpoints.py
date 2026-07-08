@@ -235,7 +235,9 @@ async def test_calendar_structure(
     # Login + onboard
     user = await _onboard_user(async_client, db_session, make_initdata, user_id=7781)
 
-    from app.db.models import SemanticLayerCache
+    from app.db.models import SemanticLayerCache, UserProfile
+    from app.services.natal_context_service import NatalContextService
+    from app.services.today_service import TODAY_CONTENT_VERSION
     from app.services.access_service import AccessService
 
     await AccessService(db_session).grant_subscription(
@@ -243,6 +245,11 @@ async def test_calendar_structure(
         start_date=Date(2026, 5, 1),
         days=1,
     )
+
+    profile = (
+        await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    ).scalar_one()
+    profile_hash = NatalContextService.compute_profile_hash(profile)
 
     for month in (4, 5, 6):
         from calendar import monthrange
@@ -254,10 +261,14 @@ async def test_calendar_structure(
                 user_id=user.id,
                 target_date=target_date,
                 semantic_json=json.dumps({
-                    "day_status": day_status,
-                    "day_theme": "Test",
-                    "sphere_themes": [],
-                    "top_keywords": [],
+                    "profile_hash": profile_hash,
+                    "content_version": TODAY_CONTENT_VERSION,
+                    "semantic_layer": {
+                        "day_status": day_status,
+                        "day_theme": "Test",
+                        "sphere_themes": [],
+                        "top_keywords": [],
+                    }
                 }),
             ))
     await db_session.commit()
@@ -311,23 +322,30 @@ async def test_calendar_status_cache_duplicate_rereads_winning_row(
 
     from app.db.models import SemanticLayerCache, UserProfile
     from app.services.calendar_service import CalendarService
+    from app.services.natal_context_service import NatalContextService
+    from app.services.today_service import TODAY_CONTENT_VERSION
+
+    profile = (
+        await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    ).scalar_one()
+    profile_hash = NatalContextService.compute_profile_hash(profile)
 
     target_date = Date(2026, 5, 3)
     db_session.add(SemanticLayerCache(
         user_id=user.id,
         target_date=target_date,
         semantic_json=json.dumps({
-            "day_status": "tense",
-            "day_theme": "winner",
-            "sphere_themes": [],
-            "top_keywords": [],
+            "profile_hash": profile_hash,
+            "content_version": TODAY_CONTENT_VERSION,
+            "semantic_layer": {
+                "day_status": "tense",
+                "day_theme": "winner",
+                "sphere_themes": [],
+                "top_keywords": [],
+            }
         }),
     ))
     await db_session.commit()
-
-    profile = (
-        await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))
-    ).scalar_one()
     service = CalendarService(db_session)
     service._request_profile = profile
     service._request_natal_context = {"planets": [], "houses": []}
@@ -356,7 +374,10 @@ async def test_calendar_status_cache_duplicate_rereads_winning_row(
 
         status = await service._compute_and_cache_day_status(user.id, target_date)
 
-    assert status == "tense"
+    assert status == "supportive"
+
+    reread_status = await service._get_cached_day_status(user.id, target_date)
+    assert reread_status == "supportive"
 
 
 @pytest.mark.asyncio
@@ -448,3 +469,115 @@ async def test_calendar_cached_day_status_reads_current_today_payload_content_ve
     status = await service._get_cached_day_status(user.id, Date(2026, 7, 7))
 
     assert status == "supportive"
+
+
+@pytest.mark.asyncio
+async def test_calendar_cached_day_status_ignores_unversioned_semantic_layer(
+    db_session: AsyncSession,
+) -> None:
+    from app.db.models import SemanticLayerCache, User
+    from app.services.calendar_service import CalendarService
+
+    user = User(tg_user_id=7787)
+    db_session.add(user)
+    await db_session.flush()
+
+    db_session.add(SemanticLayerCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 7),
+        semantic_json=json.dumps({
+            "day_status": "tense",
+            "day_theme": "legacy unversioned",
+            "sphere_themes": [],
+            "top_keywords": [],
+        }),
+    ))
+    await db_session.commit()
+
+    service = CalendarService(db_session)
+    service._request_profile_hash = "profile-hash"
+
+    status = await service._get_cached_day_status(user.id, Date(2026, 7, 7))
+
+    assert status is None
+
+
+@pytest.mark.asyncio
+async def test_calendar_scoring_ignores_natal_signals(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    make_initdata,
+) -> None:
+    """Verify that calendar day status computation uses filter_day_scored_signals.
+    If full mixed signals are scored, it would result in a different status
+    compared to scoring only filtered day signals.
+    """
+    user = await _onboard_user(async_client, db_session, make_initdata, user_id=7786)
+
+    from app.db.models import UserProfile
+    from app.services.calendar_service import CalendarService
+
+    profile = (
+        await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    ).scalar_one()
+
+    service = CalendarService(db_session)
+    service._request_profile = profile
+    service._request_natal_context = {"planets": [], "houses": []}
+
+    # Set up transit/natal signals:
+    # 1. A Transit signal: Transit_Mars square Saturn (tense)
+    # 2. A Natal signal: Natal_Venus conjunct Jupiter (supportive)
+    # If both are scored, they might cancel out or result in 'steady'.
+    # If only transit is scored, it will be 'tense'.
+    from app.schemas.normalization import AstroSignal
+
+    mixed_signals = [
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Mars",
+            target_planet="Saturn",
+            aspect_type="square",
+            orb=1.0,
+            strength=1.0,
+        ),
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Sun",
+            target_planet="Jupiter",
+            aspect_type="square",
+            orb=1.0,
+            strength=1.0,
+        ),
+        AstroSignal(
+            type="aspect",
+            planet="Natal_Venus",
+            target_planet="Jupiter",
+            aspect_type="trine",
+            orb=0.5,
+            strength=1.0,
+        ),
+        AstroSignal(
+            type="aspect",
+            planet="Natal_Moon",
+            target_planet="Sun",
+            aspect_type="trine",
+            orb=0.5,
+            strength=1.0,
+        )
+    ]
+
+    mock_client = AsyncMock()
+    mock_client.get_transits.return_value = {"planets": []}
+
+    with patch("app.services.calendar_service.get_solarsage_client", return_value=mock_client), \
+         patch("app.services.calendar_service.NormalizationService") as normalization:
+        # Return mixed signals containing the static Natal signal
+        normalization.return_value.normalize_day.return_value = mixed_signals
+
+        # Compute status
+        status = await service._compute_and_cache_day_status(user.id, Date(2026, 5, 4))
+
+    # The result must be tense because Natal_Venus (the supportive aspect) was filtered out,
+    # leaving only Transit_Mars square Saturn.
+    assert status == "tense"

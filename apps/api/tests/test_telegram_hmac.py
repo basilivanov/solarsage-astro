@@ -102,3 +102,27 @@ def test_malformed_initdata_bad_user_json() -> None:
     with pytest.raises(TelegramAuthError) as exc:
         verify_init_data(raw)
     assert exc.value.code == "MALFORMED_INITDATA"
+
+
+def test_generate_initdata_default_safety() -> None:
+    """Ensure the default generated initData does not contain the real Basil user ID."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+    script_path = project_root / "scripts" / "generate-telegram-test-initdata.py"
+
+    # Run the script without arguments
+    result = subprocess.run(
+        [sys.executable, str(script_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=str(project_root)
+    )
+    output = result.stdout
+    assert "833478509" not in output, "Default generated initData contains the real user ID 833478509!"
+    assert "testuser" not in output, "Default generated initData contains the real username 'testuser'!"
+    assert "999999999" in output, "Default generated initData should use synthetic user ID 999999999."
+    assert "synthetic_test_user" in output, "Default generated initData should use username 'synthetic_test_user'."

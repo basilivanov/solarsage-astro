@@ -76,6 +76,7 @@ from app.schemas.today import (
 from app.clients.solarsage_client import get_solarsage_client
 from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
 from app.services.astro_utils import find_house, strip_prefix
+from app.services.day_scoring_signals import filter_day_scored_signals
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
 from app.services.llm_service import LLMService
@@ -86,7 +87,7 @@ from app.services.natal_context_service import NatalContextService
 from app.core.logging import log_event, log_block
 
 
-TODAY_CONTENT_VERSION = 4
+TODAY_CONTENT_VERSION = 5
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",
@@ -228,11 +229,7 @@ class TodayService:
                 )
 
         # W-4.2: Score signals and calculate day_status using day-specific scorer
-        day_signals = [
-            s for s in signals
-            if (s.planet or "").startswith("Transit_")
-            or s.type in ("lunar", "void_moon", "retrograde", "day_event")
-        ]
+        day_signals = filter_day_scored_signals(signals)
         scoring_service = ScoringService()
         scoring_result = scoring_service.score_day(day_signals)
 
@@ -255,7 +252,7 @@ class TodayService:
         )
 
         # W-4.3: Cache semantic layer
-        await self._cache_semantic_layer(user_id, target_date, semantic_layer)
+        await self._cache_semantic_layer(user_id, target_date, semantic_layer, profile_hash)
 
         # W-5.1: Generate text via LLM
         llm_service = LLMService()
@@ -611,9 +608,14 @@ class TodayService:
         )
         await self.db.commit()
 
-    async def _cache_semantic_layer(self, user_id, target_date: Date, semantic_layer) -> None:
+    async def _cache_semantic_layer(self, user_id, target_date: Date, semantic_layer, profile_hash: str) -> None:
         """Cache semantic layer. W-4.3."""
-        semantic_json = semantic_layer.model_dump_json()
+        cache_data = {
+            "profile_hash": profile_hash,
+            "content_version": TODAY_CONTENT_VERSION,
+            "semantic_layer": semantic_layer.model_dump(),
+        }
+        semantic_json = json.dumps(cache_data)
 
         result = await self.db.execute(
             select(SemanticLayerCache).where(

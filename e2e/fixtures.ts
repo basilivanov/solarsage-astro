@@ -101,7 +101,7 @@ async function seedSessionCookie(page: Page, initData: string, baseURL?: string)
  * - All subsequent API calls use the real session
  */
 export const test = base.extend<E2EOptions>({
-  uniqueTelegramUser: [false, { option: true }],
+  uniqueTelegramUser: [true, { option: true }],
   page: async ({ page, baseURL, uniqueTelegramUser }, use, testInfo) => {
     const userId = uniqueTelegramUser
       ? deriveTelegramUserId(testInfo.project.name, testInfo.testId, testInfo.repeatEachIndex)

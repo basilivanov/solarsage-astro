@@ -65,6 +65,7 @@ from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
 from app.services.semantic_service import SemanticService
 from app.services.today_service import TODAY_CONTENT_VERSION
+from app.services.day_scoring_signals import filter_day_scored_signals
 
 
 # START_BLOCK: CALENDAR_GENERATION
@@ -193,22 +194,13 @@ class CalendarService:
         user_id: uuid.UUID,
         target_date: Date,
     ) -> DayStatus | None:
-        semantic_result = await self.db.execute(
-            select(SemanticLayerCache).where(
-                SemanticLayerCache.user_id == user_id,
-                SemanticLayerCache.target_date == target_date,
-            )
-        )
-        semantic_entry = semantic_result.scalar_one_or_none()
-        if semantic_entry:
-            data = json.loads(semantic_entry.semantic_json)
-            status = data.get("day_status")
-            if status in ("supportive", "steady", "tense"):
-                return status
+        if not self._request_profile_hash and self._request_profile:
+            self._request_profile_hash = NatalContextService.compute_profile_hash(self._request_profile)
 
         if not self._request_profile_hash:
             return None
 
+        # 1. Check TodayPayloadCache first
         payload_result = await self.db.execute(
             select(TodayPayloadCache).where(
                 TodayPayloadCache.user_id == user_id,
@@ -217,18 +209,35 @@ class CalendarService:
             )
         )
         payload_entry = payload_result.scalar_one_or_none()
-        if not payload_entry:
-            return None
+        if payload_entry:
+            data = self._load_json_object(payload_entry.payload_json)
+            meta = data.get("meta") or {}
+            content_version = meta.get("contentVersion", meta.get("content_version"))
+            if content_version == TODAY_CONTENT_VERSION:
+                status = data.get("dayStatus") or data.get("day_status")
+                if status in ("supportive", "steady", "tense"):
+                    return status
 
-        data = json.loads(payload_entry.payload_json)
-        meta = data.get("meta") or {}
-        content_version = meta.get("contentVersion", meta.get("content_version"))
-        if content_version != TODAY_CONTENT_VERSION:
-            return None
+        # 2. Check SemanticLayerCache second, validating version and profile hash
+        semantic_result = await self.db.execute(
+            select(SemanticLayerCache).where(
+                SemanticLayerCache.user_id == user_id,
+                SemanticLayerCache.target_date == target_date,
+            )
+        )
+        semantic_entry = semantic_result.scalar_one_or_none()
+        if semantic_entry:
+            data = self._load_json_object(semantic_entry.semantic_json)
+            if "content_version" in data:
+                if (
+                    data.get("content_version") == TODAY_CONTENT_VERSION
+                    and data.get("profile_hash") == self._request_profile_hash
+                ):
+                    inner_sem = data.get("semantic_layer") or {}
+                    status = inner_sem.get("day_status")
+                    if status in ("supportive", "steady", "tense"):
+                        return status
 
-        status = data.get("dayStatus") or data.get("day_status")
-        if status in ("supportive", "steady", "tense"):
-            return status
         return None
 
     async def _compute_and_cache_day_status(
@@ -238,6 +247,8 @@ class CalendarService:
     ) -> DayStatus | None:
         if not self._request_profile:
             return None
+        if not self._request_profile_hash:
+            self._request_profile_hash = NatalContextService.compute_profile_hash(self._request_profile)
 
         try:
             if self._request_natal_context is None:
@@ -252,18 +263,41 @@ class CalendarService:
                 target_tz=target_tz,
             )
             signals = NormalizationService().normalize_day(self._request_natal_context, transits)
-            scoring = ScoringService().score_day(signals)
+            day_signals = filter_day_scored_signals(signals)
+            scoring = ScoringService().score_day(day_signals)
             status = scoring["day_status"]
             semantic_layer = SemanticService().build_semantic_layer(
                 status,
                 scoring["sphere_scores"],
             )
+            if hasattr(semantic_layer, "model_dump_json"):
+                sem_json_str = semantic_layer.model_dump_json()
+                sem_data = json.loads(sem_json_str)
+            else:
+                sem_data = semantic_layer.model_dump()
+
+            cache_data = {
+                "profile_hash": self._request_profile_hash,
+                "content_version": TODAY_CONTENT_VERSION,
+                "semantic_layer": sem_data,
+            }
             try:
-                self.db.add(SemanticLayerCache(
-                    user_id=user_id,
-                    target_date=target_date,
-                    semantic_json=semantic_layer.model_dump_json(),
-                ))
+                semantic_result = await self.db.execute(
+                    select(SemanticLayerCache).where(
+                        SemanticLayerCache.user_id == user_id,
+                        SemanticLayerCache.target_date == target_date,
+                    )
+                )
+                semantic_entry = semantic_result.scalar_one_or_none()
+                if semantic_entry:
+                    semantic_entry.semantic_json = json.dumps(cache_data)
+                    semantic_entry.created_at = datetime.now(UTC)
+                else:
+                    self.db.add(SemanticLayerCache(
+                        user_id=user_id,
+                        target_date=target_date,
+                        semantic_json=json.dumps(cache_data),
+                    ))
                 await self.db.commit()
             except IntegrityError:
                 await self.db.rollback()
@@ -286,3 +320,11 @@ class CalendarService:
             year -= 1
 
         return datetime(year, month, 1)
+
+    @staticmethod
+    def _load_json_object(raw: str) -> dict:
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+        return data if isinstance(data, dict) else {}

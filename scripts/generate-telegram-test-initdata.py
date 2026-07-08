@@ -61,10 +61,10 @@ def load_bot_token() -> str:
 
 
 def generate_initdata(
-    user_id: int = 833478509,
+    user_id: int = 999999999,
     first_name: str = "Test",
     last_name: str = "User",
-    username: str = "testuser",
+    username: str = "synthetic_test_user",
 ) -> str:
     """Generate a URL-encoded initData string with valid HMAC."""
     bot_token = load_bot_token()
@@ -144,8 +144,8 @@ def build_full_url(initdata: str, base_url: str = "") -> str:
 
 if __name__ == "__main__":
     import sys
-    user_id = 833478509
-    username = "testuser"
+    user_id = 999999999
+    username = "synthetic_test_user"
     first_name = "Test"
     
     for arg in sys.argv[1:]:

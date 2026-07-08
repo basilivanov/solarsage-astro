@@ -77,6 +77,33 @@ const validTodayPayload = {
   },
   planetInfluences: [{ name: 'Moon', score: 1.25, rank: 1 }],
   sphereScores: [{ key: 'relationships', score: 2.5, rank: 1 }],
+  daySummary: {
+    statusLabel: 'Благоприятный день',
+    statusLine: 'Прекрасный день для общения и творчества.',
+    facts: [
+      { kind: 'top_planet' as const, iconName: 'sun', title: 'Солнце', summary: 'Влияние Солнца' },
+    ],
+  },
+  concreteAdvice: {
+    rows: [
+      {
+        key: 'work' as const,
+        label: 'Работа',
+        iconName: 'briefcase',
+        rank: 1,
+        verdict: 'good' as const,
+        confidence: 'high' as const,
+        text: 'Благоприятно',
+        evidence: [],
+      },
+    ],
+    counts: {
+      good: 1,
+      caution: 0,
+      avoid: 0,
+      neutral: 11,
+    },
+  },
 }
 
 describe('validateAdaptedTodayPayload', () => {

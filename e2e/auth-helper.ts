@@ -27,7 +27,9 @@ export interface TelegramAuthContext {
  * produces a fresh HMAC-signed initData string.
  */
 function generateInitData(): { initDataRaw: string; urlHash: string } {
-  const stdout = execSync(`python3 ${SCRIPT_PATH}`, {
+  const userId = process.env.TEST_TELEGRAM_USER_ID || '999999999';
+  const username = process.env.TEST_TELEGRAM_USERNAME || 'synthetic_test_user';
+  const stdout = execSync(`python3 ${SCRIPT_PATH} --user-id=${userId} --username=${username}`, {
     encoding: 'utf-8',
     cwd: process.cwd(),
     timeout: 5000,

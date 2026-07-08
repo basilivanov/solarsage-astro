@@ -149,6 +149,85 @@ def verdict_for_score(score: float) -> ConcreteAdviceVerdict:
         return "caution"
     return "neutral"
 
+
+def aspect_verdict(aspect_type: str | None) -> ConcreteAdviceVerdict:
+    aspect = (aspect_type or "").lower()
+    if aspect in SOFT_ASPECTS:
+        return "good"
+    if aspect in TENSE_ASPECTS:
+        return "caution"
+    return "neutral"
+
+
+def aspect_supports_verdict(signal: AstroSignal, verdict: ConcreteAdviceVerdict) -> bool:
+    aspect = (signal.aspect_type or "").lower()
+    if verdict == "good":
+        return aspect in SOFT_ASPECTS
+    if verdict in ("caution", "avoid"):
+        return aspect in TENSE_ASPECTS
+    return verdict == "neutral" and aspect not in SOFT_ASPECTS and aspect not in TENSE_ASPECTS
+
+
+def signal_matches_product_sphere(signal: AstroSignal, key: str) -> bool:
+    planet = strip_prefix(signal.planet)
+    target = strip_prefix(signal.target_planet) if signal.target_planet else ""
+    return (
+        key in PLANET_TO_SPHERES_MAP.get(planet, [])
+        or bool(target and key in PLANET_TO_SPHERES_MAP.get(target, []))
+    )
+
+
+def signal_rank(signal: AstroSignal) -> tuple[float, float]:
+    return (float(signal.daily_salience or signal.strength or 0.0), float(signal.strength or 0.0))
+
+
+def aspect_evidence(signal: AstroSignal) -> ConcreteAdviceEvidence:
+    planet = strip_prefix(signal.planet)
+    target = strip_prefix(signal.target_planet) if signal.target_planet else ""
+    return ConcreteAdviceEvidence(
+        kind="aspect",
+        title=f"{PLANET_LABELS_RU.get(planet, planet)} {ASPECT_LABELS_RU.get(signal.aspect_type, signal.aspect_type)} {PLANET_LABELS_RU.get(target, target)}",
+        planet=signal.planet,
+        target_planet=signal.target_planet,
+        aspect_type=signal.aspect_type,
+        orb=signal.orb,
+        strength=signal.strength,
+    )
+
+
+def planet_in_house_evidence(signal: AstroSignal) -> ConcreteAdviceEvidence:
+    planet = strip_prefix(signal.planet)
+    return ConcreteAdviceEvidence(
+        kind="planet_in_house",
+        title=f"{PLANET_LABELS_RU.get(planet, planet)} в {signal.house} доме",
+        planet=signal.planet,
+        house=signal.house,
+        strength=signal.strength,
+        sign=signal.sign,
+    )
+
+
+def sphere_score_evidence(score: SphereScore) -> ConcreteAdviceEvidence:
+    return ConcreteAdviceEvidence(
+        kind="sphere_score",
+        title=f"Показатель {score.key}",
+        weight=score.score,
+        sphere_key=score.key,
+    )
+
+
+def influence_evidence(planet_name: str, influence: PlanetInfluence) -> ConcreteAdviceEvidence:
+    return ConcreteAdviceEvidence(
+        kind="planet_in_house",
+        title=f"Влияние планеты {PLANET_LABELS_RU.get(planet_name, planet_name)}: {influence.score:.2f}",
+        planet=planet_name,
+        weight=influence.score,
+    )
+
+
+def associated_planets_for_product_sphere(key: str) -> list[str]:
+    return [planet for planet, spheres in PLANET_TO_SPHERES_MAP.items() if key in spheres]
+
 def validate_row_text(row: ConcreteAdviceRow, text: str) -> bool:
     t = text.lower()
 
@@ -230,17 +309,6 @@ class TodayInterpretationService:
         rows: list[ConcreteAdviceRow] = []
         advice_contexts: list[dict] = []
 
-        # Find aspect and planet verdicts from signals
-        planet_aspect_verdicts: dict[str, str] = {}
-        for s in signals:
-            if s.type == "aspect" and s.aspect_type and s.target_planet:
-                t = s.aspect_type.lower()
-                is_good = t in ("trine", "sextile")
-                is_bad = t in ("square", "opposition")
-                verdict = "good" if is_good else ("caution" if is_bad else "neutral")
-                planet_aspect_verdicts[strip_prefix(s.planet)] = verdict
-                planet_aspect_verdicts[strip_prefix(s.target_planet)] = verdict
-
         for rank, canon in enumerate(CANONICAL_PRODUCT_SPHERES, 1):
             key = canon["key"]
             label = canon["label"]
@@ -250,9 +318,9 @@ class TodayInterpretationService:
             evidence_list: list[ConcreteAdviceEvidence] = []
             verdict: ConcreteAdviceVerdict = "neutral"
             confidence: ConcreteAdviceConfidence = "low"
+            best_score: SphereScore | None = None
 
             if matching_scores:
-                # Deterministic selection: caution/avoid first, then good, then best rank
                 def sort_key(s: SphereScore):
                     v = verdict_for_score(s.score)
                     avoid_caution_val = 0 if v in ("avoid", "caution") else 1
@@ -264,144 +332,65 @@ class TodayInterpretationService:
                 verdict = verdict_for_score(best_score.score)
                 confidence = "high" if verdict in ("good", "avoid", "caution") else "medium"
 
-                # Dynamic evidence: find top contributing day signals for the mapped sphere
-                contributing_signals = []
-                for s in signals:
-                    p_clean = strip_prefix(s.planet)
-                    tp_clean = strip_prefix(s.target_planet) if s.target_planet else None
+            planets_for_sphere = associated_planets_for_product_sphere(key)
+            aspects = sorted(
+                [s for s in signals if s.type == "aspect" and signal_matches_product_sphere(s, key)],
+                key=signal_rank,
+                reverse=True,
+            )
+            houses = sorted(
+                [s for s in signals if s.type == "planet_in_house" and signal_matches_product_sphere(s, key)],
+                key=signal_rank,
+                reverse=True,
+            )
 
-                    is_associated = (
-                        key in PLANET_TO_SPHERES_MAP.get(p_clean, [])
-                        or (tp_clean and key in PLANET_TO_SPHERES_MAP.get(tp_clean, []))
-                    )
-                    if is_associated:
-                        contributing_signals.append(s)
-
-                # Sort by strength descending
-                contributing_signals.sort(key=lambda x: x.strength or 0.0, reverse=True)
-
-                # Add top 2 contributing day signals as evidence
-                for s in contributing_signals[:2]:
-                    p_clean = strip_prefix(s.planet)
-                    tp_clean = strip_prefix(s.target_planet) if s.target_planet else None
-                    if s.type == "aspect":
-                        evidence_list.append(
-                            ConcreteAdviceEvidence(
-                                kind="aspect",
-                                title=f"{PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(s.aspect_type, s.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}",
-                                planet=s.planet,
-                                target_planet=s.target_planet,
-                                aspect_type=s.aspect_type,
-                                orb=s.orb,
-                                strength=s.strength,
-                            )
-                        )
-                    elif s.type == "planet_in_house":
-                        evidence_list.append(
-                            ConcreteAdviceEvidence(
-                                kind="planet_in_house",
-                                title=f"{PLANET_LABELS_RU.get(p_clean, p_clean)} в {s.house} доме",
-                                planet=s.planet,
-                                house=s.house,
-                                strength=s.strength,
-                                sign=s.sign,
-                            )
-                        )
-
-                # If no day signals found, add the sphere score as evidence
-                if not evidence_list:
-                    evidence_list.append(
-                        ConcreteAdviceEvidence(
-                            kind="sphere_score",
-                            title=f"Показатель {best_score.key}",
-                            weight=best_score.score,
-                            sphere_key=best_score.key,
-                        )
-                    )
-            else:
-                # Top signals & influences check
-                found_signal = False
-                for planet_name, spheres in PLANET_TO_SPHERES_MAP.items():
-                    if key in spheres:
-                        # TopFlags aspect check
-                        if planet_name in planet_aspect_verdicts:
-                            verdict = planet_aspect_verdicts[planet_name]
-                            confidence = "medium"
-
-                            # Find the exact aspect signal
-                            asp_sig = next((s for s in signals if s.type == "aspect" and (strip_prefix(s.planet) == planet_name or strip_prefix(s.target_planet) == planet_name)), None)
-                            if asp_sig:
-                                p_clean = strip_prefix(asp_sig.planet)
-                                tp_clean = strip_prefix(asp_sig.target_planet) if asp_sig.target_planet else None
-                                evidence_list.append(
-                                    ConcreteAdviceEvidence(
-                                        kind="aspect",
-                                        title=f"{PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(asp_sig.aspect_type, asp_sig.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}",
-                                        planet=asp_sig.planet,
-                                        target_planet=asp_sig.target_planet,
-                                        aspect_type=asp_sig.aspect_type,
-                                        orb=asp_sig.orb,
-                                        strength=asp_sig.strength,
-                                    )
-                                )
-                            else:
-                                evidence_list.append(
-                                    ConcreteAdviceEvidence(
-                                        kind="aspect",
-                                        title=f"Аспект планеты {PLANET_LABELS_RU.get(planet_name, planet_name)}",
-                                        planet=planet_name,
-                                    )
-                                )
-                            found_signal = True
-                            break
-
-                        # PlanetInfluence check
-                        influence = next((pi for pi in planet_influences if pi.name == planet_name or PLANET_LABELS_RU.get(pi.name) == planet_name), None)
-                        if influence:
-                            if influence.score >= 6.0:
-                                verdict = "good"
-                                confidence = "medium"
-                            elif influence.score <= 3.0:
-                                verdict = "caution"
-                                confidence = "medium"
-                            else:
-                                verdict = "neutral"
-                                confidence = "low"
-
-                            # Find the exact planet in house signal
-                            pih_sig = next((s for s in signals if s.type == "planet_in_house" and strip_prefix(s.planet) == planet_name), None)
-                            if pih_sig:
-                                p_clean = strip_prefix(pih_sig.planet)
-                                evidence_list.append(
-                                    ConcreteAdviceEvidence(
-                                        kind="planet_in_house",
-                                        title=f"{PLANET_LABELS_RU.get(p_clean, p_clean)} в {pih_sig.house} доме",
-                                        planet=pih_sig.planet,
-                                        house=pih_sig.house,
-                                        strength=pih_sig.strength,
-                                        sign=pih_sig.sign,
-                                    )
-                                )
-                            else:
-                                evidence_list.append(
-                                    ConcreteAdviceEvidence(
-                                        kind="planet_in_house",
-                                        title=f"Влияние планеты {PLANET_LABELS_RU.get(planet_name, planet_name)}: {influence.score:.2f}",
-                                        planet=planet_name,
-                                        weight=influence.score,
-                                    )
-                                )
-                            found_signal = True
-                            break
-
-                if not found_signal:
-                    # Fallback to day_status
-                    if day_status == "supportive":
-                        verdict = "good"
-                    elif day_status == "tense":
-                        verdict = "caution"
+            if best_score is not None:
+                if verdict in ("good", "caution", "avoid"):
+                    compatible_aspects = [s for s in aspects if aspect_supports_verdict(s, verdict)]
+                    if compatible_aspects:
+                        evidence_list.append(aspect_evidence(compatible_aspects[0]))
+                    elif houses:
+                        evidence_list.append(planet_in_house_evidence(houses[0]))
                     else:
-                        verdict = "neutral"
+                        evidence_list.append(sphere_score_evidence(best_score))
+                else:
+                    neutral_aspects = [s for s in aspects if aspect_verdict(s.aspect_type) == "neutral"]
+                    if neutral_aspects:
+                        evidence_list.append(aspect_evidence(neutral_aspects[0]))
+                    elif houses:
+                        evidence_list.append(planet_in_house_evidence(houses[0]))
+                    else:
+                        evidence_list.append(sphere_score_evidence(best_score))
+            else:
+                if aspects:
+                    selected_aspect = aspects[0]
+                    verdict = aspect_verdict(selected_aspect.aspect_type)
+                    confidence = "medium" if verdict in ("good", "caution", "avoid") else "low"
+                    evidence_list.append(aspect_evidence(selected_aspect))
+                elif houses:
+                    verdict = "neutral"
+                    confidence = "low"
+                    evidence_list.append(planet_in_house_evidence(houses[0]))
+                else:
+                    for planet_name in planets_for_sphere:
+                        influence = next(
+                            (
+                                pi for pi in planet_influences
+                                if pi.name == planet_name or PLANET_LABELS_RU.get(pi.name) == planet_name
+                            ),
+                            None,
+                        )
+                        if influence:
+                            verdict = "neutral"
+                            confidence = "low"
+                            evidence_list.append(influence_evidence(planet_name, influence))
+                            break
+
+            if not evidence_list:
+                if best_score is not None:
+                    evidence_list.append(sphere_score_evidence(best_score))
+                else:
+                    verdict = "neutral"
                     confidence = "low"
                     evidence_list.append(
                         ConcreteAdviceEvidence(
