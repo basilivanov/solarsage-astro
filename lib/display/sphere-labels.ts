@@ -83,3 +83,21 @@ export function getSphereLabel(key: string): string {
   if (trimmed.length === 0) return "Сфера"
   return KNOWN_SPHERE_LABELS[trimmed] ?? snakeToReadable(trimmed)
 }
+
+/** Map English planet names to Russian product labels */
+export const PLANET_LABELS: Record<string, string> = {
+  Sun: "Солнце",
+  Moon: "Луна",
+  Mercury: "Меркурий",
+  Venus: "Венера",
+  Mars: "Марс",
+  Jupiter: "Юпитер",
+  Saturn: "Сатурн",
+  Uranus: "Уран",
+  Neptune: "Нептун",
+  Pluto: "Плутон",
+}
+
+export function getPlanetLabel(name: string): string {
+  return PLANET_LABELS[name] ?? name
+}

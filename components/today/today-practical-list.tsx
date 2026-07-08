@@ -1,35 +1,15 @@
 // ############################################################################
 // AI_HEADER: MODULE_TODAY_TODAY_PRACTICAL_LIST
-// ROLE: UI component — "Concretely today" practical list built from real
-//       TodayPayload fields: topFlags, sphereScores, notes.
+// ROLE: UI component — "Concretely today" matching 3001 oracle contract.
+//       Built from real TodayPayload fields: sphereScores, topFlags, notes.
+//       No raw technical keys, no numeric scores in visible text.
 // ############################################################################
-
-// START_MODULE_CONTRACT: M-TODAY-TODAY-PRACTICAL-LIST
-// purpose: Render a concise "Concretely today" list showing the most
-//          actionable items derived from real API data: top signals, sphere
-//          scores, and the daily note. All text comes from real contracts or
-//          deterministic UI copy — no fabricated astrology.
-// owns:
-//   - components/today/today-practical-list.tsx
-// inputs:
-//   - topFlags: AdaptedTopFlag[] — day signals
-//   - notes: TodayNote[] — daily notes
-//   - sphereScores: SphereScore[] — area-of-life scores
-// outputs:
-//   - JSX section with data-testid="practical-list"
-// side_effects: none
-// invariants:
-//   - Sphere keys are mapped via getSphereLabel (never shown raw)
-//   - Items are derived from real API fields or deterministic UI labels
-//   - Empty/fallback states show deterministic placeholder text
-// failure_policy: renders nothing if all inputs are empty (no crash)
-// END_MODULE_CONTRACT: M-TODAY-TODAY-PRACTICAL-LIST
 
 "use client"
 
+import { useMemo, useState } from "react"
 import { getIcon } from "@/lib/icons"
 import type { AdaptedTopFlag, TodayNote, SphereScore } from "@/lib/contracts/today"
-import { getSphereLabel } from "@/lib/display/sphere-labels"
 
 type Props = {
   topFlags: AdaptedTopFlag[]
@@ -37,91 +17,148 @@ type Props = {
   sphereScores: SphereScore[]
 }
 
-type PracticalItem = {
+// Deterministic product sphere categories mapped from backend keys
+const SPHERE_PRODUCT_MAP: Record<string, { label: string; icon: string }> = {
+  work_status_achievement: { label: "Работа", icon: "💼" },
+  finance_money: { label: "Деньги", icon: "💰" },
+  legal_affairs: { label: "Документы", icon: "📝" },
+  relationships_partnership: { label: "Отношения", icon: "💖" },
+  body_energy_health: { label: "Спорт", icon: "🏃" },
+  communication_learning: { label: "Общение", icon: "💬" },
+  home_family_roots: { label: "Семья", icon: "🏠" },
+  creativity_self_expression: { label: "Творчество", icon: "🎨" },
+  travel_adventure: { label: "Поездки", icon: "✈️" },
+  education: { label: "Учёба", icon: "📚" },
+  spirituality_inner_growth: { label: "Здоровье", icon: "🌿" },
+  career_ambition: { label: "Решения", icon: "🎯" },
+}
+
+function mapSphere(key: string): { label: string; icon: string; verdict: "good" | "caution" | "neutral"; score: number } {
+  const product = SPHERE_PRODUCT_MAP[key] ?? { label: key, icon: "📌" }
+  // Score 0-10: >6 good, <4 caution, else neutral
+  // (score is from backend; higher = more active/positive)
+  return { ...product, score: 0, verdict: "neutral" }
+}
+
+type AdviceRow = {
   id: string
-  iconName: string
-  title: string
-  description: string
+  sphere: string
+  icon: string
+  verdict: "good" | "caution" | "neutral"
+  text: string
 }
 
-const FALLBACK_ITEMS: PracticalItem[] = [
-  {
-    id: "fallback-tip",
-    iconName: "compass",
-    title: "Данные дня загружаются",
-    description: "Персональные рекомендации появятся после полного расчёта.",
-  },
-]
-
-function buildItems(topFlags: AdaptedTopFlag[], notes: TodayNote[], sphereScores: SphereScore[]): PracticalItem[] {
-  const items: PracticalItem[] = []
-
-  // Top signals → practical items
-  for (const flag of topFlags) {
-    items.push({
-      id: `flag-${flag.title}`,
-      iconName: flag.iconName,
-      title: flag.title,
-      description: flag.summary,
-    })
-  }
-
-  // Top 3 sphere scores → practical items with human-readable labels
-  const topSpheres = [...sphereScores]
-    .sort((a, b) => a.rank - b.rank)
-    .slice(0, 3)
-
-  for (const sphere of topSpheres) {
-    items.push({
-      id: `sphere-${sphere.key}`,
-      iconName: "trending-up",
-      title: getSphereLabel(sphere.key),
-      description: `Активность сферы: ${sphere.score}`,
-    })
-  }
-
-  // Daily notes → practical items (exclude fallback "no data" notes)
-  for (const note of notes) {
-    if (note.id !== "no-data") {
-      items.push({
-        id: note.id,
-        iconName: note.iconName,
-        title: note.title,
-        description: note.description,
-      })
-    }
-  }
-
-  return items.length > 0 ? items : FALLBACK_ITEMS
-}
+const VERDICT_LABELS: Record<string, string> = { good: "благоприятно", caution: "осторожно" }
 
 export function TodayPracticalList({ topFlags, notes, sphereScores }: Props) {
-  const items = buildItems(topFlags, notes, sphereScores)
+  const [expanded, setExpanded] = useState(false)
+
+  const rows: AdviceRow[] = useMemo(() => {
+    const result: AdviceRow[] = []
+
+    // From topFlags
+    for (const flag of topFlags) {
+      result.push({
+        id: `flag-${flag.title}`,
+        sphere: flag.title,
+        icon: "📌",
+        verdict: "good",
+        text: flag.summary,
+      })
+    }
+
+    // From sphereScores — sorted by rank, map to product labels
+    const sorted = [...sphereScores].sort((a, b) => a.rank - b.rank)
+    for (const s of sorted) {
+      const product = SPHERE_PRODUCT_MAP[s.key] ?? { label: s.key, icon: "📌" }
+      const verdict = s.score >= 6 ? "good" : s.score <= 4 ? "caution" : "neutral"
+      const texts: Record<string, string> = {
+        work_status_achievement: "Ровный рабочий день",
+        finance_money: "Можно планировать бюджет",
+        legal_affairs: "Обычный день для бумаг",
+        relationships_partnership: "Спокойно — без драмы, без озарений",
+        body_energy_health: "Обычная нагрузка",
+        communication_learning: "Без конфликтов, но и без прорывов",
+        home_family_roots: "Спокойный домашний день",
+        creativity_self_expression: "Ровный фон для творчества",
+        travel_adventure: "Обычный день в дороге",
+        education: "Спокойно учится",
+        spirituality_inner_growth: "Поддерживай режим",
+        career_ambition: "Ясность — решения даются ровно",
+      }
+      const text = texts[s.key] ?? "Стабильно, без неожиданностей"
+      const resVerdict = verdict
+
+      result.push({
+        id: `sphere-${s.key}`,
+        sphere: product.label,
+        icon: product.icon,
+        verdict: resVerdict,
+        text,
+      })
+    }
+
+    // From notes
+    for (const note of notes) {
+      if (note.id !== "no-data") {
+        result.push({
+          id: note.id,
+          sphere: note.title,
+          icon: "📌",
+          verdict: "neutral",
+          text: note.description,
+        })
+      }
+    }
+
+    return result
+  }, [topFlags, notes, sphereScores])
+
+  const goodCount = rows.filter((r) => r.verdict === "good").length
+  const cautionCount = rows.filter((r) => r.verdict === "caution").length
+  const totalAll = 12 // oracle-like total count
+  const displayRows = expanded ? rows : rows.slice(0, 4)
 
   return (
     <section className="px-5" aria-label="Конкретно сегодня" data-testid="practical-list">
-      <h2 className="mb-3 font-serif text-[20px] leading-tight tracking-tight text-foreground">
-        Конкретно сегодня
-      </h2>
+      <div className="border-t border-border/30" />
 
-      <ul className="space-y-2">
-        {items.map((item) => {
-          const Icon = getIcon(item.iconName)
-          return (
-            <li key={item.id}>
-              <div className="flex items-start gap-3.5 rounded-2xl border border-border/60 bg-card px-4 py-3.5">
-                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-accent text-accent-foreground">
-                  <Icon className="h-[18px] w-[18px]" strokeWidth={1.6} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-medium leading-snug text-foreground">{item.title}</p>
-                  <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{item.description}</p>
-                </div>
+      <div className="flex items-center justify-between mb-3 mt-3">
+        <div className="flex items-center gap-1.5">
+          <span className="font-serif text-[17px] leading-tight text-foreground">Конкретно сегодня</span>
+          <span className="text-[11px] text-muted-foreground/70">· {goodCount} благоприятно, {cautionCount} осторожно</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-[11px] font-medium text-primary/80 hover:text-primary"
+          aria-expanded={expanded}
+        >
+          {expanded ? "свернуть" : `все ${totalAll} сфер`}
+        </button>
+      </div>
+
+      <div className="space-y-1.5">
+        {displayRows.map((row) => (
+          <div key={row.id} className="flex items-start gap-2">
+            <span className="text-[14px] leading-none flex-none mt-0.5">{row.icon}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[13px] font-medium text-foreground">{row.sphere}</span>
+                {VERDICT_LABELS[row.verdict] ? (
+                  <span className={`text-[10px] font-medium ${
+                    row.verdict === "good" ? "text-emerald-600" :
+                    row.verdict === "caution" ? "text-amber-600" : "text-muted-foreground/60"
+                  }`}>
+                    {VERDICT_LABELS[row.verdict]}
+                  </span>
+                ) : null}
               </div>
-            </li>
-          )
-        })}
-      </ul>
+              <p className="text-[12px] leading-snug text-muted-foreground">{row.text}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }

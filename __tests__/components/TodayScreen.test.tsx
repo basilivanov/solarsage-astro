@@ -557,7 +557,7 @@ describe('real-data day presentation components', () => {
     const summary = screen.getByTestId('day-summary-card')
     expect(summary.textContent).toContain('Полнолуние')
     expect(summary.textContent).toContain('97%')
-    expect(summary.textContent).toContain('Saturn')
+    expect(summary.textContent).toContain('Сатурн')
     expect(summary.textContent).toContain('Луна в Раке')
   })
 })

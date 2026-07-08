@@ -44,7 +44,6 @@ import { ConcreteDayAdvice } from "./concrete-day-advice"
 import { AstroHistoryWidget } from "./astro-history-widget"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
-import { TodayImportantAccordion } from "@/components/today-important-accordion"
 import { YesterdayEchoLoader } from "@/components/checkin/yesterday-echo"
 import { addDays, sameDay, TODAY, type AdaptedTodayPayload } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
@@ -196,10 +195,7 @@ export function TodayScreen({
             dayStatus={payload.dayStatus}
           />
 
-          {/* Important events accordion */}
-          {importantToday && importantToday.length > 0 ? (
-            <TodayImportantAccordion items={importantToday} />
-          ) : null}
+          {/* Сегодня важно — hidden on /day in Wave 11 (intentional) */}
 
           {/* Day reading */}
           <DayReading paragraphs={payload.reading.paragraphs} />
