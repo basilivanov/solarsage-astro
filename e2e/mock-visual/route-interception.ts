@@ -96,7 +96,6 @@ export async function expectNoMissingApiFixtures(
   tracker: MissingRequestsTracker,
 ): Promise<void> {
   await page.waitForTimeout(800);
-  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(300);
   expect(tracker.all).toEqual([]);
 }
