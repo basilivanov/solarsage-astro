@@ -37,9 +37,15 @@ Saved under `docs/work/2026-07-08_calendar-final-visual-parity-wave-16/artifacts
 - `final-3002-tall-430x932.png`: Tall viewport fit check (`430x932`).
 
 ## Callback Response
-The trigger callback was invoked with:
+The trigger callback was invoked by the tmux agent before architect push remediation:
+
 - **Branch**: `main`
-- **Commit**: `e7c92fb5d857760c4aad7c6f224b74089fdf1f93`
+- **Commit**: `879d897b7466cf8dfcfbf8b4ecf71e6c382348cc`
 - **Push**: `FAILED` (due to custom SSH alias host resolution failure `github.com-solarsage`)
 - **Frontend**: `OK` (rebuilt and restarted successfully)
 - **E2E**: `OK` (all suites passed)
+
+Architect follow-up:
+
+- Root-context `git push origin main` succeeded after the callback.
+- The push failure was an `astro` user SSH alias resolution issue, not a git/content issue.
