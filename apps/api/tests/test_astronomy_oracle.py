@@ -228,7 +228,8 @@ async def test_today_interpretation_service_moon_phase_rounding():
 
 def test_audit_claims_report_has_no_na_placeholders_for_present_data():
     """Verify that the generated 14_claims_audit.md does not contain N/A
-    placeholders for fields that are populated in the actual payload."""
+    placeholders or fallback advice text for fields that are populated
+    in the actual payload."""
     from pathlib import Path
     claims_path = Path("artifacts/audit/2026-07-08/14_claims_audit.md")
     if not claims_path.exists():
@@ -238,3 +239,5 @@ def test_audit_claims_report_has_no_na_placeholders_for_present_data():
     assert 'Moon Phase Fact: "N/A"' not in text
     assert "Top Flags: N/A" not in text
     assert "| N/A | N/A | N/A |" not in text
+    # The canonical W0 baseline must not contain fallback LLM advice text
+    assert "Рекомендация временно недоступна." not in text

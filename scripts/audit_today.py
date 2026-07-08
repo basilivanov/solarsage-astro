@@ -451,8 +451,10 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         write_json(debug_dir / "semantic_layer.json", semantic_layer)
         write_json(debug_dir / "why_contexts.json", why_contexts)
 
-        # Force fresh generation of today payload
-        await TodayService(db).invalidate_cache(user.id)
+        # Default: use cached payload (deterministic baseline).
+        # Only invalidate and regenerate fresh LLM text when --live-llm-sample is set.
+        if getattr(args, 'live_llm_sample', False):
+            await TodayService(db).invalidate_cache(user.id)
 
         today_payload = await TodayService(db).get_today_payload(
             user_id=user.id,
@@ -461,6 +463,12 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             skip_prefetch=True,
         )
         payload_json = today_payload.model_dump(mode="json", by_alias=False)
+
+        # Normalize volatile fields so canonical artifacts are deterministic
+        meta = payload_json.get("meta", payload_json.get("Meta", {}))
+        meta["generated_at"] = f"{target_date.isoformat()}T12:00:00Z"
+        meta["cached"] = False
+
         write_json(debug_dir / "final_today_payload.json", payload_json)
 
         await client.close()
@@ -594,6 +602,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-oracles", action="store_true")
     parser.add_argument("--skip-scoring-oracle", action="store_true")
     parser.add_argument("--skip-astronomy-oracle", action="store_true")
+    parser.add_argument("--live-llm-sample", action="store_true",
+                        help="Bypass cache and regenerate fresh LLM text for live sampling")
     return parser.parse_args()
 
 
