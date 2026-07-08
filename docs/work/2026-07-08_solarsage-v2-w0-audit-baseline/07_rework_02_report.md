@@ -32,4 +32,5 @@
 | `git status --short --branch` | Only known unrelated untracked files remain |
 
 ## Commit SHA
-- **Commit**: `a8767392e811121eacfdf75dc99f379269872f19`
+- **Implementation commit**: `a8767392e811121eacfdf75dc99f379269872f19`
+- **Report commit**: Committed as a separate commit immediately after the implementation commit, so the implementation SHA is stable and the report does not contain its own commit ID.
