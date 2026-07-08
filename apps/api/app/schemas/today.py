@@ -325,6 +325,8 @@ class ConcreteAdviceEvidence(CamelModel):
     orb: float | None = None
     strength: float | None = None
     sphere_key: str | None = None
+    house: int | None = None
+    sign: str | None = None
 
 class ConcreteAdviceRow(CamelModel):
     key: Literal[

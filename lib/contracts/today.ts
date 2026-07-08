@@ -150,6 +150,8 @@ export const ConcreteAdviceEvidenceSchema = z.object({
   orb: z.number().nullable().optional(),
   strength: z.number().nullable().optional(),
   sphereKey: z.string().nullable().optional(),
+  house: z.number().int().nullable().optional(),
+  sign: z.string().nullable().optional(),
 })
 
 export const ConcreteAdviceRowSchema = z.object({

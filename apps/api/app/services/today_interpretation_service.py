@@ -137,6 +137,9 @@ ASPECT_STEMS = {
     "sextile": ["секстил"],
 }
 
+SOFT_ASPECTS = {"trine", "sextile"}
+TENSE_ASPECTS = {"square", "opposition"}
+
 def verdict_for_score(score: float) -> ConcreteAdviceVerdict:
     if score >= 6.0:
         return "good"
@@ -164,12 +167,18 @@ def validate_row_text(row: ConcreteAdviceRow, text: str) -> bool:
 
     for ev in row.evidence:
         if ev.planet:
-            allowed_planets.add(strip_prefix(ev.planet))
+            p_clean = strip_prefix(ev.planet)
+            allowed_planets.add(p_clean)
         if ev.target_planet:
-            allowed_planets.add(strip_prefix(ev.target_planet))
+            tp_clean = strip_prefix(ev.target_planet)
+            allowed_planets.add(tp_clean)
         if ev.aspect_type:
             allowed_aspects.add(ev.aspect_type.lower())
         if ev.title:
+            # Also check the title for planet names
+            for p_en, p_ru in PLANET_LABELS_RU.items():
+                if p_ru.lower() in ev.title.lower():
+                    allowed_planets.add(p_en)
             match = re.search(r'\b(\d+)\s+дом', ev.title.lower())
             if match:
                 allowed_houses.add(int(match.group(1)))
@@ -190,8 +199,6 @@ def validate_row_text(row: ConcreteAdviceRow, text: str) -> bool:
     if "дом" in t:
         house_matches = re.findall(r'\b(\d+)\s+дом', t)
         if not house_matches:
-            # Word "дом" is mentioned but no specific house number was parsed.
-            # If allowed_houses is empty, this general mention is not allowed.
             if not allowed_houses:
                 return False
         else:
@@ -256,14 +263,61 @@ class TodayInterpretationService:
                 best_score = matching_scores[0]
                 verdict = verdict_for_score(best_score.score)
                 confidence = "high" if verdict in ("good", "avoid", "caution") else "medium"
-                evidence_list.append(
-                    ConcreteAdviceEvidence(
-                        kind="sphere_score",
-                        title=f"Скор сферы {best_score.key}: {best_score.score:.2f}",
-                        weight=best_score.score,
-                        sphere_key=best_score.key,
+
+                # Dynamic evidence: find top contributing day signals for the mapped sphere
+                contributing_signals = []
+                for s in signals:
+                    p_clean = strip_prefix(s.planet)
+                    tp_clean = strip_prefix(s.target_planet) if s.target_planet else None
+
+                    is_associated = (
+                        key in PLANET_TO_SPHERES_MAP.get(p_clean, [])
+                        or (tp_clean and key in PLANET_TO_SPHERES_MAP.get(tp_clean, []))
                     )
-                )
+                    if is_associated:
+                        contributing_signals.append(s)
+
+                # Sort by strength descending
+                contributing_signals.sort(key=lambda x: x.strength or 0.0, reverse=True)
+
+                # Add top 2 contributing day signals as evidence
+                for s in contributing_signals[:2]:
+                    p_clean = strip_prefix(s.planet)
+                    tp_clean = strip_prefix(s.target_planet) if s.target_planet else None
+                    if s.type == "aspect":
+                        evidence_list.append(
+                            ConcreteAdviceEvidence(
+                                kind="aspect",
+                                title=f"{PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(s.aspect_type, s.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}",
+                                planet=s.planet,
+                                target_planet=s.target_planet,
+                                aspect_type=s.aspect_type,
+                                orb=s.orb,
+                                strength=s.strength,
+                            )
+                        )
+                    elif s.type == "planet_in_house":
+                        evidence_list.append(
+                            ConcreteAdviceEvidence(
+                                kind="planet_in_house",
+                                title=f"{PLANET_LABELS_RU.get(p_clean, p_clean)} в {s.house} доме",
+                                planet=s.planet,
+                                house=s.house,
+                                strength=s.strength,
+                                sign=s.sign,
+                            )
+                        )
+
+                # If no day signals found, add the sphere score as evidence
+                if not evidence_list:
+                    evidence_list.append(
+                        ConcreteAdviceEvidence(
+                            kind="sphere_score",
+                            title=f"Показатель {best_score.key}",
+                            weight=best_score.score,
+                            sphere_key=best_score.key,
+                        )
+                    )
             else:
                 # Top signals & influences check
                 found_signal = False
@@ -273,13 +327,31 @@ class TodayInterpretationService:
                         if planet_name in planet_aspect_verdicts:
                             verdict = planet_aspect_verdicts[planet_name]
                             confidence = "medium"
-                            evidence_list.append(
-                                ConcreteAdviceEvidence(
-                                    kind="aspect",
-                                    title=f"Аспект планеты {PLANET_LABELS_RU.get(planet_name, planet_name)}",
-                                    planet=planet_name,
+
+                            # Find the exact aspect signal
+                            asp_sig = next((s for s in signals if s.type == "aspect" and (strip_prefix(s.planet) == planet_name or strip_prefix(s.target_planet) == planet_name)), None)
+                            if asp_sig:
+                                p_clean = strip_prefix(asp_sig.planet)
+                                tp_clean = strip_prefix(asp_sig.target_planet) if asp_sig.target_planet else None
+                                evidence_list.append(
+                                    ConcreteAdviceEvidence(
+                                        kind="aspect",
+                                        title=f"{PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(asp_sig.aspect_type, asp_sig.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}",
+                                        planet=asp_sig.planet,
+                                        target_planet=asp_sig.target_planet,
+                                        aspect_type=asp_sig.aspect_type,
+                                        orb=asp_sig.orb,
+                                        strength=asp_sig.strength,
+                                    )
                                 )
-                            )
+                            else:
+                                evidence_list.append(
+                                    ConcreteAdviceEvidence(
+                                        kind="aspect",
+                                        title=f"Аспект планеты {PLANET_LABELS_RU.get(planet_name, planet_name)}",
+                                        planet=planet_name,
+                                    )
+                                )
                             found_signal = True
                             break
 
@@ -295,14 +367,30 @@ class TodayInterpretationService:
                             else:
                                 verdict = "neutral"
                                 confidence = "low"
-                            evidence_list.append(
-                                ConcreteAdviceEvidence(
-                                    kind="planet_in_house",
-                                    title=f"Влияние планеты {PLANET_LABELS_RU.get(planet_name, planet_name)}: {influence.score:.2f}",
-                                    planet=planet_name,
-                                    weight=influence.score,
+
+                            # Find the exact planet in house signal
+                            pih_sig = next((s for s in signals if s.type == "planet_in_house" and strip_prefix(s.planet) == planet_name), None)
+                            if pih_sig:
+                                p_clean = strip_prefix(pih_sig.planet)
+                                evidence_list.append(
+                                    ConcreteAdviceEvidence(
+                                        kind="planet_in_house",
+                                        title=f"{PLANET_LABELS_RU.get(p_clean, p_clean)} в {pih_sig.house} доме",
+                                        planet=pih_sig.planet,
+                                        house=pih_sig.house,
+                                        strength=pih_sig.strength,
+                                        sign=pih_sig.sign,
+                                    )
                                 )
-                            )
+                            else:
+                                evidence_list.append(
+                                    ConcreteAdviceEvidence(
+                                        kind="planet_in_house",
+                                        title=f"Влияние планеты {PLANET_LABELS_RU.get(planet_name, planet_name)}: {influence.score:.2f}",
+                                        planet=planet_name,
+                                        weight=influence.score,
+                                    )
+                                )
                             found_signal = True
                             break
 
@@ -343,10 +431,9 @@ class TodayInterpretationService:
                 )
             )
 
-        # Check if we have LLM keys configured (no test branching)
+        # Check if we have LLM keys configured
         llm_texts = None
         from app.core.config import settings
-
         has_llm_keys = any(
             bool((key or "").strip())
             for key in (
@@ -418,7 +505,7 @@ class TodayInterpretationService:
                     kind="top_planet",
                     icon_name=p_clean,
                     title=f"Влияние {PLANET_LABELS_RU.get(p_clean, p_clean)}",
-                    summary="особая тема дня",
+                    summary=None,
                 )
             )
 
@@ -467,17 +554,27 @@ class TodayInterpretationService:
                 )
             )
 
-        # Add Top Flag fact
-        if signals:
-            top_sig = signals[0]
-            p_clean = strip_prefix(top_sig.planet)
-            tp_clean = strip_prefix(top_sig.target_planet) if top_sig.target_planet else ""
+        # Add Top Flag fact (Top daily aspect)
+        top_aspect = next((s for s in scoring_result.get("top_signals", []) if s.type == "aspect"), None)
+        if top_aspect:
+            p_clean = strip_prefix(top_aspect.planet)
+            tp_clean = strip_prefix(top_aspect.target_planet) if top_aspect.target_planet else ""
+            summary_fact_title = f"{PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(top_aspect.aspect_type, top_aspect.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}"
+
+            aspect_type_lower = top_aspect.aspect_type.lower() if top_aspect.aspect_type else ""
+            if aspect_type_lower in TENSE_ASPECTS:
+                summary_fact_desc = "напряжённый аспект"
+            elif aspect_type_lower in SOFT_ASPECTS:
+                summary_fact_desc = "поддерживающий аспект"
+            else:
+                summary_fact_desc = "транзитный аспект"
+
             summary_facts.append(
                 DaySummaryFact(
                     kind="top_flag",
                     icon_name="flag",
-                    title=f"Аспект: {PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(top_sig.aspect_type, top_sig.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}" if top_sig.type == "aspect" else "Аспект дня",
-                    summary="транзитный аспект",
+                    title=summary_fact_title,
+                    summary=summary_fact_desc,
                 )
             )
 

@@ -802,6 +802,8 @@ export interface components {
         ConcreteAdviceEvidence: {
             /** Aspecttype */
             aspectType?: string | null;
+            /** House */
+            house?: number | null;
             /**
              * Kind
              * @enum {string}
@@ -811,6 +813,8 @@ export interface components {
             orb?: number | null;
             /** Planet */
             planet?: string | null;
+            /** Sign */
+            sign?: string | null;
             /** Spherekey */
             sphereKey?: string | null;
             /** Strength */

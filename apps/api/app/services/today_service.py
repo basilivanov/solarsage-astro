@@ -86,7 +86,7 @@ from app.services.natal_context_service import NatalContextService
 from app.core.logging import log_event, log_block
 
 
-TODAY_CONTENT_VERSION = 3
+TODAY_CONTENT_VERSION = 4
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",
@@ -228,8 +228,13 @@ class TodayService:
                 )
 
         # W-4.2: Score signals and calculate day_status using day-specific scorer
+        day_signals = [
+            s for s in signals
+            if (s.planet or "").startswith("Transit_")
+            or s.type in ("lunar", "void_moon", "retrograde", "day_event")
+        ]
         scoring_service = ScoringService()
-        scoring_result = scoring_service.score_day(signals)
+        scoring_result = scoring_service.score_day(day_signals)
 
         # W-4.3: Build semantic layer
         semantic_service = SemanticService()
@@ -311,7 +316,7 @@ class TodayService:
             semantic_layer=semantic_layer,
         )
         day_chart = self._build_day_chart(natal_context_dict, transits, signals)
-        planet_influences = self._build_planet_influences(signals)
+        planet_influences = self._build_planet_influences(day_signals)
         sphere_scores = self._build_sphere_scores(scoring_result["sphere_scores"])
 
         # Call interpretation service to build concrete advice and summary facts
@@ -321,7 +326,7 @@ class TodayService:
             target_date=target_date,
             day_status=scoring_result["day_status"],
             scoring_result=scoring_result,
-            signals=signals,
+            signals=day_signals,
             semantic_layer=semantic_layer,
             day_chart=day_chart,
             planet_influences=planet_influences,

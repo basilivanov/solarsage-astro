@@ -776,6 +776,17 @@
             ],
             "title": "Aspecttype"
           },
+          "house": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House"
+          },
           "kind": {
             "enum": [
               "sphere_score",
@@ -809,6 +820,17 @@
               }
             ],
             "title": "Planet"
+          },
+          "sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign"
           },
           "sphereKey": {
             "anyOf": [

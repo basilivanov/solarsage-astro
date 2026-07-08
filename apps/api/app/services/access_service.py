@@ -115,7 +115,7 @@ class AccessService:
         for entry in entries:
             if entry.start_date <= target_date <= entry.end_date:
                 # Found covering entry
-                days_left = (entry.end_date - target_date).days
+                days_left = (entry.end_date - target_date).days + 1
 
                 if entry.entry_type == "referral_bonus":
                     return ContentAccessState(

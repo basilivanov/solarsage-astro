@@ -147,6 +147,20 @@ class NormalizationService:
         if transit_planets and natal_planets:
             signals.extend(self._transit_aspects_from_planets(transit_planets, natal_planets))
 
+        # 3. Transit planet-in-house signals
+        houses_raw = natal_context.get("houses") or []
+        if transit_planets and houses_raw:
+            for tp in transit_planets:
+                longitude = float(tp["longitude"])
+                house_num = find_house(longitude, houses_raw) or 1
+                signals.append(AstroSignal(
+                    type="planet_in_house",
+                    planet=f"Transit_{tp['name']}",
+                    house=house_num,
+                    sign=tp.get("sign"),
+                    strength=1.0,
+                ))
+
         return signals
 
     # ── Legacy path (backward compat) ─────────────────────────────

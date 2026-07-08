@@ -65,14 +65,14 @@ async def test_referral_bonus_14_days(db_session: AsyncSession):
     state = await service.can_access_day(user.id, start_date)
     assert state.state == "full"
     assert state.reason == "active_referral_days"
-    assert state.referral_days_left == 13
+    assert state.referral_days_left == 14
     assert state.subscription_active is None
 
     # Check day 13 (last day)
     state = await service.can_access_day(user.id, start_date + timedelta(days=13))
     assert state.state == "full"
     assert state.reason == "active_referral_days"
-    assert state.referral_days_left == 0
+    assert state.referral_days_left == 1
 
     # Check day 14 (locked - future without access)
     state = await service.can_access_day(user.id, start_date + timedelta(days=14))
@@ -101,14 +101,14 @@ async def test_referral_plus_subscription(db_session: AsyncSession):
     state = await service.can_access_day(user.id, start_date)
     assert state.state == "full"
     assert state.reason == "active_referral_days"
-    assert state.referral_days_left == 13
+    assert state.referral_days_left == 14
     assert state.subscription_active is None
 
     # Check day 13 (last referral day)
     state = await service.can_access_day(user.id, start_date + timedelta(days=13))
     assert state.state == "full"
     assert state.reason == "active_referral_days"
-    assert state.referral_days_left == 0
+    assert state.referral_days_left == 1
 
     # Check day 14 (subscription starts)
     state = await service.can_access_day(user.id, start_date + timedelta(days=14))
