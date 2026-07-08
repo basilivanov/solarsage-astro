@@ -347,16 +347,13 @@ class TodayInterpretationService:
         llm_texts = None
         from app.core.config import settings
 
-        def is_real_key(key: str | None) -> bool:
-            if not key:
-                return False
-            k = key.strip().lower()
-            return len(k) > 0 and "mock" not in k and "test" not in k
-
-        has_llm_keys = (
-            is_real_key(settings.openrouter_api_key)
-            or is_real_key(settings.anthropic_api_key)
-            or is_real_key(getattr(settings, "deepseek_api_key", None))
+        has_llm_keys = any(
+            bool((key or "").strip())
+            for key in (
+                settings.openrouter_api_key,
+                settings.anthropic_api_key,
+                getattr(settings, "deepseek_api_key", ""),
+            )
         )
 
         if has_llm_keys:

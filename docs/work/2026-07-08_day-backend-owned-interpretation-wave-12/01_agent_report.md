@@ -50,7 +50,7 @@
 ## 5. Verification Commands & Results
 
 *   **Pytest (backend)**:
-    *   `cd apps/api && .venv/bin/pytest tests/test_today_concrete_advice.py` (4 passed)
+    *   `cd apps/api && .venv/bin/pytest tests/test_today_concrete_advice.py` (5 passed)
     *   `cd apps/api && .venv/bin/pytest tests/test_day_endpoints.py tests/integration/test_cache.py tests/integration/test_locked_day.py tests/integration/test_user_flow.py` (16 passed)
 *   **Vitest (unit)**:
     *   `npx vitest run TodayScreen.test.tsx` (14 passed)
@@ -69,13 +69,8 @@
 
 ---
 
-## 7. Rework 02 Fixes (2026-07-08)
+## 7. Rework 03 Fixes (2026-07-08)
 
-*   **Removed mock checks**: Deleted all mock introspection (`is_mocked`, `is_chart_mocked`, etc.) from `today_interpretation_service.py`. Product code only runs the LLM when real keys are configured.
-*   **Factual Day Summary Card**: Replaced hardcoded action advice in summary facts with factual, non-forecast summaries. Omitted the forecast summary from top flag facts, using `"транзитный аспект"` instead.
-*   **Cleaned LLM Prompt**: Removed hardcoded product templates from prompt examples in `llm_service.py`.
-*   **Semantic Icon Names Fallback**: Used a neutral `"•"` fallback in `concrete-day-advice.tsx` if `ICON_MAP` does not resolve the semantic icon name, completely preventing raw text leaks.
-*   **Strict Allowed Evidence Planets/Aspects Validator**: Derives the allowed planets/aspects/houses in `validate_row_text()` strictly from `row.evidence` only (no static planet maps). Mentioning any planet/aspect/house not in the evidence rejects the row.
-*   **Mocked LLM explicitly in tests**: Set the API keys to empty in `conftest.py` so cache/endpoints tests verify the true no-LLM fallback path (`"Рекомендация временно недоступна."`).
-*   **Updated E2E mock fixtures**: Restored contract/prompt version numbers to `3` and `2`, used semantic icon names, and filled text fields with backend-owned sentinel strings (e.g. `СЕНТИНЕЛ ОТНОШЕНИЯ`).
-*   **Cleaned up visual artifacts**: Restored the `artifacts/pixel-rework-03` directory to its state before commit `e0e1832`.
+*   **Removed test-aware key checks**: Deleted `is_real_key` checks from `today_interpretation_service.py`. Checked keys only using explicit non-empty configuration: `has_llm_keys = any(bool((key or "").strip()) for key in (settings.openrouter_api_key, settings.anthropic_api_key, getattr(settings, "deepseek_api_key", "")))`.
+*   **Removed old forecast templates from tests**: Replaced all instances of `Сократи траты...` and `без взлётов...` in backend tests, TodayScreen unit tests, and E2E visual tests with sentinel strings (e.g. `СЕНТИНЕЛ ДЕНЬГИ`, `Сводка временно недоступна.`).
+*   **Added test-key verification test**: Added `test_today_interpretation_service_test_key_enables_llm` in `test_today_concrete_advice.py` proving a fake key containing `"test"`, e.g. `"test-key"`, still enables the patched LLM path.

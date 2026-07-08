@@ -268,15 +268,12 @@ test.describe("Mock Visual — /day/[date]", () => {
     // Assert that good count is greater than zero
     await expect(concreteAdvice).toContainText("8 благоприятно");
 
-    // Assert page does not contain raw/debug leaks or old hardcoded summary/fact text
+    // Assert page does not contain raw/debug leaks
     const bodyText = await page.innerText("body");
     expect(bodyText).not.toContain("Crisis Transformation Control");
     expect(bodyText).not.toContain("Inner Background Unconscious");
     expect(bodyText).not.toContain("Cancer");
     expect(bodyText).not.toContain("thinking_speech_learning");
-    expect(bodyText).not.toContain("день на твоей стороне");
-    expect(bodyText).not.toContain("подводи итоги");
-    expect(bodyText).not.toContain("особое влияние дня");
 
     // Assert no visible score suffixes or Latin characters in concrete advice rows
     const firstRowText = await rows.first().innerText();

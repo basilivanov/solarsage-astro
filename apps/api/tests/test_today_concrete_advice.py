@@ -78,21 +78,19 @@ async def test_llm_concrete_advice_validation_and_fallback():
     service = TodayInterpretationService()
 
     # Case 1: LLM returns valid Russian texts for all 12 keys
-    # Each row must only mention allowed planets/aspects/houses from its evidence.
-    # To keep it simple, we provide row evidence for the planets/aspects we mention.
     valid_mock_texts = {
-        "work": "Хороший день для новых дел.",
-        "money": "Сократи траты сегодня.",
-        "documents": "Подходящее время для оформления.",
-        "relationships": "Удачный день для сближения.",
-        "sport": "Энергия на пике, можно потренироваться.",
-        "communication": "Переговоры пройдут гладко.",
-        "health": "Тело полно сил, позаботься о себе.",
-        "decisions": "Решения даются легко.",
-        "travel": "Дорога будет легкой.",
-        "creativity": "Вдохновение бьет ключом.",
-        "study": "Память цепкая, учи информацию.",
-        "shopping": "Покупки прослужат долго."
+        "work": "СЕНТИНЕЛ РАБОТА",
+        "money": "СЕНТИНЕЛ ДЕНЬГИ",
+        "documents": "СЕНТИНЕЛ ДОКУМЕНТЫ",
+        "relationships": "СЕНТИНЕЛ ОТНОШЕНИЯ",
+        "sport": "СЕНТИНЕЛ СПОРТ",
+        "communication": "СЕНТИНЕЛ ОБЩЕНИЕ",
+        "health": "СЕНТИНЕЛ ЗДОРОВЬЕ",
+        "decisions": "СЕНТИНЕЛ РЕШЕНИЯ",
+        "travel": "СЕНТИНЕЛ ПОЕЗДКИ",
+        "creativity": "СЕНТИНЕЛ ТВОРЧЕСТВО",
+        "study": "СЕНТИНЕЛ УЧЕБА",
+        "shopping": "СЕНТИНЕЛ ПОКУПКИ"
     }
 
     # Test valid case under patch
@@ -136,13 +134,13 @@ async def test_llm_concrete_advice_validation_and_fallback():
     # 1. Latin text fails (invalidate 4 keys)
     invalid_latin = valid_mock_texts.copy()
     for k in ["work", "money", "documents", "relationships"]:
-        invalid_latin[k] = "Хороший день для work задач."
+        invalid_latin[k] = "СЕНТИНЕЛ work СЕНТИНЕЛ"
     await assert_fails(invalid_latin)
 
     # 2. Transit_ / Natal_ fails (invalidate 4 keys)
     invalid_prefix = valid_mock_texts.copy()
     for k in ["work", "money", "documents", "relationships"]:
-        invalid_prefix[k] = "Сократи траты — Transit_Moon в Раке."
+        invalid_prefix[k] = "СЕНТИНЕЛ Transit_Moon СЕНТИНЕЛ"
     await assert_fails(invalid_prefix)
 
     # 3. Missing key fails
@@ -152,14 +150,13 @@ async def test_llm_concrete_advice_validation_and_fallback():
 
     # 4. Extra key fails
     invalid_extra = valid_mock_texts.copy()
-    invalid_extra["extra_key"] = "Лишний текст."
+    invalid_extra["extra_key"] = "СЕНТИНЕЛ"
     await assert_fails(invalid_extra)
 
-    # 5. Hallucinated planet fails (e.g. work evidence has no Mars aspect, but LLM mentions Mars aspect)
-    # Since evidence is empty in service.build call above, mentioning ANY planet or aspect should fail!
+    # 5. Hallucinated planet fails
     invalid_hallucination = valid_mock_texts.copy()
     for k in ["work", "money", "documents", "relationships"]:
-        invalid_hallucination[k] = "Работа сегодня подсвечена Марсом."
+        invalid_hallucination[k] = "СЕНТИНЕЛ Марс СЕНТИНЕЛ"
     await assert_fails(invalid_hallucination)
 
 
@@ -168,20 +165,19 @@ async def test_today_interpretation_service_allowed_evidence_planets():
     """Text mentioning a planet from evidence passes, but other planets fail."""
     service = TodayInterpretationService()
 
-    # work has Mars evidence, so mentioning Mars is allowed, but Venus is not.
     mock_output = {
-        "work": "Марс дает энергию для новых дел.", # Allowed (Mars in evidence)
-        "money": "Сократи траты сегодня.",
-        "documents": "Подходящее время для оформления.",
-        "relationships": "Удачный день для сближения.",
-        "sport": "Энергия на пике, можно потренироваться.",
-        "communication": "Переговоры пройдут гладко.",
-        "health": "Тело полно сил, позаботься о себе.",
-        "decisions": "Решения даются легко.",
-        "travel": "Дорога будет легкой.",
-        "creativity": "Вдохновение бьет ключом.",
-        "study": "Память цепкая, учи информацию.",
-        "shopping": "Покупки прослужат долго."
+        "work": "Марс дает энергию.",
+        "money": "СЕНТИНЕЛ",
+        "documents": "СЕНТИНЕЛ",
+        "relationships": "СЕНТИНЕЛ",
+        "sport": "СЕНТИНЕЛ",
+        "communication": "СЕНТИНЕЛ",
+        "health": "СЕНТИНЕЛ",
+        "decisions": "СЕНТИНЕЛ",
+        "travel": "СЕНТИНЕЛ",
+        "creativity": "СЕНТИНЕЛ",
+        "study": "СЕНТИНЕЛ",
+        "shopping": "СЕНТИНЕЛ"
     }
 
     # Test that allowed planet passes
@@ -201,11 +197,11 @@ async def test_today_interpretation_service_allowed_evidence_planets():
             important_items=[],
         )
 
-        assert concrete_advice.rows[0].text == "Марс дает энергию для новых дел."
+        assert concrete_advice.rows[0].text == "Марс дает энергию."
 
     # Test that mentioning Venus (not in evidence) fails
     invalid_output = mock_output.copy()
-    invalid_output["work"] = "Венера помогает в работе сегодня."
+    invalid_output["work"] = "Венера помогает."
 
     with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
          patch("app.core.config.settings.openrouter_api_key", "abc123xyz"):
@@ -213,7 +209,7 @@ async def test_today_interpretation_service_allowed_evidence_planets():
         with pytest.raises(ValueError):
             # Invalidate 4 keys to trigger ValueError
             for k in ["work", "money", "documents", "relationships"]:
-                invalid_output[k] = "Венера помогает в работе сегодня."
+                invalid_output[k] = "Венера помогает."
             await service.build(
                 target_date=date(2026, 7, 5),
                 day_status="supportive",
@@ -225,3 +221,30 @@ async def test_today_interpretation_service_allowed_evidence_planets():
                 sphere_scores=[],
                 important_items=[],
             )
+
+
+@pytest.mark.asyncio
+async def test_today_interpretation_service_test_key_enables_llm():
+    """A key containing 'test' (e.g. 'test-key') still enables the LLM path."""
+    service = TodayInterpretationService()
+
+    mock_output = {k: "СЕНТИНЕЛ" for k in ["work", "money", "documents", "relationships", "sport", "communication", "health", "decisions", "travel", "creativity", "study", "shopping"]}
+
+    with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
+         patch("app.core.config.settings.openrouter_api_key", "test-key"):
+        mock_llm.return_value = mock_output
+
+        concrete_advice, _, _ = await service.build(
+            target_date=date(2026, 7, 5),
+            day_status="supportive",
+            scoring_result={"day_status": "supportive", "sphere_scores": {}},
+            signals=[],
+            semantic_layer=None,
+            day_chart=None,
+            planet_influences=[],
+            sphere_scores=[],
+            important_items=[],
+        )
+
+        assert mock_llm.called
+        assert concrete_advice.rows[0].text == "СЕНТИНЕЛ"

@@ -145,7 +145,7 @@ describe('TodayScreen', () => {
       },
       daySummary: {
         statusLabel: 'Ровный день',
-        statusLine: 'без взлётов — занимайся рутиной',
+        statusLine: 'Сводка временно недоступна.',
         facts: []
       },
       topFlags: [],
