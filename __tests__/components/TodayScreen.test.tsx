@@ -27,7 +27,6 @@ import type { CalendarLunarFields } from '@/packages/contracts'
 import type { AdaptedTodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today'
 import { DayChart } from '@/components/today/day-chart'
 import { DaySummaryCard } from '@/components/today/day-summary-card'
-import { buildConcreteAdviceRows } from '@/components/today/concrete-day-advice'
 
 // Polyfill PointerEvent for jsdom (Node 20/jsdom lacks it)
 if (typeof PointerEvent === 'undefined') {

@@ -203,6 +203,15 @@ export function buildMockTodayPayload(date: Date): AdaptedTodayPayload {
     date: `${yyyy}-${mm}-${dd}`,
     headline: MOCK_HEADLINE,
     dayStatus: MOCK_DAY_STATUS,
+    daySummary: {
+      statusLabel: "Ровный день",
+      statusLine: "Сводка временно недоступна.",
+      facts: [],
+    },
+    concreteAdvice: {
+      rows: [],
+      counts: { good: 0, caution: 0, avoid: 0, neutral: 0 },
+    },
     topFlags: MOCK_TOP_FLAGS,
     notes: MOCK_NOTES,
     reading: MOCK_READING,

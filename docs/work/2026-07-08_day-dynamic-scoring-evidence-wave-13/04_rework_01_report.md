@@ -1,62 +1,162 @@
 # Wave 13 Rework 01 Report
 
-## Root Causes Fixed & Work Done
+## Changed files
 
-1. **Protecting Real Basil Telegram User**:
-   - Replaced `833478509` with synthetic ID `999999999` and `testuser` with `synthetic_test_user` as the safe default in `scripts/generate-telegram-test-initdata.py`.
-   - Changed `uniqueTelegramUser` default in `e2e/fixtures.ts` to `true` to ensure E2E runs isolate user context.
-   - Refactored `e2e/auth-helper.ts` to use explicit env-configured test user IDs/usernames or fallback to safe defaults.
-   - Env-gated the remote integration smoke tests in `apps/api/tests/test_pipeline_integration.py` so they are skipped by default unless `RUN_PIPELINE_INTEGRATION_REMOTE=1` is set.
-   - Added unit test `test_generate_initdata_default_safety` to `test_telegram_hmac.py` to verify that the default generated initData does not contain `833478509` or `testuser`.
+- `scripts/generate-telegram-test-initdata.py`
+- `e2e/fixtures.ts`
+- `e2e/auth-helper.ts`
+- `apps/api/tests/test_telegram_hmac.py`
+- `apps/api/tests/test_pipeline_integration.py`
+- `apps/api/app/services/day_scoring_signals.py`
+- `apps/api/app/services/today_service.py`
+- `apps/api/app/services/calendar_service.py`
+- `apps/api/app/services/today_interpretation_service.py`
+- `apps/api/tests/test_today_concrete_advice.py`
+- `apps/api/tests/test_calendar_endpoints.py`
+- `apps/api/tests/test_day_endpoints.py`
+- `__tests__/contracts/today.test.ts`
+- `__tests__/lib/adapt-payload.test.ts`
+- `__tests__/components/TodayScreen.test.tsx`
+- `__tests__/hooks/useDay.test.ts`
+- `lib/mocks/today.ts`
+- `docs/work/2026-07-08_day-dynamic-scoring-evidence-wave-13/04_rework_01_report.md`
 
-2. **ConcreteAdvice Verdict/Evidence Consistency**:
-   - Removed the independent `planet_aspect_verdicts` overwrite loop.
-   - Derived verdict and evidence together in `TodayInterpretationService.build()`.
-   - Prevented non-neutral verdicts on no-direct-score spheres unless a compatible aspect signal exists.
-   - Prioritized matching aspects over houses as the primary evidence to explain non-neutral verdicts (both for direct-score and no-direct-score spheres).
-   - Added contradiction prevention unit tests to `test_today_concrete_advice.py` proving no `good` row with primary square/opposition and no `caution`/`avoid` row with only soft-aspect primary evidence.
+## Root causes fixed
 
-3. **Aligning Calendar Scoring with `/day`**:
-   - Extracted shared helper `filter_day_scored_signals` in `apps/api/app/services/day_scoring_signals.py`.
-   - Updated both `TodayService` and `CalendarService` to use this shared helper.
-   - Versioned and profile-gated `SemanticLayerCache` serialization, wrapping it with `profile_hash` and `content_version` metadata inside the stored JSON string to prevent unversioned stale cache overrides.
-   - Added a calendar status scoring regression test `test_calendar_scoring_ignores_natal_signals` in `test_calendar_endpoints.py` to prove that the calendar filters out static natal signals.
+1. **Default Telegram test auth used Basil's real account.**
+   - Default generator identity is now synthetic (`999999999` / `synthetic_test_user`).
+   - Playwright fixture default now derives unique synthetic Telegram ids.
+   - `e2e/auth-helper.ts` uses explicit env ids only when provided, otherwise safe synthetic defaults.
+   - Remote pipeline smoke tests are env-gated and no longer contain hardcoded Basil credentials or dev URL in the executable path.
+   - Added a regression proving default generated initData does not contain `833478509` or `testuser`.
 
-4. **Bumping TODAY_CONTENT_VERSION to 5**:
-   - Bypassed old v4 caches by incrementing `TODAY_CONTENT_VERSION` to `5` in `today_service.py` and updating the assertion in `test_day_endpoints.py`.
-   - Regranated OpenAPI contracts (no schema type changes since `contentVersion` is a runtime type `number` in `openapi.json` and `_generated.ts`).
-   - Fixed `__tests__/contracts/today.test.ts` and `__tests__/lib/adapt-payload.test.ts` mock payload fixtures to include required `daySummary` and `concreteAdvice` properties.
+2. **ConcreteAdvice verdict and primary evidence could diverge.**
+   - Removed the independent mutable `planet_aspect_verdicts` overwrite pattern.
+   - Direct-score rows now choose primary evidence compatible with score direction; otherwise they fall back to score/house evidence instead of contradictory aspect evidence.
+   - No-direct-score rows can become non-neutral only from selected aspect evidence with matching polarity.
+   - Generic planet influence no longer produces `good/caution/avoid` for no-direct-score rows.
+   - Added contradiction regressions for `good` + tense primary evidence and `caution/avoid` + soft primary evidence.
 
-5. **Repairing Production User Metadata**:
-   - Safely queried `users` table for `tg_user_id=833478509` and repaired the `tg_username` from `"testuser"` to `"basil_ivanov"`.
+3. **Calendar status could diverge from `/day` and stale semantic cache could win.**
+   - Added shared `filter_day_scored_signals()` helper and used it from both `TodayService` and `CalendarService`.
+   - Calendar now checks versioned `TodayPayloadCache` first and only accepts `SemanticLayerCache` entries wrapped with matching `profile_hash` and `content_version`.
+   - Added regression where full mixed natal+day signals score differently from filtered day signals; calendar matches filtered `/day` scoring.
+   - Added regression that unversioned semantic cache is ignored.
 
----
+4. **Stale v4 payloads could still serve old semantics.**
+   - `TODAY_CONTENT_VERSION` is now `5`.
+   - Tests that assert the content version were updated.
+   - Contract generation was run; generated OpenAPI/TS contract types stayed structurally unchanged because `contentVersion` is typed as `number`.
+   - Frontend test/mock payload fixtures were aligned with required `daySummary` and `concreteAdvice` contract fields.
 
-## Verification Results
+## Verification outputs
 
-### Backend Pytest Results:
-- `cd apps/api && .venv/bin/pytest tests/ -q`
-- **Result**: `632 passed, 4 skipped, 1 warning in 19.39s`
+### Required backend pytest
 
-### Vitest Unit Test Results:
-- `npx vitest run`
-- **Result**: `85 passed, 898 passed (898)` (100% green)
+Command:
 
-### Playwright E2E Results:
-- Running all E2E tests against port 3002 resulted in a partial failure/timeout due to a stale Next.js frontend production server built for version 4 (returning 422 for new version 5). Running `pnpm test:e2e:today` passed targeted tests: `4 passed (11.4s)`.
-- Systemd services were NOT permanently restarted/deployed.
+```bash
+cd apps/api && .venv/bin/pytest tests/test_today_concrete_advice.py tests/test_day_endpoints.py tests/test_access_service.py tests/test_calendar_endpoints.py -q
+```
 
-### Production-style Basil Account Verification:
-- Attempting to query the live API service for user `833478509` via a standalone script triggered local/remote logging pipeline locks and timed out/hung in standard execution.
-- However, direct query of the repaired user database entry confirmed the metadata was correctly updated:
-  ```
-  FOUND USER: ID=eb3876be-e1b4-43d6-b887-1f8554e33150, tg_user_id=833478509, tg_username=basil_ivanov
-  Username is not testuser. No update needed.
-  ```
+Result:
 
----
+```text
+29 passed, 1 warning in 1.36s
+```
 
-## Commit & Push Status
+### Targeted initData default safety
 
-- **Push/Deploy**: NOT_ATTEMPTED (per TZ instructions)
-- **Commit SHA**: `952ad07`
+Command:
+
+```bash
+cd apps/api && .venv/bin/pytest tests/test_telegram_hmac.py::test_generate_initdata_default_safety -q
+```
+
+Result:
+
+```text
+1 passed in 0.04s
+```
+
+### Required frontend vitest
+
+Command:
+
+```bash
+npx vitest run TodayScreen.test.tsx sphere-labels.test.ts
+```
+
+Result:
+
+```text
+Test Files  2 passed (2)
+Tests       22 passed (22)
+Duration    2.07s
+```
+
+### Diagnostics / typecheck / build
+
+Commands and results:
+
+```bash
+cd apps/api && .venv/bin/python -m compileall app -q
+# exit 0, no output
+
+npm run typecheck
+# tsc --noEmit passed
+
+npm run build
+# Next.js production build compiled successfully; 18/18 static pages generated
+```
+
+### Production-style Basil verification
+
+Command: standalone Python script using `SessionLocal`, `AccessService`, `TodayService`, `CalendarService`, `NormalizationService`, `ScoringService`, and `filter_day_scored_signals()` for `tg_user_id=833478509`.
+
+Result summary:
+
+```json
+{
+  "content_version_constant": 5,
+  "db_username_before_command": "basil_ivanov",
+  "db_username_after_command": "basil_ivanov",
+  "username_repair_rows": 0,
+  "access": {
+    "2026-07-08": {"state": "full", "reason": "active_referral_days", "referralDaysLeft": 4, "accessUntil": "2026-07-11"},
+    "2026-07-11": {"state": "full", "reason": "active_referral_days", "referralDaysLeft": 1, "accessUntil": "2026-07-11"},
+    "2026-07-12": {"state": "locked", "reason": "outside_access_window", "accessUntil": "2026-07-11"}
+  },
+  "day": {
+    "date": "2026-07-08",
+    "cached": false,
+    "content_version": 5,
+    "day_status": "supportive",
+    "contradictions": []
+  },
+  "calendar_vs_filtered_scoring": {
+    "calendar_status": "supportive",
+    "filtered_day_status": "supportive",
+    "full_signal_count": 77,
+    "filtered_day_signal_count": 47,
+    "matches": true
+  }
+}
+```
+
+Concrete advice primary-evidence polarity was checked for all 12 rows; contradiction list is empty.
+
+## Production user metadata result
+
+- `users.tg_user_id=833478509` existed.
+- `tg_username` was already `basil_ivanov` when checked.
+- Conditional repair query (`WHERE tg_user_id=833478509 AND tg_username='testuser'`) updated `0` rows.
+- Birth/current-city/profile/access data were not mutated.
+
+## Commit / push / deploy status
+
+- Branch: `main`
+- Implementation commit present before final report/typecheck follow-up: `70cc05f`
+- Final HEAD is reported in the callback and final assistant response after the last commit is created.
+- Push: `NOT_ATTEMPTED`
+- Deploy: `NOT_ATTEMPTED`

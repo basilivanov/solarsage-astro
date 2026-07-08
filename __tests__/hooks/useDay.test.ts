@@ -92,6 +92,15 @@ describe('useDay', () => {
       subtitle: null,
       headline: 'Test headline',
       dayStatus: 'supportive',
+      daySummary: {
+        statusLabel: 'Поддерживающий день',
+        statusLine: 'Test summary',
+        facts: [],
+      },
+      concreteAdvice: {
+        rows: [],
+        counts: { good: 0, caution: 0, avoid: 0, neutral: 0 },
+      },
       dayQuality: null,
       topFlags: [],
       reading: { paragraphs: [] },
