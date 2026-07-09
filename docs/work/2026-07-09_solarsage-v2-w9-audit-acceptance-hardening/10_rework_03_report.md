@@ -2,7 +2,8 @@
 
 Date: 2026-07-09
 Base reviewed commit: `127d0b1` / request tip before this rework: `172f4df`
-Final rework code/tests commit: `78c33cb`
+Final rework code/tests commit: `9d6e502`
+Evidence docs tip: current main HEAD / callback SHA.
 Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
