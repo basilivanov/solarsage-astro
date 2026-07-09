@@ -454,10 +454,75 @@ describe('adaptTodayPayload', () => {
         canonVersions: {},
       }
     };
-    const api = createBaseApi({ v2: v2Block });
+    const api = createBaseApi({ v2: v2Block as any });
     const { payload } = adaptTodayPayload(api, TODAY);
     expect(payload.v2).toBeTruthy();
     expect(payload.v2?.activationSummary.headline).toBe("Сходимость на Меркурии");
     expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
+  });
+
+  it('proves V2 activation missing optional/defaulted fields is normalized with schema defaults', () => {
+    const v2Block = {
+      activationSummary: {
+        headline: "Сходимость",
+        topActivatedTargets: []
+      },
+      activationEvidence: [
+        {
+          id: "act-1",
+          technique: "transit_to_natal",
+          techniqueFamily: "transit",
+          targetType: "planet" as const,
+          targetKey: "MERCURY",
+          kind: "aspect",
+          strength: 0.8,
+          evidence: "Transit Moon trine natal Mercury",
+          // omitted: active, phase, polarity, debug
+        }
+      ],
+      scoreBreakdown: {},
+      whyToday: [],
+      audit: {
+        available: true,
+        payloadVersion: "today.v2",
+        calculationVersion: "1",
+        scoringVersion: "2",
+        canonVersions: {},
+      }
+    };
+    const api = createBaseApi({ v2: v2Block as any });
+    const { payload } = adaptTodayPayload(api, TODAY);
+    expect(payload.v2).toBeTruthy();
+    const ev = payload.v2?.activationEvidence[0];
+    expect(ev?.active).toBe(true);
+    expect(ev?.phase).toBe("background");
+    expect(ev?.polarity).toBe("neutral");
+    expect(ev?.debug).toEqual({});
+  });
+
+  it('proves malformed V2 missing required backend-owned fields throws a validation error', () => {
+    const v2Block = {
+      activationSummary: {
+        headline: "Сходимость",
+        topActivatedTargets: []
+      },
+      activationEvidence: [
+        {
+          id: "act-1",
+          // missing: technique, techniqueFamily, targetType, targetKey, kind, strength, evidence
+        }
+      ],
+      scoreBreakdown: {},
+      whyToday: [],
+      audit: {
+        available: true,
+        payloadVersion: "today.v2",
+        calculationVersion: "1",
+        scoringVersion: "2",
+        canonVersions: {},
+      }
+    };
+    const api = createBaseApi({ v2: v2Block as any });
+    expect(() => adaptTodayPayload(api, TODAY)).toThrow();
   });
 });
