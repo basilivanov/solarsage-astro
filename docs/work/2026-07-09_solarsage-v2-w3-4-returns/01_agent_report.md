@@ -32,7 +32,7 @@ Test-contract closure: malformed current_location endpoint tests, no-TodayServic
 
 ## Commit
 
-`<commit_sha>`
+`6f5660c`
 
 ## Push Status
 
