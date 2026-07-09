@@ -4,6 +4,37 @@
 #       target context. Loads period sequences from grace/canon/firdar.v1.yml.
 # ############################################################################
 
+# START_MODULE_CONTRACT: M-SIDECAR-FIRDAR
+# purpose: Firdar period calculation. Determines active firdar_major and
+#          firdar_minor lords for a birth+target local date pair using
+#          day/night canon sequences from grace/canon/firdar.v1.yml.
+# owns:
+#   - apps/solarsage/solarsage/services/firdar.py
+# inputs: birth_local (Date), target_local (Date), is_day_birth (bool),
+#         sun_house (int|None), canon (dict|None)
+# outputs: FirdarContext with major/minor lord info, debug payloads
+# dependencies: grace/canon/firdar.v1.yml, yaml, datetime
+# side_effects: Reads firdar.v1.yml canon file on first load if canon=None
+# emitted_logs: none
+# invariants:
+#   - age_years uses actual birthday interval, not calendar year
+#   - Feb 29 births clamp to Feb 28 in non-leap years
+#   - unknown sign/strength keys raise clear errors, no silent fallbacks
+# failure_policy: Raises ValueError on unknown sign, KeyError on missing canon keys
+# END_MODULE_CONTRACT: M-SIDECAR-FIRDAR
+
+# START_MODULE_MAP: M-SIDECAR-FIRDAR
+# public_entrypoints:
+#   - calculate_firdar
+#   - _load_firdar_canon
+# semantic_blocks:
+#   - CANON_LOADING: canon file loading
+#   - DATE_HELPERS: birthday clamping, age decimal calculation
+#   - FIRDAR_CALCULATION: main period/superiod logic
+# owned_tests:
+#   - tests/test_firdar.py
+# END_MODULE_MAP: M-SIDECAR-FIRDAR
+
 from __future__ import annotations
 
 import os
@@ -13,17 +44,44 @@ from typing import Any
 
 import yaml
 
-# ── Canon loading ────────────────────────────────────────────────────────────
+# ── Display names for node-period evidence ───────────────────────────────────
+# target_key remains uppercase; evidence uses readable names.
+
+_DISPLAY_NAMES: dict[str, str] = {
+    "NORTH_NODE_TRUE": "North Node",
+    "SOUTH_NODE": "South Node",
+}
+
+
+def _display_name(key: str) -> str:
+    return _DISPLAY_NAMES.get(key.upper(), key)
+
+
+# START_BLOCK: CANON_LOADING
 
 
 def _resolve_canon_path(relative: str) -> str:
-    """Resolve a path relative to the project root (grace/canon/…)."""
-    here = pathlib.Path(__file__).resolve().parent  # services/
-    root = here.parent.parent.parent.parent  # 4 levels up to project root
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._resolve_canon_path
+    # purpose: Resolve a path relative to the project root (grace/canon/…).
+    # inputs: relative — relative path from project root
+    # returns: absolute path string
+    # side_effects: none
+    # error_behavior: Returns path regardless of existence
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._resolve_canon_path
+    here = pathlib.Path(__file__).resolve().parent
+    root = here.parent.parent.parent.parent
     return os.path.join(root, relative)
 
 
 def _load_firdar_canon() -> dict[str, Any]:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._load_firdar_canon
+    # purpose: Load firdar period sequences from grace/canon/firdar.v1.yml.
+    # inputs: none
+    # returns: dict with cycle_years, minor_divisions, day_sequence,
+    #          night_sequence, node_minor_sequence
+    # side_effects: reads file
+    # error_behavior: Raises ValueError on non-mapping; KeyError on missing keys
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._load_firdar_canon
     path = _resolve_canon_path("grace/canon/firdar.v1.yml")
     with open(path) as f:
         data = yaml.safe_load(f)
@@ -36,36 +94,70 @@ def _load_firdar_canon() -> dict[str, Any]:
     return data
 
 
-# ── Date helpers ─────────────────────────────────────────────────────────────
+# END_BLOCK: CANON_LOADING
+
+# START_BLOCK: DATE_HELPERS
+
+
+def _clamp_birthday(birth_local: Date, year: int) -> Date:
+    """Return birthday in a given year, clamping Feb 29 to Feb 28 in non-leap years."""
+    import calendar
+    if birth_local.month == 2 and birth_local.day == 29 and not calendar.isleap(year):
+        return Date(year, 2, 28)
+    return Date(year, birth_local.month, birth_local.day)
 
 
 def _completed_years(birth_local: Date, target_local: Date) -> int:
-    """Completed full years between two local dates."""
+    """Completed full years between two local dates.
+
+    Uses clamped birthday (Feb 29→Feb 28 in non-leap years) for comparison
+    so that the clamped anniversary is treated as the actual birthday.
+    """
     age = target_local.year - birth_local.year
-    if (target_local.month, target_local.day) < (birth_local.month, birth_local.day):
+    # Compare with clamped birthday for the target year
+    birthday_this_year = _clamp_birthday(birth_local, target_local.year)
+    if target_local < birthday_this_year:
         age -= 1
     return max(0, age)
 
 
-def _days_in_year(year: int) -> int:
-    """Days in a given year (365 or 366 for leap years)."""
-    import calendar
-    return 366 if calendar.isleap(year) else 365
+def _last_birthday(birth_local: Date, target_local: Date) -> Date:
+    """Return the most recent birthday on or before target_local.
+    Clamps Feb 29 to Feb 28 in non-leap years."""
+    candidate = _clamp_birthday(birth_local, target_local.year)
+    if candidate <= target_local:
+        return candidate
+    return _clamp_birthday(birth_local, target_local.year - 1)
+
+
+def _next_birthday(birth_local: Date, last_bday: Date) -> Date:
+    """Return the next birthday after last_bday.
+    For Feb 29 births, returns Feb 28 in non-leap years, Feb 29 in leap years."""
+    return _clamp_birthday(birth_local, last_bday.year + 1)
 
 
 def _age_years_decimal(birth_local: Date, target_local: Date) -> float:
-    """Age in years as a decimal, from local dates."""
+    """Age in years as a decimal, using actual birthday interval denominator.
+
+    Uses the exact interval between last and next birthday as denominator.
+    This ensures age_years == 10.0 precisely on the 10th birthday,
+    and age_years < 10.0 one day before.
+
+    Feb 29 births clamp to Feb 28 in non-leap years for both last/next birthdays.
+    """
     completed = _completed_years(birth_local, target_local)
-    # Elapsed days since last birthday
-    birthday_this_year = Date(target_local.year, birth_local.month, birth_local.day)
-    if birthday_this_year > target_local:
-        birthday_this_year = Date(target_local.year - 1, birth_local.month, birth_local.day)
-    elapsed_days = (target_local - birthday_this_year).days
-    days_in_birth_year = _days_in_year(birthday_this_year.year)
-    return completed + elapsed_days / days_in_birth_year
+    last_bday = _last_birthday(birth_local, target_local)
+    next_bday = _next_birthday(birth_local, last_bday)
+    elapsed_days = (target_local - last_bday).days
+    interval_days = (next_bday - last_bday).days
+    if interval_days <= 0:
+        return float(completed)
+    return completed + elapsed_days / interval_days
 
 
-# ── Firdar calculation ───────────────────────────────────────────────────────
+# END_BLOCK: DATE_HELPERS
+
+# START_BLOCK: FIRDAR_CALCULATION
 
 
 class FirdarContext:
@@ -117,6 +209,18 @@ def calculate_firdar(
     sun_house: int | None,
     canon: dict[str, Any] | None = None,
 ) -> FirdarContext:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.calculate_firdar
+    # purpose: Calculate firdar context for a birth+target local date pair.
+    # inputs:
+    #   birth_local — birth local date
+    #   target_local — target local date
+    #   is_day_birth — True if Sun in houses 7-12 (day chart)
+    #   sun_house — natal Sun house (for debug)
+    #   canon — optional pre-loaded canon dict; loaded from file if None
+    # returns: FirdarContext with major/minor lord, ages, debug payloads
+    # side_effects: loads canon file if canon=None
+    # error_behavior: KeyError on missing canon keys or strength keys
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.calculate_firdar
     """Calculate firdar context for a birth+target local date pair.
 
     Args:
@@ -162,13 +266,9 @@ def calculate_firdar(
             major_end_age = end
             major_years = years
             break
-        # Edge case: exact boundary (age == end of a period)
-        # Boundary rule: at exact boundary, the NEXT period starts
-        # So if cycle_age == end, choose the next period
-        # But we need to handle this for the last period wrapping to first
         cumulative = end
 
-    # If we reached the end, wrap around (shouldn't happen if sequences cover cycle_years)
+    # Fallback for edge cases
     if major_lord is None:
         major_lord = sequence[0]["lord"]
         major_start_age = 0.0
@@ -176,16 +276,13 @@ def calculate_firdar(
         major_years = major_end_age
 
     # Minor subperiod
-    # Determine minor sequence base
     if major_lord in ("NORTH_NODE_TRUE", "SOUTH_NODE"):
         minor_seq = list(canon["node_minor_sequence"])
     else:
-        # Build the 7-planet sequence from the day/night sequence (filtering node entries)
         all_planets: list[str] = []
         for entry in sequence:
             if entry["lord"] not in ("NORTH_NODE_TRUE", "SOUTH_NODE"):
                 all_planets.append(entry["lord"])
-        # Rotate so major lord is first
         try:
             idx = all_planets.index(major_lord)
         except ValueError:
@@ -195,7 +292,6 @@ def calculate_firdar(
     minor_division_years = major_years / minor_divisions
     minor_offset = cycle_age - major_start_age
     minor_index = int(minor_offset // minor_division_years)
-    # Clamp to valid range
     minor_index = min(max(minor_index, 0), len(minor_seq) - 1)
 
     minor_lord = minor_seq[minor_index]
@@ -220,3 +316,6 @@ def calculate_firdar(
         cycle_years=cycle_years,
         schema_version=canon.get("schema_version", "firdar.v1"),
     )
+
+
+# END_BLOCK: FIRDAR_CALCULATION
