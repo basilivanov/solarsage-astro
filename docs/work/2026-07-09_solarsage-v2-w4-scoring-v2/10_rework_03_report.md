@@ -36,7 +36,7 @@ After bootstrap, the script runs normally under the API venv.
 
 ## Commit
 
-`<commit_sha>`
+`97d7e14`
 
 ## Push Status
 
