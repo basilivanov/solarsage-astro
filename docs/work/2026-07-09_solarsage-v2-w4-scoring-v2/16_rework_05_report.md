@@ -31,7 +31,7 @@ Fixed P1 audit bootstrap: venv interpreter path is no longer `.resolve()`d, pres
 
 ## Commit
 
-`<commit_sha>`
+`2b52dac`
 
 ## Push Status
 
