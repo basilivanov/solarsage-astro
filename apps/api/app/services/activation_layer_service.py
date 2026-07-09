@@ -101,6 +101,9 @@ class ActivationLayerService:
         by_angle: dict[str, list[str]] = {}
 
         for signal in scored:
+            # Explicit Transit_ guard: only process transit signals, not natal/static
+            if not (signal.planet or "").startswith("Transit_"):
+                continue
             if signal.type == "aspect" and signal.target_planet:
                 act = self._build_transit_aspect(signal)
                 activations.append(act)

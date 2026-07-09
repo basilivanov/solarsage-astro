@@ -5,26 +5,12 @@
 # ############################################################################
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from ..schemas.activation import ActivationLayer
 from ..services.activation_builder import build_activation_layer
 
 router = APIRouter(prefix="/v1", tags=["activation_layer"])
-
-
-class ActivationLayerRequest:
-    """Request shape for /v1/activation-layer."""
-
-
-class BirthInfo:
-    """Birth information for activation calculation."""
-
-
-class TargetInfo:
-    """Target date/time/timezone for activation calculation."""
-
-
-from pydantic import BaseModel, Field
 
 
 class BirthRequest(BaseModel):
@@ -62,7 +48,7 @@ class ActivationLayerResponse(BaseModel):
 @router.post("/activation-layer", response_model=ActivationLayerResponse)
 async def post_activation_layer(request: ActivationLayerRequest) -> ActivationLayerResponse:
     """Calculate activation layer for a given birth chart and target date.
-    
+
     W2: contract-only. Returns empty activation layer with a warning.
     """
     try:

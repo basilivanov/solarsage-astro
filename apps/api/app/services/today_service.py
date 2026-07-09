@@ -270,7 +270,7 @@ class TodayService:
             all_signals=signals,
             day_scored_signals=day_signals,
             natal_background_signals=natal_background_signals,
-            activation_layer=None,
+            activation_layer=activation_layer,
         )
 
         # W-4.3: Cache semantic layer

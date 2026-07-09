@@ -163,3 +163,21 @@ def test_activation_layer_service_no_natal_background_contamination():
     # Transit Mars in house 12 must appear
     mars_house = [a for a in layer.activations if a.source_planet == "MARS" and a.kind == "planet_in_house"]
     assert len(mars_house) >= 1
+
+
+def test_activation_layer_service_rejects_non_transit_signals():
+    """Non-transit (natal) signals must not produce activations even if passed to build()."""
+    non_transit = [
+        AstroSignal(type="aspect", planet="Sun", target_planet="Moon",
+                     aspect_type="square", orb=1.0, strength=0.8),
+        AstroSignal(type="planet_in_house", planet="Venus", house=5, strength=1.0),
+    ]
+    service = ActivationLayerService()
+    layer = service.build(
+        natal_context={}, transits={}, day_signals=non_transit,
+        target_date=date(2026, 7, 8), target_time="12:00",
+        target_tz="Europe/Moscow", house_system="WHOLE_SIGN",
+    )
+    assert len(layer.activations) == 0, "Non-transit signals must not produce activations"
+    assert layer.by_planet == {}
+    assert layer.by_house == {}

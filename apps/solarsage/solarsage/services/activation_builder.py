@@ -22,7 +22,7 @@ def build_activation_layer(
     house_system: str,
 ) -> ActivationLayer:
     """Build activation layer for a given birth + target context.
-    
+
     W2: contract-only. Returns an empty activation layer with a warning
     that no techniques have been built yet. W3+ will implement the actual
     transit-based activation extraction with Swiss Ephemeris.

@@ -1,5 +1,6 @@
 """Tests for TodayMeta versioning fields — W1 versioning skeleton."""
 
+import pytest
 from app.schemas.today import TodayMeta
 
 
@@ -56,3 +57,36 @@ def test_today_meta_includes_all_canon_versions():
         assert key in versions
     assert versions["spheres"] == "v1"
     assert len(versions) >= 5
+
+
+def test_activation_layer_version_is_al_1_0_in_live_payload():
+    """Schema-level check: ActivationLayerMeta defaults to al-1.0."""
+    from app.schemas.activation import ActivationLayer
+    from app.services.activation_layer_service import ActivationLayerService
+    from datetime import date
+    service = ActivationLayerService()
+    layer = service.build(
+        natal_context={}, transits={}, day_signals=[],
+        target_date=date(2026, 7, 8), target_time="12:00",
+        target_tz="Europe/Moscow", house_system="WHOLE_SIGN",
+    )
+    assert layer.activation_layer_version == "al-1.0"
+
+
+def test_activation_layer_passed_to_semantic_context():
+    """SemanticService.build_why_contexts must receive the real activation_layer."""
+    import sys
+    from pathlib import Path
+    _root = Path(__file__).resolve().parents[3]
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+    from scripts.audit_today import resolve_audit_output_dirs
+
+    # Check that the activation_layer parameter is passed through in today_service.py
+    from app.services.today_service import TodayService
+    import inspect
+    source = inspect.getsource(TodayService.get_today_payload)
+    # The build_why_contexts call must reference activation_layer, not None
+    assert "activation_layer=activation_layer" in source, (
+        "build_why_contexts must receive the real activation_layer object"
+    )
