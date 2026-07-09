@@ -39,3 +39,13 @@ def test_health_shape_is_exact() -> None:
     """Contract: exactly three keys. Adding fields silently is forbidden."""
     response = client.get("/api/health")
     assert set(response.json().keys()) == {"status", "version", "git_sha"}
+
+
+def test_canon_validation_runs_at_startup() -> None:
+    """Canon validation is wired into the API startup/import path.
+    The import of app.main above triggered validate_canon_bundle().
+    If a canon file were missing, the app import would fail."""
+    from app.services.canon_service import CANON_VERSIONS
+    assert "spheres" in CANON_VERSIONS
+    assert "activation_rules" in CANON_VERSIONS
+    assert "scoring_v2" in CANON_VERSIONS

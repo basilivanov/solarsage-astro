@@ -46,3 +46,13 @@ def test_today_meta_v2_string_versions():
     assert meta.activation_layer_version == "al-1.0"
     assert meta.canon_versions == {"spheres": "v1", "aspect_rules": "v1"}
     assert meta.audit_trace_id == "trace-abc-123"
+
+
+def test_today_meta_includes_all_canon_versions():
+    """Runtime TodayMeta should carry all expected canon version keys."""
+    from app.services.canon_service import get_canon_versions
+    versions = get_canon_versions()
+    for key in ("spheres", "dignities", "aspect_rules", "activation_rules", "scoring_v2"):
+        assert key in versions
+    assert versions["spheres"] == "v1"
+    assert len(versions) >= 5

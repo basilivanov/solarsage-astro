@@ -60,6 +60,7 @@ from .natal import (
 from .today import (
     ContentAccessReason,
     ContentAccessState,
+    ConvergenceEvidence,
     DayQuality,
     DayStatus,
     MicrocopyItem,
@@ -120,6 +121,7 @@ __all__ = [
     # today
     "ContentAccessReason",
     "ContentAccessState",
+    "ConvergenceEvidence",
     "DayQuality",
     "DayStatus",
     "MicrocopyItem",

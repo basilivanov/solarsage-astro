@@ -186,4 +186,3 @@ curl -X POST http://127.0.0.1:18765/trigger \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Wave W1 Rework 01 ready for architect review. Report: docs/work/2026-07-09_solarsage-v2-w1-contracts-canon/04_rework_01_report.md. Review: docs/work/2026-07-09_solarsage-v2-w1-contracts-canon/02_arch_review.md. Rework TZ: docs/work/2026-07-09_solarsage-v2-w1-contracts-canon/03_rework_01_TZ.md. Branch: main. Commit: <commit_sha>. Push: NOT_ATTEMPTED"}'
 ```
-

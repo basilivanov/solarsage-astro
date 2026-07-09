@@ -61,7 +61,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 def validate_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, Any]]:
     """Load and validate all canon files. Raise CanonValidationError on failure.
-    
+
     Returns dict mapping filename stem to loaded data, e.g. {"spheres": {...}}.
     """
     cd = canon_dir or CANON_DIR

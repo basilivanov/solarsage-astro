@@ -50,3 +50,29 @@ def test_sidecar_activation_evidence_rejects_out_of_range_strength(bad_strength)
             evidence="test",
             strength=bad_strength,
         )
+
+
+def test_sidecar_activation_layer_rejects_missing_index_reference():
+    ev = ActivationEvidence(
+        id="act-001",
+        technique="transit_to_natal",
+        technique_family="transit",
+        target_type="planet",
+        target_key="Moon",
+        kind="aspect",
+        strength=0.5,
+        evidence="test",
+    )
+    with pytest.raises(ValidationError, match="missing-id"):
+        ActivationLayer(
+            calculation_version="1",
+            target_date="2026-07-08",
+            target_time="12:00",
+            target_tz="Europe/Moscow",
+            house_system="WHOLE_SIGN",
+            activations=[ev],
+            by_planet={"Moon": ["missing-id"]},
+            by_house={},
+            by_lot={},
+            by_angle={},
+        )

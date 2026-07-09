@@ -213,7 +213,7 @@ class SphereScore(CamelModel):
 # purpose: Convergence evidence — доказательство, что несколько техник указывают
 #          на одну планету/дом/сферу. Показывает силу активации через количество
 #          независимых техник.
-class ActivationEvidence(CamelModel):
+class ConvergenceEvidence(CamelModel):
     """Convergence: несколько техник указывают на одну планету/дом/сферу"""
 
     theme: str  # "thinking_speech_learning" или "MERCURY" или "house_3"
@@ -415,7 +415,7 @@ class TodayPayload(CamelModel):
     sphere_scores: list[SphereScore] | None = None
 
     # W-4.0: convergence evidence
-    activation_evidence: list[ActivationEvidence] | None = None
+    activation_evidence: list[ConvergenceEvidence] | None = None
 
     # W-4.0: manifestation zones
     manifestation_zones: list[ManifestationZone] | None = None

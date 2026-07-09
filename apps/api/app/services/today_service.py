@@ -84,6 +84,7 @@ from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
 from app.services.natal_context_service import NatalContextService
+from app.services.canon_service import get_canon_versions
 from app.core.logging import log_event, log_block
 
 
@@ -350,6 +351,7 @@ class TodayService:
                 content_version=TODAY_CONTENT_VERSION,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
+                canon_versions=get_canon_versions(),
             ),
             date=target_date.isoformat(),
             title="Сегодня",
@@ -664,6 +666,7 @@ class TodayService:
                 content_version=TODAY_CONTENT_VERSION,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,
+                canon_versions=get_canon_versions(),
             ),
             date=target_date.isoformat(),
             title="Сегодня",

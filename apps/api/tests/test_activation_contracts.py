@@ -117,3 +117,31 @@ def test_activation_layer_with_activations():
     assert len(layer.activations) == 1
     assert layer.by_planet["Moon"] == ["act-001"]
     assert layer.by_house == {}
+
+def test_activation_layer_rejects_missing_index_reference():
+    """ActivationLayer must reject by_planet/ by_house/ by_lot/ by_angle ids
+    that are not present in activations."""
+    from pydantic import ValidationError
+    ev = ActivationEvidence(
+        id="act-001",
+        technique="transit_to_natal",
+        technique_family="transit",
+        target_type="planet",
+        target_key="Moon",
+        kind="aspect",
+        strength=0.87,
+        evidence="test",
+    )
+    with pytest.raises(ValidationError, match="missing-id"):
+        ActivationLayer(
+            calculation_version="1",
+            target_date="2026-07-08",
+            target_time="12:00",
+            target_tz="Europe/Moscow",
+            house_system="WHOLE_SIGN",
+            activations=[ev],
+            by_planet={"Moon": ["missing-id"]},
+            by_house={},
+            by_lot={},
+            by_angle={},
+        )

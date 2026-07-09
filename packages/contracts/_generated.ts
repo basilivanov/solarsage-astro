@@ -25,6 +25,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/activationlayer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Activationlayer */
+        get: operations["contracts__activationlayer___contracts___activationlayer_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/autherror": {
         parameters: {
             query?: never;
@@ -136,6 +153,23 @@ export interface paths {
         };
         /** Contracts  Checkinresponse */
         get: operations["contracts__checkinresponse___contracts___checkinresponse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/convergenceevidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Convergenceevidence */
+        get: operations["contracts__convergenceevidence___contracts___convergenceevidence_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -280,6 +314,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/scoringv2result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Scoringv2Result */
+        get: operations["contracts__scoringv2result___contracts___scoringv2result_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/telegramauthrequest": {
         parameters: {
             query?: never;
@@ -353,20 +404,119 @@ export interface components {
         };
         /**
          * ActivationEvidence
-         * @description Convergence: несколько техник указывают на одну планету/дом/сферу
+         * @description Single activation evidence entry for a transit/technique interaction.
          */
         ActivationEvidence: {
             /**
-             * Convergencelevel
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Angle */
+            angle?: string | null;
+            /** Applying */
+            applying?: boolean | null;
+            /** Aspect */
+            aspect?: string | null;
+            /** Debug */
+            debug?: {
+                [key: string]: unknown;
+            };
+            /** Evidence */
+            evidence: string;
+            /** Exactat */
+            exactAt?: string | null;
+            /** House */
+            house?: number | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Lot */
+            lot?: string | null;
+            /** Orb */
+            orb?: number | null;
+            /**
+             * Phase
+             * @default background
              * @enum {string}
              */
-            convergenceLevel: "double" | "triple" | "quad" | "peak";
-            /** Summary */
-            summary: string;
-            /** Techniques */
-            techniques: string[];
-            /** Theme */
-            theme: string;
+            phase: "applying" | "exact" | "separating" | "background" | "period";
+            /**
+             * Polarity
+             * @default neutral
+             * @enum {string}
+             */
+            polarity: "supportive" | "tense" | "mixed" | "neutral";
+            /** Sourceframe */
+            sourceFrame?: string | null;
+            /** Sourceplanet */
+            sourcePlanet?: string | null;
+            /** Strength */
+            strength: number;
+            /** Targetframe */
+            targetFrame?: string | null;
+            /** Targetkey */
+            targetKey: string;
+            /** Targetplanet */
+            targetPlanet?: string | null;
+            /**
+             * Targettype
+             * @enum {string}
+             */
+            targetType: "planet" | "house" | "lot" | "angle" | "sphere";
+            /** Technique */
+            technique: string;
+            /** Techniquefamily */
+            techniqueFamily: string;
+            /** Weighthint */
+            weightHint?: number | null;
+        };
+        /**
+         * ActivationLayer
+         * @description Full activation layer output for a given target date.
+         */
+        ActivationLayer: {
+            /**
+             * Activationlayerversion
+             * @default al-1.0
+             */
+            activationLayerVersion: string;
+            /** Activations */
+            activations: components["schemas"]["ActivationEvidence"][];
+            /** Byangle */
+            byAngle: {
+                [key: string]: string[];
+            };
+            /** Byhouse */
+            byHouse: {
+                [key: string]: string[];
+            };
+            /** Bylot */
+            byLot: {
+                [key: string]: string[];
+            };
+            /** Byplanet */
+            byPlanet: {
+                [key: string]: string[];
+            };
+            /** Calculationversion */
+            calculationVersion: string;
+            /** Housesystem */
+            houseSystem: string;
+            /**
+             * Schemaversion
+             * @default activation-layer.v1
+             */
+            schemaVersion: string;
+            /** Targetdate */
+            targetDate: string;
+            /** Targettime */
+            targetTime: string;
+            /** Targettz */
+            targetTz: string;
+            /** Warnings */
+            warnings?: string[];
         };
         /** AllowedRange */
         AllowedRange: {
@@ -876,6 +1026,23 @@ export interface components {
             /** Subscriptionactive */
             subscriptionActive?: boolean | null;
         };
+        /**
+         * ConvergenceEvidence
+         * @description Convergence: несколько техник указывают на одну планету/дом/сферу
+         */
+        ConvergenceEvidence: {
+            /**
+             * Convergencelevel
+             * @enum {string}
+             */
+            convergenceLevel: "double" | "triple" | "quad" | "peak";
+            /** Summary */
+            summary: string;
+            /** Techniques */
+            techniques: string[];
+            /** Theme */
+            theme: string;
+        };
         /** DayChart */
         DayChart: {
             /** Aspects */
@@ -1320,6 +1487,64 @@ export interface components {
             /** Paragraphs */
             paragraphs: string[];
         };
+        /**
+         * ScoringV2Result
+         * @description Full V2 scoring result. Contract-only until W4.
+         */
+        ScoringV2Result: {
+            /** Canonversions */
+            canonVersions: {
+                [key: string]: string;
+            };
+            /** Daystatus */
+            dayStatus: string;
+            /** Debug */
+            debug?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Scoringversion
+             * @default ss-scoring-2.0
+             */
+            scoringVersion: string;
+            /** Spherescores */
+            sphereScores: {
+                [key: string]: components["schemas"]["SphereScoreV2"];
+            };
+            /** Statusbreakdown */
+            statusBreakdown: {
+                [key: string]: unknown;
+            };
+            /** Topactivations */
+            topActivations: components["schemas"]["ActivationEvidence"][];
+            /** Topsignals */
+            topSignals: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * SphereContribution
+         * @description One contribution line in a sphere score breakdown.
+         */
+        SphereContribution: {
+            /** After */
+            after?: number | null;
+            /** Amount */
+            amount: number;
+            /** Before */
+            before?: number | null;
+            /** Evidence */
+            evidence: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "base_signal" | "activation" | "convergence" | "cap";
+            /** Sourceid */
+            sourceId: string;
+            /** Sphere */
+            sphere: string;
+        };
         /** SphereScore */
         SphereScore: {
             /** Key */
@@ -1328,6 +1553,35 @@ export interface components {
             rank: number;
             /** Score */
             score: number;
+        };
+        /**
+         * SphereScoreV2
+         * @description Per-sphere score with full V2 breakdown.
+         */
+        SphereScoreV2: {
+            /** Activationscore */
+            activationScore: number;
+            /** Basescore */
+            baseScore: number;
+            /** Contributions */
+            contributions: components["schemas"]["SphereContribution"][];
+            /** Convergencebonus */
+            convergenceBonus: number;
+            /**
+             * Dominancecapped
+             * @default false
+             */
+            dominanceCapped: boolean;
+            /** Finalscore */
+            finalScore: number;
+            /** Key */
+            key: string;
+            /** Normalizedscore */
+            normalizedScore?: number | null;
+            /** Rawscore */
+            rawScore: number;
+            /** Title */
+            title: string;
         };
         /**
          * TelegramAuthRequest
@@ -1450,14 +1704,20 @@ export interface components {
         /** TodayMeta */
         TodayMeta: {
             /** Activationlayerversion */
-            activationLayerVersion?: number | null;
+            activationLayerVersion?: number | string | null;
+            /** Audittraceid */
+            auditTraceId?: string | null;
             /**
              * Cached
              * @default false
              */
             cached: boolean;
             /** Calculationversion */
-            calculationVersion: number;
+            calculationVersion: number | string;
+            /** Canonversions */
+            canonVersions?: {
+                [key: string]: string;
+            } | null;
             /** Contentversion */
             contentVersion: number;
             /** Contractversion */
@@ -1476,7 +1736,7 @@ export interface components {
             /** Scoringcanonversion */
             scoringCanonVersion?: number | null;
             /** Scoringversion */
-            scoringVersion: number;
+            scoringVersion: number | string;
         };
         /** TodayPayload */
         TodayPayload: {
@@ -1484,7 +1744,7 @@ export interface components {
             /** Actions */
             actions?: components["schemas"]["TodayAction"][] | null;
             /** Activationevidence */
-            activationEvidence?: components["schemas"]["ActivationEvidence"][] | null;
+            activationEvidence?: components["schemas"]["ConvergenceEvidence"][] | null;
             concreteAdvice: components["schemas"]["ConcreteAdviceBlock"];
             /** Date */
             date: string;
@@ -1677,6 +1937,26 @@ export interface operations {
             };
         };
     };
+    contracts__activationlayer___contracts___activationlayer_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivationLayer"];
+                };
+            };
+        };
+    };
     contracts__autherror___contracts___autherror_get: {
         parameters: {
             query?: never;
@@ -1813,6 +2093,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckinResponse"];
+                };
+            };
+        };
+    };
+    contracts__convergenceevidence___contracts___convergenceevidence_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvergenceEvidence"];
                 };
             };
         };
@@ -1973,6 +2273,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileWrite"];
+                };
+            };
+        };
+    };
+    contracts__scoringv2result___contracts___scoringv2result_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoringV2Result"];
                 };
             };
         };

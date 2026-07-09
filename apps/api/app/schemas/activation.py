@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from ._base import CamelModel
 
@@ -62,3 +62,24 @@ class ActivationLayer(CamelModel):
     by_lot: dict[str, list[str]]
     by_angle: dict[str, list[str]]
     warnings: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_index_references(self) -> "ActivationLayer":
+        valid_ids = {ev.id for ev in self.activations}
+        index_maps = [
+            ("by_planet", self.by_planet),
+            ("by_house", self.by_house),
+            ("by_lot", self.by_lot),
+            ("by_angle", self.by_angle),
+        ]
+        for map_name, index_map in index_maps:
+            if not index_map:
+                continue
+            for key, refs in index_map.items():
+                for ref_id in refs:
+                    if ref_id not in valid_ids:
+                        raise ValueError(
+                            f"{map_name}[{key}] references '{ref_id}' "
+                            f"which is not present in activations"
+                        )
+        return self

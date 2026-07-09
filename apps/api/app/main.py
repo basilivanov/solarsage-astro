@@ -56,6 +56,10 @@ from app.api import _log, access, auth, calendar, chat, checkin, day, debug, geo
 from app.core.config import settings
 from app.middleware.correlation import CorrelationMiddleware
 
+# W1: Validate canon bundle at startup — missing/invalid canon must fail fast in dev/test
+from app.services.canon_service import validate_canon_bundle
+validate_canon_bundle()
+
 # START_BLOCK: APP_CONSTRUCTION
 app = FastAPI(title="Astro API", version=settings.app_version)
 # END_BLOCK: APP_CONSTRUCTION

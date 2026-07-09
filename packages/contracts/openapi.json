@@ -55,41 +55,330 @@
       },
       "ActivationEvidence": {
         "additionalProperties": false,
-        "description": "Convergence: несколько техник указывают на одну планету/дом/сферу",
+        "description": "Single activation evidence entry for a transit/technique interaction.",
         "properties": {
-          "convergenceLevel": {
-            "enum": [
-              "double",
-              "triple",
-              "quad",
-              "peak"
+          "active": {
+            "default": true,
+            "title": "Active",
+            "type": "boolean"
+          },
+          "angle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Convergencelevel",
+            "title": "Angle"
+          },
+          "applying": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applying"
+          },
+          "aspect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspect"
+          },
+          "debug": {
+            "additionalProperties": true,
+            "title": "Debug",
+            "type": "object"
+          },
+          "evidence": {
+            "title": "Evidence",
             "type": "string"
           },
-          "summary": {
-            "title": "Summary",
+          "exactAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exactat"
+          },
+          "house": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House"
+          },
+          "id": {
+            "title": "Id",
             "type": "string"
           },
-          "techniques": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Techniques",
-            "type": "array"
-          },
-          "theme": {
-            "title": "Theme",
+          "kind": {
+            "title": "Kind",
             "type": "string"
+          },
+          "lot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lot"
+          },
+          "orb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orb"
+          },
+          "phase": {
+            "default": "background",
+            "enum": [
+              "applying",
+              "exact",
+              "separating",
+              "background",
+              "period"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "polarity": {
+            "default": "neutral",
+            "enum": [
+              "supportive",
+              "tense",
+              "mixed",
+              "neutral"
+            ],
+            "title": "Polarity",
+            "type": "string"
+          },
+          "sourceFrame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceframe"
+          },
+          "sourcePlanet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceplanet"
+          },
+          "strength": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Strength",
+            "type": "number"
+          },
+          "targetFrame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetframe"
+          },
+          "targetKey": {
+            "title": "Targetkey",
+            "type": "string"
+          },
+          "targetPlanet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetplanet"
+          },
+          "targetType": {
+            "enum": [
+              "planet",
+              "house",
+              "lot",
+              "angle",
+              "sphere"
+            ],
+            "title": "Targettype",
+            "type": "string"
+          },
+          "technique": {
+            "title": "Technique",
+            "type": "string"
+          },
+          "techniqueFamily": {
+            "title": "Techniquefamily",
+            "type": "string"
+          },
+          "weightHint": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weighthint"
           }
         },
         "required": [
-          "theme",
-          "convergenceLevel",
-          "techniques",
-          "summary"
+          "id",
+          "technique",
+          "techniqueFamily",
+          "targetType",
+          "targetKey",
+          "kind",
+          "strength",
+          "evidence"
         ],
         "title": "ActivationEvidence",
+        "type": "object"
+      },
+      "ActivationLayer": {
+        "additionalProperties": false,
+        "description": "Full activation layer output for a given target date.",
+        "properties": {
+          "activationLayerVersion": {
+            "default": "al-1.0",
+            "title": "Activationlayerversion",
+            "type": "string"
+          },
+          "activations": {
+            "items": {
+              "$ref": "#/components/schemas/ActivationEvidence"
+            },
+            "title": "Activations",
+            "type": "array"
+          },
+          "byAngle": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Byangle",
+            "type": "object"
+          },
+          "byHouse": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Byhouse",
+            "type": "object"
+          },
+          "byLot": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Bylot",
+            "type": "object"
+          },
+          "byPlanet": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Byplanet",
+            "type": "object"
+          },
+          "calculationVersion": {
+            "title": "Calculationversion",
+            "type": "string"
+          },
+          "houseSystem": {
+            "title": "Housesystem",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "default": "activation-layer.v1",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "targetDate": {
+            "title": "Targetdate",
+            "type": "string"
+          },
+          "targetTime": {
+            "title": "Targettime",
+            "type": "string"
+          },
+          "targetTz": {
+            "title": "Targettz",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "calculationVersion",
+          "targetDate",
+          "targetTime",
+          "targetTz",
+          "houseSystem",
+          "activations",
+          "byPlanet",
+          "byHouse",
+          "byLot",
+          "byAngle"
+        ],
+        "title": "ActivationLayer",
         "type": "object"
       },
       "AllowedRange": {
@@ -1077,6 +1366,45 @@
           "state"
         ],
         "title": "ContentAccessState",
+        "type": "object"
+      },
+      "ConvergenceEvidence": {
+        "additionalProperties": false,
+        "description": "Convergence: несколько техник указывают на одну планету/дом/сферу",
+        "properties": {
+          "convergenceLevel": {
+            "enum": [
+              "double",
+              "triple",
+              "quad",
+              "peak"
+            ],
+            "title": "Convergencelevel",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "techniques": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Techniques",
+            "type": "array"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme",
+          "convergenceLevel",
+          "techniques",
+          "summary"
+        ],
+        "title": "ConvergenceEvidence",
         "type": "object"
       },
       "DayChart": {
@@ -2677,6 +3005,133 @@
         "title": "ReadingBody",
         "type": "object"
       },
+      "ScoringV2Result": {
+        "additionalProperties": false,
+        "description": "Full V2 scoring result. Contract-only until W4.",
+        "properties": {
+          "canonVersions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Canonversions",
+            "type": "object"
+          },
+          "dayStatus": {
+            "title": "Daystatus",
+            "type": "string"
+          },
+          "debug": {
+            "additionalProperties": true,
+            "title": "Debug",
+            "type": "object"
+          },
+          "scoringVersion": {
+            "default": "ss-scoring-2.0",
+            "title": "Scoringversion",
+            "type": "string"
+          },
+          "sphereScores": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SphereScoreV2"
+            },
+            "title": "Spherescores",
+            "type": "object"
+          },
+          "statusBreakdown": {
+            "additionalProperties": true,
+            "title": "Statusbreakdown",
+            "type": "object"
+          },
+          "topActivations": {
+            "items": {
+              "$ref": "#/components/schemas/ActivationEvidence"
+            },
+            "title": "Topactivations",
+            "type": "array"
+          },
+          "topSignals": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Topsignals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "canonVersions",
+          "dayStatus",
+          "statusBreakdown",
+          "sphereScores",
+          "topSignals",
+          "topActivations"
+        ],
+        "title": "ScoringV2Result",
+        "type": "object"
+      },
+      "SphereContribution": {
+        "additionalProperties": false,
+        "description": "One contribution line in a sphere score breakdown.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "evidence": {
+            "title": "Evidence",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "base_signal",
+              "activation",
+              "convergence",
+              "cap"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "sourceId": {
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "sphere": {
+            "title": "Sphere",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sphere",
+          "source",
+          "sourceId",
+          "amount",
+          "evidence"
+        ],
+        "title": "SphereContribution",
+        "type": "object"
+      },
       "SphereScore": {
         "additionalProperties": false,
         "properties": {
@@ -2699,6 +3154,75 @@
           "rank"
         ],
         "title": "SphereScore",
+        "type": "object"
+      },
+      "SphereScoreV2": {
+        "additionalProperties": false,
+        "description": "Per-sphere score with full V2 breakdown.",
+        "properties": {
+          "activationScore": {
+            "title": "Activationscore",
+            "type": "number"
+          },
+          "baseScore": {
+            "title": "Basescore",
+            "type": "number"
+          },
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/SphereContribution"
+            },
+            "title": "Contributions",
+            "type": "array"
+          },
+          "convergenceBonus": {
+            "title": "Convergencebonus",
+            "type": "number"
+          },
+          "dominanceCapped": {
+            "default": false,
+            "title": "Dominancecapped",
+            "type": "boolean"
+          },
+          "finalScore": {
+            "title": "Finalscore",
+            "type": "number"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "normalizedScore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalizedscore"
+          },
+          "rawScore": {
+            "title": "Rawscore",
+            "type": "number"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "baseScore",
+          "activationScore",
+          "convergenceBonus",
+          "rawScore",
+          "finalScore",
+          "contributions"
+        ],
+        "title": "SphereScoreV2",
         "type": "object"
       },
       "TelegramAuthRequest": {
@@ -3007,10 +3531,24 @@
                 "type": "integer"
               },
               {
+                "type": "string"
+              },
+              {
                 "type": "null"
               }
             ],
             "title": "Activationlayerversion"
+          },
+          "auditTraceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audittraceid"
           },
           "cached": {
             "default": false,
@@ -3018,8 +3556,29 @@
             "type": "boolean"
           },
           "calculationVersion": {
-            "title": "Calculationversion",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Calculationversion"
+          },
+          "canonVersions": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonversions"
           },
           "contentVersion": {
             "title": "Contentversion",
@@ -3058,8 +3617,15 @@
             "title": "Scoringcanonversion"
           },
           "scoringVersion": {
-            "title": "Scoringversion",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Scoringversion"
           }
         },
         "required": [
@@ -3099,7 +3665,7 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/components/schemas/ActivationEvidence"
+                  "$ref": "#/components/schemas/ConvergenceEvidence"
                 },
                 "type": "array"
               },
@@ -4235,6 +4801,27 @@
         ]
       }
     },
+    "/__contracts__/activationlayer": {
+      "get": {
+        "operationId": "contracts__activationlayer___contracts___activationlayer_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivationLayer"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Activationlayer",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
     "/__contracts__/autherror": {
       "get": {
         "operationId": "contracts__autherror___contracts___autherror_get",
@@ -4377,6 +4964,27 @@
           }
         },
         "summary": "Contracts  Checkinresponse",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/convergenceevidence": {
+      "get": {
+        "operationId": "contracts__convergenceevidence___contracts___convergenceevidence_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConvergenceEvidence"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Convergenceevidence",
         "tags": [
           "__contracts__"
         ]
@@ -4545,6 +5153,27 @@
           }
         },
         "summary": "Contracts  Profilewrite",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/scoringv2result": {
+      "get": {
+        "operationId": "contracts__scoringv2result___contracts___scoringv2result_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoringV2Result"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Scoringv2Result",
         "tags": [
           "__contracts__"
         ]

@@ -63,6 +63,7 @@ from app.schemas._base import CamelModel  # noqa: E402
 # directly (the literal is interpreted as a default value).
 _TOP_LEVEL_NAMES: tuple[str, ...] = (
     "AccessSummary",
+    "ActivationLayer",
     "AuthError",
     "AuthSession",
     "BirthData",
@@ -70,6 +71,7 @@ _TOP_LEVEL_NAMES: tuple[str, ...] = (
     "CheckinCreate",
     "CheckinMetrics",
     "CheckinResponse",
+    "ConvergenceEvidence",
     "HoraryAnswerRead",
     "HoraryQuestionCreate",
     "HoraryQuestionRead",
@@ -78,6 +80,7 @@ _TOP_LEVEL_NAMES: tuple[str, ...] = (
     "NatalPayload",
     "ProfileRead",
     "ProfileWrite",
+    "ScoringV2Result",
     "TelegramAuthRequest",
     "TodayPayload",
     "YesterdayCheckinResponse",
