@@ -19,6 +19,17 @@ from app.services.scoring_service import ScoringService
 from app.services.scoring_v2_service import ScoringV2Service
 
 
+def should_compute_v2() -> bool:
+    """Return True if V2 computation may be needed (dual-run or enabled)."""
+    return settings.solarsage_v2_enabled or settings.solarsage_v2_dual_run
+
+
+def selected_scoring_version_for_flags() -> int | str:
+    """Return the selected scoring version implied by feature flags.
+    Used before cache read so V2-enabled does not read V1 cache."""
+    return "ss-scoring-2.0" if settings.solarsage_v2_enabled else 1
+
+
 @dataclass
 class DualRunResult:
     """Result of a dual-run V1/V2 scoring computation."""

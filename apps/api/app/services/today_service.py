@@ -79,7 +79,9 @@ from app.services.astro_utils import find_house, strip_prefix
 from app.services.day_scoring_signals import filter_day_scored_signals
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
-from app.services.day_scoring_runtime_service import DayScoringRuntimeService
+from app.services.day_scoring_runtime_service import (
+    DayScoringRuntimeService, should_compute_v2, selected_scoring_version_for_flags,
+)
 from app.services.cache_key_service import build_today_cache_key
 from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
@@ -175,17 +177,20 @@ class TodayService:
         # If user changes birth data, hash changes → cache miss → fresh data.
         profile_hash = NatalContextService.compute_profile_hash(profile)
 
-        # W5: Build versioned cache key for read
+        # W5: Determine selected scoring version before cache read
+        sel_version = selected_scoring_version_for_flags()
+
+        # W5: Build versioned cache key for read with the selected scoring version
         cache_key = build_today_cache_key(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=profile_hash,
+            scoring_version=sel_version,
         )
 
         # W-5.2: Check cache first (keyed by user_id + target_date + profile_hash + cache_key_hash)
         cached = await self._get_cached_payload(user_id, target_date, profile_hash, cache_key)
         if cached:
-            # Update access state (may have changed since cache)
             cached.access = access_state
             return cached
 
@@ -205,8 +210,6 @@ class TodayService:
         )
 
         # W-NATAL-FULL: Use the new day-specific normalization path.
-        # normalize_day() uses cached natal context + fresh transits.
-        # score_day() is the day scoring method (includes day_status).
         natal_context_dict = natal_context.model_dump(by_alias=False)
         normalization_service = NormalizationService()
         signals = normalization_service.normalize_day(natal_context_dict, transits)
@@ -220,29 +223,39 @@ class TodayService:
             peak_count = sum(1 for s in signals if s.delta_kind == "peak_today")
             bg_count = sum(1 for s in signals if s.delta_kind == "background")
             with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="DAY_DELTA"):
-                log_event(
-                    "day.payload_built",
-                    level="info",
-                    msg=f"[DayDelta] Computed: {len(signals)} signals",
-                    payload={
-                        "signal_count": len(signals),
-                        "new_today": new_count,
-                        "peak": peak_count,
-                        "background": bg_count,
-                    },
-                )
+                log_event("day.payload_built", level="info",
+                          msg=f"[DayDelta] Computed: {len(signals)} signals",
+                          payload={"signal_count": len(signals), "new_today": new_count,
+                                   "peak": peak_count, "background": bg_count})
         else:
             with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="DAY_DELTA"):
-                log_event(
-                    "day.payload_built",
-                    level="info",
-                    msg="[DayDelta] No yesterday data — skipping delta computation",
-                )
+                log_event("day.payload_built", level="info",
+                          msg="[DayDelta] No yesterday data — skipping delta computation")
 
-        # W-4.2: Score signals and calculate day_status using day-specific scorer
         day_signals = filter_day_scored_signals(signals)
 
-        # W2: Build activation layer from day signals (no V2 scoring impact)
+        # W5: Fetch sidecar activation layer when V2 may be computed
+        sidecar_layer = None
+        sidecar_error = None
+        if should_compute_v2():
+            try:
+                sidecar_layer = await client.get_activation_layer(
+                    birth_date=profile.birthday.isoformat(),
+                    birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
+                    birth_lat=float(profile.birth_lat),
+                    birth_lon=float(profile.birth_lon),
+                    birth_tz=profile.birth_tz,
+                    target_date=target_date.isoformat(),
+                    target_time="12:00",
+                    target_tz=profile.current_tz or profile.birth_tz or "UTC",
+                    house_system=natal_context_dict.get("house_system", "PLACIDUS"),
+                )
+            except Exception as e:
+                sidecar_error = str(e)
+                if settings.solarsage_v2_enabled:
+                    raise  # Fail loudly when V2 is enabled
+
+        # Build activation layer with optional sidecar layer
         activation_layer = ActivationLayerService().build(
             natal_context=natal_context_dict,
             transits=transits,
@@ -251,10 +264,10 @@ class TodayService:
             target_time="12:00",
             target_tz=profile.current_tz or profile.birth_tz or "UTC",
             house_system=natal_context_dict.get("house_system", "PLACIDUS"),
-            sidecar_activation_layer=None,  # Can be wired in W3+ when sidecar endpoint is ready
+            sidecar_activation_layer=sidecar_layer,
         )
 
-        # W5: V2 dual-run via DayScoringRuntimeService (owns V1+V2 scoring)
+        # W5: V2 dual-run via DayScoringRuntimeService
         runtime = DayScoringRuntimeService()
         dual = runtime.compute(
             day_signals=day_signals,
@@ -264,6 +277,14 @@ class TodayService:
         )
         scoring_result = dual.selected_result
         scoring_version = dual.selected_scoring_version
+
+        # Rebuild cache key with actual selected scoring version for write
+        cache_key = build_today_cache_key(
+            user_id=user_id,
+            target_date=target_date.isoformat(),
+            profile_hash=profile_hash,
+            scoring_version=scoring_version,
+        )
 
         # W-4.3: Build semantic layer
         semantic_service = SemanticService()
@@ -291,7 +312,7 @@ class TodayService:
         )
 
         # W-4.3: Cache semantic layer
-        await self._cache_semantic_layer(user_id, target_date, semantic_layer, profile_hash)
+        await self._cache_semantic_layer(user_id, target_date, semantic_layer, profile_hash, cache_key)
 
         # W-5.1: Generate text via LLM
         llm_service = LLMService()
@@ -569,29 +590,25 @@ class TodayService:
     async def _get_cached_payload(self, user_id, target_date: Date, profile_hash: str, cache_key=None) -> TodayPayload | None:
         """Get cached payload if exists. W-5.2.
 
-        W-NATAL-FULL: profile_hash is part of the cache key. If user changes
-        birth data, the hash changes → cache miss → fresh generation.
-        This proves today cache is tied to natal context.
-
-        W5: Also validates cache_key_hash for versioned cache identity.
+        W-NATAL-FULL: profile_hash is part of the cache key.
+        W5: Queries by cache_key_hash for versioned cache identity.
         """
+        conditions = [
+            TodayPayloadCache.user_id == user_id,
+            TodayPayloadCache.target_date == target_date,
+            TodayPayloadCache.profile_hash == profile_hash,
+        ]
+        if cache_key:
+            conditions.append(TodayPayloadCache.cache_key_hash == cache_key.cache_key_hash)
+
         result = await self.db.execute(
-            select(TodayPayloadCache).where(
-                TodayPayloadCache.user_id == user_id,
-                TodayPayloadCache.target_date == target_date,
-                TodayPayloadCache.profile_hash == profile_hash,
-            )
+            select(TodayPayloadCache).where(*conditions)
         )
         cache_entry = result.scalar_one_or_none()
 
         if not cache_entry:
             return None
 
-        # W5: Versioned cache key validation
-        if cache_key and cache_entry.cache_key_hash != cache_key.cache_key_hash:
-            return None
-
-        # Deserialize JSON
         payload_dict = json.loads(cache_entry.payload_json)
         meta = payload_dict.get("meta") or {}
         content_version = meta.get("contentVersion", meta.get("content_version"))
@@ -599,10 +616,7 @@ class TodayService:
             return None
 
         payload = TodayPayload(**payload_dict)
-
-        # Mark as cached
         payload.meta.cached = True
-
         return payload
 
     async def _cache_payload(self, user_id, target_date: Date, payload: TodayPayload, profile_hash: str, cache_key=None) -> None:
@@ -614,12 +628,16 @@ class TodayService:
         payload_json = payload.model_dump_json()
 
         # Upsert cache entry (keyed by user_id + target_date + profile_hash + cache_key_hash)
+        conditions = [
+            TodayPayloadCache.user_id == user_id,
+            TodayPayloadCache.target_date == target_date,
+            TodayPayloadCache.profile_hash == profile_hash,
+        ]
+        if cache_key:
+            conditions.append(TodayPayloadCache.cache_key_hash == cache_key.cache_key_hash)
+
         result = await self.db.execute(
-            select(TodayPayloadCache).where(
-                TodayPayloadCache.user_id == user_id,
-                TodayPayloadCache.target_date == target_date,
-                TodayPayloadCache.profile_hash == profile_hash,
-            )
+            select(TodayPayloadCache).where(*conditions)
         )
         existing = result.scalar_one_or_none()
 
@@ -665,12 +683,19 @@ class TodayService:
         )
         await self.db.commit()
 
-    async def _cache_semantic_layer(self, user_id, target_date: Date, semantic_layer, profile_hash: str) -> None:
-        """Cache semantic layer. W-4.3."""
+    async def _cache_semantic_layer(self, user_id, target_date: Date, semantic_layer, profile_hash: str, cache_key=None) -> None:
+        """Cache semantic layer. W-4.3. W5: stores versioned cache identity."""
         cache_data = {
             "profile_hash": profile_hash,
             "content_version": TODAY_CONTENT_VERSION,
             "semantic_layer": semantic_layer.model_dump(),
+            "cache_key_hash": cache_key.cache_key_hash if cache_key else "",
+            "calculation_version": cache_key.calculation_version if cache_key else "1",
+            "activation_layer_version": cache_key.activation_layer_version if cache_key else None,
+            "scoring_version": str(cache_key.scoring_version) if cache_key else "1",
+            "canon_versions_hash": cache_key.canon_versions_hash if cache_key else "",
+            "llm_prompt_version": cache_key.llm_prompt_version if cache_key else 2,
+            "frontend_payload_version": cache_key.frontend_payload_version if cache_key else 1,
         }
         semantic_json = json.dumps(cache_data)
 
