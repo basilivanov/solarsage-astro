@@ -2,7 +2,8 @@
 
 Date: 2026-07-09
 Base reviewed commit: `ed2d2e6`
-Final rework commit: `d895d48`
+Final rework code/tests commit: `ce3c5c9`
+Evidence docs tip: current main HEAD / callback SHA.
 Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
@@ -105,5 +106,5 @@ Result: recorded after commit.
 curl -X POST http://127.0.0.1:18765/trigger \
   -H "Authorization: Bearer 324b0306c32ffc5f6a64e16076c8c9ac0ee12fbba925cfd3" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"Wave W10 Rework 01 ready for architect review. Report: docs/work/2026-07-09_solarsage-v2-w10-final-contract-proof/04_rework_01_report.md. Review: docs/work/2026-07-09_solarsage-v2-w10-final-contract-proof/02_arch_review.md. Rework TZ: docs/work/2026-07-09_solarsage-v2-w10-final-contract-proof/03_rework_01_TZ.md. Branch: main. Commit: d895d48. Push: NOT_ATTEMPTED"}'
+  -d '{"prompt":"Wave W10 Rework 01 ready for architect review. Report: docs/work/2026-07-09_solarsage-v2-w10-final-contract-proof/04_rework_01_report.md. Review: docs/work/2026-07-09_solarsage-v2-w10-final-contract-proof/02_arch_review.md. Rework TZ: docs/work/2026-07-09_solarsage-v2-w10-final-contract-proof/03_rework_01_TZ.md. Branch: main. Commit: ce3c5c9. Push: NOT_ATTEMPTED"}'
 ```
