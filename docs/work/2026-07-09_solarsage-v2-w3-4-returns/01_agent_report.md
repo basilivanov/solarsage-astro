@@ -1,59 +1,71 @@
-# Agent Report — Wave W3.4 Returns (Rework 01)
+# Agent Report — Wave W3.4 Returns (Rework 02)
 
 ## Summary
 
-Fixed P0 location and P0 lunar-latest blockers. Return charts now actually use `current_location`; lunar return selects latest valid crossing; `house_system` is no longer silently ignored.
+Fixed P0 lunar enumeration, P1 solar residual enforcement, P1 structured current_location, P1 contract tests. Full verification gates run.
 
 ## Changed Files
 
 | File | Change |
 |------|--------|
-| `apps/solarsage/solarsage/utils/ephemeris.py` | `calculate_houses_cusps` now accepts `house_system` param; supports PLACIDUS/WHOLE_SIGN; unknown systems raise `ValueError` |
-| `apps/solarsage/solarsage/services/returns.py` | Added `return_lat`/`return_lon`/`return_tz` params; return charts use location for houses; lunar: latest-JD selection |
-| `apps/solarsage/solarsage/services/activation_builder.py` | Passes `ret_lat`/`ret_lon`/`ret_tz` to return calculations; natal chart uses requested house_system |
-| `apps/solarsage/tests/test_solar_return.py` | 11 tests (up from 9): relocation changes IDs, no fallback with current_location, strength strictness |
-| `apps/solarsage/tests/test_lunar_return.py` | 11 tests (up from 9): latest-crossing regression, relocation changes IDs |
-| `apps/api/tests/test_activation_layer_returns.py` | All debug fields required in fixture, preserved through validation |
-| `artifacts/audit/2026-07-08/20_sidecar_activation_layer_w3_4_returns.json` | Regenerated (artifact clean) |
+| `apps/solarsage/solarsage/services/returns.py` | Lunar: iterative crossing enumeration (no more offset probing); Solar: final residual enforced ≤0.001° |
+| `apps/solarsage/solarsage/api/activation_layer.py` | `current_location` → structured `CurrentLocationRequest` Pydantic model |
+| `apps/solarsage/tests/test_lunar_return.py` | 13 tests: August regression, strong index coverage, all debug fields required |
+| `apps/solarsage/tests/test_solar_return.py` | 11 tests: all debug fields required, strong index coverage |
+| `artifacts/audit/2026-07-08/20_sidecar_activation_layer_w3_4_returns.json` | Regenerated (unchanged) |
 
 ## Fixes
 
-### P0: current_location drives return houses
-`calculate_solar_return` and `calculate_lunar_return` now accept `return_lat`/`return_lon`/`return_tz`. Return chart houses/ASC/MC are built at the return location, not birth location. Relocating to equator produces different activation IDs and resolves house system as PLACIDUS.
+### P0: Lunar iterative enumeration
+Replaced offset probing (`mooncross_ut` from fixed start points) with true iterative enumeration:
+1. Start at `target_jd - 30.0`
+2. Call `mooncross_ut`, collect candidate, advance `cursor = jd + epsilon`
+3. Continue until crossing > target_jd or max iterations (50)
+4. Select `max(candidate_jd)` with residual ≤ 0.001°
 
-### P0: Lunar return selects latest valid crossing
-Replaced residual-based selection with latest-JD selection. Collects all candidate crossings in the search window, keeps `candidate_jd <= target_jd` with `residual <= 0.001°`, selects `max(candidate_jd)`. Test proves `2026-07-16` target returns `2461236.95` (latest), not `2461209.52` (previous).
+Fixed both regressions:
+- July 16 target: `2461236.95` (was `2461209.52`)
+- August 12 target: `2461264.38` (was `2461236.95`)
 
-### P1: house_system forwarded
-`calculate_houses_cusps(jd, lat, lon, house_system)` now accepts a requested house system. Unknown systems raise `ValueError`. High-latitude override (PLACIDUS→WHOLE_SIGN at lat≥60) preserved.
+### P1: Solar residual enforced
+After search and optional refinement, final residual check raises `ValueError` if > 0.001°.
 
-### P1: Strength strictness tests
-Added `test_strength_missing_solar_return_key` and `test_strength_missing_lunar_return_key` — both prove `KeyError`.
+### P1: Structured current_location
+Replaced `dict | None` with `CurrentLocationRequest(BaseModel)` with `lat`, `lon`, `tz`. Malformed requests (missing `lat`/`lon`) now return 422 validation error instead of 500.
 
-## Relocation probe (architect verification)
-
-```python
-fallback warnings count = 1 ✓
-relocated warnings = [] ✓
-relocated location_source = current_location ✓
-relocated resolved_house_system = PLACIDUS (equator) ✓
-fallback ids != relocated ids ✓
-```
+### P1: Strong index/debug tests
+Every return activation verified:
+- Present in appropriate `by_house`/`by_planet` index for its `target_type`
+- All index refs point to valid activation IDs
+- All 11 required debug fields present (`return_type`, `return_jd`, `return_utc_iso`, `target_jd`, `return_location_policy`, `return_location_source`, `return_location_reason`, `return_lat`, `return_lon`, `return_tz`, `resolved_house_system`)
 
 ## Verification Results
 
 | Gate | Result |
 |------|--------|
-| Sidecar targeted (all waves) | 95 passed, 1 warning |
+| Sidecar targeted (all waves) | 96 passed, 1 warning |
+| Sidecar full | 117 passed, 1 warning |
 | API targeted | 28 passed |
-| W3.4 artifact | 133 activations, wave=W3.4 |
-| Hashseed × 3 | Identical |
+| API full | 695 passed, 5 skipped, 1 warning |
+| W3.4 artifact | 133 activations, wave=W3.4, 1 fallback warning |
+| Hashseed × 3 (all identical) | `d78b174793f3...` |
+| Combined W3.4 build time | 0.246s |
 | sidecar_activation_layer=None | Still None |
 | Whitespace | clean |
 
+## Relocation probe (verified)
+
+```python
+fallback warnings count = 1 ✓
+relocated warnings = [] ✓
+relocated location_source = current_location ✓
+equator resolved = PLACIDUS ✓
+fallback ids != relocated ids ✓
+```
+
 ## Commit
 
-`b5c8bcd`
+`<commit_sha>`
 
 ## Push Status
 

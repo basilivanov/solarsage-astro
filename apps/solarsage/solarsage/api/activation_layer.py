@@ -27,12 +27,18 @@ class TargetRequest(BaseModel):
     tz: str = Field(..., description="Target timezone")
 
 
+class CurrentLocationRequest(BaseModel):
+    lat: float = Field(..., description="Current latitude")
+    lon: float = Field(..., description="Current longitude")
+    tz: str | None = Field(default=None, description="Current timezone")
+
+
 class ActivationLayerRequest(BaseModel):
     birth: BirthRequest
     target: TargetRequest
     house_system: str = Field(default="PLACIDUS", description="House system")
     techniques: list[str] = Field(default_factory=list)
-    current_location: dict | None = Field(default=None, description="Current location {lat, lon, tz}")
+    current_location: CurrentLocationRequest | None = Field(default=None, description="Current location for return chart")
 
 
 class ActivationLayerMeta(BaseModel):
@@ -65,7 +71,7 @@ async def post_activation_layer(request: ActivationLayerRequest) -> ActivationLa
             target_tz=request.target.tz,
             house_system=request.house_system,
             techniques=list(request.techniques) if request.techniques else None,
-            current_location=request.current_location,
+            current_location=request.current_location.model_dump() if request.current_location else None,
         )
 
         meta = ActivationLayerMeta(

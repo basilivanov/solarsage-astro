@@ -90,7 +90,7 @@ def test_solar_return_endpoint_activations():
 
 
 def test_solar_return_debug_fields():
-    """Solar return activations include return_jd, timestamp, location policy."""
+    """Solar return activations include all required debug fields."""
     resp = client.post("/v1/activation-layer", json={
         **BASIL_AUDIT_REQUEST,
         "techniques": ["solar_return"],
@@ -100,14 +100,21 @@ def test_solar_return_debug_fields():
     sr_acts = [a for a in layer["activations"] if a["technique"] == "solar_return"]
     for a in sr_acts:
         d = a.get("debug", {})
+        assert d.get("return_type") == "solar"
         assert d.get("return_jd", 0) > 0, f"Missing return_jd in {a['id']}"
         assert d.get("return_utc_iso"), f"Missing return_utc_iso in {a['id']}"
+        assert d.get("target_jd", 0) > 0, f"Missing target_jd in {a['id']}"
         assert d.get("return_location_policy") == "current_location_if_known_else_birth_location"
-        assert d.get("return_location_source") == "birth_location"
+        assert d.get("return_location_source") in ("birth_location", "current_location")
+        assert d.get("return_location_reason"), f"Missing return_location_reason in {a['id']}"
+        assert "return_lat" in d, f"Missing return_lat in {a['id']}"
+        assert "return_lon" in d, f"Missing return_lon in {a['id']}"
+        assert d.get("return_tz") is not None, f"Missing return_tz in {a['id']}"
+        assert d.get("resolved_house_system"), f"Missing resolved_house_system in {a['id']}"
 
 
 def test_solar_return_indexes():
-    """Solar return activation IDs referenced in by_house/by_planet."""
+    """Every solar return activation is referenced in appropriate index."""
     resp = client.post("/v1/activation-layer", json={
         **BASIL_AUDIT_REQUEST,
         "techniques": ["solar_return"],
@@ -117,12 +124,23 @@ def test_solar_return_indexes():
     sr_acts = [a for a in layer["activations"] if a["technique"] == "solar_return"]
     valid_ids = {a["id"] for a in sr_acts}
 
-    for idx_name in ("by_house", "by_planet"):
-        idx = layer.get(idx_name, {})
+    # Every SR activation must have its ID in the appropriate index
+    for a in sr_acts:
+        if a["target_type"] == "house":
+            idx = layer.get("by_house", {})
+            assert a["target_key"] in idx, f"by_house missing key {a['target_key']} for {a['id']}"
+            assert a["id"] in idx[a["target_key"]], f"by_house[{a['target_key']}] missing {a['id']}"
+        elif a["target_type"] == "planet":
+            idx = layer.get("by_planet", {})
+            assert a["target_key"] in idx, f"by_planet missing key {a['target_key']} for {a['id']}"
+            assert a["id"] in idx[a["target_key"]], f"by_planet[{a['target_key']}] missing {a['id']}"
+
+    # Every index ref must point to a valid activation
+    for idx_name, idx in [("by_house", layer.get("by_house", {})),
+                           ("by_planet", layer.get("by_planet", {}))]:
         for key, refs in idx.items():
             for ref_id in refs:
-                if ref_id in valid_ids:
-                    break  # At least one ref is from SR activations
+                assert ref_id in valid_ids, f"{idx_name}[{key}] refs '{ref_id}' not in {idx_name}"
 
 
 def test_solar_return_location_source():

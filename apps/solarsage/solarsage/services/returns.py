@@ -218,27 +218,34 @@ def calculate_solar_return(
     if return_jd <= 0:
         raise ValueError(f"Solar return crossing returned invalid JD: {return_jd}")
 
-    # Verify precision
+    # Verify and enforce precision (must be <= 0.001°)
     sun_at_return = swe.calc_ut(return_jd, swe.SUN, flags)
     return_sun_lon = sun_at_return[0][0]
     lon_residual = abs(return_sun_lon - natal_sun_lon) % 360.0
     if lon_residual > 180.0:
         lon_residual = 360.0 - lon_residual
-    if lon_residual > 0.01:
-        # Try refining: search the other direction
+    if lon_residual > 0.001:
+        # Try refinement by re-searching from the found crossing
         try:
-            return_jd = swe.solcross_ut(natal_sun_lon, return_jd + 0.1, flags)
-            while return_jd > 0 and abs(return_jd - search_start) < 365.0:
-                sun_at_return = swe.calc_ut(return_jd, swe.SUN, flags)
-                return_sun_lon = sun_at_return[0][0]
-                lon_residual = abs(return_sun_lon - natal_sun_lon) % 360.0
-                if lon_residual > 180.0:
-                    lon_residual = 360.0 - lon_residual
-                if lon_residual <= 0.001:
-                    break
-                return_jd = swe.solcross_ut(natal_sun_lon, return_jd + 0.1, flags)
+            refined_jd = swe.solcross_ut(natal_sun_lon, return_jd + 0.001, flags)
+            if refined_jd > 0 and abs(refined_jd - return_jd) < 0.5:
+                sun_at_return = swe.calc_ut(refined_jd, swe.SUN, flags)
+                refined_lon = sun_at_return[0][0]
+                refined_residual = abs(refined_lon - natal_sun_lon) % 360.0
+                if refined_residual > 180.0:
+                    refined_residual = 360.0 - refined_residual
+                if refined_residual < lon_residual:
+                    return_jd = refined_jd
+                    return_sun_lon = refined_lon
+                    lon_residual = refined_residual
         except swe.Error:
             pass
+
+    # Final enforcement
+    if lon_residual > 0.001:
+        raise ValueError(
+            f"Solar return precision {lon_residual}° exceeds required 0.001°"
+        )
 
     # 3. Build return chart using chart_lat/chart_lon
     return_utc_iso = _jd_to_utc_iso(return_jd)
@@ -318,24 +325,28 @@ def calculate_lunar_return(
     # 2. Target JD
     target_jd = calculate_julian_day(target_date, target_time, target_tz)
 
-    # 3. Search for the most recent crossing at or before target_jd
+    # 3. Search for the most recent crossing — iterative enumeration
     swe.set_ephe_path("/opt/sweph/ephe")
     flags = swe.FLG_SWIEPH
 
     target_jd_val = target_jd
     candidates: list[tuple[float, float]] = []  # (jd, residual)
 
-    # Search windows: walk backwards by ~half day increments to find all crossings
-    for offset in [0, -0.25, -0.5, -0.75, -1.0, -1.25, -1.5, -2.0, -2.5, -3.0, -4.0, -5.0, -7.0]:
-        search_start = target_jd_val - 28.0 + offset
+    # Iterate: start at target_jd - 30 days and walk forward, collecting
+    # every crossing until we pass target_jd.
+    cursor = target_jd_val - 30.0
+    max_iterations = 50
+    epsilon = 1e-8  # tiny offset to avoid returning the same crossing
+
+    for _ in range(max_iterations):
         try:
-            jd = swe.mooncross_ut(natal_moon_lon, search_start, flags)
+            jd = swe.mooncross_ut(natal_moon_lon, cursor, flags)
         except swe.Error:
-            continue
+            break
         if jd <= 0:
-            continue
+            break
         if jd > target_jd_val:
-            continue
+            break
 
         # Verify precision
         moon_at_return = swe.calc_ut(jd, swe.MOON, flags)
@@ -346,6 +357,9 @@ def calculate_lunar_return(
 
         if lon_residual <= 0.001:
             candidates.append((jd, lon_residual))
+
+        # Advance past this crossing
+        cursor = jd + epsilon
 
     if not candidates:
         raise ValueError("Could not find valid lunar return within search window")
