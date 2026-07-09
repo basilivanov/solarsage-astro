@@ -307,10 +307,15 @@ W3_2_SUPPORTED_ORDER = (
     "annual_profection",
     "monthly_profection",
 )
-SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER
+W3_3_SUPPORTED_ORDER = (
+    "firdar_major",
+    "firdar_minor",
+)
+SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER + W3_3_SUPPORTED_ORDER
 W3_1_SUPPORTED = set(W3_1_SUPPORTED_ORDER)
 W3_2_SUPPORTED = set(W3_2_SUPPORTED_ORDER)
-SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED
+W3_3_SUPPORTED = set(W3_3_SUPPORTED_ORDER)
+SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED | W3_3_SUPPORTED
 ALL_TECHNIQUES = list(SUPPORTED_ORDER)
 
 
@@ -891,6 +896,106 @@ def build_activation_layer(
                 )
                 activations.append(lord_ev)
                 by_planet.setdefault(lord_of_month, []).append(lord_ev_id)
+
+        elif tech in ("firdar_major", "firdar_minor"):
+            # Import firdar service (lazy to avoid circular imports)
+            from solarsage.services.firdar import calculate_firdar, _load_firdar_canon
+
+            # Compute firdar context once
+            birth_local = _local_date(birth_date, birth_tz)
+            target_local = _local_date(target_date, target_tz)
+
+            firdar_canon = _load_firdar_canon()
+            ctx = calculate_firdar(
+                birth_local=birth_local,
+                target_local=target_local,
+                is_day_birth=is_day,
+                sun_house=natal_sun_house,
+                canon=firdar_canon,
+            )
+
+            strength_rules = _load_activation_rules()
+            period_base = strength_rules.get("activation_strength", {}).get("period_base", {})
+
+            major_strength = float(period_base.get("firdar_major", 0.65))
+            minor_strength = float(period_base.get("firdar_minor", 0.40))
+
+            if tech == "firdar_major":
+                major_ev_id = f"firdar_major__PERIOD_LORD__{ctx.major_lord}"
+                major_ev = ActivationEvidence(
+                    id=major_ev_id,
+                    technique="firdar_major",
+                    technique_family="firdar",
+                    target_type="planet",
+                    target_key=ctx.major_lord,
+                    kind="major_period_lord",
+                    source_frame="natal",
+                    target_frame="natal",
+                    target_planet=ctx.major_lord,
+                    phase="period",
+                    polarity="neutral",
+                    strength=major_strength,
+                    evidence=f"{_display_name(ctx.major_lord)} is major firdar lord on {target_date}",
+                    debug={
+                        "schema_version": ctx.schema_version,
+                        "is_day_birth": ctx.is_day_birth,
+                        "sect_basis": "sun_house",
+                        "sun_house": ctx.sun_house,
+                        "birth_local_date": birth_date,
+                        "target_local_date": target_date,
+                        "age_years": round(ctx.age_years, 8),
+                        "cycle_age": round(ctx.cycle_age, 8),
+                        "cycle_index": ctx.cycle_index,
+                        "cycle_years": ctx.cycle_years,
+                        "major_lord": ctx.major_lord,
+                        "major_start_age": round(ctx.major_start_age, 4),
+                        "major_end_age": round(ctx.major_end_age, 4),
+                        "major_years": round(ctx.major_years, 4),
+                    },
+                )
+                activations.append(major_ev)
+                by_planet.setdefault(ctx.major_lord, []).append(major_ev_id)
+
+            if tech == "firdar_minor":
+                minor_ev_id = f"firdar_minor__SUBPERIOD_LORD__{ctx.minor_lord}"
+                minor_ev = ActivationEvidence(
+                    id=minor_ev_id,
+                    technique="firdar_minor",
+                    technique_family="firdar",
+                    target_type="planet",
+                    target_key=ctx.minor_lord,
+                    kind="minor_period_lord",
+                    source_frame="natal",
+                    target_frame="natal",
+                    target_planet=ctx.minor_lord,
+                    phase="period",
+                    polarity="neutral",
+                    strength=minor_strength,
+                    evidence=f"{_display_name(ctx.minor_lord)} is minor firdar lord on {target_date} within {_display_name(ctx.major_lord)} major firdar",
+                    debug={
+                        "schema_version": ctx.schema_version,
+                        "is_day_birth": ctx.is_day_birth,
+                        "sect_basis": "sun_house",
+                        "sun_house": ctx.sun_house,
+                        "birth_local_date": birth_date,
+                        "target_local_date": target_date,
+                        "age_years": round(ctx.age_years, 8),
+                        "cycle_age": round(ctx.cycle_age, 8),
+                        "cycle_index": ctx.cycle_index,
+                        "cycle_years": ctx.cycle_years,
+                        "major_lord": ctx.major_lord,
+                        "major_start_age": round(ctx.major_start_age, 10),
+                        "major_end_age": round(ctx.major_end_age, 10),
+                        "major_years": round(ctx.major_years, 4),
+                        "minor_lord": ctx.minor_lord,
+                        "minor_index": ctx.minor_index,
+                        "minor_start_age": round(ctx.minor_start_age, 10),
+                        "minor_end_age": round(ctx.minor_end_age, 10),
+                        "minor_sequence": ctx.minor_sequence,
+                    },
+                )
+                activations.append(minor_ev)
+                by_planet.setdefault(ctx.minor_lord, []).append(minor_ev_id)
 
     return ActivationLayer(
         calculation_version="1",

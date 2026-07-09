@@ -193,6 +193,7 @@ def test_empty_techniques_no_fake_unsupported():
             assert a["technique"] in (
                 "transit_to_natal", "transit_to_angle", "transit_to_lot", "transit_planet_in_house",
                 "annual_profection", "monthly_profection",
+                "firdar_major", "firdar_minor",
             ), f"Unexpected technique: {a['technique']}"
 
 
@@ -221,3 +222,6 @@ def test_all_evidence_strings_include_frames():
             elif tech == "monthly_profection":
                 assert "monthly profection" in ev, \
                     f"Evidence missing 'monthly profection': {a['evidence']}"
+            elif tech in ("firdar_major", "firdar_minor"):
+                assert "firdar lord" in ev, \
+                    f"Evidence missing 'firdar lord': {a['evidence']}"

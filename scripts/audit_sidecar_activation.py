@@ -120,7 +120,11 @@ def main() -> None:
             "tz": target_tz,
         },
         "script": "audit_sidecar_activation.py",
-        "wave": "W3.2" if techniques is None or "annual_profection" in techniques or "monthly_profection" in techniques else "W3.1",
+        "wave": (
+            "W3.3" if techniques is None or "firdar_major" in techniques or "firdar_minor" in techniques
+            else "W3.2" if "annual_profection" in techniques or "monthly_profection" in techniques
+            else "W3.1"
+        ),
         "techniques": techniques,
     }
 

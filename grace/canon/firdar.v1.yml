@@ -1,0 +1,29 @@
+schema_version: firdar.v1
+description: "Firdar period sequences — day/night major periods and node minor subperiods."
+
+cycle_years: 75
+minor_divisions: 7
+
+day_sequence:
+  - { lord: SUN, years: 10 }
+  - { lord: VENUS, years: 8 }
+  - { lord: MERCURY, years: 13 }
+  - { lord: MOON, years: 9 }
+  - { lord: SATURN, years: 11 }
+  - { lord: JUPITER, years: 12 }
+  - { lord: MARS, years: 7 }
+  - { lord: NORTH_NODE_TRUE, years: 3 }
+  - { lord: SOUTH_NODE, years: 2 }
+
+night_sequence:
+  - { lord: MOON, years: 9 }
+  - { lord: SATURN, years: 11 }
+  - { lord: JUPITER, years: 12 }
+  - { lord: MARS, years: 7 }
+  - { lord: SUN, years: 10 }
+  - { lord: VENUS, years: 8 }
+  - { lord: MERCURY, years: 13 }
+  - { lord: NORTH_NODE_TRUE, years: 3 }
+  - { lord: SOUTH_NODE, years: 2 }
+
+node_minor_sequence: [SATURN, JUPITER, MARS, SUN, VENUS, MERCURY, MOON]

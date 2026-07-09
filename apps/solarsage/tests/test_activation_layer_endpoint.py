@@ -83,22 +83,24 @@ def test_activation_layer_endpoint_techniques_default_all():
     assert "transit_planet_in_house" in techniques_found
     assert "annual_profection" in techniques_found
     assert "monthly_profection" in techniques_found
+    assert "firdar_major" in techniques_found
+    assert "firdar_minor" in techniques_found
 
 
 def test_activation_layer_endpoint_unsupported_technique_warning():
     """Unsupported W3+ techniques produce deterministic warnings, no fake data.
-    annual_profection is now supported in W3.2; firdar_major remains unsupported."""
+    firdar_major/firdar_minor are now supported in W3.3; solar_return remains unsupported."""
     response = client.post(
         "/v1/activation-layer",
-        json={**MOSCOW_FIXTURE_REQUEST, "techniques": ["firdar_major", "solar_return"]},
+        json={**MOSCOW_FIXTURE_REQUEST, "techniques": ["solar_return", "lunar_return"]},
     )
     assert response.status_code == 200
     layer = response.json()["activation_layer"]
     warnings_text = " ".join(layer.get("warnings", []))
-    assert "unsupported_technique_deferred:firdar_major" in warnings_text
     assert "unsupported_technique_deferred:solar_return" in warnings_text
+    assert "unsupported_technique_deferred:lunar_return" in warnings_text
     for a in layer["activations"]:
-        assert a["technique"] not in ("firdar_major", "solar_return")
+        assert a["technique"] not in ("solar_return", "lunar_return")
 
 
 def test_activation_layer_endpoint_rejects_missing_fields():
