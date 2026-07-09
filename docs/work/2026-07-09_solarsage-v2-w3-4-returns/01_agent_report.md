@@ -86,7 +86,7 @@ Implemented `solar_return` and `lunar_return` activation-layer support in the si
 
 ## Commit
 
-`<commit_sha>`
+`b754259`
 
 ## Push Status
 
