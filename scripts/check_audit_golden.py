@@ -26,7 +26,23 @@
 import json
 import subprocess
 import sys
+import os
 from pathlib import Path
+
+# Bootstrap re-exec block for virtualenv portability
+RE_EXEC_GUARD = "SOLARSAGE_AUDIT_RE_EXEC"
+if not os.environ.get(RE_EXEC_GUARD):
+    repo_root = Path(__file__).resolve().parent.parent
+    venv_python = repo_root / "apps" / "api" / ".venv" / "bin" / "python"
+    if venv_python.exists():
+        try:
+            real_sys = Path(sys.executable).resolve()
+            real_venv = venv_python.resolve()
+            if real_sys != real_venv:
+                os.environ[RE_EXEC_GUARD] = "1"
+                os.execve(str(venv_python), [str(venv_python)] + sys.argv, os.environ)
+        except Exception as e:
+            print(f"Warning: Re-exec to venv failed: {e}. Continuing with {sys.executable}", file=sys.stderr)
 
 def log_event(event: str, level: str, msg: str) -> None:
     # START_FUNCTION_CONTRACT: F-M-AUDIT-GOLDEN-GATE.log_event
