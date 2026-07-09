@@ -63,7 +63,7 @@ Collects forward and backward candidates, filters by `days_before`/`days_after` 
 
 ## Commit
 
-`<commit_sha>`
+`97d9c3e`
 
 ## Push Status
 
