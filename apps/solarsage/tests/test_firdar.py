@@ -91,6 +91,51 @@ def test_canon_night_sequence():
         assert entry["years"] == exp_years
 
 
+# ── Canon validation ────────────────────────────────────────────────────────
+
+
+def test_canon_validation_zero_minor_divisions():
+    """minor_divisions = 0 raises ValueError."""
+    from solarsage.services.firdar import _load_firdar_canon
+    canon = _load_firdar_canon()
+    import copy
+    bad = copy.deepcopy(canon)
+    bad["minor_divisions"] = 0
+    with pytest.raises(ValueError, match="minor_divisions"):
+        _validate_canon_test(bad)
+
+
+def test_canon_validation_sequence_sum_mismatch():
+    """Sequence year sum != cycle_years raises ValueError."""
+    from solarsage.services.firdar import _load_firdar_canon
+    canon = _load_firdar_canon()
+    import copy
+    bad = copy.deepcopy(canon)
+    bad["day_sequence"] = [{"lord": "SUN", "years": 10}]  # sum=10, cycle=75
+    with pytest.raises(ValueError, match="cycle_years"):
+        _validate_canon_test(bad)
+
+
+def test_canon_validation_node_sequence_length():
+    """node_minor_sequence length != minor_divisions raises ValueError."""
+    from solarsage.services.firdar import _load_firdar_canon
+    canon = _load_firdar_canon()
+    import copy
+    bad = copy.deepcopy(canon)
+    bad["node_minor_sequence"] = bad["node_minor_sequence"][:3]  # 3 != 7
+    with pytest.raises(ValueError, match="minor_divisions"):
+        _validate_canon_test(bad)
+
+
+def _validate_canon_test(data: dict) -> None:
+    """Run _load_firdar_canon-like validation on a data dict."""
+    from solarsage.services.firdar import _load_firdar_canon
+    # We can't call _load_firdar_canon directly (it reads from file),
+    # so we simulate its validation by importing and calling the validation helper
+    from solarsage.services.firdar import _validate_firdar_canon
+    _validate_firdar_canon(data)
+
+
 # ── Calculation ──────────────────────────────────────────────────────────────
 
 
@@ -357,6 +402,29 @@ def test_strength_strict_lookup():
     assert _get_period_strength(rules, "firdar_minor") == 0.40
     with pytest.raises(KeyError):
         _get_period_strength(rules, "nonexistent_technique")
+
+
+def test_strength_missing_firdar_major_key():
+    """Missing period_strength.firdar_major raises KeyError."""
+    from solarsage.services.activation_builder import _get_period_strength
+    from solarsage.services.activation_builder import _load_activation_rules
+    rules = _load_activation_rules()
+    # Remove firdar_major from period_base
+    period_base = rules.get("activation_strength", {}).get("period_base", {})
+    del period_base["firdar_major"]
+    with pytest.raises(KeyError, match="firdar_major"):
+        _get_period_strength(rules, "firdar_major")
+
+
+def test_strength_missing_firdar_minor_key():
+    """Missing period_strength.firdar_minor raises KeyError."""
+    from solarsage.services.activation_builder import _get_period_strength
+    from solarsage.services.activation_builder import _load_activation_rules
+    rules = _load_activation_rules()
+    period_base = rules.get("activation_strength", {}).get("period_base", {})
+    del period_base["firdar_minor"]
+    with pytest.raises(KeyError, match="firdar_minor"):
+        _get_period_strength(rules, "firdar_minor")
 
 
 # ── Spy test: calculate_firdar called once ───────────────────────────────────
@@ -645,8 +713,8 @@ def test_node_south_node_exact():
 
 
 def test_activation_rules_loaded_once_firdar(monkeypatch):
-    """When both firdar_major and firdar_minor requested, activation rules are
-    loaded once, not twice."""
+    """When only firdar_major and firdar_minor requested, activation rules are
+    loaded exactly once."""
     from solarsage.services import activation_builder as ab
     original_load = ab._load_activation_rules
     load_count = 0
@@ -658,24 +726,15 @@ def test_activation_rules_loaded_once_firdar(monkeypatch):
 
     monkeypatch.setattr(ab, "_load_activation_rules", spy)
 
+    # Single focused request with only firdar techniques
     resp = client.post("/v1/activation-layer", json={
-        **BASIL_AUDIT_REQUEST,
-        "techniques": ["firdar_major", "firdar_minor"],
-    })
-    assert resp.status_code == 200
-    # Expect 1 call for firdar (major+minor use cached context, one load).
-    # The profection code also calls _load_activation_rules, so we check
-    # the firdar-specific load count relative to a baseline.
-    # With only firdar techniques, it should be exactly 1.
-    resp2 = client.post("/v1/activation-layer", json={
         "birth": {"date": "1980-10-30", "time": "19:50", "lat": 67.9394, "lon": 32.8144, "tz": "Europe/Moscow"},
         "target": {"date": "2026-07-08", "time": "12:00", "tz": "Europe/Moscow"},
         "house_system": "PLACIDUS",
         "techniques": ["firdar_major", "firdar_minor"],
     })
-    assert resp2.status_code == 200
-    # Count for this specific request: activation_rules loaded once per request
-    assert load_count <= 2, f"Expected at most 2 loads (one per request), got {load_count}"
+    assert resp.status_code == 200
+    assert load_count == 1, f"Expected exactly 1 activation-rules load, got {load_count}"
 
 
 def test_vintage_fixture_vasiliy():

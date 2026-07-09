@@ -19,9 +19,12 @@
 # invariants:
 #   - age_years uses actual birthday interval, not calendar year
 #   - Feb 29 births clamp to Feb 28 in non-leap years
-#   - unknown sign/strength keys raise clear errors, no silent fallbacks
-# failure_policy: Raises ValueError on invalid dates; KeyError on missing canon keys or
-#   division-by-zero if minor_divisions <= 0 or canon sequences do not sum to cycle_years
+#   - canon is validated: cycle_years >0, minor_divisions >0, sequences non-empty,
+#     each entry has lord and positive years, year sum == cycle_years,
+#     node_minor_sequence length == minor_divisions
+# failure_policy: Raises ValueError on malformed canon values (bad sums, zero divisions,
+#   empty sequences); KeyError on missing required canon keys; zero-division guard
+#   returns 0 if interval_days <= 0 in age calculation
 # END_MODULE_CONTRACT: M-SIDECAR-FIRDAR
 
 # START_MODULE_MAP: M-SIDECAR-FIRDAR
@@ -88,7 +91,8 @@ def _load_firdar_canon() -> dict[str, Any]:
     # returns: dict with cycle_years, minor_divisions, day_sequence,
     #          night_sequence, node_minor_sequence
     # side_effects: reads file
-    # error_behavior: Raises ValueError on non-mapping; KeyError on missing keys
+    # error_behavior: Raises ValueError on non-mapping; KeyError on missing keys;
+    #   ValueError on malformed canon values (zero cycle, empty sequences, sum mismatch)
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._load_firdar_canon
     path = _resolve_canon_path("grace/canon/firdar.v1.yml")
     with open(path) as f:
@@ -99,7 +103,56 @@ def _load_firdar_canon() -> dict[str, Any]:
     for key in required_keys:
         if key not in data:
             raise KeyError(f"firdar.v1.yml missing required key: {key}")
+
+    # ── Canon value validation ────────────────────────────────────
+    _validate_firdar_canon(data)
     return data
+
+
+def _validate_firdar_canon(data: dict) -> None:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._validate_firdar_canon
+    # purpose: Validate firdar canon values: cycle_years, minor_divisions,
+    #          sequence sums, node_minor_sequence length.
+    # inputs: data — loaded canon dict with all required keys
+    # returns: None; raises on invalid values
+    # side_effects: none
+    # error_behavior: ValueError on zero/negative values, empty sequences,
+    #   sum mismatch, node sequence length mismatch
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._validate_firdar_canon
+    """Validate firdar canon values. Raises ValueError on malformed data."""
+    import math
+    cycle_years = int(data["cycle_years"])
+    if cycle_years <= 0:
+        raise ValueError(f"cycle_years must be > 0, got {cycle_years}")
+    minor_divisions = int(data["minor_divisions"])
+    if minor_divisions <= 0:
+        raise ValueError(f"minor_divisions must be > 0, got {minor_divisions}")
+
+    for seq_key in ("day_sequence", "night_sequence"):
+        seq = data[seq_key]
+        if not isinstance(seq, list) or len(seq) == 0:
+            raise ValueError(f"{seq_key} must be a non-empty list")
+        total = 0.0
+        for entry in seq:
+            lord = entry.get("lord")
+            years = entry.get("years")
+            if not lord:
+                raise ValueError(f"{seq_key} entry missing 'lord': {entry}")
+            if not years or float(years) <= 0:
+                raise ValueError(f"{seq_key} entry {lord} has invalid years: {years}")
+            total += float(years)
+        if abs(total - cycle_years) > 1e-6:
+            raise ValueError(
+                f"{seq_key} years sum {total} != cycle_years {cycle_years}"
+            )
+
+    node_seq = data["node_minor_sequence"]
+    if not isinstance(node_seq, list) or len(node_seq) == 0:
+        raise ValueError("node_minor_sequence must be a non-empty list")
+    if len(node_seq) != minor_divisions:
+        raise ValueError(
+            f"node_minor_sequence length {len(node_seq)} != minor_divisions {minor_divisions}"
+        )
 
 
 # END_BLOCK: CANON_LOADING
@@ -209,16 +262,17 @@ def _age_years_decimal(birth_local: Date, target_local: Date) -> float:
 
 
 class FirdarContext:
-    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
-    # purpose: Hold the full firdar calculation result (major/minor lords, ages,
-    #          cycle info, subperiod data).
-    # inputs: All keyword-only parameters defining period state
-    # side_effects: none
-    # error_behavior: None (pure data storage)
-    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
     """Holds the full firdar calculation result."""
 
     def __init__(
+        # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
+        # purpose: Hold the full firdar calculation result (major/minor lords, ages,
+        #          cycle info, subperiod data).
+        # inputs: All keyword-only parameters defining period state
+        # returns: None
+        # side_effects: none
+        # error_behavior: None (pure data storage)
+        # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
         self,
         *,
         is_day_birth: bool,
