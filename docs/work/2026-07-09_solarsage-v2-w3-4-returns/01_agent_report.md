@@ -65,7 +65,7 @@ fallback ids != relocated ids ✓
 
 ## Commit
 
-`<commit_sha>`
+`0b8ce6a`
 
 ## Push Status
 
