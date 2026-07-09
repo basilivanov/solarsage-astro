@@ -45,7 +45,7 @@ All remaining required canon value lookups now raise `KeyError` instead of using
 
 ## Commit
 
-`<commit_sha>`
+`d374cc4`
 
 ## Push Status
 
