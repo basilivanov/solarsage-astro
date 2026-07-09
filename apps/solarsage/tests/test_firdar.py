@@ -803,12 +803,11 @@ def test_unsupported_future_techniques():
     """Unsupported future techniques produce warnings, not activations."""
     resp = client.post("/v1/activation-layer", json={
         **BASIL_AUDIT_REQUEST,
-        "techniques": ["solar_arc", "eclipse_window"],
+        "techniques": ["eclipse_window"],
     })
     assert resp.status_code == 200
     layer = resp.json()["activation_layer"]
     warnings_text = " ".join(layer.get("warnings", []))
-    assert "unsupported_technique_deferred:solar_arc" in warnings_text
     assert "unsupported_technique_deferred:eclipse_window" in warnings_text
     for a in layer["activations"]:
-        assert a["technique"] not in ("solar_arc", "eclipse_window")
+        assert a["technique"] not in ("eclipse_window",)

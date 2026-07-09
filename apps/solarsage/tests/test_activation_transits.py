@@ -195,6 +195,7 @@ def test_empty_techniques_no_fake_unsupported():
                 "annual_profection", "monthly_profection",
                 "firdar_major", "firdar_minor",
                 "solar_return", "lunar_return",
+                "solar_arc", "secondary_progression",
             ), f"Unexpected technique: {a['technique']}"
 
 
@@ -229,3 +230,6 @@ def test_all_evidence_strings_include_frames():
             elif tech in ("solar_return", "lunar_return"):
                 assert "return" in ev, \
                     f"Evidence missing 'return': {a['evidence']}"
+            elif tech in ("solar_arc", "secondary_progression"):
+                assert "solar arc" in ev or "progressed" in ev or "Solar Arc" in ev, \
+                    f"Evidence missing progression context: {a['evidence']}"

@@ -317,12 +317,17 @@ W3_4_SUPPORTED_ORDER = (
     "solar_return",
     "lunar_return",
 )
-SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER + W3_3_SUPPORTED_ORDER + W3_4_SUPPORTED_ORDER
+W3_5_SUPPORTED_ORDER = (
+    "solar_arc",
+    "secondary_progression",
+)
+SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER + W3_3_SUPPORTED_ORDER + W3_4_SUPPORTED_ORDER + W3_5_SUPPORTED_ORDER
 W3_1_SUPPORTED = set(W3_1_SUPPORTED_ORDER)
 W3_2_SUPPORTED = set(W3_2_SUPPORTED_ORDER)
 W3_3_SUPPORTED = set(W3_3_SUPPORTED_ORDER)
 W3_4_SUPPORTED = set(W3_4_SUPPORTED_ORDER)
-SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED | W3_3_SUPPORTED | W3_4_SUPPORTED
+W3_5_SUPPORTED = set(W3_5_SUPPORTED_ORDER)
+SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED | W3_3_SUPPORTED | W3_4_SUPPORTED | W3_5_SUPPORTED
 ALL_TECHNIQUES = list(SUPPORTED_ORDER)
 
 
@@ -1350,6 +1355,240 @@ def build_activation_layer(
                     activations.append(ang_ev)
                     by_house.setdefault(str(phouse), []).append(ang_id)
                     by_planet.setdefault(pname.upper(), []).append(ang_id)
+
+        elif tech == "solar_arc":
+            from solarsage.services.progressions import (
+                calculate_solar_arc_context, solar_arc_aspects, _get_progression_strength,
+            )
+            sa_ctx = calculate_solar_arc_context(
+                birth_date=birth_date, birth_time=birth_time, birth_tz=birth_tz,
+                birth_lat=birth_lat, birth_lon=birth_lon,
+                target_date=target_date, target_time=target_time, target_tz=target_tz,
+                house_system=house_system,
+            )
+            aspects = solar_arc_aspects(sa_ctx)
+            base_strength = _get_progression_strength("solar_arc_aspect")
+
+            for asp in aspects:
+                source_clean = asp["source_key"].capitalize()
+                target_key = asp["target_key"]
+                target_type = asp["target_type"]
+                aspect_name = asp["aspect"]
+                orb = asp["orb"]
+                strength = asp["strength"]
+                polarity = asp["polarity"]
+
+                if target_type == "planet":
+                    tgt = target_key
+                    aid = f"solar_arc__{source_clean}__{aspect_name.upper()}__NATAL_{target_key}"
+                elif target_type == "angle":
+                    tgt = target_key
+                    aid = f"solar_arc__{source_clean}__{aspect_name.upper()}__NATAL_ANGLE_{target_key}"
+                else:
+                    tgt = target_key
+                    aid = f"solar_arc__{source_clean}__{aspect_name.upper()}__NATAL_LOT_{target_key}"
+
+                ev = ActivationEvidence(
+                    id=aid,
+                    technique="solar_arc",
+                    technique_family="progression",
+                    target_type=target_type,
+                    target_key=tgt,
+                    kind="solar_arc_aspect",
+                    source_frame="solar_arc",
+                    target_frame="natal" if target_type == "planet" else target_type,
+                    target_planet=tgt if target_type == "planet" else None,
+                    angle=tgt if target_type == "angle" else None,
+                    lot=tgt if target_type == "lot" else None,
+                    aspect=aspect_name,
+                    orb=orb,
+                    phase="period",
+                    polarity=polarity,
+                    strength=strength,
+                    evidence=f"Solar Arc {_display_name(asp['source_key'])} {aspect_name} natal {_display_name(tgt)}, orb {orb}°",
+                    debug={
+                        "progression_method": "solar_arc",
+                        "birth_jd": round(sa_ctx.birth_jd, 4),
+                        "target_jd": round(sa_ctx.target_jd, 4),
+                        "age_years": round(sa_ctx.age_years, 8),
+                        "progressed_jd": round(sa_ctx.progressed_jd, 4),
+                        "progressed_utc_iso": sa_ctx.progressed_utc_iso,
+                        "max_orb": sa_ctx.max_orb,
+                        "resolved_house_system": sa_ctx.resolved_house_system,
+                        "solar_arc_delta": round(sa_ctx.solar_arc_delta, 4),
+                        "natal_sun_longitude": round(sa_ctx.natal_sun_lon, 4),
+                        "progressed_sun_longitude": round(sa_ctx.progressed_sun_lon, 4),
+                        "solar_arc_source_longitude": round(asp["source_lon"], 4),
+                        "target_longitude": round(asp["target_lon"], 4),
+                        "angular_distance": asp["angular_distance"],
+                        "aspect_angle": ASPECT_ANGLES.get(aspect_name, 0),
+                        "orb": orb,
+                        "orb_factor": round(max(0, 1 - orb / sa_ctx.max_orb), 4),
+                        "base_strength": base_strength,
+                    },
+                )
+                activations.append(ev)
+
+                if target_type == "planet":
+                    by_planet.setdefault(target_key, []).append(aid)
+                elif target_type == "angle":
+                    by_angle.setdefault(target_key, []).append(aid)
+                elif target_type == "lot":
+                    by_lot.setdefault(target_key, []).append(aid)
+
+        elif tech == "secondary_progression":
+            from solarsage.services.progressions import (
+                calculate_secondary_progression_context,
+                progressed_moon_aspects, progressed_sun_transitions,
+                _get_progression_strength,
+            )
+            sp_ctx = calculate_secondary_progression_context(
+                birth_date=birth_date, birth_time=birth_time, birth_tz=birth_tz,
+                birth_lat=birth_lat, birth_lon=birth_lon,
+                target_date=target_date, target_time=target_time, target_tz=target_tz,
+                house_system=house_system,
+            )
+
+            # Progressed Moon aspects
+            moon_aspects = progressed_moon_aspects(sp_ctx)
+            moon_base = _get_progression_strength("progressed_moon_aspect")
+            for asp in moon_aspects:
+                target_key = asp["target_key"]
+                target_type = asp["target_type"]
+                aspect_name = asp["aspect"]
+                orb = asp["orb"]
+
+                if target_type == "planet":
+                    aid = f"secondary_progression__MOON__{aspect_name.upper()}__NATAL_{target_key}"
+                elif target_type == "angle":
+                    aid = f"secondary_progression__MOON__{aspect_name.upper()}__NATAL_ANGLE_{target_key}"
+                else:
+                    aid = f"secondary_progression__MOON__{aspect_name.upper()}__NATAL_LOT_{target_key}"
+
+                ev = ActivationEvidence(
+                    id=aid,
+                    technique="secondary_progression",
+                    technique_family="progression",
+                    target_type=target_type,
+                    target_key=target_key,
+                    kind="progressed_moon_aspect",
+                    source_frame="progressed",
+                    target_frame="natal" if target_type == "planet" else target_type,
+                    target_planet=target_key if target_type == "planet" else None,
+                    angle=target_key if target_type == "angle" else None,
+                    lot=target_key if target_type == "lot" else None,
+                    aspect=aspect_name,
+                    orb=orb,
+                    phase="period",
+                    polarity=asp["polarity"],
+                    strength=asp["strength"],
+                    evidence=f"Progressed Moon {aspect_name} natal {_display_name(target_key)}, orb {orb}°",
+                    debug={
+                        "progression_method": "secondary_progression",
+                        "birth_jd": round(sp_ctx.birth_jd, 4),
+                        "target_jd": round(sp_ctx.target_jd, 4),
+                        "age_years": round(sp_ctx.age_years, 8),
+                        "progressed_jd": round(sp_ctx.progressed_jd, 4),
+                        "progressed_utc_iso": sp_ctx.progressed_utc_iso,
+                        "max_orb": sp_ctx.max_orb,
+                        "resolved_house_system": sp_ctx.resolved_house_system,
+                        "source_longitude": round(asp["source_lon"], 4),
+                        "target_longitude": round(asp["target_lon"], 4),
+                        "angular_distance": asp["angular_distance"],
+                        "aspect_angle": ASPECT_ANGLES.get(aspect_name, 0),
+                        "orb": orb,
+                        "orb_factor": round(max(0, 1 - orb / sp_ctx.max_orb), 4),
+                        "base_strength": moon_base,
+                    },
+                )
+                activations.append(ev)
+
+                if target_type == "planet":
+                    by_planet.setdefault(target_key, []).append(aid)
+                elif target_type == "angle":
+                    by_angle.setdefault(target_key, []).append(aid)
+                elif target_type == "lot":
+                    by_lot.setdefault(target_key, []).append(aid)
+
+            # Progressed Sun transitions
+            from solarsage.services.progressions import progressed_sun_transitions as pst_fn
+            transitions = pst_fn(sp_ctx, birth_lat, birth_lon, house_system, sp_ctx.max_orb)
+            for trans in transitions:
+                tt = trans["transition_type"]
+                if tt == "sign":
+                    next_s = trans.get("next_sign", "")
+                    prev_s = trans.get("previous_sign", "")
+                    sig = next_s or prev_s
+                    aid = f"secondary_progression__SUN_SIGN_TRANSITION__{sig}"
+                    ev = ActivationEvidence(
+                        id=aid,
+                        technique="secondary_progression",
+                        technique_family="progression",
+                        target_type="planet",
+                        target_key="SUN",
+                        kind="progressed_sun_sign_transition",
+                        source_frame="progressed",
+                        target_frame="natal",
+                        target_planet="SUN",
+                        phase="period",
+                        polarity="neutral",
+                        strength=trans["strength"],
+                        evidence=f"Progressed Sun near {sig} sign transition, distance {trans['distance_to_boundary']}°",
+                        debug={
+                            "progression_method": "secondary_progression",
+                            "birth_jd": round(sp_ctx.birth_jd, 4),
+                            "target_jd": round(sp_ctx.target_jd, 4),
+                            "age_years": round(sp_ctx.age_years, 8),
+                            "progressed_jd": round(sp_ctx.progressed_jd, 4),
+                            "progressed_utc_iso": sp_ctx.progressed_utc_iso,
+                            "max_orb": sp_ctx.max_orb,
+                            "resolved_house_system": sp_ctx.resolved_house_system,
+                            "transition_type": "sign",
+                            "current_sign": trans.get("current_sign", ""),
+                            "previous_sign": trans.get("previous_sign"),
+                            "next_sign": trans.get("next_sign"),
+                            "boundary_longitude": trans["boundary_longitude"],
+                            "distance_to_boundary": trans["distance_to_boundary"],
+                        },
+                    )
+                    activations.append(ev)
+                    by_planet.setdefault("SUN", []).append(aid)
+
+                elif tt == "house":
+                    th = trans["target_house"]
+                    aid = f"secondary_progression__SUN_HOUSE_TRANSITION__{th}"
+                    ev = ActivationEvidence(
+                        id=aid,
+                        technique="secondary_progression",
+                        technique_family="progression",
+                        target_type="house",
+                        target_key=str(th),
+                        kind="progressed_sun_house_transition",
+                        source_frame="progressed",
+                        target_frame="natal",
+                        house=th,
+                        phase="period",
+                        polarity="neutral",
+                        strength=trans["strength"],
+                        evidence=f"Progressed Sun near natal house {th} cusp, distance {trans['distance_to_boundary']}°",
+                        debug={
+                            "progression_method": "secondary_progression",
+                            "birth_jd": round(sp_ctx.birth_jd, 4),
+                            "target_jd": round(sp_ctx.target_jd, 4),
+                            "age_years": round(sp_ctx.age_years, 8),
+                            "progressed_jd": round(sp_ctx.progressed_jd, 4),
+                            "progressed_utc_iso": sp_ctx.progressed_utc_iso,
+                            "max_orb": sp_ctx.max_orb,
+                            "resolved_house_system": sp_ctx.resolved_house_system,
+                            "transition_type": "house",
+                            "current_house": trans.get("current_house"),
+                            "target_house": th,
+                            "boundary_longitude": trans["boundary_longitude"],
+                            "distance_to_boundary": trans["distance_to_boundary"],
+                        },
+                    )
+                    activations.append(ev)
+                    by_house.setdefault(str(th), []).append(aid)
 
     return ActivationLayer(
         calculation_version="1",

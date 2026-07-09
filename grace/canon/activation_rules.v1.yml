@@ -40,6 +40,11 @@ activation_strength:
     lunar_return_angle_in_natal_house: 0.55
     lunar_return_moon_house: 0.60
     lunar_return_angular_planet: 0.50
+  progression_base:
+    solar_arc_aspect: 0.70
+    progressed_moon_aspect: 0.65
+    progressed_sun_sign_transition: 0.50
+    progressed_sun_house_transition: 0.50
 
 techniques:
   annual_profection:
