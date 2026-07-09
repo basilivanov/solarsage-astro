@@ -2,7 +2,8 @@
 
 Date: 2026-07-09
 Base reviewed commit: `eee6346` / request tip before this rework: `4e5efb0`
-Final rework commit: `4abafb8`
+Final rework code/tests commit: `d1dfec7`
+Evidence docs tip: current main HEAD / callback SHA after this report package.
 Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
