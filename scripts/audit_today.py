@@ -605,9 +605,13 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             payload_json = normalized
             final_payload_source = "TodayService.get_today_payload"
         else:
-            # Frozen baseline mode: use committed baseline payload (already validated)
+            # Frozen baseline mode: use committed baseline payload (already validated).
+            # Materialize it under debug/ *before* oracle runners so they never
+            # depend on stale files from a previous live run.
             payload_json = _baseline
             final_payload_source = "committed_baseline_fixture"
+            write_json(debug_dir / "final_today_payload.json", payload_json)
+            write_json(debug_dir / "final_today_payload.normalized.json", payload_json)
 
         await client.close()
 

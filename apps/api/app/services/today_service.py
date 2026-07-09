@@ -93,6 +93,8 @@ from app.core.versions import (
     CALCULATION_VERSION,
     LEGACY_CALCULATION_VERSION,
     LEGACY_FRONTEND_PAYLOAD_VERSION,
+    LEGACY_SCORING_VERSION,
+    SCORING_V2_VERSION,
     TODAY_V1_PAYLOAD_VERSION,
     TODAY_V2_PAYLOAD_VERSION,
     V2_FRONTEND_PAYLOAD_VERSION,
@@ -312,21 +314,38 @@ class TodayService:
         scoring_result["top_signals"] = normalize_top_signals(scoring_result.get("top_signals", []))
         scoring_version = dual.selected_scoring_version
 
-        # Rebuild cache key with actual runtime version fields for write
-        fe_version = (
-            V2_FRONTEND_PAYLOAD_VERSION
-            if getattr(settings, "solarsage_v2_frontend_enabled", False)
-            else LEGACY_FRONTEND_PAYLOAD_VERSION
-        )
-        p_version = (
-            TODAY_V2_PAYLOAD_VERSION
-            if getattr(settings, "solarsage_v2_frontend_enabled", False)
-            else TODAY_V1_PAYLOAD_VERSION
-        )
-        calc_version = activation_layer.calculation_version or (
-            CALCULATION_VERSION if should_compute_v2() else LEGACY_CALCULATION_VERSION
-        )
-        al_version = activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
+        # Rebuild cache key with actual runtime version fields for write.
+        # Version identity follows the *selected* scoring path, not the local
+        # fallback activation-layer calculation_version (which may always be V2).
+        v2_selected = str(scoring_version) == str(SCORING_V2_VERSION)
+        if v2_selected:
+            calc_version = CALCULATION_VERSION
+            al_version = (
+                activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
+            )
+            fe_version = (
+                V2_FRONTEND_PAYLOAD_VERSION
+                if getattr(settings, "solarsage_v2_frontend_enabled", False)
+                else LEGACY_FRONTEND_PAYLOAD_VERSION
+            )
+            p_version = (
+                TODAY_V2_PAYLOAD_VERSION
+                if getattr(settings, "solarsage_v2_frontend_enabled", False)
+                else TODAY_V1_PAYLOAD_VERSION
+            )
+            # When frontend V2 is enabled, force the explicit V2 wire identity.
+            if getattr(settings, "solarsage_v2_frontend_enabled", False):
+                fe_version = V2_FRONTEND_PAYLOAD_VERSION
+                p_version = TODAY_V2_PAYLOAD_VERSION
+        else:
+            calc_version = LEGACY_CALCULATION_VERSION
+            al_version = (
+                activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
+            )
+            fe_version = LEGACY_FRONTEND_PAYLOAD_VERSION
+            p_version = TODAY_V1_PAYLOAD_VERSION
+            # Keep scoring_version intentional for V1 (int 1), even if dual-run computed V2.
+            scoring_version = LEGACY_SCORING_VERSION
 
         cache_key = build_today_cache_key(
             user_id=user_id,

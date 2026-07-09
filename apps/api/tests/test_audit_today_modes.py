@@ -291,8 +291,18 @@ async def test_frozen_mode_does_not_call_today_service(tmp_path, monkeypatch):
     ))
     monkeypatch.setattr(audit_mod, "TodayService", lambda db: today_svc)
 
+    oracle_saw_payload = {"ok": False}
+
     async def _oracles(**kwargs):
         d = kwargs["out_dir"]
+        # Regression: frozen mode must materialize baseline payload before oracles.
+        payload_path = d / "final_today_payload.json"
+        assert payload_path.exists(), (
+            "frozen-baseline must write debug/final_today_payload.json before run_oracles"
+        )
+        loaded = json.loads(payload_path.read_text(encoding="utf-8"))
+        assert loaded.get("headline") == "frozen"
+        oracle_saw_payload["ok"] = True
         (d / "scoring_intermediate_table.csv").write_text("x\n", encoding="utf-8")
         (d / "scoring_oracle_comparison.json").write_text("{}", encoding="utf-8")
         (d / "astronomy_oracle_summary.json").write_text("{}", encoding="utf-8")
@@ -317,3 +327,6 @@ async def test_frozen_mode_does_not_call_today_service(tmp_path, monkeypatch):
     assert src["activation_layer_source"] == "sidecar"
     claims = (out / "14_claims_audit.md").read_text(encoding="utf-8")
     assert "frozen baseline payload review" in claims.lower()
+    assert (out / "debug" / "final_today_payload.json").exists()
+    assert (out / "debug" / "final_today_payload.normalized.json").exists()
+    assert oracle_saw_payload["ok"] is True

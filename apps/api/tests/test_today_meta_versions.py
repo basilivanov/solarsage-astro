@@ -724,3 +724,128 @@ def test_expected_cache_identity_v2_flags(monkeypatch):
     assert key.activation_layer_version == ACTIVATION_LAYER_VERSION
     assert key.scoring_version == SCORING_V2_VERSION
     assert key.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION
+
+
+@pytest.mark.asyncio
+async def test_v1_only_payload_and_cache_identity_not_polluted_by_v2_calc(db_session, monkeypatch):
+    """V1-only selected path must keep legacy calculation/scoring/payload/frontend versions
+    even when ActivationLayerService local fallback carries V2 calculation_version."""
+    from datetime import date as Date, time as Time
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.core.config import settings
+    from app.core.versions import (
+        LEGACY_CALCULATION_VERSION,
+        LEGACY_FRONTEND_PAYLOAD_VERSION,
+        LEGACY_SCORING_VERSION,
+        TODAY_V1_PAYLOAD_VERSION,
+    )
+    from app.db.models import User, UserProfile
+    from app.schemas.access import ContentAccessState
+    from app.schemas.natal import NatalChartHouse, NatalChartPlanet, NatalContextData
+    from app.schemas.normalization import AstroSignal
+    from app.services.today_service import TodayService
+
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", False)
+    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", False)
+
+    user = User(tg_user_id=424242, tg_username="test_v1_identity")
+    db_session.add(user)
+    await db_session.flush()
+    profile = UserProfile(
+        user_id=user.id,
+        first_name="Test",
+        birthday=Date(1990, 1, 15),
+        birth_time=Time(12, 0),
+        birth_city="Moscow",
+        birth_lat=55.76,
+        birth_lon=37.62,
+        gender="female",
+        birth_tz="Europe/Moscow",
+        is_onboarded=True,
+    )
+    db_session.add(profile)
+    await db_session.commit()
+
+    deterministic_signals = [
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Moon",
+            target_planet="Pluto",
+            aspect_type="opposition",
+            orb=1.0,
+            strength=0.9,
+        ),
+        AstroSignal(
+            type="planet_in_house",
+            planet="Transit_Sun",
+            house=1,
+            strength=1.0,
+        ),
+    ]
+    fake_natal = NatalContextData(
+        house_system="WHOLE_SIGN",
+        planets=[
+            NatalChartPlanet(
+                name="Sun",
+                sign="Capricorn",
+                degree=7.0,
+                longitude=286.93,
+                retrograde=False,
+                house=11,
+            )
+        ],
+        houses=[
+            NatalChartHouse(
+                number=i,
+                sign="Aries",
+                degree=0.0,
+                longitude=float((i - 1) * 30),
+            )
+            for i in range(1, 13)
+        ],
+    )
+
+    mock_client = AsyncMock()
+    mock_client.get_transits = AsyncMock(return_value={"target_jd": 2461229.875, "planets": []})
+    mock_client.get_activation_layer = AsyncMock()
+    captured_cache_keys = []
+
+    async def capture_cache(self, *args, **kwargs):
+        # TodayService._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
+        if len(args) >= 5:
+            captured_cache_keys.append(args[4])
+        elif "cache_key" in kwargs:
+            captured_cache_keys.append(kwargs["cache_key"])
+
+    with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
+         patch("app.services.today_service.NatalContextService.get_or_build_natal_context", AsyncMock(return_value=fake_natal)), \
+         patch("app.services.today_service.NormalizationService.normalize_day", return_value=deterministic_signals), \
+         patch.object(TodayService, "_get_yesterday_signals", AsyncMock(return_value=None)), \
+         patch.object(TodayService, "_cache_payload", new=capture_cache), \
+         patch.object(TodayService, "_cache_semantic_layer", AsyncMock()):
+        service = TodayService(db_session)
+        access = ContentAccessState(state="preview", reason="expired_access")
+        payload = await service.get_today_payload(
+            user_id=user.id,
+            target_date=Date(2026, 7, 8),
+            access_state=access,
+            skip_prefetch=True,
+        )
+
+    # Sidecar activation must not be called in pure V1-only mode.
+    mock_client.get_activation_layer.assert_not_called()
+
+    assert str(payload.meta.calculation_version) == str(LEGACY_CALCULATION_VERSION)
+    assert payload.meta.scoring_version == LEGACY_SCORING_VERSION
+    assert payload.meta.payload_version == TODAY_V1_PAYLOAD_VERSION
+    assert payload.meta.frontend_payload_version == LEGACY_FRONTEND_PAYLOAD_VERSION
+    # Must not be polluted with V2 calculation identity from local fallback layer.
+    assert str(payload.meta.calculation_version) != "ss-calc-1.1.0"
+
+    assert captured_cache_keys, "expected cache write identity capture"
+    ck = captured_cache_keys[0]
+    assert str(ck.calculation_version) == str(payload.meta.calculation_version)
+    assert str(ck.scoring_version) == str(payload.meta.scoring_version)
+    assert ck.frontend_payload_version == payload.meta.frontend_payload_version

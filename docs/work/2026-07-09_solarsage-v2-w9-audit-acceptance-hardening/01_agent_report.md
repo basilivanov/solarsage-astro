@@ -1,10 +1,10 @@
 # W9 Agent Report — SolarSage V2 Audit Acceptance Hardening
 
-Date: 2026-07-09  
-Branch: `main`  
-Push: NOT_ATTEMPTED  
-Deploy: NOT_ATTEMPTED  
-Remote CI: REMOTE_CI_NOT_AVAILABLE  
+Date: 2026-07-09
+Branch: `main`
+Push: NOT_ATTEMPTED
+Deploy: NOT_ATTEMPTED
+Remote CI: REMOTE_CI_NOT_AVAILABLE
 
 ## Scope delivered
 
@@ -180,9 +180,10 @@ Intended dirty set is limited to W9 files above. Pre-existing unrelated dirty/un
 
 ## Commit SHA
 
-`2e43bcf`
+`0f0ff2e`
 
-Accepted/agent commit: `2e43bcf`
+`0f0ff2e`
+
 
 ## Remote CI evidence
 
