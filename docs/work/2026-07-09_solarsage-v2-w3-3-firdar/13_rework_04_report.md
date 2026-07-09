@@ -53,7 +53,7 @@ Contract now sits above `def __init__`, not inside the argument list. `returns: 
 
 ## Commit
 
-`<commit_sha>`
+`f27d394`
 
 ## Push Status
 
