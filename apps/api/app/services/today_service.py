@@ -80,6 +80,7 @@ from app.services.day_scoring_signals import filter_day_scored_signals
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
 from app.services.day_scoring_runtime_service import DayScoringRuntimeService
+from app.services.cache_key_service import build_today_cache_key
 from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
@@ -174,8 +175,15 @@ class TodayService:
         # If user changes birth data, hash changes → cache miss → fresh data.
         profile_hash = NatalContextService.compute_profile_hash(profile)
 
-        # W-5.2: Check cache first (keyed by user_id + target_date + profile_hash)
-        cached = await self._get_cached_payload(user_id, target_date, profile_hash)
+        # W5: Build versioned cache key for read
+        cache_key = build_today_cache_key(
+            user_id=user_id,
+            target_date=target_date.isoformat(),
+            profile_hash=profile_hash,
+        )
+
+        # W-5.2: Check cache first (keyed by user_id + target_date + profile_hash + cache_key_hash)
+        cached = await self._get_cached_payload(user_id, target_date, profile_hash, cache_key)
         if cached:
             # Update access state (may have changed since cache)
             cached.access = access_state
@@ -246,10 +254,7 @@ class TodayService:
             sidecar_activation_layer=None,  # Can be wired in W3+ when sidecar endpoint is ready
         )
 
-        scoring_service = ScoringService()
-        scoring_result = scoring_service.score_day(day_signals)
-
-        # W5: V2 dual-run via DayScoringRuntimeService
+        # W5: V2 dual-run via DayScoringRuntimeService (owns V1+V2 scoring)
         runtime = DayScoringRuntimeService()
         dual = runtime.compute(
             day_signals=day_signals,
@@ -411,7 +416,7 @@ class TodayService:
         )
 
         # W-5.2: Cache payload (with profile_hash in key)
-        await self._cache_payload(user_id, target_date, payload, profile_hash)
+        await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
 
         # W-5.2: Prefetch week in background (don't block user)
         if not skip_prefetch:
@@ -561,12 +566,14 @@ class TodayService:
             for index, (key, score) in enumerate(ranked, start=1)
         ]
 
-    async def _get_cached_payload(self, user_id, target_date: Date, profile_hash: str) -> TodayPayload | None:
+    async def _get_cached_payload(self, user_id, target_date: Date, profile_hash: str, cache_key=None) -> TodayPayload | None:
         """Get cached payload if exists. W-5.2.
 
         W-NATAL-FULL: profile_hash is part of the cache key. If user changes
         birth data, the hash changes → cache miss → fresh generation.
         This proves today cache is tied to natal context.
+
+        W5: Also validates cache_key_hash for versioned cache identity.
         """
         result = await self.db.execute(
             select(TodayPayloadCache).where(
@@ -578,6 +585,10 @@ class TodayService:
         cache_entry = result.scalar_one_or_none()
 
         if not cache_entry:
+            return None
+
+        # W5: Versioned cache key validation
+        if cache_key and cache_entry.cache_key_hash != cache_key.cache_key_hash:
             return None
 
         # Deserialize JSON
@@ -594,15 +605,15 @@ class TodayService:
 
         return payload
 
-    async def _cache_payload(self, user_id, target_date: Date, payload: TodayPayload, profile_hash: str) -> None:
+    async def _cache_payload(self, user_id, target_date: Date, payload: TodayPayload, profile_hash: str, cache_key=None) -> None:
         """Cache payload. W-5.2.
 
         W-NATAL-FULL: profile_hash is part of the cache key.
+        W5: Stores versioned cache columns.
         """
-        # Serialize to JSON
         payload_json = payload.model_dump_json()
 
-        # Upsert cache entry (keyed by user_id + target_date + profile_hash)
+        # Upsert cache entry (keyed by user_id + target_date + profile_hash + cache_key_hash)
         result = await self.db.execute(
             select(TodayPayloadCache).where(
                 TodayPayloadCache.user_id == user_id,
@@ -612,8 +623,11 @@ class TodayService:
         )
         existing = result.scalar_one_or_none()
 
+        ch = cache_key.cache_key_hash if cache_key else ""
+
         if existing:
             existing.payload_json = payload_json
+            existing.cache_key_hash = ch
             existing.created_at = datetime.now(UTC)
         else:
             cache_entry = TodayPayloadCache(
@@ -621,6 +635,13 @@ class TodayService:
                 target_date=target_date,
                 profile_hash=profile_hash,
                 payload_json=payload_json,
+                cache_key_hash=ch,
+                calculation_version=cache_key.calculation_version if cache_key else "1",
+                activation_layer_version=cache_key.activation_layer_version if cache_key else None,
+                scoring_version=str(cache_key.scoring_version) if cache_key else "1",
+                canon_versions_hash=cache_key.canon_versions_hash if cache_key else "",
+                llm_prompt_version=cache_key.llm_prompt_version if cache_key else 2,
+                frontend_payload_version=cache_key.frontend_payload_version if cache_key else 1,
             )
             self.db.add(cache_entry)
 

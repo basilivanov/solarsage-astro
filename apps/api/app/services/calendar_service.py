@@ -268,11 +268,34 @@ class CalendarService:
             )
             signals = NormalizationService().normalize_day(self._request_natal_context, transits)
             day_signals = filter_day_scored_signals(signals)
-            scoring = ScoringService().score_day(day_signals)
-            status = scoring["day_status"]
+
+            # W5: Build activation layer and use runtime scorer
+            from app.services.activation_layer_service import ActivationLayerService
+            from app.services.day_scoring_runtime_service import DayScoringRuntimeService
+
+            activation_layer = ActivationLayerService().build(
+                natal_context=self._request_natal_context,
+                transits=transits,
+                day_signals=day_signals,
+                target_date=target_date,
+                target_time="12:00",
+                target_tz=target_tz,
+                house_system=self._request_natal_context.get("house_system", "PLACIDUS"),
+                sidecar_activation_layer=None,
+            )
+            runtime = DayScoringRuntimeService()
+            dual = runtime.compute(
+                day_signals=day_signals,
+                activation_layer=activation_layer,
+                user_id=user_id,
+                target_date=target_date.isoformat(),
+            )
+            status = dual.selected_result["day_status"]
+            scoring_result = dual.selected_result
+
             semantic_layer = SemanticService().build_semantic_layer(
                 status,
-                scoring["sphere_scores"],
+                scoring_result["sphere_scores"],
             )
             if hasattr(semantic_layer, "model_dump_json"):
                 sem_json_str = semantic_layer.model_dump_json()

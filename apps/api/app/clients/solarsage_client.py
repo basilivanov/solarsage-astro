@@ -171,6 +171,45 @@ class SolarSageClient:
         await self.client.aclose()
 # END_BLOCK: CLIENT_CLASS
 
+    async def get_activation_layer(
+        self,
+        birth_date: str,
+        birth_time: str,
+        birth_lat: float,
+        birth_lon: float,
+        birth_tz: str,
+        target_date: str,
+        target_time: str,
+        target_tz: str,
+        house_system: str = "PLACIDUS",
+        techniques: list[str] | None = None,
+        current_location: dict | None = None,
+    ) -> dict:
+        """Get activation layer from sidecar /v1/activation-layer."""
+        body = {
+            "birth": {
+                "date": birth_date,
+                "time": birth_time,
+                "lat": birth_lat,
+                "lon": birth_lon,
+                "tz": birth_tz,
+            },
+            "target": {
+                "date": target_date,
+                "time": target_time,
+                "tz": target_tz,
+            },
+            "house_system": house_system,
+            "techniques": techniques or [],
+        }
+        if current_location:
+            body["current_location"] = current_location
+        response = await self.client.post("/v1/activation-layer", json=body)
+        response.raise_for_status()
+        data = response.json()
+        layer = data.get("activation_layer", data)
+        return layer
+
 
 # START_BLOCK: SINGLETON
 _client: SolarSageClient | None = None

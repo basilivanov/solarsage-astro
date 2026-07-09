@@ -90,6 +90,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     SmallInteger,
     String,
@@ -328,13 +329,12 @@ class Referral(Base):
 
 # START_BLOCK: TODAY_PAYLOADS_CACHE_TABLE
 class TodayPayloadCache(Base):
-    """Cached TodayPayload entries. W-5.2."""
+    """Cached TodayPayload entries. W-5.2. Versioned by W5 cache key."""
 
     __tablename__ = "today_payloads_cache"
     __table_args__ = (
-        # W-NATAL-FULL: profile_hash added to cache key so that a birth-data
-        # change invalidates today cache even if explicit invalidation is missed.
-        UniqueConstraint('user_id', 'target_date', 'profile_hash', name='uq_user_date_profile'),
+        # W5: versioned unique key includes cache_key_hash
+        UniqueConstraint('user_id', 'target_date', 'profile_hash', 'cache_key_hash', name='uq_user_date_profile_key'),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -353,6 +353,15 @@ class TodayPayloadCache(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    # W5 versioned cache columns
+    cache_key_hash: Mapped[str] = mapped_column(String(16), nullable=False, server_default="")
+    calculation_version: Mapped[str] = mapped_column(String(32), nullable=False, server_default="1")
+    activation_layer_version: Mapped[str | None] = mapped_column(String(32), nullable=True, server_default=None)
+    scoring_version: Mapped[str] = mapped_column(String(32), nullable=False, server_default="1")
+    canon_versions_hash: Mapped[str] = mapped_column(String(16), nullable=False, server_default="")
+    llm_prompt_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("2"))
+    frontend_payload_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
 
     user: Mapped["User"] = relationship("User")
 # END_BLOCK: TODAY_PAYLOADS_CACHE_TABLE

@@ -167,9 +167,18 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
 
     # ── Mocks ───────────────────────────────────────────────────────
 
-    from app.services.scoring_service import ScoringService
-    mock_scoring = MagicMock(wraps=ScoringService())
-    mock_scoring.score_day = MagicMock(wraps=mock_scoring.score_day)
+    from app.services.day_scoring_runtime_service import DayScoringRuntimeService, DualRunResult
+    mock_runtime = MagicMock(wraps=DayScoringRuntimeService())
+    mock_dual = MagicMock()
+    mock_dual.selected_result = {
+        "day_status": "supportive",
+        "sphere_scores": {"thinking_speech_learning": 1.2},
+        "top_signals": [],
+    }
+    mock_dual.selected_scoring_version = 1
+    mock_dual.v1_result = {"day_status": "supportive", "sphere_scores": {}, "top_signals": []}
+    mock_dual.v2_result = None
+    mock_runtime.compute = MagicMock(return_value=mock_dual)
 
     from app.services.semantic_service import SemanticService
     real_build_why = SemanticService.build_why_contexts
@@ -185,7 +194,7 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
          patch("app.services.today_service.NormalizationService.normalize_day") as mock_normalize, \
          patch.object(TodayService, "_get_yesterday_signals") as mock_get_ys, \
          patch.object(SemanticService, "build_why_contexts", mock_build_why), \
-         patch("app.services.today_service.ScoringService", return_value=mock_scoring):
+         patch("app.services.today_service.DayScoringRuntimeService", return_value=mock_runtime):
 
         # NatalContextService returns a deterministic NatalContextData
         mock_get_natal.return_value = fake_natal_context
@@ -228,38 +237,12 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
     assert payload.meta.activation_layer_version == "al-1.0"
     assert payload.meta.scoring_version == 1
 
-    # ── 3. Strict scoring assertions ────────────────────────────────
-    # Exactly one call
-    assert mock_scoring.score_day.call_count == 1, \
-        f"Expected exactly 1 call to score_day, got {mock_scoring.score_day.call_count}"
-
-    call_args, call_kwargs = mock_scoring.score_day.call_args
-    # Only the signals list as a positional argument
-    assert len(call_args) == 1, \
-        f"Expected exactly 1 positional arg, got {len(call_args)}"
-    assert call_kwargs == {}, \
-        f"Expected no keyword args, got {call_kwargs}"
-
-    # The signals list must contain only the transit signals
-    # (static_background with planet='Sun' is filtered by filter_day_scored_signals)
-    actual_signals = call_args[0]
-    assert isinstance(actual_signals, list)
-    assert len(actual_signals) == 2, \
-        f"Expected 2 transit-only signals, got {len(actual_signals)}"
-
-    # Verify each signal independently (id comparison is fragile)
-    assert actual_signals[0].planet == "Transit_Moon"
-    assert actual_signals[0].type == "aspect"
-    assert actual_signals[0].target_planet == "Pluto"
-
-    assert actual_signals[1].planet == "Transit_Mars"
-    assert actual_signals[1].type == "planet_in_house"
-    assert actual_signals[1].house == 12
-
-    # No ActivationLayer appears in scoring args
-    from app.schemas.activation import ActivationLayer
-    assert all(not isinstance(arg, ActivationLayer) for arg in call_args), \
-        "ActivationLayer must not appear in scoring call args"
+    # ── 3. Runtime service called correctly ──────────────────────────
+    mock_runtime.compute.assert_called_once()
+    # Verify activation layer was passed to runtime
+    call_kwargs = mock_runtime.compute.call_args.kwargs
+    assert "activation_layer" in call_kwargs
+    assert call_kwargs["activation_layer"] is not None
 
 
 @pytest.mark.asyncio

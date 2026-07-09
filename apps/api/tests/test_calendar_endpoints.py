@@ -382,14 +382,17 @@ async def test_calendar_status_cache_duplicate_rereads_winning_row(
 
     with patch("app.services.calendar_service.get_solarsage_client", return_value=mock_client), \
          patch("app.services.calendar_service.NormalizationService") as normalization, \
-         patch("app.services.calendar_service.ScoringService") as scoring, \
+         patch("app.services.day_scoring_runtime_service.DayScoringRuntimeService") as runtime_mock, \
          patch("app.services.calendar_service.SemanticService") as semantic:
         normalization.return_value.normalize_day.return_value = []
-        scoring.return_value.score_day.return_value = {
+        dual_result_mock = Mock()
+        dual_result_mock.selected_result = {
             "day_status": "supportive",
             "sphere_scores": {},
             "top_signals": [],
         }
+        dual_result_mock.selected_scoring_version = 1
+        runtime_mock.return_value.compute.return_value = dual_result_mock
         semantic.return_value.build_semantic_layer.return_value = mock_semantic_layer
 
         status = await service._compute_and_cache_day_status(user.id, target_date)
