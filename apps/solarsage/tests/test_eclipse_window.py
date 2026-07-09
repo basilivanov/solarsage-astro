@@ -278,3 +278,24 @@ def test_eclipse_conjunction_polarity():
         assert a["polarity"] == "mixed"
         assert a["phase"] == "period"
         assert a["source_frame"] == "eclipse"
+
+
+# ── Nearest-candidate regression ────────────────────────────────────────
+
+
+def test_nearest_eclipse_only_basil_mar03():
+    """Basil 2026-03-03: nearest eclipse (lunar on 03-03) has no natal hits
+    inside orb, so zero eclipse_window activations should be emitted.
+
+    This test fails against the original implementation that activated
+    a farther eclipse (2026-02-17 annular solar) because it had hits."""
+    resp = client.post("/v1/activation-layer", json={
+        "birth": {"date": "1980-10-30", "time": "19:50", "lat": 67.9394, "lon": 32.8144, "tz": "Europe/Moscow"},
+        "target": {"date": "2026-03-03", "time": "12:00", "tz": "Europe/Moscow"},
+        "house_system": "PLACIDUS",
+        "techniques": ["eclipse_window"],
+    })
+    assert resp.status_code == 200
+    layer = resp.json()["activation_layer"]
+    ecl_acts = [a for a in layer["activations"] if a["technique"] == "eclipse_window"]
+    assert len(ecl_acts) == 0, f"Expected 0 eclipse activations for 2026-03-03, got {len(ecl_acts)}"

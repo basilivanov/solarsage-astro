@@ -280,6 +280,11 @@ def find_eclipses(
     days_before = config["days_before"]
     days_after = config["days_after"]
 
+    # Use only the nearest eclipse candidate (W3.6 contract)
+    if not candidates:
+        return activations
+    chosen = [candidates[0]]
+
     # Debug base for all activations
     debug_base = {
         "days_before": days_before,
@@ -289,7 +294,7 @@ def find_eclipses(
         "resolved_house_system": resolved_house_system,
     }
 
-    for cand in candidates:
+    for cand in chosen:
         ecl_lon = cand["longitude"]
         ecl_kind = cand["kind"]
         ecl_type = cand["type"]

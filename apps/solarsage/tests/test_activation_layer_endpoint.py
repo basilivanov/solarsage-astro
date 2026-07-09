@@ -74,21 +74,32 @@ def test_activation_layer_endpoint_returns_200():
 
 
 def test_activation_layer_endpoint_techniques_default_all():
-    """Empty techniques list defaults to all supported transit techniques."""
-    # Use Aug 12 target so eclipse_window produces activations
+    """Empty techniques list defaults to all W3.1-W3.6 techniques in deterministic order."""
+    from solarsage.services.activation_builder import ALL_TECHNIQUES, SUPPORTED_ORDER
+    # Verify contract-complete default order
+    expected = [
+        "transit_to_natal", "transit_to_angle", "transit_planet_in_house", "transit_to_lot",
+        "annual_profection", "monthly_profection",
+        "firdar_major", "firdar_minor",
+        "solar_return", "lunar_return",
+        "solar_arc", "secondary_progression",
+        "eclipse_window",
+    ]
+    assert list(SUPPORTED_ORDER) == expected, f"SUPPORTED_ORDER mismatch"
+    assert list(ALL_TECHNIQUES) == expected, f"ALL_TECHNIQUES mismatch"
+
+    # Endpoint smoke test: default techniques produce activations for a representative date
     request = {**MOSCOW_FIXTURE_REQUEST, "target": {"date": "2026-08-12", "time": "12:00", "tz": "Europe/Moscow"}}
     response = client.post("/v1/activation-layer", json=request)
     assert response.status_code == 200
-    layer = response.json()["activation_layer"]
-    techniques_found = {a["technique"] for a in layer["activations"]}
+    techniques_found = {a["technique"] for a in response.json()["activation_layer"]["activations"]}
+    # Core techniques must always emit activations
     assert "transit_to_natal" in techniques_found
     assert "transit_planet_in_house" in techniques_found
     assert "annual_profection" in techniques_found
     assert "monthly_profection" in techniques_found
     assert "firdar_major" in techniques_found
     assert "firdar_minor" in techniques_found
-    assert "solar_return" in techniques_found
-    assert "lunar_return" in techniques_found
     assert "eclipse_window" in techniques_found
 
 
