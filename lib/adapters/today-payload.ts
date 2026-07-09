@@ -177,6 +177,7 @@ export function adaptTodayPayload(
       sphereScores: api.sphereScores ?? [],
       concreteAdvice: api.concreteAdvice,
       daySummary: api.daySummary,
+      v2: api.v2 ?? null,
     },
     access: buildAccess(api.access),
   };

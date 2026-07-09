@@ -27,6 +27,8 @@ import type { CalendarLunarFields } from '@/packages/contracts'
 import type { AdaptedTodayPayload, TodayNote, TodayWhySection } from '@/lib/contracts/today'
 import { DayChart } from '@/components/today/day-chart'
 import { DaySummaryCard } from '@/components/today/day-summary-card'
+import { ActivationEvidenceCard } from '@/components/today/activation-evidence-card'
+import { DevAuditDrawer } from '@/components/today/dev-audit-drawer'
 
 // Polyfill PointerEvent for jsdom (Node 20/jsdom lacks it)
 if (typeof PointerEvent === 'undefined') {
@@ -596,5 +598,82 @@ describe('real-data day presentation components', () => {
     expect(summary.textContent).toContain('97%')
     expect(summary.textContent).toContain('Сатурн')
     expect(summary.textContent).toContain('Луна в Раке')
+  })
+})
+
+describe('V2 activation evidence and audit rendering', () => {
+  it('renders ActivationEvidenceCard when v2 block is present', () => {
+    const v2Fixture = {
+      activationSummary: {
+        headline: "Сходимость на Меркурии",
+        topActivatedTargets: [
+          {
+            targetType: "planet" as const,
+            targetKey: "MERCURY",
+            label: "Меркурий",
+            familyCount: 2,
+            techniques: ["annual_profection", "transit_to_natal"],
+            spheres: ["communication"],
+            activationIds: ["act-1", "act-2"],
+          }
+        ]
+      },
+      activationEvidence: [
+        {
+          id: "act-1",
+          technique: "transit_to_natal",
+          techniqueFamily: "transit",
+          targetType: "planet" as const,
+          targetKey: "MERCURY",
+          kind: "aspect",
+          active: true,
+          strength: 0.8,
+          evidence: "Transit Moon trine natal Mercury",
+          debug: {},
+        }
+      ],
+      scoreBreakdown: {},
+      whyToday: [],
+      audit: {
+        available: true,
+        payloadVersion: "today.v2",
+        calculationVersion: "1",
+        scoringVersion: "2",
+        canonVersions: {},
+      }
+    }
+
+    const { getByTestId, getAllByTestId } = render(
+      <ActivationEvidenceCard v2={v2Fixture} />
+    )
+
+    const card = getByTestId('activation-evidence-card')
+    expect(card).toBeTruthy()
+    expect(card.textContent).toContain("Сходимость на Меркурии")
+    expect(card.textContent).toContain("Меркурий")
+
+    const chips = getAllByTestId('technique-chip')
+    expect(chips.length).toBeGreaterThan(0)
+    expect(chips[0].textContent).toBe("Профекция")
+    expect(chips[1].textContent).toBe("Транзит")
+  })
+
+  it('renders DevAuditDrawer when forceShow is true', () => {
+    const auditFixture = {
+      available: true,
+      payloadVersion: "today.v2",
+      calculationVersion: "1.1",
+      scoringVersion: "2.0",
+      canonVersions: { spheres: "v1" },
+    }
+
+    const { getByTestId } = render(
+      <DevAuditDrawer audit={auditFixture} forceShow={true} />
+    )
+
+    const drawer = getByTestId('dev-audit-drawer')
+    expect(drawer).toBeTruthy()
+    expect(drawer.textContent).toContain("Dev Audit Console")
+    expect(drawer.textContent).toContain("today.v2")
   })
 })

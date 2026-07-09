@@ -956,27 +956,39 @@ export interface components {
         };
         /** ConcreteAdviceEvidence */
         ConcreteAdviceEvidence: {
+            /** Activationid */
+            activationId?: string | null;
             /** Aspecttype */
             aspectType?: string | null;
+            /** Contributionsourceid */
+            contributionSourceId?: string | null;
             /** House */
             house?: number | null;
             /**
              * Kind
              * @enum {string}
              */
-            kind: "sphere_score" | "aspect" | "planet_in_house" | "day_status" | "lunar" | "important_today";
+            kind: "sphere_score" | "aspect" | "planet_in_house" | "day_status" | "lunar" | "important_today" | "activation" | "score_contribution";
             /** Orb */
             orb?: number | null;
             /** Planet */
             planet?: string | null;
             /** Sign */
             sign?: string | null;
+            /** Sourceframe */
+            sourceFrame?: string | null;
             /** Spherekey */
             sphereKey?: string | null;
             /** Strength */
             strength?: number | null;
+            /** Targetframe */
+            targetFrame?: string | null;
             /** Targetplanet */
             targetPlanet?: string | null;
+            /** Technique */
+            technique?: string | null;
+            /** Techniquefamily */
+            techniqueFamily?: string | null;
             /** Title */
             title: string;
             /** Weight */
@@ -1722,10 +1734,21 @@ export interface components {
             contentVersion: number;
             /** Contractversion */
             contractVersion: number;
+            /**
+             * Frontendpayloadversion
+             * @default 1
+             */
+            frontendPayloadVersion: number;
             /** Generatedat */
             generatedAt: string;
             /** Normalizationversion */
             normalizationVersion: number;
+            /**
+             * Payloadversion
+             * @default today.v1
+             * @enum {string}
+             */
+            payloadVersion: "today.v1" | "today.v2";
             /** Promptversion */
             promptVersion: number;
             /**
@@ -1782,10 +1805,90 @@ export interface components {
             title: string;
             /** Topflags */
             topFlags: components["schemas"]["TopFlag"][];
+            v2?: components["schemas"]["TodayV2Block"] | null;
             /** Weekstrip */
             weekStrip: components["schemas"]["WeekStripDay"][];
             whyThisHappens: components["schemas"]["WhyThisHappens"];
             yesterdayEcho?: components["schemas"]["YesterdayEcho"] | null;
+        };
+        /** TodayV2ActivatedTarget */
+        TodayV2ActivatedTarget: {
+            /** Activationids */
+            activationIds: string[];
+            /** Familycount */
+            familyCount: number;
+            /** Label */
+            label: string;
+            /** Spheres */
+            spheres: string[];
+            /** Targetkey */
+            targetKey: string;
+            /**
+             * Targettype
+             * @enum {string}
+             */
+            targetType: "planet" | "house" | "lot" | "angle" | "sphere";
+            /** Techniques */
+            techniques: string[];
+        };
+        /** TodayV2ActivationSummary */
+        TodayV2ActivationSummary: {
+            /** Headline */
+            headline: string;
+            /** Topactivatedtargets */
+            topActivatedTargets: components["schemas"]["TodayV2ActivatedTarget"][];
+        };
+        /** TodayV2Audit */
+        TodayV2Audit: {
+            /** Activationlayerversion */
+            activationLayerVersion?: string | number | null;
+            /**
+             * Available
+             * @default false
+             */
+            available: boolean;
+            /** Calculationversion */
+            calculationVersion: string | number;
+            /** Canonversions */
+            canonVersions?: {
+                [key: string]: string;
+            };
+            /** Payloadversion */
+            payloadVersion: string;
+            /** Scoringversion */
+            scoringVersion: string | number;
+            /** Traceid */
+            traceId?: string | null;
+            /** V1V2Diff */
+            v1V2Diff?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** TodayV2Block */
+        TodayV2Block: {
+            /** Activationevidence */
+            activationEvidence: components["schemas"]["ActivationEvidence"][];
+            activationSummary: components["schemas"]["TodayV2ActivationSummary"];
+            audit: components["schemas"]["TodayV2Audit"];
+            /** Scorebreakdown */
+            scoreBreakdown: {
+                [key: string]: components["schemas"]["SphereScoreV2"];
+            };
+            /** Whytoday */
+            whyToday: components["schemas"]["TodayV2WhyTodayItem"][];
+        };
+        /** TodayV2WhyTodayItem */
+        TodayV2WhyTodayItem: {
+            /** Activationids */
+            activationIds: string[];
+            /** Body */
+            body: string;
+            /** Id */
+            id: string;
+            /** Techniques */
+            techniques: string[];
+            /** Title */
+            title: string;
         };
         /** TopFlag */
         TopFlag: {

@@ -302,6 +302,9 @@ class TodayService:
         scoring_version = dual.selected_scoring_version
 
         # Rebuild cache key with actual runtime version fields for write
+        fe_version = 2 if getattr(settings, "solarsage_v2_frontend_enabled", False) else 1
+        p_version = "today.v2" if getattr(settings, "solarsage_v2_frontend_enabled", False) else "today.v1"
+
         cache_key = build_today_cache_key(
             user_id=user_id,
             target_date=target_date.isoformat(),
@@ -309,6 +312,7 @@ class TodayService:
             calculation_version=activation_layer.calculation_version,
             activation_layer_version=activation_layer.activation_layer_version,
             scoring_version=scoring_version,
+            frontend_payload_version=fe_version,
         )
 
         # W-4.3: Build semantic layer
@@ -415,7 +419,19 @@ class TodayService:
             sphere_scores=sphere_scores,
             important_items=important_items,
             lunar=None,
+            activation_layer=activation_layer if getattr(settings, "solarsage_v2_frontend_enabled", False) else None,
+            scoring_v2_result=dual.v2_result if getattr(settings, "solarsage_v2_frontend_enabled", False) else None,
         )
+
+        v2_block = None
+        if getattr(settings, "solarsage_v2_frontend_enabled", False):
+            from app.services.semantic_v2_service import SemanticV2Service
+            v2_block = SemanticV2Service().build_v2_block(
+                activation_layer=activation_layer,
+                scoring_result=dual.v2_result,
+                v1_v2_diff=dual.diff,
+                trace_id=getattr(dual, "trace_id", None),
+            )
 
         payload = TodayPayload(
             meta=TodayMeta(
@@ -430,6 +446,8 @@ class TodayService:
                 cached=False,  # W-5.2: Fresh generation
                 canon_versions=get_canon_versions(),
                 activation_layer_version=activation_layer.activation_layer_version,
+                payload_version=p_version,
+                frontend_payload_version=fe_version,
             ),
             date=target_date.isoformat(),
             title="Сегодня",
@@ -459,6 +477,7 @@ class TodayService:
             day_chart=updated_day_chart,
             planet_influences=planet_influences,
             sphere_scores=sphere_scores,
+            v2=v2_block,
         )
 
         # W-5.2: Cache payload (with profile_hash in key)

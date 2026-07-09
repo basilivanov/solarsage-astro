@@ -41,6 +41,8 @@ import { WeekStrip } from "./week-strip"
 import { DayChart } from "./day-chart"
 import { DaySummaryCard } from "./day-summary-card"
 import { ConcreteDayAdvice } from "./concrete-day-advice"
+import { ActivationEvidenceCard } from "./activation-evidence-card"
+import { DevAuditDrawer } from "./dev-audit-drawer"
 import { AstroHistoryWidget } from "./astro-history-widget"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
@@ -185,6 +187,8 @@ export function TodayScreen({
             concreteAdvice={payload.concreteAdvice}
           />
 
+          <ActivationEvidenceCard v2={payload.v2} />
+
           <DayChart
             chart={payload.dayChart}
             dateLabel={formatDateLabel(selectedDate)}
@@ -200,7 +204,10 @@ export function TodayScreen({
           <WhyExpanded
             sections={payload.why}
             keyInsight={payload.keyInsight}
+            whyToday={payload.v2?.whyToday}
           />
+
+          <DevAuditDrawer audit={payload.v2?.audit} />
 
           {/* Week strip navigation */}
           <WeekStrip

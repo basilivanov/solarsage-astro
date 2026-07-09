@@ -389,3 +389,38 @@ async def test_generate_important_today_details_prompt_contains_astro_boundary_r
         assert "НЕ ВЫЧИСЛЯЕШЬ" in prompt
         assert "ТОЛЬКО интерпретируешь" in prompt
 # END_BLOCK: TEST_PROMPT_BOUNDARY
+
+
+@pytest.mark.asyncio
+async def test_generate_concrete_advice_with_evidence_packet():
+    """generate_concrete_advice includes evidence packet in the prompt when provided."""
+    mock_response_json = {
+        "choices": [{"message": {"content": '{"work": "Тестовая рекомендация работы"}'}}]
+    }
+
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_client_class:
+        mock_response = MagicMock()
+        mock_response.json = MagicMock(return_value=mock_response_json)
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        service = LLMService()
+        evidence_packet = {
+            "day_status": "supportive",
+            "forbidden_claims": ["no invest/spend/buy recommendation for money"],
+        }
+        await service.generate_concrete_advice(
+            contexts=[{"key": "work", "label": "Работа", "verdict": "good"}],
+            evidence_packet=evidence_packet,
+        )
+
+        call_args = mock_client.post.call_args
+        prompt = call_args.kwargs["json"]["messages"][0]["content"]
+
+        assert "EVIDENCE PACKET" in prompt
+        assert "no invest/spend/buy recommendation" in prompt
+

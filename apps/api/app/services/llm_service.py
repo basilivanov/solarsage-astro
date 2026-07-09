@@ -458,10 +458,11 @@ class LLMService:
         self,
         contexts: list[dict],
         semantic_layer=None,
+        evidence_packet: dict | None = None,
     ) -> list[dict] | None:
         # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_why_sections
         # purpose: LLM writes narrative text for each pre-computed WhyThisHappens context.
-        # inputs: contexts (list[dict]), semantic_layer (optional)
+        # inputs: contexts (list[dict]), semantic_layer (optional), evidence_packet (optional)
         # returns: list[dict] | None — sections with LLM text or None on failure
         # side_effects: calls external LLM provider
         # emitted_logs: llm.response_rejected on JSON parse failure
@@ -476,10 +477,14 @@ class LLMService:
             for i, c in enumerate(contexts)
         )
 
+        evidence_packet_str = ""
+        if evidence_packet:
+            evidence_packet_str = f"\nEVIDENCE PACKET:\n{json_lib.dumps(evidence_packet, ensure_ascii=False, indent=2)}\n"
+        
         prompt = f"""{_ASTRO_BOUNDARY_RULES}
 
 Ты — астролог. Напиши блок «Почему так у меня?».
-
+{evidence_packet_str}
 Это НЕ второй прогноз. Это ТЕХНИЧЕСКАЯ расшифровка: транзит → натальная точка → дом → орб → сила → смысл.
 
 {context_text}
@@ -986,10 +991,11 @@ JSON:"""
     async def generate_concrete_advice(
         self,
         contexts: list[dict],
+        evidence_packet: dict | None = None,
     ) -> dict[str, str] | None:
         # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_concrete_advice
         # purpose: Generate Russian text recommendations for 12 canonical spheres.
-        # inputs: contexts (list[dict])
+        # inputs: contexts (list[dict]), evidence_packet (dict | None)
         # returns: dict[str, str] | None — map of product key -> recommendation text
         # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_concrete_advice
         context_lines = []
@@ -1005,10 +1011,14 @@ JSON:"""
                 f"- Сфера: {label} (ключ: {key}), Вердикт: {verdict}, Доказательства: {evidence_str}"
             )
 
+        evidence_packet_str = ""
+        if evidence_packet:
+            evidence_packet_str = f"\nEVIDENCE PACKET:\n{json_lib.dumps(evidence_packet, ensure_ascii=False, indent=2)}\n"
+
         prompt = f"""{_ASTRO_BOUNDARY_RULES}
 
 Ты — профессиональный астрологический копирайтер. Напиши краткие практичные рекомендации на русском языке на «ты» для пользователя на основе переданных астрологических данных.
-
+{evidence_packet_str}
 Данные по 12 сферам жизни:
 {"\n".join(context_lines)}
 

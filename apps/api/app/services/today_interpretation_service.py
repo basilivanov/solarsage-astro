@@ -326,6 +326,8 @@ class TodayInterpretationService:
         sphere_scores: list[SphereScore],
         important_items: list[TodayImportantEvent],
         lunar: dict | None = None,
+        activation_layer: Any | None = None,
+        scoring_v2_result: Any | None = None,
     ) -> tuple[ConcreteAdviceBlock, DaySummaryBlock, DayChart | None]:
         llm_service = LLMService()
 
@@ -423,6 +425,18 @@ class TodayInterpretationService:
                         )
                     )
 
+            if activation_layer:
+                from app.services.semantic_v2_service import SemanticV2Service
+                sem_service = SemanticV2Service()
+                backend_keys = [bk for bk, pk in BACKEND_TO_PRODUCT_KEY_MAP.items() if pk == key]
+                for bk in backend_keys:
+                    v2_evidences = sem_service.get_evidence_for_sphere(
+                        backend_sphere_key=bk,
+                        activation_layer=activation_layer,
+                        scoring_result=scoring_v2_result,
+                    )
+                    evidence_list.extend(v2_evidences)
+
             # Context for LLM wording
             advice_contexts.append({
                 "key": key,
@@ -457,7 +471,16 @@ class TodayInterpretationService:
         )
 
         if has_llm_keys:
-            llm_texts = await llm_service.generate_concrete_advice(advice_contexts)
+            evidence_packet = None
+            if activation_layer:
+                from app.services.semantic_v2_service import SemanticV2Service
+                evidence_packet = SemanticV2Service().build_llm_evidence_packet(
+                    day_status=day_status,
+                    activation_layer=activation_layer,
+                    scoring_result=scoring_v2_result,
+                    contexts=advice_contexts,
+                )
+            llm_texts = await llm_service.generate_concrete_advice(advice_contexts, evidence_packet=evidence_packet)
 
         valid_llm_count = 0
         if llm_texts and isinstance(llm_texts, dict):
@@ -469,6 +492,15 @@ class TodayInterpretationService:
                 for row in rows:
                     text = llm_texts.get(row.key)
                     if text and isinstance(text, str) and text.strip():
+                        from app.services.llm_claim_validator import LLMClaimValidator
+                        sanitized_text = LLMClaimValidator().validate_concrete_advice_text(
+                            row_key=row.key,
+                            verdict=row.verdict,
+                            text=text,
+                            evidence=row.evidence,
+                        )
+                        if sanitized_text:
+                            text = sanitized_text
                         if validate_row_text(row, text):
                             row.text = text.strip()
                             valid_llm_count += 1

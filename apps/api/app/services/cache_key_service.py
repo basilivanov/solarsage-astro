@@ -84,10 +84,13 @@ def expected_cache_identity(
     """Build a cache key with the current expected version fields.
     Used before cache read when runtime facts are not yet known.
     Includes a non-None activation_layer_version default of "al-1.0"."""
+    from app.core.config import settings
+    fe_version = 2 if getattr(settings, "solarsage_v2_frontend_enabled", False) else 1
     return build_today_cache_key(
         user_id=user_id,
         target_date=target_date,
         profile_hash=profile_hash,
         activation_layer_version="al-1.0",
         scoring_version=selected_scoring_version_for_flags(),
+        frontend_payload_version=fe_version,
     )

@@ -35,11 +35,13 @@
 # START_BLOCK: TODAY_PRIMITIVES
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Any
 
 from pydantic import Field
 
 from ._base import CamelModel
+from .activation import ActivationEvidence
+from .scoring_v2 import SphereScoreV2
 
 DayStatus = Literal["supportive", "steady", "tense"]
 
@@ -271,6 +273,8 @@ class TodayMeta(CamelModel):
     # W1+: V2 string version fields
     canon_versions: dict[str, str] | None = None
     audit_trace_id: str | None = None
+    payload_version: Literal["today.v1", "today.v2"] = "today.v1"
+    frontend_payload_version: int = 1
 
 
 # START_BLOCK: TODAY_IMPORTANT_EVENTS
@@ -317,6 +321,8 @@ ConcreteAdviceEvidenceKind = Literal[
     "day_status",
     "lunar",
     "important_today",
+    "activation",
+    "score_contribution",
 ]
 
 class ConcreteAdviceEvidence(CamelModel):
@@ -331,6 +337,12 @@ class ConcreteAdviceEvidence(CamelModel):
     sphere_key: str | None = None
     house: int | None = None
     sign: str | None = None
+    activation_id: str | None = None
+    technique: str | None = None
+    technique_family: str | None = None
+    source_frame: str | None = None
+    target_frame: str | None = None
+    contribution_source_id: str | None = None
 
 class ConcreteAdviceRow(CamelModel):
     key: Literal[
@@ -387,6 +399,50 @@ class DaySummaryBlock(CamelModel):
 # END_BLOCK: DAY_SUMMARY_SCHEMAS
 
 
+# START_BLOCK: TODAY_V2_SCHEMAS
+class TodayV2ActivatedTarget(CamelModel):
+    target_type: Literal["planet", "house", "lot", "angle", "sphere"]
+    target_key: str
+    label: str
+    family_count: int
+    techniques: list[str]
+    spheres: list[str]
+    activation_ids: list[str]
+
+
+class TodayV2ActivationSummary(CamelModel):
+    headline: str
+    top_activated_targets: list[TodayV2ActivatedTarget]
+
+
+class TodayV2WhyTodayItem(CamelModel):
+    id: str
+    title: str
+    body: str
+    activation_ids: list[str]
+    techniques: list[str]
+
+
+class TodayV2Audit(CamelModel):
+    trace_id: str | None = None
+    available: bool = False
+    payload_version: str
+    calculation_version: str | int
+    scoring_version: str | int
+    activation_layer_version: str | int | None = None
+    canon_versions: dict[str, str] = Field(default_factory=dict)
+    v1_v2_diff: dict[str, Any] | None = None
+
+
+class TodayV2Block(CamelModel):
+    activation_summary: TodayV2ActivationSummary
+    activation_evidence: list[ActivationEvidence]
+    score_breakdown: dict[str, SphereScoreV2]
+    why_today: list[TodayV2WhyTodayItem]
+    audit: TodayV2Audit
+# END_BLOCK: TODAY_V2_SCHEMAS
+
+
 class TodayPayload(CamelModel):
     meta: TodayMeta
     date: str
@@ -397,10 +453,6 @@ class TodayPayload(CamelModel):
     day_status: DayStatus
     day_summary: DaySummaryBlock
     concrete_advice: ConcreteAdviceBlock
-    subtitle: str | None = None
-    headline: str
-    access: ContentAccessState
-    day_status: DayStatus
     day_quality: DayQuality | None = None
     top_flags: list[TopFlag]
     reading: ReadingBody
@@ -425,4 +477,7 @@ class TodayPayload(CamelModel):
 
     # W-PHASE-2: today important items
     important_today: list[TodayImportantEvent] = []
+
+    # W-6: optional V2 block
+    v2: TodayV2Block | None = None
 # END_BLOCK: TODAY_PAYLOAD

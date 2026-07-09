@@ -141,7 +141,7 @@ export const TodayWhySectionSchema = z.object({
 )
 
 export const ConcreteAdviceEvidenceSchema = z.object({
-  kind: z.enum(["sphere_score", "aspect", "planet_in_house", "day_status", "lunar", "important_today"]),
+  kind: z.enum(["sphere_score", "aspect", "planet_in_house", "day_status", "lunar", "important_today", "activation", "score_contribution"]),
   title: z.string().min(1),
   weight: z.number().nullable().optional(),
   planet: z.string().nullable().optional(),
@@ -152,6 +152,12 @@ export const ConcreteAdviceEvidenceSchema = z.object({
   sphereKey: z.string().nullable().optional(),
   house: z.number().int().nullable().optional(),
   sign: z.string().nullable().optional(),
+  activationId: z.string().nullable().optional(),
+  technique: z.string().nullable().optional(),
+  techniqueFamily: z.string().nullable().optional(),
+  sourceFrame: z.string().nullable().optional(),
+  targetFrame: z.string().nullable().optional(),
+  contributionSourceId: z.string().nullable().optional(),
 })
 
 export const ConcreteAdviceRowSchema = z.object({
@@ -193,6 +199,102 @@ export const DaySummaryBlockSchema = z.object({
   facts: z.array(DaySummaryFactSchema),
 })
 
+export const ActivationTargetTypeSchema = z.enum(["planet", "house", "lot", "angle", "sphere"])
+export const ActivationPolaritySchema = z.enum(["supportive", "tense", "mixed", "neutral"])
+export const ActivationPhaseSchema = z.enum(["applying", "exact", "separating", "background", "period"])
+
+export const ActivationEvidenceSchema = z.object({
+  id: z.string().min(1),
+  technique: z.string().min(1),
+  techniqueFamily: z.string().min(1),
+  targetType: ActivationTargetTypeSchema,
+  targetKey: z.string().min(1),
+  kind: z.string().min(1),
+  active: z.boolean().default(true),
+  sourcePlanet: z.string().nullable().optional(),
+  sourceFrame: z.string().nullable().optional(),
+  targetPlanet: z.string().nullable().optional(),
+  targetFrame: z.string().nullable().optional(),
+  aspect: z.string().nullable().optional(),
+  orb: z.number().nullable().optional(),
+  applying: z.boolean().nullable().optional(),
+  exactAt: z.string().nullable().optional(),
+  phase: ActivationPhaseSchema.default("background"),
+  house: z.number().int().nullable().optional(),
+  lot: z.string().nullable().optional(),
+  angle: z.string().nullable().optional(),
+  strength: z.number().min(0).max(1),
+  polarity: ActivationPolaritySchema.default("neutral"),
+  weightHint: z.number().nullable().optional(),
+  evidence: z.string().min(1),
+  debug: z.record(z.any()).default({}),
+})
+
+export const SphereContributionSchema = z.object({
+  sphere: z.string().min(1),
+  source: z.enum(["base_signal", "activation", "convergence", "cap"]),
+  sourceId: z.string().min(1),
+  amount: z.number(),
+  before: z.number().nullable().optional(),
+  after: z.number().nullable().optional(),
+  evidence: z.string().min(1),
+})
+
+export const SphereScoreV2Schema = z.object({
+  key: z.string().min(1),
+  title: z.string().min(1),
+  baseScore: z.number(),
+  activationScore: z.number(),
+  convergenceBonus: z.number(),
+  rawScore: z.number(),
+  finalScore: z.number(),
+  normalizedScore: z.number().nullable().optional(),
+  dominanceCapped: z.boolean(),
+  contributions: z.array(SphereContributionSchema),
+})
+
+export const TodayV2ActivatedTargetSchema = z.object({
+  targetType: z.enum(["planet", "house", "lot", "angle", "sphere"]),
+  targetKey: z.string().min(1),
+  label: z.string().min(1),
+  familyCount: z.number().int(),
+  techniques: z.array(z.string()),
+  spheres: z.array(z.string()),
+  activationIds: z.array(z.string()),
+})
+
+export const TodayV2ActivationSummarySchema = z.object({
+  headline: z.string().min(1),
+  topActivatedTargets: z.array(TodayV2ActivatedTargetSchema),
+})
+
+export const TodayV2WhyTodayItemSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  body: z.string().min(1),
+  activationIds: z.array(z.string()),
+  techniques: z.array(z.string()),
+})
+
+export const TodayV2AuditSchema = z.object({
+  traceId: z.string().nullable().optional(),
+  available: z.boolean().default(false),
+  payloadVersion: z.string(),
+  calculationVersion: z.union([z.string(), z.number()]),
+  scoringVersion: z.union([z.string(), z.number()]),
+  activationLayerVersion: z.union([z.string(), z.number()]).nullable().optional(),
+  canonVersions: z.record(z.string()),
+  v1V2Diff: z.record(z.any()).nullable().optional(),
+})
+
+export const TodayV2BlockSchema = z.object({
+  activationSummary: TodayV2ActivationSummarySchema,
+  activationEvidence: z.array(ActivationEvidenceSchema),
+  scoreBreakdown: z.record(SphereScoreV2Schema),
+  whyToday: z.array(TodayV2WhyTodayItemSchema),
+  audit: TodayV2AuditSchema,
+})
+
 export const TodayPayloadSchema = z.object({
   /** ISO yyyy-mm-dd — для кэша, deeplink'ов, инвалидации SWR. */
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -212,6 +314,8 @@ export const TodayPayloadSchema = z.object({
   dayChart: DayChartSchema.nullable().default(null),
   planetInfluences: z.array(PlanetInfluenceSchema).default([]),
   sphereScores: z.array(SphereScoreSchema).default([]),
+  /** W6: optional V2 block */
+  v2: TodayV2BlockSchema.nullable().optional(),
 })
 
 export type IconName = z.infer<typeof IconNameSchema>
@@ -225,6 +329,13 @@ export type ConcreteAdviceBlock = z.infer<typeof ConcreteAdviceBlockSchema>
 export type ConcreteAdviceRow = z.infer<typeof ConcreteAdviceRowSchema>
 export type DaySummaryBlock = z.infer<typeof DaySummaryBlockSchema>
 export type AdaptedTodayPayload = z.infer<typeof TodayPayloadSchema>
+export type TodayV2Block = z.infer<typeof TodayV2BlockSchema>
+export type TodayV2ActivatedTarget = z.infer<typeof TodayV2ActivatedTargetSchema>
+export type TodayV2ActivationSummary = z.infer<typeof TodayV2ActivationSummarySchema>
+export type TodayV2WhyTodayItem = z.infer<typeof TodayV2WhyTodayItemSchema>
+export type TodayV2Audit = z.infer<typeof TodayV2AuditSchema>
+export type ActivationEvidence = z.infer<typeof ActivationEvidenceSchema>
+export type SphereScoreV2 = z.infer<typeof SphereScoreV2Schema>
 
 export function validateAdaptedTodayPayload(data: unknown): AdaptedTodayPayload {
   return TodayPayloadSchema.parse(data)

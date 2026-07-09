@@ -1099,6 +1099,17 @@
       "ConcreteAdviceEvidence": {
         "additionalProperties": false,
         "properties": {
+          "activationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activationid"
+          },
           "aspectType": {
             "anyOf": [
               {
@@ -1109,6 +1120,17 @@
               }
             ],
             "title": "Aspecttype"
+          },
+          "contributionSourceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contributionsourceid"
           },
           "house": {
             "anyOf": [
@@ -1128,7 +1150,9 @@
               "planet_in_house",
               "day_status",
               "lunar",
-              "important_today"
+              "important_today",
+              "activation",
+              "score_contribution"
             ],
             "title": "Kind",
             "type": "string"
@@ -1166,6 +1190,17 @@
             ],
             "title": "Sign"
           },
+          "sourceFrame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceframe"
+          },
           "sphereKey": {
             "anyOf": [
               {
@@ -1188,6 +1223,17 @@
             ],
             "title": "Strength"
           },
+          "targetFrame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetframe"
+          },
           "targetPlanet": {
             "anyOf": [
               {
@@ -1198,6 +1244,28 @@
               }
             ],
             "title": "Targetplanet"
+          },
+          "technique": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Technique"
+          },
+          "techniqueFamily": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Techniquefamily"
           },
           "title": {
             "title": "Title",
@@ -3588,6 +3656,11 @@
             "title": "Contractversion",
             "type": "integer"
           },
+          "frontendPayloadVersion": {
+            "default": 1,
+            "title": "Frontendpayloadversion",
+            "type": "integer"
+          },
           "generatedAt": {
             "title": "Generatedat",
             "type": "string"
@@ -3595,6 +3668,15 @@
           "normalizationVersion": {
             "title": "Normalizationversion",
             "type": "integer"
+          },
+          "payloadVersion": {
+            "default": "today.v1",
+            "enum": [
+              "today.v1",
+              "today.v2"
+            ],
+            "title": "Payloadversion",
+            "type": "string"
           },
           "promptVersion": {
             "title": "Promptversion",
@@ -3824,6 +3906,16 @@
             "title": "Topflags",
             "type": "array"
           },
+          "v2": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayV2Block"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "weekStrip": {
             "items": {
               "$ref": "#/components/schemas/WeekStripDay"
@@ -3861,6 +3953,256 @@
           "microcopy"
         ],
         "title": "TodayPayload",
+        "type": "object"
+      },
+      "TodayV2ActivatedTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "activationIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Activationids",
+            "type": "array"
+          },
+          "familyCount": {
+            "title": "Familycount",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "spheres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Spheres",
+            "type": "array"
+          },
+          "targetKey": {
+            "title": "Targetkey",
+            "type": "string"
+          },
+          "targetType": {
+            "enum": [
+              "planet",
+              "house",
+              "lot",
+              "angle",
+              "sphere"
+            ],
+            "title": "Targettype",
+            "type": "string"
+          },
+          "techniques": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Techniques",
+            "type": "array"
+          }
+        },
+        "required": [
+          "targetType",
+          "targetKey",
+          "label",
+          "familyCount",
+          "techniques",
+          "spheres",
+          "activationIds"
+        ],
+        "title": "TodayV2ActivatedTarget",
+        "type": "object"
+      },
+      "TodayV2ActivationSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "topActivatedTargets": {
+            "items": {
+              "$ref": "#/components/schemas/TodayV2ActivatedTarget"
+            },
+            "title": "Topactivatedtargets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "headline",
+          "topActivatedTargets"
+        ],
+        "title": "TodayV2ActivationSummary",
+        "type": "object"
+      },
+      "TodayV2Audit": {
+        "additionalProperties": false,
+        "properties": {
+          "activationLayerVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activationlayerversion"
+          },
+          "available": {
+            "default": false,
+            "title": "Available",
+            "type": "boolean"
+          },
+          "calculationVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Calculationversion"
+          },
+          "canonVersions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Canonversions",
+            "type": "object"
+          },
+          "payloadVersion": {
+            "title": "Payloadversion",
+            "type": "string"
+          },
+          "scoringVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Scoringversion"
+          },
+          "traceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traceid"
+          },
+          "v1V2Diff": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "V1V2Diff"
+          }
+        },
+        "required": [
+          "payloadVersion",
+          "calculationVersion",
+          "scoringVersion"
+        ],
+        "title": "TodayV2Audit",
+        "type": "object"
+      },
+      "TodayV2Block": {
+        "additionalProperties": false,
+        "properties": {
+          "activationEvidence": {
+            "items": {
+              "$ref": "#/components/schemas/ActivationEvidence"
+            },
+            "title": "Activationevidence",
+            "type": "array"
+          },
+          "activationSummary": {
+            "$ref": "#/components/schemas/TodayV2ActivationSummary"
+          },
+          "audit": {
+            "$ref": "#/components/schemas/TodayV2Audit"
+          },
+          "scoreBreakdown": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SphereScoreV2"
+            },
+            "title": "Scorebreakdown",
+            "type": "object"
+          },
+          "whyToday": {
+            "items": {
+              "$ref": "#/components/schemas/TodayV2WhyTodayItem"
+            },
+            "title": "Whytoday",
+            "type": "array"
+          }
+        },
+        "required": [
+          "activationSummary",
+          "activationEvidence",
+          "scoreBreakdown",
+          "whyToday",
+          "audit"
+        ],
+        "title": "TodayV2Block",
+        "type": "object"
+      },
+      "TodayV2WhyTodayItem": {
+        "additionalProperties": false,
+        "properties": {
+          "activationIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Activationids",
+            "type": "array"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "techniques": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Techniques",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "activationIds",
+          "techniques"
+        ],
+        "title": "TodayV2WhyTodayItem",
         "type": "object"
       },
       "TopFlag": {
