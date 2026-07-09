@@ -64,7 +64,7 @@ Added `test_timezone_boundary_local_date` proving that target `date` is treated 
 
 ## Commit
 
-`<commit_sha>`
+`305c3ad`
 
 ## Push Status
 
