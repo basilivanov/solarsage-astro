@@ -34,17 +34,20 @@ import os
 from pathlib import Path
 
 # Bootstrap re-exec block for virtualenv portability
+# Uses sys.prefix comparison to avoid false-negative when venv python is a symlink.
 RE_EXEC_GUARD = "SOLARSAGE_PERF_RE_EXEC"
 if not os.environ.get(RE_EXEC_GUARD):
     repo_root = Path(__file__).resolve().parent.parent
-    venv_python = repo_root / "apps" / "api" / ".venv" / "bin" / "python"
+    api_venv = repo_root / "apps" / "api" / ".venv"
+    venv_python = api_venv / "bin" / "python"
     if venv_python.exists():
         try:
-            real_sys = Path(sys.executable).resolve()
-            real_venv = venv_python.resolve()
-            if real_sys != real_venv:
-                os.environ[RE_EXEC_GUARD] = "1"
-                os.execve(str(venv_python), [str(venv_python)] + sys.argv, os.environ)
+            current_prefix = Path(sys.prefix).resolve()
+            in_api_venv = current_prefix == api_venv.resolve()
+            if not in_api_venv:
+                env = os.environ.copy()
+                env[RE_EXEC_GUARD] = "1"
+                os.execve(str(venv_python), [str(venv_python)] + sys.argv, env)
         except Exception as e:
             print(f"Warning: Re-exec to venv failed: {e}. Continuing with {sys.executable}", file=sys.stderr)
 
