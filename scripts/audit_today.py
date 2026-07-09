@@ -512,6 +512,19 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         write_json(debug_dir / "semantic_layer.json", semantic_layer)
         write_json(debug_dir / "why_contexts.json", why_contexts)
 
+        # W2: Build activation layer from day signals
+        from app.services.activation_layer_service import ActivationLayerService
+        activation_layer = ActivationLayerService().build(
+            natal_context=natal_context_dict,
+            transits=transits,
+            day_signals=day_signals,
+            target_date=target_date,
+            target_time="12:00",
+            target_tz=target_tz,
+            house_system=natal_context_dict.get("house_system", "PLACIDUS"),
+        )
+        write_json(debug_dir / "activation_layer.json", activation_layer)
+
         # TodayService/payload generation: only in live-LLM mode.
         # In default (canonical) mode, the payload is frozen from the committed baseline fixture.
         payload_json = None
@@ -564,6 +577,10 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         shutil.copy2(debug_dir / "scoring_oracle_comparison.json", root_dir / "12_scoring_oracle_comparison.json")
     if (debug_dir / "astronomy_oracle_summary.json").exists():
         shutil.copy2(debug_dir / "astronomy_oracle_summary.json", root_dir / "13_astronomy_oracle_summary.json")
+
+    # 16_activation_layer.json: copy to canonical root and live root
+    if (debug_dir / "activation_layer.json").exists():
+        shutil.copy2(debug_dir / "activation_layer.json", root_dir / "16_activation_layer.json")
 
     # Generate 14_claims_audit.md only in live mode; in default mode keep frozen from baseline
     if is_live:

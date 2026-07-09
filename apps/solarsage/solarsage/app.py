@@ -25,7 +25,7 @@
 
 from fastapi import FastAPI
 
-from .api import health, natal, transits
+from .api import activation_layer, health, natal, transits
 from .core.config import settings
 
 app = FastAPI(
@@ -38,6 +38,7 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(natal.router)
 app.include_router(transits.router)
+app.include_router(activation_layer.router)
 
 
 @app.get("/")

@@ -1,0 +1,13 @@
+{
+  "calculation_version": "1",
+  "target_date": "2026-07-08",
+  "target_time": "12:00",
+  "target_tz": "Europe/Moscow",
+  "house_system": "WHOLE_SIGN",
+  "activations": [],
+  "by_planet": {},
+  "by_house": {},
+  "by_lot": {},
+  "by_angle": {},
+  "warnings": []
+}

@@ -3,7 +3,7 @@ description: "Правила активации: какие техники ак�
 
 technique_families:
   transit:
-    members: [transit_to_natal, transit_to_angle, transit_to_lot]
+    members: [transit_to_natal, transit_to_angle, transit_to_lot, transit_planet_in_house]
     independence_weight: 1.0
   profection:
     members: [annual_profection, monthly_profection]

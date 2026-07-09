@@ -41,7 +41,7 @@ REQUIRED_TOP_KEYS: dict[str, list[str]] = {
 }
 
 FAMILY_TECHNIQUE_KEYS = [
-    "transit_to_natal", "transit_to_angle", "transit_to_lot",
+    "transit_to_natal", "transit_to_angle", "transit_to_lot", "transit_planet_in_house",
     "annual_profection", "monthly_profection",
     "firdar_major", "firdar_minor",
     "solar_return", "lunar_return",

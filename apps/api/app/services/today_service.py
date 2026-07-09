@@ -85,10 +85,11 @@ from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
 from app.services.natal_context_service import NatalContextService
 from app.services.canon_service import get_canon_versions
+from app.services.activation_layer_service import ActivationLayerService
 from app.core.logging import log_event, log_block
 
 
-TODAY_CONTENT_VERSION = 7
+TODAY_CONTENT_VERSION = 8
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",
@@ -231,6 +232,19 @@ class TodayService:
 
         # W-4.2: Score signals and calculate day_status using day-specific scorer
         day_signals = filter_day_scored_signals(signals)
+
+        # W2: Build activation layer from day signals (no V2 scoring impact)
+        activation_layer = ActivationLayerService().build(
+            natal_context=natal_context_dict,
+            transits=transits,
+            day_signals=day_signals,
+            target_date=target_date,
+            target_time="12:00",
+            target_tz=profile.current_tz or profile.birth_tz or "UTC",
+            house_system=natal_context_dict.get("house_system", "PLACIDUS"),
+            sidecar_activation_layer=None,  # Can be wired in W3+ when sidecar endpoint is ready
+        )
+
         scoring_service = ScoringService()
         scoring_result = scoring_service.score_day(day_signals)
 
@@ -352,6 +366,7 @@ class TodayService:
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
                 canon_versions=get_canon_versions(),
+                activation_layer_version=activation_layer.activation_layer_version,
             ),
             date=target_date.isoformat(),
             title="Сегодня",
