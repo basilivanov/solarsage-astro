@@ -94,6 +94,34 @@ from app.services.activation_layer_service import ActivationLayerService
 from app.core.logging import log_event, log_block
 
 
+def _normalize_top_signals(top_signals: list) -> list[AstroSignal]:
+    if not top_signals:
+        return []
+    from app.schemas.normalization import AstroSignal as AstroSignalModel
+    if isinstance(top_signals[0], AstroSignalModel):
+        return top_signals
+    normalized = []
+    for s in top_signals:
+        if isinstance(s, dict):
+            sig_type = s.get("type") or s.get("type_")
+            sig_planet = s.get("planet")
+            if not sig_type or not sig_planet:
+                continue
+            normalized.append(
+                AstroSignalModel(
+                    type=sig_type,
+                    planet=sig_planet,
+                    target_planet=s.get("target_planet") or s.get("targetPlanet"),
+                    aspect_type=s.get("aspect_type") or s.get("aspectType"),
+                    orb=float(s["orb"]) if s.get("orb") is not None else None,
+                    strength=float(s["strength"]) if s.get("strength") is not None else 0.0,
+                    house=int(s["house"]) if s.get("house") is not None else None,
+                    sign=s.get("sign"),
+                )
+            )
+    return normalized
+
+
 TODAY_CONTENT_VERSION = 9
 
 PLANET_LABELS_RU = {
@@ -298,7 +326,8 @@ class TodayService:
             user_id=user_id,
             target_date=target_date.isoformat(),
         )
-        scoring_result = dual.selected_result
+        scoring_result = dict(dual.selected_result)
+        scoring_result["top_signals"] = _normalize_top_signals(scoring_result.get("top_signals", []))
         scoring_version = dual.selected_scoring_version
 
         # Rebuild cache key with actual runtime version fields for write

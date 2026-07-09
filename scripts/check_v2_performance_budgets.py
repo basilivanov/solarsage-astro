@@ -1,36 +1,64 @@
 #!/usr/bin/env python3
+# START_MODULE_CONTRACT: M-V2-PERFORMANCE-BUDGETS-CHECK
+# purpose: Verify that local V2 scoring and semantic block building run under 50ms.
+# owns:
+#   - scripts/check_v2_performance_budgets.py
+# inputs: artifacts/audit/2026-07-08/ raw signals and activations
+# outputs: sys.exit(0) on success, sys.exit(1) on failure
+# dependencies: app.services.scoring_v2_service, app.services.semantic_v2_service
+# side_effects: runs scoring and semantic loops
+# emitted_logs: system.performance_budgets_passed, system.performance_budgets_failed
+# END_MODULE_CONTRACT: M-V2-PERFORMANCE-BUDGETS-CHECK
+
+# ############################################################################
+# AI_HEADER: TOOL_V2_PERFORMANCE_BUDGETS_CHECK
+# ROLE: Lightweight local/CI gate to assert p95 scoring/semantic budget limits.
+# DEPENDENCIES: stdlib, app.services
+# ############################################################################
+
 import json
 import time
 import sys
 from pathlib import Path
 
 # Add app to path
-sys.path.insert(0, "/opt/solarsage-astro/apps/api")
+repo_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(repo_root / "apps" / "api"))
 
 from app.schemas.activation import ActivationLayer
 from app.services.semantic_v2_service import SemanticV2Service
 from app.services.scoring_v2_service import ScoringV2Service
-from app.services.day_scoring_signals import filter_day_scored_signals
 from app.schemas.normalization import AstroSignal
+
+def log_event(event: str, level: str, msg: str):
+    from datetime import datetime, UTC
+    print(json.dumps({
+        "ts": datetime.now(UTC).isoformat() + "Z",
+        "level": level,
+        "event": event,
+        "msg": msg,
+        "service": "performance-tool",
+        "slice": "W7",
+        "module": "M-V2-PERFORMANCE-BUDGETS-CHECK",
+        "block": "PERFORMANCE_RUN",
+    }))
 
 def main():
     print("=== Running V2 Performance Budgets Check ===")
     print("mode: fixture")
 
-    audit_dir = Path("/opt/solarsage-astro/artifacts/audit/2026-07-08")
-    if not audit_dir.exists():
-        print("Error: Audit artifacts not found. Run make audit-day or populate artifacts.")
+    repo_root = Path(__file__).resolve().parent.parent
+    golden_inputs_dir = repo_root / "apps" / "api" / "tests" / "fixtures" / "golden" / "inputs"
+    if not golden_inputs_dir.exists():
+        print("Error: Golden inputs directory not found.")
         sys.exit(1)
 
     # 1. Load data
-    raw_activations = json.loads((audit_dir / "21_sidecar_activation_layer_w3_5_progressions.json").read_text(encoding="utf-8"))
-    if "_audit_meta" in raw_activations:
-        raw_activations.pop("_audit_meta")
+    raw_activations = json.loads((golden_inputs_dir / "raw_activations.json").read_text(encoding="utf-8"))
     activation_layer = ActivationLayer.model_validate(raw_activations)
 
     # Load signals
-    signals_data = (audit_dir / "04_day_scored_signals_after_filter.csv").read_text(encoding="utf-8").splitlines()
-    # Parse signals (skip header)
+    signals_data = (golden_inputs_dir / "raw_signals.csv").read_text(encoding="utf-8").splitlines()
     day_signals = []
     for line in signals_data[1:]:
         if not line.strip():
@@ -57,7 +85,7 @@ def main():
         t0 = time.perf_counter()
         res = scoring_v2_service.score_day(day_signals, activation_layer)
         t1 = time.perf_counter()
-        scoring_times.append((t1 - t0) * 1000.0) # in ms
+        scoring_times.append((t1 - t0) * 1000.0)
 
     scoring_times.sort()
     p95_scoring = scoring_times[int(len(scoring_times) * 0.95)]
@@ -73,14 +101,13 @@ def main():
             scoring_result=res_scoring
         )
         t1 = time.perf_counter()
-        semantic_times.append((t1 - t0) * 1000.0) # in ms
+        semantic_times.append((t1 - t0) * 1000.0)
 
     semantic_times.sort()
     p95_semantic = semantic_times[int(len(semantic_times) * 0.95)]
     print(f"Semantic V2 p95: {p95_semantic:.2f} ms")
 
-    # Budgets check: p95 targets under local execution should be extremely fast (e.g. < 50ms)
-    # This prevents any high-CPU regression in scoring/semantic builder loop.
+    # Budgets check
     BUDGET_SCORING_MS = 50.0
     BUDGET_SEMANTIC_MS = 50.0
 
@@ -93,9 +120,11 @@ def main():
         success = False
 
     if not success:
+        log_event("system.performance_budgets_failed", "error", "Performance budget check failed")
         print("Performance budget check: FAILED")
         sys.exit(1)
 
+    log_event("system.performance_budgets_passed", "info", "Performance budget check passed")
     print("Performance budget check: PASSED")
     sys.exit(0)
 

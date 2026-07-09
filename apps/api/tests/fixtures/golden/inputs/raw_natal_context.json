@@ -1,0 +1,340 @@
+{
+  "angles": [
+    {
+      "degree": 28.85,
+      "longitude": 118.853,
+      "name": "ASC",
+      "sign": "Cancer"
+    },
+    {
+      "degree": 22.1,
+      "longitude": 322.1032,
+      "name": "MC",
+      "sign": "Aquarius"
+    }
+  ],
+  "aspects": [
+    {
+      "applying": null,
+      "aspect_type": "square",
+      "orb": 0.14,
+      "planet_a": "Sun",
+      "planet_b": "Moon"
+    },
+    {
+      "applying": null,
+      "aspect_type": "trine",
+      "orb": 5.76,
+      "planet_a": "Moon",
+      "planet_b": "Mars"
+    },
+    {
+      "applying": null,
+      "aspect_type": "sextile",
+      "orb": 2.85,
+      "planet_a": "Moon",
+      "planet_b": "Saturn"
+    },
+    {
+      "applying": null,
+      "aspect_type": "conjunction",
+      "orb": 0.33,
+      "planet_a": "Venus",
+      "planet_b": "Jupiter"
+    },
+    {
+      "applying": null,
+      "aspect_type": "conjunction",
+      "orb": 4.4,
+      "planet_a": "Venus",
+      "planet_b": "Saturn"
+    },
+    {
+      "applying": null,
+      "aspect_type": "sextile",
+      "orb": 5.58,
+      "planet_a": "Venus",
+      "planet_b": "Uranus"
+    },
+    {
+      "applying": null,
+      "aspect_type": "conjunction",
+      "orb": 7.51,
+      "planet_a": "Mars",
+      "planet_b": "Neptune"
+    },
+    {
+      "applying": null,
+      "aspect_type": "conjunction",
+      "orb": 4.07,
+      "planet_a": "Jupiter",
+      "planet_b": "Saturn"
+    },
+    {
+      "applying": null,
+      "aspect_type": "sextile",
+      "orb": 5.91,
+      "planet_a": "Jupiter",
+      "planet_b": "Uranus"
+    },
+    {
+      "applying": null,
+      "aspect_type": "sextile",
+      "orb": 1.49,
+      "planet_a": "Neptune",
+      "planet_b": "Pluto"
+    }
+  ],
+  "dominants": [
+    "VENUS",
+    "MOON",
+    "JUPITER"
+  ],
+  "elements_balance": {
+    "air": 4.0,
+    "earth": 0.0,
+    "fire": 3.0,
+    "water": 3.0
+  },
+  "house_system": "WHOLE_SIGN",
+  "houses": [
+    {
+      "degree": 0.0,
+      "longitude": 90.0,
+      "number": 1,
+      "sign": "Cancer"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 120.0,
+      "number": 2,
+      "sign": "Leo"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 150.0,
+      "number": 3,
+      "sign": "Virgo"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 180.0,
+      "number": 4,
+      "sign": "Libra"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 210.0,
+      "number": 5,
+      "sign": "Scorpio"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 240.0,
+      "number": 6,
+      "sign": "Sagittarius"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 270.0,
+      "number": 7,
+      "sign": "Capricorn"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 300.0,
+      "number": 8,
+      "sign": "Aquarius"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 330.0,
+      "number": 9,
+      "sign": "Pisces"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 0.0,
+      "number": 10,
+      "sign": "Aries"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 30.0,
+      "number": 11,
+      "sign": "Taurus"
+    },
+    {
+      "degree": 0.0,
+      "longitude": 60.0,
+      "number": 12,
+      "sign": "Gemini"
+    }
+  ],
+  "modalities_balance": {
+    "cardinal": 4.0,
+    "fixed": 4.0,
+    "mutable": 2.0
+  },
+  "planets": [
+    {
+      "degree": 7.42,
+      "house": null,
+      "longitude": 217.4225,
+      "name": "Sun",
+      "retrograde": false,
+      "sign": "Scorpio"
+    },
+    {
+      "degree": 7.56,
+      "house": null,
+      "longitude": 127.5621,
+      "name": "Moon",
+      "retrograde": false,
+      "sign": "Leo"
+    },
+    {
+      "degree": 15.7,
+      "house": null,
+      "longitude": 225.7046,
+      "name": "Mercury",
+      "retrograde": false,
+      "sign": "Scorpio"
+    },
+    {
+      "degree": 0.31,
+      "house": null,
+      "longitude": 180.3107,
+      "name": "Venus",
+      "retrograde": false,
+      "sign": "Libra"
+    },
+    {
+      "degree": 13.32,
+      "house": null,
+      "longitude": 253.3214,
+      "name": "Mars",
+      "retrograde": false,
+      "sign": "Sagittarius"
+    },
+    {
+      "degree": 0.64,
+      "house": null,
+      "longitude": 180.6385,
+      "name": "Jupiter",
+      "retrograde": false,
+      "sign": "Libra"
+    },
+    {
+      "degree": 4.71,
+      "house": null,
+      "longitude": 184.71,
+      "name": "Saturn",
+      "retrograde": false,
+      "sign": "Libra"
+    },
+    {
+      "degree": 24.73,
+      "house": null,
+      "longitude": 234.7332,
+      "name": "Uranus",
+      "retrograde": false,
+      "sign": "Scorpio"
+    },
+    {
+      "degree": 20.83,
+      "house": null,
+      "longitude": 260.8344,
+      "name": "Neptune",
+      "retrograde": false,
+      "sign": "Sagittarius"
+    },
+    {
+      "degree": 22.32,
+      "house": null,
+      "longitude": 202.3205,
+      "name": "Pluto",
+      "retrograde": false,
+      "sign": "Libra"
+    }
+  ],
+  "special_points": [
+    {
+      "degree": 24.47,
+      "house": null,
+      "longitude": 324.4673,
+      "name": "ARMC",
+      "sign": "Aquarius"
+    },
+    {
+      "degree": 19.53,
+      "house": null,
+      "longitude": 229.5253,
+      "name": "Vertex",
+      "sign": "Scorpio"
+    }
+  ],
+  "sphere_scores": {
+    "body_energy_health": 1.77,
+    "crisis_transformation_control": 0.0,
+    "home_family_roots": 1.81,
+    "inner_background_unconscious": 0.0,
+    "meaning_expansion_vector": 0.49,
+    "money_security_resources": 1.23,
+    "relationships_partnership": 1.71,
+    "thinking_speech_learning": 0.0,
+    "work_status_achievement": 1.12
+  },
+  "top_signals": [
+    {
+      "aspect_type": null,
+      "house": 5,
+      "orb": 0,
+      "planet": "Sun",
+      "sign": null,
+      "strength": 1.0,
+      "target_planet": null,
+      "type": "planet_in_house"
+    },
+    {
+      "aspect_type": null,
+      "house": 2,
+      "orb": 0,
+      "planet": "Moon",
+      "sign": null,
+      "strength": 1.0,
+      "target_planet": null,
+      "type": "planet_in_house"
+    },
+    {
+      "aspect_type": null,
+      "house": 5,
+      "orb": 0,
+      "planet": "Mercury",
+      "sign": null,
+      "strength": 1.0,
+      "target_planet": null,
+      "type": "planet_in_house"
+    },
+    {
+      "aspect_type": null,
+      "house": 4,
+      "orb": 0,
+      "planet": "Venus",
+      "sign": null,
+      "strength": 1.0,
+      "target_planet": null,
+      "type": "planet_in_house"
+    },
+    {
+      "aspect_type": null,
+      "house": null,
+      "orb": 0,
+      "planet": "Sun",
+      "sign": "Scorpio",
+      "strength": 1.0,
+      "target_planet": null,
+      "type": "planet_in_sign"
+    }
+  ]
+}
