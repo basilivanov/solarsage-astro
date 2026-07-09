@@ -71,7 +71,7 @@ Loaded from `grace/canon/firdar.v1.yml`:
 
 ## Commit
 
-`<commit_sha>`
+`15f9b1c`
 
 ## Push Status
 
