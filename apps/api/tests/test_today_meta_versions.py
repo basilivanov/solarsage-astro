@@ -293,7 +293,7 @@ async def test_today_service_locked_preview_no_activation_layer(db_session):
 
 
 @pytest.mark.asyncio
-async def test_today_service_dual_run_fetches_sidecar_activation(db_session):
+async def test_today_service_dual_run_fetches_sidecar_activation(db_session, monkeypatch):
     """TodayService in dual-run mode fetches sidecar activation-layer
     containing non-W2 technique (annual_profection) and passes it to V2."""
     from unittest.mock import AsyncMock, MagicMock, patch
@@ -302,6 +302,10 @@ async def test_today_service_dual_run_fetches_sidecar_activation(db_session):
     from app.schemas.access import ContentAccessState
     from app.services.today_service import TodayService
     from app.core.config import settings
+    from app.services.day_scoring_runtime_service import DayScoringRuntimeService
+
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", True)
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
 
     # Create user + profile
     user = User(tg_user_id=777777, tg_username="test_w5_dual")
@@ -328,46 +332,47 @@ async def test_today_service_dual_run_fetches_sidecar_activation(db_session):
     mock_client.get_activation_layer = AsyncMock(return_value=sidecar_layer_dict)
     mock_client.get_transits = AsyncMock(return_value={"target_jd": 2461229.875, "planets": []})
 
+    # Spy on DayScoringRuntimeService.compute
+    original_compute = DayScoringRuntimeService.compute
+    captured_layers = []
+
+    def spy_compute(self_service, day_signals, activation_layer=None, **kwargs):
+        captured_layers.append(activation_layer)
+        return original_compute(self_service, day_signals, activation_layer=activation_layer, **kwargs)
+
     with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
          patch("app.services.today_service.NatalContextService.get_or_build_natal_context") as mock_natal, \
          patch("app.services.today_service.NormalizationService.normalize_day") as mock_norm, \
          patch.object(TodayService, "_get_yesterday_signals", return_value=None), \
          patch.object(TodayService, "_cache_payload"), \
          patch.object(TodayService, "_cache_semantic_layer"), \
-         patch("app.services.activation_layer_service.ActivationLayerService.build") as mock_act_build:
+         patch.object(DayScoringRuntimeService, "compute", spy_compute):
 
         from app.schemas.natal import NatalContextData, NatalChartPlanet, NatalChartHouse
         fake_natal = NatalContextData(house_system="WHOLE_SIGN", planets=[NatalChartPlanet(name="Sun", sign="Capricorn", degree=7.0, longitude=286.93, retrograde=False, house=11)], houses=[NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30)) for i in range(1, 13)])
         mock_natal.return_value = fake_natal
         mock_norm.return_value = []
 
-        from app.schemas.activation import ActivationLayer
-        mock_act_build.return_value = ActivationLayer(calculation_version="1", target_date="", target_time="", target_tz="", house_system="", activations=[], by_planet={}, by_house={}, by_lot={}, by_angle={})
-
-        monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(settings, "solarsage_v2_dual_run", True)
-        monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
-
         access = ContentAccessState(state="preview", reason="expired_access")
         service = TodayService(db_session)
-        payload = await service.get_today_payload(
+        await service.get_today_payload(
             user_id=user.id, target_date=Date(2026, 7, 8),
             access_state=access, skip_prefetch=True,
         )
 
-        # Prove sidecar activation-layer was fetched
+        # 1. Prove sidecar activation-layer was fetched
         mock_client.get_activation_layer.assert_awaited()
-        # Prove it was passed to ActivationLayerService.build
-        call_kwargs = mock_act_build.call_args.kwargs
-        assert call_kwargs.get("sidecar_activation_layer") is not None
-        sa = call_kwargs["sidecar_activation_layer"]
-        assert sa.get("activations", [{}])[0].get("technique") == "annual_profection"
-
-        monkeypatch.undo()
+        # 2. Prove DayScoringRuntimeService.compute received an activation layer containing the profection
+        assert len(captured_layers) == 1
+        al = captured_layers[0]
+        assert al is not None
+        profs = [a for a in al.activations if a.technique == "annual_profection"]
+        assert len(profs) == 1, "Expected annual_profection in the passed activation layer"
+        assert profs[0].id == "annual_profection__LORD_OF_YEAR__MARS"
 
 
 @pytest.mark.asyncio
-async def test_today_service_v1_only_no_sidecar_call(db_session):
+async def test_today_service_v1_only_no_sidecar_call(db_session, monkeypatch):
     """V1-only mode must not call get_activation_layer()."""
     from unittest.mock import AsyncMock, patch
     from datetime import date as Date, time as Time
@@ -375,6 +380,9 @@ async def test_today_service_v1_only_no_sidecar_call(db_session):
     from app.schemas.access import ContentAccessState
     from app.services.today_service import TodayService
     from app.core.config import settings
+
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", False)
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
 
     user = User(tg_user_id=777778, tg_username="test_w5_v1")
     db_session.add(user)
@@ -404,24 +412,19 @@ async def test_today_service_v1_only_no_sidecar_call(db_session):
         mock_natal.return_value = fake_natal
         mock_norm.return_value = []
 
-        monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(settings, "solarsage_v2_dual_run", False)
-        monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
-
         access = ContentAccessState(state="preview", reason="expired_access")
         service = TodayService(db_session)
-        payload = await service.get_today_payload(
+        await service.get_today_payload(
             user_id=user.id, target_date=Date(2026, 7, 8),
             access_state=access, skip_prefetch=True,
         )
 
         # Prove sidecar activation-layer was NOT fetched in V1-only mode
         mock_client.get_activation_layer.assert_not_awaited()
-        monkeypatch.undo()
 
 
 @pytest.mark.asyncio
-async def test_today_service_shadow_fail_open_logs_fallback(db_session):
+async def test_today_service_shadow_fail_open_logs_fallback(db_session, monkeypatch):
     """Dual-run shadow mode: sidecar failure returns V1 and logs fallback."""
     from unittest.mock import AsyncMock, patch
     from datetime import date as Date, time as Time
@@ -429,6 +432,9 @@ async def test_today_service_shadow_fail_open_logs_fallback(db_session):
     from app.schemas.access import ContentAccessState
     from app.services.today_service import TodayService
     from app.core.config import settings
+
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", True)
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
 
     user = User(tg_user_id=777779, tg_username="test_w5_shadow")
     db_session.add(user)
@@ -463,10 +469,6 @@ async def test_today_service_shadow_fail_open_logs_fallback(db_session):
         mock_natal.return_value = fake_natal
         mock_norm.return_value = []
 
-        monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(settings, "solarsage_v2_dual_run", True)
-        monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
-
         access = ContentAccessState(state="preview", reason="expired_access")
         service = TodayService(db_session)
         payload = await service.get_today_payload(
@@ -479,11 +481,10 @@ async def test_today_service_shadow_fail_open_logs_fallback(db_session):
         assert payload.meta.scoring_version == 1
         # Should have logged the fallback marker
         assert "scoring.v2_diff" in log_events
-        monkeypatch.undo()
 
 
 @pytest.mark.asyncio
-async def test_today_service_v2_enabled_fail_loud(db_session):
+async def test_today_service_v2_enabled_fail_loud(db_session, monkeypatch):
     """V2-enabled mode: sidecar failure raises, no fallback log."""
     from unittest.mock import AsyncMock, patch
     from datetime import date as Date, time as Time
@@ -491,7 +492,8 @@ async def test_today_service_v2_enabled_fail_loud(db_session):
     from app.schemas.access import ContentAccessState
     from app.services.today_service import TodayService
     from app.core.config import settings
-    import fastapi
+
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", True)
 
     user = User(tg_user_id=777780, tg_username="test_w5_fail")
     db_session.add(user)
@@ -523,9 +525,6 @@ async def test_today_service_v2_enabled_fail_loud(db_session):
         fake_natal = NatalContextData(house_system="WHOLE_SIGN", planets=[NatalChartPlanet(name="Sun", sign="Capricorn", degree=7.0, longitude=286.93, retrograde=False, house=11)], houses=[NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30)) for i in range(1, 13)])
         mock_natal.return_value = fake_natal
 
-        monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(settings, "solarsage_v2_enabled", True)
-
         access = ContentAccessState(state="preview", reason="expired_access")
         service = TodayService(db_session)
         with pytest.raises(Exception):
@@ -536,6 +535,123 @@ async def test_today_service_v2_enabled_fail_loud(db_session):
         # Must NOT log "using local fallback" in V2-enabled mode
         fallback_logged = any("fallback" in str(e) for e in log_events)
         assert not fallback_logged, "V2-enabled mode must not log fallback"
-        monkeypatch.undo()
 
 
+@pytest.mark.asyncio
+async def test_today_service_current_location_complete_passed(db_session, monkeypatch):
+    """Complete current location (lat, lon, tz) is passed to get_activation_layer."""
+    from unittest.mock import AsyncMock, patch
+    from datetime import date as Date, time as Time
+    from app.db.models import User, UserProfile
+    from app.schemas.access import ContentAccessState
+    from app.services.today_service import TodayService
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", True)
+
+    user = User(tg_user_id=777781, tg_username="test_w5_loc")
+    db_session.add(user)
+    await db_session.flush()
+    profile = UserProfile(
+        user_id=user.id, first_name="Test",
+        birthday=Date(1990, 1, 15), birth_time=Time(12, 0),
+        birth_city="Moscow", birth_lat=55.76, birth_lon=37.62,
+        gender="female", birth_tz="Europe/Moscow", is_onboarded=True,
+        current_lat=43.5, current_lon=39.5, current_tz="Europe/Moscow",
+    )
+    db_session.add(profile)
+    await db_session.commit()
+
+    sidecar_layer_dict = {
+        "schema_version": "activation-layer.v1", "activation_layer_version": "al-1.0",
+        "calculation_version": "1", "target_date": "2026-07-08", "target_time": "12:00",
+        "target_tz": "Europe/Moscow", "house_system": "WHOLE_SIGN",
+        "activations": [],
+        "by_planet": {}, "by_house": {}, "by_lot": {}, "by_angle": {}, "warnings": [],
+    }
+    mock_client = AsyncMock()
+    mock_client.get_activation_layer = AsyncMock(return_value=sidecar_layer_dict)
+    mock_client.get_transits = AsyncMock(return_value={"target_jd": 2461229.875, "planets": []})
+
+    with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
+         patch("app.services.today_service.NatalContextService.get_or_build_natal_context") as mock_natal, \
+         patch("app.services.today_service.NormalizationService.normalize_day") as mock_norm, \
+         patch.object(TodayService, "_get_yesterday_signals", return_value=None), \
+         patch.object(TodayService, "_cache_payload"), \
+         patch.object(TodayService, "_cache_semantic_layer"):
+
+        from app.schemas.natal import NatalContextData, NatalChartPlanet, NatalChartHouse
+        fake_natal = NatalContextData(house_system="WHOLE_SIGN", planets=[NatalChartPlanet(name="Sun", sign="Capricorn", degree=7.0, longitude=286.93, retrograde=False, house=11)], houses=[NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30)) for i in range(1, 13)])
+        mock_natal.return_value = fake_natal
+        mock_norm.return_value = []
+
+        access = ContentAccessState(state="preview", reason="expired_access")
+        service = TodayService(db_session)
+        await service.get_today_payload(
+            user_id=user.id, target_date=Date(2026, 7, 8),
+            access_state=access, skip_prefetch=True,
+        )
+
+        # Verify current_location parameter was passed to get_activation_layer
+        call_kwargs = mock_client.get_activation_layer.call_args.kwargs
+        assert call_kwargs.get("current_location") == {"lat": 43.5, "lon": 39.5, "tz": "Europe/Moscow"}
+
+
+@pytest.mark.asyncio
+async def test_today_service_current_location_incomplete_omitted(db_session, monkeypatch):
+    """Missing current_tz in profile omits current_location entirely."""
+    from unittest.mock import AsyncMock, patch
+    from datetime import date as Date, time as Time
+    from app.db.models import User, UserProfile
+    from app.schemas.access import ContentAccessState
+    from app.services.today_service import TodayService
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", True)
+
+    user = User(tg_user_id=777782, tg_username="test_w5_loc_inc")
+    db_session.add(user)
+    await db_session.flush()
+    profile = UserProfile(
+        user_id=user.id, first_name="Test",
+        birthday=Date(1990, 1, 15), birth_time=Time(12, 0),
+        birth_city="Moscow", birth_lat=55.76, birth_lon=37.62,
+        gender="female", birth_tz="Europe/Moscow", is_onboarded=True,
+        current_lat=43.5, current_lon=39.5, current_tz=None,  # incomplete
+    )
+    db_session.add(profile)
+    await db_session.commit()
+
+    sidecar_layer_dict = {
+        "schema_version": "activation-layer.v1", "activation_layer_version": "al-1.0",
+        "calculation_version": "1", "target_date": "2026-07-08", "target_time": "12:00",
+        "target_tz": "Europe/Moscow", "house_system": "WHOLE_SIGN",
+        "activations": [],
+        "by_planet": {}, "by_house": {}, "by_lot": {}, "by_angle": {}, "warnings": [],
+    }
+    mock_client = AsyncMock()
+    mock_client.get_activation_layer = AsyncMock(return_value=sidecar_layer_dict)
+    mock_client.get_transits = AsyncMock(return_value={"target_jd": 2461229.875, "planets": []})
+
+    with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
+         patch("app.services.today_service.NatalContextService.get_or_build_natal_context") as mock_natal, \
+         patch("app.services.today_service.NormalizationService.normalize_day") as mock_norm, \
+         patch.object(TodayService, "_get_yesterday_signals", return_value=None), \
+         patch.object(TodayService, "_cache_payload"), \
+         patch.object(TodayService, "_cache_semantic_layer"):
+
+        from app.schemas.natal import NatalContextData, NatalChartPlanet, NatalChartHouse
+        fake_natal = NatalContextData(house_system="WHOLE_SIGN", planets=[NatalChartPlanet(name="Sun", sign="Capricorn", degree=7.0, longitude=286.93, retrograde=False, house=11)], houses=[NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30)) for i in range(1, 13)])
+        mock_natal.return_value = fake_natal
+        mock_norm.return_value = []
+
+        access = ContentAccessState(state="preview", reason="expired_access")
+        service = TodayService(db_session)
+        await service.get_today_payload(
+            user_id=user.id, target_date=Date(2026, 7, 8),
+            access_state=access, skip_prefetch=True,
+        )
+
+        # Verify current_location parameter was None (omitted)
+        call_kwargs = mock_client.get_activation_layer.call_args.kwargs
+        assert call_kwargs.get("current_location") is None
