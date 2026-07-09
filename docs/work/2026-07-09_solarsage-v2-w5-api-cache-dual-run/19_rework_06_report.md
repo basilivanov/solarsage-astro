@@ -107,19 +107,16 @@ cd apps/api && source .venv/bin/activate && python -m pytest tests/ -q
 755 passed, 5 skipped, 1 warning in 56.64s
 ```
 
+## Rework 07 Note
+Rework 07 fixed the guardrail weakening from Rework 06 by removing `canon_service.py` from check exclusions and completely replacing the stdlib logger usage in `canon_service.py` with stderr prints.
+
 ## Final Git Status
 ```text
-## main...origin/main [ahead 146]
- M apps/api/tests/test_calendar_v2_dual_run.py
- M apps/api/tests/test_today_cache_v2_key.py
- M apps/api/tests/test_today_meta_versions.py
- M lib/log/events.gen.ts
- M scripts/check_logging_guardrails.py
-?? docs/work/2026-07-09_solarsage-v2-w5-api-cache-dual-run/19_rework_06_report.md
+## main...origin/main [ahead 147]
 ```
 
 ## Commit SHA
-dc60f95
+1704de2
 
 ## Push / Deploy Status
 Push: NOT_ATTEMPTED

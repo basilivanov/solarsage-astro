@@ -109,21 +109,20 @@ def load_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, Any]
     Returns empty dict for missing files but logs warnings.
     Used by production startup path.
     """
+    import sys
     cd = canon_dir or CANON_DIR
     bundle: dict[str, dict[str, Any]] = {}
-    import logging
-    logger = logging.getLogger(__name__)
 
     for filename in CANON_FILES:
         path = cd / filename
         if not path.exists():
-            logger.warning("Canon file not found: %s", path)
+            print(f"WARNING: Canon file not found: {path}", file=sys.stderr)
             continue
         try:
             data = _load_yaml(path)
             bundle[filename] = data
         except Exception as exc:
-            logger.error("Failed to load canon file %s: %s", filename, exc)
+            print(f"ERROR: Failed to load canon file {filename}: {exc}", file=sys.stderr)
 
     return bundle
 

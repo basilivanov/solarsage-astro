@@ -104,4 +104,3 @@ Required fix:
 
 - `TodayService._get_cached_payload()` and `_cache_payload()` now include `cache_key_hash` when `cache_key` is passed. That part is directionally correct.
 - `TodayService` rebuilds the write key from `dual.selected_scoring_version`. Calendar should do the same or assert helper/runtime agreement before storing semantic identity.
-

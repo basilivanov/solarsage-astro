@@ -208,4 +208,3 @@ curl -X POST http://127.0.0.1:18765/trigger \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Wave W5 Rework 03 ready for architect review. Report: docs/work/2026-07-09_solarsage-v2-w5-api-cache-dual-run/10_rework_03_report.md. Review: docs/work/2026-07-09_solarsage-v2-w5-api-cache-dual-run/08_rework_02_review.md. Rework TZ: docs/work/2026-07-09_solarsage-v2-w5-api-cache-dual-run/09_rework_03_TZ.md. Branch: main. Commit: <commit_sha>. Push: NOT_ATTEMPTED"}'
 ```
-

@@ -105,7 +105,7 @@ def check_registry_drift() -> bool:
 
 def check_backend_logger() -> bool:
     api_dir = ROOT / "apps" / "api" / "app"
-    exclude_files = {"logging.py", "logging_events.py", "redactor.py", "canon_service.py"}
+    exclude_files = {"logging.py", "logging_events.py", "redactor.py"}
     
     legacy_import_re = re.compile(r"from app\.core\.logging import logger")
     stdlib_logger_re = re.compile(r"logging\.getLogger\(")

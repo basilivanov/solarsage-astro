@@ -44,4 +44,3 @@ Required fix:
 
 - The code direction for cache identity is now close: read keys use `expected_cache_identity()`, write keys use actual `activation_layer` runtime fields, and Calendar semantic identity now checks `activation_layer_version`.
 - The remaining blocker is proof: tests must exercise the service paths that previously regressed.
-

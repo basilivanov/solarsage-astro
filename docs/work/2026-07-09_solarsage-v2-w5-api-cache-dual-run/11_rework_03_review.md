@@ -102,4 +102,3 @@ Required fix:
 
 - Calendar now queries `TodayPayloadCache` by `cache_key_hash`, which is the right shape once the key actually includes all required version fields.
 - Calendar now has the right direction for fail-loud, but tests must prove the exact sidecar failure behavior rather than relying on broad exception behavior.
-
