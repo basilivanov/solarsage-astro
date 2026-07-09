@@ -364,6 +364,7 @@ async def run_oracles(
         )
 
 
+# W9 rework01: frozen baseline materializes debug payload before oracles
 async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     # START_FUNCTION_CONTRACT: F-M-AUDIT-TODAY.run_audit
     # purpose: Capture production Today path and write audit artifacts.

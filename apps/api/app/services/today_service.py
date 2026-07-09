@@ -88,6 +88,7 @@ from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
 from app.core.config import settings
+# W9 rework01: version identity by selected scoring path
 from app.core.versions import (
     ACTIVATION_LAYER_VERSION,
     CALCULATION_VERSION,

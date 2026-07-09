@@ -849,3 +849,4 @@ async def test_v1_only_payload_and_cache_identity_not_polluted_by_v2_calc(db_ses
     assert str(ck.calculation_version) == str(payload.meta.calculation_version)
     assert str(ck.scoring_version) == str(payload.meta.scoring_version)
     assert ck.frontend_payload_version == payload.meta.frontend_payload_version
+# W9 rework01 regression: V1 identity not polluted by V2 calc

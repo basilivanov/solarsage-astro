@@ -330,3 +330,4 @@ async def test_frozen_mode_does_not_call_today_service(tmp_path, monkeypatch):
     assert (out / "debug" / "final_today_payload.json").exists()
     assert (out / "debug" / "final_today_payload.normalized.json").exists()
     assert oracle_saw_payload["ok"] is True
+# W9 rework01 regression: frozen payload before oracles
