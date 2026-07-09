@@ -41,19 +41,30 @@ from pathlib import Path
 
 def _ensure_api_runtime() -> None:
     """Re-exec into the API venv if the current interpreter cannot run the
-    API runtime correctly. Uses apps/api/.venv/bin/python.
-
-    Checks a real API dependency (AstroSignal schema) to catch cases where
-    'import app' succeeds but Pydantic 2 dependencies are missing.
-    Uses an env-var guard (AUDIT_EXEC_REEXECED) to prevent infinite loops.
+    API runtime correctly. Uses the unresolved .venv/bin/python entry path
+    to preserve virtualenv activation. Uses sys.prefix comparison as the
+    infinite-loop guard.
     """
-    # Infinite-loop guard: if we already re-execed once, do not try again
-    if os.environ.get("AUDIT_EXEC_REEXECED") == "1":
-        return  # Already tried re-exec; fail normally if imports still broken
+    api_root = (Path(__file__).resolve().parent.parent / "apps" / "api").resolve()
+    venv_root = api_root / ".venv"
+    venv_python = venv_root / "bin" / "python"
+    venv_prefix = venv_root.resolve()
 
-    venv_python = (Path(__file__).resolve().parent.parent / "apps" / "api" / ".venv" / "bin" / "python").resolve()
+    # Loop guard: if already in the API venv, do not re-exec
+    in_api_venv = Path(sys.prefix).resolve() == venv_prefix
+    already_reexeced = os.environ.get("AUDIT_EXEC_REEXECED") == "1"
 
-    # Test a real API import that proves Pydantic 2 dependencies
+    if already_reexeced or in_api_venv:
+        # If we're already in the venv or have already tried, test imports
+        # and let any failure propagate normally (no silent continue)
+        try:
+            import app  # noqa: F401
+            from app.schemas.normalization import AstroSignal  # noqa: F401
+        except Exception:
+            raise  # Re-raise to fail visibly if venv is broken
+        return
+
+    # Test a real API import
     try:
         import app  # noqa: F401
         from app.schemas.normalization import AstroSignal  # noqa: F401
@@ -69,16 +80,15 @@ def _ensure_api_runtime() -> None:
         )
         sys.exit(1)
 
-    # Re-exec into API venv
+    # Re-exec into API venv — keep the unresolved symlink so pyvenv.cfg is found
     env = os.environ.copy()
     env["AUDIT_EXEC_REEXECED"] = "1"
-    api_root = str((Path(__file__).resolve().parent.parent / "apps" / "api").resolve())
     existing_pp = env.get("PYTHONPATH", "")
     pp_entries = [p for p in existing_pp.split(":") if p] if existing_pp else []
-    if api_root not in pp_entries:
-        pp_entries.insert(0, api_root)
+    if str(api_root) not in pp_entries:
+        pp_entries.insert(0, str(api_root))
     env["PYTHONPATH"] = ":".join(pp_entries)
-    os.execve(str(venv_python), [str(venv_python)] + sys.argv, env)
+    os.execve(str(venv_python), [str(venv_python), *sys.argv], env)
 
 
 _ensure_api_runtime()
