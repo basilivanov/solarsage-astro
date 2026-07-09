@@ -67,7 +67,7 @@ Shared runtime scorer used by `TodayService` and `CalendarService`:
 
 ## Commit
 
-`<commit_sha>`
+`0b63432`
 
 ## Push Status
 
