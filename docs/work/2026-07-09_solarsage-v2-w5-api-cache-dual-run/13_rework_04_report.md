@@ -43,7 +43,7 @@ Made cache identity real by including `activation_layer_version` in read/write k
 
 ## Commit
 
-`<commit_sha>`
+`aedbdc4`
 
 ## Push Status
 
