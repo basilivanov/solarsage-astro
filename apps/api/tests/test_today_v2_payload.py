@@ -122,3 +122,48 @@ async def test_today_payload_v2_block_omitted_when_flag_disabled(db_session, mon
         assert payload.v2 is None
         assert payload.meta.payload_version == "today.v1"
         assert payload.meta.frontend_payload_version == 1
+
+
+def test_normalize_top_signals_helper():
+    from app.schemas.normalization import normalize_top_signals, AstroSignal
+
+    # 1. Test empty
+    assert normalize_top_signals([]) == []
+
+    # 2. Test already normalized list
+    signals = [AstroSignal(type="aspect", planet="Sun", strength=0.8)]
+    assert normalize_top_signals(signals) is signals
+
+    # 3. Test dict list with valid fields
+    raw = [
+        {
+            "type": "aspect",
+            "planet": "Transit_Sun",
+            "target_planet": "Mercury",
+            "aspect_type": "trine",
+            "orb": 0.529,
+            "strength": 0.933,
+            "house": None,
+            "sign": None,
+        }
+    ]
+    res = normalize_top_signals(raw)
+    assert len(res) == 1
+    assert res[0].type == "aspect"
+    assert res[0].planet == "Transit_Sun"
+    assert res[0].target_planet == "Mercury"
+    assert res[0].orb == 0.529
+    assert res[0].strength == 0.933
+
+    # 4. Test dict list missing required type or planet is ignored
+    malformed = [
+        {
+            "planet": "Transit_Sun",
+            "strength": 0.8
+        },
+        {
+            "type": "aspect",
+            "strength": 0.8
+        }
+    ]
+    assert normalize_top_signals(malformed) == []

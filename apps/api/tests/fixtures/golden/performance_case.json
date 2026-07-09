@@ -1,0 +1,56 @@
+{
+  "calculation_version": "ss-calc-1.1.0",
+  "activation_layer_version": "al-1.0",
+  "target_date": "2026-07-08",
+  "target_time": "12:00",
+  "target_tz": "Europe/Moscow",
+  "house_system": "WHOLE_SIGN",
+  "activations": [
+    {
+      "id": "act-1",
+      "technique": "transit_to_natal",
+      "technique_family": "transit",
+      "target_type": "planet",
+      "target_key": "MERCURY",
+      "kind": "aspect",
+      "active": true,
+      "strength": 0.8,
+      "evidence": "Synthetic transit to Mercury"
+    },
+    {
+      "id": "act-2",
+      "technique": "annual_profection",
+      "technique_family": "profection",
+      "target_type": "house",
+      "target_key": "3",
+      "kind": "profected_house",
+      "active": true,
+      "strength": 0.75,
+      "evidence": "Synthetic profection to house 3"
+    }
+  ],
+  "by_planet": {
+    "MERCURY": ["act-1"]
+  },
+  "by_house": {
+    "3": ["act-2"]
+  },
+  "by_lot": {},
+  "by_angle": {},
+  "day_signals": [
+    {
+      "type": "aspect",
+      "planet": "Transit_Sun",
+      "target_planet": "Mercury",
+      "aspect_type": "trine",
+      "orb": 0.5,
+      "strength": 0.9
+    },
+    {
+      "type": "planet_in_house",
+      "planet": "Transit_Moon",
+      "house": 3,
+      "strength": 0.8
+    }
+  ]
+}

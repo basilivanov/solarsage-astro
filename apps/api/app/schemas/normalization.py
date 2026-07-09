@@ -81,3 +81,43 @@ class AstroSignal(BaseModel):
     delta_kind: DeltaKind | None = Field(default=None, description="How this signal changed from yesterday")
     phase: PhaseKind | None = Field(default=None, description="Phase of the aspect (applying/exact/separating)")
     daily_salience: float | None = Field(default=None, description="Velocity + delta weighted salience")
+
+
+def normalize_top_signals(top_signals: list) -> list[AstroSignal]:
+    if not top_signals:
+        return []
+    if isinstance(top_signals[0], AstroSignal):
+        return top_signals
+
+    normalized = []
+    for s in top_signals:
+        if isinstance(s, dict):
+            sig_type = s.get("type") or s.get("type_")
+            sig_planet = s.get("planet")
+            if not sig_type or not sig_planet:
+                continue
+
+            raw_strength = s.get("strength")
+            try:
+                strength = float(raw_strength) if raw_strength is not None else 0.0
+            except (ValueError, TypeError):
+                strength = 0.0
+
+            normalized.append(
+                AstroSignal(
+                    type=sig_type,
+                    planet=sig_planet,
+                    target_planet=s.get("target_planet") or s.get("targetPlanet"),
+                    aspect_type=s.get("aspect_type") or s.get("aspectType"),
+                    orb=float(s["orb"]) if s.get("orb") is not None else None,
+                    strength=strength,
+                    house=int(s["house"]) if s.get("house") is not None else None,
+                    sign=s.get("sign"),
+                    technique=s.get("technique"),
+                    technique_family=s.get("technique_family") or s.get("techniqueFamily"),
+                    delta_kind=s.get("delta_kind") or s.get("deltaKind"),
+                    phase=s.get("phase"),
+                    daily_salience=float(s["daily_salience"]) if s.get("daily_salience") is not None else None,
+                )
+            )
+    return normalized

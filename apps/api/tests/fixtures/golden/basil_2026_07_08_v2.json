@@ -1717,6 +1717,16 @@
       "work_status_achievement": {
         "finalScore": 16.3463
       }
-    }
+    },
+    "status_flips": [
+      {
+        "evidence_ids": [
+          "t2n__SUN__TRINE__MERCURY"
+        ],
+        "explained": true,
+        "from": "supportive",
+        "to": "steady"
+      }
+    ]
   }
 }

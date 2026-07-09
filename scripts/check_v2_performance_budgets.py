@@ -3,12 +3,21 @@
 # purpose: Verify that local V2 scoring and semantic block building run under 50ms.
 # owns:
 #   - scripts/check_v2_performance_budgets.py
-# inputs: artifacts/audit/2026-07-08/ raw signals and activations
+# inputs: apps/api/tests/fixtures/golden/performance_case.json
 # outputs: sys.exit(0) on success, sys.exit(1) on failure
 # dependencies: app.services.scoring_v2_service, app.services.semantic_v2_service
 # side_effects: runs scoring and semantic loops
 # emitted_logs: system.performance_budgets_passed, system.performance_budgets_failed
+# invariants: none
+# failure_policy: log and raise
 # END_MODULE_CONTRACT: M-V2-PERFORMANCE-BUDGETS-CHECK
+
+# START_MODULE_MAP: M-V2-PERFORMANCE-BUDGETS-CHECK
+# public_entrypoints:
+#   - main
+# semantic_blocks:
+#   - BUDGET_CHECK: runs p95 performance loops
+# END_MODULE_MAP: M-V2-PERFORMANCE-BUDGETS-CHECK
 
 # ############################################################################
 # AI_HEADER: TOOL_V2_PERFORMANCE_BUDGETS_CHECK
@@ -16,12 +25,14 @@
 # DEPENDENCIES: stdlib, app.services
 # ############################################################################
 
+from __future__ import annotations
+
 import json
 import time
 import sys
 from pathlib import Path
 
-# Add app to path
+# Add app to path dynamically
 repo_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(repo_root / "apps" / "api"))
 
@@ -30,7 +41,14 @@ from app.services.semantic_v2_service import SemanticV2Service
 from app.services.scoring_v2_service import ScoringV2Service
 from app.schemas.normalization import AstroSignal
 
-def log_event(event: str, level: str, msg: str):
+
+def log_event(event: str, level: str, msg: str) -> None:
+    # START_FUNCTION_CONTRACT: F-M-V2-PERFORMANCE-BUDGETS-CHECK.log_event
+    # purpose: Emit a structured JSON log to stdout.
+    # inputs: event (str), level (str), msg (str)
+    # returns: None
+    # side_effects: writes to stdout
+    # END_FUNCTION_CONTRACT: F-M-V2-PERFORMANCE-BUDGETS-CHECK.log_event
     from datetime import datetime, UTC
     print(json.dumps({
         "ts": datetime.now(UTC).isoformat() + "Z",
@@ -43,38 +61,40 @@ def log_event(event: str, level: str, msg: str):
         "block": "PERFORMANCE_RUN",
     }))
 
-def main():
+
+def main() -> None:
+    # START_FUNCTION_CONTRACT: F-M-V2-PERFORMANCE-BUDGETS-CHECK.main
+    # purpose: Main entry point for performance budget check.
+    # inputs: none
+    # returns: None
+    # side_effects: exits process
+    # END_FUNCTION_CONTRACT: F-M-V2-PERFORMANCE-BUDGETS-CHECK.main
     print("=== Running V2 Performance Budgets Check ===")
     print("mode: fixture")
 
-    repo_root = Path(__file__).resolve().parent.parent
-    golden_inputs_dir = repo_root / "apps" / "api" / "tests" / "fixtures" / "golden" / "inputs"
-    if not golden_inputs_dir.exists():
-        print("Error: Golden inputs directory not found.")
+    golden_inputs_dir = repo_root / "apps" / "api" / "tests" / "fixtures" / "golden"
+    case_path = golden_inputs_dir / "performance_case.json"
+    if not case_path.exists():
+        print(f"Error: Performance case fixture not found at {case_path}")
         sys.exit(1)
 
     # 1. Load data
-    raw_activations = json.loads((golden_inputs_dir / "raw_activations.json").read_text(encoding="utf-8"))
-    activation_layer = ActivationLayer.model_validate(raw_activations)
+    case_data = json.loads(case_path.read_text(encoding="utf-8"))
+    day_signals_raw = case_data.pop("day_signals", [])
+    activation_layer = ActivationLayer.model_validate(case_data)
 
     # Load signals
-    signals_data = (golden_inputs_dir / "raw_signals.csv").read_text(encoding="utf-8").splitlines()
-    day_signals = []
-    for line in signals_data[1:]:
-        if not line.strip():
-            continue
-        parts = line.split(",")
-        if len(parts) >= 10:
-            day_signals.append(
-                AstroSignal(
-                    type=parts[2].strip(),
-                    planet=parts[3].strip(),
-                    target_planet=parts[5].strip() if parts[5].strip() else None,
-                    aspect_type=parts[7].strip() if parts[7].strip() else None,
-                    orb=float(parts[8].strip()) if parts[8].strip() else None,
-                    strength=float(parts[9].strip()) if parts[9].strip() else 0.0,
-                )
-            )
+    day_signals = [
+        AstroSignal(
+            type=s["type"],
+            planet=s["planet"],
+            target_planet=s.get("target_planet"),
+            aspect_type=s.get("aspect_type"),
+            orb=s.get("orb"),
+            strength=s.get("strength", 0.0),
+        )
+        for s in day_signals_raw
+    ]
 
     scoring_v2_service = ScoringV2Service()
     semantic_v2_service = SemanticV2Service()
@@ -83,7 +103,7 @@ def main():
     scoring_times = []
     for _ in range(50):
         t0 = time.perf_counter()
-        res = scoring_v2_service.score_day(day_signals, activation_layer)
+        _res = scoring_v2_service.score_day(day_signals, activation_layer)
         t1 = time.perf_counter()
         scoring_times.append((t1 - t0) * 1000.0)
 
@@ -127,6 +147,7 @@ def main():
     log_event("system.performance_budgets_passed", "info", "Performance budget check passed")
     print("Performance budget check: PASSED")
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

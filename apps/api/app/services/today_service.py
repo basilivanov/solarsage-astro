@@ -94,34 +94,6 @@ from app.services.activation_layer_service import ActivationLayerService
 from app.core.logging import log_event, log_block
 
 
-def _normalize_top_signals(top_signals: list) -> list[AstroSignal]:
-    if not top_signals:
-        return []
-    from app.schemas.normalization import AstroSignal as AstroSignalModel
-    if isinstance(top_signals[0], AstroSignalModel):
-        return top_signals
-    normalized = []
-    for s in top_signals:
-        if isinstance(s, dict):
-            sig_type = s.get("type") or s.get("type_")
-            sig_planet = s.get("planet")
-            if not sig_type or not sig_planet:
-                continue
-            normalized.append(
-                AstroSignalModel(
-                    type=sig_type,
-                    planet=sig_planet,
-                    target_planet=s.get("target_planet") or s.get("targetPlanet"),
-                    aspect_type=s.get("aspect_type") or s.get("aspectType"),
-                    orb=float(s["orb"]) if s.get("orb") is not None else None,
-                    strength=float(s["strength"]) if s.get("strength") is not None else 0.0,
-                    house=int(s["house"]) if s.get("house") is not None else None,
-                    sign=s.get("sign"),
-                )
-            )
-    return normalized
-
-
 TODAY_CONTENT_VERSION = 9
 
 PLANET_LABELS_RU = {
@@ -327,7 +299,8 @@ class TodayService:
             target_date=target_date.isoformat(),
         )
         scoring_result = dict(dual.selected_result)
-        scoring_result["top_signals"] = _normalize_top_signals(scoring_result.get("top_signals", []))
+        from app.schemas.normalization import normalize_top_signals
+        scoring_result["top_signals"] = normalize_top_signals(scoring_result.get("top_signals", []))
         scoring_version = dual.selected_scoring_version
 
         # Rebuild cache key with actual runtime version fields for write
@@ -538,32 +511,23 @@ class TodayService:
 
     @staticmethod
     def _build_top_flag(signal) -> TopFlag | None:
-        is_dict = isinstance(signal, dict)
-        sig_planet = signal["planet"] if is_dict else getattr(signal, "planet", None)
-        sig_type = signal["type"] if is_dict else getattr(signal, "type", None)
-        sig_aspect_type = signal["aspect_type"] if is_dict else getattr(signal, "aspect_type", None)
-        sig_target_planet = signal["target_planet"] if is_dict else getattr(signal, "target_planet", None)
-        sig_house = signal["house"] if is_dict else getattr(signal, "house", None)
+        planet = TodayService._planet_label(signal.planet)
+        icon_planet = strip_prefix(signal.planet) or "planet"
 
-        if not sig_planet:
-            return None
-
-        planet = TodayService._planet_label(sig_planet)
-        icon_planet = strip_prefix(sig_planet) or "planet"
-
-        if sig_type == "aspect" and sig_aspect_type and sig_target_planet:
-            target = TodayService._planet_label(sig_target_planet)
+        if signal.type == "aspect" and signal.aspect_type and signal.target_planet:
+            target = TodayService._planet_label(signal.target_planet)
+            aspect = ASPECT_LABELS_RU.get(signal.aspect_type, "аспект")
             return TopFlag(
-                icon_name=f"{icon_planet}-{sig_aspect_type}",
-                title=f"{planet} {ASPECT_LABELS_RU.get(sig_aspect_type, 'аспект')} {target}",
-                summary=TodayService._top_flag_aspect_summary(sig_aspect_type),
+                icon_name=f"{icon_planet}-{signal.aspect_type}",
+                title=f"{planet} {aspect} {target}",
+                summary=TodayService._top_flag_aspect_summary(signal.aspect_type),
                 hint=None,
             )
 
-        if sig_type == "planet_in_house" and sig_house:
+        if signal.type == "planet_in_house" and signal.house:
             return TopFlag(
                 icon_name=f"{icon_planet}-house",
-                title=f"{planet} в {sig_house} доме",
+                title=f"{planet} в {signal.house} доме",
                 summary="Акцент дня: эта тема заметнее обычного, полезно выбрать один практический шаг.",
                 hint=None,
             )
