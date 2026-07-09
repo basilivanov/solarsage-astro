@@ -29,7 +29,7 @@ Fixed audit CLI runtime detection: `_ensure_api_runtime()` now tests a real API 
 
 ## Commit
 
-`<commit_sha>`
+`e45899e`
 
 ## Push Status
 
