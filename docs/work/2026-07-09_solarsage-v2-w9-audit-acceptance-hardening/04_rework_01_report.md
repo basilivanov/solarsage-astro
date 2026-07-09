@@ -1,8 +1,8 @@
 # W9 Rework 01 Report
 
 Date: 2026-07-09
-Base reviewed commit: `ebb1898` / current pre-rework tip may be later (`bd45b9f` ahead of origin)
-Final rework commit: `94f3b18`
+Base reviewed commit: `ebb1898`
+Final rework commit: `2d2119f`
 Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
@@ -139,4 +139,4 @@ Recorded after final commit (must pass once trailing whitespace fix is committed
 - Remote CI: **REMOTE_CI_NOT_AVAILABLE**
 - Process: **no sudo**, **no `.git/index` deletion**
 
-<!-- rework01-commit: 94f3b18 -->
+<!-- rework01-commit: 2d2119f -->
