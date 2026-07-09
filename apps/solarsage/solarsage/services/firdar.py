@@ -120,7 +120,6 @@ def _validate_firdar_canon(data: dict) -> None:
     #   sum mismatch, node sequence length mismatch
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._validate_firdar_canon
     """Validate firdar canon values. Raises ValueError on malformed data."""
-    import math
     cycle_years = int(data["cycle_years"])
     if cycle_years <= 0:
         raise ValueError(f"cycle_years must be > 0, got {cycle_years}")
@@ -264,15 +263,15 @@ def _age_years_decimal(birth_local: Date, target_local: Date) -> float:
 class FirdarContext:
     """Holds the full firdar calculation result."""
 
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
+    # purpose: Hold the full firdar calculation result (major/minor lords, ages,
+    #          cycle info, subperiod data).
+    # inputs: All keyword-only parameters defining period state
+    # returns: None
+    # side_effects: none
+    # error_behavior: None (pure data storage)
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
     def __init__(
-        # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
-        # purpose: Hold the full firdar calculation result (major/minor lords, ages,
-        #          cycle info, subperiod data).
-        # inputs: All keyword-only parameters defining period state
-        # returns: None
-        # side_effects: none
-        # error_behavior: None (pure data storage)
-        # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
         self,
         *,
         is_day_birth: bool,
@@ -325,10 +324,12 @@ def calculate_firdar(
     #   target_local — target local date
     #   is_day_birth — True if Sun in houses 7-12 (day chart)
     #   sun_house — natal Sun house (for debug)
-    #   canon — optional pre-loaded canon dict; loaded from file if None
+    #   canon — optional pre-loaded canon dict; loaded from file if None;
+    #           validated for correct values before use
     # returns: FirdarContext with major/minor lord, ages, debug payloads
     # side_effects: loads canon file if canon=None
-    # error_behavior: KeyError on missing canon keys or strength keys
+    # error_behavior: KeyError on missing required canon keys;
+    #   ValueError on malformed canon values (zero cycle, empty sequences, sum mismatch)
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.calculate_firdar
     """Calculate firdar context for a birth+target local date pair.
 
@@ -344,6 +345,8 @@ def calculate_firdar(
     """
     if canon is None:
         canon = _load_firdar_canon()
+    else:
+        _validate_firdar_canon(canon)
 
     cycle_years = int(canon["cycle_years"])
     minor_divisions = int(canon["minor_divisions"])

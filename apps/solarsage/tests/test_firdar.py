@@ -95,45 +95,75 @@ def test_canon_night_sequence():
 
 
 def test_canon_validation_zero_minor_divisions():
-    """minor_divisions = 0 raises ValueError."""
-    from solarsage.services.firdar import _load_firdar_canon
+    """minor_divisions = 0 raises ValueError through calculate_firdar(canon=bad)."""
+    from solarsage.services.firdar import calculate_firdar, _load_firdar_canon
+    from datetime import date
     canon = _load_firdar_canon()
     import copy
     bad = copy.deepcopy(canon)
     bad["minor_divisions"] = 0
     with pytest.raises(ValueError, match="minor_divisions"):
-        _validate_canon_test(bad)
+        calculate_firdar(
+            birth_local=date(1990, 1, 1),
+            target_local=date(2000, 1, 1),
+            is_day_birth=True,
+            sun_house=9,
+            canon=bad,
+        )
 
 
-def test_canon_validation_sequence_sum_mismatch():
-    """Sequence year sum != cycle_years raises ValueError."""
-    from solarsage.services.firdar import _load_firdar_canon
+def test_canon_validation_day_sequence_sum_mismatch():
+    """Day sequence sum mismatch raises ValueError through calculate_firdar(canon=bad)."""
+    from solarsage.services.firdar import calculate_firdar, _load_firdar_canon
+    from datetime import date
     canon = _load_firdar_canon()
     import copy
     bad = copy.deepcopy(canon)
     bad["day_sequence"] = [{"lord": "SUN", "years": 10}]  # sum=10, cycle=75
     with pytest.raises(ValueError, match="cycle_years"):
-        _validate_canon_test(bad)
+        calculate_firdar(
+            birth_local=date(1990, 1, 1),
+            target_local=date(2000, 1, 1),
+            is_day_birth=True,
+            sun_house=9,
+            canon=bad,
+        )
+
+
+def test_canon_validation_night_sequence_sum_mismatch():
+    """Night sequence sum mismatch raises ValueError through calculate_firdar(canon=bad)."""
+    from solarsage.services.firdar import calculate_firdar, _load_firdar_canon
+    from datetime import date
+    canon = _load_firdar_canon()
+    import copy
+    bad = copy.deepcopy(canon)
+    bad["night_sequence"] = [{"lord": "MOON", "years": 9}]  # sum=9, cycle=75
+    with pytest.raises(ValueError, match="cycle_years"):
+        calculate_firdar(
+            birth_local=date(1980, 10, 30),
+            target_local=date(2026, 7, 8),
+            is_day_birth=False,
+            sun_house=5,
+            canon=bad,
+        )
 
 
 def test_canon_validation_node_sequence_length():
-    """node_minor_sequence length != minor_divisions raises ValueError."""
-    from solarsage.services.firdar import _load_firdar_canon
+    """node_minor_sequence length mismatch raises ValueError through calculate_firdar(canon=bad)."""
+    from solarsage.services.firdar import calculate_firdar, _load_firdar_canon
+    from datetime import date
     canon = _load_firdar_canon()
     import copy
     bad = copy.deepcopy(canon)
     bad["node_minor_sequence"] = bad["node_minor_sequence"][:3]  # 3 != 7
     with pytest.raises(ValueError, match="minor_divisions"):
-        _validate_canon_test(bad)
-
-
-def _validate_canon_test(data: dict) -> None:
-    """Run _load_firdar_canon-like validation on a data dict."""
-    from solarsage.services.firdar import _load_firdar_canon
-    # We can't call _load_firdar_canon directly (it reads from file),
-    # so we simulate its validation by importing and calling the validation helper
-    from solarsage.services.firdar import _validate_firdar_canon
-    _validate_firdar_canon(data)
+        calculate_firdar(
+            birth_local=date(1990, 1, 1),
+            target_local=date(2000, 1, 1),
+            is_day_birth=True,
+            sun_house=9,
+            canon=bad,
+        )
 
 
 # ── Calculation ──────────────────────────────────────────────────────────────
