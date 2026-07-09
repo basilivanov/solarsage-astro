@@ -71,4 +71,3 @@ The pass result does not close the finding because one of the key tests is only 
 ## Required Rework
 
 See `06_rework_02_TZ.md`.
-
