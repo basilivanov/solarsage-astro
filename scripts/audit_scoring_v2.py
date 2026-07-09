@@ -3,21 +3,29 @@
 # AI_HEADER: MODULE_AUDIT_SCORING_V2 — Scoring V2 audit artifact generator.
 # ROLE: Loads day-scored signals CSV and activation layer JSON, runs V1 and V2
 #       scoring, writes V2 result (snake_case) and V1/V2 diff artifacts.
+#       Self-reexecutes into the API venv if needed so the documented repo-root
+#       command 'python3 scripts/audit_scoring_v2.py ...' works.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-AUDIT-SCORING-V2
 # purpose: Generate reproducible V2 scoring artifacts for audit.
+#          Self-reexecutes into apps/api/.venv/bin/python if the current
+#          interpreter cannot import the API runtime. This is a local process
+#          bootstrap, not an external service call.
 # inputs: --signals CSV, --activation-layer JSON paths
 # outputs: --out-result (ScoringV2Result snake_case), --out-diff (V1/V2 diff)
-# dependencies: app.services.scoring_service, app.services.scoring_v2_service
-# side_effects: writes JSON files
-# failure_policy: exits non-zero on missing inputs, validation failures
+# dependencies: app.services.scoring_service, app.services.scoring_v2_service,
+#               apps/api/.venv/bin/python for runtime bootstrap
+# side_effects: writes JSON files; may re-exec into API venv
+# failure_policy: exits non-zero on missing inputs, validation failures, or
+#                 missing API venv
 # END_MODULE_CONTRACT: M-AUDIT-SCORING-V2
 
 # START_MODULE_MAP: M-AUDIT-SCORING-V2
 # public_entrypoints:
 #   - main
 # semantic_blocks:
+#   - REEXEC_BOOTSTRAP: detect API venv and re-exec if needed
 #   - SIGNAL_LOADING: CSV to AstroSignal
 #   - V1_SCORE: ScoringService.score_day
 #   - V2_SCORE: ScoringV2Service.score_day
@@ -26,10 +34,49 @@
 
 from __future__ import annotations
 
+import os
+import sys
+from pathlib import Path
+
+
+def _ensure_api_runtime() -> None:
+    """Re-exec into the API venv if the current interpreter cannot import the
+    API runtime (app.*). Uses apps/api/.venv/bin/python."""
+    # Quick check: can we import the API?
+    try:
+        import app  # noqa: F401
+        return
+    except ImportError:
+        pass
+
+    # Find API venv python
+    script_dir = Path(__file__).resolve().parent
+    venv_python = script_dir.parent / "apps" / "api" / ".venv" / "bin" / "python"
+    if not venv_python.exists():
+        print(
+            f"ERROR: API venv not found at {venv_python}. "
+            f"Create it with: cd apps/api && python3 -m venv .venv && source .venv/bin/activate && pip install -e .",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Re-exec into API venv
+    env = os.environ.copy()
+    # Ensure PYTHONPATH includes the API project root for app.* imports
+    api_root = str((script_dir.parent / "apps" / "api").resolve())
+    existing_pp = env.get("PYTHONPATH", "")
+    pp_entries = [p for p in existing_pp.split(":") if p] if existing_pp else []
+    if api_root not in pp_entries:
+        pp_entries.insert(0, api_root)
+    env["PYTHONPATH"] = ":".join(pp_entries)
+    os.execve(str(venv_python), [str(venv_python)] + sys.argv, env)
+
+
+_ensure_api_runtime()
+
 import argparse
 import csv
 import json
-from pathlib import Path
 from typing import Any
 
 
