@@ -82,7 +82,7 @@ from app.services.scoring_service import ScoringService
 from app.services.day_scoring_runtime_service import (
     DayScoringRuntimeService, should_compute_v2, selected_scoring_version_for_flags,
 )
-from app.services.cache_key_service import build_today_cache_key
+from app.services.cache_key_service import build_today_cache_key, expected_cache_identity
 from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
@@ -180,12 +180,11 @@ class TodayService:
         # W5: Determine selected scoring version before cache read
         sel_version = selected_scoring_version_for_flags()
 
-        # W5: Build versioned cache key for read with the selected scoring version
-        cache_key = build_today_cache_key(
+        # W5: Build versioned cache key for read with expected identity
+        cache_key = expected_cache_identity(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=profile_hash,
-            scoring_version=sel_version,
         )
 
         # W-5.2: Check cache first (keyed by user_id + target_date + profile_hash + cache_key_hash)
@@ -237,13 +236,14 @@ class TodayService:
         # W5: Fetch sidecar activation layer when V2 may be computed
         sidecar_layer = None
         sidecar_error = None
-        # Build current_location if complete
+        # Build current_location only when all three fields are present
         current_location = None
-        if profile.current_lat is not None and profile.current_lon is not None:
+        if (profile.current_lat is not None and profile.current_lon is not None
+                and profile.current_tz is not None):
             current_location = {
                 "lat": float(profile.current_lat),
                 "lon": float(profile.current_lon),
-                "tz": profile.current_tz or target_tz,
+                "tz": profile.current_tz,
             }
         if should_compute_v2():
             try:
@@ -261,7 +261,9 @@ class TodayService:
                 )
             except Exception as e:
                 sidecar_error = str(e)
-                # Shadow fail-open logging
+                if settings.solarsage_v2_enabled:
+                    raise  # Fail loudly when V2 is enabled
+                # Shadow fail-open logging (only reached when V2 is not enabled)
                 with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="V2_SHADOW"):
                     log_event(
                         "scoring.v2_diff",
@@ -274,8 +276,6 @@ class TodayService:
                             "fallback": "local_activation",
                         },
                     )
-                if settings.solarsage_v2_enabled:
-                    raise  # Fail loudly when V2 is enabled
 
         # Build activation layer with optional sidecar layer
         activation_layer = ActivationLayerService().build(
@@ -300,11 +300,13 @@ class TodayService:
         scoring_result = dual.selected_result
         scoring_version = dual.selected_scoring_version
 
-        # Rebuild cache key with actual selected scoring version for write
+        # Rebuild cache key with actual runtime version fields for write
         cache_key = build_today_cache_key(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=profile_hash,
+            calculation_version=activation_layer.calculation_version,
+            activation_layer_version=activation_layer.activation_layer_version,
             scoring_version=scoring_version,
         )
 

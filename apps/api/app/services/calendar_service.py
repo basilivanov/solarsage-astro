@@ -206,14 +206,12 @@ class CalendarService:
             return None
 
         from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
-        from app.services.cache_key_service import build_today_cache_key
+        from app.services.cache_key_service import expected_cache_identity
 
-        sel_ver = selected_scoring_version_for_flags()
-        current_cache_key = build_today_cache_key(
+        current_cache_key = expected_cache_identity(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=self._request_profile_hash,
-            scoring_version=sel_ver,
         )
 
         # 1. Check TodayPayloadCache with versioned identity
@@ -252,6 +250,7 @@ class CalendarService:
                     and data.get("profile_hash") == self._request_profile_hash
                     and data.get("cache_key_hash") == current_cache_key.cache_key_hash
                     and data.get("calculation_version") == current_cache_key.calculation_version
+                    and data.get("activation_layer_version") == current_cache_key.activation_layer_version
                     and data.get("scoring_version") == str(current_cache_key.scoring_version)
                     and data.get("canon_versions_hash") == current_cache_key.canon_versions_hash
                     and data.get("llm_prompt_version") == current_cache_key.llm_prompt_version
@@ -294,17 +293,17 @@ class CalendarService:
             from app.services.day_scoring_runtime_service import should_compute_v2, selected_scoring_version_for_flags
             from app.services.activation_layer_service import ActivationLayerService
             from app.services.day_scoring_runtime_service import DayScoringRuntimeService
-            from app.services.cache_key_service import build_today_cache_key
             from app.core.logging import log_event, log_block
 
-            # Build current_location if complete
+            # Build current_location only when all three fields are present
             current_location = None
             p = self._request_profile
-            if p.current_lat is not None and p.current_lon is not None:
+            if (p.current_lat is not None and p.current_lon is not None
+                    and p.current_tz is not None):
                 current_location = {
                     "lat": float(p.current_lat),
                     "lon": float(p.current_lon),
-                    "tz": p.current_tz or target_tz,
+                    "tz": p.current_tz,
                 }
 
             # Fetch sidecar activation-layer
@@ -342,12 +341,6 @@ class CalendarService:
                         )
 
             sel_ver = selected_scoring_version_for_flags()
-            cache_key = build_today_cache_key(
-                user_id=user_id,
-                target_date=target_date.isoformat(),
-                profile_hash=self._request_profile_hash,
-                scoring_version=sel_ver,
-            )
 
             activation_layer = ActivationLayerService().build(
                 natal_context=self._request_natal_context,
@@ -365,6 +358,17 @@ class CalendarService:
                 activation_layer=activation_layer,
                 user_id=user_id,
                 target_date=target_date.isoformat(),
+            )
+
+            # Build write cache key from actual runtime facts
+            from app.services.cache_key_service import build_today_cache_key
+            cache_key = build_today_cache_key(
+                user_id=user_id,
+                target_date=target_date.isoformat(),
+                profile_hash=self._request_profile_hash,
+                calculation_version=activation_layer.calculation_version,
+                activation_layer_version=activation_layer.activation_layer_version,
+                scoring_version=dual.selected_scoring_version,
             )
             status = dual.selected_result["day_status"]
             scoring_result = dual.selected_result

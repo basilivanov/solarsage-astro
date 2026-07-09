@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from app.services.canon_service import get_canon_versions
+from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
 
 
 @dataclass(frozen=True)
@@ -71,4 +72,22 @@ def build_today_cache_key(
         canon_versions_hash=canon_versions_hash,
         llm_prompt_version=llm_prompt_version,
         frontend_payload_version=frontend_payload_version,
+    )
+
+
+def expected_cache_identity(
+    *,
+    user_id: UUID,
+    target_date: str,
+    profile_hash: str,
+) -> TodayCacheKey:
+    """Build a cache key with the current expected version fields.
+    Used before cache read when runtime facts are not yet known.
+    Includes a non-None activation_layer_version default of "al-1.0"."""
+    return build_today_cache_key(
+        user_id=user_id,
+        target_date=target_date,
+        profile_hash=profile_hash,
+        activation_layer_version="al-1.0",
+        scoring_version=selected_scoring_version_for_flags(),
     )

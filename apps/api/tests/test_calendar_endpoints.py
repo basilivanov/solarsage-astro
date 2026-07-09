@@ -251,8 +251,7 @@ async def test_calendar_structure(
     ).scalar_one()
     profile_hash = NatalContextService.compute_profile_hash(profile)
 
-    from app.services.cache_key_service import build_today_cache_key
-    from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
+    from app.services.cache_key_service import expected_cache_identity
 
     for month in (4, 5, 6):
         from calendar import monthrange
@@ -260,11 +259,10 @@ async def test_calendar_structure(
         for day_number in range(1, monthrange(2026, month)[1] + 1):
             target_date = Date(2026, month, day_number)
             day_status = "supportive" if target_date == Date(2026, 5, 1) else "steady"
-            ck = build_today_cache_key(
+            ck = expected_cache_identity(
                 user_id=user.id,
                 target_date=target_date.isoformat(),
                 profile_hash=profile_hash,
-                scoring_version=selected_scoring_version_for_flags(),
             )
             db_session.add(SemanticLayerCache(
                 user_id=user.id,
@@ -486,18 +484,16 @@ async def test_calendar_cached_day_status_reads_current_today_payload_content_ve
     from app.db.models import TodayPayloadCache, User
     from app.services.calendar_service import CalendarService
     from app.services.today_service import TODAY_CONTENT_VERSION
-    from app.services.cache_key_service import build_today_cache_key
-    from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
+    from app.services.cache_key_service import expected_cache_identity
 
     user = User(tg_user_id=7784)
     db_session.add(user)
     await db_session.flush()
 
-    ck = build_today_cache_key(
+    ck = expected_cache_identity(
         user_id=user.id,
         target_date="2026-07-07",
         profile_hash="profile-hash",
-        scoring_version=selected_scoring_version_for_flags(),
     )
 
     db_session.add(TodayPayloadCache(
@@ -506,6 +502,7 @@ async def test_calendar_cached_day_status_reads_current_today_payload_content_ve
         profile_hash="profile-hash",
         cache_key_hash=ck.cache_key_hash,
         calculation_version=ck.calculation_version,
+        activation_layer_version=ck.activation_layer_version,
         scoring_version=str(ck.scoring_version),
         canon_versions_hash=ck.canon_versions_hash,
         llm_prompt_version=ck.llm_prompt_version,
