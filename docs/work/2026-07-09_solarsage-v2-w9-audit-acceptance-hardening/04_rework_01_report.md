@@ -2,8 +2,8 @@
 
 Date: 2026-07-09
 Base reviewed commit: `ebb1898`
-Final rework commit: `ab8ca23`
-Report tip note: subsequent docs-only commits may advance HEAD; code+tests rework content is in `ab8ca23` (and `2d2119f` parent with same message).
+Final rework commit: `c70095a`
+Code/tests rework commit: `ab8ca23`
 Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
@@ -119,10 +119,10 @@ pnpm typecheck
 
 Result:
 
-- `pnpm contracts:generate` **FAILED** with `EACCES` on root-owned `packages/contracts/_generated.ts` (`-rw------- root:root`).
-- No product contract content change intended in this rework.
-- `pnpm typecheck` **FAILED** transitively because `_generated.ts` is unreadable (same ownership issue).
-- Per rework TZ process constraints, **no sudo** was used to repair ownership. This is an environment blocker, not a code regression from Rework 01.
+- `pnpm contracts:generate` **PASSED**
+- contracts diff (`openapi.json` / `_generated.ts`): **zero diff**
+- `pnpm typecheck` **PASSED**
+- Ownership of `_generated.ts` was corrected externally by architect; no sudo used in rework.
 
 ### Whitespace
 
@@ -131,7 +131,7 @@ git diff --check 92fa2fd..HEAD
 git show --check HEAD
 ```
 
-Recorded after final commit (must pass once trailing whitespace fix is committed).
+Trailing whitespace removed. `git diff --check 92fa2fd..HEAD` and `git show --check HEAD` re-run after commit.
 
 ## Explicit statements
 
@@ -139,4 +139,3 @@ Recorded after final commit (must pass once trailing whitespace fix is committed
 - Deploy: **NOT_ATTEMPTED**
 - Remote CI: **REMOTE_CI_NOT_AVAILABLE**
 - Process: **no sudo**, **no `.git/index` deletion**
-

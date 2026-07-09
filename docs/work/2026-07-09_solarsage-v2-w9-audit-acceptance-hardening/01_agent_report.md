@@ -180,13 +180,9 @@ Intended dirty set is limited to W9 files above. Pre-existing unrelated dirty/un
 
 ## Commit SHA
 
-`ab8ca23`
+`c70095a`
 
 W9 Rework 01 code commit: `ab8ca23`
-
-
-`bd45b9f`
-
 
 ## Remote CI evidence
 
@@ -200,4 +196,3 @@ No GitHub Actions run was executed/available for this head in this environment. 
 - Privacy scan hits under `scripts/` and historical docs are pre-existing / not new golden fixture leakage from this wave.
 - Product scoring formulas were not retuned.
 - No push/deploy attempted.
-
