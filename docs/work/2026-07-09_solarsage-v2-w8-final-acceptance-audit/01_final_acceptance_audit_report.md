@@ -9,7 +9,7 @@ Base commit: `2f9173fbe9a9e20e97891e9789db6de57a2afaef`
 
 Full acceptance audit per `docs/15_SolarSage_v2_activation_audit_TZ.md` sections 14 and 16, executed per `docs/work/2026-07-09_solarsage-v2-w8-final-acceptance-audit/00_TZ.md`.
 
-**This is a rework of the initial W8 audit (commit `d1fbac4`).** The initial audit did not run required commands and used `sudo rm -rf` which deleted the W8 TZ. This rework corrects those issues: every required command was run, no `sudo` was used, `00_TZ.md` was restored from HEAD.
+**This is the final version after three reworks.** The initial W8 audit (commit `d1fbac4`) did not run required commands and used `sudo rm -rf` which deleted the W8 TZ. W8 Rework 01 (commit `751df0f`) corrected the process issues: every required command was run, no `sudo` was used, `00_TZ.md` was restored from HEAD — but 3 infrastructure issues blocked contracts:generate, typecheck, and E2E. W8 Rework 02 (this commit) resolves those with architect-corrected ownership.
 
 Audit-only: no code fixes, no product file changes, no push, no deploy.
 
@@ -17,15 +17,9 @@ Audit-only: no code fixes, no product file changes, no push, no deploy.
 
 ## 0. Executive Verdict
 
-**REWORK_REQUIRED**
+**ACCEPTANCE_READY**
 
-46 of 49 checklist items are **PROVEN**. 3 items are **MISSING** due to pre-existing root-owned build artifacts preventing TypeScript typecheck and Playwright E2E execution.
-
-The 3 MISSING items do not reflect code gaps; they are infrastructure issues:
-- `packages/contracts/_generated.ts` — root-owned 600 (cannot regenerate or read)
-- `test-results/` and `playwright-report/` — root-owned (cannot run E2E)
-
-These must be resolved (ownership fix) before full acceptance can be declared.
+All 49 checklist items are **PROVEN**. The 3 infrastructure issues from W8 Rework 01 (root-owned build artifacts blocking contracts:generate, typecheck, and E2E) have been resolved by the architect: ownership of `_generated.ts`, `test-results/`, and `playwright-report/` was corrected. All three previously blocked commands now pass cleanly, and the generated contract diff is zero.
 
 ---
 
@@ -35,7 +29,7 @@ These must be resolved (ownership fix) before full acceptance can be declared.
 
 ```text
 $ git status --short --branch
-## main...origin/main [ahead 174]
+## main...origin/main [ahead 176]
  M docs/work/2026-07-09_solarsage-v2-w7-ci-golden-rollout/08_rework_02_review.md
  M docs/work/2026-07-09_solarsage-v2-w7-ci-golden-rollout/09_rework_03_TZ.md
  M docs/work/2026-07-09_solarsage-v2-w7-ci-golden-rollout/11_rework_03_review.md
@@ -43,14 +37,15 @@ $ git status --short --branch
  M docs/work/2026-07-09_solarsage-v2-w7-ci-golden-rollout/14_arch_acceptance.md
  M docs/work/2026-07-09_solarsage-v2-w8-final-acceptance-audit/02_arch_review.md
  M docs/work/2026-07-09_solarsage-v2-w8-final-acceptance-audit/03_rework_01_TZ.md
- M packages/contracts/_generated.ts
+ M docs/work/2026-07-09_solarsage-v2-w8-final-acceptance-audit/05_rework_01_review.md
+ M docs/work/2026-07-09_solarsage-v2-w8-final-acceptance-audit/06_rework_02_TZ.md
 ?? .grace/
 ?? docs/superpowers/plans/2026-07-05-fix-day-route-auth-build.md
 ?? grace.db
 ?? skills/
 ```
 
-Note: `00_TZ.md` is tracked and matches HEAD (restored). `02_arch_review.md` and `03_rework_01_TZ.md` show as modified due to root-owned content from the initial W8 session; their working-tree content differs from HEAD only by permission bits and root-created content.
+Note: `00_TZ.md` is tracked and matches HEAD (restored). `_generated.ts` no longer shows as modified (fresh `pnpm contracts:generate` produced zero diff). The modified W8 docs (`02_arch_review.md`, `03_rework_01_TZ.md`, `05_rework_01_review.md`, `06_rework_02_TZ.md`) are root-owned artifacts from previous sessions — not part of this rework's scope.
 
 ```text
 $ git log --oneline -12
@@ -164,23 +159,38 @@ All technique implementations pass: transits, profections, firdar, returns, prog
 
 ### 1.6. Frontend / Contracts Commands
 
-#### pnpm contracts:generate — FAILED (EACCES)
+#### Ownership verification (previously blocked — now fixed)
+
+```text
+$ stat -c '%A %U:%G %n' packages/contracts/_generated.ts test-results playwright-report
+-rw------- astro:astro packages/contracts/_generated.ts
+drwx------ astro:astro test-results
+drwx------ astro:astro playwright-report
+```
+
+Ownership corrected by architect. All three previously blocked resources are now `astro:astro` accessible.
+
+#### pnpm contracts:generate — PASSED (zero diff)
 
 ```text
 $ pnpm contracts:generate
-Error: EACCES: permission denied, open '/opt/solarsage-astro/packages/contracts/_generated.ts'
+wrote packages/contracts/openapi.json (136910 bytes)
+contracts: regenerated openapi.json + _generated.ts
+
+$ git diff -- packages/contracts/openapi.json packages/contracts/_generated.ts
+(no output — generated files match HEAD exactly)
 ```
 
-Root cause: `_generated.ts` is owned by `root:root` with permissions `-rw-------` (600). The astro user cannot read or write it. This is a pre-existing artifact from a previous root-owned build session, not introduced by this rework.
+Generated contracts are identical to the committed versions. No tracked diff.
 
-#### pnpm typecheck — FAILED (transitive from above)
+#### pnpm typecheck — PASSED
 
 ```text
 $ pnpm typecheck
-error TS6053: File '/opt/solarsage-astro/packages/contracts/_generated.ts' not found.
+(no output — zero errors)
 ```
 
-tsc cannot read the root-owned 600 file. Same root cause as contracts:generate.
+TypeScript compiles cleanly with no errors.
 
 #### npx vitest (frontend V2 tests) — PASSED
 
@@ -204,15 +214,19 @@ All frontend V2 tests pass. TodayScreen.test.tsx specifically tests:
 - Swipe navigation
 - DayChart rendering
 
-#### npx playwright test — FAILED (EACCES)
+#### npx playwright test (E2E visual smoke) — PASSED
 
 ```text
 $ E2E_BASE_URL=http://localhost:3002 npx playwright test e2e/mock-visual/day-v2.spec.ts --project=mobile
-Error: EACCES: permission denied, scandir '/opt/solarsage-astro/test-results'
-Error: EACCES: permission denied, open '/opt/solarsage-astro/playwright-report/index.html'
+Running 1 test using 1 worker
+
+  ✓  1 [mobile] › W6 V2 Day Screen mock visual › renders V2 blocks: activation card,
+     technique chips, why-today, concrete advice expanded evidence, and audit console (7.4s)
+
+  1 passed (8.4s)
 ```
 
-Root cause: `test-results/` and `playwright-report/` are owned by `root:root`. Cannot run E2E. Port 3002 is available (frontend production service is running).
+E2E visual smoke confirms: activation card, technique chips, why-today, concrete advice expanded evidence, and audit console all render correctly.
 
 ### 1.7. Static Evidence Searches (rg)
 
@@ -285,7 +299,7 @@ $ git diff 2f9173fbe9a9e20e97891e9789db6de57a2afaef..HEAD --check
 |---|------|--------|----------|-------|
 | 6 | `ActivationLayer` schema stable | **PROVEN** | `apps/api/app/schemas/activation.py` exists; rg confirms `ActivationLayer` in service code; backend tests pass | 139 V2-related tests validate contracts |
 | 7 | `ScoringV2Result` schema stable | **PROVEN** | `apps/api/app/schemas/scoring_v2.py` exists with `SphereScoreV2`, `SphereContribution`, `ScoringV2Result` | Schema validated by test suite |
-| 8 | `TodayPayload.v2` optional fields stable | **MISSING** | Schema `today.py:482` — `TodayV2Block` exists. But `pnpm contracts:generate` failed (EACCES on root-owned `_generated.ts`). Without fresh generated TypeScript types, the TS contract alignment cannot be verified. | Root-owned generated file. The Python schemas are correct, but the TypeScript bindings are stale/unreadable. |
+| 8 | `TodayPayload.v2` optional fields stable | **PROVEN** | `pnpm contracts:generate` passes. `git diff -- packages/contracts/` produces zero output — generated types match HEAD. TypeScript contract alignment confirmed. | Schema `today.py:482` + fresh generated types match. All backend contracts tests pass. |
 | 9 | version meta present | **PROVEN** | rg confirms `activation_layer_version`, `scoring_canon_version`, `payload_version` in `today.py:258-277` and `config.py` | Code evidence + test verification |
 | 10 | cache invalidation respects versions | **PROVEN** | `cache_key_service.py` — key includes profile_hash, calc_ver, al_ver, score_ver, canon_hash, llm_ver, fe_ver | Code evidence + `test_today_cache_v2_key.py` passes |
 
@@ -331,12 +345,12 @@ All 12 technique implementations verified by rg across test files, service code,
 
 | # | Item | Status | Evidence | Notes |
 |---|------|--------|----------|-------|
-| 32 | old payload renders | **PROVEN** | `today-screen.tsx` renders v1 path when `v2` is null; vitest TodayScreen.test.tsx (17 tests) passes | Unit test evidence. Typecheck and E2E failed (infrastructure). |
-| 33 | V2 payload renders | **MISSING** | Component `today-screen.tsx:190-210` renders `ActivationEvidenceCard`, `WhyExpanded`, `DevAuditDrawer`. Vitest test "renders ActivationEvidenceCard when v2 block is present" passes. BUT `pnpm typecheck` cannot run (EACCES on root-owned `_generated.ts`), so TypeScript type safety of the V2 payload integration is unverifiable. | Root-owned generated file prevents type verification. Unit tests pass but cannot prove type-safe V2 payload binding. |
-| 34 | technique chips shown | **PROVEN** | `technique-chip.tsx` component exists; vitest tests pass | Component-level verification |
-| 35 | why exactly today shown | **PROVEN** | `why-expanded.tsx` (7.7 KB) component exists; vitest mocks/renders it | Component-level verification |
-| 36 | expanded evidence shows exact frame/orb/technique | **MISSING** | `activation-evidence-card.tsx` component exists. Vitest renders it. BUT `npx playwright test` (E2E visual smoke) cannot run due to root-owned `test-results/`, so the visual rendering of expanded evidence (technique, family, source_frame, target_frame, orb) in a browser cannot be verified. | E2E infrastructure gap. Unit test exists but E2E visual contract is unverified. |
-| 37 | dev audit drawer available | **PROVEN** | `dev-audit-drawer.tsx` (3 KB) component exists; vitest tests verify it renders when `forceShow=true` and hides by default | Direct test evidence |
+| 32 | old payload renders | **PROVEN** | `today-screen.tsx` renders v1 path when `v2` is null; vitest TodayScreen.test.tsx (17 tests) passes | Unit test evidence |
+| 33 | V2 payload renders | **PROVEN** | `pnpm typecheck` passes (zero errors). `today-screen.tsx:190-210` renders `ActivationEvidenceCard`, `WhyExpanded`, `DevAuditDrawer`. Vitest test "renders ActivationEvidenceCard when v2 block is present" passes. TypeScript types verified. | Fresh typecheck + vitest evidence |
+| 34 | technique chips shown | **PROVEN** | `technique-chip.tsx` component exists; vitest tests pass; E2E visual smoke confirms chips render | Component + E2E evidence |
+| 35 | why exactly today shown | **PROVEN** | `why-expanded.tsx` (7.7 KB) component exists; vitest mocks/renders it; E2E shows why-today block | Component + E2E evidence |
+| 36 | expanded evidence shows exact frame/orb/technique | **PROVEN** | `activation-evidence-card.tsx` component exists. Vitest renders it. E2E visual smoke confirms: "renders V2 blocks: activation card, technique chips, why-today, concrete advice expanded evidence, and audit console" passes. | Unit + E2E visual smoke evidence |
+| 37 | dev audit drawer available | **PROVEN** | `dev-audit-drawer.tsx` (3 KB) component exists; vitest tests verify it renders when `forceShow=true` and hides by default; E2E confirms audit console works | Direct test + E2E evidence |
 
 #### Rollout
 
@@ -367,45 +381,22 @@ All 12 technique implementations verified by rg across test files, service code,
 | Category | Total | PROVEN | MISSING |
 |----------|:-----:|:------:|:-------:|
 | Audit (1-5) | 5 | 5 | 0 |
-| Contracts (6-10) | 5 | 4 | 1 |
+| Contracts (6-10) | 5 | 5 | 0 |
 | Techniques (11-22) | 12 | 12 | 0 |
 | Scoring (23-27) | 5 | 5 | 0 |
 | Semantics/LLM (28-31) | 4 | 4 | 0 |
-| Frontend (32-37) | 6 | 4 | 2 |
+| Frontend (32-37) | 6 | 6 | 0 |
 | Rollout (38-41) | 4 | 4 | 0 |
 | **Hard Rules (42-49)** | **8** | **8** | **0** |
-| **Total** | **49** | **46** | **3** |
+| **Total** | **49** | **49** | **0** |
 
-**3 MISSING items** (all infrastructure, not code gaps):
-
-| # | Item | Root Cause |
-|---|------|-----------|
-| 8 | `TodayPayload.v2` optional fields stable | `packages/contracts/_generated.ts` is root-owned 600 → `pnpm contracts:generate` failed → TypeScript contract alignment unverifiable |
-| 33 | V2 payload renders | Same root-owned `_generated.ts` → `pnpm typecheck` failed → TypeScript type safety of V2 payload binding unverifiable |
-| 36 | Expanded evidence shows exact frame/orb/technique | `test-results/` and `playwright-report/` are root-owned → `npx playwright test` failed → E2E visual rendering unverified |
+All 49 items are **PROVEN**. The 3 previously MISSING items (8, 33, 36) were resolved in W8 Rework 02 after the architect corrected ownership of the blocked build artifacts.
 
 ---
 
 ## 4. Gaps and Risks
 
-### P0 — Root-owned build artifacts prevent full verification
-
-Three required commands cannot run because previous builds left root-owned files/directories:
-
-1. `packages/contracts/_generated.ts` — root:root 600 (cannot read or overwrite)
-2. `test-results/` — root:root (cannot read or create reports)
-3. `playwright-report/` — root:root (cannot write report)
-
-**Fix:** `sudo chown -R astro:astro packages/contracts/_generated.ts test-results/ playwright-report/` and rerun:
-```bash
-pnpm contracts:generate
-pnpm typecheck
-E2E_BASE_URL=http://localhost:3002 npx playwright test e2e/mock-visual/day-v2.spec.ts --project=mobile
-```
-
-These are pre-existing issues, not introduced by this rework.
-
-### P1 — Non-existent test files in TZ command list
+### P2 — Non-existent test files in TZ command list
 
 The TZ specifies test files that do not exist:
 - `test_activation_layer_service.py` → does not exist; actual tests are `test_activation_layer_contract.py`, `test_activation_layer_transits.py`, etc.
@@ -423,7 +414,8 @@ All relevant functionality is covered by the substitute test files. The TZ shoul
 ## 5. Process Notes
 
 - **Initial W8 attempt (commit `d1fbac4`):** Used `sudo rm -rf` which deleted the W8 TZ. Required commands were not run. Evidence was based on file existence, not fresh execution.
-- **This rework (W8 Rework 01):** No `sudo` used. All commands run. `00_TZ.md` restored from HEAD via `git show 1df52a2:00_TZ.md`.
+- **W8 Rework 01 (commit `751df0f`):** No `sudo` used. All commands run. `00_TZ.md` restored from HEAD. 46 PROVEN + 3 MISSING, verdict `REWORK_REQUIRED`.
+- **W8 Rework 02 (this commit):** No `sudo` used. Architect corrected ownership of `_generated.ts`, `test-results/`, `playwright-report/`. All three previously blocked commands (contracts:generate, typecheck, E2E) now pass. All 49 items PROVEN. Verdict `ACCEPTANCE_READY`.
 - **Git index:** Root-owned `.git/index` required `rm -f .git/index && git read-tree HEAD` each session.
 - **Product files:** No changes made to product/code files.
 
@@ -433,4 +425,4 @@ All relevant functionality is covered by the substitute test files. The TZ shoul
 
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
-Sudo: NOT_USED (rework only; initial attempt used sudo for rm -rf)
+Sudo: NOT_USED (W8 Rework 01 and Rework 02; only initial W8 attempt used sudo for rm -rf)
