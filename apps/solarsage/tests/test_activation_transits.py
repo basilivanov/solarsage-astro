@@ -87,16 +87,13 @@ def test_transit_moon_aspects_evidence():
     assert "transit" in ev.lower()
     assert "natal" in ev.lower()
 
-    # Evidence must NOT use uppercase planet names (P0 review finding)
-    evidence_upper = act.get("evidence", "")
-    for word in evidence_upper.split():
-        if word in ("Transit", "natal", "lot", "opposition", "trine", "square",
-                     "sextile", "quincunx", "conjunction", "semi", "sesqui"):
-            continue
-        if word == word.upper() and len(word) > 2 and word.isalpha():
-            # Allow "ASC", "MC", "DSC", "IC" in angle evidence, but not planet names
-            if word not in ("ASC", "MC", "DSC", "IC"):
-                pass  # Don't fail here, just flag
+    # Venus evidence must not contain uppercase planet names
+    # (target_key remains uppercase, display name is human-readable)
+    ev_text = act.get("evidence", "")
+    planet_words = {"SUN", "MOON", "MERCURY", "VENUS", "MARS", "JUPITER", "SATURN", "URANUS", "NEPTUNE", "PLUTO"}
+    found_upper = [w for w in ev_text.split() if w in planet_words]
+    assert not found_upper, \
+        f"Evidence must use display names, not uppercase planet keys: {found_upper} in '{ev_text}'"
 
 
 def test_basil_moon_opposition_pluto():
@@ -160,12 +157,11 @@ def test_basil_by_lot_populated():
         all_lot_refs.update(refs)
     assert all_lot_refs.issubset(valid_ids), "All by_lot refs must point to valid activation ids"
 
-    # Check that the lot names in by_lot include expected keys
+    # Check that ALL seven expected lot keys are present in by_lot
     lot_keys = set(by_lot.keys())
     expected_lots = {"FORTUNE", "SPIRIT", "EROS", "MARRIAGE", "NECESSITY", "VICTORY", "NEMESIS"}
-    # Not all lots may have aspects within orb, but at least some should be present
-    common = lot_keys & expected_lots
-    assert len(common) >= 1, f"Expected at least one of {expected_lots} in by_lot, got {lot_keys}"
+    missing = expected_lots - lot_keys
+    assert not missing, f"Missing expected Basil audit lots in by_lot: {sorted(missing)}"
 
 
 def test_angle_activations_via_builder():
