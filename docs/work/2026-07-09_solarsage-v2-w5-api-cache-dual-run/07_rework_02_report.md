@@ -43,7 +43,7 @@ Wired sidecar activation-layer into `/day` and CalendarService V2 paths; fixed v
 
 ## Commit
 
-`<commit_sha>`
+`b7c6fe4`
 
 ## Push Status
 
