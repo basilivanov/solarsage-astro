@@ -191,7 +191,8 @@ def test_empty_techniques_no_fake_unsupported():
         layer = resp.json()["activation_layer"]
         for a in layer["activations"]:
             assert a["technique"] in (
-                "transit_to_natal", "transit_to_angle", "transit_to_lot", "transit_planet_in_house"
+                "transit_to_natal", "transit_to_angle", "transit_to_lot", "transit_planet_in_house",
+                "annual_profection", "monthly_profection",
             ), f"Unexpected technique: {a['technique']}"
 
 
@@ -205,7 +206,7 @@ def test_all_evidence_strings_include_frames():
         for a in layer["activations"]:
             ev = a.get("evidence", "").lower()
             tech = a["technique"]
-            if tech == "transit_to_natal":
+            if tech in ("transit_to_natal", "transit_planet_in_house"):
                 assert "transit" in ev and "natal" in ev, \
                     f"Evidence missing frames: {a['evidence']}"
             elif tech == "transit_to_angle":
@@ -214,6 +215,9 @@ def test_all_evidence_strings_include_frames():
             elif tech == "transit_to_lot":
                 assert "transit" in ev and "lot" in ev, \
                     f"Evidence missing frames: {a['evidence']}"
-            elif tech == "transit_planet_in_house":
-                assert "transit" in ev and "natal" in ev, \
-                    f"Evidence missing frames: {a['evidence']}"
+            elif tech == "annual_profection":
+                assert "annual profection" in ev, \
+                    f"Evidence missing 'annual profection': {a['evidence']}"
+            elif tech == "monthly_profection":
+                assert "monthly profection" in ev, \
+                    f"Evidence missing 'monthly profection': {a['evidence']}"

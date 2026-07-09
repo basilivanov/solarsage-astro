@@ -303,8 +303,15 @@ W3_1_SUPPORTED_ORDER = (
     "transit_planet_in_house",
     "transit_to_lot",
 )
+W3_2_SUPPORTED_ORDER = (
+    "annual_profection",
+    "monthly_profection",
+)
+SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER
 W3_1_SUPPORTED = set(W3_1_SUPPORTED_ORDER)
-ALL_TECHNIQUES = list(W3_1_SUPPORTED_ORDER)
+W3_2_SUPPORTED = set(W3_2_SUPPORTED_ORDER)
+SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED
+ALL_TECHNIQUES = list(SUPPORTED_ORDER)
 
 
 # Title-case display names for evidence strings (target_key remains uppercase).
@@ -329,6 +336,75 @@ _DISPLAY_NAMES: dict[str, str] = {
 def _display_name(key: str) -> str:
     """Return display name for a target key (planet, angle, or lot)."""
     return _DISPLAY_NAMES.get(key.upper(), key)
+
+
+# ── Sign rulers (traditional) for profections ────────────────────────────────
+
+SIGN_RULERS: dict[str, str] = {
+    "Aries": "MARS",
+    "Taurus": "VENUS",
+    "Gemini": "MERCURY",
+    "Cancer": "MOON",
+    "Leo": "SUN",
+    "Virgo": "MERCURY",
+    "Libra": "VENUS",
+    "Scorpio": "MARS",
+    "Sagittarius": "JUPITER",
+    "Capricorn": "SATURN",
+    "Aquarius": "SATURN",
+    "Pisces": "JUPITER",
+}
+
+
+def _ruler_of_sign(sign: str) -> str:
+    """Return traditional ruler for a sign name."""
+    return SIGN_RULERS.get(sign, "SATURN")
+
+
+# ── Profection helpers ───────────────────────────────────────────────────────
+
+def _load_activation_rules() -> dict[str, Any]:
+    """Load activation_rules.v1.yml for period strengths."""
+    path = _resolve_canon_path("grace/canon/activation_rules.v1.yml")
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
+def _get_period_strength(rules: dict, technique: str) -> float:
+    """Return canon period strength; raises KeyError if missing."""
+    period_base = rules.get("activation_strength", {}).get("period_base", {})
+    return float(period_base[technique])
+
+
+def _completed_years(birth_local: "Date", target_local: "Date") -> int:
+    """Completed full years between two local dates."""
+    age = target_local.year - birth_local.year
+    # If birthday hasn't occurred yet this year, subtract one
+    if (target_local.month, target_local.day) < (birth_local.month, birth_local.day):
+        age -= 1
+    return max(0, age)
+
+
+def _add_months_with_clamp(d: "Date", months: int) -> "Date":
+    """Add months to a date, clamping day to month max."""
+    from datetime import date as Date
+    total_month = d.month - 1 + months
+    year = d.year + total_month // 12
+    month = total_month % 12 + 1
+    import calendar
+    max_day = calendar.monthrange(year, month)[1]
+    day = min(d.day, max_day)
+    return Date(year, month, day)
+
+
+def _local_date(date_str: str, tz_str: str) -> "Date":
+    """Convert a date-only string to a date. Time is irrelevant for local date."""
+    from datetime import date as Date
+    # For profections, we use the date as given (birth date or target date in target_tz).
+    # The target_time is already the middle of the day (12:00), not midnight boundary.
+    # For simplicity and to match TZ expectations, we parse the YYYY-MM-DD directly
+    # and treat it as the local calendar date.
+    return Date.fromisoformat(date_str)
 
 
 def build_activation_layer(
@@ -357,10 +433,10 @@ def build_activation_layer(
         requested = list(techniques)
 
     # Filter to supported + collect warnings for unsupported
-    active = [t for t in requested if t in W3_1_SUPPORTED]
+    active = [t for t in requested if t in SUPPORTED]
     warnings_list: list[str] = []
     for t in requested:
-        if t not in W3_1_SUPPORTED:
+        if t not in SUPPORTED:
             warnings_list.append(f"unsupported_technique_deferred:{t}")
 
     if not active:
@@ -625,6 +701,189 @@ def build_activation_layer(
                         by_angle.setdefault(tkey.upper(), []).append(ev.id)
                     elif ttype == "lot":
                         by_lot.setdefault(tkey.upper(), []).append(ev.id)
+
+        elif tech in ("annual_profection", "monthly_profection"):
+            if tech == "annual_profection":
+                # ── Annual profection ──────────────────────────────
+                birth_local = _local_date(birth_date, birth_tz)
+                target_local = _local_date(target_date, target_tz)
+                age = _completed_years(birth_local, target_local)
+                annual_house = (age % 12) + 1
+
+                # Find sign on annual house cusp
+                annual_house_cusp = None
+                for h in natal_houses_raw:
+                    if h["number"] == annual_house:
+                        annual_house_cusp = h
+                        break
+                annual_house_sign = annual_house_cusp["sign"] if annual_house_cusp else "Aries"
+                lord_of_year = _ruler_of_sign(annual_house_sign)
+
+                activation_rules = _load_activation_rules()
+                annual_strength = _get_period_strength(activation_rules, "annual_profection")
+
+                # House activation
+                house_ev_id = f"annual_profection__HOUSE__{annual_house}"
+                house_ev = ActivationEvidence(
+                    id=house_ev_id,
+                    technique="annual_profection",
+                    technique_family="profection",
+                    target_type="house",
+                    target_key=str(annual_house),
+                    kind="profected_house",
+                    source_frame="natal",
+                    target_frame="natal",
+                    house=annual_house,
+                    phase="period",
+                    polarity="neutral",
+                    strength=annual_strength,
+                    evidence=f"Annual profection activates house {annual_house}",
+                    debug={
+                        "age": age,
+                        "birth_local_date": birth_date,
+                        "target_local_date": target_date,
+                        "annual_year_start": f"{target_local.year - 1}-{birth_local.month:02d}-{birth_local.day:02d}"
+                            if target_local < birth_local.replace(year=target_local.year)
+                            else f"{target_local.year}-{birth_local.month:02d}-{birth_local.day:02d}",
+                        "house": annual_house,
+                        "house_cusp_sign": annual_house_sign,
+                        "ruler": lord_of_year,
+                        "ruler_system": "traditional",
+                        "resolved_house_system": resolved_house_system,
+                    },
+                )
+                activations.append(house_ev)
+                by_house.setdefault(str(annual_house), []).append(house_ev_id)
+
+                # Lord activation
+                lord_ev_id = f"annual_profection__LORD_OF_YEAR__{lord_of_year}"
+                lord_ev = ActivationEvidence(
+                    id=lord_ev_id,
+                    technique="annual_profection",
+                    technique_family="profection",
+                    target_type="planet",
+                    target_key=lord_of_year,
+                    kind="lord_of_year",
+                    source_frame="natal",
+                    target_frame="natal",
+                    target_planet=lord_of_year,
+                    phase="period",
+                    polarity="neutral",
+                    strength=annual_strength,
+                    evidence=f"{_display_name(lord_of_year)} is lord of year for annual profection house {annual_house}",
+                    debug={
+                        "age": age,
+                        "birth_local_date": birth_date,
+                        "target_local_date": target_date,
+                        "house": annual_house,
+                        "house_cusp_sign": annual_house_sign,
+                        "ruler": lord_of_year,
+                        "ruler_system": "traditional",
+                        "resolved_house_system": resolved_house_system,
+                    },
+                )
+                activations.append(lord_ev)
+                by_planet.setdefault(lord_of_year, []).append(lord_ev_id)
+
+            elif tech == "monthly_profection":
+                # ── Monthly profection ─────────────────────────────
+                birth_local = _local_date(birth_date, birth_tz)
+                target_local = _local_date(target_date, target_tz)
+                age = _completed_years(birth_local, target_local)
+                annual_house = (age % 12) + 1
+
+                # Annual year start = most recent birthday on or before target
+                annual_year_start = birth_local.replace(year=target_local.year)
+                if annual_year_start > target_local:
+                    annual_year_start = birth_local.replace(year=target_local.year - 1)
+
+                # Count completed monthly anniversaries
+                completed_month_steps = 0
+                probe = annual_year_start
+                while True:
+                    next_probe = _add_months_with_clamp(probe, 1)
+                    if next_probe > target_local:
+                        break
+                    probe = next_probe
+                    completed_month_steps += 1
+
+                monthly_house = ((annual_house - 1 + completed_month_steps) % 12) + 1
+
+                # Find sign on monthly house cusp
+                monthly_house_cusp = None
+                for h in natal_houses_raw:
+                    if h["number"] == monthly_house:
+                        monthly_house_cusp = h
+                        break
+                monthly_house_sign = monthly_house_cusp["sign"] if monthly_house_cusp else "Aries"
+                lord_of_month = _ruler_of_sign(monthly_house_sign)
+
+                activation_rules = _load_activation_rules()
+                monthly_strength = _get_period_strength(activation_rules, "monthly_profection")
+
+                # House activation
+                house_ev_id = f"monthly_profection__HOUSE__{monthly_house}"
+                house_ev = ActivationEvidence(
+                    id=house_ev_id,
+                    technique="monthly_profection",
+                    technique_family="profection",
+                    target_type="house",
+                    target_key=str(monthly_house),
+                    kind="monthly_profected_house",
+                    source_frame="natal",
+                    target_frame="natal",
+                    house=monthly_house,
+                    phase="period",
+                    polarity="neutral",
+                    strength=monthly_strength,
+                    evidence=f"Monthly profection activates house {monthly_house}",
+                    debug={
+                        "age": age,
+                        "birth_local_date": birth_date,
+                        "target_local_date": target_date,
+                        "annual_year_start": annual_year_start.isoformat(),
+                        "completed_month_steps": completed_month_steps,
+                        "house": monthly_house,
+                        "house_cusp_sign": monthly_house_sign,
+                        "ruler": lord_of_month,
+                        "ruler_system": "traditional",
+                        "resolved_house_system": resolved_house_system,
+                    },
+                )
+                activations.append(house_ev)
+                by_house.setdefault(str(monthly_house), []).append(house_ev_id)
+
+                # Lord activation
+                lord_ev_id = f"monthly_profection__LORD_OF_MONTH__{lord_of_month}"
+                lord_ev = ActivationEvidence(
+                    id=lord_ev_id,
+                    technique="monthly_profection",
+                    technique_family="profection",
+                    target_type="planet",
+                    target_key=lord_of_month,
+                    kind="lord_of_month",
+                    source_frame="natal",
+                    target_frame="natal",
+                    target_planet=lord_of_month,
+                    phase="period",
+                    polarity="neutral",
+                    strength=monthly_strength,
+                    evidence=f"{_display_name(lord_of_month)} is lord of month for monthly profection house {monthly_house}",
+                    debug={
+                        "age": age,
+                        "birth_local_date": birth_date,
+                        "target_local_date": target_date,
+                        "annual_year_start": annual_year_start.isoformat(),
+                        "completed_month_steps": completed_month_steps,
+                        "house": monthly_house,
+                        "house_cusp_sign": monthly_house_sign,
+                        "ruler": lord_of_month,
+                        "ruler_system": "traditional",
+                        "resolved_house_system": resolved_house_system,
+                    },
+                )
+                activations.append(lord_ev)
+                by_planet.setdefault(lord_of_month, []).append(lord_ev_id)
 
     return ActivationLayer(
         calculation_version="1",

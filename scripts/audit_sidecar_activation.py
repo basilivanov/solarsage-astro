@@ -68,6 +68,11 @@ def main() -> None:
         required=True,
         help="Output path (e.g., artifacts/audit/2026-07-08/17_sidecar_activation_layer.json)",
     )
+    parser.add_argument(
+        "--techniques",
+        default=None,
+        help="Comma-separated technique list (default: all supported)",
+    )
     args = parser.parse_args()
 
     # Basil profile birth data (hard-coded from audit 00_input_profile.json)
@@ -81,6 +86,10 @@ def main() -> None:
     target_time = "12:00"
     target_tz = "Europe/Moscow"
 
+    techniques = None
+    if args.techniques:
+        techniques = [t.strip() for t in args.techniques.split(",")]
+
     layer = build_activation_layer(
         birth_date=birth_date,
         birth_time=birth_time,
@@ -91,7 +100,7 @@ def main() -> None:
         target_time=target_time,
         target_tz=target_tz,
         house_system="PLACIDUS",
-        techniques=None,  # All supported transit techniques
+        techniques=techniques,
     )
 
     # Serialize
