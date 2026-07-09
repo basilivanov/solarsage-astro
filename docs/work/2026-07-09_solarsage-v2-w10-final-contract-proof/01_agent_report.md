@@ -5,7 +5,8 @@ Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
 Remote CI: REMOTE_CI_NOT_AVAILABLE
-Final commit: `e317bb0`
+Final code/tests commit: `37b30ab`
+Evidence docs tip: current main HEAD / callback SHA after report packaging.
 
 ## Scope
 
