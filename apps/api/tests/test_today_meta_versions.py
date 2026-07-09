@@ -1017,4 +1017,3 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
     assert str(ck.scoring_version) == str(payload.meta.scoring_version)
     assert ck.activation_layer_version == payload.meta.activation_layer_version
     assert ck.frontend_payload_version == payload.meta.frontend_payload_version
-

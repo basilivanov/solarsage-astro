@@ -914,4 +914,3 @@ class TodayService:
                     level="warn",
                     msg="Prefetch week gather failed",
                 )
-
