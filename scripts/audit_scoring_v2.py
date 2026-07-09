@@ -40,18 +40,27 @@ from pathlib import Path
 
 
 def _ensure_api_runtime() -> None:
-    """Re-exec into the API venv if the current interpreter cannot import the
-    API runtime (app.*). Uses apps/api/.venv/bin/python."""
-    # Quick check: can we import the API?
+    """Re-exec into the API venv if the current interpreter cannot run the
+    API runtime correctly. Uses apps/api/.venv/bin/python.
+
+    Checks a real API dependency (AstroSignal schema) to catch cases where
+    'import app' succeeds but Pydantic 2 dependencies are missing.
+    Uses an env-var guard (AUDIT_EXEC_REEXECED) to prevent infinite loops.
+    """
+    # Infinite-loop guard: if we already re-execed once, do not try again
+    if os.environ.get("AUDIT_EXEC_REEXECED") == "1":
+        return  # Already tried re-exec; fail normally if imports still broken
+
+    venv_python = (Path(__file__).resolve().parent.parent / "apps" / "api" / ".venv" / "bin" / "python").resolve()
+
+    # Test a real API import that proves Pydantic 2 dependencies
     try:
         import app  # noqa: F401
-        return
-    except ImportError:
-        pass
+        from app.schemas.normalization import AstroSignal  # noqa: F401
+        return  # All good
+    except Exception:
+        pass  # Will re-exec below
 
-    # Find API venv python
-    script_dir = Path(__file__).resolve().parent
-    venv_python = script_dir.parent / "apps" / "api" / ".venv" / "bin" / "python"
     if not venv_python.exists():
         print(
             f"ERROR: API venv not found at {venv_python}. "
@@ -62,8 +71,8 @@ def _ensure_api_runtime() -> None:
 
     # Re-exec into API venv
     env = os.environ.copy()
-    # Ensure PYTHONPATH includes the API project root for app.* imports
-    api_root = str((script_dir.parent / "apps" / "api").resolve())
+    env["AUDIT_EXEC_REEXECED"] = "1"
+    api_root = str((Path(__file__).resolve().parent.parent / "apps" / "api").resolve())
     existing_pp = env.get("PYTHONPATH", "")
     pp_entries = [p for p in existing_pp.split(":") if p] if existing_pp else []
     if api_root not in pp_entries:
