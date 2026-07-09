@@ -850,3 +850,171 @@ async def test_v1_only_payload_and_cache_identity_not_polluted_by_v2_calc(db_ses
     assert str(ck.scoring_version) == str(payload.meta.scoring_version)
     assert ck.frontend_payload_version == payload.meta.frontend_payload_version
 # W9 rework01 regression: V1 identity not polluted by V2 calc
+
+
+@pytest.mark.asyncio
+async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkeypatch):
+    """V2-selected scoring path must emit full V2 payload/cache identity even when
+    SOLARSAGE_V2_FRONTEND_ENABLED is false."""
+    from datetime import date as Date, time as Time
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from app.core.config import settings
+    from app.core.versions import (
+        ACTIVATION_LAYER_VERSION,
+        CALCULATION_VERSION,
+        SCORING_V2_VERSION,
+        TODAY_V2_PAYLOAD_VERSION,
+        V2_FRONTEND_PAYLOAD_VERSION,
+    )
+    from app.db.models import User, UserProfile
+    from app.schemas.access import ContentAccessState
+    from app.schemas.activation import ActivationLayer
+    from app.schemas.natal import NatalChartHouse, NatalChartPlanet, NatalContextData
+    from app.schemas.normalization import AstroSignal
+    from app.services.day_scoring_runtime_service import DualRunResult
+    from app.services.today_service import TodayService
+
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", True)
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", False)
+    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", False)
+
+    user = User(tg_user_id=525252, tg_username="test_v2_identity_fe_off")
+    db_session.add(user)
+    await db_session.flush()
+    profile = UserProfile(
+        user_id=user.id,
+        first_name="Test",
+        birthday=Date(1990, 1, 15),
+        birth_time=Time(12, 0),
+        birth_city="Moscow",
+        birth_lat=55.76,
+        birth_lon=37.62,
+        gender="female",
+        birth_tz="Europe/Moscow",
+        is_onboarded=True,
+    )
+    db_session.add(profile)
+    await db_session.commit()
+
+    deterministic_signals = [
+        AstroSignal(
+            type="aspect",
+            planet="Transit_Moon",
+            target_planet="Pluto",
+            aspect_type="opposition",
+            orb=1.0,
+            strength=0.9,
+        ),
+        AstroSignal(
+            type="planet_in_house",
+            planet="Transit_Sun",
+            house=1,
+            strength=1.0,
+        ),
+    ]
+    fake_natal = NatalContextData(
+        house_system="WHOLE_SIGN",
+        planets=[
+            NatalChartPlanet(
+                name="Sun",
+                sign="Capricorn",
+                degree=7.0,
+                longitude=286.93,
+                retrograde=False,
+                house=11,
+            )
+        ],
+        houses=[
+            NatalChartHouse(
+                number=i,
+                sign="Aries",
+                degree=0.0,
+                longitude=float((i - 1) * 30),
+            )
+            for i in range(1, 13)
+        ],
+    )
+
+    sidecar_layer = {
+        "schema_version": "activation-layer.v1",
+        "activation_layer_version": ACTIVATION_LAYER_VERSION,
+        "calculation_version": CALCULATION_VERSION,
+        "target_date": "2026-07-08",
+        "target_time": "12:00",
+        "target_tz": "Europe/Moscow",
+        "house_system": "WHOLE_SIGN",
+        "activations": [{
+            "id": "t2n__MOON__PLUTO",
+            "technique": "transit_to_natal",
+            "technique_family": "transit",
+            "target_type": "planet",
+            "target_key": "PLUTO",
+            "kind": "aspect",
+            "strength": 0.9,
+            "evidence": "test",
+            "phase": "background",
+            "polarity": "tense",
+        }],
+        "by_planet": {"PLUTO": ["t2n__MOON__PLUTO"]},
+        "by_house": {},
+        "by_lot": {},
+        "by_angle": {},
+        "warnings": [],
+    }
+
+    mock_client = AsyncMock()
+    mock_client.get_transits = AsyncMock(return_value={"target_jd": 2461229.875, "planets": []})
+    mock_client.get_activation_layer = AsyncMock(return_value=sidecar_layer)
+
+    captured_cache_keys = []
+
+    async def capture_cache(self, *args, **kwargs):
+        if len(args) >= 5:
+            captured_cache_keys.append(args[4])
+        elif "cache_key" in kwargs:
+            captured_cache_keys.append(kwargs["cache_key"])
+
+    v1_result = {
+        "day_status": "steady",
+        "sphere_scores": {"documents": 1.0},
+        "top_signals": deterministic_signals[:1],
+    }
+    dual = DualRunResult(
+        selected_result=v1_result,
+        selected_scoring_version=SCORING_V2_VERSION,
+        v1_result=v1_result,
+        v2_result=None,
+        diff=None,
+        v2_error=None,
+    )
+
+    with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
+         patch("app.services.today_service.NatalContextService.get_or_build_natal_context", AsyncMock(return_value=fake_natal)), \
+         patch("app.services.today_service.NormalizationService.normalize_day", return_value=deterministic_signals), \
+         patch.object(TodayService, "_get_yesterday_signals", AsyncMock(return_value=None)), \
+         patch.object(TodayService, "_cache_payload", new=capture_cache), \
+         patch.object(TodayService, "_cache_semantic_layer", AsyncMock()), \
+         patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual):
+        service = TodayService(db_session)
+        access = ContentAccessState(state="preview", reason="expired_access")
+        payload = await service.get_today_payload(
+            user_id=user.id,
+            target_date=Date(2026, 7, 8),
+            access_state=access,
+            skip_prefetch=True,
+        )
+
+    assert str(payload.meta.calculation_version) == CALCULATION_VERSION
+    assert payload.meta.activation_layer_version == ACTIVATION_LAYER_VERSION
+    assert str(payload.meta.scoring_version) == SCORING_V2_VERSION
+    assert payload.meta.payload_version == TODAY_V2_PAYLOAD_VERSION
+    assert payload.meta.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION
+
+    assert captured_cache_keys, "expected cache write identity capture"
+    ck = captured_cache_keys[0]
+    assert str(ck.calculation_version) == str(payload.meta.calculation_version)
+    assert str(ck.scoring_version) == str(payload.meta.scoring_version)
+    assert ck.activation_layer_version == payload.meta.activation_layer_version
+    assert ck.frontend_payload_version == payload.meta.frontend_payload_version
+

@@ -318,26 +318,17 @@ class TodayService:
         # Rebuild cache key with actual runtime version fields for write.
         # Version identity follows the *selected* scoring path, not the local
         # fallback activation-layer calculation_version (which may always be V2).
+        # Selected scoring version is the source of truth for payload/cache identity.
+        # Do not key V2 identity off SOLARSAGE_V2_FRONTEND_ENABLED.
         v2_selected = str(scoring_version) == str(SCORING_V2_VERSION)
         if v2_selected:
             calc_version = CALCULATION_VERSION
             al_version = (
                 activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
             )
-            fe_version = (
-                V2_FRONTEND_PAYLOAD_VERSION
-                if getattr(settings, "solarsage_v2_frontend_enabled", False)
-                else LEGACY_FRONTEND_PAYLOAD_VERSION
-            )
-            p_version = (
-                TODAY_V2_PAYLOAD_VERSION
-                if getattr(settings, "solarsage_v2_frontend_enabled", False)
-                else TODAY_V1_PAYLOAD_VERSION
-            )
-            # When frontend V2 is enabled, force the explicit V2 wire identity.
-            if getattr(settings, "solarsage_v2_frontend_enabled", False):
-                fe_version = V2_FRONTEND_PAYLOAD_VERSION
-                p_version = TODAY_V2_PAYLOAD_VERSION
+            fe_version = V2_FRONTEND_PAYLOAD_VERSION
+            p_version = TODAY_V2_PAYLOAD_VERSION
+            scoring_version = SCORING_V2_VERSION
         else:
             calc_version = LEGACY_CALCULATION_VERSION
             al_version = (
@@ -923,3 +914,4 @@ class TodayService:
                     level="warn",
                     msg="Prefetch week gather failed",
                 )
+
