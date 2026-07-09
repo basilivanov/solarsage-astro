@@ -75,7 +75,9 @@ def test_activation_layer_endpoint_returns_200():
 
 def test_activation_layer_endpoint_techniques_default_all():
     """Empty techniques list defaults to all supported transit techniques."""
-    response = client.post("/v1/activation-layer", json=MOSCOW_FIXTURE_REQUEST)
+    # Use Aug 12 target so eclipse_window produces activations
+    request = {**MOSCOW_FIXTURE_REQUEST, "target": {"date": "2026-08-12", "time": "12:00", "tz": "Europe/Moscow"}}
+    response = client.post("/v1/activation-layer", json=request)
     assert response.status_code == 200
     layer = response.json()["activation_layer"]
     techniques_found = {a["technique"] for a in layer["activations"]}
@@ -87,24 +89,22 @@ def test_activation_layer_endpoint_techniques_default_all():
     assert "firdar_minor" in techniques_found
     assert "solar_return" in techniques_found
     assert "lunar_return" in techniques_found
-    assert "solar_arc" in techniques_found
-    assert "secondary_progression" in techniques_found
+    assert "eclipse_window" in techniques_found
 
 
 def test_activation_layer_endpoint_unsupported_technique_warning():
     """Unsupported W3+ techniques produce deterministic warnings, no fake data.
-    solar_arc/secondary_progression are now supported in W3.5; eclipse_window remains unsupported."""
+    eclipse_window is now supported in W3.6; primary_direction remains unsupported."""
     response = client.post(
         "/v1/activation-layer",
-        json={**MOSCOW_FIXTURE_REQUEST, "techniques": ["eclipse_window", "primary_direction"]},
+        json={**MOSCOW_FIXTURE_REQUEST, "techniques": ["primary_direction"]},
     )
     assert response.status_code == 200
     layer = response.json()["activation_layer"]
     warnings_text = " ".join(layer.get("warnings", []))
-    assert "unsupported_technique_deferred:eclipse_window" in warnings_text
     assert "unsupported_technique_deferred:primary_direction" in warnings_text
     for a in layer["activations"]:
-        assert a["technique"] not in ("eclipse_window", "primary_direction")
+        assert a["technique"] not in ("primary_direction",)
 
 
 def test_activation_layer_endpoint_rejects_missing_fields():

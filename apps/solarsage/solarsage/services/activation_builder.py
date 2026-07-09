@@ -321,13 +321,17 @@ W3_5_SUPPORTED_ORDER = (
     "solar_arc",
     "secondary_progression",
 )
-SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER + W3_3_SUPPORTED_ORDER + W3_4_SUPPORTED_ORDER + W3_5_SUPPORTED_ORDER
+W3_6_SUPPORTED_ORDER = (
+    "eclipse_window",
+)
+SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER + W3_3_SUPPORTED_ORDER + W3_4_SUPPORTED_ORDER + W3_5_SUPPORTED_ORDER + W3_6_SUPPORTED_ORDER
 W3_1_SUPPORTED = set(W3_1_SUPPORTED_ORDER)
 W3_2_SUPPORTED = set(W3_2_SUPPORTED_ORDER)
 W3_3_SUPPORTED = set(W3_3_SUPPORTED_ORDER)
 W3_4_SUPPORTED = set(W3_4_SUPPORTED_ORDER)
 W3_5_SUPPORTED = set(W3_5_SUPPORTED_ORDER)
-SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED | W3_3_SUPPORTED | W3_4_SUPPORTED | W3_5_SUPPORTED
+W3_6_SUPPORTED = set(W3_6_SUPPORTED_ORDER)
+SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED | W3_3_SUPPORTED | W3_4_SUPPORTED | W3_5_SUPPORTED | W3_6_SUPPORTED
 ALL_TECHNIQUES = list(SUPPORTED_ORDER)
 
 
@@ -1600,6 +1604,25 @@ def build_activation_layer(
                     )
                     activations.append(ev)
                     by_house.setdefault(str(th), []).append(aid)
+
+        elif tech == "eclipse_window":
+            from solarsage.services.eclipses import find_eclipses
+            ecl_activations = find_eclipses(
+                birth_date=birth_date, birth_time=birth_time, birth_tz=birth_tz,
+                birth_lat=birth_lat, birth_lon=birth_lon,
+                target_date=target_date, target_time=target_time, target_tz=target_tz,
+                house_system=house_system,
+            )
+            for ed in ecl_activations:
+                ev = ActivationEvidence(**ed)
+                activations.append(ev)
+                tt = ed["target_type"]
+                if tt == "planet":
+                    by_planet.setdefault(ed["target_key"], []).append(ed["id"])
+                elif tt == "angle":
+                    by_angle.setdefault(ed["target_key"], []).append(ed["id"])
+                elif tt == "lot":
+                    by_lot.setdefault(ed["target_key"], []).append(ed["id"])
 
     return ActivationLayer(
         calculation_version="1",

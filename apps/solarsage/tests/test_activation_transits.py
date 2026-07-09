@@ -196,6 +196,7 @@ def test_empty_techniques_no_fake_unsupported():
                 "firdar_major", "firdar_minor",
                 "solar_return", "lunar_return",
                 "solar_arc", "secondary_progression",
+                "eclipse_window",
             ), f"Unexpected technique: {a['technique']}"
 
 
@@ -233,3 +234,6 @@ def test_all_evidence_strings_include_frames():
             elif tech in ("solar_arc", "secondary_progression"):
                 assert "solar arc" in ev or "progressed" in ev or "Solar Arc" in ev, \
                     f"Evidence missing progression context: {a['evidence']}"
+            elif tech == "eclipse_window":
+                assert "eclipse" in ev, \
+                    f"Evidence missing eclipse: {a['evidence']}"
