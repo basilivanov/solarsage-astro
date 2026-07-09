@@ -509,23 +509,32 @@ class TodayService:
 
     @staticmethod
     def _build_top_flag(signal) -> TopFlag | None:
-        planet = TodayService._planet_label(signal.planet)
-        icon_planet = strip_prefix(signal.planet) or "planet"
+        is_dict = isinstance(signal, dict)
+        sig_planet = signal["planet"] if is_dict else getattr(signal, "planet", None)
+        sig_type = signal["type"] if is_dict else getattr(signal, "type", None)
+        sig_aspect_type = signal["aspect_type"] if is_dict else getattr(signal, "aspect_type", None)
+        sig_target_planet = signal["target_planet"] if is_dict else getattr(signal, "target_planet", None)
+        sig_house = signal["house"] if is_dict else getattr(signal, "house", None)
 
-        if signal.type == "aspect" and signal.aspect_type and signal.target_planet:
-            target = TodayService._planet_label(signal.target_planet)
-            aspect = ASPECT_LABELS_RU.get(signal.aspect_type, "аспект")
+        if not sig_planet:
+            return None
+
+        planet = TodayService._planet_label(sig_planet)
+        icon_planet = strip_prefix(sig_planet) or "planet"
+
+        if sig_type == "aspect" and sig_aspect_type and sig_target_planet:
+            target = TodayService._planet_label(sig_target_planet)
             return TopFlag(
-                icon_name=f"{icon_planet}-{signal.aspect_type}",
-                title=f"{planet} {aspect} {target}",
-                summary=TodayService._top_flag_aspect_summary(signal.aspect_type),
+                icon_name=f"{icon_planet}-{sig_aspect_type}",
+                title=f"{planet} {ASPECT_LABELS_RU.get(sig_aspect_type, 'аспект')} {target}",
+                summary=TodayService._top_flag_aspect_summary(sig_aspect_type),
                 hint=None,
             )
 
-        if signal.type == "planet_in_house" and signal.house:
+        if sig_type == "planet_in_house" and sig_house:
             return TopFlag(
                 icon_name=f"{icon_planet}-house",
-                title=f"{planet} в {signal.house} доме",
+                title=f"{planet} в {sig_house} доме",
                 summary="Акцент дня: эта тема заметнее обычного, полезно выбрать один практический шаг.",
                 hint=None,
             )

@@ -71,3 +71,6 @@ solarsage:
 
 audit-day:
 	apps/api/.venv/bin/python scripts/audit_today.py --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)
+
+audit-golden:
+	python3 scripts/check_audit_golden.py

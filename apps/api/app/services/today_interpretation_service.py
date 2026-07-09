@@ -329,6 +329,27 @@ class TodayInterpretationService:
         activation_layer: Any | None = None,
         scoring_v2_result: Any | None = None,
     ) -> tuple[ConcreteAdviceBlock, DaySummaryBlock, DayChart | None]:
+        # Convert top_signals dicts to AstroSignal objects if necessary
+        top_signals = scoring_result.get("top_signals", [])
+        if top_signals and isinstance(top_signals[0], dict):
+            from app.schemas.normalization import AstroSignal as AstroSignalModel
+            normalized_signals = []
+            for s in top_signals:
+                normalized_signals.append(
+                    AstroSignalModel(
+                        type=s.get("type") or s.get("type_") or "",
+                        planet=s.get("planet") or "",
+                        target_planet=s.get("target_planet") or s.get("targetPlanet"),
+                        aspect_type=s.get("aspect_type") or s.get("aspectType"),
+                        orb=s.get("orb"),
+                        strength=s.get("strength"),
+                        house=s.get("house"),
+                        sign=s.get("sign"),
+                    )
+                )
+            scoring_result = dict(scoring_result)
+            scoring_result["top_signals"] = normalized_signals
+
         llm_service = LLMService()
 
         # 1. Deterministic Concrete Advice builder

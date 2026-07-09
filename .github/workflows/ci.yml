@@ -72,6 +72,22 @@ jobs:
           cd apps/api
           pytest tests/ -v
 
+      - name: Run audit golden snapshots gate
+        run: |
+          python scripts/check_audit_golden.py
+
+      - name: Run performance budgets gate
+        run: |
+          python scripts/check_v2_performance_budgets.py
+
+      - name: Run rollout gates validation
+        run: |
+          python scripts/check_solarsage_v2_rollout_gates.py
+
+      - name: Run logging guardrails check
+        run: |
+          python scripts/check_logging_guardrails.py
+
   frontend-tests:
     runs-on: ubuntu-latest
 
