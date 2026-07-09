@@ -60,7 +60,7 @@ Loaded `vasiliy_2026-05-30.json` and `test_user_2026-06-15.json`. Verified: is_d
 
 ## Commit
 
-`<commit_sha>`
+`568cbdf`
 
 ## Push Status
 
