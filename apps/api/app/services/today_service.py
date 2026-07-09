@@ -87,6 +87,7 @@ from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
+from app.core.config import settings
 from app.services.natal_context_service import NatalContextService
 from app.services.canon_service import get_canon_versions
 from app.services.activation_layer_service import ActivationLayerService
