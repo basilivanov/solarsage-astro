@@ -53,7 +53,7 @@ Evidence remains human-readable (`Solar Arc Mars trine natal Venus`).
 
 ## Commit
 
-`<commit_sha>`
+`e899a8a`
 
 ## Push Status
 
