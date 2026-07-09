@@ -79,6 +79,7 @@ from app.services.astro_utils import find_house, strip_prefix
 from app.services.day_scoring_signals import filter_day_scored_signals
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService
+from app.services.day_scoring_runtime_service import DayScoringRuntimeService
 from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
@@ -89,7 +90,7 @@ from app.services.activation_layer_service import ActivationLayerService
 from app.core.logging import log_event, log_block
 
 
-TODAY_CONTENT_VERSION = 8
+TODAY_CONTENT_VERSION = 9
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",
@@ -248,6 +249,17 @@ class TodayService:
         scoring_service = ScoringService()
         scoring_result = scoring_service.score_day(day_signals)
 
+        # W5: V2 dual-run via DayScoringRuntimeService
+        runtime = DayScoringRuntimeService()
+        dual = runtime.compute(
+            day_signals=day_signals,
+            activation_layer=activation_layer,
+            user_id=user_id,
+            target_date=target_date.isoformat(),
+        )
+        scoring_result = dual.selected_result
+        scoring_version = dual.selected_scoring_version
+
         # W-4.3: Build semantic layer
         semantic_service = SemanticService()
         semantic_layer = semantic_service.build_semantic_layer(
@@ -360,7 +372,7 @@ class TodayService:
                 contract_version=3,
                 calculation_version=1,
                 normalization_version=1,
-                scoring_version=1,
+                scoring_version=scoring_version,
                 prompt_version=2,
                 content_version=TODAY_CONTENT_VERSION,
                 generated_at=datetime.now(UTC).isoformat(),

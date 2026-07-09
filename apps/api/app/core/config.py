@@ -164,6 +164,12 @@ class Settings(BaseSettings):
     # Disabled by default; enable when LLM prompts are validated and tested.
     natal_report_enabled: bool = Field(False, alias="NATAL_REPORT_ENABLED")
 
+    # --- V2 scoring feature flags (W5) ---
+    solarsage_v2_enabled: bool = Field(False, alias="SOLARSAGE_V2_ENABLED")
+    solarsage_v2_dual_run: bool = Field(True, alias="SOLARSAGE_V2_DUAL_RUN")
+    solarsage_v2_frontend_enabled: bool = Field(False, alias="SOLARSAGE_V2_FRONTEND_ENABLED")
+    solarsage_audit_artifacts_enabled: bool = Field(False, alias="SOLARSAGE_AUDIT_ARTIFACTS_ENABLED")
+
     @property
     def git_sha(self) -> str:
         # START_FUNCTION_CONTRACT: M-CONFIG.Settings.git_sha

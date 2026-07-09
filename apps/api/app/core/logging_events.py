@@ -102,6 +102,7 @@ LogEventName = Literal[
     # sidecar / scoring / llm
     "sidecar.called",
     "scoring.computed",
+    "scoring.v2_diff",
     "llm.requested",
     "llm.response_validated",
     "llm.response_rejected",

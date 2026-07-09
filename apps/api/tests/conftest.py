@@ -52,6 +52,11 @@ def _force_test_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "anthropic_api_key", "")
     if hasattr(settings, "deepseek_api_key"):
         monkeypatch.setattr(settings, "deepseek_api_key", "")
+    # W5: force V2 flags to safe defaults in tests
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", False)
+    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", False)
+    monkeypatch.setattr(settings, "solarsage_audit_artifacts_enabled", False)
 
 
 @pytest_asyncio.fixture()

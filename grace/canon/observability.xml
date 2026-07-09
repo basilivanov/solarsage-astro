@@ -323,6 +323,11 @@
     <event name="scoring.computed"        owner="W-4.2">
       <payload-field name="day_status" type="string" required="true" />
     </event>
+    <event name="scoring.v2_diff"         owner="W-5">
+      <payload-field name="v1_day_status" type="string" required="true" />
+      <payload-field name="v2_day_status" type="string" required="true" />
+      <payload-field name="sphere_diffs"  type="object" required="false" />
+    </event>
     <event name="llm.requested"           owner="W-5.1">
       <payload-field name="prompt_version" type="string" required="true" />
     </event>
