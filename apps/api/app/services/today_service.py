@@ -363,9 +363,19 @@ class TodayService:
         )
 
         # W-4.2: Build why-this-happens sections via LLM
+        why_evidence_packet = None
+        if getattr(settings, "solarsage_v2_frontend_enabled", False):
+            from app.services.semantic_v2_service import SemanticV2Service
+            why_evidence_packet = SemanticV2Service().build_llm_evidence_packet(
+                day_status=scoring_result["day_status"],
+                activation_layer=activation_layer,
+                scoring_result=dual.v2_result,
+                contexts=[],
+            )
         why_sections = await llm_service.generate_why_sections(
             why_contexts,
             semantic_layer,
+            evidence_packet=why_evidence_packet,
         )
 
         # W-4.2: Build top_flags from top signals

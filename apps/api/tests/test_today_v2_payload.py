@@ -41,10 +41,10 @@ async def test_today_payload_v2_block_included_when_flag_enabled(db_session, mon
          patch.object(TodayService, "_get_yesterday_signals", return_value=None), \
          patch.object(TodayService, "_cache_payload"), \
          patch.object(TodayService, "_cache_semantic_layer"), \
-         patch("app.services.llm_service.LLMService.generate_headline", return_value="Test Headline"), \
-         patch("app.services.llm_service.LLMService.generate_reading", return_value=["Reading text"]), \
-         patch("app.services.llm_service.LLMService.generate_notes", return_value="Notes text"), \
-         patch("app.services.llm_service.LLMService.generate_why_sections", return_value=[]):
+        patch("app.services.llm_service.LLMService.generate_headline", return_value="Test Headline"), \
+        patch("app.services.llm_service.LLMService.generate_reading", return_value=["Reading text"]), \
+        patch("app.services.llm_service.LLMService.generate_notes", return_value="Notes text"), \
+        patch("app.services.llm_service.LLMService.generate_why_sections", return_value=[]) as mock_why:
 
         from app.schemas.natal import NatalContextData, NatalChartPlanet, NatalChartHouse
         fake_natal = NatalContextData(house_system="WHOLE_SIGN", planets=[NatalChartPlanet(name="Sun", sign="Capricorn", degree=7.0, longitude=286.93, retrograde=False, house=11)], houses=[NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30)) for i in range(1, 13)])
@@ -61,6 +61,12 @@ async def test_today_payload_v2_block_included_when_flag_enabled(db_session, mon
         assert payload.v2 is not None
         assert payload.meta.payload_version == "today.v2"
         assert payload.meta.frontend_payload_version == 2
+
+        mock_why.assert_called_once()
+        why_call_kwargs = mock_why.call_args.kwargs
+        assert "evidence_packet" in why_call_kwargs
+        assert why_call_kwargs["evidence_packet"] is not None
+        assert why_call_kwargs["evidence_packet"]["day_status"] == "steady"
 
 @pytest.mark.asyncio
 async def test_today_payload_v2_block_omitted_when_flag_disabled(db_session, monkeypatch):

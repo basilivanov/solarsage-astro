@@ -35,6 +35,8 @@ export const dayPayload: components["schemas"]["TodayPayload"] = {
     contentVersion: 3,
     generatedAt: "2026-07-05T06:00:00Z",
     cached: false,
+    payloadVersion: "today.v1",
+    frontendPayloadVersion: 1,
   },
   date: "2026-07-05",
   title: "Воскресенье, 5 июля",

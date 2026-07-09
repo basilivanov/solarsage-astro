@@ -423,4 +423,3 @@ async def test_generate_concrete_advice_with_evidence_packet():
 
         assert "EVIDENCE PACKET" in prompt
         assert "no invest/spend/buy recommendation" in prompt
-

@@ -253,4 +253,56 @@ describe('validateAdaptedTodayPayload', () => {
     }
     expect(() => validateAdaptedTodayPayload(data)).toThrow()
   })
+
+  it('validates a payload with V2 block', () => {
+    const v2Block = {
+      activationSummary: {
+        headline: "Сходимость на Меркурии",
+        topActivatedTargets: [
+          {
+            targetType: "planet",
+            targetKey: "MERCURY",
+            label: "Меркурий",
+            familyCount: 2,
+            techniques: ["annual_profection", "transit_to_natal"],
+            spheres: ["communication"],
+            activationIds: ["act-1", "act-2"],
+          }
+        ]
+      },
+      activationEvidence: [
+        {
+          id: "act-1",
+          technique: "transit_to_natal",
+          techniqueFamily: "transit",
+          targetType: "planet",
+          targetKey: "MERCURY",
+          kind: "aspect",
+          active: true,
+          strength: 0.8,
+          evidence: "Transit Moon trine natal Mercury",
+          phase: "background",
+          polarity: "neutral",
+          debug: {},
+        }
+      ],
+      scoreBreakdown: {},
+      whyToday: [],
+      audit: {
+        available: true,
+        payloadVersion: "today.v2",
+        calculationVersion: "1",
+        scoringVersion: "2",
+        canonVersions: {},
+      }
+    }
+    const data = {
+      ...validTodayPayload,
+      v2: v2Block
+    }
+    expect(() => validateAdaptedTodayPayload(data)).not.toThrow()
+    const result = validateAdaptedTodayPayload(data)
+    expect(result.v2).toBeTruthy()
+    expect(result.v2?.activationSummary.headline).toBe("Сходимость на Меркурии")
+  })
 })

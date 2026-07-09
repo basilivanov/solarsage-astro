@@ -27,7 +27,7 @@ class LLMClaimValidator:
         # Hard guard 1: relationships + avoid -> direct relationship improvement / conflict-opening advice
         if row_key == "relationships" and verdict == "avoid":
             unsafe_keywords = [
-                "выяснять отношения", "выясняй", "разбирай", "обсуди", "поговори", 
+                "выяснять отношения", "выясняй", "разбирай", "обсуди", "поговори",
                 "улучши", "улучшать", "выяснения", "конфликт", "спор"
             ]
             if any(kw in text_lower for kw in unsafe_keywords):
@@ -36,7 +36,7 @@ class LLMClaimValidator:
         # Hard guard 2: money + avoid -> invest/spend/buy recommendation
         if row_key == "money" and verdict == "avoid":
             unsafe_keywords = [
-                "инвестируй", "инвестиции", "покупай", "покупка", "тратить", "потрать", 
+                "инвестируй", "инвестиции", "покупай", "покупка", "тратить", "потрать",
                 "купи", "вкладывай", "вложения"
             ]
             if any(kw in text_lower for kw in unsafe_keywords):
@@ -45,7 +45,7 @@ class LLMClaimValidator:
         # Hard guard 3: sport/health + avoid -> intense sport recommendation
         if row_key in ("sport", "health") and verdict == "avoid":
             unsafe_keywords = [
-                "интенсивный", "тяжелый", "нагрузки", "кардио", "силовые", "тренировка", 
+                "интенсивный", "тяжелый", "нагрузки", "кардио", "силовые", "тренировка",
                 "активный", "спорт"
             ]
             if any(kw in text_lower for kw in unsafe_keywords):

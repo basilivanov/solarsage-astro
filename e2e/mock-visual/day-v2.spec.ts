@@ -58,6 +58,7 @@ test.describe("W6 V2 Day Screen mock visual", () => {
     const actCard = page.getByTestId("activation-evidence-card")
     await expect(actCard).toBeVisible()
     await expect(actCard).toContainText("Сегодня сходятся 3 независимые техники")
+    await expect(actCard).toHaveScreenshot("activation-evidence-card.png")
 
     // Assert Technique Chips render
     const chips = page.getByTestId("technique-chip")

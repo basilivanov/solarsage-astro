@@ -187,4 +187,3 @@ git show --check --stat --oneline HEAD
 git diff 70767b2..HEAD --check
 # exit 2
 ```
-

@@ -86,6 +86,8 @@ describe('useDay', () => {
         contentVersion: 1,
         generatedAt: '2026-05-30T12:00:00Z',
         cached: false,
+        payloadVersion: 'today.v1',
+        frontendPayloadVersion: 1,
       },
       date: '2026-05-30',
       title: 'Test Day',

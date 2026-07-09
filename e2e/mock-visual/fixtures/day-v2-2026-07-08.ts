@@ -109,6 +109,8 @@ export const dayPayloadV2: components["schemas"]["TodayPayload"] = {
         active: true,
         strength: 0.8,
         evidence: "Transit Moon opposition natal Mercury, orb 1.05°",
+        phase: "background",
+        polarity: "neutral",
         debug: {},
       },
     ],
@@ -132,4 +134,7 @@ export const dayPayloadV2: components["schemas"]["TodayPayload"] = {
       v1V2Diff: {},
     },
   },
+  importantToday: [],
+  microcopy: [],
+  weekStrip: [],
 }

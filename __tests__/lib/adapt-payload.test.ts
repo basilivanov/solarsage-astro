@@ -52,6 +52,8 @@ function createBaseApi(
       contentVersion: 1,
       generatedAt: '2026-06-01T00:00:00Z',
       cached: false,
+      payloadVersion: 'today.v1',
+      frontendPayloadVersion: 1,
     },
     access: { state: 'full', referralDaysLeft: 13 },
     weekStrip: [],
@@ -400,6 +402,62 @@ describe('adaptTodayPayload', () => {
     });
     const { payload } = adaptTodayPayload(api, TODAY);
 
+    expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
+  });
+
+  it('proves old payload without v2 adapts and validates, does not fabricate v2', () => {
+    const api = createBaseApi();
+    const { payload } = adaptTodayPayload(api, TODAY);
+    expect(payload.v2).toBeNull();
+    expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
+  });
+
+  it('proves V2 payload preserves v2 data after adaptation', () => {
+    const v2Block = {
+      activationSummary: {
+        headline: "Сходимость на Меркурии",
+        topActivatedTargets: [
+          {
+            targetType: "planet" as const,
+            targetKey: "MERCURY",
+            label: "Меркурий",
+            familyCount: 2,
+            techniques: ["annual_profection", "transit_to_natal"],
+            spheres: ["communication"],
+            activationIds: ["act-1", "act-2"],
+          }
+        ]
+      },
+      activationEvidence: [
+        {
+          id: "act-1",
+          technique: "transit_to_natal",
+          techniqueFamily: "transit",
+          targetType: "planet" as const,
+          targetKey: "MERCURY",
+          kind: "aspect",
+          active: true,
+          strength: 0.8,
+          evidence: "Transit Moon trine natal Mercury",
+          phase: "background" as const,
+          polarity: "neutral" as const,
+          debug: {},
+        }
+      ],
+      scoreBreakdown: {},
+      whyToday: [],
+      audit: {
+        available: true,
+        payloadVersion: "today.v2",
+        calculationVersion: "1",
+        scoringVersion: "2",
+        canonVersions: {},
+      }
+    };
+    const api = createBaseApi({ v2: v2Block });
+    const { payload } = adaptTodayPayload(api, TODAY);
+    expect(payload.v2).toBeTruthy();
+    expect(payload.v2?.activationSummary.headline).toBe("Сходимость на Меркурии");
     expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
   });
 });

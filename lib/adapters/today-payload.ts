@@ -150,6 +150,105 @@ function buildAccess(apiAccess: TodayPayload['access'] | undefined | null): Acce
   };
 }
 
+function buildV2Block(apiV2: TodayPayload['v2']): AdaptedTodayPayload['v2'] | null {
+  if (!apiV2) return null;
+
+  const topActivatedTargets = (apiV2.activationSummary?.topActivatedTargets || []).map((t) => ({
+    targetType: t.targetType as "planet" | "house" | "lot" | "angle" | "sphere",
+    targetKey: t.targetKey || "",
+    label: t.label || "",
+    familyCount: t.familyCount ?? 0,
+    techniques: t.techniques || [],
+    spheres: t.spheres || [],
+    activationIds: t.activationIds || [],
+  }));
+
+  const activationEvidence = (apiV2.activationEvidence || []).map((e) => ({
+    id: e.id || "",
+    technique: e.technique || "",
+    techniqueFamily: e.techniqueFamily || "",
+    targetType: e.targetType as "planet" | "house" | "lot" | "angle" | "sphere",
+    targetKey: e.targetKey || "",
+    kind: e.kind || "",
+    active: e.active ?? true,
+    sourcePlanet: e.sourcePlanet ?? null,
+    sourceFrame: e.sourceFrame ?? null,
+    targetPlanet: e.targetPlanet ?? null,
+    targetFrame: e.targetFrame ?? null,
+    aspect: e.aspect ?? null,
+    orb: e.orb ?? null,
+    applying: e.applying ?? null,
+    exactAt: e.exactAt ?? null,
+    phase: (e.phase || "background") as "applying" | "exact" | "separating" | "background" | "period",
+    house: e.house ?? null,
+    lot: e.lot ?? null,
+    angle: e.angle ?? null,
+    strength: e.strength ?? 0,
+    polarity: (e.polarity || "neutral") as "supportive" | "tense" | "mixed" | "neutral",
+    weightHint: e.weightHint ?? null,
+    evidence: e.evidence || "",
+    debug: (e.debug as Record<string, any>) || {},
+  }));
+
+  const scoreBreakdown: Record<string, any> = {};
+  if (apiV2.scoreBreakdown) {
+    for (const [key, score] of Object.entries(apiV2.scoreBreakdown)) {
+      if (score) {
+        scoreBreakdown[key] = {
+          key: score.key || key,
+          title: score.title || "",
+          baseScore: score.baseScore ?? 0,
+          activationScore: score.activationScore ?? 0,
+          convergenceBonus: score.convergenceBonus ?? 0,
+          rawScore: score.rawScore ?? 0,
+          finalScore: score.finalScore ?? 0,
+          normalizedScore: score.normalizedScore ?? null,
+          dominanceCapped: score.dominanceCapped ?? false,
+          contributions: (score.contributions || []).map((c) => ({
+            sphere: c.sphere || "",
+            source: c.source as "base_signal" | "activation" | "convergence" | "cap",
+            sourceId: c.sourceId || "",
+            amount: c.amount ?? 0,
+            before: c.before ?? null,
+            after: c.after ?? null,
+            evidence: c.evidence || "",
+          })),
+        };
+      }
+    }
+  }
+
+  const whyToday = (apiV2.whyToday || []).map((w) => ({
+    id: w.id || "",
+    title: w.title || "",
+    body: w.body || "",
+    activationIds: w.activationIds || [],
+    techniques: w.techniques || [],
+  }));
+
+  const audit = {
+    traceId: apiV2.audit?.traceId ?? null,
+    available: apiV2.audit?.available ?? false,
+    payloadVersion: apiV2.audit?.payloadVersion || "today.v2",
+    calculationVersion: apiV2.audit?.calculationVersion || "1",
+    scoringVersion: apiV2.audit?.scoringVersion || "2",
+    activationLayerVersion: apiV2.audit?.activationLayerVersion ?? null,
+    canonVersions: apiV2.audit?.canonVersions || {},
+    v1V2Diff: apiV2.audit?.v1V2Diff ?? null,
+  };
+
+  return {
+    activationSummary: {
+      headline: apiV2.activationSummary?.headline || "",
+      topActivatedTargets,
+    },
+    activationEvidence,
+    scoreBreakdown,
+    whyToday,
+    audit,
+  };
+}
+
 /**
  * Transform a raw API TodayPayload into the UI-ready AdaptedTodayPayload
  * and computed AccessInfo. All astrological calculation is done server-side;
@@ -177,7 +276,7 @@ export function adaptTodayPayload(
       sphereScores: api.sphereScores ?? [],
       concreteAdvice: api.concreteAdvice,
       daySummary: api.daySummary,
-      v2: api.v2 ?? null,
+      v2: buildV2Block(api.v2),
     },
     access: buildAccess(api.access),
   };

@@ -84,7 +84,7 @@ def test_semantic_v2_service_get_evidence_for_sphere(empty_activation_layer):
             evidence="Transit Moon opposition natal Mercury",
         )
     )
-    
+
     # Mock scoring result with contribution for thinking_speech_learning
     scoring_result = ScoringV2Result(
         scoring_version="ss-scoring-2.0",
@@ -114,15 +114,51 @@ def test_semantic_v2_service_get_evidence_for_sphere(empty_activation_layer):
         top_signals=[],
         top_activations=[],
     )
-    
+
     evidences = service.get_evidence_for_sphere(
         backend_sphere_key="thinking_speech_learning",
         activation_layer=empty_activation_layer,
         scoring_result=scoring_result,
     )
-    
+
     assert len(evidences) == 2
     assert evidences[0].kind == "activation"
     assert evidences[0].activation_id == "act1"
     assert evidences[1].kind == "score_contribution"
     assert evidences[1].contribution_source_id == "act1"
+
+def test_audit_canon_versions_only_contains_strings(empty_activation_layer):
+    service = SemanticV2Service()
+    block = service.build_v2_block(activation_layer=empty_activation_layer)
+    assert block.audit.canon_versions
+    for k, v in block.audit.canon_versions.items():
+        assert isinstance(k, str)
+        assert isinstance(v, str)
+
+def test_techniques_list_is_sorted(empty_activation_layer):
+    service = SemanticV2Service()
+    empty_activation_layer.activations.extend([
+        ActivationEvidence(
+            id="act_profection",
+            technique="annual_profection",
+            technique_family="profection",
+            target_type="planet",
+            target_key="MERCURY",
+            kind="lord_of_year",
+            strength=0.75,
+            evidence="Mercury is lord of year",
+        ),
+        ActivationEvidence(
+            id="act_transit",
+            technique="transit_to_natal",
+            technique_family="transit",
+            target_type="planet",
+            target_key="MERCURY",
+            kind="aspect",
+            strength=0.8,
+            evidence="Transit Moon opposition natal Mercury",
+        ),
+    ])
+    block = service.build_v2_block(activation_layer=empty_activation_layer)
+    target = block.activation_summary.top_activated_targets[0]
+    assert target.techniques == ["annual_profection", "transit_to_natal"]

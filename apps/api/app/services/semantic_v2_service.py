@@ -125,7 +125,7 @@ class SemanticV2Service:
         activated_targets = []
         for (target_type, target_key), acts in grouped.items():
             families = {act.technique_family for act in acts}
-            techniques = list({act.technique for act in acts})
+            techniques = sorted(list({act.technique for act in acts}))
             spheres = get_target_spheres(target_type, target_key, self._spheres_data)
             act_ids = [act.id for act in acts]
             total_strength = sum(act.strength for act in acts)
@@ -195,7 +195,7 @@ class SemanticV2Service:
             for target in top_activated_targets:
                 if target.family_count < 2:
                     continue
-                
+
                 # Group activations for this target by technique family
                 target_acts = grouped[(target.target_type, target.target_key)]
                 family_groups: dict[str, list[ActivationEvidence]] = {}
@@ -216,7 +216,7 @@ class SemanticV2Service:
                             title=f"{family_label} активируют {target.label}",
                             body=f"Влияние на {target.label}: {strongest.evidence}.",
                             activation_ids=[act.id for act in acts_in_family],
-                            techniques=list({act.technique for act in acts_in_family}),
+                            techniques=sorted(list({act.technique for act in acts_in_family})),
                         )
                     )
 
@@ -226,23 +226,26 @@ class SemanticV2Service:
             score_breakdown = scoring_result.sphere_scores
 
         # Build audit
+        from app.services.canon_service import get_canon_versions
+        canon_versions = {}
+        if scoring_result and hasattr(scoring_result, "canon_versions") and scoring_result.canon_versions:
+            if isinstance(scoring_result, dict):
+                canon_versions = scoring_result.get("canon_versions") or {}
+            else:
+                canon_versions = getattr(scoring_result, "canon_versions", {}) or {}
+        else:
+            canon_versions = get_canon_versions()
+
         audit = TodayV2Audit(
             trace_id=trace_id,
             available=True,
             payload_version="today.v2",
             calculation_version=activation_layer.calculation_version,
-            scoring_version=scoring_result.scoring_version if scoring_result else "ss-scoring-2.0",
+            scoring_version=scoring_result.scoring_version if scoring_result and hasattr(scoring_result, "scoring_version") else "ss-scoring-2.0",
             activation_layer_version=activation_layer.activation_layer_version,
-            canon_versions=activation_layer.calculation_version if hasattr(activation_layer, "canon_versions") else {},
+            canon_versions={str(k): str(v) for k, v in canon_versions.items()},
             v1_v2_diff=v1_v2_diff,
         )
-        # Populate canon_versions from config or layer
-        if hasattr(activation_layer, "canon_versions") and activation_layer.canon_versions:
-            audit.canon_versions = activation_layer.canon_versions
-        else:
-            audit.canon_versions = {
-                k.replace(".v1.yml", ""): v for k, v in self._canon.items() if isinstance(v, dict) and "schema_version" in v
-            }
 
         return TodayV2Block(
             activation_summary=activation_summary,

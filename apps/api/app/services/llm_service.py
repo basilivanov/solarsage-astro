@@ -470,7 +470,7 @@ class LLMService:
         # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_why_sections
         """LLM writes narrative text for each pre-computed context.
         All numbers, planets, houses are pre-computed — LLM cannot hallucinate."""
-        
+
         # Build prompt with all 9 pre-filled contexts
         context_text = "\n\n".join(
             f"СЕКЦИЯ #{i+1}: {c['title']}\nДАННЫЕ: {c['context']}"
@@ -480,7 +480,7 @@ class LLMService:
         evidence_packet_str = ""
         if evidence_packet:
             evidence_packet_str = f"\nEVIDENCE PACKET:\n{json_lib.dumps(evidence_packet, ensure_ascii=False, indent=2)}\n"
-        
+
         prompt = f"""{_ASTRO_BOUNDARY_RULES}
 
 Ты — астролог. Напиши блок «Почему так у меня?».

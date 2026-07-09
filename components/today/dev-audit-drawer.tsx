@@ -12,7 +12,9 @@ export function DevAuditDrawer({ audit, forceShow = false }: DevAuditDrawerProps
   useEffect(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search)
-      if (urlParams.get("audit") === "1" || forceShow) {
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      const isNonProd = process.env.NODE_ENV !== "production" || isLocal
+      if (forceShow || (isNonProd && urlParams.get("audit") === "1")) {
         setShow(true)
       }
     }

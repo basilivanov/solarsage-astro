@@ -629,6 +629,8 @@ describe('V2 activation evidence and audit rendering', () => {
           active: true,
           strength: 0.8,
           evidence: "Transit Moon trine natal Mercury",
+          phase: "background" as const,
+          polarity: "neutral" as const,
           debug: {},
         }
       ],
@@ -675,5 +677,19 @@ describe('V2 activation evidence and audit rendering', () => {
     expect(drawer).toBeTruthy()
     expect(drawer.textContent).toContain("Dev Audit Console")
     expect(drawer.textContent).toContain("today.v2")
+  })
+
+  it('hides DevAuditDrawer by default when forceShow is false', () => {
+    const auditFixture = {
+      available: true,
+      payloadVersion: "today.v2",
+      calculationVersion: "1.1",
+      scoringVersion: "2.0",
+      canonVersions: { spheres: "v1" },
+    }
+    const { queryByTestId } = render(
+      <DevAuditDrawer audit={auditFixture} forceShow={false} />
+    )
+    expect(queryByTestId('dev-audit-drawer')).toBeNull()
   })
 })
