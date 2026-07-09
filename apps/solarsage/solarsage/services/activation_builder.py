@@ -296,8 +296,39 @@ def _build_house_activation(
 
 # ── Main builder ─────────────────────────────────────────────────────────────
 
-W3_1_SUPPORTED = {"transit_to_natal", "transit_to_angle", "transit_to_lot", "transit_planet_in_house"}
-ALL_TECHNIQUES = list(W3_1_SUPPORTED)  # ordered default list
+# Ordered tuple for deterministic default ordering (PYTHONHASHSEED-independent).
+W3_1_SUPPORTED_ORDER = (
+    "transit_to_natal",
+    "transit_to_angle",
+    "transit_planet_in_house",
+    "transit_to_lot",
+)
+W3_1_SUPPORTED = set(W3_1_SUPPORTED_ORDER)
+ALL_TECHNIQUES = list(W3_1_SUPPORTED_ORDER)
+
+
+# Title-case display names for evidence strings (target_key remains uppercase).
+_DISPLAY_NAMES: dict[str, str] = {
+    "SUN": "Sun",
+    "MOON": "Moon",
+    "MERCURY": "Mercury",
+    "VENUS": "Venus",
+    "MARS": "Mars",
+    "JUPITER": "Jupiter",
+    "SATURN": "Saturn",
+    "URANUS": "Uranus",
+    "NEPTUNE": "Neptune",
+    "PLUTO": "Pluto",
+    "ASC": "ASC",
+    "MC": "MC",
+    "DSC": "DSC",
+    "IC": "IC",
+}
+
+
+def _display_name(key: str) -> str:
+    """Return display name for a target key (planet, angle, or lot)."""
+    return _DISPLAY_NAMES.get(key.upper(), key)
 
 
 def build_activation_layer(
@@ -497,7 +528,7 @@ def build_activation_layer(
                     # Polarity
                     polarity = _classify_polarity(best_aspect)
 
-                    # Phase / applying
+                    # Phase / applying — compare orb to aspect, not raw distance
                     probe_jd = target_jd + 0.1
                     probe_positions = calculate_positions(probe_jd)
                     probe_by_name: dict[str, dict] = {}
@@ -506,33 +537,37 @@ def build_activation_layer(
                     probe_tlon = probe_by_name.get(tname, {}).get("longitude", tlon)
                     probe_adist = _angular_distance(probe_tlon, tlon_target)
 
-                    # Tolerance for "exact"
-                    if abs(probe_adist - adist) < 1e-6:
+                    aspect_angle = ASPECT_ANGLES[best_aspect]
+                    current_orb = abs(adist - aspect_angle)
+                    probe_orb = abs(probe_adist - aspect_angle)
+
+                    tolerance = 1e-6
+                    if abs(probe_orb - current_orb) < tolerance:
                         applying = False
                         phase = "exact"
-                    elif probe_adist < adist:
+                    elif probe_orb < current_orb:
                         applying = True
                         phase = "applying"
                     else:
                         applying = False
                         phase = "separating"
 
-                    # Evidence string with frame
-                    source_clean = tname
-                    target_clean = tkey
+                    # Evidence string with frame — human-readable display names
+                    src_display = tname
+                    tgt_display = _display_name(tkey)
                     if tech == "transit_to_natal":
                         evidence = (
-                            f"Transit {source_clean} {best_aspect} natal {target_clean}, "
+                            f"Transit {src_display} {best_aspect} natal {tgt_display}, "
                             f"orb {orb}°"
                         )
                     elif tech == "transit_to_angle":
                         evidence = (
-                            f"Transit {source_clean} {best_aspect} natal {target_clean}, "
+                            f"Transit {src_display} {best_aspect} natal {tgt_display}, "
                             f"orb {orb}°"
                         )
                     else:  # transit_to_lot
                         evidence = (
-                            f"Transit {source_clean} {best_aspect} lot {target_clean}, "
+                            f"Transit {src_display} {best_aspect} lot {tgt_display}, "
                             f"orb {orb}°"
                         )
 

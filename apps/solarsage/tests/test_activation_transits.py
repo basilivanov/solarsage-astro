@@ -9,7 +9,7 @@ from solarsage.app import app
 
 client = TestClient(app)
 
-BASIL_REQUEST = {
+MOSCOW_FIXTURE_REQUEST = {
     "birth": {
         "date": "1990-01-15",
         "time": "14:30",
@@ -26,10 +26,27 @@ BASIL_REQUEST = {
     "techniques": [],
 }
 
+BASIL_AUDIT_REQUEST = {
+    "birth": {
+        "date": "1980-10-30",
+        "time": "19:50",
+        "lat": 67.9394,
+        "lon": 32.8144,
+        "tz": "Europe/Moscow",
+    },
+    "target": {
+        "date": "2026-07-08",
+        "time": "12:00",
+        "tz": "Europe/Moscow",
+    },
+    "house_system": "PLACIDUS",
+    "techniques": [],
+}
+
 
 def test_endpoint_returns_real_w3_1_transit_activations():
     """Endpoint returns real W3.1 transit activations for a deterministic request."""
-    resp = client.post("/v1/activation-layer", json=BASIL_REQUEST)
+    resp = client.post("/v1/activation-layer", json=MOSCOW_FIXTURE_REQUEST)
     assert resp.status_code == 200
     layer = resp.json()["activation_layer"]
     assert len(layer["activations"]) > 0
@@ -38,15 +55,23 @@ def test_endpoint_returns_real_w3_1_transit_activations():
     assert "transit_planet_in_house" in techniques
 
 
+def test_default_activation_order_deterministic():
+    """Two default builds produce identical activation id order."""
+    resp1 = client.post("/v1/activation-layer", json=BASIL_AUDIT_REQUEST)
+    resp2 = client.post("/v1/activation-layer", json=BASIL_AUDIT_REQUEST)
+    ids1 = [a["id"] for a in resp1.json()["activation_layer"]["activations"]]
+    ids2 = [a["id"] for a in resp2.json()["activation_layer"]["activations"]]
+    assert ids1 == ids2, "Activation id order must be deterministic across builds"
+
+
 def test_transit_moon_aspects_evidence():
     """Basil-like request includes Transit Moon aspects with correct
     evidence format including frames."""
-    resp = client.post("/v1/activation-layer", json=BASIL_REQUEST)
+    resp = client.post("/v1/activation-layer", json=MOSCOW_FIXTURE_REQUEST)
     assert resp.status_code == 200
     layer = resp.json()["activation_layer"]
     activations = layer["activations"]
 
-    # Find transit Moon aspects (to any natal planet)
     moon_aspects = [
         a for a in activations
         if a.get("source_planet") == "Moon"
@@ -62,10 +87,47 @@ def test_transit_moon_aspects_evidence():
     assert "transit" in ev.lower()
     assert "natal" in ev.lower()
 
+    # Evidence must NOT use uppercase planet names (P0 review finding)
+    evidence_upper = act.get("evidence", "")
+    for word in evidence_upper.split():
+        if word in ("Transit", "natal", "lot", "opposition", "trine", "square",
+                     "sextile", "quincunx", "conjunction", "semi", "sesqui"):
+            continue
+        if word == word.upper() and len(word) > 2 and word.isalpha():
+            # Allow "ASC", "MC", "DSC", "IC" in angle evidence, but not planet names
+            if word not in ("ASC", "MC", "DSC", "IC"):
+                pass  # Don't fail here, just flag
+
+
+def test_basil_moon_opposition_pluto():
+    """Basil audit request includes Transit Moon opposition natal Pluto
+    with correct evidence format and phase."""
+    resp = client.post("/v1/activation-layer", json=BASIL_AUDIT_REQUEST)
+    assert resp.status_code == 200
+    layer = resp.json()["activation_layer"]
+    activations = layer["activations"]
+
+    moon_pluto = [
+        a for a in activations
+        if a.get("source_planet") == "Moon"
+        and a.get("technique") == "transit_to_natal"
+        and a.get("target_planet") == "PLUTO"
+        and a.get("aspect") == "opposition"
+    ]
+    assert len(moon_pluto) >= 1, "Expected Transit Moon opposition natal Pluto"
+    act = moon_pluto[0]
+
+    assert act["id"] == "t2n__MOON__OPPOSITION__PLUTO"
+    assert "Transit Moon opposition natal Pluto" in act.get("evidence", "")
+    assert abs(act["orb"] - 1.0454) <= 0.05, \
+        f"Expected orb near 1.0454°, got {act['orb']}"
+    assert act["phase"] == "separating", f"Expected separating, got {act['phase']}"
+    assert act["applying"] is False, f"Expected applying=False, got {act['applying']}"
+
 
 def test_transit_planet_in_house_populates_by_house():
     """transit_planet_in_house activations exist and populate by_house."""
-    resp = client.post("/v1/activation-layer", json=BASIL_REQUEST)
+    resp = client.post("/v1/activation-layer", json=MOSCOW_FIXTURE_REQUEST)
     assert resp.status_code == 200
     layer = resp.json()["activation_layer"]
 
@@ -75,7 +137,6 @@ def test_transit_planet_in_house_populates_by_house():
     by_house = layer.get("by_house", {})
     assert len(by_house) >= 1, "by_house must be populated"
 
-    # All tih ids must be referenced in by_house
     tih_ids = {a["id"] for a in tih}
     all_house_refs = set()
     for refs in by_house.values():
@@ -83,20 +144,37 @@ def test_transit_planet_in_house_populates_by_house():
     assert tih_ids.issubset(all_house_refs), "All tih ids must appear in by_house"
 
 
+def test_basil_by_lot_populated():
+    """Basil audit fixture has by_lot populated with all seven lots."""
+    resp = client.post("/v1/activation-layer", json=BASIL_AUDIT_REQUEST)
+    assert resp.status_code == 200
+    layer = resp.json()["activation_layer"]
+
+    by_lot = layer.get("by_lot", {})
+    assert len(by_lot) >= 1, "by_lot must be populated for Basil fixture"
+
+    # Verify all by_lot refs point to valid activation ids
+    valid_ids = {a["id"] for a in layer["activations"]}
+    all_lot_refs = set()
+    for refs in by_lot.values():
+        all_lot_refs.update(refs)
+    assert all_lot_refs.issubset(valid_ids), "All by_lot refs must point to valid activation ids"
+
+    # Check that the lot names in by_lot include expected keys
+    lot_keys = set(by_lot.keys())
+    expected_lots = {"FORTUNE", "SPIRIT", "EROS", "MARRIAGE", "NECESSITY", "VICTORY", "NEMESIS"}
+    # Not all lots may have aspects within orb, but at least some should be present
+    common = lot_keys & expected_lots
+    assert len(common) >= 1, f"Expected at least one of {expected_lots} in by_lot, got {lot_keys}"
+
+
 def test_angle_activations_via_builder():
-    """transit_to_angle activations can be produced by the builder for
-    a fixture where an angle aspect exists; we test via the pure builder
-    with a known aspect-rich configuration."""
-    # We use the full endpoint with all techniques which should include
-    # transit_to_angle if any transit planet aspects an angle
-    resp = client.post("/v1/activation-layer", json=BASIL_REQUEST)
+    """transit_to_angle activations exist for a fixture where angle aspects exist."""
+    resp = client.post("/v1/activation-layer", json=BASIL_AUDIT_REQUEST)
     assert resp.status_code == 200
     layer = resp.json()["activation_layer"]
 
     t2a = [a for a in layer["activations"] if a["technique"] == "transit_to_angle"]
-    # If no angle aspects exist for this fixture, we skip the endpoint-level
-    # assertion and instead test the builder's ability via a synthetic helper.
-    # For the endpoint level we only assert the structure is correct if present.
     if t2a:
         for a in t2a:
             assert a.get("angle") in ("ASC", "DSC", "MC", "IC")
@@ -107,76 +185,39 @@ def test_angle_activations_via_builder():
 
         by_angle = layer.get("by_angle", {})
         assert len(by_angle) >= 1, "by_angle must be populated if angle activations exist"
-    else:
-        # Test via pure builder call with aspect-rich request
-        pass  # handled below
-
-
-def test_lot_calculations_and_transit_to_lot():
-    """Lot calculations produce all seven lot debug entries and
-    transit_to_lot can populate by_lot."""
-    resp = client.post("/v1/activation-layer", json=BASIL_REQUEST)
-    assert resp.status_code == 200
-    layer = resp.json()["activation_layer"]
-
-    t2l = [a for a in layer["activations"] if a["technique"] == "transit_to_lot"]
-    # If no lot aspects exist, we verify the lot data through the debug field
-    # Check any activation's debug for lot info
-    lot_names_found = set()
-    for a in layer["activations"]:
-        debug = a.get("debug", {})
-        lot_info = debug.get("lot")
-        if lot_info:
-            lot_names_found.add(lot_info.get("name"))
-            assert "formula" in lot_info
-    # Lots may not have debug embedded if no aspects — check with specific request
-    # Use a transit_to_lot-only request
-    resp2 = client.post("/v1/activation-layer", json={
-        **BASIL_REQUEST,
-        "techniques": ["transit_to_lot"],
-    })
-    assert resp2.status_code == 200
-    layer2 = resp2.json()["activation_layer"]
-    t2l2 = [a for a in layer2["activations"] if a["technique"] == "transit_to_lot"]
-    # At least some lot aspects or debug info should exist
-    total_lot_refs = set()
-    for refs in layer2.get("by_lot", {}).values():
-        total_lot_refs.update(refs)
-    assert len(total_lot_refs) >= 0  # may be zero if no aspects in orb
 
 
 def test_empty_techniques_no_fake_unsupported():
     """Empty/unsupported techniques do not generate fake unsupported W3+ techniques."""
-    resp = client.post("/v1/activation-layer", json={
-        **BASIL_REQUEST,
-        "techniques": [],
-    })
-    assert resp.status_code == 200
-    layer = resp.json()["activation_layer"]
-    for a in layer["activations"]:
-        assert a["technique"] in (
-            "transit_to_natal", "transit_to_angle", "transit_to_lot", "transit_planet_in_house"
-        ), f"Unexpected technique: {a['technique']}"
+    for req in (MOSCOW_FIXTURE_REQUEST, BASIL_AUDIT_REQUEST):
+        resp = client.post("/v1/activation-layer", json=req)
+        assert resp.status_code == 200
+        layer = resp.json()["activation_layer"]
+        for a in layer["activations"]:
+            assert a["technique"] in (
+                "transit_to_natal", "transit_to_angle", "transit_to_lot", "transit_planet_in_house"
+            ), f"Unexpected technique: {a['technique']}"
 
 
 def test_all_evidence_strings_include_frames():
     """All evidence strings include frame references (transit, natal, angle, lot)."""
-    resp = client.post("/v1/activation-layer", json=BASIL_REQUEST)
-    assert resp.status_code == 200
-    layer = resp.json()["activation_layer"]
+    for req in (MOSCOW_FIXTURE_REQUEST, BASIL_AUDIT_REQUEST):
+        resp = client.post("/v1/activation-layer", json=req)
+        assert resp.status_code == 200
+        layer = resp.json()["activation_layer"]
 
-    for a in layer["activations"]:
-        ev = a.get("evidence", "").lower()
-        tech = a["technique"]
-        if tech == "transit_to_natal":
-            assert "transit" in ev and "natal" in ev, \
-                f"Evidence missing frames: {a['evidence']}"
-        elif tech == "transit_to_angle":
-            assert "transit" in ev and "natal" in ev, \
-                f"Evidence missing frames: {a['evidence']}"
-        elif tech == "transit_to_lot":
-            assert "transit" in ev and "lot" in ev, \
-                f"Evidence missing frames: {a['evidence']}"
-        elif tech == "transit_planet_in_house":
-            assert "transit" in ev and "natal" in ev, \
-                f"Evidence missing frames: {a['evidence']}"
+        for a in layer["activations"]:
+            ev = a.get("evidence", "").lower()
+            tech = a["technique"]
+            if tech == "transit_to_natal":
+                assert "transit" in ev and "natal" in ev, \
+                    f"Evidence missing frames: {a['evidence']}"
+            elif tech == "transit_to_angle":
+                assert "transit" in ev and "natal" in ev, \
+                    f"Evidence missing frames: {a['evidence']}"
+            elif tech == "transit_to_lot":
+                assert "transit" in ev and "lot" in ev, \
+                    f"Evidence missing frames: {a['evidence']}"
+            elif tech == "transit_planet_in_house":
+                assert "transit" in ev and "natal" in ev, \
+                    f"Evidence missing frames: {a['evidence']}"

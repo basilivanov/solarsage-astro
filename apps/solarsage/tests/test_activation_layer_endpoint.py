@@ -7,38 +7,52 @@ from solarsage.app import app
 
 client = TestClient(app)
 
+MOSCOW_FIXTURE_REQUEST = {
+    "birth": {
+        "date": "1990-01-15",
+        "time": "14:30",
+        "lat": 55.7558,
+        "lon": 37.6173,
+        "tz": "Europe/Moscow",
+    },
+    "target": {
+        "date": "2026-07-08",
+        "time": "12:00",
+        "tz": "Europe/Moscow",
+    },
+    "house_system": "PLACIDUS",
+    "techniques": [],
+}
+
+BASIL_AUDIT_REQUEST = {
+    "birth": {
+        "date": "1980-10-30",
+        "time": "19:50",
+        "lat": 67.9394,
+        "lon": 32.8144,
+        "tz": "Europe/Moscow",
+    },
+    "target": {
+        "date": "2026-07-08",
+        "time": "12:00",
+        "tz": "Europe/Moscow",
+    },
+    "house_system": "PLACIDUS",
+    "techniques": [],
+}
+
 
 def test_activation_layer_endpoint_returns_200():
     """POST /v1/activation-layer returns 200 with real W3.1 transit activations."""
-    response = client.post(
-        "/v1/activation-layer",
-        json={
-            "birth": {
-                "date": "1990-01-15",
-                "time": "14:30",
-                "lat": 55.7558,
-                "lon": 37.6173,
-                "tz": "Europe/Moscow",
-            },
-            "target": {
-                "date": "2026-07-08",
-                "time": "12:00",
-                "tz": "Europe/Moscow",
-            },
-            "house_system": "PLACIDUS",
-            "techniques": [],
-        },
-    )
+    response = client.post("/v1/activation-layer", json=MOSCOW_FIXTURE_REQUEST)
     assert response.status_code == 200
     data = response.json()
 
-    # Check meta
     assert "meta" in data
     assert data["meta"]["activation_layer_version"] == "al-1.0"
     assert data["meta"]["calculation_version"] == "1"
     assert data["meta"]["house_system"] in ("PLACIDUS", "WHOLE_SIGN")
 
-    # Check activation layer
     assert "activation_layer" in data
     layer = data["activation_layer"]
     assert layer["schema_version"] == "activation-layer.v1"
@@ -49,10 +63,6 @@ def test_activation_layer_endpoint_returns_200():
 
     # W3.1: must have real activations (not empty)
     assert len(layer["activations"]) > 0, "Expected W3.1 real transit activations"
-
-    # Must include transit_to_natal evidence
-    ev_evidence = " ".join(a.get("evidence", "") for a in layer["activations"])
-    assert "transit" in ev_evidence.lower()
 
     # Indices must reference valid ids
     valid_ids = {a["id"] for a in layer["activations"]}
@@ -65,25 +75,7 @@ def test_activation_layer_endpoint_returns_200():
 
 def test_activation_layer_endpoint_techniques_default_all():
     """Empty techniques list defaults to all supported transit techniques."""
-    response = client.post(
-        "/v1/activation-layer",
-        json={
-            "birth": {
-                "date": "1990-01-15",
-                "time": "14:30",
-                "lat": 55.7558,
-                "lon": 37.6173,
-                "tz": "Europe/Moscow",
-            },
-            "target": {
-                "date": "2026-07-08",
-                "time": "12:00",
-                "tz": "Europe/Moscow",
-            },
-            "house_system": "PLACIDUS",
-            "techniques": [],
-        },
-    )
+    response = client.post("/v1/activation-layer", json=MOSCOW_FIXTURE_REQUEST)
     assert response.status_code == 200
     layer = response.json()["activation_layer"]
     techniques_found = {a["technique"] for a in layer["activations"]}
@@ -95,70 +87,74 @@ def test_activation_layer_endpoint_unsupported_technique_warning():
     """Unsupported W3+ techniques produce deterministic warnings, no fake data."""
     response = client.post(
         "/v1/activation-layer",
-        json={
-            "birth": {
-                "date": "1990-01-15",
-                "time": "14:30",
-                "lat": 55.7558,
-                "lon": 37.6173,
-                "tz": "Europe/Moscow",
-            },
-            "target": {
-                "date": "2026-07-08",
-                "time": "12:00",
-                "tz": "Europe/Moscow",
-            },
-            "house_system": "PLACIDUS",
-            "techniques": ["annual_profection", "firdar_major"],
-        },
+        json={**MOSCOW_FIXTURE_REQUEST, "techniques": ["annual_profection", "firdar_major"]},
     )
     assert response.status_code == 200
     layer = response.json()["activation_layer"]
-    # Must have warnings for unsupported
     warnings_text = " ".join(layer.get("warnings", []))
     assert "unsupported_technique_deferred:annual_profection" in warnings_text
     assert "unsupported_technique_deferred:firdar_major" in warnings_text
-    # No activations for unsupported techniques
     for a in layer["activations"]:
         assert a["technique"] not in ("annual_profection", "firdar_major")
 
 
 def test_activation_layer_endpoint_rejects_missing_fields():
     """Missing required fields return 422."""
-    response = client.post(
-        "/v1/activation-layer",
-        json={},
-    )
+    response = client.post("/v1/activation-layer", json={})
     assert response.status_code == 422
 
 
-def test_activation_layer_endpoint_basil_evidence():
-    """Basil-like request returns transit_to_natal activations with correct
+def test_activation_layer_endpoint_basil_moon_opposition_pluto():
+    """Basil audit fixture: Transit Moon opposition natal Pluto with correct
+    evidence, orb ~1.0454°, phase=separating, applying=false."""
+    response = client.post("/v1/activation-layer", json=BASIL_AUDIT_REQUEST)
+    assert response.status_code == 200
+    layer = response.json()["activation_layer"]
+    activations = layer["activations"]
+
+    # Find the specific Moon-Pluto transit_to_natal activation
+    t2n_moon_pluto = [
+        a for a in activations
+        if a.get("source_planet") == "Moon"
+        and a.get("technique") == "transit_to_natal"
+        and a.get("target_planet") == "PLUTO"
+        and a.get("aspect") == "opposition"
+    ]
+    assert len(t2n_moon_pluto) >= 1, "Expected Transit Moon opposition natal Pluto"
+    act = t2n_moon_pluto[0]
+
+    # Evidence is human-readable (Pluto, not PLUTO)
+    assert act["id"] == "t2n__MOON__OPPOSITION__PLUTO"
+    assert "Transit Moon opposition natal Pluto" in act.get("evidence", "")
+    assert "PLUTO" not in act.get("evidence", ""), \
+        f"Evidence must use display name, not uppercase: {act['evidence']}"
+
+    # Orb within tolerance of 1.0454
+    assert act["orb"] is not None
+    assert abs(act["orb"] - 1.0454) <= 0.05, \
+        f"Expected orb near 1.0454°, got {act['orb']}"
+
+    # For 2026-07-08, Moon-Pluto is separating
+    assert act["applying"] is False, f"Expected separating, got applying={act['applying']}"
+    assert act["phase"] == "separating", f"Expected separating, got {act['phase']}"
+
+    # Evidence includes frame references
+    ev = act.get("evidence", "")
+    assert "transit" in ev.lower()
+    assert "natal" in ev.lower()
+
+
+def test_activation_layer_endpoint_moscow_evidence():
+    """Moscow fixture request returns transit_to_natal activations with correct
     evidence format including frame references (transit/natal)."""
     response = client.post(
         "/v1/activation-layer",
-        json={
-            "birth": {
-                "date": "1990-01-15",
-                "time": "14:30",
-                "lat": 55.7558,
-                "lon": 37.6173,
-                "tz": "Europe/Moscow",
-            },
-            "target": {
-                "date": "2026-07-08",
-                "time": "12:00",
-                "tz": "Europe/Moscow",
-            },
-            "house_system": "PLACIDUS",
-            "techniques": ["transit_to_natal", "transit_planet_in_house"],
-        },
+        json={**MOSCOW_FIXTURE_REQUEST, "techniques": ["transit_to_natal", "transit_planet_in_house"]},
     )
     assert response.status_code == 200
     layer = response.json()["activation_layer"]
     activations = layer["activations"]
 
-    # All transit_to_natal activations must have frame-aware evidence
     t2n = [a for a in activations if a["technique"] == "transit_to_natal"]
     assert len(t2n) >= 5, "Expected substantial transit_to_natal activations"
     for a in t2n:
@@ -174,6 +170,5 @@ def test_activation_layer_endpoint_basil_evidence():
     assert ma.get("strength") > 0.0
     assert ma.get("target_planet") is not None
 
-    # transit_planet_in_house activations exist
     tih = [a for a in activations if a["technique"] == "transit_planet_in_house"]
     assert len(tih) >= 1, "Expected at least one transit_planet_in_house activation"

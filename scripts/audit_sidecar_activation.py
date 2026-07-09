@@ -4,18 +4,59 @@
 Calls the sidecar activation builder directly for Basil profile
 and writes the resulting activation layer as a deterministic artifact.
 
-Usage:
-    apps/solarsage/venv/bin/python scripts/audit_sidecar_activation.py \\
+Usage (from repo root):
+    python3 scripts/audit_sidecar_activation.py \\
         --user-id eb3876be-e1b4-43d6-b887-1f8554e33150 \\
         --date 2026-07-08 \\
         --out artifacts/audit/2026-07-08/17_sidecar_activation_layer.json
 """
 from __future__ import annotations
 
-import argparse
-import json
+import os
 import sys
 from pathlib import Path
+
+
+def _ensure_imports() -> None:
+    """Set up PYTHONPATH and, if needed, re-exec into sidecar venv."""
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
+    sidecar_root = project_root / "apps" / "solarsage"
+    sidecar_python = sidecar_root / "venv" / "bin" / "python"
+
+    # Ensure PYTHONPATH includes sidecar root for solarsage imports
+    sidecar_str = str(sidecar_root)
+    if sidecar_str not in sys.path:
+        sys.path.insert(0, sidecar_str)
+
+    # Check if we're in the right venv (swisseph available)
+    try:
+        import swisseph  # noqa: F401
+        return  # All good
+    except ImportError:
+        pass
+
+    # Re-exec into sidecar venv
+    if sidecar_python.exists():
+        env = os.environ.copy()
+        existing_pp = env.get("PYTHONPATH", "")
+        pp_entries = [p for p in existing_pp.split(":") if p] if existing_pp else []
+        if sidecar_str not in pp_entries:
+            pp_entries.insert(0, sidecar_str)
+        env["PYTHONPATH"] = ":".join(pp_entries)
+        os.execve(str(sidecar_python), [str(sidecar_python)] + sys.argv, env)
+    else:
+        print(f"ERROR: swisseph not found and sidecar venv not at {sidecar_python}", file=sys.stderr)
+        sys.exit(1)
+
+
+_ensure_imports()
+
+import argparse
+import json
+from pathlib import Path
+
+from solarsage.services.activation_builder import build_activation_layer
 
 
 def main() -> None:
@@ -39,11 +80,6 @@ def main() -> None:
     target_date = args.date
     target_time = "12:00"
     target_tz = "Europe/Moscow"
-
-    # Add sidecar to path
-    sidecar_root = Path(__file__).resolve().parent.parent / "apps" / "solarsage"
-    sys.path.insert(0, str(sidecar_root))
-    from solarsage.services.activation_builder import build_activation_layer
 
     layer = build_activation_layer(
         birth_date=birth_date,
