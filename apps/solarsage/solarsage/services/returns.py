@@ -170,10 +170,14 @@ def calculate_solar_return(
     birth_lon: float,
     target_year: int,
     house_system: str,
+    return_lat: float | None = None,
+    return_lon: float | None = None,
+    return_tz: str | None = None,
 ) -> SolarReturnResult:
     # START_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.calculate_solar_return
     # purpose: Calculate exact solar return for a target year.
-    # inputs: birth date/time/tz/lat/lon, target_year, house_system
+    # inputs: birth date/time/tz/lat/lon, target_year, house_system,
+    #         optional return_lat/lon/tz for return chart location
     # returns: SolarReturnResult with return JD, chart data, angles
     # side_effects: none (pure ephemeris computation)
     # error_behavior: ValueError if crossing cannot be found
@@ -181,8 +185,12 @@ def calculate_solar_return(
     """Calculate exact solar return chart for a target year.
 
     Uses Swiss Ephemeris solcross_ut to find the exact moment when transit Sun
-    longitude equals natal Sun longitude.
+    longitude equals natal Sun longitude. Return chart houses use return_lat/lon
+    if provided, otherwise birth_lat/lon.
     """
+    # Use return location for chart if provided, else birth location
+    chart_lat = return_lat if return_lat is not None else birth_lat
+    chart_lon = return_lon if return_lon is not None else birth_lon
     # 1. Natal Sun longitude
     natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
     natal_positions = calculate_positions(natal_jd)
@@ -232,11 +240,11 @@ def calculate_solar_return(
         except swe.Error:
             pass
 
-    # 3. Build return chart
+    # 3. Build return chart using chart_lat/chart_lon
     return_utc_iso = _jd_to_utc_iso(return_jd)
     chart_planets = calculate_positions(return_jd)
     chart_houses, special_points, resolved_house_system = calculate_houses_cusps(
-        return_jd, birth_lat, birth_lon,
+        return_jd, chart_lat, chart_lon, house_system,
     )
 
     # Find ASC/MC
@@ -277,19 +285,27 @@ def calculate_lunar_return(
     target_time: str,
     target_tz: str,
     house_system: str,
+    return_lat: float | None = None,
+    return_lon: float | None = None,
+    return_tz: str | None = None,
 ) -> LunarReturnResult:
     # START_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.calculate_lunar_return
     # purpose: Calculate the most recent lunar return at or before target.
-    # inputs: birth data, target data, house_system
+    # inputs: birth data, target data, house_system,
+    #         optional return_lat/lon/tz for chart location
     # returns: LunarReturnResult with return JD, chart data, angles
     # side_effects: none (pure ephemeris computation)
     # error_behavior: ValueError if crossing cannot be found within 30 days
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.calculate_lunar_return
     """Calculate the most recent lunar return chart at or before target datetime.
 
-    Uses mooncross_ut to find the crossing and walks backwards to find the
-    latest return at or before target_jd.
+    Uses mooncross_ut to find crossings, then selects the latest valid crossing
+    at or before target_jd with longitude residual <= 0.001°.
+    Return chart houses use return_lat/lon if provided, otherwise birth_lat/lon.
     """
+    # Use return location for chart if provided, else birth location
+    chart_lat = return_lat if return_lat is not None else birth_lat
+    chart_lon = return_lon if return_lon is not None else birth_lon
     # 1. Natal Moon longitude
     natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
     natal_positions = calculate_positions(natal_jd)
@@ -302,27 +318,23 @@ def calculate_lunar_return(
     # 2. Target JD
     target_jd = calculate_julian_day(target_date, target_time, target_tz)
 
-    # 3. Search for the most recent crossing
-    # mooncross_ut searches forward from the given start date.
-    # We search from target_jd - 27.5 days (slightly more than a sidereal month)
-    # to find the latest crossing at or before target_jd.
-    # If the result is > target_jd, search earlier.
+    # 3. Search for the most recent crossing at or before target_jd
     swe.set_ephe_path("/opt/sweph/ephe")
     flags = swe.FLG_SWIEPH
 
-    search_start = target_jd - 28.0  # slightly more than a lunar month
-    best_jd = -1.0
-    best_lon_residual = 999.0
+    target_jd_val = target_jd
+    candidates: list[tuple[float, float]] = []  # (jd, residual)
 
-    # Try a few search windows to find the most recent crossing
-    for offset in [0, -0.5, -1.0, -1.5, -2.0, 2.0, 1.0, 0.5]:
+    # Search windows: walk backwards by ~half day increments to find all crossings
+    for offset in [0, -0.25, -0.5, -0.75, -1.0, -1.25, -1.5, -2.0, -2.5, -3.0, -4.0, -5.0, -7.0]:
+        search_start = target_jd_val - 28.0 + offset
         try:
-            jd = swe.mooncross_ut(natal_moon_lon, search_start + offset, flags)
+            jd = swe.mooncross_ut(natal_moon_lon, search_start, flags)
         except swe.Error:
             continue
         if jd <= 0:
             continue
-        if jd > target_jd:
+        if jd > target_jd_val:
             continue
 
         # Verify precision
@@ -332,26 +344,30 @@ def calculate_lunar_return(
         if lon_residual > 180.0:
             lon_residual = 360.0 - lon_residual
 
-        if lon_residual < best_lon_residual:
-            best_lon_residual = lon_residual
-            best_jd = jd
+        if lon_residual <= 0.001:
+            candidates.append((jd, lon_residual))
 
-    if best_jd <= 0:
-        raise ValueError("Could not find lunar return within search window")
+    if not candidates:
+        raise ValueError("Could not find valid lunar return within search window")
+
+    # Select the latest (max JD) valid candidate
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return_jd, best_residual = candidates[0]
 
     # Verify constraints
-    if target_jd - best_jd >= 30:
-        raise ValueError(f"Lunar return JD {best_jd} is more than 30 days before target {target_jd}")
+    if return_jd > target_jd_val:
+        raise ValueError(f"Lunar return JD {return_jd} > target JD {target_jd_val}")
+    if target_jd_val - return_jd >= 30:
+        raise ValueError(f"Lunar return JD {return_jd} is more than 30 days before target {target_jd_val}")
 
-    return_jd = best_jd
     moon_at_return = swe.calc_ut(return_jd, swe.MOON, flags)
     return_moon_lon = moon_at_return[0][0]
 
-    # 4. Build return chart
+    # 4. Build return chart using chart_lat/chart_lon
     return_utc_iso = _jd_to_utc_iso(return_jd)
     chart_planets = calculate_positions(return_jd)
     chart_houses, special_points, resolved_house_system = calculate_houses_cusps(
-        return_jd, birth_lat, birth_lon,
+        return_jd, chart_lat, chart_lon, house_system,
     )
 
     asc_lon = 0.0

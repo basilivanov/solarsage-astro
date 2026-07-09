@@ -136,6 +136,40 @@ def test_lunar_return_indexes():
                     break
 
 
+def test_lunar_return_latest_crossing():
+    """Lunar return chooses latest valid crossing for Jul 16 target."""
+    from solarsage.services.returns import calculate_lunar_return
+    lr = calculate_lunar_return(
+        birth_date="1980-10-30", birth_time="19:50", birth_tz="Europe/Moscow",
+        birth_lat=67.9394, birth_lon=32.8144,
+        target_date="2026-07-16", target_time="12:00", target_tz="Europe/Moscow",
+        house_system="PLACIDUS",
+    )
+    # Latest crossing should be approximately 2461236.9515, not 2461209.52
+    expected_latest = 2461236.9515122585
+    assert abs(lr.return_jd - expected_latest) < 0.01, \
+        f"Expected latest LR JD near {expected_latest}, got {lr.return_jd}"
+
+
+def test_lunar_return_location_changes_results():
+    """Lunar return with current_location changes activation IDs."""
+    base = client.post("/v1/activation-layer", json={
+        **BASIL_AUDIT_REQUEST,
+        "techniques": ["lunar_return"],
+    })
+    base_ids = [a["id"] for a in base.json()["activation_layer"]["activations"]
+                if a["technique"] == "lunar_return"]
+
+    reloc = client.post("/v1/activation-layer", json={
+        **BASIL_AUDIT_REQUEST,
+        "techniques": ["lunar_return"],
+        "current_location": {"lat": 0.0, "lon": 0.0, "tz": "UTC"},
+    })
+    reloc_ids = [a["id"] for a in reloc.json()["activation_layer"]["activations"]
+                  if a["technique"] == "lunar_return"]
+    assert base_ids != reloc_ids, "Lunar return IDs must change with relocation"
+
+
 def test_lunar_return_only_when_requested():
     """Only lunar_return emitted when specifically requested."""
     resp = client.post("/v1/activation-layer", json={

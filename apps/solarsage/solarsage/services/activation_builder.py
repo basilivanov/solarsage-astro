@@ -484,7 +484,7 @@ def build_activation_layer(
     natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
     natal_positions = calculate_positions(natal_jd)
     natal_houses_raw, natal_special_points, resolved_house_system = calculate_houses_cusps(
-        natal_jd, birth_lat, birth_lon,
+        natal_jd, birth_lat, birth_lon, house_system,
     )
 
     # Build useful lookup maps
@@ -1051,6 +1051,9 @@ def build_activation_layer(
                     birth_lon=birth_lon,
                     target_year=target_year,
                     house_system=house_system,
+                    return_lat=ret_lat,
+                    return_lon=ret_lon,
+                    return_tz=ret_tz,
                 )
 
                 # Find SR ASC/MC in natal houses
@@ -1218,6 +1221,9 @@ def build_activation_layer(
                     target_time=target_time,
                     target_tz=target_tz,
                     house_system=house_system,
+                    return_lat=ret_lat,
+                    return_lon=ret_lon,
+                    return_tz=ret_tz,
                 )
 
                 # LR ASC/MC in natal houses

@@ -126,7 +126,41 @@ def test_solar_return_indexes():
 
 
 def test_solar_return_location_source():
-    """Solar return with explicit current_location changes location_source."""
+    """Solar return with explicit current_location changes location_source
+    and actually changes return chart houses/ASC/MC."""
+    # Baseline with birth location
+    base_resp = client.post("/v1/activation-layer", json={
+        **BASIL_AUDIT_REQUEST,
+        "techniques": ["solar_return"],
+    })
+    base_ids = [a["id"] for a in base_resp.json()["activation_layer"]["activations"]
+                if a["technique"] == "solar_return"]
+
+    # Relocated to equator
+    reloc_resp = client.post("/v1/activation-layer", json={
+        **BASIL_AUDIT_REQUEST,
+        "techniques": ["solar_return"],
+        "current_location": {"lat": 0.0, "lon": 0.0, "tz": "UTC"},
+    })
+    assert reloc_resp.status_code == 200
+    layer = reloc_resp.json()["activation_layer"]
+    sr_acts = [a for a in layer["activations"] if a["technique"] == "solar_return"]
+    for a in sr_acts:
+        assert a["debug"]["return_location_source"] == "current_location"
+
+    # Activation IDs must differ (chart changed with location)
+    reloc_ids = [a["id"] for a in reloc_resp.json()["activation_layer"]["activations"]
+                  if a["technique"] == "solar_return"]
+    assert base_ids != reloc_ids, "Relocated solar return must produce different activation IDs"
+
+    # Resolved house system for equator should be PLACIDUS (low latitude)
+    for a in sr_acts:
+        assert a["debug"]["resolved_house_system"] == "PLACIDUS", \
+            f"Expected PLACIDUS for equator, got {a['debug']['resolved_house_system']}"
+
+
+def test_solar_return_no_fallback_warning_with_current_location():
+    """When current_location supplied, no fallback warning emitted."""
     resp = client.post("/v1/activation-layer", json={
         **BASIL_AUDIT_REQUEST,
         "techniques": ["solar_return"],
@@ -134,9 +168,9 @@ def test_solar_return_location_source():
     })
     assert resp.status_code == 200
     layer = resp.json()["activation_layer"]
-    sr_acts = [a for a in layer["activations"] if a["technique"] == "solar_return"]
-    for a in sr_acts:
-        assert a["debug"]["return_location_source"] == "current_location"
+    # No fallback warning should appear
+    for w in layer.get("warnings", []):
+        assert "return_location_fallback" not in w, f"Unexpected fallback warning: {w}"
 
 
 def test_solar_return_only_when_requested():
@@ -167,3 +201,28 @@ def test_solar_return_deterministic():
     ids2 = [a["id"] for a in resp2.json()["activation_layer"]["activations"]
             if a["technique"] == "solar_return"]
     assert ids1 == ids2
+
+
+# ── Strength strictness ─────────────────────────────────────────────────
+
+
+def test_strength_missing_solar_return_key():
+    """Missing solar_return_angle_in_natal_house raises KeyError."""
+    from solarsage.services.activation_builder import _get_return_strength
+    from solarsage.services.activation_builder import _load_activation_rules
+    rules = _load_activation_rules()
+    period_base = rules.get("activation_strength", {}).get("return_base", {})
+    del period_base["solar_return_angle_in_natal_house"]
+    with pytest.raises(KeyError, match="solar_return_angle_in_natal_house"):
+        _get_return_strength(rules, "solar_return_angle_in_natal_house")
+
+
+def test_strength_missing_lunar_return_key():
+    """Missing lunar_return_moon_house raises KeyError."""
+    from solarsage.services.activation_builder import _get_return_strength
+    from solarsage.services.activation_builder import _load_activation_rules
+    rules = _load_activation_rules()
+    period_base = rules.get("activation_strength", {}).get("return_base", {})
+    del period_base["lunar_return_moon_house"]
+    with pytest.raises(KeyError, match="lunar_return_moon_house"):
+        _get_return_strength(rules, "lunar_return_moon_house")

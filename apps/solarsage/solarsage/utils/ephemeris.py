@@ -114,24 +114,54 @@ def calculate_positions(jd: float) -> List[Dict[str, Any]]:
     return planets
 
 
-def calculate_houses_cusps(jd: float, lat: float, lon: float) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], str]:
+def calculate_houses_cusps(
+    jd: float,
+    lat: float,
+    lon: float,
+    house_system: str = "PLACIDUS",
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], str]:
     """
     Calculate houses and special points.
 
     W-SOLARSAGE-SVC: Centralized house calculation.
 
-    Returns:
-        (houses, special_points, house_system_name)
-    """
-    # Use Placidus house system (or Whole Sign for high latitudes)
-    house_system = b'P'  # Placidus
+    Supported house systems:
+      - PLACIDUS -> Swiss Ephemeris 'P'
+      - WHOLE_SIGN -> Swiss Ephemeris 'W'
 
-    # Check if high latitude (>= 60 deg)
-    if abs(lat) >= 60:
-        house_system = b'W'  # Whole Sign
+    High-latitude resolution: if abs(lat) >= 60 and requested house_system is
+    PLACIDUS, resolved to WHOLE_SIGN.
+
+    Args:
+        jd: Julian Day
+        lat: Latitude
+        lon: Longitude
+        house_system: Requested house system ("PLACIDUS" or "WHOLE_SIGN")
+
+    Returns:
+        (houses, special_points, resolved_house_system_name)
+
+    Raises:
+        ValueError: if house_system is not supported
+    """
+    # Map requested house system to Swiss Ephemeris code
+    hs_upper = house_system.upper().strip()
+    if hs_upper == "PLACIDUS":
+        requested_code = b'P'
+    elif hs_upper == "WHOLE_SIGN":
+        requested_code = b'W'
+    else:
+        raise ValueError(f"Unsupported house system: '{house_system}'. Supported: PLACIDUS, WHOLE_SIGN")
+
+    # High-latitude override: if PLACIDUS requested but lat >= 60, use WHOLE_SIGN
+    resolved_code = requested_code
+    resolved_name = hs_upper
+    if requested_code == b'P' and abs(lat) >= 60:
+        resolved_code = b'W'
+        resolved_name = "WHOLE_SIGN"
 
     # Calculate houses
-    cusps, ascmc = swe.houses(jd, lat, lon, house_system)
+    cusps, ascmc = swe.houses(jd, lat, lon, resolved_code)
 
     # Houses (12 cusps)
     houses = []
@@ -150,6 +180,4 @@ def calculate_houses_cusps(jd: float, lat: float, lon: float) -> tuple[List[Dict
         {"name": "Vertex", "longitude": ascmc[3], "sign": get_sign(ascmc[3])},
     ]
 
-    house_system_name = "PLACIDUS" if house_system == b'P' else "WHOLE_SIGN"
-
-    return houses, special_points, house_system_name
+    return houses, special_points, resolved_name
