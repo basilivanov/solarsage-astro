@@ -2,94 +2,94 @@
   "v1_day_status": "supportive",
   "v2_day_status": "steady",
   "sphere_diffs": {
-    "work_status_achievement": {
-      "v1": 3.46,
-      "v2": 15.9505,
-      "delta": 12.4905,
+    "body_energy_health": {
+      "v1": 3.79,
+      "v2": 15.0782,
+      "delta": 11.2882,
       "top_new_evidence": [
         "t2n__SUN__QUINCUNX__MARS",
         "t2n__MOON__SESQUI_QUADRATE__MARS",
         "t2n__MERCURY__SESQUI_QUADRATE__MARS"
       ]
     },
+    "crisis_transformation_control": {
+      "v1": 5.26,
+      "v2": 12.7459,
+      "delta": 7.4859,
+      "top_new_evidence": [
+        "t2n__SUN__QUINCUNX__MARS",
+        "t2n__MOON__SESQUI_QUADRATE__MARS",
+        "t2n__MOON__OPPOSITION__PLUTO"
+      ]
+    },
     "home_family_roots": {
       "v1": 1.97,
-      "v2": 8.5382,
-      "delta": 6.5682,
+      "v2": 8.7368,
+      "delta": 6.7668,
       "top_new_evidence": [
         "t2n__VENUS__SEMI_SEXTILE__VENUS",
         "t2n__VENUS__SEMI_SEXTILE__SATURN",
         "t2n__MARS__SEXTILE__MOON"
       ]
     },
-    "crisis_transformation_control": {
-      "v1": 5.26,
-      "v2": 12.1459,
-      "delta": 6.8859,
-      "top_new_evidence": [
-        "t2n__SUN__QUINCUNX__MARS",
-        "t2n__MOON__SESQUI_QUADRATE__MARS",
-        "t2n__MOON__OPPOSITION__PLUTO"
-      ]
-    },
-    "thinking_speech_learning": {
-      "v1": 1.42,
-      "v2": 6.1118,
-      "delta": 4.6918,
-      "top_new_evidence": [
-        "t2n__SUN__TRINE__MERCURY",
-        "t2n__VENUS__SEMI_SEXTILE__JUPITER",
-        "t2n__MARS__SEXTILE__MOON"
-      ]
-    },
-    "meaning_expansion_vector": {
-      "v1": 0.46,
-      "v2": 7.0825,
-      "delta": 6.6225,
-      "top_new_evidence": [
-        "t2n__SUN__TRINE__MERCURY",
-        "t2n__SUN__QUINCUNX__NEPTUNE",
-        "t2n__MOON__TRINE__NEPTUNE"
-      ]
-    },
-    "relationships_partnership": {
-      "v1": 0.89,
-      "v2": 11.3349,
-      "delta": 10.4449,
-      "top_new_evidence": [
-        "t2n__SUN__QUINCUNX__MARS",
-        "t2n__MOON__SESQUI_QUADRATE__MARS",
-        "t2n__MERCURY__SESQUI_QUADRATE__MARS"
-      ]
-    },
     "inner_background_unconscious": {
       "v1": 4.45,
-      "v2": 12.5509,
-      "delta": 8.1009,
+      "v2": 13.1462,
+      "delta": 8.6962,
       "top_new_evidence": [
         "t2n__SUN__QUINCUNX__NEPTUNE",
         "t2n__MOON__TRINE__NEPTUNE",
         "t2n__MOON__OPPOSITION__PLUTO"
       ]
     },
-    "body_energy_health": {
-      "v1": 3.79,
-      "v2": 14.6739,
-      "delta": 10.8839,
+    "meaning_expansion_vector": {
+      "v1": 0.46,
+      "v2": 7.0849,
+      "delta": 6.6249,
+      "top_new_evidence": [
+        "t2n__SUN__TRINE__MERCURY",
+        "t2n__SUN__QUINCUNX__NEPTUNE",
+        "t2n__MOON__TRINE__NEPTUNE"
+      ]
+    },
+    "money_security_resources": {
+      "v1": 2.54,
+      "v2": 13.8051,
+      "delta": 11.2651,
+      "top_new_evidence": [
+        "t2n__MOON__OPPOSITION__PLUTO",
+        "t2n__MERCURY__SQUARE__PLUTO",
+        "t2n__VENUS__SEMI_SEXTILE__VENUS"
+      ]
+    },
+    "relationships_partnership": {
+      "v1": 0.89,
+      "v2": 11.3362,
+      "delta": 10.4462,
       "top_new_evidence": [
         "t2n__SUN__QUINCUNX__MARS",
         "t2n__MOON__SESQUI_QUADRATE__MARS",
         "t2n__MERCURY__SESQUI_QUADRATE__MARS"
       ]
     },
-    "money_security_resources": {
-      "v1": 2.54,
-      "v2": 13.6025,
-      "delta": 11.0625,
+    "thinking_speech_learning": {
+      "v1": 1.42,
+      "v2": 6.1077,
+      "delta": 4.6877,
       "top_new_evidence": [
-        "t2n__MOON__OPPOSITION__PLUTO",
-        "t2n__MERCURY__SQUARE__PLUTO",
-        "t2n__VENUS__SEMI_SEXTILE__VENUS"
+        "t2n__SUN__TRINE__MERCURY",
+        "t2n__VENUS__SEMI_SEXTILE__JUPITER",
+        "t2n__MARS__SEXTILE__MOON"
+      ]
+    },
+    "work_status_achievement": {
+      "v1": 3.46,
+      "v2": 16.3463,
+      "delta": 12.8863,
+      "top_new_evidence": [
+        "t2n__SUN__QUINCUNX__MARS",
+        "t2n__MOON__SESQUI_QUADRATE__MARS",
+        "t2n__MERCURY__SESQUI_QUADRATE__MARS"
       ]
     }
   }

@@ -104,3 +104,116 @@ def test_inactive_activation_ignored():
     # No activation contribution for that id
     for c in ss.contributions:
         assert c.source_id != "inactive_mercury", "Inactive activation must not appear in contributions"
+
+
+def test_missing_sphere_amount_modifier_raises():
+    """Missing activation_polarity.sphere_amount_modifier.neutral raises KeyError."""
+    from copy import deepcopy
+    import app.services.scoring_v2_service as svc
+    from app.services.scoring_v2_service import ScoringV2Service
+
+    orig = deepcopy(svc._get_scoring_v2())
+    mut = deepcopy(orig)
+    del mut["activation_polarity"]["sphere_amount_modifier"]["neutral"]
+    svc._SCORING_V2 = mut
+    try:
+        r = ScoringV2Service().score_day([], ActivationLayer(
+            calculation_version="1", target_date="2026-07-08", target_time="12:00",
+            target_tz="Europe/Moscow", house_system="WHOLE_SIGN",
+            activations=[ActivationEvidence(id="test", technique="annual_profection",
+                           technique_family="profection", target_type="planet",
+                           target_key="MERCURY", kind="lord", phase="period",
+                           strength=0.1, polarity="neutral", evidence="test")],
+            by_planet={"MERCURY": ["test"]}, by_house={}, by_lot={}, by_angle={},
+        ))
+        raise AssertionError("Missing sphere_amount_modifier.neutral did not raise")
+    except KeyError:
+        pass
+    finally:
+        svc._SCORING_V2 = orig
+
+
+def test_missing_status_support_modifier_raises():
+    """Missing activation_polarity.status_support_modifier.neutral raises KeyError."""
+    from copy import deepcopy
+    import app.services.scoring_v2_service as svc
+
+    orig = deepcopy(svc._get_scoring_v2())
+    mut = deepcopy(orig)
+    del mut["activation_polarity"]["status_support_modifier"]["neutral"]
+    svc._SCORING_V2 = mut
+    try:
+        ScoringV2Service().score_day([], ActivationLayer(
+            calculation_version="1", target_date="2026-07-08", target_time="12:00",
+            target_tz="Europe/Moscow", house_system="WHOLE_SIGN",
+            activations=[ActivationEvidence(id="test", technique="annual_profection",
+                           technique_family="profection", target_type="planet",
+                           target_key="MERCURY", kind="lord", phase="period",
+                           strength=0.1, polarity="neutral", evidence="test")],
+            by_planet={"MERCURY": ["test"]}, by_house={}, by_lot={}, by_angle={},
+        ))
+        raise AssertionError("Missing status_support_modifier.neutral did not raise")
+    except KeyError:
+        pass
+    finally:
+        svc._SCORING_V2 = orig
+
+
+def test_missing_status_tension_modifier_raises():
+    """Missing activation_polarity.status_tension_modifier.neutral raises KeyError."""
+    from copy import deepcopy
+    import app.services.scoring_v2_service as svc
+
+    orig = deepcopy(svc._get_scoring_v2())
+    mut = deepcopy(orig)
+    del mut["activation_polarity"]["status_tension_modifier"]["neutral"]
+    svc._SCORING_V2 = mut
+    try:
+        ScoringV2Service().score_day([], ActivationLayer(
+            calculation_version="1", target_date="2026-07-08", target_time="12:00",
+            target_tz="Europe/Moscow", house_system="WHOLE_SIGN",
+            activations=[ActivationEvidence(id="test", technique="annual_profection",
+                           technique_family="profection", target_type="planet",
+                           target_key="MERCURY", kind="lord", phase="period",
+                           strength=0.1, polarity="neutral", evidence="test")],
+            by_planet={"MERCURY": ["test"]}, by_house={}, by_lot={}, by_angle={},
+        ))
+        raise AssertionError("Missing status_tension_modifier.neutral did not raise")
+    except KeyError:
+        pass
+    finally:
+        svc._SCORING_V2 = orig
+
+
+def test_missing_convergence_curve_entry_raises():
+    """Missing convergence_curve[3] raises KeyError for three-family convergence."""
+    from copy import deepcopy
+    import app.services.scoring_v2_service as svc
+
+    orig = deepcopy(svc._get_scoring_v2())
+    mut = deepcopy(orig)
+    del mut["convergence_curve"][3]
+    svc._SCORING_V2 = mut
+    try:
+        acts = [
+            ActivationEvidence(id="p", technique="annual_profection", technique_family="profection",
+                               target_type="planet", target_key="MERCURY", kind="lord",
+                               phase="period", strength=0.1, polarity="supportive", evidence="p"),
+            ActivationEvidence(id="t", technique="transit_to_natal", technique_family="transit",
+                               target_type="planet", target_key="MERCURY", kind="trine",
+                               phase="period", strength=0.1, polarity="supportive", evidence="t"),
+            ActivationEvidence(id="f", technique="firdar_major", technique_family="firdar",
+                               target_type="planet", target_key="MERCURY", kind="lord",
+                               phase="period", strength=0.1, polarity="supportive", evidence="f"),
+        ]
+        layer = ActivationLayer(calculation_version="1", target_date="2026-07-08",
+                                target_time="12:00", target_tz="Europe/Moscow",
+                                house_system="WHOLE_SIGN", activations=acts,
+                                by_planet={"MERCURY": ["p", "t", "f"]},
+                                by_house={}, by_lot={}, by_angle={})
+        ScoringV2Service().score_day([], layer)
+        raise AssertionError("Missing convergence_curve[3] did not raise")
+    except KeyError:
+        pass
+    finally:
+        svc._SCORING_V2 = orig

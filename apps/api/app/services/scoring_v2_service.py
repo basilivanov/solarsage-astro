@@ -70,8 +70,6 @@ from app.services.scoring_service import (
 
 # ── Strict canon helpers ─────────────────────────────────────────────────────
 
-_ACTIVE_ACTIVATIONS: list[ActivationEvidence] | None = None
-
 
 def _required_float(data: dict, *keys: str) -> float:
     """Strict canon float lookup. Raises KeyError if missing or non-numeric."""
@@ -151,9 +149,8 @@ def _get_family_independence_weight(technique_family: str) -> float:
 
 
 def _family_for_technique(technique: str) -> str:
-    """Determine the technique family for a given technique name."""
-    rules = _get_activation_rules()
-    families = rules.get("technique_families", {})
+    """Determine the technique family for a given technique name. Raises KeyError if unknown."""
+    families = _required_mapping(_get_activation_rules(), "technique_families")
     for family, info in families.items():
         members = info.get("members", [])
         if technique in members:
@@ -227,7 +224,9 @@ def _compute_convergence_bonus(
         return 0.0
     curve = _required_mapping(scoring_v2, "convergence_curve")
     capped_n = min(n, 5)
-    bonus_factor = float(curve.get(capped_n, 0.0))
+    if capped_n not in curve:
+        raise KeyError(f"Missing convergence_curve entry for {capped_n}")
+    bonus_factor = float(curve[capped_n])
     conv_weight = _required_mapping(scoring_v2, "sphere_convergence_weight")
     default_w = _required_float(conv_weight, "default")
     return round(bonus_factor * default_w, 4)
@@ -244,7 +243,8 @@ def _apply_dominance_cap(
 ) -> dict[str, SphereScoreV2]:
     """Apply anti-dominance cap to sphere scores."""
     cap_config = _required_mapping(scoring_v2, "dominance_cap")
-    if not cap_config.get("enabled", True):
+    enabled = cap_config.get("enabled")
+    if enabled is None or not enabled:
         return sphere_scores
 
     threshold = _required_float(cap_config, "threshold")
@@ -323,8 +323,12 @@ def _compute_day_status_v2(
         fw = _get_family_independence_weight(family)
         amount = a.strength * fw
         pol = a.polarity or "neutral"
-        activation_support_score += amount * float(support_mod.get(pol, 0.0))
-        activation_tension_score += amount * float(tension_mod.get(pol, 0.0))
+        if pol not in support_mod:
+            raise KeyError(f"Missing activation_polarity.status_support_modifier.{pol}")
+        if pol not in tension_mod:
+            raise KeyError(f"Missing activation_polarity.status_tension_modifier.{pol}")
+        activation_support_score += amount * float(support_mod[pol])
+        activation_tension_score += amount * float(tension_mod[pol])
 
     support_score = round(positive_aspect_score + activation_support_score, 4)
     tension_score = round(negative_aspect_score + activation_tension_score, 4)
@@ -409,7 +413,7 @@ class ScoringV2Service:
             sphere_data[key] = {
                 "key": key,
                 "title": title,
-                "base_score": base_scores.get(key, 0.0),
+                "base_score": base_scores[key],
                 "activation_score": 0.0,
                 "convergence_bonus": 0.0,
                 "raw_score": 0.0,
@@ -433,7 +437,10 @@ class ScoringV2Service:
             family = act.technique_family or _family_for_technique(act.technique)
             fw = _get_family_independence_weight(family)
             polarity_mod = _required_mapping(scoring_v2, "activation_polarity", "sphere_amount_modifier")
-            pol_mod = float(polarity_mod.get(act.polarity or "neutral", 1.0))
+            pol = act.polarity or "neutral"
+            if pol not in polarity_mod:
+                raise KeyError(f"Missing activation_polarity.sphere_amount_modifier.{pol}")
+            pol_mod = float(polarity_mod[pol])
 
             for skey, tweight in mappings:
                 amount = round(act.strength * fw * tweight * pol_mod, 4)
@@ -536,11 +543,14 @@ class ScoringV2Service:
                        for s in v1_result.get("top_signals", [])]
 
         # ── 9. Debug ────────────────────────────────────────────────────
+        dc = _required_mapping(scoring_v2, "dominance_cap")
+        if "enabled" not in dc:
+            raise KeyError("Missing dominance_cap.enabled")
         debug: dict[str, Any] = {
             "unmapped_activations": unmapped_activations,
             "convergence_by_sphere": convergence_by_sphere,
             "dominance_cap": {
-                "enabled": _required_mapping(scoring_v2, "dominance_cap").get("enabled", True),
+                "enabled": bool(dc["enabled"]),
                 "threshold": _required_float(scoring_v2, "dominance_cap", "threshold"),
                 "sum_all_positive_scores": round(
                     sum(s.raw_score for s in sphere_scores.values() if s.raw_score > 0), 4
