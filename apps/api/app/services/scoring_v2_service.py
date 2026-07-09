@@ -16,8 +16,8 @@
 # side_effects: none (pure computation)
 # emitted_logs: none
 # invariants:
-#   - Base score uses V1 sphere formula without V1 convergence/cap
-#   - Activation contributions use strongest matching activation per sphere
+#   - Base score reuses ScoringService._calculate_sphere_scores (V1 pre-cap formula)
+#   - Every active activation-sphere match contributes
 #   - Convergence deduplicates by technique family
 #   - Anti-dominance caps at 65% of sum_all_positive_scores
 # failure_policy: KeyError on missing canon keys; ValueError on invalid inputs
@@ -27,12 +27,12 @@
 # public_entrypoints:
 #   - ScoringV2Service.score_day
 # semantic_blocks:
-#   - INIT: canon loading
-#   - BASE_SCORE: V1 sphere score without convergence/cap
-#   - ACTIVATION_CONTRIBUTION: map activations to spheres
+#   - INIT: canon loading + strict helpers
+#   - BASE_SCORE: V1 sphere score via ScoringService._calculate_sphere_scores
+#   - ACTIVATION_CONTRIBUTION: map active activations to spheres
 #   - CONVERGENCE: family-based bonus
 #   - ANTI_DOMINANCE: cap logic
-#   - DAY_STATUS: transparent breakdown
+#   - DAY_STATUS: transparent breakdown with V1 aspect thresholds
 # owned_tests:
 #   - tests/test_scoring_v2_contracts.py
 #   - tests/test_scoring_v2_convergence.py
@@ -45,7 +45,6 @@
 
 from __future__ import annotations
 
-import copy
 import os
 import pathlib
 from typing import Any
@@ -63,12 +62,41 @@ from app.services.canon_service import get_canon_versions
 from app.services.scoring_service import (
     _aspect_threshold,
     _aspect_weight,
-    _base_planet_name,
     _is_major,
     _POSITIVE,
     _NEGATIVE,
     ScoringService,
 )
+
+# ── Strict canon helpers ─────────────────────────────────────────────────────
+
+_ACTIVE_ACTIVATIONS: list[ActivationEvidence] | None = None
+
+
+def _required_float(data: dict, *keys: str) -> float:
+    """Strict canon float lookup. Raises KeyError if missing or non-numeric."""
+    d = data
+    for k in keys:
+        if not isinstance(d, dict) or k not in d:
+            raise KeyError(f"Missing required canon key: {'.'.join(keys)}")
+        d = d[k]
+    try:
+        return float(d)
+    except (ValueError, TypeError):
+        raise KeyError(f"Non-numeric canon value for: {'.'.join(keys)}")
+
+
+def _required_mapping(data: dict, *keys: str) -> dict:
+    """Strict canon mapping lookup. Raises KeyError if missing."""
+    d = data
+    for k in keys:
+        if not isinstance(d, dict) or k not in d:
+            raise KeyError(f"Missing required canon mapping: {'.'.join(keys)}")
+        d = d[k]
+    if not isinstance(d, dict):
+        raise KeyError(f"Expected mapping for: {'.'.join(keys)}")
+    return d
+
 
 # ── Canon loading ────────────────────────────────────────────────────────────
 
@@ -78,8 +106,8 @@ _ACTIVATION_RULES: dict | None = None
 
 
 def _resolve_canon_path(relative: str) -> str:
-    here = pathlib.Path(__file__).resolve().parent  # services/
-    root = here.parent.parent.parent.parent  # project root
+    here = pathlib.Path(__file__).resolve().parent
+    root = here.parent.parent.parent.parent
     return os.path.join(root, relative)
 
 
@@ -113,11 +141,13 @@ def _get_activation_rules() -> dict:
 
 
 def _get_family_independence_weight(technique_family: str) -> float:
+    """Strict family weight lookup. Raises KeyError for unknown families."""
     rules = _get_activation_rules()
-    families = rules.get("technique_families", {})
+    families = _required_mapping(rules, "technique_families")
     if technique_family not in families:
-        return 1.0
-    return float(families[technique_family].get("independence_weight", 1.0))
+        raise KeyError(f"Unknown technique_family: '{technique_family}'")
+    info = families[technique_family]
+    return _required_float(info, "independence_weight")
 
 
 def _family_for_technique(technique: str) -> str:
@@ -128,51 +158,8 @@ def _family_for_technique(technique: str) -> str:
         members = info.get("members", [])
         if technique in members:
             return family
-    return technique  # fallback: technique name is its own family
+    raise KeyError(f"Unknown technique: '{technique}'")
 
-
-# START_BLOCK: BASE_SCORE
-
-
-def _compute_v1_base_scores(signals: list[AstroSignal]) -> dict[str, float]:
-    """Compute V1 sphere scores WITHOUT V1 convergence/cap.
-    Uses the same formula as ScoringService._calculate_sphere_scores."""
-    spheres_data = _get_spheres().get("spheres", {})
-    scores: dict[str, float] = {}
-
-    aspects = [s for s in signals if s.type == "aspect"]
-    houses = [s for s in signals if s.type == "planet_in_house"]
-
-    for key, sphere in spheres_data.items():
-        total = 0.0
-
-        # Aspect signals
-        for s in aspects:
-            planet_weight = sphere.get("planets", {}).get(_base_planet_name(s.planet).upper(), 0)
-            if planet_weight > 0:
-                aw = _aspect_weight(s.aspect_type or "")
-                threshold = _aspect_threshold(_is_major(s.aspect_type or ""))
-                base = aw * planet_weight * s.strength
-                if base < threshold:
-                    continue
-                total += base
-
-        # Planet-in-house signals
-        for s in houses:
-            house_key = s.house
-            if house_key and house_key in sphere.get("houses", []):
-                pw = sphere.get("planets", {}).get(_base_planet_name(s.planet).upper(), 0.1)
-                angular_bonus = sphere.get("weight_multipliers", {}).get("angular_house_bonus", 1.0)
-                if house_key in {1, 4, 7, 10}:
-                    pw *= angular_bonus
-                total += pw * s.strength
-
-        scores[key] = round(total, 4)
-
-    return scores
-
-
-# END_BLOCK: BASE_SCORE
 
 # START_BLOCK: ACTIVATION_CONTRIBUTION
 
@@ -188,6 +175,9 @@ def _map_activation_to_spheres(
     target_key = (activation.target_key or "").upper()
     angle = (activation.angle or target_key).upper() if target_type == "angle" else ""
 
+    twd = _required_mapping(scoring_v2, "target_weight_defaults")
+    angle_map = _required_mapping(scoring_v2, "angle_sphere_map")
+
     for skey, sphere in spheres_data.items():
         weight = 0.0
 
@@ -199,22 +189,21 @@ def _map_activation_to_spheres(
         elif target_type == "house":
             h = activation.house or int(activation.target_key) if activation.target_key else None
             if h and h in sphere.get("houses", []):
-                weight = float(scoring_v2.get("target_weight_defaults", {}).get("house", 0.8))
+                weight = _required_float(twd, "house")
 
         elif target_type == "lot":
             if target_key in sphere.get("lots", []):
-                weight = float(scoring_v2.get("target_weight_defaults", {}).get("lot", 0.8))
+                weight = _required_float(twd, "lot")
 
         elif target_type == "angle":
-            angle_map = scoring_v2.get("angle_sphere_map", {})
             if angle in angle_map:
                 mapped_spheres = angle_map[angle]
                 if skey in mapped_spheres:
-                    weight = float(scoring_v2.get("target_weight_defaults", {}).get("angle", 0.7))
+                    weight = _required_float(twd, "angle")
 
         elif target_type == "sphere":
             if target_key == skey.upper():
-                weight = float(scoring_v2.get("target_weight_defaults", {}).get("sphere", 1.0))
+                weight = _required_float(twd, "sphere")
 
         if weight > 0:
             results.append((skey, weight))
@@ -236,11 +225,12 @@ def _compute_convergence_bonus(
     n = len(activation_families)
     if n <= 1:
         return 0.0
-    curve = scoring_v2.get("convergence_curve", {})
+    curve = _required_mapping(scoring_v2, "convergence_curve")
     capped_n = min(n, 5)
     bonus_factor = float(curve.get(capped_n, 0.0))
-    sphere_conv_weight = scoring_v2.get("sphere_convergence_weight", {}).get("default", 1.0)
-    return round(bonus_factor * sphere_conv_weight, 4)
+    conv_weight = _required_mapping(scoring_v2, "sphere_convergence_weight")
+    default_w = _required_float(conv_weight, "default")
+    return round(bonus_factor * default_w, 4)
 
 
 # END_BLOCK: CONVERGENCE
@@ -253,11 +243,11 @@ def _apply_dominance_cap(
     scoring_v2: dict,
 ) -> dict[str, SphereScoreV2]:
     """Apply anti-dominance cap to sphere scores."""
-    cap_config = scoring_v2.get("dominance_cap", {})
+    cap_config = _required_mapping(scoring_v2, "dominance_cap")
     if not cap_config.get("enabled", True):
         return sphere_scores
 
-    threshold = float(cap_config.get("threshold", 0.65))
+    threshold = _required_float(cap_config, "threshold")
     sum_all = sum(s.raw_score for s in sphere_scores.values() if s.raw_score > 0)
 
     for key, ss in sphere_scores.items():
@@ -275,7 +265,7 @@ def _apply_dominance_cap(
                 amount=cap_amount,
                 before=ss.raw_score,
                 after=ss.final_score,
-                evidence="Dominance cap applied: sphere exceeded 65% of total salience",
+                evidence=f"Dominance cap applied: sphere exceeded {int(threshold*100)}% of total salience",
             ))
 
     return sphere_scores
@@ -291,26 +281,29 @@ def _compute_day_status_v2(
     activations: list[ActivationEvidence],
     scoring_v2: dict,
 ) -> tuple[str, dict]:
-    """Compute V2 day status with transparent breakdown."""
-    thresholds = scoring_v2.get("status_thresholds", {})
-    positive_ratio = float(thresholds.get("positive_ratio", 1.3))
-    positive_min = float(thresholds.get("positive_min_score", 1.0))
-    negative_ratio = float(thresholds.get("negative_ratio", 1.3))
-    negative_min = float(thresholds.get("negative_min_score", 1.0))
+    """Compute V2 day status with transparent breakdown and V1 aspect thresholds."""
+    thresholds = _required_mapping(scoring_v2, "status_thresholds")
+    positive_ratio = _required_float(thresholds, "positive_ratio")
+    positive_min = _required_float(thresholds, "positive_min_score")
+    negative_ratio = _required_float(thresholds, "negative_ratio")
+    negative_min = _required_float(thresholds, "negative_min_score")
 
-    polarity_mod = scoring_v2.get("activation_polarity", {})
-    support_mod = polarity_mod.get("status_support_modifier", {})
-    tension_mod = polarity_mod.get("status_tension_modifier", {})
+    polarity_mod = _required_mapping(scoring_v2, "activation_polarity")
+    support_mod = _required_mapping(polarity_mod, "status_support_modifier")
+    tension_mod = _required_mapping(polarity_mod, "status_tension_modifier")
 
-    # Aspect-based scores (same as V1)
+    # Aspect-based scores with V1 threshold (same as ScoringService._calculate_day_status)
     aspects = [s for s in signals if s.type == "aspect"]
     positive_aspect_score = 0.0
     negative_aspect_score = 0.0
 
     for s in aspects:
         aw = _aspect_weight(s.aspect_type or "")
-        atype = s.aspect_type or ""
+        threshold = _aspect_threshold(_is_major(s.aspect_type or ""))
         base = aw * s.strength
+        if base < threshold:
+            continue
+        atype = s.aspect_type or ""
         if atype in _POSITIVE:
             positive_aspect_score += base
         elif atype in _NEGATIVE:
@@ -319,11 +312,13 @@ def _compute_day_status_v2(
             positive_aspect_score += base * 0.5
             negative_aspect_score += base * 0.5
 
-    # Activation-based scores
+    # Activation-based scores (only active activations)
     activation_support_score = 0.0
     activation_tension_score = 0.0
 
     for a in activations:
+        if a.active is not None and not a.active:
+            continue
         family = a.technique_family or _family_for_technique(a.technique)
         fw = _get_family_independence_weight(family)
         amount = a.strength * fw
@@ -398,18 +393,16 @@ class ScoringV2Service:
                 by_angle={},
             )
 
-        # Validate activation_layer is ActivationLayer
         if not isinstance(activation_layer, ActivationLayer):
             raise ValueError("activation_layer must be ActivationLayer, dict, or None")
 
-        # Score version
         scoring_v2 = _get_scoring_v2()
         spheres_data = _get_spheres().get("spheres", {})
 
-        # 1. Base scores
-        base_scores = _compute_v1_base_scores(day_signals)
+        # ── 1. Base scores (V1 pre-cap formula via ScoringService) ──────
+        base_scores = ScoringService()._calculate_sphere_scores(day_signals)
 
-        # 2. Activation contributions
+        # ── 2. Activation contributions (only active activations) ────────
         sphere_data: dict[str, dict] = {}
         for key in spheres_data:
             title = spheres_data[key].get("title", key)
@@ -429,6 +422,9 @@ class ScoringV2Service:
         unmapped_activations: list[str] = []
 
         for act in activation_layer.activations:
+            if act.active is not None and not act.active:
+                continue  # skip inactive activations
+
             mappings = _map_activation_to_spheres(act, spheres_data, scoring_v2)
             if not mappings:
                 unmapped_activations.append(act.id)
@@ -436,7 +432,7 @@ class ScoringV2Service:
 
             family = act.technique_family or _family_for_technique(act.technique)
             fw = _get_family_independence_weight(family)
-            polarity_mod = scoring_v2.get("activation_polarity", {}).get("sphere_amount_modifier", {})
+            polarity_mod = _required_mapping(scoring_v2, "activation_polarity", "sphere_amount_modifier")
             pol_mod = float(polarity_mod.get(act.polarity or "neutral", 1.0))
 
             for skey, tweight in mappings:
@@ -458,7 +454,7 @@ class ScoringV2Service:
                     evidence=act.evidence or "",
                 ))
 
-        # 3. Convergence
+        # ── 3. Convergence ──────────────────────────────────────────────
         convergence_by_sphere: dict[str, dict] = {}
         for key, sd in sphere_data.items():
             families = sd["activated_families"]
@@ -481,15 +477,14 @@ class ScoringV2Service:
                     "family_count": len(families),
                 }
 
-        # 4. Raw score
+        # ── 4. Raw score ────────────────────────────────────────────────
         for key, sd in sphere_data.items():
             sd["raw_score"] = round(
                 sd["base_score"] + sd["activation_score"] + sd["convergence_bonus"], 4
             )
             sd["final_score"] = sd["raw_score"]
 
-        # 5. Anti-dominance cap
-        # Build SphereScoreV2 objects first
+        # ── 5. Build SphereScoreV2 objects ──────────────────────────────
         sphere_scores: dict[str, SphereScoreV2] = {}
         for key, sd in sphere_data.items():
             ss = SphereScoreV2(
@@ -521,29 +516,32 @@ class ScoringV2Service:
 
         sphere_scores = _apply_dominance_cap(sphere_scores, scoring_v2)
 
-        # 6. Day status
+        # ── 6. Day status (only active activations) ─────────────────────
+        active_acts = [a for a in activation_layer.activations
+                       if a.active is not None and not a.active is False]
         status, status_breakdown = _compute_day_status_v2(
-            day_signals, activation_layer.activations, scoring_v2,
+            day_signals, active_acts, scoring_v2,
         )
 
-        # 7. Top activations
+        # ── 7. Top activations (only active) ────────────────────────────
         sorted_acts = sorted(
-            activation_layer.activations,
+            active_acts,
             key=lambda a: (-a.strength, a.id),
         )[:10]
 
-        # 8. Top signals (V1)
+        # ── 8. Top signals (V1) ─────────────────────────────────────────
         v1_service = ScoringService()
         v1_result = v1_service.score_day(day_signals)
-        top_signals = [s.model_dump(by_alias=True) if hasattr(s, 'model_dump') else s for s in v1_result.get("top_signals", [])]
+        top_signals = [s.model_dump(by_alias=True) if hasattr(s, 'model_dump') else s
+                       for s in v1_result.get("top_signals", [])]
 
-        # 9. Debug
+        # ── 9. Debug ────────────────────────────────────────────────────
         debug: dict[str, Any] = {
             "unmapped_activations": unmapped_activations,
             "convergence_by_sphere": convergence_by_sphere,
             "dominance_cap": {
-                "enabled": scoring_v2.get("dominance_cap", {}).get("enabled", True),
-                "threshold": float(scoring_v2.get("dominance_cap", {}).get("threshold", 0.65)),
+                "enabled": _required_mapping(scoring_v2, "dominance_cap").get("enabled", True),
+                "threshold": _required_float(scoring_v2, "dominance_cap", "threshold"),
                 "sum_all_positive_scores": round(
                     sum(s.raw_score for s in sphere_scores.values() if s.raw_score > 0), 4
                 ),

@@ -1,4 +1,4 @@
-"""Tests: Scoring V2 breakdown contract."""
+"""Tests: Scoring V2 breakdown contract + inactive activation."""
 import pytest
 from app.schemas.normalization import AstroSignal
 from app.schemas.activation import ActivationLayer, ActivationEvidence
@@ -65,3 +65,42 @@ def test_contribution_sources_valid():
     for key, ss in result.sphere_scores.items():
         for c in ss.contributions:
             assert c.source in valid_sources, f"{key}: invalid source {c.source}"
+
+
+def test_inactive_activation_ignored():
+    """Inactive activation must not contribute to sphere score or status."""
+    signals = []
+    layer = ActivationLayer(
+        calculation_version="1", target_date="2026-07-08",
+        target_time="12:00", target_tz="Europe/Moscow",
+        house_system="WHOLE_SIGN",
+        activations=[
+            ActivationEvidence(
+                id="inactive_mercury",
+                technique="annual_profection",
+                technique_family="profection",
+                target_type="planet",
+                target_key="MERCURY",
+                kind="lord",
+                active=False,
+                phase="period",
+                strength=1.0,
+                polarity="supportive",
+                evidence="inactive should not count",
+            ),
+        ],
+        by_planet={"MERCURY": ["inactive_mercury"]},
+        by_house={}, by_lot={}, by_angle={},
+    )
+    r = ScoringV2Service().score_day(signals, layer)
+    sphere_key = "thinking_speech_learning"
+    ss = r.sphere_scores.get(sphere_key)
+    assert ss is not None
+    assert ss.activation_score == 0.0, f"Expected 0 activation_score, got {ss.activation_score}"
+    assert r.status_breakdown.get("activation_support_score", 0) == 0.0, \
+        f"Expected 0 activation_support_score"
+    assert r.status_breakdown.get("activation_tension_score", 0) == 0.0, \
+        f"Expected 0 activation_tension_score"
+    # No activation contribution for that id
+    for c in ss.contributions:
+        assert c.source_id != "inactive_mercury", "Inactive activation must not appear in contributions"
