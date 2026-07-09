@@ -205,12 +205,24 @@ class CalendarService:
         if not self._request_profile_hash:
             return None
 
-        # 1. Check TodayPayloadCache first
+        from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
+        from app.services.cache_key_service import build_today_cache_key
+
+        sel_ver = selected_scoring_version_for_flags()
+        current_cache_key = build_today_cache_key(
+            user_id=user_id,
+            target_date=target_date.isoformat(),
+            profile_hash=self._request_profile_hash,
+            scoring_version=sel_ver,
+        )
+
+        # 1. Check TodayPayloadCache with versioned identity
         payload_result = await self.db.execute(
             select(TodayPayloadCache).where(
                 TodayPayloadCache.user_id == user_id,
                 TodayPayloadCache.target_date == target_date,
                 TodayPayloadCache.profile_hash == self._request_profile_hash,
+                TodayPayloadCache.cache_key_hash == current_cache_key.cache_key_hash,
             )
         )
         payload_entry = payload_result.scalar_one_or_none()
@@ -223,9 +235,7 @@ class CalendarService:
                 if status in ("supportive", "steady", "tense"):
                     return status
 
-        # 2. Check SemanticLayerCache second, validating version identity and profile hash
-        from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
-        sel_ver = str(selected_scoring_version_for_flags())
+        # 2. Check SemanticLayerCache with full version identity
         semantic_result = await self.db.execute(
             select(SemanticLayerCache).where(
                 SemanticLayerCache.user_id == user_id,
@@ -236,13 +246,18 @@ class CalendarService:
         if semantic_entry:
             data = self._load_json_object(semantic_entry.semantic_json)
             if "content_version" in data:
-                # Validate scoring_version: if absent, default to "1" (V1 legacy)
-                cache_ver = str(data.get("scoring_version", "1"))
-                if (
+                # Validate ALL identity fields; missing/wrong = miss (no defaults)
+                identity_ok = (
                     data.get("content_version") == TODAY_CONTENT_VERSION
                     and data.get("profile_hash") == self._request_profile_hash
-                    and cache_ver == sel_ver
-                ):
+                    and data.get("cache_key_hash") == current_cache_key.cache_key_hash
+                    and data.get("calculation_version") == current_cache_key.calculation_version
+                    and data.get("scoring_version") == str(current_cache_key.scoring_version)
+                    and data.get("canon_versions_hash") == current_cache_key.canon_versions_hash
+                    and data.get("llm_prompt_version") == current_cache_key.llm_prompt_version
+                    and data.get("frontend_payload_version") == current_cache_key.frontend_payload_version
+                )
+                if identity_ok:
                     inner_sem = data.get("semantic_layer") or {}
                     status = inner_sem.get("day_status")
                     if status in ("supportive", "steady", "tense"):
@@ -280,26 +295,51 @@ class CalendarService:
             from app.services.activation_layer_service import ActivationLayerService
             from app.services.day_scoring_runtime_service import DayScoringRuntimeService
             from app.services.cache_key_service import build_today_cache_key
+            from app.core.logging import log_event, log_block
 
-            # Also get activation layer for V2
+            # Build current_location if complete
+            current_location = None
+            p = self._request_profile
+            if p.current_lat is not None and p.current_lon is not None:
+                current_location = {
+                    "lat": float(p.current_lat),
+                    "lon": float(p.current_lon),
+                    "tz": p.current_tz or target_tz,
+                }
+
+            # Fetch sidecar activation-layer
             sidecar_layer = None
+            sidecar_error = None
             if should_compute_v2():
                 try:
-                    client2 = get_solarsage_client()
-                    sidecar_layer = await client2.get_activation_layer(
-                        birth_date=self._request_profile.birthday.isoformat(),
-                        birth_time=self._request_profile.birth_time.strftime("%H:%M") if self._request_profile.birth_time else "12:00",
-                        birth_lat=float(self._request_profile.birth_lat),
-                        birth_lon=float(self._request_profile.birth_lon),
-                        birth_tz=self._request_profile.birth_tz,
+                    sidecar_layer = await get_solarsage_client().get_activation_layer(
+                        birth_date=p.birthday.isoformat(),
+                        birth_time=p.birth_time.strftime("%H:%M") if p.birth_time else "12:00",
+                        birth_lat=float(p.birth_lat),
+                        birth_lon=float(p.birth_lon),
+                        birth_tz=p.birth_tz,
                         target_date=target_date.isoformat(),
                         target_time="12:00",
-                        target_tz=self._request_profile.current_tz or self._request_profile.birth_tz or "UTC",
+                        target_tz=target_tz,
                         house_system=self._request_natal_context.get("house_system", "PLACIDUS"),
+                        current_location=current_location,
                     )
-                except Exception:
+                except Exception as e:
                     if settings.solarsage_v2_enabled:
-                        raise
+                        raise  # Fail loudly when V2 is enabled
+                    sidecar_error = str(e)
+                    with log_block(slice="W-DAY", module="M-CALENDAR-SERVICE", block="V2_SHADOW"):
+                        log_event(
+                            "scoring.v2_diff",
+                            level="warning",
+                            msg="Calendar V2 shadow mode: sidecar activation-layer failed, using local fallback",
+                            payload={
+                                "user_id": str(user_id),
+                                "date": target_date.isoformat(),
+                                "error": sidecar_error,
+                                "fallback": "local_activation",
+                            },
+                        )
 
             sel_ver = selected_scoring_version_for_flags()
             cache_key = build_today_cache_key(
@@ -373,8 +413,14 @@ class CalendarService:
                 await self.db.rollback()
                 return await self._get_cached_day_status(user_id, target_date)
             return status
+        except IntegrityError:
+            await self.db.rollback()
+            return await self._get_cached_day_status(user_id, target_date)
         except Exception:
             await self.db.rollback()
+            # If V2 is enabled, sidecar failures must propagate
+            if settings.solarsage_v2_enabled:
+                raise
             return None
 
     def _add_months(self, date: datetime, months: int) -> datetime:

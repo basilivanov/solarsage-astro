@@ -237,6 +237,14 @@ class TodayService:
         # W5: Fetch sidecar activation layer when V2 may be computed
         sidecar_layer = None
         sidecar_error = None
+        # Build current_location if complete
+        current_location = None
+        if profile.current_lat is not None and profile.current_lon is not None:
+            current_location = {
+                "lat": float(profile.current_lat),
+                "lon": float(profile.current_lon),
+                "tz": profile.current_tz or target_tz,
+            }
         if should_compute_v2():
             try:
                 sidecar_layer = await client.get_activation_layer(
@@ -249,9 +257,23 @@ class TodayService:
                     target_time="12:00",
                     target_tz=profile.current_tz or profile.birth_tz or "UTC",
                     house_system=natal_context_dict.get("house_system", "PLACIDUS"),
+                    current_location=current_location,
                 )
             except Exception as e:
                 sidecar_error = str(e)
+                # Shadow fail-open logging
+                with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="V2_SHADOW"):
+                    log_event(
+                        "scoring.v2_diff",
+                        level="warning",
+                        msg="V2 shadow mode: sidecar activation-layer failed, using local fallback",
+                        payload={
+                            "user_id": str(user_id),
+                            "date": target_date.isoformat(),
+                            "error": sidecar_error,
+                            "fallback": "local_activation",
+                        },
+                    )
                 if settings.solarsage_v2_enabled:
                     raise  # Fail loudly when V2 is enabled
 
