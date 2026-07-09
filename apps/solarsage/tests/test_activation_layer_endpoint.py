@@ -179,3 +179,58 @@ def test_activation_layer_endpoint_moscow_evidence():
 
     tih = [a for a in activations if a["technique"] == "transit_planet_in_house"]
     assert len(tih) >= 1, "Expected at least one transit_planet_in_house activation"
+
+
+# ── Current location validation ──────────────────────────────────────────────
+
+
+def test_current_location_valid_returns_200():
+    """Valid current_location with lat/lon/tz returns 200."""
+    response = client.post(
+        "/v1/activation-layer",
+        json={
+            **MOSCOW_FIXTURE_REQUEST,
+            "techniques": ["solar_return"],
+            "current_location": {"lat": 55.0, "lon": 37.0, "tz": "Europe/Moscow"},
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_current_location_missing_lat_returns_422():
+    """Missing current_location.lat returns 422."""
+    response = client.post(
+        "/v1/activation-layer",
+        json={
+            **MOSCOW_FIXTURE_REQUEST,
+            "techniques": ["solar_return"],
+            "current_location": {"lon": 37.0, "tz": "Europe/Moscow"},
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_current_location_missing_lon_returns_422():
+    """Missing current_location.lon returns 422."""
+    response = client.post(
+        "/v1/activation-layer",
+        json={
+            **MOSCOW_FIXTURE_REQUEST,
+            "techniques": ["solar_return"],
+            "current_location": {"lat": 55.0, "tz": "Europe/Moscow"},
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_current_location_empty_dict_returns_422():
+    """Empty current_location dict returns 422."""
+    response = client.post(
+        "/v1/activation-layer",
+        json={
+            **MOSCOW_FIXTURE_REQUEST,
+            "techniques": ["solar_return"],
+            "current_location": {},
+        },
+    )
+    assert response.status_code == 422

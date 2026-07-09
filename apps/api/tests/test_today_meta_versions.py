@@ -307,3 +307,30 @@ async def test_today_service_locked_preview_no_activation_layer(db_session):
     assert payload.access.state == "locked"
     assert payload.meta.activation_layer_version is None, "Locked preview must not have activation layer"
     assert payload.meta.scoring_version == 1
+
+
+def test_today_service_not_wired_to_sidecar_activation_layer():
+    """W3.4 guard: TodayService must not pass sidecar_activation_layer to
+    ActivationLayerService.build(). Only None is allowed in W3.4.
+
+    This test protects the W3 boundary: future waves must explicitly decide
+    when to wire the sidecar layer.
+    """
+    from pathlib import Path
+    source_path = Path(__file__).resolve().parent.parent / "app" / "services" / "today_service.py"
+    source = source_path.read_text()
+    import re
+    # Look for non-None sidecar_activation_layer assignments
+    matches = re.findall(
+        r'sidecar_activation_layer=(?!None)',
+        source,
+    )
+    assert not matches, (
+        f"TodayService wires sidecar_activation_layer to a non-None value. "
+        f"This is forbidden in W3.4. Found {len(matches)} non-None references."
+    )
+    # Also verify the None line exists
+    assert "sidecar_activation_layer=None" in source, (
+        "TodayService must contain 'sidecar_activation_layer=None' "
+        "in its get_today_payload method."
+    )
