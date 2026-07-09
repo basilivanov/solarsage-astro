@@ -86,15 +86,20 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
     - the layer contains transit_to_natal and transit_planet_in_house activations
     - returned payload meta has activation_layer_version al-1.0
     - scoring_version remains 1
-    - ScoringService.score_day is called with day_signals only (no activation_layer arg)"""
+    - ScoringService.score_day is called *exactly once* with *only* the
+      deterministic transit-only day_signals, no activation_layer in args"""
     from datetime import date as Date
     from sqlalchemy import select
     from app.db.models import User, UserProfile
     from app.services.today_service import TodayService
     from app.services.access_service import AccessService
+    from app.schemas.natal import (
+        NatalContextData, NatalChartPlanet, NatalChartHouse,
+        NatalChartAngle, NatalChartSpecialPoint,
+    )
 
     # Create a user + profile in the in-memory DB
-    user = User(tg_user_id=777777, tg_username="test_w2")
+    user = User(tg_user_id=777777, tg_username="test_w3")
     db_session.add(user)
     await db_session.flush()
     profile = UserProfile(
@@ -112,37 +117,60 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
     db_session.add(profile)
     await db_session.commit()
 
+    # ── Deterministic fixtures ──────────────────────────────────────
+
+    # NatalContextData: returned by patched NatalContextService.
+    # Must have at least house_system so ActivationLayerService.build
+    # does not crash on natal_context_dict.get("house_system", …).
+    fake_natal_context = NatalContextData(
+        house_system="WHOLE_SIGN",
+        planets=[
+            NatalChartPlanet(name="Sun", sign="Capricorn", degree=7.0, longitude=286.93, retrograde=False, house=11),
+            NatalChartPlanet(name="Moon", sign="Gemini", degree=30.0, longitude=119.63, retrograde=False, house=4),
+            NatalChartPlanet(name="Pluto", sign="Scorpio", degree=25.0, longitude=234.78, retrograde=False, house=9),
+            NatalChartPlanet(name="Mars", sign="Cancer", degree=8.0, longitude=137.95, retrograde=True, house=5),
+        ],
+        houses=[NatalChartHouse(number=i, sign="Aries" if i == 1 else "Taurus", degree=0.0, longitude=float((i - 1) * 30)) for i in range(1, 13)],
+    )
+
+    # Deterministic transit data for the mocked get_solarsage_client
     mock_transit_data = {
         "target_jd": 2461229.875,
         "planets": [
-            {"name": "Sun", "longitude": 106.23, "sign": "Cancer", "retrograde": False, "speed": 0.95},
             {"name": "Moon", "longitude": 23.37, "sign": "Aries", "retrograde": False, "speed": 13.73},
-            {"name": "Pluto", "longitude": 304.74, "sign": "Aquarius", "retrograde": True, "speed": -0.02},
             {"name": "Mars", "longitude": 66.07, "sign": "Gemini", "retrograde": False, "speed": 0.70},
         ],
     }
 
-    mock_natal_data = {
-        "house_system": "WHOLE_SIGN",
-        "planets": [
-            {"name": "Sun", "longitude": 286.93, "sign": "Capricorn", "house": 11, "retrograde": False, "speed": 1.0},
-            {"name": "Moon", "longitude": 119.63, "sign": "Gemini", "house": 4, "retrograde": False, "speed": 1.0},
-            {"name": "Pluto", "longitude": 234.78, "sign": "Scorpio", "house": 9, "retrograde": False, "speed": 0.01},
-            {"name": "Mars", "longitude": 137.95, "sign": "Cancer", "house": 5, "retrograde": True, "speed": -0.5},
-        ],
-        "houses": [
-            {"number": i, "cusp": float((i - 1) * 30), "sign": "Aries" if i == 1 else "Taurus"}
-            for i in range(1, 13)
-        ],
-        "special_points": [],
-    }
+    # Deterministic normalized signals returned by patched normalize_day
+    transit_aspect = AstroSignal(
+        type="aspect",
+        planet="Transit_Moon",
+        target_planet="Pluto",
+        aspect_type="opposition",
+        orb=1.0,
+        strength=0.9,
+    )
+    transit_house = AstroSignal(
+        type="planet_in_house",
+        planet="Transit_Mars",
+        house=12,
+        strength=1.0,
+    )
+    static_background = AstroSignal(
+        type="planet_in_house",
+        planet="Sun",
+        house=5,
+        strength=1.0,
+    )
+    deterministic_signals = [transit_aspect, transit_house, static_background]
 
-    # Mock scoring service to prove it's called with day_signals
+    # ── Mocks ───────────────────────────────────────────────────────
+
     from app.services.scoring_service import ScoringService
     mock_scoring = MagicMock(wraps=ScoringService())
     mock_scoring.score_day = MagicMock(wraps=mock_scoring.score_day)
 
-    # Mock semantic service to capture activation_layer
     from app.services.semantic_service import SemanticService
     real_build_why = SemanticService.build_why_contexts
     captured_kwargs = {}
@@ -151,13 +179,26 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
         captured_kwargs.update(kwargs)
         return real_build_why(service_self, *args, **kwargs)
 
-    with patch("app.services.today_service.get_solarsage_client") as mock_client_factory, \
+    with \
+         patch("app.services.today_service.get_solarsage_client") as mock_client_factory, \
+         patch("app.services.today_service.NatalContextService.get_or_build_natal_context") as mock_get_natal, \
+         patch("app.services.today_service.NormalizationService.normalize_day") as mock_normalize, \
+         patch.object(TodayService, "_get_yesterday_signals") as mock_get_ys, \
          patch.object(SemanticService, "build_why_contexts", mock_build_why), \
          patch("app.services.today_service.ScoringService", return_value=mock_scoring):
 
+        # NatalContextService returns a deterministic NatalContextData
+        mock_get_natal.return_value = fake_natal_context
+
+        # normalize_day returns deterministic signals
+        mock_normalize.return_value = deterministic_signals
+
+        # No yesterday data — DayDeltaService is skipped
+        mock_get_ys.return_value = None
+
+        # SolarSage client returns deterministic transits (for activation layer)
         mock_client = AsyncMock()
         mock_client.get_transits = AsyncMock(return_value=mock_transit_data)
-        mock_client.get_natal = AsyncMock(return_value=mock_natal_data)
         mock_client_factory.return_value = mock_client
 
         access = await AccessService(db_session).can_access_day(user.id, Date(2026, 7, 8))
@@ -169,8 +210,9 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
             skip_prefetch=True,
         )
 
-    # 1. Activation layer wired into build_why_contexts
-    assert "activation_layer" in captured_kwargs, "build_why_contexts must receive activation_layer"
+    # ── 1. Activation layer wired into build_why_contexts ───────────
+    assert "activation_layer" in captured_kwargs, \
+        "build_why_contexts must receive activation_layer"
     act_layer = captured_kwargs["activation_layer"]
     assert act_layer is not None
     assert act_layer.activation_layer_version == "al-1.0"
@@ -182,15 +224,42 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
     tih = [a for a in act_layer.activations if a.technique == "transit_planet_in_house"]
     assert len(tih) >= 1, "Expected at least one transit_planet_in_house activation"
 
-    # 2. Returned payload meta
+    # ── 2. Returned payload meta ────────────────────────────────────
     assert payload.meta.activation_layer_version == "al-1.0"
     assert payload.meta.scoring_version == 1
 
-    # 3. Scoring called with day_signals (no activation_layer arg)
+    # ── 3. Strict scoring assertions ────────────────────────────────
+    # Exactly one call
+    assert mock_scoring.score_day.call_count == 1, \
+        f"Expected exactly 1 call to score_day, got {mock_scoring.score_day.call_count}"
+
     call_args, call_kwargs = mock_scoring.score_day.call_args
-    assert len(call_args) >= 1
-    assert isinstance(call_args[0], list)
-    assert "activation_layer" not in call_kwargs
+    # Only the signals list as a positional argument
+    assert len(call_args) == 1, \
+        f"Expected exactly 1 positional arg, got {len(call_args)}"
+    assert call_kwargs == {}, \
+        f"Expected no keyword args, got {call_kwargs}"
+
+    # The signals list must contain only the transit signals
+    # (static_background with planet='Sun' is filtered by filter_day_scored_signals)
+    actual_signals = call_args[0]
+    assert isinstance(actual_signals, list)
+    assert len(actual_signals) == 2, \
+        f"Expected 2 transit-only signals, got {len(actual_signals)}"
+
+    # Verify each signal independently (id comparison is fragile)
+    assert actual_signals[0].planet == "Transit_Moon"
+    assert actual_signals[0].type == "aspect"
+    assert actual_signals[0].target_planet == "Pluto"
+
+    assert actual_signals[1].planet == "Transit_Mars"
+    assert actual_signals[1].type == "planet_in_house"
+    assert actual_signals[1].house == 12
+
+    # No ActivationLayer appears in scoring args
+    from app.schemas.activation import ActivationLayer
+    assert all(not isinstance(arg, ActivationLayer) for arg in call_args), \
+        "ActivationLayer must not appear in scoring call args"
 
 
 @pytest.mark.asyncio
