@@ -468,35 +468,85 @@ def _load_fixture(path: str) -> dict:
     return json.loads(Path(path).read_text())
 
 
-def test_historical_fixture_vasiliy_sequence():
-    """Vasiliy fixture firdaria sequence matches night period canon."""
-    fixture = _load_fixture("tests/fixtures/vasiliy_2026-05-30.json")
-    firdaria = fixture.get("raw", {}).get("firdaria", {})
-    assert firdaria.get("value", {}).get("is_day_birth") is False
-
-    periods = firdaria.get("value", {}).get("periods", [])
-    major_lords = [p["lord"] for p in periods]
-
+def _night_7_planets():
+    """Night 7-planet sequence filtered from canon night_sequence."""
     from solarsage.services.firdar import _load_firdar_canon
     canon = _load_firdar_canon()
-    canon_lords = [entry["lord"] for entry in canon["night_sequence"]]
-    # The first 7 entries should match (filtering node periods at the end)
-    # Fixture stores all 9 periods (including nodes)
-    assert major_lords[:7] == canon_lords[:7], \
-        f"Vasiliy night fixture first 7 lords mismatch"
+    return [entry["lord"] for entry in canon["night_sequence"]
+            if entry["lord"] not in ("NORTH_NODE_TRUE", "SOUTH_NODE")]
 
 
-def test_historical_fixture_vasiliy_first_period():
-    """Vasiliy fixture first period (active major when born) is MOON."""
-    fixture = _load_fixture("tests/fixtures/vasiliy_2026-05-30.json")
+def _day_7_planets():
+    """Day 7-planet sequence filtered from canon day_sequence."""
+    from solarsage.services.firdar import _load_firdar_canon
+    canon = _load_firdar_canon()
+    return [entry["lord"] for entry in canon["day_sequence"]
+            if entry["lord"] not in ("NORTH_NODE_TRUE", "SOUTH_NODE")]
+
+
+def _compare_fixture_periods(fixture_path: str, canon_sequence_key: str, tol: float = 1e-10):
+    """Compare all fixture periods against canon sequence: lords, years,
+    start/end ages, and all subperiod rotations."""
+    from solarsage.services.firdar import _load_firdar_canon
+    fixture = _load_fixture(fixture_path)
     periods = fixture.get("raw", {}).get("firdaria", {}).get("value", {}).get("periods", [])
-    assert len(periods) > 0
-    assert periods[0]["lord"] == "MOON", \
-        f"Vasiliy first period expected MOON, got {periods[0]['lord']}"
-    assert periods[0]["years"] == 9
+    canon = _load_firdar_canon()
+    canon_seq = canon[canon_sequence_key]
+
+    assert len(periods) == len(canon_seq), \
+        f"Period count mismatch: fixture={len(periods)} canon={len(canon_seq)}"
+
+    all_7_planets = _day_7_planets() if "day" in canon_sequence_key else _night_7_planets()
+    node_minor = canon["node_minor_sequence"]
+    total_years = 0.0
+
+    for i, (fp, cp) in enumerate(zip(periods, canon_seq)):
+        lord = cp["lord"]
+        years = float(cp["years"])
+
+        # Lord
+        assert fp["lord"] == lord, f"Period {i}: expected lord {lord}, got {fp['lord']}"
+        # Years
+        assert abs(fp["years"] - years) < tol, \
+            f"Period {i} {lord}: expected years {years}, got {fp['years']}"
+        # Start age
+        assert abs(fp["start_age"] - total_years) < tol, \
+            f"Period {i} {lord}: expected start_age {total_years}, got {fp['start_age']}"
+        # End age
+        assert abs(fp["end_age"] - (total_years + years)) < tol, \
+            f"Period {i} {lord}: expected end_age {total_years + years}, got {fp['end_age']}"
+
+        # Subperiod rotation
+        if lord in ("NORTH_NODE_TRUE", "SOUTH_NODE"):
+            expected_sub = node_minor
+        else:
+            idx = all_7_planets.index(lord)
+            expected_sub = all_7_planets[idx:] + all_7_planets[:idx]
+
+        sub_lords = [s["lord"] for s in fp.get("sub_periods", [])]
+        assert sub_lords == expected_sub, \
+            f"Period {i} {lord}: subperiod lords {sub_lords} != expected {expected_sub}"
+        assert len(fp["sub_periods"]) == 7, \
+            f"Period {i} {lord}: expected 7 subperiods, got {len(fp['sub_periods'])}"
+
+        total_years += years
+
+    assert abs(total_years - float(canon["cycle_years"])) < tol, \
+        f"Total years {total_years} != cycle_years {canon['cycle_years']}"
 
 
-def test_historical_fixture_vasiliy_active_period():
+def test_historical_fixture_vasiliy_is_day():
+    """Vasiliy fixture: is_day_birth=False (night)."""
+    fixture = _load_fixture("tests/fixtures/vasiliy_2026-05-30.json")
+    assert fixture.get("raw", {}).get("firdaria", {}).get("value", {}).get("is_day_birth") is False
+
+
+def test_historical_fixture_vasiliy_full_periods():
+    """Vasiliy fixture: all night sequence periods compared (lords, years, ages, subperiods)."""
+    _compare_fixture_periods("tests/fixtures/vasiliy_2026-05-30.json", "night_sequence")
+
+
+def test_historical_fixture_vasiliy_active_major():
     """Vasiliy 2026-05-30 active period: SUN major (verified from fixture)."""
     fixture = _load_fixture("tests/fixtures/vasiliy_2026-05-30.json")
     fd = fixture.get("raw", {}).get("firdaria", {}).get("value", {})
@@ -504,42 +554,128 @@ def test_historical_fixture_vasiliy_active_period():
         f"Vasiliy active major expected SUN, got {fd.get('current_period', {}).get('lord')}"
 
 
-def test_historical_fixture_vasiliy_subperiods():
-    """Vasiliy fixture first period subperiods match night 7-planet sequence starting from MOON."""
-    fixture = _load_fixture("tests/fixtures/vasiliy_2026-05-30.json")
-    periods = fixture.get("raw", {}).get("firdaria", {}).get("value", {}).get("periods", [])
-    first_subperiods = periods[0].get("sub_periods", [])
-    sub_lords = [s["lord"] for s in first_subperiods]
-    # For a night chart, the 7-planet sequence filtered from night_sequence is:
-    # MOON, SATURN, JUPITER, MARS, SUN, VENUS, MERCURY
-    # Starting from MOON (major lord of first period), the rotation is the same
-    expected = ["MOON", "SATURN", "JUPITER", "MARS", "SUN", "VENUS", "MERCURY"]
-    assert sub_lords == expected, \
-        f"Vasiliy first subperiods expected {expected}, got {sub_lords}"
-
-
-def test_historical_fixture_test_user_sequence():
-    """test_user fixture firdaria sequence matches day period canon."""
+def test_historical_fixture_test_user_is_day():
+    """test_user fixture: is_day_birth=True (day)."""
     fixture = _load_fixture("tests/fixtures/test_user_2026-06-15.json")
-    firdaria = fixture.get("raw", {}).get("firdaria", {})
-    assert firdaria.get("value", {}).get("is_day_birth") is True
-
-    periods = firdaria.get("value", {}).get("periods", [])
-    major_lords = [p["lord"] for p in periods]
-
-    from solarsage.services.firdar import _load_firdar_canon
-    canon = _load_firdar_canon()
-    canon_lords = [entry["lord"] for entry in canon["day_sequence"]]
-    assert major_lords[:7] == canon_lords[:7], \
-        f"test_user day fixture first 7 lords mismatch"
+    assert fixture.get("raw", {}).get("firdaria", {}).get("value", {}).get("is_day_birth") is True
 
 
-def test_historical_fixture_test_user_active_period():
-    """test_user 2026-06-15 active period: MOON major (verified from fixture)."""
+def test_historical_fixture_test_user_full_periods():
+    """test_user fixture: all day sequence periods compared (lords, years, ages, subperiods)."""
+    _compare_fixture_periods("tests/fixtures/test_user_2026-06-15.json", "day_sequence")
+
+
+def test_historical_fixture_test_user_active_major():
+    """test_user 2026-06-15 active period: MOON major (verified from fixture).
+    NOTE: The fixture's current_sub_period = MARS was computed with integer age 36
+    by the legacy collector. The W3.3 date-precise calculation gives minor = SUN for
+    age_years ~= 36.4137. The fixture period table itself correctly shows the SUN
+    subperiod at the date-precise position (ages 36.143-37.429). The active minor
+    is verified from the period table, NOT from the legacy current_sub_period field."""
     fixture = _load_fixture("tests/fixtures/test_user_2026-06-15.json")
     fd = fixture.get("raw", {}).get("firdaria", {}).get("value", {})
     assert fd.get("current_period", {}).get("lord") == "MOON", \
         f"test_user active major expected MOON, got {fd.get('current_period', {}).get('lord')}"
+
+    # Verify from the period table itself: age 36.4137 falls in SUN subperiod (ages 36.143-37.429)
+    moon_period = [p for p in fd.get("periods", []) if p["lord"] == "MOON"][0]
+    sun_sub = [s for s in moon_period["sub_periods"] if s["lord"] == "SUN"]
+    assert len(sun_sub) == 1
+    assert sun_sub[0]["start_age"] <= 36.4137 <= sun_sub[0]["end_age"], \
+        f"SUN subperiod {sun_sub[0]} should contain age 36.4137"
+
+
+# ── Strong node endpoint assertions ─────────────────────────────────────────
+
+
+def test_node_north_node_true_exact():
+    """Date at exact age 70.0: NORTH_NODE_TRUE major, stable id, readable evidence."""
+    resp = client.post("/v1/activation-layer", json={
+        "birth": {"date": "1990-01-01", "time": "12:00", "lat": 55.0, "lon": 37.0, "tz": "Europe/Moscow"},
+        "target": {"date": "2060-01-01", "time": "12:00", "tz": "Europe/Moscow"},
+        "house_system": "PLACIDUS",
+        "techniques": ["firdar_major", "firdar_minor"],
+    })
+    assert resp.status_code == 200
+    layer = resp.json()["activation_layer"]
+
+    major = [a for a in layer["activations"] if a["id"] == "firdar_major__PERIOD_LORD__NORTH_NODE_TRUE"]
+    assert len(major) == 1, "Expected firdar_major__PERIOD_LORD__NORTH_NODE_TRUE"
+    m = major[0]
+    assert m["target_key"] == "NORTH_NODE_TRUE"
+    assert m["target_planet"] == "NORTH_NODE_TRUE"
+    assert m["evidence"].startswith("North Node is major firdar lord")
+    assert "NORTH_NODE_TRUE" not in m["evidence"]
+    assert "NORTH_NODE_TRUE" in layer.get("by_planet", {})
+    assert m["id"] in layer["by_planet"]["NORTH_NODE_TRUE"]
+
+    minor = [a for a in layer["activations"] if a["id"] == "firdar_minor__SUBPERIOD_LORD__SATURN"]
+    assert len(minor) == 1, "Expected firdar_minor__SUBPERIOD_LORD__SATURN"
+    mi = minor[0]
+    assert mi["target_key"] == "SATURN"
+    assert mi["evidence"].startswith("Saturn is minor firdar lord")
+
+
+def test_node_south_node_exact():
+    """Date at exact age 73.0: SOUTH_NODE major, stable id, readable evidence."""
+    resp = client.post("/v1/activation-layer", json={
+        "birth": {"date": "1990-01-01", "time": "12:00", "lat": 55.0, "lon": 37.0, "tz": "Europe/Moscow"},
+        "target": {"date": "2063-01-01", "time": "12:00", "tz": "Europe/Moscow"},
+        "house_system": "PLACIDUS",
+        "techniques": ["firdar_major", "firdar_minor"],
+    })
+    assert resp.status_code == 200
+    layer = resp.json()["activation_layer"]
+
+    major = [a for a in layer["activations"] if a["id"] == "firdar_major__PERIOD_LORD__SOUTH_NODE"]
+    assert len(major) == 1, "Expected firdar_major__PERIOD_LORD__SOUTH_NODE"
+    m = major[0]
+    assert m["target_key"] == "SOUTH_NODE"
+    assert m["target_planet"] == "SOUTH_NODE"
+    assert m["evidence"].startswith("South Node is major firdar lord")
+    assert "SOUTH_NODE" in layer.get("by_planet", {})
+    assert m["id"] in layer["by_planet"]["SOUTH_NODE"]
+
+    minor = [a for a in layer["activations"] if a["id"] == "firdar_minor__SUBPERIOD_LORD__SATURN"]
+    assert len(minor) == 1, "Expected firdar_minor__SUBPERIOD_LORD__SATURN (node minor starts with SATURN)"
+    assert minor[0]["target_key"] == "SATURN"
+
+
+# ── Single activation-rules load test ───────────────────────────────────────
+
+
+def test_activation_rules_loaded_once_firdar(monkeypatch):
+    """When both firdar_major and firdar_minor requested, activation rules are
+    loaded once, not twice."""
+    from solarsage.services import activation_builder as ab
+    original_load = ab._load_activation_rules
+    load_count = 0
+
+    def spy():
+        nonlocal load_count
+        load_count += 1
+        return original_load()
+
+    monkeypatch.setattr(ab, "_load_activation_rules", spy)
+
+    resp = client.post("/v1/activation-layer", json={
+        **BASIL_AUDIT_REQUEST,
+        "techniques": ["firdar_major", "firdar_minor"],
+    })
+    assert resp.status_code == 200
+    # Expect 1 call for firdar (major+minor use cached context, one load).
+    # The profection code also calls _load_activation_rules, so we check
+    # the firdar-specific load count relative to a baseline.
+    # With only firdar techniques, it should be exactly 1.
+    resp2 = client.post("/v1/activation-layer", json={
+        "birth": {"date": "1980-10-30", "time": "19:50", "lat": 67.9394, "lon": 32.8144, "tz": "Europe/Moscow"},
+        "target": {"date": "2026-07-08", "time": "12:00", "tz": "Europe/Moscow"},
+        "house_system": "PLACIDUS",
+        "techniques": ["firdar_major", "firdar_minor"],
+    })
+    assert resp2.status_code == 200
+    # Count for this specific request: activation_rules loaded once per request
+    assert load_count <= 2, f"Expected at most 2 loads (one per request), got {load_count}"
 
 
 def test_vintage_fixture_vasiliy():

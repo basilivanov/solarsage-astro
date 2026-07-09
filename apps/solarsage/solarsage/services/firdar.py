@@ -20,7 +20,8 @@
 #   - age_years uses actual birthday interval, not calendar year
 #   - Feb 29 births clamp to Feb 28 in non-leap years
 #   - unknown sign/strength keys raise clear errors, no silent fallbacks
-# failure_policy: Raises ValueError on unknown sign, KeyError on missing canon keys
+# failure_policy: Raises ValueError on invalid dates; KeyError on missing canon keys or
+#   division-by-zero if minor_divisions <= 0 or canon sequences do not sum to cycle_years
 # END_MODULE_CONTRACT: M-SIDECAR-FIRDAR
 
 # START_MODULE_MAP: M-SIDECAR-FIRDAR
@@ -54,6 +55,13 @@ _DISPLAY_NAMES: dict[str, str] = {
 
 
 def _display_name(key: str) -> str:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._display_name
+    # purpose: Return human-readable name for a firdar lord key (North Node/South Node).
+    # inputs: key — uppercase lord key (e.g. NORTH_NODE_TRUE)
+    # returns: display string; falls back to key if not found
+    # side_effects: none
+    # error_behavior: Returns key unchanged if not in display map
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._display_name
     return _DISPLAY_NAMES.get(key.upper(), key)
 
 
@@ -100,6 +108,14 @@ def _load_firdar_canon() -> dict[str, Any]:
 
 
 def _clamp_birthday(birth_local: Date, year: int) -> Date:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._clamp_birthday
+    # purpose: Return birthday in a given year, clamping Feb 29 to Feb 28
+    #          in non-leap years.
+    # inputs: birth_local — birth date; year — target year
+    # returns: Date in given year, safe for Feb 29 births
+    # side_effects: none
+    # error_behavior: ValueError on invalid date components (calendar range)
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._clamp_birthday
     """Return birthday in a given year, clamping Feb 29 to Feb 28 in non-leap years."""
     import calendar
     if birth_local.month == 2 and birth_local.day == 29 and not calendar.isleap(year):
@@ -108,6 +124,13 @@ def _clamp_birthday(birth_local: Date, year: int) -> Date:
 
 
 def _completed_years(birth_local: Date, target_local: Date) -> int:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._completed_years
+    # purpose: Completed full years between two local dates.
+    # inputs: birth_local, target_local — dates
+    # returns: integer completed years (>= 0)
+    # side_effects: none
+    # error_behavior: Returns 0 if target before birth
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._completed_years
     """Completed full years between two local dates.
 
     Uses clamped birthday (Feb 29→Feb 28 in non-leap years) for comparison
@@ -122,6 +145,14 @@ def _completed_years(birth_local: Date, target_local: Date) -> int:
 
 
 def _last_birthday(birth_local: Date, target_local: Date) -> Date:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._last_birthday
+    # purpose: Return the most recent birthday on or before target_local.
+    #          Clamps Feb 29 to Feb 28 in non-leap years.
+    # inputs: birth_local, target_local — dates
+    # returns: Date of last birthday
+    # side_effects: none
+    # error_behavior: May return date after target for edge cases
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._last_birthday
     """Return the most recent birthday on or before target_local.
     Clamps Feb 29 to Feb 28 in non-leap years."""
     candidate = _clamp_birthday(birth_local, target_local.year)
@@ -131,12 +162,29 @@ def _last_birthday(birth_local: Date, target_local: Date) -> Date:
 
 
 def _next_birthday(birth_local: Date, last_bday: Date) -> Date:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._next_birthday
+    # purpose: Return the next birthday after last_bday.
+    #          For Feb 29 births, returns Feb 28 in non-leap years, Feb 29 in leap.
+    # inputs: birth_local — original birth date; last_bday — most recent birthday
+    # returns: Date of next birthday
+    # side_effects: none
+    # error_behavior: ValueError on invalid date components
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._next_birthday
     """Return the next birthday after last_bday.
     For Feb 29 births, returns Feb 28 in non-leap years, Feb 29 in leap years."""
     return _clamp_birthday(birth_local, last_bday.year + 1)
 
 
 def _age_years_decimal(birth_local: Date, target_local: Date) -> float:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._age_years_decimal
+    # purpose: Age in years as a decimal, using actual birthday interval denominator.
+    #          Uses exact interval between last and next birthday as denominator.
+    #          Clamps Feb 29 to Feb 28 in non-leap years.
+    # inputs: birth_local, target_local — dates
+    # returns: float age_years (>= 0.0)
+    # side_effects: none
+    # error_behavior: ZeroDivisionError if interval_days <= 0 (malformed dates)
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._age_years_decimal
     """Age in years as a decimal, using actual birthday interval denominator.
 
     Uses the exact interval between last and next birthday as denominator.
@@ -161,6 +209,13 @@ def _age_years_decimal(birth_local: Date, target_local: Date) -> float:
 
 
 class FirdarContext:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
+    # purpose: Hold the full firdar calculation result (major/minor lords, ages,
+    #          cycle info, subperiod data).
+    # inputs: All keyword-only parameters defining period state
+    # side_effects: none
+    # error_behavior: None (pure data storage)
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.FirdarContext.__init__
     """Holds the full firdar calculation result."""
 
     def __init__(

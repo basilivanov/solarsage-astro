@@ -919,8 +919,9 @@ def build_activation_layer(
                     sun_house=natal_sun_house,
                     canon=firdar_canon,
                 )
-                major_strength = _get_period_strength(_load_activation_rules(), "firdar_major")
-                minor_strength = _get_period_strength(_load_activation_rules(), "firdar_minor")
+                ar = _load_activation_rules()
+                major_strength = _get_period_strength(ar, "firdar_major")
+                minor_strength = _get_period_strength(ar, "firdar_minor")
                 firdar_ctx = (firdar_result, major_strength, minor_strength)
             else:
                 firdar_result, major_strength, minor_strength = firdar_ctx
