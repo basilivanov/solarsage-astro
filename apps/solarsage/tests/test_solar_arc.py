@@ -150,3 +150,51 @@ def test_solar_arc_deterministic():
     ids2 = [a["id"] for a in resp2.json()["activation_layer"]["activations"]
             if a["technique"] == "solar_arc"]
     assert ids1 == ids2
+
+
+# ── Missing orb key ──────────────────────────────────────────────────────
+
+
+def test_missing_solar_arc_orb_key():
+    """Missing solar_arc.orb raises KeyError."""
+    from solarsage.services.progressions import _get_progression_orb
+    from solarsage.services.progressions import _load_activation_rules
+    import copy
+    rules = _load_activation_rules()
+    del rules["techniques"]["solar_arc"]["orb"]
+    # Patch the internal function to use these rules
+    import solarsage.services.progressions as pm
+    original_load = pm._load_activation_rules
+    pm._load_activation_rules = lambda: rules
+    try:
+        with pytest.raises(KeyError, match="solar_arc.orb"):
+            _get_progression_orb("solar_arc")
+    finally:
+        pm._load_activation_rules = original_load
+
+
+def test_missing_secondary_progression_orb_key():
+    """Missing secondary_progression.orb raises KeyError."""
+    from solarsage.services.progressions import _get_progression_orb
+    from solarsage.services.progressions import _load_activation_rules
+    import copy
+    rules = _load_activation_rules()
+    del rules["techniques"]["secondary_progression"]["orb"]
+    import solarsage.services.progressions as pm
+    original_load = pm._load_activation_rules
+    pm._load_activation_rules = lambda: rules
+    try:
+        with pytest.raises(KeyError, match="secondary_progression.orb"):
+            _get_progression_orb("secondary_progression")
+    finally:
+        pm._load_activation_rules = original_load
+
+
+# ── Shared aspect canon ─────────────────────────────────────────────────
+
+
+def test_progression_aspects_match_builder_map():
+    """Progression ASPECT_ANGLES matches activation_builder's canonical map."""
+    from solarsage.services.progressions import ASPECT_ANGLES as prog_angles
+    from solarsage.services.activation_builder import ASPECT_ANGLES as build_angles
+    assert prog_angles == build_angles, "Aspect maps must be identical"

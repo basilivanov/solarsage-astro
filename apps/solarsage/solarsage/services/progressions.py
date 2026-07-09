@@ -124,15 +124,21 @@ def _load_activation_rules() -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def _get_progression_orb() -> float:
-    """Load progression orb from canon. Both solar_arc and secondary_progression
-    use 1.0° max orb. Returns float; raises KeyError if missing."""
+def _get_progression_orb(technique: str) -> float:
+    """Load progression orb from canon for a specific technique.
+    Raises KeyError if missing or non-numeric."""
     rules = _load_activation_rules()
     techniques = rules.get("techniques", {})
-    orb = techniques.get("solar_arc", {}).get("orb")
+    tech = techniques.get(technique)
+    if tech is None:
+        raise KeyError(f"{technique}.orb not found in activation_rules.v1.yml")
+    orb = tech.get("orb")
     if orb is None:
-        raise KeyError("solar_arc.orb not found in activation_rules.v1.yml")
-    return float(orb)
+        raise KeyError(f"{technique}.orb not found in activation_rules.v1.yml")
+    try:
+        return float(orb)
+    except (ValueError, TypeError):
+        raise KeyError(f"{technique}.orb is non-numeric: {orb}")
 
 
 def _get_progression_strength(kind: str, rules_override: dict | None = None) -> float:
@@ -308,7 +314,7 @@ def calculate_solar_arc_context(
     for lot in lots:
         solar_arc_positions[f"LOT_{lot['name']}"] = _normalize(lot["longitude"] + solar_arc_delta)
 
-    max_orb = _get_progression_orb()
+    max_orb = _get_progression_orb("solar_arc")
 
     return SolarArcContext(
         birth_jd=birth_jd,
@@ -450,7 +456,7 @@ def calculate_secondary_progression_context(
     for lot in lots:
         lot["house"] = _find_house(lot["longitude"], natal_houses_raw)
 
-    max_orb = _get_progression_orb()
+    max_orb = _get_progression_orb("secondary_progression")
 
     return SecondaryProgressionContext(
         birth_jd=birth_jd,
@@ -485,9 +491,10 @@ def solar_arc_aspects(ctx: SolarArcContext) -> list[dict[str, Any]]:
         if not k.startswith("ANGLE_") and not k.startswith("LOT_")
     )
 
+    base_strength = _get_progression_strength("solar_arc_aspect")
+
     for sp_key in source_planets:
         sp_lon = ctx.solar_arc_positions[sp_key]
-        sp_display = sp_key.capitalize()
 
         # Against natal personal planets
         for tp_name in personal_targets:
@@ -495,16 +502,16 @@ def solar_arc_aspects(ctx: SolarArcContext) -> list[dict[str, Any]]:
             if not tp_data:
                 continue
             tp_lon = tp_data["longitude"]
-            _check_and_add_aspect(aspects, sp_key, sp_lon, tp_name, "planet", tp_lon, ctx)
+            _check_and_add_aspect(aspects, sp_key, sp_lon, tp_name, "planet", tp_lon, ctx, base_strength)
 
         # Against natal angles
         for aname in sorted(ctx.natal_angles.keys()):
             alon = ctx.natal_angles[aname]
-            _check_and_add_aspect(aspects, sp_key, sp_lon, aname, "angle", alon, ctx)
+            _check_and_add_aspect(aspects, sp_key, sp_lon, aname, "angle", alon, ctx, base_strength)
 
         # Against natal lots
         for lot in ctx.natal_lots:
-            _check_and_add_aspect(aspects, sp_key, sp_lon, lot["name"], "lot", lot["longitude"], ctx)
+            _check_and_add_aspect(aspects, sp_key, sp_lon, lot["name"], "lot", lot["longitude"], ctx, base_strength)
 
     return aspects
 
@@ -517,6 +524,7 @@ def _check_and_add_aspect(
     target_type: str,
     target_lon: float,
     ctx: SolarArcContext | SecondaryProgressionContext,
+    base_strength: float,
 ) -> None:
     """Check if source and target are within orb for any canonical aspect."""
     adist = _angular_distance(source_lon, target_lon)
@@ -533,7 +541,8 @@ def _check_and_add_aspect(
         return
 
     orb = round(best_diff, 4)
-    strength = round(min(1.0, 0.7 * max(0, 1 - orb / ctx.max_orb)), 4)
+    orb_factor = round(max(0, 1 - orb / ctx.max_orb), 4)
+    strength = round(min(1.0, base_strength * orb_factor), 4)
     polarity = _classify_polarity(best_aspect)
 
     aspects.append({
@@ -547,6 +556,8 @@ def _check_and_add_aspect(
         "strength": strength,
         "polarity": polarity,
         "angular_distance": round(adist, 4),
+        "base_strength": base_strength,
+        "orb_factor": orb_factor,
     })
 
 
@@ -557,19 +568,20 @@ def progressed_moon_aspects(ctx: SecondaryProgressionContext) -> list[dict[str, 
     """Compute progressed Moon aspects to natal planets, angles, and lots."""
     aspects: list[dict[str, Any]] = []
     moon_lon = ctx.progressed_moon_lon
+    base_strength = _get_progression_strength("progressed_moon_aspect")
 
     # Against all natal planets (sorted for determinism)
     for pname in sorted(ctx.natal_positions.keys()):
         pdata = ctx.natal_positions[pname]
-        _check_and_add_aspect(aspects, "MOON", moon_lon, pname.upper(), "planet", pdata["longitude"], ctx)
+        _check_and_add_aspect(aspects, "MOON", moon_lon, pname.upper(), "planet", pdata["longitude"], ctx, base_strength)
 
     # Against natal angles (sorted for determinism)
     for aname in sorted(ctx.natal_angles.keys()):
-        _check_and_add_aspect(aspects, "MOON", moon_lon, aname, "angle", ctx.natal_angles[aname], ctx)
+        _check_and_add_aspect(aspects, "MOON", moon_lon, aname, "angle", ctx.natal_angles[aname], ctx, base_strength)
 
     # Against natal lots
     for lot in ctx.natal_lots:
-        _check_and_add_aspect(aspects, "MOON", moon_lon, lot["name"], "lot", lot["longitude"], ctx)
+        _check_and_add_aspect(aspects, "MOON", moon_lon, lot["name"], "lot", lot["longitude"], ctx, base_strength)
 
     return aspects
 
@@ -587,13 +599,15 @@ def progressed_sun_transitions(
     """Detect progressed Sun near sign boundaries or natal house cusps."""
     transitions: list[dict[str, Any]] = []
     ps_lon = ctx.progressed_sun_lon
+    sign_base = _get_progression_strength("progressed_sun_sign_transition")
+    house_base = _get_progression_strength("progressed_sun_house_transition")
 
     # Sign boundaries
     current_sign_idx = int(ps_lon / 30)
     next_boundary = (current_sign_idx + 1) * 30.0
     prev_boundary = current_sign_idx * 30.0
 
-    # Distance to next sign boundary (forward)
+    # Distance to next sign boundary (forward) — handles wrap-around
     dist_to_next = next_boundary - ps_lon
     if dist_to_next < 0:
         dist_to_next += 360.0
@@ -603,25 +617,40 @@ def progressed_sun_transitions(
     signs = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
              "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 
+    # Forward transition (toward next sign)
     if dist_to_next <= max_orb:
         target_sign_idx = (current_sign_idx + 1) % 12
+        orb_factor = round(max(0, 1 - dist_to_next / max_orb), 4)
         transitions.append({
             "transition_type": "sign",
             "current_sign": signs[current_sign_idx],
+            "previous_sign": None,
             "next_sign": signs[target_sign_idx],
+            "current_house": None,
+            "target_house": None,
             "boundary_longitude": round(next_boundary, 4),
             "distance_to_boundary": round(dist_to_next, 4),
-            "strength": round(min(1.0, 0.5 * max(0, 1 - dist_to_next / max_orb)), 4),
+            "strength": round(min(1.0, sign_base * orb_factor), 4),
+            "base_strength": sign_base,
+            "orb_factor": orb_factor,
         })
 
+    # Backward transition (from previous sign) — only for signs > 0,
+    # since Pisces→Aries is handled by the forward case with wrap-around
     if dist_to_prev <= max_orb and current_sign_idx > 0:
+        orb_factor = round(max(0, 1 - dist_to_prev / max_orb), 4)
         transitions.append({
             "transition_type": "sign",
             "current_sign": signs[current_sign_idx],
             "previous_sign": signs[current_sign_idx - 1],
+            "next_sign": None,
+            "current_house": None,
+            "target_house": None,
             "boundary_longitude": round(prev_boundary, 4),
             "distance_to_boundary": round(dist_to_prev, 4),
-            "strength": round(min(1.0, 0.5 * max(0, 1 - dist_to_prev / max_orb)), 4),
+            "strength": round(min(1.0, sign_base * orb_factor), 4),
+            "base_strength": sign_base,
+            "orb_factor": orb_factor,
         })
 
     # Natal house cusp boundaries
@@ -630,13 +659,19 @@ def progressed_sun_transitions(
         cusp = h["cusp"]
         dist = _angular_distance(ps_lon, cusp)
         if dist <= max_orb:
+            orb_factor = round(max(0, 1 - dist / max_orb), 4)
             transitions.append({
                 "transition_type": "house",
+                "current_sign": None,
+                "previous_sign": None,
+                "next_sign": None,
                 "current_house": _find_house(ps_lon, natal_houses_raw),
                 "target_house": h["number"],
                 "boundary_longitude": round(cusp, 4),
                 "distance_to_boundary": round(dist, 4),
-                "strength": round(min(1.0, 0.5 * max(0, 1 - dist / max_orb)), 4),
+                "strength": round(min(1.0, house_base * orb_factor), 4),
+                "base_strength": house_base,
+                "orb_factor": orb_factor,
             })
 
     return transitions

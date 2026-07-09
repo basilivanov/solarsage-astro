@@ -1370,7 +1370,8 @@ def build_activation_layer(
             base_strength = _get_progression_strength("solar_arc_aspect")
 
             for asp in aspects:
-                source_clean = asp["source_key"].capitalize()
+                source_key = asp["source_key"]
+                source_display = _display_name(source_key)
                 target_key = asp["target_key"]
                 target_type = asp["target_type"]
                 aspect_name = asp["aspect"]
@@ -1380,13 +1381,13 @@ def build_activation_layer(
 
                 if target_type == "planet":
                     tgt = target_key
-                    aid = f"solar_arc__{source_clean}__{aspect_name.upper()}__NATAL_{target_key}"
+                    aid = f"solar_arc__{source_key}__{aspect_name.upper()}__NATAL_{target_key}"
                 elif target_type == "angle":
                     tgt = target_key
-                    aid = f"solar_arc__{source_clean}__{aspect_name.upper()}__NATAL_ANGLE_{target_key}"
+                    aid = f"solar_arc__{source_key}__{aspect_name.upper()}__NATAL_ANGLE_{target_key}"
                 else:
                     tgt = target_key
-                    aid = f"solar_arc__{source_clean}__{aspect_name.upper()}__NATAL_LOT_{target_key}"
+                    aid = f"solar_arc__{source_key}__{aspect_name.upper()}__NATAL_LOT_{target_key}"
 
                 ev = ActivationEvidence(
                     id=aid,
@@ -1419,6 +1420,7 @@ def build_activation_layer(
                         "natal_sun_longitude": round(sa_ctx.natal_sun_lon, 4),
                         "progressed_sun_longitude": round(sa_ctx.progressed_sun_lon, 4),
                         "solar_arc_source_longitude": round(asp["source_lon"], 4),
+                        "source_longitude": round(asp["source_lon"], 4),
                         "target_longitude": round(asp["target_lon"], 4),
                         "angular_distance": asp["angular_distance"],
                         "aspect_angle": ASPECT_ANGLES.get(aspect_name, 0),
