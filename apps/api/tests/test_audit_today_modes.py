@@ -49,11 +49,31 @@ async def test_live_mode_calls_today_service_and_writes_artifact_source(tmp_path
     class FakePayload:
         def model_dump(self, mode="json", by_alias=False):
             return {
-                "meta": {"generated_at": "2026-07-08T10:00:00Z", "cached": True},
+                "meta": {
+                    "generated_at": "2026-07-08T10:00:00Z",
+                    "cached": True,
+                    "scoring_version": "ss-scoring-2.0",
+                    "payload_version": "today.v2",
+                    "frontend_payload_version": 2,
+                },
                 "headline": "live",
                 "day_status": "steady",
                 "concrete_advice": {"rows": []},
                 "why_this_happens": {"sections": []},
+                "v2": {
+                    "activation_evidence": [{
+                        "id": "t2n__SUN__MOON",
+                        "technique": "transit_to_natal",
+                        "technique_family": "transit",
+                        "target_type": "planet",
+                        "target_key": "MOON",
+                        "kind": "aspect",
+                        "strength": 0.5,
+                        "evidence": "test",
+                        "phase": "background",
+                        "polarity": "neutral",
+                    }],
+                },
             }
 
     fake_user = SimpleNamespace(id="user-1", tg_user_id=1, tg_username="u")
@@ -331,3 +351,286 @@ async def test_frozen_mode_does_not_call_today_service(tmp_path, monkeypatch):
     assert (out / "debug" / "final_today_payload.normalized.json").exists()
     assert oracle_saw_payload["ok"] is True
 # W9 rework01 regression: frozen payload before oracles
+
+
+@pytest.mark.asyncio
+async def test_live_audit_records_v2_runtime_flags(tmp_path, monkeypatch):
+    out = tmp_path / "audit"
+    out.mkdir()
+
+    class FakePayload:
+        def model_dump(self, mode="json", by_alias=False):
+            return {
+                "meta": {
+                    "scoring_version": "ss-scoring-2.0",
+                    "payload_version": "today.v2",
+                    "frontend_payload_version": 2,
+                },
+                "headline": "live",
+                "day_status": "steady",
+                "concrete_advice": {},
+                "why_this_happens": {},
+                "v2": {
+                    "activation_evidence": [{
+                        "id": "t2n__SUN__MOON",
+                        "technique": "transit_to_natal",
+                        "technique_family": "transit",
+                        "target_type": "planet",
+                        "target_key": "MOON",
+                        "kind": "aspect",
+                        "strength": 0.5,
+                        "evidence": "test",
+                        "phase": "background",
+                        "polarity": "neutral",
+                    }],
+                },
+            }
+
+    fake_user = SimpleNamespace(id="user-1", tg_user_id=1, tg_username="u")
+    fake_profile = SimpleNamespace(
+        is_onboarded=True, gender="female",
+        birthday=MagicMock(isoformat=lambda: "1990-01-15"),
+        birth_time=MagicMock(strftime=lambda fmt: "12:00"),
+        birth_city="Moscow", birth_lat=55.75, birth_lon=37.61, birth_tz="Europe/Moscow",
+        current_city="Moscow", current_lat=55.75, current_lon=37.61, current_tz="Europe/Moscow",
+    )
+    mock_client = AsyncMock()
+    mock_client.get_transits = AsyncMock(return_value={"planets": []})
+    mock_client.get_activation_layer = AsyncMock(return_value={
+        "schema_version": "activation-layer.v1",
+        "activation_layer_version": "al-1.0",
+        "calculation_version": "ss-calc-1.1.0",
+        "target_date": "2026-07-08", "target_time": "12:00", "target_tz": "Europe/Moscow",
+        "house_system": "PLACIDUS",
+        "activations": [{
+            "id": "t2n__SUN__MOON", "technique": "transit_to_natal", "technique_family": "transit",
+            "target_type": "planet", "target_key": "MOON", "kind": "aspect", "strength": 0.5,
+            "evidence": "test", "phase": "background", "polarity": "neutral",
+        }],
+        "by_planet": {"MOON": ["t2n__SUN__MOON"]}, "by_house": {}, "by_lot": {}, "by_angle": {}, "warnings": [],
+    })
+    mock_client.close = AsyncMock()
+    today_svc = MagicMock()
+    today_svc.invalidate_cache = AsyncMock()
+    today_svc.get_today_payload = AsyncMock(return_value=FakePayload())
+
+    class FakeNatal:
+        def model_dump(self, mode="json", by_alias=False):
+            return {"house_system": "PLACIDUS", "planets": [], "houses": []}
+
+    class FakeNatalService:
+        def __init__(self, db=None):
+            pass
+        async def get_or_build_natal_context(self, user_id):
+            return FakeNatal()
+        @staticmethod
+        def compute_profile_hash(profile):
+            return "hash"
+
+    class _CM:
+        async def __aenter__(self):
+            return MagicMock()
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(audit_mod, "SessionLocal", lambda: _CM())
+    monkeypatch.setattr(audit_mod, "load_user_and_profile", AsyncMock(return_value=(fake_user, fake_profile)))
+    monkeypatch.setattr(audit_mod, "load_raw_natal_sidecar", AsyncMock(return_value=None))
+    monkeypatch.setattr(audit_mod, "get_solarsage_client", lambda: mock_client)
+    monkeypatch.setattr(audit_mod, "AccessService", lambda db: MagicMock(can_access_day=AsyncMock(return_value=SimpleNamespace(state="subscription"))))
+    monkeypatch.setattr(audit_mod, "NatalContextService", FakeNatalService)
+    monkeypatch.setattr(audit_mod, "NormalizationService", lambda: MagicMock(normalize_day=MagicMock(return_value=[])))
+    monkeypatch.setattr(audit_mod, "DayDeltaService", lambda a, b: MagicMock(compute_deltas=MagicMock(return_value=[])))
+    monkeypatch.setattr(audit_mod, "filter_day_scored_signals", lambda s: [])
+    monkeypatch.setattr(audit_mod, "ScoringService", lambda: MagicMock(score_day=MagicMock(return_value={"day_status": "steady", "sphere_scores": {}, "top_signals": []})))
+    monkeypatch.setattr(audit_mod, "SemanticService", lambda: MagicMock(build_semantic_layer=MagicMock(return_value={}), build_why_contexts=MagicMock(return_value={})))
+    monkeypatch.setattr(audit_mod, "TodayService", lambda db: today_svc)
+
+    async def _oracles(**kwargs):
+        d = kwargs["out_dir"]
+        (d / "scoring_intermediate_table.csv").write_text("x\n", encoding="utf-8")
+        (d / "scoring_oracle_comparison.json").write_text("{}", encoding="utf-8")
+        (d / "astronomy_oracle_summary.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(audit_mod, "run_oracles", _oracles)
+
+    from app.core import config as cfg
+    monkeypatch.setattr(cfg.settings, "solarsage_v2_enabled", True)
+    monkeypatch.setattr(cfg.settings, "solarsage_v2_dual_run", False)
+    monkeypatch.setattr(cfg.settings, "solarsage_v2_frontend_enabled", False)
+
+    args = audit_mod.parse_args(["--user-id", "user-1", "--date", "2026-07-08", "--out", str(out), "--mode", "live-production", "--skip-oracles"])
+    args.resolved_mode = "live-production"
+    await audit_mod.run_audit(args)
+
+    live_roots = list((out / "live").glob("*"))
+    assert live_roots
+    src = json.loads((live_roots[0] / "artifact_source.json").read_text(encoding="utf-8"))
+    assert src["solarsage_v2_enabled"] is True
+    assert src["solarsage_v2_frontend_enabled"] is False
+    assert src["selected_scoring_version"] == "ss-scoring-2.0"
+    assert src["final_payload_version"] == "today.v2"
+    assert src["final_frontend_payload_version"] == 2
+    assert src["final_has_v2_block"] is True
+    assert src["final_v2_activation_evidence_count"] == 1
+    assert src["sidecar_activation_count"] == 1
+    assert src["activation_evidence_unmapped_count"] == 0
+    mapping = json.loads((live_roots[0] / "activation_evidence_mapping.json").read_text(encoding="utf-8"))
+    assert mapping["status"] == "ok"
+    assert mapping["unmapped_ids"] == []
+
+
+@pytest.mark.asyncio
+async def test_live_audit_v2_payload_missing_v2_block_fails(tmp_path, monkeypatch):
+    out = tmp_path / "audit"
+    out.mkdir()
+
+    class FakePayload:
+        def model_dump(self, mode="json", by_alias=False):
+            return {
+                "meta": {"scoring_version": "ss-scoring-2.0", "payload_version": "today.v2", "frontend_payload_version": 2},
+                "headline": "live", "day_status": "steady", "concrete_advice": {}, "why_this_happens": {},
+                "v2": None,
+            }
+
+    fake_user = SimpleNamespace(id="user-1", tg_user_id=1, tg_username="u")
+    fake_profile = SimpleNamespace(
+        is_onboarded=True, gender="female",
+        birthday=MagicMock(isoformat=lambda: "1990-01-15"),
+        birth_time=MagicMock(strftime=lambda fmt: "12:00"),
+        birth_city="Moscow", birth_lat=55.75, birth_lon=37.61, birth_tz="Europe/Moscow",
+        current_city="Moscow", current_lat=55.75, current_lon=37.61, current_tz="Europe/Moscow",
+    )
+    mock_client = AsyncMock()
+    mock_client.get_transits = AsyncMock(return_value={"planets": []})
+    mock_client.get_activation_layer = AsyncMock(return_value={
+        "schema_version": "activation-layer.v1", "activation_layer_version": "al-1.0",
+        "calculation_version": "ss-calc-1.1.0", "target_date": "2026-07-08", "target_time": "12:00",
+        "target_tz": "Europe/Moscow", "house_system": "PLACIDUS",
+        "activations": [{"id": "A", "technique": "transit_to_natal", "technique_family": "transit",
+                         "target_type": "planet", "target_key": "MOON", "kind": "aspect", "strength": 0.5,
+                         "evidence": "t", "phase": "background", "polarity": "neutral"}],
+        "by_planet": {"MOON": ["A"]}, "by_house": {}, "by_lot": {}, "by_angle": {}, "warnings": [],
+    })
+    mock_client.close = AsyncMock()
+    today_svc = MagicMock()
+    today_svc.invalidate_cache = AsyncMock()
+    today_svc.get_today_payload = AsyncMock(return_value=FakePayload())
+
+    class FakeNatal:
+        def model_dump(self, mode="json", by_alias=False):
+            return {"house_system": "PLACIDUS", "planets": [], "houses": []}
+    class FakeNatalService:
+        def __init__(self, db=None): pass
+        async def get_or_build_natal_context(self, user_id): return FakeNatal()
+        @staticmethod
+        def compute_profile_hash(profile): return "hash"
+    class _CM:
+        async def __aenter__(self): return MagicMock()
+        async def __aexit__(self, *a): return False
+
+    monkeypatch.setattr(audit_mod, "SessionLocal", lambda: _CM())
+    monkeypatch.setattr(audit_mod, "load_user_and_profile", AsyncMock(return_value=(fake_user, fake_profile)))
+    monkeypatch.setattr(audit_mod, "load_raw_natal_sidecar", AsyncMock(return_value=None))
+    monkeypatch.setattr(audit_mod, "get_solarsage_client", lambda: mock_client)
+    monkeypatch.setattr(audit_mod, "AccessService", lambda db: MagicMock(can_access_day=AsyncMock(return_value=SimpleNamespace(state="subscription"))))
+    monkeypatch.setattr(audit_mod, "NatalContextService", FakeNatalService)
+    monkeypatch.setattr(audit_mod, "NormalizationService", lambda: MagicMock(normalize_day=MagicMock(return_value=[])))
+    monkeypatch.setattr(audit_mod, "DayDeltaService", lambda a, b: MagicMock(compute_deltas=MagicMock(return_value=[])))
+    monkeypatch.setattr(audit_mod, "filter_day_scored_signals", lambda s: [])
+    monkeypatch.setattr(audit_mod, "ScoringService", lambda: MagicMock(score_day=MagicMock(return_value={"day_status": "steady", "sphere_scores": {}, "top_signals": []})))
+    monkeypatch.setattr(audit_mod, "SemanticService", lambda: MagicMock(build_semantic_layer=MagicMock(return_value={}), build_why_contexts=MagicMock(return_value={})))
+    monkeypatch.setattr(audit_mod, "TodayService", lambda db: today_svc)
+    monkeypatch.setattr(audit_mod, "run_oracles", AsyncMock())
+
+    args = audit_mod.parse_args(["--user-id", "u", "--date", "2026-07-08", "--out", str(out), "--mode", "live-production", "--skip-oracles"])
+    args.resolved_mode = "live-production"
+    with pytest.raises(SystemExit, match="declares today.v2 but has no v2 block"):
+        await audit_mod.run_audit(args)
+
+
+@pytest.mark.asyncio
+async def test_live_audit_v2_payload_unmapped_sidecar_activation_fails(tmp_path, monkeypatch):
+    out = tmp_path / "audit"
+    out.mkdir()
+
+    class FakePayload:
+        def model_dump(self, mode="json", by_alias=False):
+            return {
+                "meta": {"scoring_version": "ss-scoring-2.0", "payload_version": "today.v2", "frontend_payload_version": 2},
+                "headline": "live", "day_status": "steady", "concrete_advice": {}, "why_this_happens": {},
+                "v2": {"activation_evidence": [{
+                    "id": "B", "technique": "transit_to_natal", "technique_family": "transit",
+                    "target_type": "planet", "target_key": "MOON", "kind": "aspect", "strength": 0.5,
+                    "evidence": "t", "phase": "background", "polarity": "neutral",
+                }]},
+            }
+
+    fake_user = SimpleNamespace(id="user-1", tg_user_id=1, tg_username="u")
+    fake_profile = SimpleNamespace(
+        is_onboarded=True, gender="female",
+        birthday=MagicMock(isoformat=lambda: "1990-01-15"),
+        birth_time=MagicMock(strftime=lambda fmt: "12:00"),
+        birth_city="Moscow", birth_lat=55.75, birth_lon=37.61, birth_tz="Europe/Moscow",
+        current_city="Moscow", current_lat=55.75, current_lon=37.61, current_tz="Europe/Moscow",
+    )
+    mock_client = AsyncMock()
+    mock_client.get_transits = AsyncMock(return_value={"planets": []})
+    mock_client.get_activation_layer = AsyncMock(return_value={
+        "schema_version": "activation-layer.v1", "activation_layer_version": "al-1.0",
+        "calculation_version": "ss-calc-1.1.0", "target_date": "2026-07-08", "target_time": "12:00",
+        "target_tz": "Europe/Moscow", "house_system": "PLACIDUS",
+        "activations": [{"id": "A", "technique": "transit_to_natal", "technique_family": "transit",
+                         "target_type": "planet", "target_key": "MOON", "kind": "aspect", "strength": 0.5,
+                         "evidence": "t", "phase": "background", "polarity": "neutral"}],
+        "by_planet": {"MOON": ["A"]}, "by_house": {}, "by_lot": {}, "by_angle": {}, "warnings": [],
+    })
+    mock_client.close = AsyncMock()
+    today_svc = MagicMock()
+    today_svc.invalidate_cache = AsyncMock()
+    today_svc.get_today_payload = AsyncMock(return_value=FakePayload())
+
+    class FakeNatal:
+        def model_dump(self, mode="json", by_alias=False):
+            return {"house_system": "PLACIDUS", "planets": [], "houses": []}
+    class FakeNatalService:
+        def __init__(self, db=None): pass
+        async def get_or_build_natal_context(self, user_id): return FakeNatal()
+        @staticmethod
+        def compute_profile_hash(profile): return "hash"
+    class _CM:
+        async def __aenter__(self): return MagicMock()
+        async def __aexit__(self, *a): return False
+
+    monkeypatch.setattr(audit_mod, "SessionLocal", lambda: _CM())
+    monkeypatch.setattr(audit_mod, "load_user_and_profile", AsyncMock(return_value=(fake_user, fake_profile)))
+    monkeypatch.setattr(audit_mod, "load_raw_natal_sidecar", AsyncMock(return_value=None))
+    monkeypatch.setattr(audit_mod, "get_solarsage_client", lambda: mock_client)
+    monkeypatch.setattr(audit_mod, "AccessService", lambda db: MagicMock(can_access_day=AsyncMock(return_value=SimpleNamespace(state="subscription"))))
+    monkeypatch.setattr(audit_mod, "NatalContextService", FakeNatalService)
+    monkeypatch.setattr(audit_mod, "NormalizationService", lambda: MagicMock(normalize_day=MagicMock(return_value=[])))
+    monkeypatch.setattr(audit_mod, "DayDeltaService", lambda a, b: MagicMock(compute_deltas=MagicMock(return_value=[])))
+    monkeypatch.setattr(audit_mod, "filter_day_scored_signals", lambda s: [])
+    monkeypatch.setattr(audit_mod, "ScoringService", lambda: MagicMock(score_day=MagicMock(return_value={"day_status": "steady", "sphere_scores": {}, "top_signals": []})))
+    monkeypatch.setattr(audit_mod, "SemanticService", lambda: MagicMock(build_semantic_layer=MagicMock(return_value={}), build_why_contexts=MagicMock(return_value={})))
+    monkeypatch.setattr(audit_mod, "TodayService", lambda db: today_svc)
+    monkeypatch.setattr(audit_mod, "run_oracles", AsyncMock())
+
+    args = audit_mod.parse_args(["--user-id", "u", "--date", "2026-07-08", "--out", str(out), "--mode", "live-production", "--skip-oracles"])
+    args.resolved_mode = "live-production"
+    with pytest.raises(SystemExit, match="does not represent all sidecar activations"):
+        await audit_mod.run_audit(args)
+
+
+def test_activation_evidence_mapping_helpers_pure():
+    mapping = audit_mod.build_activation_evidence_mapping(
+        mode="live-production",
+        payload={
+            "meta": {"payload_version": "today.v2"},
+            "v2": {"activation_evidence": [{"id": "A"}]},
+        },
+        sidecar_layer={"activations": [{"id": "A"}, {"id": "B"}]},
+        filter_policy="all_sidecar_ids_required",
+    )
+    assert mapping["status"] == "failed"
+    assert mapping["unmapped_ids"] == ["B"]
+    assert "A" in mapping["mapped_ids"]

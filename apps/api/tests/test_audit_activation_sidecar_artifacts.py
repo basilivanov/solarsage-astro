@@ -108,8 +108,14 @@ def _common_monkeypatch(monkeypatch, *, sidecar_ok: bool, v2_enabled: bool = Tru
     today_svc = MagicMock()
     today_svc.invalidate_cache = AsyncMock()
     today_svc.get_today_payload = AsyncMock(return_value=MagicMock(model_dump=lambda **k: {
-        "meta": {}, "headline": "x", "day_status": "steady",
+        "meta": {
+            "scoring_version": 1,
+            "payload_version": "today.v1",
+            "frontend_payload_version": 1,
+        },
+        "headline": "x", "day_status": "steady",
         "concrete_advice": {}, "why_this_happens": {},
+        "v2": None,
     }))
     monkeypatch.setattr(audit_mod, "TodayService", lambda db: today_svc)
 

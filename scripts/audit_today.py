@@ -39,13 +39,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import hashlib
 import json
 import subprocess
 import sys
 import shutil
 from datetime import date as Date
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 from dataclasses import dataclass
 
 
@@ -106,6 +107,143 @@ def to_jsonable(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(key): to_jsonable(item) for key, item in value.items()}
     return value
+
+
+def _get_meta(payload: dict[str, Any]) -> dict[str, Any]:
+    meta = payload.get("meta")
+    if meta is None:
+        meta = payload.get("Meta")
+    return meta if isinstance(meta, dict) else {}
+
+
+def _meta_get(meta: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in meta and meta[key] is not None:
+            return meta[key]
+    return None
+
+
+def _get_payload_v2_block(payload: dict[str, Any]) -> dict[str, Any] | None:
+    block = payload.get("v2")
+    if block is None:
+        block = payload.get("V2")
+    return block if isinstance(block, dict) else None
+
+
+def _extract_sidecar_activation_ids(layer: Any) -> set[str]:
+    if layer is None:
+        return set()
+    if hasattr(layer, "activations"):
+        acts = getattr(layer, "activations") or []
+        ids: set[str] = set()
+        for act in acts:
+            aid = getattr(act, "id", None)
+            if aid is None and isinstance(act, dict):
+                aid = act.get("id")
+            if aid:
+                ids.add(str(aid))
+        return ids
+    if isinstance(layer, dict):
+        acts = layer.get("activations") or []
+        return {str(a.get("id")) for a in acts if isinstance(a, dict) and a.get("id")}
+    return set()
+
+
+def _extract_payload_activation_ids(payload: dict[str, Any]) -> set[str]:
+    block = _get_payload_v2_block(payload)
+    if not block:
+        return set()
+    evidence = block.get("activation_evidence")
+    if evidence is None:
+        evidence = block.get("activationEvidence")
+    if not isinstance(evidence, list):
+        return set()
+    ids: set[str] = set()
+    for item in evidence:
+        if not isinstance(item, dict):
+            # pydantic model dumped may already be dict via to_jsonable
+            if hasattr(item, "id"):
+                ids.add(str(getattr(item, "id")))
+            continue
+        aid = item.get("id") or item.get("source_activation_id") or item.get("sourceActivationId")
+        if aid:
+            ids.add(str(aid))
+    return ids
+
+
+def _sha256_ids(ids: Iterable[str]) -> str:
+    joined = "\n".join(sorted(str(i) for i in ids))
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+
+
+def build_activation_evidence_mapping(
+    *,
+    mode: str,
+    payload: dict[str, Any],
+    sidecar_layer: Any,
+    filter_policy: str = "all_sidecar_ids_required",
+) -> dict[str, Any]:
+    meta = _get_meta(payload)
+    payload_version = _meta_get(meta, "payload_version", "payloadVersion")
+    sidecar_ids = _extract_sidecar_activation_ids(sidecar_layer)
+    payload_ids = _extract_payload_activation_ids(payload)
+    mapped = sorted(sidecar_ids & payload_ids)
+    unmapped = sorted(sidecar_ids - payload_ids)
+    extra = sorted(payload_ids - sidecar_ids)
+
+    if mode != "live-production":
+        status = "frozen_baseline_not_live"
+        accepted = True
+    elif str(payload_version) not in ("today.v2",):
+        status = "not_applicable"
+        accepted = True
+    elif not sidecar_ids:
+        status = "ok"
+        accepted = True
+    elif unmapped and filter_policy == "all_sidecar_ids_required":
+        status = "failed"
+        accepted = False
+    else:
+        status = "ok"
+        accepted = True
+
+    return {
+        "mode": mode,
+        "payload_version": payload_version,
+        "sidecar_activation_count": len(sidecar_ids),
+        "payload_activation_evidence_count": len(payload_ids),
+        "sidecar_ids": sorted(sidecar_ids),
+        "payload_ids": sorted(payload_ids),
+        "mapped_ids": mapped,
+        "unmapped_ids": unmapped,
+        "extra_payload_ids": extra,
+        "accepted_unmapped": accepted,
+        "filter_policy": filter_policy,
+        "status": status,
+    }
+
+
+def assert_live_v2_payload_represents_sidecar(
+    *,
+    payload: dict[str, Any],
+    mapping: dict[str, Any],
+) -> None:
+    meta = _get_meta(payload)
+    payload_version = _meta_get(meta, "payload_version", "payloadVersion")
+    if str(payload_version) != "today.v2":
+        return
+    if _get_payload_v2_block(payload) is None:
+        raise SystemExit("ERROR: final payload declares today.v2 but has no v2 block")
+    sidecar_count = int(mapping.get("sidecar_activation_count") or 0)
+    payload_count = int(mapping.get("payload_activation_evidence_count") or 0)
+    if sidecar_count > 0 and payload_count == 0:
+        raise SystemExit("ERROR: final V2 payload has no activation evidence")
+    unmapped = mapping.get("unmapped_ids") or []
+    if unmapped and mapping.get("filter_policy") == "all_sidecar_ids_required":
+        raise SystemExit(
+            "ERROR: final V2 payload does not represent all sidecar activations: "
+            f"unmapped={unmapped}"
+        )
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -616,6 +754,24 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
 
         await client.close()
 
+        # Activation evidence mapping + live V2 contract assertions.
+        from app.core.config import settings as _settings
+
+        mapping = build_activation_evidence_mapping(
+            mode=mode,
+            payload=payload_json if isinstance(payload_json, dict) else {},
+            sidecar_layer=activation_layer if activation_layer_source == "sidecar" else None,
+            filter_policy="all_sidecar_ids_required",
+        )
+        write_json(debug_dir / "activation_evidence_mapping.json", mapping)
+        write_json(root_dir / "activation_evidence_mapping.json", mapping)
+
+        if is_live:
+            assert_live_v2_payload_represents_sidecar(
+                payload=payload_json if isinstance(payload_json, dict) else {},
+                mapping=mapping,
+            )
+
         # artifact_source.json — honest provenance for acceptance evidence
         try:
             git_head = subprocess.check_output(
@@ -625,6 +781,20 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             ).strip()
         except Exception:
             git_head = None
+
+        meta = _get_meta(payload_json if isinstance(payload_json, dict) else {})
+        selected_scoring_version = _meta_get(meta, "scoring_version", "scoringVersion")
+        final_payload_version = _meta_get(meta, "payload_version", "payloadVersion")
+        final_frontend_payload_version = _meta_get(
+            meta, "frontend_payload_version", "frontendPayloadVersion"
+        )
+        v2_block = _get_payload_v2_block(payload_json if isinstance(payload_json, dict) else {})
+        final_has_v2_block = v2_block is not None
+        payload_act_ids = _extract_payload_activation_ids(
+            payload_json if isinstance(payload_json, dict) else {}
+        )
+        sidecar_act_ids = set(mapping.get("sidecar_ids") or [])
+
         artifact_source = {
             "mode": mode,
             "final_payload_source": final_payload_source,
@@ -635,6 +805,20 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             "target_time": "12:00",
             "target_tz": target_tz,
             "git_head": git_head,
+            "solarsage_v2_enabled": bool(getattr(_settings, "solarsage_v2_enabled", False)),
+            "solarsage_v2_dual_run": bool(getattr(_settings, "solarsage_v2_dual_run", False)),
+            "solarsage_v2_frontend_enabled": bool(
+                getattr(_settings, "solarsage_v2_frontend_enabled", False)
+            ),
+            "selected_scoring_version": selected_scoring_version,
+            "final_payload_version": final_payload_version,
+            "final_frontend_payload_version": final_frontend_payload_version,
+            "final_has_v2_block": final_has_v2_block,
+            "final_v2_activation_evidence_count": len(payload_act_ids),
+            "sidecar_activation_count": len(sidecar_act_ids),
+            "sidecar_activation_ids_sha256": _sha256_ids(sidecar_act_ids),
+            "payload_activation_ids_sha256": _sha256_ids(payload_act_ids),
+            "activation_evidence_unmapped_count": len(mapping.get("unmapped_ids") or []),
         }
         write_json(root_dir / "artifact_source.json", artifact_source)
         write_json(debug_dir / "artifact_source.json", artifact_source)

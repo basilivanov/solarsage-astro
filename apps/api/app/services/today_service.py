@@ -398,7 +398,9 @@ class TodayService:
 
         # W-4.2: Build why-this-happens sections via LLM
         why_evidence_packet = None
-        if getattr(settings, "solarsage_v2_frontend_enabled", False):
+        if v2_selected:
+            if dual.v2_result is None:
+                raise RuntimeError("V2 selected but v2_result is missing")
             from app.services.semantic_v2_service import SemanticV2Service
             why_evidence_packet = SemanticV2Service().build_llm_evidence_packet(
                 day_status=scoring_result["day_status"],
@@ -463,12 +465,14 @@ class TodayService:
             sphere_scores=sphere_scores,
             important_items=important_items,
             lunar=None,
-            activation_layer=activation_layer if getattr(settings, "solarsage_v2_frontend_enabled", False) else None,
-            scoring_v2_result=dual.v2_result if getattr(settings, "solarsage_v2_frontend_enabled", False) else None,
+            activation_layer=activation_layer if v2_selected else None,
+            scoring_v2_result=dual.v2_result if v2_selected else None,
         )
 
         v2_block = None
-        if getattr(settings, "solarsage_v2_frontend_enabled", False):
+        if v2_selected:
+            if dual.v2_result is None:
+                raise RuntimeError("V2 selected but v2_result is missing")
             from app.services.semantic_v2_service import SemanticV2Service
             v2_block = SemanticV2Service().build_v2_block(
                 activation_layer=activation_layer,
@@ -523,6 +527,12 @@ class TodayService:
             sphere_scores=sphere_scores,
             v2=v2_block,
         )
+
+        # Defensive contract invariants: V2 identity requires a non-null V2 body.
+        if payload.meta.payload_version == TODAY_V2_PAYLOAD_VERSION and payload.v2 is None:
+            raise RuntimeError("TodayPayload declares today.v2 but v2 block is missing")
+        if payload.meta.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION and payload.v2 is None:
+            raise RuntimeError("TodayPayload frontend v2 identity requires v2 block")
 
         # W-5.2: Cache payload (with profile_hash in key)
         await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)

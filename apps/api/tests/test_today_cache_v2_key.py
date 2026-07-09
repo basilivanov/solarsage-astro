@@ -351,3 +351,182 @@ async def test_calendar_cache_identity_semantic_layer_matching_hit(db_session):
 
     status = await service._get_cached_day_status(user.id, Date(2026, 7, 8))
     assert status == "supportive"
+
+
+def test_expected_cache_identity_v2_frontend_off_uses_v2_frontend_version(monkeypatch):
+    from app.core.config import settings
+    from app.core.versions import (
+        ACTIVATION_LAYER_VERSION,
+        CALCULATION_VERSION,
+        SCORING_V2_VERSION,
+        V2_FRONTEND_PAYLOAD_VERSION,
+    )
+
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", True)
+    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", False)
+    uid = uuid.uuid4()
+    key = expected_cache_identity(user_id=uid, target_date="2026-07-08", profile_hash="abc")
+    assert str(key.scoring_version) == SCORING_V2_VERSION
+    assert key.calculation_version == CALCULATION_VERSION
+    assert key.activation_layer_version == ACTIVATION_LAYER_VERSION
+    assert key.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION
+
+
+def test_expected_cache_identity_v1_uses_legacy_identity(monkeypatch):
+    from app.core.config import settings
+    from app.core.versions import (
+        LEGACY_CALCULATION_VERSION,
+        LEGACY_FRONTEND_PAYLOAD_VERSION,
+        LEGACY_SCORING_VERSION,
+    )
+
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
+    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", True)  # must not matter
+    uid = uuid.uuid4()
+    key = expected_cache_identity(user_id=uid, target_date="2026-07-08", profile_hash="abc")
+    assert key.scoring_version == LEGACY_SCORING_VERSION
+    assert key.calculation_version == LEGACY_CALCULATION_VERSION
+    assert key.frontend_payload_version == LEGACY_FRONTEND_PAYLOAD_VERSION
+
+
+@pytest.mark.asyncio
+async def test_cache_read_identity_matches_todayservice_write_for_v2_frontend_off(db_session, monkeypatch):
+    """Read key (expected_cache_identity) must match write key fields for V2 frontend-off."""
+    from datetime import date as Date, time as Time
+    from unittest.mock import AsyncMock, patch
+
+    from app.core.config import settings
+    from app.core.versions import (
+        ACTIVATION_LAYER_VERSION,
+        CALCULATION_VERSION,
+        SCORING_V2_VERSION,
+        V2_FRONTEND_PAYLOAD_VERSION,
+    )
+    from app.db.models import User, UserProfile
+    from app.schemas.access import ContentAccessState
+    from app.schemas.natal import NatalChartHouse, NatalChartPlanet, NatalContextData
+    from app.schemas.normalization import AstroSignal
+    from app.schemas.scoring_v2 import ScoringV2Result, SphereContribution, SphereScoreV2
+    from app.services.cache_key_service import expected_cache_identity
+    from app.services.day_scoring_runtime_service import DualRunResult
+    from app.services.natal_context_service import NatalContextService
+    from app.services.today_service import TodayService
+
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", True)
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", False)
+    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", False)
+
+    user = User(tg_user_id=828282, tg_username="test_cache_rw")
+    db_session.add(user)
+    await db_session.flush()
+    profile = UserProfile(
+        user_id=user.id,
+        first_name="Test",
+        birthday=Date(1990, 1, 15),
+        birth_time=Time(12, 0),
+        birth_city="Moscow",
+        birth_lat=55.76,
+        birth_lon=37.62,
+        gender="female",
+        birth_tz="Europe/Moscow",
+        is_onboarded=True,
+    )
+    db_session.add(profile)
+    await db_session.commit()
+
+    signals = [
+        AstroSignal(type="aspect", planet="Transit_Moon", target_planet="Pluto",
+                    aspect_type="opposition", orb=1.0, strength=0.9)
+    ]
+    fake_natal = NatalContextData(
+        house_system="WHOLE_SIGN",
+        planets=[NatalChartPlanet(name="Sun", sign="Capricorn", degree=7.0, longitude=286.93, retrograde=False, house=11)],
+        houses=[NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30)) for i in range(1, 13)],
+    )
+    sidecar_layer = {
+        "schema_version": "activation-layer.v1",
+        "activation_layer_version": ACTIVATION_LAYER_VERSION,
+        "calculation_version": CALCULATION_VERSION,
+        "target_date": "2026-07-08",
+        "target_time": "12:00",
+        "target_tz": "Europe/Moscow",
+        "house_system": "WHOLE_SIGN",
+        "activations": [{
+            "id": "t2n__MOON__PLUTO",
+            "technique": "transit_to_natal",
+            "technique_family": "transit",
+            "target_type": "planet",
+            "target_key": "PLUTO",
+            "kind": "aspect",
+            "strength": 0.9,
+            "evidence": "test",
+            "phase": "background",
+            "polarity": "tense",
+        }],
+        "by_planet": {"PLUTO": ["t2n__MOON__PLUTO"]},
+        "by_house": {}, "by_lot": {}, "by_angle": {}, "warnings": [],
+    }
+    mock_client = AsyncMock()
+    mock_client.get_transits = AsyncMock(return_value={"target_jd": 2461229.875, "planets": []})
+    mock_client.get_activation_layer = AsyncMock(return_value=sidecar_layer)
+
+    v1_result = {"day_status": "steady", "sphere_scores": {"documents": 1.0}, "top_signals": signals[:1]}
+    v2_result = ScoringV2Result(
+        scoring_version=SCORING_V2_VERSION,
+        canon_versions={"spheres": "v1"},
+        day_status="steady",
+        status_breakdown={"rule": "test"},
+        sphere_scores={
+            "documents": SphereScoreV2(
+                key="documents", title="Documents",
+                base_score=1.0, activation_score=0.5, convergence_bonus=0.0,
+                raw_score=1.5, final_score=1.5, normalized_score=None,
+                dominance_capped=False,
+                contributions=[SphereContribution(
+                    sphere="documents", source="activation",
+                    source_id="t2n__MOON__PLUTO", amount=0.5, evidence="test",
+                )],
+            )
+        },
+        top_signals=[], top_activations=[], debug={},
+    )
+    dual = DualRunResult(
+        selected_result=v1_result,
+        selected_scoring_version=SCORING_V2_VERSION,
+        v1_result=v1_result,
+        v2_result=v2_result,
+        diff=None, v2_error=None,
+    )
+
+    write_keys = []
+    async def capture_write(self, *args, **kwargs):
+        if len(args) >= 5:
+            write_keys.append(args[4])
+        elif "cache_key" in kwargs:
+            write_keys.append(kwargs["cache_key"])
+
+    with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
+         patch("app.services.today_service.NatalContextService.get_or_build_natal_context", AsyncMock(return_value=fake_natal)), \
+         patch("app.services.today_service.NormalizationService.normalize_day", return_value=signals), \
+         patch.object(TodayService, "_get_yesterday_signals", AsyncMock(return_value=None)), \
+         patch.object(TodayService, "_cache_payload", new=capture_write), \
+         patch.object(TodayService, "_cache_semantic_layer", AsyncMock()), \
+         patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual):
+        service = TodayService(db_session)
+        access = ContentAccessState(state="preview", reason="expired_access")
+        await service.get_today_payload(
+            user_id=user.id, target_date=Date(2026, 7, 8),
+            access_state=access, skip_prefetch=True,
+        )
+
+    profile_hash = NatalContextService.compute_profile_hash(profile)
+    read_key = expected_cache_identity(
+        user_id=user.id, target_date="2026-07-08", profile_hash=profile_hash,
+    )
+    assert write_keys, "expected write cache key"
+    write_key = write_keys[0]
+    assert str(read_key.scoring_version) == str(write_key.scoring_version) == SCORING_V2_VERSION
+    assert read_key.calculation_version == write_key.calculation_version == CALCULATION_VERSION
+    assert read_key.activation_layer_version == write_key.activation_layer_version == ACTIVATION_LAYER_VERSION
+    assert read_key.frontend_payload_version == write_key.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION
+    assert read_key.cache_key_hash == write_key.cache_key_hash

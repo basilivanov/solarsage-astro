@@ -12,9 +12,11 @@ from uuid import UUID
 
 from app.core.versions import (
     ACTIVATION_LAYER_VERSION,
+    CALCULATION_VERSION,
     LEGACY_CALCULATION_VERSION,
     LEGACY_FRONTEND_PAYLOAD_VERSION,
     LEGACY_SCORING_VERSION,
+    SCORING_V2_VERSION,
     V2_FRONTEND_PAYLOAD_VERSION,
 )
 from app.services.canon_service import get_canon_versions
@@ -89,23 +91,31 @@ def expected_cache_identity(
     profile_hash: str,
 ) -> TodayCacheKey:
     """Build a cache key with the current expected version fields.
-    Used before cache read when runtime facts are not yet known.
-    Includes a non-None activation_layer_version default of ACTIVATION_LAYER_VERSION."""
-    from app.core.config import settings
-    from app.core.versions import CALCULATION_VERSION
 
-    v2_enabled = bool(getattr(settings, "solarsage_v2_enabled", False))
-    fe_version = (
-        V2_FRONTEND_PAYLOAD_VERSION
-        if getattr(settings, "solarsage_v2_frontend_enabled", False)
-        else LEGACY_FRONTEND_PAYLOAD_VERSION
-    )
+    Used before cache read when runtime facts are not yet known.
+    Selected scoring version is the source of truth for identity — not the
+    frontend rollout flag.
+    """
+    selected_scoring = selected_scoring_version_for_flags()
+    v2_selected = str(selected_scoring) == str(SCORING_V2_VERSION)
+
+    if v2_selected:
+        return build_today_cache_key(
+            user_id=user_id,
+            target_date=target_date,
+            profile_hash=profile_hash,
+            calculation_version=CALCULATION_VERSION,
+            activation_layer_version=ACTIVATION_LAYER_VERSION,
+            scoring_version=SCORING_V2_VERSION,
+            frontend_payload_version=V2_FRONTEND_PAYLOAD_VERSION,
+        )
+
     return build_today_cache_key(
         user_id=user_id,
         target_date=target_date,
         profile_hash=profile_hash,
-        calculation_version=CALCULATION_VERSION if v2_enabled else LEGACY_CALCULATION_VERSION,
+        calculation_version=LEGACY_CALCULATION_VERSION,
         activation_layer_version=ACTIVATION_LAYER_VERSION,
-        scoring_version=selected_scoring_version_for_flags() if v2_enabled else LEGACY_SCORING_VERSION,
-        frontend_payload_version=fe_version,
+        scoring_version=LEGACY_SCORING_VERSION,
+        frontend_payload_version=LEGACY_FRONTEND_PAYLOAD_VERSION,
     )

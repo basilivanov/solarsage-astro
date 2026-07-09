@@ -114,6 +114,8 @@ class SemanticV2Service:
         v1_v2_diff: dict | None = None,
         trace_id: str | None = None,
     ) -> TodayV2Block:
+        if scoring_result is None:
+            raise ValueError("scoring_result is required for V2 block")
         # Group activations by target
         grouped: dict[tuple[str, str], list[ActivationEvidence]] = {}
         for act in activation_layer.activations:
