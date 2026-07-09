@@ -313,11 +313,16 @@ W3_3_SUPPORTED_ORDER = (
     "firdar_major",
     "firdar_minor",
 )
-SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER + W3_3_SUPPORTED_ORDER
+W3_4_SUPPORTED_ORDER = (
+    "solar_return",
+    "lunar_return",
+)
+SUPPORTED_ORDER = W3_1_SUPPORTED_ORDER + W3_2_SUPPORTED_ORDER + W3_3_SUPPORTED_ORDER + W3_4_SUPPORTED_ORDER
 W3_1_SUPPORTED = set(W3_1_SUPPORTED_ORDER)
 W3_2_SUPPORTED = set(W3_2_SUPPORTED_ORDER)
 W3_3_SUPPORTED = set(W3_3_SUPPORTED_ORDER)
-SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED | W3_3_SUPPORTED
+W3_4_SUPPORTED = set(W3_4_SUPPORTED_ORDER)
+SUPPORTED = W3_1_SUPPORTED | W3_2_SUPPORTED | W3_3_SUPPORTED | W3_4_SUPPORTED
 ALL_TECHNIQUES = list(SUPPORTED_ORDER)
 
 
@@ -387,6 +392,12 @@ def _get_period_strength(rules: dict, technique: str) -> float:
     return float(period_base[technique])
 
 
+def _get_return_strength(rules: dict, kind: str) -> float:
+    """Return canon return strength; raises KeyError if missing."""
+    return_base = rules.get("activation_strength", {}).get("return_base", {})
+    return float(return_base[kind])
+
+
 def _completed_years(birth_local: "Date", target_local: "Date") -> int:
     """Completed full years between two local dates."""
     age = target_local.year - birth_local.year
@@ -430,11 +441,11 @@ def build_activation_layer(
     target_tz: str,
     house_system: str,
     techniques: list[str] | None = None,
+    current_location: dict[str, Any] | None = None,
 ) -> ActivationLayer:
     """Build activation layer for a given birth + target context.
 
-    W3.1: real transit activation extraction using Swiss Ephemeris.
-    Supports transit_to_natal, transit_to_angle, transit_to_lot, transit_planet_in_house.
+    W3.1-W3.4: transit, profection, firdar, and return activations.
 
     Unsupported W3+ techniques generate deterministic warnings and are skipped.
     """
@@ -1002,6 +1013,337 @@ def build_activation_layer(
                 )
                 activations.append(minor_ev)
                 by_planet.setdefault(firdar_result.minor_lord, []).append(minor_ev_id)
+
+        elif tech in ("solar_return", "lunar_return"):
+            # Load activation rules for return strengths
+            activation_rules = _load_activation_rules()
+
+            # Location policy
+            if current_location:
+                ret_lat = current_location["lat"]
+                ret_lon = current_location["lon"]
+                ret_tz = current_location.get("tz", target_tz)
+                location_source = "current_location"
+                location_reason = "explicit_current_location"
+            else:
+                ret_lat = birth_lat
+                ret_lon = birth_lon
+                ret_tz = birth_tz
+                location_source = "birth_location"
+                location_reason = "current_location_missing"
+                fallback_warning = "return_location_fallback:birth_location:current_location_missing"
+                if fallback_warning not in warnings_list:
+                    warnings_list.append(fallback_warning)
+
+            location_policy = "current_location_if_known_else_birth_location"
+
+            if tech == "solar_return":
+                # ── Solar return ──────────────────────────────────
+                target_year = _local_date(target_date, target_tz).year
+
+                from solarsage.services.returns import calculate_solar_return
+
+                sr = calculate_solar_return(
+                    birth_date=birth_date,
+                    birth_time=birth_time,
+                    birth_tz=birth_tz,
+                    birth_lat=birth_lat,
+                    birth_lon=birth_lon,
+                    target_year=target_year,
+                    house_system=house_system,
+                )
+
+                # Find SR ASC/MC in natal houses
+                sr_asc_natal_house = _find_house(sr.asc_lon, natal_houses_raw)
+                sr_mc_natal_house = _find_house(sr.mc_lon, natal_houses_raw)
+
+                # Chart ruler: ruler of SR ASC sign
+                sr_asc_sign = get_sign(sr.asc_lon)
+                chart_ruler = _ruler_of_sign(sr_asc_sign)
+
+                # SR Moon return-chart house
+                sr_moon = None
+                for p in sr.chart_planets:
+                    if p["name"] == "Moon":
+                        sr_moon = p
+                        break
+                sr_moon_house = _find_house(sr_moon["longitude"], sr.chart_houses) if sr_moon else 1
+
+                # Angular houses: 1, 4, 7, 10
+                angular_houses = {1, 4, 7, 10}
+                angular_planets = []
+                for p in sr.chart_planets:
+                    ph = _find_house(p["longitude"], sr.chart_houses)
+                    if ph in angular_houses:
+                        angular_planets.append((p, ph))
+
+                # Debug common
+                return_debug_base: dict[str, Any] = {
+                    "return_type": "solar",
+                    "return_jd": round(sr.return_jd, 8),
+                    "return_utc_iso": sr.return_utc_iso,
+                    "target_jd": calculate_julian_day(target_date, target_time, target_tz),
+                    "return_location_policy": location_policy,
+                    "return_location_source": location_source,
+                    "return_location_reason": location_reason,
+                    "return_lat": ret_lat,
+                    "return_lon": ret_lon,
+                    "return_tz": ret_tz,
+                    "resolved_house_system": sr.house_system,
+                }
+
+                # 1. SR ASC in natal house
+                asc_id = f"solar_return__ANGLE_ASC__NATAL_HOUSE_{sr_asc_natal_house}"
+                asc_ev = ActivationEvidence(
+                    id=asc_id,
+                    technique="solar_return",
+                    technique_family="return",
+                    target_type="house",
+                    target_key=str(sr_asc_natal_house),
+                    kind="return_angle_in_natal_house",
+                    source_frame="solar_return",
+                    target_frame="natal",
+                    house=sr_asc_natal_house,
+                    phase="period",
+                    polarity="neutral",
+                    strength=_get_return_strength(activation_rules, "solar_return_angle_in_natal_house"),
+                    evidence=f"Solar Return ASC falls in natal house {sr_asc_natal_house}",
+                    debug={**return_debug_base, "return_angle": "ASC", "natal_house": sr_asc_natal_house},
+                )
+                activations.append(asc_ev)
+                by_house.setdefault(str(sr_asc_natal_house), []).append(asc_id)
+
+                # 2. SR MC in natal house
+                mc_id = f"solar_return__ANGLE_MC__NATAL_HOUSE_{sr_mc_natal_house}"
+                mc_ev = ActivationEvidence(
+                    id=mc_id,
+                    technique="solar_return",
+                    technique_family="return",
+                    target_type="house",
+                    target_key=str(sr_mc_natal_house),
+                    kind="return_angle_in_natal_house",
+                    source_frame="solar_return",
+                    target_frame="natal",
+                    house=sr_mc_natal_house,
+                    phase="period",
+                    polarity="neutral",
+                    strength=_get_return_strength(activation_rules, "solar_return_angle_in_natal_house"),
+                    evidence=f"Solar Return MC falls in natal house {sr_mc_natal_house}",
+                    debug={**return_debug_base, "return_angle": "MC", "natal_house": sr_mc_natal_house},
+                )
+                activations.append(mc_ev)
+                by_house.setdefault(str(sr_mc_natal_house), []).append(mc_id)
+
+                # 3. Chart ruler
+                ruler_id = f"solar_return__CHART_RULER__{chart_ruler}"
+                ruler_ev = ActivationEvidence(
+                    id=ruler_id,
+                    technique="solar_return",
+                    technique_family="return",
+                    target_type="planet",
+                    target_key=chart_ruler,
+                    kind="return_chart_ruler",
+                    source_frame="solar_return",
+                    target_frame="natal",
+                    target_planet=chart_ruler,
+                    phase="period",
+                    polarity="neutral",
+                    strength=_get_return_strength(activation_rules, "solar_return_chart_ruler"),
+                    evidence=f"{_display_name(chart_ruler)} is Solar Return chart ruler",
+                    debug={**return_debug_base, "chart_ruler": chart_ruler, "asc_sign": sr_asc_sign},
+                )
+                activations.append(ruler_ev)
+                by_planet.setdefault(chart_ruler, []).append(ruler_id)
+
+                # 4. SR Moon in return house
+                if sr_moon:
+                    moon_id = f"solar_return__MOON_HOUSE__{sr_moon_house}"
+                    moon_ev = ActivationEvidence(
+                        id=moon_id,
+                        technique="solar_return",
+                        technique_family="return",
+                        target_type="house",
+                        target_key=str(sr_moon_house),
+                        kind="return_moon_house",
+                        source_frame="solar_return",
+                        target_frame="solar_return",
+                        house=sr_moon_house,
+                        phase="period",
+                        polarity="neutral",
+                        strength=_get_return_strength(activation_rules, "solar_return_moon_house"),
+                        evidence=f"Solar Return Moon is in Solar Return house {sr_moon_house}",
+                        debug={**return_debug_base, "moon_house": sr_moon_house},
+                    )
+                    activations.append(moon_ev)
+                    by_house.setdefault(str(sr_moon_house), []).append(moon_id)
+
+                # 5. SR angular planets
+                for pdata, phouse in angular_planets:
+                    pname = pdata["name"]
+                    if pname == "Moon":
+                        continue  # Moon already handled
+                    ang_id = f"solar_return__ANGULAR_PLANET__{pname.upper()}__HOUSE_{phouse}"
+                    ang_ev = ActivationEvidence(
+                        id=ang_id,
+                        technique="solar_return",
+                        technique_family="return",
+                        target_type="planet",
+                        target_key=pname.upper(),
+                        kind="return_angular_planet",
+                        source_frame="solar_return",
+                        target_frame="solar_return",
+                        target_planet=pname.upper(),
+                        house=phouse,
+                        phase="period",
+                        polarity="neutral",
+                        strength=_get_return_strength(activation_rules, "solar_return_angular_planet"),
+                        evidence=f"Solar Return {_display_name(pname.upper())} is angular in Solar Return house {phouse}",
+                        debug={**return_debug_base, "angular_planet": pname, "angular_house": phouse},
+                    )
+                    activations.append(ang_ev)
+                    by_house.setdefault(str(phouse), []).append(ang_id)
+                    by_planet.setdefault(pname.upper(), []).append(ang_id)
+
+            elif tech == "lunar_return":
+                # ── Lunar return ──────────────────────────────────
+                from solarsage.services.returns import calculate_lunar_return
+
+                lr = calculate_lunar_return(
+                    birth_date=birth_date,
+                    birth_time=birth_time,
+                    birth_tz=birth_tz,
+                    birth_lat=birth_lat,
+                    birth_lon=birth_lon,
+                    target_date=target_date,
+                    target_time=target_time,
+                    target_tz=target_tz,
+                    house_system=house_system,
+                )
+
+                # LR ASC/MC in natal houses
+                lr_asc_natal_house = _find_house(lr.asc_lon, natal_houses_raw)
+                lr_mc_natal_house = _find_house(lr.mc_lon, natal_houses_raw)
+
+                # LR Moon return-chart house
+                lr_moon = None
+                for p in lr.chart_planets:
+                    if p["name"] == "Moon":
+                        lr_moon = p
+                        break
+                lr_moon_house = _find_house(lr_moon["longitude"], lr.chart_houses) if lr_moon else 1
+
+                # Angular houses
+                angular_houses = {1, 4, 7, 10}
+                lr_angular_planets = []
+                for p in lr.chart_planets:
+                    ph = _find_house(p["longitude"], lr.chart_houses)
+                    if ph in angular_houses:
+                        lr_angular_planets.append((p, ph))
+
+                lr_return_debug: dict[str, Any] = {
+                    "return_type": "lunar",
+                    "return_jd": round(lr.return_jd, 8),
+                    "return_utc_iso": lr.return_utc_iso,
+                    "target_jd": calculate_julian_day(target_date, target_time, target_tz),
+                    "return_location_policy": location_policy,
+                    "return_location_source": location_source,
+                    "return_location_reason": location_reason,
+                    "return_lat": ret_lat,
+                    "return_lon": ret_lon,
+                    "return_tz": ret_tz,
+                    "resolved_house_system": lr.house_system,
+                }
+
+                # 1. LR Moon in return house
+                if lr_moon:
+                    moon_id = f"lunar_return__MOON_HOUSE__{lr_moon_house}"
+                    moon_ev = ActivationEvidence(
+                        id=moon_id,
+                        technique="lunar_return",
+                        technique_family="return",
+                        target_type="house",
+                        target_key=str(lr_moon_house),
+                        kind="return_moon_house",
+                        source_frame="lunar_return",
+                        target_frame="lunar_return",
+                        house=lr_moon_house,
+                        phase="period",
+                        polarity="neutral",
+                        strength=_get_return_strength(activation_rules, "lunar_return_moon_house"),
+                        evidence=f"Lunar Return Moon is in Lunar Return house {lr_moon_house}",
+                        debug={**lr_return_debug, "moon_house": lr_moon_house},
+                    )
+                    activations.append(moon_ev)
+                    by_house.setdefault(str(lr_moon_house), []).append(moon_id)
+
+                # 2. LR ASC in natal house
+                asc_id = f"lunar_return__ANGLE_ASC__NATAL_HOUSE_{lr_asc_natal_house}"
+                asc_ev = ActivationEvidence(
+                    id=asc_id,
+                    technique="lunar_return",
+                    technique_family="return",
+                    target_type="house",
+                    target_key=str(lr_asc_natal_house),
+                    kind="return_angle_in_natal_house",
+                    source_frame="lunar_return",
+                    target_frame="natal",
+                    house=lr_asc_natal_house,
+                    phase="period",
+                    polarity="neutral",
+                    strength=_get_return_strength(activation_rules, "lunar_return_angle_in_natal_house"),
+                    evidence=f"Lunar Return ASC falls in natal house {lr_asc_natal_house}",
+                    debug={**lr_return_debug, "return_angle": "ASC", "natal_house": lr_asc_natal_house},
+                )
+                activations.append(asc_ev)
+                by_house.setdefault(str(lr_asc_natal_house), []).append(asc_id)
+
+                # 3. LR MC in natal house
+                mc_id = f"lunar_return__ANGLE_MC__NATAL_HOUSE_{lr_mc_natal_house}"
+                mc_ev = ActivationEvidence(
+                    id=mc_id,
+                    technique="lunar_return",
+                    technique_family="return",
+                    target_type="house",
+                    target_key=str(lr_mc_natal_house),
+                    kind="return_angle_in_natal_house",
+                    source_frame="lunar_return",
+                    target_frame="natal",
+                    house=lr_mc_natal_house,
+                    phase="period",
+                    polarity="neutral",
+                    strength=_get_return_strength(activation_rules, "lunar_return_angle_in_natal_house"),
+                    evidence=f"Lunar Return MC falls in natal house {lr_mc_natal_house}",
+                    debug={**lr_return_debug, "return_angle": "MC", "natal_house": lr_mc_natal_house},
+                )
+                activations.append(mc_ev)
+                by_house.setdefault(str(lr_mc_natal_house), []).append(mc_id)
+
+                # 4. LR angular planets
+                for pdata, phouse in lr_angular_planets:
+                    pname = pdata["name"]
+                    if pname == "Moon":
+                        continue
+                    ang_id = f"lunar_return__ANGULAR_PLANET__{pname.upper()}__HOUSE_{phouse}"
+                    ang_ev = ActivationEvidence(
+                        id=ang_id,
+                        technique="lunar_return",
+                        technique_family="return",
+                        target_type="planet",
+                        target_key=pname.upper(),
+                        kind="return_angular_planet",
+                        source_frame="lunar_return",
+                        target_frame="lunar_return",
+                        target_planet=pname.upper(),
+                        house=phouse,
+                        phase="period",
+                        polarity="neutral",
+                        strength=_get_return_strength(activation_rules, "lunar_return_angular_planet"),
+                        evidence=f"Lunar Return {_display_name(pname.upper())} is angular in Lunar Return house {phouse}",
+                        debug={**lr_return_debug, "angular_planet": pname, "angular_house": phouse},
+                    )
+                    activations.append(ang_ev)
+                    by_house.setdefault(str(phouse), []).append(ang_id)
+                    by_planet.setdefault(pname.upper(), []).append(ang_id)
 
     return ActivationLayer(
         calculation_version="1",

@@ -32,6 +32,14 @@ activation_strength:
     monthly_profection: 0.45
     firdar_major: 0.65
     firdar_minor: 0.40
+  return_base:
+    solar_return_angle_in_natal_house: 0.70
+    solar_return_chart_ruler: 0.70
+    solar_return_moon_house: 0.65
+    solar_return_angular_planet: 0.60
+    lunar_return_angle_in_natal_house: 0.55
+    lunar_return_moon_house: 0.60
+    lunar_return_angular_planet: 0.50
 
 techniques:
   annual_profection:

@@ -121,7 +121,8 @@ def main() -> None:
         },
         "script": "audit_sidecar_activation.py",
         "wave": (
-            "W3.3" if techniques is None or "firdar_major" in techniques or "firdar_minor" in techniques
+            "W3.4" if techniques is None or "solar_return" in techniques or "lunar_return" in techniques
+            else "W3.3" if "firdar_major" in techniques or "firdar_minor" in techniques
             else "W3.2" if "annual_profection" in techniques or "monthly_profection" in techniques
             else "W3.1"
         ),

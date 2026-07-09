@@ -32,6 +32,7 @@ class ActivationLayerRequest(BaseModel):
     target: TargetRequest
     house_system: str = Field(default="PLACIDUS", description="House system")
     techniques: list[str] = Field(default_factory=list)
+    current_location: dict | None = Field(default=None, description="Current location {lat, lon, tz}")
 
 
 class ActivationLayerMeta(BaseModel):
@@ -49,9 +50,8 @@ class ActivationLayerResponse(BaseModel):
 async def post_activation_layer(request: ActivationLayerRequest) -> ActivationLayerResponse:
     """Calculate activation layer for a given birth chart and target date.
 
-    W3.1: computes real transit activations (transit_to_natal, transit_to_angle,
-    transit_to_lot, transit_planet_in_house). Techniques parameter controls which
-    extraction methods are used; empty defaults to all supported.
+    W3.4: solar_return and lunar_return support with optional current_location
+    for return chart location.
     """
     try:
         layer = build_activation_layer(
@@ -65,6 +65,7 @@ async def post_activation_layer(request: ActivationLayerRequest) -> ActivationLa
             target_tz=request.target.tz,
             house_system=request.house_system,
             techniques=list(request.techniques) if request.techniques else None,
+            current_location=request.current_location,
         )
 
         meta = ActivationLayerMeta(
