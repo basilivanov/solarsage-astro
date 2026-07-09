@@ -2,7 +2,8 @@
 
 Date: 2026-07-09
 Base reviewed commit: `ebb1898`
-Final rework commit: `2d2119f`
+Final rework commit: `ab8ca23`
+Code/tests payload commit in history: `2d2119f` (same message); tip includes report SHA correction.
 Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
@@ -139,4 +140,4 @@ Recorded after final commit (must pass once trailing whitespace fix is committed
 - Remote CI: **REMOTE_CI_NOT_AVAILABLE**
 - Process: **no sudo**, **no `.git/index` deletion**
 
-<!-- rework01-commit: 2d2119f -->
+<!-- rework01-commit: ab8ca23 -->
