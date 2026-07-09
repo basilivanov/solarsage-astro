@@ -3971,6 +3971,7 @@
         "target_local_date": "2026-07-08",
         "annual_year_start": "2025-10-30",
         "house": 10,
+        "house_cusp_longitude": 0.0,
         "house_cusp_sign": "Aries",
         "ruler": "MARS",
         "ruler_system": "traditional",
@@ -4006,6 +4007,7 @@
         "birth_local_date": "1980-10-30",
         "target_local_date": "2026-07-08",
         "house": 10,
+        "house_cusp_longitude": 0.0,
         "house_cusp_sign": "Aries",
         "ruler": "MARS",
         "ruler_system": "traditional",
@@ -4043,6 +4045,7 @@
         "annual_year_start": "2025-10-30",
         "completed_month_steps": 8,
         "house": 6,
+        "house_cusp_longitude": 240.0,
         "house_cusp_sign": "Sagittarius",
         "ruler": "JUPITER",
         "ruler_system": "traditional",
@@ -4080,6 +4083,7 @@
         "annual_year_start": "2025-10-30",
         "completed_month_steps": 8,
         "house": 6,
+        "house_cusp_longitude": 240.0,
         "house_cusp_sign": "Sagittarius",
         "ruler": "JUPITER",
         "ruler_system": "traditional",
@@ -4280,6 +4284,14 @@
       "tz": "Europe/Moscow"
     },
     "script": "audit_sidecar_activation.py",
-    "wave": "W3.1"
+    "wave": "W3.2",
+    "techniques": [
+      "transit_to_natal",
+      "transit_to_angle",
+      "transit_planet_in_house",
+      "transit_to_lot",
+      "annual_profection",
+      "monthly_profection"
+    ]
   }
 }

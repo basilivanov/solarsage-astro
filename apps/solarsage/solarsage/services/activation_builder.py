@@ -357,8 +357,10 @@ SIGN_RULERS: dict[str, str] = {
 
 
 def _ruler_of_sign(sign: str) -> str:
-    """Return traditional ruler for a sign name."""
-    return SIGN_RULERS.get(sign, "SATURN")
+    """Return traditional ruler for a sign name. Raises ValueError for unknown signs."""
+    if sign not in SIGN_RULERS:
+        raise ValueError(f"Unknown sign: '{sign}'. Valid signs: {', '.join(SIGN_RULERS)}")
+    return SIGN_RULERS[sign]
 
 
 # ── Profection helpers ───────────────────────────────────────────────────────
@@ -717,6 +719,7 @@ def build_activation_layer(
                         annual_house_cusp = h
                         break
                 annual_house_sign = annual_house_cusp["sign"] if annual_house_cusp else "Aries"
+                annual_house_lon = annual_house_cusp["cusp"] if annual_house_cusp else 0.0
                 lord_of_year = _ruler_of_sign(annual_house_sign)
 
                 activation_rules = _load_activation_rules()
@@ -746,6 +749,7 @@ def build_activation_layer(
                             if target_local < birth_local.replace(year=target_local.year)
                             else f"{target_local.year}-{birth_local.month:02d}-{birth_local.day:02d}",
                         "house": annual_house,
+                        "house_cusp_longitude": round(annual_house_lon, 4),
                         "house_cusp_sign": annual_house_sign,
                         "ruler": lord_of_year,
                         "ruler_system": "traditional",
@@ -776,6 +780,7 @@ def build_activation_layer(
                         "birth_local_date": birth_date,
                         "target_local_date": target_date,
                         "house": annual_house,
+                        "house_cusp_longitude": round(annual_house_lon, 4),
                         "house_cusp_sign": annual_house_sign,
                         "ruler": lord_of_year,
                         "ruler_system": "traditional",
@@ -797,15 +802,14 @@ def build_activation_layer(
                 if annual_year_start > target_local:
                     annual_year_start = birth_local.replace(year=target_local.year - 1)
 
-                # Count completed monthly anniversaries
+                # Count completed monthly anniversaries — non-drifting from annual_year_start
                 completed_month_steps = 0
-                probe = annual_year_start
-                while True:
-                    next_probe = _add_months_with_clamp(probe, 1)
-                    if next_probe > target_local:
+                for step in range(1, 13):
+                    anniversary = _add_months_with_clamp(annual_year_start, step)
+                    if anniversary <= target_local:
+                        completed_month_steps = step
+                    else:
                         break
-                    probe = next_probe
-                    completed_month_steps += 1
 
                 monthly_house = ((annual_house - 1 + completed_month_steps) % 12) + 1
 
@@ -816,6 +820,7 @@ def build_activation_layer(
                         monthly_house_cusp = h
                         break
                 monthly_house_sign = monthly_house_cusp["sign"] if monthly_house_cusp else "Aries"
+                monthly_house_lon = monthly_house_cusp["cusp"] if monthly_house_cusp else 0.0
                 lord_of_month = _ruler_of_sign(monthly_house_sign)
 
                 activation_rules = _load_activation_rules()
@@ -844,6 +849,7 @@ def build_activation_layer(
                         "annual_year_start": annual_year_start.isoformat(),
                         "completed_month_steps": completed_month_steps,
                         "house": monthly_house,
+                        "house_cusp_longitude": round(monthly_house_lon, 4),
                         "house_cusp_sign": monthly_house_sign,
                         "ruler": lord_of_month,
                         "ruler_system": "traditional",
@@ -876,6 +882,7 @@ def build_activation_layer(
                         "annual_year_start": annual_year_start.isoformat(),
                         "completed_month_steps": completed_month_steps,
                         "house": monthly_house,
+                        "house_cusp_longitude": round(monthly_house_lon, 4),
                         "house_cusp_sign": monthly_house_sign,
                         "ruler": lord_of_month,
                         "ruler_system": "traditional",
