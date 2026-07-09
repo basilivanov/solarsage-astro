@@ -113,4 +113,3 @@ Run and report:
 - `rg -n 'sidecar_activation_layer=None' apps/api/app/services/today_service.py`.
 - `git diff 2f9173fbe9a9e20e97891e9789db6de57a2afaef..HEAD --check`.
 - `git show --check HEAD`.
-
