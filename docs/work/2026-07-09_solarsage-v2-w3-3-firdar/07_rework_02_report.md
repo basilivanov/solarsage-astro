@@ -62,7 +62,7 @@ Exact tests for NORTH_NODE_TRUE and SOUTH_NODE at ages 70.0/73.0:
 
 ## Commit
 
-`<commit_sha>`
+`11574e6`
 
 ## Push Status
 
