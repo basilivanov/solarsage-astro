@@ -2,8 +2,8 @@
 
 Date: 2026-07-09
 Base reviewed commit: `ebb1898`
-Final rework commit: `c70095a`
-Code/tests rework commit: `ab8ca23`
+Final rework code/tests commit: `ab8ca23`
+Evidence docs tip: current `main` HEAD after evidence package (callback SHA).
 Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED

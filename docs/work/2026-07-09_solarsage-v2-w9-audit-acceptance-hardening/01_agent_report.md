@@ -180,9 +180,10 @@ Intended dirty set is limited to W9 files above. Pre-existing unrelated dirty/un
 
 ## Commit SHA
 
-`c70095a`
+W9 Rework 01 code/tests commit: `ab8ca23`
 
-W9 Rework 01 code commit: `ab8ca23`
+Evidence docs tip is the current `main` HEAD after this rework evidence package (see callback / `git rev-parse --short HEAD`). Do not treat intermediate docs-only amend SHAs as the code rework.
+
 
 ## Remote CI evidence
 
