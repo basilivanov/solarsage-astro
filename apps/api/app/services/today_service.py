@@ -713,7 +713,20 @@ class TodayService:
         if content_version != TODAY_CONTENT_VERSION:
             return None
 
-        payload = TodayPayload(**payload_dict)
+        # Treat legacy bad V2 cache rows as miss: V2 identity without v2 body.
+        payload_version = meta.get("payload_version", meta.get("payloadVersion"))
+        frontend_version = meta.get("frontend_payload_version", meta.get("frontendPayloadVersion"))
+        v2_block = payload_dict.get("v2", payload_dict.get("V2"))
+        if payload_version == "today.v2" and v2_block is None:
+            return None
+        if frontend_version == 2 and v2_block is None:
+            return None
+
+        try:
+            payload = TodayPayload(**payload_dict)
+        except Exception:
+            # Invalid/legacy cache rows must not crash the request path.
+            return None
         payload.meta.cached = True
         return payload
 

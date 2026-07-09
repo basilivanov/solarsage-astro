@@ -1231,3 +1231,281 @@ async def test_v1_selected_can_have_null_v2_block(db_session, monkeypatch):
     assert payload.meta.frontend_payload_version == LEGACY_FRONTEND_PAYLOAD_VERSION
     assert payload.meta.scoring_version == LEGACY_SCORING_VERSION
     assert payload.v2 is None
+
+
+def _minimal_access():
+    from app.schemas.today import ContentAccessState
+    return ContentAccessState(state="preview", reason="expired_access")
+
+
+def _minimal_payload_kwargs(**overrides):
+    from app.schemas.today import (
+        ConcreteAdviceBlock,
+        DaySummaryBlock,
+        ReadingBody,
+        TodayMeta,
+        WhyThisHappens,
+    )
+    meta = overrides.pop("meta", None)
+    if meta is None:
+        meta = TodayMeta(
+            schema_version="today/v1",
+            contract_version=3,
+            calculation_version=1,
+            normalization_version=1,
+            scoring_version=1,
+            prompt_version=2,
+            content_version=1,
+            generated_at="2026-07-08T12:00:00Z",
+            payload_version="today.v1",
+            frontend_payload_version=1,
+        )
+    base = dict(
+        meta=meta,
+        date="2026-07-08",
+        title="Сегодня",
+        headline="h",
+        access=_minimal_access(),
+        day_status="steady",
+        day_summary=DaySummaryBlock(status_label="s", status_line="l", facts=[]),
+        concrete_advice=ConcreteAdviceBlock(rows=[], counts={"good": 0, "caution": 0, "avoid": 0, "neutral": 0}),
+        top_flags=[],
+        reading=ReadingBody(paragraphs=["p"]),
+        why_this_happens=WhyThisHappens(sections=[]),
+        week_strip=[],
+        microcopy=[],
+        v2=None,
+    )
+    base.update(overrides)
+    return base
+
+
+def test_today_payload_rejects_today_v2_with_null_v2_block():
+    from app.schemas.today import TodayMeta, TodayPayload
+    from pydantic import ValidationError
+
+    meta = TodayMeta(
+        schema_version="today/v1",
+        contract_version=3,
+        calculation_version="ss-calc-1.1.0",
+        normalization_version=1,
+        scoring_version="ss-scoring-2.0",
+        prompt_version=2,
+        content_version=1,
+        generated_at="2026-07-08T12:00:00Z",
+        payload_version="today.v2",
+        frontend_payload_version=1,
+    )
+    with pytest.raises(ValidationError, match="today.v2 payload requires v2 block"):
+        TodayPayload(**_minimal_payload_kwargs(meta=meta, v2=None))
+
+
+def test_today_payload_rejects_frontend_v2_with_null_v2_block():
+    from app.schemas.today import TodayMeta, TodayPayload
+    from pydantic import ValidationError
+
+    meta = TodayMeta(
+        schema_version="today/v1",
+        contract_version=3,
+        calculation_version="ss-calc-1.1.0",
+        normalization_version=1,
+        scoring_version="ss-scoring-2.0",
+        prompt_version=2,
+        content_version=1,
+        generated_at="2026-07-08T12:00:00Z",
+        payload_version="today.v1",
+        frontend_payload_version=2,
+    )
+    with pytest.raises(ValidationError, match="frontend payload v2 requires v2 block"):
+        TodayPayload(**_minimal_payload_kwargs(meta=meta, v2=None))
+
+
+def test_today_payload_allows_v1_with_null_v2_block():
+    from app.schemas.today import TodayPayload
+
+    payload = TodayPayload(**_minimal_payload_kwargs(v2=None))
+    assert payload.meta.payload_version == "today.v1"
+    assert payload.v2 is None
+
+
+@pytest.mark.asyncio
+async def test_get_cached_payload_misses_bad_v2_row_without_body(db_session, monkeypatch):
+    """Matching V2 cache row with v2=None must be treated as cache miss."""
+    import json
+    from datetime import date as Date, time as Time
+    from uuid import uuid4
+
+    from app.core.versions import (
+        ACTIVATION_LAYER_VERSION,
+        CALCULATION_VERSION,
+        SCORING_V2_VERSION,
+        TODAY_V2_PAYLOAD_VERSION,
+        V2_FRONTEND_PAYLOAD_VERSION,
+    )
+    from app.db.models import TodayPayloadCache, User, UserProfile
+    from app.services.cache_key_service import build_today_cache_key
+    from app.services.today_service import TODAY_CONTENT_VERSION, TodayService
+
+    user = User(tg_user_id=909090, tg_username="cache_bad_v2")
+    db_session.add(user)
+    await db_session.flush()
+    profile = UserProfile(
+        user_id=user.id, first_name="T", birthday=Date(1990, 1, 15),
+        birth_time=Time(12, 0), birth_city="Moscow", birth_lat=55.76, birth_lon=37.62,
+        gender="female", birth_tz="Europe/Moscow", is_onboarded=True,
+    )
+    db_session.add(profile)
+    await db_session.commit()
+
+    profile_hash = "abc"
+    cache_key = build_today_cache_key(
+        user_id=user.id,
+        target_date="2026-07-08",
+        profile_hash=profile_hash,
+        calculation_version=CALCULATION_VERSION,
+        activation_layer_version=ACTIVATION_LAYER_VERSION,
+        scoring_version=SCORING_V2_VERSION,
+        frontend_payload_version=V2_FRONTEND_PAYLOAD_VERSION,
+    )
+    bad_payload = {
+        "meta": {
+            "schema_version": "today/v1",
+            "contract_version": 3,
+            "calculation_version": CALCULATION_VERSION,
+            "normalization_version": 1,
+            "scoring_version": SCORING_V2_VERSION,
+            "prompt_version": 2,
+            "content_version": TODAY_CONTENT_VERSION,
+            "generated_at": "2026-07-08T12:00:00Z",
+            "payload_version": TODAY_V2_PAYLOAD_VERSION,
+            "frontend_payload_version": V2_FRONTEND_PAYLOAD_VERSION,
+        },
+        "date": "2026-07-08",
+        "title": "t",
+        "headline": "h",
+        "access": {"state": "preview", "reason": "expired_access"},
+        "day_status": "steady",
+        "day_summary": {"status_label": "s", "status_line": "l", "facts": []},
+        "concrete_advice": {"rows": [], "counts": {"good": 0, "caution": 0, "avoid": 0, "neutral": 0}},
+        "top_flags": [],
+        "reading": {"paragraphs": ["p"]},
+        "why_this_happens": {"sections": []},
+        "week_strip": [],
+        "microcopy": [],
+        "v2": None,
+    }
+    entry = TodayPayloadCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 8),
+        profile_hash=profile_hash,
+        cache_key_hash=cache_key.cache_key_hash,
+        payload_json=json.dumps(bad_payload),
+        calculation_version=str(CALCULATION_VERSION),
+        activation_layer_version=ACTIVATION_LAYER_VERSION,
+        scoring_version=str(SCORING_V2_VERSION),
+        frontend_payload_version=V2_FRONTEND_PAYLOAD_VERSION,
+    )
+    # optional columns may differ; set only if present
+    for attr, val in [
+        ("canon_versions_hash", cache_key.canon_versions_hash),
+        ("llm_prompt_version", cache_key.llm_prompt_version),
+    ]:
+        if hasattr(entry, attr):
+            setattr(entry, attr, val)
+    db_session.add(entry)
+    await db_session.commit()
+
+    service = TodayService(db_session)
+    got = await service._get_cached_payload(user.id, Date(2026, 7, 8), profile_hash, cache_key)
+    assert got is None
+
+
+@pytest.mark.asyncio
+async def test_get_cached_payload_returns_v1_with_null_v2(db_session):
+    """V1 cached rows with v2=None remain valid hits."""
+    import json
+    from datetime import date as Date, time as Time
+
+    from app.core.versions import (
+        ACTIVATION_LAYER_VERSION,
+        LEGACY_CALCULATION_VERSION,
+        LEGACY_FRONTEND_PAYLOAD_VERSION,
+        LEGACY_SCORING_VERSION,
+        TODAY_V1_PAYLOAD_VERSION,
+    )
+    from app.db.models import TodayPayloadCache, User, UserProfile
+    from app.services.cache_key_service import build_today_cache_key
+    from app.services.today_service import TODAY_CONTENT_VERSION, TodayService
+
+    user = User(tg_user_id=919191, tg_username="cache_v1_ok")
+    db_session.add(user)
+    await db_session.flush()
+    profile = UserProfile(
+        user_id=user.id, first_name="T", birthday=Date(1990, 1, 15),
+        birth_time=Time(12, 0), birth_city="Moscow", birth_lat=55.76, birth_lon=37.62,
+        gender="female", birth_tz="Europe/Moscow", is_onboarded=True,
+    )
+    db_session.add(profile)
+    await db_session.commit()
+
+    profile_hash = "abc"
+    cache_key = build_today_cache_key(
+        user_id=user.id,
+        target_date="2026-07-08",
+        profile_hash=profile_hash,
+        calculation_version=LEGACY_CALCULATION_VERSION,
+        activation_layer_version=ACTIVATION_LAYER_VERSION,
+        scoring_version=LEGACY_SCORING_VERSION,
+        frontend_payload_version=LEGACY_FRONTEND_PAYLOAD_VERSION,
+    )
+    good_v1 = {
+        "meta": {
+            "schema_version": "today/v1",
+            "contract_version": 3,
+            "calculation_version": LEGACY_CALCULATION_VERSION,
+            "normalization_version": 1,
+            "scoring_version": LEGACY_SCORING_VERSION,
+            "prompt_version": 2,
+            "content_version": TODAY_CONTENT_VERSION,
+            "generated_at": "2026-07-08T12:00:00Z",
+            "payload_version": TODAY_V1_PAYLOAD_VERSION,
+            "frontend_payload_version": LEGACY_FRONTEND_PAYLOAD_VERSION,
+        },
+        "date": "2026-07-08",
+        "title": "t",
+        "headline": "h",
+        "access": {"state": "preview", "reason": "expired_access"},
+        "day_status": "steady",
+        "day_summary": {"status_label": "s", "status_line": "l", "facts": []},
+        "concrete_advice": {"rows": [], "counts": {"good": 0, "caution": 0, "avoid": 0, "neutral": 0}},
+        "top_flags": [],
+        "reading": {"paragraphs": ["p"]},
+        "why_this_happens": {"sections": []},
+        "week_strip": [],
+        "microcopy": [],
+        "v2": None,
+    }
+    entry = TodayPayloadCache(
+        user_id=user.id,
+        target_date=Date(2026, 7, 8),
+        profile_hash=profile_hash,
+        cache_key_hash=cache_key.cache_key_hash,
+        payload_json=json.dumps(good_v1),
+        calculation_version=str(LEGACY_CALCULATION_VERSION),
+        activation_layer_version=ACTIVATION_LAYER_VERSION,
+        scoring_version=str(LEGACY_SCORING_VERSION),
+        frontend_payload_version=LEGACY_FRONTEND_PAYLOAD_VERSION,
+    )
+    if hasattr(entry, "canon_versions_hash"):
+        entry.canon_versions_hash = cache_key.canon_versions_hash
+    if hasattr(entry, "llm_prompt_version"):
+        entry.llm_prompt_version = cache_key.llm_prompt_version
+    db_session.add(entry)
+    await db_session.commit()
+
+    service = TodayService(db_session)
+    got = await service._get_cached_payload(user.id, Date(2026, 7, 8), profile_hash, cache_key)
+    assert got is not None
+    assert got.meta.payload_version == TODAY_V1_PAYLOAD_VERSION
+    assert got.v2 is None
+    assert got.meta.cached is True

@@ -350,6 +350,20 @@ async def test_frozen_mode_does_not_call_today_service(tmp_path, monkeypatch):
     assert (out / "debug" / "final_today_payload.json").exists()
     assert (out / "debug" / "final_today_payload.normalized.json").exists()
     assert oracle_saw_payload["ok"] is True
+
+    # Frozen-baseline mapping proof: non-live status, both artifacts present.
+    root_mapping_path = out / "activation_evidence_mapping.json"
+    debug_mapping_path = out / "debug" / "activation_evidence_mapping.json"
+    assert root_mapping_path.exists()
+    assert debug_mapping_path.exists()
+    root_mapping = json.loads(root_mapping_path.read_text(encoding="utf-8"))
+    debug_mapping = json.loads(debug_mapping_path.read_text(encoding="utf-8"))
+    assert root_mapping["mode"] == "frozen-baseline"
+    assert root_mapping["status"] == "frozen_baseline_not_live"
+    assert debug_mapping["status"] == "frozen_baseline_not_live"
+    assert root_mapping.get("accepted_unmapped") is True
+    # Must not claim live production proof through mapping.
+    assert root_mapping["status"] != "ok" or root_mapping["mode"] != "live-production"
 # W9 rework01 regression: frozen payload before oracles
 
 

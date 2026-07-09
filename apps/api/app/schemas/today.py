@@ -37,7 +37,7 @@ from __future__ import annotations
 
 from typing import Literal, Any
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from ._base import CamelModel
 from .activation import ActivationEvidence
@@ -480,4 +480,19 @@ class TodayPayload(CamelModel):
 
     # W-6: optional V2 block
     v2: TodayV2Block | None = None
+
+    @model_validator(mode="after")
+    def validate_v2_identity_requires_body(self) -> "TodayPayload":
+        """Reject explicit V2 wire identity without a V2 body.
+
+        V1 payloads (and legacy rows without explicit V2 identity) may keep v2=None.
+        Only explicit today.v2 / frontend_payload_version=2 require a non-null v2 block.
+        """
+        payload_version = getattr(self.meta, "payload_version", None)
+        frontend_version = getattr(self.meta, "frontend_payload_version", None)
+        if payload_version == "today.v2" and self.v2 is None:
+            raise ValueError("today.v2 payload requires v2 block")
+        if frontend_version == 2 and self.v2 is None:
+            raise ValueError("frontend payload v2 requires v2 block")
+        return self
 # END_BLOCK: TODAY_PAYLOAD
