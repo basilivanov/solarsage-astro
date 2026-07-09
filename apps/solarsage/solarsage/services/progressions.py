@@ -53,29 +53,9 @@ from solarsage.utils.ephemeris import (
     get_sign,
 )
 
-# ── Canonical aspect map ─────────────────────────────────────────────────────
+# ── Canonical aspect map (reused from activation_builder) ────────────────────
 
-ASPECT_ANGLES: dict[str, float] = {
-    "conjunction": 0.0,
-    "semi_sextile": 30.0,
-    "semi_square": 45.0,
-    "sextile": 60.0,
-    "square": 90.0,
-    "trine": 120.0,
-    "sesqui_quadrate": 135.0,
-    "quincunx": 150.0,
-    "opposition": 180.0,
-}
-
-
-def _classify_polarity(aspect_name: str) -> str:
-    if aspect_name in ("trine", "sextile"):
-        return "supportive"
-    if aspect_name in ("square", "opposition", "semi_square", "sesqui_quadrate"):
-        return "tense"
-    if aspect_name == "conjunction":
-        return "mixed"
-    return "neutral"
+from solarsage.services.activation_builder import ASPECT_ANGLES, _classify_polarity
 
 
 def _angular_distance(lon1: float, lon2: float) -> float:

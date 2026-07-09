@@ -173,76 +173,204 @@ def test_secondary_progression_deterministic():
 # ── Sun transition tests ────────────────────────────────────────────────
 
 
-def test_progressed_sun_sign_transition():
-    """Progressed Sun near a sign boundary is detected within orb."""
-    from solarsage.services.progressions import (
-        calculate_secondary_progression_context, progressed_sun_transitions,
-    )
-    # Use a target where progressed Sun is near a sign boundary
-    ctx = calculate_secondary_progression_context(
-        birth_date="1990-06-15", birth_time="12:00", birth_tz="Europe/Moscow",
-        birth_lat=55.0, birth_lon=37.0,
-        target_date="2020-07-01", target_time="12:00", target_tz="Europe/Moscow",
-        house_system="PLACIDUS",
-    )
-    transitions = progressed_sun_transitions(ctx, 55.0, 37.0, "PLACIDUS", ctx.max_orb)
-    sign_trans = [t for t in transitions if t["transition_type"] == "sign"]
-    # May or may not have a transition depending on exact position
-    if sign_trans:
-        for t in sign_trans:
-            assert t.get("current_sign") is not None
-            assert t.get("base_strength") == 0.5
-            assert "orb_factor" in t
-
-
-def test_progressed_sun_house_transition():
-    """Progressed Sun near a natal house cusp is detected within orb."""
-    from solarsage.services.progressions import (
-        calculate_secondary_progression_context, progressed_sun_transitions,
-    )
-    ctx = calculate_secondary_progression_context(
-        birth_date="1990-06-15", birth_time="12:00", birth_tz="Europe/Moscow",
-        birth_lat=55.0, birth_lon=37.0,
-        target_date="2020-07-01", target_time="12:00", target_tz="Europe/Moscow",
-        house_system="PLACIDUS",
-    )
-    transitions = progressed_sun_transitions(ctx, 55.0, 37.0, "PLACIDUS", ctx.max_orb)
-    house_trans = [t for t in transitions if t["transition_type"] == "house"]
-    if house_trans:
-        for t in house_trans:
-            assert t.get("target_house") is not None
-            assert t.get("base_strength") == 0.5
-            assert "orb_factor" in t
-
-
-def test_sun_transition_wrap_around():
-    """Aries/Pisces 0-degree wrap-around is handled by forward distance logic."""
-    # Progressed Sun near 360° (Pisces→Aries boundary at 0°)
-    from solarsage.services.progressions import (
-        calculate_secondary_progression_context, progressed_sun_transitions,
-    )
-    # Use a progressed date that puts Sun near end of Pisces
-    from solarsage.utils.ephemeris import calculate_julian_day, calculate_positions
+def test_progressed_sun_sign_transition_direct():
+    """Progressed Sun near a sign boundary is detected (direct helper test)."""
+    from solarsage.services.progressions import progressed_sun_transitions
     from datetime import date
-    # Progressed Sun position = birth_jd + age_years
-    # For a birth around June 1990, the progressed Sun moves ~1°/year.
-    # We need progressed Sun near 360°. Let's try a specific target date.
-    ctx = calculate_secondary_progression_context(
-        birth_date="1990-06-15", birth_time="12:00", birth_tz="Europe/Moscow",
-        birth_lat=55.0, birth_lon=37.0,
-        target_date="2030-07-01", target_time="12:00", target_tz="Europe/Moscow",
+    from unittest.mock import patch
+
+    class FakeCtx:
+        birth_jd = 2444543.2
+        progressed_sun_lon = 29.5  # 0.5° from Aries→Taurus boundary at 30°
+        max_orb = 1.0
+        resolved_house_system = "PLACIDUS"
+        age_years = 45.68
+        progressed_jd = 2444588.88
+        progressed_utc_iso = "1981-01-01T00:00:00+00:00"
+        target_jd = 2461229.5
+        progressed_moon_lon = 0.0
+        natal_moon_lon = 0.0
+        natal_sun_lon = 0.0
+        natal_positions = {}
+        natal_angles = {}
+        natal_lots = []
+        natal_houses = []
+
+    transitions = progressed_sun_transitions(FakeCtx(), 55.0, 37.0, "PLACIDUS", 1.0)
+    sign_trans = [t for t in transitions if t["transition_type"] == "sign"]
+    assert len(sign_trans) >= 1, "Expected at least one sign transition with Sun at 29.5°"
+    t = sign_trans[0]
+    assert t["current_sign"] == "Aries"
+    assert t["next_sign"] == "Taurus"
+    assert t["base_strength"] == 0.5
+    assert "orb_factor" in t
+    assert "distance_to_boundary" in t
+
+
+def test_progressed_sun_house_transition_direct():
+    """Progressed Sun near a natal house cusp (direct helper test with monkeypatch)."""
+    from solarsage.services.progressions import progressed_sun_transitions
+
+    class FakeCtx:
+        birth_jd = 2444543.2
+        progressed_sun_lon = 45.0  # Arbitrary, house cusp determines proximity
+        max_orb = 1.0
+        resolved_house_system = "PLACIDUS"
+        age_years = 45.68
+        progressed_jd = 2444588.88
+        progressed_utc_iso = "1981-01-01T00:00:00+00:00"
+        target_jd = 2461229.5
+        progressed_moon_lon = 0.0
+        natal_moon_lon = 0.0
+        natal_sun_lon = 0.0
+        natal_positions = {}
+        natal_angles = {}
+        natal_lots = []
+        natal_houses = []
+
+    # Monkeypatch calculate_houses_cusps to return a cusp at 44.5° (0.5° from Sun)
+    from solarsage.services import progressions as pm
+    original = pm.calculate_houses_cusps
+
+    def fake_houses(jd, lat, lon, hs="PLACIDUS"):
+        houses = [{"number": 1, "cusp": 44.5, "sign": "Taurus"}]
+        for i in range(2, 13):
+            houses.append({"number": i, "cusp": float(44.5 + (i - 1) * 30), "sign": "Taurus"})
+        special = [{"name": "ASC", "longitude": 44.5, "sign": "Taurus"},
+                   {"name": "MC", "longitude": 134.5, "sign": "Leo"}]
+        return houses, special, "PLACIDUS"
+
+    pm.calculate_houses_cusps = fake_houses
+    try:
+        transitions = progressed_sun_transitions(FakeCtx(), 55.0, 37.0, "PLACIDUS", 1.0)
+        house_trans = [t for t in transitions if t["transition_type"] == "house"]
+        assert len(house_trans) >= 1, "Expected at least one house transition"
+        t = house_trans[0]
+        assert t["target_house"] == 1
+        assert t["base_strength"] == 0.5
+        assert "orb_factor" in t
+    finally:
+        pm.calculate_houses_cusps = original
+
+
+def test_sun_transition_wrap_around_direct():
+    """Aries/Pisces 0-degree wrap-around handled correctly (direct)."""
+    from solarsage.services.progressions import progressed_sun_transitions
+
+    class FakeCtx:
+        birth_jd = 2444543.2
+        progressed_sun_lon = 359.5  # 0.5° from Pisces→Aries at 360/0°
+        max_orb = 1.0
+        resolved_house_system = "PLACIDUS"
+        age_years = 45.68
+        progressed_jd = 2444588.88
+        progressed_utc_iso = "1981-01-01T00:00:00+00:00"
+        target_jd = 2461229.5
+        progressed_moon_lon = 0.0
+        natal_moon_lon = 0.0
+        natal_sun_lon = 0.0
+        natal_positions = {}
+        natal_angles = {}
+        natal_lots = []
+        natal_houses = []
+
+    transitions = progressed_sun_transitions(FakeCtx(), 55.0, 37.0, "PLACIDUS", 1.0)
+    sign_trans = [t for t in transitions if t["transition_type"] == "sign"]
+    assert len(sign_trans) >= 1, "Expected wrap-around sign transition at 359.5°"
+    t = sign_trans[0]
+    # The forward distance to next boundary at 360° should be 0.5°
+    assert abs(t["distance_to_boundary"] - 0.5) < 0.01, f"Expected distance 0.5, got {t['distance_to_boundary']}"
+    assert t["current_sign"] in ("Pisces",)
+    assert t["next_sign"] in ("Aries",)
+
+
+def test_sun_transition_builder_sign(monkeypatch):
+    """Builder/endpoint produces sign transition activation with full debug keys."""
+    from solarsage.services import progressions as pm
+    from solarsage.services.activation_builder import build_activation_layer
+    from solarsage.schemas.activation import ActivationLayer
+
+    # Monkeypatch progressed_sun_transitions to return a deterministic sign transition
+    fake_transitions = [{
+        "transition_type": "sign",
+        "current_sign": "Aries",
+        "previous_sign": None,
+        "next_sign": "Taurus",
+        "current_house": None,
+        "target_house": None,
+        "boundary_longitude": 30.0,
+        "distance_to_boundary": 0.5,
+        "strength": 0.25,
+        "base_strength": 0.5,
+        "orb_factor": 0.5,
+    }]
+
+    def fake_progressed_sun_transitions(ctx, *args, **kwargs):
+        return fake_transitions
+
+    monkeypatch.setattr(pm, "progressed_sun_transitions", fake_progressed_sun_transitions)
+
+    result = build_activation_layer(
+        birth_date="1980-10-30", birth_time="19:50", birth_tz="Europe/Moscow",
+        birth_lat=67.9394, birth_lon=32.8144,
+        target_date="2026-07-08", target_time="12:00", target_tz="Europe/Moscow",
         house_system="PLACIDUS",
+        techniques=["secondary_progression"],
     )
-    # Check if progressed Sun is near the 0/360 boundary
-    ps_lon = ctx.progressed_sun_lon
-    dist_to_0 = 360.0 - ps_lon  # forward distance to 0°
-    dist_to_360 = ps_lon  # backward distance from 0°
-    # If close to wrap boundary, verify detection
-    transitions = progressed_sun_transitions(ctx, 55.0, 37.0, "PLACIDUS", ctx.max_orb)
-    # The forward distance logic handles wrap-around correctly for dist_to_next
-    # Even at the Aries/Pisces boundary, the forward sign transition works
-    # because next_boundary wraps via modulo
-    for t in transitions:
-        if t["transition_type"] == "sign":
-            # The boundary_longitude should be 0 or 360
-            assert 0 <= t["boundary_longitude"] <= 360
+    sign_acts = [a for a in result.activations if a.kind == "progressed_sun_sign_transition"]
+    assert len(sign_acts) >= 1, "Expected sign transition activation"
+    a = sign_acts[0]
+    d = a.debug
+    assert d.get("transition_type") == "sign"
+    assert d.get("current_sign") == "Aries"
+    assert d.get("next_sign") == "Taurus"
+    assert d.get("current_house") is None
+    assert d.get("target_house") is None
+    assert d.get("base_strength") == 0.5
+    assert d.get("orb_factor") == 0.5
+    assert a.strength == 0.25
+
+
+def test_sun_transition_builder_house(monkeypatch):
+    """Builder/endpoint produces house transition activation with full debug keys."""
+    from solarsage.services import progressions as pm
+
+    fake_transitions = [{
+        "transition_type": "house",
+        "current_sign": None,
+        "previous_sign": None,
+        "next_sign": None,
+        "current_house": 5,
+        "target_house": 6,
+        "boundary_longitude": 150.0,
+        "distance_to_boundary": 0.3,
+        "strength": 0.35,
+        "base_strength": 0.5,
+        "orb_factor": 0.7,
+    }]
+
+    def fake_progressed_sun_transitions(ctx, *args, **kwargs):
+        return fake_transitions
+
+    monkeypatch.setattr(pm, "progressed_sun_transitions", fake_progressed_sun_transitions)
+
+    from solarsage.services.activation_builder import build_activation_layer
+
+    result = build_activation_layer(
+        birth_date="1980-10-30", birth_time="19:50", birth_tz="Europe/Moscow",
+        birth_lat=67.9394, birth_lon=32.8144,
+        target_date="2026-07-08", target_time="12:00", target_tz="Europe/Moscow",
+        house_system="PLACIDUS",
+        techniques=["secondary_progression"],
+    )
+    house_acts = [a for a in result.activations if a.kind == "progressed_sun_house_transition"]
+    assert len(house_acts) >= 1, "Expected house transition activation"
+    a = house_acts[0]
+    d = a.debug
+    assert d.get("transition_type") == "house"
+    assert d.get("current_house") == 5
+    assert d.get("target_house") == 6
+    assert d.get("current_sign") is None
+    assert d.get("base_strength") == 0.5
+    assert d.get("orb_factor") == 0.7
+    assert a.strength == 0.35

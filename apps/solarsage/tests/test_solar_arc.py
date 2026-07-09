@@ -155,6 +155,15 @@ def test_solar_arc_deterministic():
 # ── Missing orb key ──────────────────────────────────────────────────────
 
 
+def _patch_progression_orb(value):
+    """Context manager to patch _load_activation_rules for orb tests."""
+    import solarsage.services.progressions as pm
+    from solarsage.services.progressions import _load_activation_rules
+    import copy
+    rules = _load_activation_rules()
+    return rules
+
+
 def test_missing_solar_arc_orb_key():
     """Missing solar_arc.orb raises KeyError."""
     from solarsage.services.progressions import _get_progression_orb
@@ -162,7 +171,6 @@ def test_missing_solar_arc_orb_key():
     import copy
     rules = _load_activation_rules()
     del rules["techniques"]["solar_arc"]["orb"]
-    # Patch the internal function to use these rules
     import solarsage.services.progressions as pm
     original_load = pm._load_activation_rules
     pm._load_activation_rules = lambda: rules
@@ -190,6 +198,24 @@ def test_missing_secondary_progression_orb_key():
         pm._load_activation_rules = original_load
 
 
+@pytest.mark.parametrize("technique", ["solar_arc", "secondary_progression"])
+def test_non_numeric_orb_raises(technique):
+    """Non-numeric orb value raises KeyError for both progression techniques."""
+    from solarsage.services.progressions import _get_progression_orb
+    from solarsage.services.progressions import _load_activation_rules
+    import copy
+    rules = _load_activation_rules()
+    rules["techniques"][technique]["orb"] = "bad"
+    import solarsage.services.progressions as pm
+    original_load = pm._load_activation_rules
+    pm._load_activation_rules = lambda: rules
+    try:
+        with pytest.raises((KeyError, ValueError)):
+            _get_progression_orb(technique)
+    finally:
+        pm._load_activation_rules = original_load
+
+
 # ── Shared aspect canon ─────────────────────────────────────────────────
 
 
@@ -198,3 +224,5 @@ def test_progression_aspects_match_builder_map():
     from solarsage.services.progressions import ASPECT_ANGLES as prog_angles
     from solarsage.services.activation_builder import ASPECT_ANGLES as build_angles
     assert prog_angles == build_angles, "Aspect maps must be identical"
+    # Also verify they are the same object (imported, not duplicated)
+    assert prog_angles is build_angles, "Aspect maps should be shared, not duplicated"

@@ -4824,7 +4824,7 @@
       }
     },
     {
-      "id": "solar_arc__Jupiter__SQUARE__NATAL_LOT_NECESSITY",
+      "id": "solar_arc__JUPITER__SQUARE__NATAL_LOT_NECESSITY",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "lot",
@@ -4860,6 +4860,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 226.7863,
+        "source_longitude": 226.7863,
         "target_longitude": 135.8442,
         "angular_distance": 90.9421,
         "aspect_angle": 90.0,
@@ -4869,7 +4870,7 @@
       }
     },
     {
-      "id": "solar_arc__Mars__TRINE__NATAL_VENUS",
+      "id": "solar_arc__MARS__TRINE__NATAL_VENUS",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "planet",
@@ -4905,6 +4906,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 299.4691,
+        "source_longitude": 299.4691,
         "target_longitude": 180.3107,
         "angular_distance": 119.1584,
         "aspect_angle": 120.0,
@@ -4914,7 +4916,7 @@
       }
     },
     {
-      "id": "solar_arc__Mars__OPPOSITION__NATAL_ANGLE_ASC",
+      "id": "solar_arc__MARS__OPPOSITION__NATAL_ANGLE_ASC",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "angle",
@@ -4950,6 +4952,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 299.4691,
+        "source_longitude": 299.4691,
         "target_longitude": 118.853,
         "angular_distance": 179.3838,
         "aspect_angle": 180.0,
@@ -4959,7 +4962,7 @@
       }
     },
     {
-      "id": "solar_arc__Mars__CONJUNCTION__NATAL_ANGLE_DSC",
+      "id": "solar_arc__MARS__CONJUNCTION__NATAL_ANGLE_DSC",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "angle",
@@ -4995,6 +4998,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 299.4691,
+        "source_longitude": 299.4691,
         "target_longitude": 298.853,
         "angular_distance": 0.6162,
         "aspect_angle": 0.0,
@@ -5004,7 +5008,7 @@
       }
     },
     {
-      "id": "solar_arc__Mars__SQUARE__NATAL_LOT_FORTUNE",
+      "id": "solar_arc__MARS__SQUARE__NATAL_LOT_FORTUNE",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "lot",
@@ -5040,6 +5044,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 299.4691,
+        "source_longitude": 299.4691,
         "target_longitude": 208.7134,
         "angular_distance": 90.7557,
         "aspect_angle": 90.0,
@@ -5049,7 +5054,7 @@
       }
     },
     {
-      "id": "solar_arc__Mars__SQUARE__NATAL_LOT_SPIRIT",
+      "id": "solar_arc__MARS__SQUARE__NATAL_LOT_SPIRIT",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "lot",
@@ -5085,6 +5090,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 299.4691,
+        "source_longitude": 299.4691,
         "target_longitude": 28.9925,
         "angular_distance": 89.5234,
         "aspect_angle": 90.0,
@@ -5094,7 +5100,7 @@
       }
     },
     {
-      "id": "solar_arc__Neptune__SQUARE__NATAL_SUN",
+      "id": "solar_arc__NEPTUNE__SQUARE__NATAL_SUN",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "planet",
@@ -5130,6 +5136,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 306.9821,
+        "source_longitude": 306.9821,
         "target_longitude": 217.4225,
         "angular_distance": 89.5596,
         "aspect_angle": 90.0,
@@ -5139,7 +5146,7 @@
       }
     },
     {
-      "id": "solar_arc__Neptune__OPPOSITION__NATAL_MOON",
+      "id": "solar_arc__NEPTUNE__OPPOSITION__NATAL_MOON",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "planet",
@@ -5175,6 +5182,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 306.9821,
+        "source_longitude": 306.9821,
         "target_longitude": 127.5621,
         "angular_distance": 179.42,
         "aspect_angle": 180.0,
@@ -5184,7 +5192,7 @@
       }
     },
     {
-      "id": "solar_arc__Pluto__TRINE__NATAL_MOON",
+      "id": "solar_arc__PLUTO__TRINE__NATAL_MOON",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "planet",
@@ -5220,6 +5228,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 248.4683,
+        "source_longitude": 248.4683,
         "target_longitude": 127.5621,
         "angular_distance": 120.9062,
         "aspect_angle": 120.0,
@@ -5229,7 +5238,7 @@
       }
     },
     {
-      "id": "solar_arc__Venus__CONJUNCTION__NATAL_MERCURY",
+      "id": "solar_arc__VENUS__CONJUNCTION__NATAL_MERCURY",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "planet",
@@ -5265,6 +5274,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 226.4585,
+        "source_longitude": 226.4585,
         "target_longitude": 225.7046,
         "angular_distance": 0.7539,
         "aspect_angle": 0.0,
@@ -5274,7 +5284,7 @@
       }
     },
     {
-      "id": "solar_arc__Venus__SQUARE__NATAL_LOT_NECESSITY",
+      "id": "solar_arc__VENUS__SQUARE__NATAL_LOT_NECESSITY",
       "technique": "solar_arc",
       "technique_family": "progression",
       "target_type": "lot",
@@ -5310,6 +5320,7 @@
         "natal_sun_longitude": 217.4225,
         "progressed_sun_longitude": 263.5703,
         "solar_arc_source_longitude": 226.4585,
+        "source_longitude": 226.4585,
         "target_longitude": 135.8442,
         "angular_distance": 90.6143,
         "aspect_angle": 90.0,
@@ -5338,7 +5349,7 @@
       "house": null,
       "lot": "EROS",
       "angle": null,
-      "strength": 0.6297,
+      "strength": 0.5847,
       "polarity": "neutral",
       "weight_hint": null,
       "evidence": "Progressed Moon semi_sextile natal EROS, orb 0.1004°",
@@ -5380,7 +5391,7 @@
       "house": null,
       "lot": "VICTORY",
       "angle": null,
-      "strength": 0.4003,
+      "strength": 0.3717,
       "polarity": "neutral",
       "weight_hint": null,
       "evidence": "Progressed Moon semi_sextile natal VICTORY, orb 0.4281°",
@@ -5422,7 +5433,7 @@
       "house": null,
       "lot": "MARRIAGE",
       "angle": null,
-      "strength": 0.5321,
+      "strength": 0.4941,
       "polarity": "supportive",
       "weight_hint": null,
       "evidence": "Progressed Moon trine natal MARRIAGE, orb 0.2399°",
@@ -5452,7 +5463,7 @@
       "t2n__NEPTUNE__SESQUI_QUADRATE__MERCURY",
       "solar_return__ANGULAR_PLANET__MERCURY__HOUSE_4",
       "lunar_return__ANGULAR_PLANET__MERCURY__HOUSE_1",
-      "solar_arc__Venus__CONJUNCTION__NATAL_MERCURY"
+      "solar_arc__VENUS__CONJUNCTION__NATAL_MERCURY"
     ],
     "MARS": [
       "t2n__SUN__QUINCUNX__MARS",
@@ -5490,7 +5501,7 @@
       "t2n__URANUS__TRINE__VENUS",
       "t2n__NEPTUNE__OPPOSITION__VENUS",
       "t2n__PLUTO__TRINE__VENUS",
-      "solar_arc__Mars__TRINE__NATAL_VENUS"
+      "solar_arc__MARS__TRINE__NATAL_VENUS"
     ],
     "JUPITER": [
       "t2n__VENUS__SEMI_SEXTILE__JUPITER",
@@ -5523,7 +5534,7 @@
       "firdar_major__PERIOD_LORD__SUN",
       "solar_return__CHART_RULER__SUN",
       "solar_return__ANGULAR_PLANET__SUN__HOUSE_4",
-      "solar_arc__Neptune__SQUARE__NATAL_SUN"
+      "solar_arc__NEPTUNE__SQUARE__NATAL_SUN"
     ],
     "MOON": [
       "t2n__MARS__SEXTILE__MOON",
@@ -5532,8 +5543,8 @@
       "t2n__URANUS__SEXTILE__MOON",
       "t2n__NEPTUNE__TRINE__MOON",
       "t2n__PLUTO__OPPOSITION__MOON",
-      "solar_arc__Neptune__OPPOSITION__NATAL_MOON",
-      "solar_arc__Pluto__TRINE__NATAL_MOON"
+      "solar_arc__NEPTUNE__OPPOSITION__NATAL_MOON",
+      "solar_arc__PLUTO__TRINE__NATAL_MOON"
     ]
   },
   "by_house": {
@@ -5596,8 +5607,8 @@
       "t2l__MOON__TRINE__NECESSITY",
       "t2l__SATURN__TRINE__NECESSITY",
       "t2l__NEPTUNE__SESQUI_QUADRATE__NECESSITY",
-      "solar_arc__Jupiter__SQUARE__NATAL_LOT_NECESSITY",
-      "solar_arc__Venus__SQUARE__NATAL_LOT_NECESSITY"
+      "solar_arc__JUPITER__SQUARE__NATAL_LOT_NECESSITY",
+      "solar_arc__VENUS__SQUARE__NATAL_LOT_NECESSITY"
     ],
     "VICTORY": [
       "t2l__SUN__SESQUI_QUADRATE__VICTORY",
@@ -5622,14 +5633,14 @@
       "t2l__MERCURY__SQUARE__FORTUNE",
       "t2l__VENUS__SEXTILE__FORTUNE",
       "t2l__JUPITER__SQUARE__FORTUNE",
-      "solar_arc__Mars__SQUARE__NATAL_LOT_FORTUNE"
+      "solar_arc__MARS__SQUARE__NATAL_LOT_FORTUNE"
     ],
     "SPIRIT": [
       "t2l__MOON__CONJUNCTION__SPIRIT",
       "t2l__MERCURY__SQUARE__SPIRIT",
       "t2l__VENUS__TRINE__SPIRIT",
       "t2l__JUPITER__SQUARE__SPIRIT",
-      "solar_arc__Mars__SQUARE__NATAL_LOT_SPIRIT"
+      "solar_arc__MARS__SQUARE__NATAL_LOT_SPIRIT"
     ],
     "NEMESIS": [
       "t2l__MARS__SEMI_SEXTILE__NEMESIS",
@@ -5657,14 +5668,14 @@
       "t2a__MERCURY__CONJUNCTION__ASC",
       "t2a__VENUS__SEMI_SEXTILE__ASC",
       "t2a__JUPITER__CONJUNCTION__ASC",
-      "solar_arc__Mars__OPPOSITION__NATAL_ANGLE_ASC"
+      "solar_arc__MARS__OPPOSITION__NATAL_ANGLE_ASC"
     ],
     "DSC": [
       "t2a__MOON__SQUARE__DSC",
       "t2a__MERCURY__OPPOSITION__DSC",
       "t2a__VENUS__QUINCUNX__DSC",
       "t2a__JUPITER__OPPOSITION__DSC",
-      "solar_arc__Mars__CONJUNCTION__NATAL_ANGLE_DSC"
+      "solar_arc__MARS__CONJUNCTION__NATAL_ANGLE_DSC"
     ]
   },
   "warnings": [
