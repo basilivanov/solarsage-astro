@@ -286,3 +286,72 @@ def test_timezone_boundary_local_date():
     assert ann_west_bday[0]["debug"]["age"] == 46, f"West Anchorage birthday: {ann_west_bday[0]['debug']}"
     assert ann_east_bday[0]["debug"]["house"] == 11
     assert ann_west_bday[0]["debug"]["house"] == 11
+
+
+def _feb29_request(target_date: str) -> dict:
+    return {
+        "birth": {
+            "date": "2000-02-29",
+            "time": "12:00",
+            "lat": 55.7558,
+            "lon": 37.6173,
+            "tz": "Europe/Moscow",
+        },
+        "target": {
+            "date": target_date,
+            "time": "12:00",
+            "tz": "Europe/Moscow",
+        },
+        "house_system": "PLACIDUS",
+        "techniques": ["annual_profection", "monthly_profection"],
+    }
+
+
+def test_feb29_annual_profection_non_leap_target_does_not_crash():
+    """Birth 2000-02-29 on non-leap targets must not raise ValueError."""
+    for target in ("2026-02-28", "2026-03-01"):
+        resp = client.post("/v1/activation-layer", json=_feb29_request(target))
+        assert resp.status_code == 200, resp.text
+        layer = resp.json()["activation_layer"]
+        annual = [a for a in layer["activations"] if a["technique"] == "annual_profection"]
+        assert annual, f"expected annual profection for {target}"
+        # feb28 policy: on 2026-02-28 birthday is treated as reached
+        house = [a for a in annual if a["target_type"] == "house"][0]
+        assert "age" in house["debug"]
+        assert house["debug"]["annual_year_start"].endswith("-02-28") or house["debug"]["annual_year_start"].endswith("-02-29")
+
+
+def test_feb29_monthly_profection_non_leap_is_deterministic():
+    resp = client.post("/v1/activation-layer", json=_feb29_request("2026-02-28"))
+    assert resp.status_code == 200
+    layer1 = resp.json()["activation_layer"]
+    resp2 = client.post("/v1/activation-layer", json=_feb29_request("2026-02-28"))
+    layer2 = resp2.json()["activation_layer"]
+    mon1 = sorted(
+        [a["id"] for a in layer1["activations"] if a["technique"] == "monthly_profection"]
+    )
+    mon2 = sorted(
+        [a["id"] for a in layer2["activations"] if a["technique"] == "monthly_profection"]
+    )
+    assert mon1 == mon2
+    assert mon1, "monthly profection must return deterministic house/lord"
+
+
+def test_feb29_leap_year_target_preserves_feb29():
+    resp = client.post("/v1/activation-layer", json=_feb29_request("2028-02-29"))
+    assert resp.status_code == 200
+    layer = resp.json()["activation_layer"]
+    annual = [a for a in layer["activations"] if a["technique"] == "annual_profection" and a["target_type"] == "house"]
+    assert annual
+    assert annual[0]["debug"]["annual_year_start"] == "2028-02-29"
+
+
+def test_safe_replace_year_helper_policy():
+    from datetime import date as Date
+    from solarsage.services.activation_builder import safe_replace_year
+
+    d = Date(2000, 2, 29)
+    assert safe_replace_year(d, 2026) == Date(2026, 2, 28)
+    assert safe_replace_year(d, 2026, feb29_policy="mar01") == Date(2026, 3, 1)
+    assert safe_replace_year(d, 2028) == Date(2028, 2, 29)
+    assert safe_replace_year(Date(2000, 1, 15), 2026) == Date(2026, 1, 15)

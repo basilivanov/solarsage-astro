@@ -50,7 +50,7 @@ def test_activation_layer_endpoint_returns_200():
 
     assert "meta" in data
     assert data["meta"]["activation_layer_version"] == "al-1.0"
-    assert data["meta"]["calculation_version"] == "1"
+    assert data["meta"]["calculation_version"] == "ss-calc-1.1.0"
     assert data["meta"]["house_system"] in ("PLACIDUS", "WHOLE_SIGN")
 
     assert "activation_layer" in data

@@ -69,8 +69,21 @@ solarsage:
 	@echo "Set SOLARSAGE_BASE_URL in .env and start it from the SolarSage repo."
 	@exit 1
 
+.PHONY: audit-day audit-day-live audit-day-freeze audit-golden
+
+# Prefer explicit mode targets. Bare audit-day fails fast so frozen baseline
+# is never silently treated as live production proof.
 audit-day:
-	apps/api/.venv/bin/python scripts/audit_today.py --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)
+	@echo "ERROR: choose audit-day-live or audit-day-freeze explicitly."
+	@echo "  make audit-day-live  USER_ID=... DATE=YYYY-MM-DD"
+	@echo "  make audit-day-freeze USER_ID=... DATE=YYYY-MM-DD"
+	@exit 1
+
+audit-day-live:
+	apps/api/.venv/bin/python scripts/audit_today.py --mode live-production --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)
+
+audit-day-freeze:
+	apps/api/.venv/bin/python scripts/audit_today.py --mode frozen-baseline --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)
 
 audit-golden:
 	python3 scripts/check_audit_golden.py

@@ -88,6 +88,15 @@ from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
 from app.core.config import settings
+from app.core.versions import (
+    ACTIVATION_LAYER_VERSION,
+    CALCULATION_VERSION,
+    LEGACY_CALCULATION_VERSION,
+    LEGACY_FRONTEND_PAYLOAD_VERSION,
+    TODAY_V1_PAYLOAD_VERSION,
+    TODAY_V2_PAYLOAD_VERSION,
+    V2_FRONTEND_PAYLOAD_VERSION,
+)
 from app.services.natal_context_service import NatalContextService
 from app.services.canon_service import get_canon_versions
 from app.services.activation_layer_service import ActivationLayerService
@@ -304,15 +313,27 @@ class TodayService:
         scoring_version = dual.selected_scoring_version
 
         # Rebuild cache key with actual runtime version fields for write
-        fe_version = 2 if getattr(settings, "solarsage_v2_frontend_enabled", False) else 1
-        p_version = "today.v2" if getattr(settings, "solarsage_v2_frontend_enabled", False) else "today.v1"
+        fe_version = (
+            V2_FRONTEND_PAYLOAD_VERSION
+            if getattr(settings, "solarsage_v2_frontend_enabled", False)
+            else LEGACY_FRONTEND_PAYLOAD_VERSION
+        )
+        p_version = (
+            TODAY_V2_PAYLOAD_VERSION
+            if getattr(settings, "solarsage_v2_frontend_enabled", False)
+            else TODAY_V1_PAYLOAD_VERSION
+        )
+        calc_version = activation_layer.calculation_version or (
+            CALCULATION_VERSION if should_compute_v2() else LEGACY_CALCULATION_VERSION
+        )
+        al_version = activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
 
         cache_key = build_today_cache_key(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=profile_hash,
-            calculation_version=activation_layer.calculation_version,
-            activation_layer_version=activation_layer.activation_layer_version,
+            calculation_version=calc_version,
+            activation_layer_version=al_version,
             scoring_version=scoring_version,
             frontend_payload_version=fe_version,
         )
@@ -449,7 +470,7 @@ class TodayService:
             meta=TodayMeta(
                 schema_version="today/v1",
                 contract_version=3,
-                calculation_version=1,
+                calculation_version=calc_version,
                 normalization_version=1,
                 scoring_version=scoring_version,
                 prompt_version=2,
@@ -457,7 +478,7 @@ class TodayService:
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
                 canon_versions=get_canon_versions(),
-                activation_layer_version=activation_layer.activation_layer_version,
+                activation_layer_version=al_version,
                 payload_version=p_version,
                 frontend_payload_version=fe_version,
             ),

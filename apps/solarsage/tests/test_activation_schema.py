@@ -23,7 +23,7 @@ def test_sidecar_activation_evidence_minimal():
 
 def test_sidecar_activation_layer_minimal():
     layer = ActivationLayer(
-        calculation_version="1",
+        calculation_version="ss-calc-1.1.0",
         target_date="2026-07-08",
         target_time="12:00",
         target_tz="Europe/Moscow",
@@ -65,7 +65,7 @@ def test_sidecar_activation_layer_rejects_missing_index_reference():
     )
     with pytest.raises(ValidationError, match="missing-id"):
         ActivationLayer(
-            calculation_version="1",
+            calculation_version="ss-calc-1.1.0",
             target_date="2026-07-08",
             target_time="12:00",
             target_tz="Europe/Moscow",

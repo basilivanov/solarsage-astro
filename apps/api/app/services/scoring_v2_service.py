@@ -51,6 +51,7 @@ from typing import Any
 
 import yaml
 
+from app.core.versions import CALCULATION_VERSION, SCORING_V2_VERSION
 from app.schemas.activation import ActivationLayer, ActivationEvidence
 from app.schemas.normalization import AstroSignal
 from app.schemas.scoring_v2 import (
@@ -385,7 +386,7 @@ class ScoringV2Service:
                 activation_layer = ActivationLayer.model_validate(activation_layer)
         else:
             activation_layer = ActivationLayer(
-                calculation_version="1",
+                calculation_version=CALCULATION_VERSION,
                 target_date="",
                 target_time="",
                 target_tz="",
@@ -559,7 +560,7 @@ class ScoringV2Service:
         }
 
         return ScoringV2Result(
-            scoring_version="ss-scoring-2.0",
+            scoring_version=SCORING_V2_VERSION,
             canon_versions=get_canon_versions(),
             day_status=status,
             status_breakdown=status_breakdown,

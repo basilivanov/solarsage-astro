@@ -4,27 +4,46 @@ This directory contains independent audits and baseline tools for the SolarSage 
 
 ## How to Run the Audit
 
-To collect production inputs, transits, and scoring results for a given user and date, run the following command:
+Audit modes are explicit. Bare `make audit-day` fails fast and does **not** silently use a frozen baseline.
+
+### Live production proof
 
 ```bash
-make audit-day USER_ID=<user_uuid> DATE=<yyyy-mm-dd>
+make audit-day-live USER_ID=<user_uuid> DATE=<yyyy-mm-dd>
 ```
 
-For example, to run the baseline audit for user Basil on 2026-07-08:
+- Calls `TodayService.get_today_payload()`
+- Writes `artifact_source.json` with `final_payload_source=TodayService.get_today_payload`
+- Prefers sidecar full activation layer for `16_activation_layer.json`
+- Live samples may write under `artifacts/audit/<DATE>/live/<timestamp>/`
+
+### Frozen baseline validation
 
 ```bash
-make audit-day USER_ID=eb3876be-e1b4-43d6-b887-1f8554e33150 DATE=2026-07-08
+make audit-day-freeze USER_ID=<user_uuid> DATE=<yyyy-mm-dd>
 ```
 
-This command executes `scripts/audit_today.py` which:
+- Requires existing `11_final_today_payload.json`
+- Labels the run as `committed_baseline_fixture`
+- Is deterministic fixture validation, **not** a fresh production payload proof
+
+Example:
+
+```bash
+make audit-day-live USER_ID=eb3876be-e1b4-43d6-b887-1f8554e33150 DATE=2026-07-08
+make audit-day-freeze USER_ID=eb3876be-e1b4-43d6-b887-1f8554e33150 DATE=2026-07-08
+```
+
+`scripts/audit_today.py` always records provenance in `artifact_source.json`:
 1. Queries the database for the user profile.
 2. Calls the SolarSage sidecar for transits at 12:00.
-3. Performs normalization and filters signals.
-4. Performs scoring (sphere scores and top signals).
-5. Computes semantic contexts for LLM.
-6. Calls `TodayService` to fetch the final TodayPayload.
-7. Executes the independent scoring and astronomy oracles.
-8. Outputs 16 canonical numbered JSON, CSV, and Markdown files directly under `artifacts/audit/<DATE>/`, and places intermediate/unprefixed debug logs and oracle details in a `debug/` subdirectory.
+3. Fetches and validates the sidecar activation layer when available.
+4. Performs normalization and filters signals.
+5. Performs scoring (sphere scores and top signals).
+6. Computes semantic contexts for LLM.
+7. In live mode, calls `TodayService` for the final TodayPayload.
+8. Executes the independent scoring and astronomy oracles.
+9. Outputs numbered JSON/CSV/Markdown artifacts and debug intermediates.
 
 ## How to Interpret the Audit Artifacts
 

@@ -367,47 +367,49 @@ async def run_oracles(
 async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     # START_FUNCTION_CONTRACT: F-M-AUDIT-TODAY.run_audit
     # purpose: Capture production Today path and write audit artifacts.
-    # inputs: argparse namespace with user_id, date, out, oracle flags.
+    # inputs: argparse namespace with user_id, date, out, oracle flags, mode.
     # returns: summary dict.
     # side_effects: DB reads, sidecar calls, writes artifact files, may run subprocesses.
     # emitted_logs: none.
     # error_behavior: raises on missing profile or failed production/oracle calls.
     # END_FUNCTION_CONTRACT: F-M-AUDIT-TODAY.run_audit
+    mode = getattr(args, "resolved_mode", None) or resolve_audit_mode(args)
+    is_live = mode == "live-production"
     target_date = Date.fromisoformat(args.date)
     out_dir = args.out.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Determine output directories based on mode
-    is_live = getattr(args, 'live_llm_sample', False)
     dirs = resolve_audit_output_dirs(out_dir, is_live)
     root_dir = dirs.root_dir
     debug_dir = dirs.debug_dir
+    _baseline: dict[str, Any] | None = None
 
     if is_live:
         root_dir.mkdir(parents=True, exist_ok=True)
         debug_dir.mkdir(parents=True, exist_ok=True)
     else:
-        # Canonical mode: output goes to standard out_dir
+        # Frozen baseline mode: require committed baseline fixture first.
         root_dir = out_dir
         debug_dir = out_dir / "debug"
-
-        # Default mode: fail fast if committed baseline fixture is missing or invalid.
-        # Do this BEFORE creating debug_dir or writing any files, so a missing/invalid
-        # baseline does not even create an empty debug/ directory.
         baseline_path = out_dir / "11_final_today_payload.json"
         if not baseline_path.exists():
             print(f"ERROR: Baseline fixture {baseline_path} not found.", file=sys.stderr)
-            print("Default make audit-day requires an existing committed baseline.", file=sys.stderr)
-            print("Run with --live-llm-sample first to create the initial baseline, then commit it.", file=sys.stderr)
+            print("Frozen baseline mode requires an existing committed baseline.", file=sys.stderr)
+            print("Run make audit-day-live first to create the initial baseline, then commit it.", file=sys.stderr)
             sys.exit(1)
-        import json as _json
         try:
             baseline_raw = baseline_path.read_text(encoding="utf-8")
-            _baseline = _json.loads(baseline_raw)
-            if "meta" not in _baseline:
-                raise ValueError("missing 'meta' key")
-            if "headline" not in _baseline:
-                raise ValueError("missing 'headline' key")
+            _baseline = json.loads(baseline_raw)
+            aliases = {
+                "day_status": ("day_status", "dayStatus"),
+                "concrete_advice": ("concrete_advice", "concreteAdvice"),
+                "why_this_happens": ("why_this_happens", "whyThisHappens"),
+            }
+            for required_key in ("meta", "headline", "day_status", "concrete_advice", "why_this_happens"):
+                keys = aliases.get(required_key, (required_key,))
+                if not any(k in _baseline for k in keys):
+                    raise ValueError(f"missing '{required_key}' key")
         except Exception as exc:
             print(f"ERROR: Invalid baseline fixture {baseline_path}: {exc}", file=sys.stderr)
             sys.exit(1)
@@ -512,24 +514,79 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         write_json(debug_dir / "semantic_layer.json", semantic_layer)
         write_json(debug_dir / "why_contexts.json", why_contexts)
 
-        # W2: Build activation layer from day signals
+        # Activation layer: prefer sidecar full V2 layer; local fallback is debug-only.
+        from app.core.config import settings
+        from app.schemas.activation import ActivationLayer
         from app.services.activation_layer_service import ActivationLayerService
-        activation_layer = ActivationLayerService().build(
-            natal_context=natal_context_dict,
-            transits=transits,
-            day_signals=day_signals,
-            target_date=target_date,
-            target_time="12:00",
-            target_tz=target_tz,
-            house_system=natal_context_dict.get("house_system", "PLACIDUS"),
-        )
+
+        activation_layer_source = "unavailable"
+        activation_layer = None
+        sidecar_layer_raw = None
+        current_location = None
+        if (
+            profile.current_lat is not None
+            and profile.current_lon is not None
+            and profile.current_tz is not None
+        ):
+            current_location = {
+                "lat": float(profile.current_lat),
+                "lon": float(profile.current_lon),
+                "tz": profile.current_tz,
+            }
+
+        try:
+            sidecar_layer_raw = await client.get_activation_layer(
+                birth_date=profile.birthday.isoformat() if profile.birthday else target_date.isoformat(),
+                birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
+                birth_lat=float(profile.birth_lat) if profile.birth_lat is not None else 0.0,
+                birth_lon=float(profile.birth_lon) if profile.birth_lon is not None else 0.0,
+                birth_tz=profile.birth_tz or "UTC",
+                target_date=target_date.isoformat(),
+                target_time="12:00",
+                target_tz=target_tz,
+                house_system=natal_context_dict.get("house_system", "PLACIDUS"),
+                current_location=current_location,
+            )
+            write_json(debug_dir / "raw_sidecar_activation_layer.json", sidecar_layer_raw)
+            activation_layer = ActivationLayer.model_validate(sidecar_layer_raw)
+            write_json(debug_dir / "sidecar_activation_layer.json", activation_layer)
+            activation_layer_source = "sidecar"
+        except Exception as sidecar_exc:
+            allow_fallback = bool(getattr(args, "allow_activation_fallback", False))
+            v2_enabled = bool(getattr(settings, "solarsage_v2_enabled", False))
+            if is_live and v2_enabled and not allow_fallback:
+                raise SystemExit(
+                    f"ERROR: sidecar activation layer failed in live-production with V2 enabled: {sidecar_exc}"
+                ) from sidecar_exc
+            if not allow_fallback and not is_live:
+                # frozen mode may continue only with explicit opt-in
+                raise SystemExit(
+                    f"ERROR: sidecar activation layer failed in frozen-baseline mode "
+                    f"(pass --allow-activation-fallback to continue): {sidecar_exc}"
+                ) from sidecar_exc
+            activation_layer = ActivationLayerService().build(
+                natal_context=natal_context_dict,
+                transits=transits,
+                day_signals=day_signals,
+                target_date=target_date,
+                target_time="12:00",
+                target_tz=target_tz,
+                house_system=natal_context_dict.get("house_system", "PLACIDUS"),
+            )
+            write_json(debug_dir / "local_fallback_activation_layer.json", activation_layer)
+            activation_layer_source = "local_fallback"
+
+        # Always keep a debug copy of whichever layer was selected for intermediates.
         write_json(debug_dir / "activation_layer.json", activation_layer)
 
-        # TodayService/payload generation: only in live-LLM mode.
-        # In default (canonical) mode, the payload is frozen from the committed baseline fixture.
+        # TodayService/payload generation: only in live-production mode.
+        # In frozen-baseline mode, the payload is the committed baseline fixture.
         payload_json = None
+        cache_invalidated = False
         if is_live:
-            await TodayService(db).invalidate_cache(user.id)
+            if not getattr(args, "allow_cache", False):
+                await TodayService(db).invalidate_cache(user.id)
+                cache_invalidated = True
             today_payload = await TodayService(db).get_today_payload(
                 user_id=user.id,
                 target_date=target_date,
@@ -537,15 +594,45 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
                 skip_prefetch=True,
             )
             payload_json = today_payload.model_dump(mode="json", by_alias=False)
-            meta = payload_json.get("meta", payload_json.get("Meta", {}))
+            write_json(debug_dir / "final_today_payload.raw.json", payload_json)
+            normalized = json.loads(json.dumps(payload_json))
+            meta = normalized.get("meta", normalized.get("Meta", {})) or {}
             meta["generated_at"] = f"{target_date.isoformat()}T12:00:00Z"
             meta["cached"] = False
-            write_json(debug_dir / "final_today_payload.json", payload_json)
+            normalized["meta"] = meta
+            write_json(debug_dir / "final_today_payload.normalized.json", normalized)
+            write_json(debug_dir / "final_today_payload.json", normalized)
+            payload_json = normalized
+            final_payload_source = "TodayService.get_today_payload"
         else:
-            # Canonical mode: use frozen baseline payload (already loaded and validated)
+            # Frozen baseline mode: use committed baseline payload (already validated)
             payload_json = _baseline
+            final_payload_source = "committed_baseline_fixture"
 
         await client.close()
+
+        # artifact_source.json — honest provenance for acceptance evidence
+        try:
+            git_head = subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=REPO_ROOT,
+                text=True,
+            ).strip()
+        except Exception:
+            git_head = None
+        artifact_source = {
+            "mode": mode,
+            "final_payload_source": final_payload_source,
+            "activation_layer_source": activation_layer_source,
+            "uses_llm_live_text": bool(is_live),
+            "cache_invalidated_before_payload": cache_invalidated if is_live else False,
+            "target_date": target_date.isoformat(),
+            "target_time": "12:00",
+            "target_tz": target_tz,
+            "git_head": git_head,
+        }
+        write_json(root_dir / "artifact_source.json", artifact_source)
+        write_json(debug_dir / "artifact_source.json", artifact_source)
 
     await run_oracles(
         out_dir=debug_dir,
@@ -578,11 +665,14 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     if (debug_dir / "astronomy_oracle_summary.json").exists():
         shutil.copy2(debug_dir / "astronomy_oracle_summary.json", root_dir / "13_astronomy_oracle_summary.json")
 
-    # 16_activation_layer.json: copy to canonical root and live root
-    if (debug_dir / "activation_layer.json").exists():
+    # 16_activation_layer.json: only sidecar layer becomes the root acceptance artifact.
+    # Local fallback stays under debug/ and must not be confused with accepted sidecar proof.
+    if activation_layer_source == "sidecar" and (debug_dir / "sidecar_activation_layer.json").exists():
+        shutil.copy2(debug_dir / "sidecar_activation_layer.json", root_dir / "16_activation_layer.json")
+    elif activation_layer_source == "sidecar" and (debug_dir / "activation_layer.json").exists():
         shutil.copy2(debug_dir / "activation_layer.json", root_dir / "16_activation_layer.json")
 
-    # Generate 14_claims_audit.md only in live mode; in default mode keep frozen from baseline
+    # Generate 14_claims_audit.md only in live mode; in frozen mode keep baseline claims.
     if is_live:
         # Support both snake_case (by_alias=False) and camelCase (by_alias=True) defensively
         def _get_field(obj, *keys):
@@ -615,6 +705,7 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         claims_text = f"""# W0 Claims Audit: User {args.user_id}, {args.date}
 
 This document contains actual production payload excerpts generated for manual review and claims verification.
+Mode: live-production (TodayService.get_today_payload).
 
 ## Production Payload Excerpts
 
@@ -639,13 +730,30 @@ This document contains actual production payload excerpts generated for manual r
 - **Stale Advice Contradiction**: active relationship outreach advised (с общением с близкими) under "avoid" verdict.
 """
         (root_dir / "14_claims_audit.md").write_text(claims_text, encoding="utf-8")
-    # else: 14_claims_audit.md is frozen from baseline in canonical mode
+    else:
+        claims_note = (
+            "# Frozen baseline claims note\n\n"
+            "This is a frozen baseline payload review. "
+            "It is not a fresh TodayService production payload.\n"
+        )
+        claims_path = root_dir / "14_claims_audit.md"
+        if claims_path.exists():
+            existing = claims_path.read_text(encoding="utf-8")
+            if "frozen baseline payload review" not in existing.lower():
+                claims_path.write_text(claims_note + "\n" + existing, encoding="utf-8")
+        else:
+            claims_path.write_text(claims_note, encoding="utf-8")
 
-    # Generate 15_audit_summary.md (deterministic, same in both modes)
+    # Generate 15_audit_summary.md
     summary_text = f"""# W0 Audit Summary: User {args.user_id}, {args.date}
 
+## Mode
+`{mode}`
+
 ## Executive summary
-Production `TodayPayload` for User {args.user_id} on {args.date} has `day_status={scoring_result["day_status"]}`.
+`TodayPayload` for User {args.user_id} on {args.date} has `day_status={scoring_result["day_status"]}`.
+Final payload source: `{final_payload_source}`.
+Activation layer source: `{activation_layer_source}`.
 
 Why the day status happened: see `production_scoring_result.json` and `scoring_oracle_comparison.json`.
 
@@ -659,6 +767,7 @@ See `trace_map.json` for details.
     summary = {
         "user_id": args.user_id,
         "date": target_date.isoformat(),
+        "mode": mode,
         "out_dir": str(out_dir),
         "target_time": "12:00",
         "target_timezone": target_tz,
@@ -667,16 +776,41 @@ See `trace_map.json` for details.
         "day_status": scoring_result["day_status"],
         "final_headline": payload_json.get("headline"),
         "final_cached": (payload_json.get("meta") or {}).get("cached"),
+        "final_payload_source": final_payload_source,
+        "activation_layer_source": activation_layer_source,
     }
     write_json(debug_dir / "audit_summary.json", summary)
     return summary
 
 
-def parse_args() -> argparse.Namespace:
+def resolve_audit_mode(args: argparse.Namespace) -> str:
+    """Resolve explicit audit mode. Fail-fast when mode is missing/ambiguous."""
+    mode = getattr(args, "mode", None)
+    if mode in ("live-production", "frozen-baseline"):
+        return mode
+    if getattr(args, "live_llm_sample", False) and getattr(args, "frozen_baseline", False):
+        raise SystemExit("ERROR: --live-llm-sample and --frozen-baseline are mutually exclusive.")
+    if getattr(args, "live_llm_sample", False):
+        return "live-production"
+    if getattr(args, "frozen_baseline", False):
+        return "frozen-baseline"
+    raise SystemExit(
+        "ERROR: audit mode is required. Use --mode live-production or --mode frozen-baseline "
+        "(aliases: --live-llm-sample / --frozen-baseline)."
+    )
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Capture SolarSage TodayPayload audit artifacts")
     parser.add_argument("--user-id", required=True)
     parser.add_argument("--date", required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("live-production", "frozen-baseline"),
+        default=None,
+        help="Explicit audit mode. Required unless a legacy alias is used.",
+    )
     parser.add_argument(
         "--astronomy-python",
         type=Path,
@@ -685,13 +819,32 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-oracles", action="store_true")
     parser.add_argument("--skip-scoring-oracle", action="store_true")
     parser.add_argument("--skip-astronomy-oracle", action="store_true")
-    parser.add_argument("--live-llm-sample", action="store_true",
-                        help="Bypass cache and regenerate fresh LLM text for live sampling")
-    return parser.parse_args()
+    parser.add_argument(
+        "--live-llm-sample",
+        action="store_true",
+        help="Legacy alias for --mode live-production",
+    )
+    parser.add_argument(
+        "--frozen-baseline",
+        action="store_true",
+        help="Legacy alias for --mode frozen-baseline",
+    )
+    parser.add_argument(
+        "--allow-cache",
+        action="store_true",
+        help="Live mode: do not invalidate TodayPayload cache before get_today_payload()",
+    )
+    parser.add_argument(
+        "--allow-activation-fallback",
+        action="store_true",
+        help="Allow local fallback activation layer when sidecar fails (frozen mode only by default)",
+    )
+    return parser.parse_args(argv)
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    args.resolved_mode = resolve_audit_mode(args)
     summary = asyncio.run(run_audit(args))
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 

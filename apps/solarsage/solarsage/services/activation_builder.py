@@ -15,6 +15,7 @@ from typing import Any
 
 import yaml
 
+from solarsage.core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
 from solarsage.schemas.activation import ActivationLayer, ActivationEvidence
 from solarsage.utils.ephemeris import (
     calculate_julian_day,
@@ -407,11 +408,39 @@ def _get_return_strength(rules: dict, kind: str) -> float:
     return float(return_base[kind])
 
 
+def safe_replace_year(
+    d: "Date",
+    year: int,
+    *,
+    feb29_policy: str = "feb28",
+) -> "Date":
+    """Replace year on a date with an explicit Feb 29 policy.
+
+    Default policy ``feb28`` maps Feb 29 births onto Feb 28 in non-leap years.
+    ``mar01`` maps them onto March 1 instead.
+    """
+    from datetime import date as Date
+
+    try:
+        return d.replace(year=year)
+    except ValueError:
+        if d.month == 2 and d.day == 29:
+            if feb29_policy == "feb28":
+                return Date(year, 2, 28)
+            if feb29_policy == "mar01":
+                return Date(year, 3, 1)
+            raise ValueError(f"Unknown feb29_policy: {feb29_policy}") from None
+        raise
+
+
 def _completed_years(birth_local: "Date", target_local: "Date") -> int:
-    """Completed full years between two local dates."""
+    """Completed full years between two local dates.
+
+    Feb 29 births use the feb28 policy birthday in non-leap years.
+    """
+    birthday_this_year = safe_replace_year(birth_local, target_local.year)
     age = target_local.year - birth_local.year
-    # If birthday hasn't occurred yet this year, subtract one
-    if (target_local.month, target_local.day) < (birth_local.month, birth_local.day):
+    if target_local < birthday_this_year:
         age -= 1
     return max(0, age)
 
@@ -473,7 +502,8 @@ def build_activation_layer(
     if not active:
         # No supported techniques requested — return contract-only layer
         return ActivationLayer(
-            calculation_version="1",
+            calculation_version=CALCULATION_VERSION,
+            activation_layer_version=ACTIVATION_LAYER_VERSION,
             target_date=target_date,
             target_time=target_time,
             target_tz=target_tz,
@@ -777,9 +807,11 @@ def build_activation_layer(
                         "age": age,
                         "birth_local_date": birth_date,
                         "target_local_date": target_date,
-                        "annual_year_start": f"{target_local.year - 1}-{birth_local.month:02d}-{birth_local.day:02d}"
-                            if target_local < birth_local.replace(year=target_local.year)
-                            else f"{target_local.year}-{birth_local.month:02d}-{birth_local.day:02d}",
+                        "annual_year_start": (
+                            safe_replace_year(birth_local, target_local.year - 1).isoformat()
+                            if target_local < safe_replace_year(birth_local, target_local.year)
+                            else safe_replace_year(birth_local, target_local.year).isoformat()
+                        ),
                         "house": annual_house,
                         "house_cusp_longitude": round(annual_house_lon, 4),
                         "house_cusp_sign": annual_house_sign,
@@ -830,9 +862,9 @@ def build_activation_layer(
                 annual_house = (age % 12) + 1
 
                 # Annual year start = most recent birthday on or before target
-                annual_year_start = birth_local.replace(year=target_local.year)
+                annual_year_start = safe_replace_year(birth_local, target_local.year)
                 if annual_year_start > target_local:
-                    annual_year_start = birth_local.replace(year=target_local.year - 1)
+                    annual_year_start = safe_replace_year(birth_local, target_local.year - 1)
 
                 # Count completed monthly anniversaries — non-drifting from annual_year_start
                 completed_month_steps = 0
@@ -1625,7 +1657,8 @@ def build_activation_layer(
                     by_lot.setdefault(ed["target_key"], []).append(ed["id"])
 
     return ActivationLayer(
-        calculation_version="1",
+        calculation_version=CALCULATION_VERSION,
+        activation_layer_version=ACTIVATION_LAYER_VERSION,
         target_date=target_date,
         target_time=target_time,
         target_tz=target_tz,

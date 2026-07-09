@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import date as Date
 from typing import Any
 
+from app.core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
 from app.schemas.activation import (
     ActivationEvidence,
     ActivationLayer,
@@ -117,7 +118,8 @@ class ActivationLayerService:
                 by_house.setdefault(house_key, []).append(act.id)
 
         return ActivationLayer(
-            calculation_version="1",
+            calculation_version=CALCULATION_VERSION,
+            activation_layer_version=ACTIVATION_LAYER_VERSION,
             target_date=target_date.isoformat(),
             target_time=target_time,
             target_tz=target_tz,

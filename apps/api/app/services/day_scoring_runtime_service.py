@@ -13,6 +13,7 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.core.logging import log_block, log_event
+from app.core.versions import LEGACY_SCORING_VERSION, SCORING_V2_VERSION
 from app.schemas.activation import ActivationLayer
 from app.schemas.normalization import AstroSignal
 from app.services.scoring_service import ScoringService
@@ -27,7 +28,7 @@ def should_compute_v2() -> bool:
 def selected_scoring_version_for_flags() -> int | str:
     """Return the selected scoring version implied by feature flags.
     Used before cache read so V2-enabled does not read V1 cache."""
-    return "ss-scoring-2.0" if settings.solarsage_v2_enabled else 1
+    return SCORING_V2_VERSION if settings.solarsage_v2_enabled else LEGACY_SCORING_VERSION
 
 
 @dataclass
@@ -35,7 +36,7 @@ class DualRunResult:
     """Result of a dual-run V1/V2 scoring computation."""
 
     selected_result: dict[str, Any]  # V1-shaped dict for existing services
-    selected_scoring_version: int | str  # 1 for V1, "ss-scoring-2.0" for V2
+    selected_scoring_version: int | str  # 1 for V1, SCORING_V2_VERSION for V2
     v1_result: dict[str, Any]
     v2_result: Any | None = None
     diff: dict[str, Any] | None = None
@@ -117,7 +118,7 @@ class DayScoringRuntimeService:
                         payload={
                             "user_id": str(user_id) if user_id else None,
                             "date": target_date,
-                            "selected_version": 1 if not v2_enabled else "ss-scoring-2.0",
+                            "selected_version": LEGACY_SCORING_VERSION if not v2_enabled else SCORING_V2_VERSION,
                             "v1_day_status": v1_day_status,
                             "v2_day_status": v2_result.day_status,
                             "sphere_diffs": sphere_diffs,
@@ -148,10 +149,10 @@ class DayScoringRuntimeService:
                 "sphere_scores": {k: round(v.final_score, 4) for k, v in v2_result.sphere_scores.items()},
                 "top_signals": v2_result.top_signals,
             }
-            selected_scoring_version = "ss-scoring-2.0"
+            selected_scoring_version = SCORING_V2_VERSION
         else:
             selected_result = v1_result
-            selected_scoring_version = 1
+            selected_scoring_version = LEGACY_SCORING_VERSION
 
         return DualRunResult(
             selected_result=selected_result,

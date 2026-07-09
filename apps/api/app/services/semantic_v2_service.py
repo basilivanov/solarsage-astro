@@ -6,6 +6,7 @@
 from __future__ import annotations
 import sys
 from typing import Any, Literal
+from app.core.versions import SCORING_V2_VERSION, TODAY_V2_PAYLOAD_VERSION
 from app.schemas.activation import ActivationLayer, ActivationEvidence
 from app.schemas.scoring_v2 import ScoringV2Result, SphereScoreV2
 from app.schemas.today import (
@@ -239,9 +240,9 @@ class SemanticV2Service:
         audit = TodayV2Audit(
             trace_id=trace_id,
             available=True,
-            payload_version="today.v2",
+            payload_version=TODAY_V2_PAYLOAD_VERSION,
             calculation_version=activation_layer.calculation_version,
-            scoring_version=scoring_result.scoring_version if scoring_result and hasattr(scoring_result, "scoring_version") else "ss-scoring-2.0",
+            scoring_version=scoring_result.scoring_version if scoring_result and hasattr(scoring_result, "scoring_version") else SCORING_V2_VERSION,
             activation_layer_version=activation_layer.activation_layer_version,
             canon_versions={str(k): str(v) for k, v in canon_versions.items()},
             v1_v2_diff=v1_v2_diff,

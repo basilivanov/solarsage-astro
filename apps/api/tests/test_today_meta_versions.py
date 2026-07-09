@@ -655,3 +655,72 @@ async def test_today_service_current_location_incomplete_omitted(db_session, mon
         # Verify current_location parameter was None (omitted)
         call_kwargs = mock_client.get_activation_layer.call_args.kwargs
         assert call_kwargs.get("current_location") is None
+
+def test_version_constants_are_explicit():
+    from app.core.versions import (
+        ACTIVATION_LAYER_VERSION,
+        CALCULATION_VERSION,
+        SCORING_V2_VERSION,
+        TODAY_V2_PAYLOAD_VERSION,
+        V2_FRONTEND_PAYLOAD_VERSION,
+    )
+    assert CALCULATION_VERSION.startswith("ss-calc-")
+    assert ACTIVATION_LAYER_VERSION.startswith("al-")
+    assert SCORING_V2_VERSION.startswith("ss-scoring-")
+    assert TODAY_V2_PAYLOAD_VERSION == "today.v2"
+    assert V2_FRONTEND_PAYLOAD_VERSION == 2
+
+
+def test_api_and_sidecar_calculation_version_literals_match():
+    """Package separation requires duplicated literals; keep them equal."""
+    from app.core.versions import ACTIVATION_LAYER_VERSION as API_AL
+    from app.core.versions import CALCULATION_VERSION as API_CALC
+    # Sidecar path may not be importable from API tests; compare literal file content.
+    from pathlib import Path
+    text = Path(__file__).resolve().parents[3].joinpath(
+        "apps/solarsage/solarsage/core/versions.py"
+    ).read_text(encoding="utf-8")
+    assert f'CALCULATION_VERSION = "{API_CALC}"' in text
+    assert f'ACTIVATION_LAYER_VERSION = "{API_AL}"' in text
+
+
+def test_activation_layer_service_uses_canonical_calculation_version():
+    from datetime import date
+    from app.core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
+    from app.services.activation_layer_service import ActivationLayerService
+
+    layer = ActivationLayerService().build(
+        natal_context={},
+        transits={},
+        day_signals=[],
+        target_date=date(2026, 7, 8),
+        target_time="12:00",
+        target_tz="Europe/Moscow",
+        house_system="WHOLE_SIGN",
+    )
+    assert layer.calculation_version == CALCULATION_VERSION
+    assert layer.activation_layer_version == ACTIVATION_LAYER_VERSION
+
+
+def test_expected_cache_identity_v2_flags(monkeypatch):
+    from uuid import uuid4
+    from app.core.config import settings
+    from app.core.versions import (
+        ACTIVATION_LAYER_VERSION,
+        CALCULATION_VERSION,
+        SCORING_V2_VERSION,
+        V2_FRONTEND_PAYLOAD_VERSION,
+    )
+    from app.services.cache_key_service import expected_cache_identity
+
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", True)
+    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", True)
+    key = expected_cache_identity(
+        user_id=uuid4(),
+        target_date="2026-07-08",
+        profile_hash="abc",
+    )
+    assert key.calculation_version == CALCULATION_VERSION
+    assert key.activation_layer_version == ACTIVATION_LAYER_VERSION
+    assert key.scoring_version == SCORING_V2_VERSION
+    assert key.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION

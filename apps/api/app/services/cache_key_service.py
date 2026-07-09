@@ -10,6 +10,13 @@ import json
 from dataclasses import dataclass
 from uuid import UUID
 
+from app.core.versions import (
+    ACTIVATION_LAYER_VERSION,
+    LEGACY_CALCULATION_VERSION,
+    LEGACY_FRONTEND_PAYLOAD_VERSION,
+    LEGACY_SCORING_VERSION,
+    V2_FRONTEND_PAYLOAD_VERSION,
+)
 from app.services.canon_service import get_canon_versions
 from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
 
@@ -50,11 +57,11 @@ def build_today_cache_key(
     user_id: UUID,
     target_date: str,
     profile_hash: str,
-    calculation_version: str = "1",
+    calculation_version: str = LEGACY_CALCULATION_VERSION,
     activation_layer_version: str | None = None,
-    scoring_version: int | str = 1,
+    scoring_version: int | str = LEGACY_SCORING_VERSION,
     llm_prompt_version: int = 2,
-    frontend_payload_version: int = 1,
+    frontend_payload_version: int = LEGACY_FRONTEND_PAYLOAD_VERSION,
 ) -> TodayCacheKey:
     """Build a versioned cache key with the current canon versions."""
     canon_versions = get_canon_versions()
@@ -83,14 +90,22 @@ def expected_cache_identity(
 ) -> TodayCacheKey:
     """Build a cache key with the current expected version fields.
     Used before cache read when runtime facts are not yet known.
-    Includes a non-None activation_layer_version default of "al-1.0"."""
+    Includes a non-None activation_layer_version default of ACTIVATION_LAYER_VERSION."""
     from app.core.config import settings
-    fe_version = 2 if getattr(settings, "solarsage_v2_frontend_enabled", False) else 1
+    from app.core.versions import CALCULATION_VERSION
+
+    v2_enabled = bool(getattr(settings, "solarsage_v2_enabled", False))
+    fe_version = (
+        V2_FRONTEND_PAYLOAD_VERSION
+        if getattr(settings, "solarsage_v2_frontend_enabled", False)
+        else LEGACY_FRONTEND_PAYLOAD_VERSION
+    )
     return build_today_cache_key(
         user_id=user_id,
         target_date=target_date,
         profile_hash=profile_hash,
-        activation_layer_version="al-1.0",
-        scoring_version=selected_scoring_version_for_flags(),
+        calculation_version=CALCULATION_VERSION if v2_enabled else LEGACY_CALCULATION_VERSION,
+        activation_layer_version=ACTIVATION_LAYER_VERSION,
+        scoring_version=selected_scoring_version_for_flags() if v2_enabled else LEGACY_SCORING_VERSION,
         frontend_payload_version=fe_version,
     )
