@@ -49,7 +49,9 @@ class ActivationLayerResponse(BaseModel):
 async def post_activation_layer(request: ActivationLayerRequest) -> ActivationLayerResponse:
     """Calculate activation layer for a given birth chart and target date.
 
-    W2: contract-only. Returns empty activation layer with a warning.
+    W3.1: computes real transit activations (transit_to_natal, transit_to_angle,
+    transit_to_lot, transit_planet_in_house). Techniques parameter controls which
+    extraction methods are used; empty defaults to all supported.
     """
     try:
         layer = build_activation_layer(
@@ -62,6 +64,7 @@ async def post_activation_layer(request: ActivationLayerRequest) -> ActivationLa
             target_time=request.target.time,
             target_tz=request.target.tz,
             house_system=request.house_system,
+            techniques=list(request.techniques) if request.techniques else None,
         )
 
         meta = ActivationLayerMeta(
