@@ -67,9 +67,9 @@ export function ActivationEvidenceCard({
 
   const v2Headline = v2.activationSummary.headline?.trim() || ""
   const fallbackHeadline = headlineFallback?.trim() || ""
-  const headline = !containsBannedAstrologyVocabulary(v2Headline)
+  const headline = v2Headline && !containsBannedAstrologyVocabulary(v2Headline)
     ? v2Headline
-    : !containsBannedAstrologyVocabulary(fallbackHeadline)
+    : fallbackHeadline && !containsBannedAstrologyVocabulary(fallbackHeadline)
       ? fallbackHeadline
       : ""
   if (!headline) return null

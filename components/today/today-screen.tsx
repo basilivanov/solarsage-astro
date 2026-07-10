@@ -9,7 +9,8 @@
 //          Composes DateHeader, access card, today-only check-in reminder,
 //          DaySummaryCard, ConcreteDayAdvice, DayChart, reading, why-expanded,
 //          week strip, AstroHistoryWidget, and bottom disclaimer. All data
-//          flows through adaptTodayPayload — no fabricated astrology.
+//          flows through adaptTodayPayload — no fabricated astrology. V2 order is
+//          summary → story → navigator → Why → chart → reading.
 // owns:
 //   - components/today/today-screen.tsx
 // inputs:
@@ -19,9 +20,11 @@
 //   - TSX layout with data-testid="today-screen" and data-state="ready|locked"
 // dependencies:
 //   - today/* components
+//   - next/navigation useSearchParams for Why deeplink defaults
 //   - @/components/paywall, @/components/trial-banner
 //   - @/lib/today, @/lib/access
-// side_effects: Pointer/touch swipe handlers for day navigation
+// side_effects: Pointer/touch swipe handlers; controlled V2 selection/Why state;
+//               post-commit smooth scroll and focus for hero navigation.
 // invariants:
 //   - data-state reflects the real access state (ready=accessible, locked=inaccessible)
 //   - data-testid attributes present on all major sections
@@ -34,7 +37,7 @@
 // public_entrypoints:
 //   - TodayScreen
 // semantic_blocks:
-//   - V2_NAVIGATION: selected sphere and Why state with post-commit scroll/focus.
+//   - V2_NAVIGATION: useSearchParams deeplink defaults, controlled sphere/Why state, and post-commit scroll/focus.
 //   - DAY_SWIPE: bounded pointer/touch date navigation.
 //   - SCREEN_COMPOSITION: accessible and locked Today layouts.
 // owned_tests:
@@ -130,8 +133,11 @@ export function TodayScreen({
   }
 
   function selectPersonalStorySphere(key: string) {
+    if (key === selectedSphereKey) {
+      scrollAndFocusSphere(key)
+      return
+    }
     setSelectedSphereKey(key)
-    scrollAndFocusSphere(key)
   }
 
   useEffect(() => {
@@ -148,8 +154,11 @@ export function TodayScreen({
   }
 
   function openWhy() {
+    if (whyOpen) {
+      scrollAndFocusWhy()
+      return
+    }
     setWhyOpen(true)
-    scrollAndFocusWhy()
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {

@@ -93,5 +93,16 @@ describe("ActivationEvidenceCard human-first", () => {
       />,
     )
     expect(screen.queryByTestId("activation-evidence-card")).toBeNull()
+
+    technicalV2.activationSummary.headline = ""
+    rerender(
+      <ActivationEvidenceCard
+        v2={technicalV2}
+        concreteAdvice={concreteAdvice}
+        headlineFallback="Безопасный fallback дня"
+        {...callbacks}
+      />,
+    )
+    expect(screen.getByTestId("activation-evidence-card").textContent).toContain("Безопасный fallback дня")
   })
 })
