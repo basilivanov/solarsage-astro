@@ -758,6 +758,8 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
     # Independent expected mapping/contributions
     expected_pairs: list[tuple[str, str]] = []
     expected_amounts: dict[tuple[str, str], float] = {}
+    # Formula inputs preserved per expected (activation_id, sphere) for 05_contribution_trace.csv
+    expected_formula_inputs: dict[tuple[str, str], dict[str, Any]] = {}
     matrix_rows: list[dict[str, Any]] = []
     families_by_sphere: dict[str, set[str]] = {k: set() for k in spheres.get("spheres", {})}
     expected_act_contrib_by_sphere: dict[str, list[tuple[str, float]]] = {k: [] for k in spheres.get("spheres", {})}
@@ -790,6 +792,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         fw = family_weight(family, activation_rules)
         pol = act.polarity or "neutral"
         pol_mod = float(scoring_v2["activation_polarity"]["sphere_amount_modifier"][pol])
+        strength_val = float(act.strength)
         mappings = map_activation_to_spheres_for_audit(act_d, spheres, scoring_v2)
         if not mappings:
             matrix_rows.append(
@@ -822,10 +825,16 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         for m in mappings:
             skey = m["sphere"]
             tweight = float(m["target_weight"])
-            expected_amount = expected_activation_amount(act.strength, fw, tweight, pol_mod)
+            expected_amount = expected_activation_amount(strength_val, fw, tweight, pol_mod)
             pair = (act.id, skey)
             expected_pairs.append(pair)
             expected_amounts[pair] = expected_amount
+            expected_formula_inputs[pair] = {
+                "strength": strength_val,
+                "family_weight": fw,
+                "target_weight": tweight,
+                "polarity_modifier": pol_mod,
+            }
             expected_act_contrib_by_sphere[skey].append((act.id, expected_amount))
             families_by_sphere[skey].add(family)
             matrix_rows.append(
@@ -899,6 +908,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         actual_amount_map.setdefault((r["activation_id"], r["sphere"]), []).append(r["amount"])
     for pair in sorted(set(expected_pairs + actual_pairs)):
         exp = expected_amounts.get(pair)
+        formula = expected_formula_inputs.get(pair, {})
         actual_list = actual_amount_map.get(pair, [])
         actual_amount = actual_list[0] if actual_list else None
         if exp is None:
@@ -928,10 +938,11 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 "actual_amount": actual_amount if actual_amount is not None else "",
                 "actual_contribution_source_id": pair[0] if actual_amount is not None else "",
                 "formula": "strength * family_weight * target_weight * polarity_modifier",
-                "strength": "",
-                "family_weight": "",
-                "target_weight": "",
-                "polarity_modifier": "",
+                # Prefer independently known formula inputs; leave only genuinely unavailable empty
+                "strength": formula.get("strength", ""),
+                "family_weight": formula.get("family_weight", ""),
+                "target_weight": formula.get("target_weight", ""),
+                "polarity_modifier": formula.get("polarity_modifier", ""),
                 "amount_delta": delta,
                 "status": status,
             }
@@ -945,7 +956,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         ],
     )
 
-    # Convergence independent + exact family set comparison
+    # Convergence independent + exact family/debug/contribution comparison
     conv_rows: list[dict[str, Any]] = []
     actual_conv = scoring_result.debug.get("convergence_by_sphere") or {}
     expected_conv_bonus: dict[str, float] = {}
@@ -956,11 +967,42 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         actual_bonus = float(ss.convergence_bonus)
         delta = abs(expected_bonus - actual_bonus)
         status = "ok" if delta <= TOL else "mismatch"
-        # exact family set comparison when production debug present or bonus expected
-        prod_families = set((actual_conv.get(skey) or {}).get("families") or [])
+        conv_contribs = [c for c in ss.contributions if c.source == "convergence"]
+        prod_entry = actual_conv.get(skey)
         if expected_bonus > 0:
-            has_conv_contrib = any(c.source == "convergence" for c in ss.contributions)
-            if not has_conv_contrib:
+            # Require production debug entry with exact families and family_count
+            if not isinstance(prod_entry, dict):
+                status = "missing_convergence_debug"
+                state.error(
+                    kind="convergence_debug_missing",
+                    sphere=skey,
+                    expected={"families": sorted(families), "family_count": len(families)},
+                    actual=prod_entry,
+                    message="expected convergence debug entry missing",
+                )
+            else:
+                prod_families = set(prod_entry.get("families") or [])
+                prod_family_count = prod_entry.get("family_count")
+                if prod_families != families:
+                    status = "family_set_mismatch"
+                    state.error(
+                        kind="convergence_family_mismatch",
+                        sphere=skey,
+                        expected=sorted(families),
+                        actual=sorted(prod_families),
+                        message="convergence family set mismatch",
+                    )
+                if prod_family_count is None or int(prod_family_count) != len(families):
+                    status = "family_count_mismatch"
+                    state.error(
+                        kind="convergence_family_count_mismatch",
+                        sphere=skey,
+                        expected=len(families),
+                        actual=prod_family_count,
+                        message="convergence family_count mismatch",
+                    )
+            # Exactly one source=convergence contribution with correct source_id and amount
+            if len(conv_contribs) == 0:
                 status = "missing_convergence_contribution"
                 state.error(
                     kind="convergence_contribution_missing",
@@ -968,14 +1010,46 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                     expected=sorted(families),
                     message="expected convergence contribution missing",
                 )
-            if prod_families and prod_families != families:
-                status = "family_set_mismatch"
+            else:
+                if len(conv_contribs) != 1:
+                    status = "duplicate_convergence_contribution"
+                    state.error(
+                        kind="convergence_contribution_duplicate",
+                        sphere=skey,
+                        expected=1,
+                        actual=len(conv_contribs),
+                        message="expected exactly one convergence contribution",
+                    )
+                expected_sid = f"convergence:{skey}"
+                for c in conv_contribs:
+                    if c.source_id != expected_sid:
+                        status = "convergence_source_id_mismatch"
+                        state.error(
+                            kind="convergence_source_id_mismatch",
+                            sphere=skey,
+                            expected=expected_sid,
+                            actual=c.source_id,
+                            message="convergence contribution source_id mismatch",
+                        )
+                    if abs(float(c.amount) - expected_bonus) > TOL:
+                        status = "convergence_amount_mismatch"
+                        state.error(
+                            kind="convergence_contribution_amount_mismatch",
+                            sphere=skey,
+                            expected=expected_bonus,
+                            actual=c.amount,
+                            message="convergence contribution amount mismatch",
+                        )
+        else:
+            # No bonus expected: still reject stray convergence contributions
+            if conv_contribs:
+                status = "unexpected_convergence_contribution"
                 state.error(
-                    kind="convergence_family_mismatch",
+                    kind="convergence_contribution_unexpected",
                     sphere=skey,
-                    expected=sorted(families),
-                    actual=sorted(prod_families),
-                    message="convergence family set mismatch",
+                    expected=0,
+                    actual=len(conv_contribs),
+                    message="unexpected convergence contribution when bonus is zero",
                 )
         if status == "mismatch":
             state.error(
@@ -1046,7 +1120,8 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             cap_value = threshold * sum_all_expected
             expected_capped = raw > cap_value
             expected_final = round(cap_value, 4) if expected_capped else raw
-            cap_contrib = next((c for c in ss.contributions if c.source == "cap"), None)
+            cap_contribs = [c for c in ss.contributions if c.source == "cap"]
+            cap_contrib = cap_contribs[0] if cap_contribs else None
             status = "ok"
             if abs(expected_final - float(ss.final_score)) > TOL:
                 status = "final_score_mismatch"
@@ -1067,10 +1142,23 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                     message="dominance_capped flag mismatch",
                 )
             if expected_capped:
-                if cap_contrib is None:
+                if len(cap_contribs) == 0:
                     status = "cap_trace_missing"
-                    state.error(kind="dominance_cap_trace_missing", sphere=skey, message="missing source=cap contribution")
-                else:
+                    state.error(
+                        kind="dominance_cap_trace_missing",
+                        sphere=skey,
+                        message="missing source=cap contribution",
+                    )
+                elif len(cap_contribs) != 1:
+                    status = "cap_duplicate"
+                    state.error(
+                        kind="dominance_cap_duplicate",
+                        sphere=skey,
+                        expected=1,
+                        actual=len(cap_contribs),
+                        message="duplicate source=cap contributions",
+                    )
+                if cap_contrib is not None:
                     expected_cap_amount = round(expected_final - raw, 4)
                     if abs(float(cap_contrib.amount) - expected_cap_amount) > TOL:
                         status = "cap_amount_mismatch"
@@ -1089,6 +1177,17 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                             actual=cap_contrib.source_id,
                             message="cap source_id policy mismatch",
                         )
+            else:
+                # Cap not expected: hard-fail on any unexpected or duplicate cap contribution
+                if len(cap_contribs) > 0:
+                    status = "unexpected_cap"
+                    state.error(
+                        kind="dominance_cap_unexpected",
+                        sphere=skey,
+                        expected=0,
+                        actual=len(cap_contribs),
+                        message="unexpected source=cap contribution on non-capped sphere",
+                    )
             cap_rows.append(
                 {
                     "sphere": skey,
@@ -1104,6 +1203,35 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                     "status": status,
                 }
             )
+        # Also scan spheres skipped above (raw <= 0) for unexpected cap contributions
+        for skey, raw in expected_raw.items():
+            if raw > 0:
+                continue
+            ss = scoring_result.sphere_scores[skey]
+            cap_contribs = [c for c in ss.contributions if c.source == "cap"]
+            if cap_contribs:
+                state.error(
+                    kind="dominance_cap_unexpected",
+                    sphere=skey,
+                    expected=0,
+                    actual=len(cap_contribs),
+                    message="unexpected source=cap contribution on non-capped sphere",
+                )
+                cap_rows.append(
+                    {
+                        "sphere": skey,
+                        "raw_score": raw,
+                        "sum_all_positive_scores": round(sum_all_expected, 4),
+                        "cap_threshold": threshold,
+                        "cap_value": "",
+                        "expected_final_score": raw,
+                        "actual_final_score": ss.final_score,
+                        "expected_capped": False,
+                        "actual_dominance_capped": ss.dominance_capped,
+                        "cap_contribution_id": cap_contribs[0].source_id,
+                        "status": "unexpected_cap",
+                    }
+                )
     write_csv(
         out_dir / "07_dominance_cap_trace.csv",
         cap_rows,
@@ -1123,18 +1251,38 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         aspect_rules,
     )
     actual_status = scoring_result.day_status
-    actual_breakdown = scoring_result.status_breakdown
+    actual_breakdown = scoring_result.status_breakdown if isinstance(scoring_result.status_breakdown, dict) else {}
     status_ok = actual_status == expected_status
-    deltas: dict[str, float] = {}
-    for k, exp_v in expected_breakdown.items():
-        if k == "rule":
+    deltas: dict[str, Any] = {}
+    # Compare every status-breakdown key: numerics with tolerance, strings/null exactly
+    all_keys = sorted(set(expected_breakdown.keys()) | set(actual_breakdown.keys()))
+    for k in all_keys:
+        exp_v = expected_breakdown.get(k, "__missing__")
+        act_v = actual_breakdown.get(k, "__missing__")
+        if exp_v == "__missing__" or act_v == "__missing__":
+            status_ok = False
+            deltas[k] = {"expected": None if exp_v == "__missing__" else exp_v, "actual": None if act_v == "__missing__" else act_v}
             continue
-        act_v = actual_breakdown.get(k)
+        # Exact nullability
+        if exp_v is None or act_v is None:
+            if exp_v is not act_v:
+                status_ok = False
+                deltas[k] = {"expected": exp_v, "actual": act_v}
+            else:
+                deltas[k] = 0
+            continue
         if isinstance(exp_v, (int, float)) and isinstance(act_v, (int, float)):
             d = abs(float(exp_v) - float(act_v))
             deltas[k] = d
             if d > TOL:
                 status_ok = False
+            continue
+        # Strings and other non-numeric components (e.g. rule): exact equality
+        if exp_v != act_v:
+            status_ok = False
+            deltas[k] = {"expected": exp_v, "actual": act_v}
+        else:
+            deltas[k] = 0 if isinstance(exp_v, (int, float)) else "match"
     if not status_ok:
         state.error(
             kind="day_status_mismatch",
@@ -1206,10 +1354,26 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
     if extra_payload:
         state.warn(kind="extra_payload_ids", actual=extra_payload, message="payload has activation ids not in sidecar")
 
-    # payload score breakdown source/id policy
+    # payload score breakdown source/id policy — unknown/missing source is hard failure
+    known_payload_sources = {"activation", "base_signal", "convergence", "cap"}
     for c in extract_payload_score_contribs(payload_v2):
         source = c.get("source")
-        sid = str(c.get("source_id") or "")
+        sid_raw = c.get("source_id")
+        sid = str(sid_raw) if sid_raw is not None else ""
+        if source is None or source == "" or sid_raw is None or sid == "":
+            state.error(
+                kind="payload_score_unknown_source",
+                actual={"source": source, "source_id": sid_raw, "sphere": c.get("sphere")},
+                message="missing payload score contribution source or source_id",
+            )
+            continue
+        if source not in known_payload_sources:
+            state.error(
+                kind="payload_score_unknown_source",
+                actual={"source": source, "source_id": sid, "sphere": c.get("sphere")},
+                message="unknown payload score contribution source",
+            )
+            continue
         if source == "activation":
             if sid not in payload_id_set:
                 state.error(
@@ -1227,8 +1391,6 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         elif source == "cap":
             if not sid.startswith("cap:"):
                 state.error(kind="payload_score_cap_id_policy", actual=sid, message="cap id policy")
-        elif source is not None:
-            state.warn(kind="payload_score_unknown_source", actual=source, message="unknown contribution source")
 
     why_ids = extract_payload_why_activation_ids(payload_v2)
     unknown_why = sorted(set(why_ids) - payload_id_set)

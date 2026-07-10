@@ -244,3 +244,142 @@ def test_no_private_production_helpers_imported_for_expected():
         assert f"import {banned}" not in src
         # allow mentioning in comments only if not called; ensure not invoked
         assert f"{banned}(" not in src
+
+
+def test_contribution_trace_csv_has_formula_inputs(tmp_path):
+    out = tmp_path / "csv"
+    summary = _run(out, "12_payload_mapping.json", fail_on_unmapped=False)
+    assert summary["status"] == "ok"
+    import csv
+
+    rows = list(csv.DictReader((out / "05_contribution_trace.csv").open(encoding="utf-8")))
+    mapped = [r for r in rows if r.get("status") == "ok"]
+    assert mapped, "expected mapped ok contribution rows"
+    for r in mapped:
+        for col in ("strength", "family_weight", "target_weight", "polarity_modifier"):
+            assert r[col] not in (None, ""), f"{col} empty for {r['activation_id']}/{r['sphere']}"
+            float(r[col])  # must be numeric
+
+
+def test_missing_convergence_debug_fails(tmp_path, monkeypatch):
+    out = tmp_path / "conv_dbg"
+    real = audit.ScoringV2Service.score_day
+
+    def drop_debug(self, day_signals, activation_layer=None):
+        res = real(self, day_signals, activation_layer)
+        # Keep numeric bonus but omit debug families entry
+        res.debug = dict(res.debug or {})
+        res.debug["convergence_by_sphere"] = {}
+        return res
+
+    monkeypatch.setattr(audit.ScoringV2Service, "score_day", drop_debug)
+    with pytest.raises(SystemExit):
+        _run(out, "08_convergence_multi_family.json", fail_on_unmapped=False)
+    summary = json.loads((out / "12_downstream_audit_summary.json").read_text())
+    assert any(f["kind"] == "convergence_debug_missing" for f in summary["failures"])
+
+
+def test_wrong_status_rule_fails(tmp_path, monkeypatch):
+    out = tmp_path / "status_rule"
+    real = audit.ScoringV2Service.score_day
+
+    def bad_rule(self, day_signals, activation_layer=None):
+        res = real(self, day_signals, activation_layer)
+        bd = dict(res.status_breakdown or {})
+        bd["rule"] = "wrong_rule_value"
+        res.status_breakdown = bd
+        return res
+
+    monkeypatch.setattr(audit.ScoringV2Service, "score_day", bad_rule)
+    with pytest.raises(SystemExit):
+        _run(out, "12_payload_mapping.json", fail_on_unmapped=False)
+    summary = json.loads((out / "12_downstream_audit_summary.json").read_text())
+    assert any(f["kind"] == "day_status_mismatch" for f in summary["failures"])
+
+
+def test_wrong_status_ratio_nullability_fails(tmp_path, monkeypatch):
+    out = tmp_path / "status_ratio"
+    real = audit.ScoringV2Service.score_day
+
+    def bad_ratio(self, day_signals, activation_layer=None):
+        res = real(self, day_signals, activation_layer)
+        bd = dict(res.status_breakdown or {})
+        # Force nullability mismatch: if ratio is numeric make null, else invent a number
+        if bd.get("ratio") is None:
+            bd["ratio"] = 1.23
+        else:
+            bd["ratio"] = None
+        res.status_breakdown = bd
+        return res
+
+    monkeypatch.setattr(audit.ScoringV2Service, "score_day", bad_ratio)
+    with pytest.raises(SystemExit):
+        _run(out, "12_payload_mapping.json", fail_on_unmapped=False)
+    summary = json.loads((out / "12_downstream_audit_summary.json").read_text())
+    assert any(f["kind"] == "day_status_mismatch" for f in summary["failures"])
+
+
+def test_unexpected_cap_contribution_fails(tmp_path, monkeypatch):
+    out = tmp_path / "uncap"
+    real = audit.ScoringV2Service.score_day
+    from app.schemas.scoring_v2 import SphereContribution
+
+    def inject_cap(self, day_signals, activation_layer=None):
+        res = real(self, day_signals, activation_layer)
+        # Prefer a positive raw, non-capped sphere so the main cap branch also sees it
+        candidates = sorted(
+            res.sphere_scores.items(),
+            key=lambda kv: (0 if float(kv[1].raw_score) > 0 else 1, kv[0]),
+        )
+        for skey, ss in candidates:
+            if ss.dominance_capped or any(c.source == "cap" for c in ss.contributions):
+                continue
+            ss.contributions = list(ss.contributions) + [
+                SphereContribution(
+                    sphere=skey,
+                    source="cap",
+                    source_id=f"cap:{skey}",
+                    amount=-0.01,
+                    before=float(ss.raw_score),
+                    after=float(ss.final_score),
+                    evidence="injected unexpected cap",
+                )
+            ]
+            break
+        return res
+
+    monkeypatch.setattr(audit.ScoringV2Service, "score_day", inject_cap)
+    with pytest.raises(SystemExit):
+        _run(out, "12_payload_mapping.json", fail_on_unmapped=False)
+    summary = json.loads((out / "12_downstream_audit_summary.json").read_text())
+    assert any(f["kind"] == "dominance_cap_unexpected" for f in summary["failures"])
+
+
+def test_unknown_payload_score_source_fails(tmp_path, monkeypatch):
+    out = tmp_path / "unksrc"
+    real = audit.SemanticV2Service.build_v2_block
+
+    def inject_unknown(self, **kwargs):
+        block = real(self, **kwargs)
+        # Mutate first sphere score breakdown contribution source to unknown
+        sb = block.score_breakdown
+        if isinstance(sb, dict):
+            for _k, ss in sb.items():
+                contribs = getattr(ss, "contributions", None)
+                if contribs is None and isinstance(ss, dict):
+                    contribs = ss.get("contributions")
+                if not contribs:
+                    continue
+                c0 = contribs[0]
+                if hasattr(c0, "source"):
+                    c0.source = "mystery_source"
+                elif isinstance(c0, dict):
+                    c0["source"] = "mystery_source"
+                break
+        return block
+
+    monkeypatch.setattr(audit.SemanticV2Service, "build_v2_block", inject_unknown)
+    with pytest.raises(SystemExit):
+        _run(out, "12_payload_mapping.json", fail_on_unmapped=False)
+    summary = json.loads((out / "12_downstream_audit_summary.json").read_text())
+    assert any(f["kind"] == "payload_score_unknown_source" for f in summary["failures"])

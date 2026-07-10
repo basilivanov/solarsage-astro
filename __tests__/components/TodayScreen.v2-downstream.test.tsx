@@ -107,19 +107,28 @@ describe("TodayScreen V2 downstream fixture", () => {
         onDateChange={() => {}}
       />,
     )
-    // today-screen root may use data-testid today-screen
-    const root =
-      document.querySelector('[data-testid="today-screen"]') ||
-      document.querySelector('[data-testid="activation-evidence-card"]')
-    expect(root).toBeTruthy()
+    // Stable screen root contract
+    expect(screen.getByTestId("today-screen")).toBeTruthy()
     expect(screen.getByTestId("activation-evidence-card")).toBeTruthy()
     const first = payload.v2!.activationEvidence[0]
     expect(screen.getAllByText(first.evidence).length).toBeGreaterThan(0)
+
+    // Every activation contribution id in scoreBreakdown must exist in activationEvidence
+    const evidenceIds = new Set((payload.v2?.activationEvidence || []).map((e) => e.id))
+    const scoreBreakdown = payload.v2?.scoreBreakdown || {}
+    for (const ss of Object.values(scoreBreakdown)) {
+      for (const c of ss.contributions || []) {
+        if (c.source === "activation") {
+          expect(evidenceIds.has(c.sourceId)).toBe(true)
+        }
+      }
+    }
   })
 
-  it("renders WhyExpanded content and keeps activation id integrity", () => {
+  it("renders WhyExpanded title, body, technique and keeps activation id integrity", () => {
     const { payload } = loadFixture()
     const why = payload.v2?.whyToday || []
+    expect(why.length).toBeGreaterThan(0)
     render(
       <WhyExpanded
         sections={payload.why}
@@ -127,8 +136,15 @@ describe("TodayScreen V2 downstream fixture", () => {
         whyToday={why}
       />,
     )
-    if (why[0]?.title) {
-      expect(screen.getAllByText(why[0].title).length).toBeGreaterThan(0)
+    const first = why[0]
+    expect(first.title).toBeTruthy()
+    expect(first.body).toBeTruthy()
+    expect(screen.getAllByText(first.title).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(first.body).length).toBeGreaterThan(0)
+    if (first.techniques && first.techniques.length > 0) {
+      for (const tech of first.techniques) {
+        expect(screen.getAllByText(tech).length).toBeGreaterThan(0)
+      }
     }
     const evidenceIds = new Set((payload.v2?.activationEvidence || []).map((e) => e.id))
     for (const item of why) {
