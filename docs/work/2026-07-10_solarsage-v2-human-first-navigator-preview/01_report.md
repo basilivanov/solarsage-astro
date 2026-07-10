@@ -18,6 +18,7 @@ The follow-up hardening pass makes human surfaces reject Unicode technical forms
 - `lib/presentation/today-v2.ts` — pure labels, banned-vocabulary guard, safe Why copy, verdict text, technical evidence selection.
 - component/unit tests and `e2e/mock-visual/day-v2.spec.ts` — public contract, interaction, visual and fixture guard coverage.
 - `e2e/mock-visual/day-v2.spec.ts-snapshots/` — replaced obsolete evidence-card baselines with the four navigator states.
+- `00_TZ.md` — canonical work specification for this completed preview cycle.
 
 ## Public DOM/test contract
 
@@ -53,6 +54,7 @@ The follow-up hardening pass makes human surfaces reject Unicode technical forms
 
 - Implementation commit: `09f8878d15f321ee49a7f2fc3de0b5ebf9ee68b4`.
 - Follow-up implementation hardening: `5581604ba4fb7336b66b536fbbf9166b190b830c`.
+- Final implementation commit: `c2338ce92c4ec3d666dfcd6b5c0934aa53b8b9ce`.
 - Report commit SHA is self-referential and is recorded in the final handoff after this file is committed.
 - `main`, production frontend `3002`, API `8000`, sidecar `18091`, nginx, flags, and systemd units were not changed or restarted.
 - User-owned untracked `.grace/`, `artifacts/design/`, `docs/superpowers/plans/2026-07-05-fix-day-route-auth-build.md`, `grace.db`, and `skills/` were not staged.
