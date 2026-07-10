@@ -1,0 +1,10 @@
+sphere,families,family_count,expected_bonus,actual_bonus,formula,status
+thinking_speech_learning,,0,0.0,0.0,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok
+work_status_achievement,,0,0.0,0.0,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok
+relationships_partnership,,0,0.0,0.0,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok
+money_security_resources,"firdar,profection,transit",3,0.65,0.65,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok
+body_energy_health,,0,0.0,0.0,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok
+home_family_roots,,0,0.0,0.0,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok
+inner_background_unconscious,"firdar,profection,transit",3,0.65,0.65,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok
+crisis_transformation_control,"firdar,profection,transit",3,0.65,0.65,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok
+meaning_expansion_vector,,0,0.0,0.0,"convergence_curve[min(n,5)] * sphere_convergence_weight.default",ok

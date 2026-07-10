@@ -43,5 +43,74 @@
     "by_angle": {},
     "warnings": []
   },
-  "expected": {}
+  "expected": {
+    "mapped_spheres": {
+      "sup1": [
+        "relationships_partnership",
+        "money_security_resources",
+        "home_family_roots"
+      ]
+    },
+    "contributions": [
+      {
+        "activation_id": "sup1",
+        "sphere": "relationships_partnership",
+        "amount": 1.0,
+        "family": "transit"
+      },
+      {
+        "activation_id": "sup1",
+        "sphere": "money_security_resources",
+        "amount": 0.8,
+        "family": "transit"
+      },
+      {
+        "activation_id": "sup1",
+        "sphere": "home_family_roots",
+        "amount": 0.4,
+        "family": "transit"
+      }
+    ],
+    "convergence": {
+      "relationships_partnership": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      },
+      "money_security_resources": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      },
+      "home_family_roots": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      }
+    },
+    "dominance_cap": {},
+    "day_status": "supportive",
+    "status_breakdown": {
+      "positive_aspect_score": 0.0,
+      "negative_aspect_score": 0.0,
+      "activation_support_score": 1.0,
+      "activation_tension_score": 0.0,
+      "support_score": 1.0,
+      "tension_score": 0.0,
+      "ratio": null,
+      "rule": "supportive_if_support_score_gt_tension_1.3"
+    },
+    "payload_mapping": {
+      "sidecar_ids": [
+        "sup1"
+      ],
+      "require_all_in_payload": true
+    }
+  }
 }

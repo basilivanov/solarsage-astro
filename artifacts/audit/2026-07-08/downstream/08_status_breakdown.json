@@ -1,0 +1,34 @@
+{
+  "day_status": "steady",
+  "expected_day_status": "steady",
+  "status": "ok",
+  "breakdown": {
+    "positive_aspect_score": 0.0,
+    "negative_aspect_score": 0.0,
+    "activation_support_score": 0.0,
+    "activation_tension_score": 0.5,
+    "support_score": 0.0,
+    "tension_score": 0.5,
+    "ratio": 0.0,
+    "rule": "steady_otherwise"
+  },
+  "independent_recalc": {
+    "positive_aspect_score": 0.0,
+    "negative_aspect_score": 0.0,
+    "activation_support_score": 0.0,
+    "activation_tension_score": 0.5,
+    "support_score": 0.0,
+    "tension_score": 0.5,
+    "ratio": 0.0,
+    "rule": "steady_otherwise"
+  },
+  "deltas": {
+    "positive_aspect_score": 0.0,
+    "negative_aspect_score": 0.0,
+    "activation_support_score": 0.0,
+    "activation_tension_score": 0.0,
+    "support_score": 0.0,
+    "tension_score": 0.0,
+    "ratio": 0.0
+  }
+}

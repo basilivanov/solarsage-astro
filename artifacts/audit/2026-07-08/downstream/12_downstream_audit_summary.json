@@ -1,0 +1,17 @@
+{
+  "status": "ok",
+  "failure_count": 0,
+  "warning_count": 0,
+  "checked": {
+    "api_preserved_sidecar_ids": true,
+    "mapped_activations_have_contributions": true,
+    "contribution_amounts_match_formula": true,
+    "convergence_matches_canon": true,
+    "dominance_cap_matches_canon": true,
+    "day_status_matches_recalc": true,
+    "payload_preserves_sidecar_ids": true,
+    "frontend_fixture_written": true
+  },
+  "failures": [],
+  "warnings": []
+}

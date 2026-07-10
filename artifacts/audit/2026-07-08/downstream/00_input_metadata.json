@@ -1,0 +1,20 @@
+{
+  "mode": "artifact_replay",
+  "user_id": "synthetic",
+  "target_date": "2026-07-08",
+  "git_head": "895d50a",
+  "sidecar_trusted": true,
+  "sidecar_source": "artifact_file",
+  "today_payload_source": "artifact_file",
+  "scoring_version": "ss-scoring-2.0",
+  "calculation_version": "ss-calc-1.1.0",
+  "activation_layer_version": "al-1.0",
+  "canon_versions": {
+    "spheres": "v1",
+    "dignities": "v1",
+    "aspect_rules": "v1",
+    "activation_rules": "v1",
+    "scoring_v2": "v1"
+  },
+  "fail_on_unmapped": false
+}

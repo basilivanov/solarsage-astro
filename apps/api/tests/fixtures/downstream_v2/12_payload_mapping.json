@@ -43,5 +43,74 @@
     "by_angle": {},
     "warnings": []
   },
-  "expected": {}
+  "expected": {
+    "mapped_spheres": {
+      "map1": [
+        "money_security_resources",
+        "inner_background_unconscious",
+        "crisis_transformation_control"
+      ]
+    },
+    "contributions": [
+      {
+        "activation_id": "map1",
+        "sphere": "money_security_resources",
+        "amount": 0.32,
+        "family": "transit"
+      },
+      {
+        "activation_id": "map1",
+        "sphere": "inner_background_unconscious",
+        "amount": 0.32,
+        "family": "transit"
+      },
+      {
+        "activation_id": "map1",
+        "sphere": "crisis_transformation_control",
+        "amount": 0.8,
+        "family": "transit"
+      }
+    ],
+    "convergence": {
+      "money_security_resources": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      },
+      "inner_background_unconscious": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      },
+      "crisis_transformation_control": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      }
+    },
+    "dominance_cap": {},
+    "day_status": "steady",
+    "status_breakdown": {
+      "positive_aspect_score": 0.0,
+      "negative_aspect_score": 0.0,
+      "activation_support_score": 0.0,
+      "activation_tension_score": 0.8,
+      "support_score": 0.0,
+      "tension_score": 0.8,
+      "ratio": 0.0,
+      "rule": "steady_otherwise"
+    },
+    "payload_mapping": {
+      "sidecar_ids": [
+        "map1"
+      ],
+      "require_all_in_payload": true
+    }
+  }
 }

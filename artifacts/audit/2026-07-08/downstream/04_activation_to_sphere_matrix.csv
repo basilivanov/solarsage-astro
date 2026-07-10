@@ -1,0 +1,10 @@
+activation_id,active,technique,technique_family,target_type,target_key,strength,polarity,mapped_sphere,mapping_reason,target_weight,family_weight,polarity_modifier,expected_amount,status
+tr1,True,transit_to_natal,transit,planet,PLUTO,0.5,tense,money_security_resources,planet PLUTO found in spheres.money_security_resources.planets,0.4,1.0,1.0,0.2,mapped
+tr1,True,transit_to_natal,transit,planet,PLUTO,0.5,tense,inner_background_unconscious,planet PLUTO found in spheres.inner_background_unconscious.planets,0.4,1.0,1.0,0.2,mapped
+tr1,True,transit_to_natal,transit,planet,PLUTO,0.5,tense,crisis_transformation_control,planet PLUTO found in spheres.crisis_transformation_control.planets,1.0,1.0,1.0,0.5,mapped
+pr1,True,annual_profection,profection,planet,PLUTO,0.5,neutral,money_security_resources,planet PLUTO found in spheres.money_security_resources.planets,0.4,0.8,0.7,0.112,mapped
+pr1,True,annual_profection,profection,planet,PLUTO,0.5,neutral,inner_background_unconscious,planet PLUTO found in spheres.inner_background_unconscious.planets,0.4,0.8,0.7,0.112,mapped
+pr1,True,annual_profection,profection,planet,PLUTO,0.5,neutral,crisis_transformation_control,planet PLUTO found in spheres.crisis_transformation_control.planets,1.0,0.8,0.7,0.28,mapped
+fi1,True,firdar_major,firdar,planet,PLUTO,0.5,neutral,money_security_resources,planet PLUTO found in spheres.money_security_resources.planets,0.4,0.8,0.7,0.112,mapped
+fi1,True,firdar_major,firdar,planet,PLUTO,0.5,neutral,inner_background_unconscious,planet PLUTO found in spheres.inner_background_unconscious.planets,0.4,0.8,0.7,0.112,mapped
+fi1,True,firdar_major,firdar,planet,PLUTO,0.5,neutral,crisis_transformation_control,planet PLUTO found in spheres.crisis_transformation_control.planets,1.0,0.8,0.7,0.28,mapped

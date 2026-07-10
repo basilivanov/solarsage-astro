@@ -1,0 +1,380 @@
+{
+  "activation_summary": {
+    "headline": "Сегодня сходятся 3 независимые техники на теме: Плутон",
+    "top_activated_targets": [
+      {
+        "target_type": "planet",
+        "target_key": "PLUTO",
+        "label": "Плутон",
+        "family_count": 3,
+        "techniques": [
+          "annual_profection",
+          "firdar_major",
+          "transit_to_natal"
+        ],
+        "spheres": [
+          "money_security_resources",
+          "inner_background_unconscious",
+          "crisis_transformation_control"
+        ],
+        "activation_ids": [
+          "tr1",
+          "pr1",
+          "fi1"
+        ]
+      }
+    ]
+  },
+  "activation_evidence": [
+    {
+      "id": "tr1",
+      "technique": "transit_to_natal",
+      "technique_family": "transit",
+      "target_type": "planet",
+      "target_key": "PLUTO",
+      "kind": "aspect",
+      "active": true,
+      "source_planet": "MOON",
+      "source_frame": "transit",
+      "target_planet": null,
+      "target_frame": "natal",
+      "aspect": "square",
+      "orb": 1.0,
+      "applying": null,
+      "exact_at": null,
+      "phase": "background",
+      "house": null,
+      "lot": null,
+      "angle": null,
+      "strength": 0.5,
+      "polarity": "tense",
+      "weight_hint": null,
+      "evidence": "Unique evidence tr1",
+      "debug": {}
+    },
+    {
+      "id": "pr1",
+      "technique": "annual_profection",
+      "technique_family": "profection",
+      "target_type": "planet",
+      "target_key": "PLUTO",
+      "kind": "aspect",
+      "active": true,
+      "source_planet": "MOON",
+      "source_frame": "transit",
+      "target_planet": null,
+      "target_frame": "natal",
+      "aspect": "square",
+      "orb": 1.0,
+      "applying": null,
+      "exact_at": null,
+      "phase": "background",
+      "house": null,
+      "lot": null,
+      "angle": null,
+      "strength": 0.5,
+      "polarity": "neutral",
+      "weight_hint": null,
+      "evidence": "Unique evidence pr1",
+      "debug": {}
+    },
+    {
+      "id": "fi1",
+      "technique": "firdar_major",
+      "technique_family": "firdar",
+      "target_type": "planet",
+      "target_key": "PLUTO",
+      "kind": "aspect",
+      "active": true,
+      "source_planet": "MOON",
+      "source_frame": "transit",
+      "target_planet": null,
+      "target_frame": "natal",
+      "aspect": "square",
+      "orb": 1.0,
+      "applying": null,
+      "exact_at": null,
+      "phase": "background",
+      "house": null,
+      "lot": null,
+      "angle": null,
+      "strength": 0.5,
+      "polarity": "neutral",
+      "weight_hint": null,
+      "evidence": "Unique evidence fi1",
+      "debug": {}
+    }
+  ],
+  "score_breakdown": {
+    "thinking_speech_learning": {
+      "key": "thinking_speech_learning",
+      "title": "мысли · речь · учёба",
+      "base_score": 0.0,
+      "activation_score": 0.0,
+      "convergence_bonus": 0.0,
+      "raw_score": 0.0,
+      "final_score": 0.0,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": []
+    },
+    "work_status_achievement": {
+      "key": "work_status_achievement",
+      "title": "работа · статус · достижения",
+      "base_score": 0.0,
+      "activation_score": 0.0,
+      "convergence_bonus": 0.0,
+      "raw_score": 0.0,
+      "final_score": 0.0,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": []
+    },
+    "relationships_partnership": {
+      "key": "relationships_partnership",
+      "title": "отношения · партнёрство",
+      "base_score": 0.0,
+      "activation_score": 0.0,
+      "convergence_bonus": 0.0,
+      "raw_score": 0.0,
+      "final_score": 0.0,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": []
+    },
+    "money_security_resources": {
+      "key": "money_security_resources",
+      "title": "деньги · безопасность · ресурсы",
+      "base_score": 0.0,
+      "activation_score": 0.424,
+      "convergence_bonus": 0.65,
+      "raw_score": 1.074,
+      "final_score": 1.074,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": [
+        {
+          "sphere": "money_security_resources",
+          "source": "activation",
+          "source_id": "tr1",
+          "amount": 0.2,
+          "before": 0.0,
+          "after": 0.2,
+          "evidence": "Unique evidence tr1"
+        },
+        {
+          "sphere": "money_security_resources",
+          "source": "activation",
+          "source_id": "pr1",
+          "amount": 0.112,
+          "before": 0.2,
+          "after": 0.312,
+          "evidence": "Unique evidence pr1"
+        },
+        {
+          "sphere": "money_security_resources",
+          "source": "activation",
+          "source_id": "fi1",
+          "amount": 0.112,
+          "before": 0.312,
+          "after": 0.424,
+          "evidence": "Unique evidence fi1"
+        },
+        {
+          "sphere": "money_security_resources",
+          "source": "convergence",
+          "source_id": "convergence:money_security_resources",
+          "amount": 0.65,
+          "before": 0.424,
+          "after": 1.074,
+          "evidence": "Convergence bonus: 3 independent technique families (firdar, profection, transit)"
+        }
+      ]
+    },
+    "body_energy_health": {
+      "key": "body_energy_health",
+      "title": "тело · энергия · здоровье",
+      "base_score": 0.0,
+      "activation_score": 0.0,
+      "convergence_bonus": 0.0,
+      "raw_score": 0.0,
+      "final_score": 0.0,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": []
+    },
+    "home_family_roots": {
+      "key": "home_family_roots",
+      "title": "дом · семья · корни",
+      "base_score": 0.0,
+      "activation_score": 0.0,
+      "convergence_bonus": 0.0,
+      "raw_score": 0.0,
+      "final_score": 0.0,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": []
+    },
+    "inner_background_unconscious": {
+      "key": "inner_background_unconscious",
+      "title": "внутренний фон · бессознательное",
+      "base_score": 0.0,
+      "activation_score": 0.424,
+      "convergence_bonus": 0.65,
+      "raw_score": 1.074,
+      "final_score": 1.074,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": [
+        {
+          "sphere": "inner_background_unconscious",
+          "source": "activation",
+          "source_id": "tr1",
+          "amount": 0.2,
+          "before": 0.0,
+          "after": 0.2,
+          "evidence": "Unique evidence tr1"
+        },
+        {
+          "sphere": "inner_background_unconscious",
+          "source": "activation",
+          "source_id": "pr1",
+          "amount": 0.112,
+          "before": 0.2,
+          "after": 0.312,
+          "evidence": "Unique evidence pr1"
+        },
+        {
+          "sphere": "inner_background_unconscious",
+          "source": "activation",
+          "source_id": "fi1",
+          "amount": 0.112,
+          "before": 0.312,
+          "after": 0.424,
+          "evidence": "Unique evidence fi1"
+        },
+        {
+          "sphere": "inner_background_unconscious",
+          "source": "convergence",
+          "source_id": "convergence:inner_background_unconscious",
+          "amount": 0.65,
+          "before": 0.424,
+          "after": 1.074,
+          "evidence": "Convergence bonus: 3 independent technique families (firdar, profection, transit)"
+        }
+      ]
+    },
+    "crisis_transformation_control": {
+      "key": "crisis_transformation_control",
+      "title": "кризис · трансформация · контроль",
+      "base_score": 0.0,
+      "activation_score": 1.06,
+      "convergence_bonus": 0.65,
+      "raw_score": 1.71,
+      "final_score": 1.71,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": [
+        {
+          "sphere": "crisis_transformation_control",
+          "source": "activation",
+          "source_id": "tr1",
+          "amount": 0.5,
+          "before": 0.0,
+          "after": 0.5,
+          "evidence": "Unique evidence tr1"
+        },
+        {
+          "sphere": "crisis_transformation_control",
+          "source": "activation",
+          "source_id": "pr1",
+          "amount": 0.28,
+          "before": 0.5,
+          "after": 0.78,
+          "evidence": "Unique evidence pr1"
+        },
+        {
+          "sphere": "crisis_transformation_control",
+          "source": "activation",
+          "source_id": "fi1",
+          "amount": 0.28,
+          "before": 0.78,
+          "after": 1.06,
+          "evidence": "Unique evidence fi1"
+        },
+        {
+          "sphere": "crisis_transformation_control",
+          "source": "convergence",
+          "source_id": "convergence:crisis_transformation_control",
+          "amount": 0.65,
+          "before": 1.06,
+          "after": 1.71,
+          "evidence": "Convergence bonus: 3 independent technique families (firdar, profection, transit)"
+        }
+      ]
+    },
+    "meaning_expansion_vector": {
+      "key": "meaning_expansion_vector",
+      "title": "смысл · расширение · вектор",
+      "base_score": 0.0,
+      "activation_score": 0.0,
+      "convergence_bonus": 0.0,
+      "raw_score": 0.0,
+      "final_score": 0.0,
+      "normalized_score": null,
+      "dominance_capped": false,
+      "contributions": []
+    }
+  },
+  "why_today": [
+    {
+      "id": "why-planet-PLUTO-transit",
+      "title": "Транзиты активируют Плутон",
+      "body": "Влияние на Плутон: Unique evidence tr1.",
+      "activation_ids": [
+        "tr1"
+      ],
+      "techniques": [
+        "transit_to_natal"
+      ]
+    },
+    {
+      "id": "why-planet-PLUTO-profection",
+      "title": "Профекции активируют Плутон",
+      "body": "Влияние на Плутон: Unique evidence pr1.",
+      "activation_ids": [
+        "pr1"
+      ],
+      "techniques": [
+        "annual_profection"
+      ]
+    },
+    {
+      "id": "why-planet-PLUTO-firdar",
+      "title": "Фирдары активируют Плутон",
+      "body": "Влияние на Плутон: Unique evidence fi1.",
+      "activation_ids": [
+        "fi1"
+      ],
+      "techniques": [
+        "firdar_major"
+      ]
+    }
+  ],
+  "audit": {
+    "trace_id": "downstream-audit-synthetic",
+    "available": true,
+    "payload_version": "today.v2",
+    "calculation_version": "ss-calc-1.1.0",
+    "scoring_version": "ss-scoring-2.0",
+    "activation_layer_version": "al-1.0",
+    "canon_versions": {
+      "spheres": "v1",
+      "dignities": "v1",
+      "aspect_rules": "v1",
+      "activation_rules": "v1",
+      "scoring_v2": "v1"
+    },
+    "v1_v2_diff": null
+  }
+}

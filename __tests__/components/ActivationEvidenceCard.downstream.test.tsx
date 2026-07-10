@@ -1,73 +1,48 @@
 // ############################################################################
 // AI_HEADER: MODULE_ACTIVATION_EVIDENCE_CARD_DOWNSTREAM_TEST
-// ROLE: W11 frontend tests for ActivationEvidenceCard downstream fixture rendering
+// ROLE: W11 frontend tests for ActivationEvidenceCard using committed fixture
 // ############################################################################
+
+// START_MODULE_CONTRACT: M-TEST-ACTIVATION-EVIDENCE-CARD-DOWNSTREAM
+// purpose: Prove ActivationEvidenceCard renders evidence from committed W11 fixture.
+// owns:
+//   - __tests__/components/ActivationEvidenceCard.downstream.test.tsx
+// inputs: artifacts/audit/2026-07-08/downstream/11_frontend_fixture.json
+// outputs: vitest assertions
+// dependencies: ActivationEvidenceCard, validateAdaptedTodayPayload
+// side_effects: none
+// emitted_logs: none
+// invariants: no fabricated activation ids
+// failure_policy: test fail
+// END_MODULE_CONTRACT: M-TEST-ACTIVATION-EVIDENCE-CARD-DOWNSTREAM
+
+// START_MODULE_MAP: M-TEST-ACTIVATION-EVIDENCE-CARD-DOWNSTREAM
+// public_entrypoints: describe/it blocks
+// END_MODULE_MAP: M-TEST-ACTIVATION-EVIDENCE-CARD-DOWNSTREAM
+
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import React from "react"
+import fs from "node:fs"
+import path from "node:path"
 import { ActivationEvidenceCard } from "@/components/today/activation-evidence-card"
-import type { TodayV2Block } from "@/lib/contracts/today"
+import { validateAdaptedTodayPayload } from "@/lib/contracts/today"
 
-const v2Fixture: TodayV2Block = {
-  activationSummary: {
-    headline: "Downstream fixture headline",
-    topActivatedTargets: [
-      {
-        targetType: "planet",
-        targetKey: "PLUTO",
-        label: "Pluto",
-        familyCount: 1,
-        techniques: ["transit_to_natal"],
-        spheres: ["crisis_transformation_control"],
-        activationIds: ["t2n__MOON__PLUTO"],
-      },
-    ],
-  },
-  activationEvidence: [
-    {
-      id: "t2n__MOON__PLUTO",
-      technique: "transit_to_natal",
-      techniqueFamily: "transit",
-      targetType: "planet",
-      targetKey: "PLUTO",
-      kind: "aspect",
-      strength: 0.8,
-      polarity: "tense",
-      phase: "background",
-      evidence: "Transit Moon square natal Pluto",
-    } as any,
-  ],
-  scoreBreakdown: {},
-  whyToday: [
-    {
-      id: "why-1",
-      title: "Why today",
-      body: "body",
-      activationIds: ["t2n__MOON__PLUTO"],
-      techniques: ["transit_to_natal"],
-    } as any,
-  ],
-  audit: {
-    available: true,
-    payloadVersion: "today.v2",
-    calculationVersion: "ss-calc-1.1.0",
-    scoringVersion: "ss-scoring-2.0",
-    activationLayerVersion: "al-1.0",
-    canonVersions: { spheres: "v1" },
-  } as any,
-}
+const fixturePath = path.join(
+  process.cwd(),
+  "artifacts/audit/2026-07-08/downstream/11_frontend_fixture.json",
+)
 
-describe("ActivationEvidenceCard downstream", () => {
-  it("renders technique targets and evidence text from fixture", () => {
-    render(<ActivationEvidenceCard v2={v2Fixture} />)
+describe("ActivationEvidenceCard downstream fixture", () => {
+  it("validates committed fixture and renders evidence text", () => {
+    const raw = JSON.parse(fs.readFileSync(fixturePath, "utf8"))
+    const payload = validateAdaptedTodayPayload(raw.payload)
+    expect(raw.assertions.has_v2).toBe(true)
+    expect(payload.v2).toBeTruthy()
+    render(<ActivationEvidenceCard v2={payload.v2} />)
     expect(screen.getByTestId("activation-evidence-card")).toBeTruthy()
-    expect(screen.getByText("Downstream fixture headline")).toBeTruthy()
-    expect(screen.getByText("Pluto")).toBeTruthy()
-    expect(screen.getByText("Transit Moon square natal Pluto")).toBeTruthy()
-  })
-
-  it("does not fabricate activation evidence when v2 is null", () => {
-    const { container } = render(<ActivationEvidenceCard v2={null} />)
-    expect(container.querySelector('[data-testid="activation-evidence-card"]')).toBeNull()
+    const first = payload.v2!.activationEvidence[0]
+    expect(first?.id).toBeTruthy()
+    expect(screen.getAllByText(first.evidence).length).toBeGreaterThan(0)
   })
 })

@@ -47,5 +47,60 @@
     "by_angle": {},
     "warnings": []
   },
-  "expected": {}
+  "expected": {
+    "mapped_spheres": {
+      "t2l__MOON__FORTUNE": [
+        "work_status_achievement",
+        "money_security_resources"
+      ]
+    },
+    "contributions": [
+      {
+        "activation_id": "t2l__MOON__FORTUNE",
+        "sphere": "work_status_achievement",
+        "amount": 0.48,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t2l__MOON__FORTUNE",
+        "sphere": "money_security_resources",
+        "amount": 0.48,
+        "family": "transit"
+      }
+    ],
+    "convergence": {
+      "work_status_achievement": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      },
+      "money_security_resources": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      }
+    },
+    "dominance_cap": {},
+    "day_status": "steady",
+    "status_breakdown": {
+      "positive_aspect_score": 0.0,
+      "negative_aspect_score": 0.0,
+      "activation_support_score": 0.6,
+      "activation_tension_score": 0.0,
+      "support_score": 0.6,
+      "tension_score": 0.0,
+      "ratio": null,
+      "rule": "steady_otherwise"
+    },
+    "payload_mapping": {
+      "sidecar_ids": [
+        "t2l__MOON__FORTUNE"
+      ],
+      "require_all_in_payload": true
+    }
+  }
 }

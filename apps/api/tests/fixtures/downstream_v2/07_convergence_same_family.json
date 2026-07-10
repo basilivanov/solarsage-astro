@@ -96,7 +96,121 @@
     "warnings": []
   },
   "expected": {
-    "family_count": 1,
-    "bonus": 0.0
+    "mapped_spheres": {
+      "t1": [
+        "money_security_resources",
+        "inner_background_unconscious",
+        "crisis_transformation_control"
+      ],
+      "t2": [
+        "money_security_resources",
+        "inner_background_unconscious",
+        "crisis_transformation_control"
+      ],
+      "t3": [
+        "money_security_resources",
+        "inner_background_unconscious",
+        "crisis_transformation_control"
+      ]
+    },
+    "contributions": [
+      {
+        "activation_id": "t1",
+        "sphere": "money_security_resources",
+        "amount": 0.2,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t1",
+        "sphere": "inner_background_unconscious",
+        "amount": 0.2,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t1",
+        "sphere": "crisis_transformation_control",
+        "amount": 0.5,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t2",
+        "sphere": "money_security_resources",
+        "amount": 0.16,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t2",
+        "sphere": "inner_background_unconscious",
+        "amount": 0.16,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t2",
+        "sphere": "crisis_transformation_control",
+        "amount": 0.4,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t3",
+        "sphere": "money_security_resources",
+        "amount": 0.12,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t3",
+        "sphere": "inner_background_unconscious",
+        "amount": 0.12,
+        "family": "transit"
+      },
+      {
+        "activation_id": "t3",
+        "sphere": "crisis_transformation_control",
+        "amount": 0.3,
+        "family": "transit"
+      }
+    ],
+    "convergence": {
+      "money_security_resources": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      },
+      "inner_background_unconscious": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      },
+      "crisis_transformation_control": {
+        "families": [
+          "transit"
+        ],
+        "family_count": 1,
+        "bonus": 0.0
+      }
+    },
+    "dominance_cap": {},
+    "day_status": "tense",
+    "status_breakdown": {
+      "positive_aspect_score": 0.0,
+      "negative_aspect_score": 0.0,
+      "activation_support_score": 0.0,
+      "activation_tension_score": 1.2,
+      "support_score": 0.0,
+      "tension_score": 1.2,
+      "ratio": 0.0,
+      "rule": "tense_if_tension_score_gt_support_1.3"
+    },
+    "payload_mapping": {
+      "sidecar_ids": [
+        "t1",
+        "t2",
+        "t3"
+      ],
+      "require_all_in_payload": true
+    }
   }
 }

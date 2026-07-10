@@ -1,0 +1,32 @@
+{
+  "sidecar_activation_count": 3,
+  "api_activation_count": 3,
+  "scoring_activation_contribution_count": 9,
+  "payload_activation_evidence_count": 3,
+  "sidecar_ids": [
+    "fi1",
+    "pr1",
+    "tr1"
+  ],
+  "api_ids": [
+    "fi1",
+    "pr1",
+    "tr1"
+  ],
+  "scoring_contribution_ids": [
+    "fi1",
+    "pr1",
+    "tr1"
+  ],
+  "payload_evidence_ids": [
+    "fi1",
+    "pr1",
+    "tr1"
+  ],
+  "missing_after_api_validation": [],
+  "missing_in_scoring_contributions": [],
+  "unmapped_activations": [],
+  "missing_in_payload_v2": [],
+  "extra_payload_ids": [],
+  "status": "ok"
+}

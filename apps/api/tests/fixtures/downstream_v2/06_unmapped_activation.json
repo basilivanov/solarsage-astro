@@ -44,8 +44,28 @@
     "warnings": []
   },
   "expected": {
-    "unmapped": [
-      "t2n__X__ZZZ"
-    ]
+    "mapped_spheres": {
+      "t2n__X__ZZZ": []
+    },
+    "contributions": [],
+    "convergence": {},
+    "dominance_cap": {},
+    "day_status": "steady",
+    "status_breakdown": {
+      "positive_aspect_score": 0.0,
+      "negative_aspect_score": 0.0,
+      "activation_support_score": 0.0,
+      "activation_tension_score": 0.0,
+      "support_score": 0.0,
+      "tension_score": 0.0,
+      "ratio": null,
+      "rule": "steady_otherwise"
+    },
+    "payload_mapping": {
+      "sidecar_ids": [
+        "t2n__X__ZZZ"
+      ],
+      "require_all_in_payload": true
+    }
   }
 }

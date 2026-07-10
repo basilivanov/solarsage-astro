@@ -1,0 +1,4 @@
+sphere,raw_score,sum_all_positive_scores,cap_threshold,cap_value,expected_final_score,actual_final_score,expected_capped,actual_dominance_capped,cap_contribution_id,status
+money_security_resources,1.074,3.858,0.65,2.5077,1.074,1.074,False,False,,ok
+inner_background_unconscious,1.074,3.858,0.65,2.5077,1.074,1.074,False,False,,ok
+crisis_transformation_control,1.71,3.858,0.65,2.5077,1.71,1.71,False,False,,ok
