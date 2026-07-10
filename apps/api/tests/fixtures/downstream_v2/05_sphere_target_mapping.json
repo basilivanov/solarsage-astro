@@ -1,0 +1,47 @@
+{
+  "name": "sphere_target_mapping",
+  "day_signals": [],
+  "activation_layer": {
+    "schema_version": "activation-layer.v1",
+    "activation_layer_version": "al-1.0",
+    "calculation_version": "ss-calc-1.1.0",
+    "target_date": "2026-07-08",
+    "target_time": "12:00",
+    "target_tz": "Europe/Moscow",
+    "house_system": "PLACIDUS",
+    "activations": [
+      {
+        "id": "sr__work",
+        "technique": "solar_return",
+        "technique_family": "return",
+        "target_type": "sphere",
+        "target_key": "WORK_STATUS_ACHIEVEMENT",
+        "kind": "aspect",
+        "active": true,
+        "source_planet": "MOON",
+        "source_frame": "transit",
+        "target_planet": null,
+        "target_frame": "natal",
+        "aspect": "square",
+        "orb": 1.0,
+        "applying": null,
+        "exact_at": null,
+        "phase": "background",
+        "house": null,
+        "lot": null,
+        "angle": null,
+        "strength": 0.5,
+        "polarity": "supportive",
+        "weight_hint": null,
+        "evidence": "test evidence",
+        "debug": {}
+      }
+    ],
+    "by_planet": {},
+    "by_house": {},
+    "by_lot": {},
+    "by_angle": {},
+    "warnings": []
+  },
+  "expected": {}
+}
