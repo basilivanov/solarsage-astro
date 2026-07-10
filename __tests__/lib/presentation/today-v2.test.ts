@@ -14,6 +14,7 @@ import {
   getHumanSphereLabel,
   getSafeWhyTodayItem,
   getVerdictManifestationCopy,
+  orderActivationEvidence,
   selectPrimaryEvidence,
   selectTechnicalCalculationEvidence,
 } from "@/lib/presentation/today-v2"
@@ -152,7 +153,12 @@ describe("presentation/today-v2", () => {
   })
 
   it("sanitizes technical why copy without touching safe human copy", () => {
-    expect(containsBannedAstrologyVocabulary("Транзиты активируют тему")).toBe(true)
+    for (const technicalForm of [
+      "транзит", "транзиты", "профекция", "профекции", "фирдар", "фирдары",
+      "орб", "орбис", "натальный", "аспекты", "сходимость", "техника", "техническая основа",
+    ]) {
+      expect(containsBannedAstrologyVocabulary(technicalForm)).toBe(true)
+    }
     expect(containsBannedAstrologyVocabulary("Личная тема заметнее обычного")).toBe(false)
     expect(
       getSafeWhyTodayItem({
@@ -184,11 +190,25 @@ describe("presentation/today-v2", () => {
       { id: "a3", active: true, kind: "aspect", technique: "transit_to_natal" },
       { id: "p1", active: true, kind: "period", technique: "annual_profection" },
       { id: "p2", active: true, kind: "period", technique: "firdar_major" },
+      { id: "other", active: true, kind: "activation", technique: "solar_return" },
     ] as ActivationEvidence[]
-    const primary = { activationIds: ["a1", "a2", "a3", "p1", "p2"] } as TodayV2ActivatedTarget
+    const primary = { activationIds: ["a1", "a2", "a3", "p1", "p2", "other"] } as TodayV2ActivatedTarget
     expect(selectTechnicalCalculationEvidence(evidence, primary)).toEqual({
       aspects: [evidence[0], evidence[1]],
       periodTechniques: ["annual_profection", "firdar_major"],
     })
+  })
+
+  it("falls back to active backend order when primary IDs have no usable evidence", () => {
+    const evidence = [
+      { id: "active-first", active: true },
+      { id: "inactive", active: false },
+      { id: "active-second", active: true },
+    ] as ActivationEvidence[]
+    const primary = { activationIds: ["missing", "inactive"] } as TodayV2ActivatedTarget
+    expect(orderActivationEvidence(evidence, primary).map((item) => item.id)).toEqual([
+      "active-first",
+      "active-second",
+    ])
   })
 })

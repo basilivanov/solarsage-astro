@@ -364,7 +364,7 @@ const HUMAN_SPHERE_LABELS: Record<string, string> = {
 }
 
 const HUMAN_BANNED_ASTROLOGY_RE =
-  /(транзит|профекци|фирдар|орб|натальн|аспект|convergence|source_frame|target_frame)/iu
+  /(транзит|профекци|фирдар|орб|натальн|аспект|сходимост|техник|технич|convergence|source[_\s-]?frame|target[_\s-]?frame)/iu
 
 const LONG_CYCLE_TECHNIQUES = new Set([
   "annual_profection",
@@ -456,9 +456,10 @@ export function orderActivationEvidence(
 ): ActivationEvidence[] {
   if (!primaryTarget?.activationIds.length) return evidence.filter((item) => item.active !== false)
   const byId = new Map(evidence.map((item) => [item.id, item]))
-  return primaryTarget.activationIds
+  const selected = primaryTarget.activationIds
     .map((id) => byId.get(id))
     .filter((item): item is ActivationEvidence => Boolean(item && item.active !== false))
+  return selected.length > 0 ? selected : evidence.filter((item) => item.active !== false)
 }
 
 // START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.selectTechnicalCalculationEvidence
@@ -476,7 +477,7 @@ export function selectTechnicalCalculationEvidence(
   const ordered = orderActivationEvidence(evidence, primaryTarget)
   const aspects = ordered.filter((item) => item.kind === "aspect").slice(0, 2)
   const periodTechniques = dedupeTechniquesPreserveOrder(
-    ordered.filter((item) => item.kind !== "aspect").map((item) => item.technique),
+    ordered.filter((item) => item.kind === "period").map((item) => item.technique),
   )
   return { aspects, periodTechniques }
 }

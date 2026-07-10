@@ -22,18 +22,23 @@ describe("ActivationEvidenceCard downstream fixture", () => {
     const payload = validateAdaptedTodayPayload(raw.payload)
     expect(raw.assertions.has_v2).toBe(true)
     expect(payload.v2).toBeTruthy()
-    render(<ActivationEvidenceCard v2={payload.v2} concreteAdvice={payload.concreteAdvice} />)
+    render(
+      <ActivationEvidenceCard
+        v2={payload.v2}
+        concreteAdvice={payload.concreteAdvice}
+        headlineFallback={payload.headline}
+        onSphereSelect={() => {}}
+        onWhyOpen={() => {}}
+      />,
+    )
     expect(screen.getByTestId("activation-evidence-card")).toBeTruthy()
 
-    const headline = payload.v2!.activationSummary.headline
-    expect(screen.getAllByText(headline).length).toBeGreaterThan(0)
+    expect(screen.getByTestId("activation-evidence-card").textContent).toContain(payload.headline)
 
     const expectedAreaCount = Math.min(payload.concreteAdvice.rows.length, 3)
     expect(screen.queryAllByTestId("personal-story-sphere-link")).toHaveLength(expectedAreaCount)
     expect(screen.queryByTestId("technique-chip")).toBeNull()
-    // This historic downstream fixture owns an earlier technical headline. The V2
-    // contract deliberately renders the backend headline verbatim; no technical
-    // evidence or chips may be appended by the human-first component.
     expect(screen.getByTestId("activation-evidence-card").querySelector('[data-testid="technique-chip"]')).toBeNull()
+    expect(screen.getByTestId("activation-evidence-card").textContent).not.toMatch(/Профекция|Фирдар|Транзит|орб|сходимост|техник/i)
   })
 })

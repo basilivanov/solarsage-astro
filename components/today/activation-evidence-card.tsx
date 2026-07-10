@@ -25,13 +25,13 @@
 import { ChevronRight } from "lucide-react"
 import type { ConcreteAdviceBlock, ConcreteAdviceRow, TodayV2Block } from "@/lib/contracts/today"
 import { getIcon } from "@/lib/icons"
-import { getHumanSphereLabel } from "@/lib/presentation/today-v2"
+import { containsBannedAstrologyVocabulary, getHumanSphereLabel } from "@/lib/presentation/today-v2"
 
 type ActivationEvidenceCardProps = {
   v2: TodayV2Block | null | undefined
   concreteAdvice?: ConcreteAdviceBlock
-  onSphereSelect?: (key: string) => void
-  onWhyOpen?: () => void
+  onSphereSelect: (key: string) => void
+  onWhyOpen: () => void
   headlineFallback?: string | null
 }
 
@@ -51,8 +51,8 @@ function getTopAffectedRows(rows: ConcreteAdviceRow[]): ConcreteAdviceRow[] {
 export function ActivationEvidenceCard({
   v2,
   concreteAdvice = { rows: [], counts: { good: 0, caution: 0, avoid: 0, neutral: 0 } },
-  onSphereSelect = () => {},
-  onWhyOpen = () => {},
+  onSphereSelect,
+  onWhyOpen,
   headlineFallback,
 }: ActivationEvidenceCardProps) {
   // START_FUNCTION_CONTRACT: F-M-ACTIVATION-EVIDENCE-CARD.ActivationEvidenceCard
@@ -65,7 +65,13 @@ export function ActivationEvidenceCard({
   // END_FUNCTION_CONTRACT: F-M-ACTIVATION-EVIDENCE-CARD.ActivationEvidenceCard
   if (!v2) return null
 
-  const headline = v2.activationSummary.headline?.trim() || headlineFallback?.trim() || ""
+  const v2Headline = v2.activationSummary.headline?.trim() || ""
+  const fallbackHeadline = headlineFallback?.trim() || ""
+  const headline = !containsBannedAstrologyVocabulary(v2Headline)
+    ? v2Headline
+    : !containsBannedAstrologyVocabulary(fallbackHeadline)
+      ? fallbackHeadline
+      : ""
   if (!headline) return null
 
   const rankedRows = getTopAffectedRows(concreteAdvice?.rows || [])

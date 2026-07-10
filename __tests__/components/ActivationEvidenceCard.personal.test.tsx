@@ -34,12 +34,14 @@ function makeV2(): TodayV2Block {
 
 describe("ActivationEvidenceCard human-first", () => {
   it("returns null without V2", () => {
-    const { container } = render(<ActivationEvidenceCard v2={null} concreteAdvice={concreteAdvice} />)
+    const { container } = render(
+      <ActivationEvidenceCard v2={null} concreteAdvice={concreteAdvice} onSphereSelect={() => {}} onWhyOpen={() => {}} />,
+    )
     expect(container.querySelector('[data-testid="activation-evidence-card"]')).toBeNull()
   })
 
   it("uses V2 headline, the lowest backend rank, and no more than three affected spheres", () => {
-    render(<ActivationEvidenceCard v2={makeV2()} concreteAdvice={concreteAdvice} />)
+    render(<ActivationEvidenceCard v2={makeV2()} concreteAdvice={concreteAdvice} onSphereSelect={() => {}} onWhyOpen={() => {}} />)
     const card = screen.getByTestId("activation-evidence-card")
     expect(card.getAttribute("data-state")).toBe("ready")
     expect(card.textContent).toContain(makeV2().activationSummary.headline)
@@ -65,5 +67,31 @@ describe("ActivationEvidenceCard human-first", () => {
     expect(onSphereSelect).toHaveBeenCalledWith("work")
     fireEvent.click(screen.getByTestId("personal-story-why-cta"))
     expect(onWhyOpen).toHaveBeenCalledOnce()
+  })
+
+  it("uses only a human-safe V2 headline or an explicitly safe backend fallback", () => {
+    const technicalV2 = makeV2()
+    technicalV2.activationSummary.headline = "Сходимость транзитов и профекции"
+    const callbacks = { onSphereSelect: () => {}, onWhyOpen: () => {} }
+    const { rerender } = render(
+      <ActivationEvidenceCard
+        v2={technicalV2}
+        concreteAdvice={concreteAdvice}
+        headlineFallback="Безопасный заголовок дня"
+        {...callbacks}
+      />,
+    )
+    expect(screen.getByTestId("activation-evidence-card").textContent).toContain("Безопасный заголовок дня")
+    expect(screen.getByTestId("activation-evidence-card").textContent).not.toMatch(/транзит|профекци|сходимост/i)
+
+    rerender(
+      <ActivationEvidenceCard
+        v2={technicalV2}
+        concreteAdvice={concreteAdvice}
+        headlineFallback="Технический аспект дня"
+        {...callbacks}
+      />,
+    )
+    expect(screen.queryByTestId("activation-evidence-card")).toBeNull()
   })
 })

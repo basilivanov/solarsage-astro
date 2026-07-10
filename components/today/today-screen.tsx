@@ -99,29 +99,43 @@ export function TodayScreen({
 
   useEffect(() => {
     if (!selectedSphereKey) return
+    scrollAndFocusSphere(selectedSphereKey)
+  }, [selectedSphereKey])
+
+  function scrollAndFocusSphere(key: string) {
     const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
-    const cancel = window.cancelAnimationFrame ?? window.clearTimeout
-    const frame = schedule(() => {
+    schedule(() => {
       const navigator = document.querySelector('[data-testid="concrete-day-advice"]')
       navigator?.scrollIntoView({ behavior: "smooth", block: "start" })
       const sphereButton = Array.from(
         document.querySelectorAll<HTMLButtonElement>('[data-testid="concrete-day-advice-row"]'),
-      ).find((element) => element.dataset.sphereKey === selectedSphereKey)
+      ).find((element) => element.dataset.sphereKey === key)
       sphereButton?.focus({ preventScroll: true })
     })
-    return () => cancel(frame)
-  }, [selectedSphereKey])
+  }
+
+  function selectPersonalStorySphere(key: string) {
+    setSelectedSphereKey(key)
+    scrollAndFocusSphere(key)
+  }
 
   useEffect(() => {
     if (!whyOpen) return
+    scrollAndFocusWhy()
+  }, [whyOpen])
+
+  function scrollAndFocusWhy() {
     const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
-    const cancel = window.cancelAnimationFrame ?? window.clearTimeout
-    const frame = schedule(() => {
+    schedule(() => {
       document.getElementById("why-expanded")?.scrollIntoView({ behavior: "smooth", block: "start" })
       document.getElementById("why-expanded-toggle")?.focus({ preventScroll: true })
     })
-    return () => cancel(frame)
-  }, [whyOpen])
+  }
+
+  function openWhy() {
+    setWhyOpen(true)
+    scrollAndFocusWhy()
+  }
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
@@ -204,7 +218,7 @@ export function TodayScreen({
             </div>
           ) : null}
 
-          {isToday && !payload.v2 ? (
+          {isToday ? (
             <div className="px-5" data-testid="evening-checkin-reminder">
               <YesterdayEchoLoader />
             </div>
@@ -222,15 +236,16 @@ export function TodayScreen({
           <ActivationEvidenceCard
             v2={payload.v2}
             concreteAdvice={payload.concreteAdvice}
-            onSphereSelect={setSelectedSphereKey}
-            onWhyOpen={() => setWhyOpen(true)}
+            onSphereSelect={selectPersonalStorySphere}
+            onWhyOpen={openWhy}
+            headlineFallback={payload.headline}
           />
 
           <ConcreteDayAdvice
             concreteAdvice={payload.concreteAdvice}
             selectedKey={selectedSphereKey}
             onSelectedKeyChange={setSelectedSphereKey}
-            onWhyOpen={() => setWhyOpen(true)}
+            onWhyOpen={openWhy}
           />
 
           {/* Why comes before technical visualization and reading in human-first V2. */}

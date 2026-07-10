@@ -721,12 +721,18 @@ describe('V2 activation evidence and audit rendering', () => {
     }
 
     const { getByTestId } = render(
-      <ActivationEvidenceCard v2={v2Fixture} />
+      <ActivationEvidenceCard
+        v2={v2Fixture}
+        concreteAdvice={{ rows: [], counts: { good: 0, caution: 0, avoid: 0, neutral: 0 } }}
+        onSphereSelect={() => {}}
+        onWhyOpen={() => {}}
+        headlineFallback="Безопасный заголовок"
+      />
     )
 
     const card = getByTestId('activation-evidence-card')
     expect(card).toBeTruthy()
-    expect(card.textContent).toContain("Сходимость на Меркурии")
+    expect(card.textContent).toContain("Безопасный заголовок")
 
     expect(card.textContent).toContain("ИМЕННО ДЛЯ ТЕБЯ")
     expect(card.querySelector('[data-testid="technique-chip"]')).toBeNull()

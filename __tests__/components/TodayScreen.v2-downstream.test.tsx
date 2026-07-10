@@ -112,9 +112,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     // Stable screen root contract
     expect(screen.getByTestId("today-screen")).toBeTruthy()
     expect(screen.getByTestId("activation-evidence-card")).toBeTruthy()
-    expect(screen.getByTestId("activation-evidence-card").textContent).toContain(
-      payload.v2!.activationSummary.headline,
-    )
+    expect(screen.getByTestId("activation-evidence-card").textContent).toContain(payload.headline)
 
     // Every activation contribution id in scoreBreakdown must exist in activationEvidence
     const evidenceIds = new Set((payload.v2?.activationEvidence || []).map((e) => e.id))

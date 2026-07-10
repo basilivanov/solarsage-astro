@@ -29,9 +29,9 @@ import { getHumanSphereLabel, getVerdictManifestationCopy } from "@/lib/presenta
 
 type Props = {
   concreteAdvice: ConcreteAdviceBlock
-  selectedKey?: string | null
-  onSelectedKeyChange?: (key: string | null) => void
-  onWhyOpen?: () => void
+  selectedKey: string | null
+  onSelectedKeyChange: (key: string | null) => void
+  onWhyOpen: () => void
 }
 
 type Verdict = "good" | "caution" | "avoid" | "neutral"
@@ -76,9 +76,9 @@ function detailsId(key: string): string {
 // START_BLOCK: SPHERE_NAVIGATOR
 export function ConcreteDayAdvice({
   concreteAdvice,
-  selectedKey = null,
-  onSelectedKeyChange = () => {},
-  onWhyOpen = () => {},
+  selectedKey,
+  onSelectedKeyChange,
+  onWhyOpen,
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.ConcreteDayAdvice
   // purpose: Render a controlled 12-sphere navigator and one selected details panel.
