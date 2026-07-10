@@ -6,6 +6,8 @@ The V2 Today flow is now human-first: compact backend-owned day summary, persona
 
 `ActivationEvidenceCard` is deliberately migrated from an evidence disclosure to a V2 personal story. It renders the backend V2 headline, the minimum-rank concrete advice row, and at most three mapped sphere links. `ConcreteDayAdvice` is a controlled two-column navigator with one full-width detail panel after the selected pair. `WhyExpanded` keeps human explanation separate from the nested, opt-in technical calculation.
 
+The follow-up hardening pass makes human surfaces reject Unicode technical forms (including Russian inflections) and use only a safe explicitly supplied backend fallback headline. Evidence selection falls back to active backend order if primary IDs resolve to nothing; the grouped long background is restricted to `period` evidence. Hero and navigator callbacks are mandatory, and repeated hero/Why actions repeat their scroll/focus behavior.
+
 ## Changed files
 
 - `components/today/day-summary-card.tsx` — V2 compact human-first presentation while retaining legacy facts.
@@ -30,8 +32,8 @@ The V2 Today flow is now human-first: compact backend-owned day summary, persona
 
 ## Verification
 
-- Targeted Vitest: 6 files, 40 tests passed.
-- Full Vitest: 91 files, 935 tests passed.
+- Targeted Vitest: 6 files, 42 tests passed.
+- Full Vitest: 91 files, 937 tests passed.
 - TypeScript: `npx tsc --noEmit` passed.
 - Production build: `pnpm build` passed.
 - Playwright baseline update: mobile V2 spec, 1 passed.
@@ -50,6 +52,7 @@ The V2 Today flow is now human-first: compact backend-owned day summary, persona
 ## Commit and scope
 
 - Implementation commit: `09f8878d15f321ee49a7f2fc3de0b5ebf9ee68b4`.
+- Follow-up implementation hardening: `5581604ba4fb7336b66b536fbbf9166b190b830c`.
 - Report commit SHA is self-referential and is recorded in the final handoff after this file is committed.
 - `main`, production frontend `3002`, API `8000`, sidecar `18091`, nginx, flags, and systemd units were not changed or restarted.
 - User-owned untracked `.grace/`, `artifacts/design/`, `docs/superpowers/plans/2026-07-05-fix-day-route-auth-build.md`, `grace.db`, and `skills/` were not staged.
