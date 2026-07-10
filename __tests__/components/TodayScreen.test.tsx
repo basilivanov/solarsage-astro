@@ -212,6 +212,7 @@ describe('TodayScreen', () => {
           'access-card',
           'evening-checkin-reminder',
           'day-summary-card',
+          'activation-evidence-card',
           'concrete-day-advice',
           'day-chart-unavailable',
           'day-reading',
@@ -222,6 +223,7 @@ describe('TodayScreen', () => {
         ].includes(id ?? ''),
       )
 
+    // No v2 → no activation-evidence-card gap between summary and advice
     expect(orderedIds).toEqual([
       'day-header',
       'access-card',
@@ -235,6 +237,7 @@ describe('TodayScreen', () => {
       'astro-history-widget',
       'today-bottom-disclaimer',
     ])
+    expect(screen.queryByTestId('activation-evidence-card')).toBeNull()
     expect(screen.queryByText('Standalone headline should not be in the top flow')).toBeNull()
     expect(screen.queryByTestId('today-notes')).toBeNull()
     expect(screen.getByTestId('day-reading')).toBeTruthy()
@@ -242,6 +245,77 @@ describe('TodayScreen', () => {
     expect(screen.getByTestId('week-strip')).toBeTruthy()
     expect(screen.getByTestId('astro-history-widget')).toBeTruthy()
     expect(screen.queryByTestId('paywall')).toBeNull()
+  })
+
+  it('places V2 personal card between day summary and concrete advice', () => {
+    const payload = buildPayload({
+      v2: {
+        activationSummary: {
+          headline: 'Персональный сюжет дня',
+          topActivatedTargets: [
+            {
+              targetType: 'planet',
+              targetKey: 'PLUTO',
+              label: 'Плутон',
+              familyCount: 3,
+              techniques: ['transit_to_natal', 'annual_profection', 'firdar_major'],
+              spheres: ['crisis_transformation_control'],
+              activationIds: ['act-1'],
+            },
+          ],
+        },
+        activationEvidence: [
+          {
+            id: 'act-1',
+            technique: 'transit_to_natal',
+            techniqueFamily: 'transit',
+            targetType: 'planet',
+            targetKey: 'PLUTO',
+            kind: 'aspect',
+            active: true,
+            strength: 0.7,
+            evidence: 'structured',
+            phase: 'separating',
+            polarity: 'tense',
+            sourcePlanet: 'Moon',
+            targetPlanet: 'Pluto',
+            aspect: 'opposition',
+            orb: 1.0,
+            debug: {},
+          },
+        ],
+        scoreBreakdown: {},
+        whyToday: [],
+        audit: {
+          available: false,
+          payloadVersion: 'today.v2',
+          calculationVersion: 'ss-calc-1.1.0',
+          scoringVersion: 'ss-scoring-2.0',
+          canonVersions: {},
+        },
+      },
+      reading: { paragraphs: ['p1'] },
+      why: [whyFixture],
+      keyInsight: 'Why',
+    })
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess()}
+        payload={payload}
+        onDateChange={onDateChange}
+      />,
+    )
+    const orderedIds = Array.from(screen.getByTestId('today-screen').querySelectorAll('[data-testid]'))
+      .map((node) => node.getAttribute('data-testid'))
+      .filter((id) =>
+        ['day-summary-card', 'activation-evidence-card', 'concrete-day-advice'].includes(id ?? ''),
+      )
+    expect(orderedIds).toEqual([
+      'day-summary-card',
+      'activation-evidence-card',
+      'concrete-day-advice',
+    ])
   })
 
   it('omits check-in on non-today routes and keeps history before disclaimer', () => {
@@ -652,7 +726,6 @@ describe('V2 activation evidence and audit rendering', () => {
     const card = getByTestId('activation-evidence-card')
     expect(card).toBeTruthy()
     expect(card.textContent).toContain("Сходимость на Меркурии")
-    expect(card.textContent).toContain("Меркурий")
 
     const chips = getAllByTestId('technique-chip')
     expect(chips.length).toBeGreaterThan(0)

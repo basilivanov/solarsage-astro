@@ -1,27 +1,12 @@
 import React from "react"
-
-const TECHNIQUE_LABELS: Record<string, string> = {
-  transit_to_natal: "Транзит",
-  transit_to_angle: "Транзит",
-  transit_to_lot: "Транзит",
-  transit_planet_in_house: "Транзит",
-  annual_profection: "Профекция",
-  monthly_profection: "Профекция",
-  firdar_major: "Фирдар",
-  firdar_minor: "Фирдар",
-  solar_return: "Возвращение",
-  lunar_return: "Возвращение",
-  secondary_progression: "Прогрессия",
-  solar_arc: "Solar Arc",
-  eclipse_window: "Затмение",
-}
+import { getTechniqueLabel } from "@/lib/presentation/today-v2"
 
 interface TechniqueChipProps {
   technique: string
 }
 
 export function TechniqueChip({ technique }: TechniqueChipProps) {
-  const label = TECHNIQUE_LABELS[technique] || technique
+  const label = getTechniqueLabel(technique)
   return (
     <span
       data-testid="technique-chip"

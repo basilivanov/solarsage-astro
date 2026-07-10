@@ -183,11 +183,12 @@ export function TodayScreen({
             daySummary={payload.daySummary}
           />
 
+          {/* Personal V2 card immediately below summary; null when v2 absent */}
+          <ActivationEvidenceCard v2={payload.v2} />
+
           <ConcreteDayAdvice
             concreteAdvice={payload.concreteAdvice}
           />
-
-          <ActivationEvidenceCard v2={payload.v2} />
 
           <DayChart
             chart={payload.dayChart}

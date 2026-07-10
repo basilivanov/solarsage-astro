@@ -10,6 +10,7 @@ import { ChevronUp } from "lucide-react"
 
 import { getIcon } from "@/lib/icons"
 import type { TodayWhySection, TodayV2WhyTodayItem } from "@/lib/contracts/today"
+import { TechniqueChip } from "./technique-chip"
 
 type Props = {
   sections: TodayWhySection[]
@@ -56,7 +57,7 @@ export function WhyExpanded({ sections, keyInsight, whyToday }: Props) {
           <div className="border-t border-border/60 bg-secondary/40 px-5 pb-6 pt-5">
             <p className="mb-5 font-serif text-[16px] italic leading-relaxed text-muted-foreground">
               {hasV2
-                ? "Анализ сходимости техник и факторов, определяющих фокус сегодняшнего дня."
+                ? "Здесь видно, почему сегодняшний сюжет относится именно к вашей карте и какие независимые циклы его подтверждают."
                 : "Как именно сегодняшние транзиты ложатся на твою натальную карту и почему день звучит так, а не иначе."}
             </p>
 
@@ -82,12 +83,7 @@ export function WhyExpanded({ sections, keyInsight, whyToday }: Props) {
                       {item.techniques && item.techniques.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {item.techniques.map((tech) => (
-                            <span
-                              key={tech}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-700 border border-slate-200"
-                            >
-                              {tech}
-                            </span>
+                            <TechniqueChip key={tech} technique={tech} />
                           ))}
                         </div>
                       )}

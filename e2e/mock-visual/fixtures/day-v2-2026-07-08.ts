@@ -1,6 +1,78 @@
+// ############################################################################
+// AI_HEADER: MODULE_E2E_MOCK_VISUAL_FIXTURE_DAY_V2_2026_07_08
+// ROLE: Rich test-only TodayPayload V2 fixture for personal day preview.
+//       Contract-valid; no birth date/time/coordinates; no product-path imports.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-FIXTURE-DAY-V2
+// purpose: Synthetic V2 day fixture for mock-visual preview and Playwright.
+// owns:
+//   - e2e/mock-visual/fixtures/day-v2-2026-07-08.ts
+// inputs: none (static)
+// outputs: dayPayloadV2, minimalDayPayloadForDate
+// dependencies: packages/contracts types only
+// side_effects: none
+// invariants:
+//   - Contract-valid TodayPayload with payloadVersion today.v2
+//   - Internally consistent activation ids across evidence/score/why/advice
+//   - No birth coordinates in payload
+// failure_policy: n/a (static data)
+// END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-FIXTURE-DAY-V2
+
 import type { components } from "../../../packages/contracts/_generated"
 
-export const dayPayloadV2: components["schemas"]["TodayPayload"] = {
+type TodayPayload = components["schemas"]["TodayPayload"]
+
+const HERO_HEADLINE =
+  "Сегодня особенно заметен внутренний конфликт между контролем и необходимостью что-то изменить"
+
+function sphereScore(
+  key: string,
+  title: string,
+  activationScore: number,
+  contributions: Array<{
+    source: "base_signal" | "activation" | "convergence" | "cap"
+    sourceId: string
+    amount: number
+    evidence: string
+  }>,
+) {
+  const baseScore = 0
+  const convergenceBonus = contributions
+    .filter((c) => c.source === "convergence")
+    .reduce((s, c) => s + c.amount, 0)
+  const rawScore = baseScore + activationScore + convergenceBonus
+  return {
+    key,
+    title,
+    baseScore,
+    activationScore,
+    convergenceBonus,
+    rawScore,
+    finalScore: rawScore,
+    normalizedScore: null,
+    dominanceCapped: false,
+    contributions: contributions.map((c) => ({
+      sphere: key,
+      source: c.source,
+      sourceId: c.sourceId,
+      amount: c.amount,
+      before: null,
+      after: null,
+      evidence: c.evidence,
+    })),
+  }
+}
+
+const evidenceBase = {
+  targetType: "planet" as const,
+  targetKey: "PLUTO",
+  active: true,
+  targetFrame: "natal",
+  debug: {},
+}
+
+export const dayPayloadV2: TodayPayload = {
   meta: {
     schemaVersion: "today/v1",
     contractVersion: 3,
@@ -17,7 +89,7 @@ export const dayPayloadV2: components["schemas"]["TodayPayload"] = {
   date: "2026-07-08",
   title: "Среда, 8 июля",
   subtitle: null,
-  headline: "День для важных решений и переговоров",
+  headline: HERO_HEADLINE,
   access: {
     state: "full",
     reason: "active_referral_days",
@@ -25,27 +97,53 @@ export const dayPayloadV2: components["schemas"]["TodayPayload"] = {
     subscriptionActive: false,
     accessUntil: null,
   },
-  dayStatus: "supportive",
+  dayStatus: "steady",
   dayQuality: {
-    supportScore: 7.5,
-    frictionScore: 2.3,
-    intensityScore: 3.1,
+    supportScore: 4.2,
+    frictionScore: 4.8,
+    intensityScore: 5.5,
   },
   topFlags: [
     {
       iconName: "moon",
-      title: "Луна в Раке",
-      summary: "Эмоциональная глубина и желание уюта",
+      title: "Луна — эмоциональный импульс",
+      summary: "Чувства быстрее доходят до глубинной темы дня",
+    },
+    {
+      iconName: "target",
+      title: "Сатурн — структура",
+      summary: "Есть опора удержать форму, не разрушаясь",
+    },
+    {
+      iconName: "zap",
+      title: "Плутон — перестройка",
+      summary: "Запрос на точное, взрослое изменение",
     },
   ],
   reading: {
     paragraphs: [
-      "Сегодня день возможностей. Марс в гармоничном аспекте с Юпитером даёт прилив уверенности.",
+      "Сегодня внутреннее напряжение не случайно: оно указывает на место, где старый способ контроля уже не работает. Это не призыв к резкому разрыву, а шанс увидеть, что именно требует более честной перестройки.",
+      "При этом в карте дня есть и опора: структура и длительные циклы поддерживают тему, а не только краткий эмоциональный всплеск. Можно действовать спокойно, без драматизации.",
+      "Если появится желание всё решить сразу — отложите крупный жест. Сначала отделите принципиальное от реакции на давление, и уже затем выбирайте следующий шаг.",
     ],
   },
-  notes: "Хороший день для творчества и общения с близкими.",
+  notes:
+    "День глубокой перестройки: напряжение можно превратить в точное и взрослое решение, без форсирования.",
   whyThisHappens: {
-    sections: [],
+    sections: [
+      {
+        id: "why-main",
+        title: "Почему день звучит именно так",
+        iconName: "telescope",
+        layer: "main_theme",
+        blocks: [
+          {
+            kind: "paragraph",
+            text: "Несколько независимых циклов сходятся на одной теме вашей карты — поэтому сюжет ощущается личным, а не общим.",
+          },
+        ],
+      },
+    ],
   },
   concreteAdvice: {
     rows: [
@@ -54,74 +152,423 @@ export const dayPayloadV2: components["schemas"]["TodayPayload"] = {
         label: "Работа",
         iconName: "briefcase",
         rank: 1,
-        verdict: "good",
+        verdict: "caution",
         confidence: "high",
-        text: "Рекомендация по работе",
+        text: "Не форсируйте разговор о статусе — сначала отделите принципиальное от реакции на давление",
         evidence: [
           {
             kind: "activation",
-            title: "Transit Mars trine natal Saturn",
-            orb: 1.25,
-            strength: 0.85,
+            title: "Луна — оппозиция к вашему натальному Плутону",
+            orb: 1.05,
+            strength: 0.72,
             technique: "transit_to_natal",
             techniqueFamily: "transit",
             sourceFrame: "transit",
             targetFrame: "natal",
+            activationId: "act-moon-opp-pluto",
+            planet: "Moon",
+            targetPlanet: "Pluto",
+            aspectType: "opposition",
           },
         ],
       },
+      {
+        key: "money",
+        label: "Деньги",
+        iconName: "building",
+        rank: 2,
+        verdict: "caution",
+        confidence: "high",
+        text: "Не принимайте крупное решение только ради ощущения контроля; перепроверьте условия",
+        evidence: [
+          {
+            kind: "activation",
+            title: "Плутон — тригон к вашему натальному Сатурну",
+            orb: 0.01,
+            strength: 0.8,
+            technique: "transit_to_natal",
+            techniqueFamily: "transit",
+            activationId: "act-pluto-trine-saturn",
+            planet: "Pluto",
+            targetPlanet: "Saturn",
+            aspectType: "trine",
+          },
+        ],
+      },
+      {
+        key: "documents",
+        label: "Документы",
+        iconName: "list-checks",
+        rank: 3,
+        verdict: "caution",
+        confidence: "medium",
+        text: "Перечитайте формулировки, особенно обязательства и сроки",
+        evidence: [
+          {
+            kind: "activation",
+            title: "Нептун — оппозиция к вашему натальному Сатурну",
+            orb: 0.29,
+            strength: 0.55,
+            technique: "transit_to_natal",
+            techniqueFamily: "transit",
+            activationId: "act-neptune-opp-saturn",
+            planet: "Neptune",
+            targetPlanet: "Saturn",
+            aspectType: "opposition",
+          },
+        ],
+      },
+      {
+        key: "relationships",
+        label: "Отношения",
+        iconName: "sparkle",
+        rank: 4,
+        verdict: "caution",
+        confidence: "high",
+        text: "Говорите о границе прямо, но не требуйте немедленного ответа",
+        evidence: [
+          {
+            kind: "activation",
+            title: "Профекция усиливает эту тему в текущем жизненном цикле",
+            technique: "annual_profection",
+            techniqueFamily: "profection",
+            activationId: "act-annual-profection",
+          },
+        ],
+      },
+      {
+        key: "sport",
+        label: "Спорт",
+        iconName: "leaf",
+        rank: 5,
+        verdict: "good",
+        confidence: "medium",
+        text: "Подойдёт короткая силовая нагрузка без гонки за рекордом",
+        evidence: [
+          {
+            kind: "activation",
+            title: "Фирдар подтверждает долгосрочный фокус темы",
+            technique: "firdar_major",
+            techniqueFamily: "firdar",
+            activationId: "act-firdar-major",
+          },
+        ],
+      },
+      {
+        key: "communication",
+        label: "Общение",
+        iconName: "telescope",
+        rank: 6,
+        verdict: "caution",
+        confidence: "high",
+        text: "Сначала сформулируйте, чего вы хотите добиться разговором",
+        evidence: [
+          {
+            kind: "activation",
+            title: "Луна — оппозиция к вашему натальному Плутону",
+            orb: 1.05,
+            technique: "transit_to_natal",
+            techniqueFamily: "transit",
+            activationId: "act-moon-opp-pluto",
+            planet: "Moon",
+            targetPlanet: "Pluto",
+            aspectType: "opposition",
+          },
+        ],
+      },
+      {
+        key: "health",
+        label: "Здоровье",
+        iconName: "compass",
+        rank: 7,
+        verdict: "neutral",
+        confidence: "medium",
+        text: "Снизьте информационный шум вечером — восстановление важнее ещё одной задачи",
+        evidence: [],
+      },
+      {
+        key: "decisions",
+        label: "Решения",
+        iconName: "target",
+        rank: 8,
+        verdict: "caution",
+        confidence: "high",
+        text: "Крупный выбор лучше зафиксировать после паузы, а не на пике эмоции",
+        evidence: [],
+      },
+      {
+        key: "travel",
+        label: "Поездки",
+        iconName: "hourglass",
+        rank: 9,
+        verdict: "neutral",
+        confidence: "low",
+        text: "Планируйте маршрут с запасом времени; срочные переезды сегодня не обязательны",
+        evidence: [],
+      },
+      {
+        key: "creativity",
+        label: "Творчество",
+        iconName: "grid",
+        rank: 10,
+        verdict: "good",
+        confidence: "medium",
+        text: "Подойдёт черновик или набросок — без требования идеального результата",
+        evidence: [],
+      },
+      {
+        key: "study",
+        label: "Учёба",
+        iconName: "layers",
+        rank: 11,
+        verdict: "good",
+        confidence: "medium",
+        text: "Разберите один сложный блок материала, а не весь список сразу",
+        evidence: [],
+      },
+      {
+        key: "shopping",
+        label: "Покупки",
+        iconName: "zap",
+        rank: 12,
+        verdict: "avoid",
+        confidence: "medium",
+        text: "Отложите импульсивные крупные траты — сначала сверьте необходимость и бюджет",
+        evidence: [],
+      },
     ],
     counts: {
-      good: 1,
-      caution: 0,
-      avoid: 0,
-      neutral: 0,
+      good: 3,
+      caution: 6,
+      avoid: 1,
+      neutral: 2,
     },
   },
   daySummary: {
-    statusLabel: "Поддерживающий день",
-    statusLine: "фокус на общении и решениях",
-    facts: [],
+    statusLabel: "День глубокой перестройки",
+    statusLine: "напряжение можно превратить в точное и взрослое решение",
+    facts: [
+      {
+        kind: "top_planet",
+        iconName: "Moon",
+        title: "Луна — эмоциональный импульс",
+        summary: "Чувства быстрее доходят до глубинной темы",
+      },
+      {
+        kind: "top_planet",
+        iconName: "Saturn",
+        title: "Сатурн — структура",
+        summary: "Есть опора удержать форму",
+      },
+      {
+        kind: "top_planet",
+        iconName: "Pluto",
+        title: "Плутон — перестройка",
+        summary: "Запрос на точное изменение",
+      },
+    ],
   },
   v2: {
     activationSummary: {
-      headline: "Сегодня сходятся 3 независимые техники на теме общения и решений",
+      headline: HERO_HEADLINE,
       topActivatedTargets: [
         {
           targetType: "planet",
-          targetKey: "MERCURY",
-          label: "Меркурий",
+          targetKey: "PLUTO",
+          label: "Плутон",
           familyCount: 3,
-          techniques: ["annual_profection", "transit_to_natal", "secondary_progression"],
-          spheres: ["communication"],
-          activationIds: ["act-1"],
+          techniques: ["transit_to_natal", "annual_profection", "firdar_major"],
+          spheres: [
+            "crisis_transformation_control",
+            "money_security_resources",
+            "inner_background_unconscious",
+          ],
+          activationIds: [
+            "act-moon-opp-pluto",
+            "act-pluto-trine-saturn",
+            "act-neptune-opp-saturn",
+            "act-annual-profection",
+            "act-firdar-major",
+          ],
         },
       ],
     },
     activationEvidence: [
       {
-        id: "act-1",
+        id: "act-moon-opp-pluto",
         technique: "transit_to_natal",
         techniqueFamily: "transit",
-        targetType: "planet",
-        targetKey: "MERCURY",
+        ...evidenceBase,
         kind: "aspect",
-        active: true,
+        sourcePlanet: "Moon",
+        sourceFrame: "transit",
+        targetPlanet: "Pluto",
+        aspect: "opposition",
+        orb: 1.05,
+        phase: "separating",
+        polarity: "tense",
+        strength: 0.72,
+        evidence: "Moon opposition natal Pluto",
+      },
+      {
+        id: "act-pluto-trine-saturn",
+        technique: "transit_to_natal",
+        techniqueFamily: "transit",
+        ...evidenceBase,
+        kind: "aspect",
+        sourcePlanet: "Pluto",
+        sourceFrame: "transit",
+        targetPlanet: "Saturn",
+        targetKey: "SATURN",
+        aspect: "trine",
+        orb: 0.01,
+        phase: "exact",
+        polarity: "supportive",
         strength: 0.8,
-        evidence: "Transit Moon opposition natal Mercury, orb 1.05°",
-        phase: "background",
+        evidence: "Pluto trine natal Saturn",
+      },
+      {
+        id: "act-neptune-opp-saturn",
+        technique: "transit_to_natal",
+        techniqueFamily: "transit",
+        ...evidenceBase,
+        kind: "aspect",
+        sourcePlanet: "Neptune",
+        sourceFrame: "transit",
+        targetPlanet: "Saturn",
+        targetKey: "SATURN",
+        aspect: "opposition",
+        orb: 0.29,
+        phase: "applying",
+        polarity: "tense",
+        strength: 0.55,
+        evidence: "Neptune opposition natal Saturn",
+      },
+      {
+        id: "act-annual-profection",
+        technique: "annual_profection",
+        techniqueFamily: "profection",
+        ...evidenceBase,
+        kind: "period",
+        sourcePlanet: null,
+        sourceFrame: null,
+        targetPlanet: "Pluto",
+        aspect: null,
+        orb: null,
+        phase: "period",
+        polarity: "mixed",
+        strength: 0.6,
+        evidence: "Annual profection activates Pluto theme",
+      },
+      {
+        id: "act-firdar-major",
+        technique: "firdar_major",
+        techniqueFamily: "firdar",
+        ...evidenceBase,
+        kind: "period",
+        sourcePlanet: null,
+        sourceFrame: null,
+        targetPlanet: "Pluto",
+        aspect: null,
+        orb: null,
+        phase: "period",
         polarity: "neutral",
-        debug: {},
+        strength: 0.5,
+        evidence: "Firdar major confirms long-term focus",
       },
     ],
-    scoreBreakdown: {},
+    scoreBreakdown: {
+      crisis_transformation_control: sphereScore(
+        "crisis_transformation_control",
+        "кризис · трансформация · контроль",
+        1.2,
+        [
+          {
+            source: "activation",
+            sourceId: "act-moon-opp-pluto",
+            amount: 0.5,
+            evidence: "Moon opposition natal Pluto",
+          },
+          {
+            source: "activation",
+            sourceId: "act-annual-profection",
+            amount: 0.35,
+            evidence: "Annual profection",
+          },
+          {
+            source: "activation",
+            sourceId: "act-firdar-major",
+            amount: 0.35,
+            evidence: "Firdar major",
+          },
+          {
+            source: "convergence",
+            sourceId: "convergence:crisis_transformation_control",
+            amount: 0.65,
+            evidence: "Multi-family convergence",
+          },
+        ],
+      ),
+      money_security_resources: sphereScore(
+        "money_security_resources",
+        "деньги · безопасность · ресурсы",
+        0.8,
+        [
+          {
+            source: "activation",
+            sourceId: "act-pluto-trine-saturn",
+            amount: 0.45,
+            evidence: "Pluto trine natal Saturn",
+          },
+          {
+            source: "activation",
+            sourceId: "act-neptune-opp-saturn",
+            amount: 0.35,
+            evidence: "Neptune opposition natal Saturn",
+          },
+        ],
+      ),
+      inner_background_unconscious: sphereScore(
+        "inner_background_unconscious",
+        "внутренний фон · бессознательное",
+        0.7,
+        [
+          {
+            source: "activation",
+            sourceId: "act-moon-opp-pluto",
+            amount: 0.4,
+            evidence: "Moon opposition natal Pluto",
+          },
+          {
+            source: "activation",
+            sourceId: "act-annual-profection",
+            amount: 0.3,
+            evidence: "Annual profection",
+          },
+        ],
+      ),
+    },
     whyToday: [
       {
-        id: "why-profection-house-3",
-        title: "Профекция года активирует 3 дом",
-        body: "Эта долгосрочная техника смещает фокус года на сферу коммуникаций, документов и ближнего круга.",
-        activationIds: ["act-1"],
-        techniques: ["annual_profection"],
+        id: "why-emotions-depth",
+        title: "Эмоции быстрее доходят до глубинной темы",
+        body: "Лунный импульс касается личной точки перестройки: чувства не «ломают» день, а показывают, где уже назрела честная корректировка.",
+        activationIds: ["act-moon-opp-pluto"],
+        techniques: ["transit_to_natal"],
+      },
+      {
+        id: "why-structure-resource",
+        title: "У вас есть ресурс удержать структуру",
+        body: "Поддерживающий контакт с темой структуры помогает не скатываться в хаос: можно менять форму, сохраняя опору.",
+        activationIds: ["act-pluto-trine-saturn"],
+        techniques: ["transit_to_natal"],
+      },
+      {
+        id: "why-longer-cycles",
+        title: "Это не случайный фон одного дня",
+        body: "Профекция и фирдар подтверждают, что сюжет опирается на более длинные циклы, а не только на краткий транзит.",
+        activationIds: ["act-annual-profection", "act-firdar-major"],
+        techniques: ["annual_profection", "firdar_major"],
       },
     ],
     audit: {
@@ -130,11 +577,44 @@ export const dayPayloadV2: components["schemas"]["TodayPayload"] = {
       calculationVersion: "ss-calc-1.1.0",
       scoringVersion: "ss-scoring-2.0",
       activationLayerVersion: "al-1.0",
-      canonVersions: {},
+      canonVersions: {
+        spheres: "v1",
+        scoring_v2: "v1",
+        activation_rules: "v1",
+      },
       v1V2Diff: {},
     },
   },
   importantToday: [],
   microcopy: [],
   weekStrip: [],
+}
+
+/** Minimal compatible day body for week-strip neighbours (not the hero fixture). */
+export function minimalDayPayloadForDate(date: string): TodayPayload {
+  return {
+    ...dayPayloadV2,
+    date,
+    title: date,
+    headline: "Соседний день недели",
+    v2: null,
+    meta: {
+      ...dayPayloadV2.meta,
+      payloadVersion: "today.v1",
+      frontendPayloadVersion: 1,
+    },
+    concreteAdvice: {
+      rows: dayPayloadV2.concreteAdvice.rows.map((r) => ({
+        ...r,
+        evidence: [],
+        text: "Краткая сводка соседнего дня для навигации по неделе",
+      })),
+      counts: { good: 0, caution: 0, avoid: 0, neutral: 12 },
+    },
+    daySummary: {
+      statusLabel: "Ровный день",
+      statusLine: "соседний день недели",
+      facts: [],
+    },
+  }
 }

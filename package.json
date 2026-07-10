@@ -34,7 +34,8 @@
     "guardrails:horary-quality": "bash scripts/check_horary_quality.sh",
     "guardrails:vercel": "bash scripts/guardrails.sh vercel",
     "guardrails:full": "bash scripts/guardrails.sh full",
-    "guardrails:strict": "bash scripts/guardrails.sh strict"
+    "guardrails:strict": "bash scripts/guardrails.sh strict",
+    "preview:v2": "node e2e/mock-visual/start-v2-preview.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

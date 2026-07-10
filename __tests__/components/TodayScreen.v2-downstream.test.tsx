@@ -110,8 +110,9 @@ describe("TodayScreen V2 downstream fixture", () => {
     // Stable screen root contract
     expect(screen.getByTestId("today-screen")).toBeTruthy()
     expect(screen.getByTestId("activation-evidence-card")).toBeTruthy()
-    const first = payload.v2!.activationEvidence[0]
-    expect(screen.getAllByText(first.evidence).length).toBeGreaterThan(0)
+    expect(screen.getByTestId("activation-evidence-card").textContent).toContain(
+      payload.v2!.activationSummary.headline,
+    )
 
     // Every activation contribution id in scoreBreakdown must exist in activationEvidence
     const evidenceIds = new Set((payload.v2?.activationEvidence || []).map((e) => e.id))
@@ -142,9 +143,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.getAllByText(first.title).length).toBeGreaterThan(0)
     expect(screen.getAllByText(first.body).length).toBeGreaterThan(0)
     if (first.techniques && first.techniques.length > 0) {
-      for (const tech of first.techniques) {
-        expect(screen.getAllByText(tech).length).toBeGreaterThan(0)
-      }
+      expect(screen.getAllByTestId("technique-chip").length).toBeGreaterThan(0)
     }
     const evidenceIds = new Set((payload.v2?.activationEvidence || []).map((e) => e.id))
     for (const item of why) {

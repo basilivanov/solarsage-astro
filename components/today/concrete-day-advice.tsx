@@ -16,21 +16,27 @@
 //   - framer-motion
 //   - lucide-react
 //   - @/lib/contracts/today
+//   - @/lib/presentation/today-v2
 // side_effects: local expand/collapse state only
 // invariants:
 //   - 12 product rows are rendered in canonical order
 //   - no client-side advice text or verdicts are fabricated
+//   - nested row interaction does not toggle the all-12-spheres control
 // failure_policy: renders gracefully if block is empty
 // END_MODULE_CONTRACT: M-TODAY-CONCRETE-DAY-ADVICE
 
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { motion } from "framer-motion"
 import { Zap, ChevronDown } from "lucide-react"
 
 import type { ConcreteAdviceBlock } from "@/lib/contracts/today"
 import { TechniqueChip } from "./technique-chip"
+import {
+  formatConcreteAdviceEvidenceTitle,
+  formatOrb,
+} from "@/lib/presentation/today-v2"
 
 type Props = {
   concreteAdvice: ConcreteAdviceBlock
@@ -65,6 +71,7 @@ const ICON_MAP: Record<string, string> = {
 export function ConcreteDayAdvice({ concreteAdvice }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const rowsId = useId()
 
   const rows = concreteAdvice?.rows || []
   const counts = concreteAdvice?.counts || { good: 0, caution: 0, avoid: 0, neutral: 0 }
@@ -87,7 +94,6 @@ export function ConcreteDayAdvice({ concreteAdvice }: Props) {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-secondary/20">
-        {/* Summary header */}
         <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
           <div className="flex items-center gap-3 text-[11px]">
             <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
@@ -103,7 +109,7 @@ export function ConcreteDayAdvice({ concreteAdvice }: Props) {
             type="button"
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
-            aria-controls="concrete-day-advice-rows"
+            aria-controls={rowsId}
             className="flex items-center gap-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
           >
             {expanded ? "свернуть" : "все 12 сфер"}
@@ -114,13 +120,15 @@ export function ConcreteDayAdvice({ concreteAdvice }: Props) {
           </button>
         </div>
 
-        {/* Advice list */}
-        <div className="divide-y divide-border/30" id="concrete-day-advice-rows">
+        <div className="divide-y divide-border/30" id={rowsId}>
           {visibleRows.map((row, i) => {
             const meta = VERDICT_META[row.verdict]
             const uniqueTechs = Array.from(
-              new Set((row.evidence || []).map((e) => e.technique).filter(Boolean))
+              new Set((row.evidence || []).map((e) => e.technique).filter(Boolean)),
             ) as string[]
+            const hasEvidence = (row.evidence || []).length > 0
+            const isRowOpen = expandedRow === row.key
+            const rowDetailsId = `concrete-advice-evidence-${row.key}`
 
             return (
               <motion.div
@@ -128,27 +136,43 @@ export function ConcreteDayAdvice({ concreteAdvice }: Props) {
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.25, delay: i * 0.04 }}
-                className="flex flex-col px-4 py-2.5 cursor-pointer hover:bg-slate-50/50 transition-colors"
-                style={{ background: expanded ? meta.bg : undefined }}
+                className="flex flex-col px-4 py-2.5"
+                style={{ background: isRowOpen ? meta.bg : undefined }}
                 data-testid="concrete-day-advice-row"
                 data-status={row.verdict}
-                onClick={() => setExpandedRow((cur) => (cur === row.key ? null : row.key))}
               >
-                <div className="flex items-start gap-2.5">
-                  <span className="mt-0.5 text-[14px] leading-none flex-none">{ICON_MAP[row.iconName] || "•"}</span>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-2.5 text-left transition-colors hover:opacity-95"
+                  aria-expanded={hasEvidence ? isRowOpen : undefined}
+                  aria-controls={hasEvidence ? rowDetailsId : undefined}
+                  onClick={(e) => {
+                    // Native <button> already activates on Enter/Space via click.
+                    // Do not add a manual key handler — it would double-toggle.
+                    e.stopPropagation()
+                    if (!hasEvidence) return
+                    setExpandedRow((cur) => (cur === row.key ? null : row.key))
+                  }}
+                >
+                  <span className="mt-0.5 text-[14px] leading-none flex-none">
+                    {ICON_MAP[row.iconName] || "•"}
+                  </span>
                   <span className="w-[68px] flex-none text-[11px] font-medium text-muted-foreground">
                     {row.label}
                   </span>
-                  <div className="flex-1 flex flex-col">
-                    <span className="text-[12.5px] leading-snug text-foreground">
-                      {row.text}
-                    </span>
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <span className="text-[12.5px] leading-snug text-foreground">{row.text}</span>
                     {uniqueTechs.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {uniqueTechs.map((tech) => (
                           <TechniqueChip key={tech} technique={tech} />
                         ))}
                       </div>
+                    )}
+                    {hasEvidence && !isRowOpen && (
+                      <span className="mt-1 text-[10px] text-muted-foreground">
+                        почему именно у вас
+                      </span>
                     )}
                   </div>
                   <span
@@ -157,34 +181,40 @@ export function ConcreteDayAdvice({ concreteAdvice }: Props) {
                     title={meta.label}
                     aria-hidden
                   />
-                </div>
+                </button>
 
-                {expandedRow === row.key && row.evidence && row.evidence.length > 0 && (
+                {isRowOpen && hasEvidence && (
                   <div
+                    id={rowDetailsId}
                     data-testid="concrete-day-advice-evidence"
-                    className="mt-2.5 ml-8 pl-3 border-l border-amber-300 space-y-1 text-xs text-slate-500 font-mono"
+                    className="mt-2.5 ml-8 pl-3 border-l border-violet-200/80 space-y-2 text-[12px] text-foreground/80"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="font-semibold uppercase tracking-wider text-[10px] text-slate-400 mb-1">
-                      Обоснование:
+                    <div className="font-semibold text-[11px] text-muted-foreground mb-1">
+                      Почему именно у вас
                     </div>
                     {row.evidence.map((ev, idx) => {
-                      let details = ev.title
-                      if (ev.kind === "activation" || ev.kind === "score_contribution") {
-                        const parts = []
-                        if (ev.technique) parts.push(`техника: ${ev.technique}`)
-                        if (ev.techniqueFamily) parts.push(`семейство: ${ev.techniqueFamily}`)
-                        if (ev.sourceFrame) parts.push(`источник: ${ev.sourceFrame}`)
-                        if (ev.targetFrame) parts.push(`цель: ${ev.targetFrame}`)
-                        if (ev.orb !== undefined && ev.orb !== null) parts.push(`орб: ${ev.orb.toFixed(2)}°`)
-                        if (ev.strength !== undefined && ev.strength !== null) parts.push(`сила: ${ev.strength.toFixed(2)}`)
-                        if (parts.length > 0) {
-                          details = `${ev.title} (${parts.join(", ")})`
-                        }
-                      }
+                      const title = formatConcreteAdviceEvidenceTitle({
+                        title: ev.title,
+                        kind: ev.kind,
+                        technique: ev.technique,
+                        planet: ev.planet,
+                        targetPlanet: ev.targetPlanet,
+                        aspectType: ev.aspectType,
+                        orb: ev.orb,
+                        contributionSourceId: ev.contributionSourceId,
+                        activationId: ev.activationId,
+                      })
+                      const orb = formatOrb(ev.orb)
                       return (
-                        <div key={idx} className="flex items-start gap-1">
-                          <span className="text-amber-500">•</span>
-                          <span>{details}</span>
+                        <div key={idx} className="space-y-1">
+                          <p className="leading-snug">{title}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {ev.technique ? <TechniqueChip technique={ev.technique} /> : null}
+                            {orb ? (
+                              <span className="text-[11px] text-muted-foreground">орб {orb}</span>
+                            ) : null}
+                          </div>
                         </div>
                       )
                     })}
@@ -195,7 +225,6 @@ export function ConcreteDayAdvice({ concreteAdvice }: Props) {
           })}
         </div>
 
-        {/* Expand hint when collapsed */}
         {!expanded && hiddenCount > 0 && (
           <button
             type="button"
