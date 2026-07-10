@@ -1,10 +1,10 @@
 activation_id,sphere,expected_amount,actual_amount,actual_contribution_source_id,formula,strength,family_weight,target_weight,polarity_modifier,amount_delta,status
-fi1,crisis_transformation_control,0.28,0.28,fi1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
-fi1,inner_background_unconscious,0.112,0.112,fi1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
-fi1,money_security_resources,0.112,0.112,fi1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
-pr1,crisis_transformation_control,0.28,0.28,pr1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
-pr1,inner_background_unconscious,0.112,0.112,pr1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
-pr1,money_security_resources,0.112,0.112,pr1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
-tr1,crisis_transformation_control,0.5,0.5,tr1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
-tr1,inner_background_unconscious,0.2,0.2,tr1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
-tr1,money_security_resources,0.2,0.2,tr1,strength * family_weight * target_weight * polarity_modifier,,,,,0.0,ok
+fi1,crisis_transformation_control,0.28,0.28,fi1,strength * family_weight * target_weight * polarity_modifier,0.5,0.8,1.0,0.7,0.0,ok
+fi1,inner_background_unconscious,0.112,0.112,fi1,strength * family_weight * target_weight * polarity_modifier,0.5,0.8,0.4,0.7,0.0,ok
+fi1,money_security_resources,0.112,0.112,fi1,strength * family_weight * target_weight * polarity_modifier,0.5,0.8,0.4,0.7,0.0,ok
+pr1,crisis_transformation_control,0.28,0.28,pr1,strength * family_weight * target_weight * polarity_modifier,0.5,0.8,1.0,0.7,0.0,ok
+pr1,inner_background_unconscious,0.112,0.112,pr1,strength * family_weight * target_weight * polarity_modifier,0.5,0.8,0.4,0.7,0.0,ok
+pr1,money_security_resources,0.112,0.112,pr1,strength * family_weight * target_weight * polarity_modifier,0.5,0.8,0.4,0.7,0.0,ok
+tr1,crisis_transformation_control,0.5,0.5,tr1,strength * family_weight * target_weight * polarity_modifier,0.5,1.0,1.0,1.0,0.0,ok
+tr1,inner_background_unconscious,0.2,0.2,tr1,strength * family_weight * target_weight * polarity_modifier,0.5,1.0,0.4,1.0,0.0,ok
+tr1,money_security_resources,0.2,0.2,tr1,strength * family_weight * target_weight * polarity_modifier,0.5,1.0,0.4,1.0,0.0,ok

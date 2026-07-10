@@ -1,7 +1,7 @@
 {
   "payload": {
     "date": "2026-07-08",
-    "headline": "Valid V2 replay payload",
+    "headline": "Downstream V2 fixture",
     "dayStatus": "steady",
     "concreteAdvice": {
       "rows": [],

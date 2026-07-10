@@ -23,12 +23,13 @@
     "rule": "steady_otherwise"
   },
   "deltas": {
-    "positive_aspect_score": 0.0,
-    "negative_aspect_score": 0.0,
     "activation_support_score": 0.0,
     "activation_tension_score": 0.0,
+    "negative_aspect_score": 0.0,
+    "positive_aspect_score": 0.0,
+    "ratio": 0.0,
+    "rule": "match",
     "support_score": 0.0,
-    "tension_score": 0.0,
-    "ratio": 0.0
+    "tension_score": 0.0
   }
 }
