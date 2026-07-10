@@ -2,7 +2,8 @@
 
 Date: 2026-07-10
 Base reviewed commits: `aecc699` / `a5f2bd6` (review) / current pre-rework tip `895d50a`
-Final rework code/tests commit: `a327abd`
+Final rework code/tests commit: `a710bec`
+Evidence docs tip: `685871f` (report packaging).
 Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
@@ -125,7 +126,7 @@ Result: generate **PASSED**, contracts **zero diff**, typecheck **PASSED**
 
 ### Whitespace / status
 
-Recorded after commit:
+Result after commit:
 
 ```bash
 git diff --check a5f2bd6..HEAD
