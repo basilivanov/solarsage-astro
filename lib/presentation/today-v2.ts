@@ -34,6 +34,12 @@
 //   - formatConcreteAdviceEvidenceTitle
 //   - dedupeTechniquesPreserveOrder
 //   - selectPrimaryEvidence
+//   - getHumanSphereLabel
+//   - containsBannedAstrologyVocabulary
+//   - getSafeWhyTodayItem
+//   - getVerdictManifestationCopy
+//   - orderActivationEvidence
+//   - selectTechnicalCalculationEvidence
 // semantic_blocks:
 //   - LABELS: planet/aspect/phase/technique/sphere maps
 //   - FORMATTERS: human evidence titles
@@ -42,7 +48,12 @@
 //   - __tests__/lib/presentation/today-v2.test.ts
 // END_MODULE_MAP: M-LIB-PRESENTATION-TODAY-V2
 
-import type { ActivationEvidence, TodayV2ActivatedTarget } from "@/lib/contracts/today"
+import type {
+  ActivationEvidence,
+  ConcreteAdviceRow,
+  TodayV2ActivatedTarget,
+  TodayV2WhyTodayItem,
+} from "@/lib/contracts/today"
 
 // START_BLOCK: LABELS
 export const TECHNIQUE_LABELS: Record<string, string> = {
@@ -335,3 +346,138 @@ export function selectPrimaryEvidence(
   return evidence.filter((e) => e.active !== false).slice(0, max)
 }
 // END_BLOCK: FORMATTERS
+
+// START_BLOCK: HUMAN_FIRST_PRESENTATION
+const HUMAN_SPHERE_LABELS: Record<string, string> = {
+  work: "Работа и статус",
+  money: "Деньги и решения",
+  documents: "Документы и сроки",
+  relationships: "Отношения",
+  sport: "Тело и энергия",
+  communication: "Общение",
+  health: "Внутреннее состояние",
+  decisions: "Решения и перемены",
+  travel: "Поездки",
+  creativity: "Творчество",
+  study: "Учёба",
+  shopping: "Покупки",
+}
+
+const HUMAN_BANNED_ASTROLOGY_RE =
+  /(транзит|профекци|фирдар|орб|натальн|аспект|convergence|source_frame|target_frame)/iu
+
+const LONG_CYCLE_TECHNIQUES = new Set([
+  "annual_profection",
+  "monthly_profection",
+  "firdar_major",
+  "firdar_minor",
+])
+
+const VERDICT_MANIFESTATION_COPY: Record<string, string> = {
+  good: "В этой сфере сегодня больше поддержки.",
+  caution: "В этой сфере сегодня особенно важны точность и отсутствие спешки.",
+  avoid: "В этой сфере сегодня выше риск поспешного шага.",
+  neutral: "В этой сфере сегодня спокойный, нейтральный фон.",
+}
+
+// START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getHumanSphereLabel
+// purpose: Return the approved human-first sphere label for a backend row.
+// inputs: row — backend-owned concrete advice row.
+// returns: Human label mapped by key, or backend label for unknown keys.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: never throws; falls back to a safe generic label.
+// END_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getHumanSphereLabel
+export function getHumanSphereLabel(row: Pick<ConcreteAdviceRow, "label"> & { key: string }): string {
+  return HUMAN_SPHERE_LABELS[row.key] || row.label || "Сфера дня"
+}
+
+// START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.containsBannedAstrologyVocabulary
+// purpose: Detect technical astrology vocabulary prohibited in human-first surfaces.
+// inputs: text — visible candidate copy.
+// returns: true when technical vocabulary is present.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: nullish text is safe and returns false.
+// END_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.containsBannedAstrologyVocabulary
+export function containsBannedAstrologyVocabulary(text: string | null | undefined): boolean {
+  return HUMAN_BANNED_ASTROLOGY_RE.test(text || "")
+}
+
+// START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getSafeWhyTodayItem
+// purpose: Preserve safe backend why copy or deterministically replace technical wording.
+// inputs: item — backend-owned whyToday item.
+// returns: Human-safe title/body pair.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: never exposes a technical title/body when the source is unsuitable.
+// END_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getSafeWhyTodayItem
+export function getSafeWhyTodayItem(item: TodayV2WhyTodayItem): { title: string; body: string } {
+  const title = containsBannedAstrologyVocabulary(item.title) ? "Личный фактор дня" : item.title
+  if (!containsBannedAstrologyVocabulary(item.body)) {
+    return { title, body: item.body }
+  }
+
+  if (item.techniques.some((technique) => LONG_CYCLE_TECHNIQUES.has(technique))) {
+    return {
+      title,
+      body: "Тема поддерживается более длинным личным циклом, поэтому ощущается заметнее обычного.",
+    }
+  }
+  if (item.techniques.some((technique) => technique.startsWith("transit_"))) {
+    return { title, body: "Сегодняшний личный фактор делает эту тему заметнее обычного." }
+  }
+  return { title, body: "Эта тема подтверждается персональными факторами дня." }
+}
+
+// START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getVerdictManifestationCopy
+// purpose: Convert a backend verdict enum into approved deterministic human copy.
+// inputs: verdict — concrete advice verdict enum.
+// returns: Fixed presentation text for that enum.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: unknown values use the neutral text.
+// END_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getVerdictManifestationCopy
+export function getVerdictManifestationCopy(verdict: string): string {
+  return VERDICT_MANIFESTATION_COPY[verdict] || VERDICT_MANIFESTATION_COPY.neutral
+}
+
+// START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.orderActivationEvidence
+// purpose: Order active evidence by the backend-owned primary activation ID sequence.
+// inputs: evidence — V2 activation evidence; primaryTarget — primary backend target.
+// returns: Active evidence in primary order, or active backend order as fallback.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: never throws; absent references are skipped.
+// END_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.orderActivationEvidence
+export function orderActivationEvidence(
+  evidence: ActivationEvidence[],
+  primaryTarget: TodayV2ActivatedTarget | null | undefined,
+): ActivationEvidence[] {
+  if (!primaryTarget?.activationIds.length) return evidence.filter((item) => item.active !== false)
+  const byId = new Map(evidence.map((item) => [item.id, item]))
+  return primaryTarget.activationIds
+    .map((id) => byId.get(id))
+    .filter((item): item is ActivationEvidence => Boolean(item && item.active !== false))
+}
+
+// START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.selectTechnicalCalculationEvidence
+// purpose: Select at most two aspect rows and grouped period techniques for the technical disclosure.
+// inputs: evidence — V2 activation evidence; primaryTarget — primary backend target.
+// returns: Ordered aspect evidence and deduplicated period technique labels.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: returns empty selections when usable evidence is absent.
+// END_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.selectTechnicalCalculationEvidence
+export function selectTechnicalCalculationEvidence(
+  evidence: ActivationEvidence[],
+  primaryTarget: TodayV2ActivatedTarget | null | undefined,
+): { aspects: ActivationEvidence[]; periodTechniques: string[] } {
+  const ordered = orderActivationEvidence(evidence, primaryTarget)
+  const aspects = ordered.filter((item) => item.kind === "aspect").slice(0, 2)
+  const periodTechniques = dedupeTechniquesPreserveOrder(
+    ordered.filter((item) => item.kind !== "aspect").map((item) => item.technique),
+  )
+  return { aspects, periodTechniques }
+}
+// END_BLOCK: HUMAN_FIRST_PRESENTATION

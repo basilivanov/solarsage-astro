@@ -20,7 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import type { AccessInfo } from '@/lib/contracts/access'
 import type { CalendarLunarFields } from '@/packages/contracts'
@@ -230,9 +230,9 @@ describe('TodayScreen', () => {
       'evening-checkin-reminder',
       'day-summary-card',
       'concrete-day-advice',
+      'why-expanded',
       'day-chart-unavailable',
       'day-reading',
-      'why-expanded',
       'week-strip',
       'astro-history-widget',
       'today-bottom-disclaimer',
@@ -361,9 +361,9 @@ describe('TodayScreen', () => {
       'access-card',
       'day-summary-card',
       'concrete-day-advice',
+      'why-expanded',
       'day-chart-unavailable',
       'day-reading',
-      'why-expanded',
       'week-strip',
       'astro-history-widget',
       'today-bottom-disclaimer',
@@ -453,7 +453,8 @@ describe('TodayScreen', () => {
     const adviceSection = screen.getByTestId('concrete-day-advice')
     expect(adviceSection).toBeTruthy()
     expect(adviceSection.textContent).toContain('Отношения')
-    expect(adviceSection.textContent).toContain('СЕНТИНЕЛ ОТНОШЕНИЯ')
+    fireEvent.click(screen.getByTestId('concrete-day-advice-row'))
+    expect(screen.getByTestId('concrete-day-advice-details').textContent).toContain('СЕНТИНЕЛ ОТНОШЕНИЯ')
     expect(adviceSection.textContent).not.toContain('sparkle')
     expect(screen.getByTestId('day-reading')).toBeTruthy()
   })
@@ -719,7 +720,7 @@ describe('V2 activation evidence and audit rendering', () => {
       }
     }
 
-    const { getByTestId, getAllByTestId } = render(
+    const { getByTestId } = render(
       <ActivationEvidenceCard v2={v2Fixture} />
     )
 
@@ -727,10 +728,8 @@ describe('V2 activation evidence and audit rendering', () => {
     expect(card).toBeTruthy()
     expect(card.textContent).toContain("Сходимость на Меркурии")
 
-    const chips = getAllByTestId('technique-chip')
-    expect(chips.length).toBeGreaterThan(0)
-    expect(chips[0].textContent).toBe("Профекция")
-    expect(chips[1].textContent).toBe("Транзит")
+    expect(card.textContent).toContain("ИМЕННО ДЛЯ ТЕБЯ")
+    expect(card.querySelector('[data-testid="technique-chip"]')).toBeNull()
   })
 
   it('renders DevAuditDrawer when forceShow is true', () => {

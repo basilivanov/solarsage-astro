@@ -31,7 +31,8 @@
 
 "use client"
 
-import { useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 
 import { DateHeader } from "./date-header"
 import { TodayNotes } from "./today-notes"
@@ -73,8 +74,11 @@ export function TodayScreen({
   onDateChange,
   importantToday,
 }: Props) {
+  const searchParams = useSearchParams()
   const accessible = isDayAccessible(selectedDate, access)
   const isToday = sameDay(selectedDate, TODAY)
+  const [selectedSphereKey, setSelectedSphereKey] = useState<string | null>(null)
+  const [whyOpen, setWhyOpen] = useState(() => searchParams?.get("why") === "1")
 
   // Навигация по дням: можно выходить только в пределах ±180 дней от сегодня
   const dayDiff = Math.round(
@@ -88,6 +92,36 @@ export function TodayScreen({
 
   // --- Свайпы (pointer + touch fallback для iOS WKWebView) ---------------
   const start = useRef<{ x: number; y: number; id: number } | null>(null)
+
+  useEffect(() => {
+    setSelectedSphereKey(null)
+  }, [selectedDate])
+
+  useEffect(() => {
+    if (!selectedSphereKey) return
+    const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
+    const cancel = window.cancelAnimationFrame ?? window.clearTimeout
+    const frame = schedule(() => {
+      const navigator = document.querySelector('[data-testid="concrete-day-advice"]')
+      navigator?.scrollIntoView({ behavior: "smooth", block: "start" })
+      const sphereButton = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('[data-testid="concrete-day-advice-row"]'),
+      ).find((element) => element.dataset.sphereKey === selectedSphereKey)
+      sphereButton?.focus({ preventScroll: true })
+    })
+    return () => cancel(frame)
+  }, [selectedSphereKey])
+
+  useEffect(() => {
+    if (!whyOpen) return
+    const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
+    const cancel = window.cancelAnimationFrame ?? window.clearTimeout
+    const frame = schedule(() => {
+      document.getElementById("why-expanded")?.scrollIntoView({ behavior: "smooth", block: "start" })
+      document.getElementById("why-expanded-toggle")?.focus({ preventScroll: true })
+    })
+    return () => cancel(frame)
+  }, [whyOpen])
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
@@ -170,7 +204,7 @@ export function TodayScreen({
             </div>
           ) : null}
 
-          {isToday ? (
+          {isToday && !payload.v2 ? (
             <div className="px-5" data-testid="evening-checkin-reminder">
               <YesterdayEchoLoader />
             </div>
@@ -181,13 +215,31 @@ export function TodayScreen({
             date={selectedDate}
             dayStatus={payload.dayStatus}
             daySummary={payload.daySummary}
+            humanFirst={Boolean(payload.v2)}
           />
 
-          {/* Personal V2 card immediately below summary; null when v2 absent */}
-          <ActivationEvidenceCard v2={payload.v2} />
+          {/* Personal V2 story immediately below summary; null when V2 is absent. */}
+          <ActivationEvidenceCard
+            v2={payload.v2}
+            concreteAdvice={payload.concreteAdvice}
+            onSphereSelect={setSelectedSphereKey}
+            onWhyOpen={() => setWhyOpen(true)}
+          />
 
           <ConcreteDayAdvice
             concreteAdvice={payload.concreteAdvice}
+            selectedKey={selectedSphereKey}
+            onSelectedKeyChange={setSelectedSphereKey}
+            onWhyOpen={() => setWhyOpen(true)}
+          />
+
+          {/* Why comes before technical visualization and reading in human-first V2. */}
+          <WhyExpanded
+            sections={payload.why}
+            keyInsight={payload.keyInsight}
+            v2={payload.v2}
+            open={payload.v2 ? whyOpen : undefined}
+            onOpenChange={payload.v2 ? setWhyOpen : undefined}
           />
 
           <DayChart
@@ -200,13 +252,6 @@ export function TodayScreen({
 
           {/* Day reading */}
           <DayReading paragraphs={payload.reading.paragraphs} />
-
-          {/* Why expanded */}
-          <WhyExpanded
-            sections={payload.why}
-            keyInsight={payload.keyInsight}
-            whyToday={payload.v2?.whyToday}
-          />
 
           <DevAuditDrawer audit={payload.v2?.audit} />
 

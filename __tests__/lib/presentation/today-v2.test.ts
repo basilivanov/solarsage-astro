@@ -9,8 +9,13 @@ import {
   getSphereLabelConcise,
   formatActivationEvidenceTitle,
   formatConcreteAdviceEvidenceTitle,
+  containsBannedAstrologyVocabulary,
   dedupeTechniquesPreserveOrder,
+  getHumanSphereLabel,
+  getSafeWhyTodayItem,
+  getVerdictManifestationCopy,
   selectPrimaryEvidence,
+  selectTechnicalCalculationEvidence,
 } from "@/lib/presentation/today-v2"
 import type { ActivationEvidence, TodayV2ActivatedTarget } from "@/lib/contracts/today"
 
@@ -136,5 +141,54 @@ describe("presentation/today-v2", () => {
     } as TodayV2ActivatedTarget
     const selected = selectPrimaryEvidence(evidence, target, 3)
     expect(selected.map((e) => e.id)).toEqual(["a1", "a2", "a3"])
+  })
+
+  it("maps human navigator labels and deterministic verdict copy", () => {
+    expect(getHumanSphereLabel({ key: "work", label: "Работа" })).toBe("Работа и статус")
+    expect(getHumanSphereLabel({ key: "unknown", label: "Backend label" })).toBe("Backend label")
+    expect(getVerdictManifestationCopy("caution")).toBe(
+      "В этой сфере сегодня особенно важны точность и отсутствие спешки.",
+    )
+  })
+
+  it("sanitizes technical why copy without touching safe human copy", () => {
+    expect(containsBannedAstrologyVocabulary("Транзиты активируют тему")).toBe(true)
+    expect(containsBannedAstrologyVocabulary("Личная тема заметнее обычного")).toBe(false)
+    expect(
+      getSafeWhyTodayItem({
+        id: "why-1",
+        title: "Профекция подтверждает тему",
+        body: "Фирдар делает тему заметнее",
+        activationIds: [],
+        techniques: ["annual_profection", "firdar_major"],
+      }),
+    ).toEqual({
+      title: "Личный фактор дня",
+      body: "Тема поддерживается более длинным личным циклом, поэтому ощущается заметнее обычного.",
+    })
+    expect(
+      getSafeWhyTodayItem({
+        id: "why-2",
+        title: "Безопасный заголовок",
+        body: "Безопасная человеческая формулировка.",
+        activationIds: [],
+        techniques: [],
+      }),
+    ).toEqual({ title: "Безопасный заголовок", body: "Безопасная человеческая формулировка." })
+  })
+
+  it("selects two technical aspects and groups active period techniques", () => {
+    const evidence = [
+      { id: "a1", active: true, kind: "aspect", technique: "transit_to_natal" },
+      { id: "a2", active: true, kind: "aspect", technique: "transit_to_natal" },
+      { id: "a3", active: true, kind: "aspect", technique: "transit_to_natal" },
+      { id: "p1", active: true, kind: "period", technique: "annual_profection" },
+      { id: "p2", active: true, kind: "period", technique: "firdar_major" },
+    ] as ActivationEvidence[]
+    const primary = { activationIds: ["a1", "a2", "a3", "p1", "p2"] } as TodayV2ActivatedTarget
+    expect(selectTechnicalCalculationEvidence(evidence, primary)).toEqual({
+      aspects: [evidence[0], evidence[1]],
+      periodTechniques: ["annual_profection", "firdar_major"],
+    })
   })
 })
