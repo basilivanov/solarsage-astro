@@ -25,9 +25,22 @@
 // invariants:
 //   - data-state reflects the real access state (ready=accessible, locked=inaccessible)
 //   - data-testid attributes present on all major sections
+//   - V2 sphere/Why state resets to the current deeplink default on date changes
 //   - Loading/error states handled by the parent page
 // failure_policy: renders gracefully; missing data hides sections silently
 // END_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
+
+// START_MODULE_MAP: M-TODAY-TODAY-SCREEN
+// public_entrypoints:
+//   - TodayScreen
+// semantic_blocks:
+//   - V2_NAVIGATION: selected sphere and Why state with post-commit scroll/focus.
+//   - DAY_SWIPE: bounded pointer/touch date navigation.
+//   - SCREEN_COMPOSITION: accessible and locked Today layouts.
+// owned_tests:
+//   - __tests__/components/TodayScreen.test.tsx
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP: M-TODAY-TODAY-SCREEN
 
 "use client"
 
@@ -78,7 +91,8 @@ export function TodayScreen({
   const accessible = isDayAccessible(selectedDate, access)
   const isToday = sameDay(selectedDate, TODAY)
   const [selectedSphereKey, setSelectedSphereKey] = useState<string | null>(null)
-  const [whyOpen, setWhyOpen] = useState(() => searchParams?.get("why") === "1")
+  const whyDeeplinkDefault = searchParams?.get("why") === "1"
+  const [whyOpen, setWhyOpen] = useState(whyDeeplinkDefault)
 
   // Навигация по дням: можно выходить только в пределах ±180 дней от сегодня
   const dayDiff = Math.round(
@@ -95,7 +109,8 @@ export function TodayScreen({
 
   useEffect(() => {
     setSelectedSphereKey(null)
-  }, [selectedDate])
+    setWhyOpen(whyDeeplinkDefault)
+  }, [selectedDate, whyDeeplinkDefault])
 
   useEffect(() => {
     if (!selectedSphereKey) return

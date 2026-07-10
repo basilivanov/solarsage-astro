@@ -43,7 +43,7 @@
 // semantic_blocks:
 //   - LABELS: planet/aspect/phase/technique/sphere maps
 //   - FORMATTERS: human evidence titles
-//   - SELECTION: presentation-only evidence selection
+//   - SELECTION: primary-ID order with active backend-order fallback and period-only grouping
 // owned_tests:
 //   - __tests__/lib/presentation/today-v2.test.ts
 // END_MODULE_MAP: M-LIB-PRESENTATION-TODAY-V2

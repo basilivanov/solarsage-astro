@@ -207,7 +207,7 @@ function TechnicalCalculation({
                 <article
                   key={item.id}
                   data-testid="astrology-calculation-item"
-                  data-polarity={item.polarity}
+                  data-polarity={item.polarity || "neutral"}
                   className="border-b border-border/60 px-3.5 py-3 last:border-b-0"
                 >
                   <p className="text-[15px] font-semibold leading-snug text-foreground">{formatActivationEvidenceTitle(item)}</p>

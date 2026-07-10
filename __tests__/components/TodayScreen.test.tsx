@@ -73,7 +73,7 @@ vi.mock('@/components/today/day-reading', () => ({
 }))
 vi.mock('@/components/today/why-expanded', () => ({
   WhyExpanded: (props: any) => (
-    <div data-testid="why-expanded">sections:{props.sections?.length ?? 0}</div>
+    <div data-testid="why-expanded" data-open={String(Boolean(props.open))}>sections:{props.sections?.length ?? 0}</div>
   ),
 }))
 vi.mock('@/components/today/week-strip', () => ({
@@ -316,6 +316,41 @@ describe('TodayScreen', () => {
       'activation-evidence-card',
       'concrete-day-advice',
     ])
+  })
+
+  it('resets V2 sphere and Why state to the deeplink default when the date changes', () => {
+    const payload = buildPayload({
+      v2: {
+        activationSummary: { headline: 'Персональный сюжет дня', topActivatedTargets: [] },
+        activationEvidence: [],
+        scoreBreakdown: {},
+        whyToday: [],
+        audit: { available: false, payloadVersion: 'today.v2', calculationVersion: '1', scoringVersion: '1', canonVersions: {} },
+      },
+      concreteAdvice: {
+        rows: [{ key: 'work', label: 'Работа', iconName: 'briefcase', rank: 1, verdict: 'caution', confidence: 'high', text: 'Совет', evidence: [] }],
+        counts: { good: 0, caution: 1, avoid: 0, neutral: 0 },
+      },
+    })
+    const view = render(
+      <TodayScreen selectedDate={selectedDate} access={buildAccess()} payload={payload} onDateChange={onDateChange} />,
+    )
+
+    fireEvent.click(screen.getByTestId('personal-story-why-cta'))
+    fireEvent.click(screen.getByTestId('concrete-day-advice-row'))
+    expect(screen.getByTestId('why-expanded').getAttribute('data-open')).toBe('true')
+    expect(screen.getByTestId('concrete-day-advice-row').getAttribute('data-selected')).toBe('true')
+
+    view.rerender(
+      <TodayScreen
+        selectedDate={new Date('2026-06-02T12:00:00Z')}
+        access={buildAccess()}
+        payload={payload}
+        onDateChange={onDateChange}
+      />,
+    )
+    expect(screen.getByTestId('why-expanded').getAttribute('data-open')).toBe('false')
+    expect(screen.getByTestId('concrete-day-advice-row').getAttribute('data-selected')).toBe('false')
   })
 
   it('omits check-in on non-today routes and keeps history before disclaimer', () => {
