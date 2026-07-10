@@ -6,7 +6,8 @@ Branch: `main`
 Push: NOT_ATTEMPTED
 Deploy: NOT_ATTEMPTED
 Remote CI: REMOTE_CI_NOT_AVAILABLE
-Final commit: `PENDING_SHA`
+Final code/tests commit: `aecc699`
+Evidence docs tip: `6f5883c` (report SHA packaging).
 
 ## Scope delivered
 
@@ -159,7 +160,7 @@ git diff --check
 git show --check HEAD
 ```
 
-Result: recorded after commit.
+Result: clean (`git show --check HEAD`).
 
 ## Audit mode status summary
 
