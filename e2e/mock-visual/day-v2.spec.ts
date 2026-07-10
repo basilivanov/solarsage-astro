@@ -19,13 +19,14 @@
 // failure_policy: Fails on missing fixture routes, public-contract regressions, or visual mismatch.
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-DAY-V2
 
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test, type Locator, type Page } from "@playwright/test"
 import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception"
 import { dayPayloadV2, minimalDayPayloadForDate } from "./fixtures/day-v2-2026-07-08"
 import { calendarPayload } from "./fixtures/calendar-2026-07"
 import { referralPayload, profilePayload } from "./fixtures/profile"
 import fs from "node:fs"
 import path from "node:path"
+import { inflateSync } from "node:zlib"
 
 const WEEK_STRIP_MIN_DATES = [
   "2026-07-05",
@@ -89,10 +90,83 @@ async function hideNextOverlay(page: Page) {
   })
 }
 
-async function capture(page: Page, name: string) {
+function nearBlackPixelRatio(png: Buffer): number {
+  let cursor = 8
+  let width = 0
+  let height = 0
+  const idat: Buffer[] = []
+  while (cursor < png.length) {
+    const length = png.readUInt32BE(cursor)
+    const type = png.subarray(cursor + 4, cursor + 8).toString("ascii")
+    const data = png.subarray(cursor + 8, cursor + 8 + length)
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0)
+      height = data.readUInt32BE(4)
+      if (data[8] !== 8 || data[9] !== 6) throw new Error("Expected an 8-bit RGBA Playwright PNG")
+    }
+    if (type === "IDAT") idat.push(data)
+    cursor += length + 12
+  }
+  const bytesPerRow = width * 4
+  const decompressed = inflateSync(Buffer.concat(idat))
+  let offset = 0
+  let nearBlack = 0
+  let previous = Buffer.alloc(bytesPerRow)
+  for (let row = 0; row < height; row += 1) {
+    const filter = decompressed[offset]
+    offset += 1
+    const raw = decompressed.subarray(offset, offset + bytesPerRow)
+    offset += bytesPerRow
+    const current = Buffer.alloc(bytesPerRow)
+    for (let index = 0; index < bytesPerRow; index += 1) {
+      const left = index >= 4 ? current[index - 4] : 0
+      const above = previous[index]
+      const upperLeft = index >= 4 ? previous[index - 4] : 0
+      const predictor = filter === 0 ? 0
+        : filter === 1 ? left
+          : filter === 2 ? above
+            : filter === 3 ? Math.floor((left + above) / 2)
+              : filter === 4 ? paeth(left, above, upperLeft)
+                : (() => { throw new Error(`Unsupported PNG filter: ${filter}`) })()
+      current[index] = (raw[index] + predictor) & 0xff
+    }
+    for (let index = 0; index < bytesPerRow; index += 4) {
+      if (
+        (current[index] < 12 && current[index + 1] < 12 && current[index + 2] < 12)
+        || current[index + 3] < 250
+      ) nearBlack += 1
+    }
+    previous = current
+  }
+  return nearBlack / (width * height)
+}
+
+function paeth(left: number, above: number, upperLeft: number): number {
+  const estimate = left + above - upperLeft
+  const leftDistance = Math.abs(estimate - left)
+  const aboveDistance = Math.abs(estimate - above)
+  const upperLeftDistance = Math.abs(estimate - upperLeft)
+  return leftDistance <= aboveDistance && leftDistance <= upperLeftDistance
+    ? left
+    : aboveDistance <= upperLeftDistance ? above : upperLeft
+}
+
+function expectLightThemePng(png: Buffer) {
+  expect(nearBlackPixelRatio(png)).toBeLessThan(0.001)
+}
+
+async function capturePage(page: Page, name: string) {
   fs.mkdirSync(ASSETS_DIR, { recursive: true })
-  await page.screenshot({ path: path.join(ASSETS_DIR, name), fullPage: false })
+  const png = await page.screenshot({ path: path.join(ASSETS_DIR, name), fullPage: false })
+  expectLightThemePng(png)
   await expect(page).toHaveScreenshot(name)
+}
+
+async function captureLocator(locator: Locator, name: string) {
+  fs.mkdirSync(ASSETS_DIR, { recursive: true })
+  const png = await locator.screenshot({ path: path.join(ASSETS_DIR, name) })
+  expectLightThemePng(png)
+  await expect(locator).toHaveScreenshot(name)
 }
 
 test.describe("V2 human-first navigator mock visual", () => {
@@ -144,11 +218,17 @@ test.describe("V2 human-first navigator mock visual", () => {
     await expect(navigator).not.toContainText("Показать ещё")
     await expect(navigator).not.toContainText("все 12 сфер")
 
-    // Top state is deliberately captured before scrolling or opening disclosures.
-    await page.setViewportSize({ width: 390, height: 1_450 })
+    // Top state is deliberately captured before opening disclosures. Its tall
+    // viewport includes the complete hero and the first navigator row.
     await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
+    const overviewHeight = await page.evaluate(() => {
+      const navigator = document.querySelector<HTMLElement>('[data-testid="concrete-day-advice"]')
+      if (!navigator) throw new Error("Navigator is missing")
+      return navigator.offsetTop + Math.min(navigator.scrollHeight, 220)
+    })
+    await page.setViewportSize({ width: 390, height: Math.ceil(overviewHeight) + 96 })
     await page.waitForTimeout(150)
-    await capture(page, "01-human-first-overview-mobile.png")
+    await capturePage(page, "01-human-first-overview-mobile.png")
 
     const work = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Работа", { exact: true }) })
     await work.click()
@@ -160,12 +240,15 @@ test.describe("V2 human-first navigator mock visual", () => {
     await expect(workDetails).not.toContainText(BANNED_HUMAN_COPY)
     await expect(navigator.getByTestId("concrete-day-advice-details")).toHaveCount(1)
 
-    const workScreenHeight = await screen.evaluate((element) => Math.ceil(element.scrollHeight))
-    await page.setViewportSize({ width: 390, height: workScreenHeight + 84 })
+    const [navigatorHeight, workScreenHeight] = await Promise.all([
+      navigator.evaluate((element) => Math.ceil(element.scrollHeight)),
+      screen.evaluate((element) => Math.ceil(element.scrollHeight)),
+    ])
+    await page.setViewportSize({ width: 390, height: Math.max(navigatorHeight, workScreenHeight) + 96 })
     await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
+    await navigator.scrollIntoViewIfNeeded()
     await page.waitForTimeout(150)
-    await navigator.screenshot({ path: path.join(ASSETS_DIR, "02-work-sphere-expanded-mobile.png") })
-    await expect(navigator).toHaveScreenshot("02-work-sphere-expanded-mobile.png")
+    await captureLocator(navigator, "02-work-sphere-expanded-mobile.png")
 
     const money = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Деньги", { exact: true }) })
     await money.focus()
@@ -203,18 +286,21 @@ test.describe("V2 human-first navigator mock visual", () => {
     await expect(technical).toContainText("Фирдар")
     await expect(technical).not.toContainText(/Moon opposition|act-|source_frame|target_frame|strength|debug/i)
 
-    const whyScreenHeight = await screen.evaluate((element) => Math.ceil(element.scrollHeight))
-    await page.setViewportSize({ width: 390, height: whyScreenHeight + 84 })
+    const [whyHeight, whyScreenHeight] = await Promise.all([
+      why.evaluate((element) => Math.ceil(element.scrollHeight)),
+      screen.evaluate((element) => Math.ceil(element.scrollHeight)),
+    ])
+    await page.setViewportSize({ width: 390, height: Math.max(whyHeight, whyScreenHeight) + 96 })
     await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
+    await why.scrollIntoViewIfNeeded()
     await page.waitForTimeout(150)
-    await why.screenshot({ path: path.join(ASSETS_DIR, "03-why-human-and-astro-expanded-mobile.png") })
-    await expect(why).toHaveScreenshot("03-why-human-and-astro-expanded-mobile.png")
+    await captureLocator(why, "03-why-human-and-astro-expanded-mobile.png")
 
     const fullScreenHeight = await screen.evaluate((element) => Math.ceil(element.scrollHeight))
-    await page.setViewportSize({ width: 390, height: fullScreenHeight + 84 })
+    await page.setViewportSize({ width: 390, height: fullScreenHeight + 96 })
     await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
     await page.waitForTimeout(150)
-    await capture(page, "04-full-day-human-first-mobile.png")
+    await captureLocator(screen, "04-full-day-human-first-mobile.png")
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
     expect(overflow).toBe(true)

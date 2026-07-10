@@ -40,7 +40,7 @@ The follow-up hardening pass makes human surfaces reject Unicode technical forms
 - Playwright verification: mobile V2 spec, 1 passed.
 - HTTP checks: preview `3003/day/2026-07-08` returned 200; production `3002/` returned 200.
 - Listener check: preview Next is on `0.0.0.0:3003`, test-only mock API is on `127.0.0.1:18092`, production remains on `3002`.
-- Visual self-review: all four assets were inspected for clipping, target size, navigator panel placement, horizontal overflow, contrast, and separation of human/technical copy.
+- Visual self-review: all four assets were inspected for clipping, target size, navigator panel placement, horizontal overflow, contrast, and separation of human/technical copy. The Playwright capture decodes each RGBA PNG and asserts a near-black/transparent-pixel ratio below 0.1% for the light theme.
 
 ## Screenshots
 
