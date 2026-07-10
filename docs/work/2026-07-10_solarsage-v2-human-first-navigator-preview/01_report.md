@@ -33,7 +33,7 @@ The follow-up hardening pass makes human surfaces reject Unicode technical forms
 ## Verification
 
 - Targeted Vitest: 6 files, 42 tests passed.
-- Full Vitest: 91 files, 937 tests passed.
+- Full Vitest: 91 files, 938 tests passed.
 - TypeScript: `npx tsc --noEmit` passed.
 - Production build: `pnpm build` passed.
 - Playwright baseline update: mobile V2 spec, 1 passed.
