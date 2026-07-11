@@ -1,9 +1,9 @@
 # S2.W1 Implementation TZ — real timing truth in sidecar
 
-Дата: 2026-07-11  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Ожидаемый base HEAD: `1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`  
-Master: `20_STAGE_2_REAL_HORIZONS_TZ.md`, секция `S2.W1`  
+Дата: 2026-07-11
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Ожидаемый base HEAD: `1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`
+Master: `20_STAGE_2_REAL_HORIZONS_TZ.md`, секция `S2.W1`
 Статус: implementation task for coder; architect review required before commit.
 
 ## 0. Режим работы и жёсткие ограничения
@@ -59,7 +59,7 @@ ActivationEvidence.active_until
 | `transit_to_angle` | то же | то же | то же |
 | `transit_to_lot` | то же | то же | то же |
 | `annual_profection` | текущий день рождения, local date | null | день перед следующим днём рождения, local date |
-| `monthly_profection` | текущая недрейфующая месячная годовщина | null | день перед следующей годовщиной | 
+| `monthly_profection` | текущая недрейфующая месячная годовщина | null | день перед следующей годовщиной |
 | `firdar_major` | первый local date текущего major-периода | null | последний local date текущего major-периода |
 | `firdar_minor` | первый local date текущего minor-периода | null | последний local date текущего minor-периода |
 | `solar_return` | точный момент текущего, уже начавшегося return | тот же момент | 1 секунда перед следующим solar return |

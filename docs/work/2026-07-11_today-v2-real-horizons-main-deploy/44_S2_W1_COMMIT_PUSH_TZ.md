@@ -1,9 +1,9 @@
 # S2.W1 Commit/Push TZ — accepted real timing and architecture plans
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Base до commit: `1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`  
-Acceptance: `43_S2_W1_ACCEPTANCE.md`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Base до commit: `1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`
+Acceptance: `43_S2_W1_ACCEPTANCE.md`
 Статус: **commit/push authorized exactly as specified below**.
 
 ## 0. Запреты

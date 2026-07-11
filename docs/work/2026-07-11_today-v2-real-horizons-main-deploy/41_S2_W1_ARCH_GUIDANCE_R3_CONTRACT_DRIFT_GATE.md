@@ -1,7 +1,7 @@
 # S2.W1 Architect Guidance R3 — contract drift gate before an intentional commit
 
-Дата: 2026-07-12  
-Applies to: `39_S2_W1_ARCH_REVIEW_R1.md`, section 7.4.  
+Дата: 2026-07-12
+Applies to: `39_S2_W1_ARCH_REVIEW_R1.md`, section 7.4.
 Status: immediate clarification; no commit/push/staging.
 
 ## Problem

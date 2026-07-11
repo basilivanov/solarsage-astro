@@ -1,11 +1,11 @@
 # S2.W1 Architect Review R1 — real timing corrections and acceptance closure
 
-Дата: 2026-07-11  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
+Дата: 2026-07-11
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
 Base HEAD, который обязан остаться неизменным до отдельного разрешения:
-`1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`  
+`1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`
 Исходное implementation ТЗ:
-`36_S2_W1_REAL_TIMING_IMPLEMENTATION_TZ.md`  
+`36_S2_W1_REAL_TIMING_IMPLEMENTATION_TZ.md`
 Статус review: **REJECTED — corrections required before commit/push**.
 
 ## 0. Режим работы

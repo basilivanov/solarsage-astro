@@ -1,7 +1,7 @@
 # S2.W1 Architecture Guidance R1 — do not weaken timing accuracy tests
 
-Дата: 2026-07-11  
-Основание: review текущего `test_transit_timing.py` после первых solver runs.  
+Дата: 2026-07-11
+Основание: review текущего `test_transit_timing.py` после первых solver runs.
 Статус: обязательное дополнение к `36_S2_W1_REAL_TIMING_IMPLEMENTATION_TZ.md`.
 
 ## Blocking guidance

@@ -1,9 +1,9 @@
 # Stage B ТЗ — реальные три горизонта, персональные действия и production UI
 
-Дата: 2026-07-11  
-Репозиторий: `/opt/solarsage-astro`  
+Дата: 2026-07-11
+Репозиторий: `/opt/solarsage-astro`
 Целевая feature branch:
-`preview/solarsage-v2-human-first-navigator-ux`  
+`preview/solarsage-v2-human-first-navigator-ux`
 Статус: **future implementation plan; не выполнять до полного принятия Stage A
 и явной команды `START_STAGE_B_REAL_HORIZONS`**.
 

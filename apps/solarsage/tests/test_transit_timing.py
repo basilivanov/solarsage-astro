@@ -319,7 +319,7 @@ def test_cache_and_grid_reuse():
         aspect_angle=0.0,
         max_orb=0.5,
     )
-    
+
     extra_calls = call_count - first_pass_calls
     assert 0 < extra_calls < first_pass_calls
     assert cache.hits > 0

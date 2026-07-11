@@ -1,11 +1,11 @@
 # S2.W1 Acceptance — real timing truth accepted
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Reviewed HEAD/origin: `1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`  
-Implementation TZ: `36_S2_W1_REAL_TIMING_IMPLEMENTATION_TZ.md`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Reviewed HEAD/origin: `1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`
+Implementation TZ: `36_S2_W1_REAL_TIMING_IMPLEMENTATION_TZ.md`
 Correction reviews: `39_S2_W1_ARCH_REVIEW_R1.md`,
-`42_S2_W1_ARCH_REVIEW_R2.md`  
+`42_S2_W1_ARCH_REVIEW_R2.md`
 Статус: **ACCEPTED FOR SCOPED COMMIT/PUSH**.
 
 ## 1. Принятый результат

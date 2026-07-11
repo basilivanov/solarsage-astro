@@ -342,7 +342,7 @@ class TransitTimingSolver:
         # Refine backward boundary
         left_jd = backward_grid[first_outside_idx].jd
         right_jd = backward_grid[first_outside_idx - 1].jd  # inside
-        
+
         # Bounded bisection to find crossing where abs(res) == max_orb
         for _ in range(64):
             if abs(right_jd - left_jd) * 86400.0 <= 300.0:
@@ -367,7 +367,7 @@ class TransitTimingSolver:
 
         left_jd_f = forward_grid[first_outside_idx_f - 1].jd  # inside
         right_jd_f = forward_grid[first_outside_idx_f].jd
-        
+
         for _ in range(64):
             if abs(right_jd_f - left_jd_f) * 86400.0 <= 300.0:
                 break
@@ -387,7 +387,7 @@ class TransitTimingSolver:
         for pos in forward_grid[:first_outside_idx_f]:
             if active_from_jd <= pos.jd <= active_until_jd:
                 samples_in_window_set.add(pos.jd)
-        
+
         samples_in_window = sorted(list(samples_in_window_set))
         roots_jd: list[float] = []
 
@@ -458,7 +458,7 @@ class TransitTimingSolver:
                 next_dist = abs(deduped_roots[closest_root_idx + 1] - self.target_jd)
                 if abs(curr_dist - next_dist) * 86400.0 <= 1.0:
                     closest_root_idx += 1
-            
+
             selected_root_jd = deduped_roots[closest_root_idx]
             exact_at_utc = exact_hits_in_window[closest_root_idx]
             occurrence_index = closest_root_idx

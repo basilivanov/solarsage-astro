@@ -1,6 +1,6 @@
 # S2.W1 Architecture Guidance R2 — classify version tests, preserve old fixtures
 
-Дата: 2026-07-11  
+Дата: 2026-07-11
 Статус: обязательное дополнение к `36_*` после первого API suite run.
 
 ## Правило

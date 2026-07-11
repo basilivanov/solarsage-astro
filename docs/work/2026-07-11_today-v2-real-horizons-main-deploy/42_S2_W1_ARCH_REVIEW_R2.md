@@ -1,10 +1,10 @@
 # S2.W1 Architect Review R2 — lazy transit grids and strict return invariants
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Base HEAD, который обязан остаться неизменным до отдельного разрешения:  
-`1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`  
-Предыдущий review: `39_S2_W1_ARCH_REVIEW_R1.md`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Base HEAD, который обязан остаться неизменным до отдельного разрешения:
+`1f8fc1e2e0e7ddcb96706a1934f65eb5ea4f20e4`
+Предыдущий review: `39_S2_W1_ARCH_REVIEW_R1.md`
 Статус: **REJECTED — небольшой correction pass обязателен до acceptance**.
 
 ## 0. Режим и scope

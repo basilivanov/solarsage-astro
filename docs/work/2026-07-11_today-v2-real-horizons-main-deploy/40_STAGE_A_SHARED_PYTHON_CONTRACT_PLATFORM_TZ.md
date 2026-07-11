@@ -1,9 +1,9 @@
 # Stage A ТЗ — Shared Python Contracts и быстрый contract workflow
 
-Дата: 2026-07-11  
-Репозиторий: `/opt/solarsage-astro`  
+Дата: 2026-07-11
+Репозиторий: `/opt/solarsage-astro`
 Целевая feature branch:
-`preview/solarsage-v2-human-first-navigator-ux`  
+`preview/solarsage-v2-human-first-navigator-ux`
 Статус: **future implementation plan; не выполнять до явной команды
 `START_STAGE_A_SHARED_CONTRACTS`**.
 
