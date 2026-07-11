@@ -31,6 +31,8 @@
 # public_entrypoints:
 #   - calculate_firdar
 #   - _load_firdar_canon
+#   - FirdarPeriodBounds
+#   - calculate_firdar_period_bounds
 # semantic_blocks:
 #   - CANON_LOADING: canon file loading
 #   - DATE_HELPERS: birthday clamping, age decimal calculation
@@ -41,9 +43,13 @@
 
 from __future__ import annotations
 
+import calendar
 import os
 import pathlib
+from dataclasses import dataclass
 from datetime import date as Date
+from datetime import timedelta
+from math import ceil, floor
 from typing import Any
 
 import yaml
@@ -158,6 +164,53 @@ def _validate_firdar_canon(data: dict) -> None:
 
 # START_BLOCK: DATE_HELPERS
 
+@dataclass(frozen=True)
+class FirdarPeriodBounds:
+    major_active_from: Date
+    major_active_until: Date
+    minor_active_from: Date
+    minor_active_until: Date
+
+def calculate_firdar_period_bounds(
+    *,
+    birth_local: Date,
+    context: FirdarContext,
+) -> FirdarPeriodBounds:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.calculate_firdar_period_bounds
+    # purpose: Calculate firdar period active_from and active_until bounds.
+    # inputs: birth_local - Date; context - FirdarContext.
+    # returns: FirdarPeriodBounds object with inclusive local-date boundaries.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: propagates date arithmetic errors for invalid dates.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR.calculate_firdar_period_bounds
+    def age_boundary_to_date(age: float) -> Date:
+        whole = floor(age + 1e-12)
+        fraction = age - whole
+        interval_start = _clamp_birthday(birth_local, birth_local.year + whole)
+        interval_end = _clamp_birthday(birth_local, birth_local.year + whole + 1)
+        interval_days = (interval_end - interval_start).days
+        offset_days = ceil(fraction * interval_days - 1e-12)
+        return interval_start + timedelta(days=offset_days)
+
+    cycle_base = context.cycle_index * context.cycle_years
+    major_start_abs = cycle_base + context.major_start_age
+    major_end_abs   = cycle_base + context.major_end_age
+    minor_start_abs = cycle_base + context.minor_start_age
+    minor_end_abs   = cycle_base + context.minor_end_age
+
+    major_active_from = age_boundary_to_date(major_start_abs)
+    major_active_until = age_boundary_to_date(major_end_abs) - timedelta(days=1)
+    minor_active_from = age_boundary_to_date(minor_start_abs)
+    minor_active_until = age_boundary_to_date(minor_end_abs) - timedelta(days=1)
+
+    return FirdarPeriodBounds(
+        major_active_from=major_active_from,
+        major_active_until=major_active_until,
+        minor_active_from=minor_active_from,
+        minor_active_until=minor_active_until,
+    )
+
 
 def _clamp_birthday(birth_local: Date, year: int) -> Date:
     # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._clamp_birthday
@@ -169,7 +222,6 @@ def _clamp_birthday(birth_local: Date, year: int) -> Date:
     # error_behavior: ValueError on invalid date components (calendar range)
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._clamp_birthday
     """Return birthday in a given year, clamping Feb 29 to Feb 28 in non-leap years."""
-    import calendar
     if birth_local.month == 2 and birth_local.day == 29 and not calendar.isleap(year):
         return Date(year, 2, 28)
     return Date(year, birth_local.month, birth_local.day)

@@ -65,8 +65,8 @@ def test_today_meta_includes_all_canon_versions():
     assert len(versions) >= 5
 
 
-def test_activation_layer_version_is_al_1_0_in_live_payload():
-    """Schema-level check: ActivationLayerMeta defaults to al-1.0."""
+def test_activation_layer_version_is_al_1_1_in_live_payload():
+    """Schema-level check: ActivationLayerMeta defaults to al-1.1."""
     from app.schemas.activation import ActivationLayer
     from app.services.activation_layer_service import ActivationLayerService
     from datetime import date
@@ -76,7 +76,7 @@ def test_activation_layer_version_is_al_1_0_in_live_payload():
         target_date=date(2026, 7, 8), target_time="12:00",
         target_tz="Europe/Moscow", house_system="WHOLE_SIGN",
     )
-    assert layer.activation_layer_version == "al-1.0"
+    assert layer.activation_layer_version == "al-1.1"
 
 
 @pytest.mark.asyncio
@@ -224,7 +224,7 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
         "build_why_contexts must receive activation_layer"
     act_layer = captured_kwargs["activation_layer"]
     assert act_layer is not None
-    assert act_layer.activation_layer_version == "al-1.0"
+    assert act_layer.activation_layer_version == "al-1.1"
     assert len(act_layer.activations) > 0
 
     t2n = [a for a in act_layer.activations if a.technique == "transit_to_natal"]
@@ -234,7 +234,7 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
     assert len(tih) >= 1, "Expected at least one transit_planet_in_house activation"
 
     # ── 2. Returned payload meta ────────────────────────────────────
-    assert payload.meta.activation_layer_version == "al-1.0"
+    assert payload.meta.activation_layer_version == "al-1.1"
     assert payload.meta.scoring_version == 1
 
     # ── 3. Runtime service called correctly ──────────────────────────

@@ -483,7 +483,7 @@ export interface components {
         ActivationLayer: {
             /**
              * Activationlayerversion
-             * @default al-1.0
+             * @default al-1.1
              */
             activationLayerVersion: string;
             /** Activations */

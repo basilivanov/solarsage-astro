@@ -72,6 +72,9 @@ def _make_w3_3_layer_dict() -> dict:
                 "source_frame": "natal",
                 "target_frame": "natal",
                 "target_planet": "SUN",
+                "active_from": "2019-10-30",
+                "exact_at": None,
+                "active_until": "2029-10-29",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.65,
@@ -89,6 +92,9 @@ def _make_w3_3_layer_dict() -> dict:
                 "source_frame": "natal",
                 "target_frame": "natal",
                 "target_planet": "SATURN",
+                "active_from": "2025-07-18",
+                "exact_at": None,
+                "active_until": "2026-12-21",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.40,
@@ -141,10 +147,16 @@ class TestActivationLayerServiceAcceptFirdar:
         major = [a for a in firdar if a.technique == "firdar_major"]
         assert len(major) == 1
         assert major[0].strength == 0.65
+        assert major[0].active_from == "2019-10-30"
+        assert major[0].exact_at is None
+        assert major[0].active_until == "2029-10-29"
 
         minor = [a for a in firdar if a.technique == "firdar_minor"]
         assert len(minor) == 1
         assert minor[0].strength == 0.40
+        assert minor[0].active_from == "2025-07-18"
+        assert minor[0].exact_at is None
+        assert minor[0].active_until == "2026-12-21"
 
     def test_by_planet_references(self):
         """by_planet index refs point to existing activations."""

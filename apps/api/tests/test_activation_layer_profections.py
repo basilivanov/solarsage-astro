@@ -57,6 +57,9 @@ def _make_w3_2_layer_dict() -> dict:
                 "source_frame": "natal",
                 "target_frame": "natal",
                 "house": 10,
+                "active_from": "2025-10-30",
+                "exact_at": None,
+                "active_until": "2026-10-29",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.75,
@@ -75,6 +78,9 @@ def _make_w3_2_layer_dict() -> dict:
                 "source_frame": "natal",
                 "target_frame": "natal",
                 "target_planet": "MARS",
+                "active_from": "2025-10-30",
+                "exact_at": None,
+                "active_until": "2026-10-29",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.75,
@@ -93,6 +99,9 @@ def _make_w3_2_layer_dict() -> dict:
                 "source_frame": "natal",
                 "target_frame": "natal",
                 "house": 6,
+                "active_from": "2026-06-30",
+                "exact_at": None,
+                "active_until": "2026-07-29",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.45,
@@ -111,6 +120,9 @@ def _make_w3_2_layer_dict() -> dict:
                 "source_frame": "natal",
                 "target_frame": "natal",
                 "target_planet": "JUPITER",
+                "active_from": "2026-06-30",
+                "exact_at": None,
+                "active_until": "2026-07-29",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.45,
@@ -163,10 +175,14 @@ class TestActivationLayerServiceAcceptProfections:
         ann = [a for a in profections if a.technique == "annual_profection"]
         assert len(ann) == 2
         assert ann[0].strength == 0.75
+        assert {a.active_from for a in ann} == {"2025-10-30"}
+        assert {a.active_until for a in ann} == {"2026-10-29"}
 
         mon = [a for a in profections if a.technique == "monthly_profection"]
         assert len(mon) == 2
         assert mon[0].strength == 0.45
+        assert {a.active_from for a in mon} == {"2026-06-30"}
+        assert {a.active_until for a in mon} == {"2026-07-29"}
 
     def test_by_house_and_by_planet_references(self):
         """by_house and by_planet index refs point to existing activations."""

@@ -93,7 +93,7 @@ def test_expected_cache_identity_has_non_none_al_version():
     uid = uuid.uuid4()
     k = expected_cache_identity(user_id=uid, target_date="2026-07-08", profile_hash="abc")
     assert k.activation_layer_version is not None, "expected_cache_identity must have non-None activation_layer_version"
-    assert k.activation_layer_version == "al-1.0"
+    assert k.activation_layer_version == "al-1.1"
 
 
 def test_cache_key_field_consistency():

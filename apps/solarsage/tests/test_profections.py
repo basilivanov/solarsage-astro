@@ -4,6 +4,7 @@ Tests that the sidecar builder produces deterministic annual_profection
 and monthly_profection activations with correct golden values for Basil
 audit profile."""
 import pytest
+from datetime import date as Date
 from fastapi.testclient import TestClient
 
 from solarsage.app import app
@@ -26,6 +27,11 @@ BASIL_AUDIT_REQUEST = {
     "house_system": "PLACIDUS",
     "techniques": [],
 }
+
+
+def _target_in_date_range(target: str, active_from: str, active_until: str) -> bool:
+    target_date = Date.fromisoformat(target)
+    return Date.fromisoformat(active_from) <= target_date <= Date.fromisoformat(active_until)
 
 
 def test_basil_annual_profection_golden_values():
@@ -58,6 +64,10 @@ def test_basil_annual_profection_golden_values():
     assert ah["debug"]["house_cusp_sign"] == "Aries"
     assert ah["debug"]["ruler"] == "MARS"
     assert ah["debug"]["ruler_system"] == "traditional"
+    assert ah["active_from"] == "2025-10-30"
+    assert ah["exact_at"] is None
+    assert ah["active_until"] == "2026-10-29"
+    assert _target_in_date_range("2026-07-08", ah["active_from"], ah["active_until"])
 
     # Find lord of year activation
     ann_lord = [a for a in activations if a["id"] == "annual_profection__LORD_OF_YEAR__MARS"]
@@ -75,6 +85,9 @@ def test_basil_annual_profection_golden_values():
     assert "house 10" in al["evidence"]
     # Lord debug also includes house_cusp_longitude
     assert al["debug"]["house_cusp_longitude"] == 0.0
+    assert al["active_from"] == ah["active_from"]
+    assert al["exact_at"] == ah["exact_at"]
+    assert al["active_until"] == ah["active_until"]
 
     # Index references
     assert "10" in layer.get("by_house", {})
@@ -113,6 +126,10 @@ def test_basil_monthly_profection_golden_values():
     assert mh["debug"]["house_cusp_longitude"] == 240.0
     assert mh["debug"]["house_cusp_sign"] == "Sagittarius"
     assert mh["debug"]["ruler"] == "JUPITER"
+    assert mh["active_from"] == "2026-06-30"
+    assert mh["exact_at"] is None
+    assert mh["active_until"] == "2026-07-29"
+    assert _target_in_date_range("2026-07-08", mh["active_from"], mh["active_until"])
 
     # Find lord of month activation
     mon_lord = [a for a in activations if a["id"] == "monthly_profection__LORD_OF_MONTH__JUPITER"]
@@ -130,6 +147,9 @@ def test_basil_monthly_profection_golden_values():
     assert "house 6" in ml["evidence"]
     # Lord debug also includes house_cusp_longitude
     assert ml["debug"]["house_cusp_longitude"] == 240.0
+    assert ml["active_from"] == mh["active_from"]
+    assert ml["exact_at"] == mh["exact_at"]
+    assert ml["active_until"] == mh["active_until"]
 
     # Index references
     assert "6" in layer.get("by_house", {})
@@ -249,6 +269,9 @@ def test_deterministic_activation_order():
     ids2 = [a["id"] for a in resp2.json()["activation_layer"]["activations"]
             if a["technique"] in ("annual_profection", "monthly_profection")]
     assert ids1 == ids2, "Profection activation order must be deterministic"
+    timing1 = [(a["id"], a["active_from"], a["exact_at"], a["active_until"]) for a in resp1.json()["activation_layer"]["activations"] if a["technique"] in ("annual_profection", "monthly_profection")]
+    timing2 = [(a["id"], a["active_from"], a["exact_at"], a["active_until"]) for a in resp2.json()["activation_layer"]["activations"] if a["technique"] in ("annual_profection", "monthly_profection")]
+    assert timing1 == timing2
 
 
 def test_timezone_boundary_local_date():
@@ -321,6 +344,20 @@ def test_feb29_annual_profection_non_leap_target_does_not_crash():
         assert house["debug"]["annual_year_start"].endswith("-02-28") or house["debug"]["annual_year_start"].endswith("-02-29")
 
 
+def test_feb29_annual_profection_golden_bounds():
+    resp = client.post("/v1/activation-layer", json=_feb29_request("2026-02-28"))
+    assert resp.status_code == 200
+    layer = resp.json()["activation_layer"]
+    annual = [a for a in layer["activations"] if a["technique"] == "annual_profection"]
+    assert annual
+    house = next(a for a in annual if a["target_type"] == "house")
+    lord = next(a for a in annual if a["target_type"] == "planet")
+    assert house["active_from"] == "2026-02-28"
+    assert house["active_until"] == "2027-02-27"
+    assert house["exact_at"] is None
+    assert (lord["active_from"], lord["exact_at"], lord["active_until"]) == (house["active_from"], house["exact_at"], house["active_until"])
+
+
 def test_feb29_monthly_profection_non_leap_is_deterministic():
     resp = client.post("/v1/activation-layer", json=_feb29_request("2026-02-28"))
     assert resp.status_code == 200
@@ -344,6 +381,23 @@ def test_feb29_leap_year_target_preserves_feb29():
     annual = [a for a in layer["activations"] if a["technique"] == "annual_profection" and a["target_type"] == "house"]
     assert annual
     assert annual[0]["debug"]["annual_year_start"] == "2028-02-29"
+    assert annual[0]["active_from"] == "2028-02-29"
+
+
+def test_jan31_monthly_sequence_does_not_drift_after_february():
+    req = {
+        "birth": {"date": "2000-01-31", "time": "12:00", "lat": 55.7558, "lon": 37.6173, "tz": "Europe/Moscow"},
+        "target": {"date": "2025-03-31", "time": "12:00", "tz": "Europe/Moscow"},
+        "house_system": "PLACIDUS",
+        "techniques": ["monthly_profection"],
+    }
+    resp = client.post("/v1/activation-layer", json=req)
+    assert resp.status_code == 200
+    house = next(a for a in resp.json()["activation_layer"]["activations"] if a["technique"] == "monthly_profection" and a["target_type"] == "house")
+    assert house["debug"]["annual_year_start"] == "2025-01-31"
+    assert house["debug"]["completed_month_steps"] == 2
+    assert house["active_from"] == "2025-03-31"
+    assert house["active_until"] == "2025-04-29"
 
 
 def test_safe_replace_year_helper_policy():

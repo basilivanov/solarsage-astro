@@ -24,10 +24,10 @@
 from __future__ import annotations
 
 # V2 calculation identity (sidecar activation + V2 path)
-CALCULATION_VERSION = "ss-calc-1.1.0"
+CALCULATION_VERSION = "ss-calc-1.2.0"
 
 # Activation layer schema/identity
-ACTIVATION_LAYER_VERSION = "al-1.0"
+ACTIVATION_LAYER_VERSION = "al-1.1"
 
 # Scoring V2 identity
 SCORING_V2_VERSION = "ss-scoring-2.0"

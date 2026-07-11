@@ -6,6 +6,7 @@ and historical fixture verification."""
 import json
 import pytest
 from pathlib import Path
+from datetime import date as Date, timedelta
 from fastapi.testclient import TestClient
 
 from solarsage.app import app
@@ -190,6 +191,79 @@ def test_calculate_firdar_basil():
     assert ctx.cycle_index == 0
 
 
+def test_calculate_firdar_period_bounds_basil_golden():
+    from solarsage.services.firdar import calculate_firdar, calculate_firdar_period_bounds, _load_firdar_canon
+    canon = _load_firdar_canon()
+    ctx = calculate_firdar(
+        birth_local=Date(1980, 10, 30),
+        target_local=Date(2026, 7, 8),
+        is_day_birth=False,
+        sun_house=5,
+        canon=canon,
+    )
+    bounds = calculate_firdar_period_bounds(birth_local=Date(1980, 10, 30), context=ctx)
+    assert bounds.major_active_from == Date(2019, 10, 30)
+    assert bounds.major_active_until == Date(2029, 10, 29)
+    assert bounds.minor_active_from == Date(2025, 7, 18)
+    assert bounds.minor_active_until == Date(2026, 12, 21)
+    assert bounds.major_active_from <= Date(2026, 7, 8) <= bounds.major_active_until
+    assert bounds.minor_active_from <= Date(2026, 7, 8) <= bounds.minor_active_until
+
+
+def test_firdar_fractional_boundary_ceil_to_first_active_date():
+    from solarsage.services.firdar import calculate_firdar, calculate_firdar_period_bounds, _load_firdar_canon
+    canon = _load_firdar_canon()
+    before = calculate_firdar(
+        birth_local=Date(2000, 1, 1),
+        target_local=Date(2001, 6, 6),
+        is_day_birth=True,
+        sun_house=9,
+        canon=canon,
+    )
+    at_boundary = calculate_firdar(
+        birth_local=Date(2000, 1, 1),
+        target_local=Date(2001, 6, 7),
+        is_day_birth=True,
+        sun_house=9,
+        canon=canon,
+    )
+    bounds = calculate_firdar_period_bounds(birth_local=Date(2000, 1, 1), context=at_boundary)
+    assert before.minor_lord == "SUN"
+    assert at_boundary.minor_lord == "VENUS"
+    assert bounds.minor_active_from == Date(2001, 6, 7)
+
+
+def test_firdar_integer_birthday_boundary_bounds():
+    from solarsage.services.firdar import calculate_firdar, calculate_firdar_period_bounds, _load_firdar_canon
+    birth = Date(1990, 7, 1)
+    target = Date(2000, 7, 1)
+    ctx = calculate_firdar(
+        birth_local=birth,
+        target_local=target,
+        is_day_birth=True,
+        sun_house=9,
+        canon=_load_firdar_canon(),
+    )
+    bounds = calculate_firdar_period_bounds(birth_local=birth, context=ctx)
+    assert ctx.major_lord == "VENUS"
+    assert bounds.major_active_from == target
+    assert bounds.major_active_from - timedelta(days=1) == Date(2000, 6, 30)
+    assert bounds.major_active_from <= target <= bounds.major_active_until
+    assert bounds.minor_active_from <= target <= bounds.minor_active_until
+
+
+def test_firdar_cycle_index_greater_than_zero():
+    from solarsage.services.firdar import calculate_firdar, _load_firdar_canon
+    ctx = calculate_firdar(
+        birth_local=Date(1900, 1, 1),
+        target_local=Date(1980, 1, 1),
+        is_day_birth=True,
+        sun_house=9,
+        canon=_load_firdar_canon(),
+    )
+    assert ctx.cycle_index > 0
+
+
 def test_calculate_firdar_test_user():
     """test_user day fixture: day birth, major=MOON, minor=SUN."""
     from solarsage.services.firdar import calculate_firdar, _load_firdar_canon
@@ -339,6 +413,21 @@ def test_feb29_birth_one_year():
         canon=canon,
     )
     assert ctx.age_years == 1.0, f"Expected age == 1.0, got {ctx.age_years}"
+
+
+def test_feb29_period_bounds_contain_target():
+    from solarsage.services.firdar import calculate_firdar, calculate_firdar_period_bounds, _load_firdar_canon
+    target = Date(2026, 2, 28)
+    ctx = calculate_firdar(
+        birth_local=Date(2000, 2, 29),
+        target_local=target,
+        is_day_birth=True,
+        sun_house=9,
+        canon=_load_firdar_canon(),
+    )
+    bounds = calculate_firdar_period_bounds(birth_local=Date(2000, 2, 29), context=ctx)
+    assert bounds.major_active_from <= target <= bounds.major_active_until
+    assert bounds.minor_active_from <= target <= bounds.minor_active_until
 
 
 # ── Node periods ─────────────────────────────────────────────────────────────
@@ -504,6 +593,9 @@ def test_basil_firdar_endpoint():
     assert m["strength"] == 0.65
     assert "Sun is major firdar lord" in m["evidence"]
     assert m["target_planet"] == "SUN"
+    assert m["active_from"] == "2019-10-30"
+    assert m["exact_at"] is None
+    assert m["active_until"] == "2029-10-29"
 
     minor = [a for a in activations if a["id"] == "firdar_minor__SUBPERIOD_LORD__SATURN"]
     assert len(minor) == 1
@@ -515,6 +607,9 @@ def test_basil_firdar_endpoint():
     assert mi["phase"] == "period"
     assert mi["strength"] == 0.40
     assert "Saturn is minor firdar lord" in mi["evidence"]
+    assert mi["active_from"] == "2025-07-18"
+    assert mi["exact_at"] is None
+    assert mi["active_until"] == "2026-12-21"
 
     # Index refs
     assert "SUN" in layer.get("by_planet", {})
@@ -563,7 +658,10 @@ def test_deterministic_order():
 
 
 def _load_fixture(path: str) -> dict:
-    return json.loads(Path(path).read_text())
+    fixture_path = Path(path)
+    if not fixture_path.exists() and path.startswith("tests/"):
+        fixture_path = Path(__file__).parent / path.removeprefix("tests/")
+    return json.loads(fixture_path.read_text())
 
 
 def _night_7_planets():

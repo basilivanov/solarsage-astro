@@ -52,7 +52,7 @@ class ActivationLayer(CamelModel):
     """Full activation layer output for a given target date."""
 
     schema_version: str = "activation-layer.v1"
-    activation_layer_version: str = "al-1.0"
+    activation_layer_version: str = "al-1.1"
     calculation_version: str
     target_date: str
     target_time: str

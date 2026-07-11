@@ -79,7 +79,7 @@ export const ActivationEvidence = z.object({
   weightHint: z.union([z.number(), z.null()]).optional(),
 });
 export const ActivationLayer = z.object({
-  activationLayerVersion: z.string().optional().default("al-1.0"),
+  activationLayerVersion: z.string().optional().default("al-1.1"),
   activations: z.array(ActivationEvidence),
   byAngle: z.record(z.array(z.string())),
   byHouse: z.record(z.array(z.string())),

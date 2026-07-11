@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 # Must match apps/api/app/core/versions.py CALCULATION_VERSION
-CALCULATION_VERSION = "ss-calc-1.1.0"
+CALCULATION_VERSION = "ss-calc-1.2.0"
 
 # Must match apps/api/app/core/versions.py ACTIVATION_LAYER_VERSION
-ACTIVATION_LAYER_VERSION = "al-1.0"
+ACTIVATION_LAYER_VERSION = "al-1.1"

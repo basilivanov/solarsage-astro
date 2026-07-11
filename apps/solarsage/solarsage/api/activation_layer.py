@@ -43,7 +43,7 @@ class ActivationLayerRequest(BaseModel):
 
 class ActivationLayerMeta(BaseModel):
     calculation_version: str
-    activation_layer_version: str = "al-1.0"
+    activation_layer_version: str = "al-1.1"
     house_system: str
 
 

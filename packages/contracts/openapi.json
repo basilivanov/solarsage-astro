@@ -304,7 +304,7 @@
         "description": "Full activation layer output for a given target date.",
         "properties": {
           "activationLayerVersion": {
-            "default": "al-1.0",
+            "default": "al-1.1",
             "title": "Activationlayerversion",
             "type": "string"
           },

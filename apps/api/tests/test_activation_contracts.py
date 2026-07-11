@@ -117,7 +117,7 @@ def test_activation_layer_minimal():
         by_angle={},
     )
     assert layer.schema_version == "activation-layer.v1"
-    assert layer.activation_layer_version == "al-1.0"
+    assert layer.activation_layer_version == "al-1.1"
 
 
 def test_activation_layer_with_activations():

@@ -40,11 +40,18 @@ def _make_w3_1_layer_dict() -> dict:
                 "aspect": "opposition",
                 "orb": 1.0454,
                 "applying": True,
+                "active_from": "2026-07-07T22:23:41Z",
+                "exact_at": "2026-07-08T07:10:15Z",
+                "active_until": "2026-07-08T15:51:22Z",
                 "phase": "applying",
                 "strength": 0.85,
                 "polarity": "tense",
                 "evidence": "Transit Moon opposition natal Pluto, orb 1.0454°",
-                "debug": {"source_longitude": 23.37, "target_longitude": 234.78},
+                "debug": {
+                    "source_longitude": 23.37,
+                    "target_longitude": 234.78,
+                    "timing": {"selected_branch": "plus", "selected_exact_longitude": 22.320514},
+                },
             },
             {
                 "id": "t2a__SATURN__TRINE__MC",
@@ -145,6 +152,12 @@ class TestActivationLayerServiceAcceptSidecarDict:
         assert isinstance(result, ActivationLayer)
         assert result.activation_layer_version == "al-1.0"
         assert len(result.activations) == 4
+        act = result.activations[0]
+        assert act.id == "t2n__MOON__OPPOSITION__PLUTO"
+        assert act.active_from == "2026-07-07T22:23:41Z"
+        assert act.exact_at == "2026-07-08T07:10:15Z"
+        assert act.active_until == "2026-07-08T15:51:22Z"
+        assert act.debug["timing"]["selected_branch"] == "plus"
 
     def test_indexes_reference_valid_ids(self):
         """by_planet, by_house, by_lot, by_angle refs point to existing activations."""
