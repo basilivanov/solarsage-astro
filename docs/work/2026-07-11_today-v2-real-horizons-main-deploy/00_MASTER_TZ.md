@@ -6,6 +6,46 @@
 Baseline HEAD на старте программы: `04bebb331575909c70c36412449101ccba999a79`
 Локальный `main`: `c9bc36bd9a947566eddb1ffcf5617967c7412676`
 
+## 0.1 Канонический архитектурный amendment после S2.W1
+
+После принятия решения об упрощении contract evolution программа получает две
+обязательные последовательные стадии перед final main release:
+
+```text
+40_STAGE_A_SHARED_PYTHON_CONTRACT_PLATFORM_TZ.md
+50_STAGE_B_REAL_HORIZONS_ACTIONS_FRONTEND_TZ.md
+```
+
+Порядок:
+
+```text
+S2.W1 real timing
+  -> Stage A shared Python contracts
+  -> Stage B real horizons/actions/frontend
+  -> 90_MAIN_RELEASE_DEPLOY_TZ.md
+```
+
+Эти файлы имеют приоритет над прежними архитектурными формулировками Stage 1/2
+в части source-of-truth и public horizon model. Уже выполненные S1 codegen,
+runtime Zod, fixture consolidation и preview checkpoints остаются действующими
+и не откатываются.
+
+Новое source-of-truth rule:
+
+```text
+sidecar -> API calculation evidence:
+  packages/py-contracts shared semantic field definitions
+  + thin boundary-specific wrappers/casing
+
+API -> frontend public read model:
+  apps/api Pydantic
+  -> OpenAPI
+  -> generated TypeScript + generated Zod
+```
+
+Не создавать один универсальный DTO, смешивающий calculation, human guidance и
+frontend presentation.
+
 ## 1. Итог программы
 
 Задача считается завершённой только когда одновременно доказано:

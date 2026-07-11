@@ -1,5 +1,10 @@
 # Стадия 1 ТЗ — единый контракт, generated runtime schemas и baseline
 
+> Исторический Stage 1 execution plan. Волны S1.W0-S1.W3 уже выполнены.
+> Следующее изменение Python contract ownership выполняется только по
+> `40_STAGE_A_SHARED_PYTHON_CONTRACT_PLATFORM_TZ.md`; этот файл не использовать
+> как основание для повторной миграции или отката codegen/runtime решений.
+
 Master:
 
 ```text

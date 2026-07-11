@@ -1,5 +1,13 @@
 # S2.W6 ТЗ — merge в main и безопасный production deploy
 
+> Amendment: если Stage A добавила `packages/py-contracts`, release обязан
+> построить один wheel из принятого main SHA, записать его SHA-256 и установить
+> один и тот же wheel в `apps/solarsage/venv` и `apps/api/.venv` до restart.
+> Изменение любого файла `packages/py-contracts/**` считается dependency/runtime
+> change даже при неизменном app `pyproject.toml`. Полный порядок и proof заданы
+> в `40_STAGE_A_SHARED_PYTHON_CONTRACT_PLATFORM_TZ.md` и
+> `50_STAGE_B_REAL_HORIZONS_ACTIONS_FRONTEND_TZ.md`.
+
 Master:
 
 ```text

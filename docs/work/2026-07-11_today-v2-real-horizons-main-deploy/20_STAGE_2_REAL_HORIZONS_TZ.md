@@ -1,5 +1,12 @@
 # Стадия 2 ТЗ — real timing, backend horizons, personal actions и frontend
 
+> S2.W1 real timing остаётся действующей по `36...39` documents. После её
+> принятия дальнейшие contract/horizon/frontend волны выполняются по новым
+> каноническим файлам:
+> `40_STAGE_A_SHARED_PYTHON_CONTRACT_PLATFORM_TZ.md` и
+> `50_STAGE_B_REAL_HORIZONS_ACTIONS_FRONTEND_TZ.md`. При расхождении они имеют
+> приоритет над прежними S2.W2-S2.W5 формулировками ниже.
+
 Master:
 
 ```text
