@@ -412,6 +412,10 @@ export interface components {
              * @default true
              */
             active: boolean;
+            /** Activefrom */
+            activeFrom?: string | null;
+            /** Activeuntil */
+            activeUntil?: string | null;
             /** Angle */
             angle?: string | null;
             /** Applying */

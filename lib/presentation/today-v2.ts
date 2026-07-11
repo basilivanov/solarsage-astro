@@ -693,28 +693,21 @@ export type EvidenceTimingPreview = {
 }
 
 // START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getEvidenceTimingPreview
-// purpose: Temporary preview timing bridge reader to retrieve activeFrom, exactAt, and activeUntil.
+// purpose: Retrieve activeFrom, exactAt, and activeUntil from validation boundary.
 // inputs: evidence - ActivationEvidence (generated wire type).
 // returns: EvidenceTimingPreview containing strings, nulls, or undefined.
 // side_effects: none.
 // emitted_logs: none.
-// error_behavior: invalid activeFrom/activeUntil preview values become undefined; exactAt remains the generated typed value.
+// error_behavior: none.
 // END_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getEvidenceTimingPreview
 export function getEvidenceTimingPreview(
   evidence: ActivationEvidence | null | undefined,
 ): EvidenceTimingPreview {
-  if (!evidence) {
-    return { activeFrom: undefined, exactAt: undefined, activeUntil: undefined }
+  return {
+    activeFrom: evidence?.activeFrom,
+    exactAt: evidence?.exactAt,
+    activeUntil: evidence?.activeUntil,
   }
-
-  const exactAt = evidence.exactAt
-  const activeFromVal = Reflect.get(evidence, "activeFrom")
-  const activeUntilVal = Reflect.get(evidence, "activeUntil")
-
-  const activeFrom = typeof activeFromVal === "string" || activeFromVal === null ? activeFromVal : undefined
-  const activeUntil = typeof activeUntilVal === "string" || activeUntilVal === null ? activeUntilVal : undefined
-
-  return { activeFrom, exactAt, activeUntil }
 }
 // END_BLOCK: PREVIEW_TIMING_BRIDGE
 // END_BLOCK: HUMAN_FIRST_PRESENTATION

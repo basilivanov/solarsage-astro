@@ -34,7 +34,9 @@ class ActivationEvidence(CamelModel):
     aspect: str | None = None
     orb: float | None = None
     applying: bool | None = None
+    active_from: str | None = None
     exact_at: str | None = None
+    active_until: str | None = None
     phase: ActivationPhase = "background"
     house: int | None = None
     lot: str | None = None

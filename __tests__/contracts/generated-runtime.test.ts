@@ -70,6 +70,15 @@ describe("generated runtime zod schemas", () => {
     expect(parsed.success).toBe(true)
   })
 
+  it("proves that generated zod validator rejects wrong known timing type", () => {
+    const evidence = dayPayloadV2.v2!.activationEvidence[0]
+    const malformedEvidence = {
+      ...evidence,
+      activeFrom: 123, // should be string or null
+    }
+    expect(ActivationEvidenceWireSchema.safeParse(malformedEvidence).success).toBe(false)
+  })
+
   it("proves that importing _generated.zod.ts no longer throws and discriminated union is functional", () => {
     // TodayV2BlockWireSchema parses dayPayloadV2.v2
     expect(TodayV2BlockWireSchema.safeParse(dayPayloadV2.v2).success).toBe(true)

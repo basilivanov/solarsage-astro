@@ -442,23 +442,6 @@ describe("presentation/today-v2", () => {
       expect(timing.activeUntil).toBeNull()
     })
 
-    it("filters out invalid non-string non-null values to undefined", () => {
-      const evidence = dayPayloadV2.v2?.activationEvidence.find(
-        (item) => item.id === "act-pluto-trine-saturn",
-      )
-      expect(evidence).toBeDefined()
-      if (!evidence) throw new Error("fixture evidence is missing")
-
-      const invalidTiming = Object.assign(structuredClone(evidence), {
-        activeFrom: 123,
-        activeUntil: ["2026-07-18"],
-      })
-
-      const timing = getEvidenceTimingPreview(invalidTiming)
-      expect(timing.activeFrom).toBeUndefined()
-      expect(timing.activeUntil).toBeUndefined()
-    })
-
     it("does not mutate the input object", () => {
       const evidence = dayPayloadV2.v2?.activationEvidence.find(
         (item) => item.id === "act-pluto-trine-saturn",

@@ -2,11 +2,10 @@
 # AI_HEADER: MODULE_CI_WORKFLOW
 # ROLE: GitHub Actions CI pipeline (W-TEST-4).
 # DEPENDENCIES: GitHub Actions, pytest, vitest, playwright
-# GRACE_ANCHORS: [CI_PIPELINE]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-CI-WORKFLOW
-# purpose: Automated CI pipeline for backend, frontend, and E2E tests
+# purpose: Automated CI pipeline for backend, frontend, E2E, and contract tests
 # owns:
 #   - .github/workflows/ci.yml
 # inputs:
@@ -19,12 +18,14 @@
 #   - apps/api (backend)
 #   - __tests__ (frontend unit tests)
 #   - e2e (E2E tests)
+#   - packages/contracts (contracts check job)
 # side_effects:
 #   - runs tests on GitHub runners
 # invariants:
 #   - all test jobs MUST pass for CI to succeed
 #   - backend tests MUST run in Python 3.11
 #   - frontend tests MUST run in Node.js 20
+#   - contract validation check MUST pass
 # failure_policy:
 #   - any job failure -> CI fails
 # non_goals:
@@ -36,6 +37,7 @@
 #   - GitHub Actions trigger
 # semantic_blocks:
 #   - CI_PIPELINE
+#   - CONTRACT_PIPELINE: runs contracts checks and generated schema vitest suites.
 # owned_tests:
 #   - runs all tests in CI
 # END_MODULE_MAP: M-CI-WORKFLOW
@@ -135,4 +137,37 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+
+  # START_BLOCK: CONTRACT_PIPELINE
+  contract-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install -e ./apps/api
+
+      - name: Run contract check
+        run: npm run contracts:check
+
+      - name: Run contract vitest files
+        run: |
+          npx vitest run __tests__/contracts/generated-runtime.test.ts
+          npx vitest run __tests__/contracts/today-fixture-roundtrip.test.ts
+  # END_BLOCK: CONTRACT_PIPELINE
 # END_BLOCK: CI_PIPELINE

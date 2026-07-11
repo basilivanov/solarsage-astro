@@ -46,6 +46,8 @@ export const AccessSummary = z.object({
 });
 export const ActivationEvidence = z.object({
   active: z.boolean().optional().default(true),
+  activeFrom: z.union([z.string(), z.null()]).optional(),
+  activeUntil: z.union([z.string(), z.null()]).optional(),
   angle: z.union([z.string(), z.null()]).optional(),
   applying: z.union([z.boolean(), z.null()]).optional(),
   aspect: z.union([z.string(), z.null()]).optional(),
