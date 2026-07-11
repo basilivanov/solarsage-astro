@@ -40,7 +40,7 @@ const WEEK_STRIP_MIN_DATES = [
 
 const ASSETS_DIR = path.join(
   process.cwd(),
-  "docs/work/2026-07-10_solarsage-v2-human-first-navigator-preview/assets",
+  "docs/work/2026-07-11_solarsage-v2-three-horizon-why-preview/assets",
 )
 
 const BANNED_HUMAN_COPY = /транзит|профекци|фирдар|орб|натальн|аспект|convergence|source_frame|target_frame/i
@@ -94,6 +94,7 @@ function nearBlackPixelRatio(png: Buffer): number {
   let cursor = 8
   let width = 0
   let height = 0
+  let channels = 0
   const idat: Buffer[] = []
   while (cursor < png.length) {
     const length = png.readUInt32BE(cursor)
@@ -102,12 +103,13 @@ function nearBlackPixelRatio(png: Buffer): number {
     if (type === "IHDR") {
       width = data.readUInt32BE(0)
       height = data.readUInt32BE(4)
-      if (data[8] !== 8 || data[9] !== 6) throw new Error("Expected an 8-bit RGBA Playwright PNG")
+      if (data[8] !== 8 || ![2, 6].includes(data[9])) throw new Error("Expected an 8-bit RGB or RGBA Playwright PNG")
+      channels = data[9] === 6 ? 4 : 3
     }
     if (type === "IDAT") idat.push(data)
     cursor += length + 12
   }
-  const bytesPerRow = width * 4
+  const bytesPerRow = width * channels
   const decompressed = inflateSync(Buffer.concat(idat))
   let offset = 0
   let nearBlack = 0
@@ -119,9 +121,9 @@ function nearBlackPixelRatio(png: Buffer): number {
     offset += bytesPerRow
     const current = Buffer.alloc(bytesPerRow)
     for (let index = 0; index < bytesPerRow; index += 1) {
-      const left = index >= 4 ? current[index - 4] : 0
+      const left = index >= channels ? current[index - channels] : 0
       const above = previous[index]
-      const upperLeft = index >= 4 ? previous[index - 4] : 0
+      const upperLeft = index >= channels ? previous[index - channels] : 0
       const predictor = filter === 0 ? 0
         : filter === 1 ? left
           : filter === 2 ? above
@@ -130,10 +132,10 @@ function nearBlackPixelRatio(png: Buffer): number {
                 : (() => { throw new Error(`Unsupported PNG filter: ${filter}`) })()
       current[index] = (raw[index] + predictor) & 0xff
     }
-    for (let index = 0; index < bytesPerRow; index += 4) {
+    for (let index = 0; index < bytesPerRow; index += channels) {
       if (
         (current[index] < 12 && current[index + 1] < 12 && current[index + 2] < 12)
-        || current[index + 3] < 250
+        || (channels === 4 && current[index + 3] < 250)
       ) nearBlack += 1
     }
     previous = current
@@ -218,18 +220,6 @@ test.describe("V2 human-first navigator mock visual", () => {
     await expect(navigator).not.toContainText("Показать ещё")
     await expect(navigator).not.toContainText("все 12 сфер")
 
-    // Top state is deliberately captured before opening disclosures. Its tall
-    // viewport includes the complete hero and the first navigator row.
-    await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
-    const overviewHeight = await page.evaluate(() => {
-      const navigator = document.querySelector<HTMLElement>('[data-testid="concrete-day-advice"]')
-      if (!navigator) throw new Error("Navigator is missing")
-      return navigator.offsetTop + Math.min(navigator.scrollHeight, 220)
-    })
-    await page.setViewportSize({ width: 390, height: Math.ceil(overviewHeight) + 96 })
-    await page.waitForTimeout(150)
-    await capturePage(page, "01-human-first-overview-mobile.png")
-
     const work = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Работа", { exact: true }) })
     await work.click()
     await expect(work).toHaveAttribute("data-selected", "true")
@@ -239,16 +229,6 @@ test.describe("V2 human-first navigator mock visual", () => {
     await expect(workDetails).toContainText("Не форсируйте разговор о статусе — сначала отделите принципиальное от реакции на давление")
     await expect(workDetails).not.toContainText(BANNED_HUMAN_COPY)
     await expect(navigator.getByTestId("concrete-day-advice-details")).toHaveCount(1)
-
-    const [navigatorHeight, workScreenHeight] = await Promise.all([
-      navigator.evaluate((element) => Math.ceil(element.scrollHeight)),
-      screen.evaluate((element) => Math.ceil(element.scrollHeight)),
-    ])
-    await page.setViewportSize({ width: 390, height: Math.max(navigatorHeight, workScreenHeight) + 96 })
-    await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
-    await navigator.scrollIntoViewIfNeeded()
-    await page.waitForTimeout(150)
-    await captureLocator(navigator, "02-work-sphere-expanded-mobile.png")
 
     const money = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Деньги", { exact: true }) })
     await money.focus()
@@ -268,15 +248,30 @@ test.describe("V2 human-first navigator mock visual", () => {
     const whyMainToggle = page.locator("#why-expanded-toggle")
     await expect(whyMainToggle).toHaveAttribute("aria-expanded", "true")
     const humanWhy = why.getByTestId("why-today")
-    await expect(humanWhy.getByRole("article")).toHaveCount(3)
+    await expect(humanWhy.getByTestId("why-time-horizon")).toHaveCount(3)
+    const horizonOrder = await humanWhy.getByTestId("why-time-horizon").evaluateAll((items) => items.map((item) => item.getAttribute("data-horizon")))
+    expect(horizonOrder).toEqual(["long", "medium", "fast"])
+    await expect(humanWhy).toContainText("1 год → несколько лет")
+    await expect(humanWhy).toContainText("2–6 месяцев вокруг пика")
+    await expect(humanWhy).toContainText("несколько часов → 2 суток")
     await expect(humanWhy).not.toContainText(BANNED_HUMAN_COPY)
+
+    const [humanWhyHeight, humanScreenHeight] = await Promise.all([
+      why.evaluate((element) => Math.ceil(element.scrollHeight)),
+      screen.evaluate((element) => Math.ceil(element.scrollHeight)),
+    ])
+    await page.setViewportSize({ width: 390, height: Math.max(humanWhyHeight, humanScreenHeight) + 96 })
+    await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
+    await why.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(150)
+    await captureLocator(why, "01-why-three-horizons-mobile.png")
 
     const astroToggle = why.getByTestId("astrology-calculation-toggle")
     await expect(astroToggle).toHaveAttribute("aria-expanded", "false")
     await astroToggle.click()
     await expect(astroToggle).toHaveAttribute("aria-expanded", "true")
     const technical = why.getByTestId("astrology-calculation")
-    await expect(technical.getByTestId("astrology-calculation-item")).toHaveCount(3)
+    await expect(technical.getByTestId("astrology-calculation-item")).toHaveCount(5)
     await expect(technical).toContainText("Луна")
     await expect(technical).toContainText("оппозиция")
     await expect(technical).toContainText(/орб 1[.,]05/)
@@ -284,6 +279,7 @@ test.describe("V2 human-first navigator mock visual", () => {
     await expect(technical).toContainText("Сатурн")
     await expect(technical).toContainText("Профекция")
     await expect(technical).toContainText("Фирдар")
+    await expect(technical).toContainText("V2 передал 5 активных подтверждений из 3 независимых методов")
     await expect(technical).not.toContainText(/Moon opposition|act-|source_frame|target_frame|strength|debug/i)
 
     const [whyHeight, whyScreenHeight] = await Promise.all([
@@ -294,13 +290,13 @@ test.describe("V2 human-first navigator mock visual", () => {
     await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
     await why.scrollIntoViewIfNeeded()
     await page.waitForTimeout(150)
-    await captureLocator(why, "03-why-human-and-astro-expanded-mobile.png")
+    await captureLocator(why, "02-why-three-horizons-calculation-mobile.png")
 
     const fullScreenHeight = await screen.evaluate((element) => Math.ceil(element.scrollHeight))
     await page.setViewportSize({ width: 390, height: fullScreenHeight + 96 })
     await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
     await page.waitForTimeout(150)
-    await captureLocator(screen, "04-full-day-human-first-mobile.png")
+    await capturePage(page, "03-full-day-three-horizons-mobile.png")
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
     expect(overflow).toBe(true)

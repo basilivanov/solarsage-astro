@@ -33,6 +33,8 @@ import { DevAuditDrawer } from "@/components/today/dev-audit-drawer"
 import { dayPayloadV2 } from "@/e2e/mock-visual/fixtures/day-v2-2026-07-08"
 import { adaptTodayPayload } from "@/lib/adapters/today-payload"
 
+const navigationState = vi.hoisted(() => ({ search: "why=1" }))
+
 vi.mock("@/lib/log", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
@@ -41,7 +43,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
   usePathname: () => "/",
   useParams: () => ({}),
-  useSearchParams: () => new URLSearchParams("why=1"),
+  useSearchParams: () => new URLSearchParams(navigationState.search),
 }))
 
 vi.mock("@/components/today/date-header", () => ({
@@ -96,6 +98,7 @@ const access: AccessInfo = {
 describe("TodayScreen V2 downstream fixture", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    navigationState.search = "why=1"
   })
 
   it("renders TodayScreen with activation evidence from committed fixture", () => {
@@ -139,8 +142,8 @@ describe("TodayScreen V2 downstream fixture", () => {
       />,
     )
     const whySection = screen.getByTestId("why-expanded")
-    expect(whySection.textContent).toContain("Личная логика дня")
-    expect(whySection.textContent).not.toMatch(/Транзит|Профекция|Фирдар|орб/i)
+    expect(whySection.textContent).toContain("Личная логика периода")
+    expect(screen.getByTestId("why-today").textContent).not.toMatch(/Транзит|Профекция|Фирдар|орб/i)
     expect(screen.getByTestId("astrology-calculation-toggle").getAttribute("aria-expanded")).toBe("false")
     const evidenceIds = new Set((payload.v2?.activationEvidence || []).map((e) => e.id))
     for (const item of why) {
@@ -171,15 +174,103 @@ describe("TodayScreen V2 downstream fixture", () => {
     const section = screen.getByTestId("why-expanded")
     const technicalToggle = screen.getByTestId("astrology-calculation-toggle")
     expect(technicalToggle.getAttribute("aria-expanded")).toBe("false")
-    expect(section.textContent).not.toMatch(/Профекция|Фирдар|орб/i)
+    expect(screen.getByTestId("why-today").textContent).not.toMatch(/Профекция|Фирдар|орб/i)
+    expect(screen.getAllByTestId("why-time-horizon").map((item) => item.getAttribute("data-horizon"))).toEqual(["long", "medium", "fast"])
+    expect(screen.getAllByTestId("why-time-horizon")[0].textContent).toContain("1 год → несколько лет")
+    expect(screen.getAllByTestId("why-time-horizon")[1].textContent).toContain("2–6 месяцев вокруг пика")
+    expect(screen.getAllByTestId("why-time-horizon")[2].textContent).toContain("несколько часов → 2 суток")
+    expect(screen.getAllByTestId("why-time-horizon")[0].textContent).toContain("Вы не просто реагируете на один сложный день")
+    expect(screen.getAllByTestId("why-time-horizon")[1].textContent).toContain("Сейчас появилось окно")
+    expect(screen.getAllByTestId("why-time-horizon")[2].textContent).toContain("Сегодня длинная тема особенно заметна")
 
     fireEvent.click(technicalToggle)
     expect(technicalToggle.getAttribute("aria-expanded")).toBe("true")
     const technical = screen.getByTestId("astrology-calculation")
-    expect(screen.getAllByTestId("astrology-calculation-item")).toHaveLength(3)
+    expect(screen.getAllByTestId("astrology-calculation-item")).toHaveLength(5)
+    expect(technical.querySelectorAll('[data-horizon="long"] [data-testid="astrology-calculation-item"]')).toHaveLength(2)
+    expect(technical.querySelectorAll('[data-horizon="medium"] [data-testid="astrology-calculation-item"]')).toHaveLength(2)
+    expect(technical.querySelectorAll('[data-horizon="fast"] [data-testid="astrology-calculation-item"]')).toHaveLength(1)
     expect(technical.textContent).toContain("Луна")
+    expect(technical.textContent).toContain("Плутон")
+    expect(technical.textContent).toContain("Нептун")
+    expect(technical.textContent).toContain("тригон")
+    expect(technical.textContent).toContain("оппозиция")
+    expect(technical.textContent).toContain("орб 1.05")
+    expect(technical.textContent).toContain("Пик уже пройден · влияние ослабевает")
     expect(technical.textContent).toContain("Профекция")
     expect(technical.textContent).toContain("Фирдар")
     expect(technical.textContent).not.toMatch(/Moon opposition|act-|source_frame|strength/i)
+  })
+
+  it("opens both disclosures from the why and astro deeplink", () => {
+    navigationState.search = "why=1&astro=1"
+    const { payload } = adaptTodayPayload(dayPayloadV2, new Date("2026-07-08T12:00:00Z"))
+    render(<WhyExpanded sections={[]} keyInsight="" v2={payload.v2} />)
+
+    expect(screen.getByTestId("astrology-calculation-toggle").getAttribute("aria-expanded")).toBe("true")
+    expect(screen.getAllByTestId("astrology-calculation-item")).toHaveLength(5)
+  })
+
+  it("keeps the legacy Why flow available without V2 horizons", () => {
+    render(
+      <WhyExpanded
+        sections={[{ id: "legacy", title: "Личный контекст", iconName: "Sparkles", paragraphs: ["Существующее объяснение остаётся доступным."] }]}
+        keyInsight="Ключ дня"
+        open
+      />,
+    )
+
+    expect(screen.getByText("Личный контекст")).toBeTruthy()
+    expect(screen.getAllByText("Ключ дня")).toHaveLength(2)
+    expect(screen.queryByTestId("why-time-horizon")).toBeNull()
+    expect(screen.queryByTestId("astrology-calculation")).toBeNull()
+  })
+
+  it("renders standalone safe whyToday without a full V2 block", () => {
+    render(
+      <WhyExpanded
+        sections={[]}
+        keyInsight=""
+        whyToday={[{
+          id: "standalone-safe",
+          title: "Личная тема заметнее обычного",
+          body: "Полезно не торопиться с выводами и опереться на проверяемые шаги.",
+          activationIds: [],
+          techniques: [],
+        }]}
+        open
+      />,
+    )
+
+    expect(screen.getByTestId("why-today-item").textContent).toContain("Личная тема заметнее обычного")
+    expect(screen.queryByText("Один личный сюжет идёт в трёх скоростях.")).toBeNull()
+    expect(screen.queryByTestId("astrology-calculation-toggle")).toBeNull()
+  })
+
+  it("uses the human-only fallback when V2 evidence does not pass horizon thresholds", () => {
+    const { payload } = adaptTodayPayload(dayPayloadV2, new Date("2026-07-08T12:00:00Z"))
+    const v2 = structuredClone(payload.v2!)
+    v2.activationEvidence = [{ ...v2.activationEvidence[0], strength: 0.1, orb: 4 }]
+    v2.activationSummary.topActivatedTargets[0].activationIds = ["act-moon-opp-pluto"]
+    v2.whyToday = [v2.whyToday[0]]
+    v2.scoreBreakdown = {}
+    render(<WhyExpanded sections={[]} keyInsight="" v2={v2} open />)
+
+    expect(screen.getByTestId("why-today-item").textContent).toContain("Сегодня длинная тема особенно заметна")
+    expect(screen.queryByTestId("why-time-horizon")).toBeNull()
+    expect(screen.queryByText("Один личный сюжет идёт в трёх скоростях.")).toBeNull()
+    expect(screen.queryByTestId("astrology-calculation-toggle")).toBeNull()
+  })
+
+  it("returns no Why block for an empty V2 payload without safe copy or legacy sections", () => {
+    const { payload } = adaptTodayPayload(dayPayloadV2, new Date("2026-07-08T12:00:00Z"))
+    const v2 = structuredClone(payload.v2!)
+    v2.activationSummary.topActivatedTargets = []
+    v2.activationEvidence = []
+    v2.whyToday = []
+    v2.scoreBreakdown = {}
+    const { queryByTestId } = render(<WhyExpanded sections={[]} keyInsight="" v2={v2} open />)
+
+    expect(queryByTestId("why-expanded")).toBeNull()
   })
 })
