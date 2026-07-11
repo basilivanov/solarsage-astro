@@ -11,7 +11,7 @@
 # inputs: none (module-level constants).
 # outputs: CALCULATION_VERSION, ACTIVATION_LAYER_VERSION, SCORING_V2_VERSION,
 #          TODAY_V2_PAYLOAD_VERSION, TODAY_V1_PAYLOAD_VERSION, LEGACY_CALCULATION_VERSION.
-# dependencies: none.
+# dependencies: solarsage_contracts.versions.
 # side_effects: none.
 # emitted_logs: none.
 # invariants:
@@ -23,11 +23,10 @@
 
 from __future__ import annotations
 
-# V2 calculation identity (sidecar activation + V2 path)
-CALCULATION_VERSION = "ss-calc-1.2.0"
-
-# Activation layer schema/identity
-ACTIVATION_LAYER_VERSION = "al-1.1"
+from solarsage_contracts.versions import (
+    ACTIVATION_LAYER_VERSION,
+    CALCULATION_VERSION,
+)
 
 # Scoring V2 identity
 SCORING_V2_VERSION = "ss-scoring-2.0"

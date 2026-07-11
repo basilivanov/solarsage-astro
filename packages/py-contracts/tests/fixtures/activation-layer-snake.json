@@ -1,0 +1,90 @@
+{
+  "activation_layer_version": "al-1.1",
+  "activations": [
+    {
+      "active": true,
+      "active_from": "2026-07-07T21:00:00Z",
+      "active_until": "2026-07-09T21:00:00Z",
+      "angle": null,
+      "applying": false,
+      "aspect": "opposition",
+      "debug": {
+        "timing": {
+          "exact_hits_in_window": [
+            "2026-07-08T05:00:00Z"
+          ],
+          "occurrence_index": 0,
+          "selected_branch": "plus",
+          "selected_exact_longitude": 22.320514,
+          "warning_code": null
+        }
+      },
+      "evidence": "Transit Moon opposition natal Pluto, orb 1.05°",
+      "exact_at": "2026-07-08T05:00:00Z",
+      "house": null,
+      "id": "t2n__MOON__OPPOSITION__PLUTO",
+      "kind": "opposition",
+      "lot": null,
+      "orb": 1.05,
+      "phase": "separating",
+      "polarity": "tense",
+      "source_frame": "transit",
+      "source_planet": "Moon",
+      "strength": 0.72,
+      "target_frame": "natal",
+      "target_key": "PLUTO",
+      "target_planet": "Pluto",
+      "target_type": "planet",
+      "technique": "transit_to_natal",
+      "technique_family": "transit",
+      "weight_hint": null
+    },
+    {
+      "active": true,
+      "active_from": "2025-10-30",
+      "active_until": "2026-10-29",
+      "angle": null,
+      "applying": null,
+      "aspect": null,
+      "debug": {},
+      "evidence": "Annual profection activates house 10",
+      "exact_at": null,
+      "house": 10,
+      "id": "annual_profection__HOUSE__10",
+      "kind": "profected_house",
+      "lot": null,
+      "orb": null,
+      "phase": "period",
+      "polarity": "neutral",
+      "source_frame": "natal",
+      "source_planet": null,
+      "strength": 0.75,
+      "target_frame": "natal",
+      "target_key": "10",
+      "target_planet": null,
+      "target_type": "house",
+      "technique": "annual_profection",
+      "technique_family": "profection",
+      "weight_hint": null
+    }
+  ],
+  "by_angle": {},
+  "by_house": {
+    "10": [
+      "annual_profection__HOUSE__10"
+    ]
+  },
+  "by_lot": {},
+  "by_planet": {
+    "PLUTO": [
+      "t2n__MOON__OPPOSITION__PLUTO"
+    ]
+  },
+  "calculation_version": "ss-calc-1.2.0",
+  "house_system": "WHOLE_SIGN",
+  "schema_version": "activation-layer.v1",
+  "target_date": "2026-07-08",
+  "target_time": "12:00",
+  "target_tz": "Europe/Moscow",
+  "warnings": []
+}

@@ -1,87 +1,68 @@
 # ############################################################################
-# AI_HEADER: MODULE_CONTRACTS_ACTIVATION — canonical activation schemas.
-# ROLE: Typed contracts for SolarSage V2 activation layer.
-#       W1: contract-only. Not populated by TodayService until W2+.
+# AI_HEADER: MODULE_CONTRACTS_ACTIVATION — API activation contract facades.
+# ROLE: Public camelCase boundary wrappers over shared SolarSage activation contracts.
 # ############################################################################
+
+# START_MODULE_CONTRACT: M-CONTRACTS-ACTIVATION
+# purpose: Expose API-owned public schema names while reusing shared activation fields.
+# owns:
+#   - apps/api/app/schemas/activation.py
+# inputs: Shared activation contracts and API CamelModel boundary config.
+# outputs: ActivationEvidence and ActivationLayer public Pydantic wrappers.
+# dependencies: solarsage_contracts.activation, app.schemas._base.CamelModel.
+# side_effects: none.
+# emitted_logs: none.
+# invariants:
+#   - Field definitions, defaults, constraints, and validators live only in shared contracts.
+#   - API wrappers remain CamelModel subclasses for OpenAPI generation.
+#   - Public wire casing remains camelCase and accepts snake_case by field name.
+# failure_policy: Pydantic ValidationError from shared/base boundary config.
+# END_MODULE_CONTRACT: M-CONTRACTS-ACTIVATION
+
+# START_MODULE_MAP: M-CONTRACTS-ACTIVATION
+# public_entrypoints:
+#   - ActivationEvidence
+#   - ActivationLayer
+#   - ActivationTargetType
+#   - ActivationPolarity
+#   - ActivationPhase
+# semantic_blocks:
+#   - API_ACTIVATION_FACADES: thin public wrappers over shared contracts
+# owned_tests:
+#   - apps/api/tests/test_activation_contracts.py
+#   - packages/py-contracts/tests/test_boundary_configs.py
+# END_MODULE_MAP: M-CONTRACTS-ACTIVATION
 
 from __future__ import annotations
 
-from typing import Any, Literal
-
-from pydantic import Field, model_validator
+from solarsage_contracts.activation import (
+    ActivationEvidenceContract,
+    ActivationLayerContract,
+    ActivationPhase,
+    ActivationPolarity,
+    ActivationTargetType,
+)
 
 from ._base import CamelModel
 
-ActivationTargetType = Literal["planet", "house", "lot", "angle", "sphere"]
-ActivationPolarity = Literal["supportive", "tense", "mixed", "neutral"]
-ActivationPhase = Literal["applying", "exact", "separating", "background", "period"]
 
-
-class ActivationEvidence(CamelModel):
+# START_BLOCK: API_ACTIVATION_FACADES
+class ActivationEvidence(ActivationEvidenceContract, CamelModel):
     """Single activation evidence entry for a transit/technique interaction."""
 
-    id: str
-    technique: str
-    technique_family: str
-    target_type: ActivationTargetType
-    target_key: str
-    kind: str
-    active: bool = True
-    source_planet: str | None = None
-    source_frame: str | None = None
-    target_planet: str | None = None
-    target_frame: str | None = None
-    aspect: str | None = None
-    orb: float | None = None
-    applying: bool | None = None
-    active_from: str | None = None
-    exact_at: str | None = None
-    active_until: str | None = None
-    phase: ActivationPhase = "background"
-    house: int | None = None
-    lot: str | None = None
-    angle: str | None = None
-    strength: float = Field(ge=0.0, le=1.0)
-    polarity: ActivationPolarity = "neutral"
-    weight_hint: float | None = None
-    evidence: str
-    debug: dict[str, Any] = Field(default_factory=dict)
 
-
-class ActivationLayer(CamelModel):
+class ActivationLayer(
+    ActivationLayerContract[ActivationEvidence],
+    CamelModel,
+):
     """Full activation layer output for a given target date."""
+# END_BLOCK: API_ACTIVATION_FACADES
 
-    schema_version: str = "activation-layer.v1"
-    activation_layer_version: str = "al-1.1"
-    calculation_version: str
-    target_date: str
-    target_time: str
-    target_tz: str
-    house_system: str
-    activations: list[ActivationEvidence]
-    by_planet: dict[str, list[str]]
-    by_house: dict[str, list[str]]
-    by_lot: dict[str, list[str]]
-    by_angle: dict[str, list[str]]
-    warnings: list[str] = Field(default_factory=list)
 
-    @model_validator(mode="after")
-    def _validate_index_references(self) -> "ActivationLayer":
-        valid_ids = {ev.id for ev in self.activations}
-        index_maps = [
-            ("by_planet", self.by_planet),
-            ("by_house", self.by_house),
-            ("by_lot", self.by_lot),
-            ("by_angle", self.by_angle),
-        ]
-        for map_name, index_map in index_maps:
-            if not index_map:
-                continue
-            for key, refs in index_map.items():
-                for ref_id in refs:
-                    if ref_id not in valid_ids:
-                        raise ValueError(
-                            f"{map_name}[{key}] references '{ref_id}' "
-                            f"which is not present in activations"
-                        )
-        return self
+__all__ = [
+    "ActivationTargetType",
+    "ActivationPolarity",
+    "ActivationPhase",
+    "ActivationEvidence",
+    "ActivationLayer",
+]

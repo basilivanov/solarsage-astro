@@ -671,17 +671,47 @@ def test_version_constants_are_explicit():
     assert V2_FRONTEND_PAYLOAD_VERSION == 2
 
 
-def test_api_and_sidecar_calculation_version_literals_match():
-    """Package separation requires duplicated literals; keep them equal."""
+def test_api_and_sidecar_versions_reexport_shared_source():
+    """API and sidecar version facades re-export shared literals instead of duplicating them."""
+    import ast
+    import sys
+    from pathlib import Path
+
     from app.core.versions import ACTIVATION_LAYER_VERSION as API_AL
     from app.core.versions import CALCULATION_VERSION as API_CALC
-    # Sidecar path may not be importable from API tests; compare literal file content.
-    from pathlib import Path
-    text = Path(__file__).resolve().parents[3].joinpath(
-        "apps/solarsage/solarsage/core/versions.py"
-    ).read_text(encoding="utf-8")
-    assert f'CALCULATION_VERSION = "{API_CALC}"' in text
-    assert f'ACTIVATION_LAYER_VERSION = "{API_AL}"' in text
+    from solarsage_contracts.versions import ACTIVATION_LAYER_VERSION as SHARED_AL
+    from solarsage_contracts.versions import CALCULATION_VERSION as SHARED_CALC
+
+    repo_root = Path(__file__).resolve().parents[3]
+    sidecar_root = repo_root / "apps/solarsage"
+    if str(sidecar_root) not in sys.path:
+        sys.path.insert(0, str(sidecar_root))
+    from solarsage.core.versions import ACTIVATION_LAYER_VERSION as SIDECAR_AL
+    from solarsage.core.versions import CALCULATION_VERSION as SIDECAR_CALC
+
+    assert API_CALC == SIDECAR_CALC == SHARED_CALC
+    assert API_AL == SIDECAR_AL == SHARED_AL
+
+    for relative_path in (
+        "apps/api/app/core/versions.py",
+        "apps/solarsage/solarsage/core/versions.py",
+    ):
+        path = repo_root / relative_path
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        imports_shared = False
+        duplicated_literal_assignment = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == "solarsage_contracts.versions":
+                imported = {alias.name for alias in node.names}
+                imports_shared = {"ACTIVATION_LAYER_VERSION", "CALCULATION_VERSION"}.issubset(imported)
+            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                target_names = {target.id for target in targets if isinstance(target, ast.Name)}
+                if target_names.intersection({"ACTIVATION_LAYER_VERSION", "CALCULATION_VERSION"}):
+                    if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                        duplicated_literal_assignment = True
+        assert imports_shared
+        assert not duplicated_literal_assignment
 
 
 def test_activation_layer_service_uses_canonical_calculation_version():

@@ -65,6 +65,55 @@ def test_sidecar_activation_layer_minimal():
     assert layer.schema_version == "activation-layer.v1"
 
 
+def test_sidecar_activation_evidence_forbids_extra_fields():
+    with pytest.raises(ValidationError):
+        ActivationEvidence(
+            id="act-extra",
+            technique="transit_to_natal",
+            technique_family="transit",
+            target_type="planet",
+            target_key="Moon",
+            kind="aspect",
+            strength=0.5,
+            evidence="test evidence",
+            unexpected_field="forbidden",
+        )
+
+
+def test_sidecar_activation_layer_is_snake_only():
+    snake_payload = {
+        "calculation_version": "ss-calc-1.2.0",
+        "target_date": "2026-07-08",
+        "target_time": "12:00",
+        "target_tz": "Europe/Moscow",
+        "house_system": "PLACIDUS",
+        "activations": [],
+        "by_planet": {},
+        "by_house": {},
+        "by_lot": {},
+        "by_angle": {},
+    }
+    layer = ActivationLayer.model_validate(snake_payload)
+    dumped = layer.model_dump(mode="json")
+    assert "calculation_version" in dumped
+    assert "calculationVersion" not in dumped
+
+    camel_payload = {
+        "calculationVersion": "ss-calc-1.2.0",
+        "targetDate": "2026-07-08",
+        "targetTime": "12:00",
+        "targetTz": "Europe/Moscow",
+        "houseSystem": "PLACIDUS",
+        "activations": [],
+        "byPlanet": {},
+        "byHouse": {},
+        "byLot": {},
+        "byAngle": {},
+    }
+    with pytest.raises(ValidationError):
+        ActivationLayer.model_validate(camel_payload)
+
+
 @pytest.mark.parametrize("bad_strength", [-0.1, 1.5])
 def test_sidecar_activation_evidence_rejects_out_of_range_strength(bad_strength):
     with pytest.raises(ValidationError):
