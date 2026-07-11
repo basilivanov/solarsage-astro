@@ -1,33 +1,40 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_ADAPTERS_TODAY_PAYLOAD
-// ROLE: Pure adapter — API TodayPayload → UI AdaptedTodayPayload
-// DEPENDENCIES: lib/contracts/today, lib/access, @/packages/contracts
-// GRACE_ANCHORS: [TODAY_PAYLOAD_ADAPTER]
+// AI_HEADER: MODULE_ADAPTERS_TODAY_PAYLOAD — transforms TodayPayload to AdaptedTodayPayload.
+// ROLE: Pure adapter function to map API types into UI presentation structures.
+// DEPENDENCIES: lib/contracts/today, lib/access, packages/contracts
 // ############################################################################
 
-// START_MODULE_CONTRACT
-// purpose: Transform API TodayPayload into UI-ready AdaptedTodayPayload
+// START_MODULE_CONTRACT: M-ADAPTERS-TODAY-PAYLOAD
+// purpose: Transform API TodayPayload into UI-ready AdaptedTodayPayload.
 // owns:
 //   - lib/adapters/today-payload.ts
-// inputs: TodayPayload (API), selectedDate
-// outputs: { payload: AdaptedTodayPayload, access: AccessInfo }
-// side_effects: n/a (pure)
+// inputs: TodayPayload (API), selectedDate.
+// outputs: { payload: AdaptedTodayPayload, access: AccessInfo }.
+// side_effects: none.
+// emitted_logs: none.
 // invariants:
-//   - No `any` types
-//   - Preserves headline, dayStatus, topFlags from API
-//   - Maps access.state: full→trial, preview→expired, locked→none
-//   - null notes → placeholder card
-// END_MODULE_CONTRACT
+//   - No `any` types.
+//   - Preserves headline, dayStatus, topFlags from API.
+//   - Maps access.state correctly.
+//   - Does not validate TodayV2Block schema in production (pure pass-through).
+// failure_policy: none.
+// END_MODULE_CONTRACT: M-ADAPTERS-TODAY-PAYLOAD
 
-import type { TodayPayload } from '@/packages/contracts';
+// START_MODULE_MAP: M-ADAPTERS-TODAY-PAYLOAD
+// public_entrypoints:
+//   - adaptTodayPayload
+// semantic_blocks:
+//   - TODAY_PAYLOAD_ADAPTER: pure adaptation logic.
+// END_MODULE_MAP: M-ADAPTERS-TODAY-PAYLOAD
+
+import type { TodayPayload, TodayV2Block } from '@/packages/contracts';
 import {
   type AdaptedTodayPayload,
   type AdaptedTopFlag,
   type TodayReading,
   type TodayNote,
   type TodayWhySection,
-  TodayV2BlockSchema,
 } from '@/lib/contracts/today';
 import type { AccessInfo } from '@/lib/access';
 
@@ -151,16 +158,19 @@ function buildAccess(apiAccess: TodayPayload['access'] | undefined | null): Acce
   };
 }
 
-function buildV2Block(apiV2: TodayPayload['v2']): AdaptedTodayPayload['v2'] | null {
-  if (!apiV2) return null;
-  return TodayV2BlockSchema.parse(apiV2);
+function buildV2Block(apiV2: TodayPayload['v2']): TodayV2Block | null {
+  return apiV2 ?? null;
 }
 
-/**
- * Transform a raw API TodayPayload into the UI-ready AdaptedTodayPayload
- * and computed AccessInfo. All astrological calculation is done server-side;
- * this adapter only reshapes data for the UI components.
- */
+// START_BLOCK: TODAY_PAYLOAD_ADAPTER
+// START_FUNCTION_CONTRACT: F-M-ADAPTERS-TODAY-PAYLOAD.adaptTodayPayload
+// purpose: Map TodayPayload to AdaptedTodayPayload structures.
+// inputs: api - raw API TodayPayload; selectedDate - Date.
+// returns: Adapted payload and access info.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: none.
+// END_FUNCTION_CONTRACT: F-M-ADAPTERS-TODAY-PAYLOAD.adaptTodayPayload
 export function adaptTodayPayload(
   api: TodayPayload,
   selectedDate: Date,
@@ -188,3 +198,4 @@ export function adaptTodayPayload(
     access: buildAccess(api.access),
   };
 }
+// END_BLOCK: TODAY_PAYLOAD_ADAPTER

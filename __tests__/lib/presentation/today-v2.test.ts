@@ -1,4 +1,32 @@
-import { describe, it, expect } from "vitest"
+// ############################################################################
+// AI_HEADER: TEST_LIB_PRESENTATION_TODAY_V2 — unit tests for today-v2 presentation helpers
+// ROLE: Tests the time horizon selection, stage/duration labeling, and timing preview bridge.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-TEST-LIB-PRESENTATION-TODAY-V2
+// purpose: Validate today-v2 presentation logic, duration/stage formatters, and timing preview bridge.
+// owns:
+//   - __tests__/lib/presentation/today-v2.test.ts
+// inputs: mock activation evidence
+// outputs: vitest assertions
+// dependencies: lib/presentation/today-v2
+// side_effects: none
+// emitted_logs: none
+// invariants:
+//   - timing preview bridge returns strings or undefined, never mutates inputs
+// failure_policy: fail test
+// END_MODULE_CONTRACT: M-TEST-LIB-PRESENTATION-TODAY-V2
+
+// START_MODULE_MAP: M-TEST-LIB-PRESENTATION-TODAY-V2
+// public_entrypoints: describe/it blocks
+// semantic_blocks:
+//   - PRESENTATION_TESTS: validates localization and formatting helpers
+//   - TIMING_BRIDGE_TESTS: validates temporary preview timing bridge behavior
+// owned_tests:
+//   - __tests__/lib/presentation/today-v2.test.ts
+// END_MODULE_MAP: M-TEST-LIB-PRESENTATION-TODAY-V2
+
+import { describe, expect, it } from "vitest"
 import {
   getTechniqueLabel,
   getPlanetLabelRu,
@@ -21,8 +49,9 @@ import {
   getEvidenceStageLabel,
   getTechnicalEvidenceExplanation,
   TECHNIQUE_LABELS,
+  getEvidenceTimingPreview,
 } from "@/lib/presentation/today-v2"
-import type { ActivationEvidence, TodayV2ActivatedTarget, TodayV2Block } from "@/lib/contracts/today"
+import type { ActivationEvidence, TodayV2ActivatedTarget, TodayV2Block } from "@/packages/contracts"
 import { adaptTodayPayload } from "@/lib/adapters/today-payload"
 import { dayPayloadV2 } from "@/e2e/mock-visual/fixtures/day-v2-2026-07-08"
 
@@ -49,6 +78,7 @@ function evidenceFromFixture(id: string, overrides: Partial<ActivationEvidence>)
 }
 
 describe("presentation/today-v2", () => {
+  // START_BLOCK: PRESENTATION_TESTS
   it("maps techniques, planets, aspects, phases, spheres", () => {
     expect(getTechniqueLabel("transit_to_natal")).toBe("Транзит")
     expect(getTechniqueLabel("annual_profection")).toBe("Профекция")
@@ -92,26 +122,26 @@ describe("presentation/today-v2", () => {
     expect(getPlanetLabelRuDative("Uranus")).toBe("Урану")
     expect(getPlanetLabelRuDative("Neptune")).toBe("Нептуну")
 
-    const title = formatActivationEvidenceTitle({
-      technique: "transit_to_natal",
-      sourcePlanet: "Transit_Moon",
-      targetPlanet: "Natal_Pluto",
-      aspect: "opposition",
-      evidence: "Transit Moon opposition natal Pluto",
-    })
+    const title = formatActivationEvidenceTitle(
+      evidenceFromFixture("dative-title", {
+        sourcePlanet: "Transit_Moon",
+        targetPlanet: "Natal_Pluto",
+        aspect: "opposition",
+      }),
+    )
     expect(title).toBe("Луна — оппозиция к вашему натальному Плутону")
     expect(title).not.toMatch(/натальному Плутон$/)
     expect(title.toLowerCase()).not.toContain("transit")
   })
 
   it("formats aspect titles in Russian without raw English frames", () => {
-    const title = formatActivationEvidenceTitle({
-      technique: "transit_to_natal",
-      sourcePlanet: "Moon",
-      targetPlanet: "Pluto",
-      aspect: "opposition",
-      evidence: "Transit Moon opposition natal Pluto",
-    })
+    const title = formatActivationEvidenceTitle(
+      evidenceFromFixture("aspect-title", {
+        sourcePlanet: "Moon",
+        targetPlanet: "Pluto",
+        aspect: "opposition",
+      }),
+    )
     expect(title).toContain("Луна")
     expect(title).toContain("оппозиция")
     expect(title).toContain("Плутону")
@@ -376,4 +406,70 @@ describe("presentation/today-v2", () => {
     expect(horizons.map((horizon) => horizon.id)).toEqual(["long", "medium"])
     expect(horizons.every((horizon) => horizon.evidence.length <= ({ long: 3, medium: 2, fast: 1 }[horizon.id]))).toBe(true)
   })
+  // END_BLOCK: PRESENTATION_TESTS
+
+  // START_BLOCK: TIMING_BRIDGE_TESTS
+  describe("getEvidenceTimingPreview", () => {
+    it("returns valid timing preview properties", () => {
+      const evidence = dayPayloadV2.v2?.activationEvidence.find(
+        (item) => item.id === "act-pluto-trine-saturn",
+      )
+      expect(evidence).toBeDefined()
+      if (!evidence) throw new Error("fixture evidence is missing")
+
+      const timing = getEvidenceTimingPreview(evidence)
+      expect(timing.exactAt).toBe("2026-07-10T11:32:00Z")
+      expect(timing.activeFrom).toBe("2026-07-03T00:00:00Z")
+      expect(timing.activeUntil).toBe("2026-07-18T00:00:00Z")
+    })
+
+    it("returns null when fields are null", () => {
+      const evidence = dayPayloadV2.v2?.activationEvidence.find(
+        (item) => item.id === "act-pluto-trine-saturn",
+      )
+      expect(evidence).toBeDefined()
+      if (!evidence) throw new Error("fixture evidence is missing")
+
+      const mockEvidence = Object.assign(structuredClone(evidence), {
+        exactAt: null,
+        activeFrom: null,
+        activeUntil: null,
+      })
+
+      const timing = getEvidenceTimingPreview(mockEvidence)
+      expect(timing.exactAt).toBeNull()
+      expect(timing.activeFrom).toBeNull()
+      expect(timing.activeUntil).toBeNull()
+    })
+
+    it("filters out invalid non-string non-null values to undefined", () => {
+      const evidence = dayPayloadV2.v2?.activationEvidence.find(
+        (item) => item.id === "act-pluto-trine-saturn",
+      )
+      expect(evidence).toBeDefined()
+      if (!evidence) throw new Error("fixture evidence is missing")
+
+      const invalidTiming = Object.assign(structuredClone(evidence), {
+        activeFrom: 123,
+        activeUntil: ["2026-07-18"],
+      })
+
+      const timing = getEvidenceTimingPreview(invalidTiming)
+      expect(timing.activeFrom).toBeUndefined()
+      expect(timing.activeUntil).toBeUndefined()
+    })
+
+    it("does not mutate the input object", () => {
+      const evidence = dayPayloadV2.v2?.activationEvidence.find(
+        (item) => item.id === "act-pluto-trine-saturn",
+      )
+      expect(evidence).toBeDefined()
+      if (!evidence) throw new Error("fixture evidence is missing")
+
+      const clone = structuredClone(evidence)
+      getEvidenceTimingPreview(evidence)
+      expect(evidence).toEqual(clone)
+    })
+  })
+  // END_BLOCK: TIMING_BRIDGE_TESTS
 })

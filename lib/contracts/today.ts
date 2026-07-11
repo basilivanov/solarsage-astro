@@ -1,36 +1,51 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_CONTRACTS_TODAY
-// ROLE: UI — today
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: MODULE_CONTRACTS_TODAY — UI-adapted today screen contracts.
+// ROLE: Defines Zod schemas and TypeScript types for today screen UI representation.
+// DEPENDENCIES: packages/contracts, packages/contracts/runtime
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI today — component
+
+// START_MODULE_CONTRACT: M-CONTRACTS-TODAY
+// purpose: Today screen UI-adapted contract definitions.
 // owns:
 //   - lib/contracts/today.ts
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: none.
+// outputs:
+//   - UI Zod schemas: DayStatusSchema, AdaptedTopFlagSchema, TodayNoteSchema, TodayWhySectionSchema, AdaptedTodayPayload
+//   - UI TypeScript types: AdaptedTodayPayload, TodayNote, TodayReading, TodayWhySection
+//   - V2 wire schemas/values are imported from generated runtime barrel
+// dependencies: packages/contracts, packages/contracts/runtime.
+// side_effects: none.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-CONTRACTS-TODAY
-// wave: W-2.7
-// purpose: Today contracts (migrated from legacy)
+//   - No manual raw V2 wire schema object declarations.
+// failure_policy: compile error on missing definitions.
+// END_MODULE_CONTRACT: M-CONTRACTS-TODAY
 
-/**
- * Zod-контракт для Today (данные дня).
- *
- * Единственный источник правды о форме данных экрана дня.
- */
+// START_MODULE_MAP: M-CONTRACTS-TODAY
+// public_entrypoints:
+//   - AdaptedTodayPayload
+//   - TodayPayloadSchema
+//   - TodayV2BlockSchema
+//   - validateAdaptedTodayPayload
+// semantic_blocks:
+//   - UI_SCHEMAS: Zod schemas for adapted UI blocks.
+//   - GENERATED_V2_WIRE_SCHEMA_ALIAS: aliases generated V2 wire validation without redeclaring its shape.
+// END_MODULE_MAP: M-CONTRACTS-TODAY
 
 import { z } from "zod"
+import type {
+  TodayV2Block as TodayV2BlockWire,
+  TodayV2ActivatedTarget as TodayV2ActivatedTargetWire,
+  TodayV2ActivationSummary as TodayV2ActivationSummaryWire,
+  TodayV2WhyTodayItem as TodayV2WhyTodayItemWire,
+  TodayV2Audit as TodayV2AuditWire,
+  ActivationEvidence as ActivationEvidenceWire,
+  SphereScoreV2 as SphereScoreV2Wire,
+} from "@/packages/contracts"
+import {
+  TodayV2BlockWireSchema,
+} from "@/packages/contracts/runtime"
 
 export const DayStatusSchema = z.enum(["supportive", "steady", "tense"]);
 
@@ -199,103 +214,11 @@ export const DaySummaryBlockSchema = z.object({
   facts: z.array(DaySummaryFactSchema),
 })
 
-export const ActivationTargetTypeSchema = z.enum(["planet", "house", "lot", "angle", "sphere"])
-export const ActivationPolaritySchema = z.enum(["supportive", "tense", "mixed", "neutral"])
-export const ActivationPhaseSchema = z.enum(["applying", "exact", "separating", "background", "period"])
-
-export const ActivationEvidenceSchema = z.object({
-  id: z.string().min(1),
-  technique: z.string().min(1),
-  techniqueFamily: z.string().min(1),
-  targetType: ActivationTargetTypeSchema,
-  targetKey: z.string().min(1),
-  kind: z.string().min(1),
-  active: z.boolean().default(true),
-  sourcePlanet: z.string().nullable().optional(),
-  sourceFrame: z.string().nullable().optional(),
-  targetPlanet: z.string().nullable().optional(),
-  targetFrame: z.string().nullable().optional(),
-  aspect: z.string().nullable().optional(),
-  orb: z.number().nullable().optional(),
-  applying: z.boolean().nullable().optional(),
-  activeFrom: z.string().nullable().optional(),
-  exactAt: z.string().nullable().optional(),
-  activeUntil: z.string().nullable().optional(),
-  phase: ActivationPhaseSchema.default("background"),
-  house: z.number().int().nullable().optional(),
-  lot: z.string().nullable().optional(),
-  angle: z.string().nullable().optional(),
-  strength: z.number().min(0).max(1),
-  polarity: ActivationPolaritySchema.default("neutral"),
-  weightHint: z.number().nullable().optional(),
-  evidence: z.string().min(1),
-  debug: z.record(z.any()).default({}),
-})
-
-export const SphereContributionSchema = z.object({
-  sphere: z.string().min(1),
-  source: z.enum(["base_signal", "activation", "convergence", "cap"]),
-  sourceId: z.string().min(1),
-  amount: z.number(),
-  before: z.number().nullable().optional(),
-  after: z.number().nullable().optional(),
-  evidence: z.string().min(1),
-})
-
-export const SphereScoreV2Schema = z.object({
-  key: z.string().min(1),
-  title: z.string().min(1),
-  baseScore: z.number(),
-  activationScore: z.number(),
-  convergenceBonus: z.number(),
-  rawScore: z.number(),
-  finalScore: z.number(),
-  normalizedScore: z.number().nullable().optional(),
-  dominanceCapped: z.boolean(),
-  contributions: z.array(SphereContributionSchema),
-})
-
-export const TodayV2ActivatedTargetSchema = z.object({
-  targetType: z.enum(["planet", "house", "lot", "angle", "sphere"]),
-  targetKey: z.string().min(1),
-  label: z.string().min(1),
-  familyCount: z.number().int(),
-  techniques: z.array(z.string()),
-  spheres: z.array(z.string()),
-  activationIds: z.array(z.string()),
-})
-
-export const TodayV2ActivationSummarySchema = z.object({
-  headline: z.string().min(1),
-  topActivatedTargets: z.array(TodayV2ActivatedTargetSchema),
-})
-
-export const TodayV2WhyTodayItemSchema = z.object({
-  id: z.string().min(1),
-  title: z.string().min(1),
-  body: z.string().min(1),
-  activationIds: z.array(z.string()),
-  techniques: z.array(z.string()),
-})
-
-export const TodayV2AuditSchema = z.object({
-  traceId: z.string().nullable().optional(),
-  available: z.boolean().default(false),
-  payloadVersion: z.string(),
-  calculationVersion: z.union([z.string(), z.number()]),
-  scoringVersion: z.union([z.string(), z.number()]),
-  activationLayerVersion: z.union([z.string(), z.number()]).nullable().optional(),
-  canonVersions: z.record(z.string()),
-  v1V2Diff: z.record(z.any()).nullable().optional(),
-})
-
-export const TodayV2BlockSchema = z.object({
-  activationSummary: TodayV2ActivationSummarySchema,
-  activationEvidence: z.array(ActivationEvidenceSchema),
-  scoreBreakdown: z.record(SphereScoreV2Schema),
-  whyToday: z.array(TodayV2WhyTodayItemSchema),
-  audit: TodayV2AuditSchema,
-})
+// START_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS
+// Today V2 wire validation is generated from Pydantic/OpenAPI and re-exported
+// through the stable runtime barrel; this UI module does not redeclare its shape.
+export const TodayV2BlockSchema = TodayV2BlockWireSchema
+// END_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS
 
 export const TodayPayloadSchema = z.object({
   /** ISO yyyy-mm-dd — для кэша, deeplink'ов, инвалидации SWR. */
@@ -331,13 +254,13 @@ export type ConcreteAdviceBlock = z.infer<typeof ConcreteAdviceBlockSchema>
 export type ConcreteAdviceRow = z.infer<typeof ConcreteAdviceRowSchema>
 export type DaySummaryBlock = z.infer<typeof DaySummaryBlockSchema>
 export type AdaptedTodayPayload = z.infer<typeof TodayPayloadSchema>
-export type TodayV2Block = z.infer<typeof TodayV2BlockSchema>
-export type TodayV2ActivatedTarget = z.infer<typeof TodayV2ActivatedTargetSchema>
-export type TodayV2ActivationSummary = z.infer<typeof TodayV2ActivationSummarySchema>
-export type TodayV2WhyTodayItem = z.infer<typeof TodayV2WhyTodayItemSchema>
-export type TodayV2Audit = z.infer<typeof TodayV2AuditSchema>
-export type ActivationEvidence = z.infer<typeof ActivationEvidenceSchema>
-export type SphereScoreV2 = z.infer<typeof SphereScoreV2Schema>
+export type TodayV2Block = TodayV2BlockWire
+export type TodayV2ActivatedTarget = TodayV2ActivatedTargetWire
+export type TodayV2ActivationSummary = TodayV2ActivationSummaryWire
+export type TodayV2WhyTodayItem = TodayV2WhyTodayItemWire
+export type TodayV2Audit = TodayV2AuditWire
+export type ActivationEvidence = ActivationEvidenceWire
+export type SphereScoreV2 = SphereScoreV2Wire
 
 export function validateAdaptedTodayPayload(data: unknown): AdaptedTodayPayload {
   return TodayPayloadSchema.parse(data)

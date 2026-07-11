@@ -43,21 +43,25 @@
 //   - getEvidenceDurationLabel
 //   - getEvidenceStageLabel
 //   - getTechnicalEvidenceExplanation
+//   - getEvidenceTimingPreview
 // semantic_blocks:
 //   - LABELS: planet/aspect/phase/technique/sphere maps
 //   - FORMATTERS: human evidence titles
 //   - HORIZON_SELECTION: related evidence classification and deterministic three-horizon ranking
 //   - TECHNICAL_EDUCATION: duration, stage, and technique/planet explanations
+//   - PREVIEW_TIMING_BRIDGE: temporary compatibility for timing fields
 // owned_tests:
 //   - __tests__/lib/presentation/today-v2.test.ts
 // END_MODULE_MAP: M-LIB-PRESENTATION-TODAY-V2
 
 import type {
   ActivationEvidence,
-  ConcreteAdviceRow,
   TodayV2Block,
   TodayV2ActivatedTarget,
   TodayV2WhyTodayItem,
+} from "@/packages/contracts"
+import type {
+  ConcreteAdviceRow,
 } from "@/lib/contracts/today"
 
 // START_BLOCK: LABELS
@@ -459,12 +463,12 @@ export function orderActivationEvidence(
   evidence: ActivationEvidence[],
   primaryTarget: TodayV2ActivatedTarget | null | undefined,
 ): ActivationEvidence[] {
-  if (!primaryTarget?.activationIds.length) return evidence.filter((item) => item.active !== false)
+  if (!primaryTarget?.activationIds.length) return evidence.filter((item) => item && item.active !== false)
   const byId = new Map(evidence.map((item) => [item.id, item]))
   const selected = primaryTarget.activationIds
     .map((id) => byId.get(id))
     .filter((item): item is ActivationEvidence => Boolean(item && item.active !== false))
-  return selected.length > 0 ? selected : evidence.filter((item) => item.active !== false)
+  return selected.length > 0 ? selected : evidence.filter((item) => item && item.active !== false)
 }
 
 export type WhyTimeHorizonId = "long" | "medium" | "fast"
@@ -680,4 +684,37 @@ export function selectWhyTimeHorizons(v2: TodayV2Block): WhyTimeHorizon[] {
     rangeLabel: HORIZON_RANGES[id],
   })).filter((horizon) => horizon.evidence.length > 0)
 }
+
+// START_BLOCK: PREVIEW_TIMING_BRIDGE
+export type EvidenceTimingPreview = {
+  activeFrom: string | null | undefined
+  exactAt: string | null | undefined
+  activeUntil: string | null | undefined
+}
+
+// START_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getEvidenceTimingPreview
+// purpose: Temporary preview timing bridge reader to retrieve activeFrom, exactAt, and activeUntil.
+// inputs: evidence - ActivationEvidence (generated wire type).
+// returns: EvidenceTimingPreview containing strings, nulls, or undefined.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: invalid activeFrom/activeUntil preview values become undefined; exactAt remains the generated typed value.
+// END_FUNCTION_CONTRACT: F-M-LIB-PRESENTATION-TODAY-V2.getEvidenceTimingPreview
+export function getEvidenceTimingPreview(
+  evidence: ActivationEvidence | null | undefined,
+): EvidenceTimingPreview {
+  if (!evidence) {
+    return { activeFrom: undefined, exactAt: undefined, activeUntil: undefined }
+  }
+
+  const exactAt = evidence.exactAt
+  const activeFromVal = Reflect.get(evidence, "activeFrom")
+  const activeUntilVal = Reflect.get(evidence, "activeUntil")
+
+  const activeFrom = typeof activeFromVal === "string" || activeFromVal === null ? activeFromVal : undefined
+  const activeUntil = typeof activeUntilVal === "string" || activeUntilVal === null ? activeUntilVal : undefined
+
+  return { activeFrom, exactAt, activeUntil }
+}
+// END_BLOCK: PREVIEW_TIMING_BRIDGE
 // END_BLOCK: HUMAN_FIRST_PRESENTATION

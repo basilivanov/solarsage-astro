@@ -24,7 +24,7 @@
 // wave: W-2.1
 // purpose: Barrel export for GRACE frontend modules
 
-export { fetchDay, fetchCalendar, ApiError } from './api/client';
+export { fetchDay, fetchCalendar, ApiError, ApiContractError } from './api/client';
 export { useDay } from './hooks/useDay';
 export { useCalendar } from './hooks/useCalendar';
 export type { UseDayResult } from './hooks/useDay';

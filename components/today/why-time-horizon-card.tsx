@@ -25,7 +25,7 @@
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
 // END_MODULE_MAP: M-WHY-TIME-HORIZON-CARD
 
-import { getEvidenceStageLabel, type WhyTimeHorizon } from "@/lib/presentation/today-v2"
+import { getEvidenceStageLabel, getEvidenceTimingPreview, type WhyTimeHorizon } from "@/lib/presentation/today-v2"
 
 const HORIZON_META = {
   long: { number: "01", label: "Большой сюжет", tone: "border-violet-300/80 bg-violet-100/35 dark:border-violet-400/35 dark:bg-violet-500/10" },
@@ -54,9 +54,10 @@ export function WhyTimeHorizonCard({ horizon }: { horizon: WhyTimeHorizon }) {
   // END_FUNCTION_CONTRACT: F-M-WHY-TIME-HORIZON-CARD.WhyTimeHorizonCard
   const meta = HORIZON_META[horizon.id]
   const primary = horizon.whyItems[0]
-  const timing = horizon.evidence[0]
-  const hasTiming = Boolean(timing?.activeFrom || timing?.exactAt || timing?.activeUntil)
-  const stage = getEvidenceStageLabel(timing?.phase)
+  const timingEvidence = horizon.evidence[0]
+  const timing = getEvidenceTimingPreview(timingEvidence)
+  const hasTiming = Boolean(timing.activeFrom || timing.exactAt || timing.activeUntil)
+  const stage = getEvidenceStageLabel(timingEvidence?.phase)
   return (
     <article
       data-testid="why-time-horizon"
