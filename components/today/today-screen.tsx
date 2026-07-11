@@ -15,7 +15,7 @@
 //   - components/today/today-screen.tsx
 // inputs:
 //   - selectedDate, access, payload (AdaptedTodayPayload), calendarLunar,
-//     onDateChange, importantToday
+//     onDateChange, importantToday, optional disableRemoteStatusFetch
 // outputs:
 //   - TSX layout with data-testid="today-screen" and data-state="ready|locked"
 // dependencies:
@@ -24,12 +24,14 @@
 //   - @/components/paywall, @/components/trial-banner
 //   - @/lib/today, @/lib/access
 // side_effects: Pointer/touch swipe handlers; controlled V2 selection/Why state;
-//               post-commit smooth scroll and focus for hero navigation.
+//               post-commit smooth scroll and focus for hero navigation; optional
+//               suppression of WeekStrip remote status fetches for local fixtures.
 // invariants:
 //   - data-state reflects the real access state (ready=accessible, locked=inaccessible)
 //   - data-testid attributes present on all major sections
 //   - V2 sphere/Why state resets to the current deeplink default on date changes
 //   - Loading/error states handled by the parent page
+//   - disableRemoteStatusFetch defaults to false, preserving ordinary WeekStrip behavior
 // failure_policy: renders gracefully; missing data hides sections silently
 // END_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 
@@ -39,7 +41,7 @@
 // semantic_blocks:
 //   - V2_NAVIGATION: useSearchParams deeplink defaults, controlled sphere/Why state, and post-commit scroll/focus.
 //   - DAY_SWIPE: bounded pointer/touch date navigation.
-//   - SCREEN_COMPOSITION: accessible and locked Today layouts.
+//   - SCREEN_COMPOSITION: accessible and locked Today layouts with optional local fixture status suppression.
 // owned_tests:
 //   - __tests__/components/TodayScreen.test.tsx
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
@@ -75,6 +77,7 @@ type Props = {
   calendarLunar?: CalendarLunarFields | null
   onDateChange: (_d: Date) => void
   importantToday?: TodayImportantEvent[]
+  disableRemoteStatusFetch?: boolean
 }
 
 // Порог срабатывания свайпа — чтобы случайные жесты не перелистывали день
@@ -82,6 +85,7 @@ const SWIPE_THRESHOLD = 70
 // Максимальное вертикальное смещение: если больше — это скролл, а не свайп
 const SWIPE_MAX_VERTICAL = 50
 
+// START_BLOCK: SCREEN_COMPOSITION
 export function TodayScreen({
   selectedDate,
   access,
@@ -89,7 +93,16 @@ export function TodayScreen({
   calendarLunar,
   onDateChange,
   importantToday,
+  disableRemoteStatusFetch,
 }: Props) {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-TODAY-SCREEN.TodayScreen
+  // purpose: Render the main screen for a specific day, handling access check, checkin, summary, advice, reading, why-expanded, and week strip sections.
+  // inputs: Props containing selectedDate, access state, adapted payload, calendar fields, callbacks, and flags.
+  // returns: Main Today layout JSX.
+  // side_effects: coordinates sub-components, triggers scroll and focus transitions on sphere select or why expand, sets up swipe navigation handlers.
+  // emitted_logs: none (delegates logs to child hooks/methods).
+  // error_behavior: bubbles rendering exceptions to the parent boundary; missing optional data is hidden gracefully.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-TODAY-SCREEN.TodayScreen
   const searchParams = useSearchParams()
   const accessible = isDayAccessible(selectedDate, access)
   const isToday = sameDay(selectedDate, TODAY)
@@ -299,6 +312,7 @@ export function TodayScreen({
             selectedDate={selectedDate}
             access={access}
             onSelect={onDateChange}
+            disableRemoteStatusFetch={disableRemoteStatusFetch}
           />
 
           <AstroHistoryWidget date={selectedDate} />
@@ -331,6 +345,7 @@ export function TodayScreen({
             selectedDate={selectedDate}
             access={access}
             onSelect={onDateChange}
+            disableRemoteStatusFetch={disableRemoteStatusFetch}
           />
 
           <AstroHistoryWidget date={selectedDate} />
@@ -346,6 +361,7 @@ export function TodayScreen({
     </div>
   )
 }
+// END_BLOCK: SCREEN_COMPOSITION
 
 function formatDateLabel(d: Date): string {
   const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]

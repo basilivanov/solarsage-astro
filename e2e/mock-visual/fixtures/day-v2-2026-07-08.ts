@@ -72,6 +72,11 @@ const evidenceBase = {
   debug: {},
 }
 
+/** Test-only timing extension consumed by the frontend preview contract. */
+function previewTiming(values: Record<string, string>): object {
+  return values
+}
+
 export const dayPayloadV2: TodayPayload = {
   meta: {
     schemaVersion: "today/v1",
@@ -405,6 +410,7 @@ export const dayPayloadV2: TodayPayload = {
         targetPlanet: "Pluto",
         aspect: "opposition",
         orb: 1.05,
+        ...previewTiming({ activeFrom: "2026-07-07T21:00:00Z", exactAt: "2026-07-08T05:00:00Z", activeUntil: "2026-07-09T21:00:00Z" }),
         phase: "separating",
         polarity: "tense",
         strength: 0.72,
@@ -422,7 +428,8 @@ export const dayPayloadV2: TodayPayload = {
         targetKey: "SATURN",
         aspect: "trine",
         orb: 0.01,
-        phase: "exact",
+        ...previewTiming({ activeFrom: "2026-07-03T00:00:00Z", exactAt: "2026-07-10T11:32:00Z", activeUntil: "2026-07-18T00:00:00Z" }),
+        phase: "applying",
         polarity: "supportive",
         strength: 0.8,
         evidence: "Pluto trine natal Saturn",
@@ -455,6 +462,7 @@ export const dayPayloadV2: TodayPayload = {
         targetPlanet: "Pluto",
         aspect: null,
         orb: null,
+        ...previewTiming({ activeFrom: "2026-05-12", activeUntil: "2027-05-11" }),
         phase: "period",
         polarity: "mixed",
         strength: 0.6,

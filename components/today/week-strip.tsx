@@ -6,19 +6,30 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TODAY-CALENDAR
 // ############################################################################
-// START_MODULE_CONTRACT
+// START_MODULE_CONTRACT: M-TODAY-WEEK-STRIP
 // purpose: UI week-strip — component
 // owns:
 //   - components/today/week-strip.tsx
-// inputs: Component props / hook params
+// inputs: selectedDate, access, onSelect, optional disableRemoteStatusFetch
 // outputs: TSX render / values
 // dependencies: local modules
-// side_effects: Logging via v2 logging spine; React state management
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
+// side_effects: Fetches remote day statuses by default; logging via v2 logging spine; React state management
+// emitted_logs: system.error
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - disableRemoteStatusFetch defaults to false; a local fixture can opt out without changing ordinary requests
+// failure_policy: per-day failure -> unknown; unexpected batch failure logs and
+//                 keeps the week UI usable; no exception is intentionally raised
+// END_MODULE_CONTRACT: M-TODAY-WEEK-STRIP
+
+// START_MODULE_MAP: M-TODAY-WEEK-STRIP
+// public_entrypoints:
+//   - WeekStrip
+// semantic_blocks:
+//   - STATUS_FETCH: default remote week-status loading or local fixture suppression.
+//   - WEEK_RENDER: accessible seven-day navigation.
+// owned_tests:
+//   - e2e/dev-timing-fixture.spec.ts
+// END_MODULE_MAP: M-TODAY-WEEK-STRIP
 "use client"
 
 import { useEffect, useState } from "react"
@@ -41,11 +52,21 @@ type Props = {
   selectedDate: Date
   access: AccessInfo
   onSelect?: (_d: Date) => void
+  disableRemoteStatusFetch?: boolean
 }
 
 type WeekStatus = DayStatus | "unknown"
 
-export function WeekStrip({ selectedDate, access, onSelect }: Props) {
+// START_BLOCK: WEEK_RENDER
+export function WeekStrip({ selectedDate, access, onSelect, disableRemoteStatusFetch = false }: Props) {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-WEEK-STRIP.WeekStrip
+  // purpose: Render a horizontal calendar strip for seven days of the current week.
+  // inputs: selectedDate, access state, onSelect date callback, disableRemoteStatusFetch flag.
+  // returns: Calendar strip JSX.
+  // side_effects: Fetches day statuses on mount or when week starts unless fetch is disabled.
+  // emitted_logs: system.error if status fetch fails.
+  // error_behavior: per-day fetch failure becomes unknown; unexpected batch failure logs system.error and leaves week UI usable; no exception is intentionally raised.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-WEEK-STRIP.WeekStrip
   const start = startOfWeek(selectedDate)
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i))
   const range = formatWeekRange(start)
@@ -55,6 +76,10 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
   const startKey = start.getTime()
 
   useEffect(() => {
+    if (disableRemoteStatusFetch) {
+      setStatuses({})
+      return
+    }
     let active = true
     async function load() {
       try {
@@ -80,7 +105,7 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
     return () => {
       active = false
     }
-  }, [startKey])
+  }, [disableRemoteStatusFetch, startKey])
 
   return (
     <section className="px-5" aria-label="Неделя" data-testid="week-strip">
@@ -166,3 +191,4 @@ export function WeekStrip({ selectedDate, access, onSelect }: Props) {
     </section>
   )
 }
+// END_BLOCK: WEEK_RENDER

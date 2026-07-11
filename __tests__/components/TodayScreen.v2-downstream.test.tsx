@@ -28,6 +28,7 @@ import path from "node:path"
 import type { AccessInfo } from "@/lib/contracts/access"
 import { validateAdaptedTodayPayload } from "@/lib/contracts/today"
 import { TodayScreen } from "@/components/today/today-screen"
+import { ConcreteDayAdvice, normalizeConcreteAdviceVerdict } from "@/components/today/concrete-day-advice"
 import { WhyExpanded } from "@/components/today/why-expanded"
 import { DevAuditDrawer } from "@/components/today/dev-audit-drawer"
 import { dayPayloadV2 } from "@/e2e/mock-visual/fixtures/day-v2-2026-07-08"
@@ -272,5 +273,62 @@ describe("TodayScreen V2 downstream fixture", () => {
     const { queryByTestId } = render(<WhyExpanded sections={[]} keyInsight="" v2={v2} open />)
 
     expect(queryByTestId("why-expanded")).toBeNull()
+  })
+
+  it("does not render a timing container when selected evidence has no timing fields", () => {
+    const { payload } = adaptTodayPayload(dayPayloadV2, new Date("2026-07-08T12:00:00Z"))
+    const v2 = structuredClone(payload.v2!)
+    v2.activationEvidence = v2.activationEvidence.map((item) => ({
+      ...item,
+      activeFrom: undefined,
+      exactAt: undefined,
+      activeUntil: undefined,
+    }))
+    render(<WhyExpanded sections={[]} keyInsight="" v2={v2} open />)
+
+    expect(screen.getAllByTestId("why-time-horizon")).toHaveLength(3)
+    expect(screen.queryByTestId("why-time-horizon-timing")).toBeNull()
+  })
+
+  it("renders normalized visible verdict statuses on compact rows and expanded details", () => {
+    const { payload } = adaptTodayPayload(dayPayloadV2, new Date("2026-07-08T12:00:00Z"))
+    const expected = {
+      good: { compact: "Поддержка", details: "Поддерживающий фон" },
+      neutral: { compact: "Ровно", details: "Нейтральный фон" },
+      caution: { compact: "Внимание", details: "Требует внимания" },
+      avoid: { compact: "Отложить", details: "Высокое напряжение · лучше отложить" },
+    } as const
+    const onSelectedKeyChange = vi.fn()
+    const renderNavigator = (selectedKey: string | null) => (
+      <ConcreteDayAdvice
+        concreteAdvice={payload.concreteAdvice}
+        selectedKey={selectedKey}
+        onSelectedKeyChange={onSelectedKeyChange}
+        onWhyOpen={() => {}}
+      />
+    )
+    const { rerender } = render(renderNavigator(null))
+
+    for (const [verdict, copy] of Object.entries(expected)) {
+      const row = screen.getAllByTestId("concrete-day-advice-row").find((element) => element.getAttribute("data-status") === verdict)!
+      const status = row.querySelector('[data-testid="concrete-day-advice-row-status"]')
+      expect(status?.getAttribute("data-status")).toBe(verdict)
+      expect(status?.textContent).toBe(copy.compact)
+    }
+    expect(normalizeConcreteAdviceVerdict("unknown_backend_value")).toBe("neutral")
+
+    for (const [verdict, copy] of Object.entries(expected)) {
+      const selectedRow = screen.getAllByTestId("concrete-day-advice-row").find((element) => element.getAttribute("data-status") === verdict)!
+      const selectedKey = selectedRow.getAttribute("data-sphere-key")!
+      rerender(renderNavigator(selectedKey))
+      const details = screen.getByTestId("concrete-day-advice-details")
+      const badge = screen.getByTestId("concrete-day-advice-details-status")
+      const currentRow = screen.getAllByTestId("concrete-day-advice-row").find((element) => element.getAttribute("data-sphere-key") === selectedKey)!
+      expect(details.getAttribute("data-status")).toBe(verdict)
+      expect(badge.getAttribute("data-status")).toBe(verdict)
+      expect(badge.textContent).toBe(copy.details)
+      expect(currentRow.getAttribute("aria-expanded")).toBe("true")
+      expect(currentRow.getAttribute("aria-controls")).toBe(details.getAttribute("id"))
+    }
   })
 })
