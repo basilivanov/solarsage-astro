@@ -1,0 +1,47 @@
+// ############################################################################
+// AI_HEADER: TEMPLATE_ZOD_SCHEMAS — handlebars template for schemas-only zod generation.
+// ROLE: Generates clean schemas-only zod structures from openapi.json.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-TEMPLATE-ZOD-SCHEMAS
+// purpose: Template file used by openapi-zod-client to generate _generated.zod.ts.
+// owns:
+//   - scripts/contracts/templates/zod-schemas.hbs
+// inputs: handlebars context from openapi-zod-client
+// outputs: TypeScript file text
+// dependencies: openapi-zod-client template engine
+// side_effects: none
+// emitted_logs: none
+// invariants:
+//   - output imports runtime only from zod
+//   - output exports every schemas context entry plus stable `schemas` map
+// failure_policy:
+//   - template/render failure aborts generator and final artifact is not replaced
+// END_MODULE_CONTRACT: M-TEMPLATE-ZOD-SCHEMAS
+
+// START_MODULE_MAP: M-TEMPLATE-ZOD-SCHEMAS
+// public_entrypoints:
+//   - generated schema declarations
+//   - schemas map export
+// semantic_blocks:
+//   - SCHEMA_DECLARATIONS: exports all generated zod schemas
+//   - SCHEMA_MAP: exports unified schema index
+// owned_tests:
+//   - __tests__/contracts/generated-runtime.test.ts
+// END_MODULE_MAP: M-TEMPLATE-ZOD-SCHEMAS
+
+import { z } from "zod";
+
+// START_BLOCK: SCHEMA_DECLARATIONS
+{{#each schemas}}
+export const {{@key}} = {{{this}}};
+{{/each}}
+// END_BLOCK: SCHEMA_DECLARATIONS
+
+// START_BLOCK: SCHEMA_MAP
+export const schemas = {
+{{#each schemas}}
+  {{@key}},
+{{/each}}
+};
+// END_BLOCK: SCHEMA_MAP
