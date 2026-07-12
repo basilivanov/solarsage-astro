@@ -1,0 +1,1448 @@
+schema_version: horizon_actions.ru.v1
+version: v1
+locale: ru
+safety_classes:
+  reflection:
+    allowed_intents:
+    - reflect
+    - clarify
+    - record_observation
+    compatible_verdicts:
+    - good
+    - neutral
+    - caution
+    - avoid
+  reversible_experiment:
+    allowed_intents:
+    - small_experiment
+    compatible_verdicts:
+    - good
+    - neutral
+    - caution
+  low_stakes_communication:
+    allowed_intents:
+    - communicate_boundary
+    - create_draft
+    compatible_verdicts:
+    - good
+    - neutral
+    - caution
+  pacing:
+    allowed_intents:
+    - plan
+    - reduce_load
+    compatible_verdicts:
+    - good
+    - neutral
+    - caution
+    - avoid
+  guardrail:
+    allowed_intents:
+    - postpone_major_decision
+    - avoid_escalation
+    - avoid_overcommitment
+    - avoid_all_at_once
+    - avoid_assumption
+    - avoid_extra_intensity
+    compatible_verdicts:
+    - good
+    - neutral
+    - caution
+    - avoid
+forbidden_intent_pairs:
+- - immediate_major_decision
+  - postpone_major_decision
+- - increase_commitment
+  - avoid_overcommitment
+- - escalate
+  - avoid_escalation
+- - replace_everything
+  - avoid_all_at_once
+- - increase_intensity
+  - avoid_extra_intensity
+forbidden_intents:
+- immediate_major_decision
+- increase_commitment
+- escalate
+- replace_everything
+- increase_intensity
+theme_spheres:
+  communication_learning_documents:
+  - communication
+  - study
+  - documents
+  structure_boundaries_control:
+  - work
+  - money
+  - documents
+  - decisions
+  relationships_values_closeness:
+  - relationships
+  - communication
+  resources_security:
+  - money
+  - documents
+  - decisions
+  - shopping
+  energy_body_pacing:
+  - work
+  - sport
+  - health
+  home_belonging:
+  - money
+  - relationships
+  - decisions
+  inner_clarity_recovery:
+  - health
+  - decisions
+  - creativity
+  direction_growth_meaning:
+  - work
+  - decisions
+  - travel
+  - study
+  creativity_visibility:
+  - work
+  - communication
+  - creativity
+  change_innovation:
+  - work
+  - documents
+  - decisions
+  - creativity
+themes:
+  structure_boundaries_control:
+    long:
+      do:
+      - id: structure.long.inventory
+        text: Разделите текущие обязательства на свои, совместные и взятые по привычке.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+      avoid:
+      - id: structure.long.no_new_load
+        text: Не берите новую долгую ответственность только ради ощущения устойчивости.
+        intent: avoid_overcommitment
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+    medium:
+      do:
+      - id: structure.medium.one_boundary
+        text: Если сейчас обсуждаются роль, объём работы, деньги или условия договорённости, обозначьте одну конкретную границу.
+        intent: communicate_boundary
+        safety_class: low_stakes_communication
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+      - id: structure.medium.one_system_change
+        text: Измените один элемент системы и заранее определите, по какому признаку проверите результат.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+      - id: structure.medium.write_ownership
+        text: Выпишите, что действительно зависит от вас, а что требует отдельной договорённости с другими.
+        intent: clarify
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+      - id: structure.medium.fallback_working_signs
+        text: Составьте короткий список признаков, по которым поймёте, что правило или граница действительно работает.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+      avoid:
+      - id: structure.medium.no_ultimatum
+        text: Не ставьте ультиматум в момент, когда главная потребность — быстро вернуть контроль.
+        intent: avoid_escalation
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+      - id: structure.medium.no_emotional_exit
+        text: Не принимайте крупное необратимое решение в короткий эмоциональный пик.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+      - id: structure.medium.no_control_load
+        text: Не берите новую ответственность только для того, чтобы меньше чувствовать неопределённость.
+        intent: avoid_overcommitment
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+    fast:
+      do:
+      - id: structure.fast.fact_principle_reaction
+        text: Перед ответом отделите факт, принципиальную границу и первую реакцию на давление.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+      avoid:
+      - id: structure.fast.delay_major
+        text: Отложите крупное решение до окончания короткого пика.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - money
+        - documents
+        - decisions
+  communication_learning_documents:
+    long:
+      do:
+      - id: communication.long.rules
+        text: Определите один устойчивый порядок для важных записей, решений или договорённостей.
+        intent: plan
+        safety_class: pacing
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - communication
+        - study
+        - documents
+      avoid:
+      - id: communication.long.no_complexity
+        text: Не усложняйте всю систему информации из-за одной неясной детали.
+        intent: avoid_all_at_once
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - communication
+        - study
+        - documents
+    medium:
+      do:
+      - id: communication.medium.draft
+        text: Если готовится важное сообщение или документ, сначала сделайте короткий черновик с одной главной мыслью.
+        intent: create_draft
+        safety_class: low_stakes_communication
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - communication
+        - study
+        - documents
+      - id: communication.medium.one_question
+        text: Если смысл чужой формулировки неясен, задайте один проверяемый вопрос вместо догадки.
+        intent: clarify
+        safety_class: reflection
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - communication
+        - study
+        - documents
+      - id: communication.medium.fallback_fact_question_draft
+        text: Запишите отдельно факт, вопрос и формулировку, которую пока не стоит отправлять.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - communication
+        - study
+        - documents
+      avoid:
+      - id: communication.medium.no_silence_assumption
+        text: Не считайте паузу, короткий ответ или молчание доказательством чужого намерения.
+        intent: avoid_assumption
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - communication
+        - study
+        - documents
+    fast:
+      do:
+      - id: communication.fast.reread_phrase
+        text: Если ответ важен, перечитайте одну ключевую фразу и проверьте, совпадают ли факт и ваш вывод.
+        intent: clarify
+        safety_class: reflection
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - communication
+        - study
+        - documents
+      avoid:
+      - id: communication.fast.no_hot_send
+        text: Не отправляйте резкий ответ в момент максимального раздражения.
+        intent: avoid_escalation
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - communication
+        - study
+        - documents
+  relationships_values_closeness:
+    long:
+      do:
+      - id: relationships.long.criteria
+        text: Сформулируйте, какие признаки взаимности и уважения к границам для вас действительно устойчивы.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - relationships
+        - communication
+      avoid:
+      - id: relationships.long.no_hidden_test
+        text: Не проверяйте близость скрытыми ожиданиями, о которых другой человек не знает.
+        intent: avoid_assumption
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - relationships
+        - communication
+    medium:
+      do:
+      - id: relationships.medium.one_question
+        text: Если сейчас есть важный разговор, задайте один прямой вопрос о фактах, ожиданиях или границе.
+        intent: clarify
+        safety_class: reflection
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - relationships
+        - communication
+      - id: relationships.medium.one_agreement
+        text: Если договорённость расплывчата, предложите один конкретный следующий шаг, который можно подтвердить или изменить.
+        intent: communicate_boundary
+        safety_class: low_stakes_communication
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - relationships
+        - communication
+      - id: relationships.medium.fallback_known_unknown_boundary
+        text: Запишите, какой факт вы знаете, чего пока не знаете и какую границу хотите прояснить.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - relationships
+        - communication
+      avoid:
+      - id: relationships.medium.no_final_conclusion
+        text: Не делайте окончательный вывод об отношениях по одной реакции или одному дню.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - relationships
+        - communication
+    fast:
+      do:
+      - id: relationships.fast.name_need
+        text: Если тон задел вас сильнее обычного, сначала назовите конкретный факт и то, что требуется уточнить.
+        intent: clarify
+        safety_class: reflection
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - relationships
+        - communication
+      avoid:
+      - id: relationships.fast.no_ultimatum
+        text: Не превращайте короткий пик чувствительности в ультиматум.
+        intent: avoid_escalation
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - relationships
+        - communication
+  resources_security:
+    long:
+      do:
+      - id: resources.long.criteria
+        text: Определите один понятный критерий достаточного запаса времени, денег или внимания.
+        intent: plan
+        safety_class: pacing
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - documents
+        - decisions
+        - shopping
+      avoid:
+      - id: resources.long.no_total_rebuild
+        text: Не перестраивайте все ресурсные правила одновременно.
+        intent: avoid_all_at_once
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - documents
+        - decisions
+        - shopping
+    medium:
+      do:
+      - id: resources.medium.one_measure
+        text: Если сейчас пересматривается расход или обязательство, измените один измеримый параметр и проверьте результат.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - documents
+        - decisions
+        - shopping
+      - id: resources.medium.need_vs_relief
+        text: Если решение хочется принять немедленно, выпишите отдельно реальную необходимость и желание быстро снять неопределённость.
+        intent: reflect
+        safety_class: reflection
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - documents
+        - decisions
+        - shopping
+      - id: resources.medium.fallback_constraint_check
+        text: 'Сверьте решение с одним заранее выбранным ограничением: сроком, суммой или запасом.'
+        intent: clarify
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - documents
+        - decisions
+        - shopping
+      avoid:
+      - id: resources.medium.no_large_emotional
+        text: Не принимайте крупное финансовое или договорное решение в эмоциональный пик.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - documents
+        - decisions
+        - shopping
+    fast:
+      do:
+      - id: resources.fast.pause_criteria
+        text: Если возник импульс потратить, обещать или резко отказаться, сначала вернитесь к заранее выбранному критерию.
+        intent: reflect
+        safety_class: reflection
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - documents
+        - decisions
+        - shopping
+      avoid:
+      - id: resources.fast.no_impulse
+        text: Отложите необязательную крупную покупку или новое обязательство до окончания короткого пика.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - documents
+        - decisions
+        - shopping
+  energy_body_pacing:
+    long:
+      do:
+      - id: energy.long.baseline
+        text: Выберите устойчивый базовый ритм нагрузки, в котором остаётся запас на непредвиденное.
+        intent: plan
+        safety_class: pacing
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - sport
+        - health
+      avoid:
+      - id: energy.long.no_heroic_norm
+        text: Не делайте редкий рывок постоянной нормой нагрузки.
+        intent: avoid_overcommitment
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - sport
+        - health
+    medium:
+      do:
+      - id: energy.medium.one_parameter
+        text: Измените один параметр нагрузки — объём, темп или паузу — и наблюдайте результат без медицинских выводов.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - sport
+        - health
+      - id: energy.medium.reserve
+        text: Если впереди плотный период, заранее оставьте один свободный интервал вместо полного заполнения графика.
+        intent: plan
+        safety_class: pacing
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - sport
+        - health
+      - id: energy.medium.fallback_load_marker
+        text: Зафиксируйте текущий объём нагрузки и один признак, по которому заметите лишнюю интенсивность.
+        intent: record_observation
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - sport
+        - health
+      avoid:
+      - id: energy.medium.no_irritation_intensity
+        text: Не увеличивайте интенсивность только из раздражения или желания быстрее доказать результат.
+        intent: avoid_extra_intensity
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - sport
+        - health
+    fast:
+      do:
+      - id: energy.fast.reduce_one_step
+        text: Уберите один необязательный источник спешки перед следующим действием.
+        intent: reduce_load
+        safety_class: pacing
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - sport
+        - health
+      avoid:
+      - id: energy.fast.no_extra_intensity
+        text: Не добавляйте нагрузку в момент максимального раздражения или спешки.
+        intent: avoid_extra_intensity
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - sport
+        - health
+  home_belonging:
+    long:
+      do:
+      - id: home.long.conditions
+        text: Опишите условия пространства и быта, при которых вам легче сохранять устойчивость.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+      avoid:
+      - id: home.long.no_event_assumption
+        text: Не превращайте внутреннюю потребность в опоре в вывод, что обязательно нужен переезд или резкий разрыв привычного
+          порядка.
+        intent: avoid_assumption
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+    medium:
+      do:
+      - id: home.medium.one_rule
+        text: Если сейчас меняется домашний порядок, проверьте одно правило или распределение ответственности в ограниченный
+          срок.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+      - id: home.medium.name_boundary
+        text: Если личное пространство нарушается, назовите одну конкретную границу без общего обвинения.
+        intent: communicate_boundary
+        safety_class: low_stakes_communication
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+      - id: home.medium.fallback_rule_cost
+        text: Запишите одно бытовое правило, которое сейчас создаёт больше напряжения, чем пользы.
+        intent: record_observation
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+      - id: home.medium.fallback_fact_not_generalization
+        text: Отделите конкретное неудобство от общего вывода о доме или близких.
+        intent: clarify
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+      avoid:
+      - id: home.medium.no_total_rearrange
+        text: Не меняйте весь бытовой порядок из-за одного дня раздражения.
+        intent: avoid_all_at_once
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+    fast:
+      do:
+      - id: home.fast.specific_discomfort
+        text: Назовите одно конкретное неудобство, не превращая его в общий вывод о доме или близких.
+        intent: record_observation
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+      avoid:
+      - id: home.fast.no_generalization
+        text: Не считайте короткую реакцию доказательством того, что вся ситуация безнадёжна.
+        intent: avoid_assumption
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - money
+        - relationships
+        - decisions
+  inner_clarity_recovery:
+    long:
+      do:
+      - id: clarity.long.conditions
+        text: 'Зафиксируйте условия, после которых ясность обычно возвращается: тишину, порядок входящих или завершённый маленький
+          шаг.'
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - health
+        - decisions
+        - creativity
+      avoid:
+      - id: clarity.long.no_diagnosis
+        text: Не превращайте астрологический сигнал или один тяжёлый день в медицинский или психологический диагноз.
+        intent: avoid_assumption
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - health
+        - decisions
+        - creativity
+    medium:
+      do:
+      - id: clarity.medium.one_noise_source
+        text: Ограничьте один повторяющийся источник информационного шума и заранее выберите срок проверки эффекта.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - health
+        - decisions
+        - creativity
+      - id: clarity.medium.write_fact_story
+        text: Выпишите отдельно наблюдаемый факт, свою интерпретацию и то, что пока неизвестно.
+        intent: clarify
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - health
+        - decisions
+        - creativity
+      - id: clarity.medium.fallback_open_question
+        text: Назовите один вопрос, который можно оставить открытым до появления новых фактов.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - health
+        - decisions
+        - creativity
+      avoid:
+      - id: clarity.medium.no_final_in_fatigue
+        text: Не принимайте окончательное решение только ради прекращения внутреннего шума.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - health
+        - decisions
+        - creativity
+    fast:
+      do:
+      - id: clarity.fast.one_fact
+        text: Зафиксируйте один факт и вернитесь к выводу после короткой паузы без входящих.
+        intent: record_observation
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - health
+        - decisions
+        - creativity
+      avoid:
+      - id: clarity.fast.no_first_thought
+        text: Не считайте первую громкую мысль самым точным объяснением ситуации.
+        intent: avoid_assumption
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - health
+        - decisions
+        - creativity
+  direction_growth_meaning:
+    long:
+      do:
+      - id: direction.long.criteria
+        text: Определите два критерия, по которым долгий путь действительно имеет для вас смысл.
+        intent: plan
+        safety_class: pacing
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - decisions
+        - travel
+        - study
+      avoid:
+      - id: direction.long.no_required_change
+        text: Не считайте, что длительный астрологический цикл сам по себе требует сменить работу, обучение или место жизни.
+        intent: avoid_assumption
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - decisions
+        - travel
+        - study
+    medium:
+      do:
+      - id: direction.medium.small_test
+        text: Если появилась новая возможность, проверьте её одним ограниченным шагом без долгого обязательства.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - decisions
+        - travel
+        - study
+      - id: direction.medium.success_signal
+        text: Заранее запишите, какой наблюдаемый результат будет признаком, что направление стоит продолжать.
+        intent: plan
+        safety_class: pacing
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - decisions
+        - travel
+        - study
+      - id: direction.medium.fallback_pro_con_unknown
+        text: Запишите один аргумент за, один против и один факт, которого пока не хватает.
+        intent: clarify
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - decisions
+        - travel
+        - study
+      avoid:
+      - id: direction.medium.no_whole_route
+        text: Не обещайте себе весь маршрут до результата первого теста.
+        intent: avoid_overcommitment
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - decisions
+        - travel
+        - study
+    fast:
+      do:
+      - id: direction.fast.record_idea
+        text: Запишите сильную идею и один вопрос, который нужно проверить до решения.
+        intent: record_observation
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - decisions
+        - travel
+        - study
+      avoid:
+      - id: direction.fast.no_big_commitment
+        text: Не превращайте короткий подъём ожиданий в крупное обязательство сегодня.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - decisions
+        - travel
+        - study
+  creativity_visibility:
+    long:
+      do:
+      - id: creativity.long.practice
+        text: Выберите устойчивый способ регулярно доводить идеи до видимого черновика.
+        intent: plan
+        safety_class: pacing
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+      avoid:
+      - id: creativity.long.no_visibility_rule
+        text: Не делайте постоянную публичность обязательным условием ценности результата.
+        intent: avoid_overcommitment
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+    medium:
+      do:
+      - id: creativity.medium.small_audience
+        text: Если есть черновик, покажите его ограниченной аудитории и запросите один конкретный вид обратной связи.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: true
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+      - id: creativity.medium.separate_feedback
+        text: Разделите фактическую обратную связь, вкусовую реакцию и собственный следующий шаг.
+        intent: clarify
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+      - id: creativity.medium.fallback_one_element
+        text: Запишите один элемент результата, который уже можно оценить отдельно от общего впечатления.
+        intent: record_observation
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+      avoid:
+      - id: creativity.medium.no_total_judgment
+        text: Не оценивайте всю свою способность по одной реакции на один результат.
+        intent: avoid_assumption
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+    fast:
+      do:
+      - id: creativity.fast.rough_version
+        text: Сделайте грубую версию следующего шага, не требуя от неё финального качества.
+        intent: create_draft
+        safety_class: low_stakes_communication
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+      - id: creativity.fast.fallback_feedback_fact
+        text: Запишите одну конкретную деталь обратной связи и отложите общую оценку результата.
+        intent: record_observation
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+      avoid:
+      - id: creativity.fast.no_delete
+        text: Не удаляйте и не отбрасывайте весь результат в пик реакции на оценку.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - communication
+        - creativity
+  change_innovation:
+    long:
+      do:
+      - id: change.long.outdated_rule
+        text: Назовите одно правило системы, которое перестало выполнять исходную задачу.
+        intent: reflect
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity
+      avoid:
+      - id: change.long.no_destroy_first
+        text: Не разрушайте рабочую систему до появления проверяемой замены.
+        intent: avoid_all_at_once
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity
+    medium:
+      do:
+      - id: change.medium.one_element
+        text: Измените один элемент процесса и сравните результат по заранее выбранному критерию.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity
+      - id: change.medium.rollback
+        text: До эксперимента определите простой способ вернуть прежний вариант, если новый не сработает.
+        intent: plan
+        safety_class: pacing
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity
+      - id: change.medium.fallback_problem_first
+        text: Сформулируйте, какую проблему должно решить изменение, прежде чем выбирать новый способ.
+        intent: clarify
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity
+      avoid:
+      - id: change.medium.no_everything
+        text: Не меняйте одновременно инструмент, сроки, роли и критерий успеха.
+        intent: avoid_all_at_once
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity
+    fast:
+      do:
+      - id: change.fast.smallest_change
+        text: Выберите самое маленькое обратимое изменение, которое даст новую информацию.
+        intent: small_experiment
+        safety_class: reversible_experiment
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity
+      - id: change.fast.fallback_record_small_change
+        text: Запишите самое маленькое изменение, которое можно проверить позже без разрушения текущей системы.
+        intent: record_observation
+        safety_class: reflection
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity
+      avoid:
+      - id: change.fast.no_sudden_break
+        text: Не принимайте решение о резком полном разрыве с прежним способом в короткий пик.
+        intent: postpone_major_decision
+        safety_class: guardrail
+        conditional: false
+        tones:
+        - supportive
+        - neutral
+        - tense
+        - mixed
+        sphere_keys:
+        - work
+        - documents
+        - decisions
+        - creativity

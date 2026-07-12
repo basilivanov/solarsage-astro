@@ -2,6 +2,7 @@
 
 import pytest
 from pathlib import Path
+import shutil
 
 from app.services.canon_service import (
     validate_canon_bundle,
@@ -53,11 +54,15 @@ def test_invalid_canon_data_raises(tmp_path: Path):
     """validate_canon_bundle raises on invalid YAML."""
     d = tmp_path / "missing_schema"
     d.mkdir()
-    (d / "spheres.v1.yml").write_text('schema_version: spheres.v1\nspheres: {}\n', encoding="utf-8")
-    (d / "dignities.v1.yml").write_text('schema_version: dignities.v1\n', encoding="utf-8")
-    (d / "aspect_rules.v1.yml").write_text('schema_version: aspect_rules.v1\naspect_weights: {}\naspect_threshold: {}\n', encoding="utf-8")
-    (d / "activation_rules.v1.yml").write_text('schema_version: activation_rules.v1\ntechnique_families: {}\n', encoding="utf-8")
-    (d / "scoring_v2.v1.yml").write_text('schema_version: scoring_v2.v1\n', encoding="utf-8")
+    (d / "spheres.v1.yml").write_text("schema_version: spheres.v1\nspheres: {}\n", encoding="utf-8")
+    (d / "dignities.v1.yml").write_text("schema_version: dignities.v1\n", encoding="utf-8")
+    (d / "aspect_rules.v1.yml").write_text(
+        "schema_version: aspect_rules.v1\naspect_weights: {}\naspect_threshold: {}\n", encoding="utf-8"
+    )
+    (d / "activation_rules.v1.yml").write_text(
+        "schema_version: activation_rules.v1\ntechnique_families: {}\n", encoding="utf-8"
+    )
+    (d / "scoring_v2.v1.yml").write_text("schema_version: scoring_v2.v1\n", encoding="utf-8")
     (d / "horizon_selection.v1.yml").write_text(VALID_HORIZON_CANON, encoding="utf-8")
     with pytest.raises(CanonValidationError, match="is empty"):
         validate_canon_bundle(d)
@@ -67,12 +72,32 @@ def test_missing_required_key_raises(tmp_path: Path):
     """Missing required key in canon file raises."""
     d = tmp_path / "missing_key"
     d.mkdir()
-    (d / "spheres.v1.yml").write_text('schema_version: spheres.v1\nspheres: {}\n', encoding="utf-8")
-    (d / "dignities.v1.yml").write_text('schema_version: dignities.v1\n', encoding="utf-8")
+    (d / "spheres.v1.yml").write_text("schema_version: spheres.v1\nspheres: {}\n", encoding="utf-8")
+    (d / "dignities.v1.yml").write_text("schema_version: dignities.v1\n", encoding="utf-8")
     # aspect_rules missing required 'aspect_weights'
-    (d / "aspect_rules.v1.yml").write_text('schema_version: aspect_rules.v1\nsome_other_key: true\n', encoding="utf-8")
-    (d / "activation_rules.v1.yml").write_text('schema_version: activation_rules.v1\ntechnique_families:\n  transit:\n    members: [transit_to_natal]\n    independence_weight: 1.0\n', encoding="utf-8")
-    (d / "scoring_v2.v1.yml").write_text('schema_version: scoring_v2.v1\n', encoding="utf-8")
+    (d / "aspect_rules.v1.yml").write_text("schema_version: aspect_rules.v1\nsome_other_key: true\n", encoding="utf-8")
+    (d / "activation_rules.v1.yml").write_text(
+        "schema_version: activation_rules.v1\ntechnique_families:\n  transit:\n    members: [transit_to_natal]\n    independence_weight: 1.0\n",
+        encoding="utf-8",
+    )
+    (d / "scoring_v2.v1.yml").write_text("schema_version: scoring_v2.v1\n", encoding="utf-8")
     (d / "horizon_selection.v1.yml").write_text(VALID_HORIZON_CANON, encoding="utf-8")
     with pytest.raises(CanonValidationError, match="missing required key"):
         validate_canon_bundle(d)
+
+
+def test_content_canons_are_required_by_strict_startup_validation(tmp_path: Path):
+    """A complete copied canon directory validates, while every B2B1 file remains fail-closed."""
+    copied = tmp_path / "canon"
+    shutil.copytree(CANON_DIR, copied)
+    validate_canon_bundle(copied)
+    for filename in (
+        "horizon_language.ru.v1.yml",
+        "horizon_actions.ru.v1.yml",
+        "personal_patterns.ru.v1.yml",
+    ):
+        isolated = tmp_path / filename
+        shutil.copytree(CANON_DIR, isolated)
+        (isolated / filename).unlink()
+        with pytest.raises(CanonValidationError, match="missing canon file"):
+            validate_canon_bundle(isolated)

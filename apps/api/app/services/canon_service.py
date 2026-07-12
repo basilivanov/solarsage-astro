@@ -25,6 +25,9 @@ CANON_FILES = [
 
 OPTIONAL_INTERNAL_CANON_FILES = [
     "horizon_selection.v1.yml",
+    "horizon_language.ru.v1.yml",
+    "horizon_actions.ru.v1.yml",
+    "personal_patterns.ru.v1.yml",
 ]
 
 CANON_VERSIONS: dict[str, str] = {
@@ -106,8 +109,10 @@ def validate_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, 
                 )
 
     from app.services.horizon_canon_service import load_horizon_selection_canon
+    from app.services.horizon_content_canon_service import load_horizon_content_canons
 
     load_horizon_selection_canon((cd / "horizon_selection.v1.yml").resolve())
+    load_horizon_content_canons(cd.resolve())
 
     return bundle
 
