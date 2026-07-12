@@ -10,7 +10,7 @@
 // inputs: browser navigation to local dev URL
 // outputs: Playwright test assertions, screenshot writes
 // dependencies: Playwright test, local server
-// side_effects: writes browser screenshots to docs/work/2026-07-11_dev-only-three-horizon-timing-fixture-preview/assets/browser-timing-fixture-mobile.png
+// side_effects: writes browser screenshot to docs/work/2026-07-11_today-v2-real-horizons-main-deploy/b1/01-backend-contract-horizons-mobile.png
 // emitted_logs: none
 // invariants: fixture делает только guarded fixture API request, обычный route не активирует fixture, три timing blocks соответствуют payload
 // failure_policy: fail E2E test
@@ -20,10 +20,10 @@
 // public_entrypoints:
 //   - test
 // semantic_blocks:
-//   - TIMING_VERIFICATION: verifies timing details and stages for three horizons
+//   - TIMING_VERIFICATION: verifies backend horizon details and stages for three horizons
 //   - INTERCEPTION_VERIFICATION: ensures auth and ordinary APIs are not triggered in fixture mode
 //   - DATE_ROUTING_VERIFICATION: verifies navigating to other dates strips the fixture query
-//   - SCREENSHOT_CAPTURE: writes mobile layout reference to docs/work/2026-07-11_dev-only-three-horizon-timing-fixture-preview/assets/browser-timing-fixture-mobile.png
+//   - SCREENSHOT_CAPTURE: writes mobile layout reference to docs/work/2026-07-11_today-v2-real-horizons-main-deploy/b1/01-backend-contract-horizons-mobile.png
 // owned_tests:
 //   - e2e/dev-timing-fixture.spec.ts
 // END_MODULE_MAP: M-E2E-DEV-TIMING-FIXTURE
@@ -34,7 +34,7 @@ import path from "node:path"
 
 const ASSET_PATH = path.join(
   process.cwd(),
-  "docs/work/2026-07-11_dev-only-three-horizon-timing-fixture-preview/assets/browser-timing-fixture-mobile.png",
+  "docs/work/2026-07-11_today-v2-real-horizons-main-deploy/b1/01-backend-contract-horizons-mobile.png",
 )
 
 test("isolates the development-only three-horizon timing fixture from normal APIs", async ({ page, browser }) => {
@@ -48,19 +48,27 @@ test("isolates the development-only three-horizon timing fixture from normal API
 
   const fixture = page.getByTestId("dev-timing-fixture")
   await expect(fixture).toBeVisible()
-  const timing = fixture.getByTestId("why-time-horizon-timing")
+  const timing = fixture.getByTestId("why-horizon-timing")
   await expect(timing).toHaveCount(3)
-  const long = fixture.locator('[data-testid="why-time-horizon"][data-horizon="long"]')
-  const medium = fixture.locator('[data-testid="why-time-horizon"][data-horizon="medium"]')
-  const fast = fixture.locator('[data-testid="why-time-horizon"][data-horizon="fast"]')
-  await expect(long).toContainText("Действует: 12 мая 2026 — 11 мая 2027")
-  await expect(long).toContainText("Сейчас: Фон уже действует")
-  await expect(medium).toContainText("Активно: 3 июля 2026 — 18 июля 2026")
-  await expect(medium).toContainText("Пик: 10 июля 2026, 11:32")
-  await expect(medium).toContainText("Сейчас: Набирает силу")
-  await expect(fast).toContainText("Активно: 7 июля 2026 — 9 июля 2026")
-  await expect(fast).toContainText("Пик: 8 июля 2026, 05:00")
-  await expect(fast).toContainText("Сейчас: Пик уже пройден · влияние ослабевает")
+  const horizons = fixture.getByTestId("why-horizons")
+  await expect(horizons).toHaveAttribute("data-source", "backend-horizons")
+  const long = fixture.locator('[data-testid="why-horizon"][data-horizon="long"]')
+  const medium = fixture.locator('[data-testid="why-horizon"][data-horizon="medium"]')
+  const fast = fixture.locator('[data-testid="why-horizon"][data-horizon="fast"]')
+  await expect(long.getByTestId("why-horizon-tone")).toHaveAttribute("data-status", "mixed")
+  await expect(medium.getByTestId("why-horizon-tone")).toHaveAttribute("data-status", "mixed")
+  await expect(fast.getByTestId("why-horizon-tone")).toHaveAttribute("data-status", "tense")
+  await expect(long).toContainText("Фон уже действует")
+  await expect(medium).toContainText("Набирает силу")
+  await expect(medium).toContainText("Точный пик — 10 июля, 14:32 по Москве")
+  await expect(fast).toContainText("Пик уже пройден")
+  await expect(fixture.getByTestId("why-horizon-technical-toggle").first()).toHaveAttribute("aria-expanded", "false")
+  await fixture.getByTestId("why-horizon-technical-toggle").first().click()
+  await expect(fixture.getByTestId("why-horizon-technical-content")).toContainText("Профекция")
+  await fast.getByTestId("why-horizon-technical-toggle").click()
+  await expect(fast.getByTestId("why-horizon-technical-content")).toContainText("С 8 по 10 июля по Москве")
+  await fixture.getByTestId("why-horizon-sphere").filter({ hasText: "Работа" }).first().click()
+  await expect(fixture.getByTestId("concrete-day-advice-details")).toHaveAttribute("data-sphere-key", "work")
   expect([...apiRequests]).toEqual(["/api/dev-fixtures/three-horizon-timing"])
   fs.mkdirSync(path.dirname(ASSET_PATH), { recursive: true })
   const why = fixture.getByTestId("why-expanded")

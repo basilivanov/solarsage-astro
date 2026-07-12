@@ -32,6 +32,7 @@ import { dayPayloadV2 } from "@/e2e/mock-visual/fixtures/day-v2-2026-07-08"
 import {
   TodayPayloadWireSchema,
   TodayV2BlockWireSchema,
+  TodayV2HorizonsBlockWireSchema,
   ActivationEvidenceWireSchema,
 } from "@/packages/contracts/runtime"
 import {
@@ -43,6 +44,7 @@ describe("generated runtime zod schemas", () => {
   it("parses a canonical valid API payload", () => {
     const parsed = TodayPayloadWireSchema.safeParse(dayPayloadV2)
     expect(parsed.success).toBe(true)
+    expect(TodayV2HorizonsBlockWireSchema.safeParse(dayPayloadV2.v2?.horizons).success).toBe(true)
   })
 
   it("rejects missing required root field", () => {
@@ -65,9 +67,42 @@ describe("generated runtime zod schemas", () => {
     const additivePayload = {
       ...dayPayloadV2,
       extraNewFieldFromFutureBackend: "yes",
+      v2: {
+        ...dayPayloadV2.v2,
+        horizons: {
+          ...dayPayloadV2.v2!.horizons,
+          futureBackendField: "allowed-and-stripped",
+        },
+      },
     }
     const parsed = TodayPayloadWireSchema.safeParse(additivePayload)
     expect(parsed.success).toBe(true)
+    expect(parsed.success && Reflect.has(parsed.data.v2!.horizons as object, "futureBackendField")).toBe(false)
+  })
+
+  it("rejects invalid horizon tone and timing scalar", () => {
+    const malformedTone = structuredClone(dayPayloadV2)
+    malformedTone.v2!.horizons!.items[0].tone = "bad-tone" as never
+    expect(TodayPayloadWireSchema.safeParse(malformedTone).success).toBe(false)
+
+    const malformedTiming = structuredClone(dayPayloadV2)
+    malformedTiming.v2!.horizons!.items[1].timing.precision = "bad-precision" as never
+    expect(TodayPayloadWireSchema.safeParse(malformedTiming).success).toBe(false)
+  })
+
+  it("accepts null or absent horizons for rolling fallback", () => {
+    const nullHorizons = {
+      ...dayPayloadV2,
+      v2: {
+        ...dayPayloadV2.v2!,
+        horizons: null,
+      },
+    }
+    expect(TodayPayloadWireSchema.safeParse(nullHorizons).success).toBe(true)
+
+    const absentHorizons = structuredClone(dayPayloadV2)
+    delete (absentHorizons.v2 as Record<string, unknown>).horizons
+    expect(TodayPayloadWireSchema.safeParse(absentHorizons).success).toBe(true)
   })
 
   it("proves that generated zod validator rejects wrong known timing type", () => {

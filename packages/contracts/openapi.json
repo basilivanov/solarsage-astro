@@ -4162,6 +4162,16 @@
           "audit": {
             "$ref": "#/components/schemas/TodayV2Audit"
           },
+          "horizons": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayV2HorizonsBlock"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "scoreBreakdown": {
             "additionalProperties": {
               "$ref": "#/components/schemas/SphereScoreV2"
@@ -4185,6 +4195,613 @@
           "audit"
         ],
         "title": "TodayV2Block",
+        "type": "object"
+      },
+      "TodayV2GroundedItem": {
+        "additionalProperties": false,
+        "properties": {
+          "conditional": {
+            "default": false,
+            "title": "Conditional",
+            "type": "boolean"
+          },
+          "id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "explanation",
+              "strength",
+              "risk",
+              "manifestation",
+              "action",
+              "avoid",
+              "technique_definition"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/TodayV2Provenance"
+          },
+          "text": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "text",
+          "provenance"
+        ],
+        "title": "TodayV2GroundedItem",
+        "type": "object"
+      },
+      "TodayV2Horizon": {
+        "additionalProperties": false,
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/TodayV2HorizonActions"
+          },
+          "activationIds": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Activationids",
+            "type": "array"
+          },
+          "eyebrow": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Eyebrow",
+            "type": "string"
+          },
+          "horizon": {
+            "enum": [
+              "long",
+              "medium",
+              "fast"
+            ],
+            "title": "Horizon",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "likelySpheres": {
+            "items": {
+              "enum": [
+                "work",
+                "money",
+                "documents",
+                "relationships",
+                "sport",
+                "communication",
+                "health",
+                "decisions",
+                "travel",
+                "creativity",
+                "study",
+                "shopping"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Likelyspheres",
+            "type": "array"
+          },
+          "manifestations": {
+            "items": {
+              "$ref": "#/components/schemas/TodayV2Manifestation"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Manifestations",
+            "type": "array"
+          },
+          "plainExplanation": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Plainexplanation",
+            "type": "string"
+          },
+          "risk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayV2GroundedItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "strength": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayV2GroundedItem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "techniqueExplanations": {
+            "items": {
+              "$ref": "#/components/schemas/TodayV2TechniqueExplanation"
+            },
+            "minItems": 1,
+            "title": "Techniqueexplanations",
+            "type": "array"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/TodayV2HorizonTiming"
+          },
+          "title": {
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "supportive",
+              "neutral",
+              "tense",
+              "mixed"
+            ],
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "horizon",
+          "tone",
+          "eyebrow",
+          "title",
+          "summary",
+          "plainExplanation",
+          "timing",
+          "likelySpheres",
+          "manifestations",
+          "actions",
+          "techniqueExplanations",
+          "activationIds"
+        ],
+        "title": "TodayV2Horizon",
+        "type": "object"
+      },
+      "TodayV2HorizonActions": {
+        "additionalProperties": false,
+        "properties": {
+          "avoid": {
+            "items": {
+              "$ref": "#/components/schemas/TodayV2GroundedItem"
+            },
+            "minItems": 1,
+            "title": "Avoid",
+            "type": "array"
+          },
+          "do": {
+            "items": {
+              "$ref": "#/components/schemas/TodayV2GroundedItem"
+            },
+            "minItems": 1,
+            "title": "Do",
+            "type": "array"
+          },
+          "heading": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Heading",
+            "type": "string"
+          },
+          "validUntil": {
+            "title": "Validuntil",
+            "type": "string"
+          },
+          "validUntilLabel": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Validuntillabel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "heading",
+          "validUntil",
+          "validUntilLabel",
+          "do",
+          "avoid"
+        ],
+        "title": "TodayV2HorizonActions",
+        "type": "object"
+      },
+      "TodayV2HorizonIntro": {
+        "additionalProperties": false,
+        "properties": {
+          "activationIds": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Activationids",
+            "type": "array"
+          },
+          "body": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "eyebrow": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Eyebrow",
+            "type": "string"
+          },
+          "headline": {
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Headline",
+            "type": "string"
+          },
+          "themeKey": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Themekey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eyebrow",
+          "headline",
+          "body",
+          "themeKey",
+          "activationIds"
+        ],
+        "title": "TodayV2HorizonIntro",
+        "type": "object"
+      },
+      "TodayV2HorizonTiming": {
+        "additionalProperties": false,
+        "properties": {
+          "activeFrom": {
+            "title": "Activefrom",
+            "type": "string"
+          },
+          "activeUntil": {
+            "title": "Activeuntil",
+            "type": "string"
+          },
+          "exactAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exactat"
+          },
+          "peakLabel": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peaklabel"
+          },
+          "precision": {
+            "enum": [
+              "date",
+              "instant"
+            ],
+            "title": "Precision",
+            "type": "string"
+          },
+          "rangeLabel": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Rangelabel",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "upcoming",
+              "building",
+              "active",
+              "exact",
+              "peaked",
+              "fading",
+              "background"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "stateLabel": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Statelabel",
+            "type": "string"
+          },
+          "timezone": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activeFrom",
+          "activeUntil",
+          "precision",
+          "state",
+          "rangeLabel",
+          "stateLabel",
+          "timezone"
+        ],
+        "title": "TodayV2HorizonTiming",
+        "type": "object"
+      },
+      "TodayV2HorizonsBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "guidanceMode": {
+            "enum": [
+              "deterministic",
+              "llm_refined"
+            ],
+            "title": "Guidancemode",
+            "type": "string"
+          },
+          "intro": {
+            "$ref": "#/components/schemas/TodayV2HorizonIntro"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TodayV2Horizon"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Items",
+            "type": "array"
+          },
+          "schemaVersion": {
+            "const": "today-horizons.v1",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "guidanceMode",
+          "intro",
+          "items"
+        ],
+        "title": "TodayV2HorizonsBlock",
+        "type": "object"
+      },
+      "TodayV2Manifestation": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "maxLength": 1200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition"
+          },
+          "id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/TodayV2Provenance"
+          },
+          "sphereKeys": {
+            "items": {
+              "enum": [
+                "work",
+                "money",
+                "documents",
+                "relationships",
+                "sport",
+                "communication",
+                "health",
+                "decisions",
+                "travel",
+                "creativity",
+                "study",
+                "shopping"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Spherekeys",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "sphereKeys",
+          "provenance"
+        ],
+        "title": "TodayV2Manifestation",
+        "type": "object"
+      },
+      "TodayV2Provenance": {
+        "additionalProperties": false,
+        "properties": {
+          "activationIds": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Activationids",
+            "type": "array"
+          },
+          "natalFactIds": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 2,
+              "pattern": "^[a-z0-9][a-z0-9._:-]{1,127}$",
+              "type": "string"
+            },
+            "title": "Natalfactids",
+            "type": "array"
+          },
+          "profileFactIds": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 2,
+              "pattern": "^[a-z0-9][a-z0-9._:-]{1,127}$",
+              "type": "string"
+            },
+            "title": "Profilefactids",
+            "type": "array"
+          },
+          "sphereKeys": {
+            "items": {
+              "enum": [
+                "work",
+                "money",
+                "documents",
+                "relationships",
+                "sport",
+                "communication",
+                "health",
+                "decisions",
+                "travel",
+                "creativity",
+                "study",
+                "shopping"
+              ],
+              "type": "string"
+            },
+            "title": "Spherekeys",
+            "type": "array"
+          }
+        },
+        "title": "TodayV2Provenance",
+        "type": "object"
+      },
+      "TodayV2TechniqueExplanation": {
+        "additionalProperties": false,
+        "properties": {
+          "activationIds": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Activationids",
+            "type": "array"
+          },
+          "label": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "technique": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Technique",
+            "type": "string"
+          },
+          "timing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayV2HorizonTiming"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "whatItIs": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Whatitis",
+            "type": "string"
+          },
+          "whyItMattersNow": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Whyitmattersnow",
+            "type": "string"
+          }
+        },
+        "required": [
+          "technique",
+          "label",
+          "whatItIs",
+          "whyItMattersNow",
+          "activationIds"
+        ],
+        "title": "TodayV2TechniqueExplanation",
         "type": "object"
       },
       "TodayV2WhyTodayItem": {

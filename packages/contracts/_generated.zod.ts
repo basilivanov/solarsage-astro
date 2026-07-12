@@ -818,6 +818,165 @@ export const TodayV2Audit = z.object({
     .union([z.object({}).partial().passthrough(), z.null()])
     .optional(),
 });
+export const TodayV2HorizonIntro = z.object({
+  activationIds: z.array(z.string().min(1).max(160)).min(1),
+  body: z.string().min(1).max(1200),
+  eyebrow: z.string().min(1).max(160),
+  headline: z.string().min(1).max(240),
+  themeKey: z.string().min(1).max(160),
+});
+export const TodayV2Provenance = z
+  .object({
+    activationIds: z.array(z.string().min(1).max(160)),
+    natalFactIds: z.array(
+      z
+        .string()
+        .min(2)
+        .max(128)
+        .regex(/^[a-z0-9][a-z0-9._:-]{1,127}$/)
+    ),
+    profileFactIds: z.array(
+      z
+        .string()
+        .min(2)
+        .max(128)
+        .regex(/^[a-z0-9][a-z0-9._:-]{1,127}$/)
+    ),
+    sphereKeys: z.array(
+      z.enum([
+        "work",
+        "money",
+        "documents",
+        "relationships",
+        "sport",
+        "communication",
+        "health",
+        "decisions",
+        "travel",
+        "creativity",
+        "study",
+        "shopping",
+      ])
+    ),
+  })
+  .partial();
+export const TodayV2GroundedItem = z.object({
+  conditional: z.boolean().optional().default(false),
+  id: z.string().min(1).max(160),
+  kind: z.enum([
+    "explanation",
+    "strength",
+    "risk",
+    "manifestation",
+    "action",
+    "avoid",
+    "technique_definition",
+  ]),
+  provenance: TodayV2Provenance,
+  text: z.string().min(1).max(1200),
+});
+export const TodayV2HorizonActions = z.object({
+  avoid: z.array(TodayV2GroundedItem).min(1),
+  do: z.array(TodayV2GroundedItem).min(1),
+  heading: z.string().min(1).max(160),
+  validUntil: z.string(),
+  validUntilLabel: z.string().min(1).max(160),
+});
+export const TodayV2Manifestation = z.object({
+  body: z.string().min(1).max(1200),
+  condition: z.union([z.string(), z.null()]).optional(),
+  id: z.string().min(1).max(160),
+  provenance: TodayV2Provenance,
+  sphereKeys: z
+    .array(
+      z.enum([
+        "work",
+        "money",
+        "documents",
+        "relationships",
+        "sport",
+        "communication",
+        "health",
+        "decisions",
+        "travel",
+        "creativity",
+        "study",
+        "shopping",
+      ])
+    )
+    .min(1)
+    .max(3),
+  title: z.string().min(1).max(240),
+});
+export const TodayV2HorizonTiming = z.object({
+  activeFrom: z.string(),
+  activeUntil: z.string(),
+  exactAt: z.union([z.string(), z.null()]).optional(),
+  peakLabel: z.union([z.string(), z.null()]).optional(),
+  precision: z.enum(["date", "instant"]),
+  rangeLabel: z.string().min(1).max(160),
+  state: z.enum([
+    "upcoming",
+    "building",
+    "active",
+    "exact",
+    "peaked",
+    "fading",
+    "background",
+  ]),
+  stateLabel: z.string().min(1).max(160),
+  timezone: z.string().min(1).max(80),
+});
+export const TodayV2TechniqueExplanation = z.object({
+  activationIds: z.array(z.string().min(1).max(160)).min(1),
+  label: z.string().min(1).max(160),
+  technique: z.string().min(1).max(160),
+  timing: z.union([TodayV2HorizonTiming, z.null()]).optional(),
+  whatItIs: z.string().min(1).max(1200),
+  whyItMattersNow: z.string().min(1).max(1200),
+});
+export const TodayV2Horizon = z.object({
+  actions: TodayV2HorizonActions,
+  activationIds: z.array(z.string().min(1).max(160)).min(1),
+  eyebrow: z.string().min(1).max(160),
+  horizon: z.enum(["long", "medium", "fast"]),
+  id: z.string().min(1).max(160),
+  likelySpheres: z
+    .array(
+      z.enum([
+        "work",
+        "money",
+        "documents",
+        "relationships",
+        "sport",
+        "communication",
+        "health",
+        "decisions",
+        "travel",
+        "creativity",
+        "study",
+        "shopping",
+      ])
+    )
+    .min(1)
+    .max(3),
+  manifestations: z.array(TodayV2Manifestation).min(1).max(3),
+  plainExplanation: z.string().min(1).max(1200),
+  risk: z.union([TodayV2GroundedItem, z.null()]).optional(),
+  strength: z.union([TodayV2GroundedItem, z.null()]).optional(),
+  summary: z.string().min(1).max(1200),
+  techniqueExplanations: z.array(TodayV2TechniqueExplanation).min(1),
+  timing: TodayV2HorizonTiming,
+  title: z.string().min(1).max(240),
+  tone: z.enum(["supportive", "neutral", "tense", "mixed"]),
+});
+export const TodayV2HorizonsBlock = z.object({
+  guidanceMode: z.enum(["deterministic", "llm_refined"]),
+  intro: TodayV2HorizonIntro,
+  items: z.array(TodayV2Horizon).min(3).max(3),
+  schemaVersion: z.literal("today-horizons.v1"),
+  warnings: z.array(z.string().min(1).max(160)).optional(),
+});
 export const TodayV2WhyTodayItem = z.object({
   activationIds: z.array(z.string()),
   body: z.string(),
@@ -829,6 +988,7 @@ export const TodayV2Block = z.object({
   activationEvidence: z.array(ActivationEvidence),
   activationSummary: TodayV2ActivationSummary,
   audit: TodayV2Audit,
+  horizons: z.union([TodayV2HorizonsBlock, z.null()]).optional(),
   scoreBreakdown: z.record(SphereScoreV2),
   whyToday: z.array(TodayV2WhyTodayItem),
 });
@@ -1026,6 +1186,15 @@ export const schemas = {
   TodayV2ActivatedTarget,
   TodayV2ActivationSummary,
   TodayV2Audit,
+  TodayV2HorizonIntro,
+  TodayV2Provenance,
+  TodayV2GroundedItem,
+  TodayV2HorizonActions,
+  TodayV2Manifestation,
+  TodayV2HorizonTiming,
+  TodayV2TechniqueExplanation,
+  TodayV2Horizon,
+  TodayV2HorizonsBlock,
   TodayV2WhyTodayItem,
   TodayV2Block,
   WeekStripDay,

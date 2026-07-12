@@ -290,6 +290,8 @@ export function TodayScreen({
             sections={payload.why}
             keyInsight={payload.keyInsight}
             v2={payload.v2}
+            concreteAdvice={payload.concreteAdvice}
+            onSphereSelect={selectPersonalStorySphere}
             open={payload.v2 ? whyOpen : undefined}
             onOpenChange={payload.v2 ? setWhyOpen : undefined}
           />

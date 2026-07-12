@@ -37,10 +37,18 @@
 import {
   TodayPayload as TodayPayloadSchema,
   TodayV2Block as TodayV2BlockSchema,
+  TodayV2HorizonsBlock as TodayV2HorizonsBlockSchema,
+  TodayV2Horizon as TodayV2HorizonSchema,
+  TodayV2HorizonTiming as TodayV2HorizonTimingSchema,
+  TodayV2Provenance as TodayV2ProvenanceSchema,
   ActivationEvidence as ActivationEvidenceSchema,
 } from "./_generated.zod";
 
 export const TodayPayloadWireSchema = TodayPayloadSchema;
 export const TodayV2BlockWireSchema = TodayV2BlockSchema;
+export const TodayV2HorizonsBlockWireSchema = TodayV2HorizonsBlockSchema;
+export const TodayV2HorizonWireSchema = TodayV2HorizonSchema;
+export const TodayV2HorizonTimingWireSchema = TodayV2HorizonTimingSchema;
+export const TodayV2ProvenanceWireSchema = TodayV2ProvenanceSchema;
 export const ActivationEvidenceWireSchema = ActivationEvidenceSchema;
 // END_BLOCK: RUNTIME_EXPORTS

@@ -42,6 +42,7 @@ from pydantic import Field, model_validator
 from ._base import CamelModel
 from .activation import ActivationEvidence
 from .scoring_v2 import SphereScoreV2
+from .today_horizons import TodayV2HorizonsBlock, validate_horizons_against_evidence
 
 DayStatus = Literal["supportive", "steady", "tense"]
 
@@ -435,11 +436,29 @@ class TodayV2Audit(CamelModel):
 
 
 class TodayV2Block(CamelModel):
+    model_config = {**CamelModel.model_config, "hide_input_in_errors": True}
+
     activation_summary: TodayV2ActivationSummary
     activation_evidence: list[ActivationEvidence]
     score_breakdown: dict[str, SphereScoreV2]
     why_today: list[TodayV2WhyTodayItem]
     audit: TodayV2Audit
+    horizons: TodayV2HorizonsBlock | None = None
+
+    @model_validator(mode="after")
+    def validate_optional_horizons(self) -> "TodayV2Block":
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS.today.TodayV2Block.validate_optional_horizons
+        # purpose: Enforce that an optional horizons block, when present, cross-references only known activation evidence and timing support.
+        # inputs: self - validated TodayV2Block candidate.
+        # returns: the same V2 block when horizons are absent or cross-reference validation passes.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises ValueError from horizon cross-reference validation on contract violations.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS.today.TodayV2Block.validate_optional_horizons
+        if self.horizons is None:
+            return self
+        validate_horizons_against_evidence(self.horizons, self.activation_evidence)
+        return self
 # END_BLOCK: TODAY_V2_SCHEMAS
 
 

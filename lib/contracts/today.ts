@@ -40,11 +40,24 @@ import type {
   TodayV2ActivationSummary as TodayV2ActivationSummaryWire,
   TodayV2WhyTodayItem as TodayV2WhyTodayItemWire,
   TodayV2Audit as TodayV2AuditWire,
+  TodayV2Provenance as TodayV2ProvenanceWire,
+  TodayV2GroundedItem as TodayV2GroundedItemWire,
+  TodayV2HorizonTiming as TodayV2HorizonTimingWire,
+  TodayV2TechniqueExplanation as TodayV2TechniqueExplanationWire,
+  TodayV2Manifestation as TodayV2ManifestationWire,
+  TodayV2HorizonActions as TodayV2HorizonActionsWire,
+  TodayV2Horizon as TodayV2HorizonWire,
+  TodayV2HorizonIntro as TodayV2HorizonIntroWire,
+  TodayV2HorizonsBlock as TodayV2HorizonsBlockWire,
   ActivationEvidence as ActivationEvidenceWire,
   SphereScoreV2 as SphereScoreV2Wire,
 } from "@/packages/contracts"
 import {
   TodayV2BlockWireSchema,
+  TodayV2HorizonsBlockWireSchema,
+  TodayV2HorizonWireSchema,
+  TodayV2HorizonTimingWireSchema,
+  TodayV2ProvenanceWireSchema,
 } from "@/packages/contracts/runtime"
 
 export const DayStatusSchema = z.enum(["supportive", "steady", "tense"]);
@@ -218,6 +231,10 @@ export const DaySummaryBlockSchema = z.object({
 // Today V2 wire validation is generated from Pydantic/OpenAPI and re-exported
 // through the stable runtime barrel; this UI module does not redeclare its shape.
 export const TodayV2BlockSchema = TodayV2BlockWireSchema
+export const TodayV2HorizonsBlockSchema = TodayV2HorizonsBlockWireSchema
+export const TodayV2HorizonSchema = TodayV2HorizonWireSchema
+export const TodayV2HorizonTimingSchema = TodayV2HorizonTimingWireSchema
+export const TodayV2ProvenanceSchema = TodayV2ProvenanceWireSchema
 // END_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS
 
 export const TodayPayloadSchema = z.object({
@@ -259,6 +276,15 @@ export type TodayV2ActivatedTarget = TodayV2ActivatedTargetWire
 export type TodayV2ActivationSummary = TodayV2ActivationSummaryWire
 export type TodayV2WhyTodayItem = TodayV2WhyTodayItemWire
 export type TodayV2Audit = TodayV2AuditWire
+export type TodayV2Provenance = TodayV2ProvenanceWire
+export type TodayV2GroundedItem = TodayV2GroundedItemWire
+export type TodayV2HorizonTiming = TodayV2HorizonTimingWire
+export type TodayV2TechniqueExplanation = TodayV2TechniqueExplanationWire
+export type TodayV2Manifestation = TodayV2ManifestationWire
+export type TodayV2HorizonActions = TodayV2HorizonActionsWire
+export type TodayV2Horizon = TodayV2HorizonWire
+export type TodayV2HorizonIntro = TodayV2HorizonIntroWire
+export type TodayV2HorizonsBlock = TodayV2HorizonsBlockWire
 export type ActivationEvidence = ActivationEvidenceWire
 export type SphereScoreV2 = SphereScoreV2Wire
 

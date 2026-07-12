@@ -73,6 +73,10 @@ describe("today v2 fixture roundtrip and single source", () => {
     )
     expect(adviceVerdicts["work"]).toBe("caution")
     expect(adviceVerdicts["shopping"]).toBe("avoid")
+    expect(v2.horizons?.items[1].timing.stateLabel).toBe("Набирает силу")
+    expect(v2.horizons?.items[2].timing.peakLabel).toBe("Пик был 8 июля в 08:00")
+    expect(v2.horizons?.items[0].techniqueExplanations[1].timing).toBeNull()
+    expect(v2.horizons?.items[2].techniqueExplanations[0].whyItMattersNow).toContain("С 8 по 10 июля по Москве")
   })
 
   it("ensures every referenced V2 activation ID exists in the evidence set", () => {
@@ -111,6 +115,52 @@ describe("today v2 fixture roundtrip and single source", () => {
       for (const contribution of score.contributions) {
         if (contribution.source === "activation") {
           expect(evidenceIds.has(contribution.sourceId)).toBe(true)
+        }
+      }
+    }
+
+    expect(v2.horizons).toBeDefined()
+    if (!v2.horizons) throw new Error("horizons block is missing")
+    expect(v2.horizons.items.map((item) => item.horizon)).toEqual(["long", "medium", "fast"])
+
+    for (const id of v2.horizons.intro.activationIds) {
+      expect(evidenceIds.has(id)).toBe(true)
+    }
+
+    const manifestationIds = new Set<string>()
+    const groundedIds = new Set<string>()
+    const concreteAdviceKeys = new Set(dayPayloadV2.concreteAdvice.rows.map((row) => row.key))
+    for (const horizon of v2.horizons.items) {
+      for (const id of horizon.activationIds) {
+        expect(evidenceIds.has(id)).toBe(true)
+      }
+      for (const key of horizon.likelySpheres) {
+        expect(concreteAdviceKeys.has(key)).toBe(true)
+      }
+      for (const explanation of horizon.techniqueExplanations) {
+        for (const id of explanation.activationIds) {
+          expect(evidenceIds.has(id)).toBe(true)
+          expect(horizon.activationIds).toContain(id)
+        }
+      }
+      for (const manifestation of horizon.manifestations) {
+        expect(manifestationIds.has(manifestation.id)).toBe(false)
+        manifestationIds.add(manifestation.id)
+        for (const id of manifestation.provenance.activationIds ?? []) {
+          expect(evidenceIds.has(id)).toBe(true)
+        }
+        for (const key of manifestation.sphereKeys) {
+          expect(concreteAdviceKeys.has(key)).toBe(true)
+        }
+      }
+      const groundedItems = [horizon.strength, horizon.risk, ...horizon.actions.do, ...horizon.actions.avoid].filter(
+        (item): item is NonNullable<typeof item> => Boolean(item),
+      )
+      for (const grounded of groundedItems) {
+        expect(groundedIds.has(grounded.id)).toBe(false)
+        groundedIds.add(grounded.id)
+        for (const id of grounded.provenance.activationIds ?? []) {
+          expect(evidenceIds.has(id)).toBe(true)
         }
       }
     }

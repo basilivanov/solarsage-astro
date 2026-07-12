@@ -8,9 +8,9 @@
 // purpose: Render controlled/uncontrolled Why disclosure for V2 and legacy Today payloads.
 // owns:
 //   - components/today/why-expanded.tsx
-// inputs: legacy sections, V2 data, controlled open state, deeplink search params.
-// outputs: data-testid="why-expanded" section with optional technical disclosure.
-// dependencies: next/navigation, contracts, presentation helpers, lib/icons.
+// inputs: legacy sections, backend v2.horizons / v2.whyToday / legacy-v2 evidence, controlled open state, deeplink search params.
+// outputs: data-testid="why-expanded" section with backend-horizons, legacy-v2, human-only, or legacy disclosure branches.
+// dependencies: next/navigation, contracts, presentation helpers, lib/icons, why-time-horizon-card.
 // side_effects: controlled state callbacks and local technical disclosure state.
 // emitted_logs: none.
 // invariants:
@@ -23,9 +23,12 @@
 // START_MODULE_MAP: M-TODAY-WHY-EXPANDED
 // public_entrypoints:
 //   - WhyExpanded
+//   - resolveWhyExpandedMode
 // semantic_blocks:
+//   - MODE_RESOLUTION: backend-horizons / legacy-v2 / human-only / legacy / empty branch selection.
 //   - WHY_DISCLOSURE: controlled/uncontrolled top-level disclosure.
-//   - V2_WHY_CONTENT: three human time horizons and nested calculation.
+//   - BACKEND_HORIZONS_CONTENT: backend-owned horizons intro and card list.
+//   - V2_WHY_CONTENT: legacy selector-derived three human time horizons and nested calculation.
 //   - TECHNICAL_CALCULATION: selected evidence grouped by horizon.
 // owned_tests:
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
@@ -37,7 +40,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-import type { TodayV2Block, TodayV2WhyTodayItem, TodayWhySection } from "@/lib/contracts/today"
+import type { ConcreteAdviceBlock, TodayV2Block, TodayV2WhyTodayItem, TodayWhySection } from "@/lib/contracts/today"
 import { getIcon } from "@/lib/icons"
 import {
   formatActivationEvidenceTitle,
@@ -49,19 +52,45 @@ import {
   getTechniqueLabel,
   selectWhyTimeHorizons,
 } from "@/lib/presentation/today-v2"
-import { WhyTimeHorizonCard } from "./why-time-horizon-card"
+import { LegacyWhyTimeHorizonCard, WhyTimeHorizonCard } from "./why-time-horizon-card"
 
 type Props = {
   sections: TodayWhySection[]
   keyInsight: string
   v2?: TodayV2Block | null
   whyToday?: TodayV2WhyTodayItem[] | null
+  concreteAdvice?: ConcreteAdviceBlock | null
+  onSphereSelect?: (key: string) => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
+export function resolveWhyExpandedMode({
+  v2,
+  whyToday,
+  sections,
+}: {
+  v2?: TodayV2Block | null
+  whyToday?: TodayV2WhyTodayItem[] | null
+  sections: TodayWhySection[]
+}): "backend-horizons" | "legacy-v2" | "human-only" | "legacy" | "empty" {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-WHY-EXPANDED.resolveWhyExpandedMode
+  // purpose: Resolve which public Why rendering branch should own the current payload.
+  // inputs: v2 - optional TodayV2 block; whyToday - optional standalone safe why items; sections - legacy why sections.
+  // returns: one of backend-horizons, legacy-v2, human-only, legacy, or empty.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: none; falls through to the safest available branch.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-WHY-EXPANDED.resolveWhyExpandedMode
+  if (v2?.horizons) return "backend-horizons"
+  if (v2) return "legacy-v2"
+  if ((whyToday ?? []).length > 0) return "human-only"
+  if (sections.length > 0) return "legacy"
+  return "empty"
+}
+
 // START_BLOCK: WHY_DISCLOSURE
-export function WhyExpanded({ sections, keyInsight, v2, whyToday, open, onOpenChange }: Props) {
+export function WhyExpanded({ sections, keyInsight, v2, whyToday, concreteAdvice, onSphereSelect, open, onOpenChange }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-WHY-EXPANDED.WhyExpanded
   // purpose: Render controlled human-first Why content and its optional technical subsection.
   // inputs: Props — backend-owned V2/legacy content and optional parent state control.
@@ -80,10 +109,11 @@ export function WhyExpanded({ sections, keyInsight, v2, whyToday, open, onOpenCh
   const wasOpen = useRef(open ?? uncontrolledOpen)
   const isOpen = open ?? uncontrolledOpen
   const effectiveWhyToday = v2?.whyToday.length ? v2.whyToday : whyToday ?? []
-  const horizons = v2 ? selectWhyTimeHorizons(v2) : []
-  const hasHorizonStory = Boolean(v2 && horizons.length > 0)
+  const mode = resolveWhyExpandedMode({ v2, whyToday: effectiveWhyToday, sections })
+  const legacyHorizons = mode === "legacy-v2" && v2 ? selectWhyTimeHorizons(v2) : []
+  const hasLegacyV2Horizons = legacyHorizons.length > 0
   const hasSafeWhyItems = effectiveWhyToday.length > 0
-  const showWhyBlock = hasHorizonStory || hasSafeWhyItems || sections.length > 0
+  const showWhyBlock = mode !== "empty" && (mode !== "legacy-v2" || hasLegacyV2Horizons || hasSafeWhyItems || sections.length > 0)
 
   useEffect(() => {
     if (isOpen && !wasOpen.current) setAstroOpen(defaultAstroOpen)
@@ -108,11 +138,11 @@ export function WhyExpanded({ sections, keyInsight, v2, whyToday, open, onOpenCh
           className="flex min-h-16 w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-violet-50/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-inset dark:hover:bg-violet-500/10"
         >
           <span className="min-w-0">
-            <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Глубже</span>
-            <span className="mt-0.5 block font-serif text-[23px] leading-tight text-foreground">
-              {hasHorizonStory || hasSafeWhyItems ? "Почему именно у меня" : "Почему так у меня"}
+              <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Глубже</span>
+              <span className="mt-0.5 block font-serif text-[23px] leading-tight text-foreground">
+                {mode === "legacy" ? "Почему так у меня" : "Почему именно у меня"}
+              </span>
             </span>
-          </span>
           <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-100">
             {isOpen ? <ChevronUp className="h-4 w-4" aria-hidden /> : <ChevronDown className="h-4 w-4" aria-hidden />}
           </span>
@@ -120,15 +150,17 @@ export function WhyExpanded({ sections, keyInsight, v2, whyToday, open, onOpenCh
 
         {isOpen ? (
           <div id={detailsId} className="border-t border-border/60 bg-gradient-to-br from-card to-violet-50/35 px-5 pb-6 pt-5 dark:to-violet-950/15">
-            {hasHorizonStory ? (
+            {mode === "backend-horizons" ? (
+              <BackendHorizonsContent v2={v2} concreteAdvice={concreteAdvice} onSphereSelect={onSphereSelect} />
+            ) : mode === "legacy-v2" && hasLegacyV2Horizons ? (
               <V2WhyContent
                 v2={v2}
-                horizons={horizons}
+                horizons={legacyHorizons}
                 astroOpen={astroOpen}
                 onAstroOpenChange={setAstroOpen}
                 technicalId={technicalId}
               />
-            ) : hasSafeWhyItems ? (
+            ) : mode === "human-only" || (mode === "legacy-v2" && hasSafeWhyItems) ? (
               <HumanOnlyWhyContent items={effectiveWhyToday} />
             ) : (
               <LegacyWhyContent sections={sections} keyInsight={keyInsight} />
@@ -140,6 +172,37 @@ export function WhyExpanded({ sections, keyInsight, v2, whyToday, open, onOpenCh
   )
 }
 // END_BLOCK: WHY_DISCLOSURE
+
+function BackendHorizonsContent({
+  v2,
+  concreteAdvice,
+  onSphereSelect,
+}: {
+  v2: TodayV2Block | null | undefined
+  concreteAdvice?: ConcreteAdviceBlock | null
+  onSphereSelect?: (key: string) => void
+}) {
+  if (!v2?.horizons) return null
+  return (
+    <section data-testid="why-horizons" data-state="ready" data-source="backend-horizons" className="space-y-4">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700 dark:text-violet-200">{v2.horizons.intro.eyebrow}</p>
+        <p className="mt-2 font-serif text-[23px] leading-[1.25] text-foreground">{v2.horizons.intro.headline}</p>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{v2.horizons.intro.body}</p>
+      </div>
+      <div className="space-y-3">
+        {v2.horizons.items.map((horizon) => (
+          <WhyTimeHorizonCard
+            key={horizon.id}
+            horizon={horizon}
+            concreteAdvice={concreteAdvice}
+            onSphereSelect={onSphereSelect}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
 
 function V2WhyContent({
   v2,
@@ -165,7 +228,7 @@ function V2WhyContent({
         Он формируется в длинном цикле, усиливается в текущем периоде и получает короткий триггер сегодня.
       </p>
       <div data-testid="why-today" className="mt-5 space-y-3">
-        {horizons.map((horizon) => <WhyTimeHorizonCard key={horizon.id} horizon={horizon} />)}
+        {horizons.map((horizon) => <LegacyWhyTimeHorizonCard key={horizon.id} horizon={horizon} />)}
       </div>
       <TechnicalCalculation
         v2={v2}

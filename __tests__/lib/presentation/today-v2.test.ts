@@ -269,6 +269,17 @@ describe("presentation/today-v2", () => {
     expect(mediumWhy.activationIds).toEqual(mediumEvidenceIds)
   })
 
+  it("keeps legacy selector algorithm unchanged even when backend horizons are present", () => {
+    const { payload } = adaptTodayPayload(dayPayloadV2, new Date("2026-07-08T12:00:00Z"))
+    const v2 = structuredClone(payload.v2!)
+    expect(v2.horizons).toBeTruthy()
+    expect(selectWhyTimeHorizons(v2).map((horizon) => horizon.evidence.map((item) => item.id))).toEqual([
+      ["act-annual-profection", "act-firdar-major"],
+      ["act-pluto-trine-saturn", "act-neptune-opp-saturn"],
+      ["act-moon-opp-pluto"],
+    ])
+  })
+
   it("falls back to related active evidence when primary activation ids are unusable", () => {
     const { payload } = adaptTodayPayload(dayPayloadV2, new Date("2026-07-08T12:00:00Z"))
     const v2 = structuredClone(payload.v2!)

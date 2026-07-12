@@ -431,6 +431,552 @@
       "scoringVersion": "ss-scoring-2.0",
       "v1V2Diff": {}
     },
+    "horizons": {
+      "guidanceMode": "deterministic",
+      "intro": {
+        "activationIds": [
+          "act-annual-profection",
+          "act-firdar-major",
+          "act-pluto-trine-saturn",
+          "act-neptune-opp-saturn",
+          "act-moon-opp-pluto"
+        ],
+        "body": "Долгий цикл меняет отношение к ответственности и контролю, ближайшие недели дают окно для одного практического изменения, а сегодняшний эмоциональный пик показывает, где не стоит торопиться.",
+        "eyebrow": "Личная логика периода",
+        "headline": "Опору сейчас лучше перестраивать без резких движений",
+        "themeKey": "structure_boundaries_control"
+      },
+      "items": [
+        {
+          "actions": {
+            "avoid": [
+              {
+                "conditional": false,
+                "id": "gi-long-avoid-1",
+                "kind": "avoid",
+                "provenance": {
+                  "activationIds": [
+                    "act-firdar-major"
+                  ],
+                  "natalFactIds": [],
+                  "profileFactIds": [],
+                  "sphereKeys": [
+                    "work"
+                  ]
+                },
+                "text": "Не превращайте усталость от контроля в ультиматум себе или другим."
+              }
+            ],
+            "do": [
+              {
+                "conditional": false,
+                "id": "gi-long-do-1",
+                "kind": "action",
+                "provenance": {
+                  "activationIds": [
+                    "act-annual-profection"
+                  ],
+                  "natalFactIds": [],
+                  "profileFactIds": [],
+                  "sphereKeys": [
+                    "work"
+                  ]
+                },
+                "text": "Выберите один устойчивый процесс, который можно упростить без потери качества."
+              },
+              {
+                "conditional": false,
+                "id": "gi-long-do-2",
+                "kind": "action",
+                "provenance": {
+                  "activationIds": [
+                    "act-firdar-major"
+                  ],
+                  "natalFactIds": [],
+                  "profileFactIds": [],
+                  "sphereKeys": [
+                    "decisions"
+                  ]
+                },
+                "text": "Назовите одну границу ответственности, которую пора оформить словами и правилами."
+              }
+            ],
+            "heading": "Что стоит перестраивать",
+            "validUntil": "2027-05-11",
+            "validUntilLabel": "Эта рамка актуальна до 11 мая 2027"
+          },
+          "activationIds": [
+            "act-annual-profection",
+            "act-firdar-major"
+          ],
+          "eyebrow": "Долгий цикл · что перестраивать",
+          "horizon": "long",
+          "id": "hz-long",
+          "likelySpheres": [
+            "work",
+            "decisions",
+            "money"
+          ],
+          "manifestations": [
+            {
+              "body": "Можно заметить, что привычный объём контроля больше не даёт прежней устойчивости и требует новой структуры.",
+              "condition": "Если сейчас вы обсуждаете новую роль или объём ответственности…",
+              "id": "mf-long-role",
+              "provenance": {
+                "activationIds": [
+                  "act-annual-profection"
+                ],
+                "natalFactIds": [
+                  "natal.pluto_control_pattern"
+                ],
+                "profileFactIds": [],
+                "sphereKeys": [
+                  "work",
+                  "decisions"
+                ]
+              },
+              "sphereKeys": [
+                "work",
+                "decisions"
+              ],
+              "title": "Новая рамка для роли и обязанностей"
+            },
+            {
+              "body": "Фон года помогает увидеть, какие финансовые решения держатся на реальной опоре, а какие — только на привычке всё контролировать.",
+              "condition": null,
+              "id": "mf-long-money",
+              "provenance": {
+                "activationIds": [
+                  "act-firdar-major"
+                ],
+                "natalFactIds": [],
+                "profileFactIds": [
+                  "profile.scope_finance_mode"
+                ],
+                "sphereKeys": [
+                  "money"
+                ]
+              },
+              "sphereKeys": [
+                "money"
+              ],
+              "title": "Опора в деньгах и ресурсах"
+            }
+          ],
+          "plainExplanation": "Это не про резкий разрыв, а про длинную перестройку правил, на которые вы опираетесь каждый день.",
+          "risk": {
+            "conditional": false,
+            "id": "gi-long-risk",
+            "kind": "risk",
+            "provenance": {
+              "activationIds": [
+                "act-firdar-major"
+              ],
+              "natalFactIds": [
+                "natal.pluto_control_pattern"
+              ],
+              "profileFactIds": [],
+              "sphereKeys": [
+                "decisions"
+              ]
+            },
+            "text": "Привычка держать под контролем каждую деталь может мешать заметить, где системе нужна новая форма."
+          },
+          "strength": {
+            "conditional": false,
+            "id": "gi-long-strength",
+            "kind": "strength",
+            "provenance": {
+              "activationIds": [
+                "act-annual-profection"
+              ],
+              "natalFactIds": [
+                "natal.saturn_resilience_strength"
+              ],
+              "profileFactIds": [],
+              "sphereKeys": [
+                "work"
+              ]
+            },
+            "text": "У вас уже есть способность удерживать долгий курс и не рушить всё из-за краткого напряжения."
+          },
+          "summary": "Главная тема года связана с тем, как вы распределяете ответственность и что считаете надёжной опорой.",
+          "techniqueExplanations": [
+            {
+              "activationIds": [
+                "act-annual-profection"
+              ],
+              "label": "Профекция",
+              "technique": "annual_profection",
+              "timing": {
+                "activeFrom": "2026-05-12",
+                "activeUntil": "2027-05-11",
+                "exactAt": null,
+                "peakLabel": null,
+                "precision": "date",
+                "rangeLabel": "12 мая 2026 — 11 мая 2027",
+                "state": "background",
+                "stateLabel": "Фон уже действует",
+                "timezone": "Europe/Moscow"
+              },
+              "whatItIs": "Профекция — символический годовой цикл, который показывает, какая тема сейчас получает больше веса во всём вашем году.",
+              "whyItMattersNow": "С 12 мая 2026 по 11 мая 2027 этот цикл делает тему контроля, границ и опоры системной, а не случайной."
+            },
+            {
+              "activationIds": [
+                "act-firdar-major"
+              ],
+              "label": "Фирдар",
+              "technique": "firdar_major",
+              "timing": null,
+              "whatItIs": "Фирдар — длинная последовательность периодов, которая показывает, какие темы остаются на переднем плане дольше обычного.",
+              "whyItMattersNow": "Этот длинный период поддерживает ту же задачу: перестраивать опору постепенно и без резких жестов."
+            }
+          ],
+          "timing": {
+            "activeFrom": "2026-05-12",
+            "activeUntil": "2027-05-11",
+            "exactAt": null,
+            "peakLabel": null,
+            "precision": "date",
+            "rangeLabel": "12 мая 2026 — 11 мая 2027",
+            "state": "background",
+            "stateLabel": "Фон уже действует",
+            "timezone": "Europe/Moscow"
+          },
+          "title": "Пересобрать опору, границы и отношение к контролю",
+          "tone": "mixed"
+        },
+        {
+          "actions": {
+            "avoid": [
+              {
+                "conditional": false,
+                "id": "gi-medium-avoid-1",
+                "kind": "avoid",
+                "provenance": {
+                  "activationIds": [
+                    "act-neptune-opp-saturn"
+                  ],
+                  "natalFactIds": [],
+                  "profileFactIds": [],
+                  "sphereKeys": [
+                    "money"
+                  ]
+                },
+                "text": "Не принимайте резкое решение только ради ощущения немедленного контроля."
+              }
+            ],
+            "do": [
+              {
+                "conditional": false,
+                "id": "gi-medium-do-1",
+                "kind": "action",
+                "provenance": {
+                  "activationIds": [
+                    "act-pluto-trine-saturn"
+                  ],
+                  "natalFactIds": [],
+                  "profileFactIds": [],
+                  "sphereKeys": [
+                    "work"
+                  ]
+                },
+                "text": "Разделите свои обязательства и привычные лишние задачи в одном рабочем контуре."
+              },
+              {
+                "conditional": true,
+                "id": "gi-medium-do-2",
+                "kind": "action",
+                "provenance": {
+                  "activationIds": [
+                    "act-neptune-opp-saturn"
+                  ],
+                  "natalFactIds": [],
+                  "profileFactIds": [],
+                  "sphereKeys": [
+                    "decisions"
+                  ]
+                },
+                "text": "Обсудите одно конкретное условие только если есть спокойный контекст для разговора."
+              }
+            ],
+            "heading": "Что можно попробовать до 18 июля",
+            "validUntil": "2026-07-18T00:00:00Z",
+            "validUntilLabel": "Этот эксперимент актуален до 18 июля"
+          },
+          "activationIds": [
+            "act-pluto-trine-saturn",
+            "act-neptune-opp-saturn"
+          ],
+          "eyebrow": "Текущий период · что попробовать",
+          "horizon": "medium",
+          "id": "hz-medium",
+          "likelySpheres": [
+            "work",
+            "money",
+            "decisions"
+          ],
+          "manifestations": [
+            {
+              "body": "Подходит окно, чтобы уточнить одно правило, дедлайн или границу ответственности и посмотреть, как меняется нагрузка.",
+              "condition": null,
+              "id": "mf-medium-terms",
+              "provenance": {
+                "activationIds": [
+                  "act-pluto-trine-saturn"
+                ],
+                "natalFactIds": [
+                  "natal.saturn_resilience_strength"
+                ],
+                "profileFactIds": [],
+                "sphereKeys": [
+                  "work",
+                  "decisions"
+                ]
+              },
+              "sphereKeys": [
+                "work",
+                "decisions"
+              ],
+              "title": "Проверка условий и обязанностей"
+            },
+            {
+              "body": "Одновременно важно перепроверять ожидания и условия, чтобы желание стабильности не увело в неясное решение.",
+              "condition": null,
+              "id": "mf-medium-budget",
+              "provenance": {
+                "activationIds": [
+                  "act-neptune-opp-saturn"
+                ],
+                "natalFactIds": [],
+                "profileFactIds": [
+                  "profile.scope_finance_mode"
+                ],
+                "sphereKeys": [
+                  "money"
+                ]
+              },
+              "sphereKeys": [
+                "money"
+              ],
+              "title": "Осторожность в решениях о ресурсе"
+            }
+          ],
+          "plainExplanation": "Сейчас полезнее менять один элемент системы и смотреть на результат, чем пытаться перестроить всё сразу.",
+          "risk": {
+            "conditional": false,
+            "id": "gi-medium-risk",
+            "kind": "risk",
+            "provenance": {
+              "activationIds": [
+                "act-neptune-opp-saturn"
+              ],
+              "natalFactIds": [
+                "natal.neptune_uncertainty_risk"
+              ],
+              "profileFactIds": [],
+              "sphereKeys": [
+                "money"
+              ]
+            },
+            "text": "Желание быстрее вернуть контроль может подтолкнуть к решению, которое выглядит ясным только из-за напряжения."
+          },
+          "strength": {
+            "conditional": false,
+            "id": "gi-medium-strength",
+            "kind": "strength",
+            "provenance": {
+              "activationIds": [
+                "act-pluto-trine-saturn"
+              ],
+              "natalFactIds": [
+                "natal.saturn_resilience_strength"
+              ],
+              "profileFactIds": [],
+              "sphereKeys": [
+                "work"
+              ]
+            },
+            "text": "Умение действовать по шагам помогает вам проверять новую рамку без лишней драмы."
+          },
+          "summary": "Ближайшие недели подходят для одного точного эксперимента с правилами, деньгами или объёмом обязательств.",
+          "techniqueExplanations": [
+            {
+              "activationIds": [
+                "act-pluto-trine-saturn",
+                "act-neptune-opp-saturn"
+              ],
+              "label": "Транзит к натальной опоре",
+              "technique": "transit_to_natal",
+              "timing": {
+                "activeFrom": "2026-07-03T00:00:00Z",
+                "activeUntil": "2026-07-18T00:00:00Z",
+                "exactAt": "2026-07-10T11:32:00Z",
+                "peakLabel": "Точный пик — 10 июля, 14:32 по Москве",
+                "precision": "instant",
+                "rangeLabel": "3–18 июля",
+                "state": "building",
+                "stateLabel": "Набирает силу",
+                "timezone": "Europe/Moscow"
+              },
+              "whatItIs": "Такой расчёт показывает, как текущие движения неба временно усиливают уже существующую личную тему.",
+              "whyItMattersNow": "С 3 по 18 июля окно подходит для одного проверяемого изменения: оно поддержано реальной устойчивостью, но требует трезвой сверки ожиданий."
+            }
+          ],
+          "timing": {
+            "activeFrom": "2026-07-03T00:00:00Z",
+            "activeUntil": "2026-07-18T00:00:00Z",
+            "exactAt": "2026-07-10T11:32:00Z",
+            "peakLabel": "Точный пик — 10 июля, 14:32 по Москве",
+            "precision": "instant",
+            "rangeLabel": "3–18 июля",
+            "state": "building",
+            "stateLabel": "Набирает силу",
+            "timezone": "Europe/Moscow"
+          },
+          "title": "Проверить одну новую границу до 18 июля",
+          "tone": "mixed"
+        },
+        {
+          "actions": {
+            "avoid": [
+              {
+                "conditional": false,
+                "id": "gi-fast-avoid-1",
+                "kind": "avoid",
+                "provenance": {
+                  "activationIds": [
+                    "act-moon-opp-pluto"
+                  ],
+                  "natalFactIds": [],
+                  "profileFactIds": [],
+                  "sphereKeys": [
+                    "relationships"
+                  ]
+                },
+                "text": "Не принимайте окончательный тон разговора на первом импульсе."
+              }
+            ],
+            "do": [
+              {
+                "conditional": true,
+                "id": "gi-fast-do-1",
+                "kind": "action",
+                "provenance": {
+                  "activationIds": [
+                    "act-moon-opp-pluto"
+                  ],
+                  "natalFactIds": [],
+                  "profileFactIds": [],
+                  "sphereKeys": [
+                    "decisions"
+                  ]
+                },
+                "text": "Назовите свою реакцию про себя и только потом решайте, нужно ли отвечать сразу."
+              }
+            ],
+            "heading": "Что сделать сегодня",
+            "validUntil": "2026-07-09T21:00:00Z",
+            "validUntilLabel": "Этот шаг полезен до конца короткого окна"
+          },
+          "activationIds": [
+            "act-moon-opp-pluto"
+          ],
+          "eyebrow": "Быстрый триггер · что сделать сегодня",
+          "horizon": "fast",
+          "id": "hz-fast",
+          "likelySpheres": [
+            "decisions",
+            "relationships",
+            "health"
+          ],
+          "manifestations": [
+            {
+              "body": "Короткий пик помогает заметить момент, где сначала поднимается реакция, а уже потом появляется желание отвечать или решать.",
+              "condition": null,
+              "id": "mf-fast-trigger",
+              "provenance": {
+                "activationIds": [
+                  "act-moon-opp-pluto"
+                ],
+                "natalFactIds": [
+                  "natal.pluto_control_pattern"
+                ],
+                "profileFactIds": [],
+                "sphereKeys": [
+                  "decisions",
+                  "relationships"
+                ]
+              },
+              "sphereKeys": [
+                "decisions",
+                "relationships"
+              ],
+              "title": "Точка мгновенной реакции"
+            }
+          ],
+          "plainExplanation": "Сейчас полезнее сделать короткую паузу, чем отвечать из автоматической защиты.",
+          "risk": {
+            "conditional": false,
+            "id": "gi-fast-risk",
+            "kind": "risk",
+            "provenance": {
+              "activationIds": [
+                "act-moon-opp-pluto"
+              ],
+              "natalFactIds": [
+                "natal.moon_reactivity_risk"
+              ],
+              "profileFactIds": [],
+              "sphereKeys": [
+                "decisions"
+              ]
+            },
+            "text": "На пике проще ответить из напряжения, чем из того, что вы действительно хотите сказать или сделать."
+          },
+          "strength": null,
+          "summary": "Сегодняшний пик показывает, где импульс может оказаться сильнее самого повода.",
+          "techniqueExplanations": [
+            {
+              "activationIds": [
+                "act-moon-opp-pluto"
+              ],
+              "label": "Короткий эмоциональный триггер",
+              "technique": "transit_to_natal",
+              "timing": {
+                "activeFrom": "2026-07-07T21:00:00Z",
+                "activeUntil": "2026-07-09T21:00:00Z",
+                "exactAt": "2026-07-08T05:00:00Z",
+                "peakLabel": "Пик был 8 июля в 08:00",
+                "precision": "instant",
+                "rangeLabel": "8–10 июля по Москве",
+                "state": "peaked",
+                "stateLabel": "Пик уже пройден",
+                "timezone": "Europe/Moscow"
+              },
+              "whatItIs": "Это короткое окно показывает, где текущая реакция особенно быстро цепляет уже знакомую личную тему.",
+              "whyItMattersNow": "С 8 по 10 июля по Москве короткий пик уже прошёл, поэтому сегодня полезнее заметить реакцию и уменьшить скорость ответа."
+            }
+          ],
+          "timing": {
+            "activeFrom": "2026-07-07T21:00:00Z",
+            "activeUntil": "2026-07-09T21:00:00Z",
+            "exactAt": "2026-07-08T05:00:00Z",
+            "peakLabel": "Пик был 8 июля в 08:00",
+            "precision": "instant",
+            "rangeLabel": "8–10 июля по Москве",
+            "state": "peaked",
+            "stateLabel": "Пик уже пройден",
+            "timezone": "Europe/Moscow"
+          },
+          "title": "Сначала назвать реакцию, потом отвечать",
+          "tone": "tense"
+        }
+      ],
+      "schemaVersion": "today-horizons.v1",
+      "warnings": []
+    },
     "scoreBreakdown": {
       "crisis_transformation_control": {
         "activationScore": 1.2,

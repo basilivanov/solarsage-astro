@@ -165,5 +165,10 @@ def test_generated_openapi_keeps_public_activation_names_without_shared_contract
     schema_names = set(data["components"]["schemas"])
     assert "ActivationEvidence" in schema_names
     assert "ActivationLayer" in schema_names
+    assert "TodayV2Provenance" in schema_names
+    assert "TodayV2HorizonTiming" in schema_names
+    assert "TodayV2Horizon" in schema_names
+    assert "TodayV2HorizonsBlock" in schema_names
+    assert "/__contracts__/todayv2horizonsblock" not in data["paths"]
     assert not any("Contract" in name for name in schema_names)
 # END_BLOCK: EXPORTER_ASSERTIONS

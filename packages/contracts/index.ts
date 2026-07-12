@@ -88,6 +88,15 @@ export type TodayV2ActivatedTarget = components["schemas"]["TodayV2ActivatedTarg
 export type TodayV2ActivationSummary = components["schemas"]["TodayV2ActivationSummary"];
 export type TodayV2WhyTodayItem = components["schemas"]["TodayV2WhyTodayItem"];
 export type TodayV2Audit = components["schemas"]["TodayV2Audit"];
+export type TodayV2Provenance = components["schemas"]["TodayV2Provenance"];
+export type TodayV2GroundedItem = components["schemas"]["TodayV2GroundedItem"];
+export type TodayV2HorizonTiming = components["schemas"]["TodayV2HorizonTiming"];
+export type TodayV2TechniqueExplanation = components["schemas"]["TodayV2TechniqueExplanation"];
+export type TodayV2Manifestation = components["schemas"]["TodayV2Manifestation"];
+export type TodayV2HorizonActions = components["schemas"]["TodayV2HorizonActions"];
+export type TodayV2Horizon = components["schemas"]["TodayV2Horizon"];
+export type TodayV2HorizonIntro = components["schemas"]["TodayV2HorizonIntro"];
+export type TodayV2HorizonsBlock = components["schemas"]["TodayV2HorizonsBlock"];
 export type ActivationEvidence = components["schemas"]["ActivationEvidence"];
 export type SphereScoreV2 = components["schemas"]["SphereScoreV2"];
 
