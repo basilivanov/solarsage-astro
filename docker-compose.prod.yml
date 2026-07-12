@@ -50,8 +50,8 @@ services:
   # API backend (production)
   api:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
     container_name: solarsage-api-prod
     environment:
       DATABASE_URL: postgresql+asyncpg://astro:${POSTGRES_PASSWORD}@db:5432/astro
@@ -79,8 +79,8 @@ services:
   # SolarSage sidecar (production)
   solarsage:
     build:
-      context: ./apps/solarsage
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/solarsage/Dockerfile
     container_name: solarsage-sidecar-prod
     ports:
       - "8003:8001"  # Production SolarSage на порту 8003

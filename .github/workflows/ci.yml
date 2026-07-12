@@ -1,11 +1,11 @@
 # ############################################################################
 # AI_HEADER: MODULE_CI_WORKFLOW
-# ROLE: GitHub Actions CI pipeline (W-TEST-4).
-# DEPENDENCIES: GitHub Actions, pytest, vitest, playwright
+# ROLE: GitHub Actions CI pipeline for backend, sidecar, frontend, E2E, and contracts.
+# DEPENDENCIES: GitHub Actions, pytest, vitest, playwright, pnpm
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-CI-WORKFLOW
-# purpose: Automated CI pipeline for backend, frontend, E2E, and contract tests
+# purpose: Automated CI pipeline for backend, sidecar, frontend, E2E, and contract tests.
 # owns:
 #   - .github/workflows/ci.yml
 # inputs:
@@ -15,29 +15,32 @@
 #   - test results (pass/fail)
 #   - build artifacts
 # dependencies:
-#   - apps/api (backend)
-#   - __tests__ (frontend unit tests)
-#   - e2e (E2E tests)
-#   - packages/contracts (contracts check job)
+#   - packages/py-contracts
+#   - apps/api
+#   - apps/solarsage
+#   - __tests__/contracts
 # side_effects:
 #   - runs tests on GitHub runners
 # invariants:
-#   - all test jobs MUST pass for CI to succeed
-#   - backend tests MUST run in Python 3.11
-#   - frontend tests MUST run in Node.js 20
-#   - contract validation check MUST pass
+#   - all Python jobs use Python 3.12
+#   - shared Python package is installed before API/sidecar packages
+#   - contract checkout fetches full history for merge-base compatibility checks
+#   - CI never uses automatic breaking-contract override
 # failure_policy:
 #   - any job failure -> CI fails
 # non_goals:
-#   - deployment, production builds
+#   - deployment, package publication
 # END_MODULE_CONTRACT: M-CI-WORKFLOW
 
 # START_MODULE_MAP: M-CI-WORKFLOW
 # public_entrypoints:
 #   - GitHub Actions trigger
 # semantic_blocks:
-#   - CI_PIPELINE
-#   - CONTRACT_PIPELINE: runs contracts checks and generated schema vitest suites.
+#   - BACKEND_PIPELINE: API install/tests and existing gates.
+#   - SIDECAR_PIPELINE: sidecar install/tests.
+#   - FRONTEND_PIPELINE: frontend unit/build job.
+#   - E2E_PIPELINE: Playwright job.
+#   - CONTRACT_PIPELINE: contract generation, compatibility, runtime, and typecheck gates.
 # owned_tests:
 #   - runs all tests in CI
 # END_MODULE_MAP: M-CI-WORKFLOW
@@ -50,7 +53,7 @@ on:
   pull_request:
     branches: [main]
 
-# START_BLOCK: CI_PIPELINE
+# START_BLOCK: BACKEND_PIPELINE
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
@@ -61,35 +64,55 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
-          cd apps/api
-          pip install -e .
-          pip install pytest pytest-asyncio httpx
+          python -m pip install --upgrade pip
+          python -m pip install -e ./packages/py-contracts
+          python -m pip install -e './apps/api[dev]'
+          python -m pip check
 
       - name: Run backend tests
-        run: |
-          cd apps/api
-          pytest tests/ -v
+        run: python -m pytest apps/api/tests -q
 
       - name: Run audit golden snapshots gate
-        run: |
-          python scripts/check_audit_golden.py
+        run: python scripts/check_audit_golden.py
 
       - name: Run performance budgets gate
-        run: |
-          python scripts/check_v2_performance_budgets.py
+        run: python scripts/check_v2_performance_budgets.py
 
       - name: Run rollout gates validation
-        run: |
-          python scripts/check_solarsage_v2_rollout_gates.py
+        run: python scripts/check_solarsage_v2_rollout_gates.py
 
       - name: Run logging guardrails check
-        run: |
-          python scripts/check_logging_guardrails.py
+        run: python scripts/check_logging_guardrails.py
+  # END_BLOCK: BACKEND_PIPELINE
 
+  # START_BLOCK: SIDECAR_PIPELINE
+  sidecar-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./packages/py-contracts
+          python -m pip install -e './apps/solarsage[dev]'
+          python -m pip check
+
+      - name: Run sidecar tests
+        run: python -m pytest apps/solarsage/tests -q
+  # END_BLOCK: SIDECAR_PIPELINE
+
+  # START_BLOCK: FRONTEND_PIPELINE
   frontend-tests:
     runs-on: ubuntu-latest
 
@@ -109,7 +132,9 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+  # END_BLOCK: FRONTEND_PIPELINE
 
+  # START_BLOCK: E2E_PIPELINE
   e2e-tests:
     runs-on: ubuntu-latest
 
@@ -137,6 +162,7 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+  # END_BLOCK: E2E_PIPELINE
 
   # START_BLOCK: CONTRACT_PIPELINE
   contract-tests:
@@ -144,30 +170,53 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: pnpm
 
       - name: Install Node dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Install Python dependencies
         run: |
-          python -m pip install -e ./apps/api
+          python -m pip install --upgrade pip
+          python -m pip install -e ./packages/py-contracts
+          python -m pip install -e './apps/api[dev]'
+          python -m pip check
+
+      - name: Select push base ref
+        if: github.event_name == 'push'
+        run: |
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            echo "CONTRACT_BASE_REF=HEAD^" >> "$GITHUB_ENV"
+          else
+            echo "CONTRACT_BASE_REF=${{ github.event.before }}" >> "$GITHUB_ENV"
+          fi
 
       - name: Run contract check
-        run: npm run contracts:check
+        run: pnpm contracts:check
+
+      - name: Run compatibility check
+        run: python scripts/contracts/check_compat.py
 
       - name: Run contract vitest files
-        run: |
-          npx vitest run __tests__/contracts/generated-runtime.test.ts
-          npx vitest run __tests__/contracts/today-fixture-roundtrip.test.ts
+        run: npx vitest run __tests__/contracts
+
+      - name: Run TypeScript typecheck
+        run: npx tsc --noEmit
   # END_BLOCK: CONTRACT_PIPELINE
-# END_BLOCK: CI_PIPELINE
