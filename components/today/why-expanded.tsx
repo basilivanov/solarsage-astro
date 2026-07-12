@@ -9,7 +9,7 @@
 // owns:
 //   - components/today/why-expanded.tsx
 // inputs: legacy sections, backend v2.horizons / v2.whyToday / legacy-v2 evidence, wire identity, controlled open state, deeplink search params.
-// outputs: data-testid="why-expanded" section with backend-horizons, horizons-unavailable, legacy-v2, human-only, or legacy disclosure branches.
+// outputs: data-testid="why-expanded" section with backend-horizons (including why-horizons-intro semantic header), horizons-unavailable, legacy-v2, human-only, or legacy disclosure branches.
 // dependencies: next/navigation, contracts, presentation helpers, lib/icons, why-time-horizon-card.
 // side_effects: controlled state callbacks and local technical disclosure state.
 // emitted_logs: none.
@@ -19,6 +19,8 @@
 //   - ?why=1 and ?why=1&astro=1 remain supported.
 //   - Legacy selector is resolved only for exact previous accepted pair.
 //   - Current/missing/mismatched identity never infers horizons.
+//   - backend intro renders exact eyebrow/headline/body without generic narrative.
+//   - backend horizon items preserve backend order.
 // failure_policy: fail-closed unavailable for incompatible or missing wire identity; never fabricates backend horizons.
 // END_MODULE_CONTRACT: M-TODAY-WHY-EXPANDED
 
@@ -29,7 +31,8 @@
 // semantic_blocks:
 //   - MODE_RESOLUTION: backend-horizons / horizons-unavailable / legacy-v2 / human-only / legacy / empty branch selection.
 //   - WHY_DISCLOSURE: controlled/uncontrolled top-level disclosure.
-//   - BACKEND_HORIZONS_CONTENT: backend-owned horizons intro and card list.
+//   - BACKEND_HORIZONS_INTRO: semantic header with exact backend eyebrow/headline/body.
+//   - BACKEND_HORIZONS_LIST: ordered long/medium/fast cards from backend.
 //   - UNAVAILABLE_CONTENT: honest backend horizons-unavailable state.
 //   - V2_WHY_CONTENT: legacy selector-derived three human time horizons and nested calculation.
 //   - TECHNICAL_CALCULATION: selected evidence grouped by horizon.
@@ -228,11 +231,11 @@ function BackendHorizonsContent({
   if (!v2?.horizons) return null
   return (
     <section data-testid="why-horizons" data-state="ready" data-source="backend-horizons" className="space-y-4">
-      <div>
+      <header data-testid="why-horizons-intro" className="rounded-2xl border border-violet-200/70 bg-violet-50/30 p-4 dark:border-violet-400/20 dark:bg-violet-500/5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700 dark:text-violet-200">{v2.horizons.intro.eyebrow}</p>
         <p className="mt-2 font-serif text-[23px] leading-[1.25] text-foreground">{v2.horizons.intro.headline}</p>
         <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{v2.horizons.intro.body}</p>
-      </div>
+      </header>
       <div className="space-y-3">
         {v2.horizons.items.map((horizon) => (
           <WhyTimeHorizonCard

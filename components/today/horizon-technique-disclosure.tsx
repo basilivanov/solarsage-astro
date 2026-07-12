@@ -7,14 +7,18 @@
 // purpose: Render a stable, accessible per-horizon technical explanation disclosure.
 // owns:
 //   - components/today/horizon-technique-disclosure.tsx
-// inputs: explanations - backend technique explanations; horizonId - stable card identity suffix.
-// outputs: why-horizon-technical-toggle button and why-horizon-technical-content region.
+// inputs: explanations - backend technique explanations; horizon - required generated horizon type.
+// outputs: wrapper/toggle/region data-horizon, unique toggle id/aria-controls, region role/aria-labelledby.
 // dependencies: react useId/useState, lib/contracts/today, lucide-react.
 // side_effects: local disclosure state only.
 // emitted_logs: none.
 // invariants:
 //   - technical vocabulary appears only inside opened content.
 //   - aria-expanded/aria-controls/role=region stay in sync.
+//   - single useId suffix owns toggle/region pair.
+//   - required generated horizon repeated on wrapper/toggle/region.
+//   - closed content absent from DOM.
+//   - backend explanations/timing preserve order/copy.
 // failure_policy: none.
 // END_MODULE_CONTRACT: M-TODAY-HORIZON-TECHNIQUE-DISCLOSURE
 
@@ -31,32 +35,38 @@
 
 import { useId, useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
-import type { TodayV2TechniqueExplanation } from "@/lib/contracts/today"
+import type { TodayV2TechniqueExplanation, TodayV2Horizon } from "@/lib/contracts/today"
+
+type HorizonType = TodayV2Horizon["horizon"]
 
 // START_BLOCK: DISCLOSURE
 export function HorizonTechniqueDisclosure({
   explanations,
-  horizonId,
+  horizon,
 }: {
   explanations: TodayV2TechniqueExplanation[]
-  horizonId: string
+  horizon: HorizonType
 }) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-HORIZON-TECHNIQUE-DISCLOSURE.HorizonTechniqueDisclosure
   // purpose: Render one accessible backend technique disclosure for a single horizon card.
-  // inputs: explanations - backend technique explanation list; horizonId - stable suffix for ids.
+  // inputs: explanations - backend technique explanation list; horizon - required closed horizon type.
   // returns: disclosure JSX.
   // side_effects: stores local expanded/collapsed state.
   // emitted_logs: none.
   // error_behavior: none.
   // END_FUNCTION_CONTRACT: F-M-TODAY-HORIZON-TECHNIQUE-DISCLOSURE.HorizonTechniqueDisclosure
   const [open, setOpen] = useState(false)
-  const regionId = `${horizonId}-${useId().replace(/:/g, "-")}`
+  const idSuffix = useId().replace(/:/g, "-")
+  const toggleId = `tech-toggle-${horizon}-${idSuffix}`
+  const regionId = `tech-region-${horizon}-${idSuffix}`
 
   return (
-    <div className="mt-4 rounded-2xl border border-violet-200/80 bg-violet-50/45 dark:border-violet-400/20 dark:bg-violet-500/10">
+    <div className="mt-4 rounded-2xl border border-violet-200/80 bg-violet-50/45 dark:border-violet-400/20 dark:bg-violet-500/10" data-horizon={horizon}>
       <button
         type="button"
+        id={toggleId}
         data-testid="why-horizon-technical-toggle"
+        data-horizon={horizon}
         aria-expanded={open}
         aria-controls={regionId}
         onClick={() => setOpen(!open)}
@@ -69,7 +79,9 @@ export function HorizonTechniqueDisclosure({
         <div
           id={regionId}
           role="region"
+          aria-labelledby={toggleId}
           data-testid="why-horizon-technical-content"
+          data-horizon={horizon}
           className="border-t border-violet-200/80 px-4 pb-4 pt-3 dark:border-violet-400/20"
         >
           <div className="space-y-4">

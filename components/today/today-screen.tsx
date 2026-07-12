@@ -33,6 +33,9 @@
 //   - Loading/error states handled by the parent page
 //   - disableRemoteStatusFetch defaults to false, preserving ordinary WeekStrip behavior
 //   - payload.wireIdentity passed to WhyExpanded unchanged.
+//   - selectPersonalStorySphere guards against non-existent row keys.
+//   - scrollAndFocusSphere targets exact matching row (not container) with smooth/center + preventScroll.
+//   - Same-key click repeats scroll/focus without deselection; missing target is no-op.
 // failure_policy: renders gracefully; missing data hides sections silently
 // END_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 
@@ -137,16 +140,17 @@ export function TodayScreen({
   function scrollAndFocusSphere(key: string) {
     const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
     schedule(() => {
-      const navigator = document.querySelector('[data-testid="concrete-day-advice"]')
-      navigator?.scrollIntoView({ behavior: "smooth", block: "start" })
-      const sphereButton = Array.from(
-        document.querySelectorAll<HTMLButtonElement>('[data-testid="concrete-day-advice-row"]'),
-      ).find((element) => element.dataset.sphereKey === key)
-      sphereButton?.focus({ preventScroll: true })
+      const row = document.querySelector<HTMLElement>(
+        `[data-testid="concrete-day-advice-row"][data-sphere-key="${key}"]`,
+      )
+      row?.scrollIntoView({ behavior: "smooth", block: "center" })
+      row?.focus({ preventScroll: true })
     })
   }
 
   function selectPersonalStorySphere(key: string) {
+    // Guard: only navigate to existing rows
+    if (!payload.concreteAdvice.rows.some((row) => row.key === key)) return
     if (key === selectedSphereKey) {
       scrollAndFocusSphere(key)
       return

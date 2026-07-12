@@ -4,7 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-TODAYSCREEN-V2-DOWNSTREAM
-// purpose: Prove TodayScreen/WhyExpanded preserve the original downstream matrix while extending it with backend-owned horizons coverage.
+// purpose: Prove TodayScreen/WhyExpanded preserve the original downstream matrix while extending it with backend-owned horizons coverage, exact DOM order, timing strings, technical ARIA, exact-row navigation, and missing-row filtering.
 // owns:
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
 // inputs: tracked downstream fixture, canonical dayPayloadV2 fixture, TodayScreen, WhyExpanded, ConcreteDayAdvice, presentation helpers.
@@ -17,6 +17,8 @@
 //   - legacy selector is resolved only for exact previous accepted pair + horizons null.
 //   - current/unavailable/mismatch identity never infers horizons.
 //   - spies are created before render and restored between tests (order-independent).
+//   - W2 test helpers use explicit narrowing, no new unsafe/non-null assertions.
+//   - exact element spies prove row target, not container.
 //   - original downstream audit/legacy assertions remain covered.
 // failure_policy: test failure.
 // END_MODULE_CONTRACT: M-TEST-TODAYSCREEN-V2-DOWNSTREAM
@@ -28,6 +30,11 @@
 //   - LEGACY_MATRIX: original downstream legacy scenarios preserved.
 //   - MODE_MATRIX: current/previous/mismatch/missing identity + horizons coverage.
 //   - BACKEND_HORIZONS_MATRIX: B1 backend-owned horizons coverage.
+//   - HUMAN_DOM_ORDER: exact meaning-first layout with strength/risk/validity/actions/spheres/tech.
+//   - EXACT_TIMING_MATRIX: verbatim range/peak/state for all three horizons.
+//   - TECHNICAL_ACCESSIBILITY_MATRIX: unique ids, aria-controls/labelledby, data-horizon.
+//   - SPHERE_NAVIGATION_MATRIX: exact row scroll/focus with own-property spies, repeat, status unchanged.
+//   - MISSING_ROW_FILTERING: horizon chip suppressed for absent concreteAdvice row.
 // owned_tests:
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
 // END_MODULE_MAP: M-TEST-TODAYSCREEN-V2-DOWNSTREAM
@@ -46,6 +53,11 @@ import { DevAuditDrawer } from "@/components/today/dev-audit-drawer"
 import { dayPayloadV2 } from "@/e2e/mock-visual/fixtures/day-v2-2026-07-08"
 import { adaptTodayPayload } from "@/lib/adapters/today-payload"
 import * as todayV2Presentation from "@/lib/presentation/today-v2"
+
+function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
+  if (!value) throw new Error(`${label} is missing`)
+  return value
+}
 
 const navigationState = vi.hoisted(() => ({ search: "why=1" }))
 
@@ -343,10 +355,10 @@ describe("TodayScreen V2 downstream fixture", () => {
   it("renders normalized visible verdict statuses on compact rows and expanded details", () => {
     const { payload } = buildCanonicalPayload()
     const expected = {
-      good: { compact: "Поддержка", details: "Поддерживающий фон" },
-      neutral: { compact: "Ровно", details: "Нейтральный фон" },
-      caution: { compact: "Внимание", details: "Требует внимания" },
-      avoid: { compact: "Отложить", details: "Высокое напряжение · лучше отложить" },
+      good: { compact: "Поддерживает", details: "Поддерживающий сигнал" },
+      neutral: { compact: "Ровный фон", details: "Нейтральный сигнал" },
+      caution: { compact: "Требует внимания", details: "Напряжённый сигнал · требует внимания" },
+      avoid: { compact: "Лучше отложить", details: "Сильное напряжение · лучше отложить" },
     } as const
     const onSelectedKeyChange = vi.fn()
     const renderNavigator = (selectedKey: string | null) => (
@@ -431,8 +443,8 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(within(longCard).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("mixed")
     expect(within(mediumCard).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("mixed")
     expect(within(fastCard).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("tense")
-    expect(screen.getAllByText("Смешанный фон")).toHaveLength(2)
-    expect(screen.getByText("Напряжённый фон")).toBeTruthy()
+    expect(screen.getAllByText("Смешанный сигнал")).toHaveLength(2)
+    expect(screen.getByText("Требует внимания")).toBeTruthy()
   })
 
   it("renders backend actions, optional strength/risk, and manifestation conditions", () => {
@@ -697,5 +709,256 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.getByTestId("dev-audit-drawer")).toBeTruthy()
     expect(screen.getByText(String(payload.v2?.audit?.scoringVersion))).toBeTruthy()
     expect(screen.getByText(String(payload.v2?.audit?.calculationVersion))).toBeTruthy()
+  })
+
+  // ── B4.W2 intro, indexes, tone ─────────────────────────────────
+  it("renders backend intro, horizon indexes, exact tone labels", () => {
+    renderBackendWhyExpanded()
+    const intro = screen.getByTestId("why-horizons-intro")
+    expect(intro.textContent).toContain("Личная логика периода")
+    const indexes = screen.getAllByTestId("why-horizon-index")
+    expect(indexes.map((el) => el.textContent)).toEqual(["01", "02", "03"])
+    const tones = screen.getAllByTestId("why-horizon-tone")
+    expect(tones.filter((t) => t.textContent === "Смешанный сигнал")).toHaveLength(2)
+    expect(tones.filter((t) => t.textContent === "Требует внимания")).toHaveLength(1)
+    const text = screen.getByTestId("why-horizons").textContent ?? ""
+    for (const old of ["Смешанный фон","Напряжённый фон","Поддерживающий фон","Нейтральный фон"]) {
+      expect(text).not.toContain(old)
+    }
+  })
+
+  // ── Long card exact DOM order ──────────────────────────────────
+  it("has exact DOM order for long card including strength/risk/validity/actions/avoid", () => {
+    renderBackendWhyExpanded()
+    const card = screen.getAllByTestId("why-horizon")[0]
+    const q = (sel: string) => requireElement(card.querySelector(sel), `long ${sel}`)
+    const meaning = q("[data-testid='why-horizon-meaning']")
+    const timing = q("[data-testid='why-horizon-timing']")
+    const manifestations = q("[data-testid='why-horizon-manifestations']")
+    const strength = q("[data-testid='why-horizon-strength']")
+    const risk = q("[data-testid='why-horizon-risk']")
+    const validity = q("[data-testid='why-horizon-validity']")
+    const actions = q("[data-testid='why-horizon-actions']")
+    const avoid = q("[data-testid='why-horizon-avoid']")
+    const spheres = q("[data-testid='why-horizon-spheres']")
+    const tech = q("[data-testid='why-horizon-technical-toggle']")
+    const follow = Node.DOCUMENT_POSITION_FOLLOWING
+    expect(meaning.compareDocumentPosition(timing) & follow).toBeTruthy()
+    expect(timing.compareDocumentPosition(manifestations) & follow).toBeTruthy()
+    expect(manifestations.compareDocumentPosition(strength) & follow).toBeTruthy()
+    expect(strength.compareDocumentPosition(risk) & follow).toBeTruthy()
+    expect(risk.compareDocumentPosition(validity) & follow).toBeTruthy()
+    expect(validity.compareDocumentPosition(actions) & follow).toBeTruthy()
+    expect(actions.compareDocumentPosition(avoid) & follow).toBeTruthy()
+    expect(avoid.compareDocumentPosition(spheres) & follow).toBeTruthy()
+    expect(spheres.compareDocumentPosition(tech) & follow).toBeTruthy()
+  })
+
+  // ── Fast card DOM order ─────────────────────────────────────────
+  it("has correct DOM order for fast card with optional strength absent", () => {
+    renderBackendWhyExpanded()
+    const card = screen.getAllByTestId("why-horizon")[2]
+    expect(card.querySelector("[data-testid='why-horizon-strength']")).toBeNull()
+    expect(card.querySelector("[data-testid='why-horizon-patterns']")).toBeTruthy()
+    const q = (sel: string) => requireElement(card.querySelector(sel), `fast ${sel}`)
+    const manifestations = q("[data-testid='why-horizon-manifestations']")
+    const risk = q("[data-testid='why-horizon-risk']")
+    const validity = q("[data-testid='why-horizon-validity']")
+    const actions = q("[data-testid='why-horizon-actions']")
+    const avoid = q("[data-testid='why-horizon-avoid']")
+    const spheres = q("[data-testid='why-horizon-spheres']")
+    const tech = q("[data-testid='why-horizon-technical-toggle']")
+    const follow = Node.DOCUMENT_POSITION_FOLLOWING
+    expect(manifestations.compareDocumentPosition(risk) & follow).toBeTruthy()
+    expect(risk.compareDocumentPosition(validity) & follow).toBeTruthy()
+    expect(validity.compareDocumentPosition(actions) & follow).toBeTruthy()
+    expect(actions.compareDocumentPosition(avoid) & follow).toBeTruthy()
+    expect(avoid.compareDocumentPosition(spheres) & follow).toBeTruthy()
+    expect(spheres.compareDocumentPosition(tech) & follow).toBeTruthy()
+  })
+
+  // ── Exact timing strings ───────────────────────────────────────
+  it("has exact timing strings for all three horizons", () => {
+    renderBackendWhyExpanded()
+    const cards = screen.getAllByTestId("why-horizon")
+    const long = cards[0]; const medium = cards[1]; const fast = cards[2]
+    const lr = requireElement(long.querySelector("[data-testid='why-horizon-timing-range']"), "long range")
+    expect(lr.textContent).toBe("Период: 12 мая 2026 — 11 мая 2027")
+    expect(long.querySelector("[data-testid='why-horizon-timing-peak']")).toBeNull()
+    const ls = requireElement(long.querySelector("[data-testid='why-horizon-timing-state']"), "long state")
+    expect(ls.textContent).toBe("Сейчас: Фон уже действует")
+
+    const mr = requireElement(medium.querySelector("[data-testid='why-horizon-timing-range']"), "med range")
+    expect(mr.textContent).toBe("Период: 3–18 июля")
+    const mp = requireElement(medium.querySelector("[data-testid='why-horizon-timing-peak']"), "med peak")
+    expect(mp.textContent).toBe("Пик: Точный пик — 10 июля, 14:32 по Москве")
+    const ms = requireElement(medium.querySelector("[data-testid='why-horizon-timing-state']"), "med state")
+    expect(ms.textContent).toBe("Сейчас: Набирает силу")
+
+    const fr = requireElement(fast.querySelector("[data-testid='why-horizon-timing-range']"), "fast range")
+    expect(fr.textContent).toBe("Период: 8–10 июля по Москве")
+    const fp = requireElement(fast.querySelector("[data-testid='why-horizon-timing-peak']"), "fast peak")
+    expect(fp.textContent).toBe("Пик: Пик был 8 июля в 08:00")
+    const fs = requireElement(fast.querySelector("[data-testid='why-horizon-timing-state']"), "fast state")
+    expect(fs.textContent).toBe("Сейчас: Пик уже пройден")
+  })
+
+  // ── Closed technical leakage ──────────────────────────────────
+  it("keeps closed human copy free of technical vocabulary and legacy constant", () => {
+    renderBackendWhyExpanded()
+    const text = screen.getByTestId("why-horizons").textContent ?? ""
+    for (const pat of [/Профекция/i,/Фирдар/i,/транзит/i,/орб/i,/аппликац/i,/return/i,/Transit_/i,/Natal_/i,/activationIds/i,/natalFactIds/i,/profileFactIds/i]) {
+      expect(text).not.toMatch(pat)
+    }
+    expect(text).not.toContain("три случайных факта")
+    expect(screen.queryByTestId("why-horizon-technical-content")).toBeNull()
+  })
+
+  it("opens first technical toggle and shows backend terms and timing", () => {
+    renderBackendWhyExpanded()
+    const toggle = screen.getAllByTestId("why-horizon-technical-toggle")[0]
+    fireEvent.click(toggle)
+    const content = screen.getByTestId("why-horizon-technical-content")
+    expect(content.textContent).toMatch(/Профекция/i)
+    expect(content.textContent).toMatch(/Фирдар/i)
+    expect(content.textContent).toContain("12 мая 2026")
+    expect(content.textContent).not.toContain("activationIds")
+    expect(content.textContent).not.toContain("natalFactIds")
+  })
+
+  // ── ARIA matrix (direct toggle data-horizon) ────────────────────
+  it("each toggle has unique id, direct data-horizon, aria-controls, region labelledby", () => {
+    renderBackendWhyExpanded()
+    const toggles = screen.getAllByTestId("why-horizon-technical-toggle")
+    expect(toggles).toHaveLength(3)
+    const ids = new Set<string>()
+    for (let i = 0; i < toggles.length; i++) {
+      const t = toggles[i]
+      expect(t.tagName).toBe("BUTTON")
+      const idAttr = t.getAttribute("id")
+      expect(idAttr).toBeTruthy()
+      if (idAttr) {
+        expect(ids.has(idAttr)).toBe(false)
+        ids.add(idAttr)
+      }
+      const expectedHorizon = ["long", "medium", "fast"][i]
+      expect(t.getAttribute("data-horizon")).toBe(expectedHorizon)
+      expect(t.getAttribute("aria-expanded")).toBe("false")
+      fireEvent.click(t)
+      expect(t.getAttribute("aria-expanded")).toBe("true")
+      const regionId = t.getAttribute("aria-controls")
+      expect(regionId).toBeTruthy()
+      const region = regionId ? document.getElementById(regionId) : null
+      expect(region).toBeTruthy()
+      expect(region?.getAttribute("role")).toBe("region")
+      expect(region?.getAttribute("aria-labelledby")).toBe(idAttr)
+      expect(region?.getAttribute("data-horizon")).toBe(expectedHorizon)
+      fireEvent.click(t)
+    }
+  })
+
+  // ── Sphere chip callback contract ──────────────────────────────
+  it("Direct Why render: work chip is native button, click calls onSphereSelect with exact key", () => {
+    const { payload } = buildCanonicalPayload()
+    const onSphereSelect = vi.fn()
+    render(
+      <WhyExpanded
+        sections={payload.why}
+        keyInsight={payload.keyInsight}
+        v2={payload.v2}
+        wireIdentity={CURRENT_WIRE_IDENTITY}
+        concreteAdvice={payload.concreteAdvice}
+        onSphereSelect={onSphereSelect}
+        open
+      />,
+    )
+    const chips = screen.getAllByTestId("why-horizon-sphere")
+    const work = requireElement(chips.find((c) => c.getAttribute("data-sphere-key") === "work"), "work chip")
+    expect(work.tagName).toBe("BUTTON")
+    expect(work.getAttribute("aria-label")).toBe("Открыть сферу «Работа» в навигаторе")
+    expect(work.className).toContain("min-h-11")
+    fireEvent.click(work)
+    expect(onSphereSelect).toHaveBeenCalledTimes(1)
+    expect(onSphereSelect).toHaveBeenCalledWith("work")
+  })
+
+  // ── Missing target row via real WhyExpanded ─────────────────────
+  it("missing concreteAdvice row filters out horizon sphere chip via WhyTimeHorizonCard", () => {
+    const { payload } = buildCanonicalPayload()
+    const filteredAdvice = { ...payload.concreteAdvice, rows: payload.concreteAdvice.rows.filter((r) => r.key !== "work") }
+    const onSphereSelect = vi.fn()
+    render(
+      <WhyExpanded
+        sections={payload.why}
+        keyInsight={payload.keyInsight}
+        v2={payload.v2}
+        wireIdentity={CURRENT_WIRE_IDENTITY}
+        concreteAdvice={filteredAdvice}
+        onSphereSelect={onSphereSelect}
+        open
+      />,
+    )
+    const chips = screen.getAllByTestId("why-horizon-sphere")
+    const workChips = chips.filter((c) => c.getAttribute("data-sphere-key") === "work")
+    expect(workChips).toHaveLength(0)
+    expect(screen.queryByRole("button", { name: /Открыть сферу «Работа»/ })).toBeNull()
+    // other chips still present
+    const decisions = chips.find((c) => c.getAttribute("data-sphere-key") === "decisions")
+    expect(decisions).toBeTruthy()
+    if (decisions) {
+      fireEvent.click(decisions)
+      expect(onSphereSelect).toHaveBeenCalledWith("decisions")
+    }
+  })
+
+  // ── Full TodayScreen exact row scroll/focus + same-click ────────
+  it("full TodayScreen: horizon sphere click scrolls/focuses exact work row, same click repeats, data-status unchanged", () => {
+    const rafSpy = vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => { cb(Date.now()); return 0 })
+
+    const { payload } = buildCanonicalPayload()
+    navigationState.search = "why=1"
+    render(
+      <TodayScreen
+        payload={payload}
+        access={access}
+        selectedDate={new Date("2026-07-08T12:00:00Z")}
+        onDateChange={() => {}}
+      />,
+    )
+
+    const rows = screen.getAllByTestId("concrete-day-advice-row")
+    const workRow = requireElement(rows.find((r) => r.getAttribute("data-sphere-key") === "work"), "work row")
+    const statusBefore = workRow.getAttribute("data-status")
+
+    const scrollSpy = vi.fn()
+    const focusSpy = vi.fn()
+    Object.defineProperty(workRow, "scrollIntoView", { configurable: true, value: scrollSpy })
+    Object.defineProperty(workRow, "focus", { configurable: true, value: focusSpy })
+
+    const chips = screen.getAllByTestId("why-horizon-sphere")
+    const workChip = requireElement(chips.find((c) => c.getAttribute("data-sphere-key") === "work"), "work chip")
+    fireEvent.click(workChip)
+
+    // After click assertions
+    expect(workRow.getAttribute("data-selected")).toBe("true")
+    expect(workRow.getAttribute("aria-expanded")).toBe("true")
+    const details = screen.getByTestId("concrete-day-advice-details")
+    expect(details.getAttribute("data-sphere-key")).toBe("work")
+    expect(workRow.getAttribute("data-status")).toBe(statusBefore)
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: "smooth", block: "center" })
+    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true })
+
+    // Same-chip repeat: clear spies, click again
+    scrollSpy.mockClear()
+    focusSpy.mockClear()
+    fireEvent.click(workChip)
+    expect(workRow.getAttribute("data-selected")).toBe("true")
+    expect(workRow.getAttribute("aria-expanded")).toBe("true")
+    expect(details.getAttribute("data-sphere-key")).toBe("work")
+    expect(workRow.getAttribute("data-status")).toBe(statusBefore)
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: "smooth", block: "center" })
+    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true })
+
+    rafSpy.mockRestore()
   })
 })

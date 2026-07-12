@@ -8,11 +8,18 @@
 // owns:
 //   - components/today/why-time-horizon-card.tsx
 // inputs: backend horizon wire model or presentation-selected legacy horizon, optional concrete-advice navigator rows, optional sphere-select callback.
-// outputs: Stable why-time-horizon article with visible metadata/title/body, tone badge, timing container, actions, and optional technical disclosure.
+// outputs: why-horizon, why-horizon-index, why-horizon-tone, why-horizon-meaning, why-horizon-timing + range/peak/state, why-horizon-manifestations, why-horizon-patterns + strength/risk, why-horizon-guidance, why-horizon-spheres + sphere, why-horizon-technical-toggle/content, legacy why-time-horizon.
 // dependencies: lib/contracts/today, lib/presentation/today-v2 types and stage formatter, horizon-actions, horizon-technique-disclosure.
 // side_effects: none.
 // emitted_logs: none.
-// invariants: backend tone presentation is selected only from horizon.tone enum; root keeps data-status; technical vocabulary and raw evidence never render in human copy; legacy path only derives localized date range, peak, and stage from evidence timing.
+// invariants:
+//   - backend tone presentation is selected only from horizon.tone enum; root keeps data-status.
+//   - technical vocabulary and raw evidence never render in human copy.
+//   - legacy path only derives localized date range, peak, and stage from evidence timing.
+//   - backend human copy and backend array order are preserved exactly; frontend does not rewrite, sort, or infer them.
+//   - DOM order: meaning -> timing -> manifestations -> patterns -> actions -> spheres -> tech.
+//   - sphere chips: matched-row-only; >=44px touch target; missing rows produce no chip/fallback.
+//   - technical disclosure last; closed content absent.
 // failure_policy: uses a neutral structural fallback when safe why copy is absent.
 // END_MODULE_CONTRACT: M-WHY-TIME-HORIZON-CARD
 
@@ -22,7 +29,12 @@
 //   - LegacyWhyTimeHorizonCard
 // semantic_blocks:
 //   - BACKEND_TONE_PRESENTATION: enum-owned style/label map for backend horizon cards and badges.
-//   - HORIZON_CARD: visual long/medium/fast presentation with optional readable timing.
+//   - BACKEND_HORIZON_HEADER_AND_MEANING: index, eyebrow, title, tone badge, summary, plainExplanation.
+//   - BACKEND_TIMING: range/peak/state labels with data-testid children.
+//   - BACKEND_MANIFESTATIONS_AND_PATTERNS: condition body grid and optional strength/risk.
+//   - BACKEND_GUIDANCE_AND_SPHERES: validity, do/avoid, matched sphere chips.
+//   - BACKEND_TECHNICAL_DISCLOSURE: accessible per-horizon technique explanation.
+//   - LEGACY_HORIZON_CARD: selector-derived fallback card with localized timing.
 // owned_tests:
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
 // END_MODULE_MAP: M-WHY-TIME-HORIZON-CARD
@@ -32,11 +44,7 @@ import { getEvidenceStageLabel, getEvidenceTimingPreview, type WhyTimeHorizon } 
 import { HorizonActions } from "./horizon-actions"
 import { HorizonTechniqueDisclosure } from "./horizon-technique-disclosure"
 
-const HORIZON_META = {
-  long: { number: "01", label: "Большой сюжет", tone: "border-violet-300/80 bg-violet-100/35 dark:border-violet-400/35 dark:bg-violet-500/10" },
-  medium: { number: "02", label: "Активная волна", tone: "border-violet-300 bg-violet-50/75 dark:border-violet-400/45 dark:bg-violet-500/15" },
-  fast: { number: "03", label: "Триггер сегодня", tone: "border-violet-200 bg-violet-50/40 dark:border-violet-400/25 dark:bg-violet-500/5" },
-} as const
+const HORIZON_INDEX = { long: "01", medium: "02", fast: "03" } as const
 
 const RU_MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
 
@@ -47,11 +55,17 @@ function formatTimingDate(value: string, includeTime = false): string {
   return `${dateText}, ${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}`
 }
 
+const HORIZON_META = {
+  long: { number: "01", label: "Большой сюжет", tone: "border-violet-300/80 bg-violet-100/35 dark:border-violet-400/35 dark:bg-violet-500/10" },
+  medium: { number: "02", label: "Активная волна", tone: "border-violet-300 bg-violet-50/75 dark:border-violet-400/45 dark:bg-violet-500/15" },
+  fast: { number: "03", label: "Триггер сегодня", tone: "border-violet-200 bg-violet-50/40 dark:border-violet-400/25 dark:bg-violet-500/5" },
+} as const
+
 const BACKEND_TONE_LABELS = {
-  supportive: "Поддерживающий фон",
-  neutral: "Нейтральный фон",
-  tense: "Напряжённый фон",
-  mixed: "Смешанный фон",
+  supportive: "Поддерживает",
+  neutral: "Ровный фон",
+  tense: "Требует внимания",
+  mixed: "Смешанный сигнал",
 } as const
 
 const BACKEND_TONE_STYLES = {
@@ -99,6 +113,7 @@ export function WhyTimeHorizonCard({
   // emitted_logs: none.
   // error_behavior: omits optional subsections when data is absent.
   // END_FUNCTION_CONTRACT: F-M-WHY-TIME-HORIZON-CARD.WhyTimeHorizonCard
+  const index = HORIZON_INDEX[horizon.horizon]
   const adviceRows = concreteAdvice?.rows ?? []
   const toneStyle = BACKEND_TONE_STYLES[horizon.tone]
   const sphereRows = horizon.likelySpheres
@@ -113,44 +128,37 @@ export function WhyTimeHorizonCard({
       data-timing-state={horizon.timing.state}
       className={`overflow-hidden rounded-2xl border p-4 shadow-sm ${toneStyle.card}`}
     >
+      {/* 1. Header: index + eyebrow + title + tone */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${toneStyle.eyebrow}`}>{horizon.eyebrow}</p>
-          <h3 className="mt-2 font-serif text-[23px] leading-[1.22] text-foreground">{horizon.title}</h3>
+        <div className="flex-1 min-w-0">
+          <span data-testid="why-horizon-index" className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-[11px] font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-100">{index}</span>
+          <p className={`mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${toneStyle.eyebrow}`}>{horizon.eyebrow}</p>
+          <h3 className="mt-1 font-serif text-[23px] leading-[1.22] text-foreground">{horizon.title}</h3>
         </div>
         <span
           data-testid="why-horizon-tone"
           data-status={horizon.tone}
-          className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${toneStyle.badge}`}
+          className={`max-w-full whitespace-normal text-center flex-none rounded-full px-2.5 py-1 text-[11px] font-medium ${toneStyle.badge}`}
         >
           {BACKEND_TONE_LABELS[horizon.tone]}
         </span>
       </div>
 
-      <div data-testid="why-horizon-timing" className={`mt-4 rounded-2xl border px-3 py-2.5 text-[13px] leading-relaxed text-foreground/85 ${toneStyle.timing}`}>
-        <p>{horizon.timing.rangeLabel}</p>
-        {horizon.timing.peakLabel ? <p>{horizon.timing.peakLabel}</p> : null}
-        <p>{horizon.timing.stateLabel}</p>
+      {/* 2. Human meaning: summary + plainExplanation */}
+      <div data-testid="why-horizon-meaning" className="mt-4 space-y-2">
+        <p className="text-[15px] font-semibold leading-relaxed text-foreground/90">{horizon.summary}</p>
+        <p className="text-[15px] leading-relaxed text-muted-foreground">{horizon.plainExplanation}</p>
       </div>
 
-      <p className="mt-4 text-[15px] leading-relaxed text-foreground/85">{horizon.summary}</p>
-      <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{horizon.plainExplanation}</p>
+      {/* 3. Timing */}
+      <div data-testid="why-horizon-timing" className={`mt-4 rounded-2xl border px-3 py-2.5 text-[13px] leading-relaxed text-foreground/85 ${toneStyle.timing}`}>
+        {horizon.timing.rangeLabel ? <p data-testid="why-horizon-timing-range"><span className="font-semibold text-foreground">Период:</span> {horizon.timing.rangeLabel}</p> : null}
+        {horizon.timing.peakLabel ? <p data-testid="why-horizon-timing-peak"><span className="font-semibold text-foreground">Пик:</span> {horizon.timing.peakLabel}</p> : null}
+        <p data-testid="why-horizon-timing-state"><span className="font-semibold text-foreground">Сейчас:</span> {horizon.timing.stateLabel}</p>
+      </div>
 
-      {horizon.strength ? (
-        <div data-testid="why-horizon-strength" className="mt-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-3 dark:border-emerald-400/20 dark:bg-emerald-500/10">
-          <p className="text-[12px] font-semibold text-foreground">На что можно опереться</p>
-          <p className="mt-1 text-[14px] leading-relaxed text-foreground/85">{horizon.strength.text}</p>
-        </div>
-      ) : null}
-
-      {horizon.risk ? (
-        <div data-testid="why-horizon-risk" className="mt-3 rounded-2xl border border-rose-200/80 bg-rose-50/55 p-3 dark:border-rose-400/20 dark:bg-rose-500/10">
-          <p className="text-[12px] font-semibold text-foreground">Что может мешать</p>
-          <p className="mt-1 text-[14px] leading-relaxed text-foreground/85">{horizon.risk.text}</p>
-        </div>
-      ) : null}
-
-      <div className="mt-4 space-y-2">
+      {/* 4. Manifestations */}
+      <div data-testid="why-horizon-manifestations" className="mt-4 space-y-2">
         <p className="text-[12px] font-semibold text-foreground">Где это вероятнее проявится</p>
         <div className="space-y-2">
           {horizon.manifestations.map((item) => (
@@ -163,24 +171,49 @@ export function WhyTimeHorizonCard({
         </div>
       </div>
 
+      {/* 5. Patterns (strength/risk) */}
+      <div data-testid="why-horizon-patterns" className="mt-4 grid gap-3 sm:grid-cols-2">
+        {horizon.strength ? (
+          <div data-testid="why-horizon-strength" className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-3 dark:border-emerald-400/20 dark:bg-emerald-500/10">
+            <p className="text-[12px] font-semibold text-foreground">На что можно опереться</p>
+            <p className="mt-1 text-[14px] leading-relaxed text-foreground/85">{horizon.strength.text}</p>
+          </div>
+        ) : null}
+        {horizon.risk ? (
+          <div data-testid="why-horizon-risk" className="rounded-2xl border border-rose-200/80 bg-rose-50/55 p-3 dark:border-rose-400/20 dark:bg-rose-500/10">
+            <p className="text-[12px] font-semibold text-foreground">Что может мешать</p>
+            <p className="mt-1 text-[14px] leading-relaxed text-foreground/85">{horizon.risk.text}</p>
+          </div>
+        ) : null}
+      </div>
+
+      {/* 6. Actions before spheres */}
+      <HorizonActions actions={horizon.actions} />
+
+      {/* 7. Sphere links */}
       {sphereRows.length ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {sphereRows.map((row) => (
-            <button
-              key={row.key}
-              type="button"
-              data-testid="why-horizon-sphere"
-              onClick={() => onSphereSelect?.(row.key)}
-              className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[13px] font-medium text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-violet-400/25 dark:bg-violet-500/10 dark:text-violet-100"
-            >
-              {row.label}
-            </button>
-          ))}
+        <div data-testid="why-horizon-spheres" className="mt-4">
+          <p className="text-[12px] font-semibold text-foreground">Открыть в навигаторе по 12 сферам</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {sphereRows.map((row) => (
+              <button
+                key={row.key}
+                type="button"
+                data-testid="why-horizon-sphere"
+                data-sphere-key={row.key}
+                onClick={() => onSphereSelect?.(row.key)}
+                aria-label={`Открыть сферу «${row.label}» в навигаторе`}
+                className="min-h-11 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[13px] font-medium text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-violet-400/25 dark:bg-violet-500/10 dark:text-violet-100"
+              >
+                {row.label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
-      <HorizonActions actions={horizon.actions} />
-      <HorizonTechniqueDisclosure explanations={horizon.techniqueExplanations} horizonId={`why-horizon-${horizon.horizon}`} />
+      {/* 8. Technique disclosure last */}
+      <HorizonTechniqueDisclosure explanations={horizon.techniqueExplanations} horizon={horizon.horizon} />
     </article>
   )
 }

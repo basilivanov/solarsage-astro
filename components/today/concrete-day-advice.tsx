@@ -18,6 +18,8 @@
 //   - only one details panel can exist.
 //   - human navigator never renders evidence, techniques, planets, or orbs.
 //   - compact rows and details share one normalized verdict presentation map and public data-status contract.
+//   - Exact 4 visible verdict mappings (good/neutral/caution/avoid); color secondary.
+//   - data-status stays exact backend verdict enum; unknown falls back to neutral.
 // failure_policy: render only supplied rows when the payload is incomplete.
 // END_MODULE_CONTRACT: M-TODAY-CONCRETE-DAY-ADVICE
 
@@ -61,32 +63,32 @@ const CONCRETE_ADVICE_VERDICT_PRESENTATION: Record<Verdict, {
   good: {
     dotClass: "bg-emerald-500",
     iconShellClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200",
-    compactCopy: "Поддержка",
-    detailsCopy: "Поддерживающий фон",
+    compactCopy: "Поддерживает",
+    detailsCopy: "Поддерживающий сигнал",
     statusTextClass: "text-emerald-700 dark:text-emerald-200",
     badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-100",
   },
   caution: {
     dotClass: "bg-amber-500",
     iconShellClass: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200",
-    compactCopy: "Внимание",
-    detailsCopy: "Требует внимания",
+    compactCopy: "Требует внимания",
+    detailsCopy: "Напряжённый сигнал · требует внимания",
     statusTextClass: "text-amber-700 dark:text-amber-200",
     badgeClass: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-100",
   },
   avoid: {
     dotClass: "bg-rose-500",
     iconShellClass: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200",
-    compactCopy: "Отложить",
-    detailsCopy: "Высокое напряжение · лучше отложить",
+    compactCopy: "Лучше отложить",
+    detailsCopy: "Сильное напряжение · лучше отложить",
     statusTextClass: "text-rose-700 dark:text-rose-200",
     badgeClass: "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-400/30 dark:bg-rose-500/15 dark:text-rose-100",
   },
   neutral: {
     dotClass: "bg-violet-500",
     iconShellClass: "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200",
-    compactCopy: "Ровно",
-    detailsCopy: "Нейтральный фон",
+    compactCopy: "Ровный фон",
+    detailsCopy: "Нейтральный сигнал",
     statusTextClass: "text-violet-700 dark:text-violet-200",
     badgeClass: "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-400/30 dark:bg-violet-500/15 dark:text-violet-100",
   },
