@@ -239,17 +239,29 @@
   "headline": "Сегодня особенно заметен внутренний конфликт между контролем и необходимостью что-то изменить",
   "importantToday": [],
   "meta": {
+    "activationLayerVersion": "al-1.1",
     "cached": false,
-    "calculationVersion": 1,
-    "contentVersion": 3,
+    "calculationVersion": "ss-calc-1.2.0",
+    "canonVersions": {
+      "activation_rules": "v1",
+      "aspect_rules": "v1",
+      "dignities": "v1",
+      "horizon_actions_ru": "v1",
+      "horizon_language_ru": "v1",
+      "horizon_selection": "v1",
+      "personal_patterns_ru": "v1",
+      "scoring_v2": "v1",
+      "spheres": "v1"
+    },
+    "contentVersion": 10,
     "contractVersion": 3,
-    "frontendPayloadVersion": 2,
+    "frontendPayloadVersion": 3,
     "generatedAt": "2026-07-08T06:00:00Z",
     "normalizationVersion": 1,
-    "payloadVersion": "today.v2",
+    "payloadVersion": "today.v2.1",
     "promptVersion": 2,
     "schemaVersion": "today/v1",
-    "scoringVersion": 1
+    "scoringVersion": "ss-scoring-2.0"
   },
   "microcopy": [],
   "notes": "День глубокой перестройки: напряжение можно превратить в точное и взрослое решение, без форсирования.",
@@ -419,15 +431,27 @@
       ]
     },
     "audit": {
-      "activationLayerVersion": "al-1.0",
+      "activationLayerVersion": "al-1.1",
       "available": true,
-      "calculationVersion": "ss-calc-1.1.0",
+      "calculationVersion": "ss-calc-1.2.0",
       "canonVersions": {
         "activation_rules": "v1",
+        "aspect_rules": "v1",
+        "dignities": "v1",
+        "horizon_actions_ru": "v1",
+        "horizon_language_ru": "v1",
+        "horizon_selection": "v1",
+        "personal_patterns_ru": "v1",
         "scoring_v2": "v1",
         "spheres": "v1"
       },
-      "payloadVersion": "today.v2",
+      "horizonPipeline": {
+        "reason": "selected",
+        "schemaVersion": "today-horizon-pipeline-audit.v1",
+        "selectedCount": 3,
+        "status": "built"
+      },
+      "payloadVersion": "today.v2.1",
       "scoringVersion": "ss-scoring-2.0",
       "v1V2Diff": {}
     },

@@ -17,6 +17,7 @@ from app.core.versions import (
     LEGACY_FRONTEND_PAYLOAD_VERSION,
     LEGACY_SCORING_VERSION,
     SCORING_V2_VERSION,
+    TODAY_CONTENT_VERSION,
     V2_FRONTEND_PAYLOAD_VERSION,
 )
 from app.services.canon_service import get_canon_versions
@@ -35,10 +36,19 @@ class TodayCacheKey:
     scoring_version: int | str
     canon_versions_hash: str
     llm_prompt_version: int
+    content_version: int
     frontend_payload_version: int
 
     @property
     def cache_key_hash(self) -> str:
+        # START_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.TodayCacheKey.cache_key_hash
+        # purpose: Hash the complete Today cache identity including content, frontend, and canon hash fields.
+        # inputs: self - immutable TodayCacheKey with user/date/profile and versioned identity fields.
+        # returns: deterministic 16-character SHA-256 prefix.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: none.
+        # END_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.TodayCacheKey.cache_key_hash
         """Deterministic hash of all versioned fields."""
         raw = json.dumps({
             "user_id": str(self.user_id),
@@ -49,6 +59,7 @@ class TodayCacheKey:
             "scoring_version": str(self.scoring_version),
             "canon_versions_hash": self.canon_versions_hash,
             "llm_prompt_version": self.llm_prompt_version,
+            "content_version": self.content_version,
             "frontend_payload_version": self.frontend_payload_version,
         }, sort_keys=True)
         return hashlib.sha256(raw.encode()).hexdigest()[:16]
@@ -63,8 +74,17 @@ def build_today_cache_key(
     activation_layer_version: str | None = None,
     scoring_version: int | str = LEGACY_SCORING_VERSION,
     llm_prompt_version: int = 2,
+    content_version: int = TODAY_CONTENT_VERSION,
     frontend_payload_version: int = LEGACY_FRONTEND_PAYLOAD_VERSION,
 ) -> TodayCacheKey:
+    # START_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.build_today_cache_key
+    # purpose: Build a deterministic Today cache key from request identity and current nine-canon hash.
+    # inputs: user/date/profile identity plus calculation, activation, scoring, prompt, content, and frontend versions.
+    # returns: TodayCacheKey whose canon_versions_hash reflects get_canon_versions() exactly.
+    # side_effects: reads canon version services through get_canon_versions().
+    # emitted_logs: none.
+    # error_behavior: propagates canon loading errors.
+    # END_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.build_today_cache_key
     """Build a versioned cache key with the current canon versions."""
     canon_versions = get_canon_versions()
     canon_versions_hash = hashlib.sha256(
@@ -80,6 +100,7 @@ def build_today_cache_key(
         scoring_version=scoring_version,
         canon_versions_hash=canon_versions_hash,
         llm_prompt_version=llm_prompt_version,
+        content_version=content_version,
         frontend_payload_version=frontend_payload_version,
     )
 
@@ -90,6 +111,14 @@ def expected_cache_identity(
     target_date: str,
     profile_hash: str,
 ) -> TodayCacheKey:
+    # START_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.expected_cache_identity
+    # purpose: Build the cache-read identity for the selected scoring family before fresh runtime objects exist.
+    # inputs: user_id, target_date, profile_hash.
+    # returns: V2 identity with current content/frontend and nine-canon hash, or legacy V1 identity.
+    # side_effects: reads rollout scoring selection and canon version services.
+    # emitted_logs: none.
+    # error_behavior: propagates canon loading errors.
+    # END_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.expected_cache_identity
     """Build a cache key with the current expected version fields.
 
     Used before cache read when runtime facts are not yet known.

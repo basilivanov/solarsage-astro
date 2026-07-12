@@ -82,6 +82,9 @@ def test_audit_writes_all_required_artifacts(tmp_path):
     fixture = json.loads((out / "11_frontend_fixture.json").read_text())
     assert fixture["assertions"]["has_v2"] is True
     assert fixture["payload"]["v2"] is not None
+    raw_payload = json.loads((out / "debug/raw_today_payload.json").read_text())
+    assert raw_payload["meta"]["payload_version"] == "today.v2.1"
+    assert raw_payload["meta"]["frontend_payload_version"] == 3
 
 
 def test_audit_ok_synthetic_and_fixture_self_consistent(tmp_path):

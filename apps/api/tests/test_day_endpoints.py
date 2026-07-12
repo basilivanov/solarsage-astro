@@ -119,7 +119,7 @@ def test_today_service_formats_top_flags_for_users() -> None:
 @pytest.mark.asyncio
 async def test_today_service_ignores_cached_payload_with_old_content_version(db_session: AsyncSession) -> None:
     service = TodayService(db_session)
-    assert TODAY_CONTENT_VERSION == 9
+    assert TODAY_CONTENT_VERSION == 10
 
     user = User(tg_user_id=919191)
     db_session.add(user)

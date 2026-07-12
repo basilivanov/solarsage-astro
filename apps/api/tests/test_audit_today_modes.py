@@ -377,8 +377,8 @@ async def test_live_audit_records_v2_runtime_flags(tmp_path, monkeypatch):
             return {
                 "meta": {
                     "scoring_version": "ss-scoring-2.0",
-                    "payload_version": "today.v2",
-                    "frontend_payload_version": 2,
+                    "payload_version": "today.v2.1",
+                    "frontend_payload_version": 3,
                 },
                 "headline": "live",
                 "day_status": "steady",
@@ -482,8 +482,8 @@ async def test_live_audit_records_v2_runtime_flags(tmp_path, monkeypatch):
     assert src["solarsage_v2_enabled"] is True
     assert src["solarsage_v2_frontend_enabled"] is False
     assert src["selected_scoring_version"] == "ss-scoring-2.0"
-    assert src["final_payload_version"] == "today.v2"
-    assert src["final_frontend_payload_version"] == 2
+    assert src["final_payload_version"] == "today.v2.1"
+    assert src["final_frontend_payload_version"] == 3
     assert src["final_has_v2_block"] is True
     assert src["final_v2_activation_evidence_count"] == 1
     assert src["sidecar_activation_count"] == 1
@@ -501,7 +501,11 @@ async def test_live_audit_v2_payload_missing_v2_block_fails(tmp_path, monkeypatc
     class FakePayload:
         def model_dump(self, mode="json", by_alias=False):
             return {
-                "meta": {"scoring_version": "ss-scoring-2.0", "payload_version": "today.v2", "frontend_payload_version": 2},
+                "meta": {
+                    "scoring_version": "ss-scoring-2.0",
+                    "payload_version": "today.v2.1",
+                    "frontend_payload_version": 3,
+                },
                 "headline": "live", "day_status": "steady", "concrete_advice": {}, "why_this_happens": {},
                 "v2": None,
             }
@@ -558,7 +562,7 @@ async def test_live_audit_v2_payload_missing_v2_block_fails(tmp_path, monkeypatc
 
     args = audit_mod.parse_args(["--user-id", "u", "--date", "2026-07-08", "--out", str(out), "--mode", "live-production", "--skip-oracles"])
     args.resolved_mode = "live-production"
-    with pytest.raises(SystemExit, match="declares today.v2 but has no v2 block"):
+    with pytest.raises(SystemExit, match="declares V2 identity but has no v2 block"):
         await audit_mod.run_audit(args)
 
 
@@ -648,3 +652,19 @@ def test_activation_evidence_mapping_helpers_pure():
     assert mapping["status"] == "failed"
     assert mapping["unmapped_ids"] == ["B"]
     assert "A" in mapping["mapped_ids"]
+
+
+def test_previous_v2_identity_pair_remains_recognized_by_audit_mapping():
+    mapping = audit_mod.build_activation_evidence_mapping(
+        mode="live-production",
+        payload={
+            "meta": {"payload_version": "today.v2", "frontend_payload_version": 2},
+            "v2": {"activation_evidence": [{"id": "A"}]},
+        },
+        sidecar_layer={"activations": [{"id": "A"}]},
+        filter_policy="all_sidecar_ids_required",
+    )
+    assert mapping["payload_version"] == "today.v2"
+    assert mapping["frontend_payload_version"] == 2
+    assert mapping["status"] == "ok"
+    assert mapping["accepted_unmapped"] is True

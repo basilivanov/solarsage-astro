@@ -79,6 +79,34 @@ describe("today v2 fixture roundtrip and single source", () => {
     expect(v2.horizons?.items[2].techniqueExplanations[0].whyItMattersNow).toContain("С 8 по 10 июля по Москве")
   })
 
+  it("verifies current V2 version and audit/canon family", () => {
+    expect(dayPayloadV2.meta.calculationVersion).toBe("ss-calc-1.2.0")
+    expect(dayPayloadV2.meta.activationLayerVersion).toBe("al-1.1")
+    expect(dayPayloadV2.meta.scoringVersion).toBe("ss-scoring-2.0")
+    expect(dayPayloadV2.meta.payloadVersion).toBe("today.v2.1")
+    expect(dayPayloadV2.meta.frontendPayloadVersion).toBe(3)
+    expect(dayPayloadV2.meta.contentVersion).toBe(10)
+    expect(dayPayloadV2.meta.promptVersion).toBe(2)
+    expect(Object.keys(dayPayloadV2.meta.canonVersions ?? {}).sort()).toEqual([
+      "activation_rules",
+      "aspect_rules",
+      "dignities",
+      "horizon_actions_ru",
+      "horizon_language_ru",
+      "horizon_selection",
+      "personal_patterns_ru",
+      "scoring_v2",
+      "spheres",
+    ])
+    expect(dayPayloadV2.v2?.audit.payloadVersion).toBe("today.v2.1")
+    expect(dayPayloadV2.v2?.audit.horizonPipeline).toEqual({
+      schemaVersion: "today-horizon-pipeline-audit.v1",
+      status: "built",
+      reason: "selected",
+      selectedCount: 3,
+    })
+  })
+
   it("ensures every referenced V2 activation ID exists in the evidence set", () => {
     const v2 = dayPayloadV2.v2
     expect(v2).toBeDefined()

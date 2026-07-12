@@ -24,11 +24,13 @@
 #   - M-NATAL-CONTEXT-SERVICE (NatalContextService)
 #   - M-SOLARSAGE-CLIENT (get_solarsage_client — transits only)
 #   - M-LLM-SERVICE
+#   - M-TODAY-HORIZON-INTEGRATION-SERVICE (request-local V2 horizons bridge)
 # invariants:
 #   - Never calls get_natal() directly; uses NatalContextService.
 #   - profile_hash ties today cache to natal context version.
 #   - If birth profile changes, cache misses and rebuilds.
 #   - meta.cached is true when returned from cache, false on fresh generation.
+#   - V2 horizons reuse exact request-local activation, scoring, natal, and advice objects once.
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
@@ -44,6 +46,7 @@
 #   - NATAL_CONTEXT_REUSE: uses NatalContextService for natal facts (W-NATAL-FULL)
 #   - TRANSIT_FETCH: calls solarsage_client.get_transits() for fresh transits
 #   - PAYLOAD_BUILDER: construct TodayPayload from natal context + transits + LLM
+#   - HORIZON_INTEGRATION: request-local V2 horizon pipeline bridge after final advice
 #   - CACHE_LAYER: check cache by (user_id, date, profile_hash), store on miss
 # owned_tests:
 #   - apps/api/tests/test_day_no_birthday_fallback.py
@@ -71,6 +74,8 @@ from app.schemas.today import (
     SphereScore,
     TodayMeta,
     TodayPayload,
+    TodayV2HorizonPipelineAuditBuilt,
+    TodayV2HorizonPipelineAuditUnavailable,
     TopFlag,
 )
 from app.clients.solarsage_client import get_solarsage_client
@@ -96,17 +101,19 @@ from app.core.versions import (
     LEGACY_FRONTEND_PAYLOAD_VERSION,
     LEGACY_SCORING_VERSION,
     SCORING_V2_VERSION,
+    TODAY_CONTENT_VERSION,
     TODAY_V1_PAYLOAD_VERSION,
+    TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
     TODAY_V2_PAYLOAD_VERSION,
+    V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS,
     V2_FRONTEND_PAYLOAD_VERSION,
 )
 from app.services.natal_context_service import NatalContextService
 from app.services.canon_service import get_canon_versions
 from app.services.activation_layer_service import ActivationLayerService
+from app.services.today_horizon_integration_service import TodayHorizonIntegrationService
 from app.core.logging import log_event, log_block
 
-
-TODAY_CONTENT_VERSION = 9
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",
@@ -137,8 +144,17 @@ TENSE_ASPECTS = {"square", "opposition"}
 
 # START_BLOCK: REAL_CALCULATION
 class TodayService:
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        horizon_integration_service: TodayHorizonIntegrationService | None = None,
+    ):
         self.db = db
+        self._horizon_integration_service = (
+            horizon_integration_service
+            if horizon_integration_service is not None
+            else TodayHorizonIntegrationService()
+        )
 
     async def get_today_payload(
         self,
@@ -474,11 +490,31 @@ class TodayService:
             if dual.v2_result is None:
                 raise RuntimeError("V2 selected but v2_result is missing")
             from app.services.semantic_v2_service import SemanticV2Service
+            horizon_result = self._horizon_integration_service.build(
+                activation_layer=activation_layer,
+                scoring_result=dual.v2_result,
+                natal_context=natal_context,
+                concrete_advice=concrete_advice,
+            )
+            if horizon_result.status == "built":
+                horizon_pipeline_audit = TodayV2HorizonPipelineAuditBuilt(
+                    status="built",
+                    reason="selected",
+                    selected_count=3,
+                )
+            else:
+                horizon_pipeline_audit = TodayV2HorizonPipelineAuditUnavailable(
+                    status="unavailable",
+                    reason=horizon_result.selection_reason,
+                    selected_count=0,
+                )
             v2_block = SemanticV2Service().build_v2_block(
                 activation_layer=activation_layer,
                 scoring_result=dual.v2_result,
                 v1_v2_diff=dual.diff,
                 trace_id=getattr(dual, "trace_id", None),
+                horizons=horizon_result.horizons,
+                horizon_pipeline_audit=horizon_pipeline_audit,
             )
 
         payload = TodayPayload(
@@ -530,9 +566,9 @@ class TodayService:
 
         # Defensive contract invariants: V2 identity requires a non-null V2 body.
         if payload.meta.payload_version == TODAY_V2_PAYLOAD_VERSION and payload.v2 is None:
-            raise RuntimeError("TodayPayload declares today.v2 but v2 block is missing")
+            raise RuntimeError("current V2 payload identity requires v2 block")
         if payload.meta.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION and payload.v2 is None:
-            raise RuntimeError("TodayPayload frontend v2 identity requires v2 block")
+            raise RuntimeError("current frontend V2 identity requires v2 block")
 
         # W-5.2: Cache payload (with profile_hash in key)
         await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
@@ -717,9 +753,9 @@ class TodayService:
         payload_version = meta.get("payload_version", meta.get("payloadVersion"))
         frontend_version = meta.get("frontend_payload_version", meta.get("frontendPayloadVersion"))
         v2_block = payload_dict.get("v2", payload_dict.get("V2"))
-        if payload_version == "today.v2" and v2_block is None:
+        if payload_version in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS and v2_block is None:
             return None
-        if frontend_version == 2 and v2_block is None:
+        if frontend_version in V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS and v2_block is None:
             return None
 
         try:

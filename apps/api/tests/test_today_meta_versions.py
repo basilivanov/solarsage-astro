@@ -667,8 +667,8 @@ def test_version_constants_are_explicit():
     assert CALCULATION_VERSION.startswith("ss-calc-")
     assert ACTIVATION_LAYER_VERSION.startswith("al-")
     assert SCORING_V2_VERSION.startswith("ss-scoring-")
-    assert TODAY_V2_PAYLOAD_VERSION == "today.v2"
-    assert V2_FRONTEND_PAYLOAD_VERSION == 2
+    assert TODAY_V2_PAYLOAD_VERSION == "today.v2.1"
+    assert V2_FRONTEND_PAYLOAD_VERSION == 3
 
 
 def test_api_and_sidecar_versions_reexport_shared_source():
@@ -992,6 +992,7 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
         "by_angle": {},
         "warnings": [],
     }
+    sentinel_activation_layer = ActivationLayer.model_validate(sidecar_layer)
 
     mock_client = AsyncMock()
     mock_client.get_transits = AsyncMock(return_value={"target_jd": 2461229.875, "planets": []})
@@ -1052,14 +1053,45 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
         v2_error=None,
     )
 
+    from app.schemas.horizon_pipeline import HorizonPipelineResult
+    from app.schemas.horizon_selection import HorizonSelectionDiagnostics
+
+    class IntegrationSpy:
+        def __init__(self):
+            self.calls = []
+
+        def build(self, **kwargs):
+            self.calls.append(kwargs)
+            return HorizonPipelineResult(
+                status="unavailable",
+                horizons=None,
+                selection_reason="missing_long",
+                selection_diagnostics=HorizonSelectionDiagnostics(
+                    input_count=1,
+                    active_count=1,
+                    classified_count=1,
+                    candidate_count=0,
+                    per_horizon_pre_bound_counts={"long": 0, "medium": 0, "fast": 0},
+                    per_horizon_post_bound_counts={"long": 0, "medium": 0, "fast": 0},
+                    excluded_counts_by_reason={},
+                    combinations_evaluated=0,
+                ),
+            )
+
+    integration_spy = IntegrationSpy()
+
     with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
          patch("app.services.today_service.NatalContextService.get_or_build_natal_context", AsyncMock(return_value=fake_natal)), \
          patch("app.services.today_service.NormalizationService.normalize_day", return_value=deterministic_signals), \
          patch.object(TodayService, "_get_yesterday_signals", AsyncMock(return_value=None)), \
          patch.object(TodayService, "_cache_payload", new=capture_cache), \
          patch.object(TodayService, "_cache_semantic_layer", AsyncMock()), \
+         patch(
+             "app.services.today_service.ActivationLayerService.build",
+             return_value=sentinel_activation_layer,
+         ), \
          patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual):
-        service = TodayService(db_session)
+        service = TodayService(db_session, horizon_integration_service=integration_spy)
         access = ContentAccessState(state="preview", reason="expired_access")
         payload = await service.get_today_payload(
             user_id=user.id,
@@ -1076,6 +1108,17 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
     assert payload.v2 is not None
     assert payload.v2.activation_evidence
     assert any(getattr(e, "id", None) == "t2n__MOON__PLUTO" for e in payload.v2.activation_evidence)
+    assert payload.v2.horizons is None
+    assert payload.v2.audit.horizon_pipeline is not None
+    assert payload.v2.audit.horizon_pipeline.status == "unavailable"
+    assert payload.v2.audit.horizon_pipeline.reason == "missing_long"
+    assert payload.v2.audit.horizon_pipeline.selected_count == 0
+
+    assert len(integration_spy.calls) == 1
+    assert integration_spy.calls[0]["activation_layer"] is sentinel_activation_layer
+    assert integration_spy.calls[0]["scoring_result"] is v2_result
+    assert integration_spy.calls[0]["natal_context"] is fake_natal
+    assert integration_spy.calls[0]["concrete_advice"] is payload.concrete_advice
 
     assert captured_cache_keys, "expected cache write identity capture"
     ck = captured_cache_keys[0]

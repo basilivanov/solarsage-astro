@@ -1,8 +1,10 @@
 """Tests: W5 versioned cache key."""
 import uuid
 import json
+from copy import deepcopy
 from datetime import date as Date, time as Time
 from datetime import datetime, UTC
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
@@ -116,10 +118,134 @@ def test_cache_key_field_consistency():
     assert k.activation_layer_version == "al-1.0"
     assert k.scoring_version == 1
     assert k.llm_prompt_version == 2
+    assert k.content_version == TODAY_CONTENT_VERSION
     assert k.frontend_payload_version == 1
 
 
+def test_cache_key_content_and_frontend_versions_affect_hash():
+    uid = uuid.uuid4()
+    base = build_today_cache_key(
+        user_id=uid,
+        target_date="2026-07-08",
+        profile_hash="abc",
+        content_version=9,
+        frontend_payload_version=2,
+    )
+    content_changed = build_today_cache_key(
+        user_id=uid,
+        target_date="2026-07-08",
+        profile_hash="abc",
+        content_version=10,
+        frontend_payload_version=2,
+    )
+    frontend_changed = build_today_cache_key(
+        user_id=uid,
+        target_date="2026-07-08",
+        profile_hash="abc",
+        content_version=9,
+        frontend_payload_version=3,
+    )
+    assert base.cache_key_hash != content_changed.cache_key_hash
+    assert base.cache_key_hash != frontend_changed.cache_key_hash
+
+
+@pytest.mark.parametrize(
+    "horizon_key",
+    [
+        "horizon_selection",
+        "horizon_language_ru",
+        "horizon_actions_ru",
+        "personal_patterns_ru",
+    ],
+)
+def test_each_horizon_canon_version_changes_both_cache_hashes(monkeypatch, horizon_key):
+    import app.services.cache_key_service as cache_keys
+
+    uid = uuid.uuid4()
+    base_versions = get_canon_versions()
+    monkeypatch.setattr(cache_keys, "get_canon_versions", lambda: dict(base_versions))
+    base = build_today_cache_key(user_id=uid, target_date="2026-07-08", profile_hash="abc")
+
+    changed_versions = {**base_versions, horizon_key: f"{base_versions[horizon_key]}-changed"}
+    monkeypatch.setattr(cache_keys, "get_canon_versions", lambda: dict(changed_versions))
+    changed = build_today_cache_key(user_id=uid, target_date="2026-07-08", profile_hash="abc")
+
+    assert base.canon_versions_hash != changed.canon_versions_hash
+    assert base.cache_key_hash != changed.cache_key_hash
+
+
 # ── DB-level cache identity ──────────────────────────────────────────────
+
+
+def _current_fixture_payload() -> dict:
+    fixture_path = (
+        Path(__file__).resolve().parents[3]
+        / "e2e/mock-visual/fixtures/json/day-v2-2026-07-08.json"
+    )
+    return json.loads(fixture_path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("case", "tg_user_id"),
+    [
+        ("missing_pipeline_audit", 99701),
+        ("current_payload_previous_frontend", 99702),
+        ("previous_payload_current_frontend", 99703),
+    ],
+)
+async def test_invalid_current_cache_rows_are_misses_without_exception(
+    db_session,
+    case,
+    tg_user_id,
+):
+    from app.core.versions import (
+        ACTIVATION_LAYER_VERSION,
+        CALCULATION_VERSION,
+        SCORING_V2_VERSION,
+        V2_FRONTEND_PAYLOAD_VERSION,
+    )
+
+    user = User(tg_user_id=tg_user_id)
+    db_session.add(user)
+    await db_session.flush()
+    profile_hash = "current-invalid-row"
+    key = build_today_cache_key(
+        user_id=user.id,
+        target_date="2026-07-08",
+        profile_hash=profile_hash,
+        calculation_version=CALCULATION_VERSION,
+        activation_layer_version=ACTIVATION_LAYER_VERSION,
+        scoring_version=SCORING_V2_VERSION,
+        frontend_payload_version=V2_FRONTEND_PAYLOAD_VERSION,
+    )
+    payload = deepcopy(_current_fixture_payload())
+    if case == "missing_pipeline_audit":
+        del payload["v2"]["audit"]["horizonPipeline"]
+    elif case == "current_payload_previous_frontend":
+        payload["meta"]["frontendPayloadVersion"] = 2
+    else:
+        payload["meta"]["payloadVersion"] = "today.v2"
+        payload["v2"]["audit"]["payloadVersion"] = "today.v2"
+
+    db_session.add(
+        TodayPayloadCache(
+            user_id=user.id,
+            target_date=Date(2026, 7, 8),
+            profile_hash=profile_hash,
+            cache_key_hash=key.cache_key_hash,
+            payload_json=json.dumps(payload),
+        )
+    )
+    await db_session.commit()
+
+    result = await TodayService(db_session)._get_cached_payload(
+        user.id,
+        Date(2026, 7, 8),
+        profile_hash,
+        cache_key=key,
+    )
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -505,6 +631,33 @@ async def test_cache_read_identity_matches_todayservice_write_for_v2_frontend_of
         elif "cache_key" in kwargs:
             write_keys.append(kwargs["cache_key"])
 
+    from app.schemas.horizon_pipeline import HorizonPipelineResult
+    from app.schemas.horizon_selection import HorizonSelectionDiagnostics
+
+    class IntegrationSpy:
+        def __init__(self):
+            self.calls = []
+
+        def build(self, **kwargs):
+            self.calls.append(kwargs)
+            return HorizonPipelineResult(
+                status="unavailable",
+                horizons=None,
+                selection_reason="missing_long",
+                selection_diagnostics=HorizonSelectionDiagnostics(
+                    input_count=1,
+                    active_count=1,
+                    classified_count=1,
+                    candidate_count=0,
+                    per_horizon_pre_bound_counts={"long": 0, "medium": 0, "fast": 0},
+                    per_horizon_post_bound_counts={"long": 0, "medium": 0, "fast": 0},
+                    excluded_counts_by_reason={},
+                    combinations_evaluated=0,
+                ),
+            )
+
+    integration_spy = IntegrationSpy()
+
     with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
          patch("app.services.today_service.NatalContextService.get_or_build_natal_context", AsyncMock(return_value=fake_natal)), \
          patch("app.services.today_service.NormalizationService.normalize_day", return_value=signals), \
@@ -512,12 +665,17 @@ async def test_cache_read_identity_matches_todayservice_write_for_v2_frontend_of
          patch.object(TodayService, "_cache_payload", new=capture_write), \
          patch.object(TodayService, "_cache_semantic_layer", AsyncMock()), \
          patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual):
-        service = TodayService(db_session)
+        service = TodayService(db_session, horizon_integration_service=integration_spy)
         access = ContentAccessState(state="preview", reason="expired_access")
         await service.get_today_payload(
             user_id=user.id, target_date=Date(2026, 7, 8),
             access_state=access, skip_prefetch=True,
         )
+
+    assert len(integration_spy.calls) == 1
+    assert integration_spy.calls[0]["activation_layer"].activation_layer_version == ACTIVATION_LAYER_VERSION
+    assert integration_spy.calls[0]["scoring_result"] is v2_result
+    assert integration_spy.calls[0]["natal_context"] is fake_natal
 
     profile_hash = NatalContextService.compute_profile_hash(profile)
     read_key = expected_cache_identity(
@@ -528,5 +686,6 @@ async def test_cache_read_identity_matches_todayservice_write_for_v2_frontend_of
     assert str(read_key.scoring_version) == str(write_key.scoring_version) == SCORING_V2_VERSION
     assert read_key.calculation_version == write_key.calculation_version == CALCULATION_VERSION
     assert read_key.activation_layer_version == write_key.activation_layer_version == ACTIVATION_LAYER_VERSION
+    assert read_key.content_version == write_key.content_version == TODAY_CONTENT_VERSION
     assert read_key.frontend_payload_version == write_key.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION
     assert read_key.cache_key_hash == write_key.cache_key_hash

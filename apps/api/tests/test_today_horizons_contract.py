@@ -31,11 +31,18 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import get_args
 
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.today import TodayV2Block
+from app.schemas.horizon_selection import HorizonSelectionReason
+from app.schemas.today import (
+    TodayPayload,
+    TodayV2Block,
+    TodayV2HorizonPipelineAuditBuilt,
+    TodayV2UnavailableHorizonSelectionReason,
+)
 from app.schemas.today_horizons import TodayV2HorizonsBlock, TodayV2HorizonTiming
 
 
@@ -530,6 +537,54 @@ def build_today_v2_block() -> dict[str, object]:
         },
         "horizons": build_horizons_block(),
     }
+
+
+def build_complete_today_payload(
+    *,
+    payload_version: str,
+    frontend_payload_version: int,
+    audit_payload_version: str,
+    include_pipeline_audit: bool,
+) -> dict[str, object]:
+    v2 = build_today_v2_block()
+    audit = v2["audit"]  # type: ignore[assignment]
+    audit["payload_version"] = audit_payload_version
+    if include_pipeline_audit:
+        audit["horizon_pipeline"] = {
+            "status": "built",
+            "reason": "selected",
+            "selected_count": 3,
+        }
+    return {
+        "meta": {
+            "schema_version": "today/v1",
+            "contract_version": 3,
+            "calculation_version": "ss-calc-1.2.0",
+            "normalization_version": 1,
+            "scoring_version": "ss-scoring-2.0",
+            "prompt_version": 2,
+            "content_version": 10,
+            "generated_at": "2026-07-12T12:00:00Z",
+            "payload_version": payload_version,
+            "frontend_payload_version": frontend_payload_version,
+        },
+        "date": "2026-07-12",
+        "title": "Сегодня",
+        "headline": "Структурный тест",
+        "access": {"state": "full", "reason": "active_subscription"},
+        "day_status": "steady",
+        "day_summary": {"status_label": "Ровный день", "status_line": "Структурный тест", "facts": []},
+        "concrete_advice": {
+            "rows": [],
+            "counts": {"good": 0, "caution": 0, "avoid": 0, "neutral": 0},
+        },
+        "top_flags": [],
+        "reading": {"paragraphs": ["Структурный тест"]},
+        "why_this_happens": {"sections": []},
+        "week_strip": [],
+        "microcopy": [],
+        "v2": v2,
+    }
 # END_BLOCK: FACTORIES
 
 
@@ -559,6 +614,129 @@ def test_horizons_omitted_or_null_accepted_in_today_v2_block(value: dict[str, ob
         payload.update(value)
     model = TodayV2Block.model_validate(payload)
     assert model.horizons is None
+
+
+def test_horizon_pipeline_audit_union_rejects_invalid_local_combo() -> None:
+    payload = build_today_v2_block()
+    payload["audit"]["horizon_pipeline"] = {  # type: ignore[index]
+        "status": "built",
+        "reason": "missing_fast",
+        "selected_count": 0,
+    }
+    with pytest.raises(ValidationError):
+        TodayV2Block.model_validate(payload)
+
+
+def test_horizon_pipeline_audit_built_requires_horizons() -> None:
+    payload = build_today_v2_block()
+    payload["audit"]["horizon_pipeline"] = {  # type: ignore[index]
+        "status": "built",
+        "reason": "selected",
+        "selected_count": 3,
+    }
+    payload["horizons"] = None
+    with pytest.raises(ValidationError, match="built horizon pipeline requires horizons"):
+        TodayV2Block.model_validate(payload)
+
+
+def test_horizon_pipeline_audit_unavailable_requires_null_horizons() -> None:
+    payload = build_today_v2_block()
+    payload["audit"]["horizon_pipeline"] = {  # type: ignore[index]
+        "status": "unavailable",
+        "reason": "missing_fast",
+        "selected_count": 0,
+    }
+    with pytest.raises(ValidationError, match="unavailable horizon pipeline requires null horizons"):
+        TodayV2Block.model_validate(payload)
+
+
+def test_current_today_payload_requires_pipeline_audit() -> None:
+    payload = build_complete_today_payload(
+        payload_version="today.v2.1",
+        frontend_payload_version=3,
+        audit_payload_version="today.v2.1",
+        include_pipeline_audit=False,
+    )
+    with pytest.raises(ValidationError, match="current V2 identity requires horizon pipeline audit"):
+        TodayPayload.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("payload_version", "frontend_payload_version"),
+    [("today.v2.1", 2), ("today.v2", 3)],
+)
+def test_current_today_payload_rejects_mismatched_identity_pair(
+    payload_version: str,
+    frontend_payload_version: int,
+) -> None:
+    payload = build_complete_today_payload(
+        payload_version=payload_version,
+        frontend_payload_version=frontend_payload_version,
+        audit_payload_version=payload_version,
+        include_pipeline_audit=True,
+    )
+    with pytest.raises(ValidationError, match="exact payload/frontend version pair"):
+        TodayPayload.model_validate(payload)
+
+
+def test_previous_today_payload_pair_without_pipeline_audit_remains_compatible() -> None:
+    payload = build_complete_today_payload(
+        payload_version="today.v2",
+        frontend_payload_version=2,
+        audit_payload_version="today.v2",
+        include_pipeline_audit=False,
+    )
+    parsed = TodayPayload.model_validate(payload)
+    assert parsed.meta.payload_version == "today.v2"
+    assert parsed.meta.frontend_payload_version == 2
+    assert parsed.v2 is not None
+    assert parsed.v2.audit.horizon_pipeline is None
+
+
+def test_current_today_payload_pair_with_matching_audit_is_valid() -> None:
+    payload = build_complete_today_payload(
+        payload_version="today.v2.1",
+        frontend_payload_version=3,
+        audit_payload_version="today.v2.1",
+        include_pipeline_audit=True,
+    )
+    parsed = TodayPayload.model_validate(payload)
+    assert parsed.v2 is not None
+    assert parsed.v2.audit.payload_version == parsed.meta.payload_version
+    assert parsed.v2.audit.horizon_pipeline is not None
+    assert parsed.v2.audit.horizon_pipeline.status == "built"
+
+
+def test_current_today_payload_rejects_audit_payload_version_mismatch() -> None:
+    payload = build_complete_today_payload(
+        payload_version="today.v2.1",
+        frontend_payload_version=3,
+        audit_payload_version="today.v2",
+        include_pipeline_audit=True,
+    )
+    with pytest.raises(ValidationError, match="audit payload version must match meta"):
+        TodayPayload.model_validate(payload)
+
+
+def test_v1_today_payload_with_null_v2_remains_compatible() -> None:
+    payload = build_complete_today_payload(
+        payload_version="today.v2",
+        frontend_payload_version=2,
+        audit_payload_version="today.v2",
+        include_pipeline_audit=False,
+    )
+    payload["meta"]["payload_version"] = "today.v1"  # type: ignore[index]
+    payload["meta"]["frontend_payload_version"] = 1  # type: ignore[index]
+    payload["v2"] = None
+    assert TodayPayload.model_validate(payload).v2 is None
+
+
+def test_public_horizon_reason_union_matches_internal_selector_reasons() -> None:
+    public_unavailable = set(get_args(TodayV2UnavailableHorizonSelectionReason))
+    internal_unavailable = set(get_args(HorizonSelectionReason)) - {"selected"}
+    built_reasons = set(get_args(TodayV2HorizonPipelineAuditBuilt.model_fields["reason"].annotation))
+    assert public_unavailable == internal_unavailable
+    assert built_reasons == {"selected"}
 
 
 def test_exact_item_order_accepted() -> None:

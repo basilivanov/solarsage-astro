@@ -6,7 +6,7 @@
 from __future__ import annotations
 import sys
 from typing import Any, Literal
-from app.core.versions import SCORING_V2_VERSION, TODAY_V2_PAYLOAD_VERSION
+from app.core.versions import TODAY_V2_PAYLOAD_VERSION
 from app.schemas.activation import ActivationLayer, ActivationEvidence
 from app.schemas.scoring_v2 import ScoringV2Result, SphereScoreV2
 from app.schemas.today import (
@@ -15,9 +15,11 @@ from app.schemas.today import (
     TodayV2ActivatedTarget,
     TodayV2WhyTodayItem,
     TodayV2Audit,
+    TodayV2HorizonPipelineAudit,
     ConcreteAdviceEvidence,
 )
-from app.services.canon_service import load_canon_bundle
+from app.schemas.today_horizons import TodayV2HorizonsBlock
+from app.services.canon_service import CANON_VERSIONS, get_canon_versions, load_canon_bundle
 
 PLANET_LABELS = {
     "SUN": "Солнце",
@@ -110,12 +112,20 @@ class SemanticV2Service:
         self,
         *,
         activation_layer: ActivationLayer,
-        scoring_result: ScoringV2Result | None = None,
+        scoring_result: ScoringV2Result,
         v1_v2_diff: dict | None = None,
         trace_id: str | None = None,
+        horizons: TodayV2HorizonsBlock | None = None,
+        horizon_pipeline_audit: TodayV2HorizonPipelineAudit | None = None,
     ) -> TodayV2Block:
-        if scoring_result is None:
-            raise ValueError("scoring_result is required for V2 block")
+        # START_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.build_v2_block
+        # purpose: Build TodayV2Block from existing activation/scoring objects and optional prebuilt horizons/audit.
+        # inputs: activation_layer, required scoring_result, optional diff/trace, horizons, and horizon_pipeline_audit.
+        # returns: TodayV2Block with direct horizons/audit pass-through and exact-nine canon audit map.
+        # side_effects: reads canon bundle data and current canon version services; does not mutate inputs.
+        # emitted_logs: none.
+        # error_behavior: Pydantic validation errors propagate for invalid output contracts.
+        # END_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.build_v2_block
         # Group activations by target
         grouped: dict[tuple[str, str], list[ActivationEvidence]] = {}
         for act in activation_layer.activations:
@@ -224,30 +234,29 @@ class SemanticV2Service:
                     )
 
         # Populate scoreBreakdown
-        score_breakdown = {}
-        if scoring_result and scoring_result.sphere_scores:
-            score_breakdown = scoring_result.sphere_scores
+        score_breakdown = scoring_result.sphere_scores
 
-        # Build audit
-        from app.services.canon_service import get_canon_versions
-        canon_versions = {}
-        if scoring_result and hasattr(scoring_result, "canon_versions") and scoring_result.canon_versions:
-            if isinstance(scoring_result, dict):
-                canon_versions = scoring_result.get("canon_versions") or {}
-            else:
-                canon_versions = getattr(scoring_result, "canon_versions", {}) or {}
-        else:
-            canon_versions = get_canon_versions()
+        # Base: get_canon_versions() returns exact nine keys (5 core + 4 horizon)
+        canon_versions = get_canon_versions()
+
+        # Overlay only core scoring keys that are in CANON_VERSIONS
+        # Do NOT accept horizon keys: horizon_selection, horizon_language_ru, horizon_actions_ru, personal_patterns_ru
+        # Do NOT accept unknown runtime keys
+        for key, value in scoring_result.canon_versions.items():
+            if key in CANON_VERSIONS:
+                canon_versions[key] = str(value)
+            # Horizon keys and unknown keys are silently ignored
 
         audit = TodayV2Audit(
             trace_id=trace_id,
             available=True,
             payload_version=TODAY_V2_PAYLOAD_VERSION,
             calculation_version=activation_layer.calculation_version,
-            scoring_version=scoring_result.scoring_version if scoring_result and hasattr(scoring_result, "scoring_version") else SCORING_V2_VERSION,
+            scoring_version=scoring_result.scoring_version,
             activation_layer_version=activation_layer.activation_layer_version,
             canon_versions={str(k): str(v) for k, v in canon_versions.items()},
             v1_v2_diff=v1_v2_diff,
+            horizon_pipeline=horizon_pipeline_audit,
         )
 
         return TodayV2Block(
@@ -256,6 +265,7 @@ class SemanticV2Service:
             score_breakdown=score_breakdown,
             why_today=why_today,
             audit=audit,
+            horizons=horizons,
         )
 
     def get_evidence_for_sphere(

@@ -3695,7 +3695,8 @@
             "default": "today.v1",
             "enum": [
               "today.v1",
-              "today.v2"
+              "today.v2",
+              "today.v2.1"
             ],
             "title": "Payloadversion",
             "type": "string"
@@ -4099,6 +4100,31 @@
             "title": "Canonversions",
             "type": "object"
           },
+          "horizonPipeline": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "built": "#/components/schemas/TodayV2HorizonPipelineAuditBuilt",
+                    "unavailable": "#/components/schemas/TodayV2HorizonPipelineAuditUnavailable"
+                  },
+                  "propertyName": "status"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TodayV2HorizonPipelineAuditBuilt"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TodayV2HorizonPipelineAuditUnavailable"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizonpipeline"
+          },
           "payloadVersion": {
             "title": "Payloadversion",
             "type": "string"
@@ -4482,6 +4508,78 @@
           "activationIds"
         ],
         "title": "TodayV2HorizonIntro",
+        "type": "object"
+      },
+      "TodayV2HorizonPipelineAuditBuilt": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "const": "selected",
+            "title": "Reason",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "const": "today-horizon-pipeline-audit.v1",
+            "default": "today-horizon-pipeline-audit.v1",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "selectedCount": {
+            "const": 3,
+            "title": "Selectedcount",
+            "type": "integer"
+          },
+          "status": {
+            "const": "built",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason",
+          "selectedCount"
+        ],
+        "title": "TodayV2HorizonPipelineAuditBuilt",
+        "type": "object"
+      },
+      "TodayV2HorizonPipelineAuditUnavailable": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "enum": [
+              "invalid_target_clock",
+              "missing_long",
+              "missing_medium",
+              "missing_fast",
+              "no_coherent_triple"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "const": "today-horizon-pipeline-audit.v1",
+            "default": "today-horizon-pipeline-audit.v1",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "selectedCount": {
+            "const": 0,
+            "title": "Selectedcount",
+            "type": "integer"
+          },
+          "status": {
+            "const": "unavailable",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason",
+          "selectedCount"
+        ],
+        "title": "TodayV2HorizonPipelineAuditUnavailable",
         "type": "object"
       },
       "TodayV2HorizonTiming": {

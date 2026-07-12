@@ -150,5 +150,20 @@ def load_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, Any]
 
 
 def get_canon_versions() -> dict[str, str]:
-    """Return the current canon version map."""
-    return dict(CANON_VERSIONS)
+    # START_FUNCTION_CONTRACT: F-M-CANON-SERVICE.get_canon_versions
+    # purpose: Return the single public Today/cache/audit canon map with exactly five core and four horizon keys.
+    # inputs: none.
+    # returns: dict[str, str] containing the exact nine current canon version entries.
+    # side_effects: loads horizon canon services through their cached public version lookups.
+    # emitted_logs: none.
+    # error_behavior: propagates CanonValidationError if a horizon canon cannot be loaded.
+    # END_FUNCTION_CONTRACT: F-M-CANON-SERVICE.get_canon_versions
+    """Return the current Today/cache/audit canon version map."""
+    from app.services.horizon_canon_service import get_horizon_canon_versions
+    from app.services.horizon_content_canon_service import get_horizon_content_canon_versions
+
+    return {
+        **CANON_VERSIONS,
+        **get_horizon_canon_versions(),
+        **get_horizon_content_canon_versions(),
+    }

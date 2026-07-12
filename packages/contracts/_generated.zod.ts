@@ -744,7 +744,7 @@ export const TodayMeta = z.object({
   generatedAt: z.string(),
   normalizationVersion: z.number().int(),
   payloadVersion: z
-    .enum(["today.v1", "today.v2"])
+    .enum(["today.v1", "today.v2", "today.v2.1"])
     .optional()
     .default("today.v1"),
   promptVersion: z.number().int(),
@@ -804,6 +804,30 @@ export const TodayV2ActivationSummary = z.object({
   headline: z.string(),
   topActivatedTargets: z.array(TodayV2ActivatedTarget),
 });
+export const TodayV2HorizonPipelineAuditBuilt = z.object({
+  reason: z.literal("selected"),
+  schemaVersion: z
+    .literal("today-horizon-pipeline-audit.v1")
+    .optional()
+    .default("today-horizon-pipeline-audit.v1"),
+  selectedCount: z.literal(3),
+  status: z.literal("built"),
+});
+export const TodayV2HorizonPipelineAuditUnavailable = z.object({
+  reason: z.enum([
+    "invalid_target_clock",
+    "missing_long",
+    "missing_medium",
+    "missing_fast",
+    "no_coherent_triple",
+  ]),
+  schemaVersion: z
+    .literal("today-horizon-pipeline-audit.v1")
+    .optional()
+    .default("today-horizon-pipeline-audit.v1"),
+  selectedCount: z.literal(0),
+  status: z.literal("unavailable"),
+});
 export const TodayV2Audit = z.object({
   activationLayerVersion: z
     .union([z.string(), z.number(), z.null()])
@@ -811,6 +835,15 @@ export const TodayV2Audit = z.object({
   available: z.boolean().optional().default(false),
   calculationVersion: z.union([z.string(), z.number()]),
   canonVersions: z.record(z.string()).optional(),
+  horizonPipeline: z
+    .union([
+      z.discriminatedUnion("status", [
+        TodayV2HorizonPipelineAuditBuilt,
+        TodayV2HorizonPipelineAuditUnavailable,
+      ]),
+      z.null(),
+    ])
+    .optional(),
   payloadVersion: z.string(),
   scoringVersion: z.union([z.string(), z.number()]),
   traceId: z.union([z.string(), z.null()]).optional(),
@@ -1185,6 +1218,8 @@ export const schemas = {
   TopFlag,
   TodayV2ActivatedTarget,
   TodayV2ActivationSummary,
+  TodayV2HorizonPipelineAuditBuilt,
+  TodayV2HorizonPipelineAuditUnavailable,
   TodayV2Audit,
   TodayV2HorizonIntro,
   TodayV2Provenance,

@@ -47,6 +47,40 @@ describe("generated runtime zod schemas", () => {
     expect(TodayV2HorizonsBlockWireSchema.safeParse(dayPayloadV2.v2?.horizons).success).toBe(true)
   })
 
+  it("accepts previous v2 identity and current fixture carries pipeline audit", () => {
+    const previous: Record<string, unknown> = structuredClone(dayPayloadV2)
+    const previousMeta = previous.meta as Record<string, unknown>
+    const previousV2 = previous.v2 as Record<string, unknown>
+    const previousAudit = previousV2.audit as Record<string, unknown>
+    previousMeta.payloadVersion = "today.v2"
+    previousMeta.frontendPayloadVersion = 2
+    previousAudit.payloadVersion = "today.v2"
+    delete previousAudit.horizonPipeline
+    expect(TodayPayloadWireSchema.safeParse(previous).success).toBe(true)
+
+    expect(dayPayloadV2.meta.payloadVersion).toBe("today.v2.1")
+    expect(dayPayloadV2.meta.frontendPayloadVersion).toBe(3)
+    expect(dayPayloadV2.v2!.audit.horizonPipeline).toEqual({
+      schemaVersion: "today-horizon-pipeline-audit.v1",
+      status: "built",
+      reason: "selected",
+      selectedCount: 3,
+    })
+  })
+
+  it("rejects structurally invalid horizon audit union values", () => {
+    const invalidAudit: Record<string, unknown> = structuredClone(dayPayloadV2)
+    const invalidV2 = invalidAudit.v2 as Record<string, unknown>
+    const invalidAuditBlock = invalidV2.audit as Record<string, unknown>
+    invalidAuditBlock.horizonPipeline = {
+      schemaVersion: "today-horizon-pipeline-audit.v1",
+      status: "built",
+      reason: "missing_fast",
+      selectedCount: 0,
+    }
+    expect(TodayPayloadWireSchema.safeParse(invalidAudit).success).toBe(false)
+  })
+
   it("rejects missing required root field", () => {
     const malformed: Record<string, unknown> = { ...dayPayloadV2 }
     delete malformed.date
@@ -95,12 +129,27 @@ describe("generated runtime zod schemas", () => {
       ...dayPayloadV2,
       v2: {
         ...dayPayloadV2.v2!,
+        audit: {
+          ...dayPayloadV2.v2!.audit,
+          horizonPipeline: {
+            schemaVersion: "today-horizon-pipeline-audit.v1",
+            status: "unavailable",
+            reason: "missing_fast",
+            selectedCount: 0,
+          },
+        },
         horizons: null,
       },
     }
     expect(TodayPayloadWireSchema.safeParse(nullHorizons).success).toBe(true)
 
     const absentHorizons = structuredClone(dayPayloadV2)
+    absentHorizons.v2!.audit.horizonPipeline = {
+      schemaVersion: "today-horizon-pipeline-audit.v1",
+      status: "unavailable",
+      reason: "missing_fast",
+      selectedCount: 0,
+    }
     delete (absentHorizons.v2 as Record<string, unknown>).horizons
     expect(TodayPayloadWireSchema.safeParse(absentHorizons).success).toBe(true)
   })

@@ -67,6 +67,9 @@ from app.core.versions import (  # noqa: E402
     ACTIVATION_LAYER_VERSION,
     CALCULATION_VERSION,
     SCORING_V2_VERSION,
+    V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS,
+    V2_FRONTEND_PAYLOAD_VERSION,
+    TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
     TODAY_V2_PAYLOAD_VERSION,
 )
 from app.schemas.activation import ActivationLayer  # noqa: E402
@@ -453,7 +456,7 @@ def is_v2_selected_payload(payload: dict[str, Any] | None) -> bool:
     pv = meta.get("payload_version") or meta.get("payloadVersion")
     sv = meta.get("scoring_version") or meta.get("scoringVersion")
     fv = meta.get("frontend_payload_version") or meta.get("frontendPayloadVersion")
-    return str(pv) == TODAY_V2_PAYLOAD_VERSION or str(sv) == SCORING_V2_VERSION or fv == 2
+    return str(pv) in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS or str(sv) == SCORING_V2_VERSION or fv in V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS
 
 
 def build_adapted_frontend_fixture(payload_v2: dict[str, Any], meta: dict[str, Any]) -> dict[str, Any]:
@@ -536,7 +539,7 @@ def build_adapted_frontend_fixture(payload_v2: dict[str, Any], meta: dict[str, A
         return {
             "traceId": a.get("trace_id") or a.get("traceId"),
             "available": a.get("available", True),
-            "payloadVersion": a.get("payload_version") or a.get("payloadVersion") or "today.v2",
+            "payloadVersion": a.get("payload_version") or a.get("payloadVersion") or TODAY_V2_PAYLOAD_VERSION,
             "calculationVersion": a.get("calculation_version") or a.get("calculationVersion") or CALCULATION_VERSION,
             "scoringVersion": a.get("scoring_version") or a.get("scoringVersion") or SCORING_V2_VERSION,
             "activationLayerVersion": a.get("activation_layer_version") or a.get("activationLayerVersion") or ACTIVATION_LAYER_VERSION,
@@ -1313,7 +1316,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         payload_json = {
             "meta": {
                 "payload_version": TODAY_V2_PAYLOAD_VERSION,
-                "frontend_payload_version": 2,
+                "frontend_payload_version": V2_FRONTEND_PAYLOAD_VERSION,
                 "scoring_version": SCORING_V2_VERSION,
                 "calculation_version": CALCULATION_VERSION,
                 "activation_layer_version": ACTIVATION_LAYER_VERSION,
@@ -1337,7 +1340,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         state.error(
             kind="payload_v2_missing",
             message="replay/live payload missing V2 identity/body; audit does not synthesize missing V2",
-            expected="today.v2 non-null body",
+            expected="today.v2.1 non-null body",
             actual={"v2_selected": v2_selected, "has_v2": payload_v2 is not None},
         )
     sidecar_id_set = set(sidecar_ids)

@@ -324,6 +324,10 @@ def test_error_privacy_and_separate_versions() -> None:
         "aspect_rules": "v1",
         "activation_rules": "v1",
         "scoring_v2": "v1",
+        "horizon_selection": "v1",
+        "horizon_language_ru": "v1",
+        "horizon_actions_ru": "v1",
+        "personal_patterns_ru": "v1",
     }
     assert get_horizon_canon_versions() == {"horizon_selection": "v1"}
 # END_BLOCK: HORIZON_CANON_STRICTNESS_TESTS

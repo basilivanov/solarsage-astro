@@ -1752,7 +1752,7 @@ export interface components {
              * @default today.v1
              * @enum {string}
              */
-            payloadVersion: "today.v1" | "today.v2";
+            payloadVersion: "today.v1" | "today.v2" | "today.v2.1";
             /** Promptversion */
             promptVersion: number;
             /**
@@ -1857,6 +1857,8 @@ export interface components {
             canonVersions?: {
                 [key: string]: string;
             };
+            /** Horizonpipeline */
+            horizonPipeline?: (components["schemas"]["TodayV2HorizonPipelineAuditBuilt"] | components["schemas"]["TodayV2HorizonPipelineAuditUnavailable"]) | null;
             /** Payloadversion */
             payloadVersion: string;
             /** Scoringversion */
@@ -1960,6 +1962,54 @@ export interface components {
             headline: string;
             /** Themekey */
             themeKey: string;
+        };
+        /** TodayV2HorizonPipelineAuditBuilt */
+        TodayV2HorizonPipelineAuditBuilt: {
+            /**
+             * Reason
+             * @constant
+             */
+            reason: "selected";
+            /**
+             * Schemaversion
+             * @default today-horizon-pipeline-audit.v1
+             * @constant
+             */
+            schemaVersion: "today-horizon-pipeline-audit.v1";
+            /**
+             * Selectedcount
+             * @constant
+             */
+            selectedCount: 3;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "built";
+        };
+        /** TodayV2HorizonPipelineAuditUnavailable */
+        TodayV2HorizonPipelineAuditUnavailable: {
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "invalid_target_clock" | "missing_long" | "missing_medium" | "missing_fast" | "no_coherent_triple";
+            /**
+             * Schemaversion
+             * @default today-horizon-pipeline-audit.v1
+             * @constant
+             */
+            schemaVersion: "today-horizon-pipeline-audit.v1";
+            /**
+             * Selectedcount
+             * @constant
+             */
+            selectedCount: 0;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "unavailable";
         };
         /** TodayV2HorizonsBlock */
         TodayV2HorizonsBlock: {
