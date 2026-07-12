@@ -12,6 +12,9 @@ from app.services.canon_service import (
 )
 
 
+VALID_HORIZON_CANON = (CANON_DIR / "horizon_selection.v1.yml").read_text(encoding="utf-8")
+
+
 def test_validate_canon_bundle_success():
     """All five canon files load and validate successfully."""
     bundle = validate_canon_bundle()
@@ -55,6 +58,7 @@ def test_invalid_canon_data_raises(tmp_path: Path):
     (d / "aspect_rules.v1.yml").write_text('schema_version: aspect_rules.v1\naspect_weights: {}\naspect_threshold: {}\n', encoding="utf-8")
     (d / "activation_rules.v1.yml").write_text('schema_version: activation_rules.v1\ntechnique_families: {}\n', encoding="utf-8")
     (d / "scoring_v2.v1.yml").write_text('schema_version: scoring_v2.v1\n', encoding="utf-8")
+    (d / "horizon_selection.v1.yml").write_text(VALID_HORIZON_CANON, encoding="utf-8")
     with pytest.raises(CanonValidationError, match="is empty"):
         validate_canon_bundle(d)
 
@@ -69,5 +73,6 @@ def test_missing_required_key_raises(tmp_path: Path):
     (d / "aspect_rules.v1.yml").write_text('schema_version: aspect_rules.v1\nsome_other_key: true\n', encoding="utf-8")
     (d / "activation_rules.v1.yml").write_text('schema_version: activation_rules.v1\ntechnique_families:\n  transit:\n    members: [transit_to_natal]\n    independence_weight: 1.0\n', encoding="utf-8")
     (d / "scoring_v2.v1.yml").write_text('schema_version: scoring_v2.v1\n', encoding="utf-8")
+    (d / "horizon_selection.v1.yml").write_text(VALID_HORIZON_CANON, encoding="utf-8")
     with pytest.raises(CanonValidationError, match="missing required key"):
         validate_canon_bundle(d)
