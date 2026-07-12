@@ -50,20 +50,13 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from app.schemas.horizon_guidance import (
-    HorizonClaimValidationError,
-    HorizonGuidanceContext,
-    HorizonGuidanceError,
-)
+from app.schemas.horizon_guidance import HorizonClaimValidationError, HorizonGuidanceError
 from app.schemas.today_horizons import (
     TodayV2HorizonsBlock,
     validate_horizons_against_evidence,
 )
 from app.services.horizon_canon_service import load_horizon_selection_canon
-from app.services.horizon_guidance_service import HorizonGuidanceService
-from app.services.horizon_claim_validator import HorizonClaimValidator
-from app.services.horizon_tone_service import HorizonToneService
-from app.services.personal_fact_pack_service import PersonalFactPackService
+from app.services.horizon_pipeline_service import HorizonPipelineService
 
 from ._horizon_content_testkit import (
     build_communication_natal,
@@ -99,8 +92,7 @@ def test_coverage_gate() -> None:
     total = len(cases)
     assert total == 60, f"expected 60 cases, got {total}"
 
-    service = HorizonGuidanceService()
-    validator = HorizonClaimValidator()
+    pipeline = HorizonPipelineService()
     canon = load_horizon_selection_canon()
 
     selected = 0
@@ -181,34 +173,19 @@ def test_coverage_gate() -> None:
 
             contract_ready += 1
 
-            # Build fact pack
             natal = _natal_for_case(natal_case)
-            fact_pack = PersonalFactPackService().build(
-                selection=selection, activation_layer=layer,
-                scoring_result=scoring, natal_context=natal,
-            )
-
-            # Build tone
             verdicts_map = _verdict_for_case(verdict_case, selection)
-            tone = HorizonToneService().assess(
-                selection=selection, sphere_verdicts=verdicts_map,
+            pipeline_result = pipeline.build(
+                activation_layer=layer,
+                scoring_result=scoring,
+                natal_context=natal,
+                sphere_verdicts=verdicts_map,
             )
-
-            # Build HorizonGuidanceContext
-            ctx = HorizonGuidanceContext(
-                schema_version="horizon-guidance-context.v1",
-                selection=selection, fact_pack=fact_pack,
-                tone_result=tone, sphere_verdicts=verdicts_map,
-            )
-
-            # Build guidance
-            block = service.build(context=ctx)
-
-            # Validate claims
-            validator.validate(
-                block=block, context=ctx,
-                activation_evidence=list(layer.activations),
-            )
+            if pipeline_result.status != "built" or pipeline_result.horizons is None:
+                guidance_failures[pipeline_result.selection_reason] += 1
+                continue
+            assert pipeline_result.selection_reason == "selected"
+            block = pipeline_result.horizons
 
             # Explicitly call public cross-reference validator
             validate_horizons_against_evidence(block, list(layer.activations))
@@ -217,8 +194,16 @@ def test_coverage_gate() -> None:
             dumped_json = block.model_dump_json()
             roundtrip_block = TodayV2HorizonsBlock.model_validate_json(dumped_json)
 
-            # Build guidance a second time
-            second_block = service.build(context=ctx)
+            # Build the full orchestrator a second time
+            second_result = pipeline.build(
+                activation_layer=layer,
+                scoring_result=scoring,
+                natal_context=natal,
+                sphere_verdicts=verdicts_map,
+            )
+            assert second_result.status == "built"
+            assert second_result.horizons is not None
+            second_block = second_result.horizons
 
             # Assert byte-identical canonical JSON for first/second/roundtrip blocks
             canonical_first = json.dumps(block.model_dump(), sort_keys=True)

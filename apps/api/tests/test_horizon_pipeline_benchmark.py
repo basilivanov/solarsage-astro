@@ -1,6 +1,6 @@
 # ############################################################################
 # AI_HEADER: TEST_HORIZON_PIPELINE_BENCHMARK — B2B2 pipeline performance.
-# ROLE: Measure p95 latency of full pipeline (selection → guidance → validator)
+# ROLE: Measure p95 latency of full pipeline orchestrator (selection → validator)
 #       with a 120-activation layer producing 1728 combinations.
 # ############################################################################
 
@@ -16,8 +16,8 @@
 # emitted_logs: none.
 # invariants:
 #   - 3 warmup runs before 20 measured runs.
-#   - Every run includes full pipeline: selection, fact pack, tone, context,
-#     guidance, validator.
+#   - Every run includes HorizonPipelineService: selection, fact pack, tone,
+#     context, guidance, validator.
 #   - Excludes fixture construction, sidecar, DB, network, LLM, cold import.
 # failure_policy: assertion failure when p95 >= 100 ms.
 # END_MODULE_CONTRACT: M-TEST-HORIZON-PIPELINE-BENCHMARK
@@ -37,12 +37,7 @@ from __future__ import annotations
 import math
 import time
 
-from app.schemas.horizon_guidance import HorizonGuidanceContext
-from app.services.horizon_guidance_service import HorizonGuidanceService
-from app.services.horizon_claim_validator import HorizonClaimValidator
-from app.services.horizon_selection_service import HorizonSelectionService
-from app.services.horizon_tone_service import HorizonToneService
-from app.services.personal_fact_pack_service import PersonalFactPackService
+from app.services.horizon_pipeline_service import HorizonPipelineService
 
 from ._horizon_guidance_testkit import build_worst_case_pipeline_input
 
@@ -65,89 +60,47 @@ def test_pipeline_benchmark() -> None:
     assert sum(1 for a in layer.activations if a.id.startswith("medium-bench-")) == 40
     assert sum(1 for a in layer.activations if a.id.startswith("fast-bench-")) == 40
 
-    guidance = HorizonGuidanceService()
-    validator = HorizonClaimValidator()
-    selection = HorizonSelectionService()
+    pipeline = HorizonPipelineService()
 
     runs_with_1728 = 0
 
     # Warmup: 3 runs — full pipeline
     for _ in range(3):
-        result = selection.select(
-            activation_layer=layer, scoring_result=scoring
-        )
-        assert result.selection is not None, "selection failed in warmup"
-        assert result.diagnostics.per_horizon_post_bound_counts == {"long": 12, "medium": 12, "fast": 12}
-        assert result.diagnostics.combinations_evaluated == 1728
-        if result.diagnostics.combinations_evaluated == 1728:
-            runs_with_1728 += 1
-
-        fact_pack = PersonalFactPackService().build(
-            selection=result.selection,
+        result = pipeline.build(
             activation_layer=layer,
             scoring_result=scoring,
             natal_context=natal,
-        )
-        tone = HorizonToneService().assess(
-            selection=result.selection,
             sphere_verdicts={},
         )
-        ctx = HorizonGuidanceContext(
-            schema_version="horizon-guidance-context.v1",
-            selection=result.selection,
-            fact_pack=fact_pack,
-            tone_result=tone,
-            sphere_verdicts={},
-        )
-        block = guidance.build(context=ctx)
-        assert block.schema_version == "today-horizons.v1"
-        assert block.guidance_mode == "deterministic"
-        validator.validate(
-            block=block,
-            context=ctx,
-            activation_evidence=list(layer.activations),
-        )
+        assert result.status == "built", "pipeline failed in warmup"
+        assert result.horizons is not None
+        assert result.selection_diagnostics.per_horizon_post_bound_counts == {"long": 12, "medium": 12, "fast": 12}
+        assert result.selection_diagnostics.combinations_evaluated == 1728
+        if result.selection_diagnostics.combinations_evaluated == 1728:
+            runs_with_1728 += 1
+        assert result.horizons.schema_version == "today-horizons.v1"
+        assert result.horizons.guidance_mode == "deterministic"
 
     # Measured: 20 runs
     samples: list[float] = []
     for _ in range(20):
         start = time.perf_counter()
 
-        # Full pipeline inside measurement
-        result = selection.select(
-            activation_layer=layer, scoring_result=scoring
-        )
-        assert result.selection is not None, "selection failed in measured"
-        assert result.diagnostics.per_horizon_post_bound_counts == {"long": 12, "medium": 12, "fast": 12}
-        assert result.diagnostics.combinations_evaluated == 1728
-        if result.diagnostics.combinations_evaluated == 1728:
-            runs_with_1728 += 1
-
-        fact_pack = PersonalFactPackService().build(
-            selection=result.selection,
+        # Full pipeline orchestrator inside measurement
+        result = pipeline.build(
             activation_layer=layer,
             scoring_result=scoring,
             natal_context=natal,
-        )
-        tone = HorizonToneService().assess(
-            selection=result.selection,
             sphere_verdicts={},
         )
-        ctx = HorizonGuidanceContext(
-            schema_version="horizon-guidance-context.v1",
-            selection=result.selection,
-            fact_pack=fact_pack,
-            tone_result=tone,
-            sphere_verdicts={},
-        )
-        block = guidance.build(context=ctx)
-        assert block.schema_version == "today-horizons.v1"
-        assert block.guidance_mode == "deterministic"
-        validator.validate(
-            block=block,
-            context=ctx,
-            activation_evidence=list(layer.activations),
-        )
+        assert result.status == "built", "pipeline failed in measured"
+        assert result.horizons is not None
+        assert result.selection_diagnostics.per_horizon_post_bound_counts == {"long": 12, "medium": 12, "fast": 12}
+        assert result.selection_diagnostics.combinations_evaluated == 1728
+        if result.selection_diagnostics.combinations_evaluated == 1728:
+            runs_with_1728 += 1
+        assert result.horizons.schema_version == "today-horizons.v1"
+        assert result.horizons.guidance_mode == "deterministic"
 
         elapsed = (time.perf_counter() - start) * 1000
         samples.append(elapsed)
