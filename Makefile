@@ -49,6 +49,55 @@ migrate:
 db-create:
 	bash scripts/db-create.sh
 
+# ---- Real API proof (W3B) --------------------------------------------
+
+PROOF_DATE ?= 2026-07-08
+PROOF_OUT ?= /tmp/solarsage-v2-real-api-proof.json
+PROOF_TRANSPORT ?= asgi
+PROOF_BASE_URL ?= http://127.0.0.1:8000
+
+unexport DATE OUT TRANSPORT BASE_URL
+unexport PROOF_DATE PROOF_OUT PROOF_TRANSPORT PROOF_BASE_URL
+
+ifneq ($(strip $(value DATE)),)
+PROOF_RUN_DATE := $(value DATE)
+else
+PROOF_RUN_DATE := $(value PROOF_DATE)
+endif
+
+ifneq ($(strip $(value OUT)),)
+PROOF_RUN_OUT := $(value OUT)
+else
+PROOF_RUN_OUT := $(value PROOF_OUT)
+endif
+
+ifneq ($(strip $(value TRANSPORT)),)
+PROOF_RUN_TRANSPORT := $(value TRANSPORT)
+else
+PROOF_RUN_TRANSPORT := $(value PROOF_TRANSPORT)
+endif
+
+ifneq ($(strip $(value BASE_URL)),)
+PROOF_RUN_BASE_URL := $(value BASE_URL)
+else
+PROOF_RUN_BASE_URL := $(value PROOF_BASE_URL)
+endif
+
+export PROOF_RUN_DATE PROOF_RUN_OUT PROOF_RUN_TRANSPORT PROOF_RUN_BASE_URL
+
+.PHONY: prove-today-v2-real
+prove-today-v2-real:
+	@APP_ENV=development DEV_MODE=false \
+	SOLARSAGE_V2_ENABLED=true \
+	SOLARSAGE_V2_DUAL_RUN=false \
+	SOLARSAGE_V2_FRONTEND_ENABLED=false \
+	PYTHONPATH=apps/api \
+	apps/api/.venv/bin/python scripts/prove_today_v2_real_api.py \
+		--transport "$${PROOF_RUN_TRANSPORT}" \
+		--base-url "$${PROOF_RUN_BASE_URL}" \
+		--date "$${PROOF_RUN_DATE}" \
+		--out "$${PROOF_RUN_OUT}"
+
 # ---- Guarded: not implemented until W-DEPLOY -------------------------
 
 deploy:
