@@ -25,12 +25,15 @@
 #   - M-SOLARSAGE-CLIENT (get_solarsage_client — transits only)
 #   - M-LLM-SERVICE
 #   - M-TODAY-HORIZON-INTEGRATION-SERVICE (request-local V2 horizons bridge)
+#   - M-CACHE-KEY-SERVICE (resolve_today_runtime_identity)
 # invariants:
 #   - Never calls get_natal() directly; uses NatalContextService.
 #   - profile_hash ties today cache to natal context version.
 #   - If birth profile changes, cache misses and rebuilds.
 #   - meta.cached is true when returned from cache, false on fresh generation.
 #   - V2 horizons reuse exact request-local activation, scoring, natal, and advice objects once.
+#   - The same resolved runtime identity drives both cache key and public meta
+#     version fields.
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
@@ -87,22 +90,16 @@ from app.services.scoring_service import ScoringService
 from app.services.day_scoring_runtime_service import (
     DayScoringRuntimeService, should_compute_v2, selected_scoring_version_for_flags,
 )
-from app.services.cache_key_service import build_today_cache_key, expected_cache_identity
+from app.services.cache_key_service import (
+    build_today_cache_key, expected_cache_identity, resolve_today_runtime_identity,
+)
 from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
 from app.core.config import settings
-# W9 rework01: version identity by selected scoring path
 from app.core.versions import (
-    ACTIVATION_LAYER_VERSION,
-    CALCULATION_VERSION,
-    LEGACY_CALCULATION_VERSION,
-    LEGACY_FRONTEND_PAYLOAD_VERSION,
-    LEGACY_SCORING_VERSION,
-    SCORING_V2_VERSION,
     TODAY_CONTENT_VERSION,
-    TODAY_V1_PAYLOAD_VERSION,
     TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
     TODAY_V2_PAYLOAD_VERSION,
     V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS,
@@ -331,38 +328,25 @@ class TodayService:
         scoring_result["top_signals"] = normalize_top_signals(scoring_result.get("top_signals", []))
         scoring_version = dual.selected_scoring_version
 
-        # Rebuild cache key with actual runtime version fields for write.
-        # Version identity follows the *selected* scoring path, not the local
-        # fallback activation-layer calculation_version (which may always be V2).
-        # Selected scoring version is the source of truth for payload/cache identity.
-        # Do not key V2 identity off SOLARSAGE_V2_FRONTEND_ENABLED.
-        v2_selected = str(scoring_version) == str(SCORING_V2_VERSION)
-        if v2_selected:
-            calc_version = CALCULATION_VERSION
-            al_version = (
-                activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
-            )
-            fe_version = V2_FRONTEND_PAYLOAD_VERSION
-            p_version = TODAY_V2_PAYLOAD_VERSION
-            scoring_version = SCORING_V2_VERSION
-        else:
-            calc_version = LEGACY_CALCULATION_VERSION
-            al_version = (
-                activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
-            )
-            fe_version = LEGACY_FRONTEND_PAYLOAD_VERSION
-            p_version = TODAY_V1_PAYLOAD_VERSION
-            # Keep scoring_version intentional for V1 (int 1), even if dual-run computed V2.
-            scoring_version = LEGACY_SCORING_VERSION
+        # Use canonical runtime identity resolver — single source of truth
+        # for V1/V2 version family mapping. Selected scoring version is the
+        # only family selector; the caller's activation-layer version is
+        # retained when non-null.
+        identity = resolve_today_runtime_identity(
+            selected_scoring_version=dual.selected_scoring_version,
+            activation_layer_version=activation_layer.activation_layer_version,
+        )
+        v2_selected = identity.payload_version == TODAY_V2_PAYLOAD_VERSION
 
         cache_key = build_today_cache_key(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=profile_hash,
-            calculation_version=calc_version,
-            activation_layer_version=al_version,
-            scoring_version=scoring_version,
-            frontend_payload_version=fe_version,
+            calculation_version=identity.calculation_version,
+            activation_layer_version=identity.activation_layer_version,
+            scoring_version=identity.scoring_version,
+            content_version=identity.content_version,
+            frontend_payload_version=identity.frontend_payload_version,
         )
 
         # W-4.3: Build semantic layer
@@ -521,17 +505,17 @@ class TodayService:
             meta=TodayMeta(
                 schema_version="today/v1",
                 contract_version=3,
-                calculation_version=calc_version,
+                calculation_version=identity.calculation_version,
                 normalization_version=1,
-                scoring_version=scoring_version,
+                scoring_version=identity.scoring_version,
                 prompt_version=2,
-                content_version=TODAY_CONTENT_VERSION,
+                content_version=identity.content_version,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
                 canon_versions=get_canon_versions(),
-                activation_layer_version=al_version,
-                payload_version=p_version,
-                frontend_payload_version=fe_version,
+                activation_layer_version=identity.activation_layer_version,
+                payload_version=identity.payload_version,
+                frontend_payload_version=identity.frontend_payload_version,
             ),
             date=target_date.isoformat(),
             title="Сегодня",

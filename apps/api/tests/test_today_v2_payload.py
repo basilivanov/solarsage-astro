@@ -1,6 +1,17 @@
 import pytest
 from datetime import date as Date, time as Time
 from unittest.mock import AsyncMock, patch, MagicMock
+from app.core.versions import (
+    ACTIVATION_LAYER_VERSION,
+    CALCULATION_VERSION,
+    LEGACY_FRONTEND_PAYLOAD_VERSION,
+    LEGACY_SCORING_VERSION,
+    SCORING_V2_VERSION,
+    TODAY_CONTENT_VERSION,
+    TODAY_V1_PAYLOAD_VERSION,
+    TODAY_V2_PAYLOAD_VERSION,
+    V2_FRONTEND_PAYLOAD_VERSION,
+)
 from app.db.models import User, UserProfile
 from app.schemas.access import ContentAccessState
 from app.services.today_service import TodayService
@@ -8,10 +19,10 @@ from app.core.config import settings
 
 @pytest.mark.asyncio
 async def test_today_payload_v2_block_included_when_flag_enabled(db_session, monkeypatch):
-    """If settings.solarsage_v2_frontend_enabled is True, TodayPayload must have v2 block,
-    payload_version='today.v2', and frontend_payload_version=2."""
-    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", True)
-    monkeypatch.setattr(settings, "solarsage_v2_dual_run", True)
+    """If solarsage_v2_enabled is True, selected scoring is V2, and
+    TodayPayload must have a V2 block with current identity constants."""
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", True)
+    monkeypatch.setattr(settings, "solarsage_v2_dual_run", False)
 
     user = User(tg_user_id=888891, tg_username="test_v2_payload")
     db_session.add(user)
@@ -27,8 +38,10 @@ async def test_today_payload_v2_block_included_when_flag_enabled(db_session, mon
 
     mock_client = AsyncMock()
     mock_client.get_activation_layer = AsyncMock(return_value={
-        "schema_version": "activation-layer.v1", "activation_layer_version": "al-1.0",
-        "calculation_version": "1", "target_date": "2026-07-08", "target_time": "12:00",
+        "schema_version": "activation-layer.v1",
+        "activation_layer_version": ACTIVATION_LAYER_VERSION,
+        "calculation_version": CALCULATION_VERSION,
+        "target_date": "2026-07-08", "target_time": "12:00",
         "target_tz": "Europe/Moscow", "house_system": "WHOLE_SIGN",
         "activations": [],
         "by_planet": {}, "by_house": {}, "by_lot": {}, "by_angle": {}, "warnings": [],
@@ -58,9 +71,17 @@ async def test_today_payload_v2_block_included_when_flag_enabled(db_session, mon
             access_state=access, skip_prefetch=True,
         )
 
+        # Selection authority is solarsage_v2_enabled
         assert payload.v2 is not None
-        assert payload.meta.payload_version == "today.v2"
-        assert payload.meta.frontend_payload_version == 2
+        assert payload.meta.scoring_version == SCORING_V2_VERSION
+        assert payload.meta.payload_version == TODAY_V2_PAYLOAD_VERSION  # "today.v2.1"
+        assert payload.meta.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION  # 3
+        assert payload.meta.content_version == TODAY_CONTENT_VERSION  # 10
+        assert payload.v2.audit.payload_version == payload.meta.payload_version
+        # With intentionally empty activation setup, horizon pipeline is unavailable
+        assert payload.v2.audit.horizon_pipeline is not None
+        assert payload.v2.audit.horizon_pipeline.status == "unavailable"
+        assert payload.v2.horizons is None
 
         mock_why.assert_called_once()
         why_call_kwargs = mock_why.call_args.kwargs
@@ -70,9 +91,9 @@ async def test_today_payload_v2_block_included_when_flag_enabled(db_session, mon
 
 @pytest.mark.asyncio
 async def test_today_payload_v2_block_omitted_when_flag_disabled(db_session, monkeypatch):
-    """If settings.solarsage_v2_frontend_enabled is False, TodayPayload must have v2=None,
+    """If solarsage_v2_enabled is False, TodayPayload must have v2=None,
     payload_version='today.v1', and frontend_payload_version=1."""
-    monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", False)
+    monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
 
     user = User(tg_user_id=888892, tg_username="test_v2_disabled")
     db_session.add(user)
@@ -120,8 +141,10 @@ async def test_today_payload_v2_block_omitted_when_flag_disabled(db_session, mon
         )
 
         assert payload.v2 is None
-        assert payload.meta.payload_version == "today.v1"
-        assert payload.meta.frontend_payload_version == 1
+        assert payload.meta.scoring_version == LEGACY_SCORING_VERSION
+        assert payload.meta.payload_version == TODAY_V1_PAYLOAD_VERSION
+        assert payload.meta.frontend_payload_version == LEGACY_FRONTEND_PAYLOAD_VERSION
+        assert payload.meta.content_version == TODAY_CONTENT_VERSION
 
 
 def test_normalize_top_signals_helper():

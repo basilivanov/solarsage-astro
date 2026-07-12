@@ -21,11 +21,14 @@
 #   - M-CONTRACTS.calendar (CalendarPayload, CalendarDay, CalendarMeta, AllowedRange)
 #   - M-CONTRACTS.access (ContentAccessState)
 #   - M-ACCESS (AccessService)
+#   - M-CACHE-KEY-SERVICE (TodayCacheKey, resolve_today_runtime_identity)
 # invariants:
 #   - Returns exactly 3 months: prev, current, next
 #   - Full-access days use cached/computed real status when available
 #   - Locked/preview days may return no day status
 #   - Allowed range is ±2 years from current date
+#   - Semantic-cache write identity and pre-read expected identity derive from
+#     the same selected scoring family resolver.
 # failure_policy:
 #   - Invalid month format handled by caller (calendar.py)
 #   - Out of range handled by caller
@@ -290,7 +293,7 @@ class CalendarService:
             day_signals = filter_day_scored_signals(signals)
 
             # W5: Fetch sidecar activation layer when V2 may be computed
-            from app.services.day_scoring_runtime_service import should_compute_v2, selected_scoring_version_for_flags
+            from app.services.day_scoring_runtime_service import should_compute_v2
             from app.services.activation_layer_service import ActivationLayerService
             from app.services.day_scoring_runtime_service import DayScoringRuntimeService
             from app.core.logging import log_event, log_block
@@ -340,8 +343,6 @@ class CalendarService:
                             },
                         )
 
-            sel_ver = selected_scoring_version_for_flags()
-
             activation_layer = ActivationLayerService().build(
                 natal_context=self._request_natal_context,
                 transits=transits,
@@ -360,15 +361,24 @@ class CalendarService:
                 target_date=target_date.isoformat(),
             )
 
-            # Build write cache key from actual runtime facts
-            from app.services.cache_key_service import build_today_cache_key
+            # Build write cache key from canonical runtime identity.
+            # Use the resolver so V1-selected scoring produces the same
+            # identity as a subsequent read even when the activation object
+            # itself carries the V2 calculation version.
+            from app.services.cache_key_service import build_today_cache_key, resolve_today_runtime_identity
+            identity = resolve_today_runtime_identity(
+                selected_scoring_version=dual.selected_scoring_version,
+                activation_layer_version=activation_layer.activation_layer_version,
+            )
             cache_key = build_today_cache_key(
                 user_id=user_id,
                 target_date=target_date.isoformat(),
                 profile_hash=self._request_profile_hash,
-                calculation_version=activation_layer.calculation_version,
-                activation_layer_version=activation_layer.activation_layer_version,
-                scoring_version=dual.selected_scoring_version,
+                calculation_version=identity.calculation_version,
+                activation_layer_version=identity.activation_layer_version,
+                scoring_version=identity.scoring_version,
+                content_version=identity.content_version,
+                frontend_payload_version=identity.frontend_payload_version,
             )
             status = dual.selected_result["day_status"]
             scoring_result = dual.selected_result

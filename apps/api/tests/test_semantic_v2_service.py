@@ -1,5 +1,6 @@
 import pytest
 from datetime import date as Date
+from app.core.versions import SCORING_V2_VERSION
 from app.schemas.activation import ActivationLayer, ActivationEvidence
 from app.schemas.scoring_v2 import ScoringV2Result, SphereScoreV2, SphereContribution
 from app.services.semantic_v2_service import SemanticV2Service
@@ -19,7 +20,22 @@ def empty_activation_layer():
         by_angle={},
     )
 
-def test_semantic_v2_service_no_convergence(empty_activation_layer):
+
+@pytest.fixture
+def empty_scoring_v2_result():
+    """Minimal typed ScoringV2Result for tests that do not exercise scoring."""
+    return ScoringV2Result(
+        scoring_version=SCORING_V2_VERSION,
+        canon_versions={"spheres": "v1"},
+        day_status="steady",
+        status_breakdown={},
+        sphere_scores={},
+        top_signals=[],
+        top_activations=[],
+    )
+
+
+def test_semantic_v2_service_no_convergence(empty_activation_layer, empty_scoring_v2_result):
     service = SemanticV2Service()
     # Add a single activation
     empty_activation_layer.activations.append(
@@ -34,12 +50,14 @@ def test_semantic_v2_service_no_convergence(empty_activation_layer):
             evidence="Transit Moon opposition natal Mercury",
         )
     )
-    block = service.build_v2_block(activation_layer=empty_activation_layer)
+    block = service.build_v2_block(activation_layer=empty_activation_layer, scoring_result=empty_scoring_v2_result)
     assert block.activation_summary.headline == "День в основном определяется текущими транзитами, без сильной сходимости долгих техник."
     assert len(block.why_today) == 1
     assert block.why_today[0].id == "fallback-no-convergence"
+    # Prove typed input was not mutated
+    assert empty_scoring_v2_result.canon_versions == {"spheres": "v1"}
 
-def test_semantic_v2_service_with_convergence(empty_activation_layer):
+def test_semantic_v2_service_with_convergence(empty_activation_layer, empty_scoring_v2_result):
     service = SemanticV2Service()
     # Add multiple activations from different families targeting MERCURY
     empty_activation_layer.activations.extend([
@@ -64,10 +82,12 @@ def test_semantic_v2_service_with_convergence(empty_activation_layer):
             evidence="Mercury is lord of year",
         )
     ])
-    block = service.build_v2_block(activation_layer=empty_activation_layer)
+    block = service.build_v2_block(activation_layer=empty_activation_layer, scoring_result=empty_scoring_v2_result)
     assert "сходятся 2 независимые техники" in block.activation_summary.headline
     assert len(block.why_today) == 2
     assert {item.id for item in block.why_today} == {"why-planet-MERCURY-transit", "why-planet-MERCURY-profection"}
+    # Prove typed input was not mutated
+    assert empty_scoring_v2_result.canon_versions == {"spheres": "v1"}
 
 def test_semantic_v2_service_get_evidence_for_sphere(empty_activation_layer):
     service = SemanticV2Service()
@@ -127,15 +147,15 @@ def test_semantic_v2_service_get_evidence_for_sphere(empty_activation_layer):
     assert evidences[1].kind == "score_contribution"
     assert evidences[1].contribution_source_id == "act1"
 
-def test_audit_canon_versions_only_contains_strings(empty_activation_layer):
+def test_audit_canon_versions_only_contains_strings(empty_activation_layer, empty_scoring_v2_result):
     service = SemanticV2Service()
-    block = service.build_v2_block(activation_layer=empty_activation_layer)
+    block = service.build_v2_block(activation_layer=empty_activation_layer, scoring_result=empty_scoring_v2_result)
     assert block.audit.canon_versions
     for k, v in block.audit.canon_versions.items():
         assert isinstance(k, str)
         assert isinstance(v, str)
 
-def test_techniques_list_is_sorted(empty_activation_layer):
+def test_techniques_list_is_sorted(empty_activation_layer, empty_scoring_v2_result):
     service = SemanticV2Service()
     empty_activation_layer.activations.extend([
         ActivationEvidence(
@@ -159,6 +179,6 @@ def test_techniques_list_is_sorted(empty_activation_layer):
             evidence="Transit Moon opposition natal Mercury",
         ),
     ])
-    block = service.build_v2_block(activation_layer=empty_activation_layer)
+    block = service.build_v2_block(activation_layer=empty_activation_layer, scoring_result=empty_scoring_v2_result)
     target = block.activation_summary.top_activated_targets[0]
     assert target.techniques == ["annual_profection", "transit_to_natal"]

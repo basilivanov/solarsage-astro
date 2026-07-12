@@ -9,13 +9,27 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from app.services.cache_key_service import build_today_cache_key, expected_cache_identity
+from app.services.cache_key_service import (
+    build_today_cache_key, expected_cache_identity, resolve_today_runtime_identity,
+    TodayRuntimeIdentity,
+)
 from app.db.models import TodayPayloadCache, SemanticLayerCache, User, UserProfile
 from app.schemas.today import TodayPayload, TodayMeta, DaySummaryBlock, ConcreteAdviceBlock, ConcreteAdviceCounts
 from app.schemas.access import ContentAccessState
 from app.services.today_service import TodayService, TODAY_CONTENT_VERSION
 from app.services.calendar_service import CalendarService
 from app.services.cache_key_service import get_canon_versions
+from app.core.versions import (
+    ACTIVATION_LAYER_VERSION,
+    CALCULATION_VERSION,
+    LEGACY_CALCULATION_VERSION,
+    LEGACY_FRONTEND_PAYLOAD_VERSION,
+    LEGACY_SCORING_VERSION,
+    SCORING_V2_VERSION,
+    TODAY_V1_PAYLOAD_VERSION,
+    TODAY_V2_PAYLOAD_VERSION,
+    V2_FRONTEND_PAYLOAD_VERSION,
+)
 
 
 def make_minimal_today_payload(target_date: Date) -> TodayPayload:
@@ -689,3 +703,159 @@ async def test_cache_read_identity_matches_todayservice_write_for_v2_frontend_of
     assert read_key.content_version == write_key.content_version == TODAY_CONTENT_VERSION
     assert read_key.frontend_payload_version == write_key.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION
     assert read_key.cache_key_hash == write_key.cache_key_hash
+
+
+class TestRuntimeIdentityResolver:
+    """Prove resolve_today_runtime_identity is the single canonical family mapper."""
+
+    def test_v1_selected_maps_to_legacy_family(self):
+        """V1 selected + any activation object → legacy calculation/scoring/frontend/payload."""
+        identity = resolve_today_runtime_identity(
+            selected_scoring_version=LEGACY_SCORING_VERSION,
+            activation_layer_version="custom-al-v1",
+        )
+        assert identity.calculation_version == LEGACY_CALCULATION_VERSION
+        assert identity.scoring_version == LEGACY_SCORING_VERSION
+        assert identity.payload_version == TODAY_V1_PAYLOAD_VERSION
+        assert identity.frontend_payload_version == LEGACY_FRONTEND_PAYLOAD_VERSION
+        assert identity.content_version == TODAY_CONTENT_VERSION
+        assert identity.activation_layer_version == "custom-al-v1"
+
+    def test_v2_selected_maps_to_current_family(self):
+        """V2 selected → current calculation/scoring/frontend/payload family."""
+        identity = resolve_today_runtime_identity(
+            selected_scoring_version=SCORING_V2_VERSION,
+            activation_layer_version=ACTIVATION_LAYER_VERSION,
+        )
+        assert identity.calculation_version == CALCULATION_VERSION
+        assert identity.scoring_version == SCORING_V2_VERSION
+        assert identity.payload_version == TODAY_V2_PAYLOAD_VERSION
+        assert identity.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION
+        assert identity.content_version == TODAY_CONTENT_VERSION
+        assert identity.activation_layer_version == ACTIVATION_LAYER_VERSION
+
+    def test_read_write_hash_parity_v1(self, monkeypatch):
+        """V1 expected_cache_identity hash equals build_today_cache_key from resolver."""
+        from app.core.config import settings
+        monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
+        uid = uuid.uuid4()
+        ident = resolve_today_runtime_identity(
+            selected_scoring_version=LEGACY_SCORING_VERSION,
+        )
+        read_key = expected_cache_identity(
+            user_id=uid, target_date="2026-07-08", profile_hash="p1",
+        )
+        write_key = build_today_cache_key(
+            user_id=uid,
+            target_date="2026-07-08",
+            profile_hash="p1",
+            calculation_version=ident.calculation_version,
+            activation_layer_version=ident.activation_layer_version,
+            scoring_version=ident.scoring_version,
+            content_version=ident.content_version,
+            frontend_payload_version=ident.frontend_payload_version,
+        )
+        assert read_key.cache_key_hash == write_key.cache_key_hash
+
+    def test_read_write_hash_parity_v2(self, monkeypatch):
+        """V2 expected_cache_identity hash equals build_today_cache_key from resolver."""
+        from app.core.config import settings
+        monkeypatch.setattr(settings, "solarsage_v2_enabled", True)
+        uid = uuid.uuid4()
+        ident = resolve_today_runtime_identity(
+            selected_scoring_version=SCORING_V2_VERSION,
+        )
+        read_key = expected_cache_identity(
+            user_id=uid, target_date="2026-07-08", profile_hash="p2",
+        )
+        write_key = build_today_cache_key(
+            user_id=uid,
+            target_date="2026-07-08",
+            profile_hash="p2",
+            calculation_version=ident.calculation_version,
+            activation_layer_version=ident.activation_layer_version,
+            scoring_version=ident.scoring_version,
+            content_version=ident.content_version,
+            frontend_payload_version=ident.frontend_payload_version,
+        )
+        assert read_key.cache_key_hash == write_key.cache_key_hash
+
+    def test_frontend_flag_does_not_alter_v1_identity(self, monkeypatch):
+        """Frontend flag true while V1 is selected does not alter identity."""
+        from app.core.config import settings
+        monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
+        monkeypatch.setattr(settings, "solarsage_v2_frontend_enabled", True)
+        uid = uuid.uuid4()
+        read_key = expected_cache_identity(
+            user_id=uid, target_date="2026-07-08", profile_hash="p3",
+        )
+        ident = resolve_today_runtime_identity(
+            selected_scoring_version=LEGACY_SCORING_VERSION,
+        )
+        # Verify V1 family from both read identity and resolver
+        assert read_key.calculation_version == ident.calculation_version == LEGACY_CALCULATION_VERSION
+        assert read_key.scoring_version == ident.scoring_version == LEGACY_SCORING_VERSION
+        assert read_key.frontend_payload_version == ident.frontend_payload_version == LEGACY_FRONTEND_PAYLOAD_VERSION
+        # Hash parity: read key matches a write key built from the same identity
+        write_key = build_today_cache_key(
+            user_id=uid,
+            target_date="2026-07-08",
+            profile_hash="p3",
+            calculation_version=ident.calculation_version,
+            activation_layer_version=ident.activation_layer_version,
+            scoring_version=ident.scoring_version,
+            content_version=ident.content_version,
+            frontend_payload_version=ident.frontend_payload_version,
+        )
+        assert read_key.cache_key_hash == write_key.cache_key_hash
+
+    def test_dual_run_does_not_alter_v1_identity(self, monkeypatch):
+        """Dual-run true while V1 is selected does not alter identity."""
+        from app.core.config import settings
+        monkeypatch.setattr(settings, "solarsage_v2_enabled", False)
+        monkeypatch.setattr(settings, "solarsage_v2_dual_run", True)
+        uid = uuid.uuid4()
+        read_key = expected_cache_identity(
+            user_id=uid, target_date="2026-07-08", profile_hash="p4",
+        )
+        ident = resolve_today_runtime_identity(
+            selected_scoring_version=LEGACY_SCORING_VERSION,
+        )
+        assert read_key.calculation_version == ident.calculation_version == LEGACY_CALCULATION_VERSION
+        assert read_key.scoring_version == ident.scoring_version == LEGACY_SCORING_VERSION
+        # Hash parity: read and write identities match under V1 selection
+        write_key = build_today_cache_key(
+            user_id=uid,
+            target_date="2026-07-08",
+            profile_hash="p4",
+            calculation_version=ident.calculation_version,
+            activation_layer_version=ident.activation_layer_version,
+            scoring_version=ident.scoring_version,
+            content_version=ident.content_version,
+            frontend_payload_version=ident.frontend_payload_version,
+        )
+        assert read_key.cache_key_hash == write_key.cache_key_hash
+
+    def test_activation_layer_version_preserved_when_non_null(self):
+        """Supplied activation-layer version is preserved."""
+        ident = resolve_today_runtime_identity(
+            selected_scoring_version=SCORING_V2_VERSION,
+            activation_layer_version="al-custom-42",
+        )
+        assert ident.activation_layer_version == "al-custom-42"
+
+    def test_activation_layer_version_fallback_when_null(self):
+        """Null activation-layer version uses canonical fallback."""
+        ident = resolve_today_runtime_identity(
+            selected_scoring_version=SCORING_V2_VERSION,
+        )
+        assert ident.activation_layer_version == ACTIVATION_LAYER_VERSION
+
+    def test_resolver_result_is_immutable(self):
+        """TodayRuntimeIdentity is frozen and cannot be mutated."""
+        identity = resolve_today_runtime_identity(
+            selected_scoring_version=LEGACY_SCORING_VERSION,
+        )
+        assert isinstance(identity, TodayRuntimeIdentity)
+        with pytest.raises(AttributeError):
+            identity.calculation_version = "changed"
