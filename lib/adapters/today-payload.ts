@@ -18,6 +18,9 @@
 //   - Preserves headline, dayStatus, topFlags from API.
 //   - Maps access.state correctly.
 //   - Does not validate TodayV2Block schema in production (pure pass-through).
+//   - adapter always copies exact payloadVersion/frontendPayloadVersion/contentVersion from api.meta.
+//   - No normalization/defaulting and no full-meta spread in wireIdentity construction.
+//   - v2 block preserves object identity (same reference).
 // failure_policy: none.
 // END_MODULE_CONTRACT: M-ADAPTERS-TODAY-PAYLOAD
 
@@ -35,6 +38,7 @@ import {
   type TodayReading,
   type TodayNote,
   type TodayWhySection,
+  type TodayWireIdentity,
 } from '@/lib/contracts/today';
 import type { AccessInfo } from '@/lib/access';
 
@@ -178,8 +182,15 @@ export function adaptTodayPayload(
   const why = buildWhySections(api.whyThisHappens?.sections || []);
   const keyInsight = why[0]?.title || FALLBACK_KEY_INSIGHT;
 
+  const wireIdentity: TodayWireIdentity = {
+    payloadVersion: api.meta.payloadVersion,
+    frontendPayloadVersion: api.meta.frontendPayloadVersion,
+    contentVersion: api.meta.contentVersion,
+  }
+
   return {
     payload: {
+      wireIdentity,
       date: api.date || selectedDate.toISOString().split('T')[0],
       headline: api.headline || '',
       dayStatus: api.dayStatus,

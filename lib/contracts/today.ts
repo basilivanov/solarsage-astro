@@ -11,14 +11,17 @@
 //   - lib/contracts/today.ts
 // inputs: none.
 // outputs:
-//   - UI Zod schemas: DayStatusSchema, AdaptedTopFlagSchema, TodayNoteSchema, TodayWhySectionSchema, AdaptedTodayPayload
-//   - UI TypeScript types: AdaptedTodayPayload, TodayNote, TodayReading, TodayWhySection
+//   - UI Zod schemas: DayStatusSchema, AdaptedTopFlagSchema, TodayNoteSchema, TodayWhySectionSchema, AdaptedTodayPayload, TodayWireIdentitySchema
+//   - UI TypeScript types: AdaptedTodayPayload, TodayNote, TodayReading, TodayWhySection, TodayWireIdentity
 //   - V2 wire schemas/values are imported from generated runtime barrel
 // dependencies: packages/contracts, packages/contracts/runtime.
 // side_effects: none.
 // emitted_logs: none.
 // invariants:
 //   - No manual raw V2 wire schema object declarations.
+//   - TodayWireIdentitySchema derived from generated Today meta .pick(), never manually redeclared.
+//   - wireIdentity field optional only for legacy adapted artifacts; real adapter always populates.
+//   - Missing identity remains unknown/fail-closed.
 // failure_policy: compile error on missing definitions.
 // END_MODULE_CONTRACT: M-CONTRACTS-TODAY
 
@@ -27,9 +30,12 @@
 //   - AdaptedTodayPayload
 //   - TodayPayloadSchema
 //   - TodayV2BlockSchema
+//   - TodayWireIdentitySchema
+//   - TodayWireIdentity
 //   - validateAdaptedTodayPayload
 // semantic_blocks:
 //   - UI_SCHEMAS: Zod schemas for adapted UI blocks.
+//   - WIRE_IDENTITY: generated pick of meta identity for consumer routing.
 //   - GENERATED_V2_WIRE_SCHEMA_ALIAS: aliases generated V2 wire validation without redeclaring its shape.
 // END_MODULE_MAP: M-CONTRACTS-TODAY
 
@@ -53,12 +59,23 @@ import type {
   SphereScoreV2 as SphereScoreV2Wire,
 } from "@/packages/contracts"
 import {
+  TodayPayloadWireSchema,
   TodayV2BlockWireSchema,
   TodayV2HorizonsBlockWireSchema,
   TodayV2HorizonWireSchema,
   TodayV2HorizonTimingWireSchema,
   TodayV2ProvenanceWireSchema,
 } from "@/packages/contracts/runtime"
+
+// START_BLOCK: WIRE_IDENTITY
+// Generated pick of the three meta identity fields used for consumer routing.
+export const TodayWireIdentitySchema = TodayPayloadWireSchema.shape.meta.pick({
+  payloadVersion: true,
+  frontendPayloadVersion: true,
+  contentVersion: true,
+})
+export type TodayWireIdentity = z.infer<typeof TodayWireIdentitySchema>
+// END_BLOCK: WIRE_IDENTITY
 
 export const DayStatusSchema = z.enum(["supportive", "steady", "tense"]);
 
@@ -238,6 +255,8 @@ export const TodayV2ProvenanceSchema = TodayV2ProvenanceWireSchema
 // END_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS
 
 export const TodayPayloadSchema = z.object({
+  /** Wire identity for consumer routing. Real adapter always sets it. */
+  wireIdentity: TodayWireIdentitySchema.optional(),
   /** ISO yyyy-mm-dd — для кэша, deeplink'ов, инвалидации SWR. */
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   /** Заголовок дня от LLM */

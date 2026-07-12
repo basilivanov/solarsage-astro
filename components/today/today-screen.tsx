@@ -32,6 +32,7 @@
 //   - V2 sphere/Why state resets to the current deeplink default on date changes
 //   - Loading/error states handled by the parent page
 //   - disableRemoteStatusFetch defaults to false, preserving ordinary WeekStrip behavior
+//   - payload.wireIdentity passed to WhyExpanded unchanged.
 // failure_policy: renders gracefully; missing data hides sections silently
 // END_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 
@@ -290,6 +291,7 @@ export function TodayScreen({
             sections={payload.why}
             keyInsight={payload.keyInsight}
             v2={payload.v2}
+            wireIdentity={payload.wireIdentity}
             concreteAdvice={payload.concreteAdvice}
             onSphereSelect={selectPersonalStorySphere}
             open={payload.v2 ? whyOpen : undefined}

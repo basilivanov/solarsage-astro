@@ -8,8 +8,8 @@
 // purpose: Render controlled/uncontrolled Why disclosure for V2 and legacy Today payloads.
 // owns:
 //   - components/today/why-expanded.tsx
-// inputs: legacy sections, backend v2.horizons / v2.whyToday / legacy-v2 evidence, controlled open state, deeplink search params.
-// outputs: data-testid="why-expanded" section with backend-horizons, legacy-v2, human-only, or legacy disclosure branches.
+// inputs: legacy sections, backend v2.horizons / v2.whyToday / legacy-v2 evidence, wire identity, controlled open state, deeplink search params.
+// outputs: data-testid="why-expanded" section with backend-horizons, horizons-unavailable, legacy-v2, human-only, or legacy disclosure branches.
 // dependencies: next/navigation, contracts, presentation helpers, lib/icons, why-time-horizon-card.
 // side_effects: controlled state callbacks and local technical disclosure state.
 // emitted_logs: none.
@@ -17,7 +17,9 @@
 //   - human V2 content does not leak technical astrology vocabulary.
 //   - technical terminology is confined to the clearly marked calculation disclosure control and its opened content, never the human narrative.
 //   - ?why=1 and ?why=1&astro=1 remain supported.
-// failure_policy: legacy content remains readable without fabricated V2 evidence.
+//   - Legacy selector is resolved only for exact previous accepted pair.
+//   - Current/missing/mismatched identity never infers horizons.
+// failure_policy: fail-closed unavailable for incompatible or missing wire identity; never fabricates backend horizons.
 // END_MODULE_CONTRACT: M-TODAY-WHY-EXPANDED
 
 // START_MODULE_MAP: M-TODAY-WHY-EXPANDED
@@ -25,9 +27,10 @@
 //   - WhyExpanded
 //   - resolveWhyExpandedMode
 // semantic_blocks:
-//   - MODE_RESOLUTION: backend-horizons / legacy-v2 / human-only / legacy / empty branch selection.
+//   - MODE_RESOLUTION: backend-horizons / horizons-unavailable / legacy-v2 / human-only / legacy / empty branch selection.
 //   - WHY_DISCLOSURE: controlled/uncontrolled top-level disclosure.
 //   - BACKEND_HORIZONS_CONTENT: backend-owned horizons intro and card list.
+//   - UNAVAILABLE_CONTENT: honest backend horizons-unavailable state.
 //   - V2_WHY_CONTENT: legacy selector-derived three human time horizons and nested calculation.
 //   - TECHNICAL_CALCULATION: selected evidence grouped by horizon.
 // owned_tests:
@@ -40,7 +43,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-import type { ConcreteAdviceBlock, TodayV2Block, TodayV2WhyTodayItem, TodayWhySection } from "@/lib/contracts/today"
+import type { ConcreteAdviceBlock, TodayV2Block, TodayV2WhyTodayItem, TodayWhySection, TodayWireIdentity } from "@/lib/contracts/today"
 import { getIcon } from "@/lib/icons"
 import {
   formatActivationEvidenceTitle,
@@ -58,6 +61,7 @@ type Props = {
   sections: TodayWhySection[]
   keyInsight: string
   v2?: TodayV2Block | null
+  wireIdentity?: TodayWireIdentity
   whyToday?: TodayV2WhyTodayItem[] | null
   concreteAdvice?: ConcreteAdviceBlock | null
   onSphereSelect?: (key: string) => void
@@ -65,35 +69,61 @@ type Props = {
   onOpenChange?: (open: boolean) => void
 }
 
+// Consumer routing constants — current and previous accepted wire pairs.
+const CURRENT_PAYLOAD_VERSION = "today.v2.1" as const
+const CURRENT_FRONTEND_VERSION = 3 as const
+const PREVIOUS_PAYLOAD_VERSION = "today.v2" as const
+const PREVIOUS_FRONTEND_VERSION = 2 as const
+
 export function resolveWhyExpandedMode({
   v2,
   whyToday,
   sections,
+  wireIdentity,
 }: {
   v2?: TodayV2Block | null
   whyToday?: TodayV2WhyTodayItem[] | null
   sections: TodayWhySection[]
-}): "backend-horizons" | "legacy-v2" | "human-only" | "legacy" | "empty" {
+  wireIdentity?: TodayWireIdentity
+}): "backend-horizons" | "horizons-unavailable" | "legacy-v2" | "human-only" | "legacy" | "empty" {
   // START_FUNCTION_CONTRACT: F-M-TODAY-WHY-EXPANDED.resolveWhyExpandedMode
-  // purpose: Resolve which public Why rendering branch should own the current payload.
-  // inputs: v2 - optional TodayV2 block; whyToday - optional standalone safe why items; sections - legacy why sections.
-  // returns: one of backend-horizons, legacy-v2, human-only, legacy, or empty.
+  // purpose: Resolve Why rendering branch based on wire identity and V2 horizons.
+  // inputs: v2, whyToday, sections, wireIdentity.
+  // returns: rendering branch.
   // side_effects: none.
   // emitted_logs: none.
-  // error_behavior: none; falls through to the safest available branch.
+  // error_behavior: returns safest branch; never invokes legacy selector for current/mismatch.
   // END_FUNCTION_CONTRACT: F-M-TODAY-WHY-EXPANDED.resolveWhyExpandedMode
-  if (v2?.horizons) return "backend-horizons"
-  if (v2) return "legacy-v2"
-  if ((whyToday ?? []).length > 0) return "human-only"
-  if (sections.length > 0) return "legacy"
-  return "empty"
+  if (!v2) {
+    if ((whyToday ?? []).length > 0) return "human-only"
+    if (sections.length > 0) return "legacy"
+    return "empty"
+  }
+
+  // Determine wire identity pair
+  const isCurrent = wireIdentity?.payloadVersion === CURRENT_PAYLOAD_VERSION
+    && wireIdentity?.frontendPayloadVersion === CURRENT_FRONTEND_VERSION
+  const isPrevious = wireIdentity?.payloadVersion === PREVIOUS_PAYLOAD_VERSION
+    && wireIdentity?.frontendPayloadVersion === PREVIOUS_FRONTEND_VERSION
+  const isKnownPair = isCurrent || isPrevious
+
+  if (!isKnownPair) {
+    // Mismatched or missing identity with V2 present → fail-closed unavailable
+    return "horizons-unavailable"
+  }
+
+  if (v2.horizons) return "backend-horizons"
+
+  // horizons is null
+  if (isPrevious) return "legacy-v2"
+  return "horizons-unavailable"
 }
 
 // START_BLOCK: WHY_DISCLOSURE
-export function WhyExpanded({ sections, keyInsight, v2, whyToday, concreteAdvice, onSphereSelect, open, onOpenChange }: Props) {
+export function WhyExpanded({ sections, keyInsight, v2, wireIdentity, whyToday, concreteAdvice, onSphereSelect, open, onOpenChange }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-WHY-EXPANDED.WhyExpanded
   // purpose: Render controlled human-first Why content and its optional technical subsection.
-  // inputs: Props — backend-owned V2/legacy content and optional parent state control.
+  // inputs: Props — backend-owned V2/legacy content, wireIdentity, optional parent state control.
   // returns: Why disclosure JSX or null.
   // side_effects: invokes onOpenChange and stores technical disclosure state.
   // emitted_logs: none.
@@ -109,7 +139,7 @@ export function WhyExpanded({ sections, keyInsight, v2, whyToday, concreteAdvice
   const wasOpen = useRef(open ?? uncontrolledOpen)
   const isOpen = open ?? uncontrolledOpen
   const effectiveWhyToday = v2?.whyToday.length ? v2.whyToday : whyToday ?? []
-  const mode = resolveWhyExpandedMode({ v2, whyToday: effectiveWhyToday, sections })
+  const mode = resolveWhyExpandedMode({ v2, whyToday: effectiveWhyToday, sections, wireIdentity })
   const legacyHorizons = mode === "legacy-v2" && v2 ? selectWhyTimeHorizons(v2) : []
   const hasLegacyV2Horizons = legacyHorizons.length > 0
   const hasSafeWhyItems = effectiveWhyToday.length > 0
@@ -152,6 +182,8 @@ export function WhyExpanded({ sections, keyInsight, v2, whyToday, concreteAdvice
           <div id={detailsId} className="border-t border-border/60 bg-gradient-to-br from-card to-violet-50/35 px-5 pb-6 pt-5 dark:to-violet-950/15">
             {mode === "backend-horizons" ? (
               <BackendHorizonsContent v2={v2} concreteAdvice={concreteAdvice} onSphereSelect={onSphereSelect} />
+            ) : mode === "horizons-unavailable" ? (
+              <HorizonsUnavailableContent />
             ) : mode === "legacy-v2" && hasLegacyV2Horizons ? (
               <V2WhyContent
                 v2={v2}
@@ -172,6 +204,17 @@ export function WhyExpanded({ sections, keyInsight, v2, whyToday, concreteAdvice
   )
 }
 // END_BLOCK: WHY_DISCLOSURE
+
+function HorizonsUnavailableContent() {
+  return (
+    <section data-testid="why-horizons-unavailable" data-state="empty" data-source="backend-horizons" className="space-y-3">
+      <h3 className="font-serif text-[20px] leading-snug text-foreground">Три временных горизонта пока недоступны</h3>
+      <p className="text-[15px] leading-relaxed text-muted-foreground">
+        Мы покажем их, когда получим подтверждённые сроки и персональные связи. Не будем заменять их приблизительной версией.
+      </p>
+    </section>
+  )
+}
 
 function BackendHorizonsContent({
   v2,

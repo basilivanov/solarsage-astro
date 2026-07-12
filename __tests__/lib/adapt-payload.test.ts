@@ -15,7 +15,8 @@
 // emitted_logs: none
 // invariants:
 //   - No unsafe casts or TypeScript suppression directives.
-//   - Validates UI AdaptedTodayPayload against TodayPayloadSchema
+//   - Validates UI AdaptedTodayPayload against TodayPayloadSchema.
+//   - Wire identity tests use explicit narrowing, not non-null assertions.
 // failure_policy: fail test
 // END_MODULE_CONTRACT: M-TEST-LIB-ADAPT-PAYLOAD
 
@@ -26,7 +27,7 @@
 //   - NOTES_TESTS: tests note placeholders and actual notes
 //   - VALUE_PRESERVATION_TESTS: checks dayStatus, headline, topFlags, etc.
 //   - WHY_SECTIONS_TESTS: tests blocks, bullets, and fallback mapping
-//   - IDENTITY_TESTS: tests V2 block pass-through identity
+//   - IDENTITY_TESTS: tests V2 block pass-through identity, wire identity preservation, and optional old-adapted compatibility
 // owned_tests:
 //   - __tests__/lib/adapt-payload.test.ts
 // END_MODULE_MAP: M-TEST-LIB-ADAPT-PAYLOAD
@@ -430,6 +431,52 @@ describe("adaptTodayPayload", () => {
     const api = createBaseApi({ v2: v2Block });
     const { payload } = adaptTodayPayload(api, TODAY);
     expect(payload.v2).toBe(v2Block);
+  });
+
+  it("today.v1 / 1 / content 1 are preserved in wireIdentity exactly", () => {
+    const api = createBaseApi();
+    const { payload } = adaptTodayPayload(api, TODAY);
+    const wi = payload.wireIdentity;
+    if (!wi) throw new Error("wireIdentity expected");
+    expect(wi.payloadVersion).toBe("today.v1");
+    expect(wi.frontendPayloadVersion).toBe(1);
+    expect(wi.contentVersion).toBe(1);
+  });
+
+  it("canonical today.v2.1 / 3 / content 10 are preserved exactly", () => {
+    const api = createBaseApi({
+      meta: {
+        ...dayPayloadV2.meta,
+        payloadVersion: "today.v2.1",
+        frontendPayloadVersion: 3,
+        contentVersion: 10,
+      },
+    });
+    const { payload } = adaptTodayPayload(api, TODAY);
+    const wi = payload.wireIdentity;
+    if (!wi) throw new Error("wireIdentity expected");
+    expect(wi.payloadVersion).toBe("today.v2.1");
+    expect(wi.frontendPayloadVersion).toBe(3);
+    expect(wi.contentVersion).toBe(10);
+  });
+
+  it("adapted payload with wireIdentity validates against UI schema", () => {
+    const v2Block = dayPayloadV2.v2;
+    if (!v2Block) throw new Error("fixture v2 block is missing");
+    const api = createBaseApi({ v2: v2Block });
+    const { payload } = adaptTodayPayload(api, TODAY);
+    expect(() => validateAdaptedTodayPayload(payload)).not.toThrow();
+  });
+
+  it("old manual payload without wireIdentity still passes schema (compat)", () => {
+    const v2Block = dayPayloadV2.v2;
+    if (!v2Block) throw new Error("fixture v2 block is missing");
+    const api = createBaseApi({ v2: v2Block });
+    const { payload } = adaptTodayPayload(api, TODAY);
+    const { wireIdentity, ...withoutWireIdentity } = payload;
+    expect(wireIdentity).toBeDefined();
+    expect(withoutWireIdentity).not.toHaveProperty("wireIdentity");
+    expect(() => validateAdaptedTodayPayload(withoutWireIdentity)).not.toThrow();
   });
   // END_BLOCK: IDENTITY_TESTS
 });

@@ -14,7 +14,9 @@
 // emitted_logs: none.
 // invariants:
 //   - backend horizons are authoritative when present.
-//   - legacy selector remains reachable only when horizons are null/absent.
+//   - legacy selector is resolved only for exact previous accepted pair + horizons null.
+//   - current/unavailable/mismatch identity never infers horizons.
+//   - spies are created before render and restored between tests (order-independent).
 //   - original downstream audit/legacy assertions remain covered.
 // failure_policy: test failure.
 // END_MODULE_CONTRACT: M-TEST-TODAYSCREEN-V2-DOWNSTREAM
@@ -24,6 +26,7 @@
 // semantic_blocks:
 //   - FIXTURE_LOADING: tracked audit fixture loader and canonical fixture adapter.
 //   - LEGACY_MATRIX: original downstream legacy scenarios preserved.
+//   - MODE_MATRIX: current/previous/mismatch/missing identity + horizons coverage.
 //   - BACKEND_HORIZONS_MATRIX: B1 backend-owned horizons coverage.
 // owned_tests:
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
@@ -35,7 +38,7 @@ import React from "react"
 import fs from "node:fs"
 import path from "node:path"
 import type { AccessInfo } from "@/lib/contracts/access"
-import { validateAdaptedTodayPayload } from "@/lib/contracts/today"
+import { validateAdaptedTodayPayload, type TodayWireIdentity } from "@/lib/contracts/today"
 import { TodayScreen } from "@/components/today/today-screen"
 import { ConcreteDayAdvice, normalizeConcreteAdviceVerdict } from "@/components/today/concrete-day-advice"
 import { WhyExpanded } from "@/components/today/why-expanded"
@@ -45,6 +48,12 @@ import { adaptTodayPayload } from "@/lib/adapters/today-payload"
 import * as todayV2Presentation from "@/lib/presentation/today-v2"
 
 const navigationState = vi.hoisted(() => ({ search: "why=1" }))
+
+// Consumer routing constants matching the WhyExpanded consumer boundary.
+const CURRENT_WIRE_IDENTITY = { payloadVersion: "today.v2.1", frontendPayloadVersion: 3, contentVersion: 10 } satisfies TodayWireIdentity
+const PREVIOUS_WIRE_IDENTITY = { payloadVersion: "today.v2", frontendPayloadVersion: 2, contentVersion: 10 } satisfies TodayWireIdentity
+const MISMATCH_WIRE_IDENTITY = { payloadVersion: "today.v2.1", frontendPayloadVersion: 2, contentVersion: 10 } satisfies TodayWireIdentity
+const HIGH_CONTENT_IDENTITY = { payloadVersion: "today.v2.1", frontendPayloadVersion: 3, contentVersion: 999 } satisfies TodayWireIdentity
 
 vi.mock("@/lib/log", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -109,6 +118,7 @@ function renderBackendWhyExpanded() {
       sections={payload.why}
       keyInsight={payload.keyInsight}
       v2={payload.v2}
+      wireIdentity={payload.wireIdentity}
       concreteAdvice={payload.concreteAdvice}
       open
     />,
@@ -126,6 +136,7 @@ const access: AccessInfo = {
 
 describe("TodayScreen V2 downstream fixture", () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
     navigationState.search = "why=1"
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() })
@@ -168,6 +179,7 @@ describe("TodayScreen V2 downstream fixture", () => {
         sections={payload.why}
         keyInsight={payload.keyInsight}
         v2={payload.v2}
+        wireIdentity={PREVIOUS_WIRE_IDENTITY}
         open
       />,
     )
@@ -201,6 +213,7 @@ describe("TodayScreen V2 downstream fixture", () => {
         sections={[]}
         keyInsight=""
         v2={v2}
+        wireIdentity={PREVIOUS_WIRE_IDENTITY}
         open
       />,
     )
@@ -240,7 +253,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     const { payload } = buildCanonicalPayload()
     const v2 = structuredClone(payload.v2!)
     v2.horizons = null
-    render(<WhyExpanded sections={[]} keyInsight="" v2={v2} />)
+    render(<WhyExpanded sections={[]} keyInsight="" v2={v2} wireIdentity={PREVIOUS_WIRE_IDENTITY} />)
 
     expect(screen.getByTestId("astrology-calculation-toggle").getAttribute("aria-expanded")).toBe("true")
     expect(screen.getAllByTestId("astrology-calculation-item")).toHaveLength(5)
@@ -290,7 +303,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     v2.activationSummary.topActivatedTargets[0].activationIds = ["act-moon-opp-pluto"]
     v2.whyToday = [v2.whyToday[0]]
     v2.scoreBreakdown = {}
-    render(<WhyExpanded sections={[]} keyInsight="" v2={v2} open />)
+    render(<WhyExpanded sections={[]} keyInsight="" v2={v2} wireIdentity={PREVIOUS_WIRE_IDENTITY} open />)
 
     expect(screen.getByTestId("why-today-item").textContent).toContain("Сегодня длинная тема особенно заметна")
     expect(screen.queryByTestId("why-time-horizon")).toBeNull()
@@ -298,7 +311,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.queryByTestId("astrology-calculation-toggle")).toBeNull()
   })
 
-  it("returns no Why block for an empty V2 payload without safe copy or legacy sections", () => {
+  it("returns no Why block for an empty previous pair V2 payload without safe copy or legacy sections", () => {
     const { payload } = buildCanonicalPayload()
     const v2 = structuredClone(payload.v2!)
     v2.horizons = null
@@ -306,7 +319,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     v2.activationEvidence = []
     v2.whyToday = []
     v2.scoreBreakdown = {}
-    const { queryByTestId } = render(<WhyExpanded sections={[]} keyInsight="" v2={v2} open />)
+    const { queryByTestId } = render(<WhyExpanded sections={[]} keyInsight="" v2={v2} wireIdentity={PREVIOUS_WIRE_IDENTITY} open />)
 
     expect(queryByTestId("why-expanded")).toBeNull()
   })
@@ -321,7 +334,7 @@ describe("TodayScreen V2 downstream fixture", () => {
       exactAt: undefined,
       activeUntil: undefined,
     }))
-    render(<WhyExpanded sections={[]} keyInsight="" v2={v2} open />)
+    render(<WhyExpanded sections={[]} keyInsight="" v2={v2} wireIdentity={PREVIOUS_WIRE_IDENTITY} open />)
 
     expect(screen.getAllByTestId("why-time-horizon")).toHaveLength(3)
     expect(screen.queryByTestId("why-time-horizon-timing")).toBeNull()
@@ -488,6 +501,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     const spy = vi.spyOn(todayV2Presentation, "selectWhyTimeHorizons")
     renderBackendWhyExpanded()
     expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
   })
 
   it("keeps raw prefixes and legacy cards absent when backend block exists", () => {
@@ -498,16 +512,150 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.queryByTestId("why-time-horizon")).toBeNull()
   })
 
-  it("restores legacy selector cards when horizons are null", () => {
+  it("current pair + horizons=null shows unavailable state", () => {
     const { payload } = buildCanonicalPayload()
-    const v2 = structuredClone(payload.v2!)
-    v2.horizons = null
+    if (!payload.v2) throw new Error("v2 missing")
+    const v2 = { ...payload.v2, horizons: null }
     const spy = vi.spyOn(todayV2Presentation, "selectWhyTimeHorizons")
     render(
       <WhyExpanded
         sections={payload.why}
         keyInsight={payload.keyInsight}
         v2={v2}
+        wireIdentity={CURRENT_WIRE_IDENTITY}
+        open
+      />,
+    )
+    expect(screen.getByTestId("why-horizons-unavailable").getAttribute("data-state")).toBe("empty")
+    expect(screen.getByTestId("why-horizons-unavailable").getAttribute("data-source")).toBe("backend-horizons")
+    expect(screen.getByTestId("why-horizons-unavailable").textContent).toContain("Три временных горизонта")
+    expect(screen.queryByTestId("why-horizons")).toBeNull()
+    expect(screen.queryByTestId("why-time-horizon")).toBeNull()
+    expect(screen.queryByTestId("astrology-calculation")).toBeNull()
+    expect(screen.queryByTestId("astrology-calculation-toggle")).toBeNull()
+    expect(screen.queryByTestId("why-today")).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it("mismatched wire identity with horizons=null shows unavailable state", () => {
+    const { payload } = buildCanonicalPayload()
+    if (!payload.v2) throw new Error("v2 missing")
+    const v2 = { ...payload.v2, horizons: null }
+    const spy = vi.spyOn(todayV2Presentation, "selectWhyTimeHorizons")
+    render(
+      <WhyExpanded
+        sections={payload.why}
+        keyInsight={payload.keyInsight}
+        v2={v2}
+        wireIdentity={MISMATCH_WIRE_IDENTITY}
+        open
+      />,
+    )
+    expect(screen.getByTestId("why-horizons-unavailable")).toBeTruthy()
+    expect(screen.queryByTestId("why-time-horizon")).toBeNull()
+    expect(screen.queryByTestId("astrology-calculation")).toBeNull()
+    expect(screen.queryByTestId("why-today")).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it("missing wire identity with horizons=null shows unavailable state", () => {
+    const { payload } = buildCanonicalPayload()
+    if (!payload.v2) throw new Error("v2 missing")
+    const v2 = { ...payload.v2, horizons: null }
+    const spy = vi.spyOn(todayV2Presentation, "selectWhyTimeHorizons")
+    render(
+      <WhyExpanded
+        sections={payload.why}
+        keyInsight={payload.keyInsight}
+        v2={v2}
+        open
+      />,
+    )
+    expect(screen.getByTestId("why-horizons-unavailable")).toBeTruthy()
+    expect(screen.queryByTestId("why-time-horizon")).toBeNull()
+    expect(screen.queryByTestId("astrology-calculation")).toBeNull()
+    expect(screen.queryByTestId("why-today")).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it("no-v2 branches do not regress when wireIdentity is absent", () => {
+    render(
+      <WhyExpanded
+        sections={[{ id: "s1", title: "Legacy", iconName: "sun", paragraphs: ["text"] }]}
+        keyInsight="Key"
+        open
+      />,
+    )
+    expect(screen.getByText("Legacy")).toBeTruthy()
+    expect(screen.queryByTestId("why-horizons-unavailable")).toBeNull()
+  })
+
+  it("TodayScreen passes adapter wireIdentity so backend horizons render for canonical payload", () => {
+    const { payload } = buildCanonicalPayload()
+    const wi = payload.wireIdentity
+    if (!wi) throw new Error("wireIdentity expected")
+    expect(wi.payloadVersion).toBe("today.v2.1")
+    render(
+      <TodayScreen
+        payload={payload}
+        access={access}
+        selectedDate={new Date("2026-07-08T12:00:00Z")}
+        onDateChange={() => {}}
+      />,
+    )
+    expect(screen.getByTestId("why-horizons").getAttribute("data-source")).toBe("backend-horizons")
+  })
+
+  it("previous pair with horizons present renders backend and selector 0", () => {
+    const { payload } = buildCanonicalPayload()
+    if (!payload.v2) throw new Error("v2 missing")
+    const spy = vi.spyOn(todayV2Presentation, "selectWhyTimeHorizons")
+    render(
+      <WhyExpanded
+        sections={payload.why}
+        keyInsight={payload.keyInsight}
+        v2={payload.v2}
+        wireIdentity={PREVIOUS_WIRE_IDENTITY}
+        open
+      />,
+    )
+    expect(screen.getByTestId("why-horizons").getAttribute("data-source")).toBe("backend-horizons")
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it("content version 999 does not prevent backend horizons", () => {
+    const { payload } = buildCanonicalPayload()
+    if (!payload.v2) throw new Error("v2 missing")
+    const spy = vi.spyOn(todayV2Presentation, "selectWhyTimeHorizons")
+    render(
+      <WhyExpanded
+        sections={payload.why}
+        keyInsight={payload.keyInsight}
+        v2={payload.v2}
+        wireIdentity={HIGH_CONTENT_IDENTITY}
+        open
+      />,
+    )
+    expect(screen.getByTestId("why-horizons").getAttribute("data-source")).toBe("backend-horizons")
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it("restores legacy selector cards when horizons are null with previous wire identity", () => {
+    const { payload } = buildCanonicalPayload()
+    if (!payload.v2) throw new Error("v2 missing")
+    const v2 = { ...payload.v2, horizons: null }
+    const spy = vi.spyOn(todayV2Presentation, "selectWhyTimeHorizons")
+    render(
+      <WhyExpanded
+        sections={payload.why}
+        keyInsight={payload.keyInsight}
+        v2={v2}
+        wireIdentity={PREVIOUS_WIRE_IDENTITY}
         concreteAdvice={payload.concreteAdvice}
         open
       />,
@@ -531,6 +679,7 @@ describe("TodayScreen V2 downstream fixture", () => {
         sections={[]}
         keyInsight=""
         v2={v2}
+        wireIdentity={PREVIOUS_WIRE_IDENTITY}
         whyToday={v2.whyToday}
         concreteAdvice={payload.concreteAdvice}
         open
