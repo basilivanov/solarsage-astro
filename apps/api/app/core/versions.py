@@ -42,8 +42,8 @@
 from __future__ import annotations
 
 from solarsage_contracts.versions import (
-    ACTIVATION_LAYER_VERSION,
-    CALCULATION_VERSION,
+    ACTIVATION_LAYER_VERSION as ACTIVATION_LAYER_VERSION,
+    CALCULATION_VERSION as CALCULATION_VERSION,
 )
 
 # Scoring V2 identity

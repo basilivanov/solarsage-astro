@@ -46,14 +46,12 @@ import typing
 import pytest
 from pydantic import BaseModel
 
-from app.schemas.activation import ActivationEvidence
 from app.schemas.horizon_guidance import (
     HorizonClaimValidationError,
     HorizonGuidanceContext,
     HorizonGuidanceError,
 )
-from app.schemas.horizon_selection import SelectedHorizonAnchor
-from app.schemas.personal_fact_pack import PersonalFact, PersonalFactPack
+from app.schemas.personal_fact_pack import PersonalFact
 from app.schemas.today_horizons import TodayV2HorizonsBlock, TodayV2GroundedItem, TodayV2Provenance
 from app.services.horizon_claim_validator import HorizonClaimValidator
 from app.services.horizon_claim_policy import (

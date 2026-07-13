@@ -36,7 +36,6 @@ import re
 
 from app.schemas.activation import ActivationEvidence, ActivationLayer
 from app.schemas.horizon_content_canon import (
-    AspectPredicate,
     PersonalPatternRule,
     PlanetInHousePredicate,
     PlanetInSignPredicate,

@@ -46,7 +46,6 @@ import json
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import pytest
 import yaml
 from pydantic import ValidationError
 
@@ -62,7 +61,6 @@ from ._horizon_content_testkit import (
     build_communication_natal,
     build_natal_context,
     build_relationship_natal,
-    build_sphere_verdicts,
     build_structure_natal,
 )
 from ._horizon_guidance_testkit import (
@@ -226,14 +224,14 @@ def test_coverage_gate() -> None:
     print(f"\ncoverage: {guidance_valid}/60 {coverage_pct}%")
     print(f"coverage_selected: {selected}/60")
     print(f"coverage_contract_ready: {contract_ready}/{selected}")
-    print(f"coverage_dates_timezones: 12 DATES / 5 TIMEZONES")
+    print("coverage_dates_timezones: 12 DATES / 5 TIMEZONES")
     print(f"coverage_failure_breakdown: {dict(guidance_failures)}")
 
     # Gate assertions
     assert _BUILDER is shifted_story_for, "must use shifted_story_for"
     assert guidance_valid / total >= 0.95, f"coverage {coverage_pct}% < 95%"
     assert selected == total, f"expected 60 selected, got {selected}"
-    assert contract_ready == selected, f"expected contract_ready == selected"
+    assert contract_ready == selected, "expected contract_ready == selected"
     assert len(unique_dates) == 12
     assert len(unique_timezones) == 5
 

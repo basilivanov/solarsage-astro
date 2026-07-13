@@ -39,7 +39,6 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.activation import ActivationEvidence
 from app.schemas.horizon_selection import (
     HorizonCandidate,
     HorizonSelectionDiagnostics,

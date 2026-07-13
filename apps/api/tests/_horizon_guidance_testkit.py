@@ -51,8 +51,8 @@ from datetime import date, datetime, timezone, timedelta, time
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
-from zoneinfo import ZoneInfo
+from pydantic import BaseModel, Field, field_validator, model_validator
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.schemas.activation import ActivationEvidence, ActivationLayer
 from app.schemas.horizon_content_canon import (
@@ -61,23 +61,15 @@ from app.schemas.horizon_content_canon import (
 from app.schemas.horizon_guidance import HorizonGuidanceContext
 from app.schemas.horizon_selection import (
     SelectedHorizonTriple,
-    HORIZON_ORDER,
     HorizonSelectionResult,
 )
-from app.schemas.natal import NatalChartAspect, NatalChartPlanet, NatalContextData
-from app.schemas.personal_fact_pack import PersonalFactPack
-from app.schemas.scoring_v2 import (
-    ScoringV2Result,
-    SphereContribution,
-    SphereScoreV2,
-)
+from app.schemas.natal import NatalChartPlanet, NatalContextData
+from app.schemas.scoring_v2 import ScoringV2Result
 from app.schemas.today_horizons import (
     TodayV2ProductSphereKey,
     TodayV2HorizonsBlock,
 )
-from app.services.horizon_content_canon_service import load_horizon_content_canons
 from app.services.horizon_guidance_service import HorizonGuidanceService
-from app.services.horizon_guidance_formatter import HorizonGuidanceFormatter
 from app.services.horizon_claim_validator import HorizonClaimValidator
 from app.services.horizon_selection_service import HorizonSelectionService
 from app.services.horizon_tone_service import HorizonToneService
@@ -88,7 +80,6 @@ from ._horizon_content_testkit import (
     build_natal_context,
     build_relationship_natal,
     build_selected_story,
-    build_sphere_verdicts,
     build_structure_natal,
 )
 from ._horizon_selection_testkit import (
@@ -264,9 +255,6 @@ def shifted_story_for(
 
 
 # Test-only Pydantic models for strict YAML coverage validation
-from pydantic import field_validator, model_validator
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
 ACCEPTED_PROFILE_IDS = {
     "synthetic-structure-moscow",
     "synthetic-communication-utc",

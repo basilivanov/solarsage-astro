@@ -45,7 +45,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from app.schemas.horizon_canon import HorizonSelectionCanon, StateRelevance
+from app.schemas.horizon_canon import StateRelevance
 from app.services.canon_service import CANON_DIR, CanonValidationError, get_canon_versions
 from app.services.horizon_canon_service import (
     clear_horizon_canon_cache_for_tests,

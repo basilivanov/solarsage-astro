@@ -47,7 +47,6 @@ from app.schemas.horizon_selection import SelectedHorizonTriple
 from app.schemas.today_horizons import (
     TodayV2Horizon,
     TodayV2HorizonIntro,
-    TodayV2HorizonTiming,
     TodayV2HorizonsBlock,
 )
 from app.services.horizon_content_canon_service import load_horizon_content_canons

@@ -66,7 +66,6 @@ from app.services.personal_fact_pack_service import PersonalFactPackService
 from ._horizon_content_testkit import (
     build_communication_natal,
     build_relationship_natal,
-    build_selected_story,
     build_sphere_verdicts,
     build_structure_natal,
 )

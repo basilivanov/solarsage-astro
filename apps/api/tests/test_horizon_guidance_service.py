@@ -54,19 +54,13 @@
 # START_BLOCK: GUIDANCE_SERVICE_STRUCTURE_TESTS
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from app.schemas.horizon_guidance import (
     HorizonGuidanceError,
     HorizonGuidanceContext,
 )
-from app.schemas.today_horizons import (
-    TodayV2Horizon,
-    TodayV2HorizonsBlock,
-    validate_horizons_against_evidence,
-)
+from app.schemas.today_horizons import TodayV2HorizonsBlock
 from app.services.horizon_guidance_service import HorizonGuidanceService
 from app.services.horizon_claim_validator import HorizonClaimValidator
 from app.services.horizon_tone_service import HorizonToneService
@@ -80,9 +74,6 @@ from ._horizon_content_testkit import (
     build_structure_natal,
     build_natal_context,
 )
-from ._horizon_selection_testkit import build_layer, build_story
-
-
 def _build_context(story, natal, verdicts=None):
     selection, layer, scoring = build_selected_story(story)
     if verdicts is None:

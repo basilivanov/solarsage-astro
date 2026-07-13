@@ -245,7 +245,7 @@ class HorizonGuidanceFormatter:
             return ZoneInfo(timezone)
         except (KeyError, TypeError, OSError):
             raise HorizonGuidanceError(
-                "invalid_timezone", f"anchor.timing.timezone"
+                "invalid_timezone", "anchor.timing.timezone"
             )
 
     def _validate_date_label(self, value: str) -> str:

@@ -55,7 +55,6 @@ from app.schemas.today import (
 )
 from app.schemas.today_horizons import TodayV2ProductSphereKey
 from app.services.horizon_pipeline_service import HorizonPipelineService
-from app.services.horizon_selection_service import HorizonSelectionService
 from app.services.today_horizon_integration_service import (
     HorizonVerdictMappingError,
     TodayHorizonIntegrationService,
@@ -63,7 +62,7 @@ from app.services.today_horizon_integration_service import (
 )
 
 from ._horizon_content_testkit import build_communication_natal, build_relationship_natal, build_structure_natal
-from ._horizon_selection_testkit import build_activation, build_layer, build_scoring, build_story
+from ._horizon_selection_testkit import build_layer, build_scoring, build_story
 
 
 def _json_bytes(value: object) -> str:

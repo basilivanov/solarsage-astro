@@ -67,8 +67,6 @@ from app.services.horizon_claim_policy import (
 from app.services.horizon_content_canon_service import load_horizon_content_canons
 from app.services.horizon_guidance_builders import (
     build_technique_explanation,
-    ordered_intersection,
-    statement_text_for_fact,
     build_manifestations,
     build_actions,
     build_eligible_claims,

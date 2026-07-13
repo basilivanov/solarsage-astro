@@ -43,7 +43,6 @@ from app.schemas.horizon_content_canon_types import (
     ASPECT_TYPES,
     ActionIntent,
     AvoidActionIntent,
-    BRACE_RE,
     ClaimSafetyClass,
     ForbiddenPolicyIntent,
     HORIZON_SELECTION_TECHNIQUES,
@@ -52,8 +51,7 @@ from app.schemas.horizon_content_canon_types import (
     HorizonThemeKey,
     ID_RE,
     PLANET_ORDER,
-    PLACEHOLDER_RE,
-    PRODUCT_SPHERE_ORDER,
+    PRODUCT_SPHERE_ORDER as PRODUCT_SPHERE_ORDER,
     PersonalFactKind,
     PositiveActionIntent,
     SIGN_KEYS,
@@ -441,9 +439,19 @@ class HorizonActionsCanon(HorizonContentCanonModel):
                     all_texts.append(_normalize_copy(template.text))
                 for tone in TONES:
                     for verdict in VERDICTS:
-                        eligible = lambda template: tone in template.tones and verdict in self.safety_classes[
-                            template.safety_class
-                        ].compatible_verdicts
+                        def eligible(template: ActionTemplate) -> bool:
+                            # START_FUNCTION_CONTRACT: F-M-HORIZON-CONTENT-CANON.eligible
+                            # purpose: Check action-template compatibility for the current tone and verdict.
+                            # inputs: template - action template from the current horizon bucket.
+                            # returns: True when the template supports the current tone/verdict pair.
+                            # side_effects: none.
+                            # emitted_logs: none.
+                            # error_behavior: propagates missing safety-class lookup errors.
+                            # END_FUNCTION_CONTRACT: F-M-HORIZON-CONTENT-CANON.eligible
+                            return tone in template.tones and verdict in self.safety_classes[
+                                template.safety_class
+                            ].compatible_verdicts
+
                         if sum(eligible(template) for template in lists.do) < required_do or sum(
                             eligible(template) for template in lists.avoid
                         ) < required_avoid:

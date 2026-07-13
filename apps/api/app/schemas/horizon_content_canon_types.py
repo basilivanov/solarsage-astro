@@ -41,7 +41,7 @@ from typing import Iterable, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.horizon_canon import HORIZON_IDS, KNOWN_TECHNIQUES, PUBLIC_PRODUCT_SPHERES
+from app.schemas.horizon_canon import KNOWN_TECHNIQUES
 from app.schemas.today_horizons import (
     TodayV2HorizonTone,
     TodayV2ProductSphereKey,

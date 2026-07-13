@@ -42,12 +42,9 @@
 from __future__ import annotations
 
 import re
-from typing import Any, NoReturn
+from typing import NoReturn
 
-from app.schemas.horizon_content_canon import (
-    ActionTemplate,
-    HorizonContentCanonBundle,
-)
+from app.schemas.horizon_content_canon import HorizonContentCanonBundle
 from app.schemas.horizon_guidance import (
     HorizonClaimValidationError,
     HorizonGuidanceContext,
@@ -56,11 +53,7 @@ from app.schemas.horizon_selection import (
     HORIZON_ORDER,
     SelectedHorizonAnchor,
 )
-from app.schemas.today_horizons import (
-    TodayV2Horizon,
-    TodayV2HorizonsBlock,
-    TodayV2ProductSphereKey,
-)
+from app.schemas.today_horizons import TodayV2HorizonsBlock
 from app.services.horizon_guidance_builders import ordered_intersection
 
 _WHITESPACE_RE = re.compile(r"\s+")

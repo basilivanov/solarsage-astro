@@ -12,18 +12,34 @@
 # public_entrypoints: 6 test_* functions. owned_tests: self.
 # END_MODULE_MAP: M-TEST-REAL-TODAY-V2-API-PROOF
 
-import json, re, ast, asyncio
+import ast
+import asyncio
+import json
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
-from httpx import MockTransport, AsyncClient
-from scripts.prove_today_v2_real_api import (validate_today_v2_payload,
-    build_redacted_proof, parse_sidecar_health, check_sidecar_health,
-    parse_args, PipelineUnavailable, ProofFailure, ProofErrorCode,
-    request_proof, main, emit_outcome, CANON_PROFILE, _raw_version_code)
+from httpx import AsyncClient, MockTransport
+
+from scripts.prove_today_v2_real_api import (
+    CANON_PROFILE,
+    PipelineUnavailable,
+    ProofErrorCode,
+    ProofFailure,
+    _raw_version_code,
+    build_redacted_proof,
+    check_sidecar_health,
+    main,
+    parse_args,
+    parse_sidecar_health,
+    request_proof,
+    validate_today_v2_payload,
+)
 
 FX = Path("e2e/mock-visual/fixtures/json/day-v2-2026-07-08.json")
+
+
 @pytest.fixture(scope="module")
 def fx():
     # START_FUNCTION_CONTRACT: F-TEST.fx
@@ -34,8 +50,12 @@ def fx():
     # emitted_logs: none.
     # error_behavior: skips.
     # END_FUNCTION_CONTRACT: F-TEST.fx
-    if not FX.exists(): pytest.skip("fixture missing")
-    with open(FX) as f: return json.load(f)
+    if not FX.exists():
+        pytest.skip("fixture missing")
+    with open(FX) as f:
+        return json.load(f)
+
+
 @pytest.fixture
 def v(fx):
     # START_FUNCTION_CONTRACT: F-TEST.v
@@ -47,7 +67,10 @@ def v(fx):
     # error_behavior: none.
     # END_FUNCTION_CONTRACT: F-TEST.v
     return deepcopy(fx)
-def _val(raw): return validate_today_v2_payload(raw)
+
+
+def _val(raw):
+    return validate_today_v2_payload(raw)
 
 # ── 1. Validation cases ────────────────────────────────────────────
 @pytest.mark.parametrize("field,val,code", [
@@ -68,7 +91,8 @@ def test_validation_cases(v, field, val, code):
     # error_behavior: raises.
     # END_FUNCTION_CONTRACT: F-TEST.test_validation_cases
     v["meta"][field] = val
-    with pytest.raises(ProofFailure) as e: _val(v)
+    with pytest.raises(ProofFailure) as e:
+        _val(v)
     assert e.value.code.value == code
 
 def test_six_field_fallback(v):
@@ -81,9 +105,11 @@ def test_six_field_fallback(v):
     # error_behavior: raises.
     # END_FUNCTION_CONTRACT: F-TEST.test_six_field_fallback
     # Both payload and calculation wrong: exact version code wins
-    cp = deepcopy(v); cp["meta"]["calculationVersion"] = "wrong"
+    cp = deepcopy(v)
+    cp["meta"]["calculationVersion"] = "wrong"
     cp["meta"]["frontendPayloadVersion"] = 2  # also wrong
-    with pytest.raises(ProofFailure) as e: _val(cp)
+    with pytest.raises(ProofFailure) as e:
+        _val(cp)
     assert e.value.code.value == "calculation_version_mismatch"
 
 # ── 2. Redaction cases ─────────────────────────────────────────────
@@ -96,28 +122,37 @@ def test_redaction_cases(v):
     # emitted_logs: none.
     # error_behavior: none.
     # END_FUNCTION_CONTRACT: F-TEST.test_redaction_cases
-    p = _val(v); r = build_redacted_proof(p, "asgi", "2026-07-08")
+    p = _val(v)
+    r = build_redacted_proof(p, "asgi", "2026-07-08")
     assert r["status"]=="pass"
     assert [h["id"] for h in r["horizons"]]==["long","medium","fast"]
-    assert r["versions"]["payload"]=="today.v2.1"; assert len(r["canonKeys"])==9
+    assert r["versions"]["payload"]=="today.v2.1"
+    assert len(r["canonKeys"])==9
     s = json.dumps(r)
     def _scan(obj, path=""):
         if isinstance(obj,dict):
             for k,val in obj.items():
                 p2=f"{path}.{k}"
                 for pat in ["birthday","birthLat","headline","firstName","initData"]:
-                    if pat in k.casefold(): assert False, f"forbidden key: {p2}"
+                    if pat in k.casefold():
+                        assert False, f"forbidden key: {p2}"
                     if isinstance(val,str) and pat in val.casefold():
                         assert False, f"forbidden value: {p2}"
                 _scan(val,p2)
         elif isinstance(obj,list):
-            for i,val in enumerate(obj): _scan(val,f"{path}[{i}]")
+            for i,val in enumerate(obj):
+                _scan(val,f"{path}[{i}]")
     _scan(r)
     all_ids = set()
-    for item in v["v2"]["horizons"]["items"]: all_ids.update(item.get("activationIds",[]))
-    for ev in v["v2"].get("activationEvidence",[]): all_ids.add(ev["id"])
-    for rid in all_ids: assert rid not in s, f"raw ID leaked: {rid}"
-    p2=_val(v); ids=list(p2.v2.horizons.items[0].activation_ids); ids.reverse()
+    for item in v["v2"]["horizons"]["items"]:
+        all_ids.update(item.get("activationIds",[]))
+    for ev in v["v2"].get("activationEvidence",[]):
+        all_ids.add(ev["id"])
+    for rid in all_ids:
+        assert rid not in s, f"raw ID leaked: {rid}"
+    p2=_val(v)
+    ids=list(p2.v2.horizons.items[0].activation_ids)
+    ids.reverse()
     p2.v2.horizons.items[0].activation_ids=ids
     assert r["horizons"][0]["activationIdsSha256"]==build_redacted_proof(p2,"asgi","2026-07-08")["horizons"][0]["activationIdsSha256"]
     # Exact CANON_PROFILE shape matching document 82
@@ -164,8 +199,10 @@ def test_request_phase_cases(scenario, cookie_val, day_status, day_body, expecte
             try:
                 await request_proof(c, "asgi", "2026-07-08")
                 return None
-            except ProofFailure as e: return e.code.value
-            except Exception: return "unexpected_error"
+            except ProofFailure as e:
+                return e.code.value
+            except Exception:
+                return "unexpected_error"
     code = asyncio.run(_run())
     assert code == expected_code, f"{scenario}: expected {expected_code}, got {code}"
 
@@ -179,48 +216,70 @@ def test_cli_and_output_cases(tmp_path, capsys):
     # emitted_logs: none.
     # error_behavior: test assertions.
     # END_FUNCTION_CONTRACT: F-TEST.test_cli_and_output_cases
-    a=parse_args([]); assert a.date=="2026-07-08" and a.transport=="asgi"
-    with pytest.raises(ProofFailure,match="invalid_date"): parse_args(["--date","x"])
-    with pytest.raises(ProofFailure,match="invalid_base_url"): parse_args(["--base-url","http://[::1"])
-    with pytest.raises(ProofFailure,match="invalid_base_url"): parse_args(["--base-url","http://localhost:bad"])
-    with pytest.raises(ProofFailure,match="invalid_cli"): parse_args(["--transport","x"])
+    a=parse_args([])
+    assert a.date=="2026-07-08" and a.transport=="asgi"
+    with pytest.raises(ProofFailure,match="invalid_date"):
+        parse_args(["--date","x"])
+    with pytest.raises(ProofFailure,match="invalid_base_url"):
+        parse_args(["--base-url","http://[::1"])
+    with pytest.raises(ProofFailure,match="invalid_base_url"):
+        parse_args(["--base-url","http://localhost:bad"])
+    with pytest.raises(ProofFailure,match="invalid_cli"):
+        parse_args(["--transport","x"])
     out_file = tmp_path / "proof.json"
-    ma=MagicMock(); ma.out=str(out_file); ma.date="2026-07-08"; ma.transport="asgi"; ma.base_url=""
+    ma=MagicMock()
+    ma.out=str(out_file)
+    ma.date="2026-07-08"
+    ma.transport="asgi"
+    ma.base_url=""
     for outcome,expected_code,status_key in [("pass",0,"pass"),("unavailable",1,"unavailable"),
       ("error",1,"error"),("internal",1,"error")]:
         with patch("scripts.prove_today_v2_real_api.parse_args",return_value=ma), \
              patch("scripts.prove_today_v2_real_api.check_sidecar_health"), \
              patch("scripts.prove_today_v2_real_api.run_asgi_proof") as m, \
              patch("scripts.prove_today_v2_real_api.Path.write_text"):
-            if outcome=="unavailable": m.side_effect=PipelineUnavailable("missing_long")
-            elif outcome=="error": m.side_effect=ProofFailure(ProofErrorCode.activation_version_mismatch)
-            elif outcome=="internal": m.side_effect=RuntimeError("boom")
-            else: m.return_value={"status":"pass","date":"x","versions":{}}
-            ec = main(); captured=capsys.readouterr()
-            lines=[l for l in captured.out.strip().split("\n") if l]
+            if outcome=="unavailable":
+                m.side_effect=PipelineUnavailable("missing_long")
+            elif outcome=="error":
+                m.side_effect=ProofFailure(ProofErrorCode.activation_version_mismatch)
+            elif outcome=="internal":
+                m.side_effect=RuntimeError("boom")
+            else:
+                m.return_value={"status":"pass","date":"x","versions":{}}
+            ec = main()
+            captured=capsys.readouterr()
+            lines=[line for line in captured.out.strip().split("\n") if line]
             assert len(lines)==1, f"{outcome}: expected 1 line, got {len(lines)}"
             assert not captured.err, f"{outcome}: stderr not empty"
-            obj=json.loads(lines[0]); assert obj["status"]==status_key
+            obj=json.loads(lines[0])
+            assert obj["status"]==status_key
             assert ec==expected_code
-            if outcome=="error": assert obj["code"]=="activation_version_mismatch"
-            if outcome=="internal": assert obj["code"]=="internal_error"
+            if outcome=="error":
+                assert obj["code"]=="activation_version_mismatch"
+            if outcome=="internal":
+                assert obj["code"]=="internal_error"
     # Write OSError
     with patch("scripts.prove_today_v2_real_api.parse_args",return_value=ma), \
          patch("scripts.prove_today_v2_real_api.check_sidecar_health"), \
          patch("scripts.prove_today_v2_real_api.run_asgi_proof") as m, \
          patch("scripts.prove_today_v2_real_api.Path.write_text",side_effect=OSError("denied")):
         m.return_value={"status":"pass","date":"x","versions":{}}
-        ec = main(); captured=capsys.readouterr()
-        obj=json.loads(captured.out.strip()); assert obj["code"]=="invalid_out_path"
-        assert not captured.err; assert ec==1
+        ec = main()
+        captured=capsys.readouterr()
+        obj=json.loads(captured.out.strip())
+        assert obj["code"]=="invalid_out_path"
+        assert not captured.err
+        assert ec==1
     # Sidecar health fail stops transport
     with patch("scripts.prove_today_v2_real_api.parse_args",return_value=ma), \
          patch("scripts.prove_today_v2_real_api.check_sidecar_health",
                side_effect=ProofFailure(ProofErrorCode.sidecar_unhealthy)), \
          patch("scripts.prove_today_v2_real_api.run_asgi_proof") as m:
-        ec = main(); captured=capsys.readouterr()
+        ec = main()
+        captured=capsys.readouterr()
         assert m.call_count==0
-        assert ec==1; obj=json.loads(captured.out.strip())
+        assert ec==1
+        obj=json.loads(captured.out.strip())
         assert obj["code"]=="sidecar_unhealthy"
         assert not captured.err
 
@@ -267,14 +326,20 @@ def test_health_and_version_cases(v):
     assert parse_sidecar_health(200,{"ok":True}) is True
     assert parse_sidecar_health(500,{"ok":True}) is False
     with patch("httpx.get") as m:
-        m.return_value.status_code=500; m.return_value.json.return_value={"ok":False}
-        with pytest.raises(ProofFailure,match="sidecar_unhealthy"): check_sidecar_health()
+        m.return_value.status_code=500
+        m.return_value.json.return_value={"ok":False}
+        with pytest.raises(ProofFailure,match="sidecar_unhealthy"):
+            check_sidecar_health()
     assert _raw_version_code({"meta":{"calculationVersion":"wrong"}}) is not None
     assert _raw_version_code({"meta":{"payloadVersion":"today.v2.1"}}) is None
-    v2=deepcopy(v["v2"]); v3=deepcopy(v["v2"])
+    v2=deepcopy(v["v2"])
+    v3=deepcopy(v["v2"])
     v2["audit"]["canonVersions"].pop("horizon_selection",None)
-    with pytest.raises(ProofFailure,match="canon_keys_mismatch"): validate_today_v2_payload({**v,"v2":v2})
+    with pytest.raises(ProofFailure,match="canon_keys_mismatch"):
+        validate_today_v2_payload({**v,"v2":v2})
     v3["audit"]["canonVersions"]["extra"]="v1"
-    with pytest.raises(ProofFailure,match="canon_keys_mismatch"): validate_today_v2_payload({**v,"v2":v3})
+    with pytest.raises(ProofFailure,match="canon_keys_mismatch"):
+        validate_today_v2_payload({**v,"v2":v3})
     v["v2"]=None
-    with pytest.raises(ProofFailure,match="payload_validation_failed"): _val(v)
+    with pytest.raises(ProofFailure,match="payload_validation_failed"):
+        _val(v)

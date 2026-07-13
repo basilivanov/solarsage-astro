@@ -32,20 +32,26 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.contracts.normalize_today_fixture import normalize_file
-from app.schemas.today import TodayPayload
+from scripts.contracts.normalize_today_fixture import normalize_file  # noqa: E402
+from app.schemas.today import TodayPayload  # noqa: E402
 
 FIXTURE_PATH = REPO_ROOT / "e2e/mock-visual/fixtures/json/day-v2-2026-07-08.json"
 
 
 def test_fixture_pydantic_validation():
     """1. canonical JSON passes strict TodayPayload.model_validate"""
+    # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-FIXTURE-CONTRACT.test_fixture_pydantic_validation
+    # purpose: Validate the canonical fixture against the strict Today payload model.
+    # inputs: none.
+    # returns: none.
+    # side_effects: reads the committed fixture.
+    # emitted_logs: none.
+    # error_behavior: assertions expose fixture or schema drift.
+    # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-FIXTURE-CONTRACT.test_fixture_pydantic_validation
     assert FIXTURE_PATH.is_file()
     raw_text = FIXTURE_PATH.read_text(encoding="utf-8")
     data = json.loads(raw_text)
@@ -57,6 +63,14 @@ def test_fixture_pydantic_validation():
 
 def test_fixture_normalization_roundtrip():
     """2-5. normalized model_dump matches details, timing, and advice verdicts"""
+    # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-FIXTURE-CONTRACT.test_fixture_normalization_roundtrip
+    # purpose: Prove strict model roundtrip preserves activation timing and advice verdicts.
+    # inputs: none.
+    # returns: none.
+    # side_effects: reads the committed fixture.
+    # emitted_logs: none.
+    # error_behavior: assertions expose normalization drift.
+    # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-FIXTURE-CONTRACT.test_fixture_normalization_roundtrip
     raw_text = FIXTURE_PATH.read_text(encoding="utf-8")
     data = json.loads(raw_text)
     model = TodayPayload.model_validate(data)
@@ -105,6 +119,14 @@ def test_fixture_normalization_roundtrip():
 
 def test_normalizer_check_and_idempotence(tmp_path):
     """6-8. check mode, normalization and idempotence of normalize_today_fixture"""
+    # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-FIXTURE-CONTRACT.test_normalizer_check_and_idempotence
+    # purpose: Prove normalizer check behavior, writes, missing-path handling, and idempotence.
+    # inputs: tmp_path - pytest-managed isolated directory.
+    # returns: none.
+    # side_effects: reads the committed fixture and writes temporary fixture copies.
+    # emitted_logs: none.
+    # error_behavior: assertions expose normalizer contract drift.
+    # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-FIXTURE-CONTRACT.test_normalizer_check_and_idempotence
     # 6. normalizer --check returns clean (0) on canonical fixture
     res = normalize_file(FIXTURE_PATH, check_only=True)
     assert res == 0
@@ -146,6 +168,14 @@ def test_normalizer_check_and_idempotence(tmp_path):
 
 def test_invalid_fixture_sanitized_error(tmp_path, capsys):
     """9. invalid fixture error does not print test sentinel or raw input"""
+    # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-FIXTURE-CONTRACT.test_invalid_fixture_sanitized_error
+    # purpose: Prove invalid-fixture diagnostics redact sentinel and raw payload content.
+    # inputs: tmp_path - isolated directory; capsys - captured process output.
+    # returns: none.
+    # side_effects: writes a temporary invalid fixture and captures normalizer output.
+    # emitted_logs: none.
+    # error_behavior: assertions expose status-code or privacy regressions.
+    # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-FIXTURE-CONTRACT.test_invalid_fixture_sanitized_error
     sentinel = "TEST_SENTINEL_SECRET"
     bad_data = {
         "date": "2026-07-08",

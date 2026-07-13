@@ -138,9 +138,19 @@ def test_action_templates_are_explicit_unique_and_cover_safety_matrix() -> None:
             for tone in TONES:
                 for verdict in VERDICTS:
                     combinations += 1
-                    eligible = lambda template: tone in template.tones and verdict in bundle.actions.safety_classes[
-                        template.safety_class
-                    ].compatible_verdicts
+                    def eligible(template):
+                        # START_FUNCTION_CONTRACT: F-M-TEST-HORIZON-ACTIONS-CANON.eligible
+                        # purpose: Check template compatibility for the current tone/verdict proof row.
+                        # inputs: template - action template from the current horizon bucket.
+                        # returns: True when the template supports the current tone/verdict pair.
+                        # side_effects: none.
+                        # emitted_logs: none.
+                        # error_behavior: propagates missing safety-class lookup errors.
+                        # END_FUNCTION_CONTRACT: F-M-TEST-HORIZON-ACTIONS-CANON.eligible
+                        return tone in template.tones and verdict in bundle.actions.safety_classes[
+                            template.safety_class
+                        ].compatible_verdicts
+
                     assert sum(eligible(template) for template in lists.do) >= need_do
                     assert sum(eligible(template) for template in lists.avoid) >= need_avoid
     assert combinations == 480
