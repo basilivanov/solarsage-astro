@@ -14,6 +14,7 @@
 #   - user_id: UUID
 #   - target_date: date
 #   - access_state: ContentAccessState
+#   - selection_context: optional immutable request-scoped V1/V2 authority
 #   - db: AsyncSession
 # outputs:
 #   - TodayPayload
@@ -26,6 +27,7 @@
 #   - M-LLM-SERVICE
 #   - M-TODAY-HORIZON-INTEGRATION-SERVICE (request-local V2 horizons bridge)
 #   - M-CACHE-KEY-SERVICE (resolve_today_runtime_identity)
+#   - M-TODAY-SELECTION-CONTEXT (explicit request-local selection value)
 # invariants:
 #   - Never calls get_natal() directly; uses NatalContextService.
 #   - profile_hash ties today cache to natal context version.
@@ -34,6 +36,11 @@
 #   - V2 horizons reuse exact request-local activation, scoring, natal, and advice objects once.
 #   - The same resolved runtime identity drives both cache key and public meta
 #     version fields.
+#   - One pre-cache scoring-family selection drives cache read, sidecar policy,
+#     runtime force propagation, public identity, cache write, and horizons.
+#   - Runtime selection must match the pre-cache family or fail closed before
+#     public payload construction and cache write.
+#   - Background week prefetch never inherits a local preview selection context.
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
@@ -50,6 +57,7 @@
 #   - TRANSIT_FETCH: calls solarsage_client.get_transits() for fresh transits
 #   - PAYLOAD_BUILDER: construct TodayPayload from natal context + transits + LLM
 #   - HORIZON_INTEGRATION: request-local V2 horizon pipeline bridge after final advice
+#   - REQUEST_SELECTION: pre-cache request-local V1/V2 family snapshot and assertion
 #   - CACHE_LAYER: check cache by (user_id, date, profile_hash), store on miss
 # owned_tests:
 #   - apps/api/tests/test_day_no_birthday_fallback.py
@@ -86,7 +94,7 @@ from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
 from app.services.astro_utils import find_house, strip_prefix
 from app.services.day_scoring_signals import filter_day_scored_signals
 from app.services.normalization_service import NormalizationService
-from app.services.scoring_service import ScoringService
+from app.services.scoring_service import ScoringService  # noqa: F401 -- legacy test patch point
 from app.services.day_scoring_runtime_service import (
     DayScoringRuntimeService, should_compute_v2, selected_scoring_version_for_flags,
 )
@@ -97,8 +105,8 @@ from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
-from app.core.config import settings
 from app.core.versions import (
+    SCORING_V2_VERSION,
     TODAY_CONTENT_VERSION,
     TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
     TODAY_V2_PAYLOAD_VERSION,
@@ -109,6 +117,7 @@ from app.services.natal_context_service import NatalContextService
 from app.services.canon_service import get_canon_versions
 from app.services.activation_layer_service import ActivationLayerService
 from app.services.today_horizon_integration_service import TodayHorizonIntegrationService
+from app.services.today_selection_context import TodaySelectionContext
 from app.core.logging import log_event, log_block
 
 
@@ -159,10 +168,12 @@ class TodayService:
         target_date: Date,
         access_state: ContentAccessState | None,
         skip_prefetch: bool = False,
+        *,
+        selection_context: TodaySelectionContext | None = None,
     ) -> TodayPayload:
         # START_FUNCTION_CONTRACT: F-M-DAY-SERVICE.get_today_payload
         # purpose: Get TodayPayload for user and date — the main day pipeline.
-        # inputs: user_id, target_date (Date), access_state (ContentAccessState | None), skip_prefetch (bool)
+        # inputs: user_id, target_date, access_state, skip_prefetch, and optional immutable selection_context.
         # returns: TodayPayload with day_status, headline, reading, top_flags, etc.
         # side_effects: reads/writes cache, calls sidecar for transits, calls LLM for text
         # emitted_logs: day.payload_built (TODO: W-1.6 — add day.viewed in API route)
@@ -203,14 +214,18 @@ class TodayService:
         # If user changes birth data, hash changes → cache miss → fresh data.
         profile_hash = NatalContextService.compute_profile_hash(profile)
 
-        # W5: Determine selected scoring version before cache read
-        sel_version = selected_scoring_version_for_flags()
+        # W2: Snapshot one request-local selection family before cache read.
+        force_v2 = selection_context.force_v2 if selection_context is not None else False
+        selected_scoring_version = selected_scoring_version_for_flags(force_v2=force_v2)
+        selected_v2 = str(selected_scoring_version) == str(SCORING_V2_VERSION)
+        compute_v2 = should_compute_v2(force_v2=force_v2)
 
         # W5: Build versioned cache key for read with expected identity
         cache_key = expected_cache_identity(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=profile_hash,
+            selected_scoring_version=selected_scoring_version,
         )
 
         # W-5.2: Check cache first (keyed by user_id + target_date + profile_hash + cache_key_hash)
@@ -271,7 +286,7 @@ class TodayService:
                 "lon": float(profile.current_lon),
                 "tz": profile.current_tz,
             }
-        if should_compute_v2():
+        if compute_v2:
             try:
                 sidecar_layer = await client.get_activation_layer(
                     birth_date=profile.birthday.isoformat(),
@@ -287,7 +302,7 @@ class TodayService:
                 )
             except Exception as e:
                 sidecar_error = str(e)
-                if settings.solarsage_v2_enabled:
+                if selected_v2:
                     raise  # Fail loudly when V2 is enabled
                 # Shadow fail-open logging (only reached when V2 is not enabled)
                 with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="V2_SHADOW"):
@@ -322,11 +337,13 @@ class TodayService:
             activation_layer=activation_layer,
             user_id=user_id,
             target_date=target_date.isoformat(),
+            force_v2=force_v2,
         )
+        if str(dual.selected_scoring_version) != str(selected_scoring_version):
+            raise RuntimeError("Today scoring selection split-brain detected")
         scoring_result = dict(dual.selected_result)
         from app.schemas.normalization import normalize_top_signals
         scoring_result["top_signals"] = normalize_top_signals(scoring_result.get("top_signals", []))
-        scoring_version = dual.selected_scoring_version
 
         # Use canonical runtime identity resolver — single source of truth
         # for V1/V2 version family mapping. Selected scoring version is the

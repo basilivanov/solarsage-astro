@@ -20,21 +20,165 @@
 //   - Malformed nested V2 response throws ApiContractError.
 //   - ApiContractError has status 502 and code SCHEMA_VALIDATION_ERROR.
 //   - Error messages do not leak raw payload data or Zod issue details.
+//   - Today marker emission is closed to development loopback port 3003.
+//   - Calendar and SSR requests remain marker-free.
 // failure_policy: fail test.
 // END_MODULE_CONTRACT: M-TEST-API-GRACE-CLIENT
 
 // START_MODULE_MAP: M-TEST-API-GRACE-CLIENT
 // public_entrypoints: describe/it blocks
 // semantic_blocks:
+//   - PREVIEW_MARKER_TESTS: pure and fetch-boundary marker authorization.
 //   - CLIENT_TESTS: validates day and calendar fetches, error transformations, and validation error constraints.
 // owned_tests:
 //   - __tests__/api/grace-client.test.ts
 // END_MODULE_MAP: M-TEST-API-GRACE-CLIENT
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchDay, fetchCalendar, ApiError, ApiContractError } from '../../lib/grace/api/client'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import {
+  fetchDay,
+  fetchCalendar,
+  ApiError,
+  ApiContractError,
+  shouldEmitTodayPreviewMarker,
+  TODAY_PREVIEW_HEADER_NAME,
+  TODAY_PREVIEW_HEADER_VALUE,
+} from '../../lib/grace/api/client'
 import { dayPayloadV2 } from '../../e2e/mock-visual/fixtures/day-v2-2026-07-08'
 import { TodayPayloadWireSchema } from '@/packages/contracts/runtime'
+
+const originalFetch = globalThis.fetch
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+  globalThis.fetch = originalFetch
+})
+
+// START_BLOCK: PREVIEW_MARKER_TESTS
+describe('Today preview marker', () => {
+  it('allows development 127.0.0.1:3003', () => {
+    expect(shouldEmitTodayPreviewMarker({
+      nodeEnv: 'development',
+      hostname: '127.0.0.1',
+      port: '3003',
+    })).toBe(true)
+  })
+
+  it('allows development localhost:3003', () => {
+    expect(shouldEmitTodayPreviewMarker({
+      nodeEnv: 'development',
+      hostname: 'localhost',
+      port: '3003',
+    })).toBe(true)
+  })
+
+  it('allows development IPv6 loopback:3003 with or without brackets', () => {
+    expect(shouldEmitTodayPreviewMarker({
+      nodeEnv: 'development',
+      hostname: '[::1]',
+      port: '3003',
+    })).toBe(true)
+    expect(shouldEmitTodayPreviewMarker({
+      nodeEnv: 'development',
+      hostname: '::1',
+      port: '3003',
+    })).toBe(true)
+  })
+
+  it('denies local development port 3000', () => {
+    expect(shouldEmitTodayPreviewMarker({
+      nodeEnv: 'development',
+      hostname: '127.0.0.1',
+      port: '3000',
+    })).toBe(false)
+  })
+
+  it('denies a public development hostname on port 3003', () => {
+    expect(shouldEmitTodayPreviewMarker({
+      nodeEnv: 'development',
+      hostname: 'preview.example.com',
+      port: '3003',
+    })).toBe(false)
+  })
+
+  it('denies production localhost:3003', () => {
+    expect(shouldEmitTodayPreviewMarker({
+      nodeEnv: 'production',
+      hostname: 'localhost',
+      port: '3003',
+    })).toBe(false)
+  })
+
+  it('keeps SSR fetchDay marker-free', async () => {
+    const contractPayload = TodayPayloadWireSchema.parse(dayPayloadV2)
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubGlobal('window', undefined)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => contractPayload,
+    }))
+
+    await fetchDay('2026-07-08')
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/day/2026-07-08'),
+      expect.objectContaining({
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      }),
+    )
+  })
+
+  it('adds the exact marker to browser development loopback:3003 fetchDay', async () => {
+    const contractPayload = TodayPayloadWireSchema.parse(dayPayloadV2)
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubGlobal('window', {
+      location: { hostname: '127.0.0.1', port: '3003' },
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => contractPayload,
+    }))
+
+    await fetchDay('2026-07-08')
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/day/2026-07-08'),
+      expect.objectContaining({
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          [TODAY_PREVIEW_HEADER_NAME]: TODAY_PREVIEW_HEADER_VALUE,
+        },
+      }),
+    )
+  })
+
+  it('keeps fetchCalendar marker-free in the same local development runtime', async () => {
+    const payload = { days: [] }
+    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubGlobal('window', {
+      location: { hostname: 'localhost', port: '3003' },
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => payload,
+    }))
+
+    await fetchCalendar('2026-07')
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/calendar?month=2026-07'),
+      expect.objectContaining({
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      }),
+    )
+  })
+})
+// END_BLOCK: PREVIEW_MARKER_TESTS
 
 describe('ApiError', () => {
   it('has correct name and extends Error', () => {
