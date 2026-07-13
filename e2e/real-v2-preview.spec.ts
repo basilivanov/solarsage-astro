@@ -240,6 +240,7 @@ test.describe("Real V2 preview — strict no interception", () => {
     await expect(details).toBeVisible()
     await expect(details).toHaveAttribute("data-sphere-key", sphereKey)
     await expect(details).toHaveAttribute("data-status", initialStatus)
+    await expect(targetRow).toBeInViewport({ ratio: 0.5 })
     const viewport = page.viewportSize()
     if (!viewport) throw new Error("Project viewport is required")
     const rowBox = await targetRow.boundingBox()
@@ -254,6 +255,7 @@ test.describe("Real V2 preview — strict no interception", () => {
     await expect(targetRow).toBeFocused()
     await expect(details).toHaveAttribute("data-sphere-key", sphereKey)
     await expect(details).toHaveAttribute("data-status", initialStatus)
+    await expect(targetRow).toBeInViewport({ ratio: 0.5 })
     // END_BLOCK: SPHERE_NAVIGATION
 
     // START_BLOCK: ATTACHMENTS
