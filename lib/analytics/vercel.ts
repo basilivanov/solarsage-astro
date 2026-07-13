@@ -25,6 +25,7 @@
 // START_MODULE_MAP: M-LIB-ANALYTICS-VERCEL
 // public_entrypoints:
 //   - shouldRenderVercelAnalytics
+//   - shouldRenderVercelAnalyticsFromEnv
 // semantic_blocks:
 //   - VERCEL_ANALYTICS_GATE
 // owned_tests:
@@ -65,6 +66,15 @@ export function shouldRenderVercelAnalytics(env: EnvInput): boolean {
  * Kept separate so tests can inject explicit EnvInput without mutating globals.
  */
 export function shouldRenderVercelAnalyticsFromEnv(): boolean {
+  // START_FUNCTION_CONTRACT: F-M-LIB-ANALYTICS-VERCEL.shouldRenderVercelAnalyticsFromEnv
+  // purpose: Read process.env and delegate to the pure helper.
+  //          Self-hosted production (VERCEL absent) returns false.
+  // inputs: none — reads process.env.NODE_ENV and process.env.VERCEL.
+  // returns: boolean — result of shouldRenderVercelAnalytics.
+  // side_effects: none.
+  // emitted_logs: none.
+  // error_behavior: fail closed through the pure helper; never throws.
+  // END_FUNCTION_CONTRACT: F-M-LIB-ANALYTICS-VERCEL.shouldRenderVercelAnalyticsFromEnv
   return shouldRenderVercelAnalytics({
     NODE_ENV: process.env.NODE_ENV,
     VERCEL: process.env.VERCEL,
