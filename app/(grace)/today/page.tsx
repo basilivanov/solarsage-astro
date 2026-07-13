@@ -1,6 +1,7 @@
 // ############################################################################
 // AI_HEADER: APP_TODAY_REDIRECT_PAGE — legacy /today compatibility redirect.
 // ROLE: Server Next.js page called by /today; redirects all requests to the canonical migrated /day/today route.
+// GRACE_ANCHORS: [COMPATIBILITY_REDIRECT]
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-APP-TODAY-REDIRECT-PAGE
