@@ -3,6 +3,7 @@
 // and the bash marker gate police the same surface area.
 
 import js from "@eslint/js";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import grace from "./eslint-rules/grace-plugin.mjs";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -99,7 +100,15 @@ export default [
     ],
     languageOptions: { globals: { Buffer: "readonly" } },
   },
-  // TypeScript parser coverage for all authored TS and TSX files.
+  js.configs.recommended,
+  // Core JavaScript unused-variable policy. The TypeScript block below replaces
+  // it with @typescript-eslint/no-unused-vars for all TS/TSX, including GRACE.
+  {
+    rules: {
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    },
+  },
+  // TypeScript parser coverage and TypeScript-aware rule semantics.
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -110,14 +119,20 @@ export default [
         ecmaFeatures: { jsx: true },
       },
     },
-  },
-  js.configs.recommended,
-  // Allow _-prefixed unused vars/args (TypeScript convention).
-  // ENFORCED_GLOBS block below sets no-unused-vars: "off" to let GRACE
-  // contracts-only-import do the policing instead.
-  {
+    plugins: { "@typescript-eslint": tsPlugin },
     rules: {
-      "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+      "no-undef": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
   // React Hooks rules — apply to ALL tsx files (catches Rules of Hooks violations early)
