@@ -1,28 +1,33 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_DAYNAVIGATION
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_DAY_NAVIGATION — previous, calendar and next day links.
+// ROLE: Date header that derives previous/next dates and exposes day/calendar links.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for DayNavigation.tsx behavior
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-DAY-NAVIGATION
+// purpose: Render navigation around a current ISO date.
 // owns:
 //   - components/grace/DayNavigation.tsx
-// inputs: Mocks, fixtures
-// outputs: Assertion results
-// dependencies: local modules
-// side_effects: n/a (tests)
-// emitted_logs: n/a (tests)
+// inputs: currentDate — ISO-like date string consumed by Date.
+// outputs: header with previous-day, calendar and next-day links plus localized label.
+// dependencies: next/link; JavaScript Date/Intl locale formatting.
+// side_effects: none directly; link activation delegates navigation to Next.js.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-DAY-NAVIGATION
-// wave: W-2.3
-// purpose: Day navigation arrows (prev/next)
+//   - day-nav-prev/day-nav-calendar/day-nav-next test IDs and aria-labels remain stable.
+//   - Previous and next routes remain one calendar day from currentDate.
+// failure_policy: Does not validate malformed dates; resulting render behavior propagates.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-DAY-NAVIGATION
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-DAY-NAVIGATION
+// public_entrypoints:
+//   - DayNavigation
+// semantic_blocks:
+//   - DATE_DERIVATION: previous/next ISO date and localized label.
+//   - NAVIGATION_HEADER: stable accessible links.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-GRACE-COMPONENT-DAY-NAVIGATION
 
 import Link from 'next/link';
 

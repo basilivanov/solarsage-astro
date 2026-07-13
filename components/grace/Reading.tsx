@@ -1,28 +1,35 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_READING
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_READING — narrative day-reading paragraph renderer.
+// ROLE: Stateless renderer for narrative day-reading paragraphs.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: Reading.tsx
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-READING
+// purpose: Render non-empty reading paragraphs with first/last paragraph styling.
 // owns:
 //   - components/grace/Reading.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: paragraphs — ordered array of strings.
+// outputs: null for an empty array, otherwise reading section and paragraph list.
+// dependencies: React JSX only.
+// side_effects: none.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-READING
-// wave: W-2.2
-// purpose: Reading paragraphs display
+//   - Empty paragraphs produce no DOM.
+//   - aria-label="Разбор дня" and data-testid="reading" remain stable.
+//   - Input order and first/last styling decisions remain unchanged.
+// failure_policy: Does not validate paragraph content; render errors propagate.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-READING
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-READING
+// public_entrypoints:
+//   - Reading
+// semantic_blocks:
+//   - EMPTY_GUARD: suppress empty reading.
+//   - SECTION_HEADING: visible separator and title.
+//   - PARAGRAPH_LIST: ordered styled narrative.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-GRACE-COMPONENT-READING
 
 interface ReadingProps {
   paragraphs: string[];

@@ -1,28 +1,37 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_TODAYSCREEN
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_LEGACY_TODAY_SCREEN — legacy TodayPayload composition surface.
+// ROLE: Legacy TodayPayload surface for components/grace, distinct from the active components/today/today-screen.tsx V2 surface.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: TodayScreen.tsx
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-TODAY-SCREEN
+// purpose: Compose locked or unlocked legacy day content from canonical TodayPayload.
 // owns:
 //   - components/grace/TodayScreen.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: payload — TodayPayload containing access, date, headline, week, flags, reading and why-this-happens sections.
+// outputs: today-screen root; locked branch or full legacy day presentation.
+// dependencies: WeekStrip; TopFlags; Reading; DayNavigation; LockedDay; packages/contracts TodayPayload.
+// side_effects: none directly; child navigation components may navigate on interaction.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-TODAY-SCREEN
-// wave: W-2.2, W-2.3, W-2.7
-// purpose: Today screen main component — Tailwind styled matching reference design
+//   - data-testid="today-screen" exists in both access branches.
+//   - Locked access renders navigation plus LockedDay and suppresses full content.
+//   - data-testid="today-headline" and child ordering remain stable when unlocked.
+//   - Paragraph and bullet why blocks retain order; unknown kinds render nothing.
+// failure_policy: Does not catch malformed payload or child render errors; they propagate.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-TODAY-SCREEN
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-TODAY-SCREEN
+// public_entrypoints:
+//   - TodayScreen
+// semantic_blocks:
+//   - LOCKED_BRANCH: navigation and access lock view.
+//   - DAY_HEADER: date navigation and headline/subtitle.
+//   - DAY_SUMMARY: week, flags and reading composition.
+//   - WHY_SECTIONS: ordered paragraph and bullet explanation cards.
+// owned_tests:
+//   - none direct; active V2 TodayScreen tests target components/today instead.
+// END_MODULE_MAP: M-GRACE-COMPONENT-TODAY-SCREEN
 
 import { WeekStrip } from './WeekStrip';
 import { TopFlags } from './TopFlags';

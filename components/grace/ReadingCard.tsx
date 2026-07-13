@@ -1,28 +1,34 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_READINGCARD
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_READING_CARD — interactive saved-reading summary.
+// ROLE: Interactive saved-reading summary button that normalizes status presentation.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: ReadingCard.tsx
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-READING-CARD
+// purpose: Render one ReadingEntry preview and invoke the caller action on activation.
 // owns:
 //   - components/grace/ReadingCard.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: entry — ReadingEntry; onClick — caller callback.
+// outputs: reading-card button with date, status label, headline and preview.
+// dependencies: React; lib/contracts/readings ReadingEntry; lib/utils cn.
+// side_effects: invokes the supplied onClick callback on button activation.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-READING-CARD
-// wave: W-2.5
-// purpose: Reading card component
+//   - data-testid="reading-card" and button semantics remain stable.
+//   - Missing or unknown dayStatus falls back to calm styling and label.
+//   - supportive, tense and calm labels and styles remain unchanged.
+// failure_policy: Does not catch callback or render errors; they propagate.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-READING-CARD
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-READING-CARD
+// public_entrypoints:
+//   - ReadingCard
+// semantic_blocks:
+//   - STATUS_PRESENTATION: status style and label lookup with calm fallback.
+//   - READING_BUTTON: interactive entry summary.
+// owned_tests:
+//   - __tests__/components/ReadingCard.test.tsx
+// END_MODULE_MAP: M-GRACE-COMPONENT-READING-CARD
 
 import React from 'react';
 import { ReadingEntry } from '@/lib/contracts/readings';

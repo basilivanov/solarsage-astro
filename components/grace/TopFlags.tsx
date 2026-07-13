@@ -1,28 +1,35 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_TOPFLAGS
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_TOP_FLAGS — ordered legacy day-signal summaries.
+// ROLE: Stateless renderer for ordered TopFlag summaries and optional hint detail.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: TopFlags.tsx
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-TOP-FLAGS
+// purpose: Render non-empty top flags with icon, title, summary and hint copy.
 // owns:
 //   - components/grace/TopFlags.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: flags — ordered TopFlag array.
+// outputs: null for empty flags, otherwise top-flags section.
+// dependencies: packages/contracts TopFlag.
+// side_effects: none.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-TOP-FLAGS
-// wave: W-2.2
-// purpose: Top flags display
+//   - Empty flags produce no DOM.
+//   - data-testid="top-flags" remains stable.
+//   - Input order, data-icon and optional howItFeels/whyToday rendering remain unchanged.
+// failure_policy: Does not validate flag content; render errors propagate.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-TOP-FLAGS
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-TOP-FLAGS
+// public_entrypoints:
+//   - TopFlags
+// semantic_blocks:
+//   - EMPTY_GUARD: suppress empty flag list.
+//   - FLAG_LIST: ordered summary rows.
+//   - FLAG_HINT: optional feelings and timing detail.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-GRACE-COMPONENT-TOP-FLAGS
 
 import type { TopFlag } from '@/packages/contracts';
 

@@ -1,28 +1,36 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_ERRORBOUNDARY
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_ERROR_BOUNDARY_VIEW — already-caught error presentation for the day route.
+// ROLE: Client error-state view used by the day route; displays an Error and optionally navigates to /debug in explicit dev mode.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Page: ErrorBoundary
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-ERROR-BOUNDARY
+// purpose: Present a stable role=alert fallback from error/title/message props.
 // owns:
 //   - components/grace/ErrorBoundary.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: error; optional title; optional message.
+// outputs: error-boundary alert with resolved title/message and optional debug button.
+// dependencies: next/navigation useRouter; NEXT_PUBLIC_DEV_MODE.
+// side_effects: router.push('/debug') only when the rendered dev button is clicked.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-ERROR-BOUNDARY
-// wave: W-2.2
-// purpose: Error state component
+//   - This is a presentation component, not a React class error catcher.
+//   - data-testid="error-boundary", data-testid="error-message" and role=alert remain stable.
+//   - Message priority remains explicit message -> error.message -> generic fallback.
+// failure_policy: Displays provided/fallback error text; navigation errors are not caught.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-ERROR-BOUNDARY
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-ERROR-BOUNDARY
+// public_entrypoints:
+//   - ErrorBoundary
+// semantic_blocks:
+//   - ERROR_COPY_RESOLUTION: title, message and dev-mode derivation.
+//   - ERROR_ALERT: accessible visual fallback.
+//   - DEV_DEBUG_ACTION: conditional /debug navigation.
+// owned_tests:
+//   - __tests__/components/ErrorBoundary.test.tsx
+//   - __tests__/app/day-page.test.tsx (route integration/mocked boundary)
+// END_MODULE_MAP: M-GRACE-COMPONENT-ERROR-BOUNDARY
 
 'use client'
 
