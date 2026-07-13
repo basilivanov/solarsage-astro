@@ -1,28 +1,48 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_HOOKS_USEDAY
-// ROLE: UI — useDay
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-LOGGING-SPINE
+// AI_HEADER: GRACE_USE_DAY — authenticated day hook with logging and onboarding routing.
+// ROLE: Hook used by the day route to await Telegram auth, fetch TodayPayload and expose state or redirect incomplete users.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI useDay — component
+
+// START_MODULE_CONTRACT: M-FRONTEND-GRACE-HOOK-USE-DAY
+// purpose: Coordinate auth readiness, delayed day loading, structured logging, cancellation-safe state and onboarding redirects.
 // owns:
 //   - lib/grace/hooks/useDay.ts
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Logging via v2 logging spine; React state management
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
+// inputs: ISO date string; Telegram-auth loading state; Next router context.
+// outputs: exported UseDayResult interface and useDay hook returning data, loading and error.
+// dependencies: React useState/useEffect; next/navigation useRouter; lib/grace/api/client fetchDay and ApiError; hooks/use-telegram-auth; lib/log logEvent; packages/contracts TodayPayload.
+// side_effects: structured browser logs, 100 ms delay, delegated day request, React state and router.replace('/onboarding').
+// emitted_logs: day.viewed, auth.tg_login_started, day.payload_built, system.error, profile.lazy_created, auth.session_expired.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-HOOKS-USE-DAY
-// wave: W-2.7
-// purpose: React hook for fetching TodayPayload with loading and error states
+//   - The render-path INIT log remains and emits day.viewed.
+//   - While authLoading is true, the effect logs auth.tg_login_started, does not fetch and leaves loading unchanged.
+//   - The load effect remains dependent on [date, router, authLoading] and retains the 100 ms delay.
+//   - Successful payload state is applied only when the effect is not cancelled.
+//   - HTTP 422 with code NOT_ONBOARDED or HTTP 409 with exact message 'Profile is incomplete' logs profile.lazy_created and redirects to /onboarding without exposing an error.
+//   - HTTP 401 logs auth.session_expired and replaces the ApiError message with the existing Russian Telegram authorization copy before exposing it.
+//   - Unknown failures become ApiError('Unknown error', 500).
+//   - Cleanup logs day.viewed and sets the local cancellation flag.
+// failure_policy: Log system.error; redirect recognized incomplete-profile failures; otherwise expose preserved or normalized ApiError and finish loading only while active.
+// END_MODULE_CONTRACT: M-FRONTEND-GRACE-HOOK-USE-DAY
+
+// START_MODULE_MAP: M-FRONTEND-GRACE-HOOK-USE-DAY
+// public_entrypoints:
+//   - UseDayResult
+//   - useDay
+// semantic_blocks:
+//   - RESULT_SHAPE: define data, loading and error output.
+//   - DAY_STATE: initialize route payload state.
+//   - RENDER_LOG: retain the render-path day.viewed event.
+//   - AUTH_GATE: defer day loading while Telegram auth is pending.
+//   - DAY_LOAD_EFFECT: delay and delegate the day request.
+//   - SUCCESS_APPLY: apply payload only while active.
+//   - ERROR_ROUTING: log and redirect recognized incomplete profiles.
+//   - UNAUTHORIZED_COPY: preserve the current 401 event and Russian message.
+//   - CANCEL_CLEANUP: log cleanup and suppress later state writes.
+// owned_tests:
+//   - __tests__/hooks/useDay.test.ts
+//   - __tests__/app/day-page.test.tsx
+// END_MODULE_MAP: M-FRONTEND-GRACE-HOOK-USE-DAY
 
 'use client';
 

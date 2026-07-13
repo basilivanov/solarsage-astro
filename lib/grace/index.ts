@@ -1,28 +1,42 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_INDEX
-// ROLE: Lib — index.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-LOGGING-SPINE
+// AI_HEADER: GRACE_FRONTEND_INDEX — public barrel for the GRACE frontend API and hooks.
+// ROLE: Pure re-export boundary for GRACE API client functions, errors, hooks and hook result types.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Library: index
+
+// START_MODULE_CONTRACT: M-FRONTEND-GRACE-INDEX
+// purpose: Provide the existing stable import surface without adding runtime behavior.
 // owns:
 //   - lib/grace/index.ts
-// inputs: Function arguments
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: none.
+// outputs: fetchDay, fetchCalendar, ApiError, ApiContractError, useDay, useCalendar and both hook result types.
+// dependencies: lib/grace/api/client; lib/grace/hooks/useDay; lib/grace/hooks/useCalendar.
+// side_effects: none introduced by this barrel.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-GRACE-INDEX
-// wave: W-2.1
-// purpose: Barrel export for GRACE frontend modules
+//   - Value exports and type-only exports remain exactly separated.
+//   - All eight public names and their source modules remain unchanged.
+//   - The module contains no wrapper logic or new initialization.
+// failure_policy: None locally; import and runtime failures propagate from exported dependency modules.
+// END_MODULE_CONTRACT: M-FRONTEND-GRACE-INDEX
+
+// START_MODULE_MAP: M-FRONTEND-GRACE-INDEX
+// public_entrypoints:
+//   - fetchDay
+//   - fetchCalendar
+//   - ApiError
+//   - ApiContractError
+//   - useDay
+//   - useCalendar
+//   - UseDayResult
+//   - UseCalendarResult
+// semantic_blocks:
+//   - API_CLIENT_EXPORTS: expose API functions and error classes.
+//   - HOOK_EXPORTS: expose day and calendar hooks.
+//   - RESULT_TYPE_EXPORTS: preserve type-only hook result exports.
+// owned_tests:
+//   - none direct; covered through typecheck and hook/API consumers.
+// END_MODULE_MAP: M-FRONTEND-GRACE-INDEX
 
 export { fetchDay, fetchCalendar, ApiError, ApiContractError } from './api/client';
 export { useDay } from './hooks/useDay';
