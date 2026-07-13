@@ -1,24 +1,37 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_[ID]_PAGE
-// ROLE: Next.js page
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: APP_NATAL_REPORT_PAGE — full natal report state and section route.
+// ROLE: Client Next.js dynamic page; loads one report id, maps backend generation/failure states, supports retry and renders typed report blocks.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for page.tsx behavior
+
+// START_MODULE_CONTRACT: M-APP-NATAL-REPORT-PAGE
+// purpose: Present the full natal report lifecycle and ready report sections for a specific report id.
 // owns:
 //   - app/(grace)/readings/natal/[id]/page.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (tests)
+// inputs: promised route id, fetchNatalReport results and forced fetchNatalGenerate retry results.
+// outputs: loading, not-found, generating, retryable/permanent failure or ready full-report UI.
+// dependencies: React hooks/use; next/link; framer-motion; lucide-react; natal API facade; shared natal contracts; mapCalloutTone.
+// side_effects: Performs report/generation requests and updates local page/section state.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Backend statuses map to explicit PageState variants without demo fallback.
+//   - Retry is offered only for retryable failures.
+//   - Ready sections and backend blocks render from typed contract data.
+// failure_policy: API result errors become honest page states; unexpected rendering errors bubble to the route boundary.
+// END_MODULE_CONTRACT: M-APP-NATAL-REPORT-PAGE
+
+// START_MODULE_MAP: M-APP-NATAL-REPORT-PAGE
+// public_entrypoints:
+//   - NatalReportPage (default).
+// semantic_blocks:
+//   - REPORT_LOAD: fetch and classify report state.
+//   - RETRY_GENERATION: force retry and transition to returned backend state.
+//   - STATE_RENDER: render loading/error/generating/ready branches.
+//   - SECTION_NAVIGATION: select and move between report sections.
+//   - BLOCK_RENDERING: render typed backend paragraph/callout/list/pros-cons blocks.
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP: M-APP-NATAL-REPORT-PAGE
 "use client"
 
 import { useCallback, useEffect, useState, use } from "react"
