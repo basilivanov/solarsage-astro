@@ -34,16 +34,30 @@ from __future__ import annotations
 
 from datetime import UTC, date as Date, datetime, time as Time
 import re
+from collections.abc import Sequence
+from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.schemas.activation import ActivationEvidence
-from app.schemas.horizon_selection import HorizonTimingAssessment
+from app.schemas.horizon_canon import HorizonSelectionCanon
+from app.schemas.horizon_selection import (
+    HORIZON_ORDER,
+    HorizonTimingAssessment,
+    HorizonTimingWarningCode,
+    RelativeTargetPosition,
+)
+from app.schemas.today_horizons import (
+    TodayV2HorizonId,
+    TodayV2TimingPrecision,
+    TodayV2TimingState,
+)
 from app.services.horizon_canon_service import load_horizon_selection_canon
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 INSTANT_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
 TARGET_TIME_RE = re.compile(r"^\d{2}:\d{2}(?::\d{2})?$")
 PREFIX_RE = re.compile(r"^(?:TRANSIT_|NATAL_)+")
+_DetectedPrecision = Literal["date", "instant", "mixed", "invalid"] | None
 
 
 def _normalize_planet(value: str | None) -> str | None:
@@ -59,20 +73,20 @@ def _safe_assessment(
     timezone: str,
     target_local: str,
     target_utc: str,
-    relative_position: str,
-    warning_codes: list[str],
-    timing_state: str | None = None,
+    relative_position: RelativeTargetPosition,
+    warning_codes: Sequence[HorizonTimingWarningCode],
+    timing_state: TodayV2TimingState | None = None,
     timing_completeness: float = 0.0,
-    precision: str | None = None,
+    precision: TodayV2TimingPrecision | None = None,
     duration_seconds: float | None = None,
     duration_days: float | None = None,
-    eligible_horizons: list[str] | None = None,
-    preferred_horizons: list[str] | None = None,
+    eligible_horizons: Sequence[TodayV2HorizonId] | None = None,
+    preferred_horizons: Sequence[TodayV2HorizonId] | None = None,
     is_anchor_eligible: bool = False,
 ) -> HorizonTimingAssessment:
     # START_FUNCTION_CONTRACT: F-M-HORIZON-TIMING-SERVICE._safe_assessment
     # purpose: Build deterministic ineligible/eligible timing results without leaking raw parse errors.
-    # inputs: evidence and machine timing fields.
+    # inputs: evidence plus closed timing, warning, and read-only horizon fields.
     # returns: HorizonTimingAssessment.
     # side_effects: none.
     # emitted_logs: none.
@@ -120,7 +134,7 @@ def _parse_target_clock(*, target_date: str, target_time: str, target_tz: str) -
     return target_local, target_local.astimezone(UTC)
 
 
-def _detect_precision(evidence: ActivationEvidence) -> str | None:
+def _detect_precision(evidence: ActivationEvidence) -> _DetectedPrecision:
     values = [value for value in (evidence.active_from, evidence.exact_at, evidence.active_until) if value is not None]
     if not values:
         return None
@@ -137,12 +151,22 @@ def _detect_precision(evidence: ActivationEvidence) -> str | None:
     return "mixed"
 
 
-def _speed_group(canon: object, source_planet: str | None) -> str | None:
+def _speed_group(
+    canon: HorizonSelectionCanon,
+    source_planet: str | None,
+) -> Literal["fast", "medium", "slow"] | None:
     planet = _normalize_planet(source_planet)
     if planet is None:
         return None
-    for group_name in ("fast", "medium", "slow"):
-        if planet in getattr(canon.planet_speed_groups, group_name):
+    groups: tuple[
+        tuple[Literal["fast", "medium", "slow"], Sequence[str]], ...
+    ] = (
+        ("fast", canon.planet_speed_groups.fast),
+        ("medium", canon.planet_speed_groups.medium),
+        ("slow", canon.planet_speed_groups.slow),
+    )
+    for group_name, members in groups:
+        if planet in members:
             return group_name
     return None
 
@@ -171,6 +195,7 @@ class HorizonTimingService:
         # error_behavior: invalid canon raises; ordinary timing problems return ineligible assessment.
         # END_FUNCTION_CONTRACT: F-M-HORIZON-TIMING-SERVICE.HorizonTimingService.classify
         canon = load_horizon_selection_canon()
+        state: TodayV2TimingState
         try:
             target_local, target_utc = _parse_target_clock(target_date=target_date, target_time=target_time, target_tz=target_tz)
         except (ValueError, ZoneInfoNotFoundError):
@@ -195,6 +220,15 @@ class HorizonTimingService:
                 relative_position="inside",
                 warning_codes=["missing_timing"],
             )
+        if precision == "invalid":
+            return _safe_assessment(
+                evidence,
+                timezone=target_tz,
+                target_local=target_local_str,
+                target_utc=target_utc_str,
+                relative_position="inside",
+                warning_codes=["invalid_timing"],
+            )
         if evidence.active_from is None or evidence.active_until is None:
             return _safe_assessment(
                 evidence,
@@ -204,15 +238,6 @@ class HorizonTimingService:
                 relative_position="inside",
                 precision=None if precision == "mixed" else precision,
                 warning_codes=["mixed_precision" if precision == "mixed" else "partial_timing"],
-            )
-        if precision == "invalid":
-            return _safe_assessment(
-                evidence,
-                timezone=target_tz,
-                target_local=target_local_str,
-                target_utc=target_utc_str,
-                relative_position="inside",
-                warning_codes=["invalid_timing"],
             )
         if precision == "mixed":
             return _safe_assessment(
@@ -309,11 +334,11 @@ class HorizonTimingService:
                 warning_codes=["invalid_timing"],
             )
 
-        eligible_horizons: list[str] = []
-        source_speed_warning: list[str] = []
+        eligible_horizons: list[TodayV2HorizonId] = []
+        source_speed_warning: list[HorizonTimingWarningCode] = []
         duration_bands = canon.duration_bands
         source_speed_group = _speed_group(canon, evidence.source_planet) if evidence.technique.startswith("transit_") else None
-        for horizon in ("long", "medium", "fast"):
+        for horizon in HORIZON_ORDER:
             if horizon not in rule.allowed_horizons:
                 continue
             band = getattr(duration_bands, horizon)
@@ -327,7 +352,9 @@ class HorizonTimingService:
                     continue
             eligible_horizons.append(horizon)
         if rule.preferred_horizon in eligible_horizons:
-            preferred_horizons = [rule.preferred_horizon]
+            preferred_horizons: list[TodayV2HorizonId] = [
+                rule.preferred_horizon
+            ]
         else:
             preferred_horizons = [
                 horizon

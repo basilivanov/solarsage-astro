@@ -447,12 +447,12 @@ class HorizonGuidanceFormatter:
             return f"область карты №{hnum}"
         elif target_type == "sphere":
             canon = self.bundle.language
-            sphere_label = canon.product_spheres.get(target_key, None)
-            if sphere_label is None:
-                raise HorizonGuidanceError(
-                    "unsupported_entity_label", "sphere"
-                )
-            return f"сферу «{sphere_label.label}»"
+            for sphere_key, sphere_label in canon.product_spheres.items():
+                if sphere_key == target_key:
+                    return f"сферу «{sphere_label.label}»"
+            raise HorizonGuidanceError(
+                "unsupported_entity_label", "sphere"
+            )
         raise HorizonGuidanceError(
             "unknown_entity_label", "target_type"
         )

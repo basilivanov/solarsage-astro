@@ -34,8 +34,10 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from itertools import product
 import re
+from typing import TypeVar
 from zoneinfo import ZoneInfoNotFoundError
 
 from app.schemas.activation import ActivationLayer
@@ -51,8 +53,10 @@ from app.schemas.scoring_v2 import ScoringV2Result
 from app.services.horizon_canon_service import load_horizon_selection_canon
 from app.services.horizon_sphere_mapping_service import HorizonSphereMappingService
 from app.services.horizon_timing_service import HorizonTimingService, _parse_target_clock
+from app.schemas.today_horizons import TodayV2HorizonId
 
 PREFIX_RE = re.compile(r"^(?:TRANSIT_|NATAL_)+")
+_TStr = TypeVar("_TStr", bound=str)
 
 
 def _normalize_planet(value: str | None) -> str | None:
@@ -66,9 +70,11 @@ def _round6(value: float) -> float:
     return round(value + 0.0, 6)
 
 
-def _ordered_union_by_frequency(items: list[list[str]]) -> list[str]:
-    order: dict[str, tuple[int, int]] = {}
-    counter: Counter[str] = Counter()
+def _ordered_union_by_frequency(
+    items: Sequence[Sequence[_TStr]],
+) -> list[_TStr]:
+    order: dict[_TStr, tuple[int, int]] = {}
+    counter: Counter[_TStr] = Counter()
     for outer_index, seq in enumerate(items):
         for inner_index, value in enumerate(seq):
             counter[value] += 1
@@ -78,7 +84,10 @@ def _ordered_union_by_frequency(items: list[list[str]]) -> list[str]:
     ]
 
 
-def _intersection_in_first_order(first: list[str], others: list[list[str]]) -> list[str]:
+def _intersection_in_first_order(
+    first: Sequence[_TStr],
+    others: Sequence[Sequence[_TStr]],
+) -> list[_TStr]:
     other_sets = [set(values) for values in others]
     return [value for value in first if all(value in values for values in other_sets)]
 
@@ -227,7 +236,7 @@ class HorizonSelectionService:
             warnings_seen.extend(timings[evidence.id].warning_codes)
 
         sphere_count = max(len(scoring_result.sphere_scores), 1)
-        candidates_by_horizon: dict[str, list[HorizonCandidate]] = {"long": [], "medium": [], "fast": []}
+        candidates_by_horizon: dict[TodayV2HorizonId, list[HorizonCandidate]] = {"long": [], "medium": [], "fast": []}
         state_relevance = canon.timing.state_relevance.model_dump()
         impact_weights = canon.impact_weights.model_dump()
         for evidence in prebound:
@@ -289,7 +298,7 @@ class HorizonSelectionService:
                 candidates_by_horizon[horizon].append(candidate)
 
         pre_counts = {horizon: len(items) for horizon, items in candidates_by_horizon.items()}
-        bounded_by_horizon: dict[str, list[HorizonCandidate]] = {}
+        bounded_by_horizon: dict[TodayV2HorizonId, list[HorizonCandidate]] = {}
         for horizon, items in candidates_by_horizon.items():
             ordered = sorted(items, key=lambda candidate: candidate.tie_break_key())
             bounded_by_horizon[horizon] = ordered[: canon.limits.max_candidates_per_horizon]

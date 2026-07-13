@@ -42,6 +42,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import NoReturn
 
 from app.schemas.horizon_content_canon import HorizonContentCanonBundle
@@ -53,8 +54,11 @@ from app.schemas.horizon_selection import (
     HORIZON_ORDER,
     SelectedHorizonAnchor,
 )
-from app.schemas.today_horizons import TodayV2HorizonsBlock
-from app.services.horizon_guidance_builders import ordered_intersection
+from app.schemas.today_horizons import TodayV2HorizonId, TodayV2HorizonsBlock
+from app.services.horizon_guidance_builders import (
+    ordered_intersection,
+    resolve_canon_theme_key,
+)
 
 _WHITESPACE_RE = re.compile(r"\s+")
 _NUMERIC_TOKEN_RE = re.compile(r"\d+")
@@ -157,14 +161,14 @@ def check_action_authorization(
     *,
     block: TodayV2HorizonsBlock,
     context: HorizonGuidanceContext,
-    anchor_by_horizon: dict[str, SelectedHorizonAnchor],
+    anchor_by_horizon: Mapping[TodayV2HorizonId, SelectedHorizonAnchor],
     canon: HorizonContentCanonBundle,
 ) -> None:
     # START_FUNCTION_CONTRACT: F-M-HORIZON-CLAIM-POLICY.check_action_authorization
     # purpose: Validate each action's theme/bucket/text/conditional/provenance/
     #          tone/verdict/intent against canon. Also detects intent pairs
     #          (forbidden combinations across horizons).
-    # inputs: block, context, anchor_by_horizon, canon.
+    # inputs: block, context, read-only closed-id anchor_by_horizon map, canon.
     # returns: none.
     # side_effects: none.
     # emitted_logs: none.
@@ -181,11 +185,17 @@ def check_action_authorization(
         anchor = anchor_by_horizon.get(hid)
         if anchor is None:
             continue
-        horizon_theme = (
+        raw_theme = (
             context.selection.shared_theme_keys[0]
             if context.selection.shared_theme_keys[0] in anchor.theme_keys
             else anchor.theme_keys[0]
         )
+        horizon_theme = resolve_canon_theme_key(raw_theme, canon)
+        if horizon_theme is None:
+            _fail(
+                "action_not_authorized",
+                f"items[{h_idx}].actions",
+            )
         action_matrix = canon.actions.themes.get(horizon_theme)
         if action_matrix is None:
             _fail(

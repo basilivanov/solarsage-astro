@@ -26,6 +26,7 @@
 # START_MODULE_MAP: M-HORIZON-GUIDANCE-BUILDERS
 # public_entrypoints:
 #   - ordered_intersection
+#   - resolve_canon_theme_key
 #   - build_manifestations
 #   - build_eligible_claims
 #   - assign_claims
@@ -41,9 +42,14 @@
 # START_BLOCK: BUILDERS_IMPORTS
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Collection, Mapping, Sequence
+from typing import Literal, TypeVar
 
-from app.schemas.horizon_content_canon import HorizonContentCanonBundle
+from app.schemas.horizon_content_canon import ActionTemplate, HorizonContentCanonBundle
+from app.schemas.horizon_content_canon_types import (
+    HorizonSphereVerdict,
+    HorizonThemeKey,
+)
 from app.schemas.horizon_guidance import HorizonGuidanceError
 from app.schemas.horizon_selection import SelectedHorizonAnchor
 from app.schemas.personal_fact_pack import PersonalFact, PersonalFactPack
@@ -60,17 +66,20 @@ from app.schemas.today_horizons import (
 )
 from app.services.horizon_guidance_formatter import HorizonGuidanceFormatter
 
+_TStr = TypeVar("_TStr", bound=str)
+
 # END_BLOCK: BUILDERS_IMPORTS
 
 
 # START_BLOCK: BUILDERS_ORDERED_INTERSECTION
 def ordered_intersection(
-    ordered: list[str], candidates: list[str]
-) -> list[str]:
+    ordered: Sequence[_TStr], candidates: Collection[_TStr]
+) -> list[_TStr]:
     # START_FUNCTION_CONTRACT: F-M-BUILDERS.ordered_intersection
     # purpose: Return items from ordered that also appear in candidates.
-    # inputs: ordered - priority list; candidates - available set.
-    # returns: List preserving ordered, filtered by candidates.
+    # inputs: ordered - read-only priority sequence; candidates - read-only
+    #   collection containing the same bounded string subtype.
+    # returns: List preserving ordered values and their input string subtype.
     # side_effects: none.
     # emitted_logs: none.
     # error_behavior: returns empty list when no intersection.
@@ -80,6 +89,28 @@ def ordered_intersection(
 
 
 # END_BLOCK: BUILDERS_ORDERED_INTERSECTION
+
+
+# START_BLOCK: BUILDERS_THEME_RESOLUTION
+def resolve_canon_theme_key(
+    value: str,
+    canon: HorizonContentCanonBundle,
+) -> HorizonThemeKey | None:
+    # START_FUNCTION_CONTRACT: F-M-HORIZON-GUIDANCE-BUILDERS.resolve_canon_theme_key
+    # purpose: Resolve a legacy string against validated canonical theme keys.
+    # inputs: value - raw internal theme string; canon - validated content bundle.
+    # returns: Matching closed HorizonThemeKey in canon order, otherwise None.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: returns None when value is not a canonical theme key.
+    # END_FUNCTION_CONTRACT: F-M-HORIZON-GUIDANCE-BUILDERS.resolve_canon_theme_key
+    for theme_key in canon.language.themes:
+        if theme_key == value:
+            return theme_key
+    return None
+
+
+# END_BLOCK: BUILDERS_THEME_RESOLUTION
 
 
 # START_BLOCK: BUILDERS_MANIFESTATIONS
@@ -272,9 +303,9 @@ def build_actions(
     *,
     horizon: TodayV2HorizonId,
     anchor: SelectedHorizonAnchor,
-    horizon_theme: str,
+    horizon_theme: HorizonThemeKey,
     tone: TodayV2HorizonTone,
-    sphere_verdicts: dict[TodayV2ProductSphereKey, str],
+    sphere_verdicts: Mapping[TodayV2ProductSphereKey, HorizonSphereVerdict],
     timing: TodayV2HorizonTiming,
     valid_until_label: str,
     canon: HorizonContentCanonBundle,
@@ -282,8 +313,8 @@ def build_actions(
     # START_FUNCTION_CONTRACT: F-M-HORIZON-GUIDANCE-BUILDERS.build_actions
     # purpose: Select compatible do/avoid action templates per horizon
     #          theme, tone, and sphere verdicts.
-    # inputs: horizon, anchor, horizon_theme, tone, sphere_verdicts, timing,
-    #         valid_until_label, canon.
+    # inputs: horizon, anchor, closed canonical horizon_theme, tone, read-only
+    #         closed sphere_verdicts mapping, timing, valid_until_label, canon.
     # returns: typed TodayV2HorizonActions with ordered do/avoid items.
     # side_effects: none.
     # emitted_logs: none.
@@ -298,14 +329,13 @@ def build_actions(
     sphere_set = set(anchor.product_spheres)
     heading = canon.language.horizons[horizon].actions_heading
 
-    def _compatible(template: object) -> bool:
-        t = template
-        if tone not in t.tones:
+    def _compatible(template: ActionTemplate) -> bool:
+        if tone not in template.tones:
             return False
-        common = set(t.sphere_keys) & sphere_set
+        common = set(template.sphere_keys) & sphere_set
         if not common:
             return False
-        safety = canon.actions.safety_classes.get(t.safety_class)
+        safety = canon.actions.safety_classes.get(template.safety_class)
         if safety is None:
             return False
         for sphere in common:
@@ -333,7 +363,10 @@ def build_actions(
     dos = dos[:max_do]
     avoids = avoids[:max_avoid]
 
-    def _build_items(templates, kind: str) -> list[TodayV2GroundedItem]:
+    def _build_items(
+        templates: Sequence[ActionTemplate],
+        kind: Literal["action", "avoid"],
+    ) -> list[TodayV2GroundedItem]:
         items: list[TodayV2GroundedItem] = []
         seen_ids: set[str] = set()
         for t in templates:
@@ -379,7 +412,7 @@ def build_technique_explanation(
     *,
     horizon: TodayV2HorizonId,
     anchor: SelectedHorizonAnchor,
-    horizon_theme: str,
+    horizon_theme: HorizonThemeKey,
     timing: TodayV2HorizonTiming,
     active_from_label: str,
     active_until_label: str,
@@ -397,7 +430,7 @@ def build_technique_explanation(
     # START_FUNCTION_CONTRACT: F-M-HORIZON-GUIDANCE-BUILDERS.build_technique_explanation
     # purpose: Build a technique explanation with fully resolved display labels
     #          and timing. Uses presentation labels, never raw machine values.
-    # inputs: All display labels, canon, and formatter.
+    # inputs: Closed canonical horizon_theme plus display labels, canon, and formatter.
     # returns: typed TodayV2TechniqueExplanation.
     # side_effects: none.
     # emitted_logs: none.
@@ -472,6 +505,7 @@ def build_technique_explanation(
 
 __all__ = [
     "ordered_intersection",
+    "resolve_canon_theme_key",
     "build_manifestations",
     "build_eligible_claims",
     "statement_text_for_fact",

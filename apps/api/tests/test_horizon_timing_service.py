@@ -137,6 +137,15 @@ def test_date_and_instant_duration_semantics() -> None:
         ({"active_from": None}, {}, "partial_timing"),
         ({"active_until": None}, {}, "partial_timing"),
         ({"active_from": "2026-01-01", "exact_at": "2026-01-03T00:00:00Z", "active_until": "2026-01-05"}, {}, "mixed_precision"),
+        (
+            {
+                "active_from": "bad",
+                "exact_at": None,
+                "active_until": None,
+            },
+            {},
+            "invalid_timing",
+        ),
         ({"active_from": "bad", "exact_at": None, "active_until": "2026-01-05"}, {}, "invalid_timing"),
         ({"active_from": "2026-01-10", "exact_at": None, "active_until": "2026-01-05"}, {}, "invalid_timing"),
         ({"active_from": "2026-01-01", "exact_at": "2026-02-01", "active_until": "2026-01-05"}, {}, "invalid_timing"),

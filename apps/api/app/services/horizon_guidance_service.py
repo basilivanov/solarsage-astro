@@ -39,11 +39,12 @@
 from __future__ import annotations
 
 from app.schemas.horizon_content_canon import HorizonContentCanonBundle
+from app.schemas.horizon_content_canon_types import HorizonThemeKey
 from app.schemas.horizon_guidance import (
     HorizonGuidanceContext,
     HorizonGuidanceError,
 )
-from app.schemas.horizon_selection import SelectedHorizonTriple
+from app.schemas.horizon_selection import SelectedHorizonAnchor, SelectedHorizonTriple
 from app.schemas.today_horizons import (
     TodayV2Horizon,
     TodayV2HorizonIntro,
@@ -56,6 +57,7 @@ from app.services.horizon_guidance_builders import (
     build_eligible_claims,
     build_manifestations,
     build_technique_explanation,
+    resolve_canon_theme_key,
 )
 from app.services.horizon_guidance_formatter import HorizonGuidanceFormatter
 
@@ -289,28 +291,45 @@ class HorizonGuidanceService:
     # START_BLOCK: GUIDANCE_THEME_INTRO
     def _resolve_primary_theme(
         self, selection: SelectedHorizonTriple
-    ) -> str:
+    ) -> HorizonThemeKey:
         if not selection.shared_theme_keys:
             raise HorizonGuidanceError(
                 "unknown_theme", "selection.shared_theme_keys"
             )
-        return selection.shared_theme_keys[0]
+        theme_key = resolve_canon_theme_key(
+            selection.shared_theme_keys[0], self.bundle
+        )
+        if theme_key is None:
+            raise HorizonGuidanceError(
+                "unknown_theme", "selection.shared_theme_keys"
+            )
+        return theme_key
 
     def _resolve_horizon_theme(
-        self, anchor: object, primary_theme: str
-    ) -> str:
-        a = anchor
-        if primary_theme in a.theme_keys:
-            return primary_theme
-        if a.theme_keys:
-            return a.theme_keys[0]
-        raise HorizonGuidanceError(
-            "unknown_theme",
-            f"items[{a.horizon}].theme_keys",
+        self,
+        anchor: SelectedHorizonAnchor,
+        primary_theme: HorizonThemeKey,
+    ) -> HorizonThemeKey:
+        if not anchor.theme_keys:
+            raise HorizonGuidanceError(
+                "unknown_theme",
+                f"items[{anchor.horizon}].theme_keys",
+            )
+        raw_theme = (
+            primary_theme
+            if primary_theme in anchor.theme_keys
+            else anchor.theme_keys[0]
         )
+        theme_key = resolve_canon_theme_key(raw_theme, self.bundle)
+        if theme_key is None:
+            raise HorizonGuidanceError(
+                "unknown_theme",
+                f"items[{anchor.horizon}].theme_keys",
+            )
+        return theme_key
 
     def _build_intro(
-        self, context: HorizonGuidanceContext, primary_theme: str
+        self, context: HorizonGuidanceContext, primary_theme: HorizonThemeKey
     ) -> TodayV2HorizonIntro:
         canon = self.bundle.language
         theme = canon.themes.get(primary_theme)

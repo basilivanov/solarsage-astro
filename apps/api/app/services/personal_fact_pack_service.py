@@ -100,7 +100,8 @@ def _canonical_pair(left: str, right: str) -> tuple[str, str]:
     # END_FUNCTION_CONTRACT: F-M-PERSONAL-FACT-PACK-SERVICE._canonical_pair
     if left not in PLANET_ORDER or right not in PLANET_ORDER or left == right:
         raise ValueError("natal.aspect: invalid normalized points")
-    return tuple(sorted((left, right), key=PLANET_ORDER.index))
+    first, second = sorted((left, right), key=PLANET_ORDER.index)
+    return first, second
 
 
 def _ordered_unique(values: list[str]) -> tuple[str, ...]:

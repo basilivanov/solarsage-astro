@@ -39,7 +39,7 @@
 # START_BLOCK: VALIDATOR_IMPORTS
 from __future__ import annotations
 
-from typing import Sequence
+from typing import NoReturn, Sequence
 
 from app.schemas.activation import ActivationEvidence
 from app.schemas.horizon_content_canon import HorizonContentCanonBundle
@@ -374,7 +374,7 @@ class HorizonClaimValidator:
                 _fail("technique_invalid", f"items[{h_idx}].technique_explanations[0]")
 
 
-def _fail(code: str, detail: str = "") -> None:
+def _fail(code: str, detail: str = "") -> NoReturn:
     raise HorizonClaimValidationError(code, detail)
 
 
