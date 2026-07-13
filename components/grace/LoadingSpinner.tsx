@@ -1,28 +1,31 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_LOADINGSPINNER
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_LOADING_SPINNER — shared accessible loading indicator.
+// ROLE: Stateless accessible loading indicator.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: LoadingSpinner.tsx
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-LOADING-SPINNER
+// purpose: Render the shared visual loading state.
 // owns:
 //   - components/grace/LoadingSpinner.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: none.
+// outputs: role=status loading-spinner with Russian loading text.
+// dependencies: React JSX only.
+// side_effects: none.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-LOADING-SPINNER
-// wave: W-2.2
-// purpose: Loading state component
+//   - data-testid="loading-spinner", role=status and aria-label="Загрузка" remain stable.
+// failure_policy: No local failure handling; render errors propagate.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-LOADING-SPINNER
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-LOADING-SPINNER
+// public_entrypoints:
+//   - LoadingSpinner
+// semantic_blocks:
+//   - LOADING_STATUS: spinner graphic and accessible status text.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-GRACE-COMPONENT-LOADING-SPINNER
 
 export function LoadingSpinner() {
   return (

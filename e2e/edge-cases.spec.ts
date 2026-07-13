@@ -162,7 +162,6 @@ test.describe('Day Screen — Access States', () => {
 
     if (!page.url().includes('/day/')) return;
 
-    const prevBtn = page.locator('[aria-label="Предыдущий день"]');
     const nextBtn = page.locator('[aria-label="Следующий день"]');
 
     if (await nextBtn.isEnabled({ timeout: 2000 }).catch(() => false)) {

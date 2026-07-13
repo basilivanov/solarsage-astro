@@ -1,76 +1,150 @@
-import React from "react"
-import { TodayV2Block } from "@/lib/contracts/today"
-import { TechniqueChip } from "./technique-chip"
+// ############################################################################
+// AI_HEADER: MODULE_ACTIVATION_EVIDENCE_CARD — human-first personal day story.
+// ROLE: Converts backend-owned V2 headline and ranked concrete advice into
+//       a progressive, non-technical entry point for the Today screen.
+// ############################################################################
 
-interface ActivationEvidenceCardProps {
+// START_MODULE_CONTRACT: M-ACTIVATION-EVIDENCE-CARD
+// purpose: Render a personal V2 story card and delegate sphere/why navigation to TodayScreen.
+// owns:
+//   - components/today/activation-evidence-card.tsx
+// inputs: v2, concreteAdvice, onSphereSelect, onWhyOpen, headlineFallback.
+// outputs: data-testid="activation-evidence-card" or null.
+// dependencies: lib/contracts/today, lib/icons, lucide-react.
+// side_effects: invokes parent-owned callbacks on real button activation.
+// emitted_logs: none.
+// invariants:
+//   - never calculates astrology, rank, score, or convergence.
+//   - headline comes only from V2 or an explicit backend fallback.
+//   - technical evidence is never rendered in this subtree.
+// failure_policy: return null when V2 or a safe headline is unavailable.
+// END_MODULE_CONTRACT: M-ACTIVATION-EVIDENCE-CARD
+
+"use client"
+
+import { ChevronRight } from "lucide-react"
+import type { ConcreteAdviceBlock, ConcreteAdviceRow, TodayV2Block } from "@/lib/contracts/today"
+import { getIcon } from "@/lib/icons"
+import { containsBannedAstrologyVocabulary, getHumanSphereLabel } from "@/lib/presentation/today-v2"
+
+type ActivationEvidenceCardProps = {
   v2: TodayV2Block | null | undefined
+  concreteAdvice?: ConcreteAdviceBlock
+  onSphereSelect: (key: string) => void
+  onWhyOpen: () => void
+  headlineFallback?: string | null
 }
 
-export function ActivationEvidenceCard({ v2 }: ActivationEvidenceCardProps) {
+function getTopAffectedRows(rows: ConcreteAdviceRow[]): ConcreteAdviceRow[] {
+  const seen = new Set<string>()
+  return [...rows]
+    .sort((left, right) => left.rank - right.rank)
+    .filter((row) => {
+      if (seen.has(row.key)) return false
+      seen.add(row.key)
+      return true
+    })
+    .slice(0, 3)
+}
+
+// START_BLOCK: PERSONAL_STORY_CARD
+export function ActivationEvidenceCard({
+  v2,
+  concreteAdvice = { rows: [], counts: { good: 0, caution: 0, avoid: 0, neutral: 0 } },
+  onSphereSelect,
+  onWhyOpen,
+  headlineFallback,
+}: ActivationEvidenceCardProps) {
+  // START_FUNCTION_CONTRACT: F-M-ACTIVATION-EVIDENCE-CARD.ActivationEvidenceCard
+  // purpose: Render the V2 personal story and delegate navigation through callbacks.
+  // inputs: ActivationEvidenceCardProps — backend-owned V2/advice fields and parent handlers.
+  // returns: Human-first story card JSX or null.
+  // side_effects: Calls onSphereSelect/onWhyOpen from native buttons.
+  // emitted_logs: none.
+  // error_behavior: hides the card when no safe headline can be shown.
+  // END_FUNCTION_CONTRACT: F-M-ACTIVATION-EVIDENCE-CARD.ActivationEvidenceCard
   if (!v2) return null
 
-  const { activationSummary, activationEvidence } = v2
+  const v2Headline = v2.activationSummary.headline?.trim() || ""
+  const fallbackHeadline = headlineFallback?.trim() || ""
+  const headline = v2Headline && !containsBannedAstrologyVocabulary(v2Headline)
+    ? v2Headline
+    : fallbackHeadline && !containsBannedAstrologyVocabulary(fallbackHeadline)
+      ? fallbackHeadline
+      : ""
+  if (!headline) return null
+
+  const rankedRows = getTopAffectedRows(concreteAdvice?.rows || [])
+  const mainRow = rankedRows[0]
+  const Sparkles = getIcon("sparkle")
 
   return (
-    <div
-      data-testid="activation-evidence-card"
-      className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4"
-    >
-      <h3 className="text-base font-semibold text-slate-900">
-        Астрологический контекст дня
-      </h3>
-      <p className="text-sm text-slate-600 font-medium">
-        {activationSummary.headline}
-      </p>
+    <section className="px-5" aria-label="Личный сюжет дня">
+      <div
+        data-testid="activation-evidence-card"
+        data-state="ready"
+        className="relative overflow-hidden rounded-[24px] border border-violet-200/70 bg-gradient-to-br from-card via-card to-violet-50/70 p-5 shadow-[0_18px_48px_-28px_rgba(109,40,217,0.5)] dark:border-violet-400/25 dark:to-violet-950/20"
+      >
+        <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-violet-300/20 blur-3xl" />
+        <p className="relative inline-flex rounded-full bg-violet-100/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
+          ИМЕННО ДЛЯ ТЕБЯ
+        </p>
 
-      {activationSummary.topActivatedTargets.length > 0 && (
-        <div className="space-y-3 pt-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Главные фокусы сегодня
-          </h4>
-          <div className="space-y-2">
-            {activationSummary.topActivatedTargets.map((target, idx) => (
-              <div
-                key={`${target.targetType}-${target.targetKey}-${idx}`}
-                className="flex flex-col gap-1 p-2.5 rounded-lg bg-slate-50 border border-slate-100"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-800">
-                    {target.label}
-                  </span>
-                  <span className="text-xs text-slate-500 font-medium">
-                    {target.familyCount} техн.
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {target.techniques.map((tech) => (
-                    <TechniqueChip key={tech} technique={tech} />
-                  ))}
-                </div>
-              </div>
-            ))}
+        <h2 className="relative mt-4 font-serif text-[25px] leading-[1.13] text-foreground sm:text-[28px]">
+          {headline}
+        </h2>
+
+        {mainRow?.text ? (
+          <div className="relative mt-4 flex items-start gap-3 rounded-2xl border border-violet-200/70 bg-violet-50/55 px-3.5 py-3 dark:border-violet-400/20 dark:bg-violet-500/10">
+            <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-100">
+              <Sparkles className="h-4 w-4" strokeWidth={1.9} aria-hidden />
+            </span>
+            <p className="min-w-0 text-[15px] font-medium leading-snug text-foreground">
+              Главное: {mainRow.text}
+            </p>
           </div>
-        </div>
-      )}
+        ) : null}
 
-      {activationEvidence.length > 0 && (
-        <div className="space-y-2 pt-2 border-t border-slate-100">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Детальные факторы
-          </h4>
-          <ul className="space-y-1.5">
-            {activationEvidence.map((evidence, idx) => (
-              <li
-                key={evidence.id || idx}
-                className="text-xs text-slate-600 flex items-start gap-2"
-              >
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
-                <span>{evidence.evidence}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
+        {rankedRows.length > 0 ? (
+          <div className="relative mt-5 border-t border-border/60 pt-4">
+            <h3 className="text-[16px] font-semibold text-violet-700 dark:text-violet-200">Где проявится сегодня</h3>
+            <div className="mt-3 space-y-2">
+              {rankedRows.map((row) => {
+                const Icon = getIcon(row.iconName)
+                const label = getHumanSphereLabel(row)
+                return (
+                  <button
+                    key={row.key}
+                    type="button"
+                    data-testid="personal-story-sphere-link"
+                    data-sphere-key={row.key}
+                    aria-label={`Открыть сферу ${label}`}
+                    onClick={() => onSphereSelect(row.key)}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-violet-200/70 bg-card/70 px-3 text-left text-foreground transition hover:border-violet-400 hover:bg-violet-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/25 dark:hover:bg-violet-500/10"
+                  >
+                    <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-violet-100/80 text-violet-700 dark:bg-violet-500/20 dark:text-violet-100">
+                      <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug">{label}</span>
+                    <ChevronRight className="h-4 w-4 flex-none text-violet-700 dark:text-violet-200" aria-hidden />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          data-testid="personal-story-why-cta"
+          onClick={onWhyOpen}
+          className="relative mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-200/80 bg-violet-100/55 px-4 text-[15px] font-semibold text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/30 dark:bg-violet-500/15 dark:text-violet-100"
+        >
+          Почему именно у меня
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+    </section>
   )
 }
+// END_BLOCK: PERSONAL_STORY_CARD

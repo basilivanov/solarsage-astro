@@ -6,32 +6,56 @@
 
 // START_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 // purpose: Renders the full /day/[date] screen with oracle-matched layout.
-//          Composes DateHeader, access card, today-only check-in reminder,
+//          Composes DateHeader, trial-only access card, today-only check-in reminder,
 //          DaySummaryCard, ConcreteDayAdvice, DayChart, reading, why-expanded,
 //          week strip, AstroHistoryWidget, and bottom disclaimer. All data
-//          flows through adaptTodayPayload — no fabricated astrology.
+//          flows through adaptTodayPayload — no fabricated astrology. V2 order is
+//          summary → story → navigator → Why → chart → reading.
 // owns:
 //   - components/today/today-screen.tsx
 // inputs:
 //   - selectedDate, access, payload (AdaptedTodayPayload), calendarLunar,
-//     onDateChange, importantToday
+//     onDateChange, importantToday, optional disableRemoteStatusFetch
 // outputs:
 //   - TSX layout with data-testid="today-screen" and data-state="ready|locked"
 // dependencies:
 //   - today/* components
+//   - next/navigation useSearchParams for Why deeplink defaults
 //   - @/components/paywall, @/components/trial-banner
 //   - @/lib/today, @/lib/access
-// side_effects: Pointer/touch swipe handlers for day navigation
+// side_effects: Pointer/touch swipe handlers; controlled V2 selection/Why state;
+//               post-commit smooth scroll and focus for hero navigation; optional
+//               suppression of WeekStrip remote status fetches for local fixtures.
 // invariants:
 //   - data-state reflects the real access state (ready=accessible, locked=inaccessible)
+//   - TrialBanner renders only for real trial access, never subscription/unmetered full access.
 //   - data-testid attributes present on all major sections
+//   - V2 sphere/Why state resets to the current deeplink default on date changes
 //   - Loading/error states handled by the parent page
+//   - disableRemoteStatusFetch defaults to false, preserving ordinary WeekStrip behavior
+//   - payload.wireIdentity passed to WhyExpanded unchanged.
+//   - selectPersonalStorySphere guards against non-existent row keys.
+//   - scrollAndFocusSphere targets exact matching row (not container) with smooth/center + preventScroll.
+//   - Same-key click repeats scroll/focus without deselection; missing target is no-op.
 // failure_policy: renders gracefully; missing data hides sections silently
 // END_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 
+// START_MODULE_MAP: M-TODAY-TODAY-SCREEN
+// public_entrypoints:
+//   - TodayScreen
+// semantic_blocks:
+//   - V2_NAVIGATION: useSearchParams deeplink defaults, controlled sphere/Why state, and post-commit scroll/focus.
+//   - DAY_SWIPE: bounded pointer/touch date navigation.
+//   - SCREEN_COMPOSITION: accessible and locked Today layouts with optional local fixture status suppression.
+// owned_tests:
+//   - __tests__/components/TodayScreen.test.tsx
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP: M-TODAY-TODAY-SCREEN
+
 "use client"
 
-import { useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 
 import { DateHeader } from "./date-header"
 import { TodayNotes } from "./today-notes"
@@ -58,6 +82,7 @@ type Props = {
   calendarLunar?: CalendarLunarFields | null
   onDateChange: (_d: Date) => void
   importantToday?: TodayImportantEvent[]
+  disableRemoteStatusFetch?: boolean
 }
 
 // Порог срабатывания свайпа — чтобы случайные жесты не перелистывали день
@@ -65,16 +90,28 @@ const SWIPE_THRESHOLD = 70
 // Максимальное вертикальное смещение: если больше — это скролл, а не свайп
 const SWIPE_MAX_VERTICAL = 50
 
+// START_BLOCK: SCREEN_COMPOSITION
 export function TodayScreen({
   selectedDate,
   access,
   payload,
-  calendarLunar,
   onDateChange,
-  importantToday,
+  disableRemoteStatusFetch,
 }: Props) {
+  // START_FUNCTION_CONTRACT: F-M-TODAY-TODAY-SCREEN.TodayScreen
+  // purpose: Render the main screen for a specific day, handling access check, checkin, summary, advice, reading, why-expanded, and week strip sections.
+  // inputs: Props containing selectedDate, access state, adapted payload, calendar fields, callbacks, and flags.
+  // returns: Main Today layout JSX.
+  // side_effects: coordinates sub-components, triggers scroll and focus transitions on sphere select or why expand, sets up swipe navigation handlers.
+  // emitted_logs: none (delegates logs to child hooks/methods).
+  // error_behavior: bubbles rendering exceptions to the parent boundary; missing optional data is hidden gracefully.
+  // END_FUNCTION_CONTRACT: F-M-TODAY-TODAY-SCREEN.TodayScreen
+  const searchParams = useSearchParams()
   const accessible = isDayAccessible(selectedDate, access)
   const isToday = sameDay(selectedDate, TODAY)
+  const [selectedSphereKey, setSelectedSphereKey] = useState<string | null>(null)
+  const whyDeeplinkDefault = searchParams?.get("why") === "1"
+  const [whyOpen, setWhyOpen] = useState(whyDeeplinkDefault)
 
   // Навигация по дням: можно выходить только в пределах ±180 дней от сегодня
   const dayDiff = Math.round(
@@ -88,6 +125,58 @@ export function TodayScreen({
 
   // --- Свайпы (pointer + touch fallback для iOS WKWebView) ---------------
   const start = useRef<{ x: number; y: number; id: number } | null>(null)
+
+  useEffect(() => {
+    setSelectedSphereKey(null)
+    setWhyOpen(whyDeeplinkDefault)
+  }, [selectedDate, whyDeeplinkDefault])
+
+  useEffect(() => {
+    if (!selectedSphereKey) return
+    scrollAndFocusSphere(selectedSphereKey)
+  }, [selectedSphereKey])
+
+  function scrollAndFocusSphere(key: string) {
+    const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
+    schedule(() => {
+      const row = document.querySelector<HTMLElement>(
+        `[data-testid="concrete-day-advice-row"][data-sphere-key="${key}"]`,
+      )
+      row?.scrollIntoView({ behavior: "smooth", block: "center" })
+      row?.focus({ preventScroll: true })
+    })
+  }
+
+  function selectPersonalStorySphere(key: string) {
+    // Guard: only navigate to existing rows
+    if (!payload.concreteAdvice.rows.some((row) => row.key === key)) return
+    if (key === selectedSphereKey) {
+      scrollAndFocusSphere(key)
+      return
+    }
+    setSelectedSphereKey(key)
+  }
+
+  useEffect(() => {
+    if (!whyOpen) return
+    scrollAndFocusWhy()
+  }, [whyOpen])
+
+  function scrollAndFocusWhy() {
+    const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
+    schedule(() => {
+      document.getElementById("why-expanded")?.scrollIntoView({ behavior: "smooth", block: "start" })
+      document.getElementById("why-expanded-toggle")?.focus({ preventScroll: true })
+    })
+  }
+
+  function openWhy() {
+    if (whyOpen) {
+      scrollAndFocusWhy()
+      return
+    }
+    setWhyOpen(true)
+  }
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
@@ -163,8 +252,8 @@ export function TodayScreen({
 
       {accessible ? (
         <div className="space-y-5 pb-8">
-          {/* Access / trial card */}
-          {access.state === "trial" || access.state === "subscription" ? (
+          {/* Trial-only access card */}
+          {access.state === "trial" ? (
             <div data-testid="access-card">
               <TrialBanner daysLeft={access.daysLeft} />
             </div>
@@ -181,13 +270,36 @@ export function TodayScreen({
             date={selectedDate}
             dayStatus={payload.dayStatus}
             daySummary={payload.daySummary}
+            humanFirst={Boolean(payload.v2)}
+          />
+
+          {/* Personal V2 story immediately below summary; null when V2 is absent. */}
+          <ActivationEvidenceCard
+            v2={payload.v2}
+            concreteAdvice={payload.concreteAdvice}
+            onSphereSelect={selectPersonalStorySphere}
+            onWhyOpen={openWhy}
+            headlineFallback={payload.headline}
           />
 
           <ConcreteDayAdvice
             concreteAdvice={payload.concreteAdvice}
+            selectedKey={selectedSphereKey}
+            onSelectedKeyChange={setSelectedSphereKey}
+            onWhyOpen={openWhy}
           />
 
-          <ActivationEvidenceCard v2={payload.v2} />
+          {/* Why comes before technical visualization and reading in human-first V2. */}
+          <WhyExpanded
+            sections={payload.why}
+            keyInsight={payload.keyInsight}
+            v2={payload.v2}
+            wireIdentity={payload.wireIdentity}
+            concreteAdvice={payload.concreteAdvice}
+            onSphereSelect={selectPersonalStorySphere}
+            open={payload.v2 ? whyOpen : undefined}
+            onOpenChange={payload.v2 ? setWhyOpen : undefined}
+          />
 
           <DayChart
             chart={payload.dayChart}
@@ -200,13 +312,6 @@ export function TodayScreen({
           {/* Day reading */}
           <DayReading paragraphs={payload.reading.paragraphs} />
 
-          {/* Why expanded */}
-          <WhyExpanded
-            sections={payload.why}
-            keyInsight={payload.keyInsight}
-            whyToday={payload.v2?.whyToday}
-          />
-
           <DevAuditDrawer audit={payload.v2?.audit} />
 
           {/* Week strip navigation */}
@@ -214,6 +319,7 @@ export function TodayScreen({
             selectedDate={selectedDate}
             access={access}
             onSelect={onDateChange}
+            disableRemoteStatusFetch={disableRemoteStatusFetch}
           />
 
           <AstroHistoryWidget date={selectedDate} />
@@ -246,6 +352,7 @@ export function TodayScreen({
             selectedDate={selectedDate}
             access={access}
             onSelect={onDateChange}
+            disableRemoteStatusFetch={disableRemoteStatusFetch}
           />
 
           <AstroHistoryWidget date={selectedDate} />
@@ -261,6 +368,7 @@ export function TodayScreen({
     </div>
   )
 }
+// END_BLOCK: SCREEN_COMPOSITION
 
 function formatDateLabel(d: Date): string {
   const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]

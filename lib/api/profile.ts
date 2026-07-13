@@ -1,26 +1,41 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_API_PROFILE
-// ROLE: Lib — profile.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
-// purpose: API client for profile
+// AI_HEADER: FRONTEND_API_PROFILE — credentialed canonical profile read and update client.
+// ROLE: Credentialed profile read and update facade used by profile and onboarding hooks.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-PROFILE
+// purpose: GET or PUT the canonical profile and preserve backend error detail.
 // owns:
 //   - lib/api/profile.ts
-// inputs: Endpoint params, request body
-// outputs: Parsed response / typed data
-// dependencies: local modules
-// side_effects: Network calls to API
-// emitted_logs: n/a (pure)
+// inputs: no arguments for get; ProfileWrite for update; NEXT_PUBLIC_API_URL.
+// outputs: exported profile types and Promise<ProfileRead>.
+// dependencies: packages/contracts profile types; fetch; JSON.
+// side_effects: credentialed GET and PUT /api/profile.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT// AI_HEADER
-// module: M-WEB-API-PROFILE
-// wave: W-2.7
-// purpose: API client for profile endpoints
+//   - Update remains PUT with a JSON body.
+//   - Successful response data is returned without local shape rewriting.
+//   - Error priority remains detail string, detail.message, validation message array, then endpoint fallback.
+// failure_policy: Throw the decoded Error on non-ok responses; network and JSON errors propagate.
+// END_MODULE_CONTRACT: M-FRONTEND-API-PROFILE
+
+// START_MODULE_MAP: M-FRONTEND-API-PROFILE
+// public_entrypoints:
+//   - BirthData
+//   - ProfileRead
+//   - ProfileWrite
+//   - getProfile
+//   - updateProfile
+// semantic_blocks:
+//   - ERROR_DECODE: preserve backend detail and validation-message priority.
+//   - PROFILE_READ: fetch and return the canonical profile.
+//   - PROFILE_UPDATE: PUT profile data and return the canonical result.
+// owned_tests:
+//   - __tests__/hooks/useProfile.test.ts
+//   - __tests__/components/OnboardingFlow.test.tsx
+//   - __tests__/components/OnboardingWelcome.test.tsx
+// END_MODULE_MAP: M-FRONTEND-API-PROFILE
 
 import type { BirthData, ProfileRead, ProfileWrite } from '@/packages/contracts'
 export type { BirthData, ProfileRead, ProfileWrite }

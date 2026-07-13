@@ -1,0 +1,130 @@
+schema_version: personal_patterns.ru.v1
+version: v1
+locale: ru
+
+patterns:
+  - order: 1
+    id: saturn_angular_dignified_structure
+    kind: strength
+    statement_key: strength.structure.steady_responsibility
+    theme_keys: [structure_boundaries_control, resources_security]
+    sphere_keys: [work, money, documents, decisions]
+    base_confidence: 0.86
+    min_confidence: 0.80
+    requirements:
+      - type: planet_in_sign
+        planet: SATURN
+        signs: [CAPRICORN, AQUARIUS, LIBRA]
+      - type: planet_in_house
+        planet: SATURN
+        houses: [1, 4, 7, 10]
+  - order: 2
+    id: mercury_saturn_soft_structured_thinking
+    kind: strength
+    statement_key: strength.communication.structured_thinking
+    theme_keys: [communication_learning_documents, structure_boundaries_control]
+    sphere_keys: [work, documents, communication, decisions, study]
+    base_confidence: 0.84
+    min_confidence: 0.72
+    requirements:
+      - {type: aspect, point_a: MERCURY, point_b: SATURN, aspect_types: [TRINE, SEXTILE], max_orb: 4.0}
+  - order: 3
+    id: mars_saturn_soft_measured_effort
+    kind: strength
+    statement_key: strength.energy.measured_effort
+    theme_keys: [structure_boundaries_control, energy_body_pacing]
+    sphere_keys: [work, sport, health, decisions]
+    base_confidence: 0.82
+    min_confidence: 0.70
+    requirements:
+      - {type: aspect, point_a: MARS, point_b: SATURN, aspect_types: [TRINE, SEXTILE], max_orb: 4.0}
+  - order: 4
+    id: mercury_venus_soft_tactful_clarity
+    kind: strength
+    statement_key: strength.relationships.tactful_clarity
+    theme_keys: [communication_learning_documents, relationships_values_closeness]
+    sphere_keys: [relationships, communication, documents]
+    base_confidence: 0.82
+    min_confidence: 0.70
+    requirements:
+      - {type: aspect, point_a: MERCURY, point_b: VENUS, aspect_types: [TRINE, SEXTILE], max_orb: 4.0}
+  - order: 5
+    id: sun_jupiter_soft_broad_view
+    kind: strength
+    statement_key: strength.direction.broad_view
+    theme_keys: [direction_growth_meaning, creativity_visibility]
+    sphere_keys: [work, decisions, travel, creativity, study]
+    base_confidence: 0.82
+    min_confidence: 0.70
+    requirements:
+      - {type: aspect, point_a: SUN, point_b: JUPITER, aspect_types: [TRINE, SEXTILE], max_orb: 4.0}
+  - order: 6
+    id: moon_mercury_soft_name_reaction
+    kind: strength
+    statement_key: strength.inner_clarity.name_reaction
+    theme_keys: [communication_learning_documents, inner_clarity_recovery]
+    sphere_keys: [health, communication, decisions, creativity]
+    base_confidence: 0.80
+    min_confidence: 0.68
+    requirements:
+      - {type: aspect, point_a: MOON, point_b: MERCURY, aspect_types: [TRINE, SEXTILE], max_orb: 4.0}
+  - order: 7
+    id: saturn_pluto_hard_control_under_pressure
+    kind: risk
+    statement_key: risk.structure.control_under_pressure
+    theme_keys: [structure_boundaries_control, resources_security]
+    sphere_keys: [work, money, documents, decisions]
+    base_confidence: 0.88
+    min_confidence: 0.76
+    requirements:
+      - {type: aspect, point_a: SATURN, point_b: PLUTO, aspect_types: [SQUARE, OPPOSITION], max_orb: 4.0}
+  - order: 8
+    id: mercury_saturn_hard_overchecking
+    kind: risk
+    statement_key: risk.communication.overchecking
+    theme_keys: [communication_learning_documents, structure_boundaries_control]
+    sphere_keys: [work, documents, communication, decisions, study]
+    base_confidence: 0.84
+    min_confidence: 0.72
+    requirements:
+      - {type: aspect, point_a: MERCURY, point_b: SATURN, aspect_types: [SQUARE, OPPOSITION], max_orb: 4.0}
+  - order: 9
+    id: mars_saturn_hard_increase_pressure
+    kind: risk
+    statement_key: risk.energy.increase_pressure
+    theme_keys: [structure_boundaries_control, energy_body_pacing]
+    sphere_keys: [work, sport, health, decisions]
+    base_confidence: 0.86
+    min_confidence: 0.74
+    requirements:
+      - {type: aspect, point_a: MARS, point_b: SATURN, aspect_types: [SQUARE, OPPOSITION], max_orb: 4.0}
+  - order: 10
+    id: venus_saturn_hard_defensive_strictness
+    kind: risk
+    statement_key: risk.relationships.defensive_strictness
+    theme_keys: [relationships_values_closeness, resources_security]
+    sphere_keys: [money, relationships, communication, decisions]
+    base_confidence: 0.84
+    min_confidence: 0.72
+    requirements:
+      - {type: aspect, point_a: VENUS, point_b: SATURN, aspect_types: [SQUARE, OPPOSITION], max_orb: 4.0}
+  - order: 11
+    id: moon_pluto_hard_intensity_before_clarity
+    kind: risk
+    statement_key: risk.inner_clarity.intensity_before_clarity
+    theme_keys: [relationships_values_closeness, structure_boundaries_control, inner_clarity_recovery]
+    sphere_keys: [relationships, health, communication, decisions, creativity]
+    base_confidence: 0.88
+    min_confidence: 0.76
+    requirements:
+      - {type: aspect, point_a: MOON, point_b: PLUTO, aspect_types: [SQUARE, OPPOSITION], max_orb: 3.0}
+  - order: 12
+    id: sun_uranus_hard_all_at_once
+    kind: risk
+    statement_key: risk.change.all_at_once
+    theme_keys: [direction_growth_meaning, creativity_visibility, change_innovation]
+    sphere_keys: [work, documents, decisions, creativity]
+    base_confidence: 0.84
+    min_confidence: 0.72
+    requirements:
+      - {type: aspect, point_a: SUN, point_b: URANUS, aspect_types: [SQUARE, OPPOSITION], max_orb: 4.0}

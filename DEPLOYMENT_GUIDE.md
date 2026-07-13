@@ -28,10 +28,11 @@ cd ../solarsage && ../../venv/bin/pip install -e .
 
 ### 3. Запустить миграции
 
+DATABASE_URL must already be supplied through the protected environment.
+
 ```bash
 cd apps/api
-DATABASE_URL=postgresql+asyncpg://astro:astro_dev_password@localhost:5433/astro \
-  ../../venv/bin/alembic upgrade head
+../../venv/bin/alembic upgrade head
 ```
 
 ### 4. Запустить сервисы

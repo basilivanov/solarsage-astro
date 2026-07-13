@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from solarsage.app import app
+from solarsage.core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
 
 client = TestClient(app)
 
@@ -49,14 +50,15 @@ def test_activation_layer_endpoint_returns_200():
     data = response.json()
 
     assert "meta" in data
-    assert data["meta"]["activation_layer_version"] == "al-1.0"
-    assert data["meta"]["calculation_version"] == "ss-calc-1.1.0"
+    assert data["meta"]["activation_layer_version"] == ACTIVATION_LAYER_VERSION
+    assert data["meta"]["calculation_version"] == CALCULATION_VERSION
     assert data["meta"]["house_system"] in ("PLACIDUS", "WHOLE_SIGN")
 
     assert "activation_layer" in data
     layer = data["activation_layer"]
     assert layer["schema_version"] == "activation-layer.v1"
-    assert layer["activation_layer_version"] == "al-1.0"
+    assert layer["activation_layer_version"] == ACTIVATION_LAYER_VERSION
+    assert layer["calculation_version"] == CALCULATION_VERSION
     assert layer["target_date"] == "2026-07-08"
     assert layer["target_time"] == "12:00"
     assert layer["target_tz"] == "Europe/Moscow"

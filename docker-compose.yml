@@ -35,8 +35,8 @@ services:
 
   api:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
     environment:
       DATABASE_URL: postgresql://astro:${DB_PASSWORD}@db:5432/astro
       APP_ENV: production
@@ -52,11 +52,11 @@ services:
 
   solarsage:
     build:
-      context: ./apps/solarsage
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/solarsage/Dockerfile
     ports:
       - "8001:8001"
-    command: uvicorn solarsage.main:app --host 0.0.0.0 --port 8001
+    command: uvicorn solarsage.app:app --host 0.0.0.0 --port 8001
 
   frontend:
     build:

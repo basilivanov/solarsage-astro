@@ -6,6 +6,8 @@
 # Cases:
 #   NEG-MARK-1: AI_HEADER removed         -> check-markers.sh must fail
 #   NEG-MARK-2: END_BLOCK removed         -> check-markers.sh must fail
+#   NEG-MARK-3: file over 1000 lines      -> check-markers.sh must fail
+#   NEG-MARK-4: function over 4000 tokens -> check-markers.sh must fail
 #   NEG-LINT-1: foreign import of payload -> eslint must fail
 #   NEG-LINT-2: local redeclare of type   -> eslint must fail
 
@@ -17,11 +19,6 @@ cd "$ROOT" || exit 2
 
 PILOT="app/(grace)/today/page.tsx"
 PATHS_FILE="grace/frontend.paths"
-
-if [[ ! -f "$PILOT" ]]; then
-  echo "[grace-negative] pilot $PILOT missing" >&2
-  exit 2
-fi
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -38,7 +35,6 @@ mkdir -p "$WORK/app/(grace)/today" \
          "$WORK/grace" \
          "$WORK/eslint-rules"
 
-cp "$PILOT"                                  "$WORK/$PILOT"
 cp lib/grace/log.ts                          "$WORK/lib/grace/log.ts"
 cp packages/contracts/index.ts               "$WORK/packages/contracts/index.ts"
 cp packages/contracts/_generated.ts          "$WORK/packages/contracts/_generated.ts"
@@ -55,40 +51,146 @@ cp package.json                              "$WORK/package.json"
 
 chmod +x "$WORK/scripts/grace/check-markers.sh"
 
+# Isolate marker-negative cases from the current product active-slice state.
+printf '%s\n' "$PILOT" > "$WORK/$PATHS_FILE"
+
+PILOT_BASE="$WORK/pilot.base.tsx"
+cat > "$PILOT_BASE" <<'EOF'
+// ############################################################################
+// AI_HEADER: NEGATIVE_MARKER_PILOT — self-contained clean fixture.
+// ROLE: Temporary GRACE negative-test input; never imported by product code.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-NEGATIVE-MARKER-PILOT
+// purpose: Provide one known-clean module with one paired block.
+// owns:
+//   - app/(grace)/today/page.tsx (temporary workspace only)
+// inputs: none.
+// outputs: one inert exported value.
+// dependencies: none.
+// side_effects: none.
+// emitted_logs: none.
+// invariants:
+//   - Baseline passes the frontend GRACE marker gate.
+// failure_policy: none.
+// END_MODULE_CONTRACT: M-NEGATIVE-MARKER-PILOT
+
+// START_MODULE_MAP: M-NEGATIVE-MARKER-PILOT
+// public_entrypoints:
+//   - negativeMarkerPilot
+// semantic_blocks:
+//   - NEGATIVE_TEST_BLOCK: paired block mutated by NEG-MARK-2.
+// owned_tests:
+//   - scripts/grace/check-negative.sh
+// END_MODULE_MAP: M-NEGATIVE-MARKER-PILOT
+
+// START_BLOCK: NEGATIVE_TEST_BLOCK
+export const negativeMarkerPilot = 1
+// END_BLOCK: NEGATIVE_TEST_BLOCK
+EOF
+
 pass=0
 fail=0
-report() {
-  local name="$1" expected_fail_cmd="$2"
-  if eval "$expected_fail_cmd" > /tmp/grace_neg.out 2>&1; then
-    echo "[grace-negative] $name: UNEXPECTED PASS — gate did not catch the violation"
+report_eslint() {
+  local name="$1" expected_rule="$2" expected_fail_cmd="$3"
+  local output="$WORK/eslint-negative-$((pass + fail + 1)).out"
+  local rc
+
+  eval "$expected_fail_cmd" > "$output" 2>&1
+  rc=$?
+
+  if [[ "$rc" -eq 0 ]]; then
+    echo "[grace-negative] $name: UNEXPECTED PASS — expected $expected_rule"
     fail=$((fail + 1))
-  else
-    echo "[grace-negative] $name: ok (gate failed as expected)"
+  elif [[ "$rc" -ne 1 ]]; then
+    echo "[grace-negative] $name: wrong failure reason — expected ESLint exit 1 for $expected_rule, got $rc"
+    sed 's/^/[grace-negative]   /' "$output"
+    fail=$((fail + 1))
+  elif grep -Fq 'Parsing error' "$output"; then
+    echo "[grace-negative] $name: wrong failure reason — Parsing error rejected"
+    sed 's/^/[grace-negative]   /' "$output"
+    fail=$((fail + 1))
+  elif grep -Fq "$expected_rule" "$output"; then
+    echo "[grace-negative] $name: ok (caught by $expected_rule)"
     pass=$((pass + 1))
+  else
+    echo "[grace-negative] $name: wrong failure reason — expected $expected_rule"
+    sed 's/^/[grace-negative]   /' "$output"
+    fail=$((fail + 1))
   fi
 }
 
+report_marker() {
+  local name="$1" expected_code="$2" expected_fail_cmd="$3"
+  local output="$WORK/marker-negative-$expected_code.out"
+  if eval "$expected_fail_cmd" > "$output" 2>&1; then
+    echo "[grace-negative] $name: UNEXPECTED PASS — expected $expected_code"
+    fail=$((fail + 1))
+  elif grep -Eq "(^|[^[:alnum:]_])$expected_code([^[:alnum:]_]|$)" "$output"; then
+    echo "[grace-negative] $name: ok (caught by $expected_code)"
+    pass=$((pass + 1))
+  else
+    echo "[grace-negative] $name: wrong failure reason — expected $expected_code"
+    sed 's/^/[grace-negative]   /' "$output"
+    fail=$((fail + 1))
+  fi
+}
+
+line_count() {
+  grep -Fxc "$1" "$2" || true
+}
+
+# A negative mutation is meaningful only when its clean synthetic baseline
+# passes every marker rule first.
+cp "$PILOT_BASE" "$WORK/$PILOT"
+BASELINE_OUTPUT="$WORK/clean-marker-baseline.out"
+if (cd "$WORK" && bash scripts/grace/check-markers.sh) > "$BASELINE_OUTPUT" 2>&1; then
+  echo "[grace-negative] clean marker baseline PASS"
+else
+  echo "[grace-negative] clean marker baseline failed" >&2
+  sed 's/^/[grace-negative]   /' "$BASELINE_OUTPUT" >&2
+  exit 2
+fi
+
 # ---------- NEG-MARK-1: AI_HEADER removed ----------
-cp "$PILOT" "$WORK/$PILOT"
+cp "$PILOT_BASE" "$WORK/$PILOT"
 sed -i.bak '/AI_HEADER:/d' "$WORK/$PILOT"
-report "NEG-MARK-1 (AI_HEADER removed)" \
-  "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
+if grep -q 'AI_HEADER:' "$WORK/$PILOT"; then
+  echo "[grace-negative] NEG-MARK-1 (AI_HEADER removed): mutation assertion failed"
+  fail=$((fail + 1))
+else
+  report_marker "NEG-MARK-1 (AI_HEADER removed)" "GRC001" \
+    "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
+fi
 
 # ---------- NEG-MARK-2: an END_BLOCK removed ----------
-cp "$PILOT" "$WORK/$PILOT"
-sed -i.bak '0,/END_BLOCK: TODAY_FETCH/{/END_BLOCK: TODAY_FETCH/d;}' "$WORK/$PILOT"
-report "NEG-MARK-2 (END_BLOCK removed)" \
-  "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
+cp "$PILOT_BASE" "$WORK/$PILOT"
+end_count="$(line_count '// END_BLOCK: NEGATIVE_TEST_BLOCK' "$WORK/$PILOT")"
+if [[ "$end_count" -ne 1 ]]; then
+  echo "[grace-negative] NEG-MARK-2 (END_BLOCK removed): pre-mutation assertion failed"
+  fail=$((fail + 1))
+else
+  sed -i.bak '\|^// END_BLOCK: NEGATIVE_TEST_BLOCK$|d' "$WORK/$PILOT"
+  start_count="$(line_count '// START_BLOCK: NEGATIVE_TEST_BLOCK' "$WORK/$PILOT")"
+  end_count="$(line_count '// END_BLOCK: NEGATIVE_TEST_BLOCK' "$WORK/$PILOT")"
+  if [[ "$start_count" -eq 1 && "$end_count" -eq 0 ]]; then
+    report_marker "NEG-MARK-2 (END_BLOCK removed)" "GRC004" \
+      "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
+  else
+    echo "[grace-negative] NEG-MARK-2 (END_BLOCK removed): post-mutation assertion failed"
+    fail=$((fail + 1))
+  fi
+fi
 
 # ---------- NEG-MARK-3: GRC030 file too long ----------
-cp "$PILOT" "$WORK/$PILOT"
+cp "$PILOT_BASE" "$WORK/$PILOT"
 # pad it with 1050 lines
 for i in {1..1050}; do echo "" >> "$WORK/$PILOT"; done
-report "NEG-MARK-3 (file over 1000 lines fails GRC030)" \
+report_marker "NEG-MARK-3 (file over 1000 lines fails GRC030)" "GRC030" \
   "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
 
 # ---------- NEG-MARK-4: GRC031 function too large ----------
-cp "$PILOT" "$WORK/$PILOT"
+cp "$PILOT_BASE" "$WORK/$PILOT"
 cat >> "$WORK/$PILOT" <<'EOF'
 export const LargeComponent = () => {
 EOF
@@ -96,40 +198,42 @@ for i in {1..1500}; do echo "  let x = 1;" >> "$WORK/$PILOT"; done
 cat >> "$WORK/$PILOT" <<'EOF'
 }
 EOF
-report "NEG-MARK-4 (function over 4000 tokens fails GRC031)" \
+report_marker "NEG-MARK-4 (function over 4000 tokens fails GRC031)" "GRC031" \
   "( cd '$WORK' && bash scripts/grace/check-markers.sh )"
 
 # Restore the pilot inside WORK before running ESLint cases.
-cp "$PILOT" "$WORK/$PILOT"
+cp "$PILOT_BASE" "$WORK/$PILOT"
 
 # ---------- NEG-LINT-1: foreign import of payload type ----------
 NEG1="$WORK/lib/api/foreign-import.ts"
 cat > "$NEG1" <<'EOF'
-# AI_HEADER: NEG_FOREIGN_IMPORT
-# START_MODULE_CONTRACT: M-NEG.foreign
-# END_MODULE_CONTRACT: M-NEG.foreign
-# START_MODULE_MAP: M-NEG.foreign
-# END_MODULE_MAP: M-NEG.foreign
+// AI_HEADER: NEG_FOREIGN_IMPORT
+// START_MODULE_CONTRACT: M-NEG.foreign
+// END_MODULE_CONTRACT: M-NEG.foreign
+// START_MODULE_MAP: M-NEG.foreign
+// END_MODULE_MAP: M-NEG.foreign
 import type { TodayPayload } from "@/lib/types/today";
 export const _x: TodayPayload | null = null;
 EOF
-report "NEG-LINT-1 (foreign import of TodayPayload)" \
+report_eslint "NEG-LINT-1 (foreign import of TodayPayload)" \
+  "grace/contracts-only-import" \
   "( cd '$WORK' && pnpm exec eslint lib/api/foreign-import.ts )"
 rm -f "$NEG1"
 
 # ---------- NEG-LINT-2: local redeclare of contract type ----------
 NEG2="$WORK/lib/api/local-redeclare.ts"
 cat > "$NEG2" <<'EOF'
-# AI_HEADER: NEG_LOCAL_REDECLARE
-# START_MODULE_CONTRACT: M-NEG.redeclare
-# END_MODULE_CONTRACT: M-NEG.redeclare
-# START_MODULE_MAP: M-NEG.redeclare
-# END_MODULE_MAP: M-NEG.redeclare
+// AI_HEADER: NEG_LOCAL_REDECLARE
+// START_MODULE_CONTRACT: M-NEG.redeclare
+// END_MODULE_CONTRACT: M-NEG.redeclare
+// START_MODULE_MAP: M-NEG.redeclare
+// END_MODULE_MAP: M-NEG.redeclare
 export interface TodayPayload {
   whatever: string;
 }
 EOF
-report "NEG-LINT-2 (local redeclare of TodayPayload)" \
+report_eslint "NEG-LINT-2 (local redeclare of TodayPayload)" \
+  "grace/no-redeclare-contract-types" \
   "( cd '$WORK' && pnpm exec eslint lib/api/local-redeclare.ts )"
 rm -f "$NEG2"
 

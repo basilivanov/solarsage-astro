@@ -17,13 +17,13 @@
 #   - meta.contract_version is an int monotonically bumped on breaking
 #     changes; never silently changed.
 # emits: nothing.
-# consumes: schemas._base.CamelModel, schemas.access (none directly today —
-#           ContentAccessState is local because it differs from AccessSummary).
+# consumes: schemas._base.CamelModel and canonical per-content access types
+#           re-exported from schemas.access.
 # END_MODULE_CONTRACT: M-CONTRACTS.today
 
 # START_MODULE_MAP: M-CONTRACTS.today
 # - DayStatus: Literal alias.
-# - ContentAccessState: per-day/per-reading access object.
+# - ContentAccessReason, ContentAccessState: canonical re-exports from schemas.access.
 # - TopFlag, TopFlagHint: highlight cards for the day.
 # - WhyParagraph, WhyBullets, WhyBlock, WhySection: "why this happens" body.
 # - WeekStripDay: 7-day strip item.
@@ -35,31 +35,26 @@
 # START_BLOCK: TODAY_PRIMITIVES
 from __future__ import annotations
 
-from typing import Literal, Any
+from typing import Annotated, Literal, Any
 
 from pydantic import Field, model_validator
 
+from app.core.versions import (
+    PREVIOUS_V2_FRONTEND_PAYLOAD_VERSION,
+    TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
+    TODAY_V2_PAYLOAD_VERSION,
+    TODAY_V2_PREVIOUS_PAYLOAD_VERSION,
+    V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS,
+    V2_FRONTEND_PAYLOAD_VERSION,
+)
 from ._base import CamelModel
+from .access import ContentAccessReason as ContentAccessReason
+from .access import ContentAccessState as ContentAccessState
 from .activation import ActivationEvidence
 from .scoring_v2 import SphereScoreV2
+from .today_horizons import TodayV2HorizonsBlock, validate_horizons_against_evidence
 
 DayStatus = Literal["supportive", "steady", "tense"]
-
-ContentAccessReason = Literal[
-    "active_referral_days",
-    "active_subscription",
-    "expired_access",
-    "outside_access_window",
-]
-
-
-class ContentAccessState(CamelModel):
-    state: Literal["full", "preview", "locked"]
-    reason: ContentAccessReason | None = None
-    referral_days_left: int | None = None
-    subscription_active: bool | None = None
-    access_until: str | None = None
-
 
 class TopFlagHint(CamelModel):
     why_today: str | None = None
@@ -165,6 +160,7 @@ class ReadingBody(CamelModel):
 # END_BLOCK: TODAY_AUX
 
 
+# START_BLOCK: TODAY_READ_MODELS
 class DayChartHouse(CamelModel):
     number: int
     cusp_longitude: float
@@ -273,7 +269,7 @@ class TodayMeta(CamelModel):
     # W1+: V2 string version fields
     canon_versions: dict[str, str] | None = None
     audit_trace_id: str | None = None
-    payload_version: Literal["today.v1", "today.v2"] = "today.v1"
+    payload_version: Literal["today.v1", "today.v2", "today.v2.1"] = "today.v1"
     frontend_payload_version: int = 1
 
 
@@ -400,6 +396,39 @@ class DaySummaryBlock(CamelModel):
 
 
 # START_BLOCK: TODAY_V2_SCHEMAS
+class TodayV2HorizonPipelineAuditBuilt(CamelModel):
+    model_config = {**CamelModel.model_config, "hide_input_in_errors": True}
+
+    schema_version: Literal["today-horizon-pipeline-audit.v1"] = "today-horizon-pipeline-audit.v1"
+    status: Literal["built"]
+    reason: Literal["selected"]
+    selected_count: Literal[3]
+
+
+TodayV2UnavailableHorizonSelectionReason = Literal[
+    "invalid_target_clock",
+    "missing_long",
+    "missing_medium",
+    "missing_fast",
+    "no_coherent_triple",
+]
+
+
+class TodayV2HorizonPipelineAuditUnavailable(CamelModel):
+    model_config = {**CamelModel.model_config, "hide_input_in_errors": True}
+
+    schema_version: Literal["today-horizon-pipeline-audit.v1"] = "today-horizon-pipeline-audit.v1"
+    status: Literal["unavailable"]
+    reason: TodayV2UnavailableHorizonSelectionReason
+    selected_count: Literal[0]
+
+
+TodayV2HorizonPipelineAudit = Annotated[
+    TodayV2HorizonPipelineAuditBuilt | TodayV2HorizonPipelineAuditUnavailable,
+    Field(discriminator="status"),
+]
+
+
 class TodayV2ActivatedTarget(CamelModel):
     target_type: Literal["planet", "house", "lot", "angle", "sphere"]
     target_key: str
@@ -432,14 +461,38 @@ class TodayV2Audit(CamelModel):
     activation_layer_version: str | int | None = None
     canon_versions: dict[str, str] = Field(default_factory=dict)
     v1_v2_diff: dict[str, Any] | None = None
+    horizon_pipeline: TodayV2HorizonPipelineAudit | None = None
 
 
 class TodayV2Block(CamelModel):
+    model_config = {**CamelModel.model_config, "hide_input_in_errors": True}
+
     activation_summary: TodayV2ActivationSummary
     activation_evidence: list[ActivationEvidence]
     score_breakdown: dict[str, SphereScoreV2]
     why_today: list[TodayV2WhyTodayItem]
     audit: TodayV2Audit
+    horizons: TodayV2HorizonsBlock | None = None
+
+    @model_validator(mode="after")
+    def validate_optional_horizons(self) -> "TodayV2Block":
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS.today.TodayV2Block.validate_optional_horizons
+        # purpose: Enforce audit-to-horizons alignment plus horizons activation/timing cross-reference integrity.
+        # inputs: self - validated TodayV2Block candidate.
+        # returns: the same V2 block when audit status, horizons presence, and cross-references are valid.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises ValueError with structural text for audit/horizons or cross-reference violations.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS.today.TodayV2Block.validate_optional_horizons
+        if self.audit.horizon_pipeline is not None:
+            if self.audit.horizon_pipeline.status == "built" and self.horizons is None:
+                raise ValueError("TodayV2Block: built horizon pipeline requires horizons")
+            if self.audit.horizon_pipeline.status == "unavailable" and self.horizons is not None:
+                raise ValueError("TodayV2Block: unavailable horizon pipeline requires null horizons")
+        if self.horizons is None:
+            return self
+        validate_horizons_against_evidence(self.horizons, self.activation_evidence)
+        return self
 # END_BLOCK: TODAY_V2_SCHEMAS
 
 
@@ -483,16 +536,38 @@ class TodayPayload(CamelModel):
 
     @model_validator(mode="after")
     def validate_v2_identity_requires_body(self) -> "TodayPayload":
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS.today.TodayPayload.validate_v2_identity_requires_body
+        # purpose: Enforce public V2 identity/body compatibility for current and previous payload pairs.
+        # inputs: self - validated TodayPayload candidate with meta and optional v2 block.
+        # returns: self when V1/null, previous V2/frontend=2, or current V2.1/frontend=3 identity is coherent.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises ValueError for missing V2 body, contradictory current pair,
+        # missing pipeline audit, or audit payload mismatch.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS.today.TodayPayload.validate_v2_identity_requires_body
         """Reject explicit V2 wire identity without a V2 body.
 
         V1 payloads (and legacy rows without explicit V2 identity) may keep v2=None.
-        Only explicit today.v2 / frontend_payload_version=2 require a non-null v2 block.
+        Known V2 payload/frontend identities require a non-null V2 body.
         """
         payload_version = getattr(self.meta, "payload_version", None)
         frontend_version = getattr(self.meta, "frontend_payload_version", None)
-        if payload_version == "today.v2" and self.v2 is None:
-            raise ValueError("today.v2 payload requires v2 block")
-        if frontend_version == 2 and self.v2 is None:
-            raise ValueError("frontend payload v2 requires v2 block")
+        if payload_version in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS and self.v2 is None:
+            if payload_version == TODAY_V2_PREVIOUS_PAYLOAD_VERSION:
+                raise ValueError("today.v2 payload requires v2 block")
+            raise ValueError("current V2 payload identity requires v2 block")
+        if frontend_version in V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS and self.v2 is None:
+            if frontend_version == PREVIOUS_V2_FRONTEND_PAYLOAD_VERSION:
+                raise ValueError("frontend payload v2 requires v2 block")
+            raise ValueError("current frontend V2 identity requires v2 block")
+        if payload_version == TODAY_V2_PAYLOAD_VERSION or frontend_version == V2_FRONTEND_PAYLOAD_VERSION:
+            if payload_version != TODAY_V2_PAYLOAD_VERSION or frontend_version != V2_FRONTEND_PAYLOAD_VERSION:
+                raise ValueError("current V2 identity requires exact payload/frontend version pair")
+            if self.v2 is None or self.v2.audit.horizon_pipeline is None:
+                raise ValueError("current V2 identity requires horizon pipeline audit")
+            if self.v2.audit.payload_version != payload_version:
+                raise ValueError("current V2 audit payload version must match meta")
+        if payload_version == TODAY_V2_PREVIOUS_PAYLOAD_VERSION and frontend_version == PREVIOUS_V2_FRONTEND_PAYLOAD_VERSION:
+            return self
         return self
 # END_BLOCK: TODAY_PAYLOAD

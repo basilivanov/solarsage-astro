@@ -33,8 +33,6 @@ const chatStorage = new Map<string, string>()
 // ── Hoisted mock setup ──
 const { mockSendMessage, mockChatReducer, mockInitialChatState } = vi.hoisted(() => {
   // reducer that matches useChat's dispatch events
-  const ms = new Map<string, string>()
-
   const mockInitial = {
     messages: [] as ChatMessage[],
     pending: false,
@@ -245,7 +243,7 @@ describe('useChat', () => {
 
   it('handles fetch error gracefully', async () => {
     mockSendMessage.mockImplementationOnce(async function* () {
-      throw new Error('Network error')
+      yield await Promise.reject<string>(new Error('Network error'))
     })
 
     const { result } = renderHook(() => useChat(context))

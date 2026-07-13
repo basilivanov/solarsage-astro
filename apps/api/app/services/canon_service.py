@@ -23,6 +23,13 @@ CANON_FILES = [
     "scoring_v2.v1.yml",
 ]
 
+OPTIONAL_INTERNAL_CANON_FILES = [
+    "horizon_selection.v1.yml",
+    "horizon_language.ru.v1.yml",
+    "horizon_actions.ru.v1.yml",
+    "personal_patterns.ru.v1.yml",
+]
+
 CANON_VERSIONS: dict[str, str] = {
     "spheres": "v1",
     "dignities": "v1",
@@ -101,6 +108,12 @@ def validate_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, 
                     f"{act_file}: technique '{member}' in family '{family_name}' is not a known technique"
                 )
 
+    from app.services.horizon_canon_service import load_horizon_selection_canon
+    from app.services.horizon_content_canon_service import load_horizon_content_canons
+
+    load_horizon_selection_canon((cd / "horizon_selection.v1.yml").resolve())
+    load_horizon_content_canons(cd.resolve())
+
     return bundle
 
 
@@ -124,9 +137,33 @@ def load_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, Any]
         except Exception as exc:
             print(f"ERROR: Failed to load canon file {filename}: {exc}", file=sys.stderr)
 
+    for filename in OPTIONAL_INTERNAL_CANON_FILES:
+        path = cd / filename
+        if not path.exists():
+            continue
+        try:
+            bundle[filename] = _load_yaml(path)
+        except Exception as exc:
+            print(f"ERROR: Failed to load canon file {filename}: {exc}", file=sys.stderr)
+
     return bundle
 
 
 def get_canon_versions() -> dict[str, str]:
-    """Return the current canon version map."""
-    return dict(CANON_VERSIONS)
+    # START_FUNCTION_CONTRACT: F-M-CANON-SERVICE.get_canon_versions
+    # purpose: Return the single public Today/cache/audit canon map with exactly five core and four horizon keys.
+    # inputs: none.
+    # returns: dict[str, str] containing the exact nine current canon version entries.
+    # side_effects: loads horizon canon services through their cached public version lookups.
+    # emitted_logs: none.
+    # error_behavior: propagates CanonValidationError if a horizon canon cannot be loaded.
+    # END_FUNCTION_CONTRACT: F-M-CANON-SERVICE.get_canon_versions
+    """Return the current Today/cache/audit canon version map."""
+    from app.services.horizon_canon_service import get_horizon_canon_versions
+    from app.services.horizon_content_canon_service import get_horizon_content_canon_versions
+
+    return {
+        **CANON_VERSIONS,
+        **get_horizon_canon_versions(),
+        **get_horizon_content_canon_versions(),
+    }

@@ -3,6 +3,7 @@
 // and the bash marker gate police the same surface area.
 
 import js from "@eslint/js";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import grace from "./eslint-rules/grace-plugin.mjs";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -36,8 +37,10 @@ const BROWSER_GLOBALS = {
   localStorage: "readonly",
   sessionStorage: "readonly",
   crypto: "readonly",
+  URL: "readonly",
   URLSearchParams: "readonly",
   TextEncoder: "readonly",
+  structuredClone: "readonly",
   self: "readonly",
   confirm: "readonly",
   global: "readonly",
@@ -53,6 +56,10 @@ const BROWSER_GLOBALS = {
   HTMLTextAreaElement: "readonly",
   HTMLAnchorElement: "readonly",
   // DOM event types (provided by lib: ["dom"])
+  Event: "readonly",
+  Node: "readonly",
+  NodeFilter: "readonly",
+  FrameRequestCallback: "readonly",
   KeyboardEvent: "readonly",
   MouseEvent: "readonly",
   PointerEvent: "readonly",
@@ -62,6 +69,7 @@ export default [
   {
     ignores: [
       ".next/**",
+      ".next-*/**",
       ".grace/**",
       "node_modules/**",
       "apps/api/**",
@@ -72,6 +80,9 @@ export default [
       "grace/**",
       "scripts/**",
       "eslint-rules/**",
+      "docs/**",
+      "playwright-report/**",
+      "test-results/**",
       // Legacy frontend snapshot. Lives outside the GRACE perimeter and outside
       // the Next.js app/ tree. Kept in-tree so packets W-2.1..W-2.8 can pull
       // files into app/(grace)/** with markers without juggling two zips.
@@ -80,13 +91,48 @@ export default [
   },
   // Browser/DOM globals for all files
   { languageOptions: { globals: BROWSER_GLOBALS } },
+  // Node runtime global used only by authored tests, e2e, and config files.
+  {
+    files: [
+      "__tests__/**/*.{ts,tsx,js,jsx,mjs,cjs}",
+      "e2e/**/*.{ts,tsx,js,jsx,mjs,cjs}",
+      "*.config.{ts,js,mjs,cjs}",
+    ],
+    languageOptions: { globals: { Buffer: "readonly" } },
+  },
   js.configs.recommended,
-  // Allow _-prefixed unused vars/args (TypeScript convention).
-  // ENFORCED_GLOBS block below sets no-unused-vars: "off" to let GRACE
-  // contracts-only-import do the policing instead.
+  // Core JavaScript unused-variable policy. The TypeScript block below replaces
+  // it with @typescript-eslint/no-unused-vars for all TS/TSX, including GRACE.
   {
     rules: {
       "no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    },
+  },
+  // TypeScript parser coverage and TypeScript-aware rule semantics.
+  {
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    plugins: { "@typescript-eslint": tsPlugin },
+    rules: {
+      "no-undef": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
   // React Hooks rules — apply to ALL tsx files (catches Rules of Hooks violations early)

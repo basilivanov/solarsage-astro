@@ -82,12 +82,6 @@ export function OnboardingFlow({ onComplete }: Props) {
     const birthPlaceStr = birthPlaceCity
       ? `${birthPlaceCity.name}, ${birthPlaceCity.country}`
       : ''
-    const currentCityStr = effectiveCurrentCity
-      ? `${effectiveCurrentCity.name}, ${effectiveCurrentCity.country}`
-      : ''
-    const birthdayCityStr = effectiveBirthdayCity
-      ? `${effectiveBirthdayCity.name}, ${effectiveBirthdayCity.country}`
-      : ''
 
     // Send to backend
     setIsSaving(true)

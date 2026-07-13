@@ -1,51 +1,46 @@
-# Mock Visual E2E Harness
+# Mock Visual E2E Harness + V2 Personal Day Preview
 
-This directory is a test-only staging area for future mock visual e2e coverage. It intentionally contains no `*.spec.ts` file yet, so the default Playwright suite does not gain a failing migration test during preflight.
+> **TEST-ONLY.** This directory is a visual/test harness. It must never be imported by product runtime paths (`app/`, `components/`, `lib/api`, etc.). Production does not depend on these fixtures.
+
+## One-command V2 personal day preview
+
+Start mock API + Next dev:
+
+```bash
+pnpm preview:v2
+```
+
+This will:
+
+1. Fail fast if ports `18092` or `3003` are already occupied
+2. Start a test-only Node mock API on `127.0.0.1:18092`
+3. Start Next on `0.0.0.0:3003` with:
+   - `NEXT_DIST_DIR=.next-v2-preview`
+   - `DEV_API_REWRITE_BASE_URL=http://127.0.0.1:18092` (ignored when `NODE_ENV=production`)
+4. Print: `http://127.0.0.1:3003/day/2026-07-08`
+5. On `SIGINT` / `SIGTERM`, terminate both processes
+
+Stop with `Ctrl+C` in the preview terminal.
+
+### Mock API rules
+
+- Serves rich V2 day payload for `/api/day/2026-07-08`
+- Serves minimal day bodies for week neighbours `2026-07-05` … `2026-07-11`
+- Serves test-shaped `/api/calendar`, `/api/auth/dev`, `/api/profile`, `/api/referral`, `/api/_log`
+- Unknown `/api/*` → HTTP `501` JSON `{ "detail": "missing_mock_visual_fixture" }`
+- **Never** falls through to the production API on port `8000`
+
+## Playwright mock visual
+
+Use Playwright `page.route("**/api/**", ...)` for API interception in specs.
+
+```bash
+E2E_BASE_URL=http://127.0.0.1:3003 pnpm exec playwright test e2e/mock-visual/day-v2.spec.ts --project=mobile
+```
 
 ## Rules
 
-- Use Playwright `page.route("**/api/**", ...)` for API interception.
-- Keep fixtures contract-valid and stored under `e2e/mock-visual/fixtures/`.
-- Keep screenshots and parity expectations tied to stable `data-testid`, `data-state`, `data-status`, roles, and ARIA state.
-- Do not add MSW.
-- Do not import `lib/mocks/*`, `lib/demo-data.ts`, or mock-preview modules into product paths.
-- Do not route unmatched mock visual API calls to production by default; fail fast so fixture gaps are visible.
-
-## Reference Artifacts
-
-The portable visual oracle lives in:
-
-```text
-docs/superpowers/specs/assets/2026-07-07-mock-preview/
-```
-
-The hand-off note is:
-
-```text
-docs/superpowers/specs/2026-07-07-mock-preview-reference.md
-```
-
-## Future Test Shape
-
-After a route is migrated onto real contracts, add a dedicated spec in this directory and install route fixtures before navigation:
-
-```ts
-import { expect, test } from "@playwright/test";
-import { installMockApiRoutes } from "./route-interception";
-import { dayFixture } from "./fixtures/day-2026-07-05";
-
-test("day route matches the visual contract", async ({ page }) => {
-  await installMockApiRoutes(page, {
-    "/api/day/2026-07-05": { body: dayFixture },
-  });
-
-  await page.goto("/day/2026-07-05");
-  await expect(page.getByTestId("today-screen")).toHaveAttribute("data-state", "ready");
-});
-```
-
-Run mock visual specs explicitly until the migration has a stable project/script:
-
-```bash
-E2E_BASE_URL=http://localhost:3002 pnpm exec playwright test e2e/mock-visual --project=mobile
-```
+- Keep fixtures contract-valid under `e2e/mock-visual/fixtures/`
+- Do not add MSW
+- Do not import `lib/mocks/*`, `lib/demo-data.ts`, or mock-preview modules into product paths
+- Do not route unmatched mock visual API calls to production

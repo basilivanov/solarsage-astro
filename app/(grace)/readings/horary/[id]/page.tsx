@@ -1,24 +1,36 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_[ID]_PAGE
-// ROLE: Next.js page
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: APP_HORARY_ANSWER_PAGE — horary answer loading, polling and error-state route.
+// ROLE: Client Next.js dynamic page; resolves one question id, polls non-terminal questions and renders progress, answer or honest failure states.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI page — component
+
+// START_MODULE_CONTRACT: M-APP-HORARY-ANSWER-PAGE
+// purpose: Load and present a single horary question through its complete pending/answered/failed/error lifecycle.
 // owns:
 //   - app/(grace)/readings/horary/[id]/page.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Logging via v2 logging spine; React state management
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
+// inputs: promised route id and getHoraryQuestion results/errors.
+// outputs: HoraryProgress, HoraryAnswerView, retryable error UI or terminal failure UI.
+// dependencies: React hooks/use; next/link; horary view/progress components; getHoraryQuestion; HoraryQuestionRead; logEvent.
+// side_effects: Performs initial/retry/poll API requests, owns a two-second interval, updates React state and logs classified failures.
+// emitted_logs: system.error.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Polling runs only for non-terminal status and retains one 30-second lifecycle per id/status.
+//   - answered, failed and expired stop polling.
+//   - Auth/server/network/not-found failures remain visibly distinct.
+// failure_policy: API failures are classified into route UI states; unexpected render errors bubble to the route boundary.
+// END_MODULE_CONTRACT: M-APP-HORARY-ANSWER-PAGE
+
+// START_MODULE_MAP: M-APP-HORARY-ANSWER-PAGE
+// public_entrypoints:
+//   - HoraryAnswerPage (default).
+// semantic_blocks:
+//   - INITIAL_LOAD: load the question by route id.
+//   - STATUS_POLLING: poll stable pending status with timeout and cleanup.
+//   - RETRY: retry recoverable server/network failures.
+//   - STATE_RENDER: select progress, error, terminal or answer UI.
+// owned_tests:
+//   - __tests__/horary/horary-error-state.test.tsx
+// END_MODULE_MAP: M-APP-HORARY-ANSWER-PAGE
 "use client"
 
 import { useCallback, useEffect, useMemo, useState, use } from "react"
@@ -75,12 +87,14 @@ export default function HoraryAnswerPage({ params }: Props) {
       })
   }, [id])
 
+  const questionStatus = question?.status
+
   useEffect(() => {
     if (
-      !question ||
-      question.status === "answered" ||
-      question.status === "failed" ||
-      question.status === "expired"
+      !questionStatus ||
+      questionStatus === "answered" ||
+      questionStatus === "failed" ||
+      questionStatus === "expired"
     ) {
       return
     }
@@ -127,7 +141,7 @@ export default function HoraryAnswerPage({ params }: Props) {
     }, 2000)
 
     return () => clearInterval(interval)
-  }, [id, question?.status])
+  }, [id, questionStatus])
 
   const isLongRunning = useMemo(() => {
     if (!question?.createdAt) return pollingTimedOut

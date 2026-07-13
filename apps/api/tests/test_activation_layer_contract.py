@@ -78,8 +78,12 @@ def test_activation_layer_service_builds_minimal(sample_day_signals):
         house_system="WHOLE_SIGN",
     )
     assert isinstance(layer, ActivationLayer)
-    assert layer.activation_layer_version == "al-1.0"
+    assert layer.activation_layer_version == "al-1.1"
     assert len(layer.activations) >= 6  # 3 aspects + 3 house activations
+    for act in layer.activations:
+        assert act.active_from is None
+        assert act.exact_at is None
+        assert act.active_until is None
 
     # Check transit Moon opposition natal Pluto activation
     pluto_acts = [a for a in layer.activations if a.target_key == "PLUTO"]
@@ -140,7 +144,7 @@ def test_activation_layer_service_accepts_sidecar_layer(sample_day_signals):
         sidecar_activation_layer=built.model_dump(mode="json"),
     )
     assert len(layer2.activations) == len(built.activations)
-    assert layer2.activation_layer_version == "al-1.0"
+    assert layer2.activation_layer_version == "al-1.1"
 
 
 def test_activation_layer_service_no_natal_background_contamination():
@@ -181,3 +185,98 @@ def test_activation_layer_service_rejects_non_transit_signals():
     assert len(layer.activations) == 0, "Non-transit signals must not produce activations"
     assert layer.by_planet == {}
     assert layer.by_house == {}
+
+
+def test_activation_layer_service_timed_sidecar_parity():
+    """W1.1: timed sidecar dict has all three timing fields preserved byte-for-byte."""
+    service = ActivationLayerService()
+    timed_sidecar_layer = {
+        "schema_version": "activation-layer.v1",
+        "activation_layer_version": "al-1.1",
+        "calculation_version": "ss-calc-1.2.0",
+        "target_date": "2026-07-08",
+        "target_time": "12:00",
+        "target_tz": "Europe/Moscow",
+        "house_system": "WHOLE_SIGN",
+        "activations": [
+            {
+                "id": "t2n__MOON__OPPOSITION__PLUTO",
+                "technique": "transit_to_natal",
+                "techniqueFamily": "transit",
+                "targetType": "planet",
+                "targetKey": "PLUTO",
+                "kind": "opposition",
+                "active": True,
+                "sourcePlanet": "Moon",
+                "sourceFrame": "transit",
+                "targetPlanet": "Pluto",
+                "targetFrame": "natal",
+                "aspect": "opposition",
+                "orb": 1.05,
+                "applying": False,
+                "activeFrom": "2026-07-07T21:00:00Z",
+                "exactAt": "2026-07-08T05:00:00Z",
+                "activeUntil": "2026-07-09T21:00:00Z",
+                "phase": "separating",
+                "strength": 0.72,
+                "polarity": "tense",
+                "evidence": "Transit Moon opposition natal Pluto, orb 1.05°",
+                "debug": {
+                    "timing": {
+                        "selected_branch": "plus",
+                        "selected_exact_longitude": 22.320514,
+                        "occurrence_index": 0,
+                        "exact_hits_in_window": ["2026-07-08T05:00:00Z"],
+                        "warning_code": None,
+                    }
+                }
+            },
+            {
+                "id": "annual_profection__HOUSE__10",
+                "technique": "annual_profection",
+                "techniqueFamily": "profection",
+                "targetType": "house",
+                "targetKey": "10",
+                "kind": "profected_house",
+                "active": True,
+                "sourceFrame": "natal",
+                "targetFrame": "natal",
+                "house": 10,
+                "activeFrom": "2025-10-30",
+                "exactAt": None,
+                "activeUntil": "2026-10-29",
+                "phase": "period",
+                "strength": 0.75,
+                "polarity": "neutral",
+                "evidence": "Annual profection activates house 10",
+                "debug": {},
+            },
+        ],
+        "by_planet": {"PLUTO": ["t2n__MOON__OPPOSITION__PLUTO"]},
+        "by_house": {"10": ["annual_profection__HOUSE__10"]},
+        "by_lot": {},
+        "by_angle": {},
+        "warnings": []
+    }
+
+    layer = service.build(
+        natal_context={}, transits={}, day_signals=[],
+        target_date=date(2026, 7, 8), target_time="12:00",
+        target_tz="Europe/Moscow", house_system="WHOLE_SIGN",
+        sidecar_activation_layer=timed_sidecar_layer,
+    )
+
+    assert len(layer.activations) == 2
+    act = layer.activations[0]
+    assert act.id == "t2n__MOON__OPPOSITION__PLUTO"
+    assert act.active_from == "2026-07-07T21:00:00Z"
+    assert act.exact_at == "2026-07-08T05:00:00Z"
+    assert act.active_until == "2026-07-09T21:00:00Z"
+    assert act.phase == "separating"
+    assert act.applying is False
+    assert act.debug["timing"]["selected_branch"] == "plus"
+    assert act.debug["timing"]["selected_exact_longitude"] == 22.320514
+    period = layer.activations[1]
+    assert period.active_from == "2025-10-30"
+    assert period.exact_at is None
+    assert period.active_until == "2026-10-29"

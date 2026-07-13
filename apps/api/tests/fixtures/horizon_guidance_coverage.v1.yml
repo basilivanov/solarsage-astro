@@ -1,0 +1,36 @@
+# Horizon guidance coverage corpus — synthetic profiles and dates for B2B2 deterministic validation.
+schema_version: horizon-guidance-coverage.v1
+profiles:
+  - id: synthetic-structure-moscow
+    timezone: Europe/Moscow
+    story: structure_boundaries_control
+    natal_case: structure
+  - id: synthetic-communication-utc
+    timezone: UTC
+    story: communication_learning_documents
+    natal_case: communication
+  - id: synthetic-relationships-berlin
+    timezone: Europe/Berlin
+    story: relationships_values_closeness
+    natal_case: relationships
+  - id: synthetic-empty-new-york
+    timezone: America/New_York
+    story: structure_boundaries_control
+    natal_case: empty
+  - id: synthetic-mixed-tbilisi
+    timezone: Asia/Tbilisi
+    story: communication_learning_documents
+    natal_case: mixed
+target_dates:
+  - "2026-01-01"
+  - "2026-02-28"
+  - "2026-03-29"
+  - "2026-04-15"
+  - "2026-06-21"
+  - "2026-07-08"
+  - "2026-07-12"
+  - "2026-09-22"
+  - "2026-10-25"
+  - "2026-12-31"
+  - "2028-02-28"
+  - "2028-02-29"

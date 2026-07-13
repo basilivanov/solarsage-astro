@@ -52,14 +52,6 @@ export type LogLevel = "debug" | "info" | "warn" | "error" | "fatal";
 
 // ── Context ───────────────────────────────────────────────────────────────
 
-interface LogContext {
-  slice: string;
-  module: string;
-  block: string;
-  event: LogEventName;
-  correlation_id?: string;
-}
-
 const levelPriority: Record<string, number> = {
   debug: 0,
   info: 1,

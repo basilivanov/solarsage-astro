@@ -1,23 +1,38 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_API_CHAT
-// ROLE: Tests — chat.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
-// purpose: Tests for chat.ts behavior
+// AI_HEADER: FRONTEND_API_CHAT — thread creation and assistant-message transport.
+// ROLE: Single chat integration facade consumed by use-chat.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-CHAT
+// purpose: Create a backend thread, send one user message and yield assistant content.
 // owns:
 //   - lib/api/chat.ts
-// inputs: Endpoint params, request body
-// outputs: Parsed response / typed data
-// dependencies: local modules
-// side_effects: Network calls to API
-// emitted_logs: n/a (tests)
+// inputs: history, message, context and optional AbortSignal; history/context remain compatibility inputs.
+// outputs: AsyncGenerator yielding zero or one assistant content string.
+// dependencies: lib/contracts/chat; fetch; JSON.
+// side_effects: credentialed POST /api/chat/threads, then POST its messages endpoint.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - AbortSignal is passed to both requests.
+//   - Message body retains the existing { content } shape.
+//   - snake_case or camelCase assistant message is accepted.
+//   - The generator yields only when assistant content exists.
+// failure_policy: Throw the existing status-bearing Error before yielding when either request is non-ok; network and abort errors propagate.
+// END_MODULE_CONTRACT: M-FRONTEND-API-CHAT
+
+// START_MODULE_MAP: M-FRONTEND-API-CHAT
+// public_entrypoints:
+//   - ChatContext
+//   - ChatMessage
+//   - sendMessage
+// semantic_blocks:
+//   - THREAD_CREATE: create an authenticated backend thread.
+//   - MESSAGE_SEND: send the current message to the new thread.
+//   - ASSISTANT_YIELD: accept wire naming variants and yield existing content.
+// owned_tests:
+//   - __tests__/hooks/useChat.test.ts
+// END_MODULE_MAP: M-FRONTEND-API-CHAT
 /**
  * API-фасад чата.
  *

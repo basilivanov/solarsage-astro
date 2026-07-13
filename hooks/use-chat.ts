@@ -29,7 +29,6 @@ import { STORAGE_KEYS } from "@/lib/storage-keys"
 import {
   chatReducer,
   initialChatState,
-  type ChatEvent,
 } from "@/lib/reducers/chat-reducer"
 
 /**

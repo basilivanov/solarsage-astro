@@ -1,0 +1,188 @@
+schema_version: horizon_selection.v1
+version: v1
+
+limits:
+  max_input_activations: 256
+  max_candidates_per_horizon: 12
+  max_product_spheres_per_candidate: 3
+  max_theme_keys_per_candidate: 4
+  max_anchor_combinations: 1728
+
+duration_bands:
+  long:
+    eligible_min_days: 120
+    eligible_max_days: null
+    preferred_min_days: 180
+    preferred_max_days: null
+  medium:
+    eligible_min_days: 14
+    eligible_max_days: 240
+    preferred_min_days: 45
+    preferred_max_days: 210
+  fast:
+    eligible_min_days: 0
+    eligible_max_days: 21
+    preferred_min_days: 0
+    preferred_max_days: 21
+
+timing:
+  instant_exact_tolerance_seconds: 3600
+  peaked_min_seconds: 43200
+  peaked_post_exact_fraction: 0.25
+  date_exact_tolerance_days: 0
+  completeness_with_exact: 1.0
+  completeness_without_exact: 0.8
+  state_relevance:
+    upcoming: 0.0
+    building: 0.95
+    active: 0.80
+    exact: 1.0
+    peaked: 0.90
+    fading: 0.65
+    background: 0.75
+
+impact_weights:
+  strength: 0.28
+  sphere_rank: 0.18
+  contribution: 0.14
+  convergence: 0.12
+  timing_relevance: 0.12
+  timing_completeness: 0.08
+  technique_priority: 0.08
+
+min_candidate_impact:
+  long: 0.44
+  medium: 0.46
+  fast: 0.42
+
+story_overlap_weights:
+  same_target: 0.35
+  shared_theme: 0.25
+  shared_product_sphere: 0.20
+  same_planet_or_house: 0.10
+  shared_technical_sphere: 0.10
+
+min_pair_overlap:
+  long_medium: 0.20
+  medium_fast: 0.18
+  long_fast: 0.10
+  triple_mean: 0.18
+
+triple_score_weights:
+  mean_impact: 0.65
+  mean_overlap: 0.30
+  family_diversity: 0.05
+
+planet_speed_groups:
+  fast: [SUN, MOON, MERCURY, VENUS, MARS]
+  medium: [JUPITER, SATURN]
+  slow: [URANUS, NEPTUNE, PLUTO, CHIRON, NORTH_NODE, SOUTH_NODE]
+
+transit_speed_eligibility:
+  long: [slow]
+  medium: [medium, slow]
+  fast: [fast]
+
+technique_rules:
+  annual_profection:
+    allowed_horizons: [long]
+    preferred_horizon: long
+    timing_mode: period
+    priority_by_horizon: {long: 1.00}
+  monthly_profection:
+    allowed_horizons: [medium]
+    preferred_horizon: medium
+    timing_mode: period
+    priority_by_horizon: {medium: 0.86}
+  firdar_major:
+    allowed_horizons: [long]
+    preferred_horizon: long
+    timing_mode: period
+    priority_by_horizon: {long: 0.96}
+  firdar_minor:
+    allowed_horizons: [long, medium]
+    preferred_horizon: long
+    timing_mode: period
+    priority_by_horizon: {long: 0.82, medium: 0.74}
+  solar_return:
+    allowed_horizons: [long]
+    preferred_horizon: long
+    timing_mode: period
+    priority_by_horizon: {long: 0.92}
+  lunar_return:
+    allowed_horizons: [medium]
+    preferred_horizon: medium
+    timing_mode: period
+    priority_by_horizon: {medium: 0.84}
+  solar_arc:
+    allowed_horizons: [long, medium]
+    preferred_horizon: long
+    timing_mode: period
+    priority_by_horizon: {long: 0.82, medium: 0.76}
+  secondary_progression:
+    allowed_horizons: [long, medium]
+    preferred_horizon: long
+    timing_mode: period
+    priority_by_horizon: {long: 0.80, medium: 0.76}
+  eclipse_window:
+    allowed_horizons: [medium]
+    preferred_horizon: medium
+    timing_mode: window
+    priority_by_horizon: {medium: 0.88}
+  transit_to_natal:
+    allowed_horizons: [long, medium, fast]
+    preferred_horizon: medium
+    timing_mode: peak
+    priority_by_horizon: {long: 0.85, medium: 0.95, fast: 0.90}
+  transit_to_angle:
+    allowed_horizons: [long, medium, fast]
+    preferred_horizon: medium
+    timing_mode: peak
+    priority_by_horizon: {long: 0.90, medium: 0.98, fast: 0.95}
+  transit_to_lot:
+    allowed_horizons: [long, medium, fast]
+    preferred_horizon: medium
+    timing_mode: peak
+    priority_by_horizon: {long: 0.75, medium: 0.82, fast: 0.80}
+  transit_planet_in_house:
+    allowed_horizons: [long, medium, fast]
+    preferred_horizon: medium
+    timing_mode: window
+    priority_by_horizon: {long: 0.60, medium: 0.68, fast: 0.62}
+
+technical_to_product_spheres:
+  thinking_speech_learning: [communication, study, documents]
+  work_status_achievement: [work, decisions]
+  relationships_partnership: [relationships]
+  money_security_resources: [money, shopping, documents]
+  body_energy_health: [health, sport]
+  home_family_roots: [relationships]
+  inner_background_unconscious: [health, creativity]
+  crisis_transformation_control: [decisions, money]
+  meaning_expansion_vector: [travel, study, decisions]
+
+technical_sphere_themes:
+  thinking_speech_learning: [communication_learning_documents]
+  work_status_achievement: [structure_boundaries_control]
+  relationships_partnership: [relationships_values_closeness]
+  money_security_resources: [resources_security]
+  body_energy_health: [energy_body_pacing]
+  home_family_roots: [home_belonging]
+  inner_background_unconscious: [inner_clarity_recovery]
+  crisis_transformation_control: [structure_boundaries_control]
+  meaning_expansion_vector: [direction_growth_meaning]
+
+target_planet_themes:
+  SATURN: [structure_boundaries_control]
+  PLUTO: [structure_boundaries_control]
+  MERCURY: [communication_learning_documents]
+  VENUS: [relationships_values_closeness, resources_security]
+  MOON: [relationships_values_closeness, energy_body_pacing]
+  MARS: [energy_body_pacing, structure_boundaries_control]
+  SUN: [creativity_visibility]
+  JUPITER: [direction_growth_meaning, resources_security]
+  URANUS: [change_innovation]
+  NEPTUNE: [inner_clarity_recovery, creativity_visibility]
+  CHIRON: [inner_clarity_recovery]
+  NORTH_NODE: [direction_growth_meaning]
+  SOUTH_NODE: [inner_clarity_recovery]

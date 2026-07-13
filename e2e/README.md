@@ -1,5 +1,39 @@
 # E2E Testing Guide
 
+## Real Today V2 preview (3003)
+
+Real preview on port 3003 uses the canonical systemd API (8000) and sidecar (18091).
+The launcher does not start backend or sidecar.
+
+> The real E2E is intentionally strict and fails closed until Stage 1 canonical
+> API convergence. Before S1.W3, a `today.v1` identity failure is expected and
+> must not be treated as a green real-preview result.
+
+```bash
+# Verify services first
+systemctl is-active solarsage-api.service solarsage-sidecar.service
+
+# Start real preview
+pnpm preview:v2:real
+```
+
+URL: `http://127.0.0.1:3003/day/2026-07-08?why=1`
+
+Run E2E from a second terminal while the launcher is running:
+
+```bash
+E2E_BASE_URL=http://127.0.0.1:3003 \
+  pnpm exec playwright test e2e/real-v2-preview.spec.ts \
+    --project=chromium --project=mobile
+```
+
+The real spec uses no route interception, no cookie seeding, no Telegram injection,
+and accepts only `today.v2.1 / frontend 3 / content 10` with all three backend
+horizons. Mock `pnpm preview:v2` remains a separate test-only reference.
+Stop the real launcher with Ctrl+C. It restores only the exact Next-generated
+`next-env.d.ts` declaration; `tsconfig.json` is verified during startup and is
+never rewritten during normal shutdown.
+
 ## Overview
 
 Playwright E2E tests для SolarSage Astro, которые ловят 95% ошибок фронтенда ДО продакшена.
@@ -77,17 +111,16 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ### Start Services
 
+Real backend and sidecar are managed by systemd:
+
 ```bash
-# Terminal 1: Start backend
-cd apps/api
-source venv/bin/activate
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+systemctl is-active solarsage-api.service solarsage-sidecar.service
+```
 
-# Terminal 2: Start frontend
-npm run dev
+Start the real preview on 3003:
 
-# Terminal 3: Run tests
-pnpm test:e2e
+```bash
+pnpm preview:v2:real
 ```
 
 ## Test Results

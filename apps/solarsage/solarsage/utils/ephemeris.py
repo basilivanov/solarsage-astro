@@ -1,30 +1,38 @@
 
 # ############################################################################
-# AI_HEADER: MODULE_UTILS_EPHEMERIS
-# ROLE: Sidecar calculation
-# DEPENDENCIES: local modules
-# GRACE_ANCHORS: []
-# SLICE: SLICE-SIDECAR-CALCULATION
-# ######################################### START_MODULE_CONTRACT
-# purpose: Module: ephemeris.py
+# AI_HEADER: MODULE_UTILS_EPHEMERIS — ephemeris calculation utilities.
+# ROLE: Provides Swiss Ephemeris calculations, Julian Day converters, and date/time formatters.
+# DEPENDENCIES: swisseph, datetime, zoneinfo, typing
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-SOLARSAGE-EPHEMERIS-UTILS
+# purpose: Ephemeris calculation utilities.
 # owns:
 #   - apps/solarsage/solarsage/utils/ephemeris.py
-# inputs: Function args
-# outputs: Return values
-# dependencies: local modules
-# side_effects: n/a (pure)
-# emitted_logs: n/a (pure)
+# inputs: date, time, timezone, JD.
+# outputs: Julian Day, planetary positions, house cusps, UTC ISO formatted timestamps.
+# dependencies: swisseph, zoneinfo, datetime.
+# side_effects: none (pure ephemeris computation).
+# emitted_logs: none.
 # invariants:
-#   - n/a
-# failure_policy: log and raise
-# END_MODULE_CONTRACT
-# AI_HEADER
-# module: M-SOLARSAGE-EPHEMERIS-UTILS
-# wave: W-SOLARSAGE-SVC
-# purpose: Ephemeris calculation utilities
+#   - julian_day_to_utc_iso converts JD to UTC ISO string with 'Z' suffix up to seconds precision.
+# failure_policy: propagates ValueError or swisseph errors.
+# END_MODULE_CONTRACT: M-SOLARSAGE-EPHEMERIS-UTILS
+
+# START_MODULE_MAP: M-SOLARSAGE-EPHEMERIS-UTILS
+# public_entrypoints:
+#   - get_sign
+#   - calculate_julian_day
+#   - calculate_positions
+#   - calculate_houses_cusps
+#   - julian_day_to_utc_iso
+# semantic_blocks:
+#   - EPHEMERIS_HELPERS: sign, JD and positions calculators.
+#   - FORMATTERS: UTC ISO formatters.
+# END_MODULE_MAP: M-SOLARSAGE-EPHEMERIS-UTILS
 
 import swisseph as swe
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from typing import Dict, List, Any
 
@@ -181,3 +189,18 @@ def calculate_houses_cusps(
     ]
 
     return houses, special_points, resolved_name
+
+# START_BLOCK: FORMATTERS
+# START_FUNCTION_CONTRACT: F-M-SOLARSAGE-EPHEMERIS-UTILS.julian_day_to_utc_iso
+# purpose: Convert Julian Day to UTC ISO-Z string with second precision.
+# inputs: jd - Julian Day float.
+# returns: str - ISO YYYY-MM-DDTHH:MM:SSZ format.
+# side_effects: none.
+# emitted_logs: none.
+# error_behavior: propagates ValueError.
+# END_FUNCTION_CONTRACT: F-M-SOLARSAGE-EPHEMERIS-UTILS.julian_day_to_utc_iso
+def julian_day_to_utc_iso(jd: float) -> str:
+    unix_seconds = (jd - 2440587.5) * 86400.0
+    dt = datetime.fromtimestamp(unix_seconds, tz=timezone.utc)
+    return dt.isoformat(timespec="seconds").replace("+00:00", "Z")
+# END_BLOCK: FORMATTERS

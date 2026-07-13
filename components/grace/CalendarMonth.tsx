@@ -1,28 +1,35 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_CALENDARMONTH
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_CALENDAR_MONTH — linked legacy calendar month grid.
+// ROLE: Presentational month grid that converts CalendarPayload days into dated Next.js links with status and lock semantics.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for CalendarMonth.tsx behavior
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-CALENDAR-MONTH
+// purpose: Render month title, weekday headings and day navigation cells.
 // owns:
 //   - components/grace/CalendarMonth.tsx
-// inputs: Mocks, fixtures
-// outputs: Assertion results
-// dependencies: local modules
-// side_effects: n/a (tests)
-// emitted_logs: n/a (tests)
+// inputs: month — CalendarPayload containing month id and day entries.
+// outputs: localized Russian month heading and role=grid list of /day/:date links.
+// dependencies: next/link; lib/utils cn; packages/contracts CalendarPayload.
+// side_effects: none directly; link activation delegates navigation to Next.js.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-CALENDAR-MONTH
-// wave: W-2.3, W-ACCESS.3
-// purpose: Single month in calendar grid with locked badges
+//   - data-testid="calendar-day-${date}", data-date and data-status remain stable.
+//   - Locked days retain the lock marker and remain linked to their day route.
+//   - Current-month, today and access styling decisions remain unchanged.
+// failure_policy: Assumes valid YYYY-MM month data; render errors propagate.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-CALENDAR-MONTH
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-CALENDAR-MONTH
+// public_entrypoints:
+//   - CalendarMonth
+// semantic_blocks:
+//   - MONTH_HEADING: localized month/year label.
+//   - WEEKDAY_HEADER: Russian weekday abbreviations.
+//   - DAY_GRID: linked day cells with current, locked and status state.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-GRACE-COMPONENT-CALENDAR-MONTH
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';

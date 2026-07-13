@@ -45,7 +45,7 @@ MESSAGE="$1"
 
 if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
   echo "ERROR: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set"
-  echo "Usage: export TELEGRAM_BOT_TOKEN=your_token"
+  echo "Usage: set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in the environment"
   echo "       export TELEGRAM_CHAT_ID=your_chat_id"
   echo "       $0 'Your message'"
   exit 1

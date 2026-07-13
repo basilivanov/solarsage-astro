@@ -1,26 +1,36 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_API_TODAY
-// ROLE: Tests — today.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
-// purpose: Tests for today.ts behavior
+// AI_HEADER: FRONTEND_API_TODAY — minimal date-to-day-payload fetch facade.
+// ROLE: Minimal date-to-TodayPayload fetch facade and compatibility alias.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-TODAY
+// purpose: Fetch the canonical day payload for one Date.
 // owns:
 //   - lib/api/today.ts
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Network calls to API
-// emitted_logs: n/a (tests)
+// inputs: Date.
+// outputs: Promise<TodayPayload> and getTodayPayloadAsync alias.
+// dependencies: packages/contracts TodayPayload; fetch.
+// side_effects: credentialed GET /api/day/YYYY-MM-DD.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT// AI_HEADER
-// module: M-API-TODAY
-// wave: W-2.7
-// purpose: Today API facade
+//   - Date path remains UTC ISO YYYY-MM-DD derived by toISOString.
+//   - Success payload is returned unchanged.
+//   - The Async alias remains reference-equal.
+// failure_policy: Non-ok throws detail.message when available, otherwise API error with status; network and JSON failures propagate.
+// END_MODULE_CONTRACT: M-FRONTEND-API-TODAY
+
+// START_MODULE_MAP: M-FRONTEND-API-TODAY
+// public_entrypoints:
+//   - getTodayPayload
+//   - getTodayPayloadAsync
+// semantic_blocks:
+//   - DATE_PATH: derive the UTC ISO date path.
+//   - DAY_FETCH: request and return the canonical day payload.
+//   - COMPATIBILITY_ALIAS: retain the reference-equal Async export.
+// owned_tests:
+//   - none direct; canonical day behavior is covered by contract and library tests.
+// END_MODULE_MAP: M-FRONTEND-API-TODAY
 
 import type { TodayPayload } from "@/packages/contracts"
 

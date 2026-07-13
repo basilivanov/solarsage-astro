@@ -1,0 +1,53 @@
+# ############################################################################
+# AI_HEADER: MODULE_DOCKERIGNORE — Docker build context exclusions.
+# ROLE: Keeps SolarSage Docker proof/release contexts small and free of local secrets/caches.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-DOCKERIGNORE
+# purpose: Exclude VCS metadata, local environments, caches, artifacts, docs,
+#   and secrets from repo-root Docker build contexts while preserving app and
+#   shared package sources needed by API/sidecar images.
+# owns:
+#   - .dockerignore
+# inputs: Docker build context rooted at repository root.
+# outputs: Docker context filtering rules.
+# dependencies: Docker build.
+# side_effects: none.
+# emitted_logs: none.
+# invariants:
+#   - packages/py-contracts, apps/api, and apps/solarsage remain included.
+#   - .env files and local virtualenv/cache/build artifacts remain excluded.
+# failure_policy: Docker uses these patterns during context transfer.
+# END_MODULE_CONTRACT: M-DOCKERIGNORE
+
+# START_MODULE_MAP: M-DOCKERIGNORE
+# public_entrypoints:
+#   - Docker build context filtering
+# semantic_blocks:
+#   - EXCLUSIONS: local-only and secret-bearing paths excluded from Docker context.
+# owned_tests:
+#   - docker build proof in Stage A2
+# END_MODULE_MAP: M-DOCKERIGNORE
+
+# START_BLOCK: EXCLUSIONS
+.git
+.github
+.env
+.env.*
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+node_modules
+.next*
+artifacts
+.grace
+grace.db
+skills
+docs
+test-results
+playwright-report
+# END_BLOCK: EXCLUSIONS

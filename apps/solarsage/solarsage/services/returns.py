@@ -5,8 +5,9 @@
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-SIDECAR-RETURNS
-# purpose: Calculate solar_return and lunar_return moments and chart data.
-#          Uses Swiss Ephemeris solcross_ut/mooncross_ut for exact crossings.
+# purpose: Calculate solar_return and lunar_return moments, reusable current/next
+#          crossing instants, and chart data. Uses Swiss Ephemeris
+#          solcross_ut/mooncross_ut for exact crossings.
 # owns:
 #   - apps/solarsage/solarsage/services/returns.py
 # inputs: birth date/time/tz/lat/lon, target date/time/tz, house_system,
@@ -14,7 +15,9 @@
 # outputs: SolarReturnResult, LunarReturnResult with chart planets, houses,
 #          angles, timestamps
 # dependencies: swisseph, ephemeris utils
-# side_effects: none (pure computation)
+# side_effects: Calls Swiss Ephemeris solcross_ut/mooncross_ut/calc_ut,
+#   calculate_positions, calculate_houses_cusps, and swe.set_ephe_path in helper
+#   searches.
 # emitted_logs: none
 # invariants:
 #   - solar return: longitude residual <= 0.001°, found within ±3 days of birthday
@@ -27,6 +30,8 @@
 # public_entrypoints:
 #   - calculate_solar_return
 #   - calculate_lunar_return
+#   - find_solar_return_jd
+#   - find_next_lunar_return_jd
 # semantic_blocks:
 #   - RETURN_SEARCH: exact crossing search
 #   - CHART_BUILDING: return chart construction
@@ -37,7 +42,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import calendar
+from datetime import date as Date
 from typing import Any
 
 import swisseph as swe
@@ -46,7 +52,7 @@ from solarsage.utils.ephemeris import (
     calculate_julian_day,
     calculate_positions,
     calculate_houses_cusps,
-    get_sign,
+    julian_day_to_utc_iso,
 )
 
 # ── Return result models ─────────────────────────────────────────────────────
@@ -119,43 +125,7 @@ class LunarReturnResult:
 
 def _jd_to_utc_iso(jd: float) -> str:
     """Convert Julian Day to UTC ISO string."""
-    year, month, day, hour = swe.revjul(jd)
-    minute = (hour - int(hour)) * 60
-    second = (minute - int(minute)) * 60
-    dt = datetime(
-        int(year), int(month), int(day),
-        int(hour), int(minute), int(second),
-        tzinfo=timezone.utc,
-    )
-    return dt.isoformat()
-
-
-def _find_house(longitude: float, houses: list[dict[str, Any]]) -> int:
-    """Find which house contains the given longitude."""
-    hlist = sorted(houses, key=lambda h: h.get("cusp", 0.0))
-    for i, house in enumerate(hlist):
-        cusp = house.get("cusp", 0.0)
-        next_i = (i + 1) % 12
-        next_cusp = hlist[next_i].get("cusp", 0.0)
-        if next_cusp < cusp:
-            next_cusp += 360.0
-        adj_lon = longitude + (360.0 if (next_cusp > 360.0 and longitude < cusp) else 0.0)
-        if cusp <= adj_lon < next_cusp:
-            return house["number"]
-    return hlist[-1]["number"]
-
-
-def _sign_ruler(sign: str) -> str:
-    """Traditional ruler for a sign (shared with activation_builder)."""
-    rulers = {
-        "Aries": "MARS", "Taurus": "VENUS", "Gemini": "MERCURY",
-        "Cancer": "MOON", "Leo": "SUN", "Virgo": "MERCURY",
-        "Libra": "VENUS", "Scorpio": "MARS", "Sagittarius": "JUPITER",
-        "Capricorn": "SATURN", "Aquarius": "SATURN", "Pisces": "JUPITER",
-    }
-    if sign not in rulers:
-        raise ValueError(f"Unknown sign: '{sign}'")
-    return rulers[sign]
+    return julian_day_to_utc_iso(jd)
 
 
 # START_BLOCK: RETURN_SEARCH
@@ -173,6 +143,7 @@ def calculate_solar_return(
     return_lat: float | None = None,
     return_lon: float | None = None,
     return_tz: str | None = None,
+    natal_sun_longitude: float | None = None,
 ) -> SolarReturnResult:
     # START_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.calculate_solar_return
     # purpose: Calculate exact solar return for a target year.
@@ -192,60 +163,28 @@ def calculate_solar_return(
     chart_lat = return_lat if return_lat is not None else birth_lat
     chart_lon = return_lon if return_lon is not None else birth_lon
     # 1. Natal Sun longitude
-    natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
-    natal_positions = calculate_positions(natal_jd)
-    natal_by_name = {p["name"]: p for p in natal_positions}
-    natal_sun = natal_by_name.get("Sun", {})
-    if not natal_sun:
-        raise ValueError("Could not find natal Sun position")
-    natal_sun_lon = natal_sun["longitude"]
+    if natal_sun_longitude is None:
+        natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
+        natal_positions = calculate_positions(natal_jd)
+        natal_by_name = {p["name"]: p for p in natal_positions}
+        natal_sun = natal_by_name.get("Sun", {})
+        if not natal_sun:
+            raise ValueError("Could not find natal Sun position")
+        natal_sun_lon = natal_sun["longitude"]
+    else:
+        natal_sun_lon = natal_sun_longitude
 
-    # 2. Search for crossing in target year
-    # Start search a few days before the birthday in the target year
-    from datetime import date as Date
-    birthday_target = Date(target_year, int(birth_date.split("-")[1]), int(birth_date.split("-")[2]))
-    # Use noon on day before birthday as search start to ensure we catch the crossing
-    from solarsage.utils.ephemeris import calculate_julian_day as calc_jd
-    search_start = calc_jd(birthday_target.isoformat(), "00:00", "UTC") - 3
+    # parse birth date
+    birth_parts = birth_date.split("-")
+    birth_month = int(birth_parts[1])
+    birth_day = int(birth_parts[2])
 
-    swe.set_ephe_path("/opt/sweph/ephe")
-    flags = swe.FLG_SWIEPH
-    try:
-        return_jd = swe.solcross_ut(natal_sun_lon, search_start, flags)
-    except swe.Error as e:
-        raise ValueError(f"Solar return crossing not found: {e}")
-
-    if return_jd <= 0:
-        raise ValueError(f"Solar return crossing returned invalid JD: {return_jd}")
-
-    # Verify and enforce precision (must be <= 0.001°)
-    sun_at_return = swe.calc_ut(return_jd, swe.SUN, flags)
-    return_sun_lon = sun_at_return[0][0]
-    lon_residual = abs(return_sun_lon - natal_sun_lon) % 360.0
-    if lon_residual > 180.0:
-        lon_residual = 360.0 - lon_residual
-    if lon_residual > 0.001:
-        # Try refinement by re-searching from the found crossing
-        try:
-            refined_jd = swe.solcross_ut(natal_sun_lon, return_jd + 0.001, flags)
-            if refined_jd > 0 and abs(refined_jd - return_jd) < 0.5:
-                sun_at_return = swe.calc_ut(refined_jd, swe.SUN, flags)
-                refined_lon = sun_at_return[0][0]
-                refined_residual = abs(refined_lon - natal_sun_lon) % 360.0
-                if refined_residual > 180.0:
-                    refined_residual = 360.0 - refined_residual
-                if refined_residual < lon_residual:
-                    return_jd = refined_jd
-                    return_sun_lon = refined_lon
-                    lon_residual = refined_residual
-        except swe.Error:
-            pass
-
-    # Final enforcement
-    if lon_residual > 0.001:
-        raise ValueError(
-            f"Solar return precision {lon_residual}° exceeds required 0.001°"
-        )
+    return_jd = find_solar_return_jd(
+        natal_sun_longitude=natal_sun_lon,
+        birth_month=birth_month,
+        birth_day=birth_day,
+        target_year=target_year,
+    )
 
     # 3. Build return chart using chart_lat/chart_lon
     return_utc_iso = _jd_to_utc_iso(return_jd)
@@ -266,6 +205,9 @@ def calculate_solar_return(
             mc_lon = sp["longitude"]
             chart_angles["MC"] = mc_lon
 
+    sun_at_return = swe.calc_ut(return_jd, swe.SUN, swe.FLG_SWIEPH)
+    return_sun_lon = sun_at_return[0][0]
+
     return SolarReturnResult(
         return_jd=return_jd,
         return_utc_iso=return_utc_iso,
@@ -279,6 +221,65 @@ def calculate_solar_return(
         mc_lon=mc_lon,
         house_system=resolved_house_system,
     )
+
+def find_solar_return_jd(
+    *,
+    natal_sun_longitude: float,
+    birth_month: int,
+    birth_day: int,
+    target_year: int,
+) -> float:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.find_solar_return_jd
+    # purpose: Find exact Julian Day of solar return crossing for target year.
+    # inputs: natal_sun_longitude, birth_month, birth_day, target_year.
+    # returns: float Julian Day.
+    # side_effects: calls swe.set_ephe_path, swe.solcross_ut, and swe.calc_ut.
+    # error_behavior: raises ValueError if crossing not found or precision > 0.001.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.find_solar_return_jd
+    # handle Feb 29 birth search starting date clamp
+    search_month = birth_month
+    search_day = birth_day
+    if birth_month == 2 and birth_day == 29 and not calendar.isleap(target_year):
+        search_day = 28
+
+    birthday_target = Date(target_year, search_month, search_day)
+    search_start = calculate_julian_day(birthday_target.isoformat(), "00:00", "UTC") - 3.0
+
+    swe.set_ephe_path("/opt/sweph/ephe")
+    flags = swe.FLG_SWIEPH
+    try:
+        return_jd = swe.solcross_ut(natal_sun_longitude, search_start, flags)
+    except swe.Error as e:
+        raise ValueError(f"Solar return crossing not found: {e}")
+
+    if return_jd <= 0:
+        raise ValueError(f"Solar return crossing returned invalid JD: {return_jd}")
+
+    # Verify and enforce precision (must be <= 0.001°)
+    sun_at_return = swe.calc_ut(return_jd, swe.SUN, flags)
+    return_sun_lon = sun_at_return[0][0]
+    lon_residual = abs(return_sun_lon - natal_sun_longitude) % 360.0
+    if lon_residual > 180.0:
+        lon_residual = 360.0 - lon_residual
+    if lon_residual > 0.001:
+        # Try refinement by re-searching from the found crossing
+        try:
+            refined_jd = swe.solcross_ut(natal_sun_longitude, return_jd + 0.001, flags)
+            if refined_jd > 0 and abs(refined_jd - return_jd) < 0.5:
+                sun_at_return = swe.calc_ut(refined_jd, swe.SUN, flags)
+                refined_lon = sun_at_return[0][0]
+                refined_residual = abs(refined_lon - natal_sun_longitude) % 360.0
+                if refined_residual > 180.0:
+                    refined_residual = 360.0 - refined_residual
+                if refined_residual < lon_residual:
+                    return_jd = refined_jd
+                    lon_residual = refined_residual
+        except swe.Error:
+            pass
+
+    if lon_residual > 0.001:
+        raise ValueError(f"Solar return precision {lon_residual}° exceeds required 0.001°")
+    return return_jd
 
 
 def calculate_lunar_return(
@@ -295,6 +296,7 @@ def calculate_lunar_return(
     return_lat: float | None = None,
     return_lon: float | None = None,
     return_tz: str | None = None,
+    natal_moon_longitude: float | None = None,
 ) -> LunarReturnResult:
     # START_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.calculate_lunar_return
     # purpose: Calculate the most recent lunar return at or before target.
@@ -314,13 +316,16 @@ def calculate_lunar_return(
     chart_lat = return_lat if return_lat is not None else birth_lat
     chart_lon = return_lon if return_lon is not None else birth_lon
     # 1. Natal Moon longitude
-    natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
-    natal_positions = calculate_positions(natal_jd)
-    natal_by_name = {p["name"]: p for p in natal_positions}
-    natal_moon = natal_by_name.get("Moon", {})
-    if not natal_moon:
-        raise ValueError("Could not find natal Moon position")
-    natal_moon_lon = natal_moon["longitude"]
+    if natal_moon_longitude is None:
+        natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
+        natal_positions = calculate_positions(natal_jd)
+        natal_by_name = {p["name"]: p for p in natal_positions}
+        natal_moon = natal_by_name.get("Moon", {})
+        if not natal_moon:
+            raise ValueError("Could not find natal Moon position")
+        natal_moon_lon = natal_moon["longitude"]
+    else:
+        natal_moon_lon = natal_moon_longitude
 
     # 2. Target JD
     target_jd = calculate_julian_day(target_date, target_time, target_tz)
@@ -366,7 +371,7 @@ def calculate_lunar_return(
 
     # Select the latest (max JD) valid candidate
     candidates.sort(key=lambda x: x[0], reverse=True)
-    return_jd, best_residual = candidates[0]
+    return_jd = candidates[0][0]
 
     # Verify constraints
     if return_jd > target_jd_val:
@@ -408,6 +413,41 @@ def calculate_lunar_return(
         mc_lon=mc_lon,
         house_system=resolved_house_system,
     )
+
+def find_next_lunar_return_jd(
+    *,
+    natal_moon_longitude: float,
+    after_jd: float,
+) -> float:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.find_next_lunar_return_jd
+    # purpose: Find exact Julian Day of next lunar return after after_jd.
+    # inputs: natal_moon_longitude, after_jd.
+    # returns: float Julian Day.
+    # side_effects: calls swe.set_ephe_path, swe.mooncross_ut, and swe.calc_ut.
+    # error_behavior: raises ValueError if crossing cannot be found or precision > 0.001.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.find_next_lunar_return_jd
+    swe.set_ephe_path("/opt/sweph/ephe")
+    flags = swe.FLG_SWIEPH
+    epsilon = 1e-8
+    try:
+        jd = swe.mooncross_ut(natal_moon_longitude, after_jd + epsilon, flags)
+    except swe.Error as e:
+        raise ValueError(f"Lunar return crossing not found: {e}")
+
+    if jd <= 0:
+        raise ValueError(f"Lunar return crossing returned invalid JD: {jd}")
+    if jd <= after_jd:
+        raise ValueError(f"Lunar return crossing JD {jd} is not after {after_jd}")
+
+    moon_at_return = swe.calc_ut(jd, swe.MOON, flags)
+    return_moon_lon = moon_at_return[0][0]
+    lon_residual = abs(return_moon_lon - natal_moon_longitude) % 360.0
+    if lon_residual > 180.0:
+        lon_residual = 360.0 - lon_residual
+
+    if lon_residual > 0.001:
+        raise ValueError(f"Lunar return precision {lon_residual}° exceeds required 0.001°")
+    return jd
 
 
 # END_BLOCK: RETURN_SEARCH

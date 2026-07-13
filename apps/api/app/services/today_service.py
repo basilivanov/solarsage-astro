@@ -14,6 +14,7 @@
 #   - user_id: UUID
 #   - target_date: date
 #   - access_state: ContentAccessState
+#   - selection_context: optional immutable request-scoped V1/V2 authority
 #   - db: AsyncSession
 # outputs:
 #   - TodayPayload
@@ -24,11 +25,24 @@
 #   - M-NATAL-CONTEXT-SERVICE (NatalContextService)
 #   - M-SOLARSAGE-CLIENT (get_solarsage_client — transits only)
 #   - M-LLM-SERVICE
+#   - M-TODAY-HORIZON-INTEGRATION-SERVICE (request-local V2 horizons bridge)
+#   - M-CACHE-KEY-SERVICE (resolve_today_runtime_identity)
+#   - M-TODAY-SELECTION-CONTEXT (explicit request-local selection value)
 # invariants:
 #   - Never calls get_natal() directly; uses NatalContextService.
 #   - profile_hash ties today cache to natal context version.
 #   - If birth profile changes, cache misses and rebuilds.
 #   - meta.cached is true when returned from cache, false on fresh generation.
+#   - V2 horizons reuse exact request-local activation, scoring, natal, and advice objects once.
+#   - The same resolved runtime identity drives both cache key and public meta
+#     version fields.
+#   - One pre-cache scoring-family selection drives cache read, sidecar policy,
+#     runtime force propagation, public identity, cache write, and horizons.
+#   - Runtime selection must match the pre-cache family or fail closed before
+#     public payload construction and cache write.
+#   - Background week prefetch spawns one best-effort asyncio task with strong
+#     ownership until completion; each day uses an independent SessionLocal
+#     session and never inherits the request's DB session or selection context.
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
@@ -44,6 +58,8 @@
 #   - NATAL_CONTEXT_REUSE: uses NatalContextService for natal facts (W-NATAL-FULL)
 #   - TRANSIT_FETCH: calls solarsage_client.get_transits() for fresh transits
 #   - PAYLOAD_BUILDER: construct TodayPayload from natal context + transits + LLM
+#   - HORIZON_INTEGRATION: request-local V2 horizon pipeline bridge after final advice
+#   - REQUEST_SELECTION: pre-cache request-local V1/V2 family snapshot and assertion
 #   - CACHE_LAYER: check cache by (user_id, date, profile_hash), store on miss
 # owned_tests:
 #   - apps/api/tests/test_day_no_birthday_fallback.py
@@ -71,42 +87,44 @@ from app.schemas.today import (
     SphereScore,
     TodayMeta,
     TodayPayload,
+    TodayV2HorizonPipelineAudit,
+    TodayV2HorizonPipelineAuditBuilt,
+    TodayV2HorizonPipelineAuditUnavailable,
     TopFlag,
 )
 from app.clients.solarsage_client import get_solarsage_client
+from app.core.config import settings
+from app.db.session import SessionLocal
 from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
 from app.services.astro_utils import find_house, strip_prefix
 from app.services.day_scoring_signals import filter_day_scored_signals
 from app.services.normalization_service import NormalizationService
-from app.services.scoring_service import ScoringService
+from app.services.scoring_service import ScoringService  # noqa: F401 -- legacy test patch point
 from app.services.day_scoring_runtime_service import (
     DayScoringRuntimeService, should_compute_v2, selected_scoring_version_for_flags,
 )
-from app.services.cache_key_service import build_today_cache_key, expected_cache_identity
+from app.services.cache_key_service import (
+    build_today_cache_key, expected_cache_identity, resolve_today_runtime_identity,
+)
 from app.services.llm_service import LLMService
 from app.services.semantic_service import SemanticService
 from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
-from app.core.config import settings
-# W9 rework01: version identity by selected scoring path
 from app.core.versions import (
-    ACTIVATION_LAYER_VERSION,
-    CALCULATION_VERSION,
-    LEGACY_CALCULATION_VERSION,
-    LEGACY_FRONTEND_PAYLOAD_VERSION,
-    LEGACY_SCORING_VERSION,
     SCORING_V2_VERSION,
-    TODAY_V1_PAYLOAD_VERSION,
+    TODAY_CONTENT_VERSION,
+    TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
     TODAY_V2_PAYLOAD_VERSION,
+    V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS,
     V2_FRONTEND_PAYLOAD_VERSION,
 )
 from app.services.natal_context_service import NatalContextService
 from app.services.canon_service import get_canon_versions
 from app.services.activation_layer_service import ActivationLayerService
+from app.services.today_horizon_integration_service import TodayHorizonIntegrationService
+from app.services.today_selection_context import TodaySelectionContext
 from app.core.logging import log_event, log_block
 
-
-TODAY_CONTENT_VERSION = 9
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",
@@ -134,11 +152,23 @@ ASPECT_LABELS_RU = {
 SOFT_ASPECTS = {"sextile", "trine"}
 TENSE_ASPECTS = {"square", "opposition"}
 
+# Strong-reference set for best-effort background prefetch tasks.
+_TODAY_PREFETCH_TASKS: set[asyncio.Task[None]] = set()
+
 
 # START_BLOCK: REAL_CALCULATION
 class TodayService:
-    def __init__(self, db: AsyncSession):
+    def __init__(
+        self,
+        db: AsyncSession,
+        horizon_integration_service: TodayHorizonIntegrationService | None = None,
+    ):
         self.db = db
+        self._horizon_integration_service = (
+            horizon_integration_service
+            if horizon_integration_service is not None
+            else TodayHorizonIntegrationService()
+        )
 
     async def get_today_payload(
         self,
@@ -146,14 +176,18 @@ class TodayService:
         target_date: Date,
         access_state: ContentAccessState | None,
         skip_prefetch: bool = False,
+        *,
+        selection_context: TodaySelectionContext | None = None,
     ) -> TodayPayload:
         # START_FUNCTION_CONTRACT: F-M-DAY-SERVICE.get_today_payload
         # purpose: Get TodayPayload for user and date — the main day pipeline.
-        # inputs: user_id, target_date (Date), access_state (ContentAccessState | None), skip_prefetch (bool)
+        # inputs: user_id, target_date, access_state, skip_prefetch, and optional immutable selection_context.
         # returns: TodayPayload with day_status, headline, reading, top_flags, etc.
-        # side_effects: reads/writes cache, calls sidecar for transits, calls LLM for text
+        # side_effects: reads/writes cache; calls sidecar for transits and LLM for text;
+        #   may schedule a best-effort background week-prefetch task with independent DB sessions
         # emitted_logs: day.payload_built (TODO: W-1.6 — add day.viewed in API route)
-        # error_behavior: HTTPException 409 on incomplete profile, 502 on sidecar failure
+        # error_behavior: HTTPException 409 on incomplete profile, 502 on sidecar failure;
+        #   raises RuntimeError if a successfully validated natal profile lacks birth identity.
         # END_FUNCTION_CONTRACT: F-M-DAY-SERVICE.get_today_payload
         """
         Get TodayPayload for a user and date.
@@ -168,7 +202,7 @@ class TodayService:
         """
         # Default access state for prefetch (real state checked on-demand by API route)
         if access_state is None:
-            access_state = ContentAccessState(state="full", reason="cached_prefetch", referralDaysLeft=None, subscriptionActive=None, accessUntil=None)
+            access_state = ContentAccessState(state="full")
 
         # W-ACCESS.3: If locked, return preview payload
         if access_state.state == "locked":
@@ -190,14 +224,18 @@ class TodayService:
         # If user changes birth data, hash changes → cache miss → fresh data.
         profile_hash = NatalContextService.compute_profile_hash(profile)
 
-        # W5: Determine selected scoring version before cache read
-        sel_version = selected_scoring_version_for_flags()
+        # W2: Snapshot one request-local selection family before cache read.
+        force_v2 = selection_context.force_v2 if selection_context is not None else False
+        selected_scoring_version = selected_scoring_version_for_flags(force_v2=force_v2)
+        selected_v2 = str(selected_scoring_version) == str(SCORING_V2_VERSION)
+        compute_v2 = should_compute_v2(force_v2=force_v2)
 
         # W5: Build versioned cache key for read with expected identity
         cache_key = expected_cache_identity(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=profile_hash,
+            selected_scoring_version=selected_scoring_version,
         )
 
         # W-5.2: Check cache first (keyed by user_id + target_date + profile_hash + cache_key_hash)
@@ -209,6 +247,10 @@ class TodayService:
         # W-NATAL-FULL: Use cached natal context instead of direct sidecar call
         context_service = NatalContextService(self.db)
         natal_context = await context_service.get_or_build_natal_context(user_id)
+        birth_date = profile.birthday
+        birth_tz = profile.birth_tz
+        if birth_date is None or birth_tz is None:
+            raise RuntimeError("validated natal profile is missing birth identity")
 
         # Get SolarSage client — only for transits now
         client = get_solarsage_client()
@@ -258,14 +300,14 @@ class TodayService:
                 "lon": float(profile.current_lon),
                 "tz": profile.current_tz,
             }
-        if should_compute_v2():
+        if compute_v2:
             try:
                 sidecar_layer = await client.get_activation_layer(
-                    birth_date=profile.birthday.isoformat(),
+                    birth_date=birth_date.isoformat(),
                     birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
                     birth_lat=float(profile.birth_lat),
                     birth_lon=float(profile.birth_lon),
-                    birth_tz=profile.birth_tz,
+                    birth_tz=birth_tz,
                     target_date=target_date.isoformat(),
                     target_time="12:00",
                     target_tz=profile.current_tz or profile.birth_tz or "UTC",
@@ -274,7 +316,7 @@ class TodayService:
                 )
             except Exception as e:
                 sidecar_error = str(e)
-                if settings.solarsage_v2_enabled:
+                if selected_v2:
                     raise  # Fail loudly when V2 is enabled
                 # Shadow fail-open logging (only reached when V2 is not enabled)
                 with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="V2_SHADOW"):
@@ -309,44 +351,33 @@ class TodayService:
             activation_layer=activation_layer,
             user_id=user_id,
             target_date=target_date.isoformat(),
+            force_v2=force_v2,
         )
+        if str(dual.selected_scoring_version) != str(selected_scoring_version):
+            raise RuntimeError("Today scoring selection split-brain detected")
         scoring_result = dict(dual.selected_result)
         from app.schemas.normalization import normalize_top_signals
         scoring_result["top_signals"] = normalize_top_signals(scoring_result.get("top_signals", []))
-        scoring_version = dual.selected_scoring_version
 
-        # Rebuild cache key with actual runtime version fields for write.
-        # Version identity follows the *selected* scoring path, not the local
-        # fallback activation-layer calculation_version (which may always be V2).
-        # Selected scoring version is the source of truth for payload/cache identity.
-        # Do not key V2 identity off SOLARSAGE_V2_FRONTEND_ENABLED.
-        v2_selected = str(scoring_version) == str(SCORING_V2_VERSION)
-        if v2_selected:
-            calc_version = CALCULATION_VERSION
-            al_version = (
-                activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
-            )
-            fe_version = V2_FRONTEND_PAYLOAD_VERSION
-            p_version = TODAY_V2_PAYLOAD_VERSION
-            scoring_version = SCORING_V2_VERSION
-        else:
-            calc_version = LEGACY_CALCULATION_VERSION
-            al_version = (
-                activation_layer.activation_layer_version or ACTIVATION_LAYER_VERSION
-            )
-            fe_version = LEGACY_FRONTEND_PAYLOAD_VERSION
-            p_version = TODAY_V1_PAYLOAD_VERSION
-            # Keep scoring_version intentional for V1 (int 1), even if dual-run computed V2.
-            scoring_version = LEGACY_SCORING_VERSION
+        # Use canonical runtime identity resolver — single source of truth
+        # for V1/V2 version family mapping. Selected scoring version is the
+        # only family selector; the caller's activation-layer version is
+        # retained when non-null.
+        identity = resolve_today_runtime_identity(
+            selected_scoring_version=dual.selected_scoring_version,
+            activation_layer_version=activation_layer.activation_layer_version,
+        )
+        v2_selected = identity.payload_version == TODAY_V2_PAYLOAD_VERSION
 
         cache_key = build_today_cache_key(
             user_id=user_id,
             target_date=target_date.isoformat(),
             profile_hash=profile_hash,
-            calculation_version=calc_version,
-            activation_layer_version=al_version,
-            scoring_version=scoring_version,
-            frontend_payload_version=fe_version,
+            calculation_version=identity.calculation_version,
+            activation_layer_version=identity.activation_layer_version,
+            scoring_version=identity.scoring_version,
+            content_version=identity.content_version,
+            frontend_payload_version=identity.frontend_payload_version,
         )
 
         # W-4.3: Build semantic layer
@@ -393,7 +424,7 @@ class TodayService:
         notes_text = await llm_service.generate_notes(
             scoring_result["day_status"],
             scoring_result["sphere_scores"],
-            semantic_layer,
+            semantic_layer.model_dump(),
         )
 
         # W-4.2: Build why-this-happens sections via LLM
@@ -474,28 +505,49 @@ class TodayService:
             if dual.v2_result is None:
                 raise RuntimeError("V2 selected but v2_result is missing")
             from app.services.semantic_v2_service import SemanticV2Service
+            horizon_result = self._horizon_integration_service.build(
+                activation_layer=activation_layer,
+                scoring_result=dual.v2_result,
+                natal_context=natal_context,
+                concrete_advice=concrete_advice,
+            )
+            horizon_pipeline_audit: TodayV2HorizonPipelineAudit
+            if horizon_result.status == "built":
+                horizon_pipeline_audit = TodayV2HorizonPipelineAuditBuilt(
+                    status="built",
+                    reason="selected",
+                    selected_count=3,
+                )
+            else:
+                horizon_pipeline_audit = TodayV2HorizonPipelineAuditUnavailable(
+                    status="unavailable",
+                    reason=horizon_result.selection_reason,
+                    selected_count=0,
+                )
             v2_block = SemanticV2Service().build_v2_block(
                 activation_layer=activation_layer,
                 scoring_result=dual.v2_result,
                 v1_v2_diff=dual.diff,
                 trace_id=getattr(dual, "trace_id", None),
+                horizons=horizon_result.horizons,
+                horizon_pipeline_audit=horizon_pipeline_audit,
             )
 
         payload = TodayPayload(
             meta=TodayMeta(
                 schema_version="today/v1",
                 contract_version=3,
-                calculation_version=calc_version,
+                calculation_version=identity.calculation_version,
                 normalization_version=1,
-                scoring_version=scoring_version,
+                scoring_version=identity.scoring_version,
                 prompt_version=2,
-                content_version=TODAY_CONTENT_VERSION,
+                content_version=identity.content_version,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
                 canon_versions=get_canon_versions(),
-                activation_layer_version=al_version,
-                payload_version=p_version,
-                frontend_payload_version=fe_version,
+                activation_layer_version=identity.activation_layer_version,
+                payload_version=identity.payload_version,
+                frontend_payload_version=identity.frontend_payload_version,
             ),
             date=target_date.isoformat(),
             title="Сегодня",
@@ -530,16 +582,18 @@ class TodayService:
 
         # Defensive contract invariants: V2 identity requires a non-null V2 body.
         if payload.meta.payload_version == TODAY_V2_PAYLOAD_VERSION and payload.v2 is None:
-            raise RuntimeError("TodayPayload declares today.v2 but v2 block is missing")
+            raise RuntimeError("current V2 payload identity requires v2 block")
         if payload.meta.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION and payload.v2 is None:
-            raise RuntimeError("TodayPayload frontend v2 identity requires v2 block")
+            raise RuntimeError("current frontend V2 identity requires v2 block")
 
         # W-5.2: Cache payload (with profile_hash in key)
         await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
 
         # W-5.2: Prefetch week in background (don't block user)
-        if not skip_prefetch:
-            asyncio.ensure_future(self._prefetch_week(user_id, target_date))
+        if not skip_prefetch and settings.app_env != "test":
+            prefetch_task = asyncio.create_task(self._prefetch_week(user_id, target_date))
+            _TODAY_PREFETCH_TASKS.add(prefetch_task)
+            prefetch_task.add_done_callback(_TODAY_PREFETCH_TASKS.discard)
 
         return payload
 
@@ -717,9 +771,9 @@ class TodayService:
         payload_version = meta.get("payload_version", meta.get("payloadVersion"))
         frontend_version = meta.get("frontend_payload_version", meta.get("frontendPayloadVersion"))
         v2_block = payload_dict.get("v2", payload_dict.get("V2"))
-        if payload_version == "today.v2" and v2_block is None:
+        if payload_version in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS and v2_block is None:
             return None
-        if frontend_version == 2 and v2_block is None:
+        if frontend_version in V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS and v2_block is None:
             return None
 
         try:
@@ -910,15 +964,21 @@ class TodayService:
     async def _prefetch_week(self, user_id, today: Date) -> None:
         """Prefetch 7 days of payloads in background. W-5.2.
 
-        Delegates to get_today_payload(skip_prefetch=True) which handles
-        cache check internally with the correct profile_hash.
-        Errors are logged at debug level but do not break the app.
+        Each day uses a fresh SessionLocal session. Errors are logged as
+        warnings and do not break the app or the foreground response.
         """
-        days = [today + timedelta(days=i) for i in range(-3, 4)]  # today ±3 days
+        days = [today + timedelta(days=i) for i in range(-3, 4)]
 
-        async def _calc_one(day: Date):
+        async def _calc_one(day: Date) -> None:
             try:
-                await self.get_today_payload(user_id, day, None, skip_prefetch=True)
+                async with SessionLocal() as session:
+                    service = TodayService(session, self._horizon_integration_service)
+                    await service.get_today_payload(
+                        user_id,
+                        day,
+                        None,
+                        skip_prefetch=True,
+                    )
             except Exception:
                 with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="PREFETCH_WEEK"):
                     log_event(
@@ -927,9 +987,8 @@ class TodayService:
                         msg=f"Prefetch failed for day {day}",
                     )
 
-        tasks = [_calc_one(d) for d in days]
         try:
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*[_calc_one(day) for day in days])
         except Exception:
             with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="PREFETCH_WEEK"):
                 log_event(

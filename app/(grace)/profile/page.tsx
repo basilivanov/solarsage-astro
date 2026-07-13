@@ -1,24 +1,34 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_PROFILE_PAGE
-// ROLE: Next.js page
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: APP_PROFILE_PAGE — profile screen data-composition route.
+// ROLE: Client Next.js page called by /profile; combines access hook state with asynchronously loaded profile meta for ProfileScreen.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI page — component
+
+// START_MODULE_CONTRACT: M-APP-PROFILE-PAGE
+// purpose: Render ProfileScreen with current access and horary/referral metadata from the real API facade.
 // owns:
 //   - app/(grace)/profile/page.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
+// inputs: useAccess state and getProfileMeta response.
+// outputs: ProfileScreen with access, currentState and profileMeta.
+// dependencies: React useEffect/useState; ProfileScreen; useAccess; getProfileMeta; ProfileMeta.
+// side_effects: Performs one profile-meta request and updates React state.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - A complete zero/default ProfileMeta is available before the request resolves.
+//   - Fetch failure preserves the safe default instead of injecting mock data.
+// failure_policy: Profile-meta rejection is intentionally absorbed with the default; render errors bubble to the route boundary.
+// END_MODULE_CONTRACT: M-APP-PROFILE-PAGE
+
+// START_MODULE_MAP: M-APP-PROFILE-PAGE
+// public_entrypoints:
+//   - ProfilePage (default).
+// semantic_blocks:
+//   - DEFAULT_META: initialize honest empty horary/referral values.
+//   - META_LOAD: replace defaults only after a successful real API response.
+//   - PAGE_COMPOSITION: render ProfileScreen.
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx (indirect screen contract).
+// END_MODULE_MAP: M-APP-PROFILE-PAGE
 "use client"
 
 import { useEffect, useState } from "react"

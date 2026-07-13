@@ -48,7 +48,11 @@ export function useOnboarded() {
       .then(profile => {
         if (profile?.isOnboarded) {
           logger.info('[Onboarded] Backend says onboarded — syncing localStorage')
-          try { window.localStorage.setItem(STORAGE_KEYS.onboarded, "1") } catch {}
+          try {
+            window.localStorage.setItem(STORAGE_KEYS.onboarded, "1")
+          } catch {
+            // Browser storage is best-effort; authenticated backend state remains authoritative.
+          }
           setOnboardedState(true)
         } else {
           setOnboardedState(false)
@@ -65,7 +69,9 @@ export function useOnboarded() {
       } else {
         window.localStorage.removeItem(STORAGE_KEYS.onboarded)
       }
-    } catch {}
+    } catch {
+      // Keep React state authoritative when browser storage is unavailable.
+    }
     setOnboardedState(value)
   }, [])
 
@@ -73,7 +79,9 @@ export function useOnboarded() {
     logger.info('[Onboarded] Reset')
     try {
       window.localStorage.removeItem(STORAGE_KEYS.onboarded)
-    } catch {}
+    } catch {
+      // Reset still succeeds in React state when browser storage is unavailable.
+    }
     setOnboardedState(false)
   }, [])
 

@@ -1,24 +1,36 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_NATAL_PAGE
-// ROLE: Next.js page
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: APP_NATAL_PREVIEW_PAGE — real natal preview route and state renderer.
+// ROLE: Client Next.js page called by /readings/natal; loads the real preview contract and composes all preview states and sections.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI page — component
+
+// START_MODULE_CONTRACT: M-APP-NATAL-PREVIEW-PAGE
+// purpose: Fetch and render the natal preview, including incomplete-profile, failure and ready states.
 // owns:
 //   - app/(grace)/readings/natal/page.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
+// inputs: fetchNatalPreview result and retry action.
+// outputs: stable natal-preview screen with loading, profile-incomplete, error or ready content.
+// dependencies: React hooks; next/link; natal preview components/chart; fetchNatalPreview; NatalPreviewRead.
+// side_effects: Performs preview API requests and updates React state.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - data-testid=natal-preview-screen exposes data-state for every state.
+//   - Ready content uses only the real typed preview response.
+//   - Retry reuses the same canonical load callback.
+// failure_policy: Profile/API failures become explicit accessible UI; unexpected render errors bubble to the route boundary.
+// END_MODULE_CONTRACT: M-APP-NATAL-PREVIEW-PAGE
+
+// START_MODULE_MAP: M-APP-NATAL-PREVIEW-PAGE
+// public_entrypoints:
+//   - NatalReadingPage (default).
+// semantic_blocks:
+//   - PREVIEW_LOAD: fetch and classify preview result.
+//   - STATE_ATTRIBUTES: expose stable screen state contract.
+//   - READY_COMPOSITION: render hero, insights, chart, spheres, planets, locked chapters and CTA.
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+//   - __tests__/natal/natal-no-english.test.tsx
+// END_MODULE_MAP: M-APP-NATAL-PREVIEW-PAGE
 "use client"
 
 import { useCallback, useEffect, useState } from "react"

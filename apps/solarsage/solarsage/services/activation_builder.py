@@ -8,20 +8,30 @@
 
 from __future__ import annotations
 
-import math
+import calendar
 import os
 import pathlib
+from datetime import date as Date, timedelta
 from typing import Any
 
 import yaml
 
 from solarsage.core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
+from solarsage.services import firdar as firdar_service
+from solarsage.services.returns import (
+    calculate_lunar_return,
+    calculate_solar_return,
+    find_next_lunar_return_jd,
+    find_solar_return_jd,
+)
+from solarsage.services.transit_timing import TransitTimingSolver, TransitTimingError
 from solarsage.schemas.activation import ActivationLayer, ActivationEvidence
 from solarsage.utils.ephemeris import (
     calculate_julian_day,
     calculate_positions,
     calculate_houses_cusps,
     get_sign,
+    julian_day_to_utc_iso,
 )
 
 # ── Canon aspect map ─────────────────────────────────────────────────────────
@@ -229,11 +239,13 @@ def _build_aspect_activation(
     target_longitude: float,
     aspect_name: str,
     orb: float,
-    applying: bool,
+    applying: bool | None,
     phase: str,
     strength: float,
     polarity: str,
-    exact_at: str | None,
+    active_from: str | None = None,
+    exact_at: str | None = None,
+    active_until: str | None = None,
     evidence: str,
     debug: dict[str, Any] | None = None,
     angle: str | None = None,
@@ -258,7 +270,9 @@ def _build_aspect_activation(
         aspect=aspect_name,
         orb=round(orb, 4),
         applying=applying,
+        active_from=active_from,
         exact_at=exact_at,
+        active_until=active_until,
         phase=phase,
         strength=round(strength, 4),
         polarity=polarity,
@@ -409,18 +423,16 @@ def _get_return_strength(rules: dict, kind: str) -> float:
 
 
 def safe_replace_year(
-    d: "Date",
+    d: Date,
     year: int,
     *,
     feb29_policy: str = "feb28",
-) -> "Date":
+) -> Date:
     """Replace year on a date with an explicit Feb 29 policy.
 
     Default policy ``feb28`` maps Feb 29 births onto Feb 28 in non-leap years.
     ``mar01`` maps them onto March 1 instead.
     """
-    from datetime import date as Date
-
     try:
         return d.replace(year=year)
     except ValueError:
@@ -433,7 +445,7 @@ def safe_replace_year(
         raise
 
 
-def _completed_years(birth_local: "Date", target_local: "Date") -> int:
+def _completed_years(birth_local: Date, target_local: Date) -> int:
     """Completed full years between two local dates.
 
     Feb 29 births use the feb28 policy birthday in non-leap years.
@@ -445,21 +457,18 @@ def _completed_years(birth_local: "Date", target_local: "Date") -> int:
     return max(0, age)
 
 
-def _add_months_with_clamp(d: "Date", months: int) -> "Date":
+def _add_months_with_clamp(d: Date, months: int) -> Date:
     """Add months to a date, clamping day to month max."""
-    from datetime import date as Date
     total_month = d.month - 1 + months
     year = d.year + total_month // 12
     month = total_month % 12 + 1
-    import calendar
     max_day = calendar.monthrange(year, month)[1]
     day = min(d.day, max_day)
     return Date(year, month, day)
 
 
-def _local_date(date_str: str, tz_str: str) -> "Date":
+def _local_date(date_str: str, tz_str: str) -> Date:
     """Convert a date-only string to a date. Time is irrelevant for local date."""
-    from datetime import date as Date
     # For profections, we use the date as given (birth date or target date in target_tz).
     # The target_time is already the middle of the day (12:00), not midnight boundary.
     # For simplicity and to match TZ expectations, we parse the YYYY-MM-DD directly
@@ -602,6 +611,10 @@ def build_activation_layer(
     # Cache for firdar context (computed once when both techniques are active)
     firdar_ctx: tuple | None = None
 
+    # Request-scoped TransitTimingSolver
+    has_transit_tech = any(t in active for t in ("transit_to_natal", "transit_to_angle", "transit_to_lot"))
+    timing_solver = TransitTimingSolver(target_jd=target_jd) if has_transit_tech else None
+
     for tech in active:
         if tech == "transit_planet_in_house":
             for tname, tpos in transit_by_name.items():
@@ -669,28 +682,59 @@ def build_activation_layer(
                     polarity = _classify_polarity(best_aspect)
 
                     # Phase / applying — compare orb to aspect, not raw distance
-                    probe_jd = target_jd + 0.1
-                    probe_positions = calculate_positions(probe_jd)
-                    probe_by_name: dict[str, dict] = {}
-                    for pp in probe_positions:
-                        probe_by_name[pp["name"]] = pp
-                    probe_tlon = probe_by_name.get(tname, {}).get("longitude", tlon)
-                    probe_adist = _angular_distance(probe_tlon, tlon_target)
+                    # Try using the request-scoped solver first
+                    timing_result = None
+                    timing_error_code: str | None = None
+                    try:
+                        if timing_solver:
+                            timing_result = timing_solver.solve(
+                                source_planet=tname,
+                                target_longitude=tlon_target,
+                                aspect_angle=ASPECT_ANGLES[best_aspect],
+                                max_orb=max_orb,
+                            )
+                    except TransitTimingError as e:
+                        # Append a warning with format transit_timing:<activation_id>:<code>
+                        # but keep the activation using fallback logic
+                        aid_for_warning = _build_aspect_id(
+                            {"transit_to_natal": "t2n", "transit_to_angle": "t2a", "transit_to_lot": "t2l"}.get(tech, "t2x"),
+                            tname, best_aspect, tkey,
+                        )
+                        timing_error_code = e.code
+                        warnings_list.append(f"transit_timing:{aid_for_warning}:{timing_error_code}")
 
-                    aspect_angle = ASPECT_ANGLES[best_aspect]
-                    current_orb = abs(adist - aspect_angle)
-                    probe_orb = abs(probe_adist - aspect_angle)
-
-                    tolerance = 1e-6
-                    if abs(probe_orb - current_orb) < tolerance:
-                        applying = False
-                        phase = "exact"
-                    elif probe_orb < current_orb:
-                        applying = True
-                        phase = "applying"
+                    if timing_result:
+                        applying = timing_result.applying
+                        phase = timing_result.phase
+                        active_from = timing_result.active_from_utc
+                        exact_at = timing_result.exact_at_utc
+                        active_until = timing_result.active_until_utc
                     else:
-                        applying = False
-                        phase = "separating"
+                        probe_jd = target_jd + 0.1
+                        probe_positions = calculate_positions(probe_jd)
+                        probe_by_name: dict[str, dict] = {}
+                        for pp in probe_positions:
+                            probe_by_name[pp["name"]] = pp
+                        probe_tlon = probe_by_name.get(tname, {}).get("longitude", tlon)
+                        probe_adist = _angular_distance(probe_tlon, tlon_target)
+
+                        aspect_angle = ASPECT_ANGLES[best_aspect]
+                        current_orb = abs(adist - aspect_angle)
+                        probe_orb = abs(probe_adist - aspect_angle)
+
+                        tolerance = 1e-6
+                        if abs(probe_orb - current_orb) < tolerance:
+                            applying = False
+                            phase = "exact"
+                        elif probe_orb < current_orb:
+                            applying = True
+                            phase = "applying"
+                        else:
+                            applying = False
+                            phase = "separating"
+                        active_from = None
+                        exact_at = None
+                        active_until = None
 
                     # Evidence string with frame — human-readable display names
                     src_display = tname
@@ -718,8 +762,24 @@ def build_activation_layer(
                         "max_orb": round(max_orb, 4),
                         "aspect_angle": ASPECT_ANGLES[best_aspect],
                         "aspect_weight": aspect_weight,
-                        "applying_probe_days": 0.1,
                     }
+                    if timing_result:
+                        debug_info["timing"] = {
+                            "selected_branch": timing_result.selected_branch,
+                            "selected_exact_longitude": round(timing_result.selected_exact_longitude, 6),
+                            "occurrence_index": timing_result.occurrence_index,
+                            "exact_hits_in_window": list(timing_result.exact_hits_in_window),
+                            "warning_code": timing_result.warning_code,
+                            "boundary_tolerance_seconds": 300,
+                            "exact_tolerance_seconds": 60,
+                        }
+                    elif timing_error_code:
+                        debug_info["applying_probe_days"] = 0.1
+                        debug_info["timing"] = {
+                            "warning_code": timing_error_code,
+                            "boundary_tolerance_seconds": 300,
+                            "exact_tolerance_seconds": 60,
+                        }
 
                     extra_kw: dict[str, Any] = {}
                     if ttype == "angle":
@@ -751,7 +811,9 @@ def build_activation_layer(
                         phase=phase,
                         strength=strength,
                         polarity=polarity,
-                        exact_at=None,
+                        active_from=active_from,
+                        exact_at=exact_at,
+                        active_until=active_until,
                         evidence=evidence,
                         debug=debug_info,
                         **extra_kw,
@@ -787,6 +849,16 @@ def build_activation_layer(
                 activation_rules = _load_activation_rules()
                 annual_strength = _get_period_strength(activation_rules, "annual_profection")
 
+                # calculate annual start and until dates
+                annual_start = safe_replace_year(birth_local, target_local.year)
+                if annual_start > target_local:
+                    annual_start = safe_replace_year(birth_local, target_local.year - 1)
+                annual_next = safe_replace_year(birth_local, annual_start.year + 1)
+                annual_until = annual_next - timedelta(days=1)
+
+                annual_start_iso = annual_start.isoformat()
+                annual_until_iso = annual_until.isoformat()
+
                 # House activation
                 house_ev_id = f"annual_profection__HOUSE__{annual_house}"
                 house_ev = ActivationEvidence(
@@ -799,6 +871,9 @@ def build_activation_layer(
                     source_frame="natal",
                     target_frame="natal",
                     house=annual_house,
+                    active_from=annual_start_iso,
+                    exact_at=None,
+                    active_until=annual_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=annual_strength,
@@ -807,11 +882,7 @@ def build_activation_layer(
                         "age": age,
                         "birth_local_date": birth_date,
                         "target_local_date": target_date,
-                        "annual_year_start": (
-                            safe_replace_year(birth_local, target_local.year - 1).isoformat()
-                            if target_local < safe_replace_year(birth_local, target_local.year)
-                            else safe_replace_year(birth_local, target_local.year).isoformat()
-                        ),
+                        "annual_year_start": annual_start_iso,
                         "house": annual_house,
                         "house_cusp_longitude": round(annual_house_lon, 4),
                         "house_cusp_sign": annual_house_sign,
@@ -835,6 +906,9 @@ def build_activation_layer(
                     source_frame="natal",
                     target_frame="natal",
                     target_planet=lord_of_year,
+                    active_from=annual_start_iso,
+                    exact_at=None,
+                    active_until=annual_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=annual_strength,
@@ -890,6 +964,14 @@ def build_activation_layer(
                 activation_rules = _load_activation_rules()
                 monthly_strength = _get_period_strength(activation_rules, "monthly_profection")
 
+                # calculate monthly start and until dates
+                monthly_start = _add_months_with_clamp(annual_year_start, completed_month_steps)
+                monthly_next = _add_months_with_clamp(annual_year_start, completed_month_steps + 1)
+                monthly_until = monthly_next - timedelta(days=1)
+
+                monthly_start_iso = monthly_start.isoformat()
+                monthly_until_iso = monthly_until.isoformat()
+
                 # House activation
                 house_ev_id = f"monthly_profection__HOUSE__{monthly_house}"
                 house_ev = ActivationEvidence(
@@ -902,6 +984,9 @@ def build_activation_layer(
                     source_frame="natal",
                     target_frame="natal",
                     house=monthly_house,
+                    active_from=monthly_start_iso,
+                    exact_at=None,
+                    active_until=monthly_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=monthly_strength,
@@ -935,6 +1020,9 @@ def build_activation_layer(
                     source_frame="natal",
                     target_frame="natal",
                     target_planet=lord_of_month,
+                    active_from=monthly_start_iso,
+                    exact_at=None,
+                    active_until=monthly_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=monthly_strength,
@@ -958,14 +1046,13 @@ def build_activation_layer(
 
         elif tech in ("firdar_major", "firdar_minor"):
             # Firdar context is computed once for both techniques before the loop.
-            # firdar_ctx is a tuple (context, major_strength, minor_strength) set
+            # firdar_ctx is a tuple (context, major_strength, minor_strength, bounds) set
             # before the loop when any firdar technique is active.
             if firdar_ctx is None:
-                from solarsage.services.firdar import calculate_firdar, _load_firdar_canon
-
-                firdar_canon = _load_firdar_canon()
-                firdar_result = calculate_firdar(
-                    birth_local=_local_date(birth_date, birth_tz),
+                firdar_canon = firdar_service._load_firdar_canon()
+                birth_date_parsed = _local_date(birth_date, birth_tz)
+                firdar_result = firdar_service.calculate_firdar(
+                    birth_local=birth_date_parsed,
                     target_local=_local_date(target_date, target_tz),
                     is_day_birth=is_day,
                     sun_house=natal_sun_house,
@@ -974,9 +1061,13 @@ def build_activation_layer(
                 ar = _load_activation_rules()
                 major_strength = _get_period_strength(ar, "firdar_major")
                 minor_strength = _get_period_strength(ar, "firdar_minor")
-                firdar_ctx = (firdar_result, major_strength, minor_strength)
+                firdar_bounds = firdar_service.calculate_firdar_period_bounds(
+                    birth_local=birth_date_parsed,
+                    context=firdar_result,
+                )
+                firdar_ctx = (firdar_result, major_strength, minor_strength, firdar_bounds)
             else:
-                firdar_result, major_strength, minor_strength = firdar_ctx
+                firdar_result, major_strength, minor_strength, firdar_bounds = firdar_ctx
 
             if tech == "firdar_major":
                 major_ev_id = f"firdar_major__PERIOD_LORD__{firdar_result.major_lord}"
@@ -990,6 +1081,9 @@ def build_activation_layer(
                     source_frame="natal",
                     target_frame="natal",
                     target_planet=firdar_result.major_lord,
+                    active_from=firdar_bounds.major_active_from.isoformat(),
+                    exact_at=None,
+                    active_until=firdar_bounds.major_active_until.isoformat(),
                     phase="period",
                     polarity="neutral",
                     strength=major_strength,
@@ -1026,6 +1120,9 @@ def build_activation_layer(
                     source_frame="natal",
                     target_frame="natal",
                     target_planet=firdar_result.minor_lord,
+                    active_from=firdar_bounds.minor_active_from.isoformat(),
+                    exact_at=None,
+                    active_until=firdar_bounds.minor_active_until.isoformat(),
                     phase="period",
                     polarity="neutral",
                     strength=minor_strength,
@@ -1082,7 +1179,24 @@ def build_activation_layer(
                 # ── Solar return ──────────────────────────────────
                 target_year = _local_date(target_date, target_tz).year
 
-                from solarsage.services.returns import calculate_solar_return
+                # Determine correct solar return year based on target date
+                natal_sun_lon_tmp = natal_sun.get("longitude", 0.0)
+
+                birth_parts = birth_date.split("-")
+                birth_month = int(birth_parts[1])
+                birth_day = int(birth_parts[2])
+
+                candidate_jd = find_solar_return_jd(
+                    natal_sun_longitude=natal_sun_lon_tmp,
+                    birth_month=birth_month,
+                    birth_day=birth_day,
+                    target_year=target_year,
+                )
+                if candidate_jd > target_jd:
+                    # Current return is previous year
+                    sr_year = target_year - 1
+                else:
+                    sr_year = target_year
 
                 sr = calculate_solar_return(
                     birth_date=birth_date,
@@ -1090,12 +1204,29 @@ def build_activation_layer(
                     birth_tz=birth_tz,
                     birth_lat=birth_lat,
                     birth_lon=birth_lon,
-                    target_year=target_year,
+                    target_year=sr_year,
                     house_system=house_system,
                     return_lat=ret_lat,
                     return_lon=ret_lon,
                     return_tz=ret_tz,
+                    natal_sun_longitude=natal_sun_lon_tmp,
                 )
+
+                # Next solar return for bounds
+                next_sr_jd = find_solar_return_jd(
+                    natal_sun_longitude=natal_sun_lon_tmp,
+                    birth_month=birth_month,
+                    birth_day=birth_day,
+                    target_year=sr_year + 1,
+                )
+
+                active_from_iso = julian_day_to_utc_iso(sr.return_jd)
+                exact_at_iso = active_from_iso
+                active_until_iso = julian_day_to_utc_iso(next_sr_jd - 1.0 / 86400.0)
+                if not sr.return_jd <= target_jd < next_sr_jd:
+                    raise ValueError(
+                        f"Solar return window invariant violated: {sr.return_jd} <= {target_jd} < {next_sr_jd}"
+                    )
 
                 # Find SR ASC/MC in natal houses
                 sr_asc_natal_house = _find_house(sr.asc_lon, natal_houses_raw)
@@ -1126,7 +1257,7 @@ def build_activation_layer(
                     "return_type": "solar",
                     "return_jd": round(sr.return_jd, 8),
                     "return_utc_iso": sr.return_utc_iso,
-                    "target_jd": calculate_julian_day(target_date, target_time, target_tz),
+                    "target_jd": target_jd,
                     "return_location_policy": location_policy,
                     "return_location_source": location_source,
                     "return_location_reason": location_reason,
@@ -1134,6 +1265,9 @@ def build_activation_layer(
                     "return_lon": ret_lon,
                     "return_tz": ret_tz,
                     "resolved_house_system": sr.house_system,
+                    "next_return_jd": round(next_sr_jd, 8),
+                    "next_return_utc_iso": julian_day_to_utc_iso(next_sr_jd),
+                    "active_until_utc": active_until_iso,
                 }
 
                 # 1. SR ASC in natal house
@@ -1148,6 +1282,9 @@ def build_activation_layer(
                     source_frame="solar_return",
                     target_frame="natal",
                     house=sr_asc_natal_house,
+                    active_from=active_from_iso,
+                    exact_at=exact_at_iso,
+                    active_until=active_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=_get_return_strength(activation_rules, "solar_return_angle_in_natal_house"),
@@ -1169,6 +1306,9 @@ def build_activation_layer(
                     source_frame="solar_return",
                     target_frame="natal",
                     house=sr_mc_natal_house,
+                    active_from=active_from_iso,
+                    exact_at=exact_at_iso,
+                    active_until=active_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=_get_return_strength(activation_rules, "solar_return_angle_in_natal_house"),
@@ -1190,6 +1330,9 @@ def build_activation_layer(
                     source_frame="solar_return",
                     target_frame="natal",
                     target_planet=chart_ruler,
+                    active_from=active_from_iso,
+                    exact_at=exact_at_iso,
+                    active_until=active_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=_get_return_strength(activation_rules, "solar_return_chart_ruler"),
@@ -1212,6 +1355,9 @@ def build_activation_layer(
                         source_frame="solar_return",
                         target_frame="solar_return",
                         house=sr_moon_house,
+                        active_from=active_from_iso,
+                        exact_at=exact_at_iso,
+                        active_until=active_until_iso,
                         phase="period",
                         polarity="neutral",
                         strength=_get_return_strength(activation_rules, "solar_return_moon_house"),
@@ -1238,6 +1384,9 @@ def build_activation_layer(
                         target_frame="solar_return",
                         target_planet=pname.upper(),
                         house=phouse,
+                        active_from=active_from_iso,
+                        exact_at=exact_at_iso,
+                        active_until=active_until_iso,
                         phase="period",
                         polarity="neutral",
                         strength=_get_return_strength(activation_rules, "solar_return_angular_planet"),
@@ -1250,8 +1399,6 @@ def build_activation_layer(
 
             elif tech == "lunar_return":
                 # ── Lunar return ──────────────────────────────────
-                from solarsage.services.returns import calculate_lunar_return
-
                 lr = calculate_lunar_return(
                     birth_date=birth_date,
                     birth_time=birth_time,
@@ -1265,7 +1412,22 @@ def build_activation_layer(
                     return_lat=ret_lat,
                     return_lon=ret_lon,
                     return_tz=ret_tz,
+                    natal_moon_longitude=natal_by_name.get("Moon", {}).get("longitude", 0.0),
                 )
+
+                # Next lunar return for bounds
+                next_lr_jd = find_next_lunar_return_jd(
+                    natal_moon_longitude=lr.natal_moon_lon,
+                    after_jd=lr.return_jd,
+                )
+
+                active_from_iso = julian_day_to_utc_iso(lr.return_jd)
+                exact_at_iso = active_from_iso
+                active_until_iso = julian_day_to_utc_iso(next_lr_jd - 1.0 / 86400.0)
+                if not lr.return_jd <= target_jd < next_lr_jd:
+                    raise ValueError(
+                        f"Lunar return window invariant violated: {lr.return_jd} <= {target_jd} < {next_lr_jd}"
+                    )
 
                 # LR ASC/MC in natal houses
                 lr_asc_natal_house = _find_house(lr.asc_lon, natal_houses_raw)
@@ -1291,7 +1453,7 @@ def build_activation_layer(
                     "return_type": "lunar",
                     "return_jd": round(lr.return_jd, 8),
                     "return_utc_iso": lr.return_utc_iso,
-                    "target_jd": calculate_julian_day(target_date, target_time, target_tz),
+                    "target_jd": target_jd,
                     "return_location_policy": location_policy,
                     "return_location_source": location_source,
                     "return_location_reason": location_reason,
@@ -1299,6 +1461,9 @@ def build_activation_layer(
                     "return_lon": ret_lon,
                     "return_tz": ret_tz,
                     "resolved_house_system": lr.house_system,
+                    "next_return_jd": round(next_lr_jd, 8),
+                    "next_return_utc_iso": julian_day_to_utc_iso(next_lr_jd),
+                    "active_until_utc": active_until_iso,
                 }
 
                 # 1. LR Moon in return house
@@ -1314,6 +1479,9 @@ def build_activation_layer(
                         source_frame="lunar_return",
                         target_frame="lunar_return",
                         house=lr_moon_house,
+                        active_from=active_from_iso,
+                        exact_at=exact_at_iso,
+                        active_until=active_until_iso,
                         phase="period",
                         polarity="neutral",
                         strength=_get_return_strength(activation_rules, "lunar_return_moon_house"),
@@ -1335,6 +1503,9 @@ def build_activation_layer(
                     source_frame="lunar_return",
                     target_frame="natal",
                     house=lr_asc_natal_house,
+                    active_from=active_from_iso,
+                    exact_at=exact_at_iso,
+                    active_until=active_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=_get_return_strength(activation_rules, "lunar_return_angle_in_natal_house"),
@@ -1356,6 +1527,9 @@ def build_activation_layer(
                     source_frame="lunar_return",
                     target_frame="natal",
                     house=lr_mc_natal_house,
+                    active_from=active_from_iso,
+                    exact_at=exact_at_iso,
+                    active_until=active_until_iso,
                     phase="period",
                     polarity="neutral",
                     strength=_get_return_strength(activation_rules, "lunar_return_angle_in_natal_house"),
@@ -1382,6 +1556,9 @@ def build_activation_layer(
                         target_frame="lunar_return",
                         target_planet=pname.upper(),
                         house=phouse,
+                        active_from=active_from_iso,
+                        exact_at=exact_at_iso,
+                        active_until=active_until_iso,
                         phase="period",
                         polarity="neutral",
                         strength=_get_return_strength(activation_rules, "lunar_return_angular_planet"),

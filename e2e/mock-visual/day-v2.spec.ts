@@ -1,8 +1,32 @@
-import { expect, test } from "@playwright/test"
+// ############################################################################
+// AI_HEADER: MODULE_E2E_MOCK_VISUAL_DAY_V2 — human-first V2 mobile review.
+// ROLE: Exercises test-only routed fixtures against the public Today DOM
+//       contract and records the four curated navigator review states.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-DAY-V2
+// purpose: Verify the human-first V2 personal story, 12-sphere navigator, and progressive Why disclosure.
+// owns:
+//   - e2e/mock-visual/day-v2.spec.ts
+// inputs: Mock fixture payloads and a running test-only preview at E2E_BASE_URL.
+// outputs: Public DOM assertions plus four visual-regression baselines/review assets.
+// dependencies: Playwright, mock route interception, test-only fixtures.
+// side_effects: Writes committed screenshot artifacts and Playwright snapshots.
+// emitted_logs: none.
+// invariants:
+//   - Product code is never mocked or imported from this test.
+//   - API interception remains Playwright-only.
+// failure_policy: Fails on missing fixture routes, public-contract regressions, or visual mismatch.
+// END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-DAY-V2
+
+import { expect, test, type Locator, type Page } from "@playwright/test"
 import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception"
-import { dayPayloadV2 } from "./fixtures/day-v2-2026-07-08"
+import { dayPayloadV2, minimalDayPayloadForDate } from "./fixtures/day-v2-2026-07-08"
 import { calendarPayload } from "./fixtures/calendar-2026-07"
 import { referralPayload, profilePayload } from "./fixtures/profile"
+import fs from "node:fs"
+import path from "node:path"
+import { inflateSync } from "node:zlib"
 
 const WEEK_STRIP_MIN_DATES = [
   "2026-07-05",
@@ -14,88 +38,268 @@ const WEEK_STRIP_MIN_DATES = [
   "2026-07-11",
 ]
 
+const ASSETS_DIR = path.join(
+  process.cwd(),
+  "docs/work/2026-07-11_solarsage-v2-three-horizon-why-preview/assets",
+)
+
+const BANNED_HUMAN_COPY = /транзит|профекци|фирдар|орб|натальн|аспект|convergence|source_frame|target_frame/i
+
 function buildReadyFixtures(): MockApiRouteFixtures {
   const fixtures: MockApiRouteFixtures = {
     "/api/day/2026-07-08": { body: dayPayloadV2 },
-    "/api/auth/dev": {
-      status: 200,
-      body: { status: "ok", userId: "mock-user-id" },
-    },
-    "/api/calendar": {
-      body: calendarPayload,
-    },
-    "/api/referral": {
-      body: referralPayload,
-    },
-    "/api/profile": {
-      body: profilePayload,
-    },
+    "/api/auth/telegram": { status: 200, body: { status: "ok", userId: "mock-user-id" } },
+    "/api/auth/dev": { status: 200, body: { status: "ok", userId: "mock-user-id" } },
+    "/api/calendar": { body: calendarPayload },
+    "/api/referral": { body: referralPayload },
+    "/api/profile": { body: profilePayload },
+    "/api/_log": { body: { ok: true } },
   }
 
   for (const dateStr of WEEK_STRIP_MIN_DATES) {
-    if (fixtures[`/api/day/${dateStr}`]) continue
-    fixtures[`/api/day/${dateStr}`] = {
-      body: { dayStatus: "steady" },
-    }
+    if (!fixtures[`/api/day/${dateStr}`]) fixtures[`/api/day/${dateStr}`] = { body: minimalDayPayloadForDate(dateStr) }
   }
-
   return fixtures
 }
 
-test.describe("W6 V2 Day Screen mock visual", () => {
-  test("renders V2 blocks: activation card, technique chips, why-today, concrete advice expanded evidence, and audit console", async ({ page }) => {
+async function installTelegramFixture(page: Page) {
+  await page.addInitScript(() => {
+    const initData = "user=%7B%22id%22%3A1%7D&auth_date=1&hash=mock"
+    ;(window as any).Telegram = {
+      WebApp: {
+        initData,
+        initDataUnsafe: { user: { id: 1 } },
+        ready: () => {},
+        expand: () => {},
+        close: () => {},
+        MainButton: { hide: () => {}, show: () => {}, onClick: () => {}, offClick: () => {}, setText: () => {} },
+        BackButton: { hide: () => {}, show: () => {}, onClick: () => {}, offClick: () => {} },
+        themeParams: {},
+        colorScheme: "light",
+        platform: "web",
+        version: "7.0",
+      },
+    }
+    localStorage.setItem("lumen:onboarded", "1")
+  })
+}
+
+async function hideNextOverlay(page: Page) {
+  await page.addStyleTag({
+    content: "nextjs-portal,[data-nextjs-dialog-overlay],#__next-build-watcher,[data-nextjs-toast],[data-next-mark-loading]{display:none!important}",
+  })
+}
+
+function nearBlackPixelRatio(png: Buffer): number {
+  let cursor = 8
+  let width = 0
+  let height = 0
+  let channels = 0
+  const idat: Buffer[] = []
+  while (cursor < png.length) {
+    const length = png.readUInt32BE(cursor)
+    const type = png.subarray(cursor + 4, cursor + 8).toString("ascii")
+    const data = png.subarray(cursor + 8, cursor + 8 + length)
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0)
+      height = data.readUInt32BE(4)
+      if (data[8] !== 8 || ![2, 6].includes(data[9])) throw new Error("Expected an 8-bit RGB or RGBA Playwright PNG")
+      channels = data[9] === 6 ? 4 : 3
+    }
+    if (type === "IDAT") idat.push(data)
+    cursor += length + 12
+  }
+  const bytesPerRow = width * channels
+  const decompressed = inflateSync(Buffer.concat(idat))
+  let offset = 0
+  let nearBlack = 0
+  let previous = Buffer.alloc(bytesPerRow)
+  for (let row = 0; row < height; row += 1) {
+    const filter = decompressed[offset]
+    offset += 1
+    const raw = decompressed.subarray(offset, offset + bytesPerRow)
+    offset += bytesPerRow
+    const current = Buffer.alloc(bytesPerRow)
+    for (let index = 0; index < bytesPerRow; index += 1) {
+      const left = index >= channels ? current[index - channels] : 0
+      const above = previous[index]
+      const upperLeft = index >= channels ? previous[index - channels] : 0
+      const predictor = filter === 0 ? 0
+        : filter === 1 ? left
+          : filter === 2 ? above
+            : filter === 3 ? Math.floor((left + above) / 2)
+              : filter === 4 ? paeth(left, above, upperLeft)
+                : (() => { throw new Error(`Unsupported PNG filter: ${filter}`) })()
+      current[index] = (raw[index] + predictor) & 0xff
+    }
+    for (let index = 0; index < bytesPerRow; index += channels) {
+      if (
+        (current[index] < 12 && current[index + 1] < 12 && current[index + 2] < 12)
+        || (channels === 4 && current[index + 3] < 250)
+      ) nearBlack += 1
+    }
+    previous = current
+  }
+  return nearBlack / (width * height)
+}
+
+function paeth(left: number, above: number, upperLeft: number): number {
+  const estimate = left + above - upperLeft
+  const leftDistance = Math.abs(estimate - left)
+  const aboveDistance = Math.abs(estimate - above)
+  const upperLeftDistance = Math.abs(estimate - upperLeft)
+  return leftDistance <= aboveDistance && leftDistance <= upperLeftDistance
+    ? left
+    : aboveDistance <= upperLeftDistance ? above : upperLeft
+}
+
+function expectLightThemePng(png: Buffer) {
+  expect(nearBlackPixelRatio(png)).toBeLessThan(0.001)
+}
+
+async function capturePage(page: Page, name: string) {
+  fs.mkdirSync(ASSETS_DIR, { recursive: true })
+  const png = await page.screenshot({ path: path.join(ASSETS_DIR, name), fullPage: false })
+  expectLightThemePng(png)
+  await expect(page).toHaveScreenshot(name)
+}
+
+async function captureLocator(locator: Locator, name: string) {
+  fs.mkdirSync(ASSETS_DIR, { recursive: true })
+  const png = await locator.screenshot({ path: path.join(ASSETS_DIR, name) })
+  expectLightThemePng(png)
+  await expect(locator).toHaveScreenshot(name)
+}
+
+test.describe("V2 human-first navigator mock visual", () => {
+  test("renders, navigates, explains, and captures the four review states", async ({ page }) => {
+    test.setTimeout(90_000)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await installTelegramFixture(page)
     const tracker = await installMockApiRoutes(page, buildReadyFixtures())
 
-    // 1. Visit day page without audit console query param
     await page.goto("/day/2026-07-08")
-    await page.waitForLoadState("networkidle")
+    await expect(page.getByTestId("auth-loading")).toBeHidden({ timeout: 30_000 })
+    await hideNextOverlay(page)
 
-    // Assert screen state
     const screen = page.getByTestId("today-screen")
-    await expect(screen).toHaveAttribute("data-state", "ready")
+    const summary = page.getByTestId("day-summary-card")
+    const story = page.getByTestId("activation-evidence-card")
+    const navigator = page.getByTestId("concrete-day-advice")
+    const why = page.getByTestId("why-expanded")
+    await expect(screen).toHaveAttribute("data-state", "ready", { timeout: 30_000 })
+    await expect(summary).toBeVisible()
+    await expect(story).toBeVisible()
+    await expect(navigator).toBeVisible()
+    await expect(why).toBeVisible()
 
-    // Assert Activation Evidence Card is visible
-    const actCard = page.getByTestId("activation-evidence-card")
-    await expect(actCard).toBeVisible()
-    await expect(actCard).toContainText("Сегодня сходятся 3 независимые техники")
-    await expect(actCard).toHaveScreenshot("activation-evidence-card.png")
+    const order = await page.evaluate(() => {
+      const nodes = [
+        document.querySelector('[data-testid="day-summary-card"]'),
+        document.querySelector('[data-testid="activation-evidence-card"]'),
+        document.querySelector('[data-testid="concrete-day-advice"]'),
+        document.querySelector('[data-testid="why-expanded"]'),
+        document.querySelector('[data-testid="day-chart"], [data-testid="day-chart-unavailable"]'),
+        document.querySelector('[data-testid="day-reading"]'),
+      ]
+      for (let index = 1; index < nodes.length; index += 1) {
+        const previous = nodes[index - 1]
+        const current = nodes[index]
+        if (!(previous instanceof Element) || !(current instanceof Element)) return false
+        if (!(previous.compareDocumentPosition(current) & Node.DOCUMENT_POSITION_FOLLOWING)) return false
+      }
+      return nodes[0] instanceof Element
+    })
+    expect(order).toBe(true)
 
-    // Assert Technique Chips render
-    const chips = page.getByTestId("technique-chip")
-    await expect(chips.first()).toBeVisible()
-    await expect(chips.first()).toContainText("Транзит")
+    await expect(story).toContainText("ИМЕННО ДЛЯ ТЕБЯ")
+    await expect(story).toContainText("Главное:")
+    await expect(story.getByTestId("personal-story-sphere-link")).toHaveCount(3)
+    await expect(story).not.toContainText(BANNED_HUMAN_COPY)
+    await expect(navigator.getByTestId("concrete-day-advice-row")).toHaveCount(12)
+    await expect(navigator).not.toContainText("Показать ещё")
+    await expect(navigator).not.toContainText("все 12 сфер")
 
-    // Assert Why-Today renders
-    await page.getByRole("button", { name: "Почему именно сегодня" }).click()
-    const whyToday = page.getByTestId("why-today")
-    await expect(whyToday).toBeVisible()
-    await expect(whyToday).toContainText("Профекция года активирует 3 дом")
+    const work = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Работа", { exact: true }) })
+    await work.click()
+    await expect(work).toHaveAttribute("data-selected", "true")
+    await expect(work).toHaveAttribute("aria-expanded", "true")
+    const workDetails = navigator.getByTestId("concrete-day-advice-details")
+    await expect(workDetails).toHaveAttribute("data-sphere-key", "work")
+    await expect(workDetails).toContainText("Не форсируйте разговор о статусе — сначала отделите принципиальное от реакции на давление")
+    await expect(workDetails).not.toContainText(BANNED_HUMAN_COPY)
+    await expect(navigator.getByTestId("concrete-day-advice-details")).toHaveCount(1)
 
-    // Assert Concrete Advice Row is present
-    const row = page.getByTestId("concrete-day-advice-row").first()
-    await expect(row).toBeVisible()
-    await expect(row).toContainText("Работа")
+    const money = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Деньги", { exact: true }) })
+    await money.focus()
+    await page.keyboard.press("Enter")
+    await expect(money).toHaveAttribute("data-selected", "true")
+    await expect(work).toHaveAttribute("data-selected", "false")
+    await expect(navigator.getByTestId("concrete-day-advice-details")).toHaveCount(1)
+    await page.keyboard.press("Space")
+    await expect(navigator.getByTestId("concrete-day-advice-details")).toHaveCount(0)
 
-    // Click row to expand evidence
-    await row.click()
-    const evidence = page.getByTestId("concrete-day-advice-evidence")
-    await expect(evidence).toBeVisible()
-    await expect(evidence).toContainText("Transit Mars trine natal Saturn")
+    const heroWork = story.getByTestId("personal-story-sphere-link").filter({ hasText: "Работа и статус" })
+    await heroWork.click()
+    await expect(work).toHaveAttribute("data-selected", "true")
 
-    // Dev Audit Drawer should be hidden by default
-    const auditDrawer = page.getByTestId("dev-audit-drawer")
-    await expect(auditDrawer).toBeHidden()
+    const whyToggle = story.getByTestId("personal-story-why-cta")
+    await whyToggle.click()
+    const whyMainToggle = page.locator("#why-expanded-toggle")
+    await expect(whyMainToggle).toHaveAttribute("aria-expanded", "true")
+    const humanWhy = why.getByTestId("why-horizons")
+    await expect(humanWhy).toHaveAttribute("data-source", "backend-horizons")
+    await expect(humanWhy.getByTestId("why-horizon")).toHaveCount(3)
+    const horizonOrder = await humanWhy.getByTestId("why-horizon").evaluateAll((items) => items.map((item) => item.getAttribute("data-horizon")))
+    expect(horizonOrder).toEqual(["long", "medium", "fast"])
+    const toneOrder = await humanWhy.getByTestId("why-horizon-tone").evaluateAll((items) => items.map((item) => item.getAttribute("data-status")))
+    expect(toneOrder).toEqual(["mixed", "mixed", "tense"])
+    await expect(humanWhy).toContainText("Фон уже действует")
+    await expect(humanWhy).toContainText("Набирает силу")
+    await expect(humanWhy).toContainText("Пик уже пройден")
+    await expect(humanWhy).not.toContainText(BANNED_HUMAN_COPY)
 
-    // 2. Visit with audit=1 to see the audit console
-    await page.goto("/day/2026-07-08?audit=1")
-    await page.waitForLoadState("networkidle")
+    const [humanWhyHeight, humanScreenHeight] = await Promise.all([
+      why.evaluate((element) => Math.ceil(element.scrollHeight)),
+      screen.evaluate((element) => Math.ceil(element.scrollHeight)),
+    ])
+    await page.setViewportSize({ width: 390, height: Math.max(humanWhyHeight, humanScreenHeight) + 96 })
+    await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
+    await why.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(150)
+    await captureLocator(why, "01-why-three-horizons-mobile.png")
 
-    const auditDrawerVisible = page.getByTestId("dev-audit-drawer")
-    await expect(auditDrawerVisible).toBeVisible()
-    await expect(auditDrawerVisible).toContainText("Dev Audit Console")
-    await expect(auditDrawerVisible).toContainText("today.v2")
+    const astroToggle = why.getByTestId("why-horizon-technical-toggle").first()
+    await expect(astroToggle).toHaveAttribute("aria-expanded", "false")
+    await astroToggle.click()
+    await expect(astroToggle).toHaveAttribute("aria-expanded", "true")
+    const technical = why.getByTestId("why-horizon-technical-content")
+    await expect(technical).toContainText("Профекция")
+    await expect(technical).toContainText("Фирдар")
+    await expect(technical).toContainText("12 мая 2026 — 11 мая 2027")
+    await expect(technical).not.toContainText(/act-|source_frame|target_frame|strength|debug/i)
+    const fastTechnicalToggle = why.getByTestId("why-horizon-technical-toggle").nth(2)
+    await fastTechnicalToggle.click()
+    await expect(why.locator('[data-testid="why-horizon"][data-horizon="fast"] [data-testid="why-horizon-technical-content"]')).toContainText("С 8 по 10 июля по Москве")
 
-    // Verify no missing API fixtures
+    const [whyHeight, whyScreenHeight] = await Promise.all([
+      why.evaluate((element) => Math.ceil(element.scrollHeight)),
+      screen.evaluate((element) => Math.ceil(element.scrollHeight)),
+    ])
+    await page.setViewportSize({ width: 390, height: Math.max(whyHeight, whyScreenHeight) + 96 })
+    await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
+    await why.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(150)
+    await captureLocator(why, "02-why-three-horizons-calculation-mobile.png")
+
+    const fullScreenHeight = await screen.evaluate((element) => Math.ceil(element.scrollHeight))
+    await page.setViewportSize({ width: 390, height: fullScreenHeight + 96 })
+    await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
+    await page.waitForTimeout(150)
+    await capturePage(page, "03-full-day-three-horizons-mobile.png")
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+    expect(overflow).toBe(true)
     await expectNoMissingApiFixtures(page, tracker)
   })
 })

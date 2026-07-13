@@ -1,28 +1,32 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_CALENDARGRID
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_CALENDAR_GRID — calendar payload wrapper for the legacy month view.
+// ROLE: Presentational wrapper that receives one CalendarPayload and delegates month rendering to CalendarMonth.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: CalendarGrid.tsx
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-CALENDAR-GRID
+// purpose: Render the calendar-grid structural container for one calendar payload.
 // owns:
 //   - components/grace/CalendarGrid.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: payload — canonical CalendarPayload for the displayed month.
+// outputs: calendar-grid div containing one CalendarMonth.
+// dependencies: CalendarMonth; packages/contracts CalendarPayload.
+// side_effects: none.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-CALENDAR-GRID
-// wave: W-2.3
-// purpose: 3-month calendar grid display
+//   - data-testid="calendar-grid" remains stable.
+//   - The payload is passed to CalendarMonth unchanged.
+// failure_policy: Does not catch child/render errors; they propagate to caller.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-CALENDAR-GRID
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-CALENDAR-GRID
+// public_entrypoints:
+//   - CalendarGrid
+// semantic_blocks:
+//   - GRID_WRAPPER: stable container and CalendarMonth delegation.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-GRACE-COMPONENT-CALENDAR-GRID
 
 import { CalendarMonth } from './CalendarMonth';
 import type { CalendarPayload } from '@/packages/contracts';

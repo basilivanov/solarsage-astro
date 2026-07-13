@@ -1,26 +1,42 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_API_READINGS
-// ROLE: Tests — readings.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
-// purpose: Tests for readings.ts behavior
+// AI_HEADER: FRONTEND_API_READINGS — past-day reading aggregation and static product catalog.
+// ROLE: Past-day reading aggregator and static readings catalog provider.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-READINGS
+// purpose: Build unlocked reading previews from recent day payloads and expose available or coming reading products.
 // owns:
 //   - lib/api/readings.ts
-// inputs: Endpoint params, request body
-// outputs: Parsed response / typed data
-// dependencies: local modules
-// side_effects: Network calls to API
-// emitted_logs: n/a (tests)
+// inputs: limit and offset for history; authenticated session.
+// outputs: ReadingsList, ReadingsCatalog and async catalog alias.
+// dependencies: readings contracts and catalog types; TodayPayload; lucide icons; Date; Promise.all; fetch.
+// side_effects: parallel credentialed GET /api/day/:date calls for history.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT// AI_HEADER
-// module: M-API-READINGS-CLIENT
-// wave: W-2.5
-// purpose: Production API client for readings
+//   - Requested dates remain prior days derived from offset and limit.
+//   - Failed or non-ok day fetches and locked payloads are omitted.
+//   - Preview remains the first reading paragraph or an empty string.
+//   - hasMore remains entries.length equal to limit.
+//   - Stable catalog keys, copy, icons and order remain unchanged.
+// failure_policy: Per-day transport or non-ok failures return null and are omitted; catalog functions do not throw.
+// END_MODULE_CONTRACT: M-FRONTEND-API-READINGS
+
+// START_MODULE_MAP: M-FRONTEND-API-READINGS
+// public_entrypoints:
+//   - getReadingsList
+//   - listReadings
+//   - listReadingsAsync
+// semantic_blocks:
+//   - HISTORY_DATE_PLAN: derive prior dates from offset and limit.
+//   - DAY_FETCH_FAIL_SOFT: fetch a day and map request failures to null.
+//   - HISTORY_ASSEMBLY: omit locked or missing days and build previews.
+//   - PRODUCT_CATALOG: expose the stable available and coming products.
+//   - ASYNC_CATALOG_ALIAS: resolve the synchronous catalog asynchronously.
+// owned_tests:
+//   - __tests__/api/readings.test.ts
+//   - __tests__/components/ReadingsScreen.test.tsx
+// END_MODULE_MAP: M-FRONTEND-API-READINGS
 
 import type { ReadingsList, ReadingEntry } from '@/lib/contracts/readings';
 import type { ReadingsCatalog } from '@/lib/readings';

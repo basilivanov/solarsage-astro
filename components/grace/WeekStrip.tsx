@@ -1,28 +1,34 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_WEEKSTRIP
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_LEGACY_WEEK_STRIP — seven-day links for legacy WeekStripDay data.
+// ROLE: Legacy seven-day link strip for WeekStripDay data, distinct from components/today/week-strip.tsx.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Page: WeekStrip
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-WEEK-STRIP
+// purpose: Render dated day links with current-date and day-status presentation.
 // owns:
 //   - components/grace/WeekStrip.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: days — ordered WeekStripDay array; currentDate — selected ISO date.
+// outputs: week-strip section containing /day/:date links.
+// dependencies: next/link; lib/utils cn; packages/contracts WeekStripDay; Date.
+// side_effects: none directly; link activation delegates navigation to Next.js.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-WEEK-STRIP
-// wave: W-2.2
-// purpose: 7-day week strip navigation
+//   - aria-label="Неделя" and data-testid="week-strip" remain stable.
+//   - data-date and data-status remain on every link.
+//   - Current-date styling and supportive/tense/neutral symbols remain unchanged.
+// failure_policy: Assumes Date can parse each day.date; render errors propagate.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-WEEK-STRIP
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-WEEK-STRIP
+// public_entrypoints:
+//   - WeekStrip
+// semantic_blocks:
+//   - WEEK_LIST: ordered day links.
+//   - DAY_PRESENTATION: active state, localized weekday/day and status symbol.
+// owned_tests:
+//   - none direct; existing WeekStrip unit test targets components/today.
+// END_MODULE_MAP: M-GRACE-COMPONENT-WEEK-STRIP
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';

@@ -20,7 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect } from 'vitest'
-import { validateAdaptedTodayPayload, TodayPayloadSchema } from '../../lib/contracts/today'
+import { validateAdaptedTodayPayload } from '../../lib/contracts/today'
 
 const validTodayPayload = {
   date: '2026-06-01',

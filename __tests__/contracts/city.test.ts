@@ -20,7 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect } from 'vitest'
-import { formatCity, validateCity, validateCities, CitySchema } from '../../lib/contracts/city'
+import { formatCity, validateCity, validateCities } from '../../lib/contracts/city'
 
 const validCity = {
   name: 'Moscow',

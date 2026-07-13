@@ -2,7 +2,7 @@
 # AI_HEADER: SCRIPT_CONTRACTS_EXPORT_OPENAPI
 # ROLE: Generate packages/contracts/openapi.json from Pydantic schemas
 #       (Option B — Pydantic is the source of truth).
-# DEPENDENCIES: fastapi, app.schemas
+# DEPENDENCIES: fastapi, app.schemas.contract_registry
 # GRACE_ANCHORS: [SCHEMA_REGISTRY, OPENAPI_DUMP]
 # ############################################################################
 
@@ -10,33 +10,29 @@
 # purpose: Construct a *throw-away* FastAPI application whose only purpose is
 #          to expose every public Pydantic schema as a response_model on a
 #          dummy endpoint so that FastAPI's openapi generator emits each one
-#          as a top-level component schema. Then write the resulting OpenAPI
-#          document to packages/contracts/openapi.json.
+#          as a top-level component schema from the explicit public registry.
+#          Then write the resulting OpenAPI document to packages/contracts/openapi.json.
 # invariants:
 #   - The dummy app is NEVER served. Endpoints exist solely to anchor schemas
 #     into the openapi.components.schemas registry.
 #   - Output is deterministic: keys are sorted, indent fixed, trailing newline.
 #     This is what makes `git diff --exit-code packages/contracts/openapi.json`
 #     a reliable drift gate in CI.
-#   - Every schema re-exported by app.schemas.__all__ that is a CamelModel
-#     subclass becomes a registered component. Forgetting to re-export a
-#     schema means it never reaches the wire and CI's contracts:check will
-#     fail on the next diff.
+#   - Every public root comes from app.schemas.contract_registry as a real class
+#     object. String getattr lookup is forbidden to keep generation explicit.
 # emits: packages/contracts/openapi.json (overwritten in place).
-# consumes: app.schemas (the public re-export surface).
+# consumes: app.schemas.contract_registry (the explicit public root registry).
 # END_MODULE_CONTRACT
 
 # START_MODULE_MAP: SCRIPT_CONTRACTS_EXPORT_OPENAPI
 # - main(): entrypoint. Resolves repo root, builds dummy app, writes file.
 # - _build_app(): constructs the FastAPI() and registers one GET route per
-#                 top-level Pydantic model from app.schemas.
-# - _iter_top_level_models(): filters app.schemas for CamelModel subclasses.
+#                 validated public registry root.
 # END_MODULE_MAP
 
 # START_BLOCK: IMPORTS
 from __future__ import annotations
 
-import inspect
 import json
 import sys
 from pathlib import Path
@@ -50,64 +46,11 @@ sys.path.insert(0, str(API_ROOT))
 
 from fastapi import FastAPI  # noqa: E402
 
-from app import schemas as schemas_pkg  # noqa: E402
-from app.schemas._base import CamelModel  # noqa: E402
-# END_BLOCK: IMPORTS
-
-
-# START_BLOCK: SCHEMA_REGISTRY
-# Top-level "wire" payloads. Anything nested inside these is pulled into
-# components.schemas automatically via $ref by FastAPI/pydantic. Listing
-# only the roots avoids `PydanticJsonSchemaWarning` that fires when a
-# class with a Literal-typed field is registered as a response_model
-# directly (the literal is interpreted as a default value).
-_TOP_LEVEL_NAMES: tuple[str, ...] = (
-    "AccessSummary",
-    "ActivationLayer",
-    "AuthError",
-    "AuthSession",
-    "BirthData",
-    "CalendarPayload",
-    "CheckinCreate",
-    "CheckinMetrics",
-    "CheckinResponse",
-    "ConvergenceEvidence",
-    "HoraryAnswerRead",
-    "HoraryQuestionCreate",
-    "HoraryQuestionRead",
-    "HoraryQuotaRead",
-    "LocationData",
-    "NatalPayload",
-    "ProfileRead",
-    "ProfileWrite",
-    "ScoringV2Result",
-    "TelegramAuthRequest",
-    "TodayPayload",
-    "YesterdayCheckinResponse",
+from app.schemas.contract_registry import (  # noqa: E402
+    PUBLIC_CONTRACT_ROOTS,
+    validate_public_contract_roots,
 )
-
-
-def _iter_top_level_models() -> list[type[CamelModel]]:
-    """Return the closed list of top-level wire payload models.
-
-    Adding a new public payload requires:
-      1. defining it in apps/api/app/schemas/<feature>.py,
-      2. re-exporting it from app.schemas,
-      3. adding its class name to ``_TOP_LEVEL_NAMES`` above.
-
-    CI's contracts:check will fail on any unrelated drift.
-    """
-
-    out: list[type[CamelModel]] = []
-    for name in _TOP_LEVEL_NAMES:
-        obj = getattr(schemas_pkg, name)
-        if not inspect.isclass(obj) or not issubclass(obj, CamelModel):
-            raise TypeError(
-                f"{name!r} from app.schemas is not a CamelModel subclass"
-            )
-        out.append(obj)
-    return out
-# END_BLOCK: SCHEMA_REGISTRY
+# END_BLOCK: IMPORTS
 
 
 # START_BLOCK: APP_BUILDER
@@ -129,7 +72,7 @@ def _build_app() -> FastAPI:
         ),
     )
 
-    for model in _iter_top_level_models():
+    for model in validate_public_contract_roots(PUBLIC_CONTRACT_ROOTS):
         slug = model.__name__.lower()
 
         # We can't use a default-arg closure here because FastAPI inspects

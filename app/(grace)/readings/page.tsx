@@ -1,24 +1,31 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_READINGS_PAGE
-// ROLE: Next.js page
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: APP_READINGS_PAGE — readings catalogue route wrapper.
+// ROLE: Client Next.js page called by /readings; delegates catalogue UI and navigation to ReadingsScreen.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI page — component
+
+// START_MODULE_CONTRACT: M-APP-READINGS-PAGE
+// purpose: Expose the canonical readings catalogue without duplicating screen logic.
 // owns:
 //   - app/(grace)/readings/page.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: none at page level.
+// outputs: ReadingsScreen.
+// dependencies: ReadingsScreen.
+// side_effects: none at page level; delegated to ReadingsScreen.
+// emitted_logs: none at page level.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Route remains a thin wrapper around ReadingsScreen.
+// failure_policy: Screen/render failures are delegated to ReadingsScreen and the route boundary.
+// END_MODULE_CONTRACT: M-APP-READINGS-PAGE
+
+// START_MODULE_MAP: M-APP-READINGS-PAGE
+// public_entrypoints:
+//   - ReadingsPage (default).
+// semantic_blocks:
+//   - PAGE_COMPOSITION: render ReadingsScreen.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-APP-READINGS-PAGE
 'use client'
 
 import { ReadingsScreen } from "@/components/readings/readings-screen"

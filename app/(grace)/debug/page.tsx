@@ -1,24 +1,35 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_DEBUG_PAGE
-// ROLE: Next.js page
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: APP_DEBUG_PAGE — authenticated frontend/backend diagnostic route.
+// ROLE: Client Next.js diagnostic page; waits for Telegram auth, fetches /api/debug and renders API-provided session/environment status.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: API client for pagex
+
+// START_MODULE_CONTRACT: M-APP-DEBUG-PAGE
+// purpose: Display authenticated debug endpoint state for operational diagnosis without mutating user/session data.
 // owns:
 //   - app/(grace)/debug/page.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Network calls to API; React state management
-// emitted_logs: n/a (pure)
+// inputs: useTelegramAuth state and text/JSON response from GET /api/debug.
+// outputs: Loading, frontend auth, backend session, user, request and environment diagnostic panels or an error panel.
+// dependencies: React useEffect/useState; useTelegramAuth; browser fetch/JSON parser.
+// side_effects: Performs credentialed GET /api/debug, writes React state and emits console.error on fetch/parse failure.
+// emitted_logs: none (console diagnostic only).
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Debug fetch starts only after auth loading completes.
+//   - Non-OK HTTP and invalid JSON become visible error state.
+//   - Page does not write profile, auth or backend data.
+// failure_policy: Fetch/parse errors are caught and rendered; unexpected render errors bubble to the route boundary.
+// END_MODULE_CONTRACT: M-APP-DEBUG-PAGE
+
+// START_MODULE_MAP: M-APP-DEBUG-PAGE
+// public_entrypoints:
+//   - DebugPage (default).
+// semantic_blocks:
+//   - AUTH_WAIT: defer diagnostics until authentication settles.
+//   - DEBUG_FETCH: fetch, parse and classify the backend response.
+//   - DEBUG_RENDER: render loading/auth/error/backend diagnostic panels.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-APP-DEBUG-PAGE
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -78,7 +89,7 @@ export default function DebugPage() {
             setDebugInfo(data)
           }
           setLoading(false)
-        } catch (e) {
+        } catch {
           throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`)
         }
       })

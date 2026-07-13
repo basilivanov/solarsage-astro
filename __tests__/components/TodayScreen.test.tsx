@@ -20,7 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import type { AccessInfo } from '@/lib/contracts/access'
 import type { CalendarLunarFields } from '@/packages/contracts'
@@ -73,7 +73,7 @@ vi.mock('@/components/today/day-reading', () => ({
 }))
 vi.mock('@/components/today/why-expanded', () => ({
   WhyExpanded: (props: any) => (
-    <div data-testid="why-expanded">sections:{props.sections?.length ?? 0}</div>
+    <div data-testid="why-expanded" data-open={String(Boolean(props.open))}>sections:{props.sections?.length ?? 0}</div>
   ),
 }))
 vi.mock('@/components/today/week-strip', () => ({
@@ -209,9 +209,9 @@ describe('TodayScreen', () => {
       .filter((id) =>
         [
           'day-header',
-          'access-card',
           'evening-checkin-reminder',
           'day-summary-card',
+          'activation-evidence-card',
           'concrete-day-advice',
           'day-chart-unavailable',
           'day-reading',
@@ -222,19 +222,20 @@ describe('TodayScreen', () => {
         ].includes(id ?? ''),
       )
 
+    // No v2 → no activation-evidence-card gap between summary and advice
     expect(orderedIds).toEqual([
       'day-header',
-      'access-card',
       'evening-checkin-reminder',
       'day-summary-card',
       'concrete-day-advice',
+      'why-expanded',
       'day-chart-unavailable',
       'day-reading',
-      'why-expanded',
       'week-strip',
       'astro-history-widget',
       'today-bottom-disclaimer',
     ])
+    expect(screen.queryByTestId('activation-evidence-card')).toBeNull()
     expect(screen.queryByText('Standalone headline should not be in the top flow')).toBeNull()
     expect(screen.queryByTestId('today-notes')).toBeNull()
     expect(screen.getByTestId('day-reading')).toBeTruthy()
@@ -242,6 +243,128 @@ describe('TodayScreen', () => {
     expect(screen.getByTestId('week-strip')).toBeTruthy()
     expect(screen.getByTestId('astro-history-widget')).toBeTruthy()
     expect(screen.queryByTestId('paywall')).toBeNull()
+  })
+
+  it('renders subscription and unmetered full access ready without a trial card', () => {
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess({ state: 'subscription', hasAccess: true, daysLeft: 0 })}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+
+    expect(screen.getByTestId('today-screen').getAttribute('data-state')).toBe('ready')
+    expect(screen.queryByTestId('access-card')).toBeNull()
+    expect(screen.queryByTestId('trial-banner')).toBeNull()
+    expect(screen.queryByTestId('paywall')).toBeNull()
+  })
+
+  it('places V2 personal card between day summary and concrete advice', () => {
+    const payload = buildPayload({
+      v2: {
+        activationSummary: {
+          headline: 'Персональный сюжет дня',
+          topActivatedTargets: [
+            {
+              targetType: 'planet',
+              targetKey: 'PLUTO',
+              label: 'Плутон',
+              familyCount: 3,
+              techniques: ['transit_to_natal', 'annual_profection', 'firdar_major'],
+              spheres: ['crisis_transformation_control'],
+              activationIds: ['act-1'],
+            },
+          ],
+        },
+        activationEvidence: [
+          {
+            id: 'act-1',
+            technique: 'transit_to_natal',
+            techniqueFamily: 'transit',
+            targetType: 'planet',
+            targetKey: 'PLUTO',
+            kind: 'aspect',
+            active: true,
+            strength: 0.7,
+            evidence: 'structured',
+            phase: 'separating',
+            polarity: 'tense',
+            sourcePlanet: 'Moon',
+            targetPlanet: 'Pluto',
+            aspect: 'opposition',
+            orb: 1.0,
+            debug: {},
+          },
+        ],
+        scoreBreakdown: {},
+        whyToday: [],
+        audit: {
+          available: false,
+          payloadVersion: 'today.v2',
+          calculationVersion: 'ss-calc-1.1.0',
+          scoringVersion: 'ss-scoring-2.0',
+          canonVersions: {},
+        },
+      },
+      reading: { paragraphs: ['p1'] },
+      why: [whyFixture],
+      keyInsight: 'Why',
+    })
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess()}
+        payload={payload}
+        onDateChange={onDateChange}
+      />,
+    )
+    const orderedIds = Array.from(screen.getByTestId('today-screen').querySelectorAll('[data-testid]'))
+      .map((node) => node.getAttribute('data-testid'))
+      .filter((id) =>
+        ['day-summary-card', 'activation-evidence-card', 'concrete-day-advice'].includes(id ?? ''),
+      )
+    expect(orderedIds).toEqual([
+      'day-summary-card',
+      'activation-evidence-card',
+      'concrete-day-advice',
+    ])
+  })
+
+  it('resets V2 sphere and Why state to the deeplink default when the date changes', () => {
+    const payload = buildPayload({
+      v2: {
+        activationSummary: { headline: 'Персональный сюжет дня', topActivatedTargets: [] },
+        activationEvidence: [],
+        scoreBreakdown: {},
+        whyToday: [],
+        audit: { available: false, payloadVersion: 'today.v2', calculationVersion: '1', scoringVersion: '1', canonVersions: {} },
+      },
+      concreteAdvice: {
+        rows: [{ key: 'work', label: 'Работа', iconName: 'briefcase', rank: 1, verdict: 'caution', confidence: 'high', text: 'Совет', evidence: [] }],
+        counts: { good: 0, caution: 1, avoid: 0, neutral: 0 },
+      },
+    })
+    const view = render(
+      <TodayScreen selectedDate={selectedDate} access={buildAccess()} payload={payload} onDateChange={onDateChange} />,
+    )
+
+    fireEvent.click(screen.getByTestId('personal-story-why-cta'))
+    fireEvent.click(screen.getByTestId('concrete-day-advice-row'))
+    expect(screen.getByTestId('why-expanded').getAttribute('data-open')).toBe('true')
+    expect(screen.getByTestId('concrete-day-advice-row').getAttribute('data-selected')).toBe('true')
+
+    view.rerender(
+      <TodayScreen
+        selectedDate={new Date('2026-06-02T12:00:00Z')}
+        access={buildAccess()}
+        payload={payload}
+        onDateChange={onDateChange}
+      />,
+    )
+    expect(screen.getByTestId('why-expanded').getAttribute('data-open')).toBe('false')
+    expect(screen.getByTestId('concrete-day-advice-row').getAttribute('data-selected')).toBe('false')
   })
 
   it('omits check-in on non-today routes and keeps history before disclaimer', () => {
@@ -267,7 +390,6 @@ describe('TodayScreen', () => {
       .filter((id) =>
         [
           'day-header',
-          'access-card',
           'evening-checkin-reminder',
           'day-summary-card',
           'concrete-day-advice',
@@ -284,12 +406,11 @@ describe('TodayScreen', () => {
     expect(screen.queryByTestId('yesterday-echo-cta')).toBeNull()
     expect(orderedIds).toEqual([
       'day-header',
-      'access-card',
       'day-summary-card',
       'concrete-day-advice',
+      'why-expanded',
       'day-chart-unavailable',
       'day-reading',
-      'why-expanded',
       'week-strip',
       'astro-history-widget',
       'today-bottom-disclaimer',
@@ -379,7 +500,8 @@ describe('TodayScreen', () => {
     const adviceSection = screen.getByTestId('concrete-day-advice')
     expect(adviceSection).toBeTruthy()
     expect(adviceSection.textContent).toContain('Отношения')
-    expect(adviceSection.textContent).toContain('СЕНТИНЕЛ ОТНОШЕНИЯ')
+    fireEvent.click(screen.getByTestId('concrete-day-advice-row'))
+    expect(screen.getByTestId('concrete-day-advice-details').textContent).toContain('СЕНТИНЕЛ ОТНОШЕНИЯ')
     expect(adviceSection.textContent).not.toContain('sparkle')
     expect(screen.getByTestId('day-reading')).toBeTruthy()
   })
@@ -474,6 +596,8 @@ describe('TodayScreen', () => {
       />,
     )
     const banner = screen.getByTestId('trial-banner')
+    expect(screen.getByTestId('today-screen').getAttribute('data-state')).toBe('ready')
+    expect(screen.getByTestId('access-card')).toBeTruthy()
     expect(banner.textContent).toContain('daysLeft:5')
   })
 
@@ -645,19 +769,22 @@ describe('V2 activation evidence and audit rendering', () => {
       }
     }
 
-    const { getByTestId, getAllByTestId } = render(
-      <ActivationEvidenceCard v2={v2Fixture} />
+    const { getByTestId } = render(
+      <ActivationEvidenceCard
+        v2={v2Fixture}
+        concreteAdvice={{ rows: [], counts: { good: 0, caution: 0, avoid: 0, neutral: 0 } }}
+        onSphereSelect={() => {}}
+        onWhyOpen={() => {}}
+        headlineFallback="Безопасный заголовок"
+      />
     )
 
     const card = getByTestId('activation-evidence-card')
     expect(card).toBeTruthy()
-    expect(card.textContent).toContain("Сходимость на Меркурии")
-    expect(card.textContent).toContain("Меркурий")
+    expect(card.textContent).toContain("Безопасный заголовок")
 
-    const chips = getAllByTestId('technique-chip')
-    expect(chips.length).toBeGreaterThan(0)
-    expect(chips[0].textContent).toBe("Профекция")
-    expect(chips[1].textContent).toBe("Транзит")
+    expect(card.textContent).toContain("ИМЕННО ДЛЯ ТЕБЯ")
+    expect(card.querySelector('[data-testid="technique-chip"]')).toBeNull()
   })
 
   it('renders DevAuditDrawer when forceShow is true', () => {

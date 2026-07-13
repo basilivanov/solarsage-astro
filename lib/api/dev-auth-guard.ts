@@ -1,3 +1,40 @@
+// ############################################################################
+// AI_HEADER: FRONTEND_API_DEV_AUTH_GUARD — fail-closed local development origin validation.
+// ROLE: Security-critical host and proxy-origin validation used only by dev auth and fixture route handlers.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-DEV-AUTH-GUARD
+// purpose: Fail closed for non-local hosts and untrusted forwarding metadata.
+// owns:
+//   - lib/api/dev-auth-guard.ts
+// inputs: Host header or Web Request.
+// outputs: boolean local-host and unsafe-proxy decisions.
+// dependencies: Web Headers, Request and URL; fixed local and allowed header sets.
+// side_effects: none.
+// emitted_logs: none.
+// invariants:
+//   - Only localhost, 127.0.0.1 and ::1 host forms are local.
+//   - Forwarded, x-real-ip and unknown x-forwarded-* headers are unsafe.
+//   - Forwarded host, port and protocol must agree with the request.
+//   - Every x-forwarded-for address must be in the fixed local allowlist.
+//   - Absence of suspicious forwarding metadata remains safe.
+// failure_policy: Malformed or mismatched forwarding state returns unsafe=true; missing or non-local host returns false from isLocalDevHost.
+// END_MODULE_CONTRACT: M-FRONTEND-API-DEV-AUTH-GUARD
+
+// START_MODULE_MAP: M-FRONTEND-API-DEV-AUTH-GUARD
+// public_entrypoints:
+//   - isLocalDevHost
+//   - hasUnsafeProxyOriginHeaders
+// semantic_blocks:
+//   - LOCAL_ALLOWLISTS: define accepted forwarding headers and local addresses.
+//   - HOST_NORMALIZATION: normalize bracketed, named and numeric host forms.
+//   - HOST_PORT_PARSE: extract an optional host port safely.
+//   - FORWARDING_VALIDATION: reject unknown, inconsistent or non-local proxy metadata.
+// owned_tests:
+//   - __tests__/api/dev-auth-route.test.ts
+//   - __tests__/guardrails/preview-isolation.test.ts
+// END_MODULE_MAP: M-FRONTEND-API-DEV-AUTH-GUARD
+
 const NEXT_FORWARDED_HEADERS = new Set([
   'x-forwarded-for',
   'x-forwarded-host',

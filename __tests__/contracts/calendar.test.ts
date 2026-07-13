@@ -24,8 +24,6 @@ import {
   validateDayStatus,
   validateDayStatusMap,
   validateCalendarPayloadReadModel,
-  DayStatusSchema,
-  DayStatusMapSchema,
 } from '../../lib/contracts/calendar'
 
 describe('validateDayStatus', () => {

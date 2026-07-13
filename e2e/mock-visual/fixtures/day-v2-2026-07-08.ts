@@ -1,140 +1,73 @@
-import type { components } from "../../../packages/contracts/_generated"
+// ############################################################################
+// AI_HEADER: MODULE_E2E_MOCK_VISUAL_FIXTURE_DAY_V2_2026_07_08 — thin wrapper for JSON visual fixture.
+// ROLE: Loads and validates the canonical day-v2-2026-07-08.json fixture.
+// DEPENDENCIES: packages/contracts, packages/contracts/runtime, json file
+// ############################################################################
 
-export const dayPayloadV2: components["schemas"]["TodayPayload"] = {
-  meta: {
-    schemaVersion: "today/v1",
-    contractVersion: 3,
-    calculationVersion: 1,
-    normalizationVersion: 1,
-    scoringVersion: 1,
-    promptVersion: 2,
-    contentVersion: 3,
-    generatedAt: "2026-07-08T06:00:00Z",
-    cached: false,
-    payloadVersion: "today.v2",
-    frontendPayloadVersion: 2,
-  },
-  date: "2026-07-08",
-  title: "Среда, 8 июля",
-  subtitle: null,
-  headline: "День для важных решений и переговоров",
-  access: {
-    state: "full",
-    reason: "active_referral_days",
-    referralDaysLeft: 7,
-    subscriptionActive: false,
-    accessUntil: null,
-  },
-  dayStatus: "supportive",
-  dayQuality: {
-    supportScore: 7.5,
-    frictionScore: 2.3,
-    intensityScore: 3.1,
-  },
-  topFlags: [
-    {
-      iconName: "moon",
-      title: "Луна в Раке",
-      summary: "Эмоциональная глубина и желание уюта",
+// START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-FIXTURE-DAY-V2
+// purpose: Synthetic V2 day fixture for mock-visual preview and Playwright.
+// owns:
+//   - e2e/mock-visual/fixtures/day-v2-2026-07-08.ts
+// inputs: e2e/mock-visual/fixtures/json/day-v2-2026-07-08.json
+// outputs: dayPayloadV2, minimalDayPayloadForDate
+// dependencies: packages/contracts, packages/contracts/runtime
+// side_effects: none
+// invariants:
+//   - throws on invalid contract during import module load
+// failure_policy: throws error on invalid format
+// END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-FIXTURE-DAY-V2
+
+// START_MODULE_MAP: M-E2E-MOCK-VISUAL-FIXTURE-DAY-V2
+// public_entrypoints:
+//   - dayPayloadV2
+//   - minimalDayPayloadForDate
+// semantic_blocks:
+//   - FIXTURE_LOAD: imports, parses, and validates the single JSON payload source.
+//   - NEIGHBOUR_BUILDER: derived minimal day payload constructor.
+// END_MODULE_MAP: M-E2E-MOCK-VISUAL-FIXTURE-DAY-V2
+
+// START_BLOCK: FIXTURE_LOAD
+import rawDayPayloadV2 from "./json/day-v2-2026-07-08.json"
+import type { TodayPayload } from "../../../packages/contracts"
+import { TodayPayloadWireSchema } from "../../../packages/contracts/runtime"
+
+export const dayPayloadV2: TodayPayload = TodayPayloadWireSchema.parse(rawDayPayloadV2)
+// END_BLOCK: FIXTURE_LOAD
+
+// START_BLOCK: NEIGHBOUR_BUILDER
+// START_FUNCTION_CONTRACT: F-M-E2E-MOCK-VISUAL-FIXTURE-DAY-V2.minimalDayPayloadForDate
+// purpose: Build a minimal compatible day body for week-strip neighbours.
+// inputs: date - string date.
+// returns: TodayPayload with minimal fields.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: none.
+// END_FUNCTION_CONTRACT: F-M-E2E-MOCK-VISUAL-FIXTURE-DAY-V2.minimalDayPayloadForDate
+export function minimalDayPayloadForDate(date: string): TodayPayload {
+  return {
+    ...dayPayloadV2,
+    date,
+    title: date,
+    headline: "Соседний день недели",
+    v2: null,
+    meta: {
+      ...dayPayloadV2.meta,
+      payloadVersion: "today.v1",
+      frontendPayloadVersion: 1,
     },
-  ],
-  reading: {
-    paragraphs: [
-      "Сегодня день возможностей. Марс в гармоничном аспекте с Юпитером даёт прилив уверенности.",
-    ],
-  },
-  notes: "Хороший день для творчества и общения с близкими.",
-  whyThisHappens: {
-    sections: [],
-  },
-  concreteAdvice: {
-    rows: [
-      {
-        key: "work",
-        label: "Работа",
-        iconName: "briefcase",
-        rank: 1,
-        verdict: "good",
-        confidence: "high",
-        text: "Рекомендация по работе",
-        evidence: [
-          {
-            kind: "activation",
-            title: "Transit Mars trine natal Saturn",
-            orb: 1.25,
-            strength: 0.85,
-            technique: "transit_to_natal",
-            techniqueFamily: "transit",
-            sourceFrame: "transit",
-            targetFrame: "natal",
-          },
-        ],
-      },
-    ],
-    counts: {
-      good: 1,
-      caution: 0,
-      avoid: 0,
-      neutral: 0,
+    concreteAdvice: {
+      rows: dayPayloadV2.concreteAdvice.rows.map((r) => ({
+        ...r,
+        evidence: [],
+        text: "Краткая сводка соседнего дня для навигации по неделе",
+      })),
+      counts: { good: 0, caution: 0, avoid: 0, neutral: 12 },
     },
-  },
-  daySummary: {
-    statusLabel: "Поддерживающий день",
-    statusLine: "фокус на общении и решениях",
-    facts: [],
-  },
-  v2: {
-    activationSummary: {
-      headline: "Сегодня сходятся 3 независимые техники на теме общения и решений",
-      topActivatedTargets: [
-        {
-          targetType: "planet",
-          targetKey: "MERCURY",
-          label: "Меркурий",
-          familyCount: 3,
-          techniques: ["annual_profection", "transit_to_natal", "secondary_progression"],
-          spheres: ["communication"],
-          activationIds: ["act-1"],
-        },
-      ],
+    daySummary: {
+      statusLabel: "Ровный день",
+      statusLine: "соседний день недели",
+      facts: [],
     },
-    activationEvidence: [
-      {
-        id: "act-1",
-        technique: "transit_to_natal",
-        techniqueFamily: "transit",
-        targetType: "planet",
-        targetKey: "MERCURY",
-        kind: "aspect",
-        active: true,
-        strength: 0.8,
-        evidence: "Transit Moon opposition natal Mercury, orb 1.05°",
-        phase: "background",
-        polarity: "neutral",
-        debug: {},
-      },
-    ],
-    scoreBreakdown: {},
-    whyToday: [
-      {
-        id: "why-profection-house-3",
-        title: "Профекция года активирует 3 дом",
-        body: "Эта долгосрочная техника смещает фокус года на сферу коммуникаций, документов и ближнего круга.",
-        activationIds: ["act-1"],
-        techniques: ["annual_profection"],
-      },
-    ],
-    audit: {
-      available: true,
-      payloadVersion: "today.v2",
-      calculationVersion: "ss-calc-1.1.0",
-      scoringVersion: "ss-scoring-2.0",
-      activationLayerVersion: "al-1.0",
-      canonVersions: {},
-      v1V2Diff: {},
-    },
-  },
-  importantToday: [],
-  microcopy: [],
-  weekStrip: [],
+  }
 }
+// END_BLOCK: NEIGHBOUR_BUILDER

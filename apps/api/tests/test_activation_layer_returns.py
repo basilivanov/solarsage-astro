@@ -30,6 +30,9 @@ def _make_w3_4_layer_dict() -> dict:
                 "source_frame": "solar_return",
                 "target_frame": "natal",
                 "house": 3,
+                "active_from": "2025-10-30T14:24:27Z",
+                "exact_at": "2025-10-30T14:24:27Z",
+                "active_until": "2026-10-30T20:17:06Z",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.70,
@@ -37,7 +40,7 @@ def _make_w3_4_layer_dict() -> dict:
                 "debug": {
                     "return_type": "solar",
                     "return_jd": 2461344.34,
-                    "return_utc_iso": "2026-10-30T20:17:07+00:00",
+                    "return_utc_iso": "2025-10-30T14:24:27Z",
                     "target_jd": 2461229.5,
                     "return_location_policy": "current_location_if_known_else_birth_location",
                     "return_location_source": "birth_location",
@@ -46,6 +49,8 @@ def _make_w3_4_layer_dict() -> dict:
                     "return_lon": 32.81,
                     "return_tz": "Europe/Moscow",
                     "resolved_house_system": "WHOLE_SIGN",
+                    "next_return_utc_iso": "2026-10-30T20:17:07Z",
+                    "active_until_utc": "2026-10-30T20:17:06Z",
                 },
             },
             {
@@ -59,6 +64,9 @@ def _make_w3_4_layer_dict() -> dict:
                 "source_frame": "solar_return",
                 "target_frame": "natal",
                 "target_planet": "MARS",
+                "active_from": "2025-10-30T14:24:27Z",
+                "exact_at": "2025-10-30T14:24:27Z",
+                "active_until": "2026-10-30T20:17:06Z",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.70,
@@ -66,7 +74,7 @@ def _make_w3_4_layer_dict() -> dict:
                 "debug": {
                     "return_type": "solar",
                     "return_jd": 2461344.34,
-                    "return_utc_iso": "2026-10-30T20:17:07+00:00",
+                    "return_utc_iso": "2025-10-30T14:24:27Z",
                     "target_jd": 2461229.5,
                     "return_location_policy": "current_location_if_known_else_birth_location",
                     "return_location_source": "birth_location",
@@ -75,6 +83,8 @@ def _make_w3_4_layer_dict() -> dict:
                     "return_lon": 32.81,
                     "return_tz": "Europe/Moscow",
                     "resolved_house_system": "WHOLE_SIGN",
+                    "next_return_utc_iso": "2026-10-30T20:17:07Z",
+                    "active_until_utc": "2026-10-30T20:17:06Z",
                 },
             },
             {
@@ -88,6 +98,9 @@ def _make_w3_4_layer_dict() -> dict:
                 "source_frame": "lunar_return",
                 "target_frame": "lunar_return",
                 "house": 7,
+                "active_from": "2026-06-18T00:30:22Z",
+                "exact_at": "2026-06-18T00:30:22Z",
+                "active_until": "2026-07-15T10:50:09Z",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.60,
@@ -95,7 +108,7 @@ def _make_w3_4_layer_dict() -> dict:
                 "debug": {
                     "return_type": "lunar",
                     "return_jd": 2461209.52,
-                    "return_utc_iso": "2026-06-18T00:30:22+00:00",
+                    "return_utc_iso": "2026-06-18T00:30:22Z",
                     "target_jd": 2461229.5,
                     "return_location_policy": "current_location_if_known_else_birth_location",
                     "return_location_source": "birth_location",
@@ -104,6 +117,8 @@ def _make_w3_4_layer_dict() -> dict:
                     "return_lon": 32.81,
                     "return_tz": "Europe/Moscow",
                     "resolved_house_system": "WHOLE_SIGN",
+                    "next_return_utc_iso": "2026-07-15T10:50:10Z",
+                    "active_until_utc": "2026-07-15T10:50:09Z",
                 },
             },
             {
@@ -117,6 +132,9 @@ def _make_w3_4_layer_dict() -> dict:
                 "source_frame": "lunar_return",
                 "target_frame": "natal",
                 "house": 4,
+                "active_from": "2026-06-18T00:30:22Z",
+                "exact_at": "2026-06-18T00:30:22Z",
+                "active_until": "2026-07-15T10:50:09Z",
                 "phase": "period",
                 "polarity": "neutral",
                 "strength": 0.55,
@@ -124,7 +142,7 @@ def _make_w3_4_layer_dict() -> dict:
                 "debug": {
                     "return_type": "lunar",
                     "return_jd": 2461209.52,
-                    "return_utc_iso": "2026-06-18T00:30:22+00:00",
+                    "return_utc_iso": "2026-06-18T00:30:22Z",
                     "target_jd": 2461229.5,
                     "return_location_policy": "current_location_if_known_else_birth_location",
                     "return_location_source": "birth_location",
@@ -133,6 +151,8 @@ def _make_w3_4_layer_dict() -> dict:
                     "return_lon": 32.81,
                     "return_tz": "Europe/Moscow",
                     "resolved_house_system": "WHOLE_SIGN",
+                    "next_return_utc_iso": "2026-07-15T10:50:10Z",
+                    "active_until_utc": "2026-07-15T10:50:09Z",
                 },
             },
         ],
@@ -167,6 +187,8 @@ class TestActivationLayerServiceAcceptReturns:
         for a in returns:
             assert a.phase == "period"
             assert a.polarity == "neutral"
+            assert a.active_from == a.exact_at
+            assert a.active_until is not None
 
     def test_source_frame_preserved(self):
         """source_frame/target_frame preserved for return activations."""
@@ -195,7 +217,8 @@ class TestActivationLayerServiceAcceptReturns:
         sr = [a for a in result.activations if a.id == "solar_return__ANGLE_ASC__NATAL_HOUSE_3"]
         assert len(sr) == 1
         assert sr[0].debug.get("return_jd") == 2461344.34
-        assert sr[0].debug.get("return_utc_iso") == "2026-10-30T20:17:07+00:00"
+        assert sr[0].debug.get("return_utc_iso") == "2025-10-30T14:24:27Z"
+        assert sr[0].debug.get("active_until_utc") == sr[0].active_until
 
     def test_indexes_valid(self):
         """by_house and by_planet refs point to existing activations."""

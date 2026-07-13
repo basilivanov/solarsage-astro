@@ -1,33 +1,45 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_ADAPTERS_TODAY_PAYLOAD
-// ROLE: Pure adapter — API TodayPayload → UI AdaptedTodayPayload
-// DEPENDENCIES: lib/contracts/today, lib/access, @/packages/contracts
-// GRACE_ANCHORS: [TODAY_PAYLOAD_ADAPTER]
+// AI_HEADER: MODULE_ADAPTERS_TODAY_PAYLOAD — transforms TodayPayload to AdaptedTodayPayload.
+// ROLE: Pure adapter function to map API types into UI presentation structures.
+// DEPENDENCIES: lib/contracts/today, lib/access, packages/contracts
 // ############################################################################
 
-// START_MODULE_CONTRACT
-// purpose: Transform API TodayPayload into UI-ready AdaptedTodayPayload
+// START_MODULE_CONTRACT: M-ADAPTERS-TODAY-PAYLOAD
+// purpose: Transform API TodayPayload into UI-ready AdaptedTodayPayload.
 // owns:
 //   - lib/adapters/today-payload.ts
-// inputs: TodayPayload (API), selectedDate
-// outputs: { payload: AdaptedTodayPayload, access: AccessInfo }
-// side_effects: n/a (pure)
+// inputs: TodayPayload (API), selectedDate.
+// outputs: { payload: AdaptedTodayPayload, access: AccessInfo }.
+// side_effects: none.
+// emitted_logs: none.
 // invariants:
-//   - No `any` types
-//   - Preserves headline, dayStatus, topFlags from API
-//   - Maps access.state: full→trial, preview→expired, locked→none
-//   - null notes → placeholder card
-// END_MODULE_CONTRACT
+//   - No `any` types.
+//   - Preserves headline, dayStatus, topFlags from API.
+//   - Maps access.state correctly.
+//   - Full access without commercial or referral metadata maps to accessible subscription UI.
+//   - Does not validate TodayV2Block schema in production (pure pass-through).
+//   - adapter always copies exact payloadVersion/frontendPayloadVersion/contentVersion from api.meta.
+//   - No normalization/defaulting and no full-meta spread in wireIdentity construction.
+//   - v2 block preserves object identity (same reference).
+// failure_policy: none.
+// END_MODULE_CONTRACT: M-ADAPTERS-TODAY-PAYLOAD
 
-import type { TodayPayload } from '@/packages/contracts';
+// START_MODULE_MAP: M-ADAPTERS-TODAY-PAYLOAD
+// public_entrypoints:
+//   - adaptTodayPayload
+// semantic_blocks:
+//   - TODAY_PAYLOAD_ADAPTER: pure adaptation logic.
+// END_MODULE_MAP: M-ADAPTERS-TODAY-PAYLOAD
+
+import type { TodayPayload, TodayV2Block } from '@/packages/contracts';
 import {
   type AdaptedTodayPayload,
   type AdaptedTopFlag,
   type TodayReading,
   type TodayNote,
   type TodayWhySection,
-  TodayV2BlockSchema,
+  type TodayWireIdentity,
 } from '@/lib/contracts/today';
 import type { AccessInfo } from '@/lib/access';
 
@@ -128,12 +140,16 @@ function buildAccess(apiAccess: TodayPayload['access'] | undefined | null): Acce
   const s = apiAccess?.state;
   const isSubscription = apiAccess?.subscriptionActive === true
     || apiAccess?.reason === 'active_subscription';
+  const isTrial = apiAccess?.reason === 'active_referral_days'
+    || apiAccess?.referralDaysLeft != null;
 
   let uiState: AccessInfo['state'];
   if (s === 'full' && isSubscription) {
     uiState = 'subscription';
-  } else if (s === 'full') {
+  } else if (s === 'full' && isTrial) {
     uiState = 'trial';
+  } else if (s === 'full') {
+    uiState = 'subscription';
   } else if (s === 'locked') {
     uiState = 'none';
   } else if (s === 'preview') {
@@ -151,16 +167,19 @@ function buildAccess(apiAccess: TodayPayload['access'] | undefined | null): Acce
   };
 }
 
-function buildV2Block(apiV2: TodayPayload['v2']): AdaptedTodayPayload['v2'] | null {
-  if (!apiV2) return null;
-  return TodayV2BlockSchema.parse(apiV2);
+function buildV2Block(apiV2: TodayPayload['v2']): TodayV2Block | null {
+  return apiV2 ?? null;
 }
 
-/**
- * Transform a raw API TodayPayload into the UI-ready AdaptedTodayPayload
- * and computed AccessInfo. All astrological calculation is done server-side;
- * this adapter only reshapes data for the UI components.
- */
+// START_BLOCK: TODAY_PAYLOAD_ADAPTER
+// START_FUNCTION_CONTRACT: F-M-ADAPTERS-TODAY-PAYLOAD.adaptTodayPayload
+// purpose: Map TodayPayload to AdaptedTodayPayload structures.
+// inputs: api - raw API TodayPayload; selectedDate - Date.
+// returns: Adapted payload and access info.
+// side_effects: none.
+// emitted_logs: none.
+// error_behavior: none.
+// END_FUNCTION_CONTRACT: F-M-ADAPTERS-TODAY-PAYLOAD.adaptTodayPayload
 export function adaptTodayPayload(
   api: TodayPayload,
   selectedDate: Date,
@@ -168,8 +187,15 @@ export function adaptTodayPayload(
   const why = buildWhySections(api.whyThisHappens?.sections || []);
   const keyInsight = why[0]?.title || FALLBACK_KEY_INSIGHT;
 
+  const wireIdentity: TodayWireIdentity = {
+    payloadVersion: api.meta.payloadVersion,
+    frontendPayloadVersion: api.meta.frontendPayloadVersion,
+    contentVersion: api.meta.contentVersion,
+  }
+
   return {
     payload: {
+      wireIdentity,
       date: api.date || selectedDate.toISOString().split('T')[0],
       headline: api.headline || '',
       dayStatus: api.dayStatus,
@@ -188,3 +214,4 @@ export function adaptTodayPayload(
     access: buildAccess(api.access),
   };
 }
+// END_BLOCK: TODAY_PAYLOAD_ADAPTER

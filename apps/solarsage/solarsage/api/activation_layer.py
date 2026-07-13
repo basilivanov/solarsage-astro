@@ -7,6 +7,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from ..core.versions import ACTIVATION_LAYER_VERSION
 from ..schemas.activation import ActivationLayer
 from ..services.activation_builder import build_activation_layer
 
@@ -43,7 +44,7 @@ class ActivationLayerRequest(BaseModel):
 
 class ActivationLayerMeta(BaseModel):
     calculation_version: str
-    activation_layer_version: str = "al-1.0"
+    activation_layer_version: str = ACTIVATION_LAYER_VERSION
     house_system: str
 
 

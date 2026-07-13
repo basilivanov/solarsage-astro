@@ -72,10 +72,119 @@ def test_why_today_ids_subset_of_evidence():
             assert aid in evidence_ids
 
 
-def test_build_v2_block_requires_scoring_result():
+def test_build_v2_block_requires_scoring_result_type():
+    import inspect
+
+    signature = inspect.signature(SemanticV2Service.build_v2_block)
+    assert str(signature.parameters["scoring_result"].annotation) == "ScoringV2Result"
+
+
+def test_canon_map_boundary_exact_nine_keys_from_scoring():
+    """Prove scoring canon map cannot escape exact nine-key boundary."""
+    from app.services.canon_service import get_canon_versions
+    from app.schemas.scoring_v2 import ScoringV2Result
+    import copy
+
     layer = _layer("12_payload_mapping.json")
-    try:
-        SemanticV2Service().build_v2_block(activation_layer=layer, scoring_result=None)
-        assert False, "expected ValueError"
-    except ValueError as e:
-        assert "scoring_result is required" in str(e)
+
+    # Create scoring with poisoned canon_versions
+    scoring = ScoringV2Result(
+        scoring_version="ss-scoring-2.0",
+        canon_versions={
+            "spheres": "runtime-core-v9",  # known core key - should be accepted
+            "dignities": "v1",  # known core key - should be accepted
+            "horizon_selection": "stale-v0",  # horizon key - should be IGNORED
+            "unknown_runtime_key": "sentinel",  # unknown key - should be IGNORED
+        },
+        day_status="steady",
+        status_breakdown={},
+        sphere_scores={},
+        top_signals=[],
+        top_activations=[],
+        debug={},
+    )
+
+    # Capture original scoring map for byte-identity check
+    scoring_copy = copy.deepcopy(scoring)
+
+    # Build V2 block
+    block = SemanticV2Service().build_v2_block(
+        activation_layer=layer,
+        scoring_result=scoring,
+        trace_id="boundary-test",
+    )
+
+    # Get expected exact nine-key set from canonical source
+    expected_nine = set(get_canon_versions().keys())
+    actual_keys = set(block.audit.canon_versions.keys())
+
+    # Prove exact nine-key set
+    assert actual_keys == expected_nine, f"Expected {expected_nine}, got {actual_keys}"
+    assert len(block.audit.canon_versions) == 9
+
+    # Prove known core keys preserved by merge semantics
+    assert block.audit.canon_versions["spheres"] == "runtime-core-v9"
+    assert block.audit.canon_versions["dignities"] == "v1"
+
+    # Prove stale horizon_selection did NOT replace current horizon canon
+    # (current value should come from horizon services, not scoring input)
+    assert block.audit.canon_versions.get("horizon_selection") != "stale-v0"
+
+    # Prove unknown runtime key absent
+    assert "unknown_runtime_key" not in block.audit.canon_versions
+
+    # Prove original scoring map byte-identical (not mutated)
+    assert scoring_copy.canon_versions == scoring.canon_versions
+
+
+def test_canon_map_boundary_incomplete_scoring_map():
+    """Prove incomplete scoring map doesn't lose core keys."""
+    from app.services.canon_service import get_canon_versions
+    from app.schemas.scoring_v2 import ScoringV2Result
+
+    layer = _layer("12_payload_mapping.json")
+
+    # Create scoring with ONLY some core keys (incomplete map)
+    scoring = ScoringV2Result(
+        scoring_version="ss-scoring-2.0",
+        canon_versions={
+            "spheres": "v2-from-scoring",  # only one core key present
+            # missing: dignities, aspect_rules, activation_rules, scoring_v2
+        },
+        day_status="steady",
+        status_breakdown={},
+        sphere_scores={},
+        top_signals=[],
+        top_activations=[],
+        debug={},
+    )
+
+    # Build V2 block
+    block = SemanticV2Service().build_v2_block(
+        activation_layer=layer,
+        scoring_result=scoring,
+        trace_id="incomplete-test",
+    )
+
+    # Get expected exact nine-key set
+    expected_nine = set(get_canon_versions().keys())
+    actual_keys = set(block.audit.canon_versions.keys())
+
+    # Prove exact nine-key set preserved
+    assert actual_keys == expected_nine
+    assert len(block.audit.canon_versions) == 9
+
+    # Prove the one provided core key was merged
+    assert block.audit.canon_versions["spheres"] == "v2-from-scoring"
+
+    # Prove other core keys still present from base get_canon_versions()
+    assert "dignities" in block.audit.canon_versions
+    assert "aspect_rules" in block.audit.canon_versions
+    assert "activation_rules" in block.audit.canon_versions
+    assert "scoring_v2" in block.audit.canon_versions
+
+    # Prove horizon keys present (from get_canon_versions())
+    assert "horizon_selection" in block.audit.canon_versions
+    assert "horizon_language_ru" in block.audit.canon_versions
+    assert "horizon_actions_ru" in block.audit.canon_versions
+    assert "personal_patterns_ru" in block.audit.canon_versions

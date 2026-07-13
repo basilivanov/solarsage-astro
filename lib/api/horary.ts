@@ -1,23 +1,46 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_API_HORARY
-// ROLE: Lib — horary.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
-// purpose: API client for horary
+// AI_HEADER: FRONTEND_API_HORARY — typed horary quota and question client.
+// ROLE: Typed quota and question CRUD facade consumed by horary screens and pages.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-HORARY
+// purpose: Fetch quota, list and detail data and create horary questions with schema validation.
 // owns:
 //   - lib/api/horary.ts
-// inputs: Endpoint params, request body
-// outputs: Parsed response / typed data
-// dependencies: local modules
-// side_effects: Network calls to API
-// emitted_logs: n/a (pure)
+// inputs: pagination, question id or HoraryQuestionCreate.
+// outputs: HoraryQuotaRead, question arrays, detail or null, created question and HoraryApiError failures.
+// dependencies: packages/contracts; lib/contracts/horary Zod schemas; fetch; Response.
+// side_effects: credentialed horary API GET and POST requests.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Detail 404 maps to null.
+//   - 402/NO_HORARY_CREDITS and 409/IDEMPOTENCY_CONFLICT retain Russian messages.
+//   - List, detail and create responses remain schema-validated.
+//   - HoraryApiError preserves HTTP status and optional backend code.
+// failure_policy: Quota throws the existing generic Error; other non-ok responses throw HoraryApiError; schema and network errors propagate.
+// END_MODULE_CONTRACT: M-FRONTEND-API-HORARY
+
+// START_MODULE_MAP: M-FRONTEND-API-HORARY
+// public_entrypoints:
+//   - HoraryApiError
+//   - getHoraryQuota
+//   - listHoraryQuestions
+//   - getHoraryQuestion
+//   - createHoraryQuestion
+// semantic_blocks:
+//   - ERROR_BODY: describe optional backend error detail.
+//   - TYPED_ERROR: preserve status, code and message in HoraryApiError.
+//   - ERROR_MESSAGE_PARSE: map known horary failures and fallbacks.
+//   - ERROR_BUILD: reconstruct and return the typed API error.
+//   - QUOTA_FETCH: fetch and validate quota.
+//   - QUESTION_LIST: fetch and validate paginated questions.
+//   - QUESTION_DETAIL: fetch one question with 404-to-null behavior.
+//   - QUESTION_CREATE: submit and validate a new question.
+// owned_tests:
+//   - __tests__/horary/horary-screen-flow.test.tsx
+//   - __tests__/horary/horary-error-state.test.tsx
+// END_MODULE_MAP: M-FRONTEND-API-HORARY
 import type {
   HoraryQuestionCreate,
   HoraryQuestionRead,

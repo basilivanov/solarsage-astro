@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 const { mockUseDay, mockGetMonthCalendar, mockTodayScreen } = vi.hoisted(() => ({
   mockUseDay: vi.fn(),
@@ -10,6 +10,7 @@ const { mockUseDay, mockGetMonthCalendar, mockTodayScreen } = vi.hoisted(() => (
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ date: '2026-07-05' }),
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({
     replace: vi.fn(),
     push: vi.fn(),
@@ -45,6 +46,11 @@ vi.mock('@/components/today/today-screen', () => ({
 describe('DayPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetMonthCalendar.mockResolvedValue({ days: [] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders API errors before the local loader state', async () => {
@@ -151,7 +157,5 @@ describe('DayPage', () => {
       illumination: 98,
       lunarDay: 15,
     });
-
-    vi.useRealTimers();
   });
 });

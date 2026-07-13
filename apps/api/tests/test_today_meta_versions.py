@@ -65,8 +65,8 @@ def test_today_meta_includes_all_canon_versions():
     assert len(versions) >= 5
 
 
-def test_activation_layer_version_is_al_1_0_in_live_payload():
-    """Schema-level check: ActivationLayerMeta defaults to al-1.0."""
+def test_activation_layer_version_is_al_1_1_in_live_payload():
+    """Schema-level check: ActivationLayerMeta defaults to al-1.1."""
     from app.schemas.activation import ActivationLayer
     from app.services.activation_layer_service import ActivationLayerService
     from datetime import date
@@ -76,7 +76,7 @@ def test_activation_layer_version_is_al_1_0_in_live_payload():
         target_date=date(2026, 7, 8), target_time="12:00",
         target_tz="Europe/Moscow", house_system="WHOLE_SIGN",
     )
-    assert layer.activation_layer_version == "al-1.0"
+    assert layer.activation_layer_version == "al-1.1"
 
 
 @pytest.mark.asyncio
@@ -224,7 +224,7 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
         "build_why_contexts must receive activation_layer"
     act_layer = captured_kwargs["activation_layer"]
     assert act_layer is not None
-    assert act_layer.activation_layer_version == "al-1.0"
+    assert act_layer.activation_layer_version == "al-1.1"
     assert len(act_layer.activations) > 0
 
     t2n = [a for a in act_layer.activations if a.technique == "transit_to_natal"]
@@ -234,7 +234,7 @@ async def test_today_service_fresh_payload_activation_layer_wiring(db_session):
     assert len(tih) >= 1, "Expected at least one transit_planet_in_house activation"
 
     # ── 2. Returned payload meta ────────────────────────────────────
-    assert payload.meta.activation_layer_version == "al-1.0"
+    assert payload.meta.activation_layer_version == "al-1.1"
     assert payload.meta.scoring_version == 1
 
     # ── 3. Runtime service called correctly ──────────────────────────
@@ -667,21 +667,51 @@ def test_version_constants_are_explicit():
     assert CALCULATION_VERSION.startswith("ss-calc-")
     assert ACTIVATION_LAYER_VERSION.startswith("al-")
     assert SCORING_V2_VERSION.startswith("ss-scoring-")
-    assert TODAY_V2_PAYLOAD_VERSION == "today.v2"
-    assert V2_FRONTEND_PAYLOAD_VERSION == 2
+    assert TODAY_V2_PAYLOAD_VERSION == "today.v2.1"
+    assert V2_FRONTEND_PAYLOAD_VERSION == 3
 
 
-def test_api_and_sidecar_calculation_version_literals_match():
-    """Package separation requires duplicated literals; keep them equal."""
+def test_api_and_sidecar_versions_reexport_shared_source():
+    """API and sidecar version facades re-export shared literals instead of duplicating them."""
+    import ast
+    import sys
+    from pathlib import Path
+
     from app.core.versions import ACTIVATION_LAYER_VERSION as API_AL
     from app.core.versions import CALCULATION_VERSION as API_CALC
-    # Sidecar path may not be importable from API tests; compare literal file content.
-    from pathlib import Path
-    text = Path(__file__).resolve().parents[3].joinpath(
-        "apps/solarsage/solarsage/core/versions.py"
-    ).read_text(encoding="utf-8")
-    assert f'CALCULATION_VERSION = "{API_CALC}"' in text
-    assert f'ACTIVATION_LAYER_VERSION = "{API_AL}"' in text
+    from solarsage_contracts.versions import ACTIVATION_LAYER_VERSION as SHARED_AL
+    from solarsage_contracts.versions import CALCULATION_VERSION as SHARED_CALC
+
+    repo_root = Path(__file__).resolve().parents[3]
+    sidecar_root = repo_root / "apps/solarsage"
+    if str(sidecar_root) not in sys.path:
+        sys.path.insert(0, str(sidecar_root))
+    from solarsage.core.versions import ACTIVATION_LAYER_VERSION as SIDECAR_AL
+    from solarsage.core.versions import CALCULATION_VERSION as SIDECAR_CALC
+
+    assert API_CALC == SIDECAR_CALC == SHARED_CALC
+    assert API_AL == SIDECAR_AL == SHARED_AL
+
+    for relative_path in (
+        "apps/api/app/core/versions.py",
+        "apps/solarsage/solarsage/core/versions.py",
+    ):
+        path = repo_root / relative_path
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        imports_shared = False
+        duplicated_literal_assignment = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == "solarsage_contracts.versions":
+                imported = {alias.name for alias in node.names}
+                imports_shared = {"ACTIVATION_LAYER_VERSION", "CALCULATION_VERSION"}.issubset(imported)
+            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                target_names = {target.id for target in targets if isinstance(target, ast.Name)}
+                if target_names.intersection({"ACTIVATION_LAYER_VERSION", "CALCULATION_VERSION"}):
+                    if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                        duplicated_literal_assignment = True
+        assert imports_shared
+        assert not duplicated_literal_assignment
 
 
 def test_activation_layer_service_uses_canonical_calculation_version():
@@ -962,6 +992,7 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
         "by_angle": {},
         "warnings": [],
     }
+    sentinel_activation_layer = ActivationLayer.model_validate(sidecar_layer)
 
     mock_client = AsyncMock()
     mock_client.get_transits = AsyncMock(return_value={"target_jd": 2461229.875, "planets": []})
@@ -1022,14 +1053,45 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
         v2_error=None,
     )
 
+    from app.schemas.horizon_pipeline import HorizonPipelineResult
+    from app.schemas.horizon_selection import HorizonSelectionDiagnostics
+
+    class IntegrationSpy:
+        def __init__(self):
+            self.calls = []
+
+        def build(self, **kwargs):
+            self.calls.append(kwargs)
+            return HorizonPipelineResult(
+                status="unavailable",
+                horizons=None,
+                selection_reason="missing_long",
+                selection_diagnostics=HorizonSelectionDiagnostics(
+                    input_count=1,
+                    active_count=1,
+                    classified_count=1,
+                    candidate_count=0,
+                    per_horizon_pre_bound_counts={"long": 0, "medium": 0, "fast": 0},
+                    per_horizon_post_bound_counts={"long": 0, "medium": 0, "fast": 0},
+                    excluded_counts_by_reason={},
+                    combinations_evaluated=0,
+                ),
+            )
+
+    integration_spy = IntegrationSpy()
+
     with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
          patch("app.services.today_service.NatalContextService.get_or_build_natal_context", AsyncMock(return_value=fake_natal)), \
          patch("app.services.today_service.NormalizationService.normalize_day", return_value=deterministic_signals), \
          patch.object(TodayService, "_get_yesterday_signals", AsyncMock(return_value=None)), \
          patch.object(TodayService, "_cache_payload", new=capture_cache), \
          patch.object(TodayService, "_cache_semantic_layer", AsyncMock()), \
+         patch(
+             "app.services.today_service.ActivationLayerService.build",
+             return_value=sentinel_activation_layer,
+         ), \
          patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual):
-        service = TodayService(db_session)
+        service = TodayService(db_session, horizon_integration_service=integration_spy)
         access = ContentAccessState(state="preview", reason="expired_access")
         payload = await service.get_today_payload(
             user_id=user.id,
@@ -1046,6 +1108,17 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
     assert payload.v2 is not None
     assert payload.v2.activation_evidence
     assert any(getattr(e, "id", None) == "t2n__MOON__PLUTO" for e in payload.v2.activation_evidence)
+    assert payload.v2.horizons is None
+    assert payload.v2.audit.horizon_pipeline is not None
+    assert payload.v2.audit.horizon_pipeline.status == "unavailable"
+    assert payload.v2.audit.horizon_pipeline.reason == "missing_long"
+    assert payload.v2.audit.horizon_pipeline.selected_count == 0
+
+    assert len(integration_spy.calls) == 1
+    assert integration_spy.calls[0]["activation_layer"] is sentinel_activation_layer
+    assert integration_spy.calls[0]["scoring_result"] is v2_result
+    assert integration_spy.calls[0]["natal_context"] is fake_natal
+    assert integration_spy.calls[0]["concrete_advice"] is payload.concrete_advice
 
     assert captured_cache_keys, "expected cache write identity capture"
     ck = captured_cache_keys[0]

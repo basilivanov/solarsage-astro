@@ -123,7 +123,7 @@ function monthTitle(month: string | null | undefined, fallback: Date): string {
   return `${MONTHS_RU_NOM[fallback.getMonth()]} ${fallback.getFullYear()}`
 }
 
-export function CalendarScreen({ access, onOpenDay }: Props) {
+export function CalendarScreen({ onOpenDay }: Props) {
   const [cursor, setCursor] = useState(
     () => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
   )
@@ -158,7 +158,7 @@ export function CalendarScreen({ access, onOpenDay }: Props) {
     }
   }, [cursor])
 
-  const days = payload?.days ?? []
+  const days = useMemo(() => payload?.days ?? [], [payload?.days])
   const dayByDate = useMemo(() => new Map(days.map((day) => [day.date, day])), [days])
   const displayDays = useMemo(() => {
     const sourceMonth = payload?.month

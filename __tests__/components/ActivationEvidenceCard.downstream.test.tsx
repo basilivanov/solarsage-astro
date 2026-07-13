@@ -3,23 +3,6 @@
 // ROLE: W11 frontend tests for ActivationEvidenceCard using committed fixture
 // ############################################################################
 
-// START_MODULE_CONTRACT: M-TEST-ACTIVATION-EVIDENCE-CARD-DOWNSTREAM
-// purpose: Prove ActivationEvidenceCard renders evidence, target, technique from committed W11 fixture.
-// owns:
-//   - __tests__/components/ActivationEvidenceCard.downstream.test.tsx
-// inputs: artifacts/audit/2026-07-08/downstream/11_frontend_fixture.json
-// outputs: vitest assertions
-// dependencies: ActivationEvidenceCard, validateAdaptedTodayPayload
-// side_effects: none
-// emitted_logs: none
-// invariants: no fabricated activation ids
-// failure_policy: test fail
-// END_MODULE_CONTRACT: M-TEST-ACTIVATION-EVIDENCE-CARD-DOWNSTREAM
-
-// START_MODULE_MAP: M-TEST-ACTIVATION-EVIDENCE-CARD-DOWNSTREAM
-// public_entrypoints: describe/it blocks
-// END_MODULE_MAP: M-TEST-ACTIVATION-EVIDENCE-CARD-DOWNSTREAM
-
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import React from "react"
@@ -34,30 +17,28 @@ const fixturePath = path.join(
 )
 
 describe("ActivationEvidenceCard downstream fixture", () => {
-  it("validates committed fixture and renders evidence, target, technique", () => {
+  it("validates committed fixture and renders the human-first headline and ranked areas", () => {
     const raw = JSON.parse(fs.readFileSync(fixturePath, "utf8"))
     const payload = validateAdaptedTodayPayload(raw.payload)
     expect(raw.assertions.has_v2).toBe(true)
     expect(payload.v2).toBeTruthy()
-    render(<ActivationEvidenceCard v2={payload.v2} />)
+    render(
+      <ActivationEvidenceCard
+        v2={payload.v2}
+        concreteAdvice={payload.concreteAdvice}
+        headlineFallback={payload.headline}
+        onSphereSelect={() => {}}
+        onWhyOpen={() => {}}
+      />,
+    )
     expect(screen.getByTestId("activation-evidence-card")).toBeTruthy()
 
-    const first = payload.v2!.activationEvidence[0]
-    expect(first?.id).toBeTruthy()
-    expect(screen.getAllByText(first.evidence).length).toBeGreaterThan(0)
+    expect(screen.getByTestId("activation-evidence-card").textContent).toContain(payload.headline)
 
-    const top = payload.v2!.activationSummary.topActivatedTargets[0]
-    expect(top).toBeTruthy()
-    // target label rendered from summary
-    expect(screen.getAllByText(top.label).length).toBeGreaterThan(0)
-    // technique chip(s) rendered (label or raw technique title)
-    expect(screen.getAllByTestId("technique-chip").length).toBeGreaterThan(0)
-    for (const tech of top.techniques) {
-      const chips = screen.getAllByTestId("technique-chip")
-      const match = chips.some(
-        (el) => el.getAttribute("title") === tech || el.textContent?.includes(tech),
-      )
-      expect(match).toBe(true)
-    }
+    const expectedAreaCount = Math.min(payload.concreteAdvice.rows.length, 3)
+    expect(screen.queryAllByTestId("personal-story-sphere-link")).toHaveLength(expectedAreaCount)
+    expect(screen.queryByTestId("technique-chip")).toBeNull()
+    expect(screen.getByTestId("activation-evidence-card").querySelector('[data-testid="technique-chip"]')).toBeNull()
+    expect(screen.getByTestId("activation-evidence-card").textContent).not.toMatch(/Профекция|Фирдар|Транзит|орб|сходимост|техник/i)
   })
 })

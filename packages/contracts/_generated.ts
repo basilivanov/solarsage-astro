@@ -412,6 +412,10 @@ export interface components {
              * @default true
              */
             active: boolean;
+            /** Activefrom */
+            activeFrom?: string | null;
+            /** Activeuntil */
+            activeUntil?: string | null;
             /** Angle */
             angle?: string | null;
             /** Applying */
@@ -479,7 +483,7 @@ export interface components {
         ActivationLayer: {
             /**
              * Activationlayerversion
-             * @default al-1.0
+             * @default al-1.1
              */
             activationLayerVersion: string;
             /** Activations */
@@ -1748,7 +1752,7 @@ export interface components {
              * @default today.v1
              * @enum {string}
              */
-            payloadVersion: "today.v1" | "today.v2";
+            payloadVersion: "today.v1" | "today.v2" | "today.v2.1";
             /** Promptversion */
             promptVersion: number;
             /**
@@ -1853,6 +1857,8 @@ export interface components {
             canonVersions?: {
                 [key: string]: string;
             };
+            /** Horizonpipeline */
+            horizonPipeline?: (components["schemas"]["TodayV2HorizonPipelineAuditBuilt"] | components["schemas"]["TodayV2HorizonPipelineAuditUnavailable"]) | null;
             /** Payloadversion */
             payloadVersion: string;
             /** Scoringversion */
@@ -1870,12 +1876,224 @@ export interface components {
             activationEvidence: components["schemas"]["ActivationEvidence"][];
             activationSummary: components["schemas"]["TodayV2ActivationSummary"];
             audit: components["schemas"]["TodayV2Audit"];
+            horizons?: components["schemas"]["TodayV2HorizonsBlock"] | null;
             /** Scorebreakdown */
             scoreBreakdown: {
                 [key: string]: components["schemas"]["SphereScoreV2"];
             };
             /** Whytoday */
             whyToday: components["schemas"]["TodayV2WhyTodayItem"][];
+        };
+        /** TodayV2GroundedItem */
+        TodayV2GroundedItem: {
+            /**
+             * Conditional
+             * @default false
+             */
+            conditional: boolean;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "explanation" | "strength" | "risk" | "manifestation" | "action" | "avoid" | "technique_definition";
+            provenance: components["schemas"]["TodayV2Provenance"];
+            /** Text */
+            text: string;
+        };
+        /** TodayV2Horizon */
+        TodayV2Horizon: {
+            actions: components["schemas"]["TodayV2HorizonActions"];
+            /** Activationids */
+            activationIds: string[];
+            /** Eyebrow */
+            eyebrow: string;
+            /**
+             * Horizon
+             * @enum {string}
+             */
+            horizon: "long" | "medium" | "fast";
+            /** Id */
+            id: string;
+            /** Likelyspheres */
+            likelySpheres: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[];
+            /** Manifestations */
+            manifestations: components["schemas"]["TodayV2Manifestation"][];
+            /** Plainexplanation */
+            plainExplanation: string;
+            risk?: components["schemas"]["TodayV2GroundedItem"] | null;
+            strength?: components["schemas"]["TodayV2GroundedItem"] | null;
+            /** Summary */
+            summary: string;
+            /** Techniqueexplanations */
+            techniqueExplanations: components["schemas"]["TodayV2TechniqueExplanation"][];
+            timing: components["schemas"]["TodayV2HorizonTiming"];
+            /** Title */
+            title: string;
+            /**
+             * Tone
+             * @enum {string}
+             */
+            tone: "supportive" | "neutral" | "tense" | "mixed";
+        };
+        /** TodayV2HorizonActions */
+        TodayV2HorizonActions: {
+            /** Avoid */
+            avoid: components["schemas"]["TodayV2GroundedItem"][];
+            /** Do */
+            do: components["schemas"]["TodayV2GroundedItem"][];
+            /** Heading */
+            heading: string;
+            /** Validuntil */
+            validUntil: string;
+            /** Validuntillabel */
+            validUntilLabel: string;
+        };
+        /** TodayV2HorizonIntro */
+        TodayV2HorizonIntro: {
+            /** Activationids */
+            activationIds: string[];
+            /** Body */
+            body: string;
+            /** Eyebrow */
+            eyebrow: string;
+            /** Headline */
+            headline: string;
+            /** Themekey */
+            themeKey: string;
+        };
+        /** TodayV2HorizonPipelineAuditBuilt */
+        TodayV2HorizonPipelineAuditBuilt: {
+            /**
+             * Reason
+             * @constant
+             */
+            reason: "selected";
+            /**
+             * Schemaversion
+             * @default today-horizon-pipeline-audit.v1
+             * @constant
+             */
+            schemaVersion: "today-horizon-pipeline-audit.v1";
+            /**
+             * Selectedcount
+             * @constant
+             */
+            selectedCount: 3;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "built";
+        };
+        /** TodayV2HorizonPipelineAuditUnavailable */
+        TodayV2HorizonPipelineAuditUnavailable: {
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "invalid_target_clock" | "missing_long" | "missing_medium" | "missing_fast" | "no_coherent_triple";
+            /**
+             * Schemaversion
+             * @default today-horizon-pipeline-audit.v1
+             * @constant
+             */
+            schemaVersion: "today-horizon-pipeline-audit.v1";
+            /**
+             * Selectedcount
+             * @constant
+             */
+            selectedCount: 0;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "unavailable";
+        };
+        /** TodayV2HorizonsBlock */
+        TodayV2HorizonsBlock: {
+            /**
+             * Guidancemode
+             * @enum {string}
+             */
+            guidanceMode: "deterministic" | "llm_refined";
+            intro: components["schemas"]["TodayV2HorizonIntro"];
+            /** Items */
+            items: components["schemas"]["TodayV2Horizon"][];
+            /**
+             * Schemaversion
+             * @constant
+             */
+            schemaVersion: "today-horizons.v1";
+            /** Warnings */
+            warnings?: string[];
+        };
+        /** TodayV2HorizonTiming */
+        TodayV2HorizonTiming: {
+            /** Activefrom */
+            activeFrom: string;
+            /** Activeuntil */
+            activeUntil: string;
+            /** Exactat */
+            exactAt?: string | null;
+            /** Peaklabel */
+            peakLabel?: string | null;
+            /**
+             * Precision
+             * @enum {string}
+             */
+            precision: "date" | "instant";
+            /** Rangelabel */
+            rangeLabel: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "upcoming" | "building" | "active" | "exact" | "peaked" | "fading" | "background";
+            /** Statelabel */
+            stateLabel: string;
+            /** Timezone */
+            timezone: string;
+        };
+        /** TodayV2Manifestation */
+        TodayV2Manifestation: {
+            /** Body */
+            body: string;
+            /** Condition */
+            condition?: string | null;
+            /** Id */
+            id: string;
+            provenance: components["schemas"]["TodayV2Provenance"];
+            /** Spherekeys */
+            sphereKeys: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[];
+            /** Title */
+            title: string;
+        };
+        /** TodayV2Provenance */
+        TodayV2Provenance: {
+            /** Activationids */
+            activationIds?: string[];
+            /** Natalfactids */
+            natalFactIds?: string[];
+            /** Profilefactids */
+            profileFactIds?: string[];
+            /** Spherekeys */
+            sphereKeys?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[];
+        };
+        /** TodayV2TechniqueExplanation */
+        TodayV2TechniqueExplanation: {
+            /** Activationids */
+            activationIds: string[];
+            /** Label */
+            label: string;
+            /** Technique */
+            technique: string;
+            timing?: components["schemas"]["TodayV2HorizonTiming"] | null;
+            /** Whatitis */
+            whatItIs: string;
+            /** Whyitmattersnow */
+            whyItMattersNow: string;
         };
         /** TodayV2WhyTodayItem */
         TodayV2WhyTodayItem: {

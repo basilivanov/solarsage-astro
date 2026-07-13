@@ -1,28 +1,35 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GRACE_LOCKEDDAY
-// ROLE: UI component
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: GRACE_LOCKED_DAY — locked-access explanation and recovery actions.
+// ROLE: Client locked-access view with subscription and referral navigation actions.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Page: LockedDay
+
+// START_MODULE_CONTRACT: M-GRACE-COMPONENT-LOCKED-DAY
+// purpose: Explain a locked day and expose two access recovery CTAs.
 // owns:
 //   - components/grace/LockedDay.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
+// inputs: none.
+// outputs: locked-day view with subscribe and invite buttons.
+// dependencies: next/navigation useRouter.
+// side_effects: router.push('/paywall') or router.push('/referral') on CTA click.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-WEB-LOCKED-DAY
-// wave: W-2.7, W-ACCESS.3
-// purpose: Locked day with soft lock + CTAs
+//   - locked-day, cta-subscribe and cta-invite test IDs remain stable.
+//   - Subscribe and invite routes remain /paywall and /referral.
+//   - Referral copy continues to promise the existing 14-day behavior.
+// failure_policy: Navigation failures are not caught locally.
+// END_MODULE_CONTRACT: M-GRACE-COMPONENT-LOCKED-DAY
+
+// START_MODULE_MAP: M-GRACE-COMPONENT-LOCKED-DAY
+// public_entrypoints:
+//   - LockedDay
+// semantic_blocks:
+//   - LOCK_EXPLANATION: locked state icon and user-facing copy.
+//   - ACCESS_ACTIONS: subscription and referral buttons.
+//   - REFERRAL_NOTE: existing 14-day explanatory copy.
+// owned_tests:
+//   - none direct.
+// END_MODULE_MAP: M-GRACE-COMPONENT-LOCKED-DAY
 
 'use client';
 

@@ -1,24 +1,38 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_GENERATING_PAGE
-// ROLE: Next.js page
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: APP_NATAL_GENERATING_PAGE — natal preview, generation and polling route.
+// ROLE: Client Next.js generation page; loads real preview context, starts generation, polls report status and routes ready reports.
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI page — component
+
+// START_MODULE_CONTRACT: M-APP-NATAL-GENERATING-PAGE
+// purpose: Coordinate the asynchronous natal full-report generation lifecycle with preview context and recoverable failure UI.
 // owns:
 //   - app/(grace)/readings/natal/generating/page.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
+// inputs: fetchNatalPreview, fetchNatalGenerate and fetchNatalReport results plus user retry/back actions.
+// outputs: preview-backed starting/generating/retryable/permanent/error UI or redirect to the ready report.
+// dependencies: React hooks; next/navigation; natal API facade; NatalPreviewRead.
+// side_effects: Performs preview/generate/poll requests, owns timeout handles, updates React state and navigates with router.replace/back.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Poll cadence is 3 seconds with at most 60 attempts.
+//   - READY routes to /readings/natal/<reportId>.
+//   - Timeout and retryable/permanent failures remain distinguishable.
+//   - Timers and cancelled async work are cleaned up.
+// failure_policy: Typed API failures become explicit GenState/PreviewState UI; unexpected render errors bubble to the route boundary.
+// END_MODULE_CONTRACT: M-APP-NATAL-GENERATING-PAGE
+
+// START_MODULE_MAP: M-APP-NATAL-GENERATING-PAGE
+// public_entrypoints:
+//   - NatalGeneratingPage (default).
+// semantic_blocks:
+//   - PREVIEW_LOAD: load real preview context.
+//   - GENERATION_START: request or resume report generation.
+//   - STATUS_POLLING: poll bounded report status with cleanup.
+//   - RETRY_AND_BACK: handle recovery/navigation actions.
+//   - STATE_RENDER: render generation and preview states.
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP: M-APP-NATAL-GENERATING-PAGE
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"

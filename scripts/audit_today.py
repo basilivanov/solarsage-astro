@@ -83,6 +83,10 @@ if str(API_ROOT) not in sys.path:
 from sqlalchemy import select  # noqa: E402
 
 from app.clients.solarsage_client import get_solarsage_client  # noqa: E402
+from app.core.versions import (  # noqa: E402
+    TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
+    V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS,
+)
 from app.db.models import NatalChartCache, User, UserProfile  # noqa: E402
 from app.db.session import SessionLocal  # noqa: E402
 from app.schemas.normalization import AstroSignal  # noqa: E402
@@ -185,6 +189,7 @@ def build_activation_evidence_mapping(
 ) -> dict[str, Any]:
     meta = _get_meta(payload)
     payload_version = _meta_get(meta, "payload_version", "payloadVersion")
+    frontend_version = _meta_get(meta, "frontend_payload_version", "frontendPayloadVersion")
     sidecar_ids = _extract_sidecar_activation_ids(sidecar_layer)
     payload_ids = _extract_payload_activation_ids(payload)
     mapped = sorted(sidecar_ids & payload_ids)
@@ -194,7 +199,10 @@ def build_activation_evidence_mapping(
     if mode != "live-production":
         status = "frozen_baseline_not_live"
         accepted = True
-    elif str(payload_version) not in ("today.v2",):
+    elif (
+        str(payload_version) not in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS
+        and frontend_version not in V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS
+    ):
         status = "not_applicable"
         accepted = True
     elif not sidecar_ids:
@@ -210,6 +218,7 @@ def build_activation_evidence_mapping(
     return {
         "mode": mode,
         "payload_version": payload_version,
+        "frontend_payload_version": frontend_version,
         "sidecar_activation_count": len(sidecar_ids),
         "payload_activation_evidence_count": len(payload_ids),
         "sidecar_ids": sorted(sidecar_ids),
@@ -230,10 +239,14 @@ def assert_live_v2_payload_represents_sidecar(
 ) -> None:
     meta = _get_meta(payload)
     payload_version = _meta_get(meta, "payload_version", "payloadVersion")
-    if str(payload_version) != "today.v2":
+    frontend_version = _meta_get(meta, "frontend_payload_version", "frontendPayloadVersion")
+    if (
+        str(payload_version) not in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS
+        and frontend_version not in V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS
+    ):
         return
     if _get_payload_v2_block(payload) is None:
-        raise SystemExit("ERROR: final payload declares today.v2 but has no v2 block")
+        raise SystemExit("ERROR: final payload declares V2 identity but has no v2 block")
     sidecar_count = int(mapping.get("sidecar_activation_count") or 0)
     payload_count = int(mapping.get("payload_activation_evidence_count") or 0)
     if sidecar_count > 0 and payload_count == 0:
