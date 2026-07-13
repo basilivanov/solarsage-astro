@@ -243,7 +243,7 @@ describe('useChat', () => {
 
   it('handles fetch error gracefully', async () => {
     mockSendMessage.mockImplementationOnce(async function* () {
-      throw new Error('Network error')
+      yield await Promise.reject<string>(new Error('Network error'))
     })
 
     const { result } = renderHook(() => useChat(context))

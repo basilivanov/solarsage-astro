@@ -75,12 +75,14 @@ export default function HoraryAnswerPage({ params }: Props) {
       })
   }, [id])
 
+  const questionStatus = question?.status
+
   useEffect(() => {
     if (
-      !question ||
-      question.status === "answered" ||
-      question.status === "failed" ||
-      question.status === "expired"
+      !questionStatus ||
+      questionStatus === "answered" ||
+      questionStatus === "failed" ||
+      questionStatus === "expired"
     ) {
       return
     }
@@ -127,7 +129,7 @@ export default function HoraryAnswerPage({ params }: Props) {
     }, 2000)
 
     return () => clearInterval(interval)
-  }, [id, question?.status])
+  }, [id, questionStatus])
 
   const isLongRunning = useMemo(() => {
     if (!question?.createdAt) return pollingTimedOut

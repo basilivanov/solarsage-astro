@@ -158,7 +158,7 @@ export function CalendarScreen({ onOpenDay }: Props) {
     }
   }, [cursor])
 
-  const days = payload?.days ?? []
+  const days = useMemo(() => payload?.days ?? [], [payload?.days])
   const dayByDate = useMemo(() => new Map(days.map((day) => [day.date, day])), [days])
   const displayDays = useMemo(() => {
     const sourceMonth = payload?.month

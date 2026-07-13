@@ -197,7 +197,11 @@ export function useTelegramAuth() {
           // Persist referral code to localStorage so it survives
           // the user closing and reopening the Mini App without the deep link.
           if (startParam) {
-            try { localStorage.setItem(persistKey, startParam); } catch (_) {}
+            try {
+              localStorage.setItem(persistKey, startParam)
+            } catch {
+              // Referral persistence is best-effort; authentication must continue.
+            }
           }
 
           // Fallback: use persisted code from a previous visit
@@ -214,7 +218,11 @@ export function useTelegramAuth() {
               body: JSON.stringify({ referrer_code: effectiveCode }),
             })
             ;(window as any)[claimKey] = true
-            try { localStorage.removeItem(persistKey); } catch (_) {}
+            try {
+              localStorage.removeItem(persistKey)
+            } catch {
+              // Referral cleanup is best-effort after a completed claim attempt.
+            }
             if (!claimRes.ok) {
               const err = await claimRes.json().catch(() => ({}))
               logger.warn(`[TGAuth] Referral claim failed: HTTP ${claimRes.status} code=${err.detail?.code || '?'}`)

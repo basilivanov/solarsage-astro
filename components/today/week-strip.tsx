@@ -32,7 +32,7 @@
 // END_MODULE_MAP: M-TODAY-WEEK-STRIP
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Lock, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -67,13 +67,14 @@ export function WeekStrip({ selectedDate, access, onSelect, disableRemoteStatusF
   // emitted_logs: system.error if status fetch fails.
   // error_behavior: per-day fetch failure becomes unknown; unexpected batch failure logs system.error and leaves week UI usable; no exception is intentionally raised.
   // END_FUNCTION_CONTRACT: F-M-TODAY-WEEK-STRIP.WeekStrip
-  const start = startOfWeek(selectedDate)
-  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i))
-  const range = formatWeekRange(start)
+  const startKey = startOfWeek(selectedDate).getTime()
+  const days = useMemo(() => {
+    const weekStart = new Date(startKey)
+    return Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+  }, [startKey])
+  const range = formatWeekRange(new Date(startKey))
 
   const [statuses, setStatuses] = useState<Record<string, WeekStatus>>({})
-
-  const startKey = start.getTime()
 
   useEffect(() => {
     if (disableRemoteStatusFetch) {
@@ -105,7 +106,7 @@ export function WeekStrip({ selectedDate, access, onSelect, disableRemoteStatusF
     return () => {
       active = false
     }
-  }, [disableRemoteStatusFetch, startKey])
+  }, [days, disableRemoteStatusFetch])
 
   return (
     <section className="px-5" aria-label="Неделя" data-testid="week-strip">
