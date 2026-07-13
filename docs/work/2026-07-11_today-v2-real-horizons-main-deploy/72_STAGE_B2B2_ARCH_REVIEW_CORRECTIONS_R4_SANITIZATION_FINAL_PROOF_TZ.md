@@ -1,9 +1,9 @@
 # Stage B2B2 — architect review corrections R4: sanitization and final proof
 
-Дата: 2026-07-12  
-Ветка: preview/solarsage-v2-human-first-navigator-ux  
-Accepted HEAD/origin: c47863a0c4b2be2242c276bb610a262b4b91a737  
-Parent documents: 68–71  
+Дата: 2026-07-12
+Ветка: preview/solarsage-v2-human-first-navigator-ux
+Accepted HEAD/origin: c47863a0c4b2be2242c276bb610a262b4b91a737
+Parent documents: 68–71
 Статус: **NOT ACCEPTED — NARROW R4, NO COMMIT/PUSH**
 
 ## 0. Scope

@@ -1,9 +1,9 @@
 # Stage B2B2 — architect acceptance, exact commit and push
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Accepted parent HEAD/origin: `c47863a0c4b2be2242c276bb610a262b4b91a737`  
-Implementation/review documents: `68`–`73`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Accepted parent HEAD/origin: `c47863a0c4b2be2242c276bb610a262b4b91a737`
+Implementation/review documents: `68`–`73`
 Статус: **ACCEPTED — EXACT COMMIT/PUSH ONLY**
 
 ## 1. Architect acceptance evidence
@@ -167,4 +167,3 @@ next_stage: NOT_STARTED
 ~~~
 
 Stop after callback.
-

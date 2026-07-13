@@ -1,9 +1,9 @@
 # Stage B4.W1 architectural review R1 — order-independent proof and GRACE truthfulness
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Базовый SHA: `1a944717efa7a70124f81cb950992998491bf72e`  
-Предыдущее ТЗ: `86_STAGE_B4_W1_GENERATED_WIRE_STEADY_STATE_CONSUMER_TZ.md`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Базовый SHA: `1a944717efa7a70124f81cb950992998491bf72e`
+Предыдущее ТЗ: `86_STAGE_B4_W1_GENERATED_WIRE_STEADY_STATE_CONSUMER_TZ.md`
 Статус: **ARCH REVIEW CORRECTIONS — NO COMMIT / NO PUSH**
 
 ## 1. Итог ревью

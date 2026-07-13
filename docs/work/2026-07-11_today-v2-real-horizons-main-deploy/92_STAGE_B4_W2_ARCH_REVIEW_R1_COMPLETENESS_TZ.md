@@ -1,9 +1,9 @@
 # Stage B4.W2 architectural review R1 — complete proof, typed accessibility, truthful GRACE
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Базовый SHA: `c0c86c540a1d8f77b282ff21705758c8594d5a6e`  
-Предыдущее ТЗ: `91_STAGE_B4_W2_FINAL_HUMAN_FIRST_UX_TZ.md`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Базовый SHA: `c0c86c540a1d8f77b282ff21705758c8594d5a6e`
+Предыдущее ТЗ: `91_STAGE_B4_W2_FINAL_HUMAN_FIRST_UX_TZ.md`
 Статус: **ARCH REVIEW REJECTED UNTIL CORRECTED — NO COMMIT / NO PUSH**
 
 ## 1. Что принято и не переписывается

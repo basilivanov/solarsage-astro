@@ -1,9 +1,9 @@
 # Stage B2B1 — architect acceptance and exact commit/push
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Base HEAD/origin: `cd27d1a8056eef92737e992c1b0998423331734b`  
-Родительские ТЗ: `63_...`, `64_...`, `65_...`, `66_...`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Base HEAD/origin: `cd27d1a8056eef92737e992c1b0998423331734b`
+Родительские ТЗ: `63_...`, `64_...`, `65_...`, `66_...`
 Статус: **ARCHITECT ACCEPTED — COMMIT/PUSH ONLY**
 
 ## 0. Режим выполнения

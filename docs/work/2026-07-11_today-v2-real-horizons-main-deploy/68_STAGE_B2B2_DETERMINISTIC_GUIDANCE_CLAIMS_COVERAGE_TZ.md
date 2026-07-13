@@ -1,9 +1,9 @@
 # Stage B2B2 — deterministic guidance, claim validation and coverage
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Accepted HEAD/origin: `c47863a0c4b2be2242c276bb610a262b4b91a737`  
-Parents: `50_...`, `51_...`, `63_...`, accepted B2A/B2B1  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Accepted HEAD/origin: `c47863a0c4b2be2242c276bb610a262b4b91a737`
+Parents: `50_...`, `51_...`, `63_...`, accepted B2A/B2B1
 Статус: **IMPLEMENT B2B2 ONLY — NO COMMIT/PUSH**
 
 ## 0. Контекст для новой coding-сессии

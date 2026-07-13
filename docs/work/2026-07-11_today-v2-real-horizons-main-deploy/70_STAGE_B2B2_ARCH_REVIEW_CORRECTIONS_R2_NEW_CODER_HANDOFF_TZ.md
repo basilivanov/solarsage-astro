@@ -1,8 +1,8 @@
 # Stage B2B2 — architect review corrections R2 / new coder handoff
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Accepted HEAD/origin: `c47863a0c4b2be2242c276bb610a262b4b91a737`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Accepted HEAD/origin: `c47863a0c4b2be2242c276bb610a262b4b91a737`
 Parent documents:
 
 - `68_STAGE_B2B2_DETERMINISTIC_GUIDANCE_CLAIMS_COVERAGE_TZ.md`;

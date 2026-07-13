@@ -1,9 +1,9 @@
 # Stage B4.W1 architectural review R2 — final literal cleanup
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Базовый SHA: `1a944717efa7a70124f81cb950992998491bf72e`  
-Предыдущие ТЗ: `86`, `87`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Базовый SHA: `1a944717efa7a70124f81cb950992998491bf72e`
+Предыдущие ТЗ: `86`, `87`
 Статус: **FINAL NARROW CLEANUP — NO COMMIT / NO PUSH**
 
 ## 1. Scope

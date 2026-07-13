@@ -1,10 +1,10 @@
 # Stage B4.W2 ТЗ — final human-first horizons UX and exact 12-sphere navigation
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Базовый SHA: `c0c86c540a1d8f77b282ff21705758c8594d5a6e`  
-Prerequisite: accepted and pushed B4.W1  
-Родительское ТЗ: `80_STAGE_B4_FRONTEND_REAL_DATA_PREVIEW_MASTER_TZ.md`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Базовый SHA: `c0c86c540a1d8f77b282ff21705758c8594d5a6e`
+Prerequisite: accepted and pushed B4.W1
+Родительское ТЗ: `80_STAGE_B4_FRONTEND_REAL_DATA_PREVIEW_MASTER_TZ.md`
 Статус: **AUTHORIZED IMPLEMENTATION WAVE — NO COMMIT / NO PUSH**
 
 ## 0. Роль и граница

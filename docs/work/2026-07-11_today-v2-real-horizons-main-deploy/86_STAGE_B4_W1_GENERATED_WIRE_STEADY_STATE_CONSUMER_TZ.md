@@ -1,9 +1,9 @@
 # Stage B4.W1 ТЗ — generated-wire steady-state consumer без frontend-пересчёта
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Базовый SHA: `1a944717efa7a70124f81cb950992998491bf72e`  
-Родительское ТЗ: `80_STAGE_B4_FRONTEND_REAL_DATA_PREVIEW_MASTER_TZ.md`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Базовый SHA: `1a944717efa7a70124f81cb950992998491bf72e`
+Родительское ТЗ: `80_STAGE_B4_FRONTEND_REAL_DATA_PREVIEW_MASTER_TZ.md`
 Статус: **AUTHORIZED IMPLEMENTATION WAVE — NO COMMIT / NO PUSH**
 
 ## 0. Роль исполнителя и жёсткая граница волны

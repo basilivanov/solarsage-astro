@@ -1,9 +1,9 @@
 # Stage B4.W2 architectural review R4 — exact backend copy/order invariant
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Базовый SHA: `c0c86c540a1d8f77b282ff21705758c8594d5a6e`  
-Предыдущие ТЗ: `91`–`94`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Базовый SHA: `c0c86c540a1d8f77b282ff21705758c8594d5a6e`
+Предыдущие ТЗ: `91`–`94`
 Статус: **ONE-LINE CONTRACT CORRECTION — NO COMMIT / NO PUSH**
 
 ## 1. Принято

@@ -1,8 +1,8 @@
 # Stage B4.W1 acceptance — exact commit and push
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Ожидаемый parent SHA: `1a944717efa7a70124f81cb950992998491bf72e`  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Ожидаемый parent SHA: `1a944717efa7a70124f81cb950992998491bf72e`
 Статус: **ARCHITECT ACCEPTED — AUTHORIZE ONE COMMIT AND PUSH**
 
 ## 1. Accepted evidence

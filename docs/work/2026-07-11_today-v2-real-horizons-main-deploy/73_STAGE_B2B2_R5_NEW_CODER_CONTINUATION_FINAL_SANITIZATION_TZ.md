@@ -1,9 +1,9 @@
 # Stage B2B2 — R5 new-coder continuation: close the remaining sanitization boundary
 
-Дата: 2026-07-12  
-Ветка: `preview/solarsage-v2-human-first-navigator-ux`  
-Accepted HEAD/origin: `c47863a0c4b2be2242c276bb610a262b4b91a737`  
-Parent documents: `68`–`72` in this directory  
+Дата: 2026-07-12
+Ветка: `preview/solarsage-v2-human-first-navigator-ux`
+Accepted HEAD/origin: `c47863a0c4b2be2242c276bb610a262b4b91a737`
+Parent documents: `68`–`72` in this directory
 Статус: **NOT ACCEPTED — CONTINUE CURRENT UNCOMMITTED B2B2 WIP, NO COMMIT/PUSH**
 
 ## 0. Исполнитель и режим работы
