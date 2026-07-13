@@ -14,7 +14,7 @@
 #   - user_id: UUID
 #   - target_date: str
 #   - profile_hash: str
-#   - selected_scoring_version: int | str
+#   - selected_scoring_version: optional explicit int | str read authority
 #   - activation_layer_version: str | None
 # outputs:
 #   - TodayCacheKey
@@ -71,6 +71,7 @@ from app.services.canon_service import get_canon_versions
 from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
 
 
+# START_BLOCK: CACHE_KEY
 @dataclass(frozen=True)
 class TodayCacheKey:
     """Deterministic versioned cache key for today payload."""
@@ -150,8 +151,10 @@ def build_today_cache_key(
         content_version=content_version,
         frontend_payload_version=frontend_payload_version,
     )
+# END_BLOCK: CACHE_KEY
 
 
+# START_BLOCK: RESOLVER
 @dataclass(frozen=True)
 class TodayRuntimeIdentity:
     """Canonical runtime identity for the selected scoring family.
@@ -203,19 +206,24 @@ def resolve_today_runtime_identity(
         frontend_payload_version=LEGACY_FRONTEND_PAYLOAD_VERSION,
         content_version=TODAY_CONTENT_VERSION,
     )
+# END_BLOCK: RESOLVER
 
 
+# START_BLOCK: READ_IDENTITY
 def expected_cache_identity(
     *,
     user_id: UUID,
     target_date: str,
     profile_hash: str,
+    selected_scoring_version: int | str | None = None,
 ) -> TodayCacheKey:
     # START_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.expected_cache_identity
     # purpose: Build the cache-read identity for the selected scoring family before fresh runtime objects exist.
-    # inputs: user_id, target_date, profile_hash.
+    # inputs: user_id, target_date, profile_hash, and optional selected scoring
+    #         version authority; None preserves global flag selection.
     # returns: V2 identity with current content/frontend and nine-canon hash, or legacy V1 identity.
-    # side_effects: reads rollout scoring selection and canon version services.
+    # side_effects: reads rollout scoring selection only when no explicit version
+    #               is supplied; always reads canon version services.
     # emitted_logs: none.
     # error_behavior: propagates canon loading errors.
     # END_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.expected_cache_identity
@@ -225,7 +233,11 @@ def expected_cache_identity(
     Selected scoring version is the source of truth for identity — not the
     frontend rollout flag.
     """
-    selected_scoring = selected_scoring_version_for_flags()
+    selected_scoring = (
+        selected_scoring_version_for_flags()
+        if selected_scoring_version is None
+        else selected_scoring_version
+    )
     identity = resolve_today_runtime_identity(
         selected_scoring_version=selected_scoring,
         activation_layer_version=ACTIVATION_LAYER_VERSION,
@@ -240,3 +252,4 @@ def expected_cache_identity(
         content_version=identity.content_version,
         frontend_payload_version=identity.frontend_payload_version,
     )
+# END_BLOCK: READ_IDENTITY

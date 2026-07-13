@@ -4,10 +4,45 @@
 #       Handles feature flags, dual-run, V2 shadow mode, and diff logging.
 # ############################################################################
 
+# START_MODULE_CONTRACT: M-DAY-SCORING-RUNTIME-SERVICE
+# purpose: Compute V1 scoring and optionally V2 scoring while selecting exactly
+#          one result from global flags plus an explicit request-scoped override.
+# owns:
+#   - apps/api/app/services/day_scoring_runtime_service.py
+# inputs: day signals, optional activation layer/request metadata, global rollout
+#         flags, and optional force_v2 request authority.
+# outputs: selected scoring version/result plus V1, optional V2, diff, and error.
+# dependencies: settings, scoring services, activation/normalization schemas,
+#               version constants, and existing structured logging helpers.
+# side_effects: emits existing scoring.v2_diff logs when V2 is computed.
+# emitted_logs: scoring.v2_diff.
+# invariants:
+#   - V1 is always computed.
+#   - force_v2 can select V2 but cannot disable globally selected V2.
+#   - Dual-run alone computes V2 without selecting it.
+#   - Rollout flags are snapshotted once per compute call.
+# failure_policy: selected V2 errors are raised; shadow-only V2 errors are
+#                 recorded while V1 remains selected.
+# END_MODULE_CONTRACT: M-DAY-SCORING-RUNTIME-SERVICE
+
+# START_MODULE_MAP: M-DAY-SCORING-RUNTIME-SERVICE
+# public_entrypoints:
+#   - should_compute_v2
+#   - selected_scoring_version_for_flags
+#   - DualRunResult
+#   - DayScoringRuntimeService.compute
+# semantic_blocks:
+#   - FLAG_SELECTION: compatible selection and compute helpers.
+#   - RESULT_CONTRACT: runtime result value.
+#   - RUNTIME_COMPUTE: snapshot-driven V1/V2 computation and selection.
+# owned_tests:
+#   - apps/api/tests/test_scoring_v2_runtime_flags.py
+#   - apps/api/tests/test_today_selection_context.py
+# END_MODULE_MAP: M-DAY-SCORING-RUNTIME-SERVICE
+
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -20,17 +55,38 @@ from app.services.scoring_service import ScoringService
 from app.services.scoring_v2_service import ScoringV2Service
 
 
-def should_compute_v2() -> bool:
-    """Return True if V2 computation may be needed (dual-run or enabled)."""
-    return settings.solarsage_v2_enabled or settings.solarsage_v2_dual_run
+# START_BLOCK: FLAG_SELECTION
+def should_compute_v2(*, force_v2: bool = False) -> bool:
+    # START_FUNCTION_CONTRACT: F-M-DAY-SCORING-RUNTIME-SERVICE.should_compute_v2
+    # purpose: Decide whether V2 must compute for selection or shadow dual-run.
+    # inputs: force_v2 — explicit request-scoped selection authority.
+    # returns: true when V2 is selected or the global dual-run flag is enabled.
+    # side_effects: reads global V2 selection and dual-run flags.
+    # emitted_logs: none.
+    # error_behavior: none.
+    # END_FUNCTION_CONTRACT: F-M-DAY-SCORING-RUNTIME-SERVICE.should_compute_v2
+    """Return whether V2 computation is selected or needed for dual-run."""
+    v2_selected = bool(force_v2 or settings.solarsage_v2_enabled)
+    return v2_selected or bool(settings.solarsage_v2_dual_run)
 
 
-def selected_scoring_version_for_flags() -> int | str:
-    """Return the selected scoring version implied by feature flags.
-    Used before cache read so V2-enabled does not read V1 cache."""
-    return SCORING_V2_VERSION if settings.solarsage_v2_enabled else LEGACY_SCORING_VERSION
+def selected_scoring_version_for_flags(*, force_v2: bool = False) -> int | str:
+    # START_FUNCTION_CONTRACT: F-M-DAY-SCORING-RUNTIME-SERVICE.selected_scoring_version_for_flags
+    # purpose: Select the scoring version from explicit request authority and
+    #          the global V2 enablement flag, excluding compute-only dual-run.
+    # inputs: force_v2 — explicit request-scoped selection authority.
+    # returns: canonical current V2 version when selected, otherwise legacy V1.
+    # side_effects: reads the global V2 selection flag.
+    # emitted_logs: none.
+    # error_behavior: none.
+    # END_FUNCTION_CONTRACT: F-M-DAY-SCORING-RUNTIME-SERVICE.selected_scoring_version_for_flags
+    """Return the selected version without treating dual-run as selection."""
+    v2_selected = bool(force_v2 or settings.solarsage_v2_enabled)
+    return SCORING_V2_VERSION if v2_selected else LEGACY_SCORING_VERSION
+# END_BLOCK: FLAG_SELECTION
 
 
+# START_BLOCK: RESULT_CONTRACT
 @dataclass
 class DualRunResult:
     """Result of a dual-run V1/V2 scoring computation."""
@@ -41,11 +97,12 @@ class DualRunResult:
     v2_result: Any | None = None
     diff: dict[str, Any] | None = None
     v2_error: str | None = None
+# END_BLOCK: RESULT_CONTRACT
 
 
+# START_BLOCK: RUNTIME_COMPUTE
 class DayScoringRuntimeService:
-    """Shared runtime scorer. Always computes V1. Computes V2 when
-    SOLARSAGE_V2_DUAL_RUN or SOLARSAGE_V2_ENABLED is set."""
+    """Shared runtime scorer with global and request-scoped V2 selection."""
 
     def compute(
         self,
@@ -53,18 +110,24 @@ class DayScoringRuntimeService:
         activation_layer: ActivationLayer | None = None,
         user_id: UUID | None = None,
         target_date: str | None = None,
+        *,
+        force_v2: bool = False,
     ) -> DualRunResult:
         # START_FUNCTION_CONTRACT: F-M-DAY-SCORING-RUNTIME-SERVICE.compute
-        # purpose: Compute dual-run scoring. Always V1, optionally V2.
-        # inputs: day_signals, activation_layer, user_id, target_date
+        # purpose: Compute V1 and optional V2 from one request-local flag snapshot.
+        # inputs: day_signals, activation_layer, user_id, target_date, and
+        #         force_v2 explicit request-scoped selection authority.
         # returns: DualRunResult with selected, v1, and optional v2/diff/error
+        # side_effects: emits existing scoring.v2_diff logs when V2 computes.
+        # emitted_logs: scoring.v2_diff.
+        # error_behavior: raises selected V2 failures; records shadow-only failures.
         # END_FUNCTION_CONTRACT: F-M-DAY-SCORING-RUNTIME-SERVICE.compute
         v1_service = ScoringService()
         v2_service = ScoringV2Service()
 
-        v2_enabled = settings.solarsage_v2_enabled
-        v2_dual_run = settings.solarsage_v2_dual_run
-        compute_v2 = v2_enabled or v2_dual_run
+        v2_selected = bool(force_v2 or settings.solarsage_v2_enabled)
+        v2_dual_run = bool(settings.solarsage_v2_dual_run)
+        compute_v2 = v2_selected or v2_dual_run
 
         # Always compute V1
         v1_result = v1_service.score_day(day_signals)
@@ -118,7 +181,7 @@ class DayScoringRuntimeService:
                         payload={
                             "user_id": str(user_id) if user_id else None,
                             "date": target_date,
-                            "selected_version": LEGACY_SCORING_VERSION if not v2_enabled else SCORING_V2_VERSION,
+                            "selected_version": SCORING_V2_VERSION if v2_selected else LEGACY_SCORING_VERSION,
                             "v1_day_status": v1_day_status,
                             "v2_day_status": v2_result.day_status,
                             "sphere_diffs": sphere_diffs,
@@ -127,8 +190,8 @@ class DayScoringRuntimeService:
 
             except Exception as e:
                 v2_error = str(e)
-                if v2_enabled:
-                    raise  # Fail loudly when V2 is enabled
+                if v2_selected:
+                    raise  # Fail loudly whenever V2 is selected.
                 # In dual-run mode, silently record the error
                 with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="V2_DUAL_RUN"):
                     log_event(
@@ -143,7 +206,8 @@ class DayScoringRuntimeService:
                     )
 
         # Select result
-        if v2_enabled and v2_result is not None:
+        selected_scoring_version: int | str
+        if v2_selected and v2_result is not None:
             selected_result = {
                 "day_status": v2_result.day_status,
                 "sphere_scores": {k: round(v.final_score, 4) for k, v in v2_result.sphere_scores.items()},
@@ -162,3 +226,4 @@ class DayScoringRuntimeService:
             diff=diff,
             v2_error=v2_error,
         )
+# END_BLOCK: RUNTIME_COMPUTE
