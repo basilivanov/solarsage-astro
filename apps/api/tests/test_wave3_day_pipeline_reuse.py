@@ -1,30 +1,36 @@
-
 # ############################################################################
-# AI_HEADER: MODULE_TESTS_TEST_WAVE3_DAY_PIPELINE_REUSE
-# ROLE: Module
-# DEPENDENCIES: local modules
-# GRACE_ANCHORS: []
-# SLICE: SLICE-TESTS
-# ######################################### START_MODULE_CONTRACT
-# purpose: Tests for wave3_day_pipeline_reuse.py behavior
+# AI_HEADER: M-TEST-WAVE3-DAY-PIPELINE-REUSE — Wave 3 acceptance tests.
+# ROLE: Proves day endpoint reuses natal context, rebuilds on profile change,
+#       and returns expected shape.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-TEST-WAVE3-DAY-PIPELINE-REUSE
+# purpose: Verify day endpoint natal-context cache hit, profile-change rebuild,
+#          and payload shape invariants.
 # owns:
 #   - apps/api/tests/test_wave3_day_pipeline_reuse.py
-# inputs: Query params, models
-# outputs: Records / query results
-# dependencies: local modules
-# side_effects: Database reads/writes
-# emitted_logs: n/a (tests)
-# invariants:
-#   - n/a
-# failure_policy: log and raise
-# END_MODULE_CONTRACT
-# AI_HEADER
-# module: M-TEST-WAVE-3-ACCEPTANCE
-# wave: W-NATAL-FULL (Wave 3 — day pipeline reuse)
-# purpose: Wave 3 acceptance tests — proving:
-#          1. Day endpoint does not call natal sidecar on context cache hit
-#          2. Day rebuilds if birth profile changes (profile_hash → cache miss)
-#          3. Day endpoint still returns same expected shape
+# inputs: In-memory DB fixtures, service mocks, sidecar doubles.
+# outputs: Assertion evidence for natal-cache, rebuild, and shape proofs.
+# dependencies: test fixtures, app models/services, mock sidecar data.
+# side_effects: In-memory DB reads/writes via fixtures.
+# emitted_logs: none.
+# invariants: none.
+# failure_policy: AssertionError on test failure.
+# END_MODULE_CONTRACT: M-TEST-WAVE3-DAY-PIPELINE-REUSE
+
+# START_MODULE_MAP: M-TEST-WAVE3-DAY-PIPELINE-REUSE
+# public_entrypoints:
+#   - db
+#   - user_with_profile
+#   - test_same_date_both_caches_hit
+#   - test_different_date_today_miss_natal_hit
+#   - test_profile_change_causes_today_cache_miss
+#   - test_rebuild_after_profile_change_end_to_end
+#   - test_today_payload_has_required_fields
+#   - test_day_client_does_not_call_get_natal
+# owned_tests:
+#   - apps/api/tests/test_wave3_day_pipeline_reuse.py
+# END_MODULE_MAP: M-TEST-WAVE3-DAY-PIPELINE-REUSE
 
 import uuid
 from datetime import date as Date, time
@@ -36,8 +42,9 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.session import Base
-from app.db.models import User, UserProfile, NatalChartCache, TodayPayloadCache
+from app.db.models import User, UserProfile
 from app.schemas.access import ContentAccessState
+from app.schemas.semantic import SemanticLayer
 from app.services.today_service import TodayService
 from app.services.natal_context_service import NatalContextService
 
@@ -46,6 +53,14 @@ from app.services.natal_context_service import NatalContextService
 
 @pytest_asyncio.fixture
 async def db():
+    # START_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.db
+    # purpose: Provide a fresh in-memory SQLite session per test.
+    # inputs: none.
+    # returns: AsyncSession (yielded) bound to an ephemeral in-memory SQLite.
+    # side_effects: Creates schema on setup, disposes engine on teardown.
+    # emitted_logs: none.
+    # error_behavior: Raises on DB create/fixture failure.
+    # END_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.db
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -57,6 +72,14 @@ async def db():
 
 @pytest_asyncio.fixture
 async def user_with_profile(db: AsyncSession):
+    # START_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.user_with_profile
+    # purpose: Create a basic User + UserProfile with complete birth data.
+    # inputs: db — AsyncSession from the db fixture.
+    # returns: tuple[User, UserProfile] (yielded) with real UUID, tg_user_id, and birth coordinates.
+    # side_effects: Commits User and UserProfile to the DB.
+    # emitted_logs: none.
+    # error_behavior: Raises on commit failure.
+    # END_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.user_with_profile
     """Create a User + UserProfile with complete birth data."""
     user_id = uuid.uuid4()
     user = User(id=user_id, tg_user_id=hash(str(user_id)) % (10**18))
@@ -136,7 +159,12 @@ def _setup_service_mocks(mocks):
     }
 
     mock_semantic = mocks["semantic"].__enter__()
-    mock_semantic.return_value.build_semantic_layer.return_value = {}
+    mock_semantic.return_value.build_semantic_layer.return_value = SemanticLayer(
+        day_status="steady",
+        day_theme="Спокойный день",
+        sphere_themes=[],
+        top_keywords=[],
+    )
     mock_semantic.return_value.build_why_contexts.return_value = []
 
     mock_llm = mocks["llm"].__enter__()
@@ -173,6 +201,14 @@ class TestDayNoNatalSidecarOnCacheHit:
 
     @pytest.mark.asyncio
     async def test_same_date_both_caches_hit(self, db, user_with_profile):
+        # START_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayNoNatalSidecarOnCacheHit.test_same_date_both_caches_hit
+        # purpose: Second call for same date hits both caches — no sidecar calls.
+        # inputs: db, user_with_profile from fixtures; mocks all external services.
+        # returns: none — assertions only.
+        # side_effects: Reads/writes TodayPayloadCache and NatalChartCache rows.
+        # error_behavior: Assertion failure on cache hit/miss or sidecar call count.
+        # emitted_logs: none.
+        # END_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayNoNatalSidecarOnCacheHit.test_same_date_both_caches_hit
         """After building a payload for a date, a second call for the same date
         hits both TodayPayload cache and NatalContext cache — no sidecar calls at all.
         """
@@ -233,6 +269,14 @@ class TestDayNoNatalSidecarOnCacheHit:
 
     @pytest.mark.asyncio
     async def test_different_date_today_miss_natal_hit(self, db, user_with_profile):
+        # START_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayNoNatalSidecarOnCacheHit.test_different_date_today_miss_natal_hit
+        # purpose: Different date → TodayPayload miss, NatalContext hit → no natal sidecar call, transit sidecar called.
+        # inputs: db, user_with_profile from fixtures.
+        # returns: none — assertions only.
+        # side_effects: Two payload builds for date_a and date_b; cache reads/writes.
+        # error_behavior: Assertion failure on cache behavior or meta.cached flag.
+        # emitted_logs: none.
+        # END_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayNoNatalSidecarOnCacheHit.test_different_date_today_miss_natal_hit
         """Key scenario: call for date A caches natal context. Then call for
         date B: TodayPayload cache MISSES (different date), but NatalContext
         cache HITS (same user). Proves:
@@ -312,6 +356,14 @@ class TestDayRebuildOnProfileChange:
 
     @pytest.mark.asyncio
     async def test_profile_change_causes_today_cache_miss(self, db, user_with_profile):
+        # START_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayRebuildOnProfileChange.test_profile_change_causes_today_cache_miss
+        # purpose: Verify profile_hash changes when birth data is modified.
+        # inputs: db, user_with_profile from fixtures.
+        # returns: none — assertions only.
+        # side_effects: Modifies profile birth coordinates and commits.
+        # error_behavior: Assertion failure if hash does not change.
+        # emitted_logs: none.
+        # END_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayRebuildOnProfileChange.test_profile_change_causes_today_cache_miss
         """Baseline: verify that profile_hash changes when birth data changes."""
         user, profile = user_with_profile
         original_hash = NatalContextService.compute_profile_hash(profile)
@@ -327,6 +379,14 @@ class TestDayRebuildOnProfileChange:
 
     @pytest.mark.asyncio
     async def test_rebuild_after_profile_change_end_to_end(self, db, user_with_profile):
+        # START_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayRebuildOnProfileChange.test_rebuild_after_profile_change_end_to_end
+        # purpose: Full end-to-end: build, change profile, rebuild — verifies natal sidecar is called again and meta.cached=False.
+        # inputs: db, user_with_profile from fixtures.
+        # returns: none — assertions only.
+        # side_effects: Two payload builds, profile modification, cache round-trips.
+        # error_behavior: Assertion failure on cache behavior, sidecar calls, or meta flags.
+        # emitted_logs: none.
+        # END_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayRebuildOnProfileChange.test_rebuild_after_profile_change_end_to_end
         """Full end-to-end scenario:
         1. Build payload with original birth data → cached with original profile_hash
         2. Change birth data → new profile_hash → old cache becomes stale
@@ -431,6 +491,14 @@ class TestDayPayloadShape:
 
     @pytest.mark.asyncio
     async def test_today_payload_has_required_fields(self, db, user_with_profile):
+        # START_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayPayloadShape.test_today_payload_has_required_fields
+        # purpose: Verify TodayPayload response contains all required structural fields.
+        # inputs: db, user_with_profile from fixtures; mocks external services.
+        # returns: none — assertions only.
+        # side_effects: Builds a payload via TodayService.
+        # error_behavior: Assertion failure on missing or malformed fields.
+        # emitted_logs: none.
+        # END_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestDayPayloadShape.test_today_payload_has_required_fields
         user, profile = user_with_profile
         target_date = Date(2026, 6, 11)
         access_state = ContentAccessState(
@@ -482,6 +550,14 @@ class TestTodayServiceNoDirectNatalCall:
 
     @pytest.mark.asyncio
     async def test_day_client_does_not_call_get_natal(self, db, user_with_profile):
+        # START_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestTodayServiceNoDirectNatalCall.test_day_client_does_not_call_get_natal
+        # purpose: Prove TodayService uses sidecar client only for get_transits(), never get_natal().
+        # inputs: db, user_with_profile from fixtures; mocks external services.
+        # returns: none — assertions only.
+        # side_effects: Builds a payload via TodayService with spy on sidecar client.
+        # error_behavior: Assertion failure if get_natal is called.
+        # emitted_logs: none.
+        # END_FUNCTION_CONTRACT: F-M-TEST-WAVE3-DAY-PIPELINE-REUSE.TestTodayServiceNoDirectNatalCall.test_day_client_does_not_call_get_natal
         """The sidecar client obtained in TodayService must only call get_transits()."""
         user, profile = user_with_profile
         target_date = Date(2026, 6, 11)

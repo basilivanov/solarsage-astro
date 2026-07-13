@@ -17,13 +17,13 @@
 #   - meta.contract_version is an int monotonically bumped on breaking
 #     changes; never silently changed.
 # emits: nothing.
-# consumes: schemas._base.CamelModel, schemas.access (none directly today —
-#           ContentAccessState is local because it differs from AccessSummary).
+# consumes: schemas._base.CamelModel and canonical per-content access types
+#           re-exported from schemas.access.
 # END_MODULE_CONTRACT: M-CONTRACTS.today
 
 # START_MODULE_MAP: M-CONTRACTS.today
 # - DayStatus: Literal alias.
-# - ContentAccessState: per-day/per-reading access object.
+# - ContentAccessReason, ContentAccessState: canonical re-exports from schemas.access.
 # - TopFlag, TopFlagHint: highlight cards for the day.
 # - WhyParagraph, WhyBullets, WhyBlock, WhySection: "why this happens" body.
 # - WeekStripDay: 7-day strip item.
@@ -48,27 +48,13 @@ from app.core.versions import (
     V2_FRONTEND_PAYLOAD_VERSION,
 )
 from ._base import CamelModel
+from .access import ContentAccessReason as ContentAccessReason
+from .access import ContentAccessState as ContentAccessState
 from .activation import ActivationEvidence
 from .scoring_v2 import SphereScoreV2
 from .today_horizons import TodayV2HorizonsBlock, validate_horizons_against_evidence
 
 DayStatus = Literal["supportive", "steady", "tense"]
-
-ContentAccessReason = Literal[
-    "active_referral_days",
-    "active_subscription",
-    "expired_access",
-    "outside_access_window",
-]
-
-
-class ContentAccessState(CamelModel):
-    state: Literal["full", "preview", "locked"]
-    reason: ContentAccessReason | None = None
-    referral_days_left: int | None = None
-    subscription_active: bool | None = None
-    access_until: str | None = None
-
 
 class TopFlagHint(CamelModel):
     why_today: str | None = None
@@ -174,6 +160,7 @@ class ReadingBody(CamelModel):
 # END_BLOCK: TODAY_AUX
 
 
+# START_BLOCK: TODAY_READ_MODELS
 class DayChartHouse(CamelModel):
     number: int
     cusp_longitude: float

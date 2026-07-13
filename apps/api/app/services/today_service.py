@@ -40,7 +40,9 @@
 #     runtime force propagation, public identity, cache write, and horizons.
 #   - Runtime selection must match the pre-cache family or fail closed before
 #     public payload construction and cache write.
-#   - Background week prefetch never inherits a local preview selection context.
+#   - Background week prefetch spawns one best-effort asyncio task with strong
+#     ownership until completion; each day uses an independent SessionLocal
+#     session and never inherits the request's DB session or selection context.
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
@@ -85,11 +87,14 @@ from app.schemas.today import (
     SphereScore,
     TodayMeta,
     TodayPayload,
+    TodayV2HorizonPipelineAudit,
     TodayV2HorizonPipelineAuditBuilt,
     TodayV2HorizonPipelineAuditUnavailable,
     TopFlag,
 )
 from app.clients.solarsage_client import get_solarsage_client
+from app.core.config import settings
+from app.db.session import SessionLocal
 from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
 from app.services.astro_utils import find_house, strip_prefix
 from app.services.day_scoring_signals import filter_day_scored_signals
@@ -147,6 +152,9 @@ ASPECT_LABELS_RU = {
 SOFT_ASPECTS = {"sextile", "trine"}
 TENSE_ASPECTS = {"square", "opposition"}
 
+# Strong-reference set for best-effort background prefetch tasks.
+_TODAY_PREFETCH_TASKS: set[asyncio.Task[None]] = set()
+
 
 # START_BLOCK: REAL_CALCULATION
 class TodayService:
@@ -175,9 +183,11 @@ class TodayService:
         # purpose: Get TodayPayload for user and date — the main day pipeline.
         # inputs: user_id, target_date, access_state, skip_prefetch, and optional immutable selection_context.
         # returns: TodayPayload with day_status, headline, reading, top_flags, etc.
-        # side_effects: reads/writes cache, calls sidecar for transits, calls LLM for text
+        # side_effects: reads/writes cache; calls sidecar for transits and LLM for text;
+        #   may schedule a best-effort background week-prefetch task with independent DB sessions
         # emitted_logs: day.payload_built (TODO: W-1.6 — add day.viewed in API route)
-        # error_behavior: HTTPException 409 on incomplete profile, 502 on sidecar failure
+        # error_behavior: HTTPException 409 on incomplete profile, 502 on sidecar failure;
+        #   raises RuntimeError if a successfully validated natal profile lacks birth identity.
         # END_FUNCTION_CONTRACT: F-M-DAY-SERVICE.get_today_payload
         """
         Get TodayPayload for a user and date.
@@ -192,7 +202,7 @@ class TodayService:
         """
         # Default access state for prefetch (real state checked on-demand by API route)
         if access_state is None:
-            access_state = ContentAccessState(state="full", reason="cached_prefetch", referralDaysLeft=None, subscriptionActive=None, accessUntil=None)
+            access_state = ContentAccessState(state="full")
 
         # W-ACCESS.3: If locked, return preview payload
         if access_state.state == "locked":
@@ -237,6 +247,10 @@ class TodayService:
         # W-NATAL-FULL: Use cached natal context instead of direct sidecar call
         context_service = NatalContextService(self.db)
         natal_context = await context_service.get_or_build_natal_context(user_id)
+        birth_date = profile.birthday
+        birth_tz = profile.birth_tz
+        if birth_date is None or birth_tz is None:
+            raise RuntimeError("validated natal profile is missing birth identity")
 
         # Get SolarSage client — only for transits now
         client = get_solarsage_client()
@@ -289,11 +303,11 @@ class TodayService:
         if compute_v2:
             try:
                 sidecar_layer = await client.get_activation_layer(
-                    birth_date=profile.birthday.isoformat(),
+                    birth_date=birth_date.isoformat(),
                     birth_time=profile.birth_time.strftime("%H:%M") if profile.birth_time else "12:00",
                     birth_lat=float(profile.birth_lat),
                     birth_lon=float(profile.birth_lon),
-                    birth_tz=profile.birth_tz,
+                    birth_tz=birth_tz,
                     target_date=target_date.isoformat(),
                     target_time="12:00",
                     target_tz=profile.current_tz or profile.birth_tz or "UTC",
@@ -410,7 +424,7 @@ class TodayService:
         notes_text = await llm_service.generate_notes(
             scoring_result["day_status"],
             scoring_result["sphere_scores"],
-            semantic_layer,
+            semantic_layer.model_dump(),
         )
 
         # W-4.2: Build why-this-happens sections via LLM
@@ -497,6 +511,7 @@ class TodayService:
                 natal_context=natal_context,
                 concrete_advice=concrete_advice,
             )
+            horizon_pipeline_audit: TodayV2HorizonPipelineAudit
             if horizon_result.status == "built":
                 horizon_pipeline_audit = TodayV2HorizonPipelineAuditBuilt(
                     status="built",
@@ -575,8 +590,10 @@ class TodayService:
         await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
 
         # W-5.2: Prefetch week in background (don't block user)
-        if not skip_prefetch:
-            asyncio.ensure_future(self._prefetch_week(user_id, target_date))
+        if not skip_prefetch and settings.app_env != "test":
+            prefetch_task = asyncio.create_task(self._prefetch_week(user_id, target_date))
+            _TODAY_PREFETCH_TASKS.add(prefetch_task)
+            prefetch_task.add_done_callback(_TODAY_PREFETCH_TASKS.discard)
 
         return payload
 
@@ -947,15 +964,21 @@ class TodayService:
     async def _prefetch_week(self, user_id, today: Date) -> None:
         """Prefetch 7 days of payloads in background. W-5.2.
 
-        Delegates to get_today_payload(skip_prefetch=True) which handles
-        cache check internally with the correct profile_hash.
-        Errors are logged at debug level but do not break the app.
+        Each day uses a fresh SessionLocal session. Errors are logged as
+        warnings and do not break the app or the foreground response.
         """
-        days = [today + timedelta(days=i) for i in range(-3, 4)]  # today ±3 days
+        days = [today + timedelta(days=i) for i in range(-3, 4)]
 
-        async def _calc_one(day: Date):
+        async def _calc_one(day: Date) -> None:
             try:
-                await self.get_today_payload(user_id, day, None, skip_prefetch=True)
+                async with SessionLocal() as session:
+                    service = TodayService(session, self._horizon_integration_service)
+                    await service.get_today_payload(
+                        user_id,
+                        day,
+                        None,
+                        skip_prefetch=True,
+                    )
             except Exception:
                 with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="PREFETCH_WEEK"):
                     log_event(
@@ -964,9 +987,8 @@ class TodayService:
                         msg=f"Prefetch failed for day {day}",
                     )
 
-        tasks = [_calc_one(d) for d in days]
         try:
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*[_calc_one(day) for day in days])
         except Exception:
             with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="PREFETCH_WEEK"):
                 log_event(

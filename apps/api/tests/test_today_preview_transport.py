@@ -39,7 +39,7 @@ import ast
 import asyncio
 import inspect
 from dataclasses import fields
-from datetime import date as Date
+from datetime import date as Date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -79,11 +79,9 @@ from app.services.today_selection_context import (
 )
 from app.services.today_service import TodayService
 
-
 # START_BLOCK: TEST_SUPPORT
 class _BoundaryStop(Exception):
     """Expected deterministic stop after the boundary under test."""
-
 
 def _guard_input(**overrides: Any) -> TodayPreviewGuardInput:
     values: dict[str, Any] = {
@@ -102,7 +100,6 @@ def _guard_input(**overrides: Any) -> TodayPreviewGuardInput:
     }
     values.update(overrides)
     return TodayPreviewGuardInput(**values)
-
 
 def _payload_for(context: TodaySelectionContext) -> TodayPayload:
     selected_version = SCORING_V2_VERSION if context.force_v2 else LEGACY_SCORING_VERSION
@@ -167,7 +164,6 @@ def _payload_for(context: TodaySelectionContext) -> TodayPayload:
         }
     return TodayPayload.model_validate(payload)
 
-
 class _RouteTodayService:
     """Request-context recorder returning schema-valid family payloads."""
 
@@ -202,7 +198,6 @@ class _RouteTodayService:
             await self._all_arrived.wait()
         return _payload_for(selection_context)
 
-
 class _RouteAccessService:
     """Minimal route access dependency returning full access."""
 
@@ -221,7 +216,6 @@ class _RouteAccessService:
         del user_id, target_date
         return ContentAccessState(state="full")
 
-
 def _route_user(*, exact_identity: bool = True) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid4(),
@@ -233,7 +227,6 @@ def _route_user(*, exact_identity: bool = True) -> SimpleNamespace:
             birth_lon=37.61,
         ),
     )
-
 
 def _build_route_app(
     monkeypatch: pytest.MonkeyPatch,
@@ -257,7 +250,6 @@ def _build_route_app(
     monkeypatch.setattr(day_api, "TodayService", lambda db: recorder)
     return route_app
 
-
 async def _route_get(
     route_app: FastAPI,
     *,
@@ -272,7 +264,6 @@ async def _route_get(
             headers=headers,
             params=params,
         )
-
 
 def _install_service_harness(
     monkeypatch: pytest.MonkeyPatch,
@@ -346,7 +337,6 @@ def _install_service_harness(
     )
 # END_BLOCK: TEST_SUPPORT
 
-
 # START_BLOCK: PURE_GUARD
 def test_guard_constants_are_exact() -> None:
     # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_guard_constants_are_exact
@@ -362,7 +352,6 @@ def test_guard_constants_are_exact() -> None:
     assert TODAY_PREVIEW_TG_USER_ID == 999999999
     assert TODAY_PREVIEW_TG_USERNAME == "dev_user"
     assert TODAY_PREVIEW_PORT == 3003
-
 
 def test_guard_reason_enum_is_exact_and_closed() -> None:
     # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_guard_reason_enum_is_exact_and_closed
@@ -385,7 +374,6 @@ def test_guard_reason_enum_is_exact_and_closed() -> None:
         "port_denied",
         "identity_denied",
     ]
-
 
 def test_production_denial_is_absolute_and_first() -> None:
     # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_production_denial_is_absolute_and_first
@@ -418,7 +406,6 @@ def test_production_denial_is_absolute_and_first() -> None:
         authorized=False,
         reason=TodayPreviewGuardReason.PRODUCTION_DENIED,
     )
-
 
 @pytest.mark.parametrize(
     ("overrides", "reason"),
@@ -468,7 +455,6 @@ def test_guard_denial_matrix(
         reason=reason,
     )
 
-
 @pytest.mark.parametrize(
     "overrides",
     [
@@ -511,7 +497,6 @@ def test_guard_authorization_matrix(overrides: dict[str, Any]) -> None:
         reason=TodayPreviewGuardReason.AUTHORIZED,
     )
 
-
 def test_guard_decision_contains_no_raw_request_facts() -> None:
     # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_guard_decision_contains_no_raw_request_facts
     # purpose: Verify decisions expose only authorization and the closed reason.
@@ -525,7 +510,6 @@ def test_guard_decision_contains_no_raw_request_facts() -> None:
         "authorized",
         "reason",
     }
-
 
 def test_guard_module_is_pure_standard_library_only() -> None:
     # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_guard_module_is_pure_standard_library_only
@@ -547,7 +531,6 @@ def test_guard_module_is_pure_standard_library_only() -> None:
     assert imported_roots <= {"__future__", "dataclasses", "enum", "ipaddress", "urllib"}
     assert not any(token in source for token in ("ContextVar", "threading.local", "current_selection"))
 # END_BLOCK: PURE_GUARD
-
 
 # START_BLOCK: ROUTE_INTEGRATION
 @pytest.mark.asyncio
@@ -578,7 +561,6 @@ async def test_route_exact_direct_preview_passes_local_v2_context_and_identity(
     assert response.json()["v2"]["audit"]["horizonPipeline"]["status"] == "unavailable"
     assert response.json()["v2"]["horizons"] is None
 
-
 @pytest.mark.asyncio
 async def test_route_next_rewrite_preview_passes_local_v2_context(
     monkeypatch: pytest.MonkeyPatch,
@@ -607,7 +589,6 @@ async def test_route_next_rewrite_preview_passes_local_v2_context(
     assert response.status_code == 200
     assert recorder.contexts[0].source is TodaySelectionSource.LOCAL_DEV_PREVIEW
     assert recorder.contexts[0].force_v2 is True
-
 
 @pytest.mark.parametrize(
     "case",
@@ -657,7 +638,6 @@ async def test_route_denials_continue_with_ordinary_global_context(
     assert response.json()["meta"]["scoringVersion"] == LEGACY_SCORING_VERSION
     assert response.json()["v2"] is None
 
-
 @pytest.mark.asyncio
 async def test_route_global_v2_without_preview_uses_global_source(
     monkeypatch: pytest.MonkeyPatch,
@@ -680,7 +660,6 @@ async def test_route_global_v2_without_preview_uses_global_source(
         source=TodaySelectionSource.GLOBAL_FLAGS,
     )]
     assert response.json()["meta"]["scoringVersion"] == SCORING_V2_VERSION
-
 
 @pytest.mark.asyncio
 async def test_overlapping_route_calls_keep_independent_contexts_and_globals(
@@ -712,7 +691,6 @@ async def test_overlapping_route_calls_keep_independent_contexts_and_globals(
     }
     assert settings.solarsage_v2_enabled is False
 # END_BLOCK: ROUTE_INTEGRATION
-
 
 # START_BLOCK: SERVICE_BOUNDARIES
 @pytest.mark.parametrize(
@@ -758,7 +736,6 @@ async def test_service_passes_explicit_selected_family_to_cache_read(
     assert identity_spy.call_args.kwargs["selected_scoring_version"] == expected_version
     assert settings.solarsage_v2_enabled is False
 
-
 @pytest.mark.asyncio
 async def test_service_forced_context_activates_sidecar_and_runtime_force(
     monkeypatch: pytest.MonkeyPatch,
@@ -799,7 +776,6 @@ async def test_service_forced_context_activates_sidecar_and_runtime_force(
     assert harness.runtime_class.return_value.compute.call_args.kwargs["force_v2"] is True
     assert settings.solarsage_v2_enabled is False
 
-
 @pytest.mark.asyncio
 async def test_service_forced_activation_failure_reraises_without_global_mutation(
     monkeypatch: pytest.MonkeyPatch,
@@ -830,7 +806,6 @@ async def test_service_forced_activation_failure_reraises_without_global_mutatio
         )
     assert settings.solarsage_v2_enabled is False
 
-
 @pytest.mark.asyncio
 async def test_service_shadow_activation_failure_remains_fail_open(
     monkeypatch: pytest.MonkeyPatch,
@@ -859,7 +834,6 @@ async def test_service_shadow_activation_failure_remains_fail_open(
         )
     assert settings.solarsage_v2_enabled is False
     assert settings.solarsage_v2_dual_run is True
-
 
 @pytest.mark.asyncio
 async def test_service_split_brain_fails_before_identity_and_cache_write(
@@ -896,26 +870,55 @@ async def test_service_split_brain_fails_before_identity_and_cache_write(
 
 
 @pytest.mark.asyncio
-async def test_prefetch_week_never_propagates_preview_context() -> None:
+async def test_prefetch_week_never_propagates_preview_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_prefetch_week_never_propagates_preview_context
-    # purpose: Verify background week calls retain compatible default/global selection behavior.
-    # inputs: none.
+    # purpose: Prove 7 fresh sessions with object identity, no request DB reuse, no selection_context.
+    # inputs: monkeypatch for SessionLocal and class-boundary get_today_payload.
     # returns: none.
-    # side_effects: Executes seven in-process prefetch coroutine calls against a recorder.
+    # side_effects: Directly awaits _prefetch_week with deterministic mocks.
     # emitted_logs: none.
-    # error_behavior: Assertion failure if selection_context is propagated or call count changes.
+    # error_behavior: Assertion failure on count, identity, date, or kwarg drift.
     # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_prefetch_week_never_propagates_preview_context
-    service = TodayService(SimpleNamespace())
-    calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+    user_id = uuid4()
+    today = Date(2026, 7, 13)
+    request_db = SimpleNamespace()
+    child_calls: list[tuple[Any, tuple[Any, ...], dict[str, Any]]] = []
 
-    async def _record(*args: Any, **kwargs: Any) -> None:
-        calls.append((args, kwargs))
+    async def _record(self: Any, *args: Any, **kwargs: Any) -> None:
+        child_calls.append((self.db, args, kwargs))
+    monkeypatch.setattr(TodayService, "get_today_payload", _record)
 
-    service.get_today_payload = _record
-    await service._prefetch_week(uuid4(), Date(2026, 7, 13))
-    assert len(calls) == 7
-    assert all(kwargs == {"skip_prefetch": True} for _, kwargs in calls)
-    assert all("selection_context" not in kwargs for _, kwargs in calls)
+    created: list[object] = []
+    entered: list[object] = []
+    exited: list[object] = []
+
+    class _FakeSession:
+        def __init__(self) -> None:
+            created.append(self)
+        async def __aenter__(self) -> _FakeSession:
+            entered.append(self)
+            return self
+        async def __aexit__(self, *args: object) -> None:
+            exited.append(self)
+
+    monkeypatch.setattr(today_service_module, "SessionLocal", lambda: _FakeSession())
+    await TodayService(request_db)._prefetch_week(user_id, today)
+
+    assert len(child_calls) == 7
+    assert len(created) == 7 and len(entered) == 7 and len(exited) == 7
+    assert entered == created
+    assert exited == created
+    child_dbs = [db for db, _, _ in child_calls]
+    assert all(db is not request_db for db in child_dbs)
+    assert child_dbs == created
+    for child_db, args, kwargs in child_calls:
+        assert child_db is not request_db
+        assert args == (user_id, args[1], None)
+        assert kwargs == {"skip_prefetch": True}
+    child_dates = {args[1] for _, args, _ in child_calls}
+    assert child_dates == {today + timedelta(days=i) for i in range(-3, 4)}
 # END_BLOCK: SERVICE_BOUNDARIES
 
 

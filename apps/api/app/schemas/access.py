@@ -47,8 +47,8 @@ ContentAccessReason = Literal[
 ]
 
 
+# Access state for a specific day (W-1.3 stub, W-ACCESS.1 real).
 class ContentAccessState(CamelModel):
-    """Access state for a specific day (W-1.3 stub, W-ACCESS.1 real)."""
     state: Literal["full", "preview", "locked"]
     reason: ContentAccessReason | None = None
     referral_days_left: int | None = None

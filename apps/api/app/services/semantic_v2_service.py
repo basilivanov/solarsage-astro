@@ -3,12 +3,41 @@
 # ROLE: SemanticV2Service — builds the TodayV2Block schema for the frontend.
 # ############################################################################
 
+# START_MODULE_CONTRACT: M-SEMANTIC-V2-SERVICE
+# purpose: Build deterministic Today V2 semantic/audit output and an LLM evidence packet.
+# owns:
+#   - apps/api/app/services/semantic_v2_service.py
+# inputs: activation, scoring, horizons, audit, and precomputed context objects.
+# outputs: TodayV2Block, sphere evidence, and a redacted structured LLM packet.
+# dependencies: version/canon services and typed activation, scoring, Today, and horizon schemas.
+# side_effects: reads the canon bundle during SemanticV2Service construction only.
+# emitted_logs: none.
+# invariants: never includes raw profile, session, or token data in evidence output.
+# failure_policy: Pydantic validation and canon loading errors propagate.
+# END_MODULE_CONTRACT: M-SEMANTIC-V2-SERVICE
+
+# START_MODULE_MAP: M-SEMANTIC-V2-SERVICE
+# public_entrypoints:
+#   - get_target_label
+#   - get_target_spheres
+#   - SemanticV2Service.build_v2_block
+#   - SemanticV2Service.get_evidence_for_sphere
+#   - SemanticV2Service.build_llm_evidence_packet
+# semantic_blocks:
+#   - TARGET_METADATA: labels and sphere mappings for activation targets.
+#   - TODAY_V2_BLOCK: deterministic activation summary, why-today, audit, and horizons assembly.
+#   - EVIDENCE_EXPORT: sphere evidence and structured LLM evidence packet construction.
+# owned_tests:
+#   - apps/api/tests/test_semantic_v2_service.py
+# END_MODULE_MAP: M-SEMANTIC-V2-SERVICE
+
 from __future__ import annotations
-import sys
-from typing import Any, Literal
+
+from typing import Any
+
 from app.core.versions import TODAY_V2_PAYLOAD_VERSION
 from app.schemas.activation import ActivationLayer, ActivationEvidence
-from app.schemas.scoring_v2 import ScoringV2Result, SphereScoreV2
+from app.schemas.scoring_v2 import ScoringV2Result
 from app.schemas.today import (
     TodayV2Block,
     TodayV2ActivationSummary,
@@ -65,6 +94,14 @@ TECHNIQUE_FAMILY_LABELS = {
 
 
 def get_target_label(target_type: str, target_key: str) -> str:
+    # START_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.get_target_label
+    # purpose: Resolve a display label for a typed activation target.
+    # inputs: target_type and target_key identifying the activation target.
+    # returns: Canonical Russian label when known, otherwise the original key.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: does not raise for unknown target types or keys.
+    # END_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.get_target_label
     key_upper = target_key.upper()
     if target_type == "planet":
         return PLANET_LABELS.get(key_upper, target_key)
@@ -80,6 +117,14 @@ def get_target_label(target_type: str, target_key: str) -> str:
 
 
 def get_target_spheres(target_type: str, target_key: str, spheres_data: dict) -> list[str]:
+    # START_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.get_target_spheres
+    # purpose: Map a target to all matching product spheres in canon iteration order.
+    # inputs: target_type, target_key, and the loaded sphere canon mapping.
+    # returns: Sphere keys whose houses, planets, lots, or angles contain the target.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: invalid house keys are ignored; malformed canon values may propagate errors.
+    # END_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.get_target_spheres
     mapped_spheres = []
     for sphere_key, sphere_val in spheres_data.get("spheres", {}).items():
         if target_type == "house":
@@ -93,7 +138,7 @@ def get_target_spheres(target_type: str, target_key: str, spheres_data: dict) ->
             if target_key.upper() in [k.upper() for k in sphere_val.get("planets", {}).keys()]:
                 mapped_spheres.append(sphere_key)
         elif target_type == "lot":
-            if target_key.upper() in [l.upper() for l in sphere_val.get("lots", [])]:
+            if target_key.upper() in [lot.upper() for lot in sphere_val.get("lots", [])]:
                 mapped_spheres.append(sphere_key)
         elif target_type == "angle":
             angle_map = {"ASC": 1, "DSC": 7, "MC": 10, "IC": 4}
@@ -129,10 +174,10 @@ class SemanticV2Service:
         # Group activations by target
         grouped: dict[tuple[str, str], list[ActivationEvidence]] = {}
         for act in activation_layer.activations:
-            key = (act.target_type, act.target_key)
-            if key not in grouped:
-                grouped[key] = []
-            grouped[key].append(act)
+            target_identity = (act.target_type, act.target_key)
+            if target_identity not in grouped:
+                grouped[target_identity] = []
+            grouped[target_identity].append(act)
 
         # Build activated targets list
         activated_targets = []
@@ -160,6 +205,14 @@ class SemanticV2Service:
         # 3. target_type
         # 4. target_key
         def sort_key(t):
+            # START_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.build_v2_block.sort_key
+            # purpose: Produce the deterministic activated-target ordering key.
+            # inputs: t, an internal activated-target dictionary.
+            # returns: Tuple ordering by family count, strength, target type, and target key.
+            # side_effects: none.
+            # emitted_logs: none.
+            # error_behavior: missing expected internal keys raise KeyError.
+            # END_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.build_v2_block.sort_key
             return (-t["family_count"], -t["total_strength"], t["target_type"], t["target_key"])
 
         activated_targets.sort(key=sort_key)
@@ -242,9 +295,9 @@ class SemanticV2Service:
         # Overlay only core scoring keys that are in CANON_VERSIONS
         # Do NOT accept horizon keys: horizon_selection, horizon_language_ru, horizon_actions_ru, personal_patterns_ru
         # Do NOT accept unknown runtime keys
-        for key, value in scoring_result.canon_versions.items():
-            if key in CANON_VERSIONS:
-                canon_versions[key] = str(value)
+        for canon_key, canon_value in scoring_result.canon_versions.items():
+            if canon_key in CANON_VERSIONS:
+                canon_versions[canon_key] = str(canon_value)
             # Horizon keys and unknown keys are silently ignored
 
         audit = TodayV2Audit(
@@ -275,6 +328,14 @@ class SemanticV2Service:
         activation_layer: ActivationLayer,
         scoring_result: ScoringV2Result | None = None,
     ) -> list[ConcreteAdviceEvidence]:
+        # START_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.get_evidence_for_sphere
+        # purpose: Collect activation and score-contribution evidence for one backend sphere.
+        # inputs: backend_sphere_key, activation_layer, and optional scoring_result.
+        # returns: ConcreteAdviceEvidence rows in activation-then-contribution order.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: schema validation or malformed input errors propagate.
+        # END_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.get_evidence_for_sphere
         evidence_list = []
 
         # 1. Collect activation evidence
@@ -323,6 +384,14 @@ class SemanticV2Service:
         scoring_result: ScoringV2Result | None = None,
         contexts: list[dict],
     ) -> dict[str, Any]:
+        # START_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.build_llm_evidence_packet
+        # purpose: Build the redacted structured evidence packet consumed by LLM why-section generation.
+        # inputs: day_status, activation_layer, optional scoring_result, and precomputed contexts.
+        # returns: Dictionary of status, activations, scores, concrete rows, restrictions, and distinctions.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: malformed context or schema values may propagate lookup/attribute errors.
+        # END_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.build_llm_evidence_packet
         top_activations = [
             {
                 "id": act.id,
