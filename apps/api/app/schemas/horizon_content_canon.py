@@ -225,15 +225,15 @@ class HorizonLanguageCanon(HorizonContentCanonModel):
             ALLOWED_PLACEHOLDERS
         ):
             raise ValueError("allowed_placeholders: expected exact vocabulary")
-        for horizon, labels in self.horizons.items():
-            for field, value in labels.model_dump().items():
-                _validate_copy(value, f"horizons.{horizon}.{field}")
-        for path, values in (
+        for horizon_id, horizon_labels in self.horizons.items():
+            for horizon_field_name, horizon_field_value in horizon_labels.model_dump().items():
+                _validate_copy(horizon_field_value, f"horizons.{horizon_id}.{horizon_field_name}")
+        for label_group_path, label_mapping in (
             ("tone_labels", self.tone_labels),
             ("timing_state_labels", self.timing_state_labels),
         ):
-            for key, value in values.items():
-                _validate_copy(value, f"{path}.{key}")
+            for label_key, label_value in label_mapping.items():
+                _validate_copy(label_value, f"{label_group_path}.{label_key}")
         expected_timing_placeholders = {
             "range": {"active_from", "active_until"},
             "peak": {"exact_at"},
@@ -241,25 +241,25 @@ class HorizonLanguageCanon(HorizonContentCanonModel):
             "long_valid_until": {"active_until"},
             "fast_eases": {"active_until"},
         }
-        for key, value in self.timing_templates.items():
-            _validate_copy(value, f"timing_templates.{key}")
-            placeholders = _template_placeholders(value, f"timing_templates.{key}")
-            if set(placeholders) != expected_timing_placeholders[key] or len(placeholders) != len(expected_timing_placeholders[key]):
+        for timing_template_key, timing_template in self.timing_templates.items():
+            _validate_copy(timing_template, f"timing_templates.{timing_template_key}")
+            placeholders = _template_placeholders(timing_template, f"timing_templates.{timing_template_key}")
+            if set(placeholders) != expected_timing_placeholders[timing_template_key] or len(placeholders) != len(expected_timing_placeholders[timing_template_key]):
                 raise ValueError("timing_templates: expected exact placeholders")
-        for key, technique in self.techniques.items():
-            for field, value in technique.model_dump().items():
-                _validate_copy(value, f"techniques.{key}.{field}")
-            if not set(_template_placeholders(technique.why_it_matters_template, "techniques")) <= ALLOWED_PLACEHOLDERS:
+        for technique_key, technique_language in self.techniques.items():
+            for technique_field_name, technique_field_value in technique_language.model_dump().items():
+                _validate_copy(technique_field_value, f"techniques.{technique_key}.{technique_field_name}")
+            if not set(_template_placeholders(technique_language.why_it_matters_template, "techniques")) <= ALLOWED_PLACEHOLDERS:
                 raise ValueError("techniques: unknown placeholder")
-        for key, theme in self.themes.items():
-            for field in ("label", "headline", "intro_body"):
-                _validate_copy(getattr(theme, field), f"themes.{key}.{field}")
-            for horizon in HORIZON_IDS:
-                for field, value in getattr(theme, horizon).model_dump().items():
-                    _validate_copy(value, f"themes.{key}.{horizon}.{field}")
-        for key, sphere in self.product_spheres.items():
-            for field in ("label", "manifestation_title", "manifestation_body"):
-                _validate_copy(getattr(sphere, field), f"product_spheres.{key}.{field}")
+        for theme_key, theme_language in self.themes.items():
+            for theme_field_name in ("label", "headline", "intro_body"):
+                _validate_copy(getattr(theme_language, theme_field_name), f"themes.{theme_key}.{theme_field_name}")
+            for horizon_id in HORIZON_IDS:
+                for theme_field_name, theme_field_value in getattr(theme_language, horizon_id).model_dump().items():
+                    _validate_copy(theme_field_value, f"themes.{theme_key}.{horizon_id}.{theme_field_name}")
+        for product_sphere_key, sphere_language in self.product_spheres.items():
+            for sphere_field_name in ("label", "manifestation_title", "manifestation_body"):
+                _validate_copy(getattr(sphere_language, sphere_field_name), f"product_spheres.{product_sphere_key}.{sphere_field_name}")
         _ensure_unique_non_blank(self.conditional_policy.required_prefixes, "conditional_policy.required_prefixes")
         _ensure_unique_non_blank(
             self.conditional_policy.forbidden_certainty_fragments, "conditional_policy.forbidden_certainty_fragments"
@@ -281,19 +281,19 @@ class HorizonLanguageCanon(HorizonContentCanonModel):
             for sphere in self.product_spheres.values()
         ):
             raise ValueError("product_spheres: conditional body requires allowed prefix")
-        for sphere, statement in self.sphere_fact_statements.items():
-            expected = f"sphere.active.{sphere}"
-            _validate_copy(statement.text, f"sphere_fact_statements.{sphere}.text")
-            if statement.statement_key != expected or statement.text != self.product_spheres[sphere].label:
+        for product_sphere_key, sphere_statement in self.sphere_fact_statements.items():
+            expected = f"sphere.active.{product_sphere_key}"
+            _validate_copy(sphere_statement.text, f"sphere_fact_statements.{product_sphere_key}.text")
+            if sphere_statement.statement_key != expected or sphere_statement.text != self.product_spheres[product_sphere_key].label:
                 raise ValueError("sphere_fact_statements: expected matching machine label")
         _ensure_unique_non_blank(tuple(self.personal_statements), "personal_statements")
         if any(
-            not STATEMENT_KEY_RE.fullmatch(key) or statement.kind not in {"strength", "risk"}
-            for key, statement in self.personal_statements.items()
+            not STATEMENT_KEY_RE.fullmatch(statement_key) or personal_statement.kind not in {"strength", "risk"}
+            for statement_key, personal_statement in self.personal_statements.items()
         ):
             raise ValueError("personal_statements: invalid key or kind")
-        for key, statement in self.personal_statements.items():
-            _validate_copy(statement.text, f"personal_statements.{key}.text")
+        for statement_key, personal_statement in self.personal_statements.items():
+            _validate_copy(personal_statement.text, f"personal_statements.{statement_key}.text")
         return self
 
 

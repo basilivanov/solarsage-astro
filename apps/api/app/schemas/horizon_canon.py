@@ -466,30 +466,30 @@ class HorizonSelectionCanon(HorizonCanonModel):
         if set(self.technical_sphere_themes) != TECHNICAL_SPHERE_KEYS:
             raise ValueError("technical_sphere_themes: expected exact nine technical keys")
         product_union: set[str] = set()
-        for technical_key, values in self.technical_to_product_spheres.items():
-            if not values:
+        for technical_key, product_spheres in self.technical_to_product_spheres.items():
+            if not product_spheres:
                 raise ValueError(f"technical_to_product_spheres.{technical_key}: must be non-empty")
-            if len(values) != len(set(values)):
+            if len(product_spheres) != len(set(product_spheres)):
                 raise ValueError(f"technical_to_product_spheres.{technical_key}: duplicate product sphere")
-            product_union.update(values)
+            product_union.update(product_spheres)
         if product_union != PUBLIC_PRODUCT_SPHERES:
             raise ValueError("technical_to_product_spheres: union must cover all 12 public product keys")
-        for technical_key, values in self.technical_sphere_themes.items():
-            if not values:
+        for technical_key, theme_ids in self.technical_sphere_themes.items():
+            if not theme_ids:
                 raise ValueError(f"technical_sphere_themes.{technical_key}: must be non-empty")
-            if len(values) != len(set(values)):
+            if len(theme_ids) != len(set(theme_ids)):
                 raise ValueError(f"technical_sphere_themes.{technical_key}: duplicate theme id")
         normalized_target_keys: set[str] = set()
-        for planet_key, values in self.target_planet_themes.items():
+        for planet_key, planet_theme_ids in self.target_planet_themes.items():
             normalized = _normalize_planet_name(planet_key)
             if not normalized or planet_key != normalized:
                 raise ValueError("target_planet_themes: keys must be canonical normalized")
             if normalized in normalized_target_keys:
                 raise ValueError("target_planet_themes: duplicate key after normalization")
             normalized_target_keys.add(normalized)
-            if not values:
+            if not planet_theme_ids:
                 raise ValueError(f"target_planet_themes.{planet_key}: must be non-empty")
-            if len(values) != len(set(values)):
+            if len(planet_theme_ids) != len(set(planet_theme_ids)):
                 raise ValueError(f"target_planet_themes.{planet_key}: duplicate theme id")
         return self
 # END_BLOCK: HORIZON_CANON_MODELS

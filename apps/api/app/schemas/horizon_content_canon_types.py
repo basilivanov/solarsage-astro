@@ -48,12 +48,31 @@ from app.schemas.today_horizons import (
     TodayV2TimingState,
 )
 
-THEME_KEYS = tuple(
-    "communication_learning_documents structure_boundaries_control relationships_values_closeness resources_security "
-    "energy_body_pacing home_belonging inner_clarity_recovery direction_growth_meaning creativity_visibility "
-    "change_innovation".split()
+HorizonThemeKey = Literal[
+    "communication_learning_documents",
+    "structure_boundaries_control",
+    "relationships_values_closeness",
+    "resources_security",
+    "energy_body_pacing",
+    "home_belonging",
+    "inner_clarity_recovery",
+    "direction_growth_meaning",
+    "creativity_visibility",
+    "change_innovation",
+]
+
+THEME_KEYS: tuple[HorizonThemeKey, ...] = (
+    "communication_learning_documents",
+    "structure_boundaries_control",
+    "relationships_values_closeness",
+    "resources_security",
+    "energy_body_pacing",
+    "home_belonging",
+    "inner_clarity_recovery",
+    "direction_growth_meaning",
+    "creativity_visibility",
+    "change_innovation",
 )
-HorizonThemeKey = Literal[*THEME_KEYS]
 PersonalFactKind = Literal["strength", "risk", "profile", "natal", "sphere"]
 ClaimSafetyClass = Literal[
     "reflection",
@@ -159,7 +178,8 @@ def _contains_forbidden_copy(values: Iterable[str], fragments: Iterable[str]) ->
 def _canonical_pair(point_a: str, point_b: str) -> tuple[str, str]:
     if point_a not in PLANET_ORDER or point_b not in PLANET_ORDER or point_a == point_b:
         raise ValueError("predicate: expected two distinct known planets")
-    return tuple(sorted((point_a, point_b), key=PLANET_ORDER.index))
+    first, second = sorted((point_a, point_b), key=PLANET_ORDER.index)
+    return first, second
 
 
 __all__ = [

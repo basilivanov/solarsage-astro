@@ -55,7 +55,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 import re
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Sequence
+from typing import TYPE_CHECKING, AbstractSet, Annotated, Any, Literal, Sequence
 
 from pydantic import Field, field_validator, model_validator
 
@@ -258,6 +258,14 @@ def _collect_provenance_activation_ids(horizon: "TodayV2Horizon") -> list[tuple[
     references: list[tuple[str, str]] = []
 
     def extend_from_provenance(path: str, provenance: TodayV2Provenance) -> None:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS._collect_provenance_activation_ids.extend_from_provenance
+        # purpose: Append every activation id from one provenance object with its structural path to the enclosing references accumulator.
+        # inputs: path - already-built structural path; provenance - typed provenance.
+        # returns: none.
+        # side_effects: mutates only the enclosing local references list.
+        # emitted_logs: none.
+        # error_behavior: none; iterates the validated activation_ids list.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS._collect_provenance_activation_ids.extend_from_provenance
         for activation_id in provenance.activation_ids:
             references.append((path, activation_id))
 
@@ -297,11 +305,11 @@ def _validate_provenance_sphere_subset(
     *,
     path: str,
     item_id: str,
-    likely_spheres: set[str],
+    likely_spheres: AbstractSet[str],
 ) -> None:
     # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS._validate_provenance_sphere_subset
     # purpose: Reject provenance sphere keys that escape the horizon likely_spheres contract.
-    # inputs: provenance - nested provenance model; path - structural path; item_id - stable nested item id; likely_spheres - allowed sphere key set.
+    # inputs: provenance - nested provenance model; path - structural path; item_id - stable nested item id; likely_spheres - read-only allowed sphere key set.
     # returns: none.
     # side_effects: none.
     # emitted_logs: none.
@@ -353,11 +361,26 @@ class TodayV2Provenance(CamelModel):
     @field_validator("activation_ids", "natal_fact_ids", "profile_fact_ids", "sphere_keys", mode="after")
     @classmethod
     def validate_unique_lists(cls, values: list[str]) -> list[str]:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Provenance.validate_unique_lists
+        # purpose: Enforce uniqueness for each provenance scalar list.
+        # inputs: values - validated field list selected by the Pydantic field validator.
+        # returns: the same list unchanged when unique.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises ValueError through _ensure_unique on duplicates.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Provenance.validate_unique_lists
         _ensure_unique(values, "todayV2Provenance.list")
         return values
-
     @model_validator(mode="after")
     def validate_non_empty_sources(self) -> "TodayV2Provenance":
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Provenance.validate_non_empty_sources
+        # purpose: Require at least one non-empty provenance source list.
+        # inputs: self - validated provenance candidate.
+        # returns: the same model when at least one source list is populated.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError when all four source lists are empty.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Provenance.validate_non_empty_sources
         if not any((self.activation_ids, self.natal_fact_ids, self.profile_fact_ids, self.sphere_keys)):
             _raise_contract_error("todayV2Provenance", "at-least-one-source-list-required")
         return self
@@ -389,11 +412,26 @@ class TodayV2HorizonTiming(CamelModel):
     @field_validator("range_label", "state_label", "timezone", mode="after")
     @classmethod
     def validate_non_blank_labels(cls, value: str, info: Any) -> str:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonTiming.validate_non_blank_labels
+        # purpose: Reject blank range/state/timezone label fields.
+        # inputs: value - field string; info - Pydantic field metadata.
+        # returns: the original value when non-blank after stripping for validation.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError through _ensure_non_empty_after_strip.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonTiming.validate_non_blank_labels
         return _ensure_non_empty_after_strip(value, f"todayV2HorizonTiming.{info.field_name}")
-
     @field_validator("peak_label", mode="after")
     @classmethod
     def validate_peak_label(cls, value: str | None) -> str | None:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonTiming.validate_peak_label
+        # purpose: Permit a null peak label or reject a present blank peak label.
+        # inputs: value - optional peak label.
+        # returns: None unchanged or the original validated non-blank string.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError for a present blank label.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonTiming.validate_peak_label
         if value is None:
             return value
         return _ensure_non_empty_after_strip(value, "todayV2HorizonTiming.peakLabel")
@@ -442,11 +480,26 @@ class TodayV2TechniqueExplanation(CamelModel):
     @field_validator("technique", "label", "what_it_is", "why_it_matters_now", mode="after")
     @classmethod
     def validate_non_blank_fields(cls, value: str, info: Any) -> str:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2TechniqueExplanation.validate_non_blank_fields
+        # purpose: Reject blank technique, label, definition and relevance copy.
+        # inputs: value - field string; info - Pydantic field metadata.
+        # returns: the original non-blank value.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError for blank copy.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2TechniqueExplanation.validate_non_blank_fields
         return _ensure_non_empty_after_strip(value, f"todayV2TechniqueExplanation.{info.field_name}")
-
     @field_validator("activation_ids", mode="after")
     @classmethod
     def validate_activation_ids_unique(cls, values: list[str]) -> list[str]:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2TechniqueExplanation.validate_activation_ids_unique
+        # purpose: Enforce unique activation references in one technique explanation.
+        # inputs: values - activation id list.
+        # returns: the same list unchanged when unique.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError on duplicate ids.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2TechniqueExplanation.validate_activation_ids_unique
         _ensure_unique(values, "todayV2TechniqueExplanation.activationIds")
         return values
 
@@ -464,18 +517,40 @@ class TodayV2Manifestation(CamelModel):
     @field_validator("title", "body", mode="after")
     @classmethod
     def validate_non_blank_fields(cls, value: str, info: Any) -> str:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Manifestation.validate_non_blank_fields
+        # purpose: Reject blank manifestation title/body copy.
+        # inputs: value - field string; info - Pydantic field metadata.
+        # returns: the original non-blank value.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError for blank copy.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Manifestation.validate_non_blank_fields
         return _ensure_non_empty_after_strip(value, f"todayV2Manifestation.{info.field_name}")
-
     @field_validator("condition", mode="after")
     @classmethod
     def validate_condition(cls, value: str | None) -> str | None:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Manifestation.validate_condition
+        # purpose: Permit a null condition or reject a present blank condition.
+        # inputs: value - optional condition copy.
+        # returns: None unchanged or the original validated non-blank string.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError for a present blank condition.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Manifestation.validate_condition
         if value is None:
             return value
         return _ensure_non_empty_after_strip(value, "todayV2Manifestation.condition")
-
     @field_validator("sphere_keys", mode="after")
     @classmethod
     def validate_sphere_keys_unique(cls, values: list[str]) -> list[str]:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Manifestation.validate_sphere_keys_unique
+        # purpose: Enforce unique sphere references in one manifestation.
+        # inputs: values - sphere key list.
+        # returns: the same list unchanged when unique.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError on duplicate keys.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Manifestation.validate_sphere_keys_unique
         _ensure_unique(values, "todayV2Manifestation.sphereKeys")
         return values
 
@@ -492,6 +567,14 @@ class TodayV2HorizonActions(CamelModel):
     @field_validator("heading", "valid_until_label", mode="after")
     @classmethod
     def validate_non_blank_fields(cls, value: str, info: Any) -> str:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonActions.validate_non_blank_fields
+        # purpose: Reject blank action heading and valid-until label.
+        # inputs: value - field string; info - Pydantic field metadata.
+        # returns: the original non-blank value.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError for blank copy.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonActions.validate_non_blank_fields
         return _ensure_non_empty_after_strip(value, f"todayV2HorizonActions.{info.field_name}")
 
     @model_validator(mode="after")
@@ -554,11 +637,27 @@ class TodayV2Horizon(CamelModel):
     @field_validator("eyebrow", "title", "summary", "plain_explanation", mode="after")
     @classmethod
     def validate_non_blank_text_fields(cls, value: str, info: Any) -> str:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Horizon.validate_non_blank_text_fields
+        # purpose: Reject blank eyebrow/title/summary/plain-explanation copy.
+        # inputs: value - field string; info - Pydantic field metadata.
+        # returns: the original non-blank value.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError for blank copy.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Horizon.validate_non_blank_text_fields
         return _ensure_non_empty_after_strip(value, f"todayV2Horizon.{info.field_name}")
 
     @field_validator("likely_spheres", "activation_ids", mode="after")
     @classmethod
     def validate_unique_scalar_lists(cls, values: list[str], info: Any) -> list[str]:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Horizon.validate_unique_scalar_lists
+        # purpose: Enforce uniqueness for likely_spheres and activation_ids.
+        # inputs: values - selected list; info - Pydantic field metadata.
+        # returns: the same list unchanged when unique.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError on duplicates.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2Horizon.validate_unique_scalar_lists
         _ensure_unique(values, f"todayV2Horizon.{info.field_name}")
         return values
 
@@ -672,11 +771,27 @@ class TodayV2HorizonIntro(CamelModel):
     @field_validator("eyebrow", "headline", "body", "theme_key", mode="after")
     @classmethod
     def validate_non_blank_text_fields(cls, value: str, info: Any) -> str:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonIntro.validate_non_blank_text_fields
+        # purpose: Reject blank intro eyebrow/headline/body/theme key.
+        # inputs: value - field string; info - Pydantic field metadata.
+        # returns: the original non-blank value.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError for blank text/id.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonIntro.validate_non_blank_text_fields
         return _ensure_non_empty_after_strip(value, f"todayV2HorizonIntro.{info.field_name}")
 
     @field_validator("activation_ids", mode="after")
     @classmethod
     def validate_activation_ids_unique(cls, values: list[str]) -> list[str]:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonIntro.validate_activation_ids_unique
+        # purpose: Enforce unique activation references in the intro.
+        # inputs: values - activation id list.
+        # returns: the same list unchanged when unique.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError on duplicate ids.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonIntro.validate_activation_ids_unique
         _ensure_unique(values, "todayV2HorizonIntro.activationIds")
         return values
 
@@ -693,6 +808,14 @@ class TodayV2HorizonsBlock(CamelModel):
     @field_validator("warnings", mode="after")
     @classmethod
     def validate_warnings(cls, values: list[str]) -> list[str]:
+        # START_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonsBlock.validate_warnings
+        # purpose: Enforce ordered unique non-blank warning strings.
+        # inputs: values - warning list.
+        # returns: the same list in original order when valid.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises structural ValueError on duplicate or blank warnings.
+        # END_FUNCTION_CONTRACT: F-M-CONTRACTS-TODAY-HORIZONS.TodayV2HorizonsBlock.validate_warnings
         seen: set[str] = set()
         for index, value in enumerate(values):
             if value in seen:
