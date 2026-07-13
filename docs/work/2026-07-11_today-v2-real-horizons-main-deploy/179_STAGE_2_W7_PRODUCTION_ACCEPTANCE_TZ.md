@@ -243,7 +243,7 @@ const EVIDENCE_DIR = process.env.RELEASE_EVIDENCE_DIR ?? ""
 const DATE = "2026-07-08"
 const DAY_PATH = `/day/${DATE}?why=1`
 const HORIZONS = ["long", "medium", "fast"] as const
-const STATUSES = new Set(["supportive", "neutral", "tense"])
+const STATUSES = new Set(["good", "caution", "avoid", "neutral"])
 
 function generateInitData(): string {
   const stdout = execFileSync(
@@ -384,6 +384,7 @@ test("public production naturally authenticates and renders exact V2", async ({ 
   await expect(page.getByTestId("why-horizon")).toHaveCount(3)
   await expect(page.getByTestId("why-horizons-unavailable")).toHaveCount(0)
   await expect(page.getByTestId("dev-timing-fixture-shell")).toHaveCount(0)
+  await expect(page.locator('script[src*="/_vercel/insights/"]')).toHaveCount(0)
 
   const cards = page.getByTestId("why-horizon")
   for (let index = 0; index < HORIZONS.length; index += 1) {

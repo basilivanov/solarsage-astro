@@ -1,30 +1,42 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_APP_LAYOUT
-// ROLE: Next.js page
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// AI_HEADER: MODULE_APP_LAYOUT — root document shell.
+// ROLE: Next.js RootLayout — owns HTML shell, Telegram/correlation bootstrap,
+//   global client crash capture, and Vercel-only analytics injection.
+// DEPENDENCIES: next/font, @vercel/analytics/next, local modules.
+// GRACE_ANCHORS: [ROOT_LAYOUT]
+// SLICE: SLICE-FRONTEND-LAYOUT
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: API client for layoutx
+// START_MODULE_CONTRACT: M-APP-LAYOUT
+// purpose: Root document shell. Bootstraps Telegram WebApp, correlation init,
+//   client crash capture, Vercel-only analytics, and mounts children.
 // owns:
 //   - app/layout.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Network calls to API
-// emitted_logs: n/a (pure)
+// inputs: children — React node tree for the matched route.
+// outputs: Full HTML document with metadata, fonts, scripts, and body.
+// dependencies:
+//   - @vercel/analytics/next (Analytics)
+//   - next/font (Inter, Instrument_Serif, Lora)
+//   - @/components/telegram-provider
+//   - @/components/telegram-init
+//   - @/components/correlation-init
+//   - @/lib/analytics/vercel (shouldRenderVercelAnalyticsFromEnv)
+// side_effects: Injects Telegram global, correlation tracking, error listeners,
+//   and Vercel Analytics <script> tag exclusively in Vercel deployments.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Analytics renders only when shouldRenderVercelAnalyticsFromEnv() returns true.
+//   - No direct business API fetch owned by RootLayout.
+//   - Crash capture via window.__astroErrors and /api/_log POST.
+// failure_policy: fail closed — analytics never renders outside actual Vercel.
+// END_MODULE_CONTRACT: M-APP-LAYOUT
 import type { Metadata, Viewport } from "next"
 import { Inter, Instrument_Serif, Lora } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { TelegramProvider } from "@/components/telegram-provider"
 import { TelegramInit } from "@/components/telegram-init"
 import { CorrelationInit } from "@/components/correlation-init"
+import { shouldRenderVercelAnalyticsFromEnv } from "@/lib/analytics/vercel"
 import "./globals.css"
 
 const inter = Inter({
@@ -101,7 +113,7 @@ window.addEventListener('unhandledrejection', function(e) {
           <CorrelationInit />
           {children}
         </TelegramProvider>
-        {process.env.NODE_ENV === "production" && <Analytics />}
+        {shouldRenderVercelAnalyticsFromEnv() && <Analytics />}
       </body>
     </html>
   )
