@@ -1,23 +1,48 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_API_NATAL
-// ROLE: Lib — natal.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
-// purpose: API client for natal
+// AI_HEADER: FRONTEND_API_NATAL — typed-result natal report lifecycle client.
+// ROLE: Typed-result natal preview, generation, report and section client.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-NATAL
+// purpose: Call natal endpoints, validate success payloads and normalize HTTP, contract and network failures into results.
 // owns:
 //   - lib/api/natal.ts
-// inputs: Endpoint params, request body
-// outputs: Parsed response / typed data
-// dependencies: local modules
-// side_effects: Network calls to API
-// emitted_logs: n/a (pure)
+// inputs: optional forceRegenerate, reportId and sectionId.
+// outputs: exported error interfaces and discriminated success or error result objects.
+// dependencies: lib/contracts/natal types and Zod schemas; fetch.
+// side_effects: credentialed natal GET and POST requests.
+// emitted_logs: none.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Public functions resolve typed results instead of throwing expected failures.
+//   - 409, 501, 502, 401 and 404 mappings and existing wire-facing messages remain unchanged.
+//   - Successful payloads remain Zod-validated.
+//   - Zod failures remain Invalid response format; other caught failures remain Network error.
+//   - No payment client or access grant is introduced.
+// failure_policy: Catch request and schema failures and return the current typed error without logging or exposing raw response bodies.
+// END_MODULE_CONTRACT: M-FRONTEND-API-NATAL
+
+// START_MODULE_MAP: M-FRONTEND-API-NATAL
+// public_entrypoints:
+//   - NatalPreviewError
+//   - NatalReportError
+//   - NatalGenerateError
+//   - fetchNatalPreview
+//   - fetchNatalGenerate
+//   - fetchNatalReport
+//   - fetchNatalReportSection
+// semantic_blocks:
+//   - ERROR_MODELS: define discriminated public failure shapes.
+//   - ERROR_BODY_PARSE: decode backend detail with a safe fallback.
+//   - PREVIEW: fetch and validate natal preview.
+//   - GENERATE: request report generation and normalize backend states.
+//   - REPORT: fetch and validate the current or identified report.
+//   - SECTION: fetch and validate one report section.
+// owned_tests:
+//   - __tests__/api/natal-report.test.ts
+//   - __tests__/natal/natal-component-states.test.tsx
+//   - __tests__/natal/natal-no-english.test.tsx
+// END_MODULE_MAP: M-FRONTEND-API-NATAL
 /**
  * API client for natal endpoints.
  *

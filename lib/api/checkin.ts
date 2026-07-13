@@ -1,3 +1,47 @@
+// ############################################################################
+// AI_HEADER: FRONTEND_API_CHECKIN — date helpers and authenticated check-in endpoints.
+// ROLE: Check-in date helpers and credentialed CRUD/metrics facade.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-CHECKIN
+// purpose: Resolve local check-in dates and call create, read, yesterday and metrics endpoints.
+// owns:
+//   - lib/api/checkin.ts
+// inputs: Date, timezone and target; CheckinCreate; date key; optional metric range.
+// outputs: date keys and typed check-in response models.
+// dependencies: packages/contracts check-in types; Intl; URLSearchParams; fetch.
+// side_effects: credentialed GET and POST check-in API calls.
+// emitted_logs: none.
+// invariants:
+//   - No-timezone formatting uses local Date getters.
+//   - Timezone formatting uses Intl parts.
+//   - An explicit YYYY-MM-DD target wins; yesterday shifts the local key by one UTC-safe day.
+//   - A { checkin: null } response maps to null.
+//   - Metrics query includes only provided from and to values.
+// failure_policy: Throw detail string, detail.message, detail.reason or endpoint fallback.
+// END_MODULE_CONTRACT: M-FRONTEND-API-CHECKIN
+
+// START_MODULE_MAP: M-FRONTEND-API-CHECKIN
+// public_entrypoints:
+//   - formatDateInTimeZone
+//   - resolveCheckinTargetDate
+//   - createCheckin
+//   - getCheckin
+//   - getYesterdayCheckin
+//   - getCheckinMetrics
+// semantic_blocks:
+//   - ERROR_DECODE: preserve backend detail priority and endpoint fallback.
+//   - JSON_RESPONSE: enforce ok responses before typed JSON decoding.
+//   - DATE_FORMAT: derive local or timezone-specific date keys.
+//   - DATE_SHIFT: move date keys with UTC-safe noon arithmetic.
+//   - TARGET_RESOLUTION: resolve explicit, yesterday or current local target.
+//   - CHECKIN_ENDPOINTS: create and read check-in resources.
+//   - METRICS_QUERY: include only supplied range parameters.
+// owned_tests:
+//   - __tests__/api/checkin.test.ts
+//   - __tests__/components/CheckinScreen.test.tsx
+// END_MODULE_MAP: M-FRONTEND-API-CHECKIN
+
 import type {
   CheckinCreate,
   CheckinMetrics,

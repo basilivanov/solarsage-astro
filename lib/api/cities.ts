@@ -1,23 +1,42 @@
 
 // ############################################################################
-// AI_HEADER: MODULE_API_CITIES
-// ROLE: Lib — cities.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-FRONTEND-API-FACADES
-// ####// START_MODULE_CONTRACT
-// purpose: Library: cities
+// AI_HEADER: FRONTEND_API_CITIES — city catalog and GeoNames result adapter.
+// ROLE: City catalog/search adapter consumed by the onboarding city picker.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-FRONTEND-API-CITIES
+// purpose: Provide static popular cities and adapt GeoSuggestion results to City.
 // owns:
 //   - lib/api/cities.ts
-// inputs: Function arguments
-// outputs: Return values
-// dependencies: local modules
-// side_effects: Logging via v2 logging spine
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
+// inputs: query and optional limit.
+// outputs: City exports and synchronous/asynchronous city arrays.
+// dependencies: lib/contracts/city; lib/api/geo; lib/log logEvent.
+// side_effects: async GeoNames-backed search and structured ui.fetch_failed log on caught failure.
+// emitted_logs: ui.fetch_failed.
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+//   - Synchronous searchCities intentionally remains an empty compatibility result.
+//   - Popular city names, coordinates and timezones remain unchanged.
+//   - GeoSuggestion fields map to the current City fallback and optional fields.
+//   - Failure log metadata remains slice=W-GEO, module=M-CITIES-API and block=SEARCH_CITIES without personal data.
+// failure_policy: Async search catches, logs and returns an empty array; popular APIs do not throw.
+// END_MODULE_CONTRACT: M-FRONTEND-API-CITIES
+
+// START_MODULE_MAP: M-FRONTEND-API-CITIES
+// public_entrypoints:
+//   - City
+//   - searchCities
+//   - getPopularCities
+//   - searchCitiesAsync
+//   - getPopularCitiesAsync
+// semantic_blocks:
+//   - GEO_ADAPTER: map GeoSuggestion fields to City.
+//   - SYNC_COMPAT_SEARCH: preserve the empty synchronous compatibility result.
+//   - POPULAR_CATALOG: expose the stable popular city list.
+//   - ASYNC_SEARCH: adapt GeoNames results and fail soft with structured logging.
+//   - ASYNC_POPULAR_ALIAS: resolve the synchronous catalog asynchronously.
+// owned_tests:
+//   - __tests__/api/cities.test.ts
+// END_MODULE_MAP: M-FRONTEND-API-CITIES
 /**
  * API-фасад для справочника городов.
  *

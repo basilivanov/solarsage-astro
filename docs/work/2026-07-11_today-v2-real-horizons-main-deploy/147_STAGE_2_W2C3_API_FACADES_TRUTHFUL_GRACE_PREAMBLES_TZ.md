@@ -398,7 +398,9 @@ side_effects: parallel credentialed GET /api/horary/quota and /api/referral.
 emitted_logs: none.
 invariants:
   - network/non-ok responses preserve existing defaults instead of throwing.
-  - successful endpoint data can populate independently of the other endpoint.
+  - when both fetch promises resolve, each response is applied only if its own
+    `response.ok` is true; a rejected promise sends the whole `Promise.all` to
+    the catch fallback.
   - bonusDays remains referralCount * rewardDays; default rewardDays remains 14.
   - Async alias remains reference-equal.
 failure_policy: catches transport failures silently and returns defaults/partials.
