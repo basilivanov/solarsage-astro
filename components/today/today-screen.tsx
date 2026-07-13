@@ -6,7 +6,7 @@
 
 // START_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 // purpose: Renders the full /day/[date] screen with oracle-matched layout.
-//          Composes DateHeader, access card, today-only check-in reminder,
+//          Composes DateHeader, trial-only access card, today-only check-in reminder,
 //          DaySummaryCard, ConcreteDayAdvice, DayChart, reading, why-expanded,
 //          week strip, AstroHistoryWidget, and bottom disclaimer. All data
 //          flows through adaptTodayPayload — no fabricated astrology. V2 order is
@@ -28,6 +28,7 @@
 //               suppression of WeekStrip remote status fetches for local fixtures.
 // invariants:
 //   - data-state reflects the real access state (ready=accessible, locked=inaccessible)
+//   - TrialBanner renders only for real trial access, never subscription/unmetered full access.
 //   - data-testid attributes present on all major sections
 //   - V2 sphere/Why state resets to the current deeplink default on date changes
 //   - Loading/error states handled by the parent page
@@ -253,8 +254,8 @@ export function TodayScreen({
 
       {accessible ? (
         <div className="space-y-5 pb-8">
-          {/* Access / trial card */}
-          {access.state === "trial" || access.state === "subscription" ? (
+          {/* Trial-only access card */}
+          {access.state === "trial" ? (
             <div data-testid="access-card">
               <TrialBanner daysLeft={access.daysLeft} />
             </div>

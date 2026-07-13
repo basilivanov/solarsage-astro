@@ -28,6 +28,7 @@
 //   - project viewports are not overridden
 //   - route interception, HAR, cookie seeding, fixture, and mock APIs are absent
 //   - V1, 401, locked, unavailable, malformed, and missing horizons always fail
+//   - API access is exact full with null commercial metadata before ready DOM proof
 //   - dynamic response copy and raw activation IDs are absent from proof artifacts
 // failure_policy:
 //   - any transport, schema, identity, horizon, DOM, accessibility, focus, or
@@ -169,6 +170,11 @@ test.describe("Real V2 preview — strict no interception", () => {
     expect(payload.meta.payloadVersion).toBe("today.v2.1")
     expect(payload.meta.frontendPayloadVersion).toBe(3)
     expect(payload.meta.contentVersion).toBe(10)
+    expect(payload.access.state).toBe("full")
+    expect(payload.access.reason).toBeNull()
+    expect(payload.access.referralDaysLeft).toBeNull()
+    expect(payload.access.subscriptionActive).toBeNull()
+    expect(payload.access.accessUntil).toBeNull()
     if (!horizons) throw new Error("Backend horizons are required")
     expect(horizons.items.map((item) => item.horizon)).toEqual(HORIZONS)
     expect(new Set(horizons.items.map((item) => item.id)).size).toBe(3)
@@ -184,6 +190,7 @@ test.describe("Real V2 preview — strict no interception", () => {
     // START_BLOCK: DOM_AND_TECHNICAL
     const todayScreen = page.getByTestId("today-screen")
     await expect(todayScreen).toHaveAttribute("data-state", "ready")
+    await expect(page.getByTestId("access-card")).toHaveCount(0)
     const whySection = page.getByTestId("why-expanded")
     const whyToggle = page.locator("#why-expanded-toggle")
     await expect(whySection).toBeVisible()

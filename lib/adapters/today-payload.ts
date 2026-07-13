@@ -17,6 +17,7 @@
 //   - No `any` types.
 //   - Preserves headline, dayStatus, topFlags from API.
 //   - Maps access.state correctly.
+//   - Full access without commercial or referral metadata maps to accessible subscription UI.
 //   - Does not validate TodayV2Block schema in production (pure pass-through).
 //   - adapter always copies exact payloadVersion/frontendPayloadVersion/contentVersion from api.meta.
 //   - No normalization/defaulting and no full-meta spread in wireIdentity construction.
@@ -139,12 +140,16 @@ function buildAccess(apiAccess: TodayPayload['access'] | undefined | null): Acce
   const s = apiAccess?.state;
   const isSubscription = apiAccess?.subscriptionActive === true
     || apiAccess?.reason === 'active_subscription';
+  const isTrial = apiAccess?.reason === 'active_referral_days'
+    || apiAccess?.referralDaysLeft != null;
 
   let uiState: AccessInfo['state'];
   if (s === 'full' && isSubscription) {
     uiState = 'subscription';
-  } else if (s === 'full') {
+  } else if (s === 'full' && isTrial) {
     uiState = 'trial';
+  } else if (s === 'full') {
+    uiState = 'subscription';
   } else if (s === 'locked') {
     uiState = 'none';
   } else if (s === 'preview') {

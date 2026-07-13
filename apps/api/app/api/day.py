@@ -26,6 +26,7 @@
 #   - M-CONFIG (app environment and global V2 selection)
 #   - M-TODAY-PREVIEW-GUARD (pure transport authorization)
 #   - M-TODAY-SELECTION-CONTEXT (immutable request selection)
+#   - M-TODAY-PREVIEW-ACCESS (pure request-scoped access derivation)
 # invariants:
 #   - 'today' resolves to current date (UTC for now, W-PROFILE.1 for timezone).
 #   - Invalid date format → 400 INVALID_DATE.
@@ -34,6 +35,9 @@
 #   - Preview denial is never an HTTP error and never changes ordinary global selection.
 #   - Query parameters, cookies, Referer, and User-Agent never select Today V2.
 #   - Raw preview transport and identity facts are neither logged nor persisted.
+#   - Exact authorized local preview derives full-content access request-locally.
+#   - Ordinary, global, and denied requests preserve the real AccessService result.
+#   - Access ledger and global settings are never mutated for preview access.
 # failure_policy:
 #   - HTTPException with code + message in detail.
 # non_goals:
@@ -68,6 +72,7 @@ from app.services.today_preview_guard import (
     TodayPreviewGuardInput,
     authorize_today_preview,
 )
+from app.services.today_preview_access import resolve_today_access_for_selection
 from app.services.today_selection_context import resolve_today_selection_context
 from app.services.today_service import TodayService
 
@@ -145,7 +150,11 @@ async def get_day(
 
     # Check access (real in W-ACCESS.1)
     access_service = AccessService(db)
-    access_state = await access_service.can_access_day(user.id, target_date)
+    real_access_state = await access_service.can_access_day(user.id, target_date)
+    access_state = resolve_today_access_for_selection(
+        access_state=real_access_state,
+        selection_context=selection_context,
+    )
 
     # Get TodayPayload (fixture-backed in W-1.3, real in W-3.4)
     today_service = TodayService(db)

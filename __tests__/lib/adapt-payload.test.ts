@@ -153,9 +153,24 @@ describe("adaptTodayPayload", () => {
     expect(isDayAccessible(TODAY, access)).toBe(true);
   });
 
-  it("full access with subscription → hasAccess=true, access.state=subscription", () => {
+  it("full access with reason=active_referral_days maps to trial", () => {
     const api = createBaseApi({
-      access: accessOverride("full", { subscriptionActive: true, referralDaysLeft: 0 }),
+      access: accessOverride("full", { reason: "active_referral_days" }),
+    });
+    const { access } = adaptTodayPayload(api, TODAY);
+
+    expect(access.hasAccess).toBe(true);
+    expect(access.state).toBe("trial");
+    expect(access.daysLeft).toBe(0);
+  });
+
+  it("subscriptionActive wins over referral markers", () => {
+    const api = createBaseApi({
+      access: accessOverride("full", {
+        reason: "active_referral_days",
+        subscriptionActive: true,
+        referralDaysLeft: 0,
+      }),
     });
     const { access } = adaptTodayPayload(api, TODAY);
 
@@ -173,11 +188,24 @@ describe("adaptTodayPayload", () => {
     expect(access.state).toBe("subscription");
   });
 
+  it("unmetered full access maps to accessible subscription UI", () => {
+    const api = createBaseApi({ access: accessOverride("full") });
+    const { access } = adaptTodayPayload(api, TODAY);
+
+    expect(access).toMatchObject({
+      state: "subscription",
+      hasAccess: true,
+      daysLeft: 0,
+    });
+    expect(isDayAccessible(TODAY, access)).toBe(true);
+  });
+
   it("preview → hasAccess=false, isDayAccessible=false", () => {
     const api = createBaseApi({ access: accessOverride("preview") });
     const { access } = adaptTodayPayload(api, TODAY);
 
     expect(access.hasAccess).toBe(false);
+    expect(access.state).toBe("expired");
     expect(isDayAccessible(TODAY, access)).toBe(false);
   });
 
@@ -194,6 +222,18 @@ describe("adaptTodayPayload", () => {
     const { access } = adaptTodayPayload(api, TODAY);
 
     expect(access.daysLeft).toBe(7);
+  });
+
+  it("does not mutate the raw access object", () => {
+    const rawAccess = accessOverride("full", {
+      reason: "active_referral_days",
+      referralDaysLeft: 7,
+    });
+    const before = { ...rawAccess };
+
+    adaptTodayPayload(createBaseApi({ access: rawAccess }), TODAY);
+
+    expect(rawAccess).toEqual(before);
   });
   // END_BLOCK: ACCESS_TESTS
 

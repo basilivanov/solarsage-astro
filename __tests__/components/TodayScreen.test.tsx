@@ -209,7 +209,6 @@ describe('TodayScreen', () => {
       .filter((id) =>
         [
           'day-header',
-          'access-card',
           'evening-checkin-reminder',
           'day-summary-card',
           'activation-evidence-card',
@@ -226,7 +225,6 @@ describe('TodayScreen', () => {
     // No v2 → no activation-evidence-card gap between summary and advice
     expect(orderedIds).toEqual([
       'day-header',
-      'access-card',
       'evening-checkin-reminder',
       'day-summary-card',
       'concrete-day-advice',
@@ -244,6 +242,22 @@ describe('TodayScreen', () => {
     expect(screen.getByTestId('why-expanded')).toBeTruthy()
     expect(screen.getByTestId('week-strip')).toBeTruthy()
     expect(screen.getByTestId('astro-history-widget')).toBeTruthy()
+    expect(screen.queryByTestId('paywall')).toBeNull()
+  })
+
+  it('renders subscription and unmetered full access ready without a trial card', () => {
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess({ state: 'subscription', hasAccess: true, daysLeft: 0 })}
+        payload={buildPayload()}
+        onDateChange={onDateChange}
+      />,
+    )
+
+    expect(screen.getByTestId('today-screen').getAttribute('data-state')).toBe('ready')
+    expect(screen.queryByTestId('access-card')).toBeNull()
+    expect(screen.queryByTestId('trial-banner')).toBeNull()
     expect(screen.queryByTestId('paywall')).toBeNull()
   })
 
@@ -376,7 +390,6 @@ describe('TodayScreen', () => {
       .filter((id) =>
         [
           'day-header',
-          'access-card',
           'evening-checkin-reminder',
           'day-summary-card',
           'concrete-day-advice',
@@ -393,7 +406,6 @@ describe('TodayScreen', () => {
     expect(screen.queryByTestId('yesterday-echo-cta')).toBeNull()
     expect(orderedIds).toEqual([
       'day-header',
-      'access-card',
       'day-summary-card',
       'concrete-day-advice',
       'why-expanded',
@@ -584,6 +596,8 @@ describe('TodayScreen', () => {
       />,
     )
     const banner = screen.getByTestId('trial-banner')
+    expect(screen.getByTestId('today-screen').getAttribute('data-state')).toBe('ready')
+    expect(screen.getByTestId('access-card')).toBeTruthy()
     expect(banner.textContent).toContain('daysLeft:5')
   })
 
