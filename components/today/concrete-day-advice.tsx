@@ -160,7 +160,6 @@ export function ConcreteDayAdvice({
                 const meta = CONCRETE_ADVICE_VERDICT_PRESENTATION[verdict]
                 const Icon = getIcon(row.iconName)
                 const selected = row.key === selectedKey
-                const label = getHumanSphereLabel(row)
                 return (
                   <button
                     key={row.key}

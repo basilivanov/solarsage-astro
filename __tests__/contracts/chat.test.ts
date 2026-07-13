@@ -25,7 +25,6 @@ import {
   validateChatHistory,
   safeValidateChatHistory,
   ChatMessageSchema,
-  ChatHistorySchema,
 } from '../../lib/contracts/chat'
 
 const validMessage = {

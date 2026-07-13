@@ -78,7 +78,7 @@ export default function DebugPage() {
             setDebugInfo(data)
           }
           setLoading(false)
-        } catch (e) {
+        } catch {
           throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`)
         }
       })

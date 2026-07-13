@@ -24,8 +24,6 @@ import { assertProductionSafety } from "../../lib/env/production-guard"
 import { fetchDay } from "../../lib/grace/api/client"
 
 describe("assertProductionSafety", () => {
-  const origEnv = { ...process.env }
-
   beforeEach(() => {
     // Clear relevant env vars
     vi.stubEnv("NODE_ENV", "")
@@ -104,8 +102,6 @@ describe("assertProductionSafety", () => {
 })
 
 describe("API error does not return demo payload in production", () => {
-  const origEnv = { ...process.env }
-
   beforeEach(() => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("NEXT_PUBLIC_DEMO_MODE", "false")

@@ -25,7 +25,6 @@ import {
   safeValidateProfile,
   BirthDatePartsSchema,
   BirthTimePartsSchema,
-  ProfileSchema,
 } from '../../lib/contracts/profile'
 
 describe('ProfileSchema', () => {

@@ -378,7 +378,7 @@ function LegacyWhyContent({ sections, keyInsight }: { sections: TodayWhySection[
   return (
     <>
       <ol className="space-y-5">
-        {sections.map((section, index) => {
+        {sections.map((section) => {
           const Icon = getIcon(section.iconName)
           return (
             <li key={section.id} className="grid grid-cols-[auto_1fr] gap-3.5">

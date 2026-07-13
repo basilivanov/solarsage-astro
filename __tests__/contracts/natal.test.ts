@@ -22,7 +22,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   validateNatalReport,
-  NatalReportSchema,
   HighlightSchema,
   SphereScoreSchema,
   PlanetScoreSchema,

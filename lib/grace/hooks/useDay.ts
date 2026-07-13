@@ -49,7 +49,7 @@ export function useDay(date: string): UseDayResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useTelegramAuth();
+  const { isLoading: authLoading } = useTelegramAuth();
 
   logEvent("day.viewed", { date }, { msg: `[useDay] Loading for ${date}`, level: "debug", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "INIT" })
 

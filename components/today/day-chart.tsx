@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import type { DayChart as DayChartData, DayStatus } from "@/lib/contracts/today"
-import { getPlanetLabel } from "@/lib/display/sphere-labels"
 
 type Props = {
   chart: DayChartData | null

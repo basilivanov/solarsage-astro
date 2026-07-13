@@ -95,9 +95,7 @@ export function TodayScreen({
   selectedDate,
   access,
   payload,
-  calendarLunar,
   onDateChange,
-  importantToday,
   disableRemoteStatusFetch,
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-TODAY-SCREEN.TodayScreen

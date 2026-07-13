@@ -33,8 +33,6 @@ const chatStorage = new Map<string, string>()
 // ── Hoisted mock setup ──
 const { mockSendMessage, mockChatReducer, mockInitialChatState } = vi.hoisted(() => {
   // reducer that matches useChat's dispatch events
-  const ms = new Map<string, string>()
-
   const mockInitial = {
     messages: [] as ChatMessage[],
     pending: false,

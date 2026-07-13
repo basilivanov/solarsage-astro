@@ -20,7 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect } from 'vitest'
-import { validateAccessInfo, AccessInfoSchema } from '../../lib/contracts/access'
+import { validateAccessInfo } from '../../lib/contracts/access'
 
 describe('AccessInfoSchema', () => {
   const validAccessInfo = {

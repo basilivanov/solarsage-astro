@@ -20,7 +20,7 @@
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 
 vi.mock('@/lib/log', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
