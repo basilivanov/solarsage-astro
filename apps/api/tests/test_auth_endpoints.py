@@ -1,23 +1,55 @@
-
 # ############################################################################
 # AI_HEADER: MODULE_TESTS_TEST_AUTH_ENDPOINTS
-# ROLE: Module
-# DEPENDENCIES: local modules
-# GRACE_ANCHORS: []
+# ROLE: Endpoint regression tests for Telegram auth, logout, and local dev auth.
+# DEPENDENCIES: pytest, httpx, sqlalchemy, starlette, app.api.auth, app.db.models
+# GRACE_ANCHORS: [AUTH_TELEGRAM_TESTS, AUTH_LOGOUT_TESTS, AUTH_DEV_TESTS]
 # SLICE: SLICE-TESTS
-# ######################################### START_MODULE_CONTRACT
-# purpose: Tests for auth_endpoints.py behavior
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-TEST-AUTH-ENDPOINTS
+# purpose: Verify public behavior of /api/auth/telegram, /api/auth/logout, and
+#   /api/auth/dev, including local-development-only guard boundaries.
 # owns:
 #   - apps/api/tests/test_auth_endpoints.py
-# inputs: Query params, models
-# outputs: Records / query results
-# dependencies: local modules
-# side_effects: Database reads/writes; Network calls to API
-# emitted_logs: n/a (tests)
+# inputs: async_client, db_session, make_initdata, monkeypatch fixtures.
+# outputs: pytest pass/fail assertions.
+# dependencies: app.api.auth, app.core.config, app.db.models.
+# side_effects: writes to isolated in-memory test database via ASGI requests.
+# emitted_logs: none
 # invariants:
-#   - n/a
-# failure_policy: log and raise
-# END_MODULE_CONTRACT
+#   - invalid Telegram auth does not write DB rows.
+#   - local dev auth is allowed only for trusted local development requests.
+# failure_policy: tests fail on assertion or unexpected exception.
+# END_MODULE_CONTRACT: M-TEST-AUTH-ENDPOINTS
+
+# START_MODULE_MAP: M-TEST-AUTH-ENDPOINTS
+# public_entrypoints:
+#   - test_login_happy_path
+#   - test_login_secure_flag_when_enabled
+#   - test_login_idempotent_user_upsert
+#   - test_login_400_on_invalid_hmac_no_db_write
+#   - test_login_401_on_expired_initdata
+#   - test_logout_revokes_and_clears_cookie
+#   - test_revoked_session_is_unauthorized
+#   - test_revoked_token_is_explicitly_revoked
+#   - test_dev_auth_denies_loopback_in_staging_when_dev_mode_disabled
+#   - test_dev_auth_denies_public_host_when_dev_mode_disabled
+#   - test_local_dev_auth_helper_denies_non_development_envs
+#   - test_local_dev_auth_helper_denies_non_string_environment
+#   - test_local_dev_auth_helper_allows_canonical_development_aliases
+#   - test_dev_auth_denies_spoofed_local_host_through_proxy
+#   - test_dev_auth_denies_spoofed_local_host_with_forwarded_host
+#   - test_dev_auth_allows_localhost_when_dev_mode_disabled
+#   - test_dev_auth_seeds_complete_profile_for_day_route
+#   - test_dev_auth_repairs_existing_onboarded_profile_missing_gender
+#   - test_dev_auth_repairs_existing_onboarded_profile_invalid_gender
+# semantic_blocks:
+#   - AUTH_TELEGRAM_TESTS: login, HMAC, cookie, and session assertions.
+#   - AUTH_LOGOUT_TESTS: logout and revoked-session assertions.
+#   - AUTH_DEV_TESTS: local dev auth allow/deny and profile seeding assertions.
+# owned_tests:
+#   - apps/api/tests/test_auth_endpoints.py
+# END_MODULE_MAP: M-TEST-AUTH-ENDPOINTS
 """Endpoint tests for /api/auth/telegram and /api/auth/logout (Option A)."""
 from __future__ import annotations
 
@@ -25,9 +57,30 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
+from app.api.auth import _is_local_dev_auth_request
 from app.core.config import settings
 from app.db.models import Session as SessionRow, User, UserProfile
+
+
+def _trusted_loopback_dev_auth_request() -> Request:
+    return Request(
+        {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "POST",
+            "scheme": "http",
+            "path": "/api/auth/dev",
+            "raw_path": b"/api/auth/dev",
+            "query_string": b"",
+            "root_path": "",
+            "server": ("127.0.0.1", 8000),
+            "client": ("127.0.0.1", 45678),
+            "headers": [(b"host", b"127.0.0.1:8000")],
+        }
+    )
 
 
 @pytest.mark.asyncio
@@ -198,6 +251,30 @@ async def test_revoked_token_is_explicitly_revoked(
 
 
 @pytest.mark.asyncio
+async def test_dev_auth_denies_loopback_in_staging_when_dev_mode_disabled(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "dev_mode", False)
+    monkeypatch.setattr(settings, "app_env", "staging")
+
+    r = await async_client.post(
+        "/api/auth/dev",
+        headers={"host": "127.0.0.1:8000"},
+    )
+
+    assert r.status_code == 403
+    assert r.json()["detail"]["code"] == "DEV_MODE_DISABLED"
+    assert settings.session_cookie_name not in r.headers.get("set-cookie", "")
+
+    user = (
+        await db_session.execute(select(User).where(User.tg_user_id == 999999999))
+    ).scalar_one_or_none()
+    assert user is None
+
+
+@pytest.mark.asyncio
 async def test_dev_auth_denies_public_host_when_dev_mode_disabled(
     async_client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -212,6 +289,37 @@ async def test_dev_auth_denies_public_host_when_dev_mode_disabled(
 
     assert r.status_code == 403
     assert r.json()["detail"]["code"] == "DEV_MODE_DISABLED"
+
+
+@pytest.mark.parametrize(
+    "app_env",
+    ["staging", "stage", "preview", "production", "prod", "test", "", "unknown"],
+)
+def test_local_dev_auth_helper_denies_non_development_envs(
+    app_env: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "app_env", app_env)
+
+    assert _is_local_dev_auth_request(_trusted_loopback_dev_auth_request()) is False
+
+
+def test_local_dev_auth_helper_denies_non_string_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "app_env", None)
+
+    assert _is_local_dev_auth_request(_trusted_loopback_dev_auth_request()) is False
+
+
+@pytest.mark.parametrize("app_env", ["dev", "development", " DEV ", "Development"])
+def test_local_dev_auth_helper_allows_canonical_development_aliases(
+    app_env: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "app_env", app_env)
+
+    assert _is_local_dev_auth_request(_trusted_loopback_dev_auth_request()) is True
 
 
 @pytest.mark.asyncio

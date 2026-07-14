@@ -1,22 +1,24 @@
 # ############################################################################
 # AI_HEADER: MODULE_API_AUTH
-# ROLE: HTTP surface for /api/auth/telegram and /api/auth/logout (Option A).
+# ROLE: HTTP surface for /api/auth/telegram, /api/auth/logout, and the local-development-only /api/auth/dev surface (Option A).
 # DEPENDENCIES: fastapi, sqlalchemy, app.services.*, app.core.*
-# GRACE_ANCHORS: [ROUTE_AUTH_TG, ROUTE_AUTH_LOGOUT]
+# GRACE_ANCHORS: [ROUTE_AUTH_TG, ROUTE_AUTH_LOGOUT, ROUTE_AUTH_DEV]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-AUTH-TG.api
-# purpose: Two endpoints:
+# purpose: Three auth surfaces:
 #   - POST /api/auth/telegram: verify initData, upsert user, mint session,
 #     set HttpOnly cookie. Body: AuthSession.
 #   - POST /api/auth/logout: revoke the session row, clear the cookie. 204.
+#   - POST /api/auth/dev: local-development-only fallback for synthetic login
+#     in canonical dev environments.
 # owns:
 #   - apps/api/app/api/auth.py
 # inputs:
 #   - request body: TelegramAuthRequest
 #   - cookie: settings.session_cookie_name (logout)
 # outputs:
-#   - APIRouter with the two endpoints
+#   - APIRouter with the three auth endpoints
 # dependencies:
 #   - M-AUTH-TG.service (verify_init_data)
 #   - M-AUTH-TG.session (create_session, revoke_session)
@@ -29,6 +31,8 @@
 #   - stale initData -> 401 INITDATA_EXPIRED.
 #   - upsert is idempotent on tg_user_id; the response carries is_new_user.
 #   - error bodies expose only AuthError(code, message); never the raw payload.
+#   - local dev auth fail-closed outside canonical dev|development, even for
+#     loopback requests.
 # failure_policy:
 #   - TelegramAuthError -> 400 or 401 per code mapping in the route.
 # non_goals:
@@ -41,6 +45,7 @@
 # semantic_blocks:
 #   - ROUTE_AUTH_TG: POST /api/auth/telegram handler
 #   - ROUTE_AUTH_LOGOUT: POST /api/auth/logout handler
+#   - ROUTE_AUTH_DEV: POST /api/auth/dev handler
 # owned_tests:
 #   - apps/api/tests/test_auth_endpoints.py
 # END_MODULE_MAP: M-AUTH-TG.api
@@ -73,6 +78,7 @@ _BAD_REQUEST_CODES = frozenset(
     {"INVALID_HMAC", "MISSING_FIELDS", "MALFORMED_INITDATA"}
 )
 _LOCAL_DEV_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+_LOCAL_DEVELOPMENT_ENVS = frozenset({"dev", "development"})
 _PROXY_ORIGIN_HEADER_NAMES = frozenset({"forwarded", "x-real-ip"})
 _PROXY_ORIGIN_HEADER_PREFIX = "x-forwarded-"
 
@@ -123,7 +129,18 @@ def _has_proxy_origin_header(request: Request) -> bool:
 
 
 def _is_local_dev_auth_request(request: Request) -> bool:
-    if settings.app_env == "production":
+    # START_FUNCTION_CONTRACT: M-AUTH-TG.api._is_local_dev_auth_request
+    # purpose: Determine whether /api/auth/dev is a trusted local-development request.
+    # inputs: request — Starlette Request carrying client and host headers.
+    # returns: bool — True only for canonical dev|development envs with loopback
+    #   client, local host header, and no proxy-origin headers.
+    # side_effects: none
+    # emitted_logs: none
+    # error_behavior: fail-closed False for non-string/unknown env values.
+    # END_FUNCTION_CONTRACT: M-AUTH-TG.api._is_local_dev_auth_request
+    raw_env = settings.app_env
+    environment = raw_env.strip().lower() if isinstance(raw_env, str) else ""
+    if environment not in _LOCAL_DEVELOPMENT_ENVS:
         return False
     if not _is_loopback_client(request):
         return False
@@ -232,13 +249,14 @@ async def auth_dev(
     db: AsyncSession = Depends(get_session),
 ) -> AuthSession:
     # START_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_dev
-    # purpose: Dev mode authentication - creates a test user session.
-    #   Only works when DEV_MODE=true in environment.
+    # purpose: Local-development auth fallback that creates a synthetic test
+    #   user session for /api/auth/dev.
     # inputs: request, response, db
     # returns: AuthSession with user_id, expires_at, is_new_user
     # side_effects: upserts test User, creates Session, sets test birth data
     # emitted_logs: auth.dev_login (TODO)
-    # error_behavior: 403 if dev_mode is disabled
+    # error_behavior: 403 outside canonical local development or when the
+    #   request is not trusted-local while DEV_MODE is disabled.
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_dev
 
     if not settings.dev_mode and not _is_local_dev_auth_request(request):
