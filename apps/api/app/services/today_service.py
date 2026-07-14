@@ -40,14 +40,13 @@
 #     runtime force propagation, public identity, cache write, and horizons.
 #   - Runtime selection must match the pre-cache family or fail closed before
 #     public payload construction and cache write.
-#   - Background week prefetch spawns one best-effort asyncio task with strong
-#     ownership until completion; each day uses an independent SessionLocal
-#     session and never inherits the request's DB session or selection context.
+#   - A foreground Today request never schedules calculations for adjacent dates.
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
 # non_goals:
 #   - No direct natal sidecar calls (use NatalContextService).
+#   - Speculative adjacent-day materialization disabled.
 # END_MODULE_CONTRACT: M-DAY-SERVICE
 
 # START_MODULE_MAP: M-DAY-SERVICE
@@ -69,7 +68,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from datetime import UTC, date as Date, datetime, timedelta
 
@@ -93,8 +91,6 @@ from app.schemas.today import (
     TopFlag,
 )
 from app.clients.solarsage_client import get_solarsage_client
-from app.core.config import settings
-from app.db.session import SessionLocal
 from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
 from app.services.astro_utils import find_house, strip_prefix
 from app.services.day_scoring_signals import filter_day_scored_signals
@@ -152,9 +148,6 @@ ASPECT_LABELS_RU = {
 SOFT_ASPECTS = {"sextile", "trine"}
 TENSE_ASPECTS = {"square", "opposition"}
 
-# Strong-reference set for best-effort background prefetch tasks.
-_TODAY_PREFETCH_TASKS: set[asyncio.Task[None]] = set()
-
 
 # START_BLOCK: REAL_CALCULATION
 class TodayService:
@@ -181,10 +174,10 @@ class TodayService:
     ) -> TodayPayload:
         # START_FUNCTION_CONTRACT: F-M-DAY-SERVICE.get_today_payload
         # purpose: Get TodayPayload for user and date — the main day pipeline.
-        # inputs: user_id, target_date, access_state, skip_prefetch, and optional immutable selection_context.
+        # inputs: user_id, target_date, access_state, skip_prefetch (compatibility-only;
+        #   week prefetch is disabled), and optional immutable selection_context.
         # returns: TodayPayload with day_status, headline, reading, top_flags, etc.
-        # side_effects: reads/writes cache; calls sidecar for transits and LLM for text;
-        #   may schedule a best-effort background week-prefetch task with independent DB sessions
+        # side_effects: reads/writes cache; calls sidecar for transits and LLM for text.
         # emitted_logs: day.payload_built (TODO: W-1.6 — add day.viewed in API route)
         # error_behavior: HTTPException 409 on incomplete profile, 502 on sidecar failure;
         #   raises RuntimeError if a successfully validated natal profile lacks birth identity.
@@ -200,7 +193,8 @@ class TodayService:
         W-5.2: cache layer (check cache first, store on miss).
         W-ACCESS.3: returns preview payload for locked days.
         """
-        # Default access state for prefetch (real state checked on-demand by API route)
+        del skip_prefetch  # compatibility-only; week prefetch is disabled
+        # Internal callers may omit access state; the API route performs the real access check.
         if access_state is None:
             access_state = ContentAccessState(state="full")
 
@@ -588,12 +582,6 @@ class TodayService:
         # W-5.2: Cache payload (with profile_hash in key)
         await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
 
-        # W-5.2: Prefetch week in background (don't block user)
-        if not skip_prefetch and settings.app_env != "test":
-            prefetch_task = asyncio.create_task(self._prefetch_week(user_id, target_date))
-            _TODAY_PREFETCH_TASKS.add(prefetch_task)
-            prefetch_task.add_done_callback(_TODAY_PREFETCH_TASKS.discard)
-
         return payload
 
     @staticmethod
@@ -959,39 +947,3 @@ class TodayService:
                     msg=f"[DayDelta] Could not get yesterday signals: {type(e).__name__}",
                 )
             return None
-
-    async def _prefetch_week(self, user_id, today: Date) -> None:
-        """Prefetch 7 days of payloads in background. W-5.2.
-
-        Each day uses a fresh SessionLocal session. Errors are logged as
-        warnings and do not break the app or the foreground response.
-        """
-        days = [today + timedelta(days=i) for i in range(-3, 4)]
-
-        async def _calc_one(day: Date) -> None:
-            try:
-                async with SessionLocal() as session:
-                    service = TodayService(session, self._horizon_integration_service)
-                    await service.get_today_payload(
-                        user_id,
-                        day,
-                        None,
-                        skip_prefetch=True,
-                    )
-            except Exception:
-                with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="PREFETCH_WEEK"):
-                    log_event(
-                        "day.payload_built",
-                        level="warn",
-                        msg=f"Prefetch failed for day {day}",
-                    )
-
-        try:
-            await asyncio.gather(*[_calc_one(day) for day in days])
-        except Exception:
-            with log_block(slice="W-DAY", module="M-TODAY-SERVICE", block="PREFETCH_WEEK"):
-                log_event(
-                    "day.payload_built",
-                    level="warn",
-                    msg="Prefetch week gather failed",
-                )

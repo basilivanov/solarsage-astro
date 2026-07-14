@@ -142,7 +142,6 @@ def _mock_all_services():
         "important": patch("app.services.today_service.TodayImportantService"),
         "yesterday": patch.object(TodayService, "_get_yesterday_signals", new=AsyncMock(return_value=None)),
         "cache_semantic": patch.object(TodayService, "_cache_semantic_layer", new=AsyncMock(return_value=None)),
-        "prefetch": patch.object(TodayService, "_prefetch_week", new=AsyncMock(return_value=None)),
     }
 
 
@@ -178,7 +177,6 @@ def _setup_service_mocks(mocks):
 
     mocks["yesterday"].__enter__()
     mocks["cache_semantic"].__enter__()
-    mocks["prefetch"].__enter__()
 
     return mocks
 
@@ -186,7 +184,7 @@ def _setup_service_mocks(mocks):
 def _teardown_service_mocks(mocks):
     """Exit all context managers."""
     for key in ["normalization", "scoring", "semantic", "llm", "important",
-                "yesterday", "cache_semantic", "prefetch"]:
+                "yesterday", "cache_semantic"]:
         mocks[key].__exit__(None, None, None)
 
 

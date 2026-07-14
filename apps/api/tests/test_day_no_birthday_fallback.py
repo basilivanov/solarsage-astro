@@ -160,8 +160,7 @@ async def test_day_passes_with_real_birth_coords(
          patch("app.services.today_service.TodayImportantService") as mock_important_class, \
          patch.object(TodayService, "_get_yesterday_signals", new=AsyncMock(return_value=None)), \
          patch.object(TodayService, "_cache_semantic_layer", new=AsyncMock(return_value=None)), \
-         patch.object(TodayService, "_cache_payload", new=AsyncMock(return_value=None)), \
-         patch.object(TodayService, "_prefetch_week", new=AsyncMock(return_value=None)):
+         patch.object(TodayService, "_cache_payload", new=AsyncMock(return_value=None)):
 
         # NatalContextService sidecar mock (for natal context)
         mock_ctx_client = AsyncMock()

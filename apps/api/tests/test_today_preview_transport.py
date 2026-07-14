@@ -39,7 +39,7 @@ import ast
 import asyncio
 import inspect
 from dataclasses import fields
-from datetime import date as Date, timedelta
+from datetime import date as Date
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -869,56 +869,21 @@ async def test_service_split_brain_fails_before_identity_and_cache_write(
     assert settings.solarsage_v2_enabled is False
 
 
-@pytest.mark.asyncio
-async def test_prefetch_week_never_propagates_preview_context(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_prefetch_week_never_propagates_preview_context
-    # purpose: Prove 7 fresh sessions with object identity, no request DB reuse, no selection_context.
-    # inputs: monkeypatch for SessionLocal and class-boundary get_today_payload.
+def test_today_service_has_no_background_week_prefetch_surface() -> None:
+    # START_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_today_service_has_no_background_week_prefetch_surface
+    # purpose: Prove that TodayService has no background week prefetch tasks or helper methods.
+    # inputs: none.
     # returns: none.
-    # side_effects: Directly awaits _prefetch_week with deterministic mocks.
+    # side_effects: reads today_service.py source.
     # emitted_logs: none.
-    # error_behavior: Assertion failure on count, identity, date, or kwarg drift.
-    # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_prefetch_week_never_propagates_preview_context
-    user_id = uuid4()
-    today = Date(2026, 7, 13)
-    request_db = SimpleNamespace()
-    child_calls: list[tuple[Any, tuple[Any, ...], dict[str, Any]]] = []
-
-    async def _record(self: Any, *args: Any, **kwargs: Any) -> None:
-        child_calls.append((self.db, args, kwargs))
-    monkeypatch.setattr(TodayService, "get_today_payload", _record)
-
-    created: list[object] = []
-    entered: list[object] = []
-    exited: list[object] = []
-
-    class _FakeSession:
-        def __init__(self) -> None:
-            created.append(self)
-        async def __aenter__(self) -> _FakeSession:
-            entered.append(self)
-            return self
-        async def __aexit__(self, *args: object) -> None:
-            exited.append(self)
-
-    monkeypatch.setattr(today_service_module, "SessionLocal", lambda: _FakeSession())
-    await TodayService(request_db)._prefetch_week(user_id, today)
-
-    assert len(child_calls) == 7
-    assert len(created) == 7 and len(entered) == 7 and len(exited) == 7
-    assert entered == created
-    assert exited == created
-    child_dbs = [db for db, _, _ in child_calls]
-    assert all(db is not request_db for db in child_dbs)
-    assert child_dbs == created
-    for child_db, args, kwargs in child_calls:
-        assert child_db is not request_db
-        assert args == (user_id, args[1], None)
-        assert kwargs == {"skip_prefetch": True}
-    child_dates = {args[1] for _, args, _ in child_calls}
-    assert child_dates == {today + timedelta(days=i) for i in range(-3, 4)}
+    # error_behavior: pytest assertion failure on prefetch code presence.
+    # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_today_service_has_no_background_week_prefetch_surface
+    source = inspect.getsource(today_service_module)
+    assert "_prefetch_week" not in source
+    assert "_TODAY_PREFETCH_TASKS" not in source
+    assert "asyncio.create_task" not in source
+    assert "asyncio.gather" not in source
+    assert "SessionLocal" not in source
 # END_BLOCK: SERVICE_BOUNDARIES
 
 
