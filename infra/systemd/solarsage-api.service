@@ -1,0 +1,60 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_SYSTEMD_API
+# ROLE: Systemd service for the FastAPI application.
+# DEPENDENCIES: systemd, python-venv, uvicorn
+# GRACE_ANCHORS: [SYSTEMD_API_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-SYSTEMD-API
+# purpose: Run the FastAPI backend service under systemd with hardening.
+# owns:
+#   - infra/systemd/solarsage-api.service
+# inputs:
+#   - /opt/solarsage-astro/.env.production
+# outputs:
+#   - API service listening on 127.0.0.1:8000
+# dependencies: none
+# invariants:
+#   - Run as non-root user 'astro'.
+#   - Hardened systemd properties (NoNewPrivileges, PrivateTmp, ProtectHome, ProtectSystem).
+#   - Strict UMask 0027.
+# failure_policy: restarts on failure.
+# END_MODULE_CONTRACT: M-INFRA-SYSTEMD-API
+
+# START_MODULE_MAP: M-INFRA-SYSTEMD-API
+# public_entrypoints:
+#   - solarsage-api.service
+# semantic_blocks:
+#   - SYSTEMD_API_SERVICE: systemd configuration
+# END_MODULE_MAP: M-INFRA-SYSTEMD-API
+
+[Unit]
+Description=SolarSage Astro API (FastAPI)
+After=network-online.target docker.service solarsage-sidecar.service
+Wants=network-online.target solarsage-sidecar.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=astro
+Group=astro
+WorkingDirectory=/opt/solarsage-astro/apps/api
+EnvironmentFile=/opt/solarsage-astro/.env.production
+Environment="PATH=/opt/solarsage-astro/apps/api/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/opt/solarsage-astro/apps/api/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0027
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

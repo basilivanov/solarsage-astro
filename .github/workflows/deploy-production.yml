@@ -1,0 +1,78 @@
+# ############################################################################
+# AI_HEADER: MODULE_DEPLOY_PRODUCTION_WORKFLOW
+# ROLE: GitHub Actions manual production deployment pipeline.
+# DEPENDENCIES: GitHub Actions, ssh
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-DEPLOY-PRODUCTION-WORKFLOW
+# purpose: Securely trigger production deployment on remote host using SSH.
+# owns:
+#   - .github/workflows/deploy-production.yml
+# inputs:
+#   - workflow_dispatch
+#   - PROD_HOST: environment secret
+#   - PROD_USER: environment secret
+#   - PROD_SSH_PRIVATE_KEY: environment secret
+#   - PROD_KNOWN_HOSTS: environment secret
+# outputs: none
+# dependencies: none
+# invariants:
+#   - Manual trigger only.
+#   - Concurrency group production-deploy, cancel-in-progress: false.
+#   - ephemeral SSH key is strictly removed at the end.
+#   - Pinned known_hosts (strict host key verification enforced).
+# failure_policy: fails on SSH connection or remote deploy script failure.
+# END_MODULE_CONTRACT: M-DEPLOY-PRODUCTION-WORKFLOW
+
+# START_MODULE_MAP: M-DEPLOY-PRODUCTION-WORKFLOW
+# public_entrypoints:
+#   - GitHub Actions trigger
+# semantic_blocks:
+#   - DEPLOY_JOB: deployment steps
+# END_MODULE_MAP: M-DEPLOY-PRODUCTION-WORKFLOW
+
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  # START_BLOCK: DEPLOY_JOB
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment: production
+
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          install -m 600 /dev/null ~/.ssh/solarsage_prod_deploy
+          # Safely print key and strip Windows line endings
+          printf '%s\n' "${{ secrets.PROD_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/solarsage_prod_deploy
+          printf '%s\n' "${{ secrets.PROD_KNOWN_HOSTS }}" | tr -d '\r' > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Trigger deploy forced-command on production server
+        run: |
+          ssh -T \
+            -i ~/.ssh/solarsage_prod_deploy \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}"
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: |
+          rm -f ~/.ssh/solarsage_prod_deploy ~/.ssh/known_hosts
+  # END_BLOCK: DEPLOY_JOB

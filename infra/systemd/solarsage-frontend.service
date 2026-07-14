@@ -1,0 +1,62 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_SYSTEMD_FRONTEND
+# ROLE: Systemd service for the Next.js frontend application.
+# DEPENDENCIES: systemd, node, pnpm
+# GRACE_ANCHORS: [SYSTEMD_FRONTEND_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-SYSTEMD-FRONTEND
+# purpose: Run the Next.js production server under systemd with hardening.
+# owns:
+#   - infra/systemd/solarsage-frontend.service
+# inputs:
+#   - none (uses environment parameters)
+# outputs:
+#   - Next.js server listening on 127.0.0.1:3002
+# dependencies: none
+# invariants:
+#   - Run as non-root user 'astro'.
+#   - Hardened systemd properties (NoNewPrivileges, PrivateTmp, ProtectHome, ProtectSystem).
+#   - Strict UMask 0027.
+#   - No dynamic pnpm build in ExecStartPre.
+# failure_policy: restarts on failure.
+# END_MODULE_CONTRACT: M-INFRA-SYSTEMD-FRONTEND
+
+# START_MODULE_MAP: M-INFRA-SYSTEMD-FRONTEND
+# public_entrypoints:
+#   - solarsage-frontend.service
+# semantic_blocks:
+#   - SYSTEMD_FRONTEND_SERVICE: systemd configuration
+# END_MODULE_MAP: M-INFRA-SYSTEMD-FRONTEND
+
+[Unit]
+Description=SolarSage Next.js Frontend
+After=network-online.target solarsage-api.service
+Wants=network-online.target solarsage-api.service
+
+[Service]
+Type=simple
+User=astro
+Group=astro
+WorkingDirectory=/opt/solarsage-astro
+Environment=NODE_ENV=production
+Environment=PORT=3002
+Environment=HOSTNAME=127.0.0.1
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3002
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0027
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

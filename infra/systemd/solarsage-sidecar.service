@@ -1,0 +1,59 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_SYSTEMD_SIDECAR
+# ROLE: Systemd service for the SolarSage sidecar application.
+# DEPENDENCIES: systemd, python-venv, uvicorn
+# GRACE_ANCHORS: [SYSTEMD_SIDECAR_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-SYSTEMD-SIDECAR
+# purpose: Run the SolarSage sidecar calculations service under systemd with hardening.
+# owns:
+#   - infra/systemd/solarsage-sidecar.service
+# inputs:
+#   - /opt/solarsage-astro/.env.production
+# outputs:
+#   - Sidecar service listening on 127.0.0.1:18091
+# dependencies: none
+# invariants:
+#   - Run as non-root user 'astro'.
+#   - Hardened systemd properties (NoNewPrivileges, PrivateTmp, ProtectHome, ProtectSystem).
+#   - Strict UMask 0027.
+# failure_policy: restarts on failure.
+# END_MODULE_CONTRACT: M-INFRA-SYSTEMD-SIDECAR
+
+# START_MODULE_MAP: M-INFRA-SYSTEMD-SIDECAR
+# public_entrypoints:
+#   - solarsage-sidecar.service
+# semantic_blocks:
+#   - SYSTEMD_SIDECAR_SERVICE: systemd configuration
+# END_MODULE_MAP: M-INFRA-SYSTEMD-SIDECAR
+
+[Unit]
+Description=SolarSage Sidecar Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=astro
+Group=astro
+WorkingDirectory=/opt/solarsage-astro/apps/solarsage
+EnvironmentFile=/opt/solarsage-astro/.env.production
+Environment="PYTHONPATH=/opt/solarsage-astro/apps/solarsage"
+ExecStart=/opt/solarsage-astro/apps/solarsage/venv/bin/uvicorn solarsage.app:app --host 127.0.0.1 --port 18091
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0027
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

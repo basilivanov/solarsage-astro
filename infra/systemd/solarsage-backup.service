@@ -1,0 +1,45 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_SYSTEMD_BACKUP_SERVICE
+# ROLE: Systemd service configuration for running database backup script.
+# DEPENDENCIES: systemd, scripts/prod-backup.sh
+# GRACE_ANCHORS: [SYSTEMD_BACKUP_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-SYSTEMD-BACKUP-SERVICE
+# purpose: Execute prod-backup.sh under systemd.
+# owns:
+#   - infra/systemd/solarsage-backup.service
+# inputs: none
+# outputs: none
+# dependencies: none
+# invariants:
+#   - Run as non-root user 'astro'.
+#   - Safe systemd hardening properties.
+# failure_policy: fails on script error.
+# END_MODULE_CONTRACT: M-INFRA-SYSTEMD-BACKUP-SERVICE
+
+# START_MODULE_MAP: M-INFRA-SYSTEMD-BACKUP-SERVICE
+# public_entrypoints:
+#   - solarsage-backup.service
+# semantic_blocks:
+#   - SYSTEMD_BACKUP_SERVICE: systemd configuration
+# END_MODULE_MAP: M-INFRA-SYSTEMD-BACKUP-SERVICE
+
+[Unit]
+Description=SolarSage Database Backup Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=astro
+Group=astro
+ExecStart=/bin/bash /opt/solarsage-astro/scripts/prod-backup.sh
+StandardOutput=journal
+StandardError=journal
+UMask=0077
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/backups/solarsage
