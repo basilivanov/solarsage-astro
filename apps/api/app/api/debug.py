@@ -34,8 +34,6 @@
 # END_MODULE_MAP: M-API-DEBUG
 
 from fastapi import APIRouter, Request, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_session
 from app.core.dependencies import require_session_optional
 from app.core.config import settings
 from datetime import datetime
@@ -100,9 +98,13 @@ async def debug_info(
         }
     except Exception as e:
         # Log error and return minimal response
-        print(f"[DEBUG] Error in debug endpoint: {e}")
-        import traceback
-        traceback.print_exc()
+        from app.core.logging import log_event
+        log_event(
+            "system.error",
+            level="error",
+            msg="Error in debug endpoint",
+            error={"kind": type(e).__name__},
+        )
 
         return {
             "error": str(e),

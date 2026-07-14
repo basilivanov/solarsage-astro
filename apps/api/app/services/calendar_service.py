@@ -66,7 +66,6 @@ from app.db.models import SemanticLayerCache, TodayPayloadCache, UserProfile
 from app.services.access_service import AccessService
 from app.services.natal_context_service import NatalContextService
 from app.services.normalization_service import NormalizationService
-from app.services.scoring_service import ScoringService
 from app.services.semantic_service import SemanticService
 from app.services.today_service import TODAY_CONTENT_VERSION
 from app.services.day_scoring_signals import filter_day_scored_signals
@@ -208,7 +207,6 @@ class CalendarService:
         if not self._request_profile_hash:
             return None
 
-        from app.services.day_scoring_runtime_service import selected_scoring_version_for_flags
         from app.services.cache_key_service import expected_cache_identity
 
         current_cache_key = expected_cache_identity(
@@ -311,7 +309,6 @@ class CalendarService:
 
             # Fetch sidecar activation-layer
             sidecar_layer = None
-            sidecar_error = None
             if should_compute_v2():
                 try:
                     sidecar_layer = await get_solarsage_client().get_activation_layer(
@@ -326,20 +323,20 @@ class CalendarService:
                         house_system=self._request_natal_context.get("house_system", "PLACIDUS"),
                         current_location=current_location,
                     )
-                except Exception as e:
+                except Exception:
                     if settings.solarsage_v2_enabled:
                         raise  # Fail loudly when V2 is enabled
-                    sidecar_error = str(e)
                     with log_block(slice="W-DAY", module="M-CALENDAR-SERVICE", block="V2_SHADOW"):
                         log_event(
                             "scoring.v2_diff",
                             level="warning",
                             msg="Calendar V2 shadow mode: sidecar activation-layer failed, using local fallback",
                             payload={
-                                "user_id": str(user_id),
                                 "date": target_date.isoformat(),
-                                "error": sidecar_error,
                                 "fallback": "local_activation",
+                            },
+                            error={
+                                "kind": "SidecarError",
                             },
                         )
 

@@ -290,7 +290,6 @@ class TodayService:
 
         # W5: Fetch sidecar activation layer when V2 may be computed
         sidecar_layer = None
-        sidecar_error = None
         # Build current_location only when all three fields are present
         current_location = None
         if (profile.current_lat is not None and profile.current_lon is not None
@@ -315,7 +314,6 @@ class TodayService:
                     current_location=current_location,
                 )
             except Exception as e:
-                sidecar_error = str(e)
                 if selected_v2:
                     raise  # Fail loudly when V2 is enabled
                 # Shadow fail-open logging (only reached when V2 is not enabled)
@@ -325,10 +323,11 @@ class TodayService:
                         level="warning",
                         msg="V2 shadow mode: sidecar activation-layer failed, using local fallback",
                         payload={
-                            "user_id": str(user_id),
                             "date": target_date.isoformat(),
-                            "error": sidecar_error,
                             "fallback": "local_activation",
+                        },
+                        error={
+                            "kind": type(e).__name__,
                         },
                     )
 

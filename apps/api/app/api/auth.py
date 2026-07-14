@@ -54,6 +54,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.log_identity import hash_user_id
+from app.core.logging import bind_log_context
 from app.core.security import (
     SESSION_TTL,
     clear_session_cookie,
@@ -179,6 +181,9 @@ async def auth_telegram(
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
+    # Bind user_id_hash to context
+    bind_log_context(user_id_hash=hash_user_id(user.id))
+
     # TODO(W-1.6): log.event("auth.tg_login_succeeded", {is_new_user, ...})
     return AuthSession(user_id=user.id, expires_at=expires_at, is_new_user=is_new)
 # END_BLOCK: ROUTE_AUTH_TG
@@ -295,6 +300,9 @@ async def auth_dev(
     expires_at = session.expires_at
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    # Bind user_id_hash to context
+    bind_log_context(user_id_hash=hash_user_id(user.id))
 
     # TODO(W-1.6): log.event("auth.dev_login", {is_new_user, ...})
     return AuthSession(user_id=user.id, expires_at=expires_at, is_new_user=is_new)

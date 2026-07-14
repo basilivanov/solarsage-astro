@@ -17,6 +17,7 @@
 #   - settings.app_version, settings.app_env, settings.app_domain (from M-CONFIG)
 #   - app.api.health.router
 # outputs:
+#   - create_app: public entrypoint function to instantiate FastAPI app
 #   - app: FastAPI ASGI application served by uvicorn
 # dependencies:
 #   - M-CONFIG
@@ -29,8 +30,9 @@
 #   - initializes structured logging (W-1.6)
 #   - mounts routers
 # invariants:
-#   - in production, allow_origins is restricted to https://{app_domain}
+#   - allow_origins is restricted to policy.cors_allowed_origins
 #   - CorrelationMiddleware runs before CORS
+#   - debug, metrics, health_extended, and microcopy routers are mounted dev-only
 # failure_policy:
 #   - any import-time error must crash the process; partial boot is forbidden
 # non_goals:
@@ -40,6 +42,7 @@
 
 # START_MODULE_MAP: M-API-BOOT
 # public_entrypoints:
+#   - create_app
 #   - app
 # semantic_blocks:
 #   - APP_CONSTRUCTION: FastAPI() instantiation with title and version
@@ -47,59 +50,81 @@
 #   - ROUTER_MOUNT: include_router for health
 # owned_tests:
 #   - apps/api/tests/test_health.py
+#   - apps/api/tests/test_public_surface_security.py
 # END_MODULE_MAP: M-API-BOOT
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import _log, access, auth, calendar, chat, checkin, day, debug, geo, health, health_extended, horary, metrics, microcopy, natal, payment, profile, referral
-from app.core.config import settings
+from app.api import _log, access, auth, calendar, chat, checkin, day, geo, health, horary, natal, payment, profile, referral
+from app.core.config import Settings, settings
+from app.core.runtime_security import build_runtime_security_policy
 from app.middleware.correlation import CorrelationMiddleware
 
-# W1: Validate canon bundle at startup — missing/invalid canon must fail fast in dev/test
-from app.services.canon_service import validate_canon_bundle
-validate_canon_bundle()
 
-# START_BLOCK: APP_CONSTRUCTION
-app = FastAPI(title="Astro API", version=settings.app_version)
-# END_BLOCK: APP_CONSTRUCTION
+def create_app(app_settings: Settings = settings) -> FastAPI:
+    # START_FUNCTION_CONTRACT: F-M-API-BOOT.create_app
+    # purpose: Construct the FastAPI application using the provided Settings.
+    # inputs: app_settings — Settings instance.
+    # returns: FastAPI — the configured application.
+    # side_effects: registers CORS, mounts routers, validates canon bundle.
+    # emitted_logs: none
+    # error_behavior: Throws ValueError if settings are invalid.
+    # END_FUNCTION_CONTRACT: F-M-API-BOOT.create_app
 
-# START_BLOCK: MIDDLEWARE_MOUNT
-# W-1.6: Correlation middleware (must run before CORS)
-app.add_middleware(CorrelationMiddleware)
-# END_BLOCK: MIDDLEWARE_MOUNT
+    # W1: Validate canon bundle at startup — missing/invalid canon must fail fast in dev/test
+    from app.services.canon_service import validate_canon_bundle
+    validate_canon_bundle()
 
-# START_BLOCK: CORS_WIRING
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=(
-        [f"https://{settings.app_domain}"]
-        if settings.app_env == "production"
-        else ["*"]
-    ),
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
-)
-# END_BLOCK: CORS_WIRING
+    policy = build_runtime_security_policy(app_settings)
 
-# START_BLOCK: ROUTER_MOUNT
-app.include_router(health.router)
-app.include_router(health_extended.router)  # W-2.7 extended health check
-app.include_router(metrics.router)  # W-2.7 production metrics
-app.include_router(debug.router)  # Debug endpoint for troubleshooting
-app.include_router(auth.router)
-app.include_router(profile.router)
-app.include_router(access.router)
-app.include_router(day.router)  # W-1.3
-app.include_router(calendar.router)  # W-1.4
-app.include_router(referral.router)  # W-ACCESS.2
-app.include_router(_log.router)  # W-1.7
-app.include_router(microcopy.router)  # W-9.2
-app.include_router(payment.router)  # W-6.1
-app.include_router(natal.router)  # W-7.2
-app.include_router(checkin.router)  # W-8.1
-app.include_router(chat.router)  # W-CHAT-1
-app.include_router(geo.router)  # GeoNames city autocomplete
-app.include_router(horary.router)  # Horary questions (W-HORARY)
-# END_BLOCK: ROUTER_MOUNT
+    # START_BLOCK: APP_CONSTRUCTION
+    application = FastAPI(title="Astro API", version=app_settings.app_version)
+    # END_BLOCK: APP_CONSTRUCTION
+
+    # START_BLOCK: MIDDLEWARE_MOUNT
+    # W-1.6: Correlation middleware (must run before CORS)
+    application.add_middleware(CorrelationMiddleware)
+    # END_BLOCK: MIDDLEWARE_MOUNT
+
+    # START_BLOCK: CORS_WIRING
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(policy.cors_allowed_origins),
+        allow_methods=["*"],
+        allow_headers=["*"],
+        allow_credentials=True,
+    )
+    # END_BLOCK: CORS_WIRING
+
+    # START_BLOCK: ROUTER_MOUNT
+    application.include_router(health.router)
+
+    # Mount internal routes only if enabled in policy
+    if policy.internal_routes_enabled:
+        # Import internal routers inline to prevent import-time leaks
+        from app.api import debug, health_extended, metrics, microcopy
+        application.include_router(health_extended.router)  # W-2.7 extended health check
+        application.include_router(metrics.router)  # W-2.7 production metrics
+        application.include_router(debug.router)  # Debug endpoint for troubleshooting
+        application.include_router(microcopy.router)  # W-9.2
+
+    application.include_router(auth.router)
+    application.include_router(profile.router)
+    application.include_router(access.router)
+    application.include_router(day.router)  # W-1.3
+    application.include_router(calendar.router)  # W-1.4
+    application.include_router(referral.router)  # W-ACCESS.2
+    application.include_router(_log.router)  # W-1.7
+    application.include_router(payment.router)  # W-6.1
+    application.include_router(natal.router)  # W-7.2
+    application.include_router(checkin.router)  # W-8.1
+    application.include_router(chat.router)  # W-CHAT-1
+    application.include_router(geo.router)  # GeoNames city autocomplete
+    application.include_router(horary.router)  # Horary questions (W-HORARY)
+    # END_BLOCK: ROUTER_MOUNT
+
+    return application
+
+
+app = create_app()

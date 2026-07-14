@@ -18,12 +18,9 @@
 #   - n/a
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
-# AI_HEADER
 # module: M-TEST-REDACTOR-CANARIES
 # wave: W-1.6
 # purpose: Redactor canary tests — every canon §8.4 key and pattern is tested.
-
-from typing import Any
 
 import pytest
 
@@ -31,7 +28,6 @@ from app.core.redactor import (
     redact_dict,
     PII_KEYS,
     ALLOW_KEYS,
-    REDACT_PATTERNS,
     _redact_string,
 )
 
@@ -103,6 +99,30 @@ def test_allow_key_not_redacted(allow_key: str):
 
 
 # ── Pattern-based redaction canaries ──────────────────────────────────────
+
+def test_redact_uuid_pattern():
+    """UUID pattern must be replaced."""
+    text = "User id is 123e4567-e89b-12d3-a456-426614174000 in database"
+    result = _redact_string(text)
+    assert "123e4567-e89b-12d3-a456-426614174000" not in result
+    assert "[redacted-uuid]" in result
+
+
+def test_redact_labeled_identifiers():
+    """Labeled identifiers must be replaced."""
+    test_cases = [
+        ("user_id=12345", "[redacted-identifier]"),
+        ("question_id:abc-123", "[redacted-identifier]"),
+        ("credit_id: 999", "[redacted-identifier]"),
+        ("thread_id=xyz", "[redacted-identifier]"),
+        ("report_id: 111", "[redacted-identifier]"),
+        ("profile_id: 222", "[redacted-identifier]"),
+        ("session_id=555", "[redacted-identifier]"),
+        ("user id: 123", "[redacted-identifier]"),
+    ]
+    for text, expected in test_cases:
+        assert _redact_string(text) == expected
+
 
 def test_redact_email_pattern():
     """Email pattern must be replaced."""

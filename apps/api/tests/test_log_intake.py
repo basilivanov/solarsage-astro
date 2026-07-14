@@ -33,12 +33,14 @@
 #   - test_log_intake_requires_auth
 #   - test_log_intake_accepts_valid_batch
 #   - test_log_intake_rejects_invalid_envelope
+#   - test_log_intake_bypass_prevention
+#   - test_log_intake_http_normalization
 # semantic_blocks:
 #   - TEST_AUTH_REQUIRED: verify 401 without auth
 #   - TEST_VALID_BATCH: verify acceptance of valid logs
 #   - TEST_INVALID_ENVELOPE: verify rejection of invalid logs
 # owned_tests:
-#   - self
+#   - apps/api/tests/test_log_intake.py
 # END_MODULE_MAP: M-TEST-LOG-INTAKE
 
 import pytest
@@ -203,3 +205,151 @@ async def test_log_intake_handles_mixed_batch(
 
 
 # END_BLOCK: TEST_INVALID_ENVELOPE
+
+
+def test_log_intake_bypass_prevention(monkeypatch):
+    # START_FUNCTION_CONTRACT: F-M-TEST-LOG-INTAKE.test_log_intake_bypass_prevention
+    # purpose: Verify that raw UUID, email-like correlation, and raw UUID in user_id_hash/question_id_hash are normalized/redacted by intake.
+    # inputs: monkeypatch
+    # returns: none
+    # side_effects: none
+    # emitted_logs: none
+    # error_behavior: raises AssertionError on failure
+    # END_FUNCTION_CONTRACT: F-M-TEST-LOG-INTAKE.test_log_intake_bypass_prevention
+    from app.services.log_intake import LogIntakeService
+
+    captured_emits = []
+    def mock_emit_line(self, data):
+        captured_emits.append(data)
+
+    monkeypatch.setattr(LogIntakeService, "_emit_line", mock_emit_line)
+    # Set app_env to "test" so hash_log_identifier allows local fallback salt
+    from app.core.config import settings as app_settings
+    monkeypatch.setattr(app_settings, "app_env", "test")
+
+    raw_uuid_corr = "123e4567-e89b-12d3-a456-426614174000"
+    email_corr = "secret@example.com"
+    safe_corr = "h1_" + "a" * 24
+    raw_user_uuid = "123e4567-e89b-12d3-a456-426614174001"
+    raw_question_uuid = "123e4567-e89b-12d3-a456-426614174002"
+
+    envelopes = [
+        {
+            "ts": "2026-05-30T10:00:00Z",
+            "level": "info",
+            "event": "system.request",
+            "correlation_id": raw_uuid_corr,
+            "service": "web",
+            "service_version": "test",
+            "env": "test",
+            "slice": "W-TEST",
+            "module": "M-TEST",
+            "block": "B-TEST",
+            "user_id_hash": raw_user_uuid,
+            "question_id_hash": raw_question_uuid,
+        },
+        {
+            "ts": "2026-05-30T10:00:00Z",
+            "level": "info",
+            "event": "system.request",
+            "correlation_id": email_corr,
+            "service": "web",
+            "service_version": "test",
+            "env": "test",
+            "slice": "W-TEST",
+            "module": "M-TEST",
+            "block": "B-TEST",
+        },
+        {
+            "ts": "2026-05-30T10:00:00Z",
+            "level": "info",
+            "event": "system.request",
+            "correlation_id": safe_corr,
+            "service": "web",
+            "service_version": "test",
+            "env": "test",
+            "slice": "W-TEST",
+            "module": "M-TEST",
+            "block": "B-TEST",
+        }
+    ]
+
+    import uuid
+    service = LogIntakeService(db=None)
+
+    # process_batch is an async function, we must await it!
+    import asyncio
+    result = asyncio.run(service.process_batch(user_id=uuid.uuid4(), envelopes=envelopes))
+
+    assert result["accepted"] == 3
+    assert len(captured_emits) == 3
+
+    # 1. Raw UUID correlation -> normalized to valid h1_
+    assert captured_emits[0]["correlation_id"].startswith("h1_")
+    assert raw_uuid_corr not in captured_emits[0]["correlation_id"]
+
+    # 2. Raw user_id_hash -> redacted
+    assert captured_emits[0]["user_id_hash"] == "[redacted-identifier]"
+
+    # 3. Raw question_id_hash -> redacted
+    assert captured_emits[0]["question_id_hash"] == "[redacted-identifier]"
+
+    # 4. Email-like correlation -> normalized to valid h1_
+    assert captured_emits[1]["correlation_id"].startswith("h1_")
+    assert email_corr not in captured_emits[1]["correlation_id"]
+
+    # 5. Safe correlation -> preserved
+    assert captured_emits[2]["correlation_id"] == safe_corr
+
+
+@pytest.mark.asyncio
+async def test_log_intake_http_normalization(async_client: AsyncClient, monkeypatch):
+    # START_FUNCTION_CONTRACT: F-M-TEST-LOG-INTAKE.test_log_intake_http_normalization
+    # purpose: Verify that HTTP /api/_log endpoint normalizes raw correlation and redacts raw user_id_hash.
+    # inputs: async_client, monkeypatch
+    # returns: none
+    # side_effects: none
+    # emitted_logs: none
+    # error_behavior: raises AssertionError on failure
+    # END_FUNCTION_CONTRACT: F-M-TEST-LOG-INTAKE.test_log_intake_http_normalization
+    from app.services.log_intake import LogIntakeService
+
+    captured_emits = []
+    def mock_emit_line(self, data):
+        captured_emits.append(data)
+
+    monkeypatch.setattr(LogIntakeService, "_emit_line", mock_emit_line)
+
+    raw_uuid_corr = "123e4567-e89b-12d3-a456-426614174000"
+    raw_user_uuid = "123e4567-e89b-12d3-a456-426614174001"
+
+    response = await async_client.post(
+        "/api/_log",
+        json={
+            "envelopes": [
+                {
+                    "ts": "2026-05-30T10:00:00Z",
+                    "level": "info",
+                    "event": "system.request",
+                    "correlation_id": raw_uuid_corr,
+                    "service": "web",
+                    "service_version": "test",
+                    "env": "test",
+                    "slice": "W-TEST",
+                    "module": "M-TEST",
+                    "block": "B-TEST",
+                    "user_id_hash": raw_user_uuid,
+                }
+            ]
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["accepted"] == 1
+
+    assert len(captured_emits) == 1
+    # Check normalization
+    from app.core.log_identity import is_opaque_log_id
+    assert is_opaque_log_id(captured_emits[0]["correlation_id"]) is True
+    assert raw_uuid_corr not in str(captured_emits[0])
+    assert captured_emits[0]["user_id_hash"] == "[redacted-identifier]"

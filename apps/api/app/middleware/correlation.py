@@ -47,7 +47,6 @@ from __future__ import annotations
 
 import os
 import time
-import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -90,14 +89,13 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
         start_time = time.monotonic()
 
         # Read or mint correlation ID
-        correlation_id = request.headers.get("X-Correlation-Id")
-        if not correlation_id:
-            correlation_id = str(uuid.uuid4())
+        raw_header = request.headers.get("X-Correlation-Id")
 
-        # Build route template (strip raw URL params)
-        route_template = request.url.path
-        if request.scope.get("route") and hasattr(request.scope["route"], "path"):
-            route_template = request.scope["route"].path
+        from app.core.log_identity import normalize_correlation_id
+        correlation_id = normalize_correlation_id(raw_header)
+
+        # Use safe placeholder before routing
+        route_template = "<unresolved>"
 
         # Bind log context
         bind_log_context(
@@ -116,6 +114,15 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
         try:
             # Call next middleware/route
             response: Response = await call_next(request)
+
+            # Resolve route template after routing (if available)
+            if request.scope.get("route") and hasattr(request.scope["route"], "path"):
+                route_template = request.scope["route"].path
+            else:
+                route_template = "<unmatched>"
+
+            # Update route in bound context before logging
+            bind_log_context(http_route=route_template)
 
             # Echo correlation ID in response header
             response.headers["X-Correlation-Id"] = correlation_id
@@ -138,6 +145,15 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
 
         except Exception as exc:
             duration_ms = (time.monotonic() - start_time) * 1000
+
+            # Try to resolve route template even on exception
+            if request.scope.get("route") and hasattr(request.scope["route"], "path"):
+                route_template = request.scope["route"].path
+            else:
+                route_template = "<unmatched>"
+
+            bind_log_context(http_route=route_template)
+
             log_event(
                 "system.error",
                 level="error",
@@ -145,7 +161,6 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
                 duration_ms=duration_ms,
                 error={
                     "kind": type(exc).__name__,
-                    "message": str(exc)[:200],
                 },
                 http={
                     "method": request.method,

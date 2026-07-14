@@ -27,7 +27,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import uuid
 import hashlib
@@ -36,7 +35,7 @@ from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -355,19 +354,25 @@ class HoraryService:
                 credit.used_amount = max(0, credit.used_amount - 1)
                 new_status = "refunded"
                 with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="REFUND"):
+                    from app.core.log_identity import hash_log_identifier
+                    credit_id_hash = hash_log_identifier("credit", credit.id)
+                    question_id_hash = hash_log_identifier("question", question_id)
                     log_event(
                         "horary.credit_refunded",
                         level="info",
-                        msg=f"[Horary Refund] Refunded credit {credit.id} for failed question {question_id}",
-                        payload={"credit_id": str(credit.id), "question_id": str(question_id)},
+                        msg="Refunded credit for failed question",
+                        payload={"credit_id_hash": credit_id_hash, "question_id_hash": question_id_hash},
                     )
             else:
                 with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="REFUND"):
+                    from app.core.log_identity import hash_log_identifier
+                    credit_id_hash = hash_log_identifier("credit", credit.id)
+                    question_id_hash = hash_log_identifier("question", question_id)
                     log_event(
                         "horary.credit_refunded",
                         level="info",
-                        msg=f"[Horary Refund] Weekly-free credit {credit.id} already expired. Not refunding for question {question_id}",
-                        payload={"credit_id": str(credit.id), "question_id": str(question_id)},
+                        msg="Weekly-free credit already expired. Not refunding for question",
+                        payload={"credit_id_hash": credit_id_hash, "question_id_hash": question_id_hash},
                     )
 
         await db.delete(spend)
@@ -387,7 +392,7 @@ class HoraryService:
                         log_event(
                             "horary.generation_failed",
                             level="error",
-                            msg=f"[Horary Generator] Question {question_id} not found",
+                            msg="Question not found",
                         )
                     return
 
@@ -396,7 +401,7 @@ class HoraryService:
                         log_event(
                             "horary.generation_failed",
                             level="info",
-                            msg=f"[Horary Generator] Question {question_id} is no longer processing (status={question.status}), skipping generation",
+                            msg="Question is no longer processing, skipping generation",
                         )
                     return
 
@@ -408,7 +413,7 @@ class HoraryService:
                         log_event(
                             "horary.generation_failed",
                             level="error",
-                            msg=f"[Horary Generator] Profile for user {question.user_id} not found",
+                            msg="Profile for user not found",
                         )
                     question.status = "failed"
                     question.failure_stage = "profile"
@@ -501,7 +506,7 @@ class HoraryService:
                         log_event(
                             "horary.generation_failed",
                             level="info",
-                            msg=f"[Horary Generator] Question {question_id} is no longer processing at save boundary, rolling back and skipping save",
+                            msg="Question is no longer processing at save boundary, rolling back and skipping save",
                         )
                     await db.rollback()
                     return
@@ -526,11 +531,13 @@ class HoraryService:
                 fresh_question.public_error_message = None
                 await db.commit()
                 with log_block(slice="W-4.3", module="M-HORARY-SERVICE", block="ANSWER_GENERATION"):
+                    from app.core.log_identity import hash_log_identifier
+                    question_id_hash = hash_log_identifier("question", question_id)
                     log_event(
                         "horary.generation_succeeded",
                         level="info",
-                        msg=f"[Horary Generator] Successfully generated answer for question {question_id}",
-                        payload={"question_id": str(question_id)},
+                        msg="Successfully generated answer for question",
+                        payload={"question_id_hash": question_id_hash},
                     )
 
             except Exception as e:
@@ -538,7 +545,8 @@ class HoraryService:
                     log_event(
                         "horary.generation_failed",
                         level="error",
-                        msg=f"[Horary Generator] Error generating answer for question {question_id}: {type(e).__name__}",
+                        msg="Error generating answer for question",
+                        error={"kind": type(e).__name__},
                     )
                 try:
                     question = (
@@ -560,5 +568,6 @@ class HoraryService:
                         log_event(
                             "horary.generation_failed",
                             level="error",
-                            msg=f"[Horary Generator] Rollback state update failed: {type(rollback_err).__name__}",
+                            msg="Rollback state update failed",
+                            error={"kind": type(rollback_err).__name__},
                         )

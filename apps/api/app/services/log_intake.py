@@ -97,8 +97,17 @@ class LogIntakeService:
                     self._emit_rejected(accepted, rejected)
                     continue
 
+                # Make a shallow copy of the envelope to avoid mutating caller's dict directly
+                normalized = dict(envelope)
+
+                # Invariant: correlation_id normalization for intake log
+                from app.core.log_identity import normalize_correlation_id
+                normalized["correlation_id"] = normalize_correlation_id(
+                    normalized.get("correlation_id")
+                )
+
                 # Redact PII — preserve all keys, just mask values
-                redacted = redact_dict(envelope)
+                redacted = redact_dict(normalized)
 
                 # Emit the SAME redacted envelope directly to stdout
                 # Do NOT rebuild via log_event() — preserve original fields

@@ -13,12 +13,14 @@
 #   - apps/api/app/core/__init__.py
 # inputs:
 #   - environment variables (APP_ENV, APP_DOMAIN, APP_VERSION, DATABASE_URL,
-#     CONTRACT_VERSION) read via pydantic-settings
+#     CONTRACT_VERSION, CORS_ALLOWED_ORIGINS, GRACE_USER_SALT) read via pydantic-settings
 #   - .env file at repo root
 #   - `git rev-parse --short HEAD` for git_sha resolution
 # outputs:
 #   - settings: Settings singleton imported by other modules
 #   - settings.git_sha: short HEAD sha or "unknown"
+#   - settings.cors_allowed_origins: comma-separated exact origins
+#   - settings.grace_user_salt: salt for logging privacy
 # dependencies:
 #   - pydantic, pydantic-settings
 #   - subprocess (for git sha)
@@ -158,6 +160,10 @@ class Settings(BaseSettings):
     # --- Dev mode (W-2.2) ---
     # When true, enables /api/auth/dev endpoint for local development without Telegram
     dev_mode: bool = Field(False, alias="DEV_MODE")
+
+    # --- Security Hardening ---
+    cors_allowed_origins: str = Field("", alias="CORS_ALLOWED_ORIGINS")
+    grace_user_salt: str = Field("", alias="GRACE_USER_SALT")
 
     # --- Feature flags ---
     # W-NATAL-FULL Wave 4: natal full report generation endpoints.

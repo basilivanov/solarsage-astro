@@ -48,7 +48,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -320,11 +319,13 @@ class NatalReportService:
             await self.db.refresh(report)
 
             with log_block(slice="W-NATAL-FULL", module="M-NATAL-REPORT-SERVICE", block="GENERATE_REPORT"):
+                from app.core.log_identity import hash_log_identifier
+                report_id_hash = hash_log_identifier("report", report.id)
                 log_event(
                     "natal.report_generation_succeeded",
                     level="info",
-                    msg=f"Natal report generated: {report.id}",
-                    payload={"report_id": str(report.id)},
+                    msg="Natal report generated",
+                    payload={"report_id_hash": report_id_hash},
                 )
             return NatalGenerateResponse(
                 report_id=str(report.id),
@@ -337,10 +338,9 @@ class NatalReportService:
                 log_event(
                     "natal.report_generation_failed",
                     level="error",
-                    msg=f"Natal report generation failed: {type(exc).__name__}",
+                    msg="Natal report generation failed",
                     error={
                         "kind": type(exc).__name__,
-                        "message": str(exc)[:200],
                     }
                 )
             report.status = "FAILED_RETRYABLE"
@@ -733,16 +733,8 @@ JSON:"""
         """
         # Build whitelists from deterministic context
         known_planets = {p.name.lower() for p in context.planets}
-        known_signs = {
-            "aries", "taurus", "gemini", "cancer", "leo", "virgo",
-            "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
-            # Russian names (LLM may use either)
-            "овен", "телец", "близнецы", "рак", "лев", "дева",
-            "весы", "скорпион", "стрелец", "козерог", "водолей", "рыбы",
-            # Prepositional forms
-            "овне", "тельце", "близнецах", "раке", "льве", "деве",
-            "весах", "скорпионе", "стрельце", "козероге", "водолее", "рыбах",
-        }
+        # Russian names (LLM may use either)
+        # Prepositional forms
         known_planet_names_ru = {
             "солнце", "луна", "меркурий", "венера", "марс",
             "юпитер", "сатурн", "уран", "нептун", "плутон",
@@ -893,10 +885,9 @@ JSON:"""
                     log_event(
                         "system.error",
                         level="error",
-                        msg=f"Failed to parse sections_json: {type(exc).__name__}",
+                        msg="Failed to parse sections_json",
                         error={
                             "kind": type(exc).__name__,
-                            "message": str(exc)[:200],
                         }
                     )
 
@@ -950,10 +941,9 @@ JSON:"""
                 log_event(
                     "system.error",
                     level="warn",
-                    msg=f"Failed to populate report meta: {type(exc).__name__}",
+                    msg="Failed to populate report meta",
                     error={
                         "kind": type(exc).__name__,
-                        "message": str(exc)[:200],
                     }
                 )
         return meta

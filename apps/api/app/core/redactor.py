@@ -72,13 +72,23 @@ PII_KEYS = {
     # network
     "ip", "remote_addr", "x-forwarded-for", "user_agent",
     "remoteaddr", "xforwardedfor", "useragent",
+    # raw identity keys from §7.3/7.4 (snake/camel/lowercase variants)
+    "user_id", "userid",
+    "session_id", "sessionid",
+    "question_id", "questionid",
+    "credit_id", "creditid",
+    "thread_id", "threadid",
+    "message_id", "messageid",
+    "report_id", "reportid",
+    "natal_context_id", "natalcontextid",
+    "profile_id", "profileid",
 }
 # END_BLOCK: PII_KEYS
 
 # START_BLOCK: ALLOW_KEYS
 # Canon §8.4 allow-list — these keys are never redacted even if key name matches
 ALLOW_KEYS: set[str] = {
-    "correlation_id", "session_id", "packet_id", "user_id_hash",
+    "packet_id",
     "service", "service_version", "route", "method", "status",
     "duration_ms", "contract_version", "calculation_version", "prompt_version",
 }
@@ -93,6 +103,23 @@ REDACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._\-]+\b"), "[redacted-bearer]"),
     (re.compile(r"\btg_user_id[=:\s]+\d{5,}\b"), "[redacted-tg-id]"),
     (re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"), "[redacted-ip]"),
+    # UUID pattern
+    (re.compile(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"), "[redacted-uuid]"),
+    # Labeled identifier redactions
+    (re.compile(r"\buser_id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bquestion_id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bcredit_id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bthread_id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\breport_id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bprofile_id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bsession_id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\buser id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bquestion id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bcredit id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bthread id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\breport id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bprofile id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
+    (re.compile(r"\bsession id[=:\s]+[A-Za-z0-9._\-]+\b", re.IGNORECASE), "[redacted-identifier]"),
 ]
 # END_BLOCK: REDACT_PATTERNS
 
@@ -119,10 +146,23 @@ def redact_dict(data: Any) -> Any:
         redacted: dict[str, Any] = {}
         for key, value in data.items():
             key_lower = str(key).lower()
-            if key_lower in ALLOW_KEYS:
+            if key_lower == "correlation_id":
+                from app.core.log_identity import is_opaque_log_id
+                if is_opaque_log_id(value):
+                    redacted[key] = value
+                else:
+                    redacted[key] = "[redacted-identifier]"
+            elif key_lower in ALLOW_KEYS:
                 redacted[key] = value
             elif key_lower in PII_KEYS:
                 redacted[key] = "[redacted]"
+            elif key_lower == "user_id_hash" or key_lower.endswith("_id_hash"):
+                from app.core.log_identity import is_opaque_log_id
+                # Strict check: must be a string matching ^h1_[0-9a-f]{24}$
+                if is_opaque_log_id(value):
+                    redacted[key] = value
+                else:
+                    redacted[key] = "[redacted-identifier]"
             elif isinstance(value, (dict, list)):
                 redacted[key] = redact_dict(value)
             elif isinstance(value, str):
