@@ -75,7 +75,7 @@ export default function ResetPage() {
             <p className="font-serif text-[22px] text-foreground">Готово</p>
             <p className="font-sans text-[15px] text-muted-foreground">{msg}</p>
             <p className="mt-4 font-sans text-[13px] text-muted-foreground/60">
-              Теперь открой @vi_astro_bot — загрузится онбординг
+              Теперь открой @AstroGrace_Bot — загрузится онбординг
             </p>
           </>
         )}

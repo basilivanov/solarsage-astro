@@ -20,10 +20,10 @@
 //     grants 14 days to BOTH users).
 //   - The bonus motivator is shared ONLY together with an attributed invite
 //     URL (API inviteUrl or the canonical startapp fallback built from
-//     Telegram initDataUnsafe user.id, both t.me/vi_astro_bot/app?startapp={id}
+//     Telegram initDataUnsafe user.id, both t.me/AstroGrace_Bot/app?startapp={id}
 //     — the frontend auto-claim reads start_param).
 //   - Without any user id, the shared link degrades to generic
-//     https://t.me/vi_astro_bot/app and the text to SHARE_TEXT_GENERIC
+//     https://t.me/AstroGrace_Bot/app and the text to SHARE_TEXT_GENERIC
 //     WITHOUT the bonus promise (an unattributed link cannot grant a bonus).
 //   - Tone: расчёт по натальной карте, на ты, без эзотерического пафоса;
 //     слово «гороскоп» только с отрицанием (здесь — не используется).
@@ -37,7 +37,9 @@ import { useCallback, useEffect, useState } from "react"
 
 export const SHARE_TEXT = "Слушай, жутко точно: тут считают день по моей натальной карте — сфера за сферой всё про меня. Глянь свой, это 30 секунд:\n\nПо моей ссылке мы оба получим по 14 дней полного доступа."
 export const SHARE_TEXT_GENERIC = "Слушай, жутко точно: тут считают день по моей натальной карте — сфера за сферой всё про меня. Глянь свой, это 30 секунд:"
-const APP_URL = "https://t.me/vi_astro_bot/app"
+// Canonical production bot (public, non-secret); API inviteUrl is preferred,
+// this is only the fallback when the API has not answered or failed.
+const APP_URL = "https://t.me/AstroGrace_Bot/app"
 
 // START_BLOCK: FALLBACK_URL
 // Canonical attributed fallback: same inviteUrl form the API returns,

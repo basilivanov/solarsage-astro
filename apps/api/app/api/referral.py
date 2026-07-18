@@ -50,6 +50,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.dependencies import require_session
 from app.db.models import User, Referral
 from app.db.session import get_session
@@ -80,7 +81,9 @@ async def get_referral_info(
     )
     referrals = result.scalars().all()
 
-    invite_url = f"https://t.me/vi_astro_bot/app?startapp={user.tg_user_id}"
+    # Canonical production bot comes from config (BOT_USERNAME env); the
+    # invite URL must never hardcode a bot username.
+    invite_url = f"https://t.me/{settings.bot_username}/app?startapp={user.tg_user_id}"
 
     return {
         "inviteCode": str(user.tg_user_id),

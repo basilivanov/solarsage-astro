@@ -126,6 +126,9 @@ class Settings(BaseSettings):
     # service layer treats empty as "auth disabled" only inside `app_env=dev`
     # and refuses to verify in any other environment (see telegram_auth).
     telegram_bot_token: str = Field("", alias="TELEGRAM_BOT_TOKEN")
+    # Canonical bot username used for public t.me links (referral inviteUrl,
+    # share fallback). Public, non-secret; production must be AstroGrace_Bot.
+    bot_username: str = Field("AstroGrace_Bot", alias="BOT_USERNAME")
     # Hard ceiling on initData age. Telegram recommends rejecting payloads
     # older than 24h; we default to 24h per W-1.2 ## Decision.
     telegram_auth_max_age_seconds: int = Field(
