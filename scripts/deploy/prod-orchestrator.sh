@@ -395,7 +395,7 @@ activate_with_digests() {
 deploy_cmd() {
   local sha="$1"
   require_sha "$sha"
-  RELEASE_SHA="$sha"
+  export RELEASE_SHA="$sha"
   run_preflight
   read_record_tuple
   local active="$REC_ACTIVE" a_api="$REC_ACTIVE_API" a_sidecar="$REC_ACTIVE_SIDECAR" a_frontend="$REC_ACTIVE_FRONTEND"
@@ -446,7 +446,7 @@ deploy_cmd() {
 rollback_cmd() {
   local sha="$1"
   require_sha "$sha"
-  RELEASE_SHA="$sha"
+  export RELEASE_SHA="$sha"
   run_preflight
   read_record_tuple
   local active="$REC_ACTIVE" previous="$REC_PREVIOUS"
@@ -504,7 +504,7 @@ migrate_cmd() {
   # END_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.migrate_cmd
   local sha="$1"
   require_sha "$sha"
-  RELEASE_SHA="$sha"
+  export RELEASE_SHA="$sha"
   run_preflight
   echo "Pre-migration backup starting..."
   backup_now >/dev/null
@@ -611,7 +611,7 @@ main() {
   case "$cmd" in
     preflight)
       [ $# -eq 1 ] || usage
-      RELEASE_SHA="$1"
+      export RELEASE_SHA="$1"
       run_preflight
       echo "Preflight OK for $RELEASE_SHA."
       return 0
