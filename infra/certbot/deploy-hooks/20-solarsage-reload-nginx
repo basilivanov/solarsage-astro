@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# ############################################################################
+# AI_HEADER: CERTBOT_RELOAD_NGINX — reload Nginx upon successful cert renewal
+# ROLE: Validates Nginx configuration and reloads the service.
+# DEPENDENCIES: nginx, systemctl
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-CERTBOT-RELOAD-NGINX
+# purpose: Safely reload Nginx when certbot issues/renews a certificate.
+# owns:
+#   - infra/certbot/deploy-hooks/20-solarsage-reload-nginx
+# inputs: none
+# outputs:
+#   - Nginx service reload
+# dependencies: none
+# invariants:
+#   - No secrets, no network calls.
+#   - Check Nginx syntax before reload.
+# failure_policy: fails non-zero on syntax check failure.
+# END_MODULE_CONTRACT: M-CERTBOT-RELOAD-NGINX
+
+# START_MODULE_MAP: M-CERTBOT-RELOAD-NGINX
+# public_entrypoints: none
+# semantic_blocks:
+#   - RELOAD_NGINX: validation and reload commands
+# END_MODULE_MAP: M-CERTBOT-RELOAD-NGINX
+
+# START_BLOCK: RELOAD_NGINX
+set -euo pipefail
+umask 027
+
+# Validate Nginx config
+/usr/sbin/nginx -t
+
+# Reload Nginx service
+/usr/bin/systemctl reload nginx.service
+# END_BLOCK: RELOAD_NGINX

@@ -36,6 +36,11 @@ services:
     image: postgres:15
     container_name: solarsage-db
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     security_opt:
       - no-new-privileges:true
     shm_size: 256mb

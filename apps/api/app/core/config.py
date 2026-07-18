@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     app_domain: str = Field("localhost", alias="APP_DOMAIN")
     app_version: str = Field("0.1.0", alias="APP_VERSION")
 
+    # Immutable release identity supplied by the OCI image/container environment
+    # (full 40-hex commit SHA). "unknown" outside the canonical app stack.
+    release_sha: str = Field("unknown", alias="RELEASE_SHA")
+
     # SQLite by default so `alembic upgrade head` works on a fresh checkout
     # without external services. Postgres URL is supplied via .env in real envs.
     database_url: str = Field(

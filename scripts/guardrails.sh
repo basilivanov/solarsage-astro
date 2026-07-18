@@ -277,7 +277,7 @@ run_normal() {
 
 run_prod_guard() {
   section "guardrails:prod"
-  bash "$ROOT/scripts/check_prod_guard.sh"
+  bash "$ROOT/scripts/deploy/check_prod_guard.sh"
 }
 
 run_vercel() {

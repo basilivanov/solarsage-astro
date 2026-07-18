@@ -44,6 +44,8 @@ async def test_health_endpoint():
         assert "ephemeris_path" in data
         assert "calculation_version" in data
         assert data["calculation_version"] == "ss-1.0.0"
+        assert "release_sha" in data
+        assert isinstance(data["release_sha"], str) and data["release_sha"]
 
 
 @pytest.mark.asyncio

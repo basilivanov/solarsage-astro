@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# ############################################################################
+# AI_HEADER: SOLARSAGE_GITHUB_DEPLOY — forced-command wrapper for GitHub Actions
+# ROLE: Executes the sole prod orchestrator safely when invoked via Actions SSH key.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-PRODUCTION-GITHUB-DEPLOY
+# purpose: Forced-command wrapper that prevents execution of arbitrary remote commands.
+# owns:
+#   - infra/production/solarsage-github-deploy
+# inputs:
+#   - SSH_ORIGINAL_COMMAND (environment variable)
+# outputs:
+#   - Runs /usr/bin/sudo -n -H /usr/local/libexec/solarsage/prod-orchestrator
+#     deploy <sha> --manual-confirm
+#     or scripts/deploy/prod-github-access.sh --check --expected-sha <sha>
+#     or returns 126 on command validation or injection attempt.
+# dependencies:
+#   - /usr/local/libexec/solarsage/prod-orchestrator (installed, root:root 0755)
+#   - /etc/sudoers.d/90-solarsage-deploy (exact deploy argv only, sudo 1.9.15 regex)
+#   - scripts/deploy/prod-github-access.sh
+# side_effects:
+#   - Executes the deployment orchestrator or readiness check.
+# emitted_logs:
+#   - stderr validation error messages when validation fails.
+# invariants:
+#   - Must reject empty SSH_ORIGINAL_COMMAND.
+#   - Must reject any positional arguments.
+#   - Must validate SSH_ORIGINAL_COMMAND format is exactly:
+#     - "deploy <40 lowercase hex>"
+#     - "source-check <40 lowercase hex>"
+#     separated by exactly one space.
+#   - Must execute command directly with exec; deploy invokes only the installed
+#     orchestrator path through sudo -n -H (the single sudoers capability),
+#     never mutable checkout code.
+# failure_policy: Exits with 126 on invalid input, empty command, or positional arguments.
+# END_MODULE_CONTRACT: M-INFRA-PRODUCTION-GITHUB-DEPLOY
+
+# START_MODULE_MAP: M-INFRA-PRODUCTION-GITHUB-DEPLOY
+# public_entrypoints:
+#   - solarsage-github-deploy
+# semantic_blocks:
+#   - FORCED_COMMAND_VALIDATION: validates SSH_ORIGINAL_COMMAND and rejects invalid commands/positional arguments
+# END_MODULE_MAP: M-INFRA-PRODUCTION-GITHUB-DEPLOY
+
+# START_BLOCK: FORCED_COMMAND_VALIDATION
+set -euo pipefail
+
+# Check if positional arguments were passed
+if [ "$#" -ne 0 ]; then
+    echo "Arguments are not permitted for this deploy key." >&2
+    exit 126
+fi
+
+# SSH_ORIGINAL_COMMAND must not be empty
+if [ -z "${SSH_ORIGINAL_COMMAND:-}" ]; then
+    echo "Remote commands are not permitted for this deploy key." >&2
+    exit 126
+fi
+
+# Match exactly "deploy<one space><40 lowercase hex>" or "source-check<one space><40 lowercase hex>"
+if [[ "$SSH_ORIGINAL_COMMAND" =~ ^deploy[[:space:]]([0-9a-f]{40})$ ]]; then
+    # Reject tab or any space other than a single literal space
+    if [[ "$SSH_ORIGINAL_COMMAND" != "deploy "* ]]; then
+        echo "Forbidden command format." >&2
+        exit 126
+    fi
+    sha="${BASH_REMATCH[1]}"
+    exec /usr/bin/sudo -n -H /usr/local/libexec/solarsage/prod-orchestrator deploy "$sha" --manual-confirm
+elif [[ "$SSH_ORIGINAL_COMMAND" =~ ^source-check[[:space:]]([0-9a-f]{40})$ ]]; then
+    # Reject tab or any space other than a single literal space
+    if [[ "$SSH_ORIGINAL_COMMAND" != "source-check "* ]]; then
+        echo "Forbidden command format." >&2
+        exit 126
+    fi
+    sha="${BASH_REMATCH[1]}"
+    exec /bin/bash /opt/solarsage-astro/scripts/deploy/prod-github-access.sh --check --expected-sha "$sha"
+else
+    echo "Forbidden command format." >&2
+    exit 126
+fi
+# END_BLOCK: FORCED_COMMAND_VALIDATION

@@ -11,14 +11,16 @@
 # inputs: repo-root Docker context containing packages/py-contracts, apps/api, and grace/canon.
 # outputs: Docker image exposing installed app.main:app on container port 8000.
 # dependencies: python:3.12-slim, pip, packages/py-contracts, apps/api, grace/canon.
-# side_effects: package installation inside image build; alembic migration on container start.
+# side_effects: package installation inside image build; no Alembic migration on
+#   ordinary container start (migrate is a separate one-shot compose profile).
 # emitted_logs: none.
 # invariants:
 #   - No root env/secrets are copied into the image.
 #   - Shared package is installed before the API package.
 #   - Runtime imports the installed API package, not the shallow /app source copy.
 #   - Runtime command keeps container API port 8000.
-# failure_policy: Docker build fails on pip install or pip check errors; runtime exits on migration/server failure.
+#   - RELEASE_SHA is received as a non-secret build ARG/env and OCI label.
+# failure_policy: Docker build fails on pip install or pip check errors; runtime exits on server failure.
 # END_MODULE_CONTRACT: M-DEPLOY-API-DOCKERFILE
 
 # START_MODULE_MAP: M-DEPLOY-API-DOCKERFILE
@@ -46,7 +48,11 @@ RUN python -m pip install --no-cache-dir . \
     && rm -rf /app/app /app/astro_api.egg-info
 COPY grace/canon /usr/local/lib/grace/canon
 
+ARG RELEASE_SHA=unknown
+ENV RELEASE_SHA=${RELEASE_SHA}
+LABEL org.opencontainers.image.revision="${RELEASE_SHA}"
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # END_BLOCK: API_IMAGE

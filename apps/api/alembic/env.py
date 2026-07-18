@@ -8,6 +8,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.engine import make_url
 
 from app.core.config import settings
 from app.db.session import Base  # noqa: F401  (registers metadata)
@@ -15,10 +16,16 @@ from app.db.session import Base  # noqa: F401  (registers metadata)
 config = context.config
 
 # Translate async drivers to sync ones for Alembic.
-sync_url = settings.database_url.replace("+asyncpg", "+psycopg").replace(
-    "+aiosqlite", ""
-)
-config.set_main_option("sqlalchemy.url", sync_url)
+async_url = make_url(settings.database_url)
+if async_url.drivername == "postgresql+asyncpg":
+    sync_url = async_url.set(drivername="postgresql+psycopg")
+elif async_url.drivername == "sqlite+aiosqlite":
+    sync_url = async_url.set(drivername="sqlite")
+else:
+    sync_url = async_url
+
+sync_url_str = sync_url.render_as_string(hide_password=False).replace("%", "%%")
+config.set_main_option("sqlalchemy.url", sync_url_str)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

@@ -1,34 +1,41 @@
 # ############################################################################
 # AI_HEADER: MODULE_DEPLOY_PRODUCTION_WORKFLOW
-# ROLE: GitHub Actions manual production deployment pipeline.
-# DEPENDENCIES: GitHub Actions, ssh
+# ROLE: GitHub Actions manual production pipeline: immutable image build/push,
+#       environment approval, exact SSH deploy of one full SHA.
+# DEPENDENCIES: GitHub Actions, docker buildx, ssh
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-DEPLOY-PRODUCTION-WORKFLOW
-# purpose: Securely trigger production deployment on remote host using SSH.
+# purpose: Manually build, publish and deploy immutable per-SHA OCI images.
 # owns:
 #   - .github/workflows/deploy-production.yml
 # inputs:
-#   - workflow_dispatch
-#   - PROD_HOST: environment secret
-#   - PROD_USER: environment secret
-#   - PROD_SSH_PRIVATE_KEY: environment secret
-#   - PROD_KNOWN_HOSTS: environment secret
+#   - workflow_dispatch (manual only)
+#   - REGISTRY_NAMESPACE: repository-level Actions variable (e.g. ghcr.io/owner,
+#     no tag; required because the build job has no environment)
+#   - PROD_HOST / PROD_USER / PROD_SSH_PRIVATE_KEY / PROD_KNOWN_HOSTS: production
+#     environment secrets
 # outputs: none
 # dependencies: none
 # invariants:
-#   - Manual trigger only.
+#   - Manual trigger only; no push to main deploys by itself.
 #   - Concurrency group production-deploy, cancel-in-progress: false.
-#   - ephemeral SSH key is strictly removed at the end.
-#   - Pinned known_hosts (strict host key verification enforced).
-# failure_policy: fails on SSH connection or remote deploy script failure.
-# END_MODULE_CONTRACT: M-DEPLOY-PRODUCTION-WORKFLOW
+#   - GITHUB_REF must be refs/heads/main; GITHUB_SHA exactly 40 lowercase hex.
+#   - Image tags are exactly the full GITHUB_SHA; no latest/branch/mutable tag.
+#   - The production environment gate stands between build/push and SSH.
+#   - SSH executes exactly "deploy $GITHUB_SHA"; the remote wrapper invokes only
+#     the orchestrator.
+#   - Ephemeral SSH key is strictly removed at the end.
+#   - Permissions are minimal and explicit per job.
+# failure_policy: fails on validation, build/push, approval or SSH failure.
+# END_MODULE_CONTRACT: M-DEPLOY-PRODUCTION_WORKFLOW
 
 # START_MODULE_MAP: M-DEPLOY-PRODUCTION-WORKFLOW
 # public_entrypoints:
 #   - GitHub Actions trigger
 # semantic_blocks:
-#   - DEPLOY_JOB: deployment steps
+#   - BUILD_JOB: immutable image build and push
+#   - DEPLOY_JOB: environment approval and exact SSH deploy
 # END_MODULE_MAP: M-DEPLOY-PRODUCTION-WORKFLOW
 
 name: Deploy Production
@@ -41,25 +48,142 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # START_BLOCK: DEPLOY_JOB
-  deploy:
+  # START_BLOCK: BUILD_JOB
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
+      packages: write
+
+    steps:
+      - name: Verify branch and SHA
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Error: Deployment is only allowed from refs/heads/main. Current ref is $GITHUB_REF." >&2
+            exit 1
+          fi
+          if [[ ! "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Error: GITHUB_SHA must be a 40-character lowercase hexadecimal string." >&2
+            exit 1
+          fi
+          if [ "$IS_PRIVATE" != "true" ]; then
+            echo "Error: Repository visibility must be private before verification can proceed." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify registry namespace
+        env:
+          REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+        run: |
+          if [[ ! "$REGISTRY_NAMESPACE" =~ ^[a-z0-9./:_-]+$ ]]; then
+            echo "Error: REGISTRY_NAMESPACE variable is missing or invalid." >&2
+            exit 1
+          fi
+          case "$REGISTRY_NAMESPACE" in
+            *":latest"*|*":")
+              echo "Error: REGISTRY_NAMESPACE must not carry a tag." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Log in to registry
+        env:
+          REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+          REGISTRY_HOST: ${{ vars.REGISTRY_NAMESPACE }}
+        run: |
+          host="${REGISTRY_HOST%%/*}"
+          printf '%s' "${{ secrets.GITHUB_TOKEN }}" | \
+            docker login "$host" -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push immutable images
+        env:
+          REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for img in api sidecar frontend; do
+            dockerfile="apps/$img/Dockerfile"
+            if [ "$img" = "sidecar" ]; then
+              dockerfile="apps/solarsage/Dockerfile"
+            fi
+            if [ "$img" = "frontend" ]; then
+              dockerfile="apps/web/Dockerfile"
+            fi
+            tag="$REGISTRY_NAMESPACE/solarsage-$img:$GITHUB_SHA"
+            docker buildx build \
+              --build-arg RELEASE_SHA="$GITHUB_SHA" \
+              --build-arg PROD_API_REWRITE_BASE_URL="http://api:8000" \
+              --tag "$tag" \
+              --file "$dockerfile" \
+              --push \
+              .
+          done
+
+      - name: Prove pushed image digests
+        env:
+          REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for img in api sidecar frontend; do
+            docker buildx imagetools inspect "$REGISTRY_NAMESPACE/solarsage-$img:$GITHUB_SHA" >/dev/null
+          done
+  # END_BLOCK: BUILD_JOB
+
+  # START_BLOCK: DEPLOY_JOB
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions: {}
     environment: production
 
     steps:
+      - name: Verify branch and SHA
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Error: Deployment is only allowed from refs/heads/main. Current ref is $GITHUB_REF." >&2
+            exit 1
+          fi
+          if [[ ! "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Error: GITHUB_SHA must be a 40-character lowercase hexadecimal string." >&2
+            exit 1
+          fi
+          if [ "$IS_PRIVATE" != "true" ]; then
+            echo "Error: Repository visibility must be private before verification can proceed." >&2
+            exit 1
+          fi
+
       - name: Configure SSH
+        env:
+          PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           install -m 600 /dev/null ~/.ssh/solarsage_prod_deploy
           # Safely print key and strip Windows line endings
-          printf '%s\n' "${{ secrets.PROD_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/solarsage_prod_deploy
-          printf '%s\n' "${{ secrets.PROD_KNOWN_HOSTS }}" | tr -d '\r' > ~/.ssh/known_hosts
+          printf '%s\n' "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/solarsage_prod_deploy
+          printf '%s\n' "$PROD_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
       - name: Trigger deploy forced-command on production server
+        env:
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           ssh -T \
             -i ~/.ssh/solarsage_prod_deploy \
@@ -69,7 +193,9 @@ jobs:
             -o ConnectTimeout=15 \
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=3 \
-            "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}"
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "$PROD_USER@$PROD_HOST" \
+            "deploy $GITHUB_SHA"
 
       - name: Cleanup SSH Key
         if: always()

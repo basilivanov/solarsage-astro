@@ -1,0 +1,110 @@
+# ############################################################################
+# AI_HEADER: SOURCE_READINESS_WORKFLOW — GitHub Actions source-readiness check
+# ROLE: Performs fail-closed validation of private repository visibility and SSH transport.
+# DEPENDENCIES: GitHub Actions, ssh
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-SOURCE-READINESS-WORKFLOW
+# purpose: Safe validation of private repository status and SSH transport readiness without deploying code.
+# owns:
+#   - .github/workflows/source-readiness.yml
+# inputs:
+#   - workflow_dispatch
+#   - PROD_HOST: environment secret
+#   - PROD_USER: environment secret
+#   - PROD_SSH_PRIVATE_KEY: environment secret
+#   - PROD_KNOWN_HOSTS: environment secret
+# outputs: none
+# dependencies: none
+# invariants:
+#   - Manual trigger only (workflow_dispatch).
+#   - Concurrency group production-source-readiness, cancel-in-progress: false.
+#   - Environment: production, permissions: {}, timeout: 10 minutes.
+#   - Private repository gate checks github.event.repository.private == true before Configure SSH.
+#   - Ephemeral SSH key is strictly removed at the end using always() cleanup.
+#   - Pinned known_hosts (strict host key verification enforced).
+#   - SSH executes exact pinned remote command: "source-check $GITHUB_SHA".
+#   - No checkout, build, deploy, systemctl or restart steps.
+# failure_policy: fails on SSH connection, visibility check failure, or remote source-check failure.
+# END_MODULE_CONTRACT: M-SOURCE-READINESS-WORKFLOW
+
+# START_MODULE_MAP: M-SOURCE-READINESS-WORKFLOW
+# public_entrypoints:
+#   - GitHub Actions trigger
+# semantic_blocks:
+#   - READINESS_JOB: source readiness validation steps
+# END_MODULE_MAP: M-SOURCE-READINESS-WORKFLOW
+
+name: Source Readiness Check
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: production-source-readiness
+  cancel-in-progress: false
+
+jobs:
+  # START_BLOCK: READINESS_JOB
+  source-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    environment: production
+
+    steps:
+      - name: Verify branch and SHA
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+          IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Error: Source readiness check is only allowed from refs/heads/main. Current ref is $GITHUB_REF." >&2
+            exit 1
+          fi
+          if [[ ! "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Error: GITHUB_SHA must be a 40-character lowercase hexadecimal string." >&2
+            exit 1
+          fi
+          if [ "$IS_PRIVATE" != "true" ]; then
+            echo "Error: Repository visibility must be private before verification can proceed." >&2
+            exit 1
+          fi
+
+      - name: Configure SSH
+        env:
+          PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          install -m 600 /dev/null ~/.ssh/solarsage_prod_deploy
+          # Safely print key and strip Windows line endings
+          printf '%s\n' "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/solarsage_prod_deploy
+          printf '%s\n' "$PROD_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Trigger source-check forced-command on production server
+        env:
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          ssh -T \
+            -i ~/.ssh/solarsage_prod_deploy \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "$PROD_USER@$PROD_HOST" \
+            "source-check $GITHUB_SHA"
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: |
+          rm -f ~/.ssh/solarsage_prod_deploy ~/.ssh/known_hosts
+  # END_BLOCK: READINESS_JOB

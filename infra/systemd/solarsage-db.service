@@ -1,0 +1,48 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_SYSTEMD_DB
+# ROLE: Systemd service for launching PostgreSQL database container.
+# DEPENDENCIES: systemd, docker, /etc/solarsage/app.env
+# GRACE_ANCHORS: [SYSTEMD_DB_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-SYSTEMD-DB
+# purpose: Manage the lifecycle of the PostgreSQL database container.
+# owns:
+#   - infra/systemd/solarsage-db.service
+# inputs:
+#   - /etc/solarsage/app.env (real non-symlink root:astro 0640, operator-created)
+# outputs:
+#   - PostgreSQL container running on port 5433
+# dependencies: docker.service
+# invariants:
+#   - Self-contained: invokes /usr/bin/docker compose directly with the
+#     canonical env file; no profile runner or generated profiles.
+#   - Remain after exit.
+# failure_policy: fails if container fails to start.
+# END_MODULE_CONTRACT: M-INFRA-SYSTEMD-DB
+
+# START_MODULE_MAP: M-INFRA-SYSTEMD-DB
+# public_entrypoints:
+#   - solarsage-db.service
+# semantic_blocks:
+#   - SYSTEMD_DB_SERVICE: systemd configuration
+# END_MODULE_MAP: M-INFRA-SYSTEMD-DB
+
+[Unit]
+Description=SolarSage Database (PostgreSQL) Container
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/solarsage-astro
+ExecStart=/usr/bin/docker compose --env-file /etc/solarsage/app.env -f /opt/solarsage-astro/infra/production/docker-compose.yml up -d --wait db
+ExecReload=/usr/bin/docker compose --env-file /etc/solarsage/app.env -f /opt/solarsage-astro/infra/production/docker-compose.yml up -d --wait db
+ExecStop=/usr/bin/docker compose --env-file /etc/solarsage/app.env -f /opt/solarsage-astro/infra/production/docker-compose.yml stop -t 30 db
+TimeoutStartSec=180
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

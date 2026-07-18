@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # Versioning
     calculation_version: str = "ss-1.0.0"
     git_sha: str = "dev"  # Override in production
+    # Immutable release identity supplied by the container environment
+    # (SOLARSAGE_RELEASE_SHA, full 40-hex commit SHA). "unknown" outside the
+    # canonical app stack.
+    release_sha: str = "unknown"
 
     model_config = SettingsConfigDict(
         env_prefix="SOLARSAGE_",

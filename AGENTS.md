@@ -5,9 +5,11 @@
 | Порт | Сервис | Где запущен | Комментарий |
 |------|--------|-------------|-------------|
 | **5433** | PostgreSQL | `solarsage-db` (Docker) | База данных. .env: `DATABASE_URL` → `localhost:5433` |
-| **8000** | API (FastAPI) | `solarsage-api.service` (systemd) | **Единственный API**. Nginx: `/api/` → 8000 |
-| **3002** | Frontend (Next.js) | `solarsage-frontend.service` (systemd) | Production build. Nginx: `/` → 3002 |
+| **8000** | API (FastAPI) | контейнер `solarsage-api` (Compose `solarsage-app`) | **Единственный API**. Nginx: `/api/` → 8000 |
+| **3002** | Frontend (Next.js) | контейнер `solarsage-frontend` (Compose `solarsage-app`) | Production build. Nginx: `/` → 3002 |
 | **80/443** | Nginx | `nginx.service` | Единая точка входа: `/api/*` → 8000, всё остальное → 3002 |
+
+Канонический production path — минимальный Compose path: immutable per-SHA OCI images + `infra/production/docker-compose.app.yml` + единственный orchestrator `/usr/local/libexec/solarsage/prod-orchestrator` (исходник `scripts/deploy/prod-orchestrator.sh`). До one-time manual cutover старые app systemd units (`solarsage-api.service`, `solarsage-sidecar.service`, `solarsage-frontend.service`) могут ещё существовать на хосте; они disabled-by-name, их templates удалены из репозитория (181 cleanup).
 
 ### Вспомогательные порты (не продакшен)
 
@@ -18,20 +20,27 @@
 | **55432** | Magia DB | Другой проект, НЕ наш |
 | **55173-55181** | Magia (dev/prod) | Другой проект, НЕ наш |
 | **18080** | Adminer | DB-менеджер, другой проект |
-| **18091** | SolarSage sidecar | Расчётный движок (systemd, внутренний) |
+
+### Production sidecar
+
+| Порт | Сервис | Где запущен | Комментарий |
+|------|--------|-------------|-------------|
+| **18091** | SolarSage sidecar | контейнер `solarsage-sidecar` (Compose `solarsage-app`) | Расчётный движок, внутренний (API → sidecar по compose-сети) |
 
 ### Docker
 
-- `solarsage-db` — PostgreSQL 15 на портах 5433+5434, `POSTGRES_DB=astro`, user/password из `.env`
-- Docker Compose (`docker-compose.yml`) — канонический файл, API=8000, SolarSage=8001, Frontend=3000
-- Docker Compose (`docker-compose.prod.yml`) — неймспейснутый для запуска рядом с другими проектами
+- `infra/production/docker-compose.app.yml` — **canonical production app stack** (api/sidecar/frontend, loopback-only, digest-pinned images; проект `solarsage-app`)
+- `infra/production/docker-compose.yml` — **canonical production DB** (PostgreSQL 15, проект `solarsage-prod`, port 5433)
+- Root `docker-compose.yml` / `docker-compose.prod.yml` — **dev/compatibility only** (не production source of truth)
+- `solarsage-db` — PostgreSQL 15 контейнер DB-проекта на портах 5433+5434, `POSTGRES_DB=astro`, user/password из `.env`
 
 ### Systemd
 
-- `solarsage-sidecar.service` — SolarSage (pyswissePH), порт 18091, PYTHONPATH=/opt/solarsage-astro/apps/solarsage
-- `solarsage-api.service` — FastAPI, порт 8000, EnvironmentFile=`/opt/solarsage-astro/.env`
-- `solarsage-frontend.service` — Next.js production build, порт 3002
+- `solarsage-db.service` — PostgreSQL compose project (canonical DB, port 5433)
+- `solarsage-backup.timer` / `solarsage-backup.service` — canonical daily backup через установленный orchestrator
 - `ductor-astro.service` — Telegram бот @vi_astro_bot
+
+App-сервисы (api/sidecar/frontend) работают в контейнерах Compose `solarsage-app`, а не как systemd units. Старые app units (`solarsage-api.service`, `solarsage-sidecar.service`, `solarsage-frontend.service`), `solarsage.service`, `solarsage-frontend-preview-3001.service` и `solarsage-backup-maintenance.*` — parked: host-prepare только disable-by-name (без `--now`, без stop), фактический stop — отдельная ручная one-time cutover команда владельца непосредственно перед первым Compose deploy.
 
 ### НЕ ИСПОЛЬЗОВАТЬ
 
@@ -192,10 +201,11 @@ python3 scripts/generate-telegram-test-initdata.py
 | Что | Где |
 |-----|-----|
 | Nginx конфиг | `/etc/nginx/sites-enabled/astro.conf` |
-| Systemd unit'ы | `/etc/systemd/system/solarsage-*.service` |
-| Production .env | `/opt/solarsage-astro/.env.production` |
-| Backend env | `/opt/astro-project/.env` |
-| Docker compose | `/opt/solarsage-astro/docker-compose.yml` |
+| Canonical env | `/etc/solarsage/app.env` (root:astro `0640`, operator-created) |
+| Installed orchestrator | `/usr/local/libexec/solarsage/prod-orchestrator` |
+| Installed app compose | `/etc/solarsage/compose/docker-compose.app.yml` |
+| App compose (source) | `infra/production/docker-compose.app.yml` |
+| DB compose (source) | `infra/production/docker-compose.yml` |
 | InitData генератор | `scripts/generate-telegram-test-initdata.py` |
 
 ## Известные баги / технический долг

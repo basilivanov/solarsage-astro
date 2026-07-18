@@ -82,9 +82,10 @@ export default defineConfig({
       maxDiffPixels: 100, // допустимая разница в пикселях
       threshold: 0.2, // 20% допустимой разницы
     },
+    timeout: 15000, // Увеличенный таймаут для всех expect утверждений (включая toHaveScreenshot)
   },
-  // Update snapshots with --update-snapshots flag
-  updateSnapshots: process.env.UPDATE_SNAPSHOTS === 'true' ? 'all' : 'missing',
+  // Update snapshots with --update-snapshots flag; do not create missing snapshots by default (fail-closed policy)
+  updateSnapshots: process.env.UPDATE_SNAPSHOTS === 'true' ? 'all' : 'none',
   projects: [
     {
       name: 'chromium',

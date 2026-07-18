@@ -32,3 +32,4 @@ class HealthResponse(BaseModel):
     version: str
     ephemeris_path: str
     calculation_version: str
+    release_sha: str

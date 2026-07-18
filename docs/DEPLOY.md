@@ -6,16 +6,15 @@ last_review: 2026-05-25
 ---
 # DEPLOY.md — развёртывание Astro Mini App на VDS
 
-> **STATUS: stale (pre-W-1.0).** This document predates the
+> **STATUS: replaced, retained history.** This document predates the
 > Phase-1 stack lockdown and references services/env-vars that no
 > longer match the canon (SolarSage sidecar, systemd units
 > `astro-api`/`astro-worker`/`astro-web`, `apps/web/` layout,
 > `/opt/solarsage-astro` VDS model, `SOLARSAGE_*` env-vars without
-> canonical prefix, etc.). The authoritative deployment surface
-> will be re-derived in a dedicated **W-DEPLOY** wave (TBD,
-> post-W-1.5). Do not use as a runbook. Retained for product-history
-> context only; see `grace/development-plan.xml` (`<future-waves>`
-> → `W-DEPLOY`) for the tracking anchor.
+> canonical prefix, etc.). It has been **replaced** by the canonical
+> `docs/DEPLOYMENT.md` and `docs/PRODUCTION_RUNBOOK.md` (minimal Compose
+> path). Do not use as a runbook. Retained for product-history
+> context only.
 
 Документ — пошаговое ТЗ. Каждая команда выполняется именно в указанном
 порядке. Если шаг падает — не идти дальше, а чинить шаг.

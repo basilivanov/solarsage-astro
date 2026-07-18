@@ -1,7 +1,11 @@
-# DEV ONLY. Production deployment surface is TBD in W-DEPLOY.
+# DEV/COMPATIBILITY ONLY. NOT the production source of truth.
+# Production canon:
+#   - app stack: infra/production/docker-compose.app.yml (api/sidecar/frontend)
+#   - DB stack:  infra/production/docker-compose.yml (PostgreSQL, port 5433)
 # This file provisions Postgres + Redis for the local dev-loop only.
-# SolarSage is an EXTERNAL service and is NOT defined here — it runs
-# in its own docker stack and we consume it via SOLARSAGE_BASE_URL.
+# SolarSage sidecar is NOT defined here: production runs it as container
+# solarsage-sidecar in the canonical app stack; dev-loop may point
+# SOLARSAGE_BASE_URL at an external sidecar (dev-only).
 
 services:
   postgres:

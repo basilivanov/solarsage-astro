@@ -9,9 +9,13 @@ name: Visual Regression Tests
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   visual-regression:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4
@@ -24,30 +28,81 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright
-        run: pnpm exec playwright install --with-deps
-
-      - name: Build
-        run: pnpm run build
-
-      - name: Start server
-        run: pnpm exec next start -H 127.0.0.1 -p 3002 &
-
-      - name: Wait for server
-        run: npx wait-on http://localhost:3002
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run visual regression tests
-        run: pnpm exec playwright test e2e/visual-regression.spec.ts
+        shell: bash
+        run: |
+          cleanup_preview() {
+            if [ -f /tmp/solarsage-v2-preview.pid ]; then
+              PID=$(cat /tmp/solarsage-v2-preview.pid)
+              echo "Stopping preview server (PID: $PID)..."
+              kill -TERM "$PID" || true
+
+              # Bounded poll/wait for process to disappear
+              for i in {1..50}; do
+                if ! kill -0 "$PID" 2>/dev/null; then
+                  echo "Preview server stopped."
+                  break
+                fi
+                if [ "$i" -eq 50 ]; then
+                  echo "Preview server did not stop. Sending SIGKILL..."
+                  kill -KILL "$PID" || true
+                fi
+                sleep 0.1
+              done
+              rm -f /tmp/solarsage-v2-preview.pid
+            fi
+          }
+          trap cleanup_preview EXIT INT TERM
+
+          # Start server directly using node
+          node e2e/mock-visual/start-v2-preview.mjs > /tmp/solarsage-v2-preview.log 2>&1 &
+          echo $! > /tmp/solarsage-v2-preview.pid
+
+          # Wait for server
+          for attempt in {1..120}; do
+            if curl --connect-timeout 2 --max-time 5 -fsS http://127.0.0.1:3003/day/2026-07-08 >/dev/null 2>&1; then
+              echo "Server is ready."
+              break
+            fi
+            if [ "$attempt" -eq 120 ]; then
+              echo "Error: server did not become ready after 120 attempts. Preview logs:" >&2
+              tail -n 100 /tmp/solarsage-v2-preview.log >&2
+              exit 1
+            fi
+            sleep 1
+          done
+
+          # Run Playwright tests
+          E2E_BASE_URL=http://127.0.0.1:3003 \
+            CI=true pnpm exec playwright test e2e/mock-visual --project=chromium --project=mobile
+
+          # Explicit normal cleanup
+          cleanup_preview
+          trap - EXIT INT TERM
 
       - name: Upload diff images
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: visual-regression-diffs
-          path: e2e/**/*-diff.png
+          path: test-results/**/*-diff.png
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

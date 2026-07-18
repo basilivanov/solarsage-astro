@@ -27,7 +27,7 @@
     "contracts:compat": "python3 scripts/contracts/check_compat.py",
     "contracts:check": "bash scripts/contracts/check.sh",
     "contracts:sync": "bash scripts/contracts/sync.sh",
-    "guardrails:prod": "bash scripts/check_prod_guard.sh",
+    "guardrails:prod": "bash scripts/deploy/check_prod_guard.sh",
     "guardrails": "bash scripts/guardrails.sh full",
     "guardrails:docs": "bash scripts/guardrails.sh docs",
     "guardrails:secrets": "bash scripts/guardrails.sh secrets",

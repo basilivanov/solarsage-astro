@@ -72,7 +72,7 @@ last_review: 2026-05-25
 - **05 API contracts и TodayPayload** — `superseded` (W-1.1B). Шаблоны
   payload теперь в `apps/api/app/schemas/` и
   `packages/contracts/_generated.ts`.
-- **DEPLOY** — `stale` (pre-W-1.0). Заменится на W-DEPLOY packet.
+- **DEPLOY** — `replaced`. Заменён canonical `DEPLOYMENT.md` + `PRODUCTION_RUNBOOK.md` (minimal Compose path); сохранён как история.
 
 ## Главный принцип
 

@@ -61,7 +61,8 @@ def test_public_surface_production_vs_development():
     assert "status" in data
     assert "version" in data
     assert "git_sha" in data
-    assert set(data.keys()) == {"status", "version", "git_sha"}
+    assert "release_sha" in data
+    assert set(data.keys()) == {"status", "version", "git_sha", "release_sha"}
 
     # Internal routes must return 404 in production/staging
     assert client.get("/api/debug").status_code == 404
