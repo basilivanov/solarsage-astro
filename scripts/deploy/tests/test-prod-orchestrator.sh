@@ -130,6 +130,12 @@ args="$*"
 case "$args" in
   "compose --env-file "*" -f "*" config --quiet")
     [ -f "$TEST_DIR/env-file-ok" ] || exit 1
+    # Contract: the canonical compose interpolates ${RELEASE_SHA:?...}; fail
+    # exactly like real compose when it is not exported into our environment.
+    compose_file=$(printf '%s' "$args" | sed -n 's/.* -f \([^ ]*\) .*/\1/p')
+    if [ -n "$compose_file" ] && grep -qF '${RELEASE_SHA:?' "$compose_file" && [ -z "${RELEASE_SHA:-}" ]; then
+      exit 1
+    fi
     exit 0
     ;;
   "compose --env-file "*" -f "*" config")
@@ -141,6 +147,7 @@ case "$args" in
     ;;
   "compose --env-file "*" -f "*" up -d --wait api sidecar frontend")
     env | grep -E '^(API|SIDECAR|FRONTEND)_IMAGE=' >> "$TEST_DIR/env-ledger" || true
+    env | grep -E '^RELEASE_SHA=' >> "$TEST_DIR/env-ledger" || true
     sha=$(grep -F "${API_IMAGE:?} " "$TEST_DIR/digest-map" | head -1 | awk '{print $2}' || echo "")
     [ -n "$sha" ] || exit 3
     if [ -f "$TEST_DIR/fail-up-for" ] && [ "$(cat "$TEST_DIR/fail-up-for")" = "$sha" ]; then
@@ -896,6 +903,35 @@ oc26() {
 }
 try_case "OC26 restore cleanup failure is generic warning rc78" oc26
 
+oc27() {
+  # START_BLOCK: OC27_RELEASE_SHA_EXPORT_CONTRACT
+  # Proves the canonical fix: RELEASE_SHA is EXPORTED at the invocation
+  # boundary so docker compose interpolation (${RELEASE_SHA:?}) receives it.
+  reset_sandbox
+  local rc=0
+  # Positive: preflight must pass; the mock config --quiet fails like real
+  # compose when RELEASE_SHA is absent from the child environment.
+  run_orch preflight "$SHA_B"
+  expect_rc 0 "OC27 preflight" || rc=1
+  [ "$rc" -eq 0 ] || return 1
+  # Negative control: the identical compose config argv without RELEASE_SHA in
+  # the environment must fail in the mock — the contract check is not vacuous.
+  if SS_MOCK_ROOT="$TEST_DIR" "$TEST_DIR/bin/docker" compose --env-file "$TEST_DIR/app.env" -f "$REPO_ROOT/infra/production/docker-compose.app.yml" config --quiet >/dev/null 2>&1; then
+    case_fail "OC27 negative control: config --quiet passed without RELEASE_SHA"
+    rc=1
+  fi
+  # Activation path: deploy must hand RELEASE_SHA to the up call.
+  reset_sandbox
+  run_orch deploy "$SHA_B" --manual-confirm
+  expect_rc 0 "OC27 deploy" || rc=1
+  [ "$rc" -eq 0 ] || return 1
+  grep -qF "RELEASE_SHA=$SHA_B" "$TEST_DIR/env-ledger" || { case_fail "OC27 RELEASE_SHA not exported to compose up"; rc=1; }
+  assert_no_canary "OC27" || rc=1
+  return $rc
+  # END_BLOCK: OC27_RELEASE_SHA_EXPORT_CONTRACT
+}
+try_case "OC27 RELEASE_SHA exported to compose config and activation" oc27
+
 # END_BLOCK: CONTRACT_CASES
 
 EXPECTED_IDS="$TEST_DIR/expected_ids"
@@ -928,6 +964,7 @@ OC23 aborted rehearsal cleans only the created container
 OC24 env RELEASE_SHA conflict fails closed; requested SHA restored
 OC25 migrate one-shot profile pinned digests no activation no record
 OC26 restore cleanup failure is generic warning rc78
+OC27 RELEASE_SHA exported to compose config and activation
 EOF
 
 LEDGER_OK=0
