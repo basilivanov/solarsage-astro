@@ -53,3 +53,31 @@ text «Открыть мой день ✨») — Bot API does not apply it for t
 description, /start responder, commands, webhook.
 
 No tokens/secrets printed anywhere. tmux alive.
+
+## Addendum — menu gate experiment: BotFather override CONFIRMED (2026-07-18)
+
+Controlled read/mutation experiment (dev egress, token memory-only, no code
+changes):
+
+1. `getMe`: id=8541896258 AstroGrace_Bot, is_bot=true.
+2. `getChatMenuButton` (before): `{"type":"web_app","text":"Открыть мой день ✨","web_app":{"url":"https://astro.vasiliy-ivanov.ru/"}}`
+   — the owner had already updated the button TEXT via BotFather (was
+   «Открыть AstroGrace»); URL stayed the BotFather root value.
+3. `setChatMenuButton {type: default}` → ok:true, read-back UNCHANGED.
+4. `setChatMenuButton` web_app «Открыть мой день ✨» →
+   `https://astro.vasiliy-ivanov.ru/day/today` → ok:true, read-back
+   UNCHANGED (root URL persists).
+
+Conclusion: BotFather owns the menu button for this bot — Bot API accepts
+all writes (ok:true) and applies none of them, including the default reset.
+This is a platform behavior, not a config error.
+
+Current production state (sync --audit rc 0, identity proven):
+
+- menu button: «Открыть мой день ✨» → `https://astro.vasiliy-ivanov.ru/`
+  (web_app). The root route client-redirects to `/day/today`
+  (`app/(grace)/page.tsx`), so the launch surface is functionally correct —
+  one client-side hop. Exact `/day/today` remains the canonical target IF
+  the owner sets it in BotFather (Bot Settings → Menu Button).
+- Everything else Telegram-side is configured and proven: bio, description,
+  /start webhook responder, /start command, webhook, referral URLs.
