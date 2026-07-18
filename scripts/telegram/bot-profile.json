@@ -1,6 +1,7 @@
 {
   "schema": "solarsage-bot-profile/v1",
-  "bot_username": "vi_astro_bot",
+  "bot_username": "AstroGrace_Bot",
+  "expected_bot_id": 8541896258,
   "short_description": "Не гороскоп из журнала, а расчёт твоего дня по натальной карте: что поддерживает, что отложить и почему именно у тебя.",
   "description": "Это не прогноз «для всех Тельцов». Я считаю твой день по настоящей астрологической математике: твоя натальная карта, транзиты, 12 сфер жизни. За 30 секунд узнаешь, что сегодня поддерживает, где трение — и почему всё складывается именно так.",
   "webapp_url": "https://astro.vasiliy-ivanov.ru",
@@ -10,7 +11,7 @@
     "text": "Открыть мой день ✨"
   },
   "start_copy": {
-    "status": "canonical-ready (no supported Ductor override — see report blocker)",
+    "status": "canonical-ready (no production responder: ductor-astro inactive on prod, no supported Ductor override — see report blocker)",
     "text": "Привет! Я считаю твой день по твоей натальной карте — конкретно твой, а не для всех разом.\n\nЧто внутри:\n• статус дня и где он будет чувствоваться\n• навигатор по 12 сферам: работа, деньги, отношения, здоровье…\n• «Почему именно у меня» — твой личный сюжет в трёх скоростях: длинный цикл, активная волна, триггер сегодня\n\nНужна только дата, время и город рождения.",
     "cta": {
       "text": "Открыть мой день ✨"

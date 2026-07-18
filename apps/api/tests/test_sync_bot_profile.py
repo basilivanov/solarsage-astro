@@ -129,41 +129,103 @@ class _FakeResponse:
         return False
 
 
-def test_apply_makes_exact_three_calls_with_exact_payloads_and_no_token_leak(config: dict, webapp_url: str, capsys) -> None:
-    calls: list[dict] = []
-
+def _bot_opener(config: dict, webapp_url: str, calls: list, bot_id=None, username=None):
+    # Method-aware fake Bot API: GET helpers pass a plain URL string,
+    # post_method passes a Request with JSON data.
     def fake_open(req, timeout=0):
-        calls.append({"url": req.full_url, "data": json.loads(req.data.decode("utf-8"))})
+        if isinstance(req, str):
+            url, method, data = req, req.split("/")[-1], None
+        else:
+            url, method = req.full_url, req.full_url.split("/")[-1]
+            data = json.loads(req.data.decode("utf-8"))
+        calls.append({"method": method, "url": url, "data": data})
+        if method == "getMe":
+            return _FakeResponse({"ok": True, "result": {
+                "is_bot": True,
+                "id": bot_id if bot_id is not None else config["expected_bot_id"],
+                "username": username or config["bot_username"],
+            }})
+        if method == "getMyName":
+            return _FakeResponse({"ok": True, "result": {"name": "AstroGrace — личная астрология"}})
+        if method == "getMyShortDescription":
+            return _FakeResponse({"ok": True, "result": {"short_description": config["short_description"]}})
+        if method == "getMyDescription":
+            return _FakeResponse({"ok": True, "result": {"description": config["description"]}})
+        if method == "getChatMenuButton":
+            return _FakeResponse({"ok": True, "result": {
+                "type": "web_app", "text": config["menu_button"]["text"],
+                "web_app": {"url": webapp_url}}})
+        if method == "getMyCommands":
+            return _FakeResponse({"ok": True, "result": []})
+        if method == "getWebhookInfo":
+            return _FakeResponse({"ok": True, "result": {"url": "", "pending_update_count": 0}})
         return _FakeResponse({"ok": True, "result": True})
+    return fake_open
 
-    rc = sbp.run_apply(config, "TEST_TOKEN_NEVER_PRINTED", webapp_url, opener=fake_open)
+
+def test_apply_makes_exact_calls_with_exact_payloads_readback_and_no_token_leak(config: dict, webapp_url: str, capsys) -> None:
+    calls: list[dict] = []
+    rc = sbp.run_apply(config, "TEST_TOKEN_NEVER_PRINTED", webapp_url,
+                       opener=_bot_opener(config, webapp_url, calls))
     assert rc == 0
 
-    assert len(calls) == 3
-    methods = [c["url"].split("/")[-1] for c in calls]
-    assert methods == ["setMyShortDescription", "setMyDescription", "setChatMenuButton"]
+    methods = [c["method"] for c in calls]
+    assert methods == ["getMe", "setMyShortDescription", "setMyDescription", "setChatMenuButton",
+                       "getMyShortDescription", "getMyDescription", "getChatMenuButton"]
 
-    assert calls[0]["data"] == {"short_description": config["short_description"]}
-    assert calls[1]["data"] == {"description": config["description"]}
-    assert calls[2]["data"]["menu_button"]["type"] == "web_app"
-    assert calls[2]["data"]["menu_button"]["text"] == config["menu_button"]["text"]
-    assert calls[2]["data"]["menu_button"]["web_app"]["url"] == webapp_url
+    setters = [c for c in calls if c["method"].startswith("set")]
+    assert setters[0]["data"] == {"short_description": config["short_description"]}
+    assert setters[1]["data"] == {"description": config["description"]}
+    assert setters[2]["data"]["menu_button"]["type"] == "web_app"
+    assert setters[2]["data"]["menu_button"]["text"] == config["menu_button"]["text"]
+    assert setters[2]["data"]["menu_button"]["web_app"]["url"] == webapp_url
 
     out = capsys.readouterr().out
+    assert "identity OK" in out
+    assert out.count("read-back") == 3
     assert "TEST_TOKEN_NEVER_PRINTED" not in out
     assert "botTEST_TOKEN_NEVER_PRINTED" not in out
 
 
+def test_apply_is_blocked_on_identity_mismatch(config: dict, webapp_url: str) -> None:
+    calls: list[dict] = []
+    with pytest.raises(SystemExit) as exc:
+        sbp.run_apply(config, "TEST_TOKEN_NEVER_PRINTED", webapp_url,
+                      opener=_bot_opener(config, webapp_url, calls, bot_id=1111111111))
+    assert exc.value.code == 78
+    assert not [c for c in calls if c["method"].startswith("set")], "mutation happened despite identity failure"
+
+
+def test_audit_is_read_only_and_prints_safe_fields(config: dict, capsys) -> None:
+    calls: list[dict] = []
+    rc = sbp.run_audit(config, "TEST_TOKEN_NEVER_PRINTED",
+                       opener=_bot_opener(config, "https://astro.vasiliy-ivanov.ru/day/today", calls))
+    assert rc == 0
+    assert all(c["method"].startswith("get") for c in calls), "audit must not mutate"
+    out = capsys.readouterr().out
+    assert "identity OK" in out
+    assert "menu_button" in out
+    assert "webhook url present: False" in out
+    assert "TEST_TOKEN_NEVER_PRINTED" not in out
+
+
+def test_config_requires_expected_bot_id(tmp_path) -> None:
+    cfg = json.loads(sbp.CONFIG_PATH.read_text(encoding="utf-8"))
+    del cfg["expected_bot_id"]
+    bad = tmp_path / "bot-profile.json"
+    bad.write_text(json.dumps(cfg), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        sbp.load_config(bad)
+    assert exc.value.code == 78
+
+
 def test_start_copy_is_never_synced(config: dict, webapp_url: str) -> None:
-    calls: list[str] = []
-
-    def fake_open(req, timeout=0):
-        calls.append(req.full_url)
-        return _FakeResponse({"ok": True, "result": True})
-
-    sbp.run_apply(config, "TEST_TOKEN_NEVER_PRINTED", webapp_url, opener=fake_open)
-    assert not any("start" in url.lower() for url in calls)
-    assert all(url.split("/")[-1] in sbp.SYNCED_METHODS for url in calls)
+    calls: list[dict] = []
+    sbp.run_apply(config, "TEST_TOKEN_NEVER_PRINTED", webapp_url,
+                  opener=_bot_opener(config, webapp_url, calls))
+    setter_methods = [c["method"] for c in calls if c["method"].startswith("set")]
+    assert not any("start" in m.lower() for m in setter_methods)
+    assert all(m in sbp.SYNCED_METHODS for m in setter_methods)
 
 
 def test_validation_fails_closed_on_limits(config: dict) -> None:

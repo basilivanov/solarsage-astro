@@ -25,14 +25,19 @@
 # invariants:
 #   - Token comes only from TELEGRAM_BOT_TOKEN env or an explicit --env-file;
 #     it is never printed, logged, or included in any output.
+#   - Identity gate (launch-gate doc 81): --apply and --audit FIRST call getMe
+#     and fail closed unless ok, is_bot, and the exact expected_bot_id and
+#     bot_username from the repo config match. --check stays fully offline.
+#   - Every mutation is followed by an exact read-back comparison.
 #   - The WebApp target is the canonical absolute WEBAPP_URL + /day/today
 #     (config default, overridable via WEBAPP_URL env or --env-file);
 #     it is never a t.me deep-link.
 #   - Bot API length limits are enforced in check mode before any HTTP:
 #     short_description <= 120 chars, description <= 512 chars.
 #   - --apply without --manual-confirm exits 78 with no HTTP performed.
-#   - start_copy is validated and reported but NOT synced (no supported
-#     Ductor override today; see work report blocker).
+#   - start_copy is validated and reported but NOT synced (no production
+#     message responder: ductor-astro is inactive on prod and Ductor has no
+#     supported start-copy override; see work report blocker).
 # failure_policy: exit 78 on any validation, confirmation, token or HTTP failure.
 # END_MODULE_CONTRACT: M-TOOL-SYNC-BOT-PROFILE
 
@@ -43,8 +48,9 @@
 #   - CONFIG_LOAD: parse and validate bot-profile.json
 #   - TOKEN_LOAD: resolve token from env/explicit env-file only
 #   - WEBAPP_URL: compose canonical WebApp target URL
+#   - IDENTITY_AUDIT: getMe proof + read-only online audit
 #   - CHECK_MODE: validate and print intended operations
-#   - APPLY_MODE: manual-gated Bot API POSTs
+#   - APPLY_MODE: manual-gated Bot API POSTs with exact read-back
 # owned_tests:
 #   - apps/api/tests/test_sync_bot_profile.py
 # END_MODULE_MAP: M-TOOL-SYNC-BOT-PROFILE
@@ -86,6 +92,12 @@ def load_config(path: Path) -> dict:
         die("bot profile config must be a JSON object")
     if config.get("schema") != "solarsage-bot-profile/v1":
         die("bot profile config schema must be solarsage-bot-profile/v1")
+    username = config.get("bot_username")
+    if not isinstance(username, str) or not username.strip():
+        die("bot_username must be a non-empty string")
+    expected_id = config.get("expected_bot_id")
+    if not isinstance(expected_id, int) or expected_id <= 0:
+        die("expected_bot_id must be a positive integer")
     return config
 
 
@@ -181,6 +193,67 @@ def load_webapp_url(config: dict, env_file: str | None) -> str:
 # END_BLOCK: WEBAPP_URL
 
 
+# START_BLOCK: IDENTITY_AUDIT
+def api_get(token: str, method: str, opener=urllib.request.urlopen) -> dict:
+    # START_FUNCTION_CONTRACT: F-M-TOOL-SYNC-BOT-PROFILE.api_get
+    # purpose: Call a read-only Bot API GET method; never expose the token.
+    # inputs: token — bot token (never printed); method — API method name.
+    # returns: parsed JSON dict.
+    # side_effects: one HTTPS GET to api.telegram.org.
+    # emitted_logs: none.
+    # error_behavior: dies (exit 78) with the exception TYPE only, never the URL.
+    # END_FUNCTION_CONTRACT: F-M-TOOL-SYNC-BOT-PROFILE.api_get
+    url = f"{API_BASE}/bot{token}/{method}"
+    try:
+        with opener(url, timeout=15) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        die(f"{method} request failed: {type(exc).__name__}")
+    if not isinstance(body, dict) or not body.get("ok"):
+        die(f"{method} rejected by Bot API")
+    return body
+
+
+def prove_identity(config: dict, token: str, opener=urllib.request.urlopen) -> None:
+    # START_FUNCTION_CONTRACT: F-M-TOOL-SYNC-BOT-PROFILE.prove_identity
+    # purpose: Launch-gate identity proof before ANY mutation or audit:
+    #   getMe must be ok, is_bot true, and match the exact expected_bot_id
+    #   and bot_username from the repo config. Fails closed otherwise.
+    # inputs: config — validated config; token — never printed.
+    # returns: None on proven identity.
+    # side_effects: one getMe HTTPS GET.
+    # emitted_logs: none.
+    # error_behavior: dies (exit 78) on any mismatch, rejection, or failure.
+    # END_FUNCTION_CONTRACT: F-M-TOOL-SYNC-BOT-PROFILE.prove_identity
+    result = api_get(token, "getMe", opener).get("result", {})
+    if not result.get("is_bot"):
+        die("identity proof failed: account is not a bot")
+    if result.get("id") != config["expected_bot_id"]:
+        die(f"identity proof failed: bot id {result.get('id')} != expected {config['expected_bot_id']}")
+    if result.get("username") != config["bot_username"]:
+        die(f"identity proof failed: username {result.get('username')} != expected {config['bot_username']}")
+
+
+def run_audit(config: dict, token: str, opener=urllib.request.urlopen) -> int:
+    # Read-only online audit: identity proof + safe current-state read-back.
+    prove_identity(config, token, opener)
+    print(f"identity OK: id={config['expected_bot_id']} username={config['bot_username']} is_bot=true")
+    name = api_get(token, "getMyName", opener).get("result", {})
+    print(f"name: {name.get('name', '')}")
+    short = api_get(token, "getMyShortDescription", opener).get("result", {})
+    print(f"short_description: {short.get('short_description', '')}")
+    desc = api_get(token, "getMyDescription", opener).get("result", {})
+    print(f"description: {desc.get('description', '')}")
+    menu = api_get(token, "getChatMenuButton", opener).get("result", {})
+    print(f"menu_button: {json.dumps(menu, ensure_ascii=False)}")
+    commands = api_get(token, "getMyCommands", opener).get("result", [])
+    print(f"commands count: {len(commands)}")
+    webhook = api_get(token, "getWebhookInfo", opener).get("result", {})
+    print(f"webhook url present: {bool(webhook.get('url'))} | pending: {webhook.get('pending_update_count')}")
+    return 0
+# END_BLOCK: IDENTITY_AUDIT
+
+
 # START_BLOCK: CHECK_MODE
 def build_operations(config: dict, webapp_url: str) -> list[dict]:
     menu = config["menu_button"]
@@ -221,10 +294,27 @@ def post_method(token: str, method: str, payload: dict, opener=urllib.request.ur
 
 
 def run_apply(config: dict, token: str, webapp_url: str, opener=urllib.request.urlopen) -> int:
+    # Identity gate (doc 81): always before any mutation.
+    prove_identity(config, token, opener)
+    print(f"identity OK: id={config['expected_bot_id']} username={config['bot_username']}")
     for op in build_operations(config, webapp_url):
         post_method(token, op["method"], op["payload"], opener)
         print(f"{op['method']}: ok")
-    print("apply OK (start_copy intentionally not synced — no supported Ductor override)")
+    # Exact read-back of every mutation (fail closed on any drift).
+    short = api_get(token, "getMyShortDescription", opener).get("result", {}).get("short_description", "")
+    if short != config["short_description"]:
+        die("read-back mismatch: short_description")
+    print("read-back short_description: exact")
+    desc = api_get(token, "getMyDescription", opener).get("result", {}).get("description", "")
+    if desc != config["description"]:
+        die("read-back mismatch: description")
+    print("read-back description: exact")
+    menu = api_get(token, "getChatMenuButton", opener).get("result", {})
+    if menu.get("type") != "web_app" or menu.get("text") != config["menu_button"]["text"] \
+            or menu.get("web_app", {}).get("url") != webapp_url:
+        die("read-back mismatch: menu_button")
+    print("read-back menu_button: exact")
+    print("apply OK (start_copy intentionally not synced — no production responder)")
     return 0
 # END_BLOCK: APPLY_MODE
 
@@ -232,6 +322,7 @@ def run_apply(config: dict, token: str, webapp_url: str, opener=urllib.request.u
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sync repo-owned Telegram bot profile (manual-gated).")
     parser.add_argument("--check", action="store_true", help="validate config and print intended operations (default, no HTTP)")
+    parser.add_argument("--audit", action="store_true", help="read-only online audit: identity proof + current profile/menu/webhook (no mutations)")
     parser.add_argument("--apply", action="store_true", help="sync via Bot API (requires --manual-confirm)")
     parser.add_argument("--manual-confirm", action="store_true", help="explicit manual confirmation for --apply")
     parser.add_argument("--env-file", default=None, help="optional env file containing TELEGRAM_BOT_TOKEN (and optional WEBAPP_URL override)")
@@ -246,6 +337,9 @@ def main() -> int:
             die("--apply requires explicit --manual-confirm")
         token = load_token(args.env_file)
         return run_apply(config, token, webapp_url)
+    if args.audit:
+        token = load_token(args.env_file)
+        return run_audit(config, token)
     return run_check(config, webapp_url)
 
 
