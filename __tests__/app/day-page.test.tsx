@@ -158,4 +158,58 @@ describe('DayPage', () => {
       lunarDay: 15,
     });
   });
+
+  it('dismisses the loader immediately when ready without the removed 600 ms hold', async () => {
+    // START_BLOCK: NO_LOADER_HOLD_PROOF
+    // With fake timers and zero timer advancement, the ready payload must
+    // render TodayScreen immediately. If the artificial 600 ms hold existed,
+    // TodayScreen would not render until timers advance.
+    vi.useFakeTimers();
+
+    mockUseDay.mockReturnValue({
+      data: {
+        date: '2026-07-05',
+        title: 'Today',
+        headline: 'Headline',
+        dayStatus: 'supportive',
+        topFlags: [],
+        reading: { paragraphs: ['Paragraph'] },
+        notes: null,
+        whyThisHappens: { sections: [] },
+        meta: {
+          schemaVersion: 'today/v1',
+          contractVersion: 1,
+          calculationVersion: 1,
+          normalizationVersion: 1,
+          scoringVersion: 1,
+          promptVersion: 1,
+          contentVersion: 1,
+          generatedAt: '2026-07-05T00:00:00Z',
+          cached: false,
+        },
+        access: { state: 'full', referralDaysLeft: 7 },
+        weekStrip: [],
+        microcopy: [],
+        importantToday: [],
+        dayChart: null,
+        planetInfluences: [],
+        sphereScores: [],
+      },
+      loading: false,
+      error: null,
+    });
+
+    const { default: DayPage } = await import(
+      '@/app/(grace)/day/[date]/page'
+    );
+    render(<DayPage />);
+
+    // flush effects/microtasks only — no virtual-time advance
+    await act(async () => {});
+
+    expect(mockTodayScreen).toHaveBeenCalled();
+    expect(screen.queryByTestId('cosmic-loader')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    // END_BLOCK: NO_LOADER_HOLD_PROOF
+  });
 });

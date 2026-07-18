@@ -200,7 +200,7 @@ For preparing a completely new Ubuntu 24.04 amd64 production host:
 ### 3.3 Testing and Workflows Specifications
 
 - **Manual-only Execution:** Both visual regression tests (`visual-regression.yml`) and real E2E tests (`e2e.yml`) are strictly manual-only (`workflow_dispatch`).
-- **Required Secrets:** Real E2E tests require two repository secrets: `E2E_TELEGRAM_BOT_TOKEN` and `E2E_OPENROUTER_API_KEY` (low-cost model `openai/gpt-4o-mini`). Do not use production tokens/keys for routine testing.
+- **Required Secrets:** Real E2E tests require two repository secrets: `E2E_TELEGRAM_BOT_TOKEN` and `E2E_OPENROUTER_API_KEY` (low-cost model `openai/gpt-4.1-nano`). Do not use production tokens/keys for routine testing.
 - **Suite Options:** `smoke` (default): Today/Calendar/Navigation specs on Chromium; `full`: all top-level real specs on Chromium.
 - **Fail-closed Snapshot Policy:** Visual regression tests use `updateSnapshots: \"none\"`. Missing snapshots fail closed; update baselines only locally with `UPDATE_SNAPSHOTS=true`.
 

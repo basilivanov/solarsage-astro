@@ -167,7 +167,7 @@ jobs:
             export LLM_PROVIDER=openrouter
             export TELEGRAM_BOT_TOKEN="$E2E_TELEGRAM_BOT_TOKEN"
             export OPENROUTER_API_KEY="$E2E_OPENROUTER_API_KEY"
-            export LLM_MODEL=openai/gpt-4o-mini
+            export LLM_MODEL=openai/gpt-4.1-nano
 
             python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir apps/api > /tmp/solarsage-e2e-api.log 2>&1 &
             echo $! > /tmp/solarsage-e2e-api.pid

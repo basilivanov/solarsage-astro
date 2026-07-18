@@ -41,6 +41,11 @@
 #   - Runtime selection must match the pre-cache family or fail closed before
 #     public payload construction and cache write.
 #   - A foreground Today request never schedules calculations for adjacent dates.
+#   - The six independent LLM calls (headline, reading, notes, why, concrete
+#     advice batch, planet interpretations) are issued concurrently via
+#     asyncio.gather once their deterministic contexts are ready; concrete
+#     advice remains a single 12-sphere batch call and DB session operations
+#     stay sequential.
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
@@ -68,6 +73,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, date as Date, datetime, timedelta
 
@@ -401,26 +407,9 @@ class TodayService:
         # W-4.3: Cache semantic layer
         await self._cache_semantic_layer(user_id, target_date, semantic_layer, profile_hash, cache_key)
 
-        # W-5.1: Generate text via LLM
-        llm_service = LLMService()
-        headline = await llm_service.generate_headline(
-            scoring_result["day_status"],
-            scoring_result["top_signals"],
-        )
-        reading_paragraphs = await llm_service.generate_reading(
-            scoring_result["day_status"],
-            scoring_result["top_signals"],
-            scoring_result["sphere_scores"],
-        )
-
-        # W-4.2: Build day notes via LLM
-        notes_text = await llm_service.generate_notes(
-            scoring_result["day_status"],
-            scoring_result["sphere_scores"],
-            semantic_layer.model_dump(),
-        )
-
-        # W-4.2: Build why-this-happens sections via LLM
+        # Deterministic contexts for every downstream LLM call are fully ready
+        # at this point; the six independent LLM calls are issued concurrently
+        # via asyncio.gather (DB session operations stay sequential).
         why_evidence_packet = None
         if v2_selected:
             if dual.v2_result is None:
@@ -432,11 +421,68 @@ class TodayService:
                 scoring_result=dual.v2_result,
                 contexts=[],
             )
-        why_sections = await llm_service.generate_why_sections(
-            why_contexts,
-            semantic_layer,
-            evidence_packet=why_evidence_packet,
+
+        # W-PHASE-2: Compute "Today Important" items (deterministic)
+        important_service = TodayImportantService()
+        important_items = important_service.build_items(
+            target_date=target_date,
+            timezone=profile.current_tz or profile.birth_tz or "Europe/Moscow",
+            natal=natal_context_dict,
+            transits=transits,
+            signals=signals,
+            scoring_result=scoring_result,
+            semantic_layer=semantic_layer,
         )
+        day_chart = self._build_day_chart(natal_context_dict, transits, signals)
+        planet_influences = self._build_planet_influences(day_signals)
+        sphere_scores = self._build_sphere_scores(scoring_result["sphere_scores"])
+
+        # W-5.1 + W-4.2 + interpretation: concurrent LLM generation.
+        from app.services.today_interpretation_service import TodayInterpretationService
+        llm_service = LLMService()
+        interpretation_service = TodayInterpretationService()
+        (
+            headline,
+            reading_paragraphs,
+            notes_text,
+            why_sections,
+            interpretation_result,
+        ) = await asyncio.gather(
+            llm_service.generate_headline(
+                scoring_result["day_status"],
+                scoring_result["top_signals"],
+            ),
+            llm_service.generate_reading(
+                scoring_result["day_status"],
+                scoring_result["top_signals"],
+                scoring_result["sphere_scores"],
+            ),
+            llm_service.generate_notes(
+                scoring_result["day_status"],
+                scoring_result["sphere_scores"],
+                semantic_layer.model_dump(),
+            ),
+            llm_service.generate_why_sections(
+                why_contexts,
+                semantic_layer,
+                evidence_packet=why_evidence_packet,
+            ),
+            interpretation_service.build(
+                target_date=target_date,
+                day_status=scoring_result["day_status"],
+                scoring_result=scoring_result,
+                signals=day_signals,
+                semantic_layer=semantic_layer,
+                day_chart=day_chart,
+                planet_influences=planet_influences,
+                sphere_scores=sphere_scores,
+                important_items=important_items,
+                lunar=None,
+                activation_layer=activation_layer if v2_selected else None,
+                scoring_v2_result=dual.v2_result if v2_selected else None,
+            ),
+        )
+        concrete_advice, day_summary, updated_day_chart = interpretation_result
 
         # W-4.2: Build top_flags from top signals
         top_flags = self._build_top_flags(scoring_result["top_signals"])
@@ -459,39 +505,6 @@ class TodayService:
                 "title": "Данные временно недоступны",
                 "blocks": [{"kind": "paragraph", "text": "Пожалуйста, попробуйте позже."}],
             }]
-
-        # W-PHASE-2: Compute "Today Important" items (deterministic)
-        important_service = TodayImportantService()
-        important_items = important_service.build_items(
-            target_date=target_date,
-            timezone=profile.current_tz or profile.birth_tz or "Europe/Moscow",
-            natal=natal_context_dict,
-            transits=transits,
-            signals=signals,
-            scoring_result=scoring_result,
-            semantic_layer=semantic_layer,
-        )
-        day_chart = self._build_day_chart(natal_context_dict, transits, signals)
-        planet_influences = self._build_planet_influences(day_signals)
-        sphere_scores = self._build_sphere_scores(scoring_result["sphere_scores"])
-
-        # Call interpretation service to build concrete advice and summary facts
-        from app.services.today_interpretation_service import TodayInterpretationService
-        interpretation_service = TodayInterpretationService()
-        concrete_advice, day_summary, updated_day_chart = await interpretation_service.build(
-            target_date=target_date,
-            day_status=scoring_result["day_status"],
-            scoring_result=scoring_result,
-            signals=day_signals,
-            semantic_layer=semantic_layer,
-            day_chart=day_chart,
-            planet_influences=planet_influences,
-            sphere_scores=sphere_scores,
-            important_items=important_items,
-            lunar=None,
-            activation_layer=activation_layer if v2_selected else None,
-            scoring_v2_result=dual.v2_result if v2_selected else None,
-        )
 
         v2_block = None
         if v2_selected:

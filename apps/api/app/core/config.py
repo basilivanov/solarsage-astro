@@ -151,7 +151,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = Field("", alias="OPENROUTER_API_KEY")
 
     # Model configuration
-    llm_model: str = Field("openai/gpt-4o-mini", alias="LLM_MODEL")
+    llm_model: str = Field("openai/gpt-4.1-nano", alias="LLM_MODEL")
     llm_max_tokens: int = Field(500, alias="LLM_MAX_TOKENS")
 
     # OpenRouter specific settings

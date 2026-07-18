@@ -34,7 +34,7 @@
 
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { TodayScreen } from "@/components/today/today-screen"
 import { CosmicLoader } from "@/components/shared/cosmic-loader"
@@ -142,20 +142,13 @@ function LoadedDay({
   onDateChange: (date: Date) => void
   disableRemoteStatusFetch?: boolean
 }) {
-  const [showLoader, setShowLoader] = useState(true)
-  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const ready = Boolean(data) && !loading
 
-  useEffect(() => {
-    if (ready) dismissTimer.current = setTimeout(() => setShowLoader(false), 600)
-    else setShowLoader(true)
-    return () => {
-      if (dismissTimer.current) clearTimeout(dismissTimer.current)
-    }
-  }, [ready])
-
+  // The loader disappears as soon as the payload is ready; the artificial
+  // 600 ms hold is removed. Loading/error states stay accessible via
+  // CosmicLoader (role=status) and ErrorBoundary (role=alert).
   if (error) return <ErrorBoundary error={error} title="Не удалось загрузить день" message={error.message} />
-  if (showLoader || !data) return <CosmicLoader done={ready} />
+  if (!ready || !data) return <CosmicLoader done={ready} />
 
   const { payload, access } = adaptTodayPayload(data, selectedDate)
   return (

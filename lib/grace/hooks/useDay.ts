@@ -11,12 +11,12 @@
 // inputs: ISO date string; Telegram-auth loading state; Next router context.
 // outputs: exported UseDayResult interface and useDay hook returning data, loading and error.
 // dependencies: React useState/useEffect; next/navigation useRouter; lib/grace/api/client fetchDay and ApiError; hooks/use-telegram-auth; lib/log logEvent; packages/contracts TodayPayload.
-// side_effects: structured browser logs, 100 ms delay, delegated day request, React state and router.replace('/onboarding').
+// side_effects: structured browser logs, delegated day request, React state and router.replace('/onboarding').
 // emitted_logs: day.viewed, auth.tg_login_started, day.payload_built, system.error, profile.lazy_created, auth.session_expired.
 // invariants:
 //   - The render-path INIT log remains and emits day.viewed.
 //   - While authLoading is true, the effect logs auth.tg_login_started, does not fetch and leaves loading unchanged.
-//   - The load effect remains dependent on [date, router, authLoading] and retains the 100 ms delay.
+//   - The load effect remains dependent on [date, router, authLoading]; the artificial 100 ms delay is removed, the day request starts immediately once auth is ready.
 //   - Successful payload state is applied only when the effect is not cancelled.
 //   - HTTP 422 with code NOT_ONBOARDED or HTTP 409 with exact message 'Profile is incomplete' logs profile.lazy_created and redirects to /onboarding without exposing an error.
 //   - HTTP 401 logs auth.session_expired and replaces the ApiError message with the existing Russian Telegram authorization copy before exposing it.
@@ -90,8 +90,6 @@ export function useDay(date: string): UseDayResult {
         setLoading(true);
         setError(null);
         logEvent("day.viewed", { date }, { msg: "[useDay] Fetching day...", level: "debug", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "FETCH" })
-
-        await new Promise(resolve => setTimeout(resolve, 100));
 
         const payload = await fetchDay(date);
         logEvent("day.payload_built", { date: payload.date, title: payload.title }, { msg: "[useDay] Day loaded", slice: "W-DAY", module: "M-USE-DAY-HOOK", block: "LOADED" })

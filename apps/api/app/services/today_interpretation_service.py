@@ -9,9 +9,15 @@
 #          with backend-owned forecast texts generated via LLMService.
 # owns:
 #   - apps/api/app/services/today_interpretation_service.py
+# invariants:
+#   - concrete advice remains one 12-sphere batch call; the concrete-advice
+#     and planet-interpretation batch calls run concurrently via asyncio.gather
+#     once both deterministic contexts are built; fallback/validation/error
+#     semantics and result application order are unchanged.
 # END_MODULE_CONTRACT: M-TODAY-INTERPRETATION-SERVICE
 
 from __future__ import annotations
+import asyncio
 import re
 from datetime import date as Date
 
@@ -470,6 +476,28 @@ class TodayInterpretationService:
             )
         )
 
+        # Deterministic planet-interpretation context (built once, before the
+        # concurrent LLM calls; application of results stays below unchanged).
+        planets_context: list[dict] = []
+        has_planet_context = bool(day_chart and day_chart.transit_planets)
+        if has_planet_context:
+            for p in day_chart.transit_planets:
+                p_aspects = []
+                for a in day_chart.aspects:
+                    if a.planet == p.name or a.target_planet == p.name:
+                        asp_lbl = ASPECT_LABELS_RU.get(a.aspect_type, a.aspect_type)
+                        other_p = a.target_planet if a.planet == p.name else a.planet
+                        other_lbl = PLANET_LABELS_RU.get(other_p, other_p)
+                        p_aspects.append(f"{asp_lbl} с {other_lbl}")
+                planets_context.append({
+                    "name": p.name,
+                    "sign": p.sign,
+                    "house": p.house,
+                    "aspects": p_aspects,
+                })
+
+        # Concurrent independent batch calls: one 12-sphere concrete advice
+        # batch and one planet interpretations batch (never split per-row).
         if has_llm_keys:
             evidence_packet = None
             if activation_layer:
@@ -480,7 +508,12 @@ class TodayInterpretationService:
                     scoring_result=scoring_v2_result,
                     contexts=advice_contexts,
                 )
-            llm_texts = await llm_service.generate_concrete_advice(advice_contexts, evidence_packet=evidence_packet)
+            llm_texts, llm_interpretations = await asyncio.gather(
+                llm_service.generate_concrete_advice(advice_contexts, evidence_packet=evidence_packet),
+                llm_service.generate_planet_interpretations(planets_context) if has_planet_context else asyncio.sleep(0, result=None),
+            )
+        else:
+            llm_interpretations = None
 
         valid_llm_count = 0
         if llm_texts and isinstance(llm_texts, dict):
@@ -630,28 +663,9 @@ class TodayInterpretationService:
             facts=summary_facts,
         )
 
-        # 3. Planet Interpretations
-        if day_chart and day_chart.transit_planets:
-            planets_context = []
-            for p in day_chart.transit_planets:
-                p_aspects = []
-                for a in day_chart.aspects:
-                    if a.planet == p.name or a.target_planet == p.name:
-                        asp_lbl = ASPECT_LABELS_RU.get(a.aspect_type, a.aspect_type)
-                        other_p = a.target_planet if a.planet == p.name else a.planet
-                        other_lbl = PLANET_LABELS_RU.get(other_p, other_p)
-                        p_aspects.append(f"{asp_lbl} с {other_lbl}")
-                planets_context.append({
-                    "name": p.name,
-                    "sign": p.sign,
-                    "house": p.house,
-                    "aspects": p_aspects,
-                })
-
-            llm_interpretations = None
-            if has_llm_keys:
-                llm_interpretations = await llm_service.generate_planet_interpretations(planets_context)
-
+        # 3. Planet Interpretations (apply the concurrently gathered result;
+        # context was built above before the batch call)
+        if has_planet_context:
             if llm_interpretations and isinstance(llm_interpretations, dict):
                 for p in day_chart.transit_planets:
                     text = llm_interpretations.get(p.name)

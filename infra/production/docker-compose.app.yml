@@ -58,7 +58,7 @@ x-api-common: &api-common
     DATABASE_URL: ${DATABASE_URL:?database url required}
     SOLARSAGE_URL: http://sidecar:8001
     LLM_PROVIDER: ${LLM_PROVIDER:-openrouter}
-    LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
+    LLM_MODEL: ${LLM_MODEL:-openai/gpt-4.1-nano}
     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?openrouter key required}
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?telegram bot token required}

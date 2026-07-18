@@ -877,12 +877,14 @@ def test_today_service_has_no_background_week_prefetch_surface() -> None:
     # side_effects: reads today_service.py source.
     # emitted_logs: none.
     # error_behavior: pytest assertion failure on prefetch code presence.
+    # notes: foreground, request-local `asyncio.gather` of the six same-day LLM
+    #   calls is permitted (no background task, no adjacent-day fan-out);
+    #   background task creation and any week prefetch surface stay forbidden.
     # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_today_service_has_no_background_week_prefetch_surface
     source = inspect.getsource(today_service_module)
     assert "_prefetch_week" not in source
     assert "_TODAY_PREFETCH_TASKS" not in source
     assert "asyncio.create_task" not in source
-    assert "asyncio.gather" not in source
     assert "SessionLocal" not in source
 # END_BLOCK: SERVICE_BOUNDARIES
 
