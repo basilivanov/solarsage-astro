@@ -63,6 +63,7 @@ x-api-common: &api-common
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?telegram bot token required}
     BOT_USERNAME: ${BOT_USERNAME:?bot username required}
+    TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:?telegram webhook secret required}
     GRACE_USER_SALT: ${GRACE_USER_SALT:?grace user salt required}
     CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?cors origins required}
     GEONAMES_USERNAME: ${GEONAMES_USERNAME:-}

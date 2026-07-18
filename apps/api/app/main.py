@@ -56,7 +56,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import _log, access, auth, calendar, chat, checkin, day, geo, health, horary, natal, payment, profile, referral
+from app.api import _log, access, auth, calendar, chat, checkin, day, geo, health, horary, natal, payment, profile, referral, telegram_webhook
 from app.core.config import Settings, settings
 from app.core.runtime_security import build_runtime_security_policy
 from app.middleware.correlation import CorrelationMiddleware
@@ -115,6 +115,7 @@ def create_app(app_settings: Settings = settings) -> FastAPI:
     application.include_router(day.router)  # W-1.3
     application.include_router(calendar.router)  # W-1.4
     application.include_router(referral.router)  # W-ACCESS.2
+    application.include_router(telegram_webhook.router)  # Telegram /start webhook
     application.include_router(_log.router)  # W-1.7
     application.include_router(payment.router)  # W-6.1
     application.include_router(natal.router)  # W-7.2
