@@ -26,6 +26,7 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select, and_
+from app.core.config import settings
 from app.db.models import User, AccessLedger
 
 
@@ -156,8 +157,11 @@ async def test_claim_referral_self_referral(async_client: AsyncClient, make_init
 
 
 @pytest.mark.asyncio
-async def test_get_referral_info(async_client: AsyncClient, make_initdata, db_session):
+async def test_get_referral_info(async_client: AsyncClient, make_initdata, db_session, monkeypatch):
     """GET /api/referral returns invite info for authenticated user."""
+    # referral.py must read the bot username from settings (never a literal):
+    # pin it deterministically — a leftover hardcode would fail this test.
+    monkeypatch.setattr(settings, "bot_username", "AstroGrace_Bot")
     raw = make_initdata(user_id=3333, username="inviter")
     await async_client.post("/api/auth/telegram", json={"initData": raw})
 
@@ -172,6 +176,10 @@ async def test_get_referral_info(async_client: AsyncClient, make_initdata, db_se
     assert data["inviteCode"] == "3333"
     assert "startapp=3333" in data["inviteUrl"]
     assert "/app" in data["inviteUrl"]
+    # Canonical production bot from config (BOT_USERNAME), never a hardcoded
+    # dev bot: the invite URL must target AstroGrace_Bot exactly.
+    assert data["inviteUrl"] == "https://t.me/AstroGrace_Bot/app?startapp=3333"
+    assert "vi_astro_bot" not in data["inviteUrl"]
 
 
 @pytest.mark.asyncio

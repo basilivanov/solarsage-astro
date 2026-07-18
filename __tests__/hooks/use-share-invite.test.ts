@@ -8,7 +8,7 @@
 // purpose: Verify the share default is the accepted variant-1 copy with the
 //   honest "оба получим по 14 дней" motivator, «гороскоп» appears only with
 //   negation (or not at all), and the invite URL keeps the working
-//   t.me/vi_astro_bot/app?startapp= form.
+//   t.me/AstroGrace_Bot/app?startapp= form.
 // owns:
 //   - __tests__/hooks/use-share-invite.test.ts
 // inputs: SHARE_TEXT export and useShareInvite hook
@@ -56,8 +56,8 @@ describe('invite URL', () => {
     vi.restoreAllMocks()
   })
 
-  it('keeps the working API inviteUrl form t.me/vi_astro_bot/app?startapp={id}', async () => {
-    const apiUrl = 'https://t.me/vi_astro_bot/app?startapp=424242'
+  it('keeps the working API inviteUrl form t.me/AstroGrace_Bot/app?startapp={id}', async () => {
+    const apiUrl = 'https://t.me/AstroGrace_Bot/app?startapp=424242'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ inviteUrl: apiUrl }),
     }))
@@ -113,7 +113,7 @@ describe('honest fallback without an attributed API link', () => {
     result.current()
     const shareUrl = openTelegramLink.mock.calls.at(-1)![0] as string
     const decoded = decodeURIComponent(shareUrl)
-    expect(decoded).toContain('https://t.me/vi_astro_bot/app?startapp=424242')
+    expect(decoded).toContain('https://t.me/AstroGrace_Bot/app?startapp=424242')
     expect(decoded).toContain('По моей ссылке мы оба получим по 14 дней полного доступа.')
     expect(decoded).not.toContain('start=invite')
   })
@@ -135,7 +135,7 @@ describe('honest fallback without an attributed API link', () => {
     result.current()
     const shareUrl = openTelegramLink.mock.calls.at(-1)![0] as string
     const decoded = decodeURIComponent(shareUrl)
-    expect(decoded).toContain('https://t.me/vi_astro_bot/app')
+    expect(decoded).toContain('https://t.me/AstroGrace_Bot/app')
     expect(decoded).not.toContain('startapp')
     expect(decoded).not.toContain('мы оба получим')
     expect(decoded).toContain(SHARE_TEXT_GENERIC)
