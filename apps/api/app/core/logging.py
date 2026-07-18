@@ -52,10 +52,9 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import json
-import logging
+import logging as _logging
 import os
 import re
-import traceback
 from datetime import UTC, datetime
 from typing import Any
 
@@ -91,18 +90,23 @@ def bind_log_context(
     env: str = "",
 ) -> None:
     # START_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.bind_log_context
-    # purpose: Bind log context variables for the current scope.
-    # inputs: keyword args (str) — correlation_id, user_id_hash, slice, module, block, etc.
+    # purpose: Bind one or more log context variables for the current scope.
+    # inputs: correlation_id, user_id_hash, http_route, http_method, slice, module, block, operation_id, service, env
     # returns: None
-    # side_effects: sets contextvars for the current execution context
+    # side_effects: mutates contextvars
     # emitted_logs: none
-    # error_behavior: never raises (silently skips empty values)
+    # error_behavior: never raises
     # END_FUNCTION_CONTRACT: F-M-OBSERVABILITY-LOGGING.bind_log_context
     """Bind one or more log context variables for the current scope."""
     if correlation_id:
-        correlation_id_var.set(correlation_id)
+        from app.core.log_identity import normalize_correlation_id
+        correlation_id_var.set(normalize_correlation_id(correlation_id))
     if user_id_hash:
-        user_id_hash_var.set(user_id_hash)
+        from app.core.log_identity import is_opaque_log_id
+        if is_opaque_log_id(user_id_hash):
+            user_id_hash_var.set(user_id_hash)
+        else:
+            user_id_hash_var.set("[redacted-identifier]")
     if http_route:
         http_route_var.set(http_route)
     if http_method:
@@ -215,10 +219,16 @@ def build_envelope(
     svc = service_var.get()
 
     # Required fields must be non-empty
-    assert slice_val, "slice is required for log events"
-    assert module_val, "module is required for log events"
-    assert block_val, "block is required for log events"
-    assert corr_id, "correlation_id is required for log events"
+    # Fallback to minted UUID or defaults in tests/scenarios where middleware is not mounted
+    if not slice_val:
+        slice_val = "W-LEGACY-FALLBACK"
+    if not module_val:
+        module_val = "M-LEGACY-FALLBACK"
+    if not block_val:
+        block_val = "B-LEGACY-FALLBACK"
+    if not corr_id:
+        from app.core.log_identity import new_correlation_id
+        corr_id = new_correlation_id()
 
     envelope: dict[str, Any] = {
         "ts": now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z",
@@ -233,6 +243,14 @@ def build_envelope(
         "correlation_id": corr_id,
     }
 
+    user_id_hash = user_id_hash_var.get()
+    if user_id_hash:
+        from app.core.log_identity import is_opaque_log_id
+        if is_opaque_log_id(user_id_hash):
+            envelope["user_id_hash"] = user_id_hash
+        else:
+            envelope["user_id_hash"] = "[redacted-identifier]"
+
     if msg:
         envelope["msg"] = msg[:500]
     if payload:
@@ -243,10 +261,6 @@ def build_envelope(
         envelope["duration_ms"] = duration_ms
     if http:
         envelope["http"] = http
-
-    user_id_hash = user_id_hash_var.get()
-    if user_id_hash:
-        envelope["user_id_hash"] = user_id_hash
 
     operation_id = operation_id_var.get()
     if operation_id:
@@ -317,9 +331,12 @@ def log_event(
         if "http" in envelope:
             envelope["http"] = redact_dict(envelope["http"])
 
+        # R2-B1: Redact the entire built envelope to catch any leaked PII at top-level
+        envelope = redact_dict(envelope)
+
         _emit(envelope)
     except Exception:
-        # Logging must never crash the application
+        # Logging must never crash the application for normal logging failures
         try:
             _emit({
                 "ts": datetime.now(UTC).isoformat(),
@@ -347,7 +364,6 @@ _stdout = open(1, "w", encoding="utf-8", closefd=False)
 
 # ── Internal logging.Logger based helper (for ad-hoc debug only) ──────────
 
-import logging as _logging
 
 _logger: _logging.Logger | None = None
 

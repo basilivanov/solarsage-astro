@@ -179,7 +179,6 @@ class DayScoringRuntimeService:
                         level="info",
                         msg="V2 dual-run scoring diff",
                         payload={
-                            "user_id": str(user_id) if user_id else None,
                             "date": target_date,
                             "selected_version": SCORING_V2_VERSION if v2_selected else LEGACY_SCORING_VERSION,
                             "v1_day_status": v1_day_status,
@@ -199,9 +198,10 @@ class DayScoringRuntimeService:
                         level="warning",
                         msg="V2 dual-run scoring failed",
                         payload={
-                            "user_id": str(user_id) if user_id else None,
                             "date": target_date,
-                            "error": str(e),
+                        },
+                        error={
+                            "kind": type(e).__name__,
                         },
                     )
 

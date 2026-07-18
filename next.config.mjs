@@ -6,14 +6,17 @@ assertProductionSafety();
 
 /**
  * Server-only API rewrite base.
- * Production always uses the canonical local API.
+ * Production uses the server-only PROD_API_REWRITE_BASE_URL when set
+ * (canonical Compose sets exactly http://api:8000) and otherwise falls back
+ * to the canonical local API http://127.0.0.1:8000.
  * DEV_API_REWRITE_BASE_URL is read only when NODE_ENV !== "production".
  * No fixture/mock modules are imported here.
  */
 function resolveApiRewriteBase() {
   const canonical = "http://127.0.0.1:8000";
   if (process.env.NODE_ENV === "production") {
-    return canonical;
+    const internal = process.env.PROD_API_REWRITE_BASE_URL?.trim();
+    return internal || canonical;
   }
   const override = process.env.DEV_API_REWRITE_BASE_URL?.trim();
   return override || canonical;

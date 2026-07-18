@@ -53,4 +53,5 @@ async def get_health() -> HealthResponse:
         version=settings.git_sha,
         ephemeris_path=settings.ephemeris_path,
         calculation_version=settings.calculation_version,
+        release_sha=settings.release_sha,
     )

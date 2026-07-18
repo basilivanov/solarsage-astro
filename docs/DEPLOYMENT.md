@@ -7,165 +7,127 @@
 
 ## Prerequisites
 
-- Docker 20.10+
-- Docker Compose 2.0+
+- Docker 20.10+ and Docker Compose 2.0+ on the production host
+- Host Nginx on 80/443 proxying to canonical loopback ports (existing)
+- Separate PostgreSQL compose project on 127.0.0.1:5433 (existing, unchanged)
 - Domain with SSL certificate (production)
 
-## Quick Start
+## Canonical production path (minimal Compose path)
 
-1. **Clone repository**
-   ```bash
-   git clone https://github.com/your-org/solarsage-astro.git
-   cd solarsage-astro
-   ```
+The canonical production path is one manually invoked orchestrator over
+immutable per-SHA OCI images and Docker Compose. There is no build or
+package-manager run on the production host.
 
-2. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your values
-   ```
+Canonical runtime:
 
-3. **Deploy**
-   ```bash
-   chmod +x scripts/deploy.sh
-   ./scripts/deploy.sh
-   ```
+```text
+Nginx 80/443 -> 127.0.0.1:3002 frontend
+             -> 127.0.0.1:8000 API
+API -> sidecar 127.0.0.1:18091
+DB  -> 127.0.0.1:5433 (separate solarsage-prod compose project)
+```
 
-## Services
+Canonical files:
 
-- **Frontend**: http://localhost:3000
-- **API**: http://localhost:8000
-- **SolarSage**: http://localhost:8001
-- **Database**: localhost:5432
+- App stack: `infra/production/docker-compose.app.yml`
+  (api/sidecar/frontend, loopback-only, digest-pinned images)
+- DB stack (separate, unchanged): `infra/production/docker-compose.yml` (port 5433)
+- Sole entrypoint: `scripts/deploy/prod-orchestrator.sh`
+  (installed by host preparation as `/usr/local/libexec/solarsage/prod-orchestrator`, root:root `0755`)
+- Installed app compose: `/etc/solarsage/compose/docker-compose.app.yml` (root:root `0644`)
+- Root-owned env/credential file on the host: `/etc/solarsage/app.env`
+  (real non-symlink `root:astro 0640`)
+- Orchestrator state directory: `/var/lib/solarsage/orchestrator` (`astro:astro 0700`)
 
-## Production Deployment
+## Orchestrator commands
 
-### 1. SSL Certificate
-
-Use Let's Encrypt with Certbot:
+Always use the installed path, executed as **root** (owner `sudo`; the GitHub
+forced wrapper reaches it through the single sudoers capability
+`sudo -n -H`; `astro` is never in the docker group):
 
 ```bash
-certbot certonly --standalone -d astro.example.com
+sudo /usr/local/libexec/solarsage/prod-orchestrator preflight <sha>
+sudo /usr/local/libexec/solarsage/prod-orchestrator deploy <sha> --manual-confirm
+sudo /usr/local/libexec/solarsage/prod-orchestrator rollback <sha> --manual-confirm
+sudo /usr/local/libexec/solarsage/prod-orchestrator status
+sudo /usr/local/libexec/solarsage/prod-orchestrator backup --manual-confirm
+sudo /usr/local/libexec/solarsage/prod-orchestrator restore <dump> --manual-confirm   # plan + isolated rehearsal only
+sudo /usr/local/libexec/solarsage/prod-orchestrator migrate <sha> --manual-confirm   # one-shot migrate profile only
 ```
 
-### 2. Update docker-compose.yml
+The canonical daily backup is automated: `solarsage-backup.timer` runs
+`solarsage-backup.service`, which executes exactly the installed orchestrator
+`backup --manual-confirm`. The manual `backup` command above is the on-demand
+fallback of the same canonical path.
 
-Add Nginx reverse proxy with SSL:
+Every deploy/rollback:
 
-```yaml
-nginx:
-  image: nginx:alpine
-  ports:
-    - "80:80"
-    - "443:443"
-  volumes:
-    - ./nginx-prod.conf:/etc/nginx/nginx.conf
-    - /etc/letsencrypt:/etc/letsencrypt
-```
+1. requires the exact full 40-hex SHA and explicit `--manual-confirm`;
+2. validates the env/credential file, registry, Compose config and DB health on 5433;
+3. runs a pre-deploy `pg_dump -Fc` + `pg_restore --list` + SHA256 pair and a Restic offsite copy;
+4. pulls each `:<sha>` tag once, verifies the OCI revision label equals the
+   exact SHA, resolves the RepoDigests, and activates only pinned
+   `registry/repo@sha256:<64 hex>` references (never mutable tags);
+5. requires API, sidecar and frontend health to return the exact requested
+   `release_sha` (sidecar additionally proves ephemeris/calculation identity);
+6. records active/previous SHA + digest references only after all health checks pass;
+7. on failed health after a change, attempts one exact rollback to the recorded
+   previous active tuple using stored digest references (never re-pulls old tags).
 
-### 3. Deploy
+Images are built and pushed only by the manual `Deploy Production` GitHub
+workflow (`workflow_dispatch` on `main`, `production` environment approval,
+exact SSH command `deploy <sha>`). No push to `main` deploys by itself.
+
+CI configuration: `REGISTRY_NAMESPACE` (for example `ghcr.io/OWNER`, no tag)
+must be a **repository-level Actions variable** (Settings → Secrets and
+variables → Actions → Variables), because the `build` job runs without an
+`environment` and cannot see environment-scoped variables. The four deploy
+secrets (`PROD_HOST`, `PROD_USER`, `PROD_SSH_PRIVATE_KEY`, `PROD_KNOWN_HOSTS`)
+remain in the `production` environment.
+
+## One-time cutover prerequisite
+
+Before the first Compose deploy, the old systemd application services must be
+stopped and disabled so the Compose stack can claim ports 8000/3002/18091:
 
 ```bash
-./scripts/deploy.sh
+sudo systemctl stop solarsage-api.service solarsage-sidecar.service solarsage-frontend.service
+sudo systemctl disable solarsage-api.service solarsage-sidecar.service solarsage-frontend.service
 ```
 
-## Monitoring
+This is a one-time manual action performed by the owner; it is never executed
+by the orchestrator, the workflow or host preparation.
 
-- **Logs**: `docker-compose logs -f`
-- **Health checks**: 
-  - API: `curl http://localhost:8000/api/health`
-  - SolarSage: `curl http://localhost:8000/api/health`
+## Secrets
 
-## Backup
+- Source-controlled files contain no secret values or defaults.
+- The host supplies `/etc/solarsage/app.env` (`root:astro 0640`) with
+  `REGISTRY`, `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`,
+  `DATABASE_URL` (container form `...@solarsage-db:5432/...`), `APP_DOMAIN`,
+  `TELEGRAM_BOT_TOKEN`, `GRACE_USER_SALT`, `CORS_ALLOWED_ORIGINS`,
+  `OPENROUTER_API_KEY`, `RESTIC_REPOSITORY` and
+  `OFFSITE_RESTIC_PASSWORD_FILE` (path to a `root:astro 0640` password file).
+- The host DB URL for orchestrator commands and backups is `127.0.0.1:5433`;
+  the container-internal `DATABASE_URL` uses the DB container name on the
+  shared network. Do not confuse the two forms.
+- No `.env`, Telegram token, OpenRouter key, DB password or SSH material is
+  copied into image layers.
 
-```bash
-# Database backup
-docker-compose exec db pg_dump -U astro astro > backup.sql
+## Backup and restore
 
-# Restore
-docker-compose exec -T db psql -U astro astro < backup.sql
-```
+- Daily automated backup via `solarsage-backup.timer`; explicit manual fallback:
+  `sudo /usr/local/libexec/solarsage/prod-orchestrator backup --manual-confirm`
+  (`pg_dump -Fc` + `pg_restore --list` + SHA256 pair in `/var/backups/solarsage`,
+  Restic offsite copy; local pair is preserved even on Restic failure).
+- Explicit manual restore rehearsal: `sudo /usr/local/libexec/solarsage/prod-orchestrator restore <dump> --manual-confirm`
+  restores into a unique throwaway postgres container only. A real production
+  restore requires a separate explicit user command and an accepted runbook.
 
-## Troubleshooting
+## Removed parked code (181 cleanup)
 
-### API not starting
-
-Check logs:
-```bash
-docker-compose logs api
-```
-
-Common issues:
-- Database not ready → wait for health check
-- Missing environment variables → check .env
-- Migration failed → check alembic logs
-
-### Database connection failed
-
-```bash
-docker-compose exec db psql -U astro -d astro
-```
-
-## Scaling
-
-### Horizontal scaling (multiple API instances)
-
-```yaml
-api:
-  deploy:
-    replicas: 3
-```
-
-### Load balancer
-
-Add Nginx upstream:
-
-```nginx
-upstream api_backend {
-    server api:8000;
-    server api:8000;
-    server api:8000;
-}
-```
-
-## Environment Variables
-
-See `.env.example` for full list. Required variables:
-
-- `DB_PASSWORD` — PostgreSQL password
-- `APP_DOMAIN` — Production domain
-- `TELEGRAM_BOT_TOKEN` — Telegram bot token
-- `OPENAI_API_KEY` — OpenAI API key
-- `JWT_SECRET` — JWT signing secret
-- `GRACE_USER_SALT` — User ID hashing salt (32+ bytes)
-
-## Security
-
-- Change all default passwords in `.env`
-- Use strong `JWT_SECRET` and `GRACE_USER_SALT`
-- Enable HTTPS in production
-- Restrict database port (5432) to internal network
-- Rotate secrets regularly
-
-## Updates
-
-```bash
-# Pull latest code
-git pull
-
-# Rebuild and restart
-./scripts/deploy.sh
-```
-
-## Rollback
-
-```bash
-# Stop services
-docker-compose down
-
-# Checkout previous version
-git checkout <previous-commit>
-
-# Deploy
-./scripts/deploy.sh
-```
+The unfinished R14 promotion/GC runtime, the profile/env engine, the old
+backup/offsite/maintenance entrypoints, the legacy operator tools, the
+exhaustive test matrix and the stale one-job deploy workflow validator were
+removed from the repository in the 181 cleanup
+(`docs/work/2026-07-15_production-server-bootstrap/181A_MANIFEST_DEAD_CODE_AUDIT.md`).
+They are non-canonical and must not be recreated.

@@ -68,44 +68,44 @@ Returns user growth and onboarding metrics.
 
 ### 2. Monitoring Scripts
 
-#### `scripts/health-check.sh`
+#### `scripts/deploy/legacy/health-check.sh`
 Comprehensive health check script that tests all endpoints.
 
 **Usage:**
 ```bash
-/opt/solarsage-astro/scripts/health-check.sh
+/opt/solarsage-astro/scripts/deploy/legacy/health-check.sh
 ```
 
 **Exit Codes:**
 - `0` - All systems operational
 - `1` - Some systems degraded
 
-#### `scripts/health-check-with-alert.sh`
+#### `scripts/deploy/legacy/health-check-with-alert.sh`
 Health check with Telegram alerting support.
 
 **Setup:**
 ```bash
 export TELEGRAM_BOT_TOKEN="your_bot_token"
 export TELEGRAM_CHAT_ID="your_chat_id"
-/opt/solarsage-astro/scripts/health-check-with-alert.sh
+/opt/solarsage-astro/scripts/deploy/legacy/health-check-with-alert.sh
 ```
 
-#### `scripts/alert.sh`
+#### `scripts/deploy/legacy/alert.sh`
 Send alerts to Telegram.
 
 **Usage:**
 ```bash
 export TELEGRAM_BOT_TOKEN="your_bot_token"
 export TELEGRAM_CHAT_ID="your_chat_id"
-/opt/solarsage-astro/scripts/alert.sh "Your message"
+/opt/solarsage-astro/scripts/deploy/legacy/alert.sh "Your message"
 ```
 
-#### `scripts/dashboard.sh`
+#### `scripts/deploy/legacy/dashboard.sh`
 Real-time monitoring dashboard (updates every 5 seconds).
 
 **Usage:**
 ```bash
-/opt/solarsage-astro/scripts/dashboard.sh
+/opt/solarsage-astro/scripts/deploy/legacy/dashboard.sh
 ```
 
 ### 3. Frontend Logger
@@ -164,7 +164,7 @@ Run health checks every 5 minutes:
 
 ```bash
 # Add to crontab
-(crontab -l 2>/dev/null; echo "*/5 * * * * /opt/solarsage-astro/scripts/health-check.sh >> /var/log/solarsage-health.log 2>&1") | crontab -
+(crontab -l 2>/dev/null; echo "*/5 * * * * /opt/solarsage-astro/scripts/deploy/legacy/health-check.sh >> /var/log/solarsage-health.log 2>&1") | crontab -
 
 # Verify
 crontab -l | grep health-check
@@ -180,17 +180,17 @@ export TELEGRAM_BOT_TOKEN="your_bot_token"
 export TELEGRAM_CHAT_ID="your_chat_id"
 
 # Test alert
-/opt/solarsage-astro/scripts/alert.sh "Test alert"
+/opt/solarsage-astro/scripts/deploy/legacy/alert.sh "Test alert"
 
 # Use health check with alerts
-/opt/solarsage-astro/scripts/health-check-with-alert.sh
+/opt/solarsage-astro/scripts/deploy/legacy/health-check-with-alert.sh
 ```
 
 ### 4. Run Dashboard
 
 ```bash
 # Start real-time dashboard
-/opt/solarsage-astro/scripts/dashboard.sh
+/opt/solarsage-astro/scripts/deploy/legacy/dashboard.sh
 ```
 
 ## Monitoring Best Practices
@@ -250,10 +250,10 @@ ps aux | grep uvicorn
 - `/opt/solarsage-astro/lib/logger.ts` - Frontend logger
 
 ### Scripts
-- `/opt/solarsage-astro/scripts/health-check.sh` - Health check script
-- `/opt/solarsage-astro/scripts/health-check-with-alert.sh` - Health check with alerts
-- `/opt/solarsage-astro/scripts/alert.sh` - Alert script
-- `/opt/solarsage-astro/scripts/dashboard.sh` - Monitoring dashboard
+- `/opt/solarsage-astro/scripts/deploy/legacy/health-check.sh` - Health check script
+- `/opt/solarsage-astro/scripts/deploy/legacy/health-check-with-alert.sh` - Health check with alerts
+- `/opt/solarsage-astro/scripts/deploy/legacy/alert.sh` - Alert script
+- `/opt/solarsage-astro/scripts/deploy/legacy/dashboard.sh` - Monitoring dashboard
 
 ## Next Steps
 

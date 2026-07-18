@@ -37,6 +37,8 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.log_identity import hash_user_id
+from app.core.logging import bind_log_context
 from app.db.session import get_session
 from app.services.session_service import InvalidSession, resolve_session
 
@@ -57,20 +59,15 @@ async def current_user_id(
     """FastAPI dependency: returns the user UUID resolved from the session cookie."""
     token = request.cookies.get(settings.session_cookie_name, "")
 
-    # DEBUG: Log cookie presence
-    print(f"[Auth] Cookie '{settings.session_cookie_name}': {'present' if token else 'MISSING'}")
-    print(f"[Auth] All cookies: {list(request.cookies.keys())}")
-    print(f"[Auth] Token length: {len(token) if token else 0}")
-
     try:
         session = await resolve_session(db, token)
     except InvalidSession as exc:
-        # TODO(W-1.6): log.event("auth.session_rejected", {code: exc.code})
-        print(f"[Auth] Session rejected: {exc.code} - {exc.message}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": exc.code, "reason": exc.message},
         ) from exc
+
+    bind_log_context(user_id_hash=hash_user_id(session.user_id))
     return session.user_id
 
 
@@ -139,6 +136,8 @@ async def require_session_optional(
         session = await resolve_session(db, token)
     except InvalidSession:
         return None
+
+    bind_log_context(user_id_hash=hash_user_id(session.user_id))
 
     stmt = select(User).where(User.id == session.user_id).options(selectinload(User.profile))
     result = await db.execute(stmt)

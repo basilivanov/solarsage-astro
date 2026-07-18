@@ -21,6 +21,10 @@
 """Test fixtures for W-1.2: in-memory DB, async client, fake initData."""
 from __future__ import annotations
 
+import os
+os.environ["APP_ENV"] = "test"
+os.environ.setdefault("APP_DOMAIN", "localhost")
+
 import hashlib
 import hmac
 import json

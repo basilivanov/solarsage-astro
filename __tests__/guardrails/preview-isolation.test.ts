@@ -102,5 +102,66 @@ describe("preview isolation guards", () => {
     expect(violations).toEqual([])
     expect(allowedImportCount).toBe(1)
   })
+
+  describe("production API rewrite base branches", () => {
+    const evalRewrites = (env: NodeJS.ProcessEnv): string => {
+      const { execFileSync } = require("node:child_process") as typeof import("node:child_process")
+      return execFileSync(
+        process.execPath,
+        [
+          "-e",
+          `(async () => {
+            const cfg = (await import("./next.config.mjs")).default;
+            const rw = await cfg.rewrites();
+            process.stdout.write(JSON.stringify(rw));
+          })();`,
+        ],
+        { cwd: process.cwd(), env: { ...process.env, ...env }, encoding: "utf8" },
+      )
+    }
+
+    it("honors PROD_API_REWRITE_BASE_URL in production (canonical Compose http://api:8000)", () => {
+      const out = evalRewrites({ NODE_ENV: "production", PROD_API_REWRITE_BASE_URL: "http://api:8000" })
+      expect(out).toContain('"destination":"http://api:8000/api/:path*"')
+    })
+
+    it("falls back to the canonical local API in production without the override", () => {
+      const env: NodeJS.ProcessEnv = { NODE_ENV: "production" }
+      delete env.PROD_API_REWRITE_BASE_URL
+      const out = evalRewrites(env)
+      expect(out).toContain('"destination":"http://127.0.0.1:8000/api/:path*"')
+    })
+
+    it("keeps ignoring DEV_API_REWRITE_BASE_URL in production", () => {
+      const out = evalRewrites({
+        NODE_ENV: "production",
+        DEV_API_REWRITE_BASE_URL: "http://dev-host:9999",
+      })
+      expect(out).toContain('"destination":"http://127.0.0.1:8000/api/:path*"')
+    })
+
+    it("still honors DEV_API_REWRITE_BASE_URL outside production", () => {
+      const out = evalRewrites({
+        NODE_ENV: "development",
+        DEV_API_REWRITE_BASE_URL: "http://dev-host:9999",
+      })
+      expect(out).toContain('"destination":"http://dev-host:9999/api/:path*"')
+    })
+
+    it("canonical frontend image bakes PROD_API_REWRITE_BASE_URL before pnpm build", () => {
+      const src = readFileSync(join(process.cwd(), "apps/web/Dockerfile"), "utf8")
+      // Builder stage must define the non-secret build arg and export it into
+      // the build environment before the pnpm build step, otherwise
+      // routes-manifest falls back to the loopback destination inside the image.
+      const argIdx = src.indexOf("ARG PROD_API_REWRITE_BASE_URL=http://api:8000")
+      const envIdx = src.indexOf("PROD_API_REWRITE_BASE_URL=${PROD_API_REWRITE_BASE_URL}")
+      const buildIdx = src.indexOf("RUN pnpm build")
+      expect(argIdx).toBeGreaterThan(-1)
+      expect(envIdx).toBeGreaterThan(-1)
+      expect(buildIdx).toBeGreaterThan(-1)
+      expect(argIdx).toBeLessThan(buildIdx)
+      expect(envIdx).toBeLessThan(buildIdx)
+    })
+  })
 })
 // END_BLOCK: ISOLATION_TESTS

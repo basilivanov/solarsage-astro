@@ -62,6 +62,10 @@ RUN python -m pip install --no-cache-dir --no-index --find-links /tmp/wheels sol
     && python -m pip check \
     && rm -rf /tmp/wheels
 
+ARG RELEASE_SHA=unknown
+ENV SOLARSAGE_RELEASE_SHA=${RELEASE_SHA}
+LABEL org.opencontainers.image.revision="${RELEASE_SHA}"
+
 EXPOSE 8001
 
 CMD ["uvicorn", "solarsage.app:app", "--host", "0.0.0.0", "--port", "8001"]

@@ -1,20 +1,25 @@
 # AI_HEADER
 # module: M-DEPLOY-PROD
 # wave: W-DEPLOY
-# purpose: NAMESPACED Docker Compose — for running alongside other projects.
+# purpose: NAMESPACED Docker Compose — dev/compatibility ONLY, for running
+#   alongside other projects. NOT the production source of truth.
 #
-# PORT MAP (host → container):
+# Production canon:
+#   - app stack: infra/production/docker-compose.app.yml (api/sidecar/frontend)
+#   - DB stack:  infra/production/docker-compose.yml (PostgreSQL, port 5433)
+#
+# PORT MAP (host → container, compatibility only):
 #   8002 → API (FastAPI)
 #   8003 → SolarSage sidecar
 #   5434 → PostgreSQL
 #   6382 → Redis
 #
-# Use this file when you need to avoid port conflicts with other projects.
-# The canonical (non-namespaced) compose is docker-compose.yml.
-# nginx and next.config must be updated to match if you switch compose files.
+# Use this file when you need to avoid port conflicts with other projects
+# in a dev/compatibility loop. nginx and next.config must be updated to
+# match if you switch compose files.
 
 services:
-  # PostgreSQL database (production)
+  # PostgreSQL database (compatibility)
   db:
     image: postgres:16-alpine
     container_name: solarsage-db-prod
@@ -25,7 +30,7 @@ services:
     volumes:
       - solarsage_postgres_prod:/var/lib/postgresql/data
     ports:
-      - "5434:5432"  # Production на порту 5434
+      - "5434:5432"  # Compatibility на порту 5434
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-astro}"]
       interval: 10s
@@ -35,19 +40,19 @@ services:
     networks:
       - solarsage-network
 
-  # Redis (production)
+  # Redis (compatibility)
   redis:
     image: redis:7-alpine
     container_name: solarsage-redis-prod
     ports:
-      - "6382:6379"  # Production на порту 6382
+      - "6382:6379"  # Compatibility на порту 6382
     volumes:
       - solarsage_redis_prod:/data
     restart: unless-stopped
     networks:
       - solarsage-network
 
-  # API backend (production)
+  # API backend (compatibility)
   api:
     build:
       context: .
@@ -66,7 +71,7 @@ services:
       SOLARSAGE_BASE_URL: http://solarsage:8001
       REDIS_URL: redis://redis:6379/0
     ports:
-      - "8002:8000"  # Production API на порту 8002
+      - "8002:8000"  # Compatibility API на порту 8002
     depends_on:
       db:
         condition: service_healthy
@@ -76,19 +81,19 @@ services:
     networks:
       - solarsage-network
 
-  # SolarSage sidecar (production)
+  # SolarSage sidecar (compatibility)
   solarsage:
     build:
       context: .
       dockerfile: apps/solarsage/Dockerfile
     container_name: solarsage-sidecar-prod
     ports:
-      - "8003:8001"  # Production SolarSage на порту 8003
+      - "8003:8001"  # Compatibility SolarSage на порту 8003
     restart: unless-stopped
     networks:
       - solarsage-network
 
-  # Frontend (production) - опционально
+  # Frontend (compatibility) - опционально
   # frontend:
   #   build:
   #     context: ./apps/web

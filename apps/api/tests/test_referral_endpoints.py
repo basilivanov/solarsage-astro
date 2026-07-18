@@ -65,6 +65,34 @@ async def test_claim_referral_success(async_client: AsyncClient, make_initdata, 
 
 
 @pytest.mark.asyncio
+async def test_claim_referral_grants_both_users_exactly_14_days(async_client: AsyncClient, make_initdata, db_session):
+    """The share motivator is honest: BOTH users get exactly 14 days in the ledger."""
+    referrer_raw = make_initdata(user_id=3111, username="referrer_b")
+    await async_client.post("/api/auth/telegram", json={"initData": referrer_raw})
+    invitee_raw = make_initdata(user_id=3222, username="invitee_b")
+    await async_client.post("/api/auth/telegram", json={"initData": invitee_raw})
+
+    response = await async_client.post("/api/referral/claim", json={"referrer_code": "3111"})
+    assert response.status_code == 200
+    assert response.json()["days_granted"] == 14
+
+    referrer_id = (await db_session.execute(select(User.id).where(User.tg_user_id == 3111))).scalar_one()
+    invitee_id = (await db_session.execute(select(User.id).where(User.tg_user_id == 3222))).scalar_one()
+
+    bonuses = (await db_session.execute(
+        select(AccessLedger).where(
+            and_(
+                AccessLedger.user_id.in_([referrer_id, invitee_id]),
+                AccessLedger.entry_type == "referral_bonus",
+            )
+        )
+    )).scalars().all()
+    assert len(bonuses) == 2, "exactly two referral_bonus ledger entries (invitee + referrer)"
+    assert all(b.days_granted == 14 for b in bonuses)
+    assert {b.user_id for b in bonuses} == {referrer_id, invitee_id}
+
+
+@pytest.mark.asyncio
 async def test_claim_referral_already_claimed(async_client: AsyncClient, make_initdata):
     """Cannot claim referral twice."""
     # Create referrer

@@ -1,0 +1,39 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_SYSTEMD_BACKUP_TIMER
+# ROLE: Systemd timer configuration for daily database backup.
+# DEPENDENCIES: systemd, solarsage-backup.service
+# GRACE_ANCHORS: [SYSTEMD_BACKUP_TIMER]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-SYSTEMD-BACKUP-TIMER
+# purpose: Trigger solarsage-backup.service daily at 03:20 with randomized delay.
+# owns:
+#   - infra/systemd/solarsage-backup.timer
+# inputs: none
+# outputs: none
+# dependencies: none
+# invariants:
+#   - Run daily at 03:20.
+#   - Persistent=true to catch up missed runs.
+#   - Randomized delay up to 15 minutes.
+# failure_policy: none.
+# END_MODULE_CONTRACT: M-INFRA-SYSTEMD-BACKUP-TIMER
+
+# START_MODULE_MAP: M-INFRA-SYSTEMD-BACKUP-TIMER
+# public_entrypoints:
+#   - solarsage-backup.timer
+# semantic_blocks:
+#   - SYSTEMD_BACKUP_TIMER: systemd timer configuration
+# END_MODULE_MAP: M-INFRA-SYSTEMD-BACKUP-TIMER
+
+[Unit]
+Description=SolarSage Database Backup Timer
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+Persistent=true
+RandomizedDelaySec=15m
+Unit=solarsage-backup.service
+
+[Install]
+WantedBy=timers.target

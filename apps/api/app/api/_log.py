@@ -45,8 +45,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import Annotated, Any, Literal
-
 from app.core.dependencies import require_session_optional
 from app.core.logging import log_event
 from app.core.logging_events import LogEventName
@@ -61,7 +59,7 @@ class CanonEnvelope(BaseModel):
 
     ts: str
     level: Annotated[str, Field(pattern=r'^(debug|info|warn|error|fatal)$')]
-    env: Literal["dev", "test", "staging", "prod"]
+    env: Literal["dev", "test", "staging", "prod", "production"]
     service: Literal["api", "web", "solarsage", "worker"]
     service_version: Annotated[str, Field(min_length=1)]
     slice: Annotated[str, Field(min_length=1)]
@@ -126,7 +124,7 @@ async def intake_logs(
             "system.error",
             level="error",
             msg=f"Log intake failed: {type(e).__name__}",
-            payload={"error": str(e)[:200]},
+            error={"kind": type(e).__name__},
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

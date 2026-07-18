@@ -31,7 +31,7 @@ Zod schema tests and adapter compatibility tests verify V1/V2 payload handling.
 ### 6. Rollback procedure documented
 To rollback, simply set `SOLARSAGE_V2_ENABLED=false` and `SOLARSAGE_V2_FRONTEND_ENABLED=false` in the production environment file.
 Operational steps for rollback:
-1. Re-deploy or restart the `solarsage-api.service` and `solarsage-frontend.service` using systemctl restart.
+1. Roll back the release through the canonical Compose orchestrator (`docs/DEPLOYMENT.md`, `docs/PRODUCTION_RUNBOOK.md`) — the app runs as containers of the `solarsage-app` stack, not as app systemd units.
 2. Run health and smoke checks to verify that the V1 payload is successfully returned.
 
 ### 7. Performance budget check passes

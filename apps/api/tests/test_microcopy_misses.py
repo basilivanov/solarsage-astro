@@ -78,21 +78,43 @@ async def test_microcopy_increments_hit_count(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_weekly_report_endpoint(async_client: AsyncClient, make_initdata, db_session):
     """Weekly report endpoint returns misses. W-9.2."""
-    # Auth (admin endpoint, simplified for MVP)
-    user_raw = make_initdata(user_id=11111, username="admin")
-    await async_client.post("/api/auth/telegram", json={"initData": user_raw})
+    # Build a deliberate local-dev app where internal routes are enabled
+    from app.core.config import Settings
+    from app.main import create_app
+    from app.db.session import get_session
+
+    dev_settings = Settings(
+        APP_ENV="dev",
+        APP_DOMAIN="localhost",
+        DEV_MODE=True,
+    )
+    app = create_app(dev_settings)
+
+    async def _override():
+        yield db_session
+    app.dependency_overrides[get_session] = _override
 
     # Create a miss
     service = MicrocopyService(db_session)
     await service.get("test.missing.key")
+    await db_session.commit()
+
+    # Use a custom TestClient over the newly created app to test routing
+    from fastapi.testclient import TestClient
+    client = TestClient(app)
+
+    # Auth (admin endpoint, simplified for MVP)
+    user_raw = make_initdata(user_id=11111, username="admin")
+    client.post("/api/auth/telegram", json={"initData": user_raw})
 
     # Get report
-    response = await async_client.get("/api/admin/microcopy/misses")
+    response = client.get("/api/admin/microcopy/misses")
     assert response.status_code == 200
 
     data = response.json()
     assert len(data["misses"]) == 1
     assert data["misses"][0]["key"] == "test.missing.key"
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio

@@ -1,12 +1,11 @@
 # Astro
 
-Astro Mini App — backend (FastAPI) + frontend (Next.js) + внешний SolarSage сервис.
+Astro Mini App — backend (FastAPI) + frontend (Next.js) + SolarSage sidecar (расчётный движок, контейнер в app stack).
 
-> **Status: Phase 1, pre-W-DEPLOY.** Проект пока **не разворачивается в прод**
-> одной командой. Production-runbook будет переписан в волне `W-DEPLOY`
-> (см. `grace/development-plan.xml` → `<future-waves>`). Текущий
-> `docs/DEPLOY.md` помечен `stale (pre-W-1.0)` и руководством к деплою
-> не является. Ниже — только **dev-loop**.
+> **Status: production path подготовлен.** Запуск — **только ручной**, через
+> canonical Compose orchestrator: `docs/DEPLOYMENT.md` и
+> `docs/PRODUCTION_RUNBOOK.md`. Исторический `docs/DEPLOY.md` заменён этими
+> документами и сохранён как история. Ниже — **dev-loop**.
 
 ---
 
@@ -29,8 +28,9 @@ make -C apps/api run                       # FastAPI :8000
 pnpm install && pnpm dev                   # Next.js :3000
 ```
 
-SolarSage запускается **отдельно** (внешний docker-сервис), мы только
-ходим в него по `SOLARSAGE_BASE_URL` из `.env`.
+SolarSage sidecar — контейнер `solarsage-sidecar` в canonical app stack
+(production). В dev-loop допустим и внешний sidecar (**dev-only**): просто
+укажи `SOLARSAGE_BASE_URL` в `.env`.
 
 ---
 
@@ -38,14 +38,14 @@ SolarSage запускается **отдельно** (внешний docker-с�
 
 | Путь | Что |
 |---|---|
-| `app/`, `components/`, `package.json` | Next.js 16 App Router (frontend) |
+| `app/`, `components/`, `package.json` | Next.js App Router (frontend) |
 | `apps/api/` | FastAPI + alembic (backend) |
-| `apps/solarsage/` | вспомогательные `collect_*.py` скрипты (рантайм SolarSage — внешний) |
+| `apps/solarsage/` | SolarSage sidecar runtime (расчётный движок; production — контейнер `solarsage-sidecar` в app stack) |
 | `packages/contracts/` | сгенерированные OpenAPI + TS (drift-gated) |
-| `grace/` | план развития, инварианты, маркеры волн |
-| `infra/` | dev-only `docker-compose.yml` (postgres + redis) |
-| `scripts/` | bootstrap-vds, db-create, контракт-генератор, grace-линтер |
-| `docs/` | продуктовая история; `DEPLOY.md` — **stale** до `W-DEPLOY` |
+| `grace/` | план развития, инварианты, маркеры волн (история) |
+| `infra/` | `infra/docker-compose.yml` dev-only (postgres + redis); production — `infra/production/` |
+| `scripts/` | `scripts/deploy/` (canonical production), `scripts/dev/` (dev helpers, напр. `db-create.sh`), контракт-генератор, grace-линтер |
+| `docs/` | canonical docs: `DEPLOYMENT.md`, `PRODUCTION_RUNBOOK.md`; `DEPLOY.md` — история (replaced) |
 
 ---
 
@@ -75,8 +75,6 @@ All tests run automatically on push/PR via GitHub Actions (`.github/workflows/ci
 ---
 
 ## Что точно не работает прямо сейчас
-- `make deploy` / `scripts/deploy.sh` — guarded, exit 1 (см. `W-DEPLOY`).
-- `make logs` — нет systemd unit-файлов до `W-DEPLOY`.
-- Полноценный SolarSage runtime — поднимается отдельно вне этого репо.
+- `make deploy` / `make backup` / `make logs` / `make solarsage` — disabled, exit 1 (production идёт через canonical Compose orchestrator: app/sidecar/frontend контейнеры стека `solarsage-app`, см. `docs/DEPLOYMENT.md` и `docs/PRODUCTION_RUNBOOK.md`).
 
 См. также `MANIFEST.md` — оперативное состояние волн.

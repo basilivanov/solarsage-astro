@@ -341,8 +341,7 @@ async def test_day_endpoint_exposes_real_day_chart_from_existing_sources(
     with patch("app.services.natal_context_service.get_solarsage_client", return_value=mock_context_client), \
          patch("app.services.today_service.get_solarsage_client", return_value=mock_day_client), \
          patch("app.services.today_service.LLMService", return_value=mock_llm), \
-         patch.object(TodayService, "_get_yesterday_signals", new=AsyncMock(return_value=None)), \
-         patch.object(TodayService, "_prefetch_week", new=AsyncMock(return_value=None)):
+         patch.object(TodayService, "_get_yesterday_signals", new=AsyncMock(return_value=None)):
         response = await async_client.get("/api/day/2026-05-10")
 
     assert response.status_code == 200

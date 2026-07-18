@@ -118,7 +118,7 @@ async def test_generate_headline(sample_signals):
         # Verify call parameters
         call_args = mock_client.post.call_args
         assert "openrouter.ai" in call_args.args[0]
-        assert call_args.kwargs["json"]["model"] == "openai/gpt-4o-mini"
+        assert call_args.kwargs["json"]["model"] == "openai/gpt-4.1-nano"
         assert call_args.kwargs["json"]["max_tokens"] == 120
         assert len(call_args.kwargs["json"]["messages"]) == 1
         assert call_args.kwargs["json"]["messages"][0]["role"] == "user"
@@ -172,7 +172,7 @@ async def test_generate_reading(sample_signals):
         # Verify call parameters
         call_args = mock_client.post.call_args
         assert "openrouter.ai" in call_args.args[0]
-        assert call_args.kwargs["json"]["model"] == "openai/gpt-4o-mini"
+        assert call_args.kwargs["json"]["model"] == "openai/gpt-4.1-nano"
         assert call_args.kwargs["json"]["max_tokens"] == 500
         assert len(call_args.kwargs["json"]["messages"]) == 1
         assert call_args.kwargs["json"]["messages"][0]["role"] == "user"

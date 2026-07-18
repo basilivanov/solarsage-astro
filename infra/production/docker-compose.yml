@@ -1,0 +1,64 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_PRODUCTION_DB
+# ROLE: Production PostgreSQL 15 database container setup.
+# DEPENDENCIES: docker, postgres:15
+# GRACE_ANCHORS: [PRODUCTION_DB_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-PRODUCTION-DB
+# purpose: Provide production PostgreSQL 15 container bound strictly to loopback.
+# owns:
+#   - infra/production/docker-compose.yml
+# inputs:
+#   - POSTGRES_USER: DB username
+#   - POSTGRES_PASSWORD: DB password (required)
+#   - POSTGRES_DB: DB name
+# outputs:
+#   - PostgreSQL service running on port 5433
+# dependencies: none
+# invariants:
+#   - Strictly bound to 127.0.0.1 (never 0.0.0.0).
+#   - No plaintext secrets or default passwords in file.
+# failure_policy: fails on missing env variables or startup check errors.
+# END_MODULE_CONTRACT: M-INFRA-PRODUCTION-DB
+
+# START_MODULE_MAP: M-INFRA-PRODUCTION-DB
+# public_entrypoints:
+#   - db
+# semantic_blocks:
+#   - PRODUCTION_DB_SERVICE: postgres container configuration
+# END_MODULE_MAP: M-INFRA-PRODUCTION-DB
+
+name: solarsage-prod
+
+services:
+  db:
+    image: postgres:15
+    container_name: solarsage-db
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 256mb
+    stop_grace_period: 30s
+    ports:
+      - "127.0.0.1:5433:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?postgres user required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?postgres password required}
+      POSTGRES_DB: ${POSTGRES_DB:?postgres db required}
+    volumes:
+      - solarsage_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  solarsage_postgres_data:

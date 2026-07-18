@@ -1,0 +1,53 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_SYSTEMD_BACKUP_SERVICE
+# ROLE: Systemd service configuration for the canonical daily database backup
+#       through the installed orchestrator.
+# DEPENDENCIES: systemd, /usr/local/libexec/solarsage/prod-orchestrator
+# GRACE_ANCHORS: [SYSTEMD_BACKUP_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-SYSTEMD-BACKUP-SERVICE
+# purpose: Execute the canonical daily backup via the installed orchestrator.
+# owns:
+#   - infra/systemd/solarsage-backup.service
+# inputs:
+#   - /etc/solarsage/app.env (root:astro 0640)
+# outputs: none
+# dependencies: none
+# invariants:
+#   - Runs the installed root-owned orchestrator only; never mutable checkout.
+#   - Safe systemd hardening properties.
+#   - TimeoutStartSec is set to 3 hours to allow long backup operations.
+#   - TimeoutStopSec is set to 2 minutes for graceful shutdown.
+# failure_policy: fails on orchestrator backup error.
+# END_MODULE_CONTRACT: M-INFRA-SYSTEMD-BACKUP-SERVICE
+
+# START_MODULE_MAP: M-INFRA-SYSTEMD-BACKUP-SERVICE
+# public_entrypoints:
+#   - solarsage-backup.service
+# semantic_blocks:
+#   - SYSTEMD_BACKUP_SERVICE: systemd configuration
+# END_MODULE_MAP: M-INFRA-SYSTEMD-BACKUP-SERVICE
+
+[Unit]
+Description=SolarSage Database Backup Service (canonical orchestrator)
+After=solarsage-db.service network-online.target
+Requires=solarsage-db.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/usr/local/libexec/solarsage/prod-orchestrator backup --manual-confirm
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=3h
+TimeoutStopSec=2min
+UMask=0027
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/backups/solarsage /var/lib/solarsage/orchestrator /run/solarsage-maintenance.lock

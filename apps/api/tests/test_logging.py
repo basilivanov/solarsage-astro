@@ -54,6 +54,8 @@ def test_redact_pii():
         "password": "secret123",
         "birth_date": "1990-01-15",
         "public_field": "visible",
+        "user_id": "some_raw_id",
+        "session_id": "some_session_id",
     }
 
     redacted = redact_dict(data)
@@ -62,6 +64,57 @@ def test_redact_pii():
     assert redacted["password"] == "[redacted]"
     assert redacted["birth_date"] == "[redacted]"
     assert redacted["public_field"] == "visible"
+    assert redacted["user_id"] == "[redacted]"
+    assert redacted["session_id"] == "[redacted]"
+
+
+def test_redact_user_id_hash():
+    """Redactor preserves user_id_hash but redacts other keys."""
+    valid_hash = "h1_" + "a" * 24
+    data = {
+        "user_id_hash": valid_hash,
+        "other_id_hash": valid_hash,
+    }
+    redacted = redact_dict(data)
+    assert redacted["user_id_hash"] == valid_hash
+    assert redacted["other_id_hash"] == valid_hash
+
+    # R4-B1: Parametrized exactness checks for opaque log ID
+    from app.core.log_identity import is_opaque_log_id
+
+    # 1. h1_ + 24 lowercase hex -> true
+    assert is_opaque_log_id("h1_" + "a" * 24) is True
+
+    # 2. h1_ + 23 hex -> false
+    assert is_opaque_log_id("h1_" + "a" * 23) is False
+
+    # 3. h1_ + 25 hex -> false
+    assert is_opaque_log_id("h1_" + "a" * 25) is False
+
+    # 4. h1_ + 24 hex + suffix -> false
+    assert is_opaque_log_id("h1_" + "a" * 24 + "extra") is False
+
+    # 5. h1_ + 24 hex + newline -> false
+    assert is_opaque_log_id("h1_" + "a" * 24 + "\n") is False
+
+    # 6. h1_ + uppercase hex -> false
+    assert is_opaque_log_id("h1_" + "A" * 24) is False
+
+    # 7. integer / None -> false
+    assert is_opaque_log_id(12345) is False
+    assert is_opaque_log_id(None) is False
+
+
+def test_log_identity_hashing():
+    """Test log identity hashing invariants."""
+    from app.core.log_identity import hash_log_identifier, hash_user_id
+    h1 = hash_user_id("user123")
+    h2 = hash_user_id("user123")
+    h3 = hash_log_identifier("question", "user123")
+    assert h1.startswith("h1_")
+    assert len(h1) == 27 # h1_ + 24 chars
+    assert h1 == h2
+    assert h1 != h3 # namespaces isolate hashes
 
 
 def test_redact_nested():
@@ -116,7 +169,8 @@ def test_redact_case_insensitive():
 @pytest.mark.asyncio
 async def test_correlation_id_round_trip(async_client: AsyncClient):
     """Correlation ID is echoed in response header."""
-    correlation_id = "test-correlation-123"
+    # A valid correlation id in the test environment (using h1_ format)
+    correlation_id = "h1_" + "a" * 24
 
     response = await async_client.get(
         "/api/health", headers={"X-Correlation-Id": correlation_id}
@@ -138,18 +192,13 @@ async def test_correlation_id_minted(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_correlation_id_format(async_client: AsyncClient):
-    """Minted correlation ID is a valid UUID."""
+    """Minted correlation ID is a valid opaque log id."""
     response = await async_client.get("/api/health")
 
     assert response.status_code == 200
     correlation_id = response.headers["X-Correlation-Id"]
 
-    # Check UUID format (8-4-4-4-12 hex digits)
-    parts = correlation_id.split("-")
-    assert len(parts) == 5
-    assert len(parts[0]) == 8
-    assert len(parts[1]) == 4
-    assert len(parts[2]) == 4
-    assert len(parts[3]) == 4
-    assert len(parts[4]) == 12
+    # Check h1_ + 24 hex digits format
+    assert correlation_id.startswith("h1_")
+    assert len(correlation_id) == 27
 # END_BLOCK: TEST_CORRELATION

@@ -83,10 +83,12 @@ class ChatService:
 
         # W-CHAT-3: Emit event
         with log_block(slice="W-CHAT", module="M-CHAT-SERVICE", block="CREATE_THREAD"):
+            from app.core.log_identity import hash_log_identifier
+            thread_id_hash = hash_log_identifier("thread", thread.id)
             log_event(
                 "chat.thread_created",
                 payload={
-                    "thread_id": str(thread.id),
+                    "thread_id_hash": thread_id_hash,
                 },
             )
 
@@ -166,11 +168,14 @@ class ChatService:
 
         # W-CHAT-3: Emit event
         with log_block(slice="W-CHAT", module="M-CHAT-SERVICE", block="ADD_MESSAGE"):
+            from app.core.log_identity import hash_log_identifier
+            thread_id_hash = hash_log_identifier("thread", thread_id)
+            message_id_hash = hash_log_identifier("message", message.id)
             log_event(
                 "chat.message_sent",
                 payload={
-                    "thread_id": str(thread_id),
-                    "message_id": str(message.id),
+                    "thread_id_hash": thread_id_hash,
+                    "message_id_hash": message_id_hash,
                     "role": role,
                 },
             )

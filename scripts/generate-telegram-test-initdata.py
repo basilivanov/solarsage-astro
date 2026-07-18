@@ -7,17 +7,17 @@
 # GRACE_ANCHORS: []
 # SLICE: SLICE-GUARDRAILS-TOOLING
 # ######################################### START_MODULE_CONTRACT
-# purpose: Tests for generate-telegram-test-initdata.py behavior
+# purpose: Generate valid Telegram WebApp initData for E2E testing.
 # owns:
 #   - scripts/generate-telegram-test-initdata.py
-# inputs: Mocks, fixtures
+# inputs: Mocks, fixtures, process environment or --env-file
 # outputs: Assertion results
 # dependencies: local modules
-# side_effects: n/a (tests)
-# emitted_logs: n/a (tests)
+# side_effects: n/a
+# emitted_logs: n/a
 # invariants:
-#   - n/a
-# failure_policy: log and raise
+#   - TELEGRAM_BOT_TOKEN value is never printed in success or error output
+# failure_policy: log safe error and raise SystemExit
 # END_MODULE_CONTRACT
 """
 Generate valid Telegram WebApp initData for E2E testing.
@@ -30,8 +30,8 @@ Usage:
 Output: a URL query string starting with tgWebAppData=...
   that can be appended to the frontend URL for browser tests.
 
-No args are needed; the script reads TELEGRAM_BOT_TOKEN from
-the project's .env.production file.
+Reads TELEGRAM_BOT_TOKEN from process environment first,
+then falls back to the explicit --env-file if provided.
 """
 
 from __future__ import annotations
@@ -47,17 +47,27 @@ from urllib.parse import quote_plus
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def load_bot_token() -> str:
-    env_file = PROJECT_ROOT / ".env.production"
-    if not env_file.exists():
-        raise FileNotFoundError(f"{env_file} not found — cannot load TELEGRAM_BOT_TOKEN")
-    for line in env_file.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line.startswith("TELEGRAM_BOT_TOKEN="):
-            value = line.split("=", 1)[1].strip()
-            if value:
-                return value
-    raise ValueError("TELEGRAM_BOT_TOKEN not found in .env.production")
+def load_bot_token(env_file_path: str | None = None) -> str:
+    # First check process environment
+    env_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if env_token:
+        return env_token
+
+    if env_file_path:
+        p = Path(env_file_path)
+        if not p.exists():
+            raise FileNotFoundError(f"Explicit env file not found at {env_file_path}")
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("TELEGRAM_BOT_TOKEN="):
+                value = line.split("=", 1)[1].strip()
+                if value.startswith('"') and value.endswith('"'):
+                    value = value[1:-1]
+                if value:
+                    return value
+        raise ValueError(f"TELEGRAM_BOT_TOKEN not found in explicit env file: {env_file_path}")
+
+    raise ValueError("TELEGRAM_BOT_TOKEN not found in environment. Export TELEGRAM_BOT_TOKEN or pass an explicit --env-file (e.g. /etc/solarsage/app.env).")
 
 
 def generate_initdata(
@@ -65,9 +75,10 @@ def generate_initdata(
     first_name: str = "Test",
     last_name: str = "User",
     username: str = "synthetic_test_user",
+    env_file_path: str | None = None,
 ) -> str:
     """Generate a URL-encoded initData string with valid HMAC."""
-    bot_token = load_bot_token()
+    bot_token = load_bot_token(env_file_path)
 
     auth_date = int(time.time())
     user_obj = {
@@ -147,6 +158,7 @@ if __name__ == "__main__":
     user_id = 999999999
     username = "synthetic_test_user"
     first_name = "Test"
+    env_file_path = None
     
     for arg in sys.argv[1:]:
         if arg.startswith("--user-id="):
@@ -155,9 +167,19 @@ if __name__ == "__main__":
             username = arg.split("=")[1]
         elif arg.startswith("--first-name="):
             first_name = arg.split("=")[1]
+        elif arg.startswith("--env-file="):
+            env_file_path = arg.split("=")[1]
+        else:
+            print(f"ERROR: Unknown or malformed argument: {arg}", file=sys.stderr)
+            raise SystemExit(2)
 
     try:
-        initdata = generate_initdata(user_id=user_id, username=username, first_name=first_name)
+        initdata = generate_initdata(
+            user_id=user_id,
+            username=username,
+            first_name=first_name,
+            env_file_path=env_file_path,
+        )
         full_url = build_full_url(initdata)
         print(f"# Generated at UNIX timestamp {int(time.time())}")
         print(f"# user_id={user_id}, username={username}")

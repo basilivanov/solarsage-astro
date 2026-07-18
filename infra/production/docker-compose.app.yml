@@ -1,0 +1,160 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_PRODUCTION_APP — canonical application compose stack
+# ROLE: Production app services (api, sidecar, frontend) plus one-shot migrate
+#       profile, deployed only from immutable per-SHA OCI images.
+# DEPENDENCIES: docker compose v2, external solarsage-prod DB network
+# GRACE_ANCHORS: [PRODUCTION_APP_SERVICES]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-PRODUCTION-APP
+# purpose: Canonical production application stack for the minimal Compose path.
+# owns:
+#   - infra/production/docker-compose.app.yml
+# inputs:
+#   - REGISTRY: OCI registry/namespace prefix (no tag)
+#   - RELEASE_SHA: full 40-lowercase-hex commit SHA selecting image tags
+#   - required secret/env values supplied by the root-owned host env file
+# outputs:
+#   - api on 127.0.0.1:8000, frontend on 127.0.0.1:3002, sidecar on 127.0.0.1:18091
+# dependencies:
+#   - infra/production/docker-compose.yml (solarsage-prod DB project, port 5433)
+# invariants:
+#   - Loopback-only host bindings on canonical ports.
+#   - Images are required per-service digest references of the exact form
+#     registry/repo@sha256:<64 lowercase hex>; no latest/branch/tag/mutable refs.
+#   - No secret values in this file; only required-variable interpolation.
+#   - api image never runs Alembic on ordinary start; migrate is a one-shot profile.
+#   - No DB volume is created or deleted by this stack.
+# failure_policy: compose config fails on any missing required variable.
+# END_MODULE_CONTRACT: M-INFRA-PRODUCTION-APP
+
+# START_MODULE_MAP: M-INFRA-PRODUCTION-APP
+# public_entrypoints:
+#   - api
+#   - sidecar
+#   - frontend
+#   - migrate (profile)
+# semantic_blocks:
+#   - PRODUCTION_APP_SERVICES: canonical loopback services from immutable images
+# END_MODULE_MAP: M-INFRA-PRODUCTION-APP
+
+name: solarsage-app
+
+networks:
+  app:
+  db:
+    external: true
+    name: solarsage-prod_default
+
+x-api-common: &api-common
+  image: ${API_IMAGE:?api digest image required}
+  environment: &api-env
+    APP_ENV: production
+    APP_DOMAIN: ${APP_DOMAIN:?app domain required}
+    APP_VERSION: ${APP_VERSION:-0.1.0}
+    CONTRACT_VERSION: "1"
+    DEV_MODE: "false"
+    SESSION_COOKIE_SECURE: "true"
+    DATABASE_URL: ${DATABASE_URL:?database url required}
+    SOLARSAGE_URL: http://sidecar:8001
+    LLM_PROVIDER: ${LLM_PROVIDER:-openrouter}
+    LLM_MODEL: ${LLM_MODEL:-openai/gpt-4.1-nano}
+    OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?openrouter key required}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?telegram bot token required}
+    GRACE_USER_SALT: ${GRACE_USER_SALT:?grace user salt required}
+    CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?cors origins required}
+    GEONAMES_USERNAME: ${GEONAMES_USERNAME:-}
+    RELEASE_SHA: ${RELEASE_SHA:?release sha required}
+
+services:
+  api:
+    <<: *api-common
+    container_name: solarsage-api
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - app
+      - db
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      sidecar:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  sidecar:
+    image: ${SIDECAR_IMAGE:?sidecar digest image required}
+    container_name: solarsage-sidecar
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - app
+    ports:
+      - "127.0.0.1:18091:8001"
+    environment:
+      SOLARSAGE_EPHEMERIS_PATH: /opt/sweph/ephe
+      SOLARSAGE_RELEASE_SHA: ${RELEASE_SHA:?release sha required}
+    volumes:
+      - /opt/sweph/ephe:/opt/sweph/ephe:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/v1/health', timeout=3).status == 200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?frontend digest image required}
+    container_name: solarsage-frontend
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - app
+    ports:
+      - "127.0.0.1:3002:3002"
+    environment:
+      NODE_ENV: production
+      RELEASE_SHA: ${RELEASE_SHA:?release sha required}
+      PROD_API_REWRITE_BASE_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3002/api/release-health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  migrate:
+    <<: *api-common
+    container_name: solarsage-migrate
+    profiles: ["migrate"]
+    restart: "no"
+    networks:
+      - db
+    command: ["alembic", "upgrade", "head"]

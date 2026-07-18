@@ -18,7 +18,7 @@ Accepted. Updated on 2026-07-07 after the real-data frontend migration discussio
 SolarSage Astro is currently operated as a dev/staging product, but it already has a canonical app runtime:
 
 - `main` branch.
-- `solarsage-frontend.service` on port `3002`.
+- Canonical Compose app stack: `solarsage-frontend` container on port `3002` (see `docs/DEPLOYMENT.md`).
 - Nginx public entrypoint.
 - FastAPI on port `8000`.
 - Telegram WebApp auth via HMAC.
@@ -94,7 +94,7 @@ Non-purpose:
 
 - Does not prove Telegram auth works.
 - Does not prove backend/sidecar/API integration works.
-- Does not prove cache, systemd, nginx, or database behavior.
+- Does not prove cache, container orchestration (Compose), nginx, or database behavior.
 
 Recommended Playwright project name:
 

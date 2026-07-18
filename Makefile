@@ -2,8 +2,9 @@ SHELL := /bin/bash
 
 # ----------------------------------------------------------------------
 # Astro Makefile — DEV ONLY.
-# Production targets (deploy / logs) are guarded until W-DEPLOY lands.
-# See grace/development-plan.xml -> <future-waves> -> W-DEPLOY.
+# Production goes through the canonical Compose orchestrator
+# (docs/DEPLOYMENT.md, docs/PRODUCTION_RUNBOOK.md); deploy/backup/logs/
+# solarsage targets here stay disabled (fail-closed hints only).
 # ----------------------------------------------------------------------
 
 .PHONY: help dev up down api web migrate db-create deploy backup logs solarsage
@@ -18,7 +19,7 @@ help:
 	@echo "  make migrate     - alembic upgrade head"
 	@echo "  make db-create   - create role + db in Postgres (uses .env)"
 	@echo ""
-	@echo "Disabled until W-DEPLOY:"
+	@echo "Disabled (production goes via canonical Compose orchestrator, see docs/DEPLOYMENT.md):"
 	@echo "  make deploy / backup / logs / solarsage  (will exit 1)"
 
 up:
@@ -47,7 +48,7 @@ migrate:
 	$(MAKE) -C apps/api migrate
 
 db-create:
-	bash scripts/db-create.sh
+	bash scripts/dev/db-create.sh
 
 # ---- Real API proof (W3B) --------------------------------------------
 
@@ -98,24 +99,22 @@ prove-today-v2-real:
 		--date "$${PROOF_RUN_DATE}" \
 		--out "$${PROOF_RUN_OUT}"
 
-# ---- Guarded: not implemented until W-DEPLOY -------------------------
+# ---- Guarded: production goes via the canonical Compose orchestrator ------
 
 deploy:
-	@echo "ERROR: 'make deploy' is disabled until W-DEPLOY."
-	@echo "scripts/deploy.sh is stale-guarded; see grace/development-plan.xml."
+	@echo "ERROR: 'make deploy' is disabled. Use the canonical Compose orchestrator; see docs/DEPLOYMENT.md."
 	@exit 1
 
 backup:
-	@echo "ERROR: 'make backup' is not implemented yet (W-DEPLOY)."
+	@echo "ERROR: 'make backup' is disabled here. Canonical backup: solarsage-backup.timer or 'sudo /usr/local/libexec/solarsage/prod-orchestrator backup --manual-confirm'; see docs/PRODUCTION_RUNBOOK.md section 4."
 	@exit 1
 
 logs:
-	@echo "ERROR: 'make logs' requires systemd units that do not exist yet (W-DEPLOY)."
+	@echo "ERROR: 'make logs' is disabled here. App logs come from the Compose stack; see docs/PRODUCTION_RUNBOOK.md section 6 (Container Operations)."
 	@exit 1
 
 solarsage:
-	@echo "ERROR: SolarSage is an external service and runs in its own docker."
-	@echo "Set SOLARSAGE_BASE_URL in .env and start it from the SolarSage repo."
+	@echo "ERROR: 'make solarsage' is disabled here. The sidecar runs as container solarsage-sidecar in the canonical app stack (infra/production/docker-compose.app.yml, port 18091); see docs/DEPLOYMENT.md."
 	@exit 1
 
 .PHONY: audit-day audit-day-live audit-day-freeze audit-downstream-v2 audit-golden

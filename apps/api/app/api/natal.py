@@ -59,7 +59,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import current_user_id, require_session
+from app.core.dependencies import current_user_id
 from app.core.config import settings
 from app.db.session import get_session
 from app.schemas.natal import (
@@ -101,10 +101,9 @@ async def get_natal_preview(
             log_event(
                 "natal.preview_failed",
                 level="error",
-                msg=f"Natal preview failed: {type(exc).__name__}",
+                msg="Natal preview failed",
                 error={
                     "kind": type(exc).__name__,
-                    "message": str(exc)[:200],
                 }
             )
         raise HTTPException(
@@ -154,10 +153,9 @@ async def generate_natal_report(
             log_event(
                 "natal.report_generation_failed",
                 level="error",
-                msg=f"Natal report generation failed: {type(exc).__name__}",
+                msg="Natal report generation failed",
                 error={
                     "kind": type(exc).__name__,
-                    "message": str(exc)[:200],
                 }
             )
         raise HTTPException(

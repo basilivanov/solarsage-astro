@@ -1,0 +1,35 @@
+# ############################################################################
+# AI_HEADER: FAIL2BAN_SSHD_LOCAL — Fail2ban sshd jail overrides
+# ROLE: Hardens sshd access on the host.
+# DEPENDENCIES: fail2ban
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-FAIL2BAN-SSHD-LOCAL
+# purpose: Secure SSH daemon by banning malicious IPs.
+# owns:
+#   - infra/fail2ban/jail.d/solarsage-sshd.local
+# inputs: none
+# outputs:
+#   - Fail2ban jail overrides for sshd
+# dependencies: none
+# invariants:
+#   - Enable sshd jail.
+#   - Use systemd backend.
+#   - maxretry = 5, findtime = 10m, bantime = 1h.
+# failure_policy: none.
+# END_MODULE_CONTRACT: M-FAIL2BAN-SSHD-LOCAL
+
+# START_MODULE_MAP: M-FAIL2BAN-SSHD-LOCAL
+# public_entrypoints: none
+# semantic_blocks:
+#   - FAIL2BAN_SSHD: jail parameters
+# END_MODULE_MAP: M-FAIL2BAN-SSHD-LOCAL
+
+# START_BLOCK: FAIL2BAN_SSHD
+[sshd]
+enabled = true
+backend = systemd
+maxretry = 5
+findtime = 10m
+bantime = 1h
+# END_BLOCK: FAIL2BAN_SSHD

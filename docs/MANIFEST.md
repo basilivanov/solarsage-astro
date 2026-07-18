@@ -35,8 +35,9 @@
 - `05_API_contracts_и_TodayPayload.md` — superseded by W-1.1B.
   Source of truth for payload shapes is now `apps/api/app/schemas/`
   and `packages/contracts/_generated.ts`.
-- `DEPLOY.md` — stale (pre-W-1.0). References the old SolarSage CLI /
-  systemd layout. Will be replaced by a W-DEPLOY packet.
+- `DEPLOY.md` — replaced. References the old SolarSage CLI / systemd layout.
+  Replaced by canonical `DEPLOYMENT.md` + `PRODUCTION_RUNBOOK.md`
+  (minimal Compose path); retained as history.
 
 ## Related (outside docs/)
 

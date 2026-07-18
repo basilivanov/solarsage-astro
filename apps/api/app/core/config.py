@@ -13,12 +13,14 @@
 #   - apps/api/app/core/__init__.py
 # inputs:
 #   - environment variables (APP_ENV, APP_DOMAIN, APP_VERSION, DATABASE_URL,
-#     CONTRACT_VERSION) read via pydantic-settings
+#     CONTRACT_VERSION, CORS_ALLOWED_ORIGINS, GRACE_USER_SALT) read via pydantic-settings
 #   - .env file at repo root
 #   - `git rev-parse --short HEAD` for git_sha resolution
 # outputs:
 #   - settings: Settings singleton imported by other modules
 #   - settings.git_sha: short HEAD sha or "unknown"
+#   - settings.cors_allowed_origins: comma-separated exact origins
+#   - settings.grace_user_salt: salt for logging privacy
 # dependencies:
 #   - pydantic, pydantic-settings
 #   - subprocess (for git sha)
@@ -104,6 +106,10 @@ class Settings(BaseSettings):
     app_domain: str = Field("localhost", alias="APP_DOMAIN")
     app_version: str = Field("0.1.0", alias="APP_VERSION")
 
+    # Immutable release identity supplied by the OCI image/container environment
+    # (full 40-hex commit SHA). "unknown" outside the canonical app stack.
+    release_sha: str = Field("unknown", alias="RELEASE_SHA")
+
     # SQLite by default so `alembic upgrade head` works on a fresh checkout
     # without external services. Postgres URL is supplied via .env in real envs.
     database_url: str = Field(
@@ -145,7 +151,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = Field("", alias="OPENROUTER_API_KEY")
 
     # Model configuration
-    llm_model: str = Field("openai/gpt-4o-mini", alias="LLM_MODEL")
+    llm_model: str = Field("openai/gpt-4.1-nano", alias="LLM_MODEL")
     llm_max_tokens: int = Field(500, alias="LLM_MAX_TOKENS")
 
     # OpenRouter specific settings
@@ -158,6 +164,10 @@ class Settings(BaseSettings):
     # --- Dev mode (W-2.2) ---
     # When true, enables /api/auth/dev endpoint for local development without Telegram
     dev_mode: bool = Field(False, alias="DEV_MODE")
+
+    # --- Security Hardening ---
+    cors_allowed_origins: str = Field("", alias="CORS_ALLOWED_ORIGINS")
+    grace_user_salt: str = Field("", alias="GRACE_USER_SALT")
 
     # --- Feature flags ---
     # W-NATAL-FULL Wave 4: natal full report generation endpoints.

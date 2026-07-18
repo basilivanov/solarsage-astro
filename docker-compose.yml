@@ -1,15 +1,19 @@
 # AI_HEADER
 # module: M-DEPLOY-ORCHESTRATION
 # wave: W-DEPLOY
-# purpose: CANONICAL Docker Compose — source of truth for port assignments.
+# purpose: DEV/COMPATIBILITY Docker Compose — local legacy loop ONLY.
 #
-# PORT MAP (host → container):
+# This file is NOT the production source of truth. Production canon:
+#   - app stack: infra/production/docker-compose.app.yml (api/sidecar/frontend)
+#   - DB stack:  infra/production/docker-compose.yml (PostgreSQL, port 5433)
+#
+# PORT MAP (host → container, dev only):
 #   8000 → API (FastAPI)
 #   8001 → SolarSage sidecar (astrological calculation engine)
 #   3000 → Frontend (Next.js)
 #   5432 → PostgreSQL
 #
-# This is the NAMED (non-namespaced) compose file.
+# This is the NAMED (non-namespaced) dev compose file.
 # If you need to run alongside other projects on the same host,
 # use docker-compose.prod.yml which maps to namespaced ports
 # (8002, 8003, 5434) to avoid conflicts.

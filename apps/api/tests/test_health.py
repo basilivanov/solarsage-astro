@@ -33,12 +33,13 @@ def test_health_returns_ok() -> None:
     assert body["status"] == "ok"
     assert isinstance(body["version"], str) and body["version"]
     assert isinstance(body["git_sha"], str) and body["git_sha"]
+    assert isinstance(body["release_sha"], str) and body["release_sha"]
 
 
 def test_health_shape_is_exact() -> None:
-    """Contract: exactly three keys. Adding fields silently is forbidden."""
+    """Contract: exactly four keys. Adding fields silently is forbidden."""
     response = client.get("/api/health")
-    assert set(response.json().keys()) == {"status", "version", "git_sha"}
+    assert set(response.json().keys()) == {"status", "version", "git_sha", "release_sha"}
 
 
 def test_canon_validation_runs_at_startup() -> None:

@@ -25,7 +25,7 @@
 // purpose: Unit tests for useDay hook
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import type { components } from '../../packages/contracts/_generated';
 
 type TodayPayload = components['schemas']['TodayPayload'];
@@ -276,5 +276,28 @@ describe('useDay', () => {
     });
     expect(result.current.data?.date).toBe('2026-05-31');
     expect(mockFetchDay).toHaveBeenCalledWith('2026-05-31');
+  });
+
+  it('starts the day request immediately without the removed artificial 100 ms delay', async () => {
+    // START_BLOCK: NO_ARTIFICIAL_DELAY_PROOF
+    // Fake timers are active but NEVER advanced: if a setTimeout(…, 100) still
+    // gated the request, fetchDay would remain uncalled here and exactly one
+    // timer would stay pending. Flushing only render effects + promise
+    // microtasks must already show the call — no timer advance anywhere.
+    vi.useFakeTimers();
+    try {
+      mockFetchDay.mockResolvedValue({ date: '2026-05-30' });
+
+      renderHook(() => useDay('2026-05-30'));
+
+      // Flush effects + microtasks only; do NOT advance virtual time.
+      await act(async () => {});
+
+      expect(mockFetchDay).toHaveBeenCalledWith('2026-05-30');
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+    // END_BLOCK: NO_ARTIFICIAL_DELAY_PROOF
   });
 });

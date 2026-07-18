@@ -68,7 +68,8 @@ def test_envelope_has_required_fields():
     assert envelope["slice"] == "W-TEST"
     assert envelope["module"] == "M-TEST"
     assert envelope["block"] == "TEST_BLOCK"
-    assert envelope["correlation_id"] == "test-corr-id"
+    # correlation_id is normalized to h1_ format under R3 policy
+    assert envelope["correlation_id"].startswith("h1_")
 
 
 def test_envelope_serializes_to_json():
@@ -151,7 +152,7 @@ def test_contextvars_bind_correctly():
         block="TEST_CTX",
     )
     envelope = build_envelope("system.startup")
-    assert envelope["correlation_id"] == "ctx-corr"
+    assert envelope["correlation_id"].startswith("h1_")
     assert envelope["slice"] == "W-TEST-CTX"
     assert envelope["module"] == "M-TEST-CTX"
     assert envelope["block"] == "TEST_CTX"

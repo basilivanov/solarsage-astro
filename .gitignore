@@ -43,6 +43,7 @@ agents/
 
 # V2 personal day preview Next dist
 .next-v2-preview/
+.next-v2-preview-*/
 
 # Real V2 local preview Next dist
 .next-v2-real-preview/
