@@ -91,3 +91,56 @@ future dedicated product-bot handler; commands remain empty by design.
 
 No webhook/commands mutations, no Ductor restarts, no avatar/picture calls,
 no token ever printed or stored outside apex app.env. tmux alive.
+
+## Addendum — BLOCKER: referral/share URLs hardcode the dev bot (2026-07-18)
+
+Read-only verification after the identity resolution. **Mismatch confirmed,
+no evidence of intent — recorded as a launch blocker; nothing changed.**
+
+Evidence:
+
+- `apps/api/app/api/referral.py:83` (deployed in release b156f60e):
+  `invite_url = f"https://t.me/vi_astro_bot/app?startapp={user.tg_user_id}"`
+  — production `/api/referral` returns a link to the **dev bot**
+  `vi_astro_bot` (8542033508), not the canonical production bot
+  `AstroGrace_Bot` (8541896258).
+- `lib/hooks/use-share-invite.ts:40`: fallback `APP_URL =
+  "https://t.me/vi_astro_bot/app"` — same wrong-bot class on the client.
+- Apex `.env.production` already carries `BOT_USERNAME="AstroGrace_Bot"`,
+  but `apps/api/app/core/config.py` exposes no `bot_username` setting and
+  `referral.py` ignores the env entirely (hardcoded literal).
+
+Impact: every production referral share routes invitees to the dev bot's
+Mini App (wrong bot, wrong surface); the `startapp={tg_user_id}` attribution
+is attached to the wrong bot. Referral acquisition in production is
+effectively broken/misrouted.
+
+Minimal fix (NOT applied — awaiting owner decision):
+
+1. `config.py`: add `bot_username` setting (env `BOT_USERNAME`, no default
+   secret); `referral.py`: build invite_url from
+   `settings.bot_username` instead of the literal.
+2. `use-share-invite.ts`: align fallback `APP_URL` with the canonical bot
+   (or drop the hardcode in favor of the API-provided URL + config-driven
+   fallback).
+3. Tests: referral endpoint returns the AstroGrace_Bot URL; share fallback
+   matches the canonical bot; no `vi_astro_bot` remains in product paths.
+4. Redeploy via the canonical path (new main SHA → images → orchestrator).
+
+## Addendum 2 — referral/share blocker FIXED and redeployed (2026-07-18)
+
+- Fix (PR #6, merged): `config.py` `bot_username` setting (BOT_USERNAME env,
+  default AstroGrace_Bot); `referral.py` inviteUrl from settings (hardcode
+  removed); compose passes BOT_USERNAME fail-closed; share fallback and
+  `/reset` page aligned to AstroGrace_Bot. Tests: referral exact canonical
+  URL with pinned settings (hardcode-proof), share fallback updated; pytest
+  9/9, vitest 6/6, eslint 0; product paths free of `vi_astro_bot`.
+- Canonical redeploy via Deploy Production workflow (run 29662894167,
+  build+deploy success through the forced-command path): active release
+  **`750d818006fb31d239caf0dbd596ac9fa1595a16`**, previous recorded
+  `b156f60e…` (rollback target). Loopback health ×3 exact + HTTPS 200.
+- Production proof: HMAC auth (200) → `GET /api/referral` →
+  `https://t.me/AstroGrace_Bot/app?startapp=<id>` (dev bot absent) → logout
+  204 → smoke user row deleted (1→0).
+- Frontend bundle proof: `AstroGrace_Bot` present in built chunks,
+  `vi_astro_bot` absent from `/app/.next-prod` in the running container.
