@@ -194,6 +194,25 @@ those later slices.
   file feeding the script), never modify the audit pipeline itself.
 - **Pass/fail:** byte-stable audit artifacts across two runs (hash match).
 
+### Status note (2026-07-19, acceptance slice)
+
+- **P1-1 partial ✅:** `artifact-acceptance` job in `deploy-production.yml`
+  (blocking for deploy): ephemeral Postgres + migrations, seed from the
+  EXACT committed `00_input_profile.json` (external adapter, ephemeral DB
+  only), exact-image sidecar proof (`engine=swieph` + release_sha),
+  `make audit-day-freeze` ×2 with byte-stability + untracked-artifact
+  cleanliness, `check_audit_golden.py`, `prove_today_v2_real_api.py`
+  (explicit dev env). No OpenRouter dependency for frozen mode (it uses the
+  committed baseline).
+- **P1-3 BLOCKED (honest):** the V2 same-payload UI proof
+  (`e2e/mock-visual/acceptance-day.spec.ts` + preview
+  `ACCEPTANCE_PAYLOAD_PATH` override) fails closed while the committed
+  artifact is `today/v1` — it requires an owner-approved committed
+  `today.v2.x` `11_final_today_payload.json` (live audit refresh). Evidence
+  screenshot is not a visual baseline; P1-3 stays open.
+- **P1-2 NOT started:** independent oracle source + tolerances need owner
+  input; nothing invented.
+
 ### P1-2. Independent calculation oracle
 
 - **Goal:** owner-approved independent reference for positions/houses/

@@ -67,14 +67,19 @@ function sendJson(res, status, body) {
 }
 
 function createMockServer() {
-  const dayV2 = loadJson("day-v2-2026-07-08.json")
+  // Acceptance override: serve the exact audit payload instead of the bundled
+  // fixture when ACCEPTANCE_PAYLOAD_PATH points at a produced artifact JSON.
+  const overridePath = process.env.ACCEPTANCE_PAYLOAD_PATH
+  const dayV2 = overridePath
+    ? JSON.parse(readFileSync(overridePath, "utf-8"))
+    : loadJson("day-v2-2026-07-08.json")
   const week = loadJson("week-neighbours.json")
   const calendar = loadJson("calendar-2026-07.json")
   const profile = loadJson("profile.json")
   const referral = loadJson("referral.json")
 
   const dayByDate = {
-    "2026-07-08": dayV2,
+    [overridePath ? dayV2.date : "2026-07-08"]: dayV2,
     ...week,
   }
 
@@ -216,7 +221,7 @@ async function main() {
     try {
       originalEnvBytes = readFileSync(envFile)
       originalEnvMode = statSync(envFile).mode & 0o777
-    } catch (e) {
+    } catch {
       console.error(`[preview:v2] Warning: Could not read existing next-env.d.ts.`)
     }
   }
@@ -228,7 +233,7 @@ async function main() {
     try {
       originalTsconfigBytes = readFileSync(tsconfigFile)
       originalTsconfigMode = statSync(tsconfigFile).mode & 0o777
-    } catch (e) {
+    } catch {
       console.error(`[preview:v2] Warning: Could not read existing tsconfig.json.`)
     }
   }

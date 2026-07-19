@@ -169,9 +169,148 @@ jobs:
           done
   # END_BLOCK: BUILD_JOB
 
+  # START_BLOCK: ACCEPTANCE_JOB
+  # Blocking release-quality acceptance: audit-day-freeze byte-stability,
+  # golden snapshots, real V2 API proof, and the same-payload V2 UI proof.
+  # Fails closed on any missing acceptance input; deploy depends on it.
+  artifact-acceptance:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: astro
+          POSTGRES_PASSWORD: acceptance-pw
+          POSTGRES_DB: astro
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U astro -d astro"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install API dependencies into the Makefile venv path
+        run: |
+          python -m venv apps/api/.venv
+          apps/api/.venv/bin/pip install --upgrade pip
+          apps/api/.venv/bin/pip install -e ./packages/py-contracts -e './apps/api[dev]' -e './apps/solarsage[dev]'
+
+      - name: Run migrations on the ephemeral acceptance DB
+        env:
+          DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
+        run: apps/api/.venv/bin/alembic upgrade head
+
+      - name: Seed the exact committed audit profile (ephemeral DB only)
+        env:
+          DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
+        run: |
+          uuid=$(apps/api/.venv/bin/python scripts/acceptance/seed_audit_profile.py | tail -1 | cut -d= -f2)
+          [ -n "$uuid" ] || { echo "Error: seed adapter did not return a user uuid" >&2; exit 1; }
+          echo "AUDIT_USER_UUID=$uuid" >> "$GITHUB_ENV"
+
+      - name: Log in to registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Start sidecar from the exact image (production mode, baked ephemeris)
+        env:
+          REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          docker run -d --name acceptance-sidecar -p 127.0.0.1:18091:8001 \
+            -e SOLARSAGE_APP_ENV=production \
+            -e SOLARSAGE_RELEASE_SHA="$GITHUB_SHA" \
+            "$REGISTRY_NAMESPACE/solarsage-sidecar:$GITHUB_SHA"
+          ok=""
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:18091/v1/health > /tmp/sidecar-health.json 2>/dev/null; then ok=1; break; fi
+            sleep 2
+          done
+          [ -n "$ok" ] || { docker logs acceptance-sidecar | tail -30; exit 1; }
+          python3 -c 'import json,sys; h=json.load(open("/tmp/sidecar-health.json")); assert h.get("engine")=="swieph", h; assert h.get("release_sha")=="'"$GITHUB_SHA"'", h; assert not h.get("fallback", True), h; print("sidecar health OK:", h["engine"], h["ephemeris_artifact_id"])'
+
+      - name: Audit day freeze — run 1 (deterministic, committed baseline)
+        env:
+          DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
+          SOLARSAGE_URL: http://127.0.0.1:18091
+        run: |
+          make audit-day-freeze USER_ID="$AUDIT_USER_UUID" DATE=2026-07-08
+          find artifacts/audit/2026-07-08 -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/audit-hash-1.txt
+
+      - name: Audit day freeze — run 2 (byte-stability proof)
+        env:
+          DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
+          SOLARSAGE_URL: http://127.0.0.1:18091
+        run: |
+          make audit-day-freeze USER_ID="$AUDIT_USER_UUID" DATE=2026-07-08
+          find artifacts/audit/2026-07-08 -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/audit-hash-2.txt
+          diff /tmp/audit-hash-1.txt /tmp/audit-hash-2.txt
+          git diff --exit-code -- artifacts/ || { echo "Error: tracked audit artifacts changed between freeze runs" >&2; exit 1; }
+          leftovers=$(git status --porcelain -- artifacts/)
+          [ -z "$leftovers" ] || { echo "Error: untracked artifacts left after freeze runs:" >&2; echo "$leftovers" >&2; exit 1; }
+          echo "audit-day-freeze byte-stable across two runs (tracked + untracked clean)"
+
+      - name: Golden snapshots gate
+        run: apps/api/.venv/bin/python scripts/check_audit_golden.py
+
+      - name: Real V2 API proof (ASGI transport, ephemeral stack)
+        env:
+          DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
+          SOLARSAGE_URL: http://127.0.0.1:18091
+          OPENROUTER_API_KEY: ${{ secrets.E2E_OPENROUTER_API_KEY }}
+          APP_ENV: development
+          DEV_MODE: "true"
+          SESSION_COOKIE_SECURE: "false"
+          TELEGRAM_BOT_TOKEN: acceptance-test-token
+          GRACE_USER_SALT: acceptance-test-salt-0123456789abcdef0123456789
+          SOLARSAGE_V2_ENABLED: "true"
+        run: apps/api/.venv/bin/python scripts/prove_today_v2_real_api.py --transport asgi --date 2026-07-08 --out /tmp/v2-proof.json
+
+      - name: Same-payload V2 UI proof (DOM contract + evidence screenshot)
+        env:
+          ACCEPTANCE_PAYLOAD_PATH: artifacts/audit/2026-07-08/11_final_today_payload.json
+          E2E_BASE_URL: http://127.0.0.1:3003
+        run: |
+          set -euo pipefail
+          [ -f "$ACCEPTANCE_PAYLOAD_PATH" ] || { echo "Error: audit payload artifact missing: $ACCEPTANCE_PAYLOAD_PATH" >&2; exit 1; }
+          corepack enable
+          pnpm install --frozen-lockfile
+          npx playwright install --with-deps chromium
+          node e2e/mock-visual/start-v2-preview.mjs > /tmp/preview.log 2>&1 &
+          echo $! > /tmp/preview.pid
+          trap 'kill $(cat /tmp/preview.pid) 2>/dev/null || true' EXIT
+          npx playwright test e2e/mock-visual/acceptance-day.spec.ts --project=chromium
+
+      - name: Upload acceptance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-${{ github.sha }}
+          path: |
+            artifacts/audit/2026-07-08/
+            artifacts/acceptance-today.png
+            /tmp/v2-proof.json
+  # END_BLOCK: ACCEPTANCE_JOB
+
   # START_BLOCK: DEPLOY_JOB
   deploy:
-    needs: build
+    needs: [build, artifact-acceptance]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions: {}
