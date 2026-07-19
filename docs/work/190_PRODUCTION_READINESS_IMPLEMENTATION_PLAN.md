@@ -194,6 +194,47 @@ those later slices.
   file feeding the script), never modify the audit pipeline itself.
 - **Pass/fail:** byte-stable audit artifacts across two runs (hash match).
 
+### Status note 2 (2026-07-19, P1-4/P1-5 slice)
+
+- **P1-4 done ✅:** `today.spec.ts` rewritten without early returns
+  (`ensureOnboarded` completes the REAL onboarding via `completeOnboarding`
+  copied step-for-step from onboarding-real); `cross-feature-navigation.spec.ts`
+  rewritten with required link+destination assertions (no conditional clicks,
+  no expect(true)); `deriveTelegramUserId` now run-salted
+  (E2E_RUN_SALT/GITHUB_RUN_ID) with created-id persistence to
+  E2E_CREATED_USERS_FILE; cleanup adapter
+  `scripts/acceptance/cleanup_e2e_users.py` (guarded APP_ENV=test|acceptance +
+  localhost DB, per-id verified deletion) wired into `e2e.yml` as a separate
+  `if: always()` step; `e2e/README.md` corrected (manual-only trigger, real
+  spec inventory, stale refs removed).
+- **P1-5 PARTIAL / in progress (measured facts, no invented thresholds; acceptance runs pending):**
+  - sidecar: TOTAL **90.97%** after deleting dead `services/calculator.py`
+    (zero runtime callers, rg-verified; not replaced by tests for dead code);
+  - frontend: lines/statements **46.67%**, functions **64.89%**, branches
+    **76.38%** (v8, 1099 tests green) — thresholds wired as Vitest built-in
+    `coverage.thresholds` (46/46/64/76);
+  - API: TOTAL **81.77%** (1490 passed, integration-marked tests excluded;
+    critical rows auth 62, geo 53, referral 43, telegram_webhook 91,
+    access 69, geonames 53, llm 60, today_service 89, today_interpretation 88).
+  - CI gates (ci.yml): pytest coverage + TOTAL via `coverage report
+    --fail-under` (API 82, sidecar 89) + per-file built-in
+    `--include/--fail-under` gates + diff-cover (changed lines >= 80 on PR)
+    + artifact uploads. Measured finding: `--cov-fail-under` in pytest-cov
+    prints FAIL but exits 0 in this env — TOTAL gates therefore use the
+    coverage CLI directly.
+  - Exclusions (documented): `test_audit_live_isolates_output` marked
+    `@pytest.mark.integration` (env-dependent audit integration; canonical
+    gate is artifact-acceptance + make audit-day).
+  - diff-cover threshold part: wired off-the-shelf (PR-only step) but NOT
+    yet accepted against a real PR; two consecutive candidate runs are still
+    pending. Frontend changed-lines coverage is NOT claimed.
+    Coverage tooling: `pytest-cov` in api+solarsage dev deps,
+    `@vitest/coverage-v8` in frontend dev deps (lockfile updated).
+  - Measured findings honored: dead `services/calculator.py` (zero runtime
+    callers) deleted, not covered by new tests; TOTAL floors set at the
+    measured baselines (API 81, sidecar 90); API result 1490 passed /
+    4 skipped / 7 deselected, sidecar 220 passed.
+
 ### Status note (2026-07-19, acceptance slice)
 
 - **P1-1 partial ✅:** `artifact-acceptance` job in `deploy-production.yml`

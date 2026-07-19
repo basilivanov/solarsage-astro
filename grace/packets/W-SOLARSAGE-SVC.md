@@ -70,12 +70,6 @@ Refactor monolithic SolarSage into modular architecture: services (natal, transi
 
 ## Migration Notes
 
-**Before (W-3.2):**
-```python
-# Monolithic calculator
-from ..services.calculator import calculate_planets, calculate_houses
-```
-
 **After (W-SOLARSAGE-SVC):**
 ```python
 # Modular services
@@ -84,7 +78,7 @@ from ..utils.ephemeris import calculate_positions
 ```
 
 **Deprecated:**
-- `services/calculator.py` — Functions moved to utils/ephemeris.py and services
+- `services/calculator.py` — Functions moved to utils/ephemeris.py and services; the dead module was later removed (zero runtime callers)
 
 **Future Services:**
 - ProgressionsService — Secondary progressions

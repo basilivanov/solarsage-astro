@@ -1,62 +1,49 @@
 // AI_HEADER
 // module: M-TEST-CROSS-FEATURE-NAVIGATION
 // wave: W-TEST-3
-// purpose: Test navigation between Day, Chat, Readings, Calendar — real Telegram auth
+// purpose: Test navigation between Day, Calendar, Chat, Profile — real Telegram auth, no skips
 
-import { test, expect } from './fixtures';
+import { test, expect, completeOnboarding } from './fixtures';
 
 test.describe('Cross-Feature Navigation', () => {
-  test('should navigate Day → Calendar → Chat → Profile', async ({ page }) => {
+  test('should navigate Day → Calendar → Chat → Profile → Day', async ({ page }) => {
     test.setTimeout(60000);
 
-    // Navigate through home to trigger auth + redirect
     await page.goto('/');
     await page.waitForTimeout(5000);
-
-    const url = page.url();
-
-    // If new user (onboarding), skip navigation test
-    if (url.includes('/onboarding')) {
-      console.log('New user — skipping navigation test (needs onboarding first)');
-      return;
+    if (page.url().includes('/onboarding')) {
+      await completeOnboarding(page);
     }
 
-    // Should be on day page now
-    console.log('Current URL:', url);
+    // Day is the starting point — required, never conditional.
+    await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });
 
-    // Navigate to calendar via bottom tab
+    // Calendar: required link and required destination.
     const calendarLink = page.locator('a[href="/calendar"]');
-    if (await calendarLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await calendarLink.click();
-      await page.waitForTimeout(2000);
-      console.log('Navigated to calendar:', page.url());
-    }
+    await expect(calendarLink).toBeVisible({ timeout: 5000 });
+    await calendarLink.click();
+    await expect(page).toHaveURL(/\/calendar/);
+    await expect(page.getByTestId('calendar-grid')).toBeVisible({ timeout: 10000 });
 
-    // Navigate to chat
+    // Chat: required link and required destination.
     const chatLink = page.locator('a[href="/chat"]');
-    if (await chatLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await chatLink.click();
-      await page.waitForTimeout(2000);
-      console.log('Navigated to chat:', page.url());
-    }
+    await expect(chatLink).toBeVisible({ timeout: 5000 });
+    await chatLink.click();
+    await expect(page).toHaveURL(/\/chat/);
+    await expect(page.locator('main')).toBeVisible({ timeout: 5000 });
 
-    // Navigate to profile
+    // Profile: required link and required destination.
     const profileLink = page.locator('a[href="/profile"]');
-    if (await profileLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await profileLink.click();
-      await page.waitForTimeout(2000);
-      console.log('Navigated to profile:', page.url());
-    }
+    await expect(profileLink).toBeVisible({ timeout: 5000 });
+    await profileLink.click();
+    await expect(page).toHaveURL(/\/profile/);
+    await expect(page.getByTestId('profile-screen')).toBeVisible({ timeout: 10000 });
 
-    // Navigate back to day
+    // Back to day: required link and required destination.
     const dayLink = page.locator('a[href="/day/today"]');
-    if (await dayLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await dayLink.click();
-      await page.waitForTimeout(2000);
-      console.log('Navigated back to day:', page.url());
-    }
-
-    // All navigations should have completed without errors
-    expect(true).toBe(true);
+    await expect(dayLink).toBeVisible({ timeout: 5000 });
+    await dayLink.click();
+    await expect(page).toHaveURL(/\/day\/today/);
+    await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 10000 });
   });
 });

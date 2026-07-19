@@ -214,6 +214,8 @@ jobs:
             export E2E_BASE_URL=http://127.0.0.1:3002
             export E2E_API_BASE_URL=http://127.0.0.1:8000
             export TELEGRAM_BOT_TOKEN="$E2E_TELEGRAM_BOT_TOKEN"
+            export E2E_RUN_SALT="${{ github.run_id }}"
+            export E2E_CREATED_USERS_FILE=/tmp/solarsage-e2e-created-users.jsonl
             export CI=true
 
             if [ "${{ github.event.inputs.suite }}" = "smoke" ]; then
@@ -228,6 +230,14 @@ jobs:
           # Remove trap and perform normal cleanup
           trap - EXIT INT TERM
           cleanup_stack
+
+      - name: Cleanup created E2E users (ephemeral acceptance DB, always runs)
+        if: always()
+        env:
+          APP_ENV: acceptance
+          DATABASE_URL: postgresql+asyncpg://astro:astro_test_password@localhost:5432/astro
+          E2E_CREATED_USERS_FILE: /tmp/solarsage-e2e-created-users.jsonl
+        run: python scripts/acceptance/cleanup_e2e_users.py
 
       - name: Upload test results
         if: always()

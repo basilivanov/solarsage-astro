@@ -47,6 +47,17 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     include: ['__tests__/**/*.test.ts', '__tests__/**/*.test.tsx'],
+    // Built-in coverage thresholds from the measured baseline (2026-07-19):
+    // lines/statements 46.67 -> 46, functions 64.89 -> 64, branches 76.38 -> 76.
+    coverage: {
+      provider: 'v8',
+      thresholds: {
+        lines: 46,
+        statements: 46,
+        functions: 64,
+        branches: 76,
+      },
+    },
   },
   resolve: {
     alias: {

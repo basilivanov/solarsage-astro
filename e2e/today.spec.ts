@@ -1,38 +1,31 @@
 // ############################################################################
 // AI_HEADER: MODULE_E2E_TODAY
-// ROLE: E2E tests for Today screen — real Telegram auth, no mocks
+// ROLE: E2E tests for Today screen — real Telegram auth, no mocks, no skips
 // DEPENDENCIES: @playwright/test, real backend with TELEGRAM_BOT_TOKEN
 // GRACE_ANCHORS: [E2E_TODAY_TESTS]
 // ############################################################################
 
-import { test, expect } from './fixtures';
+import { test, expect, completeOnboarding } from './fixtures';
+
+// START_BLOCK: ENSURE_ONBOARDED
+// Every test reaches a real profile: if the app redirects to onboarding,
+// the REAL onboarding flow is completed instead of returning green early.
+async function ensureOnboarded(page: import('@playwright/test').Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('lumen:onboarded', '1');
+  });
+  await page.goto('/');
+  await page.waitForTimeout(3000);
+  if (page.url().includes('/onboarding')) {
+    await completeOnboarding(page);
+  }
+}
+// END_BLOCK: ENSURE_ONBOARDED
 
 test.describe('Today Screen - Real Auth', () => {
   test('today screen loads after Telegram auth', async ({ page }) => {
-    test.setTimeout(30000);
-
-    // Set onboarded flag so we skip onboarding flow
-    await page.addInitScript(() => {
-      localStorage.setItem('lumen:onboarded', '1');
-    });
-
-    // Navigate through home page to trigger auth + redirect
-    await page.goto('/');
-
-    // Wait for auth to complete and page to settle
-    await page.waitForTimeout(3000);
-
-    // Should land on either /day/today (onboarded) or /onboarding
-    const url = page.url();
-    console.log('Landed at:', url);
-
-    if (url.includes('/onboarding')) {
-      // New user — need to complete onboarding first
-      // But the page should at least render (no white screen)
-      await expect(page.locator('text=/Продолжить|продолжить/i')).toBeVisible({ timeout: 5000 });
-      console.log('Onboarding page rendered — user needs onboarding');
-      return; // onboarding test is a separate spec
-    }
+    test.setTimeout(60000);
+    await ensureOnboarded(page);
 
     const todayScreen = page.getByTestId('today-screen');
     await expect(todayScreen).toBeVisible({ timeout: 15000 });
@@ -51,16 +44,8 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('no placeholder when API returns real data', async ({ page }) => {
-    test.setTimeout(30000);
-
-    await page.addInitScript(() => localStorage.setItem('lumen:onboarded', '1'));
-
-    await page.goto('/');
-    await page.waitForTimeout(6000);
-
-    if (page.url().includes('/onboarding')) {
-      return;
-    }
+    test.setTimeout(60000);
+    await ensureOnboarded(page);
 
     await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });
 
@@ -71,21 +56,8 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('calendar navigation with real auth', async ({ page }) => {
-    test.setTimeout(30000);
-
-    await page.addInitScript(() => {
-      localStorage.setItem('lumen:onboarded', '1');
-    });
-
-    // Go via home to trigger auth
-    await page.goto('/');
-    await page.waitForTimeout(3000);
-
-    // If we land on onboarding, skip the calendar test
-    if (page.url().includes('/onboarding')) {
-      console.log('Skipping calendar — user needs onboarding');
-      return;
-    }
+    test.setTimeout(60000);
+    await ensureOnboarded(page);
 
     await page.goto('/calendar');
     await expect(page.getByTestId('calendar-grid')).toBeVisible({ timeout: 15000 });
@@ -97,19 +69,8 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('week strip navigation with real auth', async ({ page }) => {
-    test.setTimeout(30000);
-
-    await page.addInitScript(() => {
-      localStorage.setItem('lumen:onboarded', '1');
-    });
-
-    await page.goto('/');
-    await page.waitForTimeout(3000);
-
-    if (page.url().includes('/onboarding')) {
-      console.log('Skipping week strip — user needs onboarding');
-      return;
-    }
+    test.setTimeout(60000);
+    await ensureOnboarded(page);
 
     await page.goto('/day/today');
     await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });

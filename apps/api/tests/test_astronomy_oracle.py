@@ -277,6 +277,7 @@ def test_audit_default_fails_fast_on_invalid_baseline(tmp_path: Path):
     existing = list(out.rglob("*"))
     assert len(existing) == 1 and existing[0].name == "11_final_today_payload.json"
 
+@pytest.mark.integration
 def test_audit_live_isolates_output(tmp_path: Path):
     """Live mode must write only under live/<timestamp>/ and not to canonical root.
     Must fail when subprocess fails (detects regression in live execution)."""

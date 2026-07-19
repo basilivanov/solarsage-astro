@@ -25,6 +25,7 @@ dev = [
   "ruff",
   "pytest",
   "pytest-asyncio",
+  "pytest-cov",
   "mypy",
 ]
 
@@ -49,3 +50,6 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: integration tests requiring the live audit environment (excluded from ordinary unit coverage)",
+]

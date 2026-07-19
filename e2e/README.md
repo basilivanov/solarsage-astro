@@ -40,31 +40,21 @@ Playwright E2E tests для SolarSage Astro, которые ловят 95% ош�
 
 ## Что тестируем
 
-### 1. API Integration (`api-integration.spec.ts`)
-- ✅ Отсутствие бесконечной загрузки
-- ✅ Обработка 401 Unauthorized
-- ✅ Обработка network errors
-- ✅ Обработка 500 Internal Server Error
-- ✅ Tracking API response times
-- ✅ Capture console errors
+Real E2E suites (real Telegram HMAC, no route interception except where noted):
 
-### 2. Performance (`performance.spec.ts`)
-- ✅ Page load time (< 5 seconds)
-- ✅ First Contentful Paint (FCP)
-- ✅ Memory leaks detection
-- ✅ API response time
-- ✅ Long tasks detection
-
-### 3. GRACE Logs (`grace-logs.spec.ts`)
-- ✅ Frontend log shipping
-- ✅ Navigation events logging
-- ✅ Error events capture
-- ✅ Log shipping latency
-
-### 4. User Flows (`today.spec.ts`)
-- ✅ Today screen loads
-- ✅ Calendar navigation
-- ✅ Week strip navigation
+- `today.spec.ts` — Today screen after real auth/onboarding, calendar navigation,
+  week strip navigation.
+- `onboarding-real.spec.ts` — full real onboarding flow.
+- `calendar.spec.ts` — calendar grid and day navigation.
+- `cross-feature-navigation.spec.ts` — Day → Calendar → Chat → Profile → Day
+  with required link and destination assertions (no conditional passes).
+- `locked-features.spec.ts` — locked/paywalled states.
+- `edge-cases.spec.ts` — edge cases (contains one page.route interception).
+- `hydration-guard.spec.ts` — hydration stability.
+- `real-v2-preview.spec.ts` — V2 preview, strictly no interception (uses
+  `/api/auth/dev` instead of Telegram HMAC).
+- `dev-timing-fixture.spec.ts`, `dev-visible-sphere-status.spec.ts` — dev
+  fixtures for timing/sphere states.
 
 ## Quick Start
 
@@ -88,7 +78,7 @@ pnpm test:e2e
 pnpm test:e2e:ui
 
 # Run specific test file
-pnpm exec playwright test e2e/api-integration.spec.ts
+pnpm exec playwright test e2e/today.spec.ts
 
 # Run in headed mode (see browser)
 pnpm exec playwright test --headed
@@ -143,11 +133,10 @@ cat test-results/error-events.json
 
 ## CI/CD Integration
 
-GitHub Actions автоматически запускает E2E тесты при:
-- Push в `main` или `develop`
-- Pull Request
-
-См. `.github/workflows/e2e.yml`
+E2E tests are **manual-only**: `.github/workflows/e2e.yml` runs exclusively via
+`workflow_dispatch` (no automatic triggers on push or pull_request), with a
+`suite` input (`smoke` = today/calendar/cross-feature-navigation on Chromium,
+`full` = all specs). Run locally or trigger the workflow explicitly.
 
 ## Debugging Failed Tests
 
@@ -170,7 +159,7 @@ pnpm exec playwright show-trace test-results/trace.zip
 
 ### 4. Run in debug mode
 ```bash
-pnpm exec playwright test --debug e2e/api-integration.spec.ts
+pnpm exec playwright test --debug e2e/today.spec.ts
 ```
 
 ## Common Issues
@@ -190,7 +179,7 @@ pnpm exec playwright test --debug e2e/api-integration.spec.ts
 
 **Решение:**
 - Тесты должны мокать API или использовать тестовую сессию
-- См. `api-integration.spec.ts` для примеров мокирования
+- Mock/fixture layer lives only in `e2e/mock-visual/` (test-only route interception)
 
 ### Issue: "Port 3002 already in use"
 
