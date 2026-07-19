@@ -219,7 +219,7 @@ def calculate_solar_arc_context(
     # returns: SolarArcContext with delta, positions, natal data
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-PROGRESSIONS.calculate_solar_arc_context
     """Calculate solar arc context: progressed Sun, delta, and solar arc positions."""
-    swe.set_ephe_path("/opt/sweph/ephe")
+    # Engine path is configured by core/ephemeris_runtime (single owner).
     flags = swe.FLG_SWIEPH
 
     birth_jd, target_jd, age_years, progressed_jd = _compute_progressed_jd(
@@ -375,7 +375,7 @@ def calculate_secondary_progression_context(
     # returns: SecondaryProgressionContext
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-PROGRESSIONS.calculate_secondary_progression_context
     """Calculate secondary progression context."""
-    swe.set_ephe_path("/opt/sweph/ephe")
+    # Engine path is configured by core/ephemeris_runtime (single owner).
     flags = swe.FLG_SWIEPH
 
     birth_jd, target_jd, age_years, progressed_jd = _compute_progressed_jd(

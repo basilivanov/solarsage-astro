@@ -235,8 +235,7 @@ while IFS= read -r rel; do
     scripts/deploy/lib/prod-*)
       compat_section | grep -qF 'scripts/lib/prod-<name>' || compat_report "$rel" ;;
     scripts/deploy/tests/test-prod-namespace-layout.sh|\
-    scripts/deploy/tests/test-prod-orchestrator.sh|\
-    scripts/deploy/lib/ephemeris_artifact_check.py)
+    scripts/deploy/tests/test-prod-orchestrator.sh)
       # New files after the namespace refactor: must be marked as new, not
       # mapped from old paths.
       compat_section | sed -n '/^### New files/,$p' | grep -qF "$rel" || compat_report "$rel (not marked new)" ;;

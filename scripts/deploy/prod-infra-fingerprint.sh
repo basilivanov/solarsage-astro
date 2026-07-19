@@ -53,8 +53,6 @@ FILES=(
   "infra/systemd/solarsage-backup.service"
   "infra/systemd/solarsage-backup.timer"
   "scripts/deploy/prod-orchestrator.sh"
-  "scripts/deploy/prod-ephemeris-install.sh"
-  "scripts/deploy/lib/ephemeris_artifact_check.py"
   "scripts/deploy/prod-host-prepare.sh"
   "scripts/deploy/prod-infra-fingerprint.sh"
   "scripts/deploy/lib/prod-path-transaction.sh"

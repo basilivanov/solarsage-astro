@@ -36,8 +36,9 @@ class Settings(BaseSettings):
     port: int = 18091
 
     # Ephemeris
-    # Canonical pinned artifact root (per doc 80 layout: <root>/{ephe,manifest.json,manifest.sha256}).
-    ephemeris_root: str = "/opt/solarsage-ephemeris/current"
+    # Canonical pinned artifact root baked into the sidecar image at build
+    # (no symlinks; per the simplified image-baked design).
+    ephemeris_root: str = "/opt/solarsage-ephemeris/bundle"
     # Legacy data dir used ONLY by the explicit non-production moshier mode.
     ephemeris_path: str = "/opt/sweph/ephe"
     # Explicit test-only switch: accept Moshier instead of the pinned Swiss

@@ -16,7 +16,7 @@
 #          angles, timestamps
 # dependencies: swisseph, ephemeris utils
 # side_effects: Calls Swiss Ephemeris solcross_ut/mooncross_ut/calc_ut,
-#   calculate_positions, calculate_houses_cusps, and swe.set_ephe_path in helper
+#   calculate_positions, calculate_houses_cusps via the single runtime owner
 #   searches.
 # emitted_logs: none
 # invariants:
@@ -235,7 +235,7 @@ def find_solar_return_jd(
     # purpose: Find exact Julian Day of solar return crossing for target year.
     # inputs: natal_sun_longitude, birth_month, birth_day, target_year.
     # returns: float Julian Day.
-    # side_effects: calls swe.set_ephe_path, swe.solcross_ut, and swe.calc_ut.
+    # side_effects: ephemeris calculations via cross_ut_checked/calc_ut_checked (single runtime owner).
     # error_behavior: raises ValueError if crossing not found or precision > 0.001.
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.find_solar_return_jd
     # handle Feb 29 birth search starting date clamp
@@ -247,7 +247,7 @@ def find_solar_return_jd(
     birthday_target = Date(target_year, search_month, search_day)
     search_start = calculate_julian_day(birthday_target.isoformat(), "00:00", "UTC") - 3.0
 
-    swe.set_ephe_path("/opt/sweph/ephe")
+    # Engine path is configured by core/ephemeris_runtime (single owner).
     flags = swe.FLG_SWIEPH
     try:
         return_jd = cross_ut_checked(swe.solcross_ut, natal_sun_longitude, search_start, flags)
@@ -333,7 +333,7 @@ def calculate_lunar_return(
     target_jd = calculate_julian_day(target_date, target_time, target_tz)
 
     # 3. Search for the most recent crossing — iterative enumeration
-    swe.set_ephe_path("/opt/sweph/ephe")
+    # Engine path is configured by core/ephemeris_runtime (single owner).
     flags = swe.FLG_SWIEPH
 
     target_jd_val = target_jd
@@ -425,10 +425,10 @@ def find_next_lunar_return_jd(
     # purpose: Find exact Julian Day of next lunar return after after_jd.
     # inputs: natal_moon_longitude, after_jd.
     # returns: float Julian Day.
-    # side_effects: calls swe.set_ephe_path, swe.mooncross_ut, and swe.calc_ut.
+    # side_effects: ephemeris calculations via cross_ut_checked/calc_ut_checked (single runtime owner).
     # error_behavior: raises ValueError if crossing cannot be found or precision > 0.001.
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-RETURNS.find_next_lunar_return_jd
-    swe.set_ephe_path("/opt/sweph/ephe")
+    # Engine path is configured by core/ephemeris_runtime (single owner).
     flags = swe.FLG_SWIEPH
     epsilon = 1e-8
     try:

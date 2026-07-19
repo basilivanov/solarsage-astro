@@ -103,6 +103,32 @@ jobs:
           printf '%s' "${{ secrets.GITHUB_TOKEN }}" | \
             docker login "$host" -u "${{ github.actor }}" --password-stdin
 
+      - name: Fetch and verify licensed ephemeris bundle (fail closed)
+        env:
+          EPHEMERIS_BUNDLE_URL: ${{ vars.EPHEMERIS_BUNDLE_URL }}
+          EPHEMERIS_BUNDLE_SHA256: ${{ vars.EPHEMERIS_BUNDLE_SHA256 }}
+          EPHEMERIS_BUNDLE_CREDENTIAL: ${{ secrets.EPHEMERIS_BUNDLE_CREDENTIAL }}
+        run: |
+          set -euo pipefail
+          : "${EPHEMERIS_BUNDLE_URL:?missing required repository variable EPHEMERIS_BUNDLE_URL (OCI/release-asset source of the licensed bundle tar) — sidecar image cannot be proven without it}"
+          : "${EPHEMERIS_BUNDLE_SHA256:?missing required repository variable EPHEMERIS_BUNDLE_SHA256 (exact tar checksum)}"
+          case "$EPHEMERIS_BUNDLE_URL" in
+            https://*) ;;
+            *) echo "Error: EPHEMERIS_BUNDLE_URL must be an https URL" >&2; exit 1 ;;
+          esac
+          if [[ ! "$EPHEMERIS_BUNDLE_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Error: EPHEMERIS_BUNDLE_SHA256 must be 64 lowercase hex" >&2; exit 1
+          fi
+          auth_args=()
+          if [ -n "${EPHEMERIS_BUNDLE_CREDENTIAL:-}" ]; then
+            auth_args=(-H "Authorization: Bearer ${EPHEMERIS_BUNDLE_CREDENTIAL}")
+          fi
+          curl -fsSL --retry 3 "${auth_args[@]}" -o /tmp/ephemeris-bundle.tar "$EPHEMERIS_BUNDLE_URL"
+          echo "$EPHEMERIS_BUNDLE_SHA256  /tmp/ephemeris-bundle.tar" | sha256sum -c -
+          mkdir -p /tmp/ephemeris-bundle
+          python3 -c 'import tarfile; tarfile.open("/tmp/ephemeris-bundle.tar").extractall("/tmp/ephemeris-bundle", filter="data")'
+          rm -f /tmp/ephemeris-bundle.tar
+
       - name: Build and push immutable images
         env:
           REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}
@@ -118,13 +144,18 @@ jobs:
               dockerfile="apps/web/Dockerfile"
             fi
             tag="$REGISTRY_NAMESPACE/solarsage-$img:$GITHUB_SHA"
-            docker buildx build \
-              --build-arg RELEASE_SHA="$GITHUB_SHA" \
-              --build-arg PROD_API_REWRITE_BASE_URL="http://api:8000" \
-              --tag "$tag" \
-              --file "$dockerfile" \
-              --push \
+            build_args=(
+              --build-arg "RELEASE_SHA=$GITHUB_SHA"
+              --build-arg "PROD_API_REWRITE_BASE_URL=http://api:8000"
+              --tag "$tag"
+              --file "$dockerfile"
+              --push
               .
+            )
+            if [ "$img" = "sidecar" ]; then
+              build_args=(--build-context "ephemeris=/tmp/ephemeris-bundle" "${build_args[@]}")
+            fi
+            docker buildx build "${build_args[@]}"
           done
 
       - name: Prove pushed image digests

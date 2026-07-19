@@ -277,34 +277,26 @@ Today/Calendar cache is versioned by calculation/scoring/content/canon identity;
 
 ---
 
-## 5.1 Swiss Ephemeris Artifact (Canonical)
+## 5.1 Swiss Ephemeris Artifact (Canonical — image-baked)
 
 Production calculations must run on pinned Swiss Ephemeris files, never on
-the Moshier fallback. Canonical layout (root-owned, immutable):
+the Moshier fallback. The licensed bundle (`ephe/` data + `manifest.json` +
+`manifest.sha256`) is baked INTO the immutable sidecar OCI image at build
+time at the fixed path `/opt/solarsage-ephemeris/bundle` (no symlink, no
+host mount, no host-side installer). The build fails closed without a valid
+bundle or on a Moshier build-time probe.
 
-```text
-/opt/solarsage-ephemeris/
-  releases/<artifact-id>/{ephe/, manifest.json, manifest.sha256}
-  current -> releases/<artifact-id>
-  previous  # preserved prior release path for rollback
-```
-
-Install/verify with the fail-closed installer (no downloads, no fabricated
-bytes, immutable releases, atomic pointer flip). Use the installed canonical
-path — the offline engine oracle needs pyswisseph, so point
-`EPHE_ORACLE_PYTHON` at an interpreter that has it (sidecar venv by default):
-
-```bash
-sudo EPHE_ORACLE_PYTHON=/opt/solarsage-astro/apps/solarsage/venv/bin/python \
-  /usr/local/libexec/solarsage/prod-ephemeris-install --apply /path/to/staged-bundle
-sudo /usr/local/libexec/solarsage/prod-ephemeris-install --check
-```
-
-After install, set `EPHEMERIS_EXPECTED_ARTIFACT_ID` and
-`EPHEMERIS_EXPECTED_MANIFEST_SHA256` in `/etc/solarsage/app.env` to the
-installed values and keep `EXPECTED_CALCULATION_VERSION` current. The
-orchestrator's health proof requires the sidecar to report `engine=swieph`
-and these exact identities; any Moshier fallback fails the deploy closed.
+- Build input: the licensed bundle + provenance is supplied to the image
+  build via the named BuildKit context `ephemeris` (operator/CI secret,
+  never committed to Git).
+- Runtime: the sidecar verifies the bundle manifest at startup and requires
+  returned `FLG_SWIEPH` on probes and on every calculation; production
+  fallback is fatal.
+- Deploy proof: set `EXPECTED_CALCULATION_VERSION`,
+  `EPHEMERIS_EXPECTED_ARTIFACT_ID` and `EPHEMERIS_EXPECTED_MANIFEST_SHA256`
+  in `/etc/solarsage/app.env` to the values of the baked artifact; the
+  orchestrator's health proof matches them exactly against the sidecar's
+  reported identity (`engine=swieph`).
 
 ## 5. Database Migrations (Alembic)
 

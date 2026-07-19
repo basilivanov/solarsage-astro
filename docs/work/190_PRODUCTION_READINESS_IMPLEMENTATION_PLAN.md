@@ -12,9 +12,49 @@ Makefile, `scripts/audit_today.py`, `scripts/deploy/prod-orchestrator.sh`,
 production-ready — Moshier math (empty `/opt/sweph/ephe`), Telegram webhook
 ingress blocked (pending=2), deployed with red CI, no exact-SHA gate.
 
+## Current launch scope
+
+The current gate is limited to the minimal P0 contour below. **P1/P2 are
+NOT cancelled and NOT deferred/non-binding** — they will be implemented as
+their own later phases per owner decision; the earlier P0-1 (workflow
+release-quality gate), P0-3 (Telegram ingress) and P0-4 (migration safety)
+items from the first version of this plan are likewise moved into those
+separate P1/P2 slices by owner decision.
+
+## Simplified P0 ephemeris design (supersedes the installer design)
+
+Owner decision (2026-07-19): the Swiss Ephemeris bundle is BAKED INTO the
+immutable sidecar OCI image at build time. The host installer
+(`prod-ephemeris-install.sh`) and the `/opt/solarsage-ephemeris`
+current/previous host layout are NOT the target design.
+
+- **Pinned artifact/provenance at build:** the sidecar Dockerfile stages the
+  licensed bundle with `manifest.json` + `manifest.sha256` at a fixed image
+  path WITHOUT any symlink (e.g. `/opt/solarsage-ephemeris/bundle` inside
+  the image); build fails closed without the bundle/provenance
+  (build-arg/secret, never committed).
+- **Startup proof:** sidecar startup runs fixed + boundary FLG_SWIEPH probes
+  with returned-flag checks; production is fail-closed on Moshier.
+- **Health identity:** `/v1/health` exposes exact `ephemeris_artifact_id` +
+  `ephemeris_manifest_sha256` + `engine=swieph`; orchestrator `prove_health`
+  requires them and the `EPHEMERIS_EXPECTED_*` env pins exactly.
+- **Superseded commits:** `1c7a884`, `4566462`, `f4fe81f` implement the
+  superseded installer design and REQUIRE REFACTOR BEFORE MERGE. Keep:
+  runtime verifier + returned-flag checks, health v2, exact orchestrator
+  proof, sidecar tests. Remove/replace: host installer, host
+  artifact layout + `current/previous`, host-prepare artifact wiring and
+  compose host mount — replaced by the image-baked bundle.
+
 ---
 
 ## Phase P0 — blocking (before any public exposure)
+
+Scope per owner decision: P0 currently contains ONLY the ephemeris gate
+(P0-2 below) plus the manual launch gates at the end of this phase.
+Former P0-1 (workflow release-quality gate), P0-3 (Telegram ingress) and
+P0-4 (migration safety) are moved to separate P1/P2 slices — see
+"Current launch scope" above; their text below is kept as the design for
+those later slices.
 
 ### P0-1. Exact-SHA release-quality gate in the ONE deploy workflow
 
@@ -47,44 +87,57 @@ ingress blocked (pending=2), deployed with red CI, no exact-SHA gate.
 - **Artifacts:** workflow run evidence per job; pass = all jobs green for
   the exact SHA; fail = no build, no deploy.
 
-### P0-2. Swiss Ephemeris artifact + exact identity (reuse doc 80 design)
+### P0-2. Swiss Ephemeris artifact baked into the sidecar image + exact identity
 
 - **Goal:** production calculates with real Swiss files and PROVES it at
-  host/deploy/runtime layers; identity drift impossible.
-- **Steps (per doc 80):**
-  1. Owner/secret-owner supplies licensed/redistributable artifact bundle
-     (sepl_18.se1, semo_18.se1, …) with provenance; create
-     `/opt/solarsage-ephemeris/releases/<artifact-id>/{ephe/,manifest.json,
-     manifest.sha256}` + atomic `current` symlink (root-owned immutable).
-  2. Offline installer (root-only check/apply): validates tree/manifest/
-     hash, runs offline oracle requiring returned FLG_SWIEPH, atomic
-     install + pointer flip, preserves previous for rollback. (Doc 80 §
-     "Offline installer".)
-  3. Single runtime owner module in sidecar: resolves `current`, verifies
-     manifest identity, `set_ephe_path` once, wraps every calc_ut checking
-     return flags, fatal on fallback under APP_ENV=production.
-  4. Health schema v2: expose `ephemeris_artifact_id`,
-     `ephemeris_manifest_sha256`, `engine=swieph`, `pyswisseph_version`,
-     `calculation_version` (canonical ss-calc-1.2.0), probe
-     flags/fallback=false; orchestrator `prove_health` compares EXACT
-     expected values (not nonempty).
-  5. Compose/host-prepare: mount artifact read-only into sidecar container;
-     remove hardcoded `/opt/sweph/ephe` writes; CI/E2E uses pinned test
-     artifact or explicit Moshier-only label (never counts as prod proof).
-- **Files:** `apps/solarsage/solarsage/core/health.py`, new
-  `apps/solarsage/solarsage/core/ephemeris_runtime.py`, sidecar service paths
-  (calculator/returns/eclipses/progressions), `apps/solarsage/Dockerfile`,
-  `infra/production/docker-compose.app.yml`, `scripts/deploy/*` (host-prepare
-  verify), `scripts/deploy/prod-orchestrator.sh` (prove_health exact match).
-- **Commands:** installer `--check/--apply` on apex; orchestrator preflight;
+  build/runtime/deploy layers; identity drift impossible; no host-side
+  artifact installation.
+- **Design (simplified, owner-approved):** the licensed bundle
+  (`ephe/` data files + `manifest.json` + `manifest.sha256` with
+  provenance: artifact_id, supported_date_range, swiss_data_version,
+  pyswisseph version, full inventory with size+sha256) is staged into the
+  immutable sidecar OCI image at a fixed path WITHOUT symlinks
+  (`/opt/solarsage-ephemeris/bundle`).
+- **Steps:**
+  1. Secret-owner supplies the licensed bundle + provenance as a build
+     input (build-arg/secret, never committed to Git).
+  2. `apps/solarsage/Dockerfile`: stage the bundle at
+     `/opt/solarsage-ephemeris/bundle`, then run the single verifier owner
+     (`solarsage.core.ephemeris_runtime.verify_and_configure`) at build
+     time — build FAILS CLOSED on missing/invalid bundle, bad manifest, or
+     a Moshier-only probe result.
+  3. Sidecar runtime (already implemented): startup gate verifies the
+     manifest + fixed/boundary probes require returned FLG_SWIEPH; every
+     calculation passes `calc_ut_checked`; production fallback is fatal.
+  4. Health: `/v1/health` exposes exact `ephemeris_artifact_id`,
+     `ephemeris_manifest_sha256`, `engine=swieph`, canonical
+     `calculation_version`.
+  5. Orchestrator `prove_health` (already implemented): requires
+     `engine=swieph`, exact `EXPECTED_CALCULATION_VERSION`, and exact
+     `EPHEMERIS_EXPECTED_ARTIFACT_ID` /
+     `EPHEMERIS_EXPECTED_MANIFEST_SHA256` env pins (required keys in
+     `/etc/solarsage/app.env`).
+  6. Compose: NO host ephemeris mount — the bundle lives only inside the
+     image; `SOLARSAGE_EPHEMERIS_ROOT=/opt/solarsage-ephemeris/bundle`,
+     `SOLARSAGE_APP_ENV=production`.
+- **Removed from P0-2 by the simplification:** host installer
+  (`prod-ephemeris-install.sh`), `/opt/solarsage-ephemeris`
+  `current/previous` host layout, host-prepare artifact wiring, and the
+  compose host mount — superseded by the image-baked bundle (superseded
+  commits `1c7a884`, `4566462`, `f4fe81f` require refactor before merge;
+  keep: runtime verifier + flag checks, health v2, exact orchestrator
+  proof, sidecar tests).
+- **Files:** `apps/solarsage/Dockerfile`,
+  `apps/solarsage/solarsage/core/{ephemeris_runtime.py,health.py,config.py}`,
+  `infra/production/docker-compose.app.yml`,
+  `scripts/deploy/prod-orchestrator.sh`.
+- **Responsible:** secret-owner (bundle + provenance at build) → Kimi
+  (Dockerfile/wiring) → operator (env pins).
+- **Blockers:** bundle licensing/provenance decision (owner).
+- **Artifacts:** image manifest identity, build log proof, health v2 JSON,
   deploy health proof.
-- **Responsible:** secret-owner (artifact bytes + provenance) → operator
-  (install) → Kimi (code/wiring).
-- **Blockers:** artifact licensing/provenance decision (owner).
-- **Artifacts:** manifest+sha256, installer log, health v2 JSON,
-  acceptance matrix (doc 80 §"Acceptance matrix") all-pass.
-- **Pass/fail:** retflag SWIEPH in all probes incl. range boundaries;
-  Moshier → fatal everywhere; exact identity in orchestrator status.
+- **Pass/fail:** build fails without a valid bundle; startup fails on
+  Moshier; deploy health proof requires exact identity match.
 
 ### P0-3. Telegram webhook ingress
 

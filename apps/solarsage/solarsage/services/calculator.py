@@ -27,12 +27,11 @@ import swisseph as swe
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from ..core.config import settings
 from ..core.ephemeris_runtime import calc_ut_checked
 
 
-# Initialize Swiss Ephemeris
-swe.set_ephe_path(settings.ephemeris_path)
+# Engine path is configured by the single runtime owner
+# (core/ephemeris_runtime); nothing here sets its own path.
 
 
 PLANETS = {

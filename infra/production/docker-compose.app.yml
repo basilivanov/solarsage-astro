@@ -112,11 +112,9 @@ services:
     ports:
       - "127.0.0.1:18091:8001"
     environment:
-      SOLARSAGE_EPHEMERIS_ROOT: /opt/solarsage-ephemeris/current
+      SOLARSAGE_EPHEMERIS_ROOT: /opt/solarsage-ephemeris/bundle
       SOLARSAGE_APP_ENV: production
       SOLARSAGE_RELEASE_SHA: ${RELEASE_SHA:?release sha required}
-    volumes:
-      - /opt/solarsage-ephemeris:/opt/solarsage-ephemeris:ro
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/v1/health', timeout=3).status == 200 else 1)\""]
       interval: 10s

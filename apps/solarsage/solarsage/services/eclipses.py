@@ -147,7 +147,7 @@ def _find_house(longitude: float, houses: list[dict[str, Any]]) -> int:
 
 def _find_eclipse_candidates(target_jd: float, config: dict) -> list[dict]:
     """Find eclipse candidates within the configured window."""
-    swe.set_ephe_path("/opt/sweph/ephe")
+    # Engine path is configured by core/ephemeris_runtime (single owner).
     flags = swe.FLG_SWIEPH
     candidates: list[dict] = []
 
