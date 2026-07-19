@@ -25,6 +25,11 @@
 #     cross-feature-navigation, profile-city-checkin, readings-horary,
 #     natal-report, chat, referral-deeplink (dev-v2 and edge-cases are
 #     intentionally excluded from the gate).
+#   - The ephemeral sidecar runs ONLY in explicit Moshier-only mode
+#     (SOLARSAGE_EPHEMERIS_ALLOW_MOSHIER=1 + SOLARSAGE_APP_ENV=development,
+#     identical to ci.yml); the production SWIEPH fail-closed proof stays
+#     with the image build verifier and the artifact-acceptance gate, never
+#     with this ephemeral stack.
 #   - Missing required E2E secrets fail closed before any stack starts.
 #   - Created E2E users are always cleaned up via the acceptance adapter.
 # failure_policy: any failing spec fails the job; the secrets check exits 1.
@@ -162,10 +167,7 @@ jobs:
           E2E_OPENROUTER_API_KEY: ${{ secrets.E2E_OPENROUTER_API_KEY }}
         shell: bash
         run: |
-          # 1. Prepare ephemeris path
-          mkdir -p /tmp/solarsage-e2e-ephe
-
-          # 2. Define cleanup function
+          # 1. Define cleanup function
           cleanup_stack() {
             echo "Cleaning up E2E stack processes..."
             if [ -f /tmp/solarsage-e2e-sidecar.pid ]; then
@@ -184,8 +186,12 @@ jobs:
 
           trap cleanup_stack EXIT INT TERM
 
-          # 3. Start Sidecar (port 18091)
-          export SOLARSAGE_EPHEMERIS_PATH=/tmp/solarsage-e2e-ephe
+          # 2. Start Sidecar (port 18091) — explicit Moshier-only E2E mode,
+          # identical to the ci.yml integration mode. The production SWIEPH
+          # proof is NOT weakened here: it is enforced separately by the
+          # image build verifier and the artifact-acceptance gate.
+          export SOLARSAGE_EPHEMERIS_ALLOW_MOSHIER=1
+          export SOLARSAGE_APP_ENV=development
           export PYTHONPATH=apps/solarsage
           python -m uvicorn solarsage.app:app --host 127.0.0.1 --port 18091 > /tmp/solarsage-e2e-sidecar.log 2>&1 &
           echo $! > /tmp/solarsage-e2e-sidecar.pid
@@ -204,7 +210,7 @@ jobs:
             sleep 1
           done
 
-          # 4. Start API (port 8000) - Scoped env to prevent leaking secrets to Next build
+          # 3. Start API (port 8000) - Scoped env to prevent leaking secrets to Next build
           # Secrets are passed via step-level env and used as quoted variables
           (
             export DATABASE_URL=postgresql+asyncpg://astro:astro_test_password@127.0.0.1:5432/astro
@@ -243,7 +249,7 @@ jobs:
             sleep 1
           done
 
-          # 5. Build and Start Frontend (port 3002)
+          # 4. Build and Start Frontend (port 3002)
           # We use production build to test production assets and real routing.
           # Explicitly unsetting/removing secrets from build child environment using env -u
           env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY pnpm run build
@@ -265,7 +271,7 @@ jobs:
             sleep 1
           done
 
-          # 6. Run E2E tests based on suite input - Scoped secrets env
+          # 5. Run E2E tests based on suite input - Scoped secrets env
           (
             export E2E_BASE_URL=http://127.0.0.1:3002
             export E2E_API_BASE_URL=http://127.0.0.1:8000
