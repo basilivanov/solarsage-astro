@@ -23,8 +23,8 @@
 #   - The release suite runs ONLY existing real-HMAC specs without route
 #     interception: onboarding-real, today, calendar,
 #     cross-feature-navigation, profile-city-checkin, readings-horary,
-#     natal-report, chat (dev-v2 and edge-cases are intentionally excluded
-#     from the gate).
+#     natal-report, chat, referral-deeplink (dev-v2 and edge-cases are
+#     intentionally excluded from the gate).
 #   - Missing required E2E secrets fail closed before any stack starts.
 #   - Created E2E users are always cleaned up via the acceptance adapter.
 # failure_policy: any failing spec fails the job; the secrets check exits 1.
@@ -279,7 +279,7 @@ jobs:
               pnpm exec playwright test today.spec.ts calendar.spec.ts cross-feature-navigation.spec.ts --project=chromium
             elif [ "${{ inputs.suite }}" = "release" ]; then
               echo "Running E2E release gate suite..."
-              pnpm exec playwright test e2e/onboarding-real.spec.ts e2e/today.spec.ts e2e/calendar.spec.ts e2e/cross-feature-navigation.spec.ts e2e/profile-city-checkin.spec.ts e2e/readings-horary.spec.ts e2e/natal-report.spec.ts e2e/chat.spec.ts --project=chromium
+              pnpm exec playwright test e2e/onboarding-real.spec.ts e2e/today.spec.ts e2e/calendar.spec.ts e2e/cross-feature-navigation.spec.ts e2e/profile-city-checkin.spec.ts e2e/readings-horary.spec.ts e2e/natal-report.spec.ts e2e/chat.spec.ts e2e/referral-deeplink.spec.ts --project=chromium
             else
               echo "Running E2E full suite..."
               pnpm exec playwright test e2e/*.spec.ts --project=chromium

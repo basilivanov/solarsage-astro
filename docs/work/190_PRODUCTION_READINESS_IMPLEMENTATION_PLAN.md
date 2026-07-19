@@ -390,7 +390,7 @@ their text below is kept as the design for those later slices.
   secrets are a fail-closed blocker) with a `release` suite of exactly the
   real-HMAC no-interception specs (onboarding-real, today, calendar,
   cross-feature-navigation, profile-city-checkin, readings-horary,
-  natal-report, chat); `deploy-production.yml`
+  natal-report, chat, referral-deeplink); `deploy-production.yml`
   adds the `real-e2e` reusable job (`needs: [source-quality,
   visual-baselines]`) and `deploy` now needs it, so a failing real flow
   blocks migrate/deploy/tag. Second slice (2026-07-19, local): real-HMAC
@@ -406,10 +406,19 @@ their text below is kept as the design for those later slices.
   `e2e/chat.spec.ts` (real send → structural assistant reply). Minimal chat
   testids added per AGENTS contract (`chat-screen`/`chat-messages`/
   `chat-message`/`chat-input`/`chat-send`), no business-logic changes.
+  Third slice (2026-07-19, local): referral deep-link auto-claim —
+  `e2e/referral-deeplink.spec.ts` (referrer invite code via real GET
+  /api/referral; isolated second user via new fixtures export
+  `createAuthedUserPage` — same run-salted ids and cleanup ledger, no
+  duplicated crypto; invitee opened with `?tgWebAppStartParam=<code>` so the
+  real auth flow claims; GET /api/access `referralDaysLeft >= 13`;
+  `totalInvited=1`; repeated deep-link open idempotent, no manual API
+  mutation). Release suite now includes all of these specs.
   Real candidate run on the ephemeral stack is
   PENDING (needs the full real stack + Telegram secrets); the remaining
-  P1-6 flows (paywall/referral claim, /start→web_app launch, payment
-  webhook idempotency) stay OPEN.
+  P1-6 items are only the /start external Telegram-client path (owner
+  ingress, P0-3) and the payment implementation + provider sandbox
+  (product work, not a test gap).
 - **Goal:** every user-facing capability has real-path evidence.
 - **Steps:** add specs for readings list + horary lifecycle (no
   delete/archive — the endpoint does not exist), natal generate/view, chat,

@@ -66,6 +66,12 @@ Real E2E suites (real Telegram HMAC, no route interception except where noted):
   stays off).
 - `chat.spec.ts` — real chat send → user bubble → structural assistant reply
   (roles + non-empty content, never LLM-text-dependent).
+- `referral-deeplink.spec.ts` — referral deep-link auto-claim: referrer
+  invite code via real GET /api/referral, invitee opened with
+  `?tgWebAppStartParam=<code>` so the real auth flow claims the bonus
+  (GET /api/access `referralDaysLeft >= 13`), referrer reads back
+  `totalInvited=1`, and a repeated deep-link open stays idempotent (no
+  manual API mutation; second user via `createAuthedUserPage`).
 - `locked-features.spec.ts` — locked/paywalled states.
 - `edge-cases.spec.ts` — edge cases (contains one page.route interception).
 - `hydration-guard.spec.ts` — hydration stability.
@@ -166,8 +172,8 @@ starts).
 The `release` suite runs only the existing real-HMAC specs without route
 interception: `onboarding-real.spec.ts`, `today.spec.ts`, `calendar.spec.ts`,
 `cross-feature-navigation.spec.ts`, `profile-city-checkin.spec.ts`,
-`readings-horary.spec.ts`, `natal-report.spec.ts`, `chat.spec.ts` (dev-v2 and
-edge-cases stay out of the gate). The production deploy workflow reuses it as
+`readings-horary.spec.ts`, `natal-report.spec.ts`, `chat.spec.ts`,
+`referral-deeplink.spec.ts` (dev-v2 and edge-cases stay out of the gate). The production deploy workflow reuses it as
 the `real-e2e` job (`needs: [source-quality, visual-baselines]`), and the
 `deploy` job requires it (`needs: [build, artifact-acceptance, real-e2e]`), so
 a failing real flow blocks migrate/deploy/tag.

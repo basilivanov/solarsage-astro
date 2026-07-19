@@ -1,9 +1,11 @@
 // AI_HEADER
 // module: M-TEST-E2E-FIXTURES
 // wave: W-TEST-3
-// purpose: Playwright fixtures with real Telegram auth (no mocks, real HMAC)
+// purpose: Playwright fixtures with real Telegram auth (no mocks, real HMAC);
+//   createAuthedUserPage adds isolated extra users for multi-user flows
+//   (same run-salted ids, same cleanup ledger, no duplicated crypto)
 
-import { test as base, expect, request, type Page } from '@playwright/test';
+import { test as base, expect, request, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
 import { appendFileSync } from 'fs';
@@ -101,6 +103,98 @@ async function seedSessionCookie(page: Page, initData: string, baseURL?: string)
 }
 
 /**
+ * Inject the Telegram WebApp globals with real initData BEFORE any app script
+ * runs (the Telegram SDK normally does this). Shared by the fixture page and
+ * createAuthedUserPage so the crypto/DOM contract exists exactly once.
+ */
+async function injectTelegramWebApp(page: Page, initData: string) {
+  await page.addInitScript((data: string) => {
+    (window as any).Telegram = {
+      WebApp: {
+        initData: data,
+        initDataUnsafe: {},
+        ready: () => {},
+        expand: () => {},
+        close: () => {},
+        platform: 'web',
+        version: '9.5',
+        colorScheme: 'light',
+        themeParams: {},
+        isExpanded: true,
+        viewportHeight: 812,
+        viewportStableHeight: 812,
+        headerColor: '#ffffff',
+        backgroundColor: '#ffffff',
+        MainButton: {
+          text: '',
+          color: '',
+          textColor: '',
+          isVisible: false,
+          isActive: true,
+          isProgressVisible: false,
+          setText: () => {},
+          onClick: () => {},
+          offClick: () => {},
+          show: () => {},
+          hide: () => {},
+          enable: () => {},
+          disable: () => {},
+          showProgress: () => {},
+          hideProgress: () => {},
+        },
+        BackButton: {
+          isVisible: false,
+          onClick: () => {},
+          offClick: () => {},
+          show: () => {},
+          hide: () => {},
+        },
+        HapticFeedback: {
+          impactOccurred: () => {},
+          notificationOccurred: () => {},
+          selectionChanged: () => {},
+        },
+        onEvent: () => {},
+        offEvent: () => {},
+        sendData: () => {},
+        switchInlineQuery: () => {},
+        openLink: () => {},
+        openTelegramLink: () => {},
+        openInvoice: () => {},
+        showPopup: () => {},
+        showAlert: () => {},
+        showConfirm: () => {},
+      },
+    };
+  }, initData);
+}
+
+/**
+ * Create an additional isolated browser context with its own unique Telegram
+ * user (same run-salted id derivation + cleanup ledger + real HMAC auth as the
+ * main fixture). Used by multi-user flows (e.g. referral deep-link). The
+ * caller owns closing the returned context.
+ */
+export async function createAuthedUserPage(
+  browser: Browser,
+  baseURL: string | undefined,
+  testInfo: TestInfo,
+  idSuffix: string,
+): Promise<{ context: BrowserContext; page: Page; tgUserId: number }> {
+  const tgUserId = deriveTelegramUserId(
+    testInfo.project.name,
+    `${testInfo.testId}#${idSuffix}`,
+    testInfo.repeatEachIndex,
+  );
+  const initData = generateInitData(tgUserId);
+  const context = await browser.newContext(baseURL ? { baseURL } : {});
+  const page = await context.newPage();
+  await seedSessionCookie(page, initData, baseURL);
+  await injectTelegramWebApp(page, initData);
+  return { context, page, tgUserId };
+}
+
+/**
  * Extended Playwright test with real Telegram WebApp auth.
  *
  * Every test gets:
@@ -123,65 +217,7 @@ export const test = base.extend<E2EOptions>({
     // Inject Telegram WebApp globals BEFORE page loads any scripts.
     // The Telegram SDK (telegram-web-app.js) normally sets this up,
     // but in E2E we populate it directly with real initData.
-    await page.addInitScript((data: string) => {
-      (window as any).Telegram = {
-        WebApp: {
-          initData: data,
-          initDataUnsafe: {},
-          ready: () => {},
-          expand: () => {},
-          close: () => {},
-          platform: 'web',
-          version: '9.5',
-          colorScheme: 'light',
-          themeParams: {},
-          isExpanded: true,
-          viewportHeight: 812,
-          viewportStableHeight: 812,
-          headerColor: '#ffffff',
-          backgroundColor: '#ffffff',
-          MainButton: {
-            text: '',
-            color: '',
-            textColor: '',
-            isVisible: false,
-            isActive: true,
-            isProgressVisible: false,
-            setText: () => {},
-            onClick: () => {},
-            offClick: () => {},
-            show: () => {},
-            hide: () => {},
-            enable: () => {},
-            disable: () => {},
-            showProgress: () => {},
-            hideProgress: () => {},
-          },
-          BackButton: {
-            isVisible: false,
-            onClick: () => {},
-            offClick: () => {},
-            show: () => {},
-            hide: () => {},
-          },
-          HapticFeedback: {
-            impactOccurred: () => {},
-            notificationOccurred: () => {},
-            selectionChanged: () => {},
-          },
-          onEvent: () => {},
-          offEvent: () => {},
-          sendData: () => {},
-          switchInlineQuery: () => {},
-          openLink: () => {},
-          openTelegramLink: () => {},
-          openInvoice: () => {},
-          showPopup: () => {},
-          showAlert: () => {},
-          showConfirm: () => {},
-        },
-      };
-    }, initData);
+    await injectTelegramWebApp(page, initData);
 
     await use(page);
   },
