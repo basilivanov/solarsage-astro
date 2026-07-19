@@ -290,11 +290,14 @@ the Moshier fallback. Canonical layout (root-owned, immutable):
 ```
 
 Install/verify with the fail-closed installer (no downloads, no fabricated
-bytes, immutable releases, atomic pointer flip):
+bytes, immutable releases, atomic pointer flip). Use the installed canonical
+path — the offline engine oracle needs pyswisseph, so point
+`EPHE_ORACLE_PYTHON` at an interpreter that has it (sidecar venv by default):
 
 ```bash
-sudo /opt/solarsage-astro/scripts/deploy/prod-ephemeris-install.sh --apply /path/to/staged-bundle
-sudo /opt/solarsage-astro/scripts/deploy/prod-ephemeris-install.sh --check
+sudo EPHE_ORACLE_PYTHON=/opt/solarsage-astro/apps/solarsage/venv/bin/python \
+  /usr/local/libexec/solarsage/prod-ephemeris-install --apply /path/to/staged-bundle
+sudo /usr/local/libexec/solarsage/prod-ephemeris-install --check
 ```
 
 After install, set `EPHEMERIS_EXPECTED_ARTIFACT_ID` and

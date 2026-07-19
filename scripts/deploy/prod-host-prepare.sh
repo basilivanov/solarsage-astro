@@ -183,6 +183,11 @@ verify_host_state() {
     if ! cmp -s "$APP_ROOT/scripts/deploy/lib/ephemeris_artifact_check.py" "$eph_lib"; then
       report_ver_error "Installed ephemeris verifier differs from repository source"
     fi
+    local el_info
+    el_info=$(stat -c "%U:%G:%a" "$eph_lib")
+    if [ "$el_info" != "root:root:644" ]; then
+      report_ver_error "Ephemeris verifier '$eph_lib' ownership/mode is $el_info, expected root:root:644"
+    fi
   fi
 
   local compose_path="/etc/solarsage/compose/docker-compose.app.yml"
@@ -713,7 +718,9 @@ main() {
       "scripts/deploy/prod-os-bootstrap.sh"
       "scripts/deploy/prod-cert-prepare.sh"
       "scripts/deploy/prod-github-access.sh"
+      "scripts/deploy/prod-ephemeris-install.sh"
       "scripts/deploy/lib/prod-path-transaction.sh"
+      "scripts/deploy/lib/ephemeris_artifact_check.py"
     )
 
     for inv_file in "${INVENTORY_FILES[@]}"; do
@@ -731,6 +738,7 @@ main() {
       "scripts/deploy/prod-os-bootstrap.sh"
       "scripts/deploy/prod-cert-prepare.sh"
       "scripts/deploy/prod-github-access.sh"
+      "scripts/deploy/prod-ephemeris-install.sh"
       "infra/production/solarsage-github-deploy"
        "infra/certbot/deploy-hooks/20-solarsage-reload-nginx"
       "scripts/deploy/lib/prod-path-transaction.sh"
@@ -901,6 +909,8 @@ main() {
     PROD_TX_PATHS["fingerprint"]="/etc/solarsage/infra-fingerprint"
     PROD_TX_PATHS["gh_known_hosts"]="/home/astro/.ssh/known_hosts.github"
     PROD_TX_PATHS["orchestrator"]="/usr/local/libexec/solarsage/prod-orchestrator"
+    PROD_TX_PATHS["ephemeris_installer"]="/usr/local/libexec/solarsage/prod-ephemeris-install"
+    PROD_TX_PATHS["ephemeris_verifier"]="/usr/local/libexec/solarsage/lib/ephemeris_artifact_check.py"
     PROD_TX_PATHS["app_compose"]="/etc/solarsage/compose/docker-compose.app.yml"
     PROD_TX_PATHS["tmpfiles"]="/etc/tmpfiles.d/solarsage.conf"
 

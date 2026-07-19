@@ -106,15 +106,21 @@ PYEOF
 check_cmd() {
   [ -d "$RELEASES_DIR" ] || fail "releases directory is missing: $RELEASES_DIR"
   [ -L "$CURRENT_LINK" ] || fail "current pointer is missing or not a symlink: $CURRENT_LINK"
-  local target
+  local target resolved releases_resolved
   target=$(readlink "$CURRENT_LINK")
-  case "$target" in
-    "$RELEASES_DIR"/*) ;;
-    *) fail "current pointer escapes the releases directory: $target" ;;
+  [ -n "$target" ] || fail "current pointer target is empty"
+  # Canonicalize: the resolved target must really live inside releases/.
+  resolved=$(realpath -m -- "$CURRENT_LINK")
+  releases_resolved=$(realpath -m -- "$RELEASES_DIR")
+  case "$resolved" in
+    "$releases_resolved"/*) ;;
+    *) fail "current pointer resolves outside the releases directory: $resolved" ;;
   esac
-  "$CHECK_PY" "$CHECK_SCRIPT" "$target" >/dev/null
-  run_oracle "$target/ephe" || fail "engine oracle failed for the current installation"
-  echo "Ephemeris installation check OK: $(basename "$target")"
+  [ "$resolved" != "$releases_resolved" ] || fail "current points at the releases root itself"
+  [ -d "$resolved" ] || fail "current target is not a directory: $resolved"
+  "$CHECK_PY" "$CHECK_SCRIPT" "$resolved" >/dev/null
+  run_oracle "$resolved/ephe" || fail "engine oracle failed for the current installation"
+  echo "Ephemeris installation check OK: $(basename "$resolved")"
 }
 # END_BLOCK: EPHE_CHECK
 

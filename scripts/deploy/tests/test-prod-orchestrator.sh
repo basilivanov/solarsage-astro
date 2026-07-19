@@ -306,6 +306,8 @@ OPENROUTER_API_KEY=$CANARY_OR
 RESTIC_REPOSITORY=canary-repo
 OFFSITE_RESTIC_PASSWORD_FILE=$TEST_DIR/restic-password
 EXPECTED_CALCULATION_VERSION=ss-calc-1.2.0
+EPHEMERIS_EXPECTED_ARTIFACT_ID=se-test-artifact
+EPHEMERIS_EXPECTED_MANIFEST_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 EOF
   chmod 0640 "$TEST_DIR/app.env"
   printf 'canary-restic-password-content\n' > "$TEST_DIR/restic-password"

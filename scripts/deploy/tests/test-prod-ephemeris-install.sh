@@ -143,6 +143,11 @@ fi
 rm -f "$EPHE_ROOT/current"
 expect_fail "check with missing current" bash "$INSTALLER" --check
 
+# 11. --check rejects a current pointer escaping releases/.
+stage_bundle "$TEST_DIR/escape-target" "se-escape"
+ln -sfn "$TEST_DIR/escape-target" "$EPHE_ROOT/current"
+expect_fail "check rejects escaped current pointer" bash "$INSTALLER" --check
+
 if [ "$FAILURES" -gt 0 ]; then
   echo "FAILED: $FAILURES checks" >&2
   exit 1

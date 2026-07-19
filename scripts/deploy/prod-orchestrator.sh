@@ -162,7 +162,8 @@ load_env_file() {
              DATABASE_URL APP_DOMAIN TELEGRAM_BOT_TOKEN GRACE_USER_SALT \
              CORS_ALLOWED_ORIGINS OPENROUTER_API_KEY \
              RESTIC_REPOSITORY OFFSITE_RESTIC_PASSWORD_FILE \
-             EXPECTED_CALCULATION_VERSION; do
+             EXPECTED_CALCULATION_VERSION \
+             EPHEMERIS_EXPECTED_ARTIFACT_ID EPHEMERIS_EXPECTED_MANIFEST_SHA256; do
     [ -n "${!var:-}" ] || fail "required env value $var is missing"
   done
   case "$REGISTRY" in
@@ -264,14 +265,8 @@ prove_health() {
   [ "$(health_release_sha 18091 /v1/health)" = "$want" ] || return 1
   [ "$(health_field_nonempty 18091 /v1/health engine)" = "swieph" ] || return 1
   [ "$(health_field_nonempty 18091 /v1/health calculation_version)" = "$EXPECTED_CALCULATION_VERSION" ] || return 1
-  [ -n "$(health_field_nonempty 18091 /v1/health ephemeris_artifact_id)" ] || return 1
-  [ -n "$(health_field_nonempty 18091 /v1/health ephemeris_manifest_sha256)" ] || return 1
-  if [ -n "${EPHEMERIS_EXPECTED_ARTIFACT_ID:-}" ]; then
-    [ "$(health_field_nonempty 18091 /v1/health ephemeris_artifact_id)" = "$EPHEMERIS_EXPECTED_ARTIFACT_ID" ] || return 1
-  fi
-  if [ -n "${EPHEMERIS_EXPECTED_MANIFEST_SHA256:-}" ]; then
-    [ "$(health_field_nonempty 18091 /v1/health ephemeris_manifest_sha256)" = "$EPHEMERIS_EXPECTED_MANIFEST_SHA256" ] || return 1
-  fi
+  [ "$(health_field_nonempty 18091 /v1/health ephemeris_artifact_id)" = "$EPHEMERIS_EXPECTED_ARTIFACT_ID" ] || return 1
+  [ "$(health_field_nonempty 18091 /v1/health ephemeris_manifest_sha256)" = "$EPHEMERIS_EXPECTED_MANIFEST_SHA256" ] || return 1
   [ "$(health_release_sha 3002 /api/release-health)" = "$want" ] || return 1
   return 0
 }
