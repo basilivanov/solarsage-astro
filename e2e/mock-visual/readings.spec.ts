@@ -32,6 +32,7 @@
 
 import { expect, test } from "@playwright/test";
 import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
+import { prepareForScreenshot } from "./screenshot";
 
 function buildFixtures(): MockApiRouteFixtures {
   return {
@@ -73,6 +74,10 @@ test.describe("Mock Visual — /readings", () => {
     // Coming section visible
     await expect(page.getByTestId("readings-coming-section")).toBeVisible();
     await expect(page.getByTestId("readings-coming-list")).toBeVisible();
+
+    // Deterministic visual baseline (fail-closed; UPDATE_SNAPSHOTS=true to refresh)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("readings-ready.png");
 
     // Tab bar navigation is present
     const tabBar = page.locator('nav[aria-label="Основная навигация"]');

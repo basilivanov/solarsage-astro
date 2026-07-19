@@ -47,6 +47,7 @@
 #   - GitHub Actions trigger
 # semantic_blocks:
 #   - SOURCE_QUALITY_JOB: reusable CI gate for the exact SHA
+#   - VISUAL_BASELINES_JOB: reusable visual baseline gate
 #   - BUILD_JOB: immutable image build and push
 #   - ACCEPTANCE_JOB: artifact acceptance (partial, blocked by P1-2/P1-3)
 #   - DEPLOY_JOB: environment approval and exact SSH deploy
@@ -71,9 +72,16 @@ jobs:
     uses: ./.github/workflows/ci.yml
   # END_BLOCK: SOURCE_QUALITY_JOB
 
+  # START_BLOCK: VISUAL_BASELINES_JOB
+  # Blocking visual baseline gate (reusable visual-regression workflow,
+  # baseline suite only — no acceptance-day, no new harness).
+  visual-baselines:
+    uses: ./.github/workflows/visual-regression.yml
+  # END_BLOCK: VISUAL_BASELINES_JOB
+
   # START_BLOCK: BUILD_JOB
   build:
-    needs: source-quality
+    needs: [source-quality, visual-baselines]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:

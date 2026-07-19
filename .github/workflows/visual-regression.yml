@@ -8,6 +8,7 @@ name: Visual Regression Tests
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -81,9 +82,18 @@ jobs:
             sleep 1
           done
 
-          # Run Playwright tests
+          # Run Playwright tests — baseline suite only (the P1-3
+          # acceptance-day spec stays out: it is blocked on the v1 payload
+          # by design, not a visual baseline).
           E2E_BASE_URL=http://127.0.0.1:3003 \
-            CI=true pnpm exec playwright test e2e/mock-visual --project=chromium --project=mobile
+            CI=true pnpm exec playwright test \
+            e2e/mock-visual/calendar.spec.ts \
+            e2e/mock-visual/profile.spec.ts \
+            e2e/mock-visual/readings.spec.ts \
+            e2e/mock-visual/horary.spec.ts \
+            e2e/mock-visual/natal.spec.ts \
+            e2e/mock-visual/day-v2.spec.ts \
+            --project=chromium --project=mobile
 
           # Explicit normal cleanup
           cleanup_preview

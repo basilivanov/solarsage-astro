@@ -18,6 +18,7 @@
 import { expect, test } from "@playwright/test";
 import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
 import { horaryQuotaPayload, horaryQuestionsPayload, profilePayload } from "./fixtures/horary";
+import { prepareForScreenshot } from "./screenshot";
 
 function buildFixtures(): MockApiRouteFixtures {
   return {
@@ -44,6 +45,7 @@ test.describe("Mock Visual — /readings/horary", () => {
     await expect(screen).toBeVisible({ timeout: 10000 });
     await expect(screen).toHaveAttribute("data-state", "ready");
     await expect(screen).toHaveAttribute("data-has-credit", "true");
+    await expect(screen).toHaveAttribute("data-access-state", "unlocked");
 
     // Header and back link
     await expect(page.getByTestId("horary-header")).toBeVisible();
@@ -70,6 +72,11 @@ test.describe("Mock Visual — /readings/horary", () => {
     await expect(page.getByTestId("horary-history-section")).toBeVisible();
     await expect(page.getByTestId("horary-empty-history")).toBeVisible();
 
+    // Deterministic visual baseline including the empty-history state
+    // (fail-closed; UPDATE_SNAPSHOTS=true to refresh)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("horary-ready.png");
+
     // No missing API fixtures
     await expectNoMissingApiFixtures(page, tracker);
   });
@@ -91,8 +98,13 @@ test.describe("Mock Visual — /readings/horary", () => {
     await page.waitForLoadState("networkidle");
 
     await expect(page.getByTestId("horary-screen")).toHaveAttribute("data-has-credit", "false");
+    await expect(page.getByTestId("horary-screen")).toHaveAttribute("data-access-state", "locked");
     await expect(page.getByTestId("horary-no-credit-card")).toBeVisible();
     await expect(page.getByTestId("horary-no-credit-card")).not.toContainText("докупите");
+
+    // Deterministic locked/no-credit visual baseline (fail-closed)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("horary-no-credit.png");
 
     await expectNoMissingApiFixtures(page, tracker);
   });

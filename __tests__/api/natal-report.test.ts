@@ -87,6 +87,23 @@ describe("fetchNatalReport — backend routing", () => {
     )
   })
 
+  it("returns localized fallback on HTTP 500 without a structured message", async () => {
+    const { fetchNatalReport } = await import("@/lib/api/natal")
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    })
+
+    const result = await fetchNatalReport("visual-error")
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.type).toBe("error")
+      expect(result.error.message).toBe("Не удалось загрузить отчёт")
+    }
+  })
+
   it("calls backend for real report ids", async () => {
     const { fetchNatalReport } = await import("@/lib/api/natal")
 

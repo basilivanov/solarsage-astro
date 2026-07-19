@@ -17,6 +17,8 @@
 import { expect, test } from "@playwright/test";
 import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
 import { natalPreviewPayload } from "./fixtures/natal-preview";
+import { natalReportGeneratingId, natalReportGeneratingPayload } from "./fixtures/natal-report";
+import { prepareForScreenshot } from "./screenshot";
 
 function buildFixtures(): MockApiRouteFixtures {
   return {
@@ -79,6 +81,10 @@ test.describe("Mock Visual — /readings/natal", () => {
     await expect(cta).toBeVisible();
     await expect(cta.locator("button").first()).toBeDisabled();
     await expect(cta.locator("button").first()).toHaveAttribute("aria-disabled", "true");
+
+    // Deterministic visual baseline (fail-closed; UPDATE_SNAPSHOTS=true to refresh)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("natal-ready.png");
 
     // No missing API fixtures
     await expectNoMissingApiFixtures(page, tracker);
@@ -148,6 +154,61 @@ test.describe("Mock Visual — /readings/natal", () => {
     await expect(page.getByTestId("natal-preview-screen")).toHaveAttribute("data-state", "profile_incomplete");
     await expect(page.getByTestId("natal-profile-incomplete")).toBeVisible();
     await expect(page.getByTestId("natal-profile-incomplete")).toHaveAttribute("role", "alert");
+
+    // Additional state baseline (does NOT replace the data-state=error baseline)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("natal-profile-incomplete.png");
+
+    await expectNoMissingApiFixtures(page, tracker);
+  });
+
+  test("natal report generating state renders on the unified root with screenshot baseline", async ({ page }) => {
+    const tracker = await installMockApiRoutes(page, {
+      "/api/auth/dev": { status: 200, body: { status: "ok", userId: "mock-user-id" } },
+      [`/api/natal/report/${natalReportGeneratingId}`]: { body: natalReportGeneratingPayload },
+    });
+
+    await page.addInitScript(() => {
+      localStorage.setItem("lumen:onboarded", "1");
+    });
+
+    await page.goto(`/readings/natal/${natalReportGeneratingId}`);
+    await page.waitForLoadState("networkidle");
+
+    const screen = page.getByTestId("natal-report-screen");
+    await expect(screen).toBeVisible({ timeout: 10000 });
+    await expect(screen).toHaveAttribute("data-state", "generating");
+    await expect(screen).toHaveAttribute("role", "status");
+    await expect(screen).toHaveAttribute("aria-busy", "true");
+
+    // Deterministic generating visual baseline (fail-closed)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("natal-report-generating.png");
+
+    await expectNoMissingApiFixtures(page, tracker);
+  });
+
+  test("natal report error state renders data-state=error with role=alert and screenshot baseline", async ({ page }) => {
+    const tracker = await installMockApiRoutes(page, {
+      "/api/auth/dev": { status: 200, body: { status: "ok", userId: "mock-user-id" } },
+      "/api/natal/report/visual-error": { status: 500, body: { detail: "visual error fixture" } },
+    });
+
+    await page.addInitScript(() => {
+      localStorage.setItem("lumen:onboarded", "1");
+    });
+
+    await page.goto("/readings/natal/visual-error");
+    await page.waitForLoadState("networkidle");
+
+    const screen = page.getByTestId("natal-report-screen");
+    await expect(screen).toBeVisible({ timeout: 10000 });
+    await expect(screen).toHaveAttribute("data-state", "error");
+    await expect(screen).toHaveAttribute("role", "alert");
+
+    // Deterministic error visual baseline (fail-closed)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("natal-report-error.png");
 
     await expectNoMissingApiFixtures(page, tracker);
   });

@@ -41,6 +41,7 @@ import {
   referralPayload,
   checkinMetricsPayload,
 } from "./fixtures/profile";
+import { prepareForScreenshot } from "./screenshot";
 
 function buildProfileFixtures(): MockApiRouteFixtures {
   return {
@@ -93,6 +94,10 @@ test.describe("Mock Visual — /profile", () => {
 
     // Service section visible
     await expect(page.getByTestId("profile-service-section")).toBeVisible();
+
+    // Deterministic visual baseline (fail-closed; UPDATE_SNAPSHOTS=true to refresh)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("profile-ready.png");
 
     // No missing API fixtures after quiet wait
     await expectNoMissingApiFixtures(page, tracker);

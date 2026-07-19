@@ -16,7 +16,9 @@
 // side_effects: Logging via v2 logging spine; React state management
 // emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
 // invariants:
-//   - n/a
+//   - Root exposes the public state contract: data-state (loading|error|ready),
+//     data-has-credit (true|false, undefined while loading/error), and
+//     data-access-state (unlocked|locked, undefined while loading/error).
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 "use client"
@@ -335,7 +337,7 @@ export function HoraryScreen() {
     : questions
 
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-y-auto" data-testid="horary-screen" data-state={loading ? "loading" : loadError ? "error" : "ready"} data-has-credit={loading || loadError ? undefined : hasSpendableCredit ? "true" : "false"}>
+    <div className="flex h-full w-full flex-col bg-background overflow-y-auto" data-testid="horary-screen" data-state={loading ? "loading" : loadError ? "error" : "ready"} data-has-credit={loading || loadError ? undefined : hasSpendableCredit ? "true" : "false"} data-access-state={loading || loadError ? undefined : hasSpendableCredit ? "unlocked" : "locked"}>
       {loading ? (
         <div className="flex h-[80dvh] items-center justify-center" data-testid="horary-loading" role="status">
           <Spinner className="h-8 w-8 text-primary" />

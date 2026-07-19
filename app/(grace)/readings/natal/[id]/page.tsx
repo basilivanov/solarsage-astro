@@ -17,6 +17,10 @@
 //   - Backend statuses map to explicit PageState variants without demo fallback.
 //   - Retry is offered only for retryable failures.
 //   - Ready sections and backend blocks render from typed contract data.
+//   - Every branch shares ONE stable root data-testid="natal-report-screen"
+//     distinguished only by data-state: loading (role=status, aria-busy),
+//     not_found, error (role=alert), generating (role=status, aria-busy),
+//     failed (role=alert), ready.
 // failure_policy: API result errors become honest page states; unexpected rendering errors bubble to the route boundary.
 // END_MODULE_CONTRACT: M-APP-NATAL-REPORT-PAGE
 
@@ -169,7 +173,13 @@ export default function NatalReportPage({ params }: Props) {
   // ---- Loading state ----
   if (state.status === "loading") {
     return (
-      <div className="flex h-[80dvh] items-center justify-center">
+      <div
+        className="flex h-[80dvh] items-center justify-center"
+        data-testid="natal-report-screen"
+        data-state="loading"
+        role="status"
+        aria-busy="true"
+      >
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     )
@@ -178,7 +188,11 @@ export default function NatalReportPage({ params }: Props) {
   // ---- Not found ----
   if (state.status === "not_found") {
     return (
-      <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
+      <div
+        className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4"
+        data-testid="natal-report-screen"
+        data-state="not_found"
+      >
         <h3 className="font-serif text-[20px] font-bold text-foreground">Отчёт не найден</h3>
         <Link href="/readings/natal" className="inline-flex items-center gap-1.5 text-[14px] text-primary">
           <ChevronLeft className="h-4 w-4" />
@@ -191,7 +205,12 @@ export default function NatalReportPage({ params }: Props) {
   // ---- Error ----
   if (state.status === "error") {
     return (
-      <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
+      <div
+        className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4"
+        data-testid="natal-report-screen"
+        data-state="error"
+        role="alert"
+      >
         <AlertTriangle className="h-8 w-8 text-muted-foreground" />
         <h3 className="font-serif text-[20px] font-bold text-foreground">Ошибка загрузки</h3>
         <p className="text-[14px] text-muted-foreground">{state.message}</p>
@@ -206,7 +225,13 @@ export default function NatalReportPage({ params }: Props) {
   // ---- Still generating ----
   if (state.status === "generating") {
     return (
-      <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
+      <div
+        className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4"
+        data-testid="natal-report-screen"
+        data-state="generating"
+        role="status"
+        aria-busy="true"
+      >
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         <h3 className="font-serif text-[20px] font-bold text-foreground">Отчёт ещё генерируется</h3>
         <p className="text-[14px] text-muted-foreground">Подождите немного, разбор почти готов</p>
@@ -220,7 +245,12 @@ export default function NatalReportPage({ params }: Props) {
   // ---- Failed ----
   if (state.status === "failed") {
     return (
-      <div className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4">
+      <div
+        className="flex h-[80dvh] flex-col items-center justify-center p-6 text-center space-y-4"
+        data-testid="natal-report-screen"
+        data-state="failed"
+        role="alert"
+      >
         <AlertTriangle className="h-8 w-8 text-rose-500" />
         <h3 className="font-serif text-[20px] font-bold text-foreground">Не удалось создать разбор</h3>
         <p className="text-[14px] text-muted-foreground">{state.message}</p>
@@ -265,7 +295,11 @@ export default function NatalReportPage({ params }: Props) {
   // Show TOC
   const meta = report.meta
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
+    <div
+      className="flex h-full w-full flex-col bg-background overflow-y-auto"
+      data-testid="natal-report-screen"
+      data-state="ready"
+    >
       <header
         className="flex-none px-4 pb-4 border-b border-border/40"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)" }}
@@ -347,7 +381,11 @@ function NatalSectionView({
   const nextSection = sectionIndex < report.sections.length - 1 ? report.sections[sectionIndex + 1] : null
 
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
+    <div
+      className="flex h-full w-full flex-col bg-background overflow-y-auto"
+      data-testid="natal-report-screen"
+      data-state="ready"
+    >
       <header
         className="flex-none px-4 pb-4 border-b border-border/40"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)" }}

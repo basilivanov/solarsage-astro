@@ -208,6 +208,35 @@ those later slices.
   file feeding the script), never modify the audit pipeline itself.
 - **Pass/fail:** byte-stable audit artifacts across two runs (hash match).
 
+### Status note 3 (2026-07-19, P1-7 visual baselines slice)
+
+- **P1-7 IMPLEMENTED (verified locally; remote candidate runs pending):**
+  ready-screen baselines for calendar/profile/readings/horary/natal +
+  state baselines: horary no-credit (locked, `data-access-state=locked`),
+  natal profile_incomplete, natal report GENERATING and ERROR on the unified
+  `natal-report-screen` root (`data-state` + role/aria-busy per AGENTS
+  contract; empty horary history is inside the ready baseline).
+- Baselines generated for chromium AND mobile (`*-{chromium,mobile}-linux.png`)
+  and proven deterministic: TWO consecutive FULL-GATE runs without
+  UPDATE_SNAPSHOTS — 52/52 passed each (26 chromium + 26 mobile, the exact
+  visual-regression.yml command including day-v2). Missing-baseline fails
+  closed (profile-ready deleted → test fails; restored → passes). No
+  screenshot masking of real UI; only the Next.js dev chrome is hidden via
+  the shared hideNextOverlay selectors (verified pixel-level: no dev
+  indicator in regenerated baselines). Error baseline is localized
+  ("Не удалось загрузить отчёт").
+- Workflow: `visual-regression.yml` reusable (`workflow_call`), baseline
+  suite only (acceptance-day excluded — P1-3 blocked on v1);
+  `deploy-production.yml` job `visual-baselines` (reusable), `build` now
+  `needs: [source-quality, visual-baselines]`. Single production workflow
+  and manual trigger preserved.
+- Product contract additions (minimal): `natal-report-screen` unified root
+  across all branches (loading/not_found/error/generating/failed/ready/
+  section-view) with data-state + role + aria-busy; `horary-screen` gained
+  `data-access-state` (unlocked|locked). No business-logic changes.
+- Remote candidate runs: PENDING (not yet executed on GitHub).
+- P1-2 (oracle), P1-3 (V2 same-payload), P1-6 (full real E2E) stay OPEN.
+
 ### Status note 2 (2026-07-19, P1-4/P1-5 slice)
 
 - **P1-4 done ✅:** `today.spec.ts` rewritten without early returns

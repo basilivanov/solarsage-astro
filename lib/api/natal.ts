@@ -15,7 +15,9 @@
 // emitted_logs: none.
 // invariants:
 //   - Public functions resolve typed results instead of throwing expected failures.
-//   - 409, 501, 502, 401 and 404 mappings and existing wire-facing messages remain unchanged.
+//   - 409, 501, 502, 401 and 404 status-to-error mappings remain unchanged.
+//   - The generic fetchNatalReport HTTP-error fallback message is localized:
+//     "Не удалось загрузить отчёт" (other wire-facing messages unchanged).
 //   - Successful payloads remain Zod-validated.
 //   - Zod failures remain Invalid response format; other caught failures remain Network error.
 //   - No payment client or access grant is introduced.
@@ -244,7 +246,7 @@ export async function fetchNatalReport(reportId?: string): Promise<
         ok: false,
         error: {
           type: "error",
-          message: body.detail?.message || body.message || "Failed to load report",
+          message: body.detail?.message || body.message || "Не удалось загрузить отчёт",
           errorCode: body.detail?.code,
         },
       }

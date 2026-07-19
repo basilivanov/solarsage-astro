@@ -35,6 +35,7 @@ import {
   type MockApiRouteFixtures,
 } from "./route-interception";
 import { calendarPayload, accessPayload, dayPayload } from "./fixtures/calendar-2026-07";
+import { prepareForScreenshot } from "./screenshot";
 
 function buildCalendarFixtures(): MockApiRouteFixtures {
   const fixtures: MockApiRouteFixtures = {
@@ -228,6 +229,10 @@ test.describe("Mock Visual — /calendar", () => {
     // Segmented controls are present
     await expect(page.getByTestId("calendar-view-day")).toBeVisible();
     await expect(page.getByTestId("calendar-view-moon")).toBeVisible();
+
+    // Deterministic visual baseline (fail-closed; UPDATE_SNAPSHOTS=true to refresh)
+    await prepareForScreenshot(page);
+    await expect(page).toHaveScreenshot("calendar-ready.png");
 
     // No missing API fixtures after quiet wait
     await expectNoMissingApiFixtures(page, tracker);
