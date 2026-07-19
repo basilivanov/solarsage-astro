@@ -16,7 +16,8 @@
 // side_effects: React state management
 // emitted_logs: n/a (tests)
 // invariants:
-//   - n/a
+//   - Public test contract: data-testid="chat-input" on the composer textarea
+//     and data-testid="chat-send" on the submit button.
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 "use client"
@@ -75,6 +76,7 @@ export function Composer({ onSend, onStop, disabled, streaming }: Props) {
         <textarea
           ref={ref}
           value={value}
+          data-testid="chat-input"
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -102,6 +104,7 @@ export function Composer({ onSend, onStop, disabled, streaming }: Props) {
           type="submit"
           disabled={!value.trim() || disabled}
           aria-label="Отправить"
+          data-testid="chat-send"
           className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary text-primary-foreground transition active:opacity-80 disabled:opacity-40"
         >
           <ArrowUp className="h-5 w-5" strokeWidth={2} />

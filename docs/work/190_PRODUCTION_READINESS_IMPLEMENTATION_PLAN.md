@@ -389,18 +389,31 @@ their text below is kept as the design for those later slices.
   `E2E_TELEGRAM_BOT_TOKEN` / `E2E_OPENROUTER_API_KEY` secrets — missing
   secrets are a fail-closed blocker) with a `release` suite of exactly the
   real-HMAC no-interception specs (onboarding-real, today, calendar,
-  cross-feature-navigation, profile-city-checkin); `deploy-production.yml`
+  cross-feature-navigation, profile-city-checkin, readings-horary,
+  natal-report, chat); `deploy-production.yml`
   adds the `real-e2e` reusable job (`needs: [source-quality,
   visual-baselines]`) and `deploy` now needs it, so a failing real flow
-  blocks migrate/deploy/tag. Real candidate run on the ephemeral stack is
+  blocks migrate/deploy/tag. Second slice (2026-07-19, local): real-HMAC
+  no-interception specs for the remaining user paths —
+  `e2e/readings-horary.spec.ts` (readings list contract + horary submit →
+  auto-navigated answer view → API read-back `status=answered` → history;
+  the product has no delete/archive operation, none invented),
+  `e2e/natal-report.spec.ts` (preview ready + the product's own
+  `/readings/natal/generating` route → redirect → ready report on the
+  unified `natal-report-screen` root, API read-back only as additional
+  proof; the ephemeral E2E stack sets
+  `NATAL_REPORT_ENABLED=true`, the production flag stays off),
+  `e2e/chat.spec.ts` (real send → structural assistant reply). Minimal chat
+  testids added per AGENTS contract (`chat-screen`/`chat-messages`/
+  `chat-message`/`chat-input`/`chat-send`), no business-logic changes.
+  Real candidate run on the ephemeral stack is
   PENDING (needs the full real stack + Telegram secrets); the remaining
-  P1-6 flows
-  (readings CRUD, horary submit/view, natal generate/view, chat,
-  paywall/referral claim, /start→web_app, payment webhook idempotency) stay
-  OPEN.
+  P1-6 flows (paywall/referral claim, /start→web_app launch, payment
+  webhook idempotency) stay OPEN.
 - **Goal:** every user-facing capability has real-path evidence.
-- **Steps:** add specs for readings CRUD, horary submit/view, natal
-  generate/view, chat, checkin, paywall/referral claim, profile edit city
+- **Steps:** add specs for readings list + horary lifecycle (no
+  delete/archive — the endpoint does not exist), natal generate/view, chat,
+  checkin, paywall/referral claim, profile edit city
   change, /start→web_app launch; use P1-4 cleanup. Payment webhook
   idempotency + sandbox proof (repeated callback → single effect).
 - **Files:** `e2e/*.spec.ts`, payment tests.

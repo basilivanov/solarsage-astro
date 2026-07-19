@@ -16,7 +16,9 @@
 // side_effects: React state management
 // emitted_logs: n/a (pure)
 // invariants:
-//   - n/a
+//   - Public test contract: root exposes data-testid="chat-screen" with
+//     data-state (empty|ready); the message list exposes
+//     data-testid="chat-messages".
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 "use client"
@@ -91,7 +93,7 @@ export function ChatScreen({ profile }: Props) {
   const showTyping = pending && !streamingId
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col" data-testid="chat-screen" data-state={isEmpty ? "empty" : "ready"}>
       <header
         className="flex items-start justify-between gap-3 px-5 pb-1 pt-4"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)" }}
@@ -129,7 +131,7 @@ export function ChatScreen({ profile }: Props) {
             />
           </ChatEmpty>
         ) : (
-          <ul className="flex flex-col gap-3 pb-3">
+          <ul className="flex flex-col gap-3 pb-3" data-testid="chat-messages">
             {messages.map((m: ChatMessage) => (
               <MessageBubble
                 key={m.id}

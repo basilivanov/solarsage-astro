@@ -16,7 +16,8 @@
 // side_effects: n/a (pure)
 // emitted_logs: n/a (pure)
 // invariants:
-//   - n/a
+//   - Public test contract: each message item exposes data-testid="chat-message"
+//     and data-role={user|assistant}; tests scope locators to the chat screen.
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import type { ChatMessage } from "@/lib/chat"
@@ -39,7 +40,11 @@ export function MessageBubble({
 }) {
   const isUser = message.role === "user"
   return (
-    <li className={isUser ? "flex justify-end" : "flex justify-start"}>
+    <li
+      className={isUser ? "flex justify-end" : "flex justify-start"}
+      data-testid="chat-message"
+      data-role={message.role}
+    >
       <div
         className={
           isUser

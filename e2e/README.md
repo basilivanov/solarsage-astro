@@ -55,6 +55,17 @@ Real E2E suites (real Telegram HMAC, no route interception except where noted):
   public CityPicker contract (`city-picker-input/-suggestions/-suggestion`)
   with real GET /api/profile proof, then check-in mood → energy → accuracy
   with fresh-load read-back (no interception).
+- `readings-horary.spec.ts` — readings screen contract + real horary
+  lifecycle: submit (weekly free credit) → auto-navigated answer view → API
+  read-back (`status=answered`) → history card (no interception; the product
+  has no delete/archive operation and none is invented).
+- `natal-report.spec.ts` — natal preview ready contract + the product's own
+  `/readings/natal/generating` route (starts generation, polls, redirects) →
+  ready report view on the unified `natal-report-screen` root (requires
+  `NATAL_REPORT_ENABLED=true` in the ephemeral E2E stack; production flag
+  stays off).
+- `chat.spec.ts` — real chat send → user bubble → structural assistant reply
+  (roles + non-empty content, never LLM-text-dependent).
 - `locked-features.spec.ts` — locked/paywalled states.
 - `edge-cases.spec.ts` — edge cases (contains one page.route interception).
 - `hydration-guard.spec.ts` — hydration stability.
@@ -154,7 +165,8 @@ starts).
 
 The `release` suite runs only the existing real-HMAC specs without route
 interception: `onboarding-real.spec.ts`, `today.spec.ts`, `calendar.spec.ts`,
-`cross-feature-navigation.spec.ts`, `profile-city-checkin.spec.ts` (dev-v2 and
+`cross-feature-navigation.spec.ts`, `profile-city-checkin.spec.ts`,
+`readings-horary.spec.ts`, `natal-report.spec.ts`, `chat.spec.ts` (dev-v2 and
 edge-cases stay out of the gate). The production deploy workflow reuses it as
 the `real-e2e` job (`needs: [source-quality, visual-baselines]`), and the
 `deploy` job requires it (`needs: [build, artifact-acceptance, real-e2e]`), so

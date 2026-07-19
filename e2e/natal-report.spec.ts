@@ -1,0 +1,90 @@
+// AI_HEADER
+// module: M-TEST-E2E-NATAL-REPORT
+// wave: W-TEST-3
+// purpose: Real-API E2E (no route interception): natal preview contract,
+//   the product's own /readings/natal/generating UI path, and the ready
+//   report view (P1-6 slice).
+
+// START_MODULE_CONTRACT: M-TEST-E2E-NATAL-REPORT
+// purpose: Prove the natal preview ready contract and the real full-report
+//   generation path exactly as the product exposes it: the generating route
+//   starts generation, polls and redirects to the ready report.
+// owns:
+//   - e2e/natal-report.spec.ts
+// inputs: real Telegram HMAC auth via e2e/fixtures.ts (uniqueTelegramUser),
+//   real API/LLM endpoints. Requires NATAL_REPORT_ENABLED=true in the
+//   ephemeral E2E stack (production flag stays off).
+// outputs: Playwright pass/fail; created users tracked for the acceptance
+//   cleanup adapter via E2E_CREATED_USERS_FILE (fixtures default).
+// dependencies: e2e/fixtures.ts (test, expect, completeOnboarding).
+// side_effects: Creates one real user and one real natal report (synchronous
+//   LLM generation) through the product's own generation route; an API
+//   read-back is used only as additional proof, never instead of the UI path.
+// emitted_logs: none.
+// invariants:
+//   - No page.route/mock/interception; no direct API mutation bypassing the
+//     UI generation route; no conditional early returns or expect(true)
+//     passes; no LLM-text-only assertions.
+// failure_policy: any failed expectation fails the test.
+// END_MODULE_CONTRACT: M-TEST-E2E-NATAL-REPORT
+
+// START_MODULE_MAP: M-TEST-E2E-NATAL-REPORT
+// public_entrypoints:
+//   - Playwright test runner
+// semantic_blocks:
+//   - PREVIEW: natal preview ready structural contract
+//   - GENERATE_AND_VIEW: product generating route → ready report screen
+// END_MODULE_MAP: M-TEST-E2E-NATAL-REPORT
+
+import { test, expect, completeOnboarding } from './fixtures';
+
+test.describe('Natal preview + full report — Real API (P1-6)', () => {
+  test.use({ uniqueTelegramUser: true });
+
+  test('renders preview and generates a real full report view', async ({ page }) => {
+    test.setTimeout(420000);
+
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+
+    await page.goto('/onboarding');
+    await completeOnboarding(page);
+
+    // --- PREVIEW: real calculated preview, structural assertions ---
+    await page.goto('/readings/natal');
+    const preview = page.getByTestId('natal-preview-screen');
+    await expect(preview).toHaveAttribute('data-state', 'ready', { timeout: 30000 });
+    await expect(page.getByTestId('natal-calculation-depth')).toBeVisible();
+    await expect(page.getByTestId('natal-spheres')).toBeVisible();
+    await expect(page.getByTestId('natal-planets')).toBeVisible();
+
+    // --- GENERATE_AND_VIEW: the product's own generation route ---
+    // /readings/natal/generating calls fetchNatalGenerate, shows the
+    // generation state, polls and redirects to /readings/natal/<id> on READY.
+    await page.goto('/readings/natal/generating');
+    await page.waitForURL(/\/readings\/natal\/[0-9a-f-]{36}$/, { timeout: 360000 });
+    const reportId = page.url().match(/\/readings\/natal\/([0-9a-f-]{36})$/)![1];
+
+    // The ready report renders through the real UI on the unified root.
+    const reportScreen = page.getByTestId('natal-report-screen');
+    await expect(reportScreen).toHaveAttribute('data-state', 'ready', { timeout: 30000 });
+    // Structural proof: the chapter list exists (8 canonical sections).
+    const chapterButtons = reportScreen.locator('main button');
+    await expect(chapterButtons.first()).toBeVisible({ timeout: 15000 });
+    expect(await chapterButtons.count()).toBeGreaterThanOrEqual(8);
+
+    // Additional API read-back proof (never instead of the UI path).
+    const report = await page.evaluate(async (id) => {
+      const res = await fetch(`/api/natal/report/${id}`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`GET /api/natal/report/${id} failed: ${res.status}`);
+      return res.json();
+    }, reportId);
+    expect(report.status).toBe('READY');
+    expect(report.sections.length).toBeGreaterThanOrEqual(8);
+  });
+});
