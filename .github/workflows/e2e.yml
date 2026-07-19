@@ -15,7 +15,9 @@
 # inputs:
 #   - workflow_dispatch: suite choice (smoke | release | full, default smoke)
 #   - workflow_call: suite string (required) and required secrets
-#     E2E_TELEGRAM_BOT_TOKEN / E2E_OPENROUTER_API_KEY
+#     E2E_TELEGRAM_BOT_TOKEN / E2E_OPENROUTER_API_KEY /
+#     E2E_GEONAMES_USERNAME (real GeoNames account for the ephemeral API
+#     only, scrubbed from the frontend build)
 # outputs: Playwright pass/fail; uploaded reports/artifacts; cleaned-up users.
 # dependencies: scripts/generate-telegram-test-initdata.py,
 #   scripts/acceptance/cleanup_e2e_users.py, e2e/* specs.
@@ -67,6 +69,8 @@ on:
         required: true
       E2E_OPENROUTER_API_KEY:
         required: true
+      E2E_GEONAMES_USERNAME:
+        required: true
 
 permissions:
   contents: read
@@ -109,6 +113,7 @@ jobs:
         env:
           E2E_TELEGRAM_BOT_TOKEN: ${{ secrets.E2E_TELEGRAM_BOT_TOKEN }}
           E2E_OPENROUTER_API_KEY: ${{ secrets.E2E_OPENROUTER_API_KEY }}
+          E2E_GEONAMES_USERNAME: ${{ secrets.E2E_GEONAMES_USERNAME }}
         run: |
           if [ -z "$E2E_TELEGRAM_BOT_TOKEN" ]; then
             echo "Error: E2E_TELEGRAM_BOT_TOKEN secret is empty" >&2
@@ -116,6 +121,10 @@ jobs:
           fi
           if [ -z "$E2E_OPENROUTER_API_KEY" ]; then
             echo "Error: E2E_OPENROUTER_API_KEY secret is empty" >&2
+            exit 1
+          fi
+          if [ -z "$E2E_GEONAMES_USERNAME" ]; then
+            echo "Error: E2E_GEONAMES_USERNAME secret is empty (real geo autocomplete cannot work without it)" >&2
             exit 1
           fi
 
@@ -165,6 +174,7 @@ jobs:
         env:
           E2E_TELEGRAM_BOT_TOKEN: ${{ secrets.E2E_TELEGRAM_BOT_TOKEN }}
           E2E_OPENROUTER_API_KEY: ${{ secrets.E2E_OPENROUTER_API_KEY }}
+          E2E_GEONAMES_USERNAME: ${{ secrets.E2E_GEONAMES_USERNAME }}
         shell: bash
         run: |
           # 1. Define cleanup function
@@ -226,6 +236,10 @@ jobs:
             export TELEGRAM_BOT_TOKEN="$E2E_TELEGRAM_BOT_TOKEN"
             export OPENROUTER_API_KEY="$E2E_OPENROUTER_API_KEY"
             export LLM_MODEL=openai/gpt-4.1-nano
+            # Real GeoNames account for /api/geo/* city/timezone lookups in
+            # the ephemeral API (scoped to this subshell only, never the
+            # frontend build); without it autocomplete answers 400.
+            export GEONAMES_USERNAME="$E2E_GEONAMES_USERNAME"
             # Natal full-report flag ON for the ephemeral E2E stack only
             # (production default stays false) so the real generate path is
             # exercised by the release gate.
@@ -252,9 +266,9 @@ jobs:
           # 4. Build and Start Frontend (port 3002)
           # We use production build to test production assets and real routing.
           # Explicitly unsetting/removing secrets from build child environment using env -u
-          env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY pnpm run build
+          env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u E2E_GEONAMES_USERNAME -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY -u GEONAMES_USERNAME pnpm run build
 
-          env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY pnpm exec next start -H 127.0.0.1 -p 3002 > /tmp/solarsage-e2e-frontend.log 2>&1 &
+          env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u E2E_GEONAMES_USERNAME -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY -u GEONAMES_USERNAME pnpm exec next start -H 127.0.0.1 -p 3002 > /tmp/solarsage-e2e-frontend.log 2>&1 &
           echo $! > /tmp/solarsage-e2e-frontend.pid
 
           # Wait for Frontend
