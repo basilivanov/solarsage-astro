@@ -16,7 +16,11 @@
 // side_effects: n/a (pure)
 // emitted_logs: n/a (pure)
 // invariants:
-//   - n/a
+//   - Public test contract: the birth-city picker is wrapped in
+//     data-testid="onboarding-birth-city-field" and the current-city picker
+//     (rendered when "same as birth" is unchecked) in
+//     data-testid="onboarding-current-city-field"; tests scope CityPicker
+//     selectors to the relevant wrapper because two pickers can coexist.
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 "use client"
@@ -65,7 +69,7 @@ export function StepPlace({
       }
     >
       <div className="space-y-8">
-        <div>
+        <div data-testid="onboarding-birth-city-field">
           <p className="mb-3 font-sans text-[11px] uppercase tracking-[0.14em] text-foreground/45">
             Город рождения
           </p>
@@ -125,7 +129,7 @@ export function StepPlace({
           </label>
 
           {!sameAsBirth ? (
-            <div className="mt-5">
+            <div className="mt-5" data-testid="onboarding-current-city-field">
               <p className="mb-3 font-sans text-[11px] uppercase tracking-[0.14em] text-foreground/45">
                 Текущий город
               </p>

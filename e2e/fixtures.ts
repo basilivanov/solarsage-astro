@@ -263,9 +263,12 @@ export async function completeOnboarding(page: Page) {
 
   // Birth place: real geo search, first result, then "Сейчас живу там же"
   await expect(page.getByText('Место рождения')).toBeVisible({ timeout: 5000 });
-  const cityInput = page.getByTestId('city-picker-input');
+  // Scoped to the birth-city wrapper: StepPlace can render TWO pickers
+  // (birth + current) when "same as birth" is unchecked.
+  const birthCityField = page.getByTestId('onboarding-birth-city-field');
+  const cityInput = birthCityField.getByTestId('city-picker-input');
   await cityInput.fill('Москва');
-  const cityResult = page.getByTestId('city-picker-suggestion').first();
+  const cityResult = birthCityField.getByTestId('city-picker-suggestion').first();
   await expect(cityResult).toBeVisible({ timeout: 5000 });
   await cityResult.click();
   await page.getByText(/сейчас живу там же/i).click();

@@ -49,12 +49,14 @@ test.describe('Onboarding Flow - Real Telegram Auth', () => {
     // Step 3: Place — select Moscow via search
     await expect(page.getByText('Место рождения')).toBeVisible({ timeout: 5000 });
 
-    // Type city to trigger search
-    const cityInput = page.getByTestId('city-picker-input');
+    // Type city to trigger search (scoped to the birth-city wrapper —
+    // StepPlace can render two pickers when "same as birth" is unchecked)
+    const birthCityField = page.getByTestId('onboarding-birth-city-field');
+    const cityInput = birthCityField.getByTestId('city-picker-input');
     await cityInput.fill('Москва');
 
     // Click first search result
-    const cityResult = page.getByTestId('city-picker-suggestion').first();
+    const cityResult = birthCityField.getByTestId('city-picker-suggestion').first();
     await expect(cityResult).toBeVisible({ timeout: 5000 });
     await cityResult.click();
 
