@@ -94,6 +94,14 @@ test.describe('Referral deep-link auto-claim — Real API (P1-6)', () => {
       expect(access.user).toBe('trial');
       expect(access.referralDaysLeft).toBeGreaterThanOrEqual(13);
 
+      // Unlocked full-day proof: the claimed 14-day access unlocks Today
+      // (structural only, never LLM text).
+      await inviteePage.goto('/');
+      const inviteeToday = inviteePage.getByTestId('today-screen');
+      await expect(inviteeToday).toHaveAttribute('data-state', 'ready', { timeout: 15000 });
+      await expect(inviteePage.getByTestId('day-summary-card')).toBeVisible({ timeout: 15000 });
+      await expect(inviteePage.getByTestId('concrete-day-advice')).toBeVisible({ timeout: 15000 });
+
       // Referrer-side proof: exactly one invite recorded.
       const after = await readReferralInfo();
       expect(after.totalInvited).toBe(1);

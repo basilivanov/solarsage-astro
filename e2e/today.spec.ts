@@ -23,22 +23,25 @@ async function ensureOnboarded(page: import('@playwright/test').Page) {
 // END_BLOCK: ENSURE_ONBOARDED
 
 test.describe('Today Screen - Real Auth', () => {
-  test('today screen loads after Telegram auth', async ({ page }) => {
+  test('fresh user gets the honest locked preview (no fabricated access)', async ({ page }) => {
     test.setTimeout(60000);
     await ensureOnboarded(page);
 
+    // A fresh user intentionally has NO access ledger: Today is locked with
+    // the real preview, never an error and never fabricated full content.
+    // The unlocked full-day path is proven separately by the referral flow
+    // (e2e/referral-deeplink.spec.ts).
     const todayScreen = page.getByTestId('today-screen');
     await expect(todayScreen).toBeVisible({ timeout: 15000 });
+    await expect(todayScreen).toHaveAttribute('data-state', 'locked');
     await expect(page.getByTestId('error-boundary')).toBeHidden();
-    await expect(page.getByTestId('day-summary-card')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByTestId('concrete-day-advice')).toBeVisible({ timeout: 5000 });
-    const chart = page.getByTestId('day-chart');
-    const chartUnavailable = page.getByTestId('day-chart-unavailable');
-    await expect(chart.or(chartUnavailable)).toBeVisible({ timeout: 5000 });
-    const paywall = page.locator('text=/открыть доступ|подписки/i');
-    await expect(paywall).not.toBeVisible({ timeout: 3000 });
-    const whySection = page.locator('text=/почему так у меня/i');
-    await expect(whySection).toBeVisible({ timeout: 5000 });
+    // Paywall/preview contract: access card present, full-day cards absent.
+    await expect(page.getByTestId('access-card')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('day-summary-card')).toHaveCount(0);
+    await expect(page.getByTestId('concrete-day-advice')).toHaveCount(0);
+    // Preview content still renders from the real payload.
+    await expect(page.getByText('Главное на этот день')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('week-strip')).toBeVisible({ timeout: 10000 });
     const tabBar = page.locator('nav[aria-label="Основная навигация"]');
     await expect(tabBar).toBeVisible({ timeout: 5000 });
   });
@@ -62,9 +65,15 @@ test.describe('Today Screen - Real Auth', () => {
     await page.goto('/calendar');
     await expect(page.getByTestId('calendar-grid')).toBeVisible({ timeout: 15000 });
 
+    // Selecting a day cell opens the preview card; the PUBLIC CTA
+    // («Открыть день» for accessible days, «Открыть превью» for locked)
+    // performs the canonical navigation to /day/YYYY-MM-DD.
     const firstOpenableDay = page.locator('[data-testid^="calendar-day-"]:not([disabled])').first();
     await expect(firstOpenableDay).toBeVisible({ timeout: 5000 });
     await firstOpenableDay.click();
+    const openCta = page.getByRole('button', { name: /Открыть день|Открыть превью/ });
+    await expect(openCta).toBeEnabled({ timeout: 10000 });
+    await openCta.click();
     await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/);
   });
 
@@ -72,7 +81,9 @@ test.describe('Today Screen - Real Auth', () => {
     test.setTimeout(60000);
     await ensureOnboarded(page);
 
-    await page.goto('/day/today');
+    // Canonical day URL is /day/YYYY-MM-DD (the root route redirects there).
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/, { timeout: 15000 });
     await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });
     const weekStrip = page.getByTestId('week-strip');
     await expect(weekStrip).toBeVisible({ timeout: 5000 });

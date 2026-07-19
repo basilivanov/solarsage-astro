@@ -195,6 +195,38 @@ export async function createAuthedUserPage(
 }
 
 /**
+ * Grant the main fixture user real 14-day access through the genuine
+ * referral deep-link path: an isolated grantor user is created (same harness
+ * primitives), then the page is opened with the tgWebAppStartParam query so
+ * the real use-telegram-auth auto-claim fires. Waits for the typed access
+ * read-back to prove the bonus. No manual API/DB mutation. Returns the
+ * grantor's tg id.
+ */
+export async function grantReferralAccess(
+  page: Page,
+  browser: Browser,
+  baseURL: string | undefined,
+  testInfo: TestInfo,
+): Promise<number> {
+  const grantor = await createAuthedUserPage(browser, baseURL, testInfo, 'grantor');
+  const grantorId = grantor.tgUserId;
+  await grantor.context.close();
+  await page.goto(`/?tgWebAppStartParam=${encodeURIComponent(String(grantorId))}`);
+  await expect(async () => {
+    const access = await page.evaluate(async () => {
+      const res = await fetch('/api/access', {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`GET /api/access failed: ${res.status}`);
+      return res.json();
+    });
+    expect(access.referralDaysLeft ?? 0).toBeGreaterThanOrEqual(13);
+  }).toPass({ timeout: 30000 });
+  return grantorId;
+}
+
+/**
  * Extended Playwright test with real Telegram WebApp auth.
  *
  * Every test gets:
@@ -269,7 +301,8 @@ export async function completeOnboarding(page: Page) {
   const cityInput = birthCityField.getByTestId('city-picker-input');
   await cityInput.fill('Москва');
   const cityResult = birthCityField.getByTestId('city-picker-suggestion').first();
-  await expect(cityResult).toBeVisible({ timeout: 5000 });
+  // Real GeoNames latency is 2.8–5.1s; debounce (300ms) + network needs headroom.
+  await expect(cityResult).toBeVisible({ timeout: 15000 });
   await cityResult.click();
   await page.getByText(/сейчас живу там же/i).click();
 

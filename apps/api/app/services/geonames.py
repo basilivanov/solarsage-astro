@@ -22,6 +22,9 @@
 # invariants:
 #   - GEONAMES_USERNAME must be set in environment
 #   - retries with compact query if no results
+#   - search uses style=FULL; an inline item.timezone.timeZoneId is used as
+#     timezone_id directly, otherwise _fetch_timezone (timezoneJSON) is the
+#     per-item fallback
 # failure_policy:
 #   - GeoNamesError on API failure
 #   - returns empty list if no results
@@ -75,7 +78,7 @@ def _fetch_geonames(query: str, limit: int, mode: str) -> List[dict]:
     params = {
         "maxRows": str(limit),
         "featureClass": "P",
-        "style": "MEDIUM",
+        "style": "FULL",
         "lang": "ru",
         "username": _get_username(),
     }
@@ -121,7 +124,13 @@ def _fetch_geonames(query: str, limit: int, mode: str) -> List[dict]:
         if lat is None or lon is None:
             continue
 
-        tz_id = _fetch_timezone(lat, lon)
+        # style=FULL carries an inline timezone for most populated places;
+        # only items without it cost a separate timezoneJSON round-trip.
+        tz_inline = item.get("timezone")
+        if isinstance(tz_inline, dict) and tz_inline.get("timeZoneId"):
+            tz_id = tz_inline["timeZoneId"]
+        else:
+            tz_id = _fetch_timezone(lat, lon)
 
         results.append(
             {

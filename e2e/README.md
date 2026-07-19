@@ -56,23 +56,28 @@ Real E2E suites (real Telegram HMAC, no route interception except where noted):
   with real GET /api/profile proof, then check-in mood → energy → accuracy
   with fresh-load read-back (no interception).
 - `readings-horary.spec.ts` — readings screen contract + real horary
-  lifecycle: submit (weekly free credit) → auto-navigated answer view → API
-  read-back (`status=answered`) → history card (no interception; the product
-  has no delete/archive operation and none is invented).
+  lifecycle: real referral deep-link grant (14-day access) → quota/unlocked
+  proof → submit → auto-navigated answer view → API read-back
+  (`status=answered`) → history card (no interception; the product has no
+  delete/archive operation and none is invented).
 - `natal-report.spec.ts` — natal preview ready contract + the product's own
   `/readings/natal/generating` route (starts generation, polls, redirects) →
   ready report view on the unified `natal-report-screen` root (requires
   `NATAL_REPORT_ENABLED=true` in the ephemeral E2E stack; production flag
   stays off).
-- `chat.spec.ts` — real chat send → user bubble → structural assistant reply
-  (roles + non-empty content, never LLM-text-dependent).
+- `chat.spec.ts` — REMOVED (2026-07-19): /chat is an intentional locked
+  placeholder (no ChatScreen in the product route), so a real-chat API test
+  is impossible without faking the product; the honest locked state is
+  covered by `locked-features.spec.ts`.
 - `referral-deeplink.spec.ts` — referral deep-link auto-claim: referrer
   invite code via real GET /api/referral, invitee opened with
   `?tgWebAppStartParam=<code>` so the real auth flow claims the bonus
   (GET /api/access `referralDaysLeft >= 13`), referrer reads back
   `totalInvited=1`, and a repeated deep-link open stays idempotent (no
   manual API mutation; second user via `createAuthedUserPage`).
-- `locked-features.spec.ts` — locked/paywalled states.
+- `locked-features.spec.ts` — locked/paywalled states (incl. the intentional
+  chat placeholder; /chat is locked by design until the product follow-up,
+  so no real-chat spec exists in the suites).
 - `edge-cases.spec.ts` — edge cases (contains one page.route interception).
 - `hydration-guard.spec.ts` — hydration stability.
 - `real-v2-preview.spec.ts` — V2 preview, strictly no interception (uses
@@ -172,7 +177,7 @@ starts).
 The `release` suite runs only the existing real-HMAC specs without route
 interception: `onboarding-real.spec.ts`, `today.spec.ts`, `calendar.spec.ts`,
 `cross-feature-navigation.spec.ts`, `profile-city-checkin.spec.ts`,
-`readings-horary.spec.ts`, `natal-report.spec.ts`, `chat.spec.ts`,
+`readings-horary.spec.ts`, `natal-report.spec.ts`,
 `referral-deeplink.spec.ts` (dev-v2 and edge-cases stay out of the gate). The production deploy workflow reuses it as
 the `real-e2e` job (`needs: [source-quality, visual-baselines]`), and the
 `deploy` job requires it (`needs: [build, artifact-acceptance, real-e2e]`), so

@@ -64,9 +64,9 @@ test.describe('Profile city edit + check-in — Real API (P1-6)', () => {
     const cityInput = sheet.getByTestId('city-picker-input');
     await cityInput.fill('Казань');
     const suggestions = sheet.getByTestId('city-picker-suggestions');
-    await expect(suggestions).toBeVisible({ timeout: 10000 });
+    await expect(suggestions).toBeVisible({ timeout: 15000 });
     const firstSuggestion = suggestions.getByTestId('city-picker-suggestion').first();
-    await expect(firstSuggestion).toBeVisible({ timeout: 10000 });
+    await expect(firstSuggestion).toBeVisible({ timeout: 15000 });
     await firstSuggestion.click();
 
     const saveButton = sheet.getByRole('button', { name: 'Сохранить' });

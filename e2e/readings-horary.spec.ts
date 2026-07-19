@@ -7,17 +7,20 @@
 
 // START_MODULE_CONTRACT: M-TEST-E2E-READINGS-HORARY
 // purpose: Prove the readings screen contract and the real horary question
-//   lifecycle (weekly free credit) with structural assertions only.
+//   lifecycle (weekly-free credit under active referral access) with
+//   structural assertions only.
 // owns:
 //   - e2e/readings-horary.spec.ts
 // inputs: real Telegram HMAC auth via e2e/fixtures.ts (uniqueTelegramUser),
 //   real API/LLM endpoints.
 // outputs: Playwright pass/fail; created users tracked for the acceptance
 //   cleanup adapter via E2E_CREATED_USERS_FILE (fixtures default).
-// dependencies: e2e/fixtures.ts (test, expect, completeOnboarding).
-// side_effects: Creates one real user and one real horary question with a
-//   real LLM answer. No delete/archive operation exists in the product and
-//   none is invented here.
+// dependencies: e2e/fixtures.ts (test, expect, completeOnboarding,
+//   grantReferralAccess, createAuthedUserPage).
+// side_effects: Creates two real users (main + referral grantor), one real
+//   referral claim (14-day access), and one real horary question with a real
+//   LLM answer. No delete/archive operation exists in the product and none
+//   is invented here.
 // emitted_logs: none.
 // invariants:
 //   - No page.route/mock/interception; no conditional early returns or
@@ -33,12 +36,12 @@
 //   - HORARY_FLOW: submit → answer view → API read-back → history
 // END_MODULE_MAP: M-TEST-E2E-READINGS-HORARY
 
-import { test, expect, completeOnboarding } from './fixtures';
+import { test, expect, completeOnboarding, grantReferralAccess } from './fixtures';
 
 test.describe('Readings + horary — Real API (P1-6)', () => {
   test.use({ uniqueTelegramUser: true });
 
-  test('lists reading types and completes a real horary question lifecycle', async ({ page }) => {
+  test('lists reading types and completes a real horary question lifecycle', async ({ page, browser, baseURL }, testInfo) => {
     test.setTimeout(240000);
 
     await page.addInitScript(() => {
@@ -46,7 +49,10 @@ test.describe('Readings + horary — Real API (P1-6)', () => {
       sessionStorage.clear();
     });
 
-    await page.goto('/onboarding');
+    // Fresh users intentionally have NO horary weekly credit (no access
+    // ledger). Grant REAL 14-day access through the genuine referral
+    // deep-link flow — never a direct POST/DB seed.
+    await grantReferralAccess(page, browser, baseURL, testInfo);
     await completeOnboarding(page);
 
     // --- READINGS_LIST: the real readings screen contract ---
@@ -59,8 +65,20 @@ test.describe('Readings + horary — Real API (P1-6)', () => {
     await page.getByTestId('readings-card-horary').click();
     const horaryScreen = page.getByTestId('horary-screen');
     await expect(horaryScreen).toHaveAttribute('data-state', 'ready', { timeout: 15000 });
-    // A fresh user has the weekly free credit → unlocked form.
+    // Active referral access creates the weekly-free credit → unlocked form
+    // (a fresh user WITHOUT an access ledger is locked by design).
     await expect(horaryScreen).toHaveAttribute('data-access-state', 'unlocked');
+
+    // Quota proof (typed API read-back): real access granted a spendable credit.
+    const quota = await page.evaluate(async () => {
+      const res = await fetch('/api/horary/quota', {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`GET /api/horary/quota failed: ${res.status}`);
+      return res.json();
+    });
+    expect(quota.weeklyFreeAvailable || quota.bonusCredits > 0 || quota.paidCredits > 0).toBe(true);
 
     // Submit a real question (category + text + profile-confirmed moment).
     await page.getByTestId('horary-category-career').click();

@@ -144,3 +144,43 @@ class TestSearchGeoNamesTimezone:
 
         assert len(results) == 1
         assert results[0]["timezone_id"] is None
+
+    def test_autocomplete_inline_timezone_skips_timezone_json(self):
+        # style=FULL payload carries inline timezone: no timezoneJSON round-trip.
+        search_payload = json.dumps(
+            {
+                "geonames": [
+                    {
+                        "geonameId": 524901,
+                        "name": "Moscow",
+                        "adminName1": "Moscow",
+                        "countryName": "Russia",
+                        "lat": 55.7558,
+                        "lng": 37.6173,
+                        "timezone": {"timeZoneId": "Europe/Moscow", "gmtOffset": 3.0},
+                    },
+                ]
+            }
+        ).encode()
+
+        mock_search_resp = MagicMock()
+        mock_search_resp.read.return_value = search_payload
+        mock_search_resp.__enter__ = lambda s: s
+        mock_search_resp.__exit__ = MagicMock(return_value=False)
+
+        tz_calls = []
+
+        def mock_urlopen(url, timeout=5):
+            if "timezoneJSON" in url:
+                tz_calls.append(url)
+                raise AssertionError("timezoneJSON must not be called for inline timezone")
+            return mock_search_resp
+
+        with patch("app.services.geonames.urllib.request.urlopen", side_effect=mock_urlopen):
+            with patch("app.services.geonames._get_username", return_value="testuser"):
+                results = search_geonames("Moscow", limit=8)
+
+        assert tz_calls == []
+        assert len(results) == 1
+        assert results[0]["timezone_id"] == "Europe/Moscow"
+        assert results[0]["name"] == "Moscow"

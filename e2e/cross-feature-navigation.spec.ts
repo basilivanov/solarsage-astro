@@ -39,11 +39,11 @@ test.describe('Cross-Feature Navigation', () => {
     await expect(page).toHaveURL(/\/profile/);
     await expect(page.getByTestId('profile-screen')).toBeVisible({ timeout: 10000 });
 
-    // Back to day: required link and required destination.
-    const dayLink = page.locator('a[href="/day/today"]');
-    await expect(dayLink).toBeVisible({ timeout: 5000 });
-    await dayLink.click();
-    await expect(page).toHaveURL(/\/day\/today/);
+    // Back to day: required link and required canonical destination.
+    const dayLink = page.locator('a[href^="/day/"]');
+    await expect(dayLink.first()).toBeVisible({ timeout: 5000 });
+    await dayLink.first().click();
+    await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/);
     await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 10000 });
   });
 });

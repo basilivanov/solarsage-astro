@@ -55,9 +55,9 @@ test.describe('Onboarding Flow - Real Telegram Auth', () => {
     const cityInput = birthCityField.getByTestId('city-picker-input');
     await cityInput.fill('Москва');
 
-    // Click first search result
+    // Click first search result (real GeoNames latency needs headroom)
     const cityResult = birthCityField.getByTestId('city-picker-suggestion').first();
-    await expect(cityResult).toBeVisible({ timeout: 5000 });
+    await expect(cityResult).toBeVisible({ timeout: 15000 });
     await cityResult.click();
 
     // Check "Сейчас живу там же" to satisfy currentCity requirement

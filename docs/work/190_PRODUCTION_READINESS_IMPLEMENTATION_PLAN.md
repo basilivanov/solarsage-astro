@@ -386,11 +386,12 @@ their text below is kept as the design for those later slices.
   with fresh-load read-back («Оценка уже сохранена»), no interception, no
   conditional passes. Release-gate wiring implemented locally: `e2e.yml` is
   reusable (`workflow_call`, required string `suite` + required
-  `E2E_TELEGRAM_BOT_TOKEN` / `E2E_OPENROUTER_API_KEY` secrets — missing
+  `E2E_TELEGRAM_BOT_TOKEN` / `E2E_OPENROUTER_API_KEY` /
+  `E2E_GEONAMES_USERNAME` secrets — missing
   secrets are a fail-closed blocker) with a `release` suite of exactly the
   real-HMAC no-interception specs (onboarding-real, today, calendar,
   cross-feature-navigation, profile-city-checkin, readings-horary,
-  natal-report, chat, referral-deeplink); `deploy-production.yml`
+  natal-report, referral-deeplink); `deploy-production.yml`
   adds the `real-e2e` reusable job (`needs: [source-quality,
   visual-baselines]`) and `deploy` now needs it, so a failing real flow
   blocks migrate/deploy/tag. Second slice (2026-07-19, local): real-HMAC
@@ -402,10 +403,32 @@ their text below is kept as the design for those later slices.
   `/readings/natal/generating` route → redirect → ready report on the
   unified `natal-report-screen` root, API read-back only as additional
   proof; the ephemeral E2E stack sets
-  `NATAL_REPORT_ENABLED=true`, the production flag stays off),
-  `e2e/chat.spec.ts` (real send → structural assistant reply). Minimal chat
-  testids added per AGENTS contract (`chat-screen`/`chat-messages`/
-  `chat-message`/`chat-input`/`chat-send`), no business-logic changes.
+  `NATAL_REPORT_ENABLED=true`, the production flag stays off).
+  /chat is an INTENTIONAL locked placeholder (historical commit 4449768;
+  the route does not render ChatScreen): the earlier real-chat spec was
+  invalid and has been REMOVED from the repo and the release suite — chat
+  is a product follow-up, NOT implemented; the honest locked state is
+  covered by `locked-features.spec.ts`.
+  **Candidate run 29701833426 (2026-07-19, completed FAILURE: 6 passed /
+  5 failed).** GeoNames wiring proven (`/api/geo/autocomplete` 200).
+  Causes identified and fixed in the candidate follow-up: GeoNames latency
+  2.8–5.1s (suggestion waits raised to 15s, no retries/mocks);
+  `searchJSON` now uses `style=FULL`
+  with inline `timezone.timeZoneId` (per-item `timezoneJSON` N+1 removed,
+  `_fetch_timezone` kept as fallback; narrow backend test added); fresh
+  users intentionally have NO access ledger — Today is locked
+  (`today.spec.ts` now proves the honest locked preview
+  `data-state=locked` + access-card + payload preview, full-day cards
+  absent) and horary weekly credit is absent; the referral deep-link flow
+  grants real 14-day access — `referral-deeplink.spec.ts` now also proves
+  the unlocked full day (`data-state=ready` + `day-summary-card` +
+  `concrete-day-advice`) and `readings-horary.spec.ts` grants access via
+  the new fixtures helper `grantReferralAccess` (real deep-link claim, no
+  direct POST/DB seed) before quota/unlocked + submit→answer→read-back→
+  history. Stale navigation fixed: calendar day cell → public CTA
+  «Открыть день/Открыть превью» → canonical `/day/YYYY-MM-DD`;
+  cross-feature uses `a[href^="/day/"]` + dated URL regex. Next candidate
+  run is pending.
   Third slice (2026-07-19, local): referral deep-link auto-claim —
   `e2e/referral-deeplink.spec.ts` (referrer invite code via real GET
   /api/referral; isolated second user via new fixtures export
@@ -414,10 +437,9 @@ their text below is kept as the design for those later slices.
   real auth flow claims; GET /api/access `referralDaysLeft >= 13`;
   `totalInvited=1`; repeated deep-link open idempotent, no manual API
   mutation). Release suite now includes all of these specs.
-  Real candidate run on the ephemeral stack is
-  PENDING (needs the full real stack + Telegram secrets); the remaining
-  P1-6 items are only the /start external Telegram-client path (owner
-  ingress, P0-3) and the payment implementation + provider sandbox
+  Remaining P1-6 items: chat product follow-up (intentional locked
+  placeholder), the external /start Telegram-client ingress path (owner
+  ingress, P0-3), and the payment implementation + provider sandbox
   (product work, not a test gap).
 - **Goal:** every user-facing capability has real-path evidence.
 - **Steps:** add specs for readings list + horary lifecycle (no
