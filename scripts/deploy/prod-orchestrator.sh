@@ -271,6 +271,24 @@ prove_health() {
   return 0
 }
 
+run_smoke() {
+  # Functional smoke executed INSIDE deploy before the release record is
+  # written, so a smoke failure triggers the same rollback path as a health
+  # failure. Telegram delivery is intentionally NOT part of smoke (synthetic
+  # webhook checks are separate tooling and never stand in for real delivery).
+  "$CURL" -fsS -o /dev/null --max-time 5 "http://127.0.0.1:3002/" || return 1
+  local geo_out
+  geo_out=$("$CURL" -fsS --max-time 8 "http://127.0.0.1:8000/api/geo/autocomplete?q=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&limit=1" 2>/dev/null) || return 1
+  printf '%s' "$geo_out" | "$PYTHON" -c 'import json,sys
+try:
+    d = json.load(sys.stdin)
+    ok = isinstance(d, list) and len(d) > 0 and any(bool(s.get("timezone_id")) for s in d)
+except Exception:
+    ok = False
+sys.exit(0 if ok else 1)' || return 1
+  return 0
+}
+
 resolve_images() {
   # Pull each :<sha> tag once, verify the OCI revision label equals the exact
   # SHA, and resolve the matching RepoDigest. Prints three digest refs.
@@ -381,17 +399,17 @@ activate_with_digests() {
   local fb_sha="$5" fb_api="$6" fb_sidecar="$7" fb_frontend="$8"
   validate_activation_config "$a_api" "$a_sidecar" "$a_frontend"
   if up_wait "$a_api" "$a_sidecar" "$a_frontend"; then
-    if prove_health "$sha"; then
+    if prove_health "$sha" && run_smoke; then
       return 0
     fi
   fi
-  echo "Warning: activation or health identity proof failed for $sha" >&2
+  echo "Warning: activation, health identity proof, or smoke failed for $sha" >&2
   if [ -z "$fb_sha" ]; then
     return 1
   fi
   # Exact rollback with recorded digest references; never re-pulls an old tag.
   if up_wait "$fb_api" "$fb_sidecar" "$fb_frontend"; then
-    if prove_health "$fb_sha"; then
+    if prove_health "$fb_sha" && run_smoke; then
       return 2
     fi
   fi
@@ -406,7 +424,7 @@ deploy_cmd() {
   read_record_tuple
   local active="$REC_ACTIVE" a_api="$REC_ACTIVE_API" a_sidecar="$REC_ACTIVE_SIDECAR" a_frontend="$REC_ACTIVE_FRONTEND"
   if [ "$sha" = "$active" ]; then
-    if prove_health "$sha"; then
+    if prove_health "$sha" && run_smoke; then
       echo "Deploy of $sha is a proven no-op (already active)."
       return 0
     fi
@@ -457,7 +475,7 @@ rollback_cmd() {
   read_record_tuple
   local active="$REC_ACTIVE" previous="$REC_PREVIOUS"
   if [ "$sha" = "$active" ]; then
-    if prove_health "$sha"; then
+    if prove_health "$sha" && run_smoke; then
       echo "Rollback to $sha is a proven no-op (already active)."
       return 0
     fi

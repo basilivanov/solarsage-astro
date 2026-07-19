@@ -327,6 +327,35 @@ sudo docker compose --env-file /etc/solarsage/app.env -f /etc/solarsage/compose/
 sudo docker compose --env-file /etc/solarsage/app.env -f /etc/solarsage/compose/docker-compose.app.yml logs -f api
 ```
 
+### 6.1 Canonical Post-Deploy Smoke (non-destructive)
+
+Run after every deploy. Each check must pass exactly; any failure goes
+through the orchestrator rollback authority (deploy already gates on it).
+
+```bash
+# 1. Release identity on all three endpoints (exact requested SHA)
+sudo /usr/local/libexec/solarsage/prod-orchestrator status
+
+# 2. Frontend serves
+curl -fsS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3002/
+
+# 3. Geo autocomplete (real GeoNames): 200, non-empty, timezone_id present
+curl -fsS "http://127.0.0.1:8000/api/geo/autocomplete?q=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&limit=1"
+
+# 4. Webhook endpoint proof (synthetic only): correct secret -> 200,
+#    wrong secret -> 403. This proves the endpoint and its secret gate; it
+#    does NOT prove real Telegram delivery (see the ingress blocker).
+curl -fsS -X POST "https://astro.vasiliy-ivanov.ru/api/telegram/webhook" \
+  -H "Content-Type: application/json" \
+  -H "X-Telegram-Bot-Api-Secret-Token: <from /etc/solarsage/app.env, never printed>" \
+  -d '{"update_id":1,"message":{"message_id":1,"text":"/start","chat":{"id":1,"type":"private"}}}'
+```
+
+Note: the orchestrator's `deploy` command itself runs the same front+geo
+smoke before writing the release record, and a smoke failure triggers the
+recorded rollback path (contract OC28). The webhook step is operator-run
+and proves endpoint/gate only.
+
 ---
 
 ## 7. Nginx, Fail2ban, UFW, and SSL Certs

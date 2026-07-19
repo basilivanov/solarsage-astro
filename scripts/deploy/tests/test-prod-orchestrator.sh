@@ -209,12 +209,22 @@ elif [ -f "$TEST_DIR/fail-health-for" ]; then
   fi
 fi
 case "$url" in
+  *:8000/api/geo/autocomplete*)
+    if [ -f "$TEST_DIR/fail-smoke-for" ] && [ "$active" = "$(cat "$TEST_DIR/fail-smoke-for")" ]; then
+      exit 22
+    fi
+    printf '[{"name":"Moscow","country":"Russia","lat":55.75,"lon":37.62,"timezone_id":"Europe/Moscow"}]\n' ;;
   *:8000/api/health)
     printf '{"status":"ok","version":"0.1.0","git_sha":"g","release_sha":"%s"}\n' "$active" ;;
   *:18091/v1/health)
     printf '{"ok":true,"version":"g","engine":"swieph","calculation_version":"ss-calc-1.2.0","ephemeris_artifact_id":"se-test-artifact","ephemeris_manifest_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","fallback":false,"release_sha":"%s"}\n' "$active" ;;
   *:3002/api/release-health)
     printf '{"status":"ok","release_sha":"%s"}\n' "$active" ;;
+  *:3002/)
+    if [ -f "$TEST_DIR/fail-smoke-for" ] && [ "$active" = "$(cat "$TEST_DIR/fail-smoke-for")" ]; then
+      exit 22
+    fi
+    printf '<html>ok</html>\n' ;;
   *)
     exit 22 ;;
 esac
@@ -321,7 +331,7 @@ reset_sandbox() {
         "$TEST_DIR/digest-map" "$TEST_DIR/containers" \
         "$TEST_DIR/fail-pull" "$TEST_DIR/fail-up" "$TEST_DIR/fail-up-for" \
         "$TEST_DIR/fail-db" "$TEST_DIR/fail-dump" "$TEST_DIR/fail-restore-list" \
-        "$TEST_DIR/fail-restic" "$TEST_DIR/fail-health-all" "$TEST_DIR/fail-health-for" \
+        "$TEST_DIR/fail-restic" "$TEST_DIR/fail-health-all" "$TEST_DIR/fail-health-for" "$TEST_DIR/fail-smoke-for" \
         "$TEST_DIR/fail-label-for" "$TEST_DIR/fail-digest-for" "$TEST_DIR/fail-psql" \
         "$TEST_DIR/fail-migrate" "$TEST_DIR/fail-rm-rehearsal"
   rm -rf "$TEST_DIR/state" "$TEST_DIR/backups"
@@ -935,6 +945,27 @@ oc27() {
 }
 try_case "OC27 RELEASE_SHA exported to compose config and activation" oc27
 
+oc28() {
+  # START_BLOCK: OC28_SMOKE_GATE
+  # Smoke failure must behave exactly like a health failure: one rollback to
+  # the recorded previous, record byte-identical, no release fixation.
+  reset_sandbox
+  write_record_fixture "$SHA_A" ""
+  cp "$TEST_DIR/state/release-record" "$TEST_DIR/record-before"
+  printf '%s' "$SHA_B" > "$TEST_DIR/fail-smoke-for"
+  run_orch deploy "$SHA_B" --manual-confirm
+  local rc=0
+  expect_rc 78 "OC28" || rc=1
+  assert_err_has "rollback to previous active $SHA_A is proven" || rc=1
+  cmp -s "$TEST_DIR/record-before" "$TEST_DIR/state/release-record" || { case_fail "OC28 record changed after smoke failure"; rc=1; }
+  [ "$(grep -cF ' up -d --wait api sidecar frontend' "$TEST_DIR/ledger")" -eq 2 ] || { case_fail "OC28 expected 2 ups (activation + rollback)"; rc=1; }
+  grep -qF "API_IMAGE=$(digest_for api "$SHA_A")" "$TEST_DIR/env-ledger" || { case_fail "OC28 rollback did not use recorded digest"; rc=1; }
+  assert_no_canary "OC28" || rc=1
+  return $rc
+  # END_BLOCK: OC28_SMOKE_GATE
+}
+try_case "OC28 deploy smoke failure proves rollback with byte-identical record" oc28
+
 # END_BLOCK: CONTRACT_CASES
 
 EXPECTED_IDS="$TEST_DIR/expected_ids"
@@ -968,6 +999,7 @@ OC24 env RELEASE_SHA conflict fails closed; requested SHA restored
 OC25 migrate one-shot profile pinned digests no activation no record
 OC26 restore cleanup failure is generic warning rc78
 OC27 RELEASE_SHA exported to compose config and activation
+OC28 deploy smoke failure proves rollback with byte-identical record
 EOF
 
 LEDGER_OK=0

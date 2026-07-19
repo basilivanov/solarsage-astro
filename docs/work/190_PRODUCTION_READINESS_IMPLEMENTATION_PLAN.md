@@ -277,6 +277,16 @@ those later slices.
   POST (200 exact/403), front 200, referral auth smoke optional.
 - **Files:** `docs/PRODUCTION_RUNBOOK.md`.
 - **Pass/fail:** each check exact; failure → rollback authority (P0-1 step 5).
+- **Status ✅ (implemented):** `run_smoke` (front 3002 + geo autocomplete
+  with timezone_id) is wired into the orchestrator's `deploy` at all four
+  prove_health call sites (activation, rollback, both no-op paths) — the
+  release record is written only after health+smoke, and a smoke failure
+  triggers the existing recorded-rollback path. Harness regression case
+  OC28 (addressable `fail-smoke-for`): smoke failure → proven rollback with
+  byte-identical record, exactly 2 ups; orchestrator harness 30/30.
+  Runbook §6.1 documents the canonical non-destructive smoke command
+  (health ×3, front, geo, webhook synthetic 200/403 explicitly marked as
+  endpoint proof, not real Telegram delivery). Remaining P1 items stay open.
 
 ### Stop rule P1
 
