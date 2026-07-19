@@ -68,9 +68,12 @@ export function CityPicker({
     }
   }, [value])
 
+  const [searchError, setSearchError] = useState(false)
+
   useEffect(() => {
     if (!inputValue.trim() || inputValue.length < 2) {
       setMatches([])
+      setSearchError(false)
       return
     }
 
@@ -79,9 +82,11 @@ export function CityPicker({
       try {
         const results = await searchCitiesAsync(inputValue, 8)
         setMatches(results)
+        setSearchError(false)
       } catch (error) {
         logEvent("system.error", { error: String(error) }, { msg: "Failed to search cities", slice: "W-ONBOARDING", module: "M-CITY-PICKER", block: "SEARCH" })
         setMatches([])
+        setSearchError(true)
       } finally {
         setLoading(false)
       }
@@ -183,6 +188,10 @@ export function CityPicker({
             </li>
           ))}
         </ul>
+      ) : inputValue.trim() && searchError ? (
+        <p role="alert" className="font-sans text-[13px] text-foreground/60">
+          Не получилось найти город — проверьте подключение и попробуйте ещё раз.
+        </p>
       ) : inputValue.trim() ? null : (
         <div>
           <p className="mb-2 font-sans text-[11px] uppercase tracking-[0.14em] text-foreground/45">
