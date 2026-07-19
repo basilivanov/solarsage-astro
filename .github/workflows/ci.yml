@@ -81,7 +81,18 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ./packages/py-contracts
           python -m pip install -e './apps/api[dev]'
+          python -m pip install -e './apps/solarsage[dev]'
           python -m pip check
+
+      - name: Start sidecar for integration tests (explicit Moshier-only CI mode)
+        run: |
+          SOLARSAGE_EPHEMERIS_ALLOW_MOSHIER=1 SOLARSAGE_APP_ENV=development \
+            nohup python -m uvicorn solarsage.app:app --host 127.0.0.1 --port 18091 >/tmp/sidecar.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:18091/v1/health >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:18091/v1/health
 
       - name: Run backend tests
         run: python -m pytest apps/api/tests -q

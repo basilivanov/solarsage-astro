@@ -15,45 +15,30 @@
 # side_effects: n/a (pure)
 # emitted_logs: n/a (pure)
 # invariants:
-#   - n/a
+#   - Health is ok ONLY when the pinned Swiss artifact verifies and the
+#     engine probe returns FLG_SWIEPH (explicit moshier test mode excluded).
 # failure_policy: log and raise
 # END_MODULE_CONTRACT
 # AI_HEADER
 # module: M-SIDECAR-HEALTH-LOGIC
 # wave: W-3.1, W-3.2, W-SOLARSAGE-SVC
-# purpose: Health check logic (ephemeris validation + probe calculation)
+# purpose: Health check logic (ephemeris artifact validation + engine proof)
 
-import os
-import swisseph as swe
-
-from .config import settings
+from .ephemeris_runtime import EphemerisError, EphemerisIdentity, verify_and_configure
 
 
-def check_health() -> tuple[bool, str]:
+def check_health() -> tuple[bool, str, EphemerisIdentity | None]:
     """
     Check sidecar health.
 
     Returns:
-        (ok, error_message)
+        (ok, error_message, identity_or_none)
 
-    W-3.1: Check ephemeris path exists.
-    W-3.2: Add probe calculation (SUN on now).
-    W-SOLARSAGE-SVC: Use swisseph directly (no calculator dependency).
+    Fail-closed: any artifact/engine verification failure is unhealthy;
+    a bare path-exists check is never sufficient (P0 ephemeris gate).
     """
-    # Check ephemeris path
-    if not os.path.exists(settings.ephemeris_path):
-        return False, f"Ephemeris path not found: {settings.ephemeris_path}"
-
-    # W-3.2: Probe calculation
     try:
-        jd = swe.julday(2026, 5, 30, 12.0)  # Fixed date for probe
-        result = swe.calc_ut(jd, swe.SUN)
-        lon = result[0][0]
-
-        # Check that longitude is reasonable (0-360)
-        if not (0 <= lon <= 360):
-            return False, "Probe calculation failed (invalid longitude)"
-    except Exception as e:
-        return False, f"Probe calculation failed: {str(e)}"
-
-    return True, ""
+        identity = verify_and_configure()
+    except EphemerisError as exc:
+        return False, str(exc), None
+    return True, "", identity

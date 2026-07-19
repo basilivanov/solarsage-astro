@@ -24,6 +24,8 @@
 # purpose: Health endpoint tests
 
 import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from httpx import AsyncClient, ASGITransport
 
 from solarsage.app import app
@@ -43,7 +45,7 @@ async def test_health_endpoint():
         assert "version" in data
         assert "ephemeris_path" in data
         assert "calculation_version" in data
-        assert data["calculation_version"] == "ss-1.0.0"
+        assert data["calculation_version"] == "ss-calc-1.2.0"
         assert "release_sha" in data
         assert isinstance(data["release_sha"], str) and data["release_sha"]
 

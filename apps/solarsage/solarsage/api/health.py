@@ -35,23 +35,29 @@ router = APIRouter(prefix="/v1", tags=["health"])
 @router.get("/health")
 async def get_health() -> HealthResponse:
     """
-    Health check endpoint.
+    Health check endpoint (v2).
 
-    Returns 200 if:
-    - Ephemeris path exists
-    - Probe calculation succeeds (W-3.2)
+    Returns 200 only when the pinned Swiss artifact verifies AND the engine
+    probe returns FLG_SWIEPH (explicit moshier test mode reports
+    engine="moshier", fallback=true).
 
     Returns 503 otherwise.
     """
-    ok, error = check_health()
+    ok, error, identity = check_health()
 
-    if not ok:
+    if not ok or identity is None:
         raise HTTPException(status_code=503, detail=error)
 
     return HealthResponse(
         ok=True,
         version=settings.git_sha,
-        ephemeris_path=settings.ephemeris_path,
+        ephemeris_path=identity.ephemeris_path,
         calculation_version=settings.calculation_version,
         release_sha=settings.release_sha,
+        ephemeris_artifact_id=identity.artifact_id,
+        ephemeris_manifest_sha256=identity.manifest_sha256,
+        engine=identity.engine,
+        pyswisseph_version=identity.pyswisseph_version,
+        swiss_data_version=identity.swiss_data_version,
+        fallback=identity.fallback,
     )

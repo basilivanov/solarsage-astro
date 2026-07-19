@@ -1,6 +1,8 @@
 """Tests for sidecar activation schemas."""
 
 import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from pydantic import ValidationError
 
 from solarsage.schemas.activation import ActivationEvidence, ActivationLayer

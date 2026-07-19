@@ -1,6 +1,8 @@
 """Tests for sidecar /v1/activation-layer endpoint."""
 
 import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from fastapi.testclient import TestClient
 
 from solarsage.app import app

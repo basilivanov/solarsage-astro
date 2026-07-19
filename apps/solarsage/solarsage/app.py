@@ -23,15 +23,29 @@
 # wave: W-3.1, W-3.2, W-3.3
 # purpose: FastAPI sidecar application
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from .api import activation_layer, health, natal, transits
 from .core.config import settings
+from .core.ephemeris_runtime import verify_and_configure
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Startup gate: verify the pinned ephemeris artifact and configure the
+    # engine path BEFORE serving traffic. Production startup fails here on
+    # any verification problem; plain module import stays side-effect free.
+    verify_and_configure()
+    yield
+
 
 app = FastAPI(
     title="SolarSage Sidecar",
     description="HTTP sidecar for astrological calculations",
     version=settings.calculation_version,
+    lifespan=lifespan,
 )
 
 # Mount routers

@@ -27,9 +27,15 @@ from pydantic import BaseModel
 
 
 class HealthResponse(BaseModel):
-    """Health check response."""
+    """Health check response (v2 — exact ephemeris identity)."""
     ok: bool
     version: str
     ephemeris_path: str
     calculation_version: str
     release_sha: str
+    ephemeris_artifact_id: str = ""
+    ephemeris_manifest_sha256: str = ""
+    engine: str = ""
+    pyswisseph_version: str = ""
+    swiss_data_version: str = ""
+    fallback: bool = False

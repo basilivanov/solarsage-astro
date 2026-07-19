@@ -28,6 +28,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from ..core.config import settings
+from ..core.ephemeris_runtime import calc_ut_checked
 
 
 # Initialize Swiss Ephemeris
@@ -86,7 +87,7 @@ def calculate_planets(jd: float) -> list[dict]:
     planets = []
 
     for name, planet_id in PLANETS.items():
-        result = swe.calc_ut(jd, planet_id)
+        result = calc_ut_checked(jd, planet_id, swe.FLG_SWIEPH | swe.FLG_SPEED)
         lon, lat, dist, speed_lon, speed_lat, speed_dist = result[0]
 
         planets.append({
@@ -158,7 +159,7 @@ def probe_calculation() -> bool:
     """
     try:
         jd = swe.julday(2026, 5, 30, 12.0)  # Fixed date for probe
-        result = swe.calc_ut(jd, swe.SUN)
+        result = calc_ut_checked(jd, swe.SUN, swe.FLG_SWIEPH | swe.FLG_SPEED)
         lon = result[0][0]
 
         # Check that longitude is reasonable (0-360)

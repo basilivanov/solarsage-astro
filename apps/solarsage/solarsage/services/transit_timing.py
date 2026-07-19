@@ -47,6 +47,8 @@ from typing import Literal
 
 import swisseph as swe
 
+from solarsage.core.ephemeris_runtime import calc_ut_checked
+
 from solarsage.utils.ephemeris import PLANETS, julian_day_to_utc_iso
 
 TransitPhase = Literal["applying", "exact", "separating"]
@@ -122,7 +124,7 @@ class TransitPositionCache:
 
     def _default_calc(self, jd: float, planet_id: int) -> tuple[float, float]:
         flags = swe.FLG_SWIEPH | swe.FLG_SPEED
-        res = swe.calc_ut(jd, planet_id, flags)
+        res = calc_ut_checked(jd, planet_id, flags)
         lon, _, _, speed_lon, _, _ = res[0]
         return lon, speed_lon
 

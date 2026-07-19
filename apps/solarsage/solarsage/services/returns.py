@@ -48,6 +48,8 @@ from typing import Any
 
 import swisseph as swe
 
+from solarsage.core.ephemeris_runtime import calc_ut_checked, cross_ut_checked
+
 from solarsage.utils.ephemeris import (
     calculate_julian_day,
     calculate_positions,
@@ -205,7 +207,7 @@ def calculate_solar_return(
             mc_lon = sp["longitude"]
             chart_angles["MC"] = mc_lon
 
-    sun_at_return = swe.calc_ut(return_jd, swe.SUN, swe.FLG_SWIEPH)
+    sun_at_return = calc_ut_checked(return_jd, swe.SUN, swe.FLG_SWIEPH)
     return_sun_lon = sun_at_return[0][0]
 
     return SolarReturnResult(
@@ -248,7 +250,7 @@ def find_solar_return_jd(
     swe.set_ephe_path("/opt/sweph/ephe")
     flags = swe.FLG_SWIEPH
     try:
-        return_jd = swe.solcross_ut(natal_sun_longitude, search_start, flags)
+        return_jd = cross_ut_checked(swe.solcross_ut, natal_sun_longitude, search_start, flags)
     except swe.Error as e:
         raise ValueError(f"Solar return crossing not found: {e}")
 
@@ -256,7 +258,7 @@ def find_solar_return_jd(
         raise ValueError(f"Solar return crossing returned invalid JD: {return_jd}")
 
     # Verify and enforce precision (must be <= 0.001°)
-    sun_at_return = swe.calc_ut(return_jd, swe.SUN, flags)
+    sun_at_return = calc_ut_checked(return_jd, swe.SUN, flags)
     return_sun_lon = sun_at_return[0][0]
     lon_residual = abs(return_sun_lon - natal_sun_longitude) % 360.0
     if lon_residual > 180.0:
@@ -264,9 +266,9 @@ def find_solar_return_jd(
     if lon_residual > 0.001:
         # Try refinement by re-searching from the found crossing
         try:
-            refined_jd = swe.solcross_ut(natal_sun_longitude, return_jd + 0.001, flags)
+            refined_jd = cross_ut_checked(swe.solcross_ut, natal_sun_longitude, return_jd + 0.001, flags)
             if refined_jd > 0 and abs(refined_jd - return_jd) < 0.5:
-                sun_at_return = swe.calc_ut(refined_jd, swe.SUN, flags)
+                sun_at_return = calc_ut_checked(refined_jd, swe.SUN, flags)
                 refined_lon = sun_at_return[0][0]
                 refined_residual = abs(refined_lon - natal_sun_longitude) % 360.0
                 if refined_residual > 180.0:
@@ -345,7 +347,7 @@ def calculate_lunar_return(
 
     for _ in range(max_iterations):
         try:
-            jd = swe.mooncross_ut(natal_moon_lon, cursor, flags)
+            jd = cross_ut_checked(swe.mooncross_ut, natal_moon_lon, cursor, flags)
         except swe.Error:
             break
         if jd <= 0:
@@ -354,7 +356,7 @@ def calculate_lunar_return(
             break
 
         # Verify precision
-        moon_at_return = swe.calc_ut(jd, swe.MOON, flags)
+        moon_at_return = calc_ut_checked(jd, swe.MOON, flags)
         return_moon_lon = moon_at_return[0][0]
         lon_residual = abs(return_moon_lon - natal_moon_lon) % 360.0
         if lon_residual > 180.0:
@@ -379,7 +381,7 @@ def calculate_lunar_return(
     if target_jd_val - return_jd >= 30:
         raise ValueError(f"Lunar return JD {return_jd} is more than 30 days before target {target_jd_val}")
 
-    moon_at_return = swe.calc_ut(return_jd, swe.MOON, flags)
+    moon_at_return = calc_ut_checked(return_jd, swe.MOON, flags)
     return_moon_lon = moon_at_return[0][0]
 
     # 4. Build return chart using chart_lat/chart_lon
@@ -430,7 +432,7 @@ def find_next_lunar_return_jd(
     flags = swe.FLG_SWIEPH
     epsilon = 1e-8
     try:
-        jd = swe.mooncross_ut(natal_moon_longitude, after_jd + epsilon, flags)
+        jd = cross_ut_checked(swe.mooncross_ut, natal_moon_longitude, after_jd + epsilon, flags)
     except swe.Error as e:
         raise ValueError(f"Lunar return crossing not found: {e}")
 
@@ -439,7 +441,7 @@ def find_next_lunar_return_jd(
     if jd <= after_jd:
         raise ValueError(f"Lunar return crossing JD {jd} is not after {after_jd}")
 
-    moon_at_return = swe.calc_ut(jd, swe.MOON, flags)
+    moon_at_return = calc_ut_checked(jd, swe.MOON, flags)
     return_moon_lon = moon_at_return[0][0]
     lon_residual = abs(return_moon_lon - natal_moon_longitude) % 360.0
     if lon_residual > 180.0:

@@ -36,11 +36,13 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from typing import Dict, List, Any
 
-from ..core.config import settings
+from ..core.ephemeris_runtime import calc_ut_checked, get_ephe_path
 
 
-# Initialize Swiss Ephemeris
-swe.set_ephe_path(settings.ephemeris_path)
+def _ensure_configured() -> None:
+    # Lazy single-owner configuration: verification runs at first actual
+    # calculation (or at the FastAPI startup gate), never at module import.
+    get_ephe_path()
 
 
 PLANETS = {
@@ -104,10 +106,11 @@ def calculate_positions(jd: float) -> List[Dict[str, Any]]:
 
     W-SOLARSAGE-SVC: Centralized ephemeris calculations.
     """
+    _ensure_configured()
     planets = []
 
     for name, planet_id in PLANETS.items():
-        result = swe.calc_ut(jd, planet_id)
+        result = calc_ut_checked(jd, planet_id, swe.FLG_SWIEPH | swe.FLG_SPEED)
         lon, lat, dist, speed_lon, speed_lat, speed_dist = result[0]
 
         planets.append({
@@ -152,6 +155,7 @@ def calculate_houses_cusps(
     Raises:
         ValueError: if house_system is not supported
     """
+    _ensure_configured()
     # Map requested house system to Swiss Ephemeris code
     hs_upper = house_system.upper().strip()
     if hs_upper == "PLACIDUS":

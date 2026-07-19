@@ -1,6 +1,9 @@
 """W9 tests: activation technique family coverage across fixtures."""
 
 from __future__ import annotations
+import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 
 from solarsage.services.activation_builder import ALL_TECHNIQUES, SUPPORTED, build_activation_layer
 

@@ -1,5 +1,6 @@
 """Tests for sidecar W3.5 solar arc activations."""
 import pytest
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from fastapi.testclient import TestClient
 
 from solarsage.app import app

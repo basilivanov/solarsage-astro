@@ -4,6 +4,8 @@ Tests that the sidecar builder produces deterministic annual_profection
 and monthly_profection activations with correct golden values for Basil
 audit profile."""
 import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from datetime import date as Date
 from fastapi.testclient import TestClient
 

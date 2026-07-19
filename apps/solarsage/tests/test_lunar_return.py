@@ -1,5 +1,7 @@
 """Tests for sidecar W3.4 lunar return activations."""
 import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from datetime import datetime, timezone, timedelta
 from fastapi.testclient import TestClient
 

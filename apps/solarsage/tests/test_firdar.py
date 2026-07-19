@@ -5,6 +5,8 @@ exact boundary behavior, technique filtering, node periods, Feb 29 births,
 and historical fixture verification."""
 import json
 import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from pathlib import Path
 from datetime import date as Date, timedelta
 from fastapi.testclient import TestClient

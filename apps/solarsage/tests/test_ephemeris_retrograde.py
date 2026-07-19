@@ -1,4 +1,7 @@
 from solarsage.utils.ephemeris import calculate_julian_day, calculate_positions
+import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 
 def test_ephemeris_retrograde_calculation():
     # 2026-07-08 12:00 in Moscow: Mercury, Neptune, Pluto are retrograde

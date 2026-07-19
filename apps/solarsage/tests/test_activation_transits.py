@@ -4,6 +4,9 @@ Tests that the sidecar builder produces real transit activations with
 correct evidence formats, index structures, and deterministic behavior
 for all four supported techniques."""
 from fastapi.testclient import TestClient
+import pytest
+
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from datetime import datetime, timezone
 import swisseph as swe
 

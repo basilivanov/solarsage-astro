@@ -24,6 +24,7 @@
 # purpose: Transits endpoint tests
 
 import pytest
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from httpx import AsyncClient, ASGITransport
 
 from solarsage.app import app

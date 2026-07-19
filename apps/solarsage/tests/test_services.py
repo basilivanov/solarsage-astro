@@ -24,6 +24,7 @@
 # purpose: Service module tests
 
 import pytest
+pytestmark = pytest.mark.usefixtures("moshier_mode")
 from datetime import datetime, date
 
 from solarsage.services.natal import NatalService

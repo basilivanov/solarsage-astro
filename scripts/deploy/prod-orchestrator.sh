@@ -161,7 +161,8 @@ load_env_file() {
   for var in REGISTRY POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB \
              DATABASE_URL APP_DOMAIN TELEGRAM_BOT_TOKEN GRACE_USER_SALT \
              CORS_ALLOWED_ORIGINS OPENROUTER_API_KEY \
-             RESTIC_REPOSITORY OFFSITE_RESTIC_PASSWORD_FILE; do
+             RESTIC_REPOSITORY OFFSITE_RESTIC_PASSWORD_FILE \
+             EXPECTED_CALCULATION_VERSION; do
     [ -n "${!var:-}" ] || fail "required env value $var is missing"
   done
   case "$REGISTRY" in
@@ -255,12 +256,22 @@ except Exception:
 }
 
 prove_health() {
-  # $1 = expected full SHA; rc 0 only when all three identities match exactly.
+  # $1 = expected full SHA; rc 0 only when all identities match exactly.
+  # Sidecar must prove exact ephemeris identity (engine=swieph, canonical
+  # calculation version, artifact present; optional exact artifact pins).
   local want="$1"
   [ "$(health_release_sha 8000 /api/health)" = "$want" ] || return 1
   [ "$(health_release_sha 18091 /v1/health)" = "$want" ] || return 1
-  [ -n "$(health_field_nonempty 18091 /v1/health ephemeris_path)" ] || return 1
-  [ -n "$(health_field_nonempty 18091 /v1/health calculation_version)" ] || return 1
+  [ "$(health_field_nonempty 18091 /v1/health engine)" = "swieph" ] || return 1
+  [ "$(health_field_nonempty 18091 /v1/health calculation_version)" = "$EXPECTED_CALCULATION_VERSION" ] || return 1
+  [ -n "$(health_field_nonempty 18091 /v1/health ephemeris_artifact_id)" ] || return 1
+  [ -n "$(health_field_nonempty 18091 /v1/health ephemeris_manifest_sha256)" ] || return 1
+  if [ -n "${EPHEMERIS_EXPECTED_ARTIFACT_ID:-}" ]; then
+    [ "$(health_field_nonempty 18091 /v1/health ephemeris_artifact_id)" = "$EPHEMERIS_EXPECTED_ARTIFACT_ID" ] || return 1
+  fi
+  if [ -n "${EPHEMERIS_EXPECTED_MANIFEST_SHA256:-}" ]; then
+    [ "$(health_field_nonempty 18091 /v1/health ephemeris_manifest_sha256)" = "$EPHEMERIS_EXPECTED_MANIFEST_SHA256" ] || return 1
+  fi
   [ "$(health_release_sha 3002 /api/release-health)" = "$want" ] || return 1
   return 0
 }

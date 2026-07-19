@@ -25,6 +25,8 @@
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from solarsage_contracts.versions import CALCULATION_VERSION
+
 
 class Settings(BaseSettings):
     """Sidecar configuration."""
@@ -34,10 +36,18 @@ class Settings(BaseSettings):
     port: int = 18091
 
     # Ephemeris
+    # Canonical pinned artifact root (per doc 80 layout: <root>/{ephe,manifest.json,manifest.sha256}).
+    ephemeris_root: str = "/opt/solarsage-ephemeris/current"
+    # Legacy data dir used ONLY by the explicit non-production moshier mode.
     ephemeris_path: str = "/opt/sweph/ephe"
+    # Explicit test-only switch: accept Moshier instead of the pinned Swiss
+    # artifact. NEVER honored under app_env=production (fail-closed).
+    ephemeris_allow_moshier: bool = False
+    app_env: str = "development"
 
-    # Versioning
-    calculation_version: str = "ss-1.0.0"
+    # Versioning — default is the shared canonical contract version; env may
+    # only override in non-production tooling.
+    calculation_version: str = CALCULATION_VERSION
     git_sha: str = "dev"  # Override in production
     # Immutable release identity supplied by the container environment
     # (SOLARSAGE_RELEASE_SHA, full 40-hex commit SHA). "unknown" outside the

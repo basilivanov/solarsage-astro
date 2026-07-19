@@ -32,6 +32,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("moshier_mode")
+
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 

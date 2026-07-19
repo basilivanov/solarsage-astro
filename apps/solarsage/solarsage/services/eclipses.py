@@ -37,6 +37,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 import swisseph as swe
+
+from ..core.ephemeris_runtime import calc_ut_checked
 import yaml
 
 from solarsage.utils.ephemeris import (
@@ -180,7 +182,7 @@ def _find_eclipse_candidates(target_jd: float, config: dict) -> list[dict]:
 
             # Longitude at maximum eclipse
             body = swe.SUN if is_solar else swe.MOON
-            pos = swe.calc_ut(eclipse_jd, body, flags)
+            pos = calc_ut_checked(eclipse_jd, body, flags)
             eclipse_lon = pos[0][0]
 
             candidates.append({
