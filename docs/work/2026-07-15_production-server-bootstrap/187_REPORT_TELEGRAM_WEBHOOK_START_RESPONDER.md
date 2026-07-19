@@ -81,3 +81,29 @@ Current production state (sync --audit rc 0, identity proven):
   the owner sets it in BotFather (Bot Settings → Menu Button).
 - Everything else Telegram-side is configured and proven: bio, description,
   /start webhook responder, /start command, webhook, referral URLs.
+
+## Addendum 2 — UX copy consolidation (2026-07-19, uncommitted workspace change)
+
+Mobile screenshot showed the menu button truncated («Открыть мой д…») and an
+overlong «What can this bot do?» block. One laconic variant implemented in
+canon (NOT yet committed/deployed/applied):
+
+- Menu button label: «Открыть мой день ✨» → **«Мой день ✨»**
+  (`bot-profile.json`; BotFather remains the manual gate for the live button).
+- Description («What can this bot do?») → 2 short sentences:
+  «Твой день по натальной карте — не общий гороскоп. Узнай, что сегодня
+  поддержит, где лучше не спешить и почему.» (ты-form, «гороскоп» only with
+  negation; live bot needs a `setMyDescription` re-apply).
+- /start copy → one short greeting + one big button:
+  «Привет! ✨ Это твой день по натальной карте — что поддержит сегодня и где
+  лучше не спешить. Нажми кнопку — начнём.» + «Мой день ✨»
+  (`bot-profile.json` + `apps/api/app/api/telegram_webhook.py` START_TEXT,
+  byte-sync test; live webhook needs a redeploy to serve the new text).
+- /start command description → «Мой день» (`setup_webhook.py`; live command
+  needs a `setMyCommands` re-apply).
+- In-app onboarding CTA «Открыть мой день» intentionally unchanged (no
+  truncation there; e2e regex tolerates both forms).
+
+Tests: telegram suites 34/34 (webhook exact copy/button via constants +
+bot-profile byte-sync, setup payload, sync read-back); offline `--check`
+passes the tone guard. No Bot API calls made for this change.
