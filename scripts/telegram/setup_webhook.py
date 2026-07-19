@@ -71,7 +71,7 @@ from sync_bot_profile import (  # noqa: E402
 # END_BLOCK: SHARED_IMPORTS
 
 WEBHOOK_PATH = "/api/telegram/webhook"
-START_COMMAND = {"command": "start", "description": "Открыть мой день"}
+START_COMMAND = {"command": "start", "description": "Мой день"}
 
 
 # START_BLOCK: SECRET_LOAD
