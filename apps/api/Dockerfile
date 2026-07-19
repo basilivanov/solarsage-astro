@@ -10,11 +10,12 @@
 #   - apps/api/Dockerfile
 # inputs: repo-root Docker context containing packages/py-contracts, apps/api, and grace/canon.
 # outputs: Docker image exposing installed app.main:app on container port 8000.
-# dependencies: python:3.12-slim, pip, packages/py-contracts, apps/api, grace/canon.
+# dependencies: python:3.12-slim (multi-arch digest-pinned), pip, packages/py-contracts, apps/api, grace/canon.
 # side_effects: package installation inside image build; no Alembic migration on
 #   ordinary container start (migrate is a separate one-shot compose profile).
 # emitted_logs: none.
 # invariants:
+#   - Base image is pinned by the verified multi-arch index digest, never a mutable tag.
 #   - No root env/secrets are copied into the image.
 #   - Shared package is installed before the API package.
 #   - Runtime imports the installed API package, not the shallow /app source copy.
@@ -33,7 +34,10 @@
 # END_MODULE_MAP: M-DEPLOY-API-DOCKERFILE
 
 # START_BLOCK: API_IMAGE
-FROM python:3.12-slim
+# Base image pinned by multi-arch index digest (source tag python:3.12-slim,
+# version 3.12.13-slim-trixie; verified via docker buildx imagetools inspect
+# on 2026-07-19).
+FROM python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
 
 WORKDIR /app
 

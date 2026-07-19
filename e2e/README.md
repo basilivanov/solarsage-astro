@@ -2,16 +2,19 @@
 
 ## Real Today V2 preview (3003)
 
-Real preview on port 3003 uses the canonical systemd API (8000) and sidecar (18091).
-The launcher does not start backend or sidecar.
+Real preview on port 3003 expects an already-running API (8000) and sidecar
+(18091) on the host (Compose app stack on this machine); the launcher does not
+start backend or sidecar. In the `e2e.yml` workflow the stack is ephemeral:
+Postgres/Redis service containers plus `uvicorn` sidecar/API and a production
+Next build — no host services and no production systemd units are touched.
 
 > The real E2E is intentionally strict and fails closed until Stage 1 canonical
 > API convergence. Before S1.W3, a `today.v1` identity failure is expected and
 > must not be treated as a green real-preview result.
 
 ```bash
-# Verify services first
-systemctl is-active solarsage-api.service solarsage-sidecar.service
+# Verify the local stack first (Compose app project on this host)
+docker compose -p solarsage-app ps
 
 # Start real preview
 pnpm preview:v2:real
@@ -105,10 +108,14 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ### Start Services
 
-Real backend and sidecar are managed by systemd:
+The E2E workflow stack is ephemeral and self-contained: GitHub Actions
+Postgres/Redis service containers plus `uvicorn` sidecar (18091) and API
+(8000) and a production Next build (3002), all started inside the workflow
+run and cleaned up afterwards. Production systemd units are never touched.
+For local runs, use the already-running host stack (Compose app project):
 
 ```bash
-systemctl is-active solarsage-api.service solarsage-sidecar.service
+docker compose -p solarsage-app ps
 ```
 
 Start the real preview on 3003:

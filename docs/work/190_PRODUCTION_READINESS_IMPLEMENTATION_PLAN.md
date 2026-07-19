@@ -446,9 +446,26 @@ bundle (coverage, audit hashes, E2E reports, baselines) + owner review.
 ## Phase P2 — hardening (post-launch ok)
 
 - Docker base images pinned by digest; Python deps locked (P2).
+  **Status: PARTIAL (2026-07-19).** Base image digest pins implemented
+  locally and verified via `docker buildx imagetools inspect`:
+  `python:3.12-slim` (3.12.13-slim-trixie) in `apps/api/Dockerfile` and both
+  stages of `apps/solarsage/Dockerfile`; `node:20-slim` (20-bookworm-slim) in
+  both stages of `apps/web/Dockerfile`; `postgres:15` (15.18) in
+  `infra/production/docker-compose.yml`. Root `docker-compose*.yml` stay
+  unpinned intentionally (dev/compatibility only per AGENTS, not production
+  source of truth); E2E service images unchanged. **Open blocker:**
+  Python dependency lock export — both Python images install editable
+  packages via pip from pyproject constraints (`>=` ranges included), and
+  `apps/api/poetry.lock` is not consumed by the pip-based Docker builds, so
+  image dependency content is not bit-reproducible; a lock→constraints
+  export pipeline remains an open P2 item (not invented here).
 - Branch protection/rulesets when billing allows.
 - Stale docs refresh (`e2e/README.md` systemd-era content), harness dedup,
   stale astro ssh config block on apex.
+  **Status (2026-07-19, partial):** `e2e/README.md` systemd-era claims
+  replaced — the E2E workflow stack is documented as ephemeral
+  (Postgres/Redis services + uvicorn sidecar/API + production Next build)
+  and production systemd units are never touched.
 - ANTHROPIC_API_KEY empty-default documented (harmless while
   LLM_PROVIDER=openrouter).
 

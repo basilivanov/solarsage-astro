@@ -2,7 +2,7 @@
 # AI_HEADER: MODULE_DEPLOY_FRONTEND_DOCKERFILE — frontend Docker image recipe
 # ROLE: Builds the root Next.js production image from the repository context;
 #       replaces the obsolete apps/web Vite dist + nginx recipe.
-# DEPENDENCIES: node:20-slim, pnpm (corepack), Next.js production build
+# DEPENDENCIES: node:20-slim (multi-arch digest-pinned), pnpm (corepack), Next.js production build
 # GRACE_ANCHORS: [FRONTEND_IMAGE]
 # ############################################################################
 
@@ -17,10 +17,11 @@
 #   - build ARG PROD_API_REWRITE_BASE_URL (default http://api:8000, non-secret;
 #     baked into routes-manifest at build time)
 # outputs: Next.js production server image listening on container port 3002.
-# dependencies: node:20-slim base, frozen pnpm lockfile.
+# dependencies: node:20-slim base (multi-arch digest-pinned), frozen pnpm lockfile.
 # side_effects: pnpm install and next build inside the image build only.
 # emitted_logs: none.
 # invariants:
+#   - Both stages are pinned by the verified multi-arch index digest, never a mutable tag.
 #   - No .env, Telegram token, OpenRouter key, DB password or SSH material in
 #     any layer; build uses only non-secret NEXT_PUBLIC/defaults.
 #   - Build runs next build once; runtime runs next start, never pnpm dev.
@@ -38,7 +39,10 @@
 # END_MODULE_MAP: M-DEPLOY-FRONTEND
 
 # START_BLOCK: FRONTEND_DEPS
-FROM node:20-slim AS deps
+# Base image pinned by multi-arch index digest (source tag node:20-slim,
+# version 20-bookworm-slim; verified via docker buildx imagetools inspect on
+# 2026-07-19). The runtime stage below uses the same pinned digest.
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS deps
 
 RUN corepack enable
 WORKDIR /app
@@ -68,7 +72,9 @@ RUN pnpm build
 # END_BLOCK: FRONTEND_BUILD
 
 # START_BLOCK: FRONTEND_RUNTIME
-FROM node:20-slim
+# Same pinned base as the deps stage (source tag node:20-slim,
+# version 20-bookworm-slim).
+FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1

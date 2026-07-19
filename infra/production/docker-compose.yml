@@ -1,7 +1,7 @@
 # ############################################################################
 # AI_HEADER: MODULE_INFRA_PRODUCTION_DB
 # ROLE: Production PostgreSQL 15 database container setup.
-# DEPENDENCIES: docker, postgres:15
+# DEPENDENCIES: docker, postgres:15 (multi-arch digest-pinned)
 # GRACE_ANCHORS: [PRODUCTION_DB_SERVICE]
 # ############################################################################
 
@@ -18,6 +18,7 @@
 # dependencies: none
 # invariants:
 #   - Strictly bound to 127.0.0.1 (never 0.0.0.0).
+#   - DB image is pinned by the verified multi-arch index digest, never a mutable tag.
 #   - No plaintext secrets or default passwords in file.
 # failure_policy: fails on missing env variables or startup check errors.
 # END_MODULE_CONTRACT: M-INFRA-PRODUCTION-DB
@@ -33,7 +34,9 @@ name: solarsage-prod
 
 services:
   db:
-    image: postgres:15
+    # Pinned by multi-arch index digest (source tag postgres:15, version 15.18;
+    # verified via docker buildx imagetools inspect on 2026-07-19).
+    image: postgres:15@sha256:74e110c41804365e3915fcc09d5e7a1eff50161aaa94d5da0e58e0cd75ae509c
     container_name: solarsage-db
     restart: unless-stopped
     logging:

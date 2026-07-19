@@ -11,10 +11,11 @@
 #   - apps/solarsage/Dockerfile
 # inputs: repo-root Docker context containing packages/py-contracts, apps/solarsage, and grace/canon; named BuildKit context `ephemeris` with the licensed Swiss bundle (never Git/never secret).
 # outputs: Docker image exposing solarsage.app:app on container port 8001 with the verified ephemeris bundle at /opt/solarsage-ephemeris/bundle.
-# dependencies: python:3.12-slim, pip, packages/py-contracts, apps/solarsage, grace/canon/*.yml, pyswisseph.
+# dependencies: python:3.12-slim (multi-arch digest-pinned), pip, packages/py-contracts, apps/solarsage, grace/canon/*.yml, pyswisseph.
 # side_effects: package installation inside image build.
 # emitted_logs: none.
 # invariants:
+#   - Both stages are pinned by the verified multi-arch index digest, never a mutable tag.
 #   - No root env/secrets are copied into the image.
 #   - Compiler toolchain is absent from the runtime stage.
 #   - Runtime stage contains /usr/local/lib/grace/canon for installed sidecar canon loaders.
@@ -35,7 +36,10 @@
 # END_MODULE_MAP: M-DEPLOY-SOLARSAGE-DOCKERFILE
 
 # START_BLOCK: SIDECAR_BUILDER
-FROM python:3.12-slim AS builder
+# Base image pinned by multi-arch index digest (source tag python:3.12-slim,
+# version 3.12.13-slim-trixie; verified via docker buildx imagetools inspect
+# on 2026-07-19). The runtime stage below uses the same pinned digest.
+FROM python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de AS builder
 
 WORKDIR /app
 
@@ -52,7 +56,9 @@ RUN python -m pip wheel --no-cache-dir --wheel-dir /tmp/wheels --find-links /tmp
 # END_BLOCK: SIDECAR_BUILDER
 
 # START_BLOCK: SIDECAR_RUNTIME
-FROM python:3.12-slim
+# Same pinned base as the builder stage (source tag python:3.12-slim,
+# version 3.12.13-slim-trixie).
+FROM python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
 
 WORKDIR /app
 
