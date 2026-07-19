@@ -1,3 +1,42 @@
+# ############################################################################
+# AI_HEADER: MODULE_E2E_WORKFLOW
+# ROLE: Reusable real-stack E2E harness (manual suites + release gate reused
+#       by the production deploy workflow via workflow_call).
+# DEPENDENCIES: GitHub Actions, postgres/redis services, pnpm, playwright
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-E2E-WORKFLOW
+# purpose: Run the real-HMAC Playwright suites against an ephemeral real stack
+#   (postgres/redis services + sidecar + API + built frontend). Manual
+#   smoke/full suites are preserved; the release suite is the blocking gate
+#   reused by deploy-production.yml via workflow_call.
+# owns:
+#   - .github/workflows/e2e.yml
+# inputs:
+#   - workflow_dispatch: suite choice (smoke | release | full, default smoke)
+#   - workflow_call: suite string (required) and required secrets
+#     E2E_TELEGRAM_BOT_TOKEN / E2E_OPENROUTER_API_KEY
+# outputs: Playwright pass/fail; uploaded reports/artifacts; cleaned-up users.
+# dependencies: scripts/generate-telegram-test-initdata.py,
+#   scripts/acceptance/cleanup_e2e_users.py, e2e/* specs.
+# invariants:
+#   - The release suite runs ONLY existing real-HMAC specs without route
+#     interception: onboarding-real, today, calendar,
+#     cross-feature-navigation, profile-city-checkin (dev-v2 and edge-cases
+#     are intentionally excluded from the gate).
+#   - Missing required E2E secrets fail closed before any stack starts.
+#   - Created E2E users are always cleaned up via the acceptance adapter.
+# failure_policy: any failing spec fails the job; the secrets check exits 1.
+# END_MODULE_CONTRACT: M-E2E-WORKFLOW
+
+# START_MODULE_MAP: M-E2E-WORKFLOW
+# public_entrypoints:
+#   - workflow_dispatch (manual suites)
+#   - workflow_call (reusable release gate)
+# semantic_blocks:
+#   - TEST_JOB: ephemeral stack + suite runner + cleanup
+# END_MODULE_MAP: M-E2E-WORKFLOW
+
 name: E2E Tests
 
 on:
@@ -8,8 +47,20 @@ on:
         description: 'E2E Suite Selection'
         options:
           - smoke
+          - release
           - full
         default: smoke
+  workflow_call:
+    inputs:
+      suite:
+        type: string
+        description: 'E2E suite to run (smoke | release | full)'
+        required: true
+    secrets:
+      E2E_TELEGRAM_BOT_TOKEN:
+        required: true
+      E2E_OPENROUTER_API_KEY:
+        required: true
 
 permissions:
   contents: read
@@ -218,9 +269,12 @@ jobs:
             export E2E_CREATED_USERS_FILE=/tmp/solarsage-e2e-created-users.jsonl
             export CI=true
 
-            if [ "${{ github.event.inputs.suite }}" = "smoke" ]; then
+            if [ "${{ inputs.suite }}" = "smoke" ]; then
               echo "Running E2E smoke suite..."
               pnpm exec playwright test today.spec.ts calendar.spec.ts cross-feature-navigation.spec.ts --project=chromium
+            elif [ "${{ inputs.suite }}" = "release" ]; then
+              echo "Running E2E release gate suite..."
+              pnpm exec playwright test e2e/onboarding-real.spec.ts e2e/today.spec.ts e2e/calendar.spec.ts e2e/cross-feature-navigation.spec.ts e2e/profile-city-checkin.spec.ts --project=chromium
             else
               echo "Running E2E full suite..."
               pnpm exec playwright test e2e/*.spec.ts --project=chromium

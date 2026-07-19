@@ -384,8 +384,17 @@ their text below is kept as the design for those later slices.
   the profile "Где живу сейчас" edit with real GET `/api/profile` proof
   (city/coordinates/timezone) and the check-in mood → energy → accuracy flow
   with fresh-load read-back («Оценка уже сохранена»), no interception, no
-  conditional passes. Real candidate run on the ephemeral stack is PENDING
-  (needs the full real stack + Telegram secrets); the remaining P1-6 flows
+  conditional passes. Release-gate wiring implemented locally: `e2e.yml` is
+  reusable (`workflow_call`, required string `suite` + required
+  `E2E_TELEGRAM_BOT_TOKEN` / `E2E_OPENROUTER_API_KEY` secrets — missing
+  secrets are a fail-closed blocker) with a `release` suite of exactly the
+  real-HMAC no-interception specs (onboarding-real, today, calendar,
+  cross-feature-navigation, profile-city-checkin); `deploy-production.yml`
+  adds the `real-e2e` reusable job (`needs: [source-quality,
+  visual-baselines]`) and `deploy` now needs it, so a failing real flow
+  blocks migrate/deploy/tag. Real candidate run on the ephemeral stack is
+  PENDING (needs the full real stack + Telegram secrets); the remaining
+  P1-6 flows
   (readings CRUD, horary submit/view, natal generate/view, chat,
   paywall/referral claim, /start→web_app, payment webhook idempotency) stay
   OPEN.

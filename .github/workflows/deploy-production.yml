@@ -22,12 +22,17 @@
 # outputs: immutable per-SHA images in GHCR, acceptance evidence bundle,
 #   deployed exact SHA on the production host, annotated immutable prod tag.
 # dependencies: local reusable ./.github/workflows/ci.yml (source-quality),
-#   docker/buildx (build/push), ssh + forced-command orchestrator (deploy),
+#   ./.github/workflows/visual-regression.yml (visual-baselines),
+#   ./.github/workflows/e2e.yml (real-e2e release gate), docker/buildx
+#   (build/push), ssh + forced-command orchestrator (deploy),
 #   git + GITHUB_TOKEN (tag push)
 # invariants:
 #   - Manual trigger only; no push to main deploys by itself.
 #   - source-quality (reusable ./.github/workflows/ci.yml) gates build:
 #     nothing starts before full green CI on the exact SHA.
+#   - real-e2e (reusable ./.github/workflows/e2e.yml, release suite of
+#     existing real-HMAC no-interception specs) gates deploy: a failing real
+#     flow blocks migrate/deploy/tag; missing E2E secrets fail closed.
 #   - tag is created only after a successful deploy; immutable annotated
 #     prod-<utc>-<short12sha>, never overwritten; health/smoke/rollback stay
 #     inside the orchestrator (no second functional-smoke job).
@@ -51,6 +56,7 @@
 # semantic_blocks:
 #   - SOURCE_QUALITY_JOB: reusable CI gate for the exact SHA
 #   - VISUAL_BASELINES_JOB: reusable visual baseline gate
+#   - REAL_E2E_JOB: reusable real-HMAC release gate (e2e.yml release suite)
 #   - BUILD_JOB: immutable image build and push
 #   - ACCEPTANCE_JOB: artifact acceptance (partial, blocked by P1-2/P1-3)
 #   - DEPLOY_JOB: environment approval and exact SSH migrate + deploy
@@ -81,6 +87,22 @@ jobs:
   visual-baselines:
     uses: ./.github/workflows/visual-regression.yml
   # END_BLOCK: VISUAL_BASELINES_JOB
+
+  # START_BLOCK: REAL_E2E_JOB
+  # Blocking real-HMAC E2E release gate (reusable e2e workflow, release suite
+  # only: onboarding-real, today, calendar, cross-feature-navigation,
+  # profile-city-checkin — no route interception, no new harness). Runs the
+  # ephemeral real stack; missing E2E secrets fail closed inside the reusable
+  # workflow and block the deploy.
+  real-e2e:
+    needs: [source-quality, visual-baselines]
+    uses: ./.github/workflows/e2e.yml
+    with:
+      suite: release
+    secrets:
+      E2E_TELEGRAM_BOT_TOKEN: ${{ secrets.E2E_TELEGRAM_BOT_TOKEN }}
+      E2E_OPENROUTER_API_KEY: ${{ secrets.E2E_OPENROUTER_API_KEY }}
+  # END_BLOCK: REAL_E2E_JOB
 
   # START_BLOCK: BUILD_JOB
   build:
@@ -345,7 +367,7 @@ jobs:
 
   # START_BLOCK: DEPLOY_JOB
   deploy:
-    needs: [build, artifact-acceptance]
+    needs: [build, artifact-acceptance, real-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions: {}

@@ -137,10 +137,21 @@ cat test-results/error-events.json
 
 ## CI/CD Integration
 
-E2E tests are **manual-only**: `.github/workflows/e2e.yml` runs exclusively via
-`workflow_dispatch` (no automatic triggers on push or pull_request), with a
-`suite` input (`smoke` = today/calendar/cross-feature-navigation on Chromium,
-`full` = all specs). Run locally or trigger the workflow explicitly.
+E2E tests are **manual-only** for ad-hoc runs and **reusable** for the release
+gate: `.github/workflows/e2e.yml` supports `workflow_dispatch` with a `suite`
+input (`smoke` = today/calendar/cross-feature-navigation on Chromium,
+`release` = the blocking gate subset, `full` = all specs) and `workflow_call`
+(required string `suite` + required secrets `E2E_TELEGRAM_BOT_TOKEN` /
+`E2E_OPENROUTER_API_KEY`; missing secrets fail closed before the stack
+starts).
+
+The `release` suite runs only the existing real-HMAC specs without route
+interception: `onboarding-real.spec.ts`, `today.spec.ts`, `calendar.spec.ts`,
+`cross-feature-navigation.spec.ts`, `profile-city-checkin.spec.ts` (dev-v2 and
+edge-cases stay out of the gate). The production deploy workflow reuses it as
+the `real-e2e` job (`needs: [source-quality, visual-baselines]`), and the
+`deploy` job requires it (`needs: [build, artifact-acceptance, real-e2e]`), so
+a failing real flow blocks migrate/deploy/tag.
 
 ## Debugging Failed Tests
 
