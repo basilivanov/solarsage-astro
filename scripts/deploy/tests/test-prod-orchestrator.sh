@@ -34,7 +34,7 @@
 #   - main
 # semantic_blocks:
 #   - HARNESS_SETUP: sandbox layout, mocks, env file with canaries
-#   - CONTRACT_CASES: OC01..OC22 orchestrator matrix
+#   - CONTRACT_CASES: OC01..OC30 orchestrator matrix
 # END_MODULE_MAP: M-TEST-PROD-ORCHESTRATOR
 
 set -euo pipefail
@@ -159,6 +159,11 @@ case "$args" in
     ;;
   "compose --env-file "*" -f "*" ps")
     printf 'solarsage-api running\n'
+    exit 0
+    ;;
+  "compose --env-file "*" -f "*" --profile migrate run --rm migrate alembic current --check-heads")
+    env | grep -E '^(API|SIDECAR|FRONTEND)_IMAGE=' >> "$TEST_DIR/env-ledger" || true
+    [ -f "$TEST_DIR/fail-check-heads" ] && exit 1
     exit 0
     ;;
   "compose --env-file "*" -f "*" --profile migrate run --rm migrate")
@@ -333,7 +338,7 @@ reset_sandbox() {
         "$TEST_DIR/fail-db" "$TEST_DIR/fail-dump" "$TEST_DIR/fail-restore-list" \
         "$TEST_DIR/fail-restic" "$TEST_DIR/fail-health-all" "$TEST_DIR/fail-health-for" "$TEST_DIR/fail-smoke-for" \
         "$TEST_DIR/fail-label-for" "$TEST_DIR/fail-digest-for" "$TEST_DIR/fail-psql" \
-        "$TEST_DIR/fail-migrate" "$TEST_DIR/fail-rm-rehearsal"
+        "$TEST_DIR/fail-migrate" "$TEST_DIR/fail-check-heads" "$TEST_DIR/fail-rm-rehearsal"
   rm -rf "$TEST_DIR/state" "$TEST_DIR/backups"
   mkdir -p "$TEST_DIR/state" "$TEST_DIR/backups"
   : > "$TEST_DIR/ledger"
@@ -432,6 +437,24 @@ write_record_fixture() {
   [ -z "$previous" ] || seed_digest_map_for "$previous"
 }
 
+write_migration_marker_fixture() {
+  # $1 = sha, $2 = optional dump timestamp (default matches the mocked date).
+  # Seeds a valid migration marker plus its backup dump pair in the sandbox.
+  local sha="$1" ts="${2:-20260717T000000Z}"
+  local base="db-$ts.dump" dump="$TEST_DIR/backups/db-$ts.dump"
+  printf 'DUMP-FIXTURE\n' > "$dump"
+  (cd "$TEST_DIR/backups" && sha256sum "$base" > "$base.sha256")
+  chmod 0600 "$dump" "$dump.sha256"
+  {
+    printf 'target_sha=%s\n' "$sha"
+    printf 'api_image=%s\n' "$(digest_for api "$sha")"
+    printf 'backup_dump=%s\n' "$dump"
+    printf 'verified_at=%s\n' "$ts"
+    printf 'status=heads_applied\n'
+  } > "$TEST_DIR/state/migration-record"
+  chmod 0600 "$TEST_DIR/state/migration-record"
+}
+
 MANIFEST="$TEST_DIR/case_ids"
 : > "$MANIFEST"
 FAILURES="$TEST_DIR/failures"
@@ -521,6 +544,7 @@ try_case "OC07B preflight restic password file wrong mode rejected" oc07b
 
 oc08() {
   reset_sandbox
+  write_migration_marker_fixture "$SHA_B"
   run_orch deploy "$SHA_B" --manual-confirm
   local rc=0
   expect_rc 0 "OC08" || rc=1
@@ -567,6 +591,7 @@ try_case "OC08 deploy success digest-pinned with exact order and record" oc08
 oc09() {
   reset_sandbox
   write_record_fixture "$SHA_A" ""
+  write_migration_marker_fixture "$SHA_B"
   cp "$TEST_DIR/state/release-record" "$TEST_DIR/record-before"
   printf '%s' "$SHA_B" > "$TEST_DIR/fail-health-for"
   run_orch deploy "$SHA_B" --manual-confirm
@@ -585,6 +610,7 @@ try_case "OC09 deploy health failure proves rollback with byte-identical record"
 oc10() {
   reset_sandbox
   write_record_fixture "$SHA_A" ""
+  write_migration_marker_fixture "$SHA_B"
   cp "$TEST_DIR/state/release-record" "$TEST_DIR/record-before"
   : > "$TEST_DIR/fail-health-all"
   run_orch deploy "$SHA_B" --manual-confirm
@@ -771,6 +797,7 @@ try_case "OC19 malformed RepoDigest rejected before activation" oc19
 oc20() {
   reset_sandbox
   write_record_fixture "$SHA_A" ""
+  write_migration_marker_fixture "$SHA_B"
   cp "$TEST_DIR/state/release-record" "$TEST_DIR/record-before"
   printf '%s' "$SHA_B" > "$TEST_DIR/fail-up-for"
   run_orch deploy "$SHA_B" --manual-confirm
@@ -856,6 +883,7 @@ oc24() {
   # A matching value is irrelevant: the requested identity is restored and used.
   reset_sandbox
   printf 'RELEASE_SHA=%s\n' "$SHA_B" >> "$TEST_DIR/app.env"
+  write_migration_marker_fixture "$SHA_B"
   run_orch deploy "$SHA_B" --manual-confirm
   expect_rc 0 "OC24-match" || rc=1
   grep -qF "pull ghcr.io/test/solarsage-api:$SHA_B" "$TEST_DIR/ledger" || { case_fail "OC24 requested SHA was substituted by env"; rc=1; }
@@ -864,31 +892,62 @@ oc24() {
 try_case "OC24 env RELEASE_SHA conflict fails closed; requested SHA restored" oc24
 
 oc25() {
+  # START_BLOCK: OC25_MIGRATE_PROVEN_MARKER
   reset_sandbox
   run_orch migrate "$SHA_B" --manual-confirm
   local rc=0
   expect_rc 0 "OC25" || rc=1
   [ "$rc" -eq 0 ] || return 1
-  assert_out_has "Migration for $SHA_B completed successfully (one-shot profile only; no app activation, no release record change)." || rc=1
-  # Exact order: backup pair -> restic -> pull x3 -> inspect x6 -> migrate run.
+  assert_out_has "Migration for $SHA_B completed successfully (heads applied and checked; marker recorded; no app activation, no release record change)." || rc=1
+  # Exact order: backup pair -> restic -> pull x3 -> upgrade head -> check-heads.
   grep -qF "pg_dump " "$TEST_DIR/ledger" || { case_fail "OC25 pre-migration backup missing"; rc=1; }
   grep -qF "restic backup " "$TEST_DIR/ledger" || { case_fail "OC25 restic missing"; rc=1; }
   [ "$(grep -c '^pull ghcr.io/test/solarsage-' "$TEST_DIR/ledger")" -eq 3 ] || { case_fail "OC25 expected 3 tag pulls"; rc=1; }
   grep -qF -- "--profile migrate run --rm migrate" "$TEST_DIR/ledger" || { case_fail "OC25 migrate run missing"; rc=1; }
+  grep -qF -- "--profile migrate run --rm migrate alembic current --check-heads" "$TEST_DIR/ledger" || { case_fail "OC25 head check run missing"; rc=1; }
   grep -qF "API_IMAGE=$(digest_for api "$SHA_B")" "$TEST_DIR/env-ledger" || { case_fail "OC25 migrate did not use pinned api digest"; rc=1; }
+  local d_line u_line c_line
+  d_line=$(grep -nx "pg_dump .*" "$TEST_DIR/ledger" | head -1 | cut -d: -f1)
+  u_line=$(grep -nF -- "--profile migrate run --rm migrate" "$TEST_DIR/ledger" | grep -vF "check-heads" | head -1 | cut -d: -f1)
+  c_line=$(grep -nF -- "migrate alembic current --check-heads" "$TEST_DIR/ledger" | head -1 | cut -d: -f1)
+  [ -n "$d_line" ] && [ -n "$u_line" ] && [ -n "$c_line" ] || { case_fail "OC25 order lines missing"; rc=1; }
+  { [ "$d_line" -lt "$u_line" ] && [ "$u_line" -lt "$c_line" ]; } || { case_fail "OC25 order wrong: backup=$d_line upgrade=$u_line check=$c_line"; rc=1; }
+  # Atomic marker: exact contents and mode.
+  local marker="$TEST_DIR/state/migration-record"
+  [ -f "$marker" ] && [ ! -L "$marker" ] || { case_fail "OC25 marker missing"; rc=1; }
+  local expected_marker
+  expected_marker="target_sha=$SHA_B
+api_image=$(digest_for api "$SHA_B")
+backup_dump=$TEST_DIR/backups/db-20260717T000000Z.dump
+verified_at=20260717T000000Z
+status=heads_applied"
+  [ "$(cat "$marker")" = "$expected_marker" ] || { case_fail "OC25 marker mismatch: [$(cat "$marker")]"; rc=1; }
+  [ "$(stat -c '%a' "$marker")" = "600" ] || { case_fail "OC25 marker mode"; rc=1; }
   # Never activates app services, never writes the release record.
   if grep -qF "up -d --wait" "$TEST_DIR/ledger"; then
     case_fail "OC25 migration activated app services"
     rc=1
   fi
   [ ! -e "$TEST_DIR/state/release-record" ] || { case_fail "OC25 migration mutated the release record"; rc=1; }
-  # Failure path: migration run failure returns 78 without record changes.
+  # Upgrade failure: no marker write; a pre-existing marker stays byte-identical.
   reset_sandbox
+  write_migration_marker_fixture "$SHA_A"
+  cp "$TEST_DIR/state/migration-record" "$TEST_DIR/marker-before"
   : > "$TEST_DIR/fail-migrate"
   run_orch migrate "$SHA_B" --manual-confirm
   expect_rc 78 "OC25-failure" || rc=1
   assert_err_has "migration run failed" || rc=1
+  cmp -s "$TEST_DIR/marker-before" "$TEST_DIR/state/migration-record" || { case_fail "OC25-failure previous marker changed"; rc=1; }
   [ ! -e "$TEST_DIR/state/release-record" ] || { case_fail "OC25-failure record must not be written"; rc=1; }
+  # Head-check failure: no marker write; previous marker stays byte-identical.
+  reset_sandbox
+  write_migration_marker_fixture "$SHA_A"
+  cp "$TEST_DIR/state/migration-record" "$TEST_DIR/marker-before"
+  : > "$TEST_DIR/fail-check-heads"
+  run_orch migrate "$SHA_B" --manual-confirm
+  expect_rc 78 "OC25-headcheck" || rc=1
+  assert_err_has "migration head check failed" || rc=1
+  cmp -s "$TEST_DIR/marker-before" "$TEST_DIR/state/migration-record" || { case_fail "OC25-headcheck previous marker changed"; rc=1; }
   # CLI gates.
   reset_sandbox
   run_orch migrate "not-a-sha" --manual-confirm
@@ -897,8 +956,9 @@ oc25() {
   expect_rc 78 "OC25-noconfirm" || rc=1
   assert_no_canary "OC25" || rc=1
   return $rc
+  # END_BLOCK: OC25_MIGRATE_PROVEN_MARKER
 }
-try_case "OC25 migrate one-shot profile pinned digests no activation no record" oc25
+try_case "OC25 migrate proven heads check writes atomic marker without activation" oc25
 
 oc26() {
   reset_sandbox
@@ -935,6 +995,7 @@ oc27() {
   fi
   # Activation path: deploy must hand RELEASE_SHA to the up call.
   reset_sandbox
+  write_migration_marker_fixture "$SHA_B"
   run_orch deploy "$SHA_B" --manual-confirm
   expect_rc 0 "OC27 deploy" || rc=1
   [ "$rc" -eq 0 ] || return 1
@@ -951,6 +1012,7 @@ oc28() {
   # the recorded previous, record byte-identical, no release fixation.
   reset_sandbox
   write_record_fixture "$SHA_A" ""
+  write_migration_marker_fixture "$SHA_B"
   cp "$TEST_DIR/state/release-record" "$TEST_DIR/record-before"
   printf '%s' "$SHA_B" > "$TEST_DIR/fail-smoke-for"
   run_orch deploy "$SHA_B" --manual-confirm
@@ -965,6 +1027,114 @@ oc28() {
   # END_BLOCK: OC28_SMOKE_GATE
 }
 try_case "OC28 deploy smoke failure proves rollback with byte-identical record" oc28
+
+oc29() {
+  # START_BLOCK: OC29_MIGRATION_GATE
+  # A new deploy target must fail closed before any activation when the
+  # migration marker is missing, stale, symlinked, digest-mismatched or its
+  # recorded backup pair is corrupted.
+  local rc=0
+  # Missing marker.
+  reset_sandbox
+  run_orch deploy "$SHA_B" --manual-confirm
+  expect_rc 78 "OC29-missing" || rc=1
+  assert_err_has "migration marker is missing" || rc=1
+  if grep -qF "up -d --wait" "$TEST_DIR/ledger"; then
+    case_fail "OC29-missing activated without a marker"
+    rc=1
+  fi
+  [ ! -e "$TEST_DIR/state/release-record" ] || { case_fail "OC29-missing record written"; rc=1; }
+  # Stale marker (recorded for a different target SHA).
+  reset_sandbox
+  write_migration_marker_fixture "$SHA_C"
+  run_orch deploy "$SHA_B" --manual-confirm
+  expect_rc 78 "OC29-stale" || rc=1
+  assert_err_has "is stale" || rc=1
+  if grep -qF "up -d --wait" "$TEST_DIR/ledger"; then
+    case_fail "OC29-stale activated with a stale marker"
+    rc=1
+  fi
+  # Symlink marker.
+  reset_sandbox
+  write_migration_marker_fixture "$SHA_B"
+  rm -f "$TEST_DIR/state/migration-record"
+  printf 'target_sha=%s\n' "$SHA_B" > "$TEST_DIR/state/migration-target"
+  ln -s "$TEST_DIR/state/migration-target" "$TEST_DIR/state/migration-record"
+  run_orch deploy "$SHA_B" --manual-confirm
+  expect_rc 78 "OC29-symlink" || rc=1
+  assert_err_has "migration marker is missing or not a regular file" || rc=1
+  if grep -qF "up -d --wait" "$TEST_DIR/ledger"; then
+    case_fail "OC29-symlink activated with a symlink marker"
+    rc=1
+  fi
+  # Digest mismatch (marker api digest is not the resolved api digest).
+  reset_sandbox
+  write_migration_marker_fixture "$SHA_B"
+  sed -i "s|^api_image=.*|api_image=$(digest_for api "$SHA_C")|" "$TEST_DIR/state/migration-record"
+  run_orch deploy "$SHA_B" --manual-confirm
+  expect_rc 78 "OC29-digest" || rc=1
+  assert_err_has "api digest does not match" || rc=1
+  if grep -qF "up -d --wait" "$TEST_DIR/ledger"; then
+    case_fail "OC29-digest activated with a digest mismatch"
+    rc=1
+  fi
+  # Corrupted recorded backup pair. The marker uses the SAME timestamp the
+  # deploy's own pre-deploy backup will get: backup_now must pick the -1
+  # suffix instead of overwriting, so the corrupted marker dump is never
+  # "healed" by the new deploy backup.
+  reset_sandbox
+  write_migration_marker_fixture "$SHA_B"
+  printf 'corrupted\n' >> "$TEST_DIR/backups/db-20260717T000000Z.dump"
+  run_orch deploy "$SHA_B" --manual-confirm
+  expect_rc 78 "OC29-checksum" || rc=1
+  assert_err_has "checksum verification failed" || rc=1
+  if grep -qF "up -d --wait" "$TEST_DIR/ledger"; then
+    case_fail "OC29-checksum activated with a corrupted dump"
+    rc=1
+  fi
+  [ -f "$TEST_DIR/backups/db-20260717T000000Z-1.dump" ] || { case_fail "OC29-checksum deploy backup did not use the -1 suffix"; rc=1; }
+  # Same-second collision happy path: migrate records the base-name dump,
+  # the deploy pre-deploy backup takes the deterministic -1 suffix, and the
+  # recorded pre-migration pair stays byte-identical through a green deploy.
+  reset_sandbox
+  run_orch migrate "$SHA_B" --manual-confirm
+  expect_rc 0 "OC29-collision-migrate" || rc=1
+  [ "$rc" -eq 0 ] || return 1
+  cp "$TEST_DIR/backups/db-20260717T000000Z.dump" "$TEST_DIR/dump-before"
+  cp "$TEST_DIR/backups/db-20260717T000000Z.dump.sha256" "$TEST_DIR/dump-before.sha256"
+  run_orch deploy "$SHA_B" --manual-confirm
+  expect_rc 0 "OC29-collision-deploy" || rc=1
+  [ -f "$TEST_DIR/backups/db-20260717T000000Z-1.dump" ] || { case_fail "OC29-collision deploy backup did not take the -1 suffix"; rc=1; }
+  cmp -s "$TEST_DIR/dump-before" "$TEST_DIR/backups/db-20260717T000000Z.dump" || { case_fail "OC29-collision pre-migration dump was overwritten"; rc=1; }
+  cmp -s "$TEST_DIR/dump-before.sha256" "$TEST_DIR/backups/db-20260717T000000Z.dump.sha256" || { case_fail "OC29-collision pre-migration checksum was overwritten"; rc=1; }
+  grep -qxF "backup_dump=$TEST_DIR/backups/db-20260717T000000Z.dump" "$TEST_DIR/state/migration-record" || { case_fail "OC29-collision marker dump path changed"; rc=1; }
+  assert_no_canary "OC29" || rc=1
+  return $rc
+  # END_BLOCK: OC29_MIGRATION_GATE
+}
+try_case "OC29 deploy requires valid migration marker before activation" oc29
+
+oc30() {
+  local rc=0
+  reset_sandbox
+  write_record_fixture "$SHA_A" ""
+  write_migration_marker_fixture "$SHA_B"
+  run_orch status
+  expect_rc 0 "OC30" || rc=1
+  assert_out_has "migration marker:" || rc=1
+  assert_out_has "target=$SHA_B" || rc=1
+  assert_out_has "verified_at=20260717T000000Z status=heads_applied" || rc=1
+  if grep -qE " pull | up -d |pg_dump|restic backup" "$TEST_DIR/ledger"; then
+    case_fail "OC30 status mutated state: [$(cat "$TEST_DIR/ledger")]"
+    rc=1
+  fi
+  reset_sandbox
+  run_orch status
+  expect_rc 0 "OC30-none" || rc=1
+  assert_out_has "migration marker:            none" || rc=1
+  return $rc
+}
+try_case "OC30 status prints read-only migration marker evidence" oc30
 
 # END_BLOCK: CONTRACT_CASES
 
@@ -996,10 +1166,12 @@ OC21 same-SHA deploy is a proven no-op preserving history
 OC22 mutating command under held lock fails busy rc75
 OC23 aborted rehearsal cleans only the created container
 OC24 env RELEASE_SHA conflict fails closed; requested SHA restored
-OC25 migrate one-shot profile pinned digests no activation no record
+OC25 migrate proven heads check writes atomic marker without activation
 OC26 restore cleanup failure is generic warning rc78
 OC27 RELEASE_SHA exported to compose config and activation
 OC28 deploy smoke failure proves rollback with byte-identical record
+OC29 deploy requires valid migration marker before activation
+OC30 status prints read-only migration marker evidence
 EOF
 
 LEDGER_OK=0

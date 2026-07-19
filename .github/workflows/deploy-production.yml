@@ -35,8 +35,11 @@
 #   - GITHUB_REF must be refs/heads/main; GITHUB_SHA exactly 40 lowercase hex.
 #   - Image tags are exactly the full GITHUB_SHA; no latest/branch/mutable tag.
 #   - The production environment gate stands between build/push and SSH.
-#   - SSH executes exactly "deploy $GITHUB_SHA"; the remote wrapper invokes only
-#     the orchestrator.
+#   - SSH executes exactly "migrate $GITHUB_SHA" and only then
+#     "deploy $GITHUB_SHA" (two separate forced commands); the remote wrapper
+#     invokes only the orchestrator. Migration runs on every manual run —
+#     Alembic upgrade is a no-op when the release carries no new revisions —
+#     and a migration or head-check failure blocks the deploy step.
 #   - Ephemeral SSH key is strictly removed at the end.
 #   - Permissions are minimal and explicit per job.
 # failure_policy: fails on validation, build/push, approval or SSH failure.
@@ -50,7 +53,7 @@
 #   - VISUAL_BASELINES_JOB: reusable visual baseline gate
 #   - BUILD_JOB: immutable image build and push
 #   - ACCEPTANCE_JOB: artifact acceptance (partial, blocked by P1-2/P1-3)
-#   - DEPLOY_JOB: environment approval and exact SSH deploy
+#   - DEPLOY_JOB: environment approval and exact SSH migrate + deploy
 #   - TAG_JOB: immutable annotated release tag after successful deploy
 # END_MODULE_MAP: M-DEPLOY-PRODUCTION-WORKFLOW
 
@@ -380,6 +383,27 @@ jobs:
           printf '%s\n' "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/solarsage_prod_deploy
           printf '%s\n' "$PROD_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+      - name: Run database migrations forced-command on production server
+        env:
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          # Runs on every manual deploy: Alembic upgrade head is a no-op when
+          # the release carries no new revisions. A migration or head-check
+          # failure fails this step and blocks the deploy step below.
+          ssh -T \
+            -i ~/.ssh/solarsage_prod_deploy \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "$PROD_USER@$PROD_HOST" \
+            "migrate $GITHUB_SHA"
 
       - name: Trigger deploy forced-command on production server
         env:

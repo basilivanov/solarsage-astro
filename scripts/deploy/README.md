@@ -40,6 +40,12 @@ entrypoints, the legacy operator tools, the exhaustive matrix and the stale
 workflow validator were removed in the 181 cleanup
 (`docs/work/2026-07-15_production-server-bootstrap/181A_MANIFEST_DEAD_CODE_AUDIT.md`).
 
+Migration safety contract: `migrate <sha>` records an atomic migration marker
+only after a proven `alembic upgrade head` + `alembic current --check-heads`
+with the pinned api digest; every new deploy target requires a valid marker
+(exact SHA + exact resolved api digest + verified backup pair) before
+activation. App rollback never implies schema rollback.
+
 ## Layout
 
 ```text

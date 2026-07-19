@@ -27,6 +27,9 @@ set -euo pipefail
 
 # START_BLOCK: TEST_SUITE
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
+
 TEST_DIR=$(mktemp -d "/tmp/solarsage-r13-access-test.XXXXXX")
 LAST_CASE_ID="unknown"
 CASE_COUNT=0
@@ -70,10 +73,10 @@ rm -f "$TEST_DIR/actions_temp" "$TEST_DIR/actions_temp.pub"
 # Generate passphrase-protected key
 /usr/bin/ssh-keygen -t ed25519 -N "secure_pass" -f "$TEST_DIR/passphrase_key" >/dev/null
 
-# Copy templates to baseline
-cp /opt/solarsage-astro/infra/production/solarsage-github-deploy "$BASELINE_DIR/opt/solarsage-astro/infra/production/solarsage-github-deploy"
+# Copy templates to baseline (from the current checkout, never a foreign path)
+cp "$REPO_ROOT/infra/production/solarsage-github-deploy" "$BASELINE_DIR/opt/solarsage-astro/infra/production/solarsage-github-deploy"
 chmod 755 "$BASELINE_DIR/opt/solarsage-astro/infra/production/solarsage-github-deploy"
-cp /opt/solarsage-astro/infra/ssh/github.com.known_hosts "$BASELINE_DIR/opt/solarsage-astro/infra/ssh/github.com.known_hosts"
+cp "$REPO_ROOT/infra/ssh/github.com.known_hosts" "$BASELINE_DIR/opt/solarsage-astro/infra/ssh/github.com.known_hosts"
 chmod 644 "$BASELINE_DIR/opt/solarsage-astro/infra/ssh/github.com.known_hosts"
 
 # Save safe tokens/comment/sentinels for global output scan
@@ -637,7 +640,7 @@ reset_fixture() {
   # Setup live path substitutions
   TEST_SCRIPT="$TEST_DIR/prod-github-access.sh"
   # We copy first, then substitute paths
-  cp /opt/solarsage-astro/scripts/deploy/prod-github-access.sh "$TEST_SCRIPT"
+  cp "$REPO_ROOT/scripts/deploy/prod-github-access.sh" "$TEST_SCRIPT"
   sed -i \
     -e "s|^SSH_DIR=\"/home/astro/\.ssh\"$|SSH_DIR=\"$MOCK_HOME/.ssh\"|" \
     -e "s|^ACTIONS_PUB=\"/etc/solarsage/keys/github-actions-deploy.pub\"$|ACTIONS_PUB=\"$MOCK_ETC/keys/github-actions-deploy.pub\"|" \

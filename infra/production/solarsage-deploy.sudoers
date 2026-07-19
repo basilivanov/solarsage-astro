@@ -1,10 +1,10 @@
 # ############################################################################
 # AI_HEADER: SOLARSAGE_DEPLOY_SUDOERS — sudoers configuration for deploy
-# ROLE: Grants exactly one deploy invocation to the astro user via sudo 1.9.15 regex.
+# ROLE: Grants exactly the deploy and migrate invocations to the astro user via sudo 1.9.15 regex.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-INFRA-PRODUCTION-DEPLOY-SUDOERS
-# purpose: Configure the single exact deploy capability for the astro user.
+# purpose: Configure the exact deploy and migrate capabilities for the astro user.
 # owns:
 #   - infra/production/solarsage-deploy.sudoers
 # inputs: none
@@ -13,9 +13,10 @@
 # side_effects: none
 # emitted_logs: none
 # invariants:
-#   - Exactly one allowed command: the installed root-owned orchestrator whose
+#   - Exactly two allowed commands: the installed root-owned orchestrator whose
 #     entire argument string matches the sudo 1.9.15 whole-argument regex
-#     ^deploy [0-9a-f]{40} --manual-confirm$ (no wildcard/literal args).
+#     ^deploy [0-9a-f]{40} --manual-confirm$ or
+#     ^migrate [0-9a-f]{40} --manual-confirm$ (no wildcard/literal args).
 #   - No restart/systemd aliases, no release-authority, no ALL wildcard, no
 #     other privileges.
 #   - The helper validates argv itself; sudoers is the transport boundary only.
@@ -28,3 +29,4 @@
 # END_MODULE_MAP: M-INFRA-PRODUCTION-DEPLOY-SUDOERS
 
 astro ALL=(root) NOPASSWD: /usr/local/libexec/solarsage/prod-orchestrator ^deploy [0-9a-f]{40} --manual-confirm$
+astro ALL=(root) NOPASSWD: /usr/local/libexec/solarsage/prod-orchestrator ^migrate [0-9a-f]{40} --manual-confirm$

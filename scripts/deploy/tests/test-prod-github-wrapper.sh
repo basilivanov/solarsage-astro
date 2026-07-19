@@ -33,8 +33,8 @@ set -euo pipefail
 #   - ASSERT_AUDIT_INVOCATION: verifies correct target, single invocation, exact argv
 #   - RUN_CASE: single-case runner with rc, target, stderr-class, and audit validation
 #   - SELF_TEST_BLOCK: 10 self-test mutations verifying harness assertion integrity
-#   - NEGATIVE_MATRIX: 21 deploy + 21 source-check hostile input cases
-#   - POSITIVE_MATRIX: 5 deploy + 5 source-check valid+propagation cases
+#   - NEGATIVE_MATRIX: 21 deploy + 21 source-check + 5 migrate hostile input cases
+#   - POSITIVE_MATRIX: 5 deploy + 5 source-check + 2 migrate valid+propagation cases
 #   - MANIFEST_VERIFICATION: sorted cmp -s of declared vs executed case IDs
 #   - OUTPUT_SAFETY_SCAN: sentinel injection check, stderr generic-only audit
 # owned_tests:
@@ -51,10 +51,12 @@ SENTINEL_PATH="$TEST_DIR/hostile_sentinel"
 mkdir -p "$MOCK_BIN"
 
 # ----------------------------------------------------------------------
-# 1. Copy wrapper to sandbox
+# 1. Copy wrapper to sandbox (from the current checkout, never a foreign path)
 # ----------------------------------------------------------------------
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
 WRAPPER_COPY="$TEST_DIR/wrapper.sh"
-cp /opt/solarsage-astro/infra/production/solarsage-github-deploy "$WRAPPER_COPY"
+cp "$REPO_ROOT/infra/production/solarsage-github-deploy" "$WRAPPER_COPY"
 chmod +x "$WRAPPER_COPY"
 
 # ----------------------------------------------------------------------
@@ -66,19 +68,20 @@ SUDO_CANON="/usr/bin/sudo"
 DEPLOY_EXEC_PATTERN="exec $SUDO_CANON -n -H $DEPLOY_CANON"
 ACCESS_EXEC_PATTERN="exec /bin/bash $ACCESS_CANON"
 
-# Pre-check: exactly two exec dispatch lines (one sudo deploy, one bash access)
+# Pre-check: exactly three exec dispatch lines (two sudo orchestrator, one bash access)
 EXEC_LINE_COUNT=$(grep -cE "^[[:space:]]*exec " "$WRAPPER_COPY" || true)
-if [ "$EXEC_LINE_COUNT" -ne 2 ]; then
-  echo "FAIL: Expected exactly 2 exec dispatch lines, got $EXEC_LINE_COUNT" >&2
+if [ "$EXEC_LINE_COUNT" -ne 3 ]; then
+  echo "FAIL: Expected exactly 3 exec dispatch lines, got $EXEC_LINE_COUNT" >&2
   exit 1
 fi
 
-# Each canonical target appears exactly once in executable dispatch lines
+# Each canonical target appears in executable dispatch lines: the orchestrator
+# twice (deploy + migrate), the access script exactly once.
 DEPLOY_EXEC_COUNT_BEFORE=$(grep -cF "$DEPLOY_EXEC_PATTERN" "$WRAPPER_COPY" || true)
 ACCESS_EXEC_COUNT_BEFORE=$(grep -cF "$ACCESS_EXEC_PATTERN" "$WRAPPER_COPY" || true)
 
-if [ "$DEPLOY_EXEC_COUNT_BEFORE" -ne 1 ]; then
-  echo "FAIL: Deploy exec target count $DEPLOY_EXEC_COUNT_BEFORE != 1" >&2
+if [ "$DEPLOY_EXEC_COUNT_BEFORE" -ne 2 ]; then
+  echo "FAIL: Deploy orchestrator exec target count $DEPLOY_EXEC_COUNT_BEFORE != 2" >&2
   exit 1
 fi
 if [ "$ACCESS_EXEC_COUNT_BEFORE" -ne 1 ]; then
@@ -151,11 +154,12 @@ if [ "$ACCESS_EXEC_AFTER" -ne 0 ]; then
   exit 1
 fi
 
-# Sandbox target paths present exactly once in executable dispatch lines
+# Sandbox target paths present in executable dispatch lines: the orchestrator
+# twice (deploy + migrate), the access script exactly once.
 MOCK_DEPLOY_EXEC_COUNT=$(grep -cF "exec $MOCK_SUDO -n -H $MOCK_DEPLOY" "$WRAPPER_COPY" || true)
 MOCK_ACCESS_EXEC_COUNT=$(grep -cF "exec /bin/bash $MOCK_ACCESS" "$WRAPPER_COPY" || true)
-if [ "$MOCK_DEPLOY_EXEC_COUNT" -ne 1 ]; then
-  echo "FAIL: Mock deploy exec count $MOCK_DEPLOY_EXEC_COUNT != 1" >&2
+if [ "$MOCK_DEPLOY_EXEC_COUNT" -ne 2 ]; then
+  echo "FAIL: Mock deploy orchestrator exec count $MOCK_DEPLOY_EXEC_COUNT != 2" >&2
   exit 1
 fi
 if [ "$MOCK_ACCESS_EXEC_COUNT" -ne 1 ]; then
@@ -311,6 +315,25 @@ build_expected_access_audit() {
     printf '%q\n' "--check"
     printf '%q\n' "--expected-sha"
     printf '%q\n' "$sha"
+    printf '%s\n' "END"
+  } > "$out"
+}
+
+# START_FUNCTION_CONTRACT: F-M-TEST-PROD-GITHUB-WRAPPER.build_expected_migrate_audit
+# purpose: Build expected single-invocation audit file for the migrate target
+#   (orchestrator mock invoked with migrate argv).
+# END_FUNCTION_CONTRACT: F-M-TEST-PROD-GITHUB-WRAPPER.build_expected_migrate_audit
+build_expected_migrate_audit() {
+  local sha="$1"
+  local out="$2"
+  {
+    printf '%s\n' "BEGIN"
+    printf '%s\n' "target=deploy"
+    printf '%s\n' "/bin/bash"
+    printf '%q\n' "$MOCK_DEPLOY"
+    printf '%q\n' "migrate"
+    printf '%q\n' "$sha"
+    printf '%q\n' "--manual-confirm"
     printf '%s\n' "END"
   } > "$out"
 }
@@ -704,8 +727,8 @@ run_self_test "SELF07_TAB_AFTER_BYPASS"
 self_test_7() {
   local mut_wrapper="$TEST_DIR/wrapper_self7.sh"
   cp "$WRAPPER_COPY" "$mut_wrapper"
-  sed -i '64s|if \[\[[^]]*\]\]; then|if false; then|' "$mut_wrapper"
-  sed -i '72s|if \[\[[^]]*\]\]; then|if false; then|' "$mut_wrapper"
+  sed -i '67s|if \[\[[^]]*\]\]; then|if false; then|' "$mut_wrapper"
+  sed -i '75s|if \[\[[^]]*\]\]; then|if false; then|' "$mut_wrapper"
   rm -f "$DEPLOY_AUDIT" "$ACCESS_AUDIT"
   local tab_cmd
   tab_cmd=$(printf "deploy\t%s" "$SHA1")
@@ -915,6 +938,38 @@ run_positive_access "SRC_P03" "$SHA1" 126 "propagation rc 126"
 unset MOCK_TARGET_RC
 
 # ----------------------------------------------------------------------
+# 9b. Migrate: exact success + rc propagation + representative rejects
+# ----------------------------------------------------------------------
+
+run_positive_migrate() {
+  local case_id="$1"
+  local sha="$2"
+  local expected_rc="$3"
+  local label="$4"
+  export MOCK_TARGET_RC="$expected_rc"
+  run_case "$expected_rc" "deploy" "$case_id" "migrate $label" "migrate $sha" "empty"
+  local exp_aud="$TEST_DIR/${case_id}_exp.txt"
+  build_expected_migrate_audit "$sha" "$exp_aud"
+  assert_audit_invocation "$DEPLOY_AUDIT" "$exp_aud" "deploy"
+  rm -f "$exp_aud"
+}
+
+# Migrate: valid with SHA1
+export MOCK_TARGET_RC=0
+run_positive_migrate "MIG_V01" "$SHA1" 0 "valid SHA1"
+# Migrate: rc propagation (orchestrator fail code)
+run_positive_migrate "MIG_P01" "$SHA1" 78 "propagation rc 78"
+
+unset MOCK_TARGET_RC
+
+# Representative malformed/injection rejects (no full matrix)
+run_case 126 "none" "MIG_N01" "missing SHA" "migrate" "forbidden"
+run_case 126 "none" "MIG_N02" "non-hex SHA (40 chars, g)" "migrate $NONHEX_SHA" "forbidden"
+run_case 126 "none" "MIG_N03" "tab instead of space" $'migrate\t'$DEP_SHA "forbidden"
+run_case 126 "none" "MIG_N04" "extra token after SHA" "migrate $DEP_SHA extra" "forbidden"
+run_case 126 "none" "MIG_N05" "semicolon injection" "migrate $DEP_SHA; id" "forbidden"
+
+# ----------------------------------------------------------------------
 # 10. Hostile sentinel cases — verify shell injection is prevented
 # ----------------------------------------------------------------------
 
@@ -975,6 +1030,13 @@ DEP_P02
 DEP_P03
 DEP_V01
 DEP_V02
+MIG_N01
+MIG_N02
+MIG_N03
+MIG_N04
+MIG_N05
+MIG_P01
+MIG_V01
 SRC_N01
 SRC_N02
 SRC_N03
@@ -1013,8 +1075,8 @@ ACTUAL_LINES=$(wc -l < "$TEST_DIR/actual_sorted")
 
 PRODUCT_CASE_COUNT="$ACTUAL_LINES"
 
-if [ "$EXPECTED_LINES" -ne 56 ]; then
-  echo "FAIL: Manifest expected line count is $EXPECTED_LINES, expected 56" >&2
+if [ "$EXPECTED_LINES" -ne 63 ]; then
+  echo "FAIL: Manifest expected line count is $EXPECTED_LINES, expected 63" >&2
   exit 1
 fi
 if [ "$ACTUAL_LINES" -ne "$EXPECTED_LINES" ]; then

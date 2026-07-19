@@ -20,9 +20,11 @@ live release is not yet proof of the new gate.
 The current gate is limited to the minimal P0 contour below. **P1/P2 are
 NOT cancelled and NOT deferred/non-binding** — they will be implemented as
 their own later phases per owner decision; the earlier P0-1 (workflow
-release-quality gate), P0-3 (Telegram ingress) and P0-4 (migration safety)
-items from the first version of this plan are likewise moved into those
-separate P1/P2 slices by owner decision.
+release-quality gate) and P0-3 (Telegram ingress) items from the first
+version of this plan are likewise moved into those separate P1/P2 slices
+by owner decision. P0-4 (migration safety) was pulled back forward by
+owner decision and is now implemented locally as PARTIAL (remote host
+apply and a real candidate run are still pending) — see the P0-4 section.
 
 ## Simplified P0 ephemeris design (supersedes the installer design)
 
@@ -54,10 +56,11 @@ current/previous host layout are NOT the target design.
 
 Scope per owner decision: P0 currently contains ONLY the ephemeris gate
 (P0-2 below) plus the manual launch gates at the end of this phase.
-Former P0-1 (workflow release-quality gate), P0-3 (Telegram ingress) and
-P0-4 (migration safety) are moved to separate P1/P2 slices — see
-"Current launch scope" above; their text below is kept as the design for
-those later slices.
+P0-4 (migration safety) was pulled forward and is implemented locally as
+PARTIAL (remote apply/candidate pending) — see its section below.
+Former P0-1 (workflow release-quality gate) and P0-3 (Telegram ingress)
+are moved to separate P1/P2 slices — see "Current launch scope" above;
+their text below is kept as the design for those later slices.
 
 ### P0-1. Exact-SHA release-quality gate in the ONE deploy workflow
 
@@ -168,13 +171,31 @@ those later slices.
 ### P0-4. Migration safety contract
 
 - **Goal:** forward migrations never strand the app on failed rollout.
+- **Status: PARTIAL (implemented locally 2026-07-19; remote candidate run
+  and host sudoers apply pending).** Implemented: orchestrator `migrate
+  <sha>` now records an atomic migration marker (target SHA, exact resolved
+  api digest, backup dump path, verified timestamp, `status=heads_applied`)
+  only after a proven `alembic upgrade head` + separate `alembic current
+  --check-heads` with the same pinned api digest; a failed upgrade/head
+  check leaves the previous marker byte-identical. Every new deploy target
+  is gated on a valid marker + verified non-symlink backup pair before
+  activation (same-SHA no-op and rollback unchanged). `status` prints
+  read-only marker evidence. The Deploy Production job runs `migrate
+  <sha>` then `deploy <sha>` on every manual run (upgrade is a no-op
+  without new revisions); the forced wrapper and sudoers allow exactly
+  `migrate <40hex>` additionally to deploy/source-check. Evidence:
+  test-prod-orchestrator 32/32 (OC25/OC29/OC30), test-prod-github-wrapper
+  63+10 (MIG_*), host-offsite sudoers assertions, github-access 162.
+  Pending: real workflow candidate run and `prod-host-prepare --apply`
+  installing the two-capability sudoers on the host.
 - **Design:** backward-compatible expand/contract only; pre-migration
-  backup (already in `migrate <sha>`); snapshot + `alembic current=head`
-  evidence before app switch; migration result recorded; no blind
-  auto-migrate in the workflow; rollback of app code never implies schema
-  rollback.
-- **Files:** runbook §5, `deploy-production.yml` (acceptance step runs
-  `migrate <sha>` explicitly when the release carries new revisions).
+  backup (already in `migrate <sha>`); head-check evidence before app
+  switch; migration result recorded; no blind auto-migrate in the ordinary
+  app/api path; rollback of app code never implies schema rollback.
+- **Files:** runbook §5, `deploy-production.yml` (migrate step always runs
+  before deploy), `scripts/deploy/prod-orchestrator.sh`,
+  `infra/production/solarsage-github-deploy`,
+  `infra/production/solarsage-deploy.sudoers`.
 - **Pass/fail:** head check green before activation; failed migration →
   stop before app switch, DB restorable from pre-migration dump.
 

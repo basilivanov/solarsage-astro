@@ -16,7 +16,8 @@
 # inputs:
 #   - preflight <sha> | deploy <sha> --manual-confirm |
 #     rollback <sha> --manual-confirm | status |
-#     backup --manual-confirm | restore <dump> --manual-confirm
+#     backup --manual-confirm | restore <dump> --manual-confirm |
+#     migrate <sha> --manual-confirm
 # outputs: exit 0 on proven success, non-zero otherwise (75 on busy lock).
 # dependencies:
 #   - /etc/solarsage/compose/docker-compose.app.yml (installed canonical stack)
@@ -28,6 +29,8 @@
 #     docker compose up -d --wait of pinned digest references (deploy/rollback)
 #   - pg_dump -Fc + pg_restore --list + SHA256 pair + restic backup
 #   - small root-owned active/previous SHA+digest record after proven health
+#   - one-shot migrate profile runs (upgrade head, then current --check-heads)
+#     with pinned digest env, then one atomic migration marker in STATE_DIR
 #   - restore rehearsal into a unique throwaway postgres container only
 # emitted_logs: none
 # invariants:
@@ -38,6 +41,16 @@
 #     maintenance lock; no journal/state machine is built here.
 #   - Proven recovery after failed deploy/rollback leaves the complete record
 #     unchanged; same-SHA commands are proven no-ops preserving history.
+#   - A new deploy target activates only after a valid atomic migration marker:
+#     exact target SHA, exact resolved api digest, heads_applied status and a
+#     verified non-symlink backup dump pair under BACKUP_DIR. Missing, stale,
+#     malformed, symlink or digest-mismatch markers fail closed before up.
+#   - migrate never activates app services and never writes the release record;
+#     a failed upgrade or head check leaves any previous marker byte-identical.
+#   - backup_now never overwrites an existing dump/checksum: a taken base name
+#     gets the first free deterministic -N suffix under the maintenance lock.
+#   - App rollback never implies schema rollback; schema restore is only the
+#     manual pre-migration dump procedure.
 #   - No down -v, no DB volume mutation, no Nginx/systemd mutation, no arbitrary
 #     user-supplied shell, no secret values in stdout/stderr.
 #   - status is read-only; backup/restore are explicit manual commands.
@@ -51,7 +64,8 @@
 # semantic_blocks:
 #   - ORCH_CLI: argument parsing and confirmation gate
 #   - ORCH_PREFLIGHT: env/registry/compose/DB/restic validation
-#   - ORCH_DEPLOY: backup, digest resolve, up --wait, health proof, record
+#   - ORCH_DEPLOY: backup, digest resolve, migration gate, up --wait, health proof, record
+#   - ORCH_MIGRATE: backup, upgrade head, current --check-heads, atomic marker
 #   - ORCH_BACKUP: pg_dump pair + checksum + restic via password file
 #   - ORCH_RESTORE: plan + isolated unique-container rehearsal only
 # owned_tests:
@@ -69,6 +83,7 @@ STATE_DIR="${ORCH_STATE_DIR:-/var/lib/solarsage/orchestrator}"
 BACKUP_DIR="${ORCH_BACKUP_DIR:-/var/backups/solarsage}"
 LOCK_FILE="${ORCH_LOCK_FILE:-/run/solarsage-maintenance.lock}"
 RECORD_FILE="$STATE_DIR/release-record"
+MIGRATION_RECORD_FILE="$STATE_DIR/migration-record"
 RESTORE_PORT="${ORCH_RESTORE_PORT:-55439}"
 
 # Installed env/credential contract identity (root:astro when installed).
@@ -213,11 +228,23 @@ run_preflight() {
 # START_BLOCK: ORCH_BACKUP
 
 backup_now() {
+  # Collision-safe under the maintenance lock: an existing dump/checksum is
+  # never overwritten (a dangling symlink also counts as taken); a taken base
+  # name gets the first free deterministic numeric suffix (db-<ts>.dump,
+  # db-<ts>-1.dump, db-<ts>-2.dump, ...). This keeps a pre-migration dump
+  # referenced by the migration marker intact when a following backup lands
+  # in the same second.
   mkdir -p "$BACKUP_DIR"
   chmod 0700 "$BACKUP_DIR"
-  local ts dump
+  local ts base dump n=0
   ts=$("$DATE_BIN" -u +%Y%m%dT%H%M%SZ)
-  dump="$BACKUP_DIR/db-$ts.dump"
+  base="db-$ts.dump"
+  dump="$BACKUP_DIR/$base"
+  while [ -e "$dump" ] || [ -L "$dump" ] || [ -e "$dump.sha256" ] || [ -L "$dump.sha256" ]; do
+    n=$((n + 1))
+    base="db-$ts-$n.dump"
+    dump="$BACKUP_DIR/$base"
+  done
   PGPASSWORD="$POSTGRES_PASSWORD" "$PG_DUMP" \
     -h 127.0.0.1 -p 5433 -U "$POSTGRES_USER" -F c -d "$POSTGRES_DB" -f "$dump" \
     || fail "pg_dump failed"
@@ -365,7 +392,6 @@ write_record() {
   mv -fT "$tmp" "$RECORD_FILE"
   chmod 0600 "$RECORD_FILE"
 }
-
 up_wait() {
   # $1..$3 = api/sidecar/frontend digest references. rc of compose up.
   local rc=0
@@ -452,6 +478,9 @@ deploy_cmd() {
   if [ "${#digests[@]}" -ne 3 ]; then
     fail "digest resolution returned an incomplete result"
   fi
+  # Migration safety gate: a new target activates only with a proven marker
+  # (exact SHA + exact resolved api digest + verified backup pair).
+  require_migration_marker "$sha" "${digests[0]}"
   local rc=0
   activate_with_digests "$sha" "${digests[@]}" "$active" "$a_api" "$a_sidecar" "$a_frontend" || rc=$?
   if [ "$rc" -eq 0 ]; then
@@ -511,28 +540,111 @@ status_cmd() {
   echo "api health release_sha:      $(health_release_sha 8000 /api/health)"
   echo "sidecar health release_sha:  $(health_release_sha 18091 /v1/health)"
   echo "frontend health release_sha: $(health_release_sha 3002 /api/release-health)"
+  # Migration marker evidence (read-only).
+  if [ -L "$MIGRATION_RECORD_FILE" ]; then
+    echo "migration marker:            invalid (symlink)"
+  elif [ -f "$MIGRATION_RECORD_FILE" ]; then
+    echo "migration marker:            target=$(migration_field target_sha)"
+    echo "  api=$(migration_field api_image)"
+    echo "  backup=$(migration_field backup_dump)"
+    echo "  verified_at=$(migration_field verified_at) status=$(migration_field status)"
+  else
+    echo "migration marker:            none"
+  fi
   return 0
+}
+
+# END_BLOCK: ORCH_DEPLOY
+
+# START_BLOCK: ORCH_MIGRATE
+
+migration_field() {
+  # $1 = field name; prints value or empty.
+  grep -E "^$1=" "$MIGRATION_RECORD_FILE" 2>/dev/null | head -1 | cut -d= -f2- || echo ""
+}
+
+write_migration_marker() {
+  # START_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.write_migration_marker
+  # purpose: Atomically record one proven migration result in STATE_DIR.
+  # inputs: $1 target sha, $2 resolved api digest, $3 backup dump path,
+  #   $4 verified UTC timestamp.
+  # returns: 0; the marker appears only via a same-filesystem atomic rename.
+  # side_effects: creates $MIGRATION_RECORD_FILE root-only 0600.
+  # END_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.write_migration_marker
+  mkdir -p "$STATE_DIR"
+  chmod 0700 "$STATE_DIR"
+  local tmp
+  tmp=$(mktemp "$STATE_DIR/.migration-record.XXXXXX")
+  chmod 0600 "$tmp"
+  {
+    printf 'target_sha=%s\n' "$1"
+    printf 'api_image=%s\n' "$2"
+    printf 'backup_dump=%s\n' "$3"
+    printf 'verified_at=%s\n' "$4"
+    printf 'status=heads_applied\n'
+  } > "$tmp"
+  mv -fT "$tmp" "$MIGRATION_RECORD_FILE"
+  chmod 0600 "$MIGRATION_RECORD_FILE"
+}
+
+require_migration_marker() {
+  # START_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.require_migration_marker
+  # purpose: Fail-closed deploy gate: a new target activates only with a
+  #   valid atomic migration marker for the exact target SHA, the exact
+  #   resolved api digest and a verified non-symlink backup dump pair.
+  # inputs: $1 target sha, $2 resolved api digest.
+  # returns: 0 when the marker is valid; exits 78 otherwise (before any up).
+  # side_effects: sha256 checksum verification of the recorded dump pair.
+  # END_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.require_migration_marker
+  local sha="$1" api_digest="$2"
+  [ -f "$MIGRATION_RECORD_FILE" ] && [ ! -L "$MIGRATION_RECORD_FILE" ] \
+    || fail "migration marker is missing or not a regular file; run migrate $sha --manual-confirm first"
+  local m_sha m_api m_dump m_ts m_status dump_base
+  m_sha=$(migration_field target_sha)
+  m_api=$(migration_field api_image)
+  m_dump=$(migration_field backup_dump)
+  m_ts=$(migration_field verified_at)
+  m_status=$(migration_field status)
+  [[ "$m_sha" =~ ^[0-9a-f]{40}$ ]] || fail "migration marker target SHA is malformed"
+  [ "$m_sha" = "$sha" ] || fail "migration marker target $m_sha is stale; deploy target is $sha"
+  [[ "$m_api" =~ $DIGEST_RE ]] || fail "migration marker api digest is malformed"
+  [ "$m_api" = "$api_digest" ] || fail "migration marker api digest does not match the resolved api digest"
+  [ "$m_status" = "heads_applied" ] || fail "migration marker status is not heads_applied"
+  [ -n "$m_ts" ] || fail "migration marker verified timestamp is missing"
+  dump_base=$(basename "$m_dump")
+  [ "$m_dump" = "$BACKUP_DIR/$dump_base" ] || fail "migration backup dump path is outside BACKUP_DIR"
+  [[ "$dump_base" =~ ^db-[0-9]{8}T[0-9]{6}Z(-[0-9]+)?\.dump$ ]] || fail "migration backup dump name is malformed"
+  [ -f "$m_dump" ] && [ ! -L "$m_dump" ] || fail "migration backup dump is missing or not a regular file"
+  [ -f "$m_dump.sha256" ] && [ ! -L "$m_dump.sha256" ] || fail "migration backup checksum is missing or not a regular file"
+  (cd "$BACKUP_DIR" && "$SHA256SUM" -c "$dump_base.sha256") >/dev/null \
+    || fail "migration backup checksum verification failed"
 }
 
 migrate_cmd() {
   # START_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.migrate_cmd
-  # purpose: Run exactly one one-shot Alembic migration pass for a pinned
-  #   target release: exact SHA, maintenance lock, env/DB/restic/compose
-  #   preflight, digest resolution/verification, pre-migration backup, and only
-  #   the one-shot migrate profile with pinned digest env. Never activates app
-  #   services, never mutates the release record; never runs automatically.
+  # purpose: Run exactly one proven one-shot Alembic migration pass for a
+  #   pinned target release: exact SHA, maintenance lock, env/DB/restic/compose
+  #   preflight, digest resolution/verification, pre-migration backup, the
+  #   one-shot migrate profile (alembic upgrade head), then a separate
+  #   alembic current --check-heads run with the same exact api digest. Only
+  #   after a successful head check the atomic migration marker is written.
+  #   Never activates app services, never mutates the release record; never
+  #   runs automatically; never downgrades the schema.
   # inputs: $1 - full 40-hex target SHA.
-  # returns: 0 on a completed one-shot migration run; non-zero otherwise.
-  # side_effects: pre-migration backup, digest pulls/inspects, one-shot
-  #   migrate container run. No app up, no release record write.
+  # returns: 0 on a completed proven migration run; non-zero otherwise. A
+  #   failed upgrade or head check leaves any previous marker byte-identical.
+  # side_effects: pre-migration backup, digest pulls/inspects, two one-shot
+  #   migrate container runs, atomic migration marker write. No app up, no
+  #   release record write.
   # END_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.migrate_cmd
   local sha="$1"
   require_sha "$sha"
   export RELEASE_SHA="$sha"
   run_preflight
   echo "Pre-migration backup starting..."
-  backup_now >/dev/null
-  echo "Pre-migration backup completed."
+  local pre_dump
+  pre_dump=$(backup_now)
+  echo "Pre-migration backup completed: $pre_dump"
   local resolved_out
   if ! resolved_out=$(resolve_images "$sha"); then
     return 78
@@ -550,11 +662,17 @@ migrate_cmd() {
     echo "Error: migration run failed for $sha." >&2
     return 78
   fi
-  echo "Migration for $sha completed successfully (one-shot profile only; no app activation, no release record change)."
+  if ! RELEASE_SHA="$sha" API_IMAGE="${digests[0]}" SIDECAR_IMAGE="${digests[1]}" FRONTEND_IMAGE="${digests[2]}" \
+       compose --profile migrate run --rm migrate alembic current --check-heads; then
+    echo "Error: migration head check failed for $sha." >&2
+    return 78
+  fi
+  write_migration_marker "$sha" "${digests[0]}" "$pre_dump" "$("$DATE_BIN" -u +%Y%m%dT%H%M%SZ)"
+  echo "Migration for $sha completed successfully (heads applied and checked; marker recorded; no app activation, no release record change)."
   return 0
 }
 
-# END_BLOCK: ORCH_DEPLOY
+# END_BLOCK: ORCH_MIGRATE
 
 # START_BLOCK: ORCH_RESTORE
 

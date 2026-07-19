@@ -172,7 +172,7 @@ For preparing a completely new Ubuntu 24.04 amd64 production host:
 
 ### 3.2 Routine Deployments and Infrastructure Updates
 
-- **Routine Code-only Deployments:** Use the manual Deploy Production workflow (`workflow_dispatch` on `main`, `production` environment approval). The workflow builds and pushes immutable images and executes exactly `deploy <sha>` on the host, which the forced-command wrapper routes through the single sudoers capability (`sudo -n -H`) to `/usr/local/libexec/solarsage/prod-orchestrator deploy <sha> --manual-confirm`.
+- **Routine Code-only Deployments:** Use the manual Deploy Production workflow (`workflow_dispatch` on `main`, `production` environment approval). The workflow builds and pushes immutable images and executes exactly `migrate <sha>` and then `deploy <sha>` on the host. The forced-command wrapper routes them through the two exact sudoers capabilities (`sudo -n -H`): `/usr/local/libexec/solarsage/prod-orchestrator migrate <sha> --manual-confirm` and `/usr/local/libexec/solarsage/prod-orchestrator deploy <sha> --manual-confirm`.
 - **Orchestrator commands (as root via owner sudo):**
   ```bash
   sudo /usr/local/libexec/solarsage/prod-orchestrator preflight <sha>
@@ -250,7 +250,7 @@ Manual fallback / on-demand backup (as root):
 sudo /usr/local/libexec/solarsage/prod-orchestrator backup --manual-confirm
 ```
 
-Each backup runs `pg_dump -Fc` against `127.0.0.1:5433`, verifies with `pg_restore --list`, writes a `db-YYYYMMDDTHHMMSSZ.dump` + `.sha256` pair (mode `0600`) into `/var/backups/solarsage`, and copies the pair to the encrypted Restic repository (`RESTIC_REPOSITORY` + `OFFSITE_RESTIC_PASSWORD_FILE`). On a Restic failure the local dump and checksum are preserved and the command returns non-zero. Backup data is never deleted by these paths.
+Each backup runs `pg_dump -Fc` against `127.0.0.1:5433`, verifies with `pg_restore --list`, writes a `db-YYYYMMDDTHHMMSSZ.dump` + `.sha256` pair (mode `0600`) into `/var/backups/solarsage`, and copies the pair to the encrypted Restic repository (`RESTIC_REPOSITORY` + `OFFSITE_RESTIC_PASSWORD_FILE`). If that base name is already taken (two backups landing in the same second), the pair instead gets the first free deterministic suffix `db-YYYYMMDDTHHMMSSZ-1.dump`, `-2`, etc. — an existing dump/checksum is never overwritten. On a Restic failure the local dump and checksum are preserved and the command returns non-zero. Backup data is never deleted by these paths.
 
 ### 4.2 Encrypted Offsite Backup (Restic)
 
@@ -268,6 +268,8 @@ Restore in the canonical path is an explicit manual command that verifies the du
 ```bash
 sudo /usr/local/libexec/solarsage/prod-orchestrator restore /var/backups/solarsage/db-YYYYMMDDTHHMMSSZ.dump --manual-confirm
 ```
+
+Pass the actual exact dump filename, including a possible `-1`/`-2` same-second suffix (e.g. `db-YYYYMMDDTHHMMSSZ-1.dump`); the command verifies that exact pair.
 
 A real production restore requires a separate explicit user command and a later accepted runbook.
 
@@ -300,19 +302,23 @@ bundle or on a Moshier build-time probe.
 
 ## 5. Database Migrations (Alembic)
 
-Migrations run only through the explicit orchestrator command — exact SHA, maintenance lock, full preflight, digest-pinned one-shot `migrate` profile, pre-migration backup included. They are never automatic and never part of `deploy`:
+Migrations run only through the explicit orchestrator command — exact SHA, maintenance lock, full preflight, digest-pinned one-shot `migrate` profile, pre-migration backup included. They are never automatic in the ordinary app/api path:
 
 ```bash
 sudo /usr/local/libexec/solarsage/prod-orchestrator migrate <full-40-char-hex-sha> --manual-confirm
 ```
 
-Run migrations only after the pre-migration backup succeeded and before deploying the release that requires them. To inspect the current head without mutating:
+One `migrate` run performs, in order: pre-migration backup → pinned digest resolution → `alembic upgrade head` (one-shot `migrate` profile) → a separate `alembic current --check-heads` with the same exact api digest → an atomic migration marker in the orchestrator state dir (`target_sha`, exact api digest, backup dump path, verified timestamp, `status=heads_applied`). A failed upgrade or head check leaves any previous marker byte-identical.
+
+**Deploy gate:** the manual Deploy Production workflow always runs `migrate <sha>` first and only then `deploy <sha>` (Alembic upgrade is a no-op when the release carries no new revisions). A new deploy target activates only with a valid marker for that exact SHA + exact resolved api digest + a verified non-symlink backup dump pair; a missing, stale, malformed, symlinked or digest-mismatched marker fails the deploy before any container switch. Same-SHA deploy no-op and rollback do not require or touch the marker. Current marker evidence is shown read-only by `sudo /usr/local/libexec/solarsage/prod-orchestrator status`.
+
+To inspect the current head without mutating:
 
 ```bash
 cd /opt/solarsage-astro/apps/api && .venv/bin/alembic -c alembic.ini current
 ```
 
-**Rollback Warning:** schema rollbacks are not automated. On migration failure, restore the database from the pre-deployment backup (section 4.3 rehearsal first) and roll back the release via the orchestrator.
+**Rollback Warning:** app rollback never rolls back the schema, and schema rollbacks are not automated. The marker records the dump only of a SUCCESSFUL migration: on a failed upgrade or head check the previous marker stays byte-identical and the new pre-migration dump is NOT written into it. To restore after a migration failure, use the exact pre-migration dump path printed by the migrate command (`Pre-migration backup completed: <path>`) or saved in the workflow step log — the dump and its `.sha256` pair stay under the backup dir — rehearsing first per section 4.3, then roll back the release via the orchestrator.
 
 ---
 

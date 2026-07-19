@@ -253,12 +253,21 @@ if ! grep -q 'systemctl start solarsage-backup.timer' "$HOST_PREPARE"; then
   exit 1
 fi
 
-# 9. Sudoers exact whole-argument regex contract: the only capability must be
+# 9. Sudoers exact whole-argument regex contract: the only capabilities must be
 # the installed orchestrator with the anchored ^deploy <40hex> --manual-confirm$
-# whole-argument regex; no wildcard/literal argument forms.
+# and ^migrate <40hex> --manual-confirm$ whole-argument regexes; no
+# wildcard/literal argument forms.
 SUDOERS_SRC="$REPO_ROOT/infra/production/solarsage-deploy.sudoers"
 if ! grep -qxF 'astro ALL=(root) NOPASSWD: /usr/local/libexec/solarsage/prod-orchestrator ^deploy [0-9a-f]{40} --manual-confirm$' "$SUDOERS_SRC"; then
   echo "FAIL: sudoers must allow exactly the orchestrator with ^deploy [0-9a-f]{40} --manual-confirm$ whole-argument regex" >&2
+  exit 1
+fi
+if ! grep -qxF 'astro ALL=(root) NOPASSWD: /usr/local/libexec/solarsage/prod-orchestrator ^migrate [0-9a-f]{40} --manual-confirm$' "$SUDOERS_SRC"; then
+  echo "FAIL: sudoers must allow exactly the orchestrator with ^migrate [0-9a-f]{40} --manual-confirm$ whole-argument regex" >&2
+  exit 1
+fi
+if [ "$(grep -cE '^astro ALL=\(root\)' "$SUDOERS_SRC")" -ne 2 ]; then
+  echo "FAIL: sudoers must contain exactly the deploy and migrate capabilities and nothing else" >&2
   exit 1
 fi
 if grep -vE '^\s*#' "$SUDOERS_SRC" | grep -qE 'systemctl restart|release-authority|Cmnd_Alias|ALL[[:space:]]'; then
