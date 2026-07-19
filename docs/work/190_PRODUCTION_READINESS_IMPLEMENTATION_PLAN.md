@@ -477,21 +477,37 @@ bundle (coverage, audit hashes, E2E reports, baselines) + owner review.
   restore rehearsal (`RESTORE_REHEARSAL_IMAGE` constant — no env override,
   no mutable tag). Root `docker-compose*.yml` stay
   unpinned intentionally (dev/compatibility only per AGENTS, not production
-  source of truth); E2E service images unchanged. **Open blocker:**
-  Python dependency lock export — both Python images install editable
-  packages via pip from pyproject constraints (`>=` ranges included), and
-  `apps/api/poetry.lock` is not consumed by the pip-based Docker builds, so
-  image dependency content is not bit-reproducible; a lock→constraints
-  export pipeline remains an open P2 item (not invented here).
+  source of truth); E2E service images unchanged. **Deferred blocker
+  (2026-07-19, investigated):** Python dependency lock→constraints export is
+  NOT a small reproducible change: `apps/api/poetry.lock` is STALE
+  (`poetry check --lock` reports pyproject changed significantly since the
+  lock was generated), `apps/solarsage` has NO lock file at all, and no
+  build path consumes any lock (CI and both Dockerfiles install editable
+  packages via pip from pyproject `>=` ranges). Implementing means
+  regenerating both locks, adding a supported export step (poetry export or
+  uv — owner tool decision), changing both Dockerfiles to install with
+  constraints, and adding a CI freshness gate. Owner action: pick the tool
+  and regenerate the locks first; until then the `apps/api/poetry.lock` is
+  evidence-only, not a build input.
 - Branch protection/rulesets when billing allows.
 - Stale docs refresh (`e2e/README.md` systemd-era content), harness dedup,
   stale astro ssh config block on apex.
   **Status (2026-07-19, partial):** `e2e/README.md` systemd-era claims
   replaced — the E2E workflow stack is documented as ephemeral
   (Postgres/Redis services + uvicorn sidecar/API + production Next build)
-  and production systemd units are never touched.
+  and production systemd units are never touched. **Blocked external:** the
+  stale ssh config block lives on the apex HOST (`~/.ssh/config`), not in
+  this repo — host-side manual cleanup only. Harness dedup: no dead
+  in-repo references found — both preview launchers are live and
+  referenced (`scripts/preview-v2-real.mjs` = real-backend local preview,
+  `e2e/mock-visual/start-v2-preview.mjs` = mock preview used by CI
+  workflows); no second harness was created.
 - ANTHROPIC_API_KEY empty-default documented (harmless while
-  LLM_PROVIDER=openrouter).
+  LLM_PROVIDER=openrouter). **Status: DONE (2026-07-19)** —
+  `docs/PRODUCTION_RUNBOOK.md` §2 states the key is required only with
+  `LLM_PROVIDER=anthropic` and the empty default is valid on the canonical
+  openrouter path; runtime config untouched (`config.py` keeps the empty
+  default).
 
 ---
 

@@ -67,7 +67,7 @@ The `/etc/solarsage/app.env` file must exist on the host as a real non-symlink f
 - **GRACE_USER_SALT**: Secret salt for user identity hash masking.
 - **CORS_ALLOWED_ORIGINS**: Explicit allowed origin(s) for CORS, matching the production domain.
 - **LLM_PROVIDER** (optional, default `openrouter`) and **OPENROUTER_API_KEY**: active provider key.
-- **ANTHROPIC_API_KEY** (optional): required when `LLM_PROVIDER=anthropic`.
+- **ANTHROPIC_API_KEY** (optional): required only when `LLM_PROVIDER=anthropic`. With the canonical `LLM_PROVIDER=openrouter` path the empty default is valid and no Anthropic secret is needed.
 - **RESTIC_REPOSITORY**: restic target repository for offsite backups.
 - **OFFSITE_RESTIC_PASSWORD_FILE**: path to a real non-symlink `root:astro 0640` file containing the restic repository password (e.g. `/etc/solarsage/backup/restic-password`).
 
