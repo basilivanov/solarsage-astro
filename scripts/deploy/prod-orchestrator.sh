@@ -4,7 +4,8 @@
 # ROLE: Manual-gate deploy/rollback/status/backup/restore orchestrator for the
 #       canonical Compose app stack using immutable digest-pinned OCI images.
 # DEPENDENCIES: bash (5.2), docker compose v2, pg_dump/pg_restore/pg_isready,
-#               restic, sha256sum, curl, python3.12, flock
+#               restic, sha256sum, curl, python3.12, flock,
+#               postgres:15 rehearsal image (digest-pinned)
 # GRACE_ANCHORS: [ORCH_CLI, ORCH_PREFLIGHT, ORCH_DEPLOY, ORCH_BACKUP, ORCH_RESTORE]
 # ############################################################################
 
@@ -102,6 +103,12 @@ SHA256SUM="${ORCH_SHA256SUM:-/usr/bin/sha256sum}"
 DATE_BIN="${ORCH_DATE:-/bin/date}"
 
 DIGEST_RE='^[^/[:space:]@]+(/[^/[:space:]@]+)*@sha256:[0-9a-f]{64}$'
+
+# Restore rehearsal DB image: pinned by verified multi-arch index digest
+# (source tag postgres:15, version 15.18; same pin as the canonical
+# production DB compose, verified via docker buildx imagetools inspect on
+# 2026-07-19). Never a mutable tag, never an env override.
+RESTORE_REHEARSAL_IMAGE="postgres:15@sha256:74e110c41804365e3915fcc09d5e7a1eff50161aaa94d5da0e58e0cd75ae509c"
 
 fail() {
   echo "Error: $*" >&2
@@ -685,7 +692,7 @@ restore_cmd() {
   "$PG_RESTORE" --list "$dump" >/dev/null || fail "restore dump failed pg_restore --list"
   echo "=== Restore plan (isolated rehearsal only in this slice) ==="
   echo "1. Verify dump pair and pg_restore --list (done)."
-  echo "2. Restore into an isolated throwaway postgres:15 container on 127.0.0.1:$RESTORE_PORT."
+  echo "2. Restore into an isolated throwaway postgres:15 (digest-pinned) container on 127.0.0.1:$RESTORE_PORT."
   echo "3. Sanity-check the rehearsal database and destroy the created container."
   echo "Real production restore requires a separate explicit user command and an accepted runbook."
   # Unique safe name: this invocation never removes a pre-existing container
@@ -710,7 +717,7 @@ restore_cmd() {
   "$DOCKER" run -d --name "$name" \
     -e POSTGRES_PASSWORD=rehearsal \
     -p "127.0.0.1:$RESTORE_PORT:5432" \
-    postgres:15 >/dev/null || fail "rehearsal container start failed"
+    "$RESTORE_REHEARSAL_IMAGE" >/dev/null || fail "rehearsal container start failed"
   created=1
   local i
   for i in $(seq 1 30); do

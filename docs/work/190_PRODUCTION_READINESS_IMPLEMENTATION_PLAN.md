@@ -451,7 +451,9 @@ bundle (coverage, audit hashes, E2E reports, baselines) + owner review.
   `python:3.12-slim` (3.12.13-slim-trixie) in `apps/api/Dockerfile` and both
   stages of `apps/solarsage/Dockerfile`; `node:20-slim` (20-bookworm-slim) in
   both stages of `apps/web/Dockerfile`; `postgres:15` (15.18) in
-  `infra/production/docker-compose.yml`. Root `docker-compose*.yml` stay
+  `infra/production/docker-compose.yml` and in the canonical orchestrator
+  restore rehearsal (`RESTORE_REHEARSAL_IMAGE` constant — no env override,
+  no mutable tag). Root `docker-compose*.yml` stay
   unpinned intentionally (dev/compatibility only per AGENTS, not production
   source of truth); E2E service images unchanged. **Open blocker:**
   Python dependency lock export — both Python images install editable
