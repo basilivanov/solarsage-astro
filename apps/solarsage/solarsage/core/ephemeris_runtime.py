@@ -66,6 +66,7 @@ PROBE_FLAGS = swe.FLG_SWIEPH | swe.FLG_SPEED
 PROBE_JD = swe.julday(2026, 7, 8, 12.0)  # fixed deterministic probe date
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _RANGE_RE = re.compile(r"^(\d{4})\s*[-–]\s*(\d{4})$")
+ARTIFACT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 
 class EphemerisError(RuntimeError):
@@ -135,14 +136,17 @@ def _load_and_verify_manifest(root: Path) -> tuple[dict, str, Path]:
     if manifest.get("schema_version") != "solarsage-ephemeris/v1":
         raise EphemerisError("manifest schema_version must be solarsage-ephemeris/v1")
     artifact_id = manifest.get("artifact_id")
-    if not isinstance(artifact_id, str) or not artifact_id.strip():
-        raise EphemerisError("manifest artifact_id must be a non-empty string")
+    if not isinstance(artifact_id, str) or not ARTIFACT_ID_RE.match(artifact_id):
+        raise EphemerisError("manifest artifact_id must match ^[a-z0-9][a-z0-9._-]{0,63}$")
     data_version = manifest.get("swiss_data_version")
     if not isinstance(data_version, str) or not data_version.strip():
         raise EphemerisError("manifest swiss_data_version must be a non-empty string")
     date_range = manifest.get("supported_date_range")
-    if not isinstance(date_range, str) or not _RANGE_RE.match(date_range.strip()):
-        raise EphemerisError("manifest supported_date_range must look like '1800-2399'")
+    if not isinstance(date_range, str):
+        raise EphemerisError("manifest supported_date_range must be a string like '1800-2399'")
+    _range_match = _RANGE_RE.match(date_range.strip())
+    if not _range_match or int(_range_match.group(1)) > int(_range_match.group(2)):
+        raise EphemerisError("manifest supported_date_range must be 'start-end' with start <= end")
     files = manifest.get("files")
     if not isinstance(files, list) or not files:
         raise EphemerisError("manifest files inventory must be a non-empty list")
@@ -152,14 +156,17 @@ def _load_and_verify_manifest(root: Path) -> tuple[dict, str, Path]:
         raise EphemerisError("artifact ephe/ is missing, not a real directory, or a symlink")
 
     listed: set[str] = set()
+    seen: set[str] = set()
     for entry in files:
         if not isinstance(entry, dict):
             raise EphemerisError("manifest inventory entries must be objects")
         rel = entry.get("path")
         size = entry.get("size")
         sha = entry.get("sha256")
-        if not isinstance(rel, str) or not rel or rel.startswith("/") or ".." in Path(rel).parts:
-            raise EphemerisError(f"manifest inventory path is not a safe relative path: {rel!r}")
+        if not isinstance(rel, str) or not rel.startswith("ephe/") or ".." in Path(rel).parts:
+            raise EphemerisError(f"manifest inventory path must stay inside ephe/: {rel!r}")
+        if rel in seen:
+            raise EphemerisError(f"manifest inventory path is duplicated: {rel}")
         if not isinstance(size, int) or size < 0:
             raise EphemerisError(f"manifest inventory size must be a non-negative int: {rel}")
         if not isinstance(sha, str) or not SHA256_RE.match(sha):
@@ -173,6 +180,7 @@ def _load_and_verify_manifest(root: Path) -> tuple[dict, str, Path]:
             raise EphemerisError(f"artifact inventory size mismatch: {rel}")
         if _sha256_file(raw) != sha:
             raise EphemerisError(f"artifact inventory sha256 mismatch: {rel}")
+        seen.add(rel)
         listed.add(rel)
 
     # Reject any extra/unlisted file or symlink anywhere in the tree.

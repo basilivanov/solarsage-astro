@@ -72,6 +72,8 @@ The `/etc/solarsage/app.env` file must exist on the host as a real non-symlink f
 - **OFFSITE_RESTIC_PASSWORD_FILE**: path to a real non-symlink `root:astro 0640` file containing the restic repository password (e.g. `/etc/solarsage/backup/restic-password`).
 
 - **GEONAMES_USERNAME**: GeoNames account used by `/api/geo/*` city/timezone lookups (fail-closed: compose interpolation and the endpoint both refuse to run without it).
+- **EXPECTED_CALCULATION_VERSION**: canonical calculation version the sidecar must report exactly (currently `ss-calc-1.2.0`). Required: the orchestrator's health proof compares the sidecar's `calculation_version` against this value.
+- **EPHEMERIS_EXPECTED_ARTIFACT_ID** and **EPHEMERIS_EXPECTED_MANIFEST_SHA256**: exact identity pins of the installed Swiss Ephemeris artifact (see section 5.1). Required once the artifact is installed: health proof matches them exactly against the sidecar's reported `ephemeris_artifact_id` / `ephemeris_manifest_sha256`.
 
 Optional keys: `APP_VERSION`, `LLM_MODEL`.
 
@@ -274,6 +276,32 @@ A real production restore requires a separate explicit user command and a later 
 Today/Calendar cache is versioned by calculation/scoring/content/canon identity; no blanket cache invalidation is performed at deploy time. Schema-affecting cache transformations belong strictly to migrations.
 
 ---
+
+## 5.1 Swiss Ephemeris Artifact (Canonical)
+
+Production calculations must run on pinned Swiss Ephemeris files, never on
+the Moshier fallback. Canonical layout (root-owned, immutable):
+
+```text
+/opt/solarsage-ephemeris/
+  releases/<artifact-id>/{ephe/, manifest.json, manifest.sha256}
+  current -> releases/<artifact-id>
+  previous  # preserved prior release path for rollback
+```
+
+Install/verify with the fail-closed installer (no downloads, no fabricated
+bytes, immutable releases, atomic pointer flip):
+
+```bash
+sudo /opt/solarsage-astro/scripts/deploy/prod-ephemeris-install.sh --apply /path/to/staged-bundle
+sudo /opt/solarsage-astro/scripts/deploy/prod-ephemeris-install.sh --check
+```
+
+After install, set `EPHEMERIS_EXPECTED_ARTIFACT_ID` and
+`EPHEMERIS_EXPECTED_MANIFEST_SHA256` in `/etc/solarsage/app.env` to the
+installed values and keep `EXPECTED_CALCULATION_VERSION` current. The
+orchestrator's health proof requires the sidecar to report `engine=swieph`
+and these exact identities; any Moshier fallback fails the deploy closed.
 
 ## 5. Database Migrations (Alembic)
 

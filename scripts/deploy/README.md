@@ -63,11 +63,13 @@ Every canonical file under `scripts/deploy/` (excluding this README and generate
 
 ### Shared libraries
 
+  - `scripts/deploy/lib/ephemeris_artifact_check.py`
   - `scripts/deploy/lib/prod-path-transaction.sh`
 
 ### Production entrypoints
 
   - `scripts/deploy/prod-cert-prepare.sh`
+  - `scripts/deploy/prod-ephemeris-install.sh`
   - `scripts/deploy/prod-github-access.sh`
   - `scripts/deploy/prod-host-prepare.sh`
   - `scripts/deploy/prod-infra-fingerprint.sh`
@@ -77,6 +79,7 @@ Every canonical file under `scripts/deploy/` (excluding this README and generate
 ### Focused test harnesses
 
   - `scripts/deploy/tests/test-prod-backup-units.sh`
+  - `scripts/deploy/tests/test-prod-ephemeris-install.sh`
   - `scripts/deploy/tests/test-prod-github-access.sh`
   - `scripts/deploy/tests/test-prod-github-wrapper.sh`
   - `scripts/deploy/tests/test-prod-host-offsite-routing.sh`
@@ -109,6 +112,9 @@ These files were created after the namespace refactor; they intentionally have n
   - `scripts/deploy/prod-orchestrator.sh` — sole minimal app deploy entrypoint (TZ 173)
   - `scripts/deploy/tests/test-prod-orchestrator.sh` — focused orchestrator contract harness
   - `scripts/deploy/tests/test-prod-namespace-layout.sh` — namespace/layout contract
+  - `scripts/deploy/prod-ephemeris-install.sh` — fail-closed ephemeris artifact installer (P0-2)
+  - `scripts/deploy/lib/ephemeris_artifact_check.py` — deploy-side artifact verifier (P0-2)
+  - `scripts/deploy/tests/test-prod-ephemeris-install.sh` — installer acceptance harness (P0-2)
 
 ## Boundary rules
 

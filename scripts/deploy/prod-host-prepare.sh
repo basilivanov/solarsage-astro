@@ -162,6 +162,29 @@ verify_host_state() {
     fi
   fi
 
+  # 2.6 Ephemeris installer + helper verification (regular, not symlink)
+  local eph_inst="/usr/local/libexec/solarsage/prod-ephemeris-install"
+  if [ ! -e "$eph_inst" ] || [ -L "$eph_inst" ] || [ ! -f "$eph_inst" ]; then
+    report_ver_error "Ephemeris installer '$eph_inst' is missing, is a symlink, or is not a regular file"
+  else
+    if ! cmp -s "$APP_ROOT/scripts/deploy/prod-ephemeris-install.sh" "$eph_inst"; then
+      report_ver_error "Installed ephemeris installer differs from repository source"
+    fi
+    local e_info
+    e_info=$(stat -c "%U:%G:%a" "$eph_inst")
+    if [ "$e_info" != "root:root:755" ]; then
+      report_ver_error "Ephemeris installer '$eph_inst' ownership/mode is $e_info, expected root:root:755"
+    fi
+  fi
+  local eph_lib="/usr/local/libexec/solarsage/lib/ephemeris_artifact_check.py"
+  if [ ! -e "$eph_lib" ] || [ -L "$eph_lib" ] || [ ! -f "$eph_lib" ]; then
+    report_ver_error "Ephemeris verifier '$eph_lib' is missing, is a symlink, or is not a regular file"
+  else
+    if ! cmp -s "$APP_ROOT/scripts/deploy/lib/ephemeris_artifact_check.py" "$eph_lib"; then
+      report_ver_error "Installed ephemeris verifier differs from repository source"
+    fi
+  fi
+
   local compose_path="/etc/solarsage/compose/docker-compose.app.yml"
   if [ ! -e "$compose_path" ] || [ -L "$compose_path" ] || [ ! -f "$compose_path" ]; then
     report_ver_error "App compose '$compose_path' is missing, is a symlink, or is not a regular file"
@@ -395,10 +418,12 @@ verify_host_state() {
     fi
   }
   verify_dir_perms "/var/backups/solarsage" "astro:astro" "700"
-  verify_dir_perms "/opt/sweph/ephe" "astro:astro" "755"
+  verify_dir_perms "/opt/solarsage-ephemeris" "root:root" "755"
+  verify_dir_perms "/opt/solarsage-ephemeris/releases" "root:root" "755"
   verify_dir_perms "/etc/solarsage" "root:root" "755"
   verify_dir_perms "/etc/solarsage/compose" "root:root" "755"
   verify_dir_perms "/usr/local/libexec/solarsage" "root:root" "755"
+  verify_dir_perms "/usr/local/libexec/solarsage/lib" "root:root" "755"
   verify_dir_perms "/var/lib/solarsage/orchestrator" "astro:astro" "700"
   verify_dir_perms "/var/www/letsencrypt" "root:root" "755"
   verify_dir_perms "/var/www/letsencrypt/.well-known" "root:root" "755"
@@ -892,7 +917,8 @@ main() {
 
     # 4. Create directories idempotently
     install -d -o "$APP_USER" -g "$APP_GROUP" -m 0700 /var/backups/solarsage
-    install -d -o "$APP_USER" -g "$APP_GROUP" -m 0755 /opt/sweph/ephe
+    install -d -o root -g root -m 0755 /opt/solarsage-ephemeris
+    install -d -o root -g root -m 0755 /opt/solarsage-ephemeris/releases
     install -d -o root -g root -m 0755 /etc/solarsage
     install -d -o root -g root -m 0755 /etc/solarsage/compose
     install -d -o root -g root -m 0755 /usr/local/libexec/solarsage
@@ -903,6 +929,9 @@ main() {
 
     # 4.1 Install the canonical app orchestrator and compose stack byte-exact
     install -o root -g root -m 0755 "$APP_ROOT/scripts/deploy/prod-orchestrator.sh" "/usr/local/libexec/solarsage/prod-orchestrator"
+    install -o root -g root -m 0755 "$APP_ROOT/scripts/deploy/prod-ephemeris-install.sh" "/usr/local/libexec/solarsage/prod-ephemeris-install"
+    install -d -o root -g root -m 0755 /usr/local/libexec/solarsage/lib
+    install -o root -g root -m 0644 "$APP_ROOT/scripts/deploy/lib/ephemeris_artifact_check.py" "/usr/local/libexec/solarsage/lib/ephemeris_artifact_check.py"
     install -o root -g root -m 0644 "$APP_ROOT/infra/production/docker-compose.app.yml" "/etc/solarsage/compose/docker-compose.app.yml"
 
     # 4.2 Install the tmpfiles declaration and materialize the maintenance lock
