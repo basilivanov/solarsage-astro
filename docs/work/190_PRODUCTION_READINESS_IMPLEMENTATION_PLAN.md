@@ -1,6 +1,6 @@
 # 190 — Production Readiness Implementation Plan
 
-Date: 2026-07-19. PLAN ONLY — no implementation, no commit/push. Sources:
+Date: 2026-07-19. IMPLEMENTATION IN PROGRESS — slices land via reviewed commits; no unreviewed push. Sources:
 AGENTS.md, 189 (R1-corrected audit), 80 (accepted ephemeris gate design),
 Makefile, `scripts/audit_today.py`, `scripts/deploy/prod-orchestrator.sh`,
 `.github/workflows/{ci,e2e,deploy-production}.yml`, e2e/mock READMEs.
@@ -8,9 +8,12 @@ Makefile, `scripts/audit_today.py`, `scripts/deploy/prod-orchestrator.sh`,
 **Status legend:** ✅ confirmed done (with evidence) · 🔲 not implemented ·
 🚦 launch criterion (must be green before public exposure)
 
-**Current truth:** release `72871dbd` live with green liveness; NOT
-production-ready — Moshier math (empty `/opt/sweph/ephe`), Telegram webhook
-ingress blocked (pending=2), deployed with red CI, no exact-SHA gate.
+**Current truth:** live release `72871dbd` predates this gate; it runs
+with green liveness but without production-readiness proof (Moshier math at
+deploy time, Telegram webhook ingress blocked pending=2, and it was deployed
+while CI was red). The branch now HAS the source-quality/tag gates, but the
+full artifact-acceptance contour remains incomplete (P1-2/P1-3) — so the
+live release is not yet proof of the new gate.
 
 ## Current launch scope
 
@@ -59,20 +62,29 @@ those later slices.
 ### P0-1. Exact-SHA release-quality gate in the ONE deploy workflow
 
 - **Goal:** red code can never reach build/deploy again.
-- **Design (from 189 §10, no duplicate gates):** single authoritative manual
-  `Deploy Production` workflow for the exact SHA:
-  1. `source-quality` (BLOCKING): checkout exact SHA; pytest apps/api +
-     apps/solarsage, vitest, eslint/tsc, `check_audit_golden.py`, contracts.
-  2. `build` (existing): build/push immutable images ONCE.
-  3. `artifact-acceptance` (BLOCKING, runs against those exact images —
-     details in P1-1/P1-3; an initial compose-up + health implementation is
-     only an interim step, never the release criterion). **The release gate
-     MUST block deploy/tag until ALL of: full `make audit-day-freeze` on the
-     exact SHA + independent oracle (P1-2) + same-payload
-     API/DOM/screenshot proof (P1-3) pass.**
-  4. `deploy` (existing forced command), needs 1–3.
-  5. `functional-smoke` → rollback authority on failure.
-  6. `tag` (immutable, after smoke only).
+- **Status: PARTIAL.** Sub-parts: `source-quality` ✅ (implemented),
+  `tag` ✅ (implemented), artifact-acceptance BLOCKED (P1-2/P1-3).
+  Details: `source-quality` job in
+  `deploy-production.yml` is a LOCAL REUSABLE call to the whole existing CI
+  (`uses: ./.github/workflows/ci.yml` — no duplicated commands); `build`
+  `needs: source-quality`, so no login/bundle fetch/image build happens
+  before full green CI on the exact SHA. `ci.yml` gained `workflow_call`;
+  contract base ref: PR merge-base unchanged, push uses
+  `github.event.before`, workflow_call/dispatch use `HEAD^`.
+- **Tag (implemented):** `tag` job `needs: deploy`, `contents: write`;
+  re-verifies refs/heads/main + exact 40-hex SHA, checkout exact SHA
+  fetch-depth 0, creates annotated immutable collision-safe
+  `prod-YYYYMMDDTHHMMSSZ-<short12sha>` (fails on existing tag, never
+  force/overwrite), verifies tag target == GITHUB_SHA, pushes only
+  `refs/tags/<tag>`; annotation carries exact SHA + workflow run URL.
+- **Smoke/rollback authority:** the canonical health + front/geo smoke +
+  recorded rollback already run INSIDE the orchestrator during deploy
+  (proven by OC28); no second functional-smoke job was added.
+- **artifact-acceptance: PARTIAL, blocked** by P1-2 (independent oracle,
+  owner input) and P1-3 (V2 same-payload UI proof needs an owner-approved
+  committed today.v2.x payload). The blocking acceptance full gate
+  (audit-day-freeze + oracle + same-payload proof) MUST block deploy/tag
+  until those pass.
 - **Files:** `.github/workflows/deploy-production.yml` (add jobs/needs);
   reuse `ci.yml` commands verbatim.
 - **Companion CI fixes so the gate can pass:** run sidecar in backend CI
@@ -82,8 +94,10 @@ those later slices.
   secret guard to skip symlinks WITHOUT reading their targets (never copy
   the target's secret content into the repo).
 - **Responsible:** Kimi implements; owner approves PR.
-- **Blockers:** none (private-plan branch protection irrelevant — gate lives
-  in the workflow itself).
+- **Blockers:** source-quality/tag — none (private-plan branch protection
+  irrelevant, the gate lives in the workflow itself). Full artifact
+  acceptance remains blocked by P1-2 (independent oracle, owner input) and
+  P1-3 (owner-approved committed today.v2.x payload).
 - **Artifacts:** workflow run evidence per job; pass = all jobs green for
   the exact SHA; fail = no build, no deploy.
 
@@ -217,7 +231,7 @@ those later slices.
     critical rows auth 62, geo 53, referral 43, telegram_webhook 91,
     access 69, geonames 53, llm 60, today_service 89, today_interpretation 88).
   - CI gates (ci.yml): pytest coverage + TOTAL via `coverage report
-    --fail-under` (API 82, sidecar 89) + per-file built-in
+    --fail-under` (API 81, sidecar 90 (precision=2)) + per-file built-in
     `--include/--fail-under` gates + diff-cover (changed lines >= 80 on PR)
     + artifact uploads. Measured finding: `--cov-fail-under` in pytest-cov
     prints FAIL but exits 0 in this env — TOTAL gates therefore use the

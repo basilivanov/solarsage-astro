@@ -1,12 +1,16 @@
 # ############################################################################
 # AI_HEADER: MODULE_DEPLOY_PRODUCTION_WORKFLOW
-# ROLE: GitHub Actions manual production pipeline: immutable image build/push,
-#       environment approval, exact SSH deploy of one full SHA.
-# DEPENDENCIES: GitHub Actions, docker buildx, ssh
+# ROLE: GitHub Actions manual production pipeline: reusable exact-SHA quality
+#       gate (local ci.yml), immutable image build/push, artifact acceptance,
+#       approved SSH deploy with integrated orchestrator smoke/rollback, and an
+#       annotated immutable Git release tag.
+# DEPENDENCIES: GitHub Actions, local ./.github/workflows/ci.yml, docker buildx, ssh, git
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-DEPLOY-PRODUCTION-WORKFLOW
-# purpose: Manually build, publish and deploy immutable per-SHA OCI images.
+# purpose: Manually build, publish, accept and deploy immutable per-SHA OCI
+#   images with a blocking reusable quality gate, artifact acceptance, and an
+#   immutable annotated release tag after a proven deploy.
 # owns:
 #   - .github/workflows/deploy-production.yml
 # inputs:
@@ -15,10 +19,18 @@
 #     no tag; required because the build job has no environment)
 #   - PROD_HOST / PROD_USER / PROD_SSH_PRIVATE_KEY / PROD_KNOWN_HOSTS: production
 #     environment secrets
-# outputs: none
-# dependencies: none
+# outputs: immutable per-SHA images in GHCR, acceptance evidence bundle,
+#   deployed exact SHA on the production host, annotated immutable prod tag.
+# dependencies: local reusable ./.github/workflows/ci.yml (source-quality),
+#   docker/buildx (build/push), ssh + forced-command orchestrator (deploy),
+#   git + GITHUB_TOKEN (tag push)
 # invariants:
 #   - Manual trigger only; no push to main deploys by itself.
+#   - source-quality (reusable ./.github/workflows/ci.yml) gates build:
+#     nothing starts before full green CI on the exact SHA.
+#   - tag is created only after a successful deploy; immutable annotated
+#     prod-<utc>-<short12sha>, never overwritten; health/smoke/rollback stay
+#     inside the orchestrator (no second functional-smoke job).
 #   - Concurrency group production-deploy, cancel-in-progress: false.
 #   - GITHUB_REF must be refs/heads/main; GITHUB_SHA exactly 40 lowercase hex.
 #   - Image tags are exactly the full GITHUB_SHA; no latest/branch/mutable tag.
@@ -34,8 +46,11 @@
 # public_entrypoints:
 #   - GitHub Actions trigger
 # semantic_blocks:
+#   - SOURCE_QUALITY_JOB: reusable CI gate for the exact SHA
 #   - BUILD_JOB: immutable image build and push
+#   - ACCEPTANCE_JOB: artifact acceptance (partial, blocked by P1-2/P1-3)
 #   - DEPLOY_JOB: environment approval and exact SSH deploy
+#   - TAG_JOB: immutable annotated release tag after successful deploy
 # END_MODULE_MAP: M-DEPLOY-PRODUCTION-WORKFLOW
 
 name: Deploy Production
@@ -48,8 +63,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # START_BLOCK: SOURCE_QUALITY_JOB
+  # Blocking release-quality gate: the whole existing CI runs for the exact
+  # SHA via the reusable workflow — nothing (login, bundle fetch, image
+  # build) starts before full green CI. No commands are duplicated here.
+  source-quality:
+    uses: ./.github/workflows/ci.yml
+  # END_BLOCK: SOURCE_QUALITY_JOB
+
   # START_BLOCK: BUILD_JOB
   build:
+    needs: source-quality
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -372,3 +396,64 @@ jobs:
         run: |
           rm -f ~/.ssh/solarsage_prod_deploy ~/.ssh/known_hosts
   # END_BLOCK: DEPLOY_JOB
+
+  # START_BLOCK: TAG_JOB
+  # Immutable evidence tag AFTER a successful deploy only. The canonical
+  # health + front/geo smoke + recorded rollback authority already run inside
+  # the orchestrator during deploy (no second functional-smoke job here).
+  tag:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Verify branch and SHA
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "Error: tag only from refs/heads/main" >&2; exit 1; }
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Error: GITHUB_SHA must be 40 lowercase hex" >&2; exit 1; }
+
+      - name: Checkout exact SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Create and push immutable annotated tag
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          ts=$(date -u +%Y%m%dT%H%M%SZ)
+          short=$(printf '%s' "$GITHUB_SHA" | cut -c1-12)
+          tag="prod-${ts}-${short}"
+          # Remote collision check, fail-closed on any unexpected rc:
+          # rc=0 -> tag exists (hard fail), rc=2 -> absent (continue),
+          # anything else (network/auth/remote error) -> hard fail.
+          remote_rc=0
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Error: tag $tag already exists on origin (immutable, no overwrite)" >&2
+            exit 1
+          else
+            remote_rc=$?
+          fi
+          if [ "$remote_rc" -ne 2 ]; then
+            echo "Error: remote tag collision check failed (rc=$remote_rc)" >&2
+            exit 1
+          fi
+          if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Error: tag $tag already exists locally (immutable, no overwrite)" >&2
+            exit 1
+          fi
+          git config user.name "solarsage-deploy-bot"
+          git config user.email "deploy@solarsage.local"
+          git tag -a "$tag" "$GITHUB_SHA" -m "Production release $tag" -m "Exact SHA: $GITHUB_SHA" -m "Workflow run: $RUN_URL"
+          [ "$(git rev-parse "$tag^{commit}")" = "$GITHUB_SHA" ] || { echo "Error: tag target mismatch" >&2; exit 1; }
+          git push origin "refs/tags/$tag"
+          echo "tagged: $tag -> $GITHUB_SHA"
+  # END_BLOCK: TAG_JOB
