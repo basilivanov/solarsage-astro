@@ -48,6 +48,10 @@ Real E2E suites (real Telegram HMAC, no route interception except where noted):
 - `calendar.spec.ts` — calendar grid and day navigation.
 - `cross-feature-navigation.spec.ts` — Day → Calendar → Chat → Profile → Day
   with required link and destination assertions (no conditional passes).
+- `profile-city-checkin.spec.ts` — profile "Где живу сейчас" edit through the
+  public CityPicker contract (`city-picker-input/-suggestions/-suggestion`)
+  with real GET /api/profile proof, then check-in mood → energy → accuracy
+  with fresh-load read-back (no interception).
 - `locked-features.spec.ts` — locked/paywalled states.
 - `edge-cases.spec.ts` — edge cases (contains one page.route interception).
 - `hydration-guard.spec.ts` — hydration stability.

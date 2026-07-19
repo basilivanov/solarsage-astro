@@ -16,7 +16,12 @@
 // side_effects: Logging via v2 logging spine; React state management
 // emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
 // invariants:
-//   - n/a
+//   - Public test contract: data-testid="city-picker-input" on the text input,
+//     data-testid="city-picker-suggestions" on the dropdown list and
+//     data-testid="city-picker-suggestion" on each suggestion button. The
+//     contract is NOT globally unique: onboarding can render two pickers at
+//     once (birth city + current city when "same as birth" is unchecked), so
+//     tests must scope the locator to the active screen/sheet.
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 "use client"
@@ -140,6 +145,7 @@ export function CityPicker({
         <input
           ref={inputRef}
           type="text"
+          data-testid="city-picker-input"
           value={inputValue}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => {
@@ -161,7 +167,7 @@ export function CityPicker({
       </div>
 
       {showList ? (
-        <ul className="-mx-1 max-h-[35vh] overflow-y-auto rounded-xl border border-border/60 bg-card">
+        <ul data-testid="city-picker-suggestions" className="-mx-1 max-h-[35vh] overflow-y-auto rounded-xl border border-border/60 bg-card">
           {matches.map((c, i) => (
             <li
               key={`${c.name}-${c.country}`}
@@ -169,6 +175,7 @@ export function CityPicker({
             >
               <button
                 type="button"
+                data-testid="city-picker-suggestion"
                 onClick={() => handleSelect(c)}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left transition active:bg-foreground/5"
               >

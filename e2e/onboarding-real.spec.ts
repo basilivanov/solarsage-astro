@@ -50,11 +50,11 @@ test.describe('Onboarding Flow - Real Telegram Auth', () => {
     await expect(page.getByText('Место рождения')).toBeVisible({ timeout: 5000 });
 
     // Type city to trigger search
-    const cityInput = page.locator('input[placeholder*="Например"], input[placeholder*="Начни"]').first();
+    const cityInput = page.getByTestId('city-picker-input');
     await cityInput.fill('Москва');
 
     // Click first search result
-    const cityResult = page.locator('ul li button').first();
+    const cityResult = page.getByTestId('city-picker-suggestion').first();
     await expect(cityResult).toBeVisible({ timeout: 5000 });
     await cityResult.click();
 

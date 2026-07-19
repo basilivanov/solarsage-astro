@@ -374,6 +374,21 @@ their text below is kept as the design for those later slices.
 
 ### P1-6. Real E2E missing flows (real HMAC, no interception)
 
+- **Status: PARTIAL (2026-07-19).** Implemented locally: public CityPicker DOM
+  contract (`city-picker-input` / `city-picker-suggestions` /
+  `city-picker-suggestion`; NOT globally unique — onboarding can render two
+  pickers when "same as birth" is unchecked, so tests scope the locator to
+  the active screen/sheet) adopted by `completeOnboarding` and
+  `onboarding-real.spec.ts` (fragile placeholder / `ul li` selectors
+  removed); new `e2e/profile-city-checkin.spec.ts` covers
+  the profile "Где живу сейчас" edit with real GET `/api/profile` proof
+  (city/coordinates/timezone) and the check-in mood → energy → accuracy flow
+  with fresh-load read-back («Оценка уже сохранена»), no interception, no
+  conditional passes. Real candidate run on the ephemeral stack is PENDING
+  (needs the full real stack + Telegram secrets); the remaining P1-6 flows
+  (readings CRUD, horary submit/view, natal generate/view, chat,
+  paywall/referral claim, /start→web_app, payment webhook idempotency) stay
+  OPEN.
 - **Goal:** every user-facing capability has real-path evidence.
 - **Steps:** add specs for readings CRUD, horary submit/view, natal
   generate/view, chat, checkin, paywall/referral claim, profile edit city

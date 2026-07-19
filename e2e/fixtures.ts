@@ -227,9 +227,9 @@ export async function completeOnboarding(page: Page) {
 
   // Birth place: real geo search, first result, then "Сейчас живу там же"
   await expect(page.getByText('Место рождения')).toBeVisible({ timeout: 5000 });
-  const cityInput = page.locator('input[placeholder*="Например"], input[placeholder*="Начни"]').first();
+  const cityInput = page.getByTestId('city-picker-input');
   await cityInput.fill('Москва');
-  const cityResult = page.locator('ul li button').first();
+  const cityResult = page.getByTestId('city-picker-suggestion').first();
   await expect(cityResult).toBeVisible({ timeout: 5000 });
   await cityResult.click();
   await page.getByText(/сейчас живу там же/i).click();
