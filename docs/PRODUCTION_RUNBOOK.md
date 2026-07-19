@@ -71,7 +71,9 @@ The `/etc/solarsage/app.env` file must exist on the host as a real non-symlink f
 - **RESTIC_REPOSITORY**: restic target repository for offsite backups.
 - **OFFSITE_RESTIC_PASSWORD_FILE**: path to a real non-symlink `root:astro 0640` file containing the restic repository password (e.g. `/etc/solarsage/backup/restic-password`).
 
-Optional keys: `APP_VERSION`, `LLM_MODEL`, `GEONAMES_USERNAME`.
+- **GEONAMES_USERNAME**: GeoNames account used by `/api/geo/*` city/timezone lookups (fail-closed: compose interpolation and the endpoint both refuse to run without it).
+
+Optional keys: `APP_VERSION`, `LLM_MODEL`.
 
 The env file must **not** contain `RELEASE_SHA`: the target release identity is supplied per invocation; a conflicting `RELEASE_SHA` in the env file fails closed.
 

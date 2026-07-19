@@ -57,11 +57,10 @@ describe('searchCitiesAsync', () => {
     vi.clearAllMocks()
   })
 
-  it('returns empty array on geo error', async () => {
+  it('rethrows geo error so the caller can surface an error state', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Geo error'))
 
-    const result = await searchCitiesAsync('Moscow')
-    expect(result).toEqual([])
+    await expect(searchCitiesAsync('Moscow')).rejects.toThrow('Geo error')
   })
 
   it('returns cities on successful geo search', async () => {

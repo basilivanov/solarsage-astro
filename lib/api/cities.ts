@@ -32,7 +32,8 @@
 //   - GEO_ADAPTER: map GeoSuggestion fields to City.
 //   - SYNC_COMPAT_SEARCH: preserve the empty synchronous compatibility result.
 //   - POPULAR_CATALOG: expose the stable popular city list.
-//   - ASYNC_SEARCH: adapt GeoNames results and fail soft with structured logging.
+//   - ASYNC_SEARCH: adapt GeoNames results; log and rethrow failures so the
+//     sole consumer (CityPicker) can render an accessible error state.
 //   - ASYNC_POPULAR_ALIAS: resolve the synchronous catalog asynchronously.
 // owned_tests:
 //   - __tests__/api/cities.test.ts
@@ -79,12 +80,14 @@ export async function searchCitiesAsync(
   query: string,
   limit: number = 8,
 ): Promise<City[]> {
+  // Log and rethrow: the sole consumer (CityPicker) renders an accessible
+  // error state, so failures must NOT degrade silently to an empty list.
   try {
     const suggestions = await searchGeoNames(query, limit)
     return suggestions.map(geoSuggestionToCity)
   } catch (error) {
     logEvent("ui.fetch_failed", { error: String(error) }, { msg: "Failed to search cities", level: "error", slice: "W-GEO", module: "M-CITIES-API", block: "SEARCH_CITIES" })
-    return []
+    throw error
   }
 }
 
