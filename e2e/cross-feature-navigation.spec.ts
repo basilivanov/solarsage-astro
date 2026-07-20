@@ -3,7 +3,7 @@
 // wave: W-TEST-3
 // purpose: Test navigation between Day, Calendar, Chat, Profile — real Telegram auth, no skips
 
-import { test, expect, completeOnboarding } from './fixtures';
+import { test, expect, completeOnboarding, waitForTodayState } from './fixtures';
 
 test.describe('Cross-Feature Navigation', () => {
   test('should navigate Day → Calendar → Chat → Profile → Day', async ({ page }) => {
@@ -15,8 +15,9 @@ test.describe('Cross-Feature Navigation', () => {
       await completeOnboarding(page);
     }
 
-    // Day is the starting point — required, never conditional.
-    await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });
+    // Day is the starting point — required, never conditional. Fresh user:
+    // wait for the exact terminal locked state, not the loader.
+    await waitForTodayState(page, 'locked');
 
     // Calendar: required link and required destination.
     const calendarLink = page.locator('a[href="/calendar"]');
@@ -44,6 +45,7 @@ test.describe('Cross-Feature Navigation', () => {
     await expect(dayLink.first()).toBeVisible({ timeout: 5000 });
     await dayLink.first().click();
     await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/);
-    await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 10000 });
+    // The final day landing must be terminal (fresh user: locked) before the test ends.
+    await waitForTodayState(page, 'locked');
   });
 });

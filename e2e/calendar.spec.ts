@@ -5,7 +5,7 @@
 // GRACE_ANCHORS: [E2E_CALENDAR_TESTS]
 // ############################################################################
 
-import { test, expect } from './fixtures';
+import { test, expect, waitForTodayState } from './fixtures';
 
 test.describe('Calendar Screen - Real Auth', () => {
   test('calendar renders real payload grid, lunar state, and CTA navigation', async ({ page }) => {
@@ -55,5 +55,7 @@ test.describe('Calendar Screen - Real Auth', () => {
 
     await page.getByRole('button', { name: /Открыть (день|превью)/ }).click();
     await expect(page).toHaveURL(/\/day\/2026-07-12/);
+    // The opened day must reach its terminal locked preview before the test ends.
+    await waitForTodayState(page, 'locked');
   });
 });

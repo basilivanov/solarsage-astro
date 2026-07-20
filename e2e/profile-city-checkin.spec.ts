@@ -35,7 +35,7 @@
 //   - CHECKIN_FLOW: mood/energy/accuracy submit + read-back
 // END_MODULE_MAP: M-TEST-E2E-PROFILE-CITY-CHECKIN
 
-import { test, expect, completeOnboarding } from './fixtures';
+import { test, expect, completeOnboarding, waitForTodayState } from './fixtures';
 
 test.describe('Profile city edit + check-in — Real API (P1-6)', () => {
   test.use({ uniqueTelegramUser: true });
@@ -104,8 +104,10 @@ test.describe('Profile city edit + check-in — Real API (P1-6)', () => {
     await page.getByTestId('energy-3').click();
     await page.getByTestId('accuracy-2').click();
 
-    // Accuracy auto-submits; completion navigates to the saved day page.
+    // Accuracy auto-submits; completion navigates to the saved day page,
+    // which must reach a terminal public state (fresh user: locked).
     await page.waitForURL(`**/day/${today}**`, { timeout: 15000 });
+    await waitForTodayState(page, 'locked');
 
     // Read-back after a fresh load: the saved state comes from the real API.
     await page.goto(`/checkin?target=${today}`);

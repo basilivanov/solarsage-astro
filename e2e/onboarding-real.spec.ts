@@ -3,7 +3,7 @@
 // wave: W-TEST-3
 // purpose: Complete onboarding flow test with real Telegram auth (no mocks)
 
-import { test, expect } from './fixtures';
+import { test, expect, waitForTodayState } from './fixtures';
 
 test.describe('Onboarding Flow - Real Telegram Auth', () => {
   test.use({ uniqueTelegramUser: true });
@@ -88,6 +88,10 @@ test.describe('Onboarding Flow - Real Telegram Auth', () => {
     // Should redirect to /day/...
     await page.waitForURL('**/day/**', { timeout: 15000 });
     expect(page.url()).toMatch(/\/day\/(today|\d{4}-\d{2}-\d{2})/);
+
+    // The day landing must reach the exact locked state — this standalone
+    // flow always creates a fresh user with no access ledger.
+    await waitForTodayState(page, 'locked');
 
     // localStorage should be set
     const onboarded = await page.evaluate(() =>

@@ -260,6 +260,32 @@ export const test = base.extend<E2EOptions>({
 
 export { expect };
 
+// START_BLOCK: TODAY_TERMINAL_WAIT
+// START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.waitForTodayState
+// purpose: Block until the day page reaches a TERMINAL public state on the
+//   today-screen root. loading/error are never success; a test must not
+//   proceed (or finish) while a day request is still in flight.
+// inputs: page — Playwright page; expected — 'ready' | 'locked' |
+//   'terminal' (either ready or locked); timeout — default 30000 (real
+//   /api/day takes 8.3–18.8s in candidate runs).
+// returns: void; Playwright expect throws on timeout.
+// side_effects: none (read-only DOM polling via expect).
+// error_behavior: throws when the terminal state is not reached in time.
+// END_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.waitForTodayState
+export async function waitForTodayState(
+  page: Page,
+  expected: 'ready' | 'locked' | 'terminal' = 'terminal',
+  timeout = 30000,
+): Promise<void> {
+  const screen = page.getByTestId('today-screen');
+  if (expected === 'terminal') {
+    await expect(screen).toHaveAttribute('data-state', /^(ready|locked)$/, { timeout });
+  } else {
+    await expect(screen).toHaveAttribute('data-state', expected, { timeout });
+  }
+}
+// END_BLOCK: TODAY_TERMINAL_WAIT
+
 /**
  * Helper: wait for auth to complete and return to a specific page.
  * After auth, the home page redirects based on onboarding state.
@@ -329,10 +355,12 @@ export async function completeOnboarding(page: Page) {
   await expect(finishBtn).toBeEnabled({ timeout: 5000 });
   await finishBtn.click();
 
-  // Landed on the day page for real
+  // Landed on the day page for real — wait for the TERMINAL public state
+  // (ready|locked), never just the loading branch, so no test proceeds while
+  // the first day request is still in flight.
   await page.waitForURL('**/day/**', { timeout: 15000 });
   expect(page.url()).toMatch(/\/day\/(today|\d{4}-\d{2}-\d{2})/);
-  await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });
+  await waitForTodayState(page, 'terminal');
   const onboarded = await page.evaluate(() => localStorage.getItem('lumen:onboarded'));
   expect(['true', '1']).toContain(onboarded);
 }

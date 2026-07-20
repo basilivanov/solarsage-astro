@@ -35,7 +35,7 @@
 //   - INVITEE_CLAIM: deep-link auto-claim + access proof + idempotent reload
 // END_MODULE_MAP: M-TEST-E2E-REFERRAL-DEEPLINK
 
-import { test, expect, completeOnboarding, createAuthedUserPage } from './fixtures';
+import { test, expect, completeOnboarding, createAuthedUserPage, waitForTodayState } from './fixtures';
 
 test.describe('Referral deep-link auto-claim — Real API (P1-6)', () => {
   test.use({ uniqueTelegramUser: true });
@@ -95,10 +95,10 @@ test.describe('Referral deep-link auto-claim — Real API (P1-6)', () => {
       expect(access.referralDaysLeft).toBeGreaterThanOrEqual(13);
 
       // Unlocked full-day proof: the claimed 14-day access unlocks Today
-      // (structural only, never LLM text).
+      // (structural only, never LLM text). Wait for the exact terminal ready
+      // state — the day payload can take ~19s in candidate runs.
       await inviteePage.goto('/');
-      const inviteeToday = inviteePage.getByTestId('today-screen');
-      await expect(inviteeToday).toHaveAttribute('data-state', 'ready', { timeout: 15000 });
+      await waitForTodayState(inviteePage, 'ready');
       await expect(inviteePage.getByTestId('day-summary-card')).toBeVisible({ timeout: 15000 });
       await expect(inviteePage.getByTestId('concrete-day-advice')).toBeVisible({ timeout: 15000 });
 
@@ -109,7 +109,7 @@ test.describe('Referral deep-link auto-claim — Real API (P1-6)', () => {
       // Idempotency: opening the same deep link again must not double-claim
       // (backend ALREADY_CLAIMED; no manual API mutation from the test).
       await inviteePage.goto(`/?tgWebAppStartParam=${encodeURIComponent(inviteCode)}`);
-      await expect(inviteePage.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });
+      await waitForTodayState(inviteePage, 'ready');
       const afterReload = await readReferralInfo();
       expect(afterReload.totalInvited).toBe(1);
     } finally {

@@ -5,7 +5,7 @@
 // GRACE_ANCHORS: [E2E_TODAY_TESTS]
 // ############################################################################
 
-import { test, expect, completeOnboarding } from './fixtures';
+import { test, expect, completeOnboarding, waitForTodayState } from './fixtures';
 
 // START_BLOCK: ENSURE_ONBOARDED
 // Every test reaches a real profile: if the app redirects to onboarding,
@@ -33,7 +33,7 @@ test.describe('Today Screen - Real Auth', () => {
     // (e2e/referral-deeplink.spec.ts).
     const todayScreen = page.getByTestId('today-screen');
     await expect(todayScreen).toBeVisible({ timeout: 15000 });
-    await expect(todayScreen).toHaveAttribute('data-state', 'locked');
+    await waitForTodayState(page, 'locked');
     await expect(page.getByTestId('error-boundary')).toBeHidden();
     // Paywall/preview contract: access card present, full-day cards absent.
     await expect(page.getByTestId('access-card')).toBeVisible({ timeout: 10000 });
@@ -50,7 +50,9 @@ test.describe('Today Screen - Real Auth', () => {
     test.setTimeout(60000);
     await ensureOnboarded(page);
 
-    await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });
+    // Wait for the terminal locked preview first — otherwise the check is
+    // vacuous against the loading branch.
+    await waitForTodayState(page, 'locked');
 
     // Placeholder should NOT be visible — real LLM data should render instead
     const placeholder = page.locator('text=/Данные временно недоступны/i');
@@ -75,6 +77,8 @@ test.describe('Today Screen - Real Auth', () => {
     await expect(openCta).toBeEnabled({ timeout: 10000 });
     await openCta.click();
     await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/);
+    // The opened day must reach its terminal locked preview before the test ends.
+    await waitForTodayState(page, 'locked');
   });
 
   test('week strip navigation with real auth', async ({ page }) => {
@@ -84,12 +88,17 @@ test.describe('Today Screen - Real Auth', () => {
     // Canonical day URL is /day/YYYY-MM-DD (the root route redirects there).
     await page.goto('/');
     await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/, { timeout: 15000 });
-    await expect(page.getByTestId('today-screen')).toBeVisible({ timeout: 15000 });
+    // A fresh user is locked: wait for the terminal locked preview, not the
+    // loading branch, before touching the week strip.
+    await waitForTodayState(page, 'locked');
     const weekStrip = page.getByTestId('week-strip');
     await expect(weekStrip).toBeVisible({ timeout: 5000 });
     const firstWeekDay = weekStrip.locator('button').first();
     await expect(firstWeekDay).toBeVisible({ timeout: 5000 });
     await firstWeekDay.click();
     await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/);
+    // The navigated day must also reach terminal state before the test ends
+    // (no in-flight day request left behind).
+    await waitForTodayState(page, 'locked');
   });
 });
