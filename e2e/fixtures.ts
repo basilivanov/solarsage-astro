@@ -266,8 +266,8 @@ export { expect };
 //   today-screen root. loading/error are never success; a test must not
 //   proceed (or finish) while a day request is still in flight.
 // inputs: page — Playwright page; expected — 'ready' | 'locked' |
-//   'terminal' (either ready or locked); timeout — default 30000 (real
-//   /api/day takes 8.3–18.8s in candidate runs).
+//   'terminal' (either ready or locked); timeout — default 45000 (observed
+//   /api/day range in candidate runs: 8.3–32.8s).
 // returns: void; Playwright expect throws on timeout.
 // side_effects: none (read-only DOM polling via expect).
 // error_behavior: throws when the terminal state is not reached in time.
@@ -275,7 +275,7 @@ export { expect };
 export async function waitForTodayState(
   page: Page,
   expected: 'ready' | 'locked' | 'terminal' = 'terminal',
-  timeout = 30000,
+  timeout = 45000,
 ): Promise<void> {
   const screen = page.getByTestId('today-screen');
   if (expected === 'terminal') {

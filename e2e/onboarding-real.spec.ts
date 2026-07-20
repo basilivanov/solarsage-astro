@@ -9,7 +9,9 @@ test.describe('Onboarding Flow - Real Telegram Auth', () => {
   test.use({ uniqueTelegramUser: true });
 
   test('should complete all steps and redirect to /day/today', async ({ page }) => {
-    test.setTimeout(60000);
+    // Outer budget honestly covers the real GeoNames/form path plus the
+    // 45s terminal-day wait (observed /api/day up to 32.8s in candidates).
+    test.setTimeout(90000);
 
     // Clear onboarding state so we start fresh
     await page.addInitScript(() => {
