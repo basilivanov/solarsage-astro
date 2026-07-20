@@ -34,6 +34,9 @@ const mockList = vi.fn();
 const mockCreate = vi.fn();
 const mockGet = vi.fn();
 const mockProfile = vi.fn();
+// Stable identity like the real module-level `toast` from hooks/use-toast.ts:
+// a fresh vi.fn() per render would recreate loadData and wipe questions.
+const mockToastFn = vi.fn();
 
 vi.mock("@/lib/api/horary", () => ({
   getHoraryQuota: (...args: unknown[]) => mockQuota(...args),
@@ -47,7 +50,7 @@ vi.mock("@/lib/api/profile", () => ({
 }));
 
 vi.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: mockToastFn }),
 }));
 
 const processingQuestion = {
@@ -443,5 +446,95 @@ describe("HoraryScreen — polling starts after create", () => {
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith("q-new");
     }, { timeout: 5000 });
+  });
+});
+
+describe("HoraryScreen — polling cadence (no storm)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("polls at most once per 2000ms after the initial read", async () => {
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    // Flush the initial data load (quota/list/profile) and render the form.
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: processingQuestion.text } });
+    fireEvent.click(screen.getByRole("button", { name: /Получить ответ карты/ }));
+
+    // Flush create + the single immediate read after start (timer schedules
+    // in a later microtask round, so settle the chain first).
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockGet).toHaveBeenCalledTimes(1);
+
+    // Before the next 2000ms window: no new GET (the old storm fired dozens).
+    await act(async () => { await vi.advanceTimersByTimeAsync(1998); });
+    expect(mockGet).toHaveBeenCalledTimes(1);
+
+    // Then exactly one next GET — and no more.
+    await act(async () => { await vi.advanceTimersByTimeAsync(10); });
+    expect(mockGet).toHaveBeenCalledTimes(2);
+
+    // The cadence holds: nothing inside the next 2000ms window, then exactly one.
+    await act(async () => { await vi.advanceTimersByTimeAsync(1990); });
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(20); });
+    expect(mockGet).toHaveBeenCalledTimes(3);
+  });
+
+  it("merges initial processing chain and submit: one follow-up round per 2000ms, no duplicate chain", async () => {
+    const oldProcessing = { ...processingQuestion, id: "q-old", text: "Старый вопрос из истории" };
+    mockList.mockResolvedValue([oldProcessing]);
+    mockGet.mockImplementation((id: unknown) =>
+      Promise.resolve(id === "q-old" ? oldProcessing : processingQuestion)
+    );
+
+    render(
+      <React.Suspense fallback={<div>loading</div>}>
+        <HoraryScreen />
+      </React.Suspense>
+    );
+
+    // Initial load: the history question starts the chain with one immediate read.
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(mockGet).toHaveBeenCalledTimes(1);
+    expect(mockGet).toHaveBeenCalledWith("q-old");
+
+    // Submit a new question while the initial chain timer is still pending.
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: processingQuestion.text } });
+    fireEvent.click(screen.getByRole("button", { name: /Получить ответ карты/ }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    expect(mockGet).toHaveBeenCalledWith("q-new");
+
+    // Before the first 2s boundary: no further GET (no orphan/duplicate chain).
+    await act(async () => { await vi.advanceTimersByTimeAsync(1900); });
+    expect(mockGet).toHaveBeenCalledTimes(2);
+
+    // At the boundary: exactly ONE follow-up round covering both questions once each.
+    await act(async () => { await vi.advanceTimersByTimeAsync(150); });
+    expect(mockGet).toHaveBeenCalledTimes(4);
+    expect(mockGet.mock.calls.slice(2).map((c) => c[0]).sort()).toEqual(["q-new", "q-old"]);
+
+    // Second boundary: again exactly one round, nothing in between.
+    await act(async () => { await vi.advanceTimersByTimeAsync(1900); });
+    expect(mockGet).toHaveBeenCalledTimes(4);
+    await act(async () => { await vi.advanceTimersByTimeAsync(150); });
+    expect(mockGet).toHaveBeenCalledTimes(6);
   });
 });

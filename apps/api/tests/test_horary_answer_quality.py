@@ -272,7 +272,132 @@ async def test_llm_valid_response_with_full_block_set_passes(monkeypatch):
     assert len(out["blocks"]) == 8
 
 
-# 9. Timing with category hint falls back to unclear (not known)
+def _valid_llm_blocks():
+    return [
+        {"type": "verdict_card", "verdict": "yes", "confidence": 0.5,
+         "label": "Да", "confidenceLabel": "medium",
+         "confidenceExplanation": "Данных достаточно для умеренной уверенности, потому что карта показывает согласованные указания без критичных противоречий."},
+        {"type": "lead", "text": "Ответ скорее положительный, потому что карта показывает больше поддерживающих факторов, чем ослабляющих указаний."},
+        {"type": "paragraph", "text": "Сигнификаторы пользователя и вопроса описывают ситуацию без явных противоречий и позволяют рассматривать развитие как рабочее и реалистичное."},
+        {"type": "testimonies",
+         "prosLabel": "За", "consLabel": "Против", "neutralLabel": "Нейтр",
+         "pros": [{"title": "Поддержка", "explanation": "Есть показатель, который говорит в пользу благоприятного исхода.", "weight": 0.5, "planets": [], "aspectType": None, "orb": None}],
+         "cons": [],
+         "neutral": [{"title": "Нейтральный фактор", "explanation": "Есть фон, который не влияет на исход.", "weight": 0.0, "planets": [], "aspectType": None, "orb": None}]},
+        {"type": "paragraph", "text": "Исход может измениться, если появятся новые сдерживающие факторы или если участники начнут действовать менее последовательно, чем сейчас."},
+        {"type": "timing", "status": "known", "timeRange": "1 неделя", "text": "Вероятное проявление видно в течение недели, потому что карта показывает достаточно ясный и относительно близкий временной ориентир."},
+        {"type": "callout", "tone": "insight", "title": "Совет", "text": "Действуй спокойно и не форсируй процесс: лучше закрепить уже имеющиеся преимущества, проверить детали и дать ситуации раскрыться естественным образом."},
+        {"type": "paragraph", "text": "Итог указывает на благоприятное развитие при сохранении текущего курса, особенно если не создавать лишнего давления и не торопить события."},
+    ]
+
+
+def _blocks_missing_neutral_weight():
+    import copy
+    blocks = copy.deepcopy(_valid_llm_blocks())
+    for b in blocks:
+        if b["type"] == "testimonies":
+            for item in b["neutral"]:
+                del item["weight"]
+    return blocks
+
+
+def _make_analysis() -> HoraryAnalysis:
+    return HoraryAnalysis(
+        verdict="yes",
+        confidence_score=70,
+        confidence_label="medium",
+        confidence_explanation="test",
+        involved_planets=["Venus"],
+        testimonies_for=[],
+        testimonies_against=[],
+        neutral_factors=[],
+        timing=TimingInfo(status="known", time_range="1 неделя", text="ок"),
+    )
+
+
+# 9. Malformed LLM output (missing neutral testimony weight) is rejected at
+# the contract boundary; the valid second attempt is accepted (provider x2).
+@pytest.mark.asyncio
+async def test_llm_malformed_missing_weight_is_retried_and_second_valid_accepted(monkeypatch):
+    monkeypatch.setattr(LLMService, "__init__", lambda self: None)
+    svc = LLMService()
+    calls: list = []
+    responses = iter([
+        json.dumps({"blocks": _blocks_missing_neutral_weight()}, ensure_ascii=False),
+        json.dumps({"blocks": _valid_llm_blocks()}, ensure_ascii=False),
+    ])
+
+    async def fake_gen(prompt, max_tokens):
+        calls.append(prompt)
+        return next(responses)
+
+    monkeypatch.setattr(svc, "_generate_text", fake_gen)
+    out = await svc.generate_horary_answer(
+        question_text="Q",
+        category=None,
+        analysis=_make_analysis(),
+    )
+    assert len(calls) == 2
+    assert "blocks" in out
+    assert len(out["blocks"]) == 8
+
+
+# 10. Two malformed outputs (missing neutral testimony weight) are both
+# rejected at the contract boundary: domain HoraryGenerationError after
+# exactly 2 attempts.
+@pytest.mark.asyncio
+async def test_llm_two_malformed_missing_weight_raises_horary_generation_error(monkeypatch):
+    monkeypatch.setattr(LLMService, "__init__", lambda self: None)
+    svc = LLMService()
+    calls: list = []
+
+    async def fake_gen(prompt, max_tokens):
+        calls.append(prompt)
+        return json.dumps({"blocks": _blocks_missing_neutral_weight()}, ensure_ascii=False)
+
+    monkeypatch.setattr(svc, "_generate_text", fake_gen)
+    with pytest.raises(HoraryGenerationError):
+        await svc.generate_horary_answer(
+            question_text="Q",
+            category=None,
+            analysis=_make_analysis(),
+        )
+    assert len(calls) == 2
+
+
+# 11. Privacy (direct validators): the pydantic ValidationError text embeds
+# raw LLM input_value fragments, so both horary block validators must convert
+# it to their domain HoraryGenerationError WITHOUT chaining.
+def test_monolith_validator_rejection_never_leaks_raw_llm_content():
+    sentinel = "RAW_9f8e"
+    bad_blocks = _blocks_missing_neutral_weight()
+    for b in bad_blocks:
+        if b["type"] == "testimonies":
+            b["neutral"][0]["title"] = sentinel
+    with pytest.raises(HoraryGenerationError) as excinfo:
+        LLMService._validate_horary_blocks(bad_blocks)
+    assert sentinel not in str(excinfo.value)
+    assert excinfo.value.__cause__ is None
+
+
+# 12. Privacy (modular validator): same no-leak contract on the
+# app.services.llm.horary path (no contract drift).
+def test_modular_validator_rejection_never_leaks_raw_llm_content():
+    from app.services.llm.client import HoraryGenerationError as ModularError
+    from app.services.llm.horary import _validate_horary_blocks as modular_validate
+
+    sentinel = "RAW_9f8e"
+    bad_blocks = _blocks_missing_neutral_weight()
+    for b in bad_blocks:
+        if b["type"] == "testimonies":
+            b["neutral"][0]["title"] = sentinel
+    with pytest.raises(ModularError) as excinfo:
+        modular_validate(bad_blocks)
+    assert sentinel not in str(excinfo.value)
+    assert excinfo.value.__cause__ is None
+
+
+# 13. Timing with category hint falls back to unclear (not known)
 def test_engine_timing_category_fallback_is_unclear():
     horary_chart = {
         "special_points": [{"name": "ASC", "longitude": 30.0}],
@@ -284,7 +409,7 @@ def test_engine_timing_category_fallback_is_unclear():
     assert a.timing.status != "known"
 
 
-# 10. No user-facing probability wording in prompt template
+# 14. No user-facing probability wording in prompt template
 def test_no_probability_wording_in_horary_prompt():
     """TZ 3.1: no `55% вероятность`-style wording. The label is
     low/medium/high, not a percent."""

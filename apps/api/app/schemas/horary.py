@@ -13,9 +13,13 @@
 #   - none
 # outputs:
 #   - HoraryQuestionCreate, HoraryQuestionRead, HoraryQuotaRead
+#   - validate_horary_llm_blocks (shared LLM-output contract boundary)
 # invariants:
 #   - all schemas inherit from CamelModel for camelCase JSON translation.
 #   - Text length constraints (5-500 chars) are enforced on input questions.
+#   - validate_horary_llm_blocks is the single HoraryBlock contract check for
+#     raw LLM output; its ValidationError embeds pydantic input_value
+#     fragments, so callers MUST convert it without chaining (no __cause__).
 # END_MODULE_CONTRACT: M-CONTRACTS.horary
 
 # START_MODULE_MAP: M-CONTRACTS.horary
@@ -23,12 +27,13 @@
 #   - HoraryQuestionCreate
 #   - HoraryQuestionRead
 #   - HoraryQuotaRead
+#   - validate_horary_llm_blocks
 # END_MODULE_MAP: M-CONTRACTS.horary
 
 from __future__ import annotations
 
 from typing import Annotated, Literal
-from pydantic import Field, field_validator
+from pydantic import Field, TypeAdapter, field_validator
 from ._base import CamelModel
 
 
@@ -140,6 +145,24 @@ HoraryBlock = Annotated[
     | TimingBlock,
     Field(discriminator="type"),
 ]
+
+_HORARY_BLOCKS_ADAPTER = TypeAdapter(list[HoraryBlock])
+
+
+# START_BLOCK: LLM_BLOCKS_CONTRACT_BOUNDARY
+def validate_horary_llm_blocks(blocks: object) -> None:
+    # START_FUNCTION_CONTRACT: F-M-SCHEMAS-HORARY.validate_horary_llm_blocks
+    # purpose: Validate raw LLM-produced blocks against the public HoraryBlock
+    #   contract (e.g. every testimony item requires `weight`). Single shared
+    #   boundary used by both horary LLM validators — no contract drift.
+    # inputs: blocks — raw parsed JSON value from the LLM response.
+    # returns: None; raises pydantic ValidationError on any mismatch.
+    # side_effects: none.
+    # error_behavior: raises ValidationError; callers convert it to their
+    #   domain error WITHOUT leaking raw LLM content.
+    # END_FUNCTION_CONTRACT: F-M-SCHEMAS-HORARY.validate_horary_llm_blocks
+    _HORARY_BLOCKS_ADAPTER.validate_python(blocks)
+# END_BLOCK: LLM_BLOCKS_CONTRACT_BOUNDARY
 
 
 # ---- Request/Response схемы ----

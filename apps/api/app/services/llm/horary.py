@@ -17,6 +17,8 @@
 #   - M-LLM-RUSSIAN (_PLANET_RU)
 # invariants:
 #   - validation is schema-only (no semantic checking)
+#   - every block must satisfy the shared public HoraryBlock contract
+#     (validate_horary_llm_blocks); malformed output is never persisted
 # failure_policy:
 #   - raises HoraryGenerationError on invalid blocks
 # END_MODULE_CONTRACT: M-LLM-HORARY
@@ -25,6 +27,8 @@ from __future__ import annotations
 
 from app.services.llm.client import HoraryGenerationError
 from app.services.llm.russian import _PLANET_RU
+from app.schemas.horary import validate_horary_llm_blocks
+from pydantic import ValidationError
 
 
 def _format_evidence(item) -> str:
@@ -55,6 +59,16 @@ def _validate_horary_blocks(blocks: list) -> bool:
         raise HoraryGenerationError("LLM response 'blocks' is not a list")
     if len(blocks) < 7:
         raise HoraryGenerationError("LLM response must contain at least 7 blocks")
+
+    # Contract boundary (shared with llm_service): every block must satisfy
+    # the public HoraryBlock schema (e.g. testimony items require weight).
+    # Malformed output is rejected, never persisted; raw LLM content never
+    # leaks into the error (no __cause__ chain: pydantic error text embeds
+    # input_value fragments).
+    try:
+        validate_horary_llm_blocks(blocks)
+    except ValidationError:
+        raise HoraryGenerationError("LLM response failed block schema validation") from None
 
     types_seen: set[str] = set()
     paragraph_count = 0

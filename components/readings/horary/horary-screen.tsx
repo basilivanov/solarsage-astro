@@ -19,6 +19,11 @@
 //   - Root exposes the public state contract: data-state (loading|error|ready),
 //     data-has-credit (true|false, undefined while loading/error), and
 //     data-access-state (unlocked|locked, undefined while loading/error).
+//   - Polling is exactly one chain: one immediate read after create/start,
+//     then at most one getHoraryQuestion round per 2000ms, 60s cap; state
+//     updates never restart or overlap chains; scheduling is unified —
+//     a new schedule cancels the pending timeout and the callback nulls the
+//     ref, so no orphan timer can ever start a second chain.
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 "use client"
@@ -60,7 +65,11 @@ export function HoraryScreen() {
   const [profile, setProfile] = useState<ProfileRead | null>(null)
 
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pollInFlightRef = useRef(false)
   const pollStartedAtRef = useRef<number | null>(null)
+  // Latest questions for the poll chain: a setTimeout closure must read the
+  // CURRENT list, never the stale render-closure state.
+  const questionsRef = useRef<HoraryQuestionRead[]>(questions)
   const activeQuestionIdRef = useRef<string | null>(null)
   const seenAnsweredIdsRef = useRef<Set<string>>(new Set())
   const seenFailedIdsRef = useRef<Set<string>>(new Set())
@@ -112,97 +121,122 @@ export function HoraryScreen() {
     pollStartedAtRef.current = null
   }, [])
 
+  // Unified poll scheduling: cancel any pending timeout before scheduling,
+  // and null the ref when the callback fires, so no orphan timer can ever
+  // start a second chain (e.g. initial chain timer vs submit immediate poll).
+  // The callback always invokes the latest poll instance via the ref.
+  const pollAllProcessingRef = useRef<(() => Promise<void>) | null>(null)
+  const scheduleNextPoll = useCallback(() => {
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current)
+      pollTimeoutRef.current = null
+    }
+    pollTimeoutRef.current = setTimeout(() => {
+      pollTimeoutRef.current = null
+      void pollAllProcessingRef.current?.()
+    }, 2000)
+  }, [])
+
   const pollAllProcessing = useCallback(async (processingQuestions?: HoraryQuestionRead[]) => {
-    const currentProcessingQuestions = processingQuestions ?? questions.filter(
-      (q) => q.status === "processing" || q.status === "pending"
-    )
-
-    if (currentProcessingQuestions.length === 0) {
-      stopPolling()
-      return
-    }
-
-    if (!pollStartedAtRef.current) {
-      pollStartedAtRef.current = Date.now()
-    }
-
-    if (Date.now() - pollStartedAtRef.current > 60000) {
-      stopPolling()
-      setSubmitting(false)
-      toast({
-        description: "Ответ формируется дольше обычного. Мы сохраним вопрос и покажем ответ, когда карта будет готова.",
-      })
-      return
-    }
-
+    // Single-flight guard: exactly one poll chain exists; overlapping chains
+    // (submit + effect + re-render) previously produced a request storm.
+    if (pollInFlightRef.current) return
+    pollInFlightRef.current = true
     try {
-      const updates = await Promise.all(currentProcessingQuestions.map((q) => getHoraryQuestion(q.id)))
-      let hasProcessingLeft = false
+      const currentProcessingQuestions = processingQuestions ?? questionsRef.current.filter(
+        (q) => q.status === "processing" || q.status === "pending"
+      )
 
-      updates.forEach((updatedQuestion) => {
-        if (!updatedQuestion) {
-          return
-        }
+      if (currentProcessingQuestions.length === 0) {
+        stopPolling()
+        return
+      }
 
-        upsertQuestion(updatedQuestion)
+      if (!pollStartedAtRef.current) {
+        pollStartedAtRef.current = Date.now()
+      }
 
-        if (updatedQuestion.status === "processing" || updatedQuestion.status === "pending") {
-          hasProcessingLeft = true
-        }
-
-        if (updatedQuestion.status === "answered" && !seenAnsweredIdsRef.current.has(updatedQuestion.id)) {
-          seenAnsweredIdsRef.current.add(updatedQuestion.id)
-
-          // If this is the question user just submitted, auto-scroll + auto-navigate
-          const isJustSubmitted = activeQuestionIdRef.current === updatedQuestion.id
-          setActiveQuestionId((current) => (current === updatedQuestion.id ? null : current))
-          setActiveQuestionStartedAt((current) =>
-            activeQuestionIdRef.current === updatedQuestion.id ? null : current
-          )
-
-          if (isJustSubmitted) {
-            // Trigger scroll: wait for the card to render, then scroll + navigate
-            setPendingScrollId(updatedQuestion.id)
-          } else {
-            toast({ description: "Ответ готов" })
-          }
-        }
-
-        if (
-          (updatedQuestion.status === "failed" || updatedQuestion.status === "expired") &&
-          !seenFailedIdsRef.current.has(updatedQuestion.id)
-        ) {
-          seenFailedIdsRef.current.add(updatedQuestion.id)
-          setActiveQuestionId((current) => (current === updatedQuestion.id ? null : current))
-          setActiveQuestionStartedAt((current) =>
-            activeQuestionIdRef.current === updatedQuestion.id ? null : current
-          )
-          toast({
-            variant: "destructive",
-            description:
-              updatedQuestion.publicErrorMessage ||
-              (updatedQuestion.status === "expired"
-                ? "Время ожидания ответа истекло. Попробуйте задать вопрос снова."
-                : "Не удалось рассчитать хорарный ответ. Пожалуйста, попробуйте снова."),
-          })
-        }
-      })
-
-      if (hasProcessingLeft) {
-        pollTimeoutRef.current = setTimeout(() => {
-          void pollAllProcessing()
-        }, 2000)
-      } else {
+      if (Date.now() - pollStartedAtRef.current > 60000) {
         stopPolling()
         setSubmitting(false)
+        toast({
+          description: "Ответ формируется дольше обычного. Мы сохраним вопрос и покажем ответ, когда карта будет готова.",
+        })
+        return
       }
-    } catch (error) {
-      logEvent("system.error", { error: String(error) }, { msg: "[HoraryScreen] Polling error", slice: "W-HORARY", module: "M-HORARY-SCREEN", block: "POLLING" })
-      pollTimeoutRef.current = setTimeout(() => {
-        void pollAllProcessing()
-      }, 2000)
+
+      try {
+        const updates = await Promise.all(currentProcessingQuestions.map((q) => getHoraryQuestion(q.id)))
+        let hasProcessingLeft = false
+
+        updates.forEach((updatedQuestion) => {
+          if (!updatedQuestion) {
+            return
+          }
+
+          upsertQuestion(updatedQuestion)
+
+          if (updatedQuestion.status === "processing" || updatedQuestion.status === "pending") {
+            hasProcessingLeft = true
+          }
+
+          if (updatedQuestion.status === "answered" && !seenAnsweredIdsRef.current.has(updatedQuestion.id)) {
+            seenAnsweredIdsRef.current.add(updatedQuestion.id)
+
+            // If this is the question user just submitted, auto-scroll + auto-navigate
+            const isJustSubmitted = activeQuestionIdRef.current === updatedQuestion.id
+            setActiveQuestionId((current) => (current === updatedQuestion.id ? null : current))
+            setActiveQuestionStartedAt((current) =>
+              activeQuestionIdRef.current === updatedQuestion.id ? null : current
+            )
+
+            if (isJustSubmitted) {
+              // Trigger scroll: wait for the card to render, then scroll + navigate
+              setPendingScrollId(updatedQuestion.id)
+            } else {
+              toast({ description: "Ответ готов" })
+            }
+          }
+
+          if (
+            (updatedQuestion.status === "failed" || updatedQuestion.status === "expired") &&
+            !seenFailedIdsRef.current.has(updatedQuestion.id)
+          ) {
+            seenFailedIdsRef.current.add(updatedQuestion.id)
+            setActiveQuestionId((current) => (current === updatedQuestion.id ? null : current))
+            setActiveQuestionStartedAt((current) =>
+              activeQuestionIdRef.current === updatedQuestion.id ? null : current
+            )
+            toast({
+              variant: "destructive",
+              description:
+                updatedQuestion.publicErrorMessage ||
+                (updatedQuestion.status === "expired"
+                  ? "Время ожидания ответа истекло. Попробуйте задать вопрос снова."
+                  : "Не удалось рассчитать хорарный ответ. Пожалуйста, попробуйте снова."),
+            })
+          }
+        })
+
+        if (hasProcessingLeft) {
+          scheduleNextPoll()
+        } else {
+          stopPolling()
+          setSubmitting(false)
+        }
+      } catch (error) {
+        logEvent("system.error", { error: String(error) }, { msg: "[HoraryScreen] Polling error", slice: "W-HORARY", module: "M-HORARY-SCREEN", block: "POLLING" })
+        scheduleNextPoll()
+      }
+    } finally {
+      pollInFlightRef.current = false
     }
-  }, [questions, stopPolling, toast, upsertQuestion])
+  }, [scheduleNextPoll, stopPolling, toast, upsertQuestion])
+
+  // Keep the latest poll instance for timer callbacks (latest-ref pattern).
+  useEffect(() => {
+    pollAllProcessingRef.current = pollAllProcessing
+  })
 
   // Auto-scroll to answered card + auto-navigate to answer page
   useEffect(() => {
@@ -241,6 +275,7 @@ export function HoraryScreen() {
   }, [loadData])
 
   useEffect(() => {
+    questionsRef.current = questions
     const hasProcessing = questions.some((q) => q.status === "processing" || q.status === "pending")
 
     if (!hasProcessing) {
@@ -248,17 +283,18 @@ export function HoraryScreen() {
       return
     }
 
-    if (!pollTimeoutRef.current) {
+    // Start the chain only when nothing is running: the 2s timer owns the
+    // cadence. The previous cleanup cleared the timer on every questions
+    // change and the body immediately re-polled — that was the storm.
+    if (!pollTimeoutRef.current && !pollInFlightRef.current) {
       void pollAllProcessing()
     }
-
-    return () => {
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current)
-        pollTimeoutRef.current = null
-      }
-    }
   }, [questions, pollAllProcessing, stopPolling])
+
+  // Unmount-only cleanup: never cancel the cadence on plain re-renders.
+  useEffect(() => {
+    return () => stopPolling()
+  }, [stopPolling])
 
   const handleSubmit = async (
     text: string,

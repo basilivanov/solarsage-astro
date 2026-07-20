@@ -24,6 +24,9 @@
 # invariants:
 #   - falls back through providers: OpenRouter → DeepSeek → None
 #   - horary generation has 2 retry attempts
+#   - horary blocks are validated against the shared public HoraryBlock
+#     contract (validate_horary_llm_blocks); malformed output is rejected,
+#     never persisted as an unreadable "answered" report
 # failure_policy:
 #   - returns None if all providers fail
 #   - raises HoraryGenerationError if horary fails after 2 attempts
@@ -57,6 +60,8 @@ import httpx
 
 from app.core.config import settings
 from app.core.logging import log_event, log_block
+from app.schemas.horary import validate_horary_llm_blocks
+from pydantic import ValidationError
 
 # ── Astrological boundary rules ─────────────────────────────────────
 # LLM must NOT compute astrology — only interpret pre-computed backend data.
@@ -918,6 +923,16 @@ JSON:"""
             raise HoraryGenerationError("LLM response 'blocks' is not a list")
         if len(blocks) < 7:
             raise HoraryGenerationError("LLM response must contain at least 7 blocks")
+
+        # Contract boundary: every block must satisfy the public HoraryBlock
+        # schema (e.g. testimony items require weight). Malformed output is
+        # rejected here, never persisted as an unreadable "answered" report;
+        # raw LLM content is never leaked into the error (no __cause__ chain:
+        # pydantic error text embeds input_value fragments).
+        try:
+            validate_horary_llm_blocks(blocks)
+        except ValidationError:
+            raise HoraryGenerationError("LLM response failed block schema validation") from None
 
         types_seen: set[str] = set()
         paragraph_count = 0
