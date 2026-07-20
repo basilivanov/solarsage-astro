@@ -374,7 +374,10 @@ their text below is kept as the design for those later slices.
 
 ### P1-6. Real E2E missing flows (real HMAC, no interception)
 
-- **Status: PARTIAL (2026-07-19).** Implemented locally: public CityPicker DOM
+- **Status: PARTIAL (2026-07-20).** Strict real-HMAC release suite truth:
+  8 specs / 12 chromium tests, no route interception, workflow runs them
+  with `--fail-on-flaky-tests`; first CLEAN strict green is proven (run
+  29758437120 below). Implemented locally: public CityPicker DOM
   contract (`city-picker-input` / `city-picker-suggestions` /
   `city-picker-suggestion`; NOT globally unique — onboarding can render two
   pickers when "same as birth" is unchecked, so tests scope the locator to
@@ -427,8 +430,28 @@ their text below is kept as the design for those later slices.
   direct POST/DB seed) before quota/unlocked + submit→answer→read-back→
   history. Stale navigation fixed: calendar day cell → public CTA
   «Открыть день/Открыть превью» → canonical `/day/YYYY-MM-DD`;
-  cross-feature uses `a[href^="/day/"]` + dated URL regex. Next candidate
-  run is pending.
+  cross-feature uses `a[href^="/day/"]` + dated URL regex.
+
+  **Candidate timeline (strict real-HMAC release suite):**
+  - 29701833426 — FAILURE: 6 passed / 5 failed (GeoNames wiring proven 200;
+    causes fixed in the follow-up above).
+  - 29702970139 — 11 passed / 1 failed: horary create `MissingGreenlet`
+    (lazy `spent_credit` serialization in a fresh request session) — fixed
+    by the eager-loaded create path (`881f108`, directed fresh-session
+    regression).
+  - 29749139004 — GitHub success but results 9 expected + 3 flaky:
+    false-green by design closed — release suite now runs with
+    `--fail-on-flaky-tests` (`b4c00b5`).
+  - 29750842382 — strict failure: onboarding wait, real `/api/day` took
+    32.8s — day-state timeouts widened to observed latency (`86bec7c`).
+  - 29751885436 — strict failure: malformed LLM neutral testimony without
+    `weight` persisted as unreadable answered + frontend polling storm —
+    fixed (`812f8c6`): exact `HoraryBlock` contract boundary with retry and
+    no raw cause in errors, single owned polling chain.
+  - **29758437120 (SHA `812f8c6`) — FIRST CLEAN strict green:** 12
+    expected, 0 unexpected, 0 flaky, all retry=0, duration 309637ms,
+    horary first pass 30.544s.
+    https://github.com/basilivanov/solarsage-astro/actions/runs/29758437120
   Third slice (2026-07-19, local): referral deep-link auto-claim —
   `e2e/referral-deeplink.spec.ts` (referrer invite code via real GET
   /api/referral; isolated second user via new fixtures export
@@ -441,6 +464,14 @@ their text below is kept as the design for those later slices.
   placeholder), the external /start Telegram-client ingress path (owner
   ingress, P0-3), and the payment implementation + provider sandbox
   (product work, not a test gap).
+  **Stop rule (unchanged, not release-ready):** because this docs commit
+  creates a new exact SHA, TWO consecutive strict candidate runs on the
+  final docs SHA are still PENDING and will be recorded in the handoff —
+  without a next docs commit. All other blockers stay open: P0-2 licensed
+  bundle/identity production proof, P0-3 external Telegram ingress, P0-4
+  host apply/deploy-workflow proof, P1-2 independent oracle owner input,
+  P1-3 owner-approved today.v2 payload, P1-5 PR diff-cover acceptance,
+  chat/payments/provider sandbox follow-ups, manual launch gates.
 - **Goal:** every user-facing capability has real-path evidence.
 - **Steps:** add specs for readings list + horary lifecycle (no
   delete/archive — the endpoint does not exist), natal generate/view, chat,
