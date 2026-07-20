@@ -45,12 +45,14 @@ function generateInitData(userId?: number): string {
   throw new Error(`Failed to parse initData from script output:\n${stdout}`);
 }
 
-function deriveTelegramUserId(projectName: string, testId: string, repeatEachIndex: number): number {
+export function deriveTelegramUserId(projectName: string, testId: string, repeatEachIndex: number, retry: number): number {
   // Run-scoped salt keeps ids unique across runs so reruns never collide and
-  // the acceptance cleanup adapter can find exactly this run's users.
+  // the acceptance cleanup adapter can find exactly this run's users. The
+  // retry index is part of the deterministic input so a retried test never
+  // reuses the already-onboarded user of the failed attempt.
   const runSalt = process.env.E2E_RUN_SALT || process.env.GITHUB_RUN_ID || 'local';
   const digest = createHash('sha256')
-    .update(`${runSalt}\0${projectName}\0${testId}\0${repeatEachIndex}`)
+    .update(`${runSalt}\0${projectName}\0${testId}\0${repeatEachIndex}\0${retry}`)
     .digest();
 
   const tgUserId = 1_000_000_000 + (digest.readUInt32BE(0) % 1_000_000_000);
@@ -185,6 +187,7 @@ export async function createAuthedUserPage(
     testInfo.project.name,
     `${testInfo.testId}#${idSuffix}`,
     testInfo.repeatEachIndex,
+    testInfo.retry,
   );
   const initData = generateInitData(tgUserId);
   const context = await browser.newContext(baseURL ? { baseURL } : {});
@@ -240,7 +243,7 @@ export const test = base.extend<E2EOptions>({
   uniqueTelegramUser: [true, { option: true }],
   page: async ({ page, baseURL, uniqueTelegramUser }, use, testInfo) => {
     const userId = uniqueTelegramUser
-      ? deriveTelegramUserId(testInfo.project.name, testInfo.testId, testInfo.repeatEachIndex)
+      ? deriveTelegramUserId(testInfo.project.name, testInfo.testId, testInfo.repeatEachIndex, testInfo.retry)
       : undefined;
     const initData = generateInitData(userId);
 

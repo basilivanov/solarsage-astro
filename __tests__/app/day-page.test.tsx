@@ -53,6 +53,44 @@ describe('DayPage', () => {
     vi.useRealTimers();
   });
 
+  it('exposes the public today-screen root with data-state=loading while loading', async () => {
+    mockUseDay.mockReturnValue({
+      data: null,
+      loading: true,
+      error: null,
+    });
+
+    const { default: DayPage } = await import(
+      '@/app/(grace)/day/[date]/page'
+    );
+    render(<DayPage />);
+
+    const root = screen.getByTestId('today-screen');
+    expect(root.getAttribute('data-state')).toBe('loading');
+    expect(root.getAttribute('aria-busy')).toBe('true');
+    expect(screen.getByTestId('cosmic-loader')).toBeTruthy();
+  });
+
+  it('exposes the public today-screen root with data-state=error on failure', async () => {
+    mockUseDay.mockReturnValue({
+      data: null,
+      loading: false,
+      error: new Error('Service unavailable'),
+    });
+
+    const { default: DayPage } = await import(
+      '@/app/(grace)/day/[date]/page'
+    );
+    render(<DayPage />);
+
+    const root = screen.getByTestId('today-screen');
+    expect(root.getAttribute('data-state')).toBe('error');
+    expect(root.getAttribute('aria-busy')).toBeNull();
+    expect(screen.getByTestId('day-error').textContent).toBe(
+      'Service unavailable'
+    );
+  });
+
   it('renders API errors before the local loader state', async () => {
     mockUseDay.mockReturnValue({
       data: null,

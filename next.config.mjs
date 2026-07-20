@@ -25,6 +25,12 @@ function resolveApiRewriteBase() {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   distDir: resolveNextDistDir(),
+  experimental: {
+    // Synchronous MVP endpoints (e.g. natal report generation) legitimately
+    // exceed the 30 s default rewrite proxy timeout; production nginx already
+    // allows 300 s, so the fallback rewrite matches it.
+    proxyTimeout: 300_000,
+  },
   ...(process.env.NODE_ENV !== "production"
     ? { allowedDevOrigins: ["127.0.0.1"] }
     : {}),

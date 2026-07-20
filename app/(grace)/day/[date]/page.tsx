@@ -18,6 +18,10 @@
 //   - Fixture branch requires development mode, 2026-07-08, and fixture=three-horizon-timing.
 //   - Normal branch never receives fixture data or a fixture feature flag.
 //   - Fixture day navigation drops fixture query and returns to ordinary /day flow.
+//   - Every LoadedDay branch exposes the public today-screen root:
+//     loading → data-state="loading" + aria-busy (CosmicLoader),
+//     error → data-state="error" (ErrorBoundary),
+//     ready → TodayScreen owns the root itself (never duplicated).
 // failure_policy: Invalid date redirects in normal flow; request failures use ErrorBoundary.
 // END_MODULE_CONTRACT: M-DAY-DATE-PAGE
 
@@ -145,10 +149,23 @@ function LoadedDay({
   const ready = Boolean(data) && !loading
 
   // The loader disappears as soon as the payload is ready; the artificial
-  // 600 ms hold is removed. Loading/error states stay accessible via
-  // CosmicLoader (role=status) and ErrorBoundary (role=alert).
-  if (error) return <ErrorBoundary error={error} title="Не удалось загрузить день" message={error.message} />
-  if (!ready || !data) return <CosmicLoader done={ready} />
+  // 600 ms hold is removed. Every branch exposes the public today-screen
+  // root: loading with aria-busy (CosmicLoader role=status), error
+  // (ErrorBoundary role=alert); ready is owned by TodayScreen itself.
+  if (error) {
+    return (
+      <div data-testid="today-screen" data-state="error">
+        <ErrorBoundary error={error} title="Не удалось загрузить день" message={error.message} />
+      </div>
+    )
+  }
+  if (!ready || !data) {
+    return (
+      <div data-testid="today-screen" data-state="loading" aria-busy="true">
+        <CosmicLoader done={ready} />
+      </div>
+    )
+  }
 
   const { payload, access } = adaptTodayPayload(data, selectedDate)
   return (

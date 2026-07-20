@@ -41,6 +41,14 @@ describe("preview isolation guards", () => {
     expect(src).not.toMatch(/mock-visual|day-v2-2026|fixtures\//)
   })
 
+  it("next.config sets a rewrite proxyTimeout that covers synchronous generation", () => {
+    const src = readFileSync(join(process.cwd(), "next.config.mjs"), "utf8")
+    // Synchronous MVP endpoints (natal report generation) exceed the 30 s
+    // default; production nginx allows 300 s, so the rewrite must match it.
+    expect(src).toContain("proxyTimeout")
+    expect(src).toMatch(/proxyTimeout:\s*300_?000/)
+  })
+
   it("product runtime paths do not import e2e mock-visual fixtures", () => {
     const roots = ["app", "components", "hooks", "lib"]
     // Match real imports only — not comments that mention the harness path.
