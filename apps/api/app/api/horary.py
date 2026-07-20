@@ -18,6 +18,8 @@
 # invariants:
 #   - all endpoints require session auth.
 #   - duplicates under same idempotencyKey are idempotent without double spend.
+#   - responses are serialized only from eagerly-loaded ORM objects; no
+#     relationship access may trigger lazy IO in the async request path.
 # END_MODULE_CONTRACT: M-API-HORARY
 
 # START_MODULE_MAP: M-API-HORARY
@@ -202,10 +204,12 @@ async def create_horary_question(
     # START_FUNCTION_CONTRACT: M-API-HORARY.create_horary_question
     # purpose: Atomically spends a credit and creates a new question; starts background generator.
     # inputs: body (HoraryQuestionCreate), user_id (UUID), db (AsyncSession)
-    # returns: HoraryQuestionRead
+    # returns: HoraryQuestionRead serialized from an eagerly re-fetched
+    #   question (no lazy relationship IO in the async path).
     # side_effects: inserts question, updates credits, spawns background task
     # emitted_logs: none
-    # error_behavior: raises 402 on no credits, 409 on idempotency conflict, propagates DB errors
+    # error_behavior: raises 402 on no credits, 409 on idempotency conflict, propagates DB errors;
+    #   defensive 500 QUESTION_NOT_FOUND_AFTER_CREATE if the eager re-fetch misses.
     # END_FUNCTION_CONTRACT: M-API-HORARY.create_horary_question
     
     service = HoraryService(db)
@@ -220,7 +224,17 @@ async def create_horary_question(
         if created and question.status == "processing":
             asyncio.create_task(service._generate_answer_task(question.id))
 
-        return _to_question_read(question)
+        # create_question does NOT load the spent_credit relationship; in a
+        # fresh request session, serializing it would lazy-load synchronously
+        # and raise MissingGreenlet (production 500). Re-fetch with the same
+        # eager strategy as get/list endpoints before serializing.
+        persisted = await service.get_question(user_id, question.id)
+        if persisted is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="QUESTION_NOT_FOUND_AFTER_CREATE",
+            )
+        return _to_question_read(persisted)
 
     except ValueError as e:
         err_msg = str(e)

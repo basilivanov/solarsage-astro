@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import json
+import gc
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
@@ -175,6 +176,14 @@ async def test_post_question_success_and_credit_consumption(
             "questionLon": 37.62,
             "idempotencyKey": "key-success-endpoint",
         }
+
+        # Directed MissingGreenlet regression (production 500): drop the last
+        # strong reference to the credit so the weak-referenced identity map
+        # can release it. Production holds the credit only locally inside
+        # spend_credit_for_question, so nothing keeps it in the map when the
+        # endpoint serializes the fresh question.
+        del credit
+        gc.collect()
 
         r = await async_client.post("/api/horary/questions", json=payload)
         assert r.status_code == 201
