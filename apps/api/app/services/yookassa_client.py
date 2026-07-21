@@ -141,6 +141,17 @@ class YooKassaClient:
             raise YooKassaError("yookassa malformed response: missing payment id")
         return provider_payment_id
 
+    @staticmethod
+    def _response_status(payment: dict) -> str:
+        # Create-response status: absent means the documented "pending"
+        # default; a present status MUST be a string (never coerced).
+        status = payment.get("status")
+        if status is None:
+            return "pending"
+        if not isinstance(status, str):
+            raise YooKassaError("yookassa malformed response: invalid status")
+        return status
+
     async def create_initial_payment(
         self,
         *,
@@ -181,7 +192,7 @@ class YooKassaClient:
         return {
             "provider_payment_id": self._payment_id(payment),
             "confirmation_url": self._confirmation_url(payment),
-            "status": payment.get("status", "pending"),
+            "status": self._response_status(payment),
         }
 
     async def create_one_time_payment(
@@ -219,7 +230,7 @@ class YooKassaClient:
         return {
             "provider_payment_id": self._payment_id(payment),
             "confirmation_url": self._confirmation_url(payment),
-            "status": payment.get("status", "pending"),
+            "status": self._response_status(payment),
         }
 
     async def create_recurrent_payment(
@@ -259,7 +270,7 @@ class YooKassaClient:
         payment = await self._post("/payments", payload, idempotence_key)
         return {
             "provider_payment_id": self._payment_id(payment),
-            "status": payment.get("status", "pending"),
+            "status": self._response_status(payment),
         }
     # END_BLOCK: YK_CREATE
 
@@ -285,18 +296,54 @@ class YooKassaClient:
         if response.status_code >= 400:
             raise YooKassaError(f"yookassa http {response.status_code}")
         payment = self._json_object(response)
-        method = self._nested_object(payment, "payment_method")
-        amount = self._nested_object(payment, "amount")
-        metadata = self._nested_object(payment, "metadata")
+        # Strict scalar contract at the money boundary: NO bool()/str()
+        # coercions of provider data. Any shape/type violation is a sanitized
+        # YooKassaError (the webhook boundary maps it to a retryable 502).
+        status = payment.get("status")
+        if not isinstance(status, str) or not status:
+            raise YooKassaError("yookassa malformed response: invalid status")
+        paid = payment.get("paid")
+        if not isinstance(paid, bool):
+            raise YooKassaError("yookassa malformed response: invalid paid")
+        amount = payment.get("amount")
+        if amount is None:
+            raise YooKassaError("yookassa malformed response: missing amount")
+        if not isinstance(amount, dict):
+            raise YooKassaError("yookassa malformed response: invalid amount")
+        amount_value = amount.get("value")
+        if not isinstance(amount_value, str) or not amount_value:
+            raise YooKassaError("yookassa malformed response: invalid amount value")
+        currency = amount.get("currency")
+        if not isinstance(currency, str) or not currency:
+            raise YooKassaError("yookassa malformed response: invalid amount currency")
+        metadata = payment.get("metadata")
+        if not isinstance(metadata, dict):
+            raise YooKassaError("yookassa malformed response: invalid metadata")
+        method_id: str | None = None
+        method_saved = False
+        method = payment.get("payment_method")
+        if method is not None:
+            if not isinstance(method, dict):
+                raise YooKassaError("yookassa malformed response: invalid payment_method")
+            saved_value = method.get("saved")
+            if not isinstance(saved_value, bool):
+                raise YooKassaError("yookassa malformed response: invalid payment_method saved")
+            method_saved = saved_value
+            id_value = method.get("id")
+            if id_value is not None and (not isinstance(id_value, str) or not id_value):
+                raise YooKassaError("yookassa malformed response: invalid payment_method id")
+            if method_saved and not id_value:
+                raise YooKassaError("yookassa malformed response: saved method without id")
+            method_id = id_value
         return {
             "provider_payment_id": self._payment_id(payment),
-            "status": payment.get("status"),
-            "paid": bool(payment.get("paid")),
-            "amount_value": str(amount.get("value", "")),
-            "currency": str(amount.get("currency", "")),
+            "status": status,
+            "paid": paid,
+            "amount_value": amount_value,
+            "currency": currency,
             "metadata": metadata,
-            "payment_method_id": method.get("id"),
-            "payment_method_saved": bool(method.get("saved")),
+            "payment_method_id": method_id,
+            "payment_method_saved": method_saved,
         }
     # END_BLOCK: YK_GET
 

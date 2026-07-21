@@ -295,7 +295,15 @@ async def test_malformed_json_and_missing_id_are_sanitized() -> None:
     with pytest.raises(YooKassaError, match="malformed"):
         await client.get_payment("prov-x")
 
-    client2 = _client(lambda request: httpx.Response(200, json={"status": "succeeded"}))
+    client2 = _client(lambda request: httpx.Response(
+        200,
+        json={
+            "status": "succeeded",
+            "paid": True,
+            "amount": {"value": "99.00", "currency": "RUB"},
+            "metadata": {},
+        },
+    ))
     with pytest.raises(YooKassaError, match="missing payment id"):
         await client2.get_payment("prov-x")
 
@@ -353,7 +361,14 @@ async def test_nested_shape_strings_are_sanitized() -> None:
     client3 = _client(
         lambda request: httpx.Response(
             200,
-            json={"id": "prov-9", "status": "succeeded", "paid": True, "payment_method": "bad"},
+            json={
+                "id": "prov-9",
+                "status": "succeeded",
+                "paid": True,
+                "amount": {"value": "99.00", "currency": "RUB"},
+                "metadata": {},
+                "payment_method": "bad",
+            },
         )
     )
     with pytest.raises(YooKassaError, match="invalid payment_method"):
@@ -363,7 +378,13 @@ async def test_nested_shape_strings_are_sanitized() -> None:
     client4 = _client(
         lambda request: httpx.Response(
             200,
-            json={"id": "prov-10", "status": "succeeded", "paid": True, "metadata": "bad"},
+            json={
+                "id": "prov-10",
+                "status": "succeeded",
+                "paid": True,
+                "amount": {"value": "99.00", "currency": "RUB"},
+                "metadata": "bad",
+            },
         )
     )
     with pytest.raises(YooKassaError, match="invalid metadata"):
@@ -391,3 +412,120 @@ async def test_post_transport_failure_is_sanitized() -> None:
     assert "transport error" in message
     assert "10.0.0.1" not in message
     assert "secret-1" not in message
+
+
+def _get_client(body: dict) -> YooKassaClient:
+    return _client(lambda request: httpx.Response(200, json=body))
+
+
+def _valid_get_body(**overrides) -> dict:
+    body = {
+        "id": "prov-ok",
+        "status": "succeeded",
+        "paid": True,
+        "amount": {"value": "99.00", "currency": "RUB"},
+        "metadata": {"user_id": "u", "owner_id": "o"},
+    }
+    body.update(overrides)
+    return body
+
+
+@pytest.mark.asyncio
+async def test_strict_paid_must_be_bool() -> None:
+    with pytest.raises(YooKassaError, match="invalid paid"):
+        await _get_client(_valid_get_body(paid="false")).get_payment("prov-ok")
+    with pytest.raises(YooKassaError, match="invalid paid"):
+        await _get_client(_valid_get_body(paid=1)).get_payment("prov-ok")
+    with pytest.raises(YooKassaError, match="invalid paid"):
+        await _get_client(_valid_get_body(paid=None)).get_payment("prov-ok")
+
+
+@pytest.mark.asyncio
+async def test_strict_status_must_be_nonempty_str() -> None:
+    with pytest.raises(YooKassaError, match="invalid status"):
+        await _get_client(_valid_get_body(status=123)).get_payment("prov-ok")
+    with pytest.raises(YooKassaError, match="invalid status"):
+        await _get_client(_valid_get_body(status="")).get_payment("prov-ok")
+
+
+@pytest.mark.asyncio
+async def test_strict_amount_contract() -> None:
+    # Missing amount entirely.
+    with pytest.raises(YooKassaError, match="missing amount"):
+        await _get_client(_valid_get_body(amount=None)).get_payment("prov-ok")
+    # Numeric value.
+    with pytest.raises(YooKassaError, match="invalid amount value"):
+        await _get_client(_valid_get_body(amount={"value": 9900, "currency": "RUB"})).get_payment("prov-ok")
+    # Missing currency.
+    with pytest.raises(YooKassaError, match="invalid amount currency"):
+        await _get_client(_valid_get_body(amount={"value": "99.00"})).get_payment("prov-ok")
+    # Empty currency.
+    with pytest.raises(YooKassaError, match="invalid amount currency"):
+        await _get_client(_valid_get_body(amount={"value": "99.00", "currency": ""})).get_payment("prov-ok")
+
+
+@pytest.mark.asyncio
+async def test_strict_metadata_must_be_present_dict() -> None:
+    with pytest.raises(YooKassaError, match="invalid metadata"):
+        await _get_client(_valid_get_body(metadata=None)).get_payment("prov-ok")
+    with pytest.raises(YooKassaError, match="invalid metadata"):
+        await _get_client(_valid_get_body(metadata="bad")).get_payment("prov-ok")
+
+
+@pytest.mark.asyncio
+async def test_strict_payment_method_scalars() -> None:
+    # saved as a string.
+    with pytest.raises(YooKassaError, match="invalid payment_method saved"):
+        await _get_client(
+            _valid_get_body(payment_method={"id": "pm-1", "saved": "false"})
+        ).get_payment("prov-ok")
+    # Numeric method id.
+    with pytest.raises(YooKassaError, match="invalid payment_method id"):
+        await _get_client(
+            _valid_get_body(payment_method={"id": 123, "saved": False})
+        ).get_payment("prov-ok")
+    # saved=true without id.
+    with pytest.raises(YooKassaError, match="saved method without id"):
+        await _get_client(
+            _valid_get_body(payment_method={"saved": True})
+        ).get_payment("prov-ok")
+    # Valid: no payment_method at all (a card payment that was not saved).
+    result = await _get_client(_valid_get_body()).get_payment("prov-ok")
+    assert result["payment_method_id"] is None
+    assert result["payment_method_saved"] is False
+    # Valid: saved method with id.
+    result = await _get_client(
+        _valid_get_body(payment_method={"id": "pm-1", "saved": True})
+    ).get_payment("prov-ok")
+    assert result["payment_method_id"] == "pm-1"
+    assert result["payment_method_saved"] is True
+
+
+@pytest.mark.asyncio
+async def test_strict_create_response_status() -> None:
+    # Non-string status in a create response is rejected.
+    client = _client(lambda request: httpx.Response(200, json={"id": "prov-5", "status": 123}))
+    with pytest.raises(YooKassaError, match="invalid status"):
+        await client.create_one_time_payment(
+            user_id=USER_ID,
+            owner_id=OWNER_ID,
+            amount_kopecks=5000,
+            currency="RUB",
+            description="d",
+            return_url="https://app.example/return",
+            product_slug="horary_1",
+            idempotence_key="purchase-owner",
+        )
+    # Absent status takes the documented pending default.
+    client2 = _client(lambda request: httpx.Response(200, json={"id": "prov-6", "confirmation": {}}))
+    result = await client2.create_one_time_payment(
+        user_id=USER_ID,
+        owner_id=OWNER_ID,
+        amount_kopecks=5000,
+        currency="RUB",
+        description="d",
+        return_url="https://app.example/return",
+        product_slug="horary_1",
+        idempotence_key="purchase-owner",
+    )
+    assert result["status"] == "pending"

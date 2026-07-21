@@ -355,3 +355,54 @@ async def test_webhook_subscription_inactive_is_retryable(
     )
     assert r.status_code == 500
     assert (await db_session.execute(select(AccessLedger))).scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_webhook_malformed_paid_scalar_is_retryable_502_no_grant(
+    async_client: AsyncClient, db_session, monkeypatch
+) -> None:
+    """Valid identity but malformed provider scalar (paid as a STRING): the
+    strict client contract rejects it, the endpoint answers a retryable 502,
+    and NOTHING is granted (payment pending, ledger empty)."""
+    import httpx
+    from app.services.yookassa_client import YooKassaClient
+
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+    monkeypatch.setattr("app.api.payment._webhook_source_allowed", lambda request: True)
+    monkeypatch.setattr(
+        "app.services.billing_service.get_yookassa_client",
+        lambda: FakeClient({}),
+    )
+    user, payment, subscription_id = await _make_pending_payment(db_session, 900025)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "id": payment.provider_payment_id,
+                "status": "succeeded",
+                "paid": "false",  # malformed scalar: must be a real bool
+                "amount": {"value": "99.00", "currency": "RUB"},
+                "metadata": {
+                    "user_id": str(payment.user_id),
+                    "owner_id": subscription_id,
+                    "product_slug": "subscription_month",
+                    "type": "initial_recurrent",
+                },
+            },
+        )
+
+    strict_client = YooKassaClient("shop-1", "secret-1", transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(
+        "app.services.billing_service.get_yookassa_client",
+        lambda: strict_client,
+    )
+    r = await async_client.post(
+        "/api/payment/webhook/yookassa",
+        json={"type": "notification", "event": "payment.succeeded", "object": {"id": payment.provider_payment_id}},
+    )
+    assert r.status_code == 502
+    assert r.json()["detail"]["code"] == "PROVIDER_UNAVAILABLE"
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    assert (await db_session.execute(select(AccessLedger))).scalars().all() == []
