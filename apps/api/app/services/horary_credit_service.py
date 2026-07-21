@@ -38,6 +38,7 @@ from typing import Any
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models import AccessLedger, HoraryCredit, HoraryCreditSpend, HoraryQuestion
 from app.schemas.horary import HoraryQuotaRead
 
@@ -218,7 +219,8 @@ class HoraryCreditService:
             next_weekly_free_at=next_weekly_free_at,
             bonus_credits=bonus_credits,
             paid_credits=paid_credits,
-            can_purchase=False,
+            # Paid top-up is purchasable only when billing itself is live.
+            can_purchase=settings.yookassa_enabled,
         )
 
     async def select_spendable_credit(self, user_id: uuid.UUID, now: datetime, lock: bool = False) -> HoraryCredit | None:

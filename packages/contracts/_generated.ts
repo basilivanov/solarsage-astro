@@ -280,6 +280,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/productslistresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Productslistresponse */
+        get: operations["contracts__productslistresponse___contracts___productslistresponse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/profileread": {
         parameters: {
             query?: never;
@@ -314,6 +331,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/purchasestartresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Purchasestartresponse */
+        get: operations["contracts__purchasestartresponse___contracts___purchasestartresponse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/purchasestatusresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Purchasestatusresponse */
+        get: operations["contracts__purchasestatusresponse___contracts___purchasestatusresponse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/scoringv2result": {
         parameters: {
             query?: never;
@@ -323,6 +374,40 @@ export interface paths {
         };
         /** Contracts  Scoringv2Result */
         get: operations["contracts__scoringv2result___contracts___scoringv2result_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/subscriptionstartresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Subscriptionstartresponse */
+        get: operations["contracts__subscriptionstartresponse___contracts___subscriptionstartresponse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/subscriptionstatusresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Subscriptionstatusresponse */
+        get: operations["contracts__subscriptionstatusresponse___contracts___subscriptionstatusresponse_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1451,6 +1536,33 @@ export interface components {
             /** Score */
             score: number;
         };
+        /** ProductRead */
+        ProductRead: {
+            /** Currency */
+            currency: string;
+            /** Description */
+            description?: string | null;
+            /** Horaryquota */
+            horaryQuota?: number | null;
+            /** Name */
+            name: string;
+            /** Perioddays */
+            periodDays?: number | null;
+            /** Pricekopecks */
+            priceKopecks: number;
+            /**
+             * Producttype
+             * @enum {string}
+             */
+            productType: "subscription_recurrent" | "one_time";
+            /** Slug */
+            slug: string;
+        };
+        /** ProductsListResponse */
+        ProductsListResponse: {
+            /** Products */
+            products: components["schemas"]["ProductRead"][];
+        };
         /**
          * ProfileRead
          * @description Response shape for GET /api/profile. Privacy: NO tg_user_id, NO tokens.
@@ -1497,6 +1609,38 @@ export interface components {
             text: string;
             /** Title */
             title: string;
+        };
+        /** PurchaseStartResponse */
+        PurchaseStartResponse: {
+            /** Confirmationurl */
+            confirmationUrl?: string | null;
+            /** Productslug */
+            productSlug: string;
+            /** Providerpaymentid */
+            providerPaymentId: string;
+            /**
+             * Purchaseid
+             * Format: uuid
+             */
+            purchaseId: string;
+            /** Status */
+            status: string;
+        };
+        /** PurchaseStatusResponse */
+        PurchaseStatusResponse: {
+            /** Confirmationurl */
+            confirmationUrl?: string | null;
+            /** Productslug */
+            productSlug: string;
+            /** Providerpaymentid */
+            providerPaymentId?: string | null;
+            /**
+             * Purchaseid
+             * Format: uuid
+             */
+            purchaseId: string;
+            /** Status */
+            status: string;
         };
         /** ReadingBody */
         ReadingBody: {
@@ -1598,6 +1742,46 @@ export interface components {
             rawScore: number;
             /** Title */
             title: string;
+        };
+        /** SubscriptionStartResponse */
+        SubscriptionStartResponse: {
+            /** Confirmationurl */
+            confirmationUrl?: string | null;
+            /** Productslug */
+            productSlug: string;
+            /** Providerpaymentid */
+            providerPaymentId: string;
+            /** Status */
+            status: string;
+            /**
+             * Subscriptionid
+             * Format: uuid
+             */
+            subscriptionId: string;
+        };
+        /** SubscriptionStatusResponse */
+        SubscriptionStatusResponse: {
+            /** Accessuntil */
+            accessUntil?: string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Currentperiodend */
+            currentPeriodEnd?: string | null;
+            /** Hasaccess */
+            hasAccess: boolean;
+            /** Nextchargeat */
+            nextChargeAt?: string | null;
+            /** Pricekopecks */
+            priceKopecks?: number | null;
+            /** Productslug */
+            productSlug?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "none" | "pending" | "active" | "past_due" | "canceled" | "expired";
+            /** Subscriptionid */
+            subscriptionId?: string | null;
         };
         /**
          * TelegramAuthRequest
@@ -2558,6 +2742,26 @@ export interface operations {
             };
         };
     };
+    contracts__productslistresponse___contracts___productslistresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductsListResponse"];
+                };
+            };
+        };
+    };
     contracts__profileread___contracts___profileread_get: {
         parameters: {
             query?: never;
@@ -2598,6 +2802,46 @@ export interface operations {
             };
         };
     };
+    contracts__purchasestartresponse___contracts___purchasestartresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseStartResponse"];
+                };
+            };
+        };
+    };
+    contracts__purchasestatusresponse___contracts___purchasestatusresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseStatusResponse"];
+                };
+            };
+        };
+    };
     contracts__scoringv2result___contracts___scoringv2result_get: {
         parameters: {
             query?: never;
@@ -2614,6 +2858,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScoringV2Result"];
+                };
+            };
+        };
+    };
+    contracts__subscriptionstartresponse___contracts___subscriptionstartresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionStartResponse"];
+                };
+            };
+        };
+    };
+    contracts__subscriptionstatusresponse___contracts___subscriptionstatusresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionStatusResponse"];
                 };
             };
         };

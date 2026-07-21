@@ -65,9 +65,14 @@ EXPECTED_ROOT_NAMES = [
     "HoraryQuotaRead",
     "LocationData",
     "NatalPayload",
+    "ProductsListResponse",
     "ProfileRead",
     "ProfileWrite",
+    "PurchaseStartResponse",
+    "PurchaseStatusResponse",
     "ScoringV2Result",
+    "SubscriptionStartResponse",
+    "SubscriptionStatusResponse",
     "TelegramAuthRequest",
     "TodayPayload",
     "YesterdayCheckinResponse",
@@ -79,9 +84,9 @@ def test_public_contract_roots_have_exact_names_and_order() -> None:
 
 
 def test_public_contract_roots_are_unique_camelmodel_subclasses() -> None:
-    assert len(PUBLIC_CONTRACT_ROOTS) == 22
-    assert len({id(root) for root in PUBLIC_CONTRACT_ROOTS}) == 22
-    assert len({root.__name__ for root in PUBLIC_CONTRACT_ROOTS}) == 22
+    assert len(PUBLIC_CONTRACT_ROOTS) == 27
+    assert len({id(root) for root in PUBLIC_CONTRACT_ROOTS}) == 27
+    assert len({root.__name__ for root in PUBLIC_CONTRACT_ROOTS}) == 27
     assert all(issubclass(root, CamelModel) for root in PUBLIC_CONTRACT_ROOTS)
 
 

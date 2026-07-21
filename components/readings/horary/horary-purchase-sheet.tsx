@@ -1,35 +1,62 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_HORARY_HORARY_PURCHASE_SHEET
-// ROLE: UI component
+// ROLE: Real horary top-up sheet: packs with catalog prices from the API,
+//       provider checkout redirect and authenticated purchase-status polling.
+//       Quota updates only after a CONFIRMED fulfillment.
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
 // ############################################################################
 // START_MODULE_CONTRACT
-// purpose: UI horary-purchase-sheet — component
+// purpose: Horary purchase bottom-sheet: lists horary_* packs from the live
+//   catalog (prices never hardcoded), starts the one-time payment, opens the
+//   provider checkout Telegram-safe and polls the authenticated local status.
 // owns:
 //   - components/readings/horary/horary-purchase-sheet.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
+// inputs: onClose, onPurchased (quota refresh of the caller).
+// outputs: TSX render with loading/ready/error/waiting states.
+// dependencies: lib/api/payment, lib/billing/purchase-flow.
+// side_effects: credentialed billing API calls, provider checkout open.
+// emitted_logs: n/a
 // invariants:
-//   - n/a
-// failure_policy: log and raise
+//   - Prices/quota labels come only from GET /api/payment/products.
+//   - data-testid=horary-purchase-sheet root exposes data-state.
+//   - onPurchased fires only after a confirmed succeeded/consumed status.
+// failure_policy: inline error with role=alert; sheet stays open.
 // END_MODULE_CONTRACT
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { X, Coins } from "lucide-react"
+
+import {
+  PaymentApiError,
+  getPaymentProducts,
+  startPurchase,
+  type OneTimeProductSlug,
+} from "@/lib/api/payment"
+import {
+  PurchasePollTimeoutError,
+  openProviderCheckout,
+  pollPurchaseStatus,
+} from "@/lib/billing/purchase-flow"
+import { formatPriceRubles } from "@/lib/hooks/use-subscription-purchase"
+import type { ProductRead } from "@/packages/contracts"
 
 type Props = {
   onClose: () => void
+  onPurchased: () => void
 }
 
-export function HoraryPurchaseSheet({ onClose }: Props) {
+type Phase = "loading" | "ready" | "error" | "waiting"
+
+export function HoraryPurchaseSheet({ onClose, onPurchased }: Props) {
   const [mounted, setMounted] = useState(false)
+  const [phase, setPhase] = useState<Phase>("loading")
+  const [packs, setPacks] = useState<ProductRead[]>([])
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [activeSlug, setActiveSlug] = useState<string | null>(null)
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true))
@@ -45,13 +72,75 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
     }
   }, [])
 
+  const loadPacks = useCallback(async () => {
+    setPhase("loading")
+    setErrorMessage(null)
+    try {
+      const res = await getPaymentProducts()
+      setPacks(
+        res.products.filter(
+          (p) => p.productType === "one_time" && p.slug.startsWith("horary_")
+        )
+      )
+      setPhase("ready")
+    } catch (error) {
+      setPhase("error")
+      setErrorMessage(
+        error instanceof PaymentApiError
+          ? error.message
+          : "Не удалось загрузить тарифы. Попробуй ещё раз."
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadPacks()
+  }, [loadPacks])
+
   const close = () => {
     setMounted(false)
     window.setTimeout(onClose, 220)
   }
 
+  const buy = async (pack: ProductRead) => {
+    setPhase("waiting")
+    setActiveSlug(pack.slug)
+    setErrorMessage(null)
+    try {
+      const started = await startPurchase(pack.slug as OneTimeProductSlug)
+      if (started.confirmationUrl) {
+        openProviderCheckout(started.confirmationUrl)
+      }
+      const terminal = await pollPurchaseStatus(started.purchaseId)
+      if (terminal.status === "consumed" || terminal.status === "succeeded" || terminal.status === "delivered") {
+        onPurchased()
+        close()
+        return
+      }
+      setPhase("ready")
+      setActiveSlug(null)
+      setErrorMessage("Оплата не завершена. Попробуй ещё раз, когда будешь готов(а).")
+    } catch (error) {
+      setPhase("ready")
+      setActiveSlug(null)
+      if (error instanceof PurchasePollTimeoutError) {
+        setErrorMessage(error.message)
+      } else if (error instanceof PaymentApiError) {
+        setErrorMessage(error.message)
+      } else {
+        setErrorMessage("Не удалось начать оплату. Попробуй ещё раз.")
+      }
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog" data-testid="horary-purchase-sheet">
+    <div
+      className="fixed inset-0 z-50"
+      aria-modal="true"
+      role="dialog"
+      data-testid="horary-purchase-sheet"
+      data-state={phase}
+    >
       {/* Backdrop */}
       <button
         type="button"
@@ -81,7 +170,7 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
                 Хорарные вопросы
               </h2>
               <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">
-                Оплата и пополнение баланса пока недоступны: сначала подключим реальное подтверждение платежа и выдачу вопросов.
+                Оплата через ЮKassa. Вопросы появятся на балансе сразу после подтверждения платежа.
               </p>
             </div>
             <button
@@ -96,21 +185,62 @@ export function HoraryPurchaseSheet({ onClose }: Props) {
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 pb-8 pt-6">
-            <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Coins className="h-[18px] w-[18px]" />
-                </div>
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">
-                    Пополнение скоро появится
-                  </div>
-                  <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-                    Сейчас можно использовать еженедельный бесплатный вопрос и бонусы за приглашения.
-                  </p>
-                </div>
+            {phase === "loading" ? (
+              <p className="text-[13px] text-muted-foreground" role="status" data-testid="horary-purchase-loading">
+                Загружаем тарифы…
+              </p>
+            ) : null}
+
+            {phase === "error" ? (
+              <div role="alert" data-testid="horary-purchase-error">
+                <p className="text-[13px] text-destructive">{errorMessage}</p>
+                <button
+                  type="button"
+                  onClick={() => void loadPacks()}
+                  className="mt-3 flex h-10 items-center justify-center rounded-full border border-border/70 px-5 text-[13px] font-medium text-foreground/85 transition active:scale-[0.99]"
+                >
+                  Повторить
+                </button>
               </div>
-            </div>
+            ) : null}
+
+            {phase === "ready" || phase === "waiting" ? (
+              <div className="flex flex-col gap-2" data-testid="horary-purchase-packs">
+                {packs.map((pack) => {
+                  const isActive = activeSlug === pack.slug
+                  return (
+                    <button
+                      key={pack.slug}
+                      type="button"
+                      onClick={() => void buy(pack)}
+                      disabled={phase === "waiting"}
+                      aria-disabled={phase === "waiting"}
+                      data-testid={`horary-pack-${pack.slug}`}
+                      className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4 text-left transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55"
+                    >
+                      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Coins className="h-[18px] w-[18px]" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[15px] font-medium text-foreground">
+                          {pack.name}
+                        </div>
+                        <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                          {isActive && phase === "waiting"
+                            ? "Ждём подтверждение оплаты…"
+                            : `${formatPriceRubles(pack.priceKopecks)} ₽`}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+                {errorMessage ? (
+                  <p className="mt-2 text-[12.5px] text-destructive" role="alert" data-testid="horary-purchase-flow-error">
+                    {errorMessage}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

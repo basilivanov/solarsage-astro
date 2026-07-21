@@ -38,6 +38,10 @@ import type { ProfileMeta } from "@/lib/profile-meta"
 import { useProfile } from "@/hooks/use-profile"
 import { useTelegramUser } from "@/hooks/use-telegram-user"
 import { formatBirthDate, formatBirthTime, type Profile } from "@/lib/profile"
+import {
+  formatPriceRubles,
+  useSubscriptionPurchase,
+} from "@/lib/hooks/use-subscription-purchase"
 
 import { AccessCard } from "./access-card"
 import { Avatar } from "./avatar"
@@ -52,6 +56,7 @@ type Props = {
   access: AccessInfo
   currentState: AccessState
   profileMeta: ProfileMeta
+  onAccessChanged?: () => void
 }
 
 const noop = () => {
@@ -68,10 +73,26 @@ export function ProfileScreen({
   access,
   currentState,
   profileMeta,
+  onAccessChanged,
 }: Props) {
   const tgUser = useTelegramUser()
   const { profile, update, loaded, saving, error } = useProfile()
   const [editField, setEditField] = useState<EditField | null>(null)
+  const billingFlow = useSubscriptionPurchase(onAccessChanged)
+  const billingBusy = billingFlow.phase === "starting" || billingFlow.phase === "waiting"
+  const billing = {
+    ready: billingFlow.ready,
+    unavailable: billingFlow.unavailable,
+    busy: billingBusy,
+    monthLabel: billingFlow.month
+      ? `Подписка · ${formatPriceRubles(billingFlow.month.priceKopecks)} ₽/мес`
+      : "Подписка",
+    yearLabel: billingFlow.year
+      ? `Подписка · ${formatPriceRubles(billingFlow.year.priceKopecks)} ₽/год`
+      : "Подписка на год",
+    onBuy: (slug: "subscription_month" | "subscription_year") => void billingFlow.buy(slug),
+    onCancel: () => void billingFlow.cancel(),
+  }
 
   const closeEdit = () => setEditField(null)
 
@@ -116,8 +137,13 @@ export function ProfileScreen({
         <AccessCard
           access={access}
           currentState={currentState}
-          onSubscribe={noop}
+          billing={billing}
         />
+        {billingFlow.errorMessage ? (
+          <p className="mt-2 px-1 text-[12px] text-destructive" role="alert" data-testid="profile-billing-error">
+            {billingFlow.errorMessage}
+          </p>
+        ) : null}
       </section>
 
       <section className="px-5 pt-5" data-testid="profile-referral-card">
@@ -207,9 +233,12 @@ export function ProfileScreen({
           <ServiceRow
             icon={CreditCard}
             label="Платежи"
-            hint="Оплата и управление подпиской скоро появятся"
-            onClick={noop}
-            disabled
+            hint={billingFlow.unavailable ? "Оплата временно недоступна" : "Подписка и управление оплатой"}
+            onClick={() =>
+              document
+                .querySelector('[data-testid="profile-access-card"]')
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
             isLast
           />
         </div>

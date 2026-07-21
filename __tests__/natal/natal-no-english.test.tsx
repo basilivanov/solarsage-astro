@@ -107,6 +107,7 @@ const russianPreview: NatalPreviewRead = {
     "Увидишь приоритетные сферы, а не разрозненные факты.",
   ],
   fullReportAvailable: false,
+  fullReportPurchasable: false,
   fullReportPriceKopecks: 39900,
 };
 

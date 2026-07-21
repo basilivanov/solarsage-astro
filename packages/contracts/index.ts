@@ -82,6 +82,14 @@ export type HoraryQuestionRead = components["schemas"]["HoraryQuestionRead"];
 export type HoraryAnswerRead = components["schemas"]["HoraryAnswerRead"];
 export type HoraryQuotaRead = components["schemas"]["HoraryQuotaRead"];
 
+// W-BILLING (YooKassa): billing wire contracts for the purchase UX
+export type ProductRead = components["schemas"]["ProductRead"];
+export type ProductsListResponse = components["schemas"]["ProductsListResponse"];
+export type SubscriptionStartResponse = components["schemas"]["SubscriptionStartResponse"];
+export type SubscriptionStatusResponse = components["schemas"]["SubscriptionStatusResponse"];
+export type PurchaseStartResponse = components["schemas"]["PurchaseStartResponse"];
+export type PurchaseStatusResponse = components["schemas"]["PurchaseStatusResponse"];
+
 // Today V2 Horizon aliases
 export type TodayV2Block = components["schemas"]["TodayV2Block"];
 export type TodayV2ActivatedTarget = components["schemas"]["TodayV2ActivatedTarget"];

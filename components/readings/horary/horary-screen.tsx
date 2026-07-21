@@ -487,7 +487,10 @@ export function HoraryScreen() {
 
       <AnimatePresence>
         {showPurchase && (
-          <HoraryPurchaseSheet onClose={() => setShowPurchase(false)} />
+          <HoraryPurchaseSheet
+            onClose={() => setShowPurchase(false)}
+            onPurchased={() => { void loadData() }}
+          />
         )}
       </AnimatePresence>
       </>

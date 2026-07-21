@@ -278,6 +278,9 @@ class NatalPreviewRead(CamelModel):
     calculation_stats: NatalCalculationStats
     sales_bullets: list[str] = []
     full_report_available: bool = False
+    # Purchasable RIGHT NOW: feature flag on AND no ready report for the
+    # current context. Drives the CTA buy vs watch vs disabled state.
+    full_report_purchasable: bool = False
     # Price is always injected from the product catalog (products table);
     # no literal default is allowed here.
     full_report_price_kopecks: int

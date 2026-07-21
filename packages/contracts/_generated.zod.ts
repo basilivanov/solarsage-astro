@@ -535,6 +535,19 @@ export const NatalPayload = z.object({
   meta: NatalMeta,
   sections: z.array(NatalSection),
 });
+export const ProductRead = z.object({
+  currency: z.string(),
+  description: z.union([z.string(), z.null()]).optional(),
+  horaryQuota: z.union([z.number(), z.null()]).optional(),
+  name: z.string(),
+  periodDays: z.union([z.number(), z.null()]).optional(),
+  priceKopecks: z.number().int(),
+  productType: z.enum(["subscription_recurrent", "one_time"]),
+  slug: z.string(),
+});
+export const ProductsListResponse = z.object({
+  products: z.array(ProductRead),
+});
 export const ProfileRead = z.object({
   birth: BirthData,
   birthdayLocation: z.union([LocationData, z.null()]).optional(),
@@ -553,6 +566,20 @@ export const ProfileWrite = z
     gender: z.union([z.enum(["male", "female"]), z.null()]),
   })
   .partial();
+export const PurchaseStartResponse = z.object({
+  confirmationUrl: z.union([z.string(), z.null()]).optional(),
+  productSlug: z.string(),
+  providerPaymentId: z.string(),
+  purchaseId: z.string().uuid(),
+  status: z.string(),
+});
+export const PurchaseStatusResponse = z.object({
+  confirmationUrl: z.union([z.string(), z.null()]).optional(),
+  productSlug: z.string(),
+  providerPaymentId: z.union([z.string(), z.null()]).optional(),
+  purchaseId: z.string().uuid(),
+  status: z.string(),
+});
 export const SphereContribution = z.object({
   after: z.union([z.number(), z.null()]).optional(),
   amount: z.number(),
@@ -583,6 +610,31 @@ export const ScoringV2Result = z.object({
   statusBreakdown: z.object({}).partial().passthrough(),
   topActivations: z.array(ActivationEvidence),
   topSignals: z.array(z.object({}).partial().passthrough()),
+});
+export const SubscriptionStartResponse = z.object({
+  confirmationUrl: z.union([z.string(), z.null()]).optional(),
+  productSlug: z.string(),
+  providerPaymentId: z.string(),
+  status: z.string(),
+  subscriptionId: z.string().uuid(),
+});
+export const SubscriptionStatusResponse = z.object({
+  accessUntil: z.union([z.string(), z.null()]).optional(),
+  currency: z.union([z.string(), z.null()]).optional(),
+  currentPeriodEnd: z.union([z.string(), z.null()]).optional(),
+  hasAccess: z.boolean(),
+  nextChargeAt: z.union([z.string(), z.null()]).optional(),
+  priceKopecks: z.union([z.number(), z.null()]).optional(),
+  productSlug: z.union([z.string(), z.null()]).optional(),
+  status: z.enum([
+    "none",
+    "pending",
+    "active",
+    "past_due",
+    "canceled",
+    "expired",
+  ]),
+  subscriptionId: z.union([z.string(), z.null()]).optional(),
 });
 export const TelegramAuthRequest = z.object({
   initData: z.string().min(1).max(8192),
@@ -1187,11 +1239,17 @@ export const schemas = {
   BulletsBlock,
   NatalSection,
   NatalPayload,
+  ProductRead,
+  ProductsListResponse,
   ProfileRead,
   ProfileWrite,
+  PurchaseStartResponse,
+  PurchaseStatusResponse,
   SphereContribution,
   SphereScoreV2,
   ScoringV2Result,
+  SubscriptionStartResponse,
+  SubscriptionStatusResponse,
   TelegramAuthRequest,
   TodayAction,
   ConcreteAdviceCounts,

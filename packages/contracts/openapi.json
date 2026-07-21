@@ -2930,6 +2930,94 @@
         "title": "PlanetInfluence",
         "type": "object"
       },
+      "ProductRead": {
+        "additionalProperties": false,
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "horaryQuota": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horaryquota"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "periodDays": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perioddays"
+          },
+          "priceKopecks": {
+            "title": "Pricekopecks",
+            "type": "integer"
+          },
+          "productType": {
+            "enum": [
+              "subscription_recurrent",
+              "one_time"
+            ],
+            "title": "Producttype",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "productType",
+          "priceKopecks",
+          "currency"
+        ],
+        "title": "ProductRead",
+        "type": "object"
+      },
+      "ProductsListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/ProductRead"
+            },
+            "title": "Products",
+            "type": "array"
+          }
+        },
+        "required": [
+          "products"
+        ],
+        "title": "ProductsListResponse",
+        "type": "object"
+      },
       "ProfileRead": {
         "additionalProperties": false,
         "description": "Response shape for GET /api/profile. Privacy: NO tg_user_id, NO tokens.",
@@ -3076,6 +3164,94 @@
           "text"
         ],
         "title": "ProsConsItem",
+        "type": "object"
+      },
+      "PurchaseStartResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmationUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmationurl"
+          },
+          "productSlug": {
+            "title": "Productslug",
+            "type": "string"
+          },
+          "providerPaymentId": {
+            "title": "Providerpaymentid",
+            "type": "string"
+          },
+          "purchaseId": {
+            "format": "uuid",
+            "title": "Purchaseid",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purchaseId",
+          "productSlug",
+          "providerPaymentId",
+          "status"
+        ],
+        "title": "PurchaseStartResponse",
+        "type": "object"
+      },
+      "PurchaseStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmationUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmationurl"
+          },
+          "productSlug": {
+            "title": "Productslug",
+            "type": "string"
+          },
+          "providerPaymentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providerpaymentid"
+          },
+          "purchaseId": {
+            "format": "uuid",
+            "title": "Purchaseid",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purchaseId",
+          "productSlug",
+          "status"
+        ],
+        "title": "PurchaseStatusResponse",
         "type": "object"
       },
       "ReadingBody": {
@@ -3313,6 +3489,152 @@
           "contributions"
         ],
         "title": "SphereScoreV2",
+        "type": "object"
+      },
+      "SubscriptionStartResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmationUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmationurl"
+          },
+          "productSlug": {
+            "title": "Productslug",
+            "type": "string"
+          },
+          "providerPaymentId": {
+            "title": "Providerpaymentid",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subscriptionId": {
+            "format": "uuid",
+            "title": "Subscriptionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscriptionId",
+          "productSlug",
+          "providerPaymentId",
+          "status"
+        ],
+        "title": "SubscriptionStartResponse",
+        "type": "object"
+      },
+      "SubscriptionStatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accessUntil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessuntil"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "currentPeriodEnd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentperiodend"
+          },
+          "hasAccess": {
+            "title": "Hasaccess",
+            "type": "boolean"
+          },
+          "nextChargeAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextchargeat"
+          },
+          "priceKopecks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pricekopecks"
+          },
+          "productSlug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Productslug"
+          },
+          "status": {
+            "enum": [
+              "none",
+              "pending",
+              "active",
+              "past_due",
+              "canceled",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subscriptionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscriptionid"
+          }
+        },
+        "required": [
+          "status",
+          "hasAccess"
+        ],
+        "title": "SubscriptionStatusResponse",
         "type": "object"
       },
       "TelegramAuthRequest": {
@@ -6195,6 +6517,27 @@
         ]
       }
     },
+    "/__contracts__/productslistresponse": {
+      "get": {
+        "operationId": "contracts__productslistresponse___contracts___productslistresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductsListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Productslistresponse",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
     "/__contracts__/profileread": {
       "get": {
         "operationId": "contracts__profileread___contracts___profileread_get",
@@ -6237,6 +6580,48 @@
         ]
       }
     },
+    "/__contracts__/purchasestartresponse": {
+      "get": {
+        "operationId": "contracts__purchasestartresponse___contracts___purchasestartresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Purchasestartresponse",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/purchasestatusresponse": {
+      "get": {
+        "operationId": "contracts__purchasestatusresponse___contracts___purchasestatusresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Purchasestatusresponse",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
     "/__contracts__/scoringv2result": {
       "get": {
         "operationId": "contracts__scoringv2result___contracts___scoringv2result_get",
@@ -6253,6 +6638,48 @@
           }
         },
         "summary": "Contracts  Scoringv2Result",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/subscriptionstartresponse": {
+      "get": {
+        "operationId": "contracts__subscriptionstartresponse___contracts___subscriptionstartresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Subscriptionstartresponse",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/subscriptionstatusresponse": {
+      "get": {
+        "operationId": "contracts__subscriptionstatusresponse___contracts___subscriptionstatusresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Subscriptionstatusresponse",
         "tags": [
           "__contracts__"
         ]

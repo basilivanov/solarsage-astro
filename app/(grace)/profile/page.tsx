@@ -48,7 +48,7 @@ import type { ProfileMeta } from "@/lib/profile-meta"
  * где показывается OnboardingFlow.
  */
 export default function ProfilePage() {
-  const { state, access } = useAccess()
+  const { state, access, refresh } = useAccess()
 
   const [profileMeta, setProfileMeta] = useState<ProfileMeta>({
     horary: {
@@ -71,6 +71,7 @@ export default function ProfilePage() {
       access={access}
       currentState={state}
       profileMeta={profileMeta}
+      onAccessChanged={refresh}
     />
   )
 }

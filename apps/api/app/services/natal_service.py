@@ -45,6 +45,7 @@ from fastapi import HTTPException
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models import UserProfile
 from app.schemas.natal import (
     NatalCalculationStats,
@@ -518,6 +519,9 @@ class NatalService:
             calculation_stats=calculation_stats,
             sales_bullets=sales_bullets,
             full_report_available=full_report_available,
+            # The CTA may offer a purchase only while the feature is live and
+            # no ready report exists for the current context.
+            full_report_purchasable=settings.natal_report_enabled and not full_report_available,
             full_report_price_kopecks=full_report_price,
         )
 

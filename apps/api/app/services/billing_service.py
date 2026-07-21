@@ -69,6 +69,7 @@
 #   - BillingService.start_subscription
 #   - BillingService.start_purchase
 #   - BillingService.get_subscription_status
+#   - BillingService.get_purchase_status
 #   - BillingService.cancel_subscription
 #   - BillingService.verify_and_process_webhook
 #   - BillingService.rebill_due_subscriptions
@@ -372,6 +373,44 @@ class BillingService:
         await self.db.commit()
         log_event("billing.subscription_canceled", msg="subscription canceled")
         return {"subscription_id": subscription.id, "status": "canceled"}
+
+    async def get_purchase_status(self, user_id: uuid.UUID, purchase_id: uuid.UUID) -> dict:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.get_purchase_status
+        # purpose: Owner-only authenticated status read for the purchase
+        #   polling flow. Answers strictly from LOCAL rows — never calls the
+        #   provider (webhook is the only fulfillment driver).
+        # inputs: user_id (session), purchase_id.
+        # returns: dict with purchase_id, product_slug, status
+        #   (pending|succeeded|consumed|delivered|canceled),
+        #   provider_payment_id, confirmation_url (only while pending).
+        # side_effects: none.
+        # error_behavior: ValueError PURCHASE_NOT_FOUND for an unknown OR
+        #   foreign purchase id (no existence leak across users).
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.get_purchase_status
+        result = await self.db.execute(select(Purchase).where(Purchase.id == purchase_id))
+        purchase = result.scalar_one_or_none()
+        if purchase is None or purchase.user_id != user_id:
+            raise ValueError("PURCHASE_NOT_FOUND")
+
+        status = purchase.status
+        provider_payment_id = None
+        confirmation_url = None
+        if purchase.payment_id is not None:
+            result = await self.db.execute(select(Payment).where(Payment.id == purchase.payment_id))
+            payment = result.scalar_one_or_none()
+            if payment is not None:
+                provider_payment_id = payment.provider_payment_id
+                if payment.status == "canceled" and purchase.status == "pending":
+                    status = "canceled"
+                if purchase.status == "pending" and payment.status == "pending":
+                    confirmation_url = payment.confirmation_url
+        return {
+            "purchase_id": purchase.id,
+            "product_slug": purchase.product_slug,
+            "status": status,
+            "provider_payment_id": provider_payment_id,
+            "confirmation_url": confirmation_url,
+        }
 
     # START_BLOCK: BILLING_FULFILL
     async def verify_and_process_webhook(self, provider_payment_id: str) -> dict:

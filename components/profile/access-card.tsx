@@ -31,7 +31,17 @@ import { useShareInvite } from "@/lib/hooks/use-share-invite"
 type Props = {
   access: AccessInfo
   currentState: AccessState
-  onSubscribe?: () => void
+  billing?: AccessCardBilling
+}
+
+export type AccessCardBilling = {
+  ready: boolean
+  unavailable: boolean
+  busy: boolean
+  monthLabel: string
+  yearLabel: string
+  onBuy: (_slug: "subscription_month" | "subscription_year") => void
+  onCancel: () => void
 }
 
 type Variant = {
@@ -45,12 +55,29 @@ type Variant = {
   secondary: { label: string; onClick?: () => void; icon?: LucideIcon; disabled?: boolean }
 }
 
+function subscribeButtons(billing: AccessCardBilling): Pick<Variant, "primary" | "secondary"> {
+  if (billing.busy) {
+    return {
+      primary: { label: "Ждём подтверждение оплаты…", disabled: true },
+      secondary: { label: billing.yearLabel, disabled: true },
+    }
+  }
+  return {
+    primary: { label: billing.monthLabel, onClick: () => billing.onBuy("subscription_month"), icon: ArrowRight },
+    secondary: { label: billing.yearLabel, onClick: () => billing.onBuy("subscription_year") },
+  }
+}
+
 function buildVariant(
   access: AccessInfo,
   state: AccessState,
-  onSubscribe?: () => void,
+  billing: AccessCardBilling | undefined,
   onInvite?: () => void,
 ): Variant {
+  const unavailableButtons: Pick<Variant, "primary" | "secondary"> = {
+    primary: { label: billing?.ready === false && !billing.unavailable ? "Загружаем тарифы…" : "Оплата временно недоступна", disabled: true },
+    secondary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
+  }
   if (state === "trial") {
     const days = access.daysLeft
     const ending =
@@ -62,9 +89,8 @@ function buildVariant(
       title: "Доступ активен",
       subtitle: `Осталось ${days} ${pluralDays(days)}${ending ? ` · ${ending}` : ""}`,
       footnote:
-        "Сначала расходуются бонусные дни. Оплата и подписка появятся после подключения реального платежного подтверждения.",
-      primary: { label: "Подписка скоро появится", icon: ArrowRight, disabled: true },
-      secondary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
+        "Сначала расходуются бонусные дни. Подписка продлит доступ без перерыва.",
+      ...(billing && !billing.unavailable && billing.ready ? subscribeButtons(billing) : unavailableButtons),
     }
   }
 
@@ -77,9 +103,11 @@ function buildVariant(
       title: "Подписка активна",
       subtitle: ending || "Доступ к прошлому и будущему",
       footnote:
-        "Доступ активен. Управление платежами появится после подключения реального платежного провайдера.",
+        "Доступ активен. Отмена подписки не отзывает уже оплаченный период.",
       primary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
-      secondary: { label: "Управление подпиской скоро появится", disabled: true },
+      secondary: billing && !billing.unavailable && billing.ready
+        ? { label: billing.busy ? "Ждём подтверждение…" : "Отменить подписку", onClick: billing.busy ? undefined : billing.onCancel, disabled: billing.busy }
+        : { label: "Пригласить друга", onClick: onInvite, icon: Gift },
     }
   }
 
@@ -93,9 +121,8 @@ function buildVariant(
         ? `Окно закрылось ${formatLong(access.accessEnd)}`
         : "Окно доступа завершилось",
       footnote:
-        "Платная подписка пока недоступна. Можно пригласить друга и получить бонусные дни.",
-      primary: { label: "Подписка скоро появится", icon: ArrowRight, disabled: true },
-      secondary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
+        "Продли доступ подпиской — или пригласи друга и получите бонусные дни.",
+      ...(billing && !billing.unavailable && billing.ready ? subscribeButtons(billing) : unavailableButtons),
     }
   }
 
@@ -106,9 +133,8 @@ function buildVariant(
     title: "Нет доступа",
     subtitle: "Разборы дней закрыты",
     footnote:
-      "Платная подписка пока недоступна. Пригласи друга — вы оба получите 14 дней бесплатно.",
-    primary: { label: "Подписка скоро появится", icon: ArrowRight, disabled: true },
-    secondary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
+      "Открой доступ подпиской — или пригласи друга: вы оба получите 14 дней бесплатно.",
+    ...(billing && !billing.unavailable && billing.ready ? subscribeButtons(billing) : unavailableButtons),
   }
 }
 
@@ -120,9 +146,9 @@ function pluralDays(n: number) {
   return "дней"
 }
 
-export function AccessCard({ access, currentState, onSubscribe }: Props) {
+export function AccessCard({ access, currentState, billing }: Props) {
   const share = useShareInvite()
-  const v = buildVariant(access, currentState, onSubscribe, share)
+  const v = buildVariant(access, currentState, billing, share)
   const Icon = v.icon
   const PrimaryIcon = v.primary.icon
   const SecondaryIcon = v.secondary.icon
@@ -133,6 +159,7 @@ export function AccessCard({ access, currentState, onSubscribe }: Props) {
         "rounded-2xl border bg-card p-5",
         v.tone === "active" ? "border-border/70" : "border-border/60",
       )}
+      data-billing={billing ? (billing.busy ? "busy" : billing.unavailable ? "unavailable" : billing.ready ? "ready" : "loading") : "off"}
     >
       <div className="flex items-start gap-3">
         <div
@@ -168,6 +195,7 @@ export function AccessCard({ access, currentState, onSubscribe }: Props) {
           onClick={v.primary.disabled ? undefined : v.primary.onClick}
           disabled={v.primary.disabled}
           aria-disabled={v.primary.disabled}
+          data-testid="access-card-primary"
           className="flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-[14px] font-medium text-primary-foreground transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100"
         >
           {v.primary.label}
@@ -180,6 +208,7 @@ export function AccessCard({ access, currentState, onSubscribe }: Props) {
           onClick={v.secondary.disabled ? undefined : v.secondary.onClick}
           disabled={v.secondary.disabled}
           aria-disabled={v.secondary.disabled}
+          data-testid="access-card-secondary"
           className="flex h-11 items-center justify-center gap-2 rounded-full border border-border/70 bg-card px-5 text-[13.5px] font-medium text-foreground/85 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100"
         >
           {SecondaryIcon ? (

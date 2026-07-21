@@ -1,13 +1,15 @@
 
 // ############################################################################
 // AI_HEADER: MODULE_COMPONENTS_PAYWALL_TEST
-// ROLE: Unit tests for Paywall.test.tsx
+// ROLE: Unit tests for the production Paywall with the REAL subscription
+//       flow (catalog price CTA, provider checkout, confirmed-status unlock)
+//       and the unchanged test-only monetization stub copy.
 // DEPENDENCIES: local modules
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TESTS
 // ############################################################################
 // START_MODULE_CONTRACT
-// purpose: Tests for Paywalltsx behavior
+// purpose: Tests for Paywall behavior.
 // owns:
 //   - __tests__/components/Paywall.test.tsx
 // inputs: Mocks, fixtures
@@ -16,11 +18,12 @@
 // side_effects: n/a (tests)
 // emitted_logs: n/a (tests)
 // invariants:
-//   - n/a
+//   - The production paywall never shows "скоро появится"; prices come from
+//     the mocked catalog only.
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import React from 'react'
 
 vi.mock('@/lib/log', () => ({
@@ -44,10 +47,44 @@ vi.mock('@/lib/utils', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }))
 
+const mockGetPaymentProducts = vi.fn()
+const mockStartSubscription = vi.fn()
+const mockOpenProviderCheckout = vi.fn()
+const mockPollSubscriptionStatus = vi.fn()
+
+vi.mock('@/lib/api/payment', () => ({
+  PaymentApiError: class PaymentApiError extends Error {
+    status: number
+    code?: string
+    constructor({ status, code, message }: { status: number; code?: string; message: string }) {
+      super(message)
+      this.status = status
+      this.code = code
+    }
+  },
+  getPaymentProducts: (...args: unknown[]) => mockGetPaymentProducts(...args),
+  startSubscription: (...args: unknown[]) => mockStartSubscription(...args),
+  cancelSubscription: vi.fn(),
+}))
+
+vi.mock('@/lib/billing/purchase-flow', () => ({
+  PurchasePollTimeoutError: class PurchasePollTimeoutError extends Error {},
+  openProviderCheckout: (...args: unknown[]) => mockOpenProviderCheckout(...args),
+  pollSubscriptionStatus: (...args: unknown[]) => mockPollSubscriptionStatus(...args),
+  pollPurchaseStatus: vi.fn(),
+}))
+
 const mockFetch = vi.fn()
 
 import { Paywall } from '@/components/paywall'
 import { Paywall as MonetizationPaywall } from '@/components/monetization/paywall'
+
+const PRODUCTS = {
+  products: [
+    { slug: 'subscription_month', name: 'Подписка на 1 месяц', description: null, productType: 'subscription_recurrent', priceKopecks: 9900, currency: 'RUB', periodDays: 30, horaryQuota: null },
+    { slug: 'subscription_year', name: 'Подписка на 1 год', description: null, productType: 'subscription_recurrent', priceKopecks: 99900, currency: 'RUB', periodDays: 365, horaryQuota: null },
+  ],
+}
 
 describe('Paywall', () => {
   beforeEach(() => {
@@ -56,6 +93,7 @@ describe('Paywall', () => {
     mockFetch.mockResolvedValue({
       json: () => Promise.resolve({ inviteUrl: 'https://t.me/invite-link' }),
     })
+    mockGetPaymentProducts.mockResolvedValue(PRODUCTS)
   })
 
   it('renders default title', () => {
@@ -70,19 +108,49 @@ describe('Paywall', () => {
     expect(screen.getByText('Custom paywall title')).toBeTruthy()
   })
 
-  it('renders disabled subscribe button copy', () => {
+  it('shows the real catalog month price on the CTA, never "скоро появится"', async () => {
     render(<Paywall />)
-    expect(screen.getByText('Подписка скоро появится')).toBeTruthy()
+    const cta = await screen.findByTestId('paywall-subscribe-cta')
+    await waitFor(() => {
+      expect(cta.textContent).toContain('Подписка · 99 ₽/мес')
+    })
+    expect((cta as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.queryByText(/скоро появится/i)).toBeNull()
   })
 
-  it('keeps subscribe CTA disabled until real payment fulfillment exists', () => {
+  it('disables the CTA honestly when billing is unavailable', async () => {
+    mockGetPaymentProducts.mockRejectedValue(new Error('503'))
     render(<Paywall />)
-    expect(
-      (screen.getByRole('button', { name: 'Подписка скоро появится' }) as HTMLButtonElement).disabled,
-    ).toBe(true)
+    const cta = await screen.findByTestId('paywall-subscribe-cta')
+    await waitFor(() => {
+      expect(cta.textContent).toContain('Оплата временно недоступна')
+    })
+    expect((cta as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('keeps monetization subscribe CTA disabled until real payment fulfillment exists', () => {
+  it('buy flow: start -> provider checkout -> confirmed active -> onUnlocked', async () => {
+    const onUnlocked = vi.fn()
+    mockStartSubscription.mockResolvedValue({
+      subscriptionId: 's-1',
+      productSlug: 'subscription_month',
+      providerPaymentId: 'prov-1',
+      confirmationUrl: 'https://pay.example/c',
+      status: 'pending',
+    })
+    mockPollSubscriptionStatus.mockResolvedValue({ status: 'active', hasAccess: true })
+
+    render(<Paywall onUnlocked={onUnlocked} />)
+    const cta = await screen.findByTestId('paywall-subscribe-cta')
+    await waitFor(() => expect((cta as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(cta)
+
+    await waitFor(() => expect(mockStartSubscription).toHaveBeenCalledWith('subscription_month'))
+    await waitFor(() => expect(mockOpenProviderCheckout).toHaveBeenCalledWith('https://pay.example/c'))
+    await waitFor(() => expect(mockPollSubscriptionStatus).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(onUnlocked).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps the test-only monetization stub copy unchanged', () => {
     render(<MonetizationPaywall />)
     expect(screen.queryByRole('button', { name: 'Оформить подписку' })).toBeNull()
     expect(
@@ -108,14 +176,11 @@ describe('Paywall', () => {
   it('applies compact padding when compact=true', () => {
     const { container } = render(<Paywall compact />)
     const section = container.querySelector('section')
-    // compact=true → "p-5", non-compact → "p-6"
     expect(section?.className).toContain('p-5')
   })
 
   it('does not render description <p> when description is empty string', () => {
     const { container } = render(<Paywall description="" />)
-    // The description <p> should not be rendered when description is falsy (empty string)
-    // Only the title <h3> should be present in the text-center div
     const textCenterDiv = container.querySelector('.text-center')
     const paragraphs = textCenterDiv?.querySelectorAll('p')
     expect(paragraphs?.length).toBe(0)

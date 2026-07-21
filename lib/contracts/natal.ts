@@ -321,6 +321,7 @@ export const NatalPreviewReadSchema = z.object({
   calculationStats: NatalCalculationStatsSchema,
   salesBullets: z.array(z.string()),
   fullReportAvailable: z.boolean(),
+  fullReportPurchasable: z.boolean().default(false),
   fullReportPriceKopecks: z.number(),
 })
 

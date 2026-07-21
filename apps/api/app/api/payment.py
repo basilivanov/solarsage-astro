@@ -19,6 +19,7 @@
 #   - GET /api/payment/subscription/status
 #   - POST /api/payment/subscription/cancel: SubscriptionCancelRequest
 #   - POST /api/payment/purchase/start: PurchaseStartRequest
+#   - GET /api/payment/purchase/{purchase_id}: owner-only purchase status
 #   - POST /api/payment/webhook/yookassa: YooKassa notification
 # outputs: catalog, start payloads, status, cancel result, webhook ack.
 # dependencies:
@@ -48,21 +49,24 @@
 #   - get_subscription_status
 #   - cancel_subscription
 #   - start_purchase
+#   - get_purchase_status
 #   - yookassa_webhook
 # semantic_blocks:
 #   - BILLING_PRODUCTS_ENDPOINT: GET /api/payment/products
 #   - SUBSCRIPTION_ENDPOINTS: start/status/cancel
 #   - PURCHASE_ENDPOINT: POST /api/payment/purchase/start
+#   - PURCHASE_STATUS_ENDPOINT: GET /api/payment/purchase/{purchase_id}
 #   - YOOKASSA_WEBHOOK_ENDPOINT: POST /api/payment/webhook/yookassa
 # owned_tests:
 #   - apps/api/tests/test_billing_products.py
 #   - apps/api/tests/test_billing_webhook.py
-#   - apps/api/tests/test_billing_endpoints.py
+#   - apps/api/tests/test_billing_purchase_status.py
 # END_MODULE_MAP: M-API-PAYMENT
 
 from __future__ import annotations
 
 import ipaddress
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,6 +79,7 @@ from app.schemas.payment import (
     ProductsListResponse,
     PurchaseStartRequest,
     PurchaseStartResponse,
+    PurchaseStatusResponse,
     SubscriptionCancelRequest,
     SubscriptionCancelResponse,
     SubscriptionStartRequest,
@@ -157,6 +162,8 @@ def _domain_error(exc: ValueError) -> HTTPException:
     code = str(exc)
     if code == "PRODUCT_NOT_FOUND":
         return HTTPException(status_code=404, detail={"code": code, "message": "Product not found or inactive"})
+    if code == "PURCHASE_NOT_FOUND":
+        return HTTPException(status_code=404, detail={"code": code, "message": "Purchase not found"})
     if code == "NATAL_CONTEXT_MISSING":
         return HTTPException(status_code=400, detail={"code": code, "message": "Natal context is missing"})
     if code == "LIVE_SUBSCRIPTION_EXISTS":
@@ -264,6 +271,31 @@ async def start_purchase(
         raise HTTPException(status_code=409, detail={"code": "ALREADY_ENTITLED", "message": "Report already purchased for the current context"})
     return PurchaseStartResponse(**result)
 # END_BLOCK: PURCHASE_ENDPOINT
+
+
+# START_BLOCK: PURCHASE_STATUS_ENDPOINT
+@router.get("/api/payment/purchase/{purchase_id}", response_model=PurchaseStatusResponse)
+async def get_purchase_status(
+    purchase_id: uuid.UUID,
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(require_session),
+):
+    # START_FUNCTION_CONTRACT: F-M-API-PAYMENT.get_purchase_status
+    # purpose: Authenticated owner-only purchase status for the polling flow
+    #   (after the provider redirect). Local rows only — the endpoint NEVER
+    #   calls the provider and never trusts a query-supplied user id.
+    # inputs: purchase_id path param, session.
+    # returns: PurchaseStatusResponse; 404 for unknown/foreign id; 503 when
+    #   payments are disabled.
+    # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.get_purchase_status
+    _require_enabled()
+    service = BillingService(db)
+    try:
+        result = await service.get_purchase_status(user.id, purchase_id)
+    except ValueError as exc:
+        raise _domain_error(exc) from exc
+    return PurchaseStatusResponse(**result)
+# END_BLOCK: PURCHASE_STATUS_ENDPOINT
 
 
 # START_BLOCK: YOOKASSA_WEBHOOK_ENDPOINT

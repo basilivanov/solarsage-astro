@@ -12,7 +12,7 @@
 #   - apps/api/app/schemas/payment.py
 # inputs: none (type definitions)
 # outputs: ProductRead, SubscriptionStart*, SubscriptionStatus*, SubscriptionCancel*,
-#   PurchaseStart*, ProductsListResponse, YooKassaWebhookEvent
+#   PurchaseStart*, PurchaseStatusResponse, ProductsListResponse, YooKassaWebhookEvent
 # dependencies: pydantic, CamelModel
 # side_effects: none (type-only module)
 # emitted_logs: none
@@ -30,6 +30,7 @@
 #   - SubscriptionStatusResponse
 #   - SubscriptionCancelRequest / SubscriptionCancelResponse
 #   - PurchaseStartRequest / PurchaseStartResponse
+#   - PurchaseStatusResponse
 #   - ProductsListResponse
 #   - YooKassaWebhookEvent
 # semantic_blocks:
@@ -113,6 +114,17 @@ class PurchaseStartResponse(CamelModel):
     provider_payment_id: str
     confirmation_url: str | None = None
     status: str
+
+
+class PurchaseStatusResponse(CamelModel):
+    # Authenticated owner-only status read for the polling flow. NEVER calls
+    # the provider: answers strictly from local rows. confirmation_url is
+    # exposed only while the payment is still pending.
+    purchase_id: UUID
+    product_slug: str
+    status: str  # pending | succeeded | consumed | delivered | canceled
+    provider_payment_id: str | None = None
+    confirmation_url: str | None = None
 
 
 # ---- Webhook envelope (permissive; real verification is provider GET) ----

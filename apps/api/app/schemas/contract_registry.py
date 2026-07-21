@@ -51,6 +51,13 @@ from .horary import (
     HoraryQuotaRead,
 )
 from .natal import NatalPayload
+from .payment import (
+    ProductsListResponse,
+    PurchaseStartResponse,
+    PurchaseStatusResponse,
+    SubscriptionStartResponse,
+    SubscriptionStatusResponse,
+)
 from .scoring_v2 import ScoringV2Result
 from .today import ConvergenceEvidence, TodayPayload
 
@@ -73,9 +80,14 @@ PUBLIC_CONTRACT_ROOTS: tuple[type[CamelModel], ...] = (
     HoraryQuotaRead,
     LocationData,
     NatalPayload,
+    ProductsListResponse,
     ProfileRead,
     ProfileWrite,
+    PurchaseStartResponse,
+    PurchaseStatusResponse,
     ScoringV2Result,
+    SubscriptionStartResponse,
+    SubscriptionStatusResponse,
     TelegramAuthRequest,
     TodayPayload,
     YesterdayCheckinResponse,

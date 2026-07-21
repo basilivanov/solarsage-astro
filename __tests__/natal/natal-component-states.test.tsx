@@ -157,6 +157,7 @@ const VALID_PREVIEW_WITH_CHART: NatalPreviewRead = {
   },
   salesBullets: ["Поймёшь себя"],
   fullReportAvailable: false,
+  fullReportPurchasable: false,
   fullReportPriceKopecks: 39900,
 }
 
@@ -279,11 +280,12 @@ describe("NatalReadingPage — natal chart preview", () => {
     // Hero badges are present when badge data exists
     expect(screen.getByTestId("natal-hero-badges")).toBeTruthy()
 
-    // CTA button is still disabled and aria-disabled even when fullReportAvailable is true
+    // With a READY report for the current context the CTA offers to watch it
+    // (never a purchase, never a disabled stub).
     const cta = screen.getByTestId("natal-full-report-cta")
-    const button = within(cta).getByRole("button", { name: "Полный отчёт скоро появится" }) as HTMLButtonElement
-    expect(button.disabled).toBe(true)
-    expect(button.getAttribute("aria-disabled")).toBe("true")
+    const button = within(cta).getByRole("button", { name: "Смотреть полный отчёт" }) as HTMLButtonElement
+    expect(button.disabled).toBe(false)
+    expect(button.getAttribute("aria-disabled")).toBe("false")
   })
 
   it("error state renders natal-preview-error role=alert and retry recovers", async () => {
@@ -364,6 +366,7 @@ describe("NatalGeneratingPage — retry behavior", () => {
       ok: true,
       data: {
         meta: { name: "Backend User", birthDate: "2000-01-01", gender: "female" },
+        fullReportPurchasable: false,
         fullReportPriceKopecks: 39900,
       },
     })

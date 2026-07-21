@@ -91,5 +91,6 @@ export const natalPreviewPayload: NatalPreviewRead = {
     "Совместимость с партнёрами",
   ],
   fullReportAvailable: false,
-  fullReportPriceKopecks: 99000,
+  fullReportPurchasable: false,
+  fullReportPriceKopecks: 39900,
 };

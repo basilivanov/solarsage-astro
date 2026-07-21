@@ -68,6 +68,24 @@ async def test_get_quota_initial_state_no_access(
 
 
 @pytest.mark.asyncio
+async def test_get_quota_can_purchase_follows_billing_flag(
+    async_client: AsyncClient, make_initdata, monkeypatch
+) -> None:
+    """canPurchase is driven by the billing kill-switch: paid top-up is
+    advertised only when YOOKASSA_ENABLED=true."""
+    from app.core.config import settings
+
+    await _login(async_client, make_initdata, user_id=43)
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+    r = await async_client.get("/api/horary/quota")
+    assert r.status_code == 200
+    assert r.json()["canPurchase"] is True
+    monkeypatch.setattr(settings, "yookassa_enabled", False)
+    r = await async_client.get("/api/horary/quota")
+    assert r.json()["canPurchase"] is False
+
+
+@pytest.mark.asyncio
 async def test_post_question_validation_errors(
     async_client: AsyncClient, make_initdata
 ) -> None:

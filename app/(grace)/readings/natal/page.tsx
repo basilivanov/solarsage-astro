@@ -35,6 +35,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ChevronLeft } from "lucide-react"
 
 import { NatalChartWheel } from "@/components/readings/natal-chart-wheel"
@@ -51,6 +52,12 @@ import { ProfileIncompleteCard } from "@/components/readings/natal-preview/profi
 import { SalesBullets } from "@/components/readings/natal-preview/sales-bullets"
 import { SpheresStrip } from "@/components/readings/natal-preview/spheres-strip"
 import { fetchNatalPreview } from "@/lib/api/natal"
+import { PaymentApiError, startPurchase } from "@/lib/api/payment"
+import {
+  PurchasePollTimeoutError,
+  openProviderCheckout,
+  pollPurchaseStatus,
+} from "@/lib/billing/purchase-flow"
 import type { NatalPreviewRead } from "@/lib/contracts/natal"
 
 type State =
@@ -59,8 +66,15 @@ type State =
   | { status: "error"; message: string }
   | { status: "ready"; data: NatalPreviewRead }
 
+type CtaPhase = "idle" | "starting" | "waiting" | "error"
+
+const GENERATING_PATH = "/readings/natal/generating"
+
 export default function NatalReadingPage() {
+  const router = useRouter()
   const [state, setState] = useState<State>({ status: "loading" })
+  const [ctaPhase, setCtaPhase] = useState<CtaPhase>("idle")
+  const [ctaError, setCtaError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setState({ status: "loading" })
@@ -79,6 +93,51 @@ export default function NatalReadingPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // START_BLOCK: NATAL_CTA_PURCHASE_FLOW
+  // Real YooKassa flow: a READY report navigates to it directly; otherwise
+  // start the purchase, open the provider checkout Telegram-safe and let the
+  // authenticated purchase-status poll (never the provider return) decide.
+  // Generation starts only after a CONFIRMED fulfillment.
+  const onCta = useCallback(async () => {
+    if (state.status !== "ready") return
+    if (state.data.fullReportAvailable) {
+      router.push(GENERATING_PATH)
+      return
+    }
+    setCtaPhase("starting")
+    setCtaError(null)
+    try {
+      const started = await startPurchase("natal_full_report")
+      if (started.confirmationUrl) {
+        openProviderCheckout(started.confirmationUrl)
+      }
+      setCtaPhase("waiting")
+      const terminal = await pollPurchaseStatus(started.purchaseId)
+      if (terminal.status === "delivered" || terminal.status === "succeeded" || terminal.status === "consumed") {
+        router.push(GENERATING_PATH)
+        return
+      }
+      setCtaPhase("error")
+      setCtaError("Оплата не завершена. Попробуй ещё раз, когда будешь готов(а).")
+    } catch (error) {
+      if (error instanceof PaymentApiError && error.status === 409) {
+        // Already entitled (e.g. bought earlier for this context): go to the
+        // existing generate flow without a new charge.
+        router.push(GENERATING_PATH)
+        return
+      }
+      setCtaPhase("error")
+      if (error instanceof PurchasePollTimeoutError) {
+        setCtaError(error.message)
+      } else if (error instanceof PaymentApiError) {
+        setCtaError(error.message)
+      } else {
+        setCtaError("Не удалось начать оплату. Попробуй ещё раз.")
+      }
+    }
+  }, [state, router])
+  // END_BLOCK: NATAL_CTA_PURCHASE_FLOW
 
   const statusAttr = state.status
   const fullReportAvailable = state.status === "ready" ? String(state.data.fullReportAvailable) : undefined
@@ -143,7 +202,11 @@ export default function NatalReadingPage() {
             {/* 10. CTA */}
             <div data-testid="natal-full-report-cta"><CtaButton
               priceKopecks={state.data.fullReportPriceKopecks}
-              disabled
+              hasReport={state.data.fullReportAvailable}
+              busy={ctaPhase === "starting" || ctaPhase === "waiting"}
+              errorMessage={ctaPhase === "error" ? ctaError : null}
+              disabled={!state.data.fullReportAvailable && !state.data.fullReportPurchasable}
+              onClick={() => void onCta()}
             /></div>
           </>
           </div>
