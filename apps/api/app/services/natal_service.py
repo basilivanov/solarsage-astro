@@ -491,6 +491,22 @@ class NatalService:
             if report_result.scalar_one_or_none() is not None:
                 full_report_available = True
 
+        # Price comes from the canonical product catalog (products table),
+        # never from a literal here.
+        from app.db.models import Product
+        from app.services.product_catalog import catalog_by_slug
+
+        price_row = (
+            await self.db.execute(
+                select(Product).where(Product.slug == "natal_full_report")
+            )
+        ).scalar_one_or_none()
+        full_report_price = (
+            price_row.price_kopecks
+            if price_row is not None
+            else catalog_by_slug("natal_full_report").price_kopecks
+        )
+
         return NatalPreviewRead(
             meta=meta,
             chart=self._build_chart_from_context(natal_context),
@@ -502,7 +518,7 @@ class NatalService:
             calculation_stats=calculation_stats,
             sales_bullets=sales_bullets,
             full_report_available=full_report_available,
-            full_report_price_kopecks=99900,
+            full_report_price_kopecks=full_report_price,
         )
 
     @staticmethod

@@ -79,7 +79,7 @@ from app.db.models import (
     Subscription,
 )
 from app.services.access_service import AccessService
-from app.services.yookassa_client import get_yookassa_client
+from app.services.yookassa_client import YooKassaError, get_yookassa_client
 
 
 def _kopecks_str(kopecks: int) -> str:
@@ -95,7 +95,12 @@ class BillingService:
         result = await self.db.execute(
             select(Product).where(Product.is_active.is_(True)).order_by(Product.price_kopecks)
         )
-        return list(result.scalars().all())
+        products = list(result.scalars().all())
+        # Never advertise a 501 feature: the natal report is hidden while its
+        # generation flag is off.
+        if not settings.natal_report_enabled:
+            products = [p for p in products if p.slug != "natal_full_report"]
+        return products
 
     async def _get_product(self, slug: str) -> Product | None:
         result = await self.db.execute(
@@ -149,7 +154,22 @@ class BillingService:
             currency=product.currency,
         )
         self.db.add(subscription)
-        await self.db.flush()
+        # Reserve the owner row BEFORE the external POST. A concurrent start
+        # hits the partial unique index (one pending per user+product) and is
+        # converted into the same reuse path instead of a second charge.
+        from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+        try:
+            async with self.db.begin_nested():
+                await self.db.flush()
+        except SQLIntegrityError:
+            # The failed savepoint is rolled back; drop the in-memory copy
+            # before re-reading the row a concurrent start reserved.
+            self.db.expunge(subscription)
+            pending = await self._get_pending_subscription(user_id, product_slug)
+            if pending is None:
+                raise
+            subscription = pending
 
         client = get_yookassa_client()
         result = await client.create_initial_payment(
@@ -174,8 +194,19 @@ class BillingService:
             provider_payment_id=result["provider_payment_id"],
             idempotence_key=f"init-{subscription.id}-first",
             confirmation_url=result.get("confirmation_url"),
+            subscription_id=subscription.id,
         )
         self.db.add(payment)
+        try:
+            async with self.db.begin_nested():
+                await self.db.flush()
+        except SQLIntegrityError:
+            # A concurrent start already stored this exact payment (stable
+            # idempotence key + provider dedupe); reuse it, never charge twice.
+            self.db.expunge(payment)
+            payment = await self._get_payment_by_idempotence_key(f"init-{subscription.id}-first")
+            if payment is None:
+                raise
         await self.db.commit()
         log_event("billing.subscription_started", msg="subscription started", payload={"payment_id": payment.id})
 
@@ -204,12 +235,16 @@ class BillingService:
         product = await self._get_product(product_slug)
         if product is None or product.product_type != "one_time":
             raise ValueError("PRODUCT_NOT_FOUND")
+        # Fail closed: never sell a 501 feature.
+        if product_slug == "natal_full_report" and not settings.natal_report_enabled:
+            raise ValueError("PRODUCT_NOT_FOUND")
 
-        context_hash: str | None = None
+        context_hash = ""
         if product_slug == "natal_full_report":
-            context_hash = await self._current_natal_context_hash(user_id)
-            if context_hash is None:
+            natal_hash = await self._current_natal_context_hash(user_id)
+            if natal_hash is None:
                 raise ValueError("NATAL_CONTEXT_MISSING")
+            context_hash = natal_hash
             entitled = await self.has_natal_entitlement(user_id, context_hash)
             if entitled:
                 return {"status": "already_entitled"}
@@ -236,7 +271,17 @@ class BillingService:
             context_hash=context_hash,
         )
         self.db.add(purchase)
-        await self.db.flush()
+        from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+        try:
+            async with self.db.begin_nested():
+                await self.db.flush()
+        except SQLIntegrityError:
+            self.db.expunge(purchase)
+            pending = await self._get_pending_purchase(user_id, product_slug, context_hash)
+            if pending is None:
+                raise
+            purchase = pending
 
         client = get_yookassa_client()
         result = await client.create_one_time_payment(
@@ -263,7 +308,14 @@ class BillingService:
             confirmation_url=result.get("confirmation_url"),
         )
         self.db.add(payment)
-        await self.db.flush()
+        try:
+            async with self.db.begin_nested():
+                await self.db.flush()
+        except SQLIntegrityError:
+            self.db.expunge(payment)
+            payment = await self._get_payment_by_idempotence_key(f"purchase-{purchase.id}")
+            if payment is None:
+                raise
         purchase.payment_id = payment.id
         await self.db.commit()
         log_event("billing.purchase_started", msg="purchase started", payload={"payment_id": payment.id})
@@ -347,7 +399,9 @@ class BillingService:
         #   provider errors propagate as YooKassaError.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.verify_and_process_webhook
         result = await self.db.execute(
-            select(Payment).where(Payment.provider_payment_id == provider_payment_id)
+            select(Payment)
+            .where(Payment.provider_payment_id == provider_payment_id)
+            .with_for_update()
         )
         payment = result.scalar_one_or_none()
         if payment is None:
@@ -405,38 +459,56 @@ class BillingService:
             return False
         if metadata.get("product_slug") != payment.product_slug:
             return False
-        if str(metadata.get("owner_id")) != self._expected_owner_id(payment):
-            return False
-        return True
+        # Strict owner check: subscription payments are linked by FK; purchase
+        # payments by the purchase key prefix.
+        owner = str(metadata.get("owner_id"))
+        if payment.subscription_id is not None:
+            return owner == str(payment.subscription_id)
+        return owner == self._expected_purchase_owner_id(payment)
 
-    def _expected_owner_id(self, payment: Payment) -> str:
+    @staticmethod
+    def _expected_purchase_owner_id(payment: Payment) -> str:
         key = payment.idempotence_key or ""
-        if key.startswith("init-") and key.endswith("-first"):
-            return key[len("init-"):-len("-first")]
         if key.startswith("purchase-"):
             return key[len("purchase-"):]
-        if key.startswith("rebill-"):
-            return key[len("rebill-"):].rsplit("-", 1)[0]
         return ""
 
     async def _fulfill_subscription(self, payment: Payment, product: Product, remote: dict) -> None:
+        # Strict owner: the payment is FK-linked to exactly one subscription.
+        if payment.subscription_id is None:
+            log_event("billing.webhook_rejected", msg="subscription payment without owner link", level="warning")
+            return
         result = await self.db.execute(
-            select(Subscription).where(
-                Subscription.user_id == payment.user_id,
-                Subscription.status.in_(["pending", "past_due"]),
-                Subscription.product_slug == product.slug,
-            ).order_by(Subscription.created_at.desc())
+            select(Subscription)
+            .where(Subscription.id == payment.subscription_id)
+            .with_for_update()
         )
-        subscription = result.scalars().first()
+        subscription = result.scalar_one_or_none()
+        if subscription is None:
+            return
+
         days = product.period_days or 30
         now = datetime.now(UTC)
-        if subscription is not None:
+        if subscription.status in ("pending", "past_due"):
+            # First activation: a new period starts now.
             subscription.status = "active"
             subscription.current_period_start = now
             subscription.current_period_end = now + timedelta(days=days)
             subscription.next_charge_at = now + timedelta(days=days)
-            if remote["payment_method_saved"] and remote["payment_method_id"]:
-                subscription.payment_method_id = remote["payment_method_id"]
+        elif subscription.status == "active":
+            # Renewal: extend strictly FROM the current period end, so a
+            # renewal payment can never shorten or duplicate a period.
+            base_end = subscription.current_period_end or now
+            subscription.current_period_end = base_end + timedelta(days=days)
+            subscription.next_charge_at = base_end + timedelta(days=days)
+        else:
+            # canceled/expired: never resurrect via webhook.
+            log_event("billing.webhook_rejected", msg="webhook for inactive subscription", level="warning")
+            return
+
+        if remote["payment_method_saved"] and remote["payment_method_id"]:
+            subscription.payment_method_id = remote["payment_method_id"]
+
         access = AccessService(self.db)
         await access.grant_subscription(user_id=payment.user_id, start_date=date.today(), days=days)
 
@@ -493,12 +565,14 @@ class BillingService:
         client = get_yookassa_client()
         attempts = 0
         for sub in due:
-            period_label = (sub.next_charge_at or now).date().isoformat()
-            idempotence_key = f"rebill-{sub.id}-{period_label}"[:64]
-            # next_charge_at filter guarantees a saved method id.
             payment_method_id = sub.payment_method_id
             if not payment_method_id:
                 continue
+            # Stable per-cycle label: retries of the SAME rebill keep the same
+            # idempotence key even when next_charge_at is pushed forward.
+            cycle_end = sub.current_period_end or sub.next_charge_at or now
+            period_label = cycle_end.date().isoformat()
+            idempotence_key = f"rebill-{sub.id}-{period_label}"[:64]
             try:
                 result_payment = await client.create_recurrent_payment(
                     user_id=sub.user_id,
@@ -511,25 +585,29 @@ class BillingService:
                     period_label=period_label,
                     idempotence_key=idempotence_key,
                 )
-                payment = Payment(
-                    user_id=sub.user_id,
-                    amount=sub.price_kopecks,
-                    currency=sub.currency,
-                    status="pending",
-                    provider="yookassa",
-                    description="Автопродление подписки",
-                    product_slug=sub.product_slug,
-                    provider_payment_id=result_payment["provider_payment_id"],
-                    idempotence_key=idempotence_key,
-                )
-                self.db.add(payment)
-                sub.next_charge_at = now + timedelta(days=1)
-                attempts += 1
-                log_event("billing.rebill_started", msg="rebill started")
-            except Exception:
+            except YooKassaError:
+                # Explicit provider failure: demote and retry tomorrow; DB
+                # stays consistent (no half-written payment row).
                 sub.status = "past_due"
                 sub.next_charge_at = now + timedelta(days=1)
-                log_event("system.error", msg="rebill failed", level="error")
+                log_event("system.error", msg="rebill provider failure", level="error")
+                continue
+            payment = Payment(
+                user_id=sub.user_id,
+                amount=sub.price_kopecks,
+                currency=sub.currency,
+                status="pending",
+                provider="yookassa",
+                description="Автопродление подписки",
+                product_slug=sub.product_slug,
+                provider_payment_id=result_payment["provider_payment_id"],
+                idempotence_key=idempotence_key,
+                subscription_id=sub.id,
+            )
+            self.db.add(payment)
+            sub.next_charge_at = now + timedelta(days=1)
+            attempts += 1
+            log_event("billing.rebill_started", msg="rebill started")
         await self.db.commit()
         return attempts
     # END_BLOCK: BILLING_REBILL
@@ -578,13 +656,13 @@ class BillingService:
         return result.scalars().first()
 
     async def _get_pending_purchase(
-        self, user_id: uuid.UUID, product_slug: str, context_hash: str | None
+        self, user_id: uuid.UUID, product_slug: str, context_hash: str
     ) -> Purchase | None:
         result = await self.db.execute(
             select(Purchase).where(
                 Purchase.user_id == user_id,
                 Purchase.product_slug == product_slug,
-                Purchase.context_hash.is_(context_hash) if context_hash is None else Purchase.context_hash == context_hash,
+                Purchase.context_hash == context_hash,
                 Purchase.status == "pending",
             ).order_by(Purchase.created_at.desc())
         )
@@ -603,12 +681,26 @@ class BillingService:
         )
         return result.scalar_one_or_none()
 
+    async def _get_payment_by_idempotence_key(self, idempotence_key: str) -> Payment | None:
+        result = await self.db.execute(
+            select(Payment).where(Payment.idempotence_key == idempotence_key)
+        )
+        return result.scalar_one_or_none()
+
     async def _current_natal_context_hash(self, user_id: uuid.UUID) -> str | None:
+        # Compute the entitlement hash from the REAL current profile — the
+        # same deterministic input the generation gate uses. The previous
+        # getattr(NatalContextData, "profile_hash") always returned None.
+        from app.db.models import UserProfile
         from app.services.natal_context_service import NatalContextService
 
-        service = NatalContextService(self.db)
-        context = await service.get_or_build_natal_context(user_id)
-        return getattr(context, "profile_hash", None)
+        result = await self.db.execute(
+            select(UserProfile).where(UserProfile.user_id == user_id)
+        )
+        profile = result.scalar_one_or_none()
+        if profile is None:
+            return None
+        return NatalContextService.compute_profile_hash(profile)
 
     async def _access_summary(self, user_id: uuid.UUID) -> dict:
         today = date.today()

@@ -104,14 +104,47 @@ def _webhook_allowlist() -> list[ipaddress._BaseNetwork]:
     return [ipaddress.ip_network(r) for r in ranges]
 
 
+def _trusted_proxies() -> list[ipaddress._BaseNetwork]:
+    raw = (settings.yookassa_trusted_proxy_cidrs or "").strip()
+    return [ipaddress.ip_network(r.strip()) for r in raw.split(",") if r.strip()]
+
+
+def _in_any(ip: ipaddress._BaseAddress, networks) -> bool:
+    return any(ip in network for network in networks)
+
+
 def _webhook_source_allowed(request: Request) -> bool:
+    # START_FUNCTION_CONTRACT: F-M-API-PAYMENT._webhook_source_allowed
+    # purpose: Trusted-proxy source verification for the webhook: a direct
+    #   YooKassa peer is accepted from the official ranges; forwarded
+    #   X-Real-IP / X-Forwarded-For is believed ONLY when the direct peer is
+    #   an explicitly trusted proxy CIDR (our own nginx). Anything else fails
+    #   closed, so forged headers from an untrusted peer never pass.
+    # inputs: incoming Request.
+    # returns: True when the effective source is verified.
+    # END_FUNCTION_CONTRACT: F-M-API-PAYMENT._webhook_source_allowed
     if request.client is None:
         return False
     try:
-        source = ipaddress.ip_address(request.client.host)
+        peer = ipaddress.ip_address(request.client.host)
     except ValueError:
         return False
-    return any(source in network for network in _webhook_allowlist())
+
+    allowlist = _webhook_allowlist()
+    if _in_any(peer, allowlist):
+        return True
+
+    # Forwarded headers are honoured only from an explicitly trusted proxy.
+    if not _in_any(peer, _trusted_proxies()):
+        return False
+    forwarded = request.headers.get("x-real-ip") or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if not forwarded:
+        return False
+    try:
+        source = ipaddress.ip_address(forwarded)
+    except ValueError:
+        return False
+    return _in_any(source, allowlist)
 
 
 def _require_enabled() -> None:

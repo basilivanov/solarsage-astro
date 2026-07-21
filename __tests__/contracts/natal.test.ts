@@ -269,7 +269,7 @@ describe('NatalPreviewReadSchema chart contract', () => {
       },
       salesBullets: [],
       fullReportAvailable: false,
-      fullReportPriceKopecks: 99900,
+      fullReportPriceKopecks: 39900,
     })
 
     expect(preview.chart?.houseSystem).toBe('Placidus')
@@ -304,7 +304,7 @@ describe('NatalPreviewReadSchema chart contract', () => {
       },
       salesBullets: [],
       fullReportAvailable: false,
-      fullReportPriceKopecks: 99900,
+      fullReportPriceKopecks: 39900,
     })
 
     expect(preview.chart).toBeNull()

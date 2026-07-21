@@ -199,6 +199,12 @@ class Settings(BaseSettings):
     # Comma-separated CIDR allowlist override for the webhook source check
     # (tests/dev only; production default = official YooKassa ranges).
     yookassa_webhook_ip_allowlist: str = Field("", alias="YOOKASSA_WEBHOOK_IP_ALLOWLIST")
+    # Comma-separated CIDRs of TRUSTED proxies (our own nginx) whose
+    # X-Real-IP / X-Forwarded-For headers may be believed for the webhook
+    # source check. Default loopback only; anything else fails closed.
+    yookassa_trusted_proxy_cidrs: str = Field(
+        "127.0.0.1/32,::1/128", alias="YOOKASSA_TRUSTED_PROXY_CIDRS"
+    )
 
     @property
     def yookassa_shop_id(self) -> str:

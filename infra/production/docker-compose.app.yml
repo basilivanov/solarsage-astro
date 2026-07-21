@@ -68,6 +68,18 @@ x-api-common: &api-common
     CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?cors origins required}
     GEONAMES_USERNAME: ${GEONAMES_USERNAME:?geonames username required}
     RELEASE_SHA: ${RELEASE_SHA:?release sha required}
+    # Billing (YooKassa): secrets come ONLY from the root-owned host env file
+    # (/etc/solarsage/app.env), never from the repository. NATAL_REPORT_ENABLED
+    # stays off until the billing path is proven in sandbox.
+    NATAL_REPORT_ENABLED: ${NATAL_REPORT_ENABLED:-false}
+    YOOKASSA_ENABLED: ${YOOKASSA_ENABLED:-false}
+    YOOKASSA_MODE: ${YOOKASSA_MODE:-test}
+    YOOKASSA_TEST_SHOP_ID: ${YOOKASSA_TEST_SHOP_ID:-}
+    YOOKASSA_TEST_SECRET_KEY: ${YOOKASSA_TEST_SECRET_KEY:-}
+    YOOKASSA_LIVE_SHOP_ID: ${YOOKASSA_LIVE_SHOP_ID:-}
+    YOOKASSA_LIVE_SECRET_KEY: ${YOOKASSA_LIVE_SECRET_KEY:-}
+    YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-}
+    YOOKASSA_RECURRENT_ENABLED: ${YOOKASSA_RECURRENT_ENABLED:-false}
 
 services:
   api:

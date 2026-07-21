@@ -98,6 +98,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
     Uuid,
+    text as sa_text,
     func,
     text,
 )
@@ -456,6 +457,10 @@ class Payment(Base):
     payment_method_saved: Mapped[bool] = mapped_column(nullable=False, default=False)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Strict owner link for subscription payments (initial + rebill).
+    subscription_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("subscriptions.id"), nullable=True, index=True
+    )
 
     user: Mapped["User"] = relationship("User")
 # END_BLOCK: PAYMENTS_TABLE
@@ -489,6 +494,14 @@ class Subscription(Base):
     __table_args__ = (
         Index("ix_subscriptions_user_id_status", "user_id", "status"),
         Index("ix_subscriptions_next_charge_at", "next_charge_at"),
+        Index(
+            "uq_subscriptions_pending_user_product",
+            "user_id",
+            "product_slug",
+            unique=True,
+            sqlite_where=sa_text("status = 'pending'"),
+            postgresql_where=sa_text("status = 'pending'"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -524,7 +537,23 @@ class Purchase(Base):
     __tablename__ = "purchases"
     __table_args__ = (
         Index("ix_purchases_user_id_status", "user_id", "status"),
-        UniqueConstraint("user_id", "product_slug", "context_hash", name="uq_purchases_natal_entitlement"),
+        Index(
+            "uq_purchases_pending_user_product",
+            "user_id",
+            "product_slug",
+            "context_hash",
+            unique=True,
+            sqlite_where=sa_text("status = 'pending'"),
+            postgresql_where=sa_text("status = 'pending'"),
+        ),
+        Index(
+            "uq_purchases_natal_entitlement",
+            "user_id",
+            "context_hash",
+            unique=True,
+            sqlite_where=sa_text("product_slug = 'natal_full_report' AND status IN ('succeeded', 'delivered')"),
+            postgresql_where=sa_text("product_slug = 'natal_full_report' AND status IN ('succeeded', 'delivered')"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -534,8 +563,8 @@ class Purchase(Base):
     # pending -> succeeded -> consumed (horary) / delivered (natal)
     horary_quota_added: Mapped[int | None] = mapped_column(nullable=True)
     # Natal entitlement binding: the natal context hash this purchase unlocks
-    # (NULL for non-natal products). One succeeded entitlement per context.
-    context_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # ("" for non-natal products). One fulfilled entitlement per context.
+    context_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -18,7 +18,7 @@ The existing `docs/17_Natal_landing_and_generation_TZ.md` has a good product dir
 But it is too broad and has outdated/unsafe parts for the next coder packet:
 
 1. It mixes preview, payment, DB report model, LLM generation, section polling, and paid full report into one wave.
-2. It says `price: int = 999` while commenting that price is in kopecks. If price is stored in kopecks, 999 ₽ must be `99900`.
+2. It says `price: int = 399` while commenting that price is in kopecks. If price is stored in kopecks, 399 ₽ must be `39900`.
 3. It allows skipped/placeholder generated sections on LLM failure. That violates the failure-handling canon: do not show generic successful-looking content when real generation failed.
 4. It does not include the new onboarding gender requirement for Russian masculine/feminine wording.
 5. It lists advanced inputs such as fixed stars, midpoints, configurations, special points. Coder must use only data actually returned by the current backend/sidecar; no invented preview facts.
@@ -184,7 +184,7 @@ class NatalPreviewRead(CamelModel):
     chapters: list[NatalChapterPreview]
     personal_hook: str
     full_report_available: bool = False
-    full_report_price_kopecks: int = 99900
+    full_report_price_kopecks: int = 39900
 ```
 
 Field names on wire must be camelCase through `CamelModel`.
@@ -325,7 +325,7 @@ Page order:
 
 7. CTA:
    - text: `Полный разбор натальной карты`;
-   - price shown: `999 ₽`;
+   - price shown: `399 ₽`;
    - button disabled or “скоро”, unless payment is already implemented;
    - no broken payment route.
 
@@ -361,7 +361,7 @@ Recommended user-facing error text:
 4. Complete profile returns preview.
 5. Preview endpoint does not call LLM.
 6. Sidecar/client failure returns error state/status, no fixture payload.
-7. `fullReportPriceKopecks == 99900`.
+7. `fullReportPriceKopecks == 39900`.
 8. Male profile returns masculine chapter title `Из чего ты собран`.
 9. Female profile returns feminine chapter title `Из чего ты собрана`.
 10. Pure builders use only provided chart/scoring data.
@@ -381,7 +381,7 @@ Recommended user-facing error text:
 Add a small guard if practical:
 
 - no hardcoded natal demo payload in production path;
-- no `999` kopeck price for natal full report; expected `99900`;
+- no `399` kopeck price for natal full report; expected `39900`;
 - no generic natal fallback text like `Эта секция будет обновлена позже` in production preview path.
 
 ## 10. Acceptance criteria
@@ -394,7 +394,7 @@ Add a small guard if practical:
 - It handles incomplete profile honestly.
 - It handles calculation failure honestly.
 - It respects `gender` for masculine/feminine wording.
-- It shows `999 ₽` as future full-report price but does not start a broken payment flow.
+- It shows `399 ₽` as future full-report price but does not start a broken payment flow.
 - Tests pass.
 - Existing horary tests and guardrails remain green.
 

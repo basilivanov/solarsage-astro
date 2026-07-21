@@ -2,13 +2,16 @@
 
 Revision ID: 0020_add_yookassa_billing
 Revises: 0019
+
+IMMUTABLE: the product seed below is a literal snapshot of the catalog at
+migration time (99/999/399 RUB, horary packs). Runtime code reads the
+products table, not this file; future price changes land ONLY as explicit
+later migrations. Do NOT import runtime modules here.
 """
 
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-
-from app.services.product_catalog import CATALOG
 
 revision = "0020_add_yookassa_billing"
 down_revision = "0019"
@@ -16,8 +19,21 @@ branch_labels = None
 depends_on = None
 
 
+_PRODUCTS_SEED = [
+    # (slug, name, description, product_type, price_kopecks, currency, period_days, horary_quota, is_active)
+    ("subscription_month", "Подписка на 1 месяц", "Полный доступ ко всем разборам и хорарным вопросам на 30 дней", "subscription_recurrent", 9900, "RUB", 30, None, True),
+    ("subscription_year", "Подписка на 1 год", "Полный доступ ко всем разборам и хорарным вопросам на 365 дней", "subscription_recurrent", 99900, "RUB", 365, None, True),
+    ("natal_full_report", "Полный натальный разбор", "Полный отчёт по натальной карте для текущего контекста (разовая покупка)", "one_time", 39900, "RUB", None, None, True),
+    ("horary_1", "1 хорарный вопрос", "Один вопрос к хорарному оракулу", "one_time", 5000, "RUB", None, 1, True),
+    ("horary_3", "3 хорарных вопроса", "Три вопроса к хорарному оракулу", "one_time", 12000, "RUB", None, 3, True),
+    ("horary_5", "5 хорарных вопросов", "Пять вопросов к хорарному оракулу", "one_time", 18000, "RUB", None, 5, True),
+    ("horary_10", "10 хорарных вопросов", "Десять вопросов к хорарному оракулу", "one_time", 30000, "RUB", None, 10, True),
+    ("synastry", "Синастрия", "Полный разбор совместимости двух натальных карт (пока не продаётся)", "one_time", 39900, "RUB", None, None, False),
+]
+
+
 def upgrade() -> None:
-    # 1. Extend payments with YooKassa columns
+    # 1. Extend payments with YooKassa columns + strict subscription link
     op.add_column("payments", sa.Column("product_slug", sa.String(50), nullable=True))
     op.add_column("payments", sa.Column("idempotence_key", sa.String(64), nullable=True))
     op.add_column("payments", sa.Column("confirmation_token", sa.String(512), nullable=True))
@@ -26,10 +42,12 @@ def upgrade() -> None:
     op.add_column("payments", sa.Column("payment_method_saved", sa.Boolean(), server_default="false", nullable=False))
     op.add_column("payments", sa.Column("failure_reason", sa.Text(), nullable=True))
     op.add_column("payments", sa.Column("canceled_at", sa.DateTime(timezone=True), nullable=True))
+    op.add_column("payments", sa.Column("subscription_id", postgresql.UUID(as_uuid=True), nullable=True))
     op.create_index("uq_payments_idempotence_key", "payments", ["idempotence_key"], unique=True)
     op.create_index("uq_payments_provider_payment_id", "payments", ["provider_payment_id"], unique=True)
+    op.create_index("ix_payments_subscription_id", "payments", ["subscription_id"])
 
-    # 2. products (catalog seeded from the single source of truth)
+    # 2. products (literal immutable snapshot; runtime reads only the table)
     op.create_table(
         "products",
         sa.Column("slug", sa.String(50), primary_key=True),
@@ -59,17 +77,17 @@ def upgrade() -> None:
         products_table,
         [
             {
-                "slug": p.slug,
-                "name": p.name,
-                "description": p.description,
-                "product_type": p.product_type,
-                "price_kopecks": p.price_kopecks,
-                "currency": p.currency,
-                "period_days": p.period_days,
-                "horary_quota": p.horary_quota,
-                "is_active": p.is_active,
+                "slug": slug,
+                "name": name,
+                "description": description,
+                "product_type": product_type,
+                "price_kopecks": price_kopecks,
+                "currency": currency,
+                "period_days": period_days,
+                "horary_quota": horary_quota,
+                "is_active": is_active,
             }
-            for p in CATALOG
+            for (slug, name, description, product_type, price_kopecks, currency, period_days, horary_quota, is_active) in _PRODUCTS_SEED
         ],
     )
 
@@ -94,6 +112,23 @@ def upgrade() -> None:
     )
     op.create_index("ix_subscriptions_user_id_status", "subscriptions", ["user_id", "status"])
     op.create_index("ix_subscriptions_next_charge_at", "subscriptions", ["next_charge_at"])
+    op.create_index(
+        "uq_subscriptions_pending_user_product",
+        "subscriptions",
+        ["user_id", "product_slug"],
+        unique=True,
+        sqlite_where=sa.text("status = 'pending'"),
+        postgresql_where=sa.text("status = 'pending'"),
+    )
+    # FK added via batch mode: SQLite cannot ALTER existing tables with new
+    # constraints; batch is a no-op passthrough on PostgreSQL.
+    with op.batch_alter_table("payments") as batch_op:
+        batch_op.create_foreign_key(
+            "fk_payments_subscription_id",
+            "subscriptions",
+            ["subscription_id"],
+            ["id"],
+        )
 
     # 4. purchases (one-time: horary packs, natal entitlement)
     op.create_table(
@@ -103,24 +138,45 @@ def upgrade() -> None:
         sa.Column("product_slug", sa.String(50), sa.ForeignKey("products.slug"), nullable=False),
         sa.Column("status", sa.String(30), nullable=False, server_default="pending"),
         sa.Column("horary_quota_added", sa.Integer(), nullable=True),
-        sa.Column("context_hash", sa.String(64), nullable=True),
+        sa.Column("context_hash", sa.String(64), nullable=False, server_default=""),
         sa.Column("payment_id", sa.Integer(), sa.ForeignKey("payments.id"), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_purchases_user_id_status", "purchases", ["user_id", "status"])
-    op.create_index("uq_purchases_natal_entitlement", "purchases", ["user_id", "product_slug", "context_hash"], unique=True)
+    op.create_index(
+        "uq_purchases_pending_user_product",
+        "purchases",
+        ["user_id", "product_slug", "context_hash"],
+        unique=True,
+        sqlite_where=sa.text("status = 'pending'"),
+        postgresql_where=sa.text("status = 'pending'"),
+    )
+    op.create_index(
+        "uq_purchases_natal_entitlement",
+        "purchases",
+        ["user_id", "context_hash"],
+        unique=True,
+        sqlite_where=sa.text("product_slug = 'natal_full_report' AND status IN ('succeeded', 'delivered')"),
+        postgresql_where=sa.text("product_slug = 'natal_full_report' AND status IN ('succeeded', 'delivered')"),
+    )
 
 
 def downgrade() -> None:
     op.drop_index("uq_purchases_natal_entitlement", table_name="purchases")
+    op.drop_index("uq_purchases_pending_user_product", table_name="purchases")
     op.drop_index("ix_purchases_user_id_status", table_name="purchases")
     op.drop_table("purchases")
+    with op.batch_alter_table("payments") as batch_op:
+        batch_op.drop_constraint("fk_payments_subscription_id", type_="foreignkey")
+    op.drop_index("uq_subscriptions_pending_user_product", table_name="subscriptions")
     op.drop_index("ix_subscriptions_next_charge_at", table_name="subscriptions")
     op.drop_index("ix_subscriptions_user_id_status", table_name="subscriptions")
     op.drop_table("subscriptions")
     op.drop_table("products")
+    op.drop_index("ix_payments_subscription_id", table_name="payments")
     op.drop_index("uq_payments_provider_payment_id", table_name="payments")
     op.drop_index("uq_payments_idempotence_key", table_name="payments")
+    op.drop_column("payments", "subscription_id")
     op.drop_column("payments", "canceled_at")
     op.drop_column("payments", "failure_reason")
     op.drop_column("payments", "payment_method_saved")

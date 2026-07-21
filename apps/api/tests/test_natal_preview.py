@@ -155,11 +155,12 @@ async def test_natal_preview_returns_safe_error_on_sidecar_failure(async_client:
 
 
 @pytest.mark.asyncio
-async def test_natal_preview_price_is_99900(async_client: AsyncClient, make_initdata, db_session):
+async def test_natal_preview_price_matches_catalog(async_client: AsyncClient, make_initdata, db_session):
     await _login(async_client, make_initdata, user_id=30104)
 
     from app.services.telegram_auth import TelegramUser
     from app.services.profile_service import get_or_create_user
+    from app.services.product_catalog import catalog_by_slug
 
     tg = TelegramUser(id=30104, username="natal30104", first_name="Test")
     user, _ = await get_or_create_user(db_session, tg)
@@ -173,7 +174,7 @@ async def test_natal_preview_price_is_99900(async_client: AsyncClient, make_init
         response = await async_client.get("/api/natal/preview")
 
     assert response.status_code == 200
-    assert response.json()["fullReportPriceKopecks"] == 99900
+    assert response.json()["fullReportPriceKopecks"] == catalog_by_slug("natal_full_report").price_kopecks
 
 
 @pytest.mark.asyncio

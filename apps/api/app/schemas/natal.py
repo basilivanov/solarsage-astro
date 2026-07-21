@@ -278,7 +278,9 @@ class NatalPreviewRead(CamelModel):
     calculation_stats: NatalCalculationStats
     sales_bullets: list[str] = []
     full_report_available: bool = False
-    full_report_price_kopecks: int = 99900
+    # Price is always injected from the product catalog (products table);
+    # no literal default is allowed here.
+    full_report_price_kopecks: int
 # END_BLOCK: NATAL_PAYLOAD
 
 # START_BLOCK: NATAL_REPORT_SCHEMAS

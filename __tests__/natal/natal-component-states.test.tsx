@@ -157,7 +157,7 @@ const VALID_PREVIEW_WITH_CHART: NatalPreviewRead = {
   },
   salesBullets: ["Поймёшь себя"],
   fullReportAvailable: false,
-  fullReportPriceKopecks: 99900,
+  fullReportPriceKopecks: 39900,
 }
 
 describe("NatalChartWheel — supplied chart rendering", () => {
@@ -364,7 +364,7 @@ describe("NatalGeneratingPage — retry behavior", () => {
       ok: true,
       data: {
         meta: { name: "Backend User", birthDate: "2000-01-01", gender: "female" },
-        fullReportPriceKopecks: 99900,
+        fullReportPriceKopecks: 39900,
       },
     })
   })

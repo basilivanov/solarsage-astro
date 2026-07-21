@@ -75,6 +75,29 @@ The `/etc/solarsage/app.env` file must exist on the host as a real non-symlink f
 - **EXPECTED_CALCULATION_VERSION**: canonical calculation version the sidecar must report exactly (currently `ss-calc-1.2.0`). Required: the orchestrator's health proof compares the sidecar's `calculation_version` against this value.
 - **EPHEMERIS_EXPECTED_ARTIFACT_ID** and **EPHEMERIS_EXPECTED_MANIFEST_SHA256**: exact identity pins of the installed Swiss Ephemeris artifact (see section 5.1). Required once the artifact is installed: health proof matches them exactly against the sidecar's reported `ephemeris_artifact_id` / `ephemeris_manifest_sha256`.
 
+### 2.1 Billing (YooKassa) and natal report flags
+
+Billing secrets live ONLY in this root-owned env file, never in the repository. Defaults are all OFF — nothing charges and the natal full-report stays unavailable until the operator enables the path deliberately after a sandbox run:
+
+- **YOOKASSA_ENABLED** (default `false`): master billing kill-switch; while `false` all `/api/payment/*` endpoints return 503 and the natal payment gate is off.
+- **YOOKASSA_MODE** (default `test`): `test` (sandbox) or `live`.
+- **YOOKASSA_TEST_SHOP_ID** / **YOOKASSA_TEST_SECRET_KEY**: sandbox credentials (required only when `YOOKASSA_MODE=test` and billing is enabled; client creation fails closed without them).
+- **YOOKASSA_LIVE_SHOP_ID** / **YOOKASSA_LIVE_SECRET_KEY**: production credentials, operator-placed (required only when `YOOKASSA_MODE=live` and billing is enabled).
+- **YOOKASSA_RETURN_URL**: return URL after payment (e.g. `https://astro.vasiliy-ivanov.ru/profile`).
+- **YOOKASSA_RECURRENT_ENABLED** (default `false`): recurrent charging kill-switch; while `false` the rebill path performs zero charges. Enable only after the rebill wrapper is scheduled (runbook §5.2) and the first manual payment is proven.
+- **NATAL_REPORT_ENABLED** (default `false`): natal full-report generation feature flag. Enable together with billing — selling the report while the flag is off is blocked (purchase start is rejected and the product is hidden, so a 501 feature is never sold).
+
+### 2.2 Recurrent rebill job
+
+Auto-renewal runs ONLY through the operator-runnable wrapper `scripts/billing_rebill.py` (single-shot, uses the canonical app session and `BillingService.rebill_due_subscriptions`; no Prefect/new harness). It is hard-gated by `YOOKASSA_RECURRENT_ENABLED` and exits 0 doing nothing while the flag is off. Schedule it only after the first manual payment is proven, e.g. via cron on the host:
+
+```bash
+# /etc/cron.d/solarsage-billing-rebill (runs every 30 minutes)
+*/30 * * * * root bash -lc 'set -a && . /etc/solarsage/app.env && set +a && cd /opt/solarsage-astro/apps/api && .venv/bin/python ../../scripts/billing_rebill.py'
+```
+
+Until this job is actually scheduled, `YOOKASSA_RECURRENT_ENABLED` MUST stay `false` — the launch never silently advertises auto-renewal without a scheduler.
+
 Optional keys: `APP_VERSION`, `LLM_MODEL`.
 
 The env file must **not** contain `RELEASE_SHA`: the target release identity is supplied per invocation; a conflicting `RELEASE_SHA` in the env file fails closed.

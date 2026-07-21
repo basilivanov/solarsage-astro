@@ -35,24 +35,52 @@ from app.services.billing_service import BillingService
 from app.services.product_catalog import seed_products
 
 
-def _request_with_host(host: str):
-    return SimpleNamespace(client=SimpleNamespace(host=host))
+def _request(host: str, headers: dict | None = None):
+    raw = {k.lower(): v for k, v in (headers or {}).items()}
+
+    class _Headers:
+        def get(self, name: str, default=None):
+            return raw.get(name.lower(), default)
+
+    return SimpleNamespace(client=SimpleNamespace(host=host), headers=_Headers())
 
 
 def test_webhook_source_policy_official_ranges(monkeypatch) -> None:
     monkeypatch.setattr(settings, "yookassa_webhook_ip_allowlist", "")
-    assert _webhook_source_allowed(_request_with_host("185.71.76.1")) is True
-    assert _webhook_source_allowed(_request_with_host("185.71.77.30")) is True
-    assert _webhook_source_allowed(_request_with_host("77.75.156.11")) is True
-    assert _webhook_source_allowed(_request_with_host("77.75.154.129")) is True
-    assert _webhook_source_allowed(_request_with_host("8.8.8.8")) is False
-    assert _webhook_source_allowed(_request_with_host("10.0.0.5")) is False
+    assert _webhook_source_allowed(_request("185.71.76.1")) is True
+    assert _webhook_source_allowed(_request("185.71.77.30")) is True
+    assert _webhook_source_allowed(_request("77.75.156.11")) is True
+    assert _webhook_source_allowed(_request("77.75.154.129")) is True
+    assert _webhook_source_allowed(_request("8.8.8.8")) is False
+    assert _webhook_source_allowed(_request("10.0.0.5")) is False
 
 
 def test_webhook_source_policy_override(monkeypatch) -> None:
     monkeypatch.setattr(settings, "yookassa_webhook_ip_allowlist", "192.0.2.0/24")
-    assert _webhook_source_allowed(_request_with_host("192.0.2.9")) is True
-    assert _webhook_source_allowed(_request_with_host("185.71.76.1")) is False
+    assert _webhook_source_allowed(_request("192.0.2.9")) is True
+    assert _webhook_source_allowed(_request("185.71.76.1")) is False
+
+
+def test_webhook_trusted_proxy_forwarded_ip(monkeypatch) -> None:
+    # Legitimate nginx (trusted loopback peer) forwarding a real YooKassa IP.
+    monkeypatch.setattr(settings, "yookassa_webhook_ip_allowlist", "")
+    monkeypatch.setattr(settings, "yookassa_trusted_proxy_cidrs", "127.0.0.1/32")
+    assert _webhook_source_allowed(_request("127.0.0.1", {"X-Real-IP": "185.71.76.9"})) is True
+    assert _webhook_source_allowed(_request("127.0.0.1", {"X-Forwarded-For": "77.75.156.35, 10.0.0.1"})) is True
+    # Trusted proxy but missing/invalid forwarded header.
+    assert _webhook_source_allowed(_request("127.0.0.1")) is False
+    assert _webhook_source_allowed(_request("127.0.0.1", {"X-Real-IP": "not-an-ip"})) is False
+    # Trusted proxy forwarding a NON-YooKassa address.
+    assert _webhook_source_allowed(_request("127.0.0.1", {"X-Real-IP": "203.0.113.7"})) is False
+
+
+def test_webhook_forged_forwarded_header_from_untrusted_peer(monkeypatch) -> None:
+    # Forged header from an untrusted peer must never pass, even with a
+    # YooKassa-looking value inside.
+    monkeypatch.setattr(settings, "yookassa_webhook_ip_allowlist", "")
+    monkeypatch.setattr(settings, "yookassa_trusted_proxy_cidrs", "127.0.0.1/32")
+    assert _webhook_source_allowed(_request("8.8.8.8", {"X-Forwarded-For": "185.71.76.9"})) is False
+    assert _webhook_source_allowed(_request("8.8.8.8", {"X-Real-IP": "77.75.156.11"})) is False
 
 
 class FakeClient:

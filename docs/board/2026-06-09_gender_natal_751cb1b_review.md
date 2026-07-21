@@ -32,7 +32,7 @@ Changed areas:
 2. Backend added `GET /api/natal/preview` returning `NatalPreviewRead`.
 3. `user_profiles.gender` was added as a nullable DB column, and `ProfileRead/ProfileWrite` expose `gender` as `male|female|null`.
 4. The preview service requires core birth data and `gender` before generating the natal preview.
-5. The CTA price is represented as `99900` kopecks, which is correct for 999 ₽.
+5. The CTA price is represented as `39900` kopecks, which is correct for 399 ₽.
 6. The frontend CTA is disabled, so it does not currently route into a broken payment flow.
 
 Direction is good, but the packet is not yet acceptable.
@@ -123,7 +123,7 @@ The approved TZ asks for:
 
 - top 5–7 life spheres;
 - 8 locked full-report chapters;
-- sales layer that makes the future 999 ₽ report feel valuable.
+- sales layer that makes the future 399 ₽ report feel valuable.
 
 Current implementation:
 
@@ -224,7 +224,7 @@ Backend:
 - missing gender returns profile incomplete;
 - complete profile returns preview;
 - sidecar failure returns safe error;
-- price is 99900;
+- price is 39900;
 - male/female wording;
 - calculation stats bucket rules;
 - 8 chapters.
@@ -233,7 +233,7 @@ Frontend:
 
 - loading / profile incomplete / error / successful preview;
 - mini landing first screen;
-- CTA disabled and priced at 999 ₽;
+- CTA disabled and priced at 399 ₽;
 - male/female fixtures;
 - calculation stats from backend.
 
@@ -273,7 +273,7 @@ Coder/local evidence was not included in the user message.
 
 REJECTED.
 
-The implementation direction is correct: real natal preview endpoint, real mini landing route, profile gender field, disabled 999 ₽ CTA. But it cannot be accepted until the blockers are fixed:
+The implementation direction is correct: real natal preview endpoint, real mini landing route, profile gender field, disabled 399 ₽ CTA. But it cannot be accepted until the blockers are fixed:
 
 1. implement gender in onboarding;
 2. fix profile-incomplete error parsing/contract;

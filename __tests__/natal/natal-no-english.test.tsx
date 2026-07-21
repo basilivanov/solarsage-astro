@@ -107,7 +107,7 @@ const russianPreview: NatalPreviewRead = {
     "Увидишь приоритетные сферы, а не разрозненные факты.",
   ],
   fullReportAvailable: false,
-  fullReportPriceKopecks: 99900,
+  fullReportPriceKopecks: 39900,
 };
 
 const ENGLISH_SIGNS = ["Cancer", "Scorpio", "Leo", "Libra", "Sagittarius", "Aries", "Taurus", "Gemini", "Virgo", "Capricorn", "Aquarius", "Pisces"];

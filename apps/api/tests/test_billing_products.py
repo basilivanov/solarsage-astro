@@ -66,6 +66,7 @@ async def test_products_endpoint_lists_only_active_with_exact_prices(
     from app.core.config import settings
 
     monkeypatch.setattr(settings, "yookassa_enabled", True)
+    monkeypatch.setattr(settings, "natal_report_enabled", True)
     await seed_products(db_session)
 
     initdata = make_initdata(user_id=8101, username="bill")

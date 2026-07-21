@@ -519,7 +519,7 @@ const VALID_PREVIEW_RESPONSE = {
   },
   salesBullets: ["Поймёшь себя"],
   fullReportAvailable: true,
-  fullReportPriceKopecks: 99900,
+  fullReportPriceKopecks: 39900,
 }
 
 describe("fetchNatalPreview — Zod validation", () => {

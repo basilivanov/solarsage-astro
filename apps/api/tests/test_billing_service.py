@@ -28,7 +28,6 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
-from unittest.mock import AsyncMock
 
 from app.core.config import settings
 from app.db.models import (
@@ -230,11 +229,26 @@ async def test_webhook_fulfill_horary_creates_paid_credit(db_session, fake_clien
 
 @pytest.mark.asyncio
 async def test_webhook_fulfill_natal_delivers_entitlement(db_session, fake_client, monkeypatch) -> None:
+    from app.db.models import UserProfile
+    from app.services.natal_context_service import NatalContextService
+    from decimal import Decimal
+    from datetime import date as Date, time as dtime
+
+    monkeypatch.setattr(settings, "natal_report_enabled", True)
     await seed_products(db_session)
     user = await _user(db_session, 900006)
-    monkeypatch.setattr(
-        "app.services.billing_service.BillingService._current_natal_context_hash",
-        AsyncMock(return_value="ctxhash-1"),
+    db_session.add(
+        UserProfile(
+            user_id=user.id, first_name="Nat", gender="female",
+            birthday=Date(1993, 1, 7), birth_time=dtime(10, 33),
+            birth_city="Chirchiq", birth_lat=Decimal("41.46890"),
+            birth_lon=Decimal("69.58220"), birth_tz="Asia/Tashkent",
+            is_onboarded=True,
+        )
+    )
+    await db_session.commit()
+    real_hash = NatalContextService.compute_profile_hash(
+        (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
     )
     service = BillingService(db_session)
 
@@ -246,7 +260,7 @@ async def test_webhook_fulfill_natal_delivers_entitlement(db_session, fake_clien
     result = await service.verify_and_process_webhook(payment.provider_payment_id)
     assert result["processed"] is True
 
-    assert await service.has_natal_entitlement(user.id, "ctxhash-1") is True
+    assert await service.has_natal_entitlement(user.id, real_hash) is True
     assert await service.has_natal_entitlement(user.id, "other-hash") is False
 
     again = await service.verify_and_process_webhook(payment.provider_payment_id)
@@ -255,6 +269,48 @@ async def test_webhook_fulfill_natal_delivers_entitlement(db_session, fake_clien
     entitled_again = await service.start_purchase(user.id, "natal_full_report")
     assert entitled_again["status"] == "already_entitled"
     assert len(fake_client.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_natal_context_hash_computed_from_real_profile(db_session) -> None:
+    """Regression: entitlement hash must equal compute_profile_hash(profile),
+    never getattr(context, 'profile_hash') (the old always-None bug)."""
+    from app.db.models import UserProfile
+    from app.services.natal_context_service import NatalContextService
+    from decimal import Decimal
+    from datetime import date as Date, time as dtime
+
+    user = await _user(db_session, 900012)
+    profile = UserProfile(
+        user_id=user.id, first_name="Hash", gender="male",
+        birthday=Date(1990, 5, 20), birth_time=dtime(6, 15),
+        birth_city="Moscow", birth_lat=Decimal("55.7558"),
+        birth_lon=Decimal("37.6173"), birth_tz="Europe/Moscow",
+        is_onboarded=True,
+    )
+    db_session.add(profile)
+    await db_session.commit()
+
+    service = BillingService(db_session)
+    computed = await service._current_natal_context_hash(user.id)
+    expected = NatalContextService.compute_profile_hash(profile)
+    assert computed is not None
+    assert computed == expected
+
+
+@pytest.mark.asyncio
+async def test_natal_product_not_sold_when_report_disabled(db_session, fake_client, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "natal_report_enabled", False)
+    await seed_products(db_session)
+    user = await _user(db_session, 900013)
+    service = BillingService(db_session)
+
+    products = await service.get_products()
+    assert "natal_full_report" not in [p.slug for p in products]
+
+    with pytest.raises(ValueError, match="PRODUCT_NOT_FOUND"):
+        await service.start_purchase(user.id, "natal_full_report")
+    assert fake_client.calls == []
 
 
 # ---- Webhook rejections (service level) ----
@@ -360,6 +416,8 @@ async def test_rebill_charges_saved_method_with_stable_key(db_session, fake_clie
             price_kopecks=9900,
             currency="RUB",
             payment_method_id="pm-saved-1",
+            current_period_start=datetime.now(UTC) - timedelta(days=29),
+            current_period_end=datetime.now(UTC),
             next_charge_at=datetime.now(UTC) - timedelta(hours=1),
         )
     )
@@ -374,3 +432,76 @@ async def test_rebill_charges_saved_method_with_stable_key(db_session, fake_clie
     assert kwargs["amount_kopecks"] == 9900
     assert kwargs["idempotence_key"].startswith("rebill-")
     assert len(kwargs["idempotence_key"]) <= 64
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    assert payment.subscription_id == kwargs["owner_id"] or str(payment.subscription_id) == str(kwargs["owner_id"])
+
+
+@pytest.mark.asyncio
+async def test_renewal_webhook_extends_active_period(db_session, fake_client, monkeypatch) -> None:
+    """Renewal fulfillment must extend from current period end, and a
+    duplicate renewal webhook must not create a duplicate ledger."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    await seed_products(db_session)
+    user = await _user(db_session, 900014)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    first_payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[first_payment.provider_payment_id] = _remote_for(
+        first_payment, str(started["subscription_id"])
+    )
+    await service.verify_and_process_webhook(first_payment.provider_payment_id)
+
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    first_end = sub.current_period_end
+
+    # Make the subscription due for renewal (period boundary reached).
+    sub.next_charge_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+
+    attempts = await service.rebill_due_subscriptions()
+    assert attempts == 1
+    renewal_payment = (
+        await db_session.execute(
+            select(Payment).where(Payment.idempotence_key.like("rebill-%"))
+        )
+    ).scalar_one()
+    fake_client.remote[renewal_payment.provider_payment_id] = _remote_for(
+        renewal_payment, str(started["subscription_id"])
+    )
+
+    result = await service.verify_and_process_webhook(renewal_payment.provider_payment_id)
+    assert result["processed"] is True
+
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "active"
+    assert sub.current_period_end > first_end
+    # Extended by exactly one period from the previous end.
+    assert (sub.current_period_end - first_end).days in (29, 30)
+
+    ledgers = (await db_session.execute(select(AccessLedger))).scalars().all()
+    assert len(ledgers) == 2  # one per paid period, exactly
+
+    # Duplicate renewal webhook: no third ledger.
+    again = await service.verify_and_process_webhook(renewal_payment.provider_payment_id)
+    assert again["reason"] == "already_fulfilled"
+    ledgers = (await db_session.execute(select(AccessLedger))).scalars().all()
+    assert len(ledgers) == 2
+
+
+@pytest.mark.asyncio
+async def test_pending_unique_index_blocks_concurrent_start_rows(db_session) -> None:
+    """DB-level concurrency guard: two pending subscriptions for the same
+    user+product violate the partial unique index."""
+    from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+    user = await _user(db_session, 900015)
+    db_session.add(
+        Subscription(user_id=user.id, product_slug="subscription_month", status="pending", price_kopecks=9900, currency="RUB")
+    )
+    await db_session.commit()
+    db_session.add(
+        Subscription(user_id=user.id, product_slug="subscription_month", status="pending", price_kopecks=9900, currency="RUB")
+    )
+    with pytest.raises(SQLIntegrityError):
+        await db_session.commit()
