@@ -38,11 +38,18 @@
 
 import { test, expect, completeOnboarding } from './fixtures';
 
+// Shared budget for the synchronous natal generation path: the real LLM
+// generates 8 sections inline and latency varies widely across candidates
+// (observed 79s–360+s); the URL wait and the outer test budget must cover it
+// exactly once — a timed-out first pass is a real signal, not a retry case.
+const NATAL_GENERATION_WAIT_MS = 600_000;
+const NATAL_TEST_TIMEOUT_MS = 720_000;
+
 test.describe('Natal preview + full report — Real API (P1-6)', () => {
   test.use({ uniqueTelegramUser: true });
 
   test('renders preview and generates a real full report view', async ({ page }) => {
-    test.setTimeout(420000);
+    test.setTimeout(NATAL_TEST_TIMEOUT_MS);
 
     await page.addInitScript(() => {
       localStorage.clear();
@@ -64,7 +71,7 @@ test.describe('Natal preview + full report — Real API (P1-6)', () => {
     // /readings/natal/generating calls fetchNatalGenerate, shows the
     // generation state, polls and redirects to /readings/natal/<id> on READY.
     await page.goto('/readings/natal/generating');
-    await page.waitForURL(/\/readings\/natal\/[0-9a-f-]{36}$/, { timeout: 360000 });
+    await page.waitForURL(/\/readings\/natal\/[0-9a-f-]{36}$/, { timeout: NATAL_GENERATION_WAIT_MS });
     const reportId = page.url().match(/\/readings\/natal\/([0-9a-f-]{36})$/)![1];
 
     // The ready report renders through the real UI on the unified root.

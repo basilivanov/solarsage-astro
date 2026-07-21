@@ -44,9 +44,10 @@ describe("preview isolation guards", () => {
   it("next.config sets a rewrite proxyTimeout that covers synchronous generation", () => {
     const src = readFileSync(join(process.cwd(), "next.config.mjs"), "utf8")
     // Synchronous MVP endpoints (natal report generation) exceed the 30 s
-    // default; production nginx allows 300 s, so the rewrite must match it.
+    // default and can pass 300 s; production nginx allows 300 s, so the
+    // rewrite must cover the full 600 s generation budget.
     expect(src).toContain("proxyTimeout")
-    expect(src).toMatch(/proxyTimeout:\s*300_?000/)
+    expect(src).toMatch(/proxyTimeout:\s*600_?000/)
   })
 
   it("product runtime paths do not import e2e mock-visual fixtures", () => {

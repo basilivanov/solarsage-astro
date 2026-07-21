@@ -27,9 +27,11 @@ const nextConfig = {
   distDir: resolveNextDistDir(),
   experimental: {
     // Synchronous MVP endpoints (e.g. natal report generation) legitimately
-    // exceed the 30 s default rewrite proxy timeout; production nginx already
-    // allows 300 s, so the fallback rewrite matches it.
-    proxyTimeout: 300_000,
+    // exceed the 30 s default rewrite proxy timeout and can pass 300 s on
+    // slow candidates (observed >360 s first pass); production nginx already
+    // allows 300 s, so the fallback rewrite covers the full 600 s budget the
+    // E2E generation wait uses.
+    proxyTimeout: 600_000,
   },
   ...(process.env.NODE_ENV !== "production"
     ? { allowedDevOrigins: ["127.0.0.1"] }
