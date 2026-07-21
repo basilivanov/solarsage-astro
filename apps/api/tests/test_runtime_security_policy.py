@@ -384,6 +384,30 @@ def test_billing_enabled_requires_credentials_and_https_return_url():
         build_runtime_security_policy(_deployed_settings(**{**enabled, "YOOKASSA_RETURN_URL": "http://astro.vasiliy-ivanov.ru"}))
     with pytest.raises(ValueError, match="YOOKASSA_RETURN_URL:invalid-billing"):
         build_runtime_security_policy(_deployed_settings(**{**enabled, "YOOKASSA_RETURN_URL": ""}))
+    # Invalid port must not slip through urlparse (host:notaport).
+    with pytest.raises(ValueError, match="YOOKASSA_RETURN_URL:invalid-billing"):
+        build_runtime_security_policy(
+            _deployed_settings(**{**enabled, "YOOKASSA_RETURN_URL": "https://astro.vasiliy-ivanov.ru:notaport/path"})
+        )
+    # Userinfo is forbidden (no credentials in the return URL).
+    with pytest.raises(ValueError, match="YOOKASSA_RETURN_URL:invalid-billing"):
+        build_runtime_security_policy(
+            _deployed_settings(**{**enabled, "YOOKASSA_RETURN_URL": "https://user:pass@astro.vasiliy-ivanov.ru"})
+        )
+    # Path and query are valid.
+    policy = build_runtime_security_policy(
+        _deployed_settings(**{**enabled, "YOOKASSA_RETURN_URL": "https://astro.vasiliy-ivanov.ru/profile?from=pay"})
+    )
+    assert policy.environment == "production"
+    # The error text never carries the offending URL.
+    try:
+        build_runtime_security_policy(
+            _deployed_settings(**{**enabled, "YOOKASSA_RETURN_URL": "https://user:secret@astro.vasiliy-ivanov.ru"})
+        )
+        raise AssertionError("expected invalid-billing")
+    except ValueError as exc:
+        assert "user:secret" not in str(exc)
+        assert "astro.vasiliy-ivanov.ru" not in str(exc)
 
     # Live mode picks the LIVE credential pair, not the test pair.
     with pytest.raises(ValueError, match="YOOKASSA_SHOP_ID:empty-billing"):

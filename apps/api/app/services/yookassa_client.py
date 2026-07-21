@@ -33,6 +33,7 @@
 
 # START_MODULE_MAP: M-YOOKASSA-CLIENT
 # public_entrypoints:
+#   - YooKassaError
 #   - YooKassaClient.create_initial_payment
 #   - YooKassaClient.create_one_time_payment
 #   - YooKassaClient.create_recurrent_payment
@@ -100,10 +101,38 @@ class YooKassaClient:
         if response.status_code >= 400:
             # Never re-raise the provider body (may echo request/secrets).
             raise YooKassaError(f"yookassa http {response.status_code}")
+        return self._json_object(response)
+
+    @staticmethod
+    def _json_object(response: httpx.Response) -> dict:
+        # Central contract: a YooKassa response body is ALWAYS a JSON object.
+        # Anything else (list/scalar/garbage) is a sanitized error, never an
+        # AttributeError/TypeError downstream.
         try:
-            return response.json()
+            data = response.json()
         except ValueError:
             raise YooKassaError("yookassa malformed response") from None
+        if not isinstance(data, dict):
+            raise YooKassaError("yookassa malformed response")
+        return data
+
+    @staticmethod
+    def _nested_object(parent: dict, key: str) -> dict:
+        # A nested field we dereference must be an object when present;
+        # missing is allowed (our contract treats it as absent).
+        value = parent.get(key)
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise YooKassaError(f"yookassa malformed response: invalid {key}")
+        return value
+
+    @staticmethod
+    def _confirmation_url(payment: dict) -> str | None:
+        url = YooKassaClient._nested_object(payment, "confirmation").get("confirmation_url")
+        if url is not None and not isinstance(url, str):
+            raise YooKassaError("yookassa malformed response: invalid confirmation")
+        return url
 
     @staticmethod
     def _payment_id(payment: dict) -> str:
@@ -111,11 +140,6 @@ class YooKassaClient:
         if not provider_payment_id or not isinstance(provider_payment_id, str):
             raise YooKassaError("yookassa malformed response: missing payment id")
         return provider_payment_id
-
-    @staticmethod
-    def _confirmation_url(payment: dict) -> str | None:
-        confirmation = payment.get("confirmation") or {}
-        return confirmation.get("confirmation_url")
 
     async def create_initial_payment(
         self,
@@ -260,18 +284,17 @@ class YooKassaClient:
             raise YooKassaError(f"yookassa transport error: {type(exc).__name__}") from exc
         if response.status_code >= 400:
             raise YooKassaError(f"yookassa http {response.status_code}")
-        try:
-            payment = response.json()
-        except ValueError:
-            raise YooKassaError("yookassa malformed response") from None
-        method = payment.get("payment_method") or {}
+        payment = self._json_object(response)
+        method = self._nested_object(payment, "payment_method")
+        amount = self._nested_object(payment, "amount")
+        metadata = self._nested_object(payment, "metadata")
         return {
             "provider_payment_id": self._payment_id(payment),
             "status": payment.get("status"),
             "paid": bool(payment.get("paid")),
-            "amount_value": str((payment.get("amount") or {}).get("value", "")),
-            "currency": str((payment.get("amount") or {}).get("currency", "")),
-            "metadata": payment.get("metadata") or {},
+            "amount_value": str(amount.get("value", "")),
+            "currency": str(amount.get("currency", "")),
+            "metadata": metadata,
             "payment_method_id": method.get("id"),
             "payment_method_saved": bool(method.get("saved")),
         }

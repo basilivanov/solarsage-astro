@@ -110,7 +110,14 @@ async def test_initial_recurrent_exact_payload_and_mapping() -> None:
 @pytest.mark.asyncio
 async def test_one_time_exact_payload() -> None:
     captured, handler = _capture(
-        lambda request: httpx.Response(200, json={"id": "prov-2", "status": "pending", "confirmation": {}})
+        lambda request: httpx.Response(
+            200,
+            json={
+                "id": "prov-2",
+                "status": "pending",
+                "confirmation": {"confirmation_url": "https://pay.example/once"},
+            },
+        )
     )
     client = _client(handler)
     result = await client.create_one_time_payment(
@@ -123,15 +130,28 @@ async def test_one_time_exact_payload() -> None:
         product_slug="horary_3",
         idempotence_key="purchase-owner",
     )
-    body = _body(captured["request"])
-    assert body["amount"]["value"] == "120.00"
-    assert body["capture"] is True
-    assert "save_payment_method" not in body
-    assert "merchant_customer_id" not in body
-    assert body["metadata"]["type"] == "one_time"
-    assert body["confirmation"]["return_url"] == "https://app.example/return"
-    assert result["provider_payment_id"] == "prov-2"
-    assert result["confirmation_url"] is None
+    request = captured["request"]
+    assert str(request.url) == "https://api.yookassa.ru/v3/payments"
+    _assert_auth(request)
+    assert request.headers["idempotence-key"] == "purchase-owner"
+    body = _body(request)
+    assert body == {
+        "amount": {"value": "120.00", "currency": "RUB"},
+        "confirmation": {"type": "redirect", "return_url": "https://app.example/return"},
+        "capture": True,
+        "description": "3 хорарных вопроса",
+        "metadata": {
+            "user_id": str(USER_ID),
+            "owner_id": str(OWNER_ID),
+            "product_slug": "horary_3",
+            "type": "one_time",
+        },
+    }
+    assert result == {
+        "provider_payment_id": "prov-2",
+        "confirmation_url": "https://pay.example/once",
+        "status": "pending",
+    }
 
 
 @pytest.mark.asyncio
@@ -151,20 +171,25 @@ async def test_rebill_exact_payload() -> None:
         period_label="2027-07-21",
         idempotence_key="rebill-owner-2027-07-21",
     )
-    body = _body(captured["request"])
-    assert body["payment_method_id"] == "pm-saved-1"
-    assert body["capture"] is True
-    assert "confirmation" not in body
-    assert "save_payment_method" not in body
-    assert body["metadata"] == {
-        "user_id": str(USER_ID),
-        "owner_id": str(OWNER_ID),
-        "product_slug": "subscription_year",
-        "type": "recurrent",
-        "period": "2027-07-21",
+    request = captured["request"]
+    assert str(request.url) == "https://api.yookassa.ru/v3/payments"
+    _assert_auth(request)
+    assert request.headers["idempotence-key"] == "rebill-owner-2027-07-21"
+    body = _body(request)
+    assert body == {
+        "amount": {"value": "999.00", "currency": "RUB"},
+        "capture": True,
+        "payment_method_id": "pm-saved-1",
+        "description": "Подписка SolarSage — автопродление",
+        "metadata": {
+            "user_id": str(USER_ID),
+            "owner_id": str(OWNER_ID),
+            "product_slug": "subscription_year",
+            "type": "recurrent",
+            "period": "2027-07-21",
+        },
     }
-    assert result["provider_payment_id"] == "prov-3"
-    assert result["status"] == "succeeded"
+    assert result == {"provider_payment_id": "prov-3", "status": "succeeded"}
 
 
 @pytest.mark.asyncio
@@ -273,3 +298,96 @@ async def test_malformed_json_and_missing_id_are_sanitized() -> None:
     client2 = _client(lambda request: httpx.Response(200, json={"status": "succeeded"}))
     with pytest.raises(YooKassaError, match="missing payment id"):
         await client2.get_payment("prov-x")
+
+
+@pytest.mark.asyncio
+async def test_top_level_list_is_sanitized_on_post_and_get() -> None:
+    for call in ("post", "get"):
+        client = _client(lambda request: httpx.Response(200, json=[]))
+        with pytest.raises(YooKassaError, match="malformed") as exc_info:
+            if call == "post":
+                await client.create_one_time_payment(
+                    user_id=USER_ID,
+                    owner_id=OWNER_ID,
+                    amount_kopecks=5000,
+                    currency="RUB",
+                    description="d",
+                    return_url="https://app.example/return",
+                    product_slug="horary_1",
+                    idempotence_key="purchase-owner",
+                )
+            else:
+                await client.get_payment("prov-x")
+        assert "AttributeError" not in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_nested_shape_strings_are_sanitized() -> None:
+    # confirmation as a string (POST path)
+    client = _client(
+        lambda request: httpx.Response(200, json={"id": "prov-7", "status": "pending", "confirmation": "bad"})
+    )
+    with pytest.raises(YooKassaError, match="invalid confirmation"):
+        await client.create_one_time_payment(
+            user_id=USER_ID,
+            owner_id=OWNER_ID,
+            amount_kopecks=5000,
+            currency="RUB",
+            description="d",
+            return_url="https://app.example/return",
+            product_slug="horary_1",
+            idempotence_key="purchase-owner",
+        )
+
+    # amount as a string (GET path)
+    client2 = _client(
+        lambda request: httpx.Response(
+            200,
+            json={"id": "prov-8", "status": "succeeded", "paid": True, "amount": "bad"},
+        )
+    )
+    with pytest.raises(YooKassaError, match="invalid amount"):
+        await client2.get_payment("prov-8")
+
+    # payment_method as a string (GET path)
+    client3 = _client(
+        lambda request: httpx.Response(
+            200,
+            json={"id": "prov-9", "status": "succeeded", "paid": True, "payment_method": "bad"},
+        )
+    )
+    with pytest.raises(YooKassaError, match="invalid payment_method"):
+        await client3.get_payment("prov-9")
+
+    # metadata as a string (GET path)
+    client4 = _client(
+        lambda request: httpx.Response(
+            200,
+            json={"id": "prov-10", "status": "succeeded", "paid": True, "metadata": "bad"},
+        )
+    )
+    with pytest.raises(YooKassaError, match="invalid metadata"):
+        await client4.get_payment("prov-10")
+
+
+@pytest.mark.asyncio
+async def test_post_transport_failure_is_sanitized() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused by 10.0.0.1:443")
+
+    client = _client(handler)
+    with pytest.raises(YooKassaError) as exc_info:
+        await client.create_one_time_payment(
+            user_id=USER_ID,
+            owner_id=OWNER_ID,
+            amount_kopecks=5000,
+            currency="RUB",
+            description="d",
+            return_url="https://app.example/return",
+            product_slug="horary_1",
+            idempotence_key="purchase-owner",
+        )
+    message = str(exc_info.value)
+    assert "transport error" in message
+    assert "10.0.0.1" not in message
+    assert "secret-1" not in message

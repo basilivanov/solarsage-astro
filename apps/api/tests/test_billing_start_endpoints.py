@@ -108,3 +108,5 @@ async def test_purchase_start_provider_failure_is_stable_502(
     assert purchase.status == "pending"
     payment = (await db_session.execute(select(Payment))).scalar_one()
     assert payment.status == "pending"
+    assert payment.idempotence_key is not None
+    assert payment.first_attempt_at is not None

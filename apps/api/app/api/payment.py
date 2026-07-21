@@ -62,6 +62,7 @@
 #   - apps/api/tests/test_billing_products.py
 #   - apps/api/tests/test_billing_webhook.py
 #   - apps/api/tests/test_billing_purchase_status.py
+#   - apps/api/tests/test_billing_start_endpoints.py
 # END_MODULE_MAP: M-API-PAYMENT
 
 from __future__ import annotations

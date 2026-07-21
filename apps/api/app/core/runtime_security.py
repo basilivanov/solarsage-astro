@@ -38,6 +38,8 @@
 # semantic_blocks:
 #   - POLICY_DECLARATION: RuntimeSecurityPolicy dataclass definition
 #   - POLICY_BUILDER: build_runtime_security_policy implementation
+#   - BILLING_POLICY: fail-closed YooKassa runtime contract (mode,
+#     credentials, return URL, natal gate, webhook pins, recurrent)
 # owned_tests:
 #   - apps/api/tests/test_runtime_security_policy.py
 # END_MODULE_MAP: M-RUNTIME-SECURITY
@@ -226,15 +228,26 @@ def build_runtime_security_policy(settings: Settings) -> RuntimeSecurityPolicy:
             raise ValueError("YOOKASSA_MODE:invalid-deployed")
         if settings.yookassa_enabled:
             # Chosen mode credentials must be present and the return URL a
-            # valid HTTPS URL. (Billing OFF keeps empty values valid.)
+            # valid absolute HTTPS URL (path/query allowed; no userinfo; port
+            # must parse). Error codes never carry the URL or secrets.
             if not settings.yookassa_shop_id.strip():
                 raise ValueError("YOOKASSA_SHOP_ID:empty-billing")
             if not settings.yookassa_secret_key.strip():
                 raise ValueError("YOOKASSA_SECRET_KEY:empty-billing")
             return_url = settings.yookassa_return_url.strip()
             parsed_return = urllib.parse.urlparse(return_url)
-            if parsed_return.scheme != "https" or not parsed_return.netloc:
+            if (
+                parsed_return.scheme != "https"
+                or not parsed_return.netloc
+                or not parsed_return.hostname
+                or parsed_return.username is not None
+                or parsed_return.password is not None
+            ):
                 raise ValueError("YOOKASSA_RETURN_URL:invalid-billing")
+            try:
+                _ = parsed_return.port
+            except ValueError:
+                raise ValueError("YOOKASSA_RETURN_URL:invalid-billing") from None
         # The natal full report is sold only through billing: the feature
         # flag requires the master switch in deployed env.
         if settings.natal_report_enabled and not settings.yookassa_enabled:
