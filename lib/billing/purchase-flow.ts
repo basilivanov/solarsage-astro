@@ -37,7 +37,8 @@
 //   - PurchasePollTimeoutError
 // semantic_blocks:
 //   - PROVIDER_REDIRECT: Telegram-safe external open.
-//   - POLL: bounded backoff loops for purchase/subscription status.
+//   - POLL: bounded backoff loops for purchase/subscription status;
+//     subscription success requires the EXACT started subscriptionId active.
 // owned_tests:
 //   - __tests__/billing/purchase-flow.test.ts
 // END_MODULE_MAP: M-FRONTEND-BILLING-PURCHASE-FLOW
@@ -76,6 +77,13 @@ export class PurchasePollTimeoutError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "PurchasePollTimeoutError"
+  }
+}
+
+export class SubscriptionTerminalError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "SubscriptionTerminalError"
   }
 }
 
@@ -129,11 +137,26 @@ export function pollPurchaseStatus(
 }
 
 export function pollSubscriptionStatus(
+  expectedSubscriptionId: string,
   options: PollOptions = {}
 ): Promise<SubscriptionStatusResponse> {
+  // STRICT success contract: only the EXACT subscription created by this
+  // start reaching status=active. hasAccess=true from a referral bonus or
+  // an old ledger NEVER completes the wait; a foreign active subscription id
+  // is ignored; an exact canceled/expired is an honest terminal failure.
   return pollWithBackoff(
     () => getSubscriptionStatus(),
-    (status) => status.hasAccess === true || status.status === "active",
+    (status) => {
+      if (status.subscriptionId !== expectedSubscriptionId) {
+        return false
+      }
+      if (status.status === "canceled" || status.status === "expired") {
+        throw new SubscriptionTerminalError(
+          "Подписка не активировалась: платёж был отменён или истёк. Деньги за незавершённый платёж не списываются."
+        )
+      }
+      return status.status === "active"
+    },
     options,
     "Подписка не подтвердилась вовремя. Если деньги списались, статус обновится автоматически."
   )

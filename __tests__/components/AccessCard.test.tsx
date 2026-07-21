@@ -60,13 +60,14 @@ describe("AccessCard billing contract", () => {
     expect(b.onBuy).not.toHaveBeenCalled()
   })
 
-  it("subscription state: secondary cancels, paid period note kept", () => {
+  it("subscription state: secondary cancels when cancelable, paid period note kept", () => {
     const b = billing()
     render(
       <ProfileAccessCard
         access={{ ...access, state: "subscription", hasAccess: true }}
         currentState="subscription"
         billing={b}
+        renewal={{ renewing: true, cancelable: true }}
       />,
     )
     const secondary = screen.getByTestId("access-card-secondary")
@@ -82,24 +83,41 @@ describe("AccessCard billing contract", () => {
         access={{ ...access, state: "subscription", hasAccess: true }}
         currentState="subscription"
         billing={b}
-        renewal={{ renewing: false }}
+        renewal={{ renewing: false, cancelable: false }}
       />,
     )
     expect(screen.getByText(/Без автопродления/)).toBeTruthy()
     expect(screen.queryByText(/Автопродление активно/)).toBeNull()
   })
 
-  it("subscription state shows auto-renew note when renewal is on", () => {
+  it("subscription state hides cancel for non-renewing (cancelable=false)", () => {
     const b = billing()
     render(
       <ProfileAccessCard
         access={{ ...access, state: "subscription", hasAccess: true }}
         currentState="subscription"
         billing={b}
-        renewal={{ renewing: true }}
+        renewal={{ renewing: false, cancelable: false }}
+      />,
+    )
+    expect(screen.queryByText("Отменить подписку")).toBeNull()
+  })
+
+  it("subscription state shows auto-renew note and cancel when renewal is on (cancelable)", () => {
+    const b = billing()
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+        renewal={{ renewing: true, cancelable: true }}
       />,
     )
     expect(screen.getByText(/Автопродление активно/)).toBeTruthy()
+    const secondary = screen.getByTestId("access-card-secondary")
+    expect(secondary.textContent).toContain("Отменить подписку")
+    fireEvent.click(secondary)
+    expect(b.onCancel).toHaveBeenCalledTimes(1)
   })
 
   it("keeps the test-only monetization stub copy unchanged", () => {

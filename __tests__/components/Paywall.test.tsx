@@ -146,7 +146,7 @@ describe('Paywall', () => {
 
     await waitFor(() => expect(mockStartSubscription).toHaveBeenCalledWith('subscription_month'))
     await waitFor(() => expect(mockOpenProviderCheckout).toHaveBeenCalledWith('https://pay.example/c'))
-    await waitFor(() => expect(mockPollSubscriptionStatus).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mockPollSubscriptionStatus).toHaveBeenCalledWith('s-1'))
     await waitFor(() => expect(onUnlocked).toHaveBeenCalledTimes(1))
   })
 

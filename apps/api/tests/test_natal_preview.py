@@ -24,7 +24,6 @@
 # purpose: Tests for GET /api/natal/preview — profile validation, gender wording,
 #          sidecar error handling, response structure.
 
-import uuid
 from datetime import date as Date, time
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
@@ -175,6 +174,66 @@ async def test_natal_preview_price_matches_catalog(async_client: AsyncClient, ma
 
     assert response.status_code == 200
     assert response.json()["fullReportPriceKopecks"] == catalog_by_slug("natal_full_report").price_kopecks
+
+
+@pytest.mark.asyncio
+async def test_natal_preview_purchasable_requires_billing_flag_product_and_unavailable(
+    async_client: AsyncClient, make_initdata, db_session, monkeypatch
+):
+    """fullReportPurchasable is true ONLY when YOOKASSA_ENABLED and
+    NATAL_REPORT_ENABLED and an ACTIVE catalog product row exists and no
+    ready report is available. Anything less is a disabled honest CTA."""
+    from app.core.config import settings
+    from app.db.models import Product
+    from app.services.product_catalog import seed_products
+    from app.services.profile_service import get_or_create_user
+    from app.services.telegram_auth import TelegramUser
+    from sqlalchemy import select
+
+    await _login(async_client, make_initdata, user_id=30106)
+    tg = TelegramUser(id=30106, username="natal30106", first_name="Test")
+    user, _ = await get_or_create_user(db_session, tg)
+    await _set_profile(db_session, user.id, gender="female")
+
+    async def preview():
+        with _mock_sidecar() as mock_factory:
+            mock_client = AsyncMock()
+            mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
+            mock_factory.return_value = mock_client
+            return await async_client.get("/api/natal/preview")
+
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+    monkeypatch.setattr(settings, "natal_report_enabled", True)
+
+    # 0. No product row at all: never for sale.
+    r = await preview()
+    assert r.json()["fullReportPurchasable"] is False
+
+    await seed_products(db_session)
+
+    # 1. Everything on: purchasable.
+    r = await preview()
+    assert r.json()["fullReportPurchasable"] is True
+    assert r.json()["fullReportPriceKopecks"] == 39900
+
+    # 2. Billing off.
+    monkeypatch.setattr(settings, "yookassa_enabled", False)
+    r = await preview()
+    assert r.json()["fullReportPurchasable"] is False
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+
+    # 3. Feature flag off.
+    monkeypatch.setattr(settings, "natal_report_enabled", False)
+    r = await preview()
+    assert r.json()["fullReportPurchasable"] is False
+    monkeypatch.setattr(settings, "natal_report_enabled", True)
+
+    # 4. Inactive product: never for sale.
+    product = (await db_session.execute(select(Product).where(Product.slug == "natal_full_report"))).scalar_one()
+    product.is_active = False
+    await db_session.commit()
+    r = await preview()
+    assert r.json()["fullReportPurchasable"] is False
 
 
 @pytest.mark.asyncio

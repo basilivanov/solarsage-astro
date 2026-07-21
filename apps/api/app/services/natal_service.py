@@ -507,6 +507,17 @@ class NatalService:
             if price_row is not None
             else catalog_by_slug("natal_full_report").price_kopecks
         )
+        # Purchasable ONLY when billing is live, the feature flag is on, an
+        # ACTIVE catalog product row exists and no ready report is available
+        # for the current context. Anything less must render a disabled
+        # honest CTA — never a sale.
+        full_report_purchasable = (
+            settings.yookassa_enabled
+            and settings.natal_report_enabled
+            and price_row is not None
+            and price_row.is_active
+            and not full_report_available
+        )
 
         return NatalPreviewRead(
             meta=meta,
@@ -519,9 +530,7 @@ class NatalService:
             calculation_stats=calculation_stats,
             sales_bullets=sales_bullets,
             full_report_available=full_report_available,
-            # The CTA may offer a purchase only while the feature is live and
-            # no ready report exists for the current context.
-            full_report_purchasable=settings.natal_report_enabled and not full_report_available,
+            full_report_purchasable=full_report_purchasable,
             full_report_price_kopecks=full_report_price,
         )
 

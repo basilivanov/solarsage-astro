@@ -41,13 +41,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
-  PaymentApiError,
   cancelSubscription,
   getPaymentProducts,
+  paymentErrorMessage,
   startSubscription,
 } from "@/lib/api/payment"
 import {
   PurchasePollTimeoutError,
+  SubscriptionTerminalError,
   openProviderCheckout,
   pollSubscriptionStatus,
 } from "@/lib/billing/purchase-flow"
@@ -91,19 +92,18 @@ export function useSubscriptionPurchase(onActivated?: () => void) {
         openProviderCheckout(started.confirmationUrl)
       }
       setPhase("waiting")
-      await pollSubscriptionStatus()
+      // STRICT: success only when THIS subscriptionId reaches active.
+      await pollSubscriptionStatus(started.subscriptionId)
       if (!mountedRef.current) return
       setPhase("success")
       onActivatedRef.current?.()
     } catch (error) {
       if (!mountedRef.current) return
       setPhase("error")
-      if (error instanceof PurchasePollTimeoutError) {
-        setErrorMessage(error.message)
-      } else if (error instanceof PaymentApiError) {
+      if (error instanceof PurchasePollTimeoutError || error instanceof SubscriptionTerminalError) {
         setErrorMessage(error.message)
       } else {
-        setErrorMessage("Не удалось оформить подписку. Попробуй ещё раз.")
+        setErrorMessage(paymentErrorMessage(error))
       }
     }
   }, [])
@@ -117,11 +117,7 @@ export function useSubscriptionPurchase(onActivated?: () => void) {
       onActivatedRef.current?.()
     } catch (error) {
       if (!mountedRef.current) return
-      setErrorMessage(
-        error instanceof PaymentApiError
-          ? error.message
-          : "Не удалось отменить подписку. Попробуй ещё раз."
-      )
+      setErrorMessage(paymentErrorMessage(error))
     }
   }, [])
   // END_BLOCK: CANCEL

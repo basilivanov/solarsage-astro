@@ -10,6 +10,7 @@ import {
   PaymentApiError,
   getPaymentProducts,
   getPurchaseStatus,
+  paymentErrorMessage,
   startPurchase,
   startSubscription,
 } from "@/lib/api/payment"
@@ -101,5 +102,44 @@ describe("lib/api/payment typed client", () => {
   it("getPurchaseStatus validates the wire shape", async () => {
     mockFetch.mockResolvedValue(jsonResponse(200, { bogus: true }))
     await expect(getPurchaseStatus("id")).rejects.toThrow()
+  })
+})
+
+
+describe("paymentErrorMessage — RU mapping, never raw backend English", () => {
+  it("maps known codes to curated Russian texts", () => {
+    const reconciliation = new PaymentApiError({
+      status: 409,
+      code: "PAYMENT_NEEDS_RECONCILIATION",
+      message: "A previous payment attempt is being reconciled",
+    })
+    expect(paymentErrorMessage(reconciliation)).toContain("обрабатывается")
+    expect(paymentErrorMessage(reconciliation)).not.toContain("reconciled")
+
+    const liveSub = new PaymentApiError({
+      status: 409,
+      code: "LIVE_SUBSCRIPTION_EXISTS",
+      message: "A live subscription already exists",
+    })
+    expect(paymentErrorMessage(liveSub)).toBe("У вас уже есть активная подписка.")
+
+    const pendingCancel = new PaymentApiError({
+      status: 409,
+      code: "PENDING_SUBSCRIPTION_NOT_CANCELABLE",
+      message: "The pending payment remains open and payable",
+    })
+    expect(paymentErrorMessage(pendingCancel)).toContain("Незавершённый платёж")
+
+    const product = new PaymentApiError({ status: 404, code: "PRODUCT_NOT_FOUND", message: "Product not found" })
+    expect(paymentErrorMessage(product)).toBe("Тариф временно недоступен.")
+  })
+
+  it("falls back by status and stays generic for unknown errors", () => {
+    expect(paymentErrorMessage(new PaymentApiError({ status: 503, message: "x" }))).toContain("временно недоступна")
+    expect(paymentErrorMessage(new PaymentApiError({ status: 401, message: "x" }))).toContain("авторизация")
+    expect(paymentErrorMessage(new PaymentApiError({ status: 500, code: "SOME_UNKNOWN", message: "raw" }))).toContain(
+      "Не удалось выполнить платёжный запрос"
+    )
+    expect(paymentErrorMessage(new Error("boom"))).toContain("Не удалось выполнить платёжный запрос")
   })
 })

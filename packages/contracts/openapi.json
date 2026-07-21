@@ -3546,6 +3546,11 @@
             ],
             "title": "Accessuntil"
           },
+          "cancelable": {
+            "default": false,
+            "title": "Cancelable",
+            "type": "boolean"
+          },
           "currency": {
             "anyOf": [
               {
@@ -3604,6 +3609,11 @@
               }
             ],
             "title": "Productslug"
+          },
+          "renewing": {
+            "default": false,
+            "title": "Renewing",
+            "type": "boolean"
           },
           "status": {
             "enum": [

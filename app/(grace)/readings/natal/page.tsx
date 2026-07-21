@@ -52,7 +52,7 @@ import { ProfileIncompleteCard } from "@/components/readings/natal-preview/profi
 import { SalesBullets } from "@/components/readings/natal-preview/sales-bullets"
 import { SpheresStrip } from "@/components/readings/natal-preview/spheres-strip"
 import { fetchNatalPreview } from "@/lib/api/natal"
-import { PaymentApiError, startPurchase } from "@/lib/api/payment"
+import { PaymentApiError, paymentErrorMessage, startPurchase } from "@/lib/api/payment"
 import {
   PurchasePollTimeoutError,
   openProviderCheckout,
@@ -121,19 +121,23 @@ export default function NatalReadingPage() {
       setCtaPhase("error")
       setCtaError("Оплата не завершена. Попробуй ещё раз, когда будешь готов(а).")
     } catch (error) {
-      if (error instanceof PaymentApiError && error.status === 409) {
+      if (
+        error instanceof PaymentApiError &&
+        error.status === 409 &&
+        error.code === "ALREADY_ENTITLED"
+      ) {
         // Already entitled (e.g. bought earlier for this context): go to the
-        // existing generate flow without a new charge.
+        // existing generate flow without a new charge. ANY other 409
+        // (PAYMENT_NEEDS_RECONCILIATION included) stays a visible error —
+        // never a silent navigation.
         router.push(GENERATING_PATH)
         return
       }
       setCtaPhase("error")
       if (error instanceof PurchasePollTimeoutError) {
         setCtaError(error.message)
-      } else if (error instanceof PaymentApiError) {
-        setCtaError(error.message)
       } else {
-        setCtaError("Не удалось начать оплату. Попробуй ещё раз.")
+        setCtaError(paymentErrorMessage(error))
       }
     }
   }, [state, router])

@@ -371,8 +371,18 @@ class BillingService:
                 "currency": None,
                 "current_period_end": None,
                 "next_charge_at": None,
+                "renewing": False,
+                "cancelable": False,
                 **access,
             }
+        # Backend state machine, never UI-derived:
+        # renewing = live (active/past_due) with a saved method AND a
+        # scheduled next charge; cancelable = a real recurring enrollment
+        # exists that the cancel endpoint meaningfully cancels.
+        live = subscription.status in ("active", "past_due")
+        has_method = subscription.payment_method_id is not None
+        renewing = live and has_method and subscription.next_charge_at is not None
+        cancelable = live and has_method
         return {
             "subscription_id": subscription.id,
             "product_slug": subscription.product_slug,
@@ -387,6 +397,8 @@ class BillingService:
                 subscription.next_charge_at.isoformat()
                 if subscription.next_charge_at else None
             ),
+            "renewing": renewing,
+            "cancelable": cancelable,
             **access,
         }
 

@@ -2342,3 +2342,53 @@ async def test_canceled_valid_identity_still_applies(db_session, fake_client) ->
     await db_session.refresh(payment)
     assert payment.status == "canceled"
     assert payment.canceled_at is not None
+
+
+# ---- Subscription status: backend-computed renewing/cancelable ----
+
+@pytest.mark.asyncio
+async def test_subscription_status_renewing_cancelable_matrix(db_session, fake_client) -> None:
+    """renewing/cancelable are computed by the BACKEND state machine:
+    none/pending/non-renewing/canceled -> both false; active or past_due
+    with a saved method and a scheduled charge -> both true."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900081)
+    service = BillingService(db_session)
+
+    # none
+    status = await service.get_subscription_status(user.id)
+    assert (status["renewing"], status["cancelable"]) == (False, False)
+
+    # pending
+    started = await service.start_subscription(user.id, "subscription_month")
+    status = await service.get_subscription_status(user.id)
+    assert (status["renewing"], status["cancelable"]) == (False, False)
+
+    # active with a saved method
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["subscription_id"]))
+    await service.verify_and_process_webhook(payment.provider_payment_id)
+    status = await service.get_subscription_status(user.id)
+    assert (status["renewing"], status["cancelable"]) == (True, True)
+
+    # active non-renewing (no saved method): no enrollment -> both false
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    sub.payment_method_id = None
+    await db_session.commit()
+    status = await service.get_subscription_status(user.id)
+    assert (status["renewing"], status["cancelable"]) == (False, False)
+
+    # past_due with a saved method and a scheduled retry charge
+    sub.payment_method_id = "pm-1"
+    sub.status = "past_due"
+    sub.next_charge_at = datetime.now(UTC) + timedelta(hours=1)
+    await db_session.commit()
+    status = await service.get_subscription_status(user.id)
+    assert (status["renewing"], status["cancelable"]) == (True, True)
+
+    # canceled
+    sub.status = "canceled"
+    sub.next_charge_at = None
+    await db_session.commit()
+    status = await service.get_subscription_status(user.id)
+    assert (status["renewing"], status["cancelable"]) == (False, False)

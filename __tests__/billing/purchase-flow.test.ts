@@ -17,6 +17,7 @@ vi.mock("@/lib/api/payment", () => ({
 
 import {
   PurchasePollTimeoutError,
+  SubscriptionTerminalError,
   openProviderCheckout,
   pollPurchaseStatus,
   pollSubscriptionStatus,
@@ -67,12 +68,39 @@ describe("lib/billing/purchase-flow", () => {
     ).rejects.toBeInstanceOf(PurchasePollTimeoutError)
   })
 
-  it("pollSubscriptionStatus stops only on confirmed access, never on pending", async () => {
+  it("pollSubscriptionStatus succeeds only on the EXACT started id reaching active", async () => {
+    // Referral hasAccess=true and a foreign active subscription must be
+    // ignored — the wait continues until OUR id is active.
     mockGetSubscriptionStatus
-      .mockResolvedValueOnce({ status: "pending", hasAccess: false })
-      .mockResolvedValueOnce({ status: "active", hasAccess: true })
-    const result = await pollSubscriptionStatus({ sleep: instantSleep, intervalMs: 1, maxIntervalMs: 2 })
+      .mockResolvedValueOnce({ subscriptionId: "foreign", status: "active", hasAccess: true })
+      .mockResolvedValueOnce({ subscriptionId: "s-1", status: "pending", hasAccess: true })
+      .mockResolvedValueOnce({ subscriptionId: "s-1", status: "active", hasAccess: true })
+    const result = await pollSubscriptionStatus("s-1", { sleep: instantSleep, intervalMs: 1, maxIntervalMs: 2 })
     expect(result.status).toBe("active")
+    expect(mockGetSubscriptionStatus).toHaveBeenCalledTimes(3)
+  })
+
+  it("pollSubscriptionStatus keeps waiting on referral access without our id", async () => {
+    mockGetSubscriptionStatus.mockResolvedValue({ subscriptionId: null, status: "none", hasAccess: true })
+    await expect(
+      pollSubscriptionStatus("s-1", { sleep: instantSleep, intervalMs: 1, maxIntervalMs: 1, timeoutMs: -1 })
+    ).rejects.toBeInstanceOf(PurchasePollTimeoutError)
+  })
+
+  it("pollSubscriptionStatus fails fast on exact canceled (no 5-minute wait)", async () => {
+    mockGetSubscriptionStatus
+      .mockResolvedValueOnce({ subscriptionId: "s-1", status: "pending", hasAccess: false })
+      .mockResolvedValueOnce({ subscriptionId: "s-1", status: "canceled", hasAccess: false })
+    await expect(
+      pollSubscriptionStatus("s-1", { sleep: instantSleep, intervalMs: 1, maxIntervalMs: 2 })
+    ).rejects.toBeInstanceOf(SubscriptionTerminalError)
     expect(mockGetSubscriptionStatus).toHaveBeenCalledTimes(2)
+  })
+
+  it("pollSubscriptionStatus fails fast on exact expired", async () => {
+    mockGetSubscriptionStatus.mockResolvedValue({ subscriptionId: "s-1", status: "expired", hasAccess: false })
+    await expect(
+      pollSubscriptionStatus("s-1", { sleep: instantSleep, intervalMs: 1, maxIntervalMs: 2 })
+    ).rejects.toBeInstanceOf(SubscriptionTerminalError)
   })
 })

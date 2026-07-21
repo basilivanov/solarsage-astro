@@ -42,6 +42,7 @@
 //   - CATALOG: products list fetch.
 //   - SUBSCRIPTION: start/status/cancel calls.
 //   - PURCHASE: start/status calls.
+//   - ERROR_TEXT: paymentErrorMessage RU mapping for user-facing flows.
 // owned_tests:
 //   - __tests__/api/payment-client.test.ts
 // END_MODULE_MAP: M-FRONTEND-API-PAYMENT
@@ -156,6 +157,36 @@ export type OneTimeProductSlug =
   | "horary_3"
   | "horary_5"
   | "horary_10"
+
+const KNOWN_ERROR_MESSAGES: Record<string, string> = {
+  PAYMENT_NEEDS_RECONCILIATION:
+    "Платёж уже обрабатывается. Дождитесь финального статуса или напишите в поддержку.",
+  LIVE_SUBSCRIPTION_EXISTS: "У вас уже есть активная подписка.",
+  PENDING_SUBSCRIPTION_NOT_CANCELABLE:
+    "Незавершённый платёж нельзя отменить здесь. Дождитесь его финального статуса.",
+  PRODUCT_NOT_FOUND: "Тариф временно недоступен.",
+  NATAL_CONTEXT_MISSING: "Сначала заполните данные рождения в профиле.",
+}
+
+/**
+ * User-facing Russian message for any error thrown by this client. Known
+ * backend codes map to curated texts; unknown errors stay generic — raw
+ * English backend text is never shown to the user.
+ */
+export function paymentErrorMessage(error: unknown): string {
+  if (error instanceof PaymentApiError) {
+    if (error.code && error.code in KNOWN_ERROR_MESSAGES) {
+      return KNOWN_ERROR_MESSAGES[error.code]
+    }
+    if (error.status === 503) {
+      return "Оплата временно недоступна. Попробуйте позже."
+    }
+    if (error.status === 401) {
+      return "Требуется авторизация. Откройте приложение заново."
+    }
+  }
+  return "Не удалось выполнить платёжный запрос. Попробуйте ещё раз."
+}
 
 export async function startPurchase(productSlug: OneTimeProductSlug): Promise<PurchaseStartResponse> {
   const res = await fetch(`${API_BASE}/api/payment/purchase/start`, {

@@ -1763,6 +1763,11 @@ export interface components {
         SubscriptionStatusResponse: {
             /** Accessuntil */
             accessUntil?: string | null;
+            /**
+             * Cancelable
+             * @default false
+             */
+            cancelable: boolean;
             /** Currency */
             currency?: string | null;
             /** Currentperiodend */
@@ -1775,6 +1780,11 @@ export interface components {
             priceKopecks?: number | null;
             /** Productslug */
             productSlug?: string | null;
+            /**
+             * Renewing
+             * @default false
+             */
+            renewing: boolean;
             /**
              * Status
              * @enum {string}

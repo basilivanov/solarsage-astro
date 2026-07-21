@@ -32,7 +32,7 @@ type Props = {
   access: AccessInfo
   currentState: AccessState
   billing?: AccessCardBilling
-  renewal?: { renewing: boolean }
+  renewal?: { renewing: boolean; cancelable: boolean }
 }
 
 export type AccessCardBilling = {
@@ -74,7 +74,7 @@ function buildVariant(
   state: AccessState,
   billing: AccessCardBilling | undefined,
   onInvite?: () => void,
-  renewal?: { renewing: boolean },
+  renewal?: { renewing: boolean; cancelable: boolean },
 ): Variant {
   const unavailableButtons: Pick<Variant, "primary" | "secondary"> = {
     primary: { label: billing?.ready === false && !billing.unavailable ? "Загружаем тарифы…" : "Оплата временно недоступна", disabled: true },
@@ -103,6 +103,11 @@ function buildVariant(
         ? "Автопродление активно. Отмена подписки не отзывает уже оплаченный период."
         : "Без автопродления — доступ до конца оплаченного периода. Новую подписку можно оформить после его завершения."
       : "Доступ активен. Отмена подписки не отзывает уже оплаченный период."
+    // The cancel button exists ONLY for a real recurring enrollment
+    // (backend cancelable). Non-renewing subscriptions have nothing to
+    // cancel recurrently.
+    const showCancel =
+      billing && !billing.unavailable && billing.ready && renewal?.cancelable === true
     return {
       icon: Crown,
       tone: "active",
@@ -111,7 +116,7 @@ function buildVariant(
       subtitle: ending || "Доступ к прошлому и будущему",
       footnote,
       primary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
-      secondary: billing && !billing.unavailable && billing.ready
+      secondary: showCancel
         ? { label: billing.busy ? "Ждём подтверждение…" : "Отменить подписку", onClick: billing.busy ? undefined : billing.onCancel, disabled: billing.busy }
         : { label: "Пригласить друга", onClick: onInvite, icon: Gift },
     }
@@ -166,6 +171,7 @@ export function AccessCard({ access, currentState, billing, renewal }: Props) {
         v.tone === "active" ? "border-border/70" : "border-border/60",
       )}
       data-billing={billing ? (billing.busy ? "busy" : billing.unavailable ? "unavailable" : billing.ready ? "ready" : "loading") : "off"}
+      data-renewal={renewal ? (renewal.renewing ? "renewing" : "non-renewing") : undefined}
     >
       <div className="flex items-start gap-3">
         <div

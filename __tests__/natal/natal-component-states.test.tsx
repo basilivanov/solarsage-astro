@@ -60,6 +60,37 @@ vi.mock("@/lib/api/natal", () => ({
   fetchNatalPreview: (...args: unknown[]) => mockFetchNatalPreview(...args),
 }))
 
+// ---- Mock billing client (used only by the CTA purchase flow) ----
+
+const mockStartPurchase = vi.fn()
+const mockOpenProviderCheckout = vi.fn()
+const mockPollPurchaseStatus = vi.fn()
+
+vi.mock("@/lib/api/payment", () => ({
+  PaymentApiError: class PaymentApiError extends Error {
+    status: number
+    code?: string
+    constructor({ status, code, message }: { status: number; code?: string; message: string }) {
+      super(message)
+      this.name = "PaymentApiError"
+      this.status = status
+      this.code = code
+    }
+  },
+  paymentErrorMessage: (error: unknown) =>
+    error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "PAYMENT_NEEDS_RECONCILIATION"
+      ? "Платёж уже обрабатывается. Дождитесь финального статуса или напишите в поддержку."
+      : "Не удалось выполнить платёжный запрос. Попробуйте ещё раз.",
+  startPurchase: (...args: unknown[]) => mockStartPurchase(...args),
+}))
+
+vi.mock("@/lib/billing/purchase-flow", () => ({
+  PurchasePollTimeoutError: class PurchasePollTimeoutError extends Error {},
+  openProviderCheckout: (...args: unknown[]) => mockOpenProviderCheckout(...args),
+  pollPurchaseStatus: (...args: unknown[]) => mockPollPurchaseStatus(...args),
+  pollSubscriptionStatus: vi.fn(),
+}))
+
 // ---- Mock lucide-react with all needed icons ----
 
 vi.mock("lucide-react", async (importOriginal) => {
@@ -643,5 +674,80 @@ describe("NatalReportPage — retry and demo isolation", () => {
     await waitFor(() => {
       expect(screen.getByText(/Отчёт ещё генерируется/i)).toBeTruthy()
     }, { timeout: 5000 })
+  })
+})
+
+
+// ============================================================
+// Natal CTA purchase flow — 409 code honesty
+// ============================================================
+
+describe("NatalReadingPage — CTA purchase flow", () => {
+  beforeEach(() => {
+    mockPush.mockReset()
+    mockFetchNatalPreview.mockReset()
+    mockStartPurchase.mockReset()
+    mockOpenProviderCheckout.mockReset()
+    mockPollPurchaseStatus.mockReset()
+    mockFetchNatalPreview.mockResolvedValue({
+      ok: true,
+      data: { ...VALID_PREVIEW_WITH_CHART, fullReportAvailable: false, fullReportPurchasable: true },
+    })
+  })
+
+  it("409 ALREADY_ENTITLED navigates to the generate flow without a new charge", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+    const { PaymentApiError } = await import("@/lib/api/payment")
+    mockStartPurchase.mockRejectedValue(
+      new PaymentApiError({ status: 409, code: "ALREADY_ENTITLED", message: "Report already purchased" })
+    )
+
+    render(<NatalReadingPage />)
+    const cta = await screen.findByTestId("natal-full-report-cta-button")
+    await waitFor(() => expect((cta as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(cta)
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/readings/natal/generating"))
+    expect(screen.queryByTestId("natal-cta-error")).toBeNull()
+    expect(mockPollPurchaseStatus).not.toHaveBeenCalled()
+  })
+
+  it("409 PAYMENT_NEEDS_RECONCILIATION stays a visible error, never a navigation", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+    const { PaymentApiError } = await import("@/lib/api/payment")
+    mockStartPurchase.mockRejectedValue(
+      new PaymentApiError({ status: 409, code: "PAYMENT_NEEDS_RECONCILIATION", message: "reconciling" })
+    )
+
+    render(<NatalReadingPage />)
+    const cta = await screen.findByTestId("natal-full-report-cta-button")
+    await waitFor(() => expect((cta as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(cta)
+
+    await screen.findByTestId("natal-cta-error")
+    expect(screen.getByTestId("natal-cta-error").textContent).toContain("обрабатывается")
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it("happy path: start -> provider checkout -> confirmed delivered -> navigate", async () => {
+    const NatalReadingPage = (await import("@/app/(grace)/readings/natal/page")).default
+    mockStartPurchase.mockResolvedValue({
+      purchaseId: "p-1",
+      productSlug: "natal_full_report",
+      providerPaymentId: "prov-1",
+      confirmationUrl: "https://pay.example/c",
+      status: "pending",
+    })
+    mockPollPurchaseStatus.mockResolvedValue({ status: "delivered" })
+
+    render(<NatalReadingPage />)
+    const cta = await screen.findByTestId("natal-full-report-cta-button")
+    await waitFor(() => expect((cta as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(cta)
+
+    await waitFor(() => expect(mockStartPurchase).toHaveBeenCalledWith("natal_full_report"))
+    await waitFor(() => expect(mockOpenProviderCheckout).toHaveBeenCalledWith("https://pay.example/c"))
+    await waitFor(() => expect(mockPollPurchaseStatus).toHaveBeenCalledWith("p-1"))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/readings/natal/generating"))
   })
 })

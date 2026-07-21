@@ -88,6 +88,12 @@ class SubscriptionStatusResponse(CamelModel):
     next_charge_at: str | None = None
     has_access: bool
     access_until: str | None = None
+    # Backend-computed state machine fields (the UI never derives these):
+    # renewing = live (active/past_due) with a saved method AND a scheduled
+    # next charge; cancelable = a real recurring enrollment exists that the
+    # cancel endpoint meaningfully cancels (active/past_due with a method).
+    renewing: bool = False
+    cancelable: bool = False
 
 
 class SubscriptionCancelRequest(CamelModel):

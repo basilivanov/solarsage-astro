@@ -80,20 +80,20 @@ export function ProfileScreen({
   const { profile, update, loaded, saving, error } = useProfile()
   const [editField, setEditField] = useState<EditField | null>(null)
   const billingFlow = useSubscriptionPurchase(onAccessChanged)
-  const [renewing, setRenewing] = useState<boolean | null>(null)
+  const [subFlags, setSubFlags] = useState<{ renewing: boolean; cancelable: boolean } | null>(null)
 
   useEffect(() => {
-    // Honest renewal semantics for an active subscription: auto-renew only
-    // when the backend reports an active sub with a scheduled charge.
+    // Renewal/cancel semantics come from the BACKEND state machine
+    // (SubscriptionStatusResponse.renewing/cancelable), never UI-derived.
     if (currentState !== "subscription" || !billingFlow.ready || billingFlow.unavailable) {
-      setRenewing(null)
+      setSubFlags(null)
       return
     }
     let cancelled = false
     getSubscriptionStatus()
       .then((status) => {
         if (!cancelled) {
-          setRenewing(status.status === "active" && status.nextChargeAt != null)
+          setSubFlags({ renewing: status.renewing, cancelable: status.cancelable })
         }
       })
       .catch(() => {})
@@ -161,7 +161,7 @@ export function ProfileScreen({
           access={access}
           currentState={currentState}
           billing={billing}
-          renewal={renewing === null ? undefined : { renewing }}
+          renewal={subFlags === null ? undefined : subFlags}
         />
         {billingFlow.errorMessage ? (
           <p className="mt-2 px-1 text-[12px] text-destructive" role="alert" data-testid="profile-billing-error">

@@ -620,12 +620,14 @@ export const SubscriptionStartResponse = z.object({
 });
 export const SubscriptionStatusResponse = z.object({
   accessUntil: z.union([z.string(), z.null()]).optional(),
+  cancelable: z.boolean().optional().default(false),
   currency: z.union([z.string(), z.null()]).optional(),
   currentPeriodEnd: z.union([z.string(), z.null()]).optional(),
   hasAccess: z.boolean(),
   nextChargeAt: z.union([z.string(), z.null()]).optional(),
   priceKopecks: z.union([z.number(), z.null()]).optional(),
   productSlug: z.union([z.string(), z.null()]).optional(),
+  renewing: z.boolean().optional().default(false),
   status: z.enum([
     "none",
     "pending",
