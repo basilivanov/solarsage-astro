@@ -42,6 +42,10 @@
 #     that succeeds AFTER a user cancel fulfills exactly the paid period once
 #     (status stays canceled, next_charge_at NULL); an initial payment of a
 #     canceled start is never resurrected.
+#   - Initial activation defers the paid period AFTER the latest existing
+#     access end (referral bonus or leftover paid): bonus days are consumed
+#     first, the paid ledger starts the next day with no overlap and no gap,
+#     and current_period_*/next_charge_at shift with the same deferral.
 #   - Same-key provider retries happen only inside the 24h YooKassa
 #     Idempotence-Key dedupe window anchored by payments.first_attempt_at
 #     (committed BEFORE the POST in every charge path: initial, one-time,
@@ -641,11 +645,21 @@ class BillingService:
         now = datetime.now(UTC)
         grant_start = date.today()
         if subscription.status in ("pending", "past_due"):
-            # First activation: a new period starts now.
+            # First activation: bonus/referral days and any leftover paid
+            # access are consumed FIRST (the AccessCard promise). The paid
+            # period starts right after the LATEST existing access end — no
+            # overlap (no lost days), no gap. current_period_* and
+            # next_charge_at shift with the same deferral; the ledger end
+            # (inclusive) is the day before current_period_end (exclusive).
+            latest_end = await self._latest_access_end_date(payment.user_id)
+            defer_days = 0
+            if latest_end is not None and latest_end >= date.today():
+                defer_days = (latest_end - date.today()).days + 1
             subscription.status = "active"
-            subscription.current_period_start = now
-            subscription.current_period_end = now + timedelta(days=days)
-            subscription.next_charge_at = now + timedelta(days=days)
+            subscription.current_period_start = now + timedelta(days=defer_days)
+            subscription.current_period_end = now + timedelta(days=defer_days + days)
+            subscription.next_charge_at = now + timedelta(days=defer_days + days)
+            grant_start = date.today() + timedelta(days=defer_days)
         elif subscription.status == "active":
             # Renewal: extend strictly FROM the current period end, so a
             # renewal payment can never shorten or duplicate a period. The
@@ -962,6 +976,16 @@ class BillingService:
                 Subscription.user_id == user_id,
                 Subscription.status.in_(["pending", "active", "past_due"]),
             ).order_by(Subscription.created_at.desc())
+        )
+        return result.scalars().first()
+
+    async def _latest_access_end_date(self, user_id: uuid.UUID) -> date | None:
+        # Latest access end across ALL ledger types (referral bonus and paid
+        # alike): the anchor for the deferred initial paid period.
+        result = await self.db.execute(
+            select(AccessLedger.end_date)
+            .where(AccessLedger.user_id == user_id)
+            .order_by(AccessLedger.end_date.desc())
         )
         return result.scalars().first()
 

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import inspect
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -1590,3 +1590,76 @@ def test_payment_needs_reconciliation_maps_to_409() -> None:
     exc = _domain_error(ValueError("PAYMENT_NEEDS_RECONCILIATION"))
     assert exc.status_code == 409
     assert exc.detail["code"] == "PAYMENT_NEEDS_RECONCILIATION"
+
+
+# ---- Deferred initial paid period (bonus days first) ----
+
+@pytest.mark.asyncio
+async def test_initial_fulfill_defers_paid_period_after_existing_access(db_session, fake_client) -> None:
+    """The AccessCard promise "сначала бонусные дни": with an active referral
+    bonus (and a leftover paid ledger), the paid 30-day period must start the
+    day AFTER the latest existing access end — no overlap (no lost days), no
+    gap — and current_period_*/next_charge_at shift with the same deferral
+    (period end exclusive vs ledger inclusive)."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900056)
+    today = date.today()
+    db_session.add(
+        AccessLedger(
+            user_id=user.id, entry_type="referral_bonus", days_granted=14,
+            start_date=today - timedelta(days=3), end_date=today + timedelta(days=11),
+        )
+    )
+    db_session.add(
+        AccessLedger(
+            user_id=user.id, entry_type="subscription", days_granted=30,
+            start_date=today - timedelta(days=25), end_date=today + timedelta(days=5),
+        )
+    )
+    await db_session.commit()
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["subscription_id"]))
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result["processed"] is True
+
+    expected_start = today + timedelta(days=12)  # latest end (+11d) + 1 day
+    ledgers = (
+        await db_session.execute(select(AccessLedger).order_by(AccessLedger.start_date))
+    ).scalars().all()
+    assert len(ledgers) == 3
+    paid = ledgers[-1]
+    assert paid.entry_type == "subscription"
+    assert paid.start_date == expected_start
+    assert paid.end_date == expected_start + timedelta(days=29)  # full 30 days, inclusive
+
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.current_period_start.date() == expected_start
+    assert sub.current_period_end.date() == expected_start + timedelta(days=30)
+    assert sub.next_charge_at == sub.current_period_end  # charge at paid period end
+
+    # No overlap with any existing access day: previous latest end + 1 == start.
+    assert paid.start_date == today + timedelta(days=11) + timedelta(days=1)
+
+
+@pytest.mark.asyncio
+async def test_initial_fulfill_without_prior_access_starts_today(db_session, fake_client) -> None:
+    """No existing access: the initial paid period starts today (no deferral)."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900057)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["subscription_id"]))
+    await service.verify_and_process_webhook(payment.provider_payment_id)
+
+    today = date.today()
+    paid = (await db_session.execute(select(AccessLedger))).scalar_one()
+    assert paid.start_date == today
+    assert paid.end_date == today + timedelta(days=29)
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.current_period_end.date() == today + timedelta(days=30)
+    assert sub.next_charge_at == sub.current_period_end
