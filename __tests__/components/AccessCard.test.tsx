@@ -90,7 +90,7 @@ describe("AccessCard billing contract", () => {
     expect(screen.queryByText(/Автопродление активно/)).toBeNull()
   })
 
-  it("subscription state hides cancel for non-renewing (cancelable=false)", () => {
+  it("subscription state hides cancel for non-renewing (cancelable=false) with an honest disabled secondary", () => {
     const b = billing()
     render(
       <ProfileAccessCard
@@ -101,6 +101,16 @@ describe("AccessCard billing contract", () => {
       />,
     )
     expect(screen.queryByText("Отменить подписку")).toBeNull()
+    const primary = screen.getByTestId("access-card-primary")
+    const secondary = screen.getByTestId("access-card-secondary")
+    // Never two identical invite CTAs.
+    expect(secondary.textContent).not.toBe(primary.textContent)
+    expect(secondary.textContent).toContain("Автопродление отключено")
+    expect((secondary as HTMLButtonElement).disabled).toBe(true)
+    // Semantic contract: exact data attributes drive tests, not CSS.
+    const root = primary.closest("[data-renewal]") as HTMLElement
+    expect(root.getAttribute("data-renewal")).toBe("non-renewing")
+    expect(root.getAttribute("data-cancelable")).toBe("false")
   })
 
   it("subscription state shows auto-renew note and cancel when renewal is on (cancelable)", () => {
@@ -116,8 +126,42 @@ describe("AccessCard billing contract", () => {
     expect(screen.getByText(/Автопродление активно/)).toBeTruthy()
     const secondary = screen.getByTestId("access-card-secondary")
     expect(secondary.textContent).toContain("Отменить подписку")
+    const root = secondary.closest("[data-renewal]") as HTMLElement
+    expect(root.getAttribute("data-renewal")).toBe("renewing")
+    expect(root.getAttribute("data-cancelable")).toBe("true")
     fireEvent.click(secondary)
     expect(b.onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it("subscription state with unknown flags checks renewal instead of offering actions", () => {
+    const b = billing()
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+      />,
+    )
+    const secondary = screen.getByTestId("access-card-secondary")
+    expect(secondary.textContent).toContain("Проверяем автопродление")
+    expect((secondary as HTMLButtonElement).disabled).toBe(true)
+    const root = secondary.closest("[data-renewal]") as HTMLElement
+    expect(root.getAttribute("data-renewal")).toBe("loading")
+    expect(root.getAttribute("data-cancelable")).toBe("false")
+  })
+
+  it("subscription state with unavailable billing shows an honest unavailable secondary", () => {
+    const b = billing({ unavailable: true })
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+      />,
+    )
+    const secondary = screen.getByTestId("access-card-secondary")
+    expect(secondary.textContent).toContain("Управление подпиской недоступно")
+    expect((secondary as HTMLButtonElement).disabled).toBe(true)
   })
 
   it("keeps the test-only monetization stub copy unchanged", () => {

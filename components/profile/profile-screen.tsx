@@ -85,6 +85,8 @@ export function ProfileScreen({
   useEffect(() => {
     // Renewal/cancel semantics come from the BACKEND state machine
     // (SubscriptionStatusResponse.renewing/cancelable), never UI-derived.
+    // billingFlow.statusRevision re-triggers this read after every
+    // successful buy/cancel — flags never stay stale behind the ledger.
     if (currentState !== "subscription" || !billingFlow.ready || billingFlow.unavailable) {
       setSubFlags(null)
       return
@@ -100,7 +102,7 @@ export function ProfileScreen({
     return () => {
       cancelled = true
     }
-  }, [currentState, billingFlow.ready, billingFlow.unavailable])
+  }, [currentState, billingFlow.ready, billingFlow.unavailable, billingFlow.statusRevision])
 
   const billingBusy = billingFlow.phase === "starting" || billingFlow.phase === "waiting"
   const billing = {

@@ -837,10 +837,6 @@ class BillingService:
             return owner == str(payment.subscription_id)
         return owner == self._expected_purchase_owner_id(payment)
 
-    def _payment_matches(self, payment: Payment, remote: dict) -> bool:
-        # Succeeded-path matcher: the strict identity plus the paid flag.
-        return bool(remote["paid"]) and self._identity_matches(payment, remote)
-
     @staticmethod
     def _expected_purchase_owner_id(payment: Payment) -> str:
         # Owner is encoded in the idempotence key: purchase-<uuid> with an

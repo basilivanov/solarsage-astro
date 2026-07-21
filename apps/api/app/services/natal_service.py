@@ -39,9 +39,7 @@
 
 from __future__ import annotations
 
-import json
 import uuid
-from fastapi import HTTPException
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -441,7 +439,8 @@ class NatalService:
             )
         )
         cache_entry = cache_result.scalar_one_or_none()
-        chart_data = json.loads(cache_entry.raw_chart_json) if cache_entry else {}
+        # Preview components are built strictly from the natal context below;
+        # the cache row only gates regeneration, its payload is not read here.
 
         # Build preview components from natal context
         asc = next((a for a in natal_context.angles if a.name == "ASC"), None)

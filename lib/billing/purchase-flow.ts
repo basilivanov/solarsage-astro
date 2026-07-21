@@ -35,6 +35,7 @@
 //   - pollPurchaseStatus
 //   - pollSubscriptionStatus
 //   - PurchasePollTimeoutError
+//   - SubscriptionTerminalError
 // semantic_blocks:
 //   - PROVIDER_REDIRECT: Telegram-safe external open.
 //   - POLL: bounded backoff loops for purchase/subscription status;

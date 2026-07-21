@@ -14,7 +14,8 @@
 // owns:
 //   - lib/hooks/use-subscription-purchase.ts
 // inputs: onActivated callback (access refresh of the caller).
-// outputs: products (month/year), phase, errorMessage, buy/cancel actions.
+// outputs: products (month/year), phase, errorMessage, buy/cancel actions,
+//   statusRevision (bumps on successful buy/cancel for status re-reads).
 // dependencies: lib/api/payment, lib/billing/purchase-flow.
 // side_effects: credentialed API calls; opens provider checkout.
 // emitted_logs: none.
@@ -33,6 +34,8 @@
 //   - CATALOG_LOAD: products fetch with unavailable fallback.
 //   - BUY: start -> provider checkout -> bounded status poll.
 //   - CANCEL: cancel subscription (paid period is kept server-side).
+//   - REVISION: statusRevision increments on successful buy/cancel so
+//     consumers re-read SubscriptionStatusResponse (flags never go stale).
 // owned_tests:
 //   - __tests__/billing/use-subscription-purchase.test.tsx
 // END_MODULE_MAP: M-FRONTEND-HOOK-USE-SUBSCRIPTION-PURCHASE
@@ -63,6 +66,10 @@ export function useSubscriptionPurchase(onActivated?: () => void) {
   const [unavailable, setUnavailable] = useState(false)
   const [phase, setPhase] = useState<SubscriptionPurchasePhase>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // Bumped on every SUCCESSFUL buy/cancel: consumers re-read the subscription
+  // status instead of trusting stale renewing/cancelable flags. Failures
+  // never bump it.
+  const [statusRevision, setStatusRevision] = useState(0)
   const mountedRef = useRef(true)
   const onActivatedRef = useRef(onActivated)
   onActivatedRef.current = onActivated
@@ -96,6 +103,7 @@ export function useSubscriptionPurchase(onActivated?: () => void) {
       await pollSubscriptionStatus(started.subscriptionId)
       if (!mountedRef.current) return
       setPhase("success")
+      setStatusRevision((v) => v + 1)
       onActivatedRef.current?.()
     } catch (error) {
       if (!mountedRef.current) return
@@ -114,6 +122,7 @@ export function useSubscriptionPurchase(onActivated?: () => void) {
     setErrorMessage(null)
     try {
       await cancelSubscription()
+      setStatusRevision((v) => v + 1)
       onActivatedRef.current?.()
     } catch (error) {
       if (!mountedRef.current) return
@@ -124,7 +133,7 @@ export function useSubscriptionPurchase(onActivated?: () => void) {
 
   const month = products?.find((p) => p.slug === "subscription_month") ?? null
   const year = products?.find((p) => p.slug === "subscription_year") ?? null
-  return { phase, errorMessage, buy, cancel, month, year, unavailable, ready: products !== null }
+  return { phase, errorMessage, buy, cancel, month, year, unavailable, ready: products !== null, statusRevision }
 }
 
 export function formatPriceRubles(kopecks: number): string {
