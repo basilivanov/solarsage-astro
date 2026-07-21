@@ -37,7 +37,10 @@
 #   - A payment is marked succeeded ONLY when its fulfillment target
 #     (product row without the is_active sales filter + owner row) exists;
 #     otherwise it stays pending and observable (billing.fulfillment_blocked)
-#     so a later webhook/reconciliation can still grant.
+#     so a later webhook/reconciliation can still grant. An in-flight renewal
+#     that succeeds AFTER a user cancel fulfills exactly the paid period once
+#     (status stays canceled, next_charge_at NULL); an initial payment of a
+#     canceled start is never resurrected.
 #   - Same-key provider retries happen only inside the 24h YooKassa
 #     Idempotence-Key dedupe window anchored by payments.first_attempt_at;
 #     past the window an ambiguous rebill is NEVER auto-charged again.
@@ -495,6 +498,18 @@ class BillingService:
             return key[len("purchase-"):]
         return ""
 
+    @staticmethod
+    def _is_paid_canceled_renewal(payment: Payment, subscription: Subscription) -> bool:
+        # An IN-FLIGHT renewal (rebill- key) of a subscription that was active
+        # (has a paid period) and was then canceled: the money was taken for
+        # the next period before the cancel landed, so the paid period must
+        # be honored — WITHOUT resurrecting the subscription.
+        return (
+            subscription.status == "canceled"
+            and (payment.idempotence_key or "").startswith("rebill-")
+            and subscription.current_period_end is not None
+        )
+
     async def _fulfillment_block_reason(self, payment: Payment, product: Product) -> str | None:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._fulfillment_block_reason
         # purpose: Decide whether a verified succeeded payment can be granted
@@ -503,6 +518,8 @@ class BillingService:
         # inputs: payment (locked row), product (unfiltered catalog row).
         # returns: None when fulfillment may proceed, else one of
         #   owner_missing | subscription_inactive | unknown_product_type.
+        #   A paid in-flight renewal of a canceled subscription is NOT a gap:
+        #   it fulfills the paid period while the subscription stays canceled.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._fulfillment_block_reason
         if product.product_type == "subscription_recurrent":
             if payment.subscription_id is None:
@@ -513,10 +530,12 @@ class BillingService:
             subscription = result.scalar_one_or_none()
             if subscription is None:
                 return "owner_missing"
-            if subscription.status not in ("pending", "past_due", "active"):
-                # canceled/expired: never resurrect via webhook.
-                return "subscription_inactive"
-            return None
+            if subscription.status in ("pending", "past_due", "active"):
+                return None
+            if self._is_paid_canceled_renewal(payment, subscription):
+                return None
+            # canceled initial payment / expired: never resurrect via webhook.
+            return "subscription_inactive"
         if product.product_type == "one_time":
             result = await self.db.execute(
                 select(Purchase).where(Purchase.payment_id == payment.id)
@@ -553,8 +572,16 @@ class BillingService:
             base_end = subscription.current_period_end or now
             subscription.current_period_end = base_end + timedelta(days=days)
             subscription.next_charge_at = base_end + timedelta(days=days)
+        elif self._is_paid_canceled_renewal(payment, subscription):
+            # In-flight renewal that succeeded AFTER the user's cancel: honor
+            # exactly the paid period (extend access from the paid period
+            # end) but NEVER resurrect — status stays canceled and
+            # next_charge_at stays NULL, so no future charge can happen.
+            base_end = subscription.current_period_end or now
+            subscription.current_period_end = base_end + timedelta(days=days)
+            subscription.next_charge_at = None
         else:
-            # canceled/expired: never resurrect via webhook.
+            # canceled initial payment / expired: never resurrect via webhook.
             log_event("billing.webhook_rejected", msg="webhook for inactive subscription", level="warning")
             return
 

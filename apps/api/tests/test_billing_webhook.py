@@ -14,8 +14,9 @@
 # side_effects: test DB rows only.
 # emitted_logs: none.
 # invariants:
-#   - Non-allowlisted source -> 403; allowlisted unknown payment -> no grant;
-#     forged amount/status -> rejected; valid -> fulfilled exactly once.
+#   - Non-allowlisted source -> 403; transient local gap (unknown payment,
+#     missing owner) -> 500 so YooKassa redelivers; forged amount/status ->
+#     rejected (200 ack, no grant); valid -> fulfilled exactly once (200).
 # failure_policy: assertion failure.
 # END_MODULE_CONTRACT: M-TESTS-BILLING_WEBHOOK
 
@@ -30,7 +31,7 @@ from sqlalchemy import select
 
 from app.api.payment import _webhook_source_allowed
 from app.core.config import settings
-from app.db.models import AccessLedger, Payment, User
+from app.db.models import AccessLedger, HoraryCredit, Payment, Purchase, User
 from app.services.billing_service import BillingService
 from app.services.product_catalog import seed_products
 
@@ -217,9 +218,12 @@ async def test_webhook_amount_mismatch_rejected(
 
 
 @pytest.mark.asyncio
-async def test_webhook_unknown_payment_does_not_fail(
+async def test_webhook_unknown_payment_is_retryable(
     async_client: AsyncClient, db_session, monkeypatch
 ) -> None:
+    """Early webhook before the local commit: unknown_payment is a TRANSIENT
+    gap -> 500, so YooKassa redelivers (up to 24h) instead of the grant being
+    silently lost behind a false 200 ack."""
     monkeypatch.setattr(settings, "yookassa_enabled", True)
     monkeypatch.setattr("app.api.payment._webhook_source_allowed", lambda request: True)
     monkeypatch.setattr(
@@ -230,4 +234,42 @@ async def test_webhook_unknown_payment_does_not_fail(
         "/api/payment/webhook/yookassa",
         json={"type": "notification", "event": "payment.succeeded", "object": {"id": "prov-unknown"}},
     )
+    assert r.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_webhook_transient_owner_gap_retried_then_acked(
+    async_client: AsyncClient, db_session, monkeypatch
+) -> None:
+    """Transient owner gap -> 500 (YooKassa redelivers); after the gap is
+    repaired the redelivery is acked 200 and fulfills exactly once."""
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+    monkeypatch.setattr("app.api.payment._webhook_source_allowed", lambda request: True)
+    remote: dict = {}
+    monkeypatch.setattr(
+        "app.services.billing_service.get_yookassa_client",
+        lambda: FakeClient(remote),
+    )
+
+    await seed_products(db_session)
+    user = User(id=uuid.uuid4(), tg_user_id=900022)
+    db_session.add(user)
+    await db_session.commit()
+    service = BillingService(db_session)
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    purchase = (await db_session.execute(select(Purchase))).scalar_one()
+    purchase.payment_id = None  # transient local gap
+    await db_session.commit()
+
+    remote[payment.provider_payment_id] = _remote(payment, str(started["purchase_id"]))
+    body = {"type": "notification", "event": "payment.succeeded", "object": {"id": payment.provider_payment_id}}
+    r = await async_client.post("/api/payment/webhook/yookassa", json=body)
+    assert r.status_code == 500
+    assert (await db_session.execute(select(HoraryCredit))).scalars().all() == []
+
+    purchase.payment_id = payment.id  # gap repaired before the redelivery
+    await db_session.commit()
+    r = await async_client.post("/api/payment/webhook/yookassa", json=body)
     assert r.status_code == 200
+    assert (await db_session.execute(select(HoraryCredit))).scalar_one().amount == 1

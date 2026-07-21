@@ -37,7 +37,8 @@
 #     whose provider state matches an authenticated GET by id.
 #   - synastry stays fail-closed (not sellable).
 # failure_policy: 400/404/409 domain mapping; 503 when disabled; 403 for a
-#   non-allowlisted webhook source.
+#   non-allowlisted webhook source; 500 for a TRANSIENT webhook gap so
+#   YooKassa redelivers (up to 24h per the official webhook contract).
 # END_MODULE_CONTRACT: M-API-PAYMENT
 
 # START_MODULE_MAP: M-API-PAYMENT
@@ -266,6 +267,22 @@ async def start_purchase(
 
 
 # START_BLOCK: YOOKASSA_WEBHOOK_ENDPOINT
+# Ack classification (YooKassa retries any non-200 for up to 24h):
+# terminal/processed/duplicate/mismatch/canceled -> 200; transient local gaps
+# -> retryable 5xx so a redelivery can fulfill after the gap closes.
+_RETRYABLE_WEBHOOK_REASONS = frozenset(
+    {
+        # Early webhook before provider_payment_id was committed locally
+        # (webhook vs create-response order is NOT guaranteed).
+        "unknown_payment",
+        # Owner/product gaps: local state may be repaired before a redelivery.
+        "owner_missing",
+        "product_missing",
+        "unknown_product_type",
+    }
+)
+
+
 @router.post("/api/payment/webhook/yookassa")
 async def yookassa_webhook(
     request: Request,
@@ -276,8 +293,12 @@ async def yookassa_webhook(
     #   IPs and ONLY after an authenticated provider GET by id (the payload
     #   alone never grants anything).
     # inputs: raw YooKassa notification (no session, no trust).
-    # returns: {"ok": true} (always 200 for a well-formed allowlisted event;
-    #   403 for a non-allowlisted source; 503 when payments are disabled).
+    # returns: {"ok": true} with 200 for terminal outcomes (fulfilled,
+    #   duplicate, mismatch, canceled, inactive, untracked event); 500 for a
+    #   TRANSIENT local gap (unknown_payment / owner_missing / product_missing
+    #   / unknown_product_type / provider non-final) so YooKassa's redelivery
+    #   (up to 24h) can complete the grant; 403 non-allowlisted source; 503
+    #   when payments are disabled.
     # side_effects: idempotent fulfillment via BillingService.
     # error_behavior: 403 non-allowlisted source; 400 malformed body.
     # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.yookassa_webhook
@@ -299,6 +320,10 @@ async def yookassa_webhook(
         raise HTTPException(status_code=400, detail="Malformed notification")
 
     service = BillingService(db)
-    await service.verify_and_process_webhook(provider_payment_id)
+    result = await service.verify_and_process_webhook(provider_payment_id)
+    if not result.get("processed"):
+        reason = str(result.get("reason", ""))
+        if reason in _RETRYABLE_WEBHOOK_REASONS or reason.startswith("provider_status_"):
+            raise HTTPException(status_code=500, detail="Temporary processing failure")
     return {"ok": True}
 # END_BLOCK: YOOKASSA_WEBHOOK_ENDPOINT

@@ -1143,3 +1143,84 @@ async def test_missing_idempotence_key_fails_closed(db_session) -> None:
     )
     with pytest.raises(RuntimeError, match="PAYMENT_INVARIANT_VIOLATION"):
         BillingService._require_idempotence_key(payment)
+
+
+# ---- In-flight renewal succeeding after a user cancel ----
+
+@pytest.mark.asyncio
+async def test_inflight_rebill_fulfilled_after_cancel_keeps_canceled(db_session, fake_client, monkeypatch) -> None:
+    """An in-flight renewal that succeeds AFTER the user's cancel must honor
+    the paid period exactly once (the money never vanishes) while the
+    subscription stays canceled with next_charge_at NULL — never resurrected,
+    never re-charged. Duplicate webhook stays idempotent."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    await seed_products(db_session)
+    user = await _user(db_session, 900044)
+    service = BillingService(db_session)
+
+    # Activate: initial payment fulfilled -> active with a paid period.
+    started = await service.start_subscription(user.id, "subscription_month")
+    first_payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[first_payment.provider_payment_id] = _remote_for(
+        first_payment, str(started["subscription_id"])
+    )
+    await service.verify_and_process_webhook(first_payment.provider_payment_id)
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    first_end = sub.current_period_end
+
+    # Renewal becomes due and is charged (in-flight at the provider).
+    sub.next_charge_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+    assert await service.rebill_due_subscriptions() == 1
+    renewal = (
+        await db_session.execute(select(Payment).where(Payment.idempotence_key.like("rebill-%")))
+    ).scalar_one()
+
+    # The user cancels BEFORE the provider confirms the renewal.
+    canceled = await service.cancel_subscription(user.id, "user_request")
+    assert canceled["status"] == "canceled"
+
+    # The in-flight renewal succeeds: fulfill the paid period exactly once.
+    fake_client.remote[renewal.provider_payment_id] = _remote_for(renewal, str(sub.id))
+    result = await service.verify_and_process_webhook(renewal.provider_payment_id)
+    assert result["processed"] is True
+    await db_session.refresh(sub)
+    assert sub.status == "canceled"
+    assert sub.next_charge_at is None
+    assert sub.current_period_end == first_end + timedelta(days=30)
+    ledgers = (await db_session.execute(select(AccessLedger))).scalars().all()
+    assert len(ledgers) == 2
+
+    # Duplicate delivery: idempotent — no second extension.
+    again = await service.verify_and_process_webhook(renewal.provider_payment_id)
+    assert again["reason"] == "already_fulfilled"
+    await db_session.refresh(sub)
+    assert sub.status == "canceled"
+    assert sub.next_charge_at is None
+    assert sub.current_period_end == first_end + timedelta(days=30)
+    assert len((await db_session.execute(select(AccessLedger))).scalars().all()) == 2
+
+
+@pytest.mark.asyncio
+async def test_canceled_initial_payment_not_resurrected(db_session, fake_client) -> None:
+    """An initial payment linked to a canceled (never-active) start must NOT
+    activate anything: subscription_inactive, payment stays pending, no
+    access ledger. Only paid renewals are honored after a cancel."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900045)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    sub.status = "canceled"  # legacy/manual state: never activated
+    await db_session.commit()
+
+    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["subscription_id"]))
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result == {"processed": False, "reason": "subscription_inactive"}
+    await db_session.refresh(sub)
+    assert sub.status == "canceled"
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    assert (await db_session.execute(select(AccessLedger))).scalars().all() == []
