@@ -90,16 +90,14 @@ Billing secrets live ONLY in this root-owned env file, never in the repository. 
 
 ### 2.2 Recurrent rebill job
 
-Auto-renewal runs ONLY through the canonical one-shot compose profile `billing-rebill` (the installed `app.jobs.billing_rebill` module inside the immutable API image — no mutable checkout, no Prefect/new harness). It is hard-gated by `YOOKASSA_RECURRENT_ENABLED` and exits 0 doing nothing while the flag is off. Schedule it only after the first manual payment is proven, e.g. via cron on the host:
+Auto-renewal runs ONLY through the canonical orchestrator subcommand `billing-rebill` of the installed prod-orchestrator. The subcommand PARSES (never sources/evals) the release record, requires the running `solarsage-api` container to match the active record exactly, and then runs the fixed job argv (`python -m app.jobs.billing_rebill`) in a throwaway container of the pinned active api image via the compose one-shot `billing-rebill` profile — no mutable checkout, no Prefect/new harness, no shell from state files. It is hard-gated by `YOOKASSA_RECURRENT_ENABLED` and exits 0 doing nothing while the flag is off. Schedule it only after the first manual payment is proven, via cron on the host:
 
 ```bash
 # /etc/cron.d/solarsage-billing-rebill (runs every 30 minutes)
-# Image/SHA come from the orchestrator release record (the running release),
-# NOT from app.env, which deliberately never carries RELEASE_SHA.
-*/30 * * * * root bash -lc 'set -a && . /etc/solarsage/app.env && . /var/lib/solarsage/orchestrator/release-record && set +a && RELEASE_SHA="$active" API_IMAGE="$active_api_image" SIDECAR_IMAGE="$active_sidecar_image" FRONTEND_IMAGE="$active_frontend_image" docker compose -f /etc/solarsage/compose/docker-compose.app.yml --profile billing-rebill run --rm --no-deps billing-rebill'
+*/30 * * * * root /usr/local/libexec/solarsage/prod-orchestrator billing-rebill
 ```
 
-Equivalent fallback when the API container is already running the target release: `docker exec solarsage-api python -m app.jobs.billing_rebill`.
+NEVER source `/var/lib/solarsage/orchestrator/release-record` (or any state file) from a root cron — that is shell execution of operator-writable state and a root-RCE vector. The orchestrator subcommand is the only sanctioned path; do not substitute ad-hoc `docker compose run` / `docker exec` one-liners for it.
 
 Until this job is actually scheduled, `YOOKASSA_RECURRENT_ENABLED` MUST stay `false` — the launch never silently advertises auto-renewal without a scheduler.
 

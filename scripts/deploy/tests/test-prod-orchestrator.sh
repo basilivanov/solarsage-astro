@@ -34,7 +34,7 @@
 #   - main
 # semantic_blocks:
 #   - HARNESS_SETUP: sandbox layout, mocks, env file with canaries
-#   - CONTRACT_CASES: OC01..OC30 orchestrator matrix
+#   - CONTRACT_CASES: OC01..OC31 orchestrator matrix
 # END_MODULE_MAP: M-TEST-PROD-ORCHESTRATOR
 
 set -euo pipefail
@@ -126,6 +126,17 @@ if [ "${1:-}" = "image" ] && [ "${2:-}" = "inspect" ] && [ "${3:-}" = "--format"
   esac
   exit 2
 fi
+if [ "${1:-}" = "inspect" ]; then
+  # Plain container inspect: solarsage-api running state + Config.Image.
+  printf 'inspect %s\n' "${*:2}" >> "$TEST_DIR/inspect-ledger"
+  [ -f "$TEST_DIR/fail-inspect" ] && exit 1
+  img=$(cat "$TEST_DIR/active-api-image" 2>/dev/null || echo "")
+  [ -n "$img" ] || exit 1
+  running="true"
+  [ -f "$TEST_DIR/api-stopped" ] && running="false"
+  printf '%s %s\n' "$running" "$img"
+  exit 0
+fi
 args="$*"
 case "$args" in
   "compose --env-file "*" -f "*" config --quiet")
@@ -169,6 +180,13 @@ case "$args" in
   "compose --env-file "*" -f "*" --profile migrate run --rm migrate")
     env | grep -E '^(API|SIDECAR|FRONTEND)_IMAGE=' >> "$TEST_DIR/env-ledger" || true
     [ -f "$TEST_DIR/fail-migrate" ] && exit 1
+    exit 0
+    ;;
+  "compose --env-file "*" -f "*" --profile billing-rebill run --rm --no-deps billing-rebill")
+    env | grep -E '^(API|SIDECAR|FRONTEND)_IMAGE=' >> "$TEST_DIR/env-ledger" || true
+    env | grep -E '^RELEASE_SHA=' >> "$TEST_DIR/env-ledger" || true
+    [ -f "$TEST_DIR/fail-billing-rebill" ] && exit 1
+    printf 'rebill skipped: YOOKASSA_RECURRENT_ENABLED=false\n'
     exit 0
     ;;
   "run -d --name solarsage-restore-rehearsal-"*)
@@ -338,7 +356,9 @@ reset_sandbox() {
         "$TEST_DIR/fail-db" "$TEST_DIR/fail-dump" "$TEST_DIR/fail-restore-list" \
         "$TEST_DIR/fail-restic" "$TEST_DIR/fail-health-all" "$TEST_DIR/fail-health-for" "$TEST_DIR/fail-smoke-for" \
         "$TEST_DIR/fail-label-for" "$TEST_DIR/fail-digest-for" "$TEST_DIR/fail-psql" \
-        "$TEST_DIR/fail-migrate" "$TEST_DIR/fail-check-heads" "$TEST_DIR/fail-rm-rehearsal"
+        "$TEST_DIR/fail-migrate" "$TEST_DIR/fail-check-heads" "$TEST_DIR/fail-rm-rehearsal" \
+        "$TEST_DIR/fail-inspect" "$TEST_DIR/fail-billing-rebill" "$TEST_DIR/api-stopped" \
+        "$TEST_DIR/active-api-image" "$TEST_DIR/inspect-ledger"
   rm -rf "$TEST_DIR/state" "$TEST_DIR/backups"
   mkdir -p "$TEST_DIR/state" "$TEST_DIR/backups"
   : > "$TEST_DIR/ledger"
@@ -1136,6 +1156,87 @@ oc30() {
 }
 try_case "OC30 status prints read-only migration marker evidence" oc30
 
+oc31() {
+  # START_BLOCK: OC31_BILLING_REBILL_CANONICAL
+  local rc=0
+  # Happy path: valid record + matching running container -> fixed job argv
+  # with record-validated pinned digests. The record is never sourced.
+  reset_sandbox
+  write_record_fixture "$SHA_A" ""
+  printf '%s\n' "$(digest_for api "$SHA_A")" > "$TEST_DIR/active-api-image"
+  run_orch billing-rebill
+  expect_rc 0 "OC31" || rc=1
+  assert_out_has "rebill skipped: YOOKASSA_RECURRENT_ENABLED=false" || rc=1
+  grep -qF -- "--profile billing-rebill run --rm --no-deps billing-rebill" "$TEST_DIR/ledger" || { case_fail "OC31 rebill run missing"; rc=1; }
+  grep -qF "API_IMAGE=$(digest_for api "$SHA_A")" "$TEST_DIR/env-ledger" || { case_fail "OC31 rebill did not use the record api digest"; rc=1; }
+  grep -qF "RELEASE_SHA=$SHA_A" "$TEST_DIR/env-ledger" || { case_fail "OC31 rebill did not use the record SHA"; rc=1; }
+  grep -qF "solarsage-api" "$TEST_DIR/inspect-ledger" || { case_fail "OC31 container identity was not verified"; rc=1; }
+  # No record at all: fail closed before any container/job interaction.
+  reset_sandbox
+  run_orch billing-rebill
+  expect_rc 78 "OC31-norecord" || rc=1
+  assert_err_has "no active release record" || rc=1
+  if grep -qF "billing-rebill" "$TEST_DIR/ledger"; then
+    case_fail "OC31 ran the job without a release record"
+    rc=1
+  fi
+  # Tampered record with embedded shell: PARSED, never sourced — the payload
+  # must not execute and the malformed field fails closed.
+  reset_sandbox
+  write_record_fixture "$SHA_A" ""
+  printf '%s\n' "$(digest_for api "$SHA_A")" > "$TEST_DIR/active-api-image"
+  sed -i "s|^active=.*|active=\$(touch $TEST_DIR/pwned)|" "$TEST_DIR/state/release-record"
+  run_orch billing-rebill
+  expect_rc 78 "OC31-tampered" || rc=1
+  assert_err_has "record active SHA is malformed" || rc=1
+  [ ! -e "$TEST_DIR/pwned" ] || { case_fail "OC31 record was sourced/evaluated — shell payload executed"; rc=1; }
+  if grep -qF "billing-rebill" "$TEST_DIR/ledger"; then
+    case_fail "OC31 ran the job with a tampered record"
+    rc=1
+  fi
+  # Container missing: nothing to rebill against.
+  reset_sandbox
+  write_record_fixture "$SHA_A" ""
+  : > "$TEST_DIR/fail-inspect"
+  run_orch billing-rebill
+  expect_rc 78 "OC31-nocontainer" || rc=1
+  assert_err_has "api container solarsage-api not found" || rc=1
+  # Container stopped.
+  reset_sandbox
+  write_record_fixture "$SHA_A" ""
+  printf '%s\n' "$(digest_for api "$SHA_A")" > "$TEST_DIR/active-api-image"
+  : > "$TEST_DIR/api-stopped"
+  run_orch billing-rebill
+  expect_rc 78 "OC31-stopped" || rc=1
+  assert_err_has "is not running" || rc=1
+  # Container image mismatch vs the active record: stale/mid-deploy state.
+  reset_sandbox
+  write_record_fixture "$SHA_A" ""
+  printf '%s\n' "$(digest_for api "$SHA_B")" > "$TEST_DIR/active-api-image"
+  run_orch billing-rebill
+  expect_rc 78 "OC31-mismatch" || rc=1
+  assert_err_has "does not match the active release record" || rc=1
+  if grep -qF "billing-rebill" "$TEST_DIR/ledger"; then
+    case_fail "OC31 ran the job against a mismatched container"
+    rc=1
+  fi
+  # Job failure propagates non-zero.
+  reset_sandbox
+  write_record_fixture "$SHA_A" ""
+  printf '%s\n' "$(digest_for api "$SHA_A")" > "$TEST_DIR/active-api-image"
+  : > "$TEST_DIR/fail-billing-rebill"
+  run_orch billing-rebill
+  expect_rc 1 "OC31-jobfail" || rc=1
+  # CLI gate: no extra arguments accepted.
+  reset_sandbox
+  run_orch billing-rebill extra
+  expect_rc 78 "OC31-extra" || rc=1
+  assert_no_canary "OC31" || rc=1
+  return $rc
+  # END_BLOCK: OC31_BILLING_REBILL_CANONICAL
+}
+try_case "OC31 billing-rebill canonical validating subcommand" oc31
+
 # END_BLOCK: CONTRACT_CASES
 
 EXPECTED_IDS="$TEST_DIR/expected_ids"
@@ -1172,6 +1273,7 @@ OC27 RELEASE_SHA exported to compose config and activation
 OC28 deploy smoke failure proves rollback with byte-identical record
 OC29 deploy requires valid migration marker before activation
 OC30 status prints read-only migration marker evidence
+OC31 billing-rebill canonical validating subcommand
 EOF
 
 LEDGER_OK=0

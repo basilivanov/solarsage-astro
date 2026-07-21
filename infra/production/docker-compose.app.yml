@@ -188,8 +188,8 @@ services:
   billing-rebill:
     # Canonical one-shot rebill entrypoint: the installed app package runs
     # inside the same immutable API image (no mutable checkout on the host).
-    # Operator schedules: docker compose -f /etc/solarsage/compose/docker-compose.app.yml \
-    #   --profile billing-rebill run --rm --no-deps billing-rebill
+    # Invoked ONLY via the validating orchestrator subcommand:
+    #   /usr/local/libexec/solarsage/prod-orchestrator billing-rebill
     <<: *api-common
     container_name: solarsage-billing-rebill
     profiles: ["billing-rebill"]

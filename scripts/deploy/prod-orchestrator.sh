@@ -18,7 +18,7 @@
 #   - preflight <sha> | deploy <sha> --manual-confirm |
 #     rollback <sha> --manual-confirm | status |
 #     backup --manual-confirm | restore <dump> --manual-confirm |
-#     migrate <sha> --manual-confirm
+#     migrate <sha> --manual-confirm | billing-rebill
 # outputs: exit 0 on proven success, non-zero otherwise (75 on busy lock).
 # dependencies:
 #   - /etc/solarsage/compose/docker-compose.app.yml (installed canonical stack)
@@ -54,6 +54,9 @@
 #     manual pre-migration dump procedure.
 #   - No down -v, no DB volume mutation, no Nginx/systemd mutation, no arbitrary
 #     user-supplied shell, no secret values in stdout/stderr.
+#   - billing-rebill PARSES (never sources/evals) the release record, requires
+#     the running api container to match the active record exactly, and runs
+#     only the fixed job argv of the compose billing-rebill profile.
 #   - status is read-only; backup/restore are explicit manual commands.
 # failure_policy: fails closed on any validation, backup, pull, up or health
 #   failure; one exact rollback attempt after failed post-change health.
@@ -123,6 +126,7 @@ usage() {
   echo "       $0 backup --manual-confirm" >&2
   echo "       $0 restore <dump> --manual-confirm" >&2
   echo "       $0 migrate <sha> --manual-confirm" >&2
+  echo "       $0 billing-rebill" >&2
   exit 78
 }
 
@@ -681,6 +685,45 @@ migrate_cmd() {
 
 # END_BLOCK: ORCH_MIGRATE
 
+# START_BLOCK: ORCH_BILLING_REBILL
+
+billing_rebill_cmd() {
+  # START_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.billing_rebill_cmd
+  # purpose: Canonical unattended recurrent rebill entrypoint (operator
+  #   cron). The release record is PARSED and format-validated by
+  #   read_record_tuple — never sourced/evaluated, so a tampered state file
+  #   can never become shell code. The running api container must exist and
+  #   match the active record exactly; the job then runs as a FIXED argv in a
+  #   throwaway container of the pinned active api image (compose one-shot
+  #   billing-rebill profile).
+  # inputs: none (no arguments, no confirmation gate — the operator's cron is
+  #   the explicit scheduling decision; YOOKASSA_RECURRENT_ENABLED gates all
+  #   charging inside the job itself).
+  # returns: 0 on job success/skip; 78 on any validation failure; otherwise
+  #   the job's own non-zero exit code.
+  # side_effects: one compose run of the billing-rebill profile with
+  #   record-validated pinned digests; maintenance flock held by the caller.
+  # error_behavior: fails closed on missing/malformed record, missing/
+  #   stopped/mismatched api container, or env file contract violation.
+  # END_FUNCTION_CONTRACT: F-M-PROD-ORCHESTRATOR.billing_rebill_cmd
+  read_record_tuple
+  [ -n "$REC_ACTIVE" ] || fail "no active release record — rebill requires a proven deployment"
+  local cinfo crunning cimage
+  if ! cinfo=$("$DOCKER" inspect -f '{{.State.Running}} {{.Config.Image}}' solarsage-api 2>/dev/null); then
+    fail "api container solarsage-api not found — rebill requires the running canonical deployment"
+  fi
+  crunning=${cinfo%% *}
+  cimage=${cinfo#* }
+  [ "$crunning" = "true" ] || fail "api container solarsage-api is not running"
+  [ "$cimage" = "$REC_ACTIVE_API" ] || fail "api container image does not match the active release record"
+  export RELEASE_SHA="$REC_ACTIVE"
+  load_env_file
+  RELEASE_SHA="$REC_ACTIVE" API_IMAGE="$REC_ACTIVE_API" SIDECAR_IMAGE="$REC_ACTIVE_SIDECAR" FRONTEND_IMAGE="$REC_ACTIVE_FRONTEND" \
+    compose --profile billing-rebill run --rm --no-deps billing-rebill
+}
+
+# END_BLOCK: ORCH_BILLING_REBILL
+
 # START_BLOCK: ORCH_RESTORE
 
 restore_cmd() {
@@ -805,6 +848,11 @@ main() {
       require_confirm "$2"
       acquire_lock
       migrate_cmd "$1"
+      ;;
+    billing-rebill)
+      [ $# -eq 0 ] || usage
+      acquire_lock
+      billing_rebill_cmd
       ;;
     *)
       usage
