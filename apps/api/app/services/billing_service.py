@@ -45,7 +45,10 @@
 #     -attempt-N key, never reusing the canceled one.
 #   - YOOKASSA_ENABLED=false => all start/status paths fail 503 upstream.
 #   - YOOKASSA_RECURRENT_ENABLED=false => rebill performs zero charges.
-#   - Cancel never revokes the already-paid period.
+#   - Cancel never revokes the already-paid period; cancel applies only to
+#     active/past_due. A pending (unpaid) start is never silently abandoned
+#     (no provider cancel call exists, so its confirmation URL would stay
+#     payable) — plan switch is the explicit 409, not local cancel.
 #   - A reserved payment without idempotence_key is corrupted state: fail
 #     closed (RuntimeError), never charge on a silently substituted key.
 #   - No secrets, shop keys or raw provider payloads in logs.
@@ -337,20 +340,25 @@ class BillingService:
 
     async def cancel_subscription(self, user_id: uuid.UUID, reason: str | None) -> dict:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.cancel_subscription
-        # purpose: Cancel the user's LIVE subscription (pending/active/
-        #   past_due). The already-paid period is NEVER revoked — access
-        #   stays until the ledger end date. Canceling a pending (unpaid)
-        #   start simply abandons it and frees the one-live slot for a plan
-        #   switch.
+        # purpose: Cancel the user's PAYING subscription (active/past_due).
+        #   The already-paid period is NEVER revoked — access stays until the
+        #   ledger end date. A PENDING (unpaid) start is NOT locally
+        #   cancelable: without a provider cancel call its confirmation URL
+        #   stays payable and the user could pay into an abandoned owner, so
+        #   cancel is rejected explicitly and a plan switch stays the domain
+        #   409 on start (LIVE_SUBSCRIPTION_EXISTS), never silent abandonment.
         # inputs: user_id, reason.
         # returns: {"subscription_id": id|None, "status": "canceled"|"no_active_subscription"}
         # side_effects: updates Subscription.status to canceled and clears
         #   next_charge_at (no further rebill attempts).
-        # error_behavior: none raised for missing subscription.
+        # error_behavior: ValueError PENDING_SUBSCRIPTION_NOT_CANCELABLE when
+        #   only a pending start exists (-> API 409).
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.cancel_subscription
         subscription = await self._get_live_subscription(user_id)
         if subscription is None:
             return {"subscription_id": None, "status": "no_active_subscription"}
+        if subscription.status == "pending":
+            raise ValueError("PENDING_SUBSCRIPTION_NOT_CANCELABLE")
         subscription.status = "canceled"
         subscription.canceled_at = datetime.now(UTC)
         subscription.cancellation_reason = reason or "user_request"

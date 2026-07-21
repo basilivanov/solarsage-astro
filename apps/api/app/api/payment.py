@@ -163,6 +163,11 @@ def _domain_error(exc: ValueError) -> HTTPException:
             status_code=409,
             detail={"code": code, "message": "A live subscription already exists; cancel it before starting another"},
         )
+    if code == "PENDING_SUBSCRIPTION_NOT_CANCELABLE":
+        return HTTPException(
+            status_code=409,
+            detail={"code": code, "message": "An unpaid pending start cannot be canceled; it expires at the provider"},
+        )
     return HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": code})
 
 
@@ -230,7 +235,10 @@ async def cancel_subscription(
 ):
     _require_enabled()
     service = BillingService(db)
-    result = await service.cancel_subscription(user.id, body.reason)
+    try:
+        result = await service.cancel_subscription(user.id, body.reason)
+    except ValueError as exc:
+        raise _domain_error(exc) from exc
     return SubscriptionCancelResponse(**result)
 # END_BLOCK: SUBSCRIPTION_ENDPOINTS
 

@@ -841,22 +841,30 @@ async def test_cancel_past_due_keeps_paid_period(db_session, fake_client) -> Non
 
 
 @pytest.mark.asyncio
-async def test_cancel_pending_frees_plan_switch(db_session, fake_client) -> None:
-    """Canceling an UNPAID pending start abandons it and frees the one-live
-    slot, so the user can switch plans."""
+async def test_cancel_pending_rejected_without_provider_cancel(db_session, fake_client) -> None:
+    """NO local cancel of a pending start: without a provider cancel API the
+    confirmation URL stays payable and the user could pay into an abandoned
+    owner. Cancel is an explicit domain reject; the pending start keeps the
+    reuse path, and a plan switch stays the 409 on start."""
     await seed_products(db_session)
     user = await _user(db_session, 900035)
     service = BillingService(db_session)
 
     await service.start_subscription(user.id, "subscription_month")
-    canceled = await service.cancel_subscription(user.id, None)
-    assert canceled["status"] == "canceled"
+    with pytest.raises(ValueError, match="PENDING_SUBSCRIPTION_NOT_CANCELABLE"):
+        await service.cancel_subscription(user.id, None)
 
-    started = await service.start_subscription(user.id, "subscription_year")
-    assert started["status"] == "pending"
-    assert started["product_slug"] == "subscription_year"
-    subs = (await db_session.execute(select(Subscription))).scalars().all()
-    assert sorted(s.status for s in subs) == ["canceled", "pending"]
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "pending"  # no silent abandonment
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    assert payment.status == "pending"
+
+    # Same-plan start still reuses the pending start; cross-plan stays 409.
+    again = await service.start_subscription(user.id, "subscription_month")
+    assert again["status"] == "pending"
+    assert len(fake_client.calls) == 1
+    with pytest.raises(ValueError, match="LIVE_SUBSCRIPTION_EXISTS"):
+        await service.start_subscription(user.id, "subscription_year")
 
 
 # ---- Rebill: 24h dedupe window + known-canceled fresh key ----
