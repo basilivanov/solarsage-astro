@@ -23,6 +23,7 @@
 
 from __future__ import annotations
 
+import inspect
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -40,10 +41,15 @@ from app.db.models import (
 )
 from app.services.billing_service import BillingService
 from app.services.product_catalog import seed_products
+from app.services.yookassa_client import YooKassaClient
 
 
 class FakeYooKassaClient:
-    """In-test provider fake: records create calls, serves get_payment fakes."""
+    """In-test provider fake: records create calls, serves get_payment fakes.
+
+    Signatures mirror YooKassaClient exactly (keyword-only, no **kwargs): a
+    misspelled argument at a call site (e.g. ``amount_kopeks=``) raises
+    TypeError here instead of being silently swallowed by the fake."""
 
     def __init__(self, remote: dict | None = None):
         self.calls: list[tuple[str, dict]] = []
@@ -54,20 +60,101 @@ class FakeYooKassaClient:
         self.next_id += 1
         return f"prov-{self.next_id:04d}"
 
-    async def create_initial_payment(self, **kwargs):
-        self.calls.append(("initial", kwargs))
+    async def create_initial_payment(
+        self,
+        *,
+        user_id: uuid.UUID,
+        owner_id: uuid.UUID,
+        amount_kopecks: int,
+        currency: str,
+        description: str,
+        return_url: str,
+        product_slug: str,
+        idempotence_key: str,
+    ) -> dict:
+        self.calls.append(("initial", {
+            "user_id": user_id,
+            "owner_id": owner_id,
+            "amount_kopecks": amount_kopecks,
+            "currency": currency,
+            "description": description,
+            "return_url": return_url,
+            "product_slug": product_slug,
+            "idempotence_key": idempotence_key,
+        }))
         return {"provider_payment_id": self._new_id(), "confirmation_url": "https://pay.example/init", "status": "pending"}
 
-    async def create_one_time_payment(self, **kwargs):
-        self.calls.append(("one_time", kwargs))
+    async def create_one_time_payment(
+        self,
+        *,
+        user_id: uuid.UUID,
+        owner_id: uuid.UUID,
+        amount_kopecks: int,
+        currency: str,
+        description: str,
+        return_url: str,
+        product_slug: str,
+        idempotence_key: str,
+    ) -> dict:
+        self.calls.append(("one_time", {
+            "user_id": user_id,
+            "owner_id": owner_id,
+            "amount_kopecks": amount_kopecks,
+            "currency": currency,
+            "description": description,
+            "return_url": return_url,
+            "product_slug": product_slug,
+            "idempotence_key": idempotence_key,
+        }))
         return {"provider_payment_id": self._new_id(), "confirmation_url": "https://pay.example/once", "status": "pending"}
 
-    async def create_recurrent_payment(self, **kwargs):
-        self.calls.append(("rebill", kwargs))
+    async def create_recurrent_payment(
+        self,
+        *,
+        user_id: uuid.UUID,
+        owner_id: uuid.UUID,
+        payment_method_id: str,
+        amount_kopecks: int,
+        currency: str,
+        description: str,
+        product_slug: str,
+        period_label: str,
+        idempotence_key: str,
+    ) -> dict:
+        self.calls.append(("rebill", {
+            "user_id": user_id,
+            "owner_id": owner_id,
+            "payment_method_id": payment_method_id,
+            "amount_kopecks": amount_kopecks,
+            "currency": currency,
+            "description": description,
+            "product_slug": product_slug,
+            "period_label": period_label,
+            "idempotence_key": idempotence_key,
+        }))
         return {"provider_payment_id": self._new_id(), "status": "pending"}
 
     async def get_payment(self, provider_payment_id: str) -> dict:
         return self.remote[provider_payment_id]
+
+
+def test_fake_client_mirrors_real_provider_signatures() -> None:
+    """Guard against contract drift: the fake must expose the SAME typed
+    keyword-only parameters as YooKassaClient, so a typo'd kwarg at any call
+    site (e.g. amount_kopeks) fails with TypeError instead of passing through
+    a **kwargs fake. Also proves no VAR_KEYWORD (**kwargs) crept back in."""
+    for name in (
+        "create_initial_payment",
+        "create_one_time_payment",
+        "create_recurrent_payment",
+        "get_payment",
+    ):
+        real = inspect.signature(getattr(YooKassaClient, name))
+        fake = inspect.signature(getattr(FakeYooKassaClient, name))
+        assert list(fake.parameters) == list(real.parameters), name
+        assert all(
+            p.kind is not inspect.Parameter.VAR_KEYWORD for p in fake.parameters.values()
+        ), name
 
 
 def _remote_for(payment: Payment, owner_id: str, **overrides) -> dict:
