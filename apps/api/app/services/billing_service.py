@@ -43,8 +43,11 @@
 #     (status stays canceled, next_charge_at NULL); an initial payment of a
 #     canceled start is never resurrected.
 #   - Same-key provider retries happen only inside the 24h YooKassa
-#     Idempotence-Key dedupe window anchored by payments.first_attempt_at;
-#     past the window an ambiguous rebill is NEVER auto-charged again.
+#     Idempotence-Key dedupe window anchored by payments.first_attempt_at
+#     (committed BEFORE the POST in every charge path: initial, one-time,
+#     rebill); past the window an ambiguous payment is NEVER auto-charged
+#     again — start flows fail with PAYMENT_NEEDS_RECONCILIATION (API 409),
+#     rebill skips charging, and the owner/payment stays observable.
 #   - A rebill cycle always resolves its LATEST attempt first: a live
 #     (non-canceled) latest attempt is reused/skipped, never re-charged; a
 #     fresh -a<N> key is reserved ONLY when the latest attempt is known
@@ -165,6 +168,8 @@ class BillingService:
         #   capture=true.
         # error_behavior: ValueError on unknown/wrong product or when another
         #   live subscription exists (LIVE_SUBSCRIPTION_EXISTS -> 409);
+        #   ValueError PAYMENT_NEEDS_RECONCILIATION when the 24h dedupe window
+        #   of the first attempt expired (-> 409, no provider POST);
         #   RuntimeError on a broken reservation (missing idempotence key);
         #   YooKassaError on provider failure (reservation stays pending).
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.start_subscription
@@ -204,7 +209,15 @@ class BillingService:
         if payment.provider_payment_id is None:
             # First external attempt (or reconciliation after a timeout): the
             # SAME idempotence key makes YooKassa dedupe the charge, so a
-            # retry merges into the existing payment instead of doubling it.
+            # retry merges into the existing payment instead of doubling it —
+            # but ONLY inside the provider's 24h dedupe window.
+            self._assert_within_dedupe_window(payment)
+            if payment.first_attempt_at is None:
+                # Durable attempt anchor COMMITTED before the external POST:
+                # the dedupe window is computed from the row, not from
+                # process memory, even when the POST outcome stays unknown.
+                payment.first_attempt_at = datetime.now(UTC)
+                await self.db.commit()
             client = get_yookassa_client()
             result = await client.create_initial_payment(
                 user_id=user_id,
@@ -245,8 +258,10 @@ class BillingService:
         # side_effects: commits Purchase + Payment reservation and the
         #   purchase.payment_id link; POST to YooKassa with capture=true.
         # error_behavior: ValueError on unknown/inactive product (synastry is
-        #   fail-closed) or missing natal context; RuntimeError on a broken
-        #   reservation (missing idempotence key); YooKassaError upstream.
+        #   fail-closed) or missing natal context; ValueError
+        #   PAYMENT_NEEDS_RECONCILIATION when the 24h dedupe window expired
+        #   (-> 409, no provider POST); RuntimeError on a broken reservation
+        #   (missing idempotence key); YooKassaError upstream.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.start_purchase
         product = await self._get_product(product_slug)
         if product is None or product.product_type != "one_time":
@@ -289,6 +304,13 @@ class BillingService:
             await self.db.commit()
 
         if payment.provider_payment_id is None:
+            # Same dedupe-window contract as the subscription start: retry
+            # with the SAME key only inside 24h; past it, fail closed with a
+            # domain error and leave the pending owner/payment observable.
+            self._assert_within_dedupe_window(payment)
+            if payment.first_attempt_at is None:
+                payment.first_attempt_at = datetime.now(UTC)
+                await self.db.commit()
             client = get_yookassa_client()
             result = await client.create_one_time_payment(
                 user_id=user_id,
@@ -679,8 +701,9 @@ class BillingService:
 
     # START_BLOCK: BILLING_REBILL
     # YooKassa guarantees Idempotence-Key dedupe only for 24h after the first
-    # attempt. Same-key retries are allowed strictly inside this window.
-    _REBILL_KEY_DEDUPE_WINDOW = timedelta(hours=24)
+    # attempt. Same-key retries are allowed strictly inside this window —
+    # for rebill AND for initial/one-time start charges alike.
+    _KEY_DEDUPE_WINDOW = timedelta(hours=24)
 
     async def rebill_due_subscriptions(self) -> int:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.rebill_due_subscriptions
@@ -756,7 +779,7 @@ class BillingService:
                 first_attempt_at = first_attempt_at.replace(tzinfo=UTC)
             if (
                 first_attempt_at is not None
-                and now - first_attempt_at >= self._REBILL_KEY_DEDUPE_WINDOW
+                and now - first_attempt_at >= self._KEY_DEDUPE_WINDOW
             ):
                 # Past the dedupe window the first attempt's outcome is
                 # unknowable client-side and the provider no longer dedupes
@@ -1002,6 +1025,34 @@ class BillingService:
             )
             raise RuntimeError("PAYMENT_INVARIANT_VIOLATION")
         return payment.idempotence_key
+
+    def _assert_within_dedupe_window(self, payment: Payment) -> None:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._assert_within_dedupe_window
+        # purpose: Fail-closed guard for start-flow retries. YooKassa dedupes
+        #   an Idempotence-Key only for 24h after the FIRST attempt; past the
+        #   window the outcome of that attempt is unknowable client-side, so
+        #   a same-key retry could double-charge. Inside the window the retry
+        #   is safe (provider dedupes); after it the pending owner/payment
+        #   stays observable for reconciliation (a webhook can still fulfill)
+        #   and NO provider POST happens.
+        # inputs: payment (reserved row about to be (re-)charged).
+        # returns: None when the retry is inside the 24h window.
+        # side_effects: system.error log on violation.
+        # error_behavior: raises ValueError PAYMENT_NEEDS_RECONCILIATION past
+        #   the window (-> API 409).
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._assert_within_dedupe_window
+        first_attempt_at = payment.first_attempt_at
+        # SQLite returns tz-naive datetimes; Postgres returns aware ones.
+        if first_attempt_at is not None and first_attempt_at.tzinfo is None:
+            first_attempt_at = first_attempt_at.replace(tzinfo=UTC)
+        if first_attempt_at is not None and datetime.now(UTC) - first_attempt_at >= self._KEY_DEDUPE_WINDOW:
+            log_event(
+                "system.error",
+                msg="payment needs manual reconciliation: idempotence window expired",
+                level="error",
+                payload={"payment_id": payment.id},
+            )
+            raise ValueError("PAYMENT_NEEDS_RECONCILIATION")
 
     async def _get_pending_subscription(self, user_id: uuid.UUID, product_slug: str) -> Subscription | None:
         result = await self.db.execute(

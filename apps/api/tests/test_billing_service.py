@@ -719,13 +719,15 @@ async def test_provider_timeout_retry_reuses_same_key_and_owner(db_session, monk
     with pytest.raises(YooKassaError):
         await service.start_subscription(user.id, "subscription_month")
 
-    # The reservation is durably committed despite the failed POST.
+    # The reservation is durably committed despite the failed POST — and so
+    # is the first-attempt anchor that bounds the 24h dedupe window.
     subs = (await db_session.execute(select(Subscription))).scalars().all()
     payments = (await db_session.execute(select(Payment))).scalars().all()
     assert len(subs) == 1
     assert len(payments) == 1
     assert payments[0].status == "pending"
     assert payments[0].provider_payment_id is None
+    assert payments[0].first_attempt_at is not None
     stable_key = payments[0].idempotence_key
 
     # A FRESH service instance (new request) sees the same committed state.
@@ -1474,3 +1476,117 @@ async def test_expiry_runs_even_with_recurrent_kill_switch_off(db_session, fake_
     assert fake_client.calls == []
     sub = (await db_session.execute(select(Subscription))).scalar_one()
     assert sub.status == "expired"  # lifecycle hygiene is NOT gated by charging
+
+
+# ---- 24h dedupe window for START flows (initial + one-time) ----
+
+@pytest.mark.asyncio
+async def test_start_subscription_after_window_no_second_charge(db_session, fake_client) -> None:
+    """Past the 24h dedupe window the first attempt's outcome is unknowable
+    and the provider no longer dedupes the key: NO provider POST, stable
+    domain error, pending owner/payment stay observable for reconciliation."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900053)
+    service = BillingService(db_session)
+
+    calls: list[dict] = []
+
+    async def failing_initial(**kwargs):
+        calls.append(kwargs)
+        raise YooKassaError("timeout")
+
+    fake_client.create_initial_payment = failing_initial
+    with pytest.raises(YooKassaError):
+        await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    assert payment.first_attempt_at is not None  # durable anchor despite failure
+
+    # The first attempt happened >24h ago: the dedupe window has expired.
+    payment.first_attempt_at = datetime.now(UTC) - timedelta(hours=25)
+    await db_session.commit()
+
+    with pytest.raises(ValueError, match="PAYMENT_NEEDS_RECONCILIATION"):
+        await service.start_subscription(user.id, "subscription_month")
+    assert len(calls) == 1  # ZERO provider calls after the window
+
+    await db_session.refresh(payment)
+    assert payment.status == "pending"  # observable for reconciliation
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_start_purchase_retry_inside_window_reuses_key(db_session, fake_client) -> None:
+    """One-time mirror of the subscription timeout contract: failed first
+    attempt leaves the durable reservation + anchor; retry inside 24h uses
+    the SAME key (provider dedupes) and links the same purchase."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900054)
+    service = BillingService(db_session)
+
+    attempts: list[dict] = []
+    original = fake_client.create_one_time_payment
+
+    async def fail_once(**kwargs):
+        attempts.append(kwargs)
+        if len(attempts) == 1:
+            raise YooKassaError("timeout")
+        return await original(**kwargs)
+
+    fake_client.create_one_time_payment = fail_once
+    with pytest.raises(YooKassaError):
+        await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    assert payment.status == "pending"
+    assert payment.first_attempt_at is not None
+    stable_key = payment.idempotence_key
+
+    result = await service.start_purchase(user.id, "horary_1")
+    assert result["status"] == "pending"
+    assert len(attempts) == 2
+    assert {a["idempotence_key"] for a in attempts} == {stable_key}
+
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(payments) == 1  # retry never creates a second local payment
+    purchase = (await db_session.execute(select(Purchase))).scalar_one()
+    assert purchase.payment_id == payment.id
+
+
+@pytest.mark.asyncio
+async def test_start_purchase_after_window_no_second_charge(db_session, fake_client) -> None:
+    await seed_products(db_session)
+    user = await _user(db_session, 900055)
+    service = BillingService(db_session)
+
+    calls: list[dict] = []
+
+    async def failing_one_time(**kwargs):
+        calls.append(kwargs)
+        raise YooKassaError("timeout")
+
+    fake_client.create_one_time_payment = failing_one_time
+    with pytest.raises(YooKassaError):
+        await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    assert payment.first_attempt_at is not None
+
+    payment.first_attempt_at = datetime.now(UTC) - timedelta(hours=25)
+    await db_session.commit()
+
+    with pytest.raises(ValueError, match="PAYMENT_NEEDS_RECONCILIATION"):
+        await service.start_purchase(user.id, "horary_1")
+    assert len(calls) == 1  # ZERO provider calls after the window
+
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    purchase = (await db_session.execute(select(Purchase))).scalar_one()
+    assert purchase.status == "pending"
+
+
+def test_payment_needs_reconciliation_maps_to_409() -> None:
+    """Stable API contract for the expired-window domain error."""
+    from app.api.payment import _domain_error
+
+    exc = _domain_error(ValueError("PAYMENT_NEEDS_RECONCILIATION"))
+    assert exc.status_code == 409
+    assert exc.detail["code"] == "PAYMENT_NEEDS_RECONCILIATION"

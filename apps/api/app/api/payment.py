@@ -179,6 +179,14 @@ def _domain_error(exc: ValueError) -> HTTPException:
                 "message": "The pending payment remains open and payable; retry the same plan or wait for the provider's final status",
             },
         )
+    if code == "PAYMENT_NEEDS_RECONCILIATION":
+        return HTTPException(
+            status_code=409,
+            detail={
+                "code": code,
+                "message": "A previous payment attempt is being reconciled; wait for its final status or contact support",
+            },
+        )
     return HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": code})
 
 
