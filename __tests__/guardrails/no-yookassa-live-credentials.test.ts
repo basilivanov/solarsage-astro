@@ -20,7 +20,7 @@ function trackedTextFiles() {
 function findYooKassaCredentialLeaks(text: string) {
   const leaks: Array<{ key: string; value: string }> = []
   const assignment =
-    /["'`]?((?:YOOKASSA_)(?:LIVE_)?(?:SHOP_ID|SECRET_KEY))["'`]?\s*(?:=|:)\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|`([^`\r\n]*)`|([^\r\n#]*))/gi
+    /["'`]?((?:YOOKASSA_)(?:(?:LIVE|TEST)_)?(?:SHOP_ID|SECRET_KEY))["'`]?\s*(?:=|:)\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|`([^`\r\n]*)`|([^\r\n#]*))/gi
 
   for (const match of text.matchAll(assignment)) {
     const key = match[1].toUpperCase()
@@ -30,21 +30,22 @@ function findYooKassaCredentialLeaks(text: string) {
       .replace(/^[`"']+|[`"',}\]]+$/g, "")
       .trim()
 
+    // Only explicit synthetic canaries are allowed. A test_ prefix is NOT a
+    // safe marker: real YooKassa SANDBOX secrets also start with test_.
     if (
       value === "" ||
       /^<[^>]+>$/.test(value) ||
-      /^REDACTED$/i.test(value) ||
-      /^test_/i.test(value)
+      /^REDACTED$/i.test(value)
     ) {
       continue
     }
 
     const isShopId = key.endsWith("SHOP_ID")
-    const isLiveLooking = isShopId
+    const isRealLooking = isShopId
       ? /^\d{5,}$/.test(value)
-      : /^(?:live_)?[A-Za-z0-9_-]{24,}$/.test(value)
+      : /^(?:live_|test_)?[A-Za-z0-9_-]{24,}$/.test(value)
 
-    if (isLiveLooking) {
+    if (isRealLooking) {
       leaks.push({ key, value })
     }
   }
@@ -58,30 +59,48 @@ describe("YooKassa credential hygiene", () => {
     const secretKey = "YOOKASSA_SECRET_KEY"
     const liveShopKey = "YOOKASSA_LIVE_SHOP_ID"
     const liveSecretKey = "YOOKASSA_LIVE_SECRET_KEY"
+    const testShopKey = "YOOKASSA_TEST_SHOP_ID"
+    const testSecretKey = "YOOKASSA_TEST_SECRET_KEY"
     const liveSecret = "live_" + "K_jp1ZvDWs89sdwLCMlvxbWIywx1Hz_mZyxPF3EjFiw"
+    const sandboxSecret = "test_" + "K_jp1ZvDWs89sdwLCMlvxbWIywx1Hz_mZyxPF3EjFiw"
     const sample = [
       `${shopKey}=1317569`,
       `${secretKey}: ${liveSecret}`,
       `"${liveShopKey}": "1317569"`,
       `\`${liveSecretKey}=${liveSecret}\``,
+      `${testShopKey}=1317569`,
+      `${testSecretKey}: ${sandboxSecret}`,
     ].join("\n")
 
-    expect(findYooKassaCredentialLeaks(sample)).toHaveLength(4)
+    expect(findYooKassaCredentialLeaks(sample)).toHaveLength(6)
   })
 
-  it("allows placeholders, blanks, redacted values, and sandbox examples", () => {
+  it("allows only explicit placeholders, blanks and redacted canaries — never a test_ prefix", () => {
     const shopKey = "YOOKASSA_SHOP_ID"
     const secretKey = "YOOKASSA_SECRET_KEY"
     const liveShopKey = "YOOKASSA_LIVE_SHOP_ID"
     const liveSecretKey = "YOOKASSA_LIVE_SECRET_KEY"
-    const sample = [
+    const testShopKey = "YOOKASSA_TEST_SHOP_ID"
+    const testSecretKey = "YOOKASSA_TEST_SECRET_KEY"
+    const allowed = [
       `${shopKey}=<set-in-secret-store>`,
       `${secretKey}=REDACTED`,
       `${liveShopKey}=`,
-      `${liveSecretKey}=test_K_jp1ZvDWs89sdwLCMlvxbWIywx1Hz_mZyxPF3EjFiw`,
+      `${liveSecretKey}=<placeholder>`,
+      `${testShopKey}=<set-in-secret-store>`,
+      `${testSecretKey}=`,
+      `${testSecretKey}=REDACTED`,
     ].join("\n")
+    expect(findYooKassaCredentialLeaks(allowed)).toEqual([])
 
-    expect(findYooKassaCredentialLeaks(sample)).toEqual([])
+    // A test_-prefixed REAL-looking sandbox secret must now fail: the old
+    // blanket test_ whitelist accepted exactly this shape.
+    const sandboxSecret = "test_" + "K_jp1ZvDWs89sdwLCMlvxbWIywx1Hz_mZyxPF3EjFiw"
+    const rejected = [
+      `${testSecretKey}=${sandboxSecret}`,
+      `${liveSecretKey}=${sandboxSecret}`,
+    ].join("\n")
+    expect(findYooKassaCredentialLeaks(rejected)).toHaveLength(2)
   })
 
   it("does not track real-looking YooKassa credentials in tracked text files", () => {
