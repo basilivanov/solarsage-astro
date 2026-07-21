@@ -19,6 +19,9 @@
 #   - Every run includes HorizonPipelineService: selection, fact pack, tone,
 #     context, guidance, validator.
 #   - Excludes fixture construction, sidecar, DB, network, LLM, cold import.
+#   - The CI coverage-gate run excludes this file (benchmark marker): coverage
+#     tracing inflates wall-clock timings ~3x and makes the absolute bound
+#     flaky; CI measures it in a separate step WITHOUT instrumentation.
 # failure_policy: assertion failure when p95 >= 100 ms.
 # END_MODULE_CONTRACT: M-TEST-HORIZON-PIPELINE-BENCHMARK
 
@@ -37,9 +40,13 @@ from __future__ import annotations
 import math
 import time
 
+import pytest
+
 from app.services.horizon_pipeline_service import HorizonPipelineService
 
 from ._horizon_guidance_testkit import build_worst_case_pipeline_input
+
+pytestmark = pytest.mark.benchmark
 
 
 def test_pipeline_benchmark() -> None:

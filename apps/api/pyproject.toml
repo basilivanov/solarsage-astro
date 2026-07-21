@@ -52,4 +52,5 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "integration: integration tests requiring the live audit environment (excluded from ordinary unit coverage)",
+    "benchmark: wall-clock performance benchmarks (excluded from the coverage-gate run; coverage instrumentation distorts timings)",
 ]

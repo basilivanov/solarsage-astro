@@ -28,6 +28,8 @@
 #   - shared Python package is installed before API/sidecar packages
 #   - contract checkout fetches full history for merge-base compatibility checks
 #   - CI never uses automatic breaking-contract override
+#   - wall-clock benchmarks run WITHOUT coverage instrumentation in a separate
+#     step (coverage tracing distorts timings; the coverage gate excludes them)
 # failure_policy:
 #   - any job failure -> CI fails
 # non_goals:
@@ -109,7 +111,7 @@ jobs:
           COVERAGE_FILE: /tmp/api.coverage
         run: |
           set -o pipefail
-          python -m pytest apps/api/tests -q -m "not integration" \
+          python -m pytest apps/api/tests -q -m "not integration and not benchmark" \
             --cov=apps/api/app --cov-branch \
             --cov-report=term-missing \
             --cov-report=xml:/tmp/api-coverage.xml | tee /tmp/api-coverage.txt
@@ -124,6 +126,17 @@ jobs:
           python -m coverage report --include="apps/api/app/services/llm_service.py" --fail-under=58
           python -m coverage report --include="apps/api/app/services/today_interpretation_service.py" --fail-under=85
           python -m coverage report --include="apps/api/app/services/today_service.py" --fail-under=88
+
+      - name: Run pipeline benchmark (no coverage instrumentation)
+        env:
+          APP_ENV: test
+          GRACE_USER_SALT: ci-coverage-salt-0123456789abcdef0123456789ab
+          SOLARSAGE_URL: http://127.0.0.1:18091
+        run: |
+          # Benchmarks measure wall-clock latency: coverage tracing inflates
+          # timings ~3x and made the absolute 100ms bound flaky on shared
+          # runners (observed 114.87ms). Measured here WITHOUT instrumentation.
+          python -m pytest apps/api/tests -q -m "benchmark"
 
       - name: Changed-lines coverage (diff-cover, >= 80%)
         if: github.event_name == 'pull_request'
