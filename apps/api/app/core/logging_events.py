@@ -84,6 +84,7 @@ LogEventName = Literal[
     "billing.rebill_started",
     "billing.webhook_rejected",
     "billing.fulfillment_blocked",
+    "billing.subscription_expired",
     # horary
     "horary.question_created",
     "horary.question_create_failed",

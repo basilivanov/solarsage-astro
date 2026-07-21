@@ -1351,3 +1351,126 @@ async def test_renewal_ledger_covers_extended_period(db_session, fake_client, mo
     ledger = (await db_session.execute(select(AccessLedger))).scalar_one()
     assert ledger.start_date == base_end.date()
     assert ledger.end_date == base_end.date() + timedelta(days=29)
+
+
+# ---- Non-renewing lifecycle fail-safe (initial success without saved method) ----
+
+@pytest.mark.asyncio
+async def test_initial_success_without_saved_method_expires_and_new_start_works(db_session, fake_client) -> None:
+    """Regression: an initial payment may succeed with payment_method_saved=
+    false. The paid period is fully honored, but the subscription must expire
+    at period end — otherwise it stays live forever and the one-live guard
+    deadlocks any new start. No charge is ever attempted for it."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900049)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[payment.provider_payment_id] = _remote_for(
+        payment,
+        str(started["subscription_id"]),
+        payment_method_saved=False,
+        payment_method_id=None,
+    )
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result["processed"] is True
+
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "active"
+    assert sub.payment_method_id is None  # cannot ever renew
+    assert len((await db_session.execute(select(AccessLedger))).scalars().all()) == 1
+
+    # The paid period ends.
+    sub.current_period_end = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+
+    # Honest read: expired, and the paid ledger is preserved.
+    status = await service.get_subscription_status(user.id)
+    assert status["status"] == "expired"
+    await db_session.refresh(sub)
+    assert sub.status == "expired"
+    assert sub.next_charge_at is None
+    assert len((await db_session.execute(select(AccessLedger))).scalars().all()) == 1
+
+    # No deadlock: a new start works immediately after expiry.
+    new_started = await service.start_subscription(user.id, "subscription_month")
+    assert new_started["status"] == "pending"
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    assert len(subs) == 2
+    assert sorted(s.status for s in subs) == ["expired", "pending"]
+
+
+@pytest.mark.asyncio
+async def test_expire_never_touches_renewing_or_past_due(db_session, fake_client, monkeypatch) -> None:
+    """The fail-safe is strictly for non-renewing subs: an active sub WITH a
+    saved method renews via rebill (never expired here), and a past_due retry
+    is left alone."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900050)  # has pm-saved-1
+    service = BillingService(db_session)
+
+    status = await service.get_subscription_status(sub.user_id)
+    assert status["status"] == "active"  # renewing sub is NOT expired
+
+    sub.status = "past_due"
+    await db_session.commit()
+    status = await service.get_subscription_status(sub.user_id)
+    assert status["status"] == "past_due"  # retry flow untouched
+
+
+@pytest.mark.asyncio
+async def test_rebill_job_expires_non_renewing_without_charging(db_session, fake_client, monkeypatch) -> None:
+    """The canonical job expires non-renewing subs with zero provider calls,
+    and the transition does not depend on the recurrent kill-switch."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    await seed_products(db_session)
+    user = await _user(db_session, 900051)
+    sub = Subscription(
+        user_id=user.id,
+        product_slug="subscription_month",
+        status="active",
+        price_kopecks=9900,
+        currency="RUB",
+        payment_method_id=None,
+        current_period_start=datetime.now(UTC) - timedelta(days=31),
+        current_period_end=datetime.now(UTC) - timedelta(days=1),
+        next_charge_at=datetime.now(UTC) - timedelta(days=1),
+    )
+    db_session.add(sub)
+    await db_session.commit()
+
+    service = BillingService(db_session)
+    attempts = await service.rebill_due_subscriptions()
+    assert attempts == 0
+    assert fake_client.calls == []  # no charge attempt, ever
+    await db_session.refresh(sub)
+    assert sub.status == "expired"
+    assert sub.next_charge_at is None
+
+
+@pytest.mark.asyncio
+async def test_expiry_runs_even_with_recurrent_kill_switch_off(db_session, fake_client, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", False)
+    await seed_products(db_session)
+    user = await _user(db_session, 900052)
+    db_session.add(
+        Subscription(
+            user_id=user.id,
+            product_slug="subscription_month",
+            status="active",
+            price_kopecks=9900,
+            currency="RUB",
+            payment_method_id=None,
+            current_period_start=datetime.now(UTC) - timedelta(days=31),
+            current_period_end=datetime.now(UTC) - timedelta(days=1),
+            next_charge_at=datetime.now(UTC) - timedelta(days=1),
+        )
+    )
+    await db_session.commit()
+
+    service = BillingService(db_session)
+    assert await service.rebill_due_subscriptions() == 0  # kill-switch: zero charges
+    assert fake_client.calls == []
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "expired"  # lifecycle hygiene is NOT gated by charging

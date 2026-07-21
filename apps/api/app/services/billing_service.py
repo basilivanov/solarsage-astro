@@ -22,6 +22,7 @@
 #   HoraryCredit rows; calls the YooKassa API via the client.
 # emitted_logs: billing.subscription_started, billing.purchase_started,
 #   billing.payment_fulfilled, billing.subscription_canceled,
+#   billing.subscription_expired,
 #   billing.rebill_skipped, billing.rebill_started, billing.webhook_rejected,
 #   billing.fulfillment_blocked, system.error
 # invariants:
@@ -54,6 +55,11 @@
 #     active/past_due. A pending (unpaid) start is never silently abandoned
 #     (no provider cancel call exists, so its confirmation URL would stay
 #     payable) — plan switch is the explicit 409, not local cancel.
+#   - A non-renewing subscription (initial success without a saved payment
+#     method) expires automatically at period end: the paid period is
+#     preserved, no charge is attempted, and the one-live slot frees for a
+#     new start. Expiry never depends on a charge attempt or the recurrent
+#     kill-switch; renewing subscriptions and past_due retries are untouched.
 #   - A reserved payment without idempotence_key is corrupted state: fail
 #     closed (RuntimeError), never charge on a silently substituted key.
 #   - No secrets, shop keys or raw provider payloads in logs.
@@ -310,6 +316,9 @@ class BillingService:
     # END_BLOCK: BILLING_START
 
     async def get_subscription_status(self, user_id: uuid.UUID) -> dict:
+        # Honest read: expire a non-renewing subscription whose period ended
+        # before reporting, so the UI never shows a dead sub as active.
+        await self._expire_non_renewing(user_id)
         result = await self.db.execute(
             select(Subscription)
             .where(Subscription.user_id == user_id)
@@ -396,8 +405,10 @@ class BillingService:
         provider_payment_id = None
         confirmation_url = None
         if purchase.payment_id is not None:
-            result = await self.db.execute(select(Payment).where(Payment.id == purchase.payment_id))
-            payment = result.scalar_one_or_none()
+            payment_result = await self.db.execute(
+                select(Payment).where(Payment.id == purchase.payment_id)
+            )
+            payment = payment_result.scalar_one_or_none()
             if payment is not None:
                 provider_payment_id = payment.provider_payment_id
                 if payment.status == "canceled" and purchase.status == "pending":
@@ -688,6 +699,11 @@ class BillingService:
         #   auto-charged again — it stays pending for manual reconciliation
         #   (system.error log), subscription past_due.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.rebill_due_subscriptions
+        # Lifecycle hygiene first and INDEPENDENT of charging: non-renewing
+        # subscriptions (no saved method) whose paid period ended become
+        # expired even when the recurrent kill-switch is off — expiry never
+        # depends on a charge attempt.
+        await self._expire_non_renewing()
         if not settings.yookassa_recurrent_enabled:
             log_event("billing.rebill_skipped", msg="recurrent disabled by kill-switch")
             return 0
@@ -914,6 +930,10 @@ class BillingService:
     async def _get_live_subscription(self, user_id: uuid.UUID) -> Subscription | None:
         # LIVE = pending | active | past_due. The partial unique index
         # uq_subscriptions_one_live_per_user guarantees at most one such row.
+        # Fail-safe first: a non-renewing active subscription whose paid
+        # period has ended is expired here, so it can never deadlock a new
+        # start behind the one-live guard.
+        await self._expire_non_renewing(user_id)
         result = await self.db.execute(
             select(Subscription).where(
                 Subscription.user_id == user_id,
@@ -921,6 +941,44 @@ class BillingService:
             ).order_by(Subscription.created_at.desc())
         )
         return result.scalars().first()
+
+    async def _expire_non_renewing(self, user_id: uuid.UUID | None = None) -> int:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._expire_non_renewing
+        # purpose: Lifecycle fail-safe for subscriptions that CANNOT renew
+        #   (initial payment succeeded with payment_method_saved=false, so no
+        #   payment_method_id). When their paid period ends they transition
+        #   active -> expired — the paid period (access ledger) is fully
+        #   preserved, no charge is ever attempted, and the one-live slot
+        #   frees up for a new start. Renewing subscriptions (saved method)
+        #   and past_due retries are NEVER touched here; the transition does
+        #   not depend on the recurrent kill-switch or any charge attempt.
+        # inputs: optional user_id to scope the sweep (read paths), else all.
+        # returns: number of subscriptions expired in this sweep.
+        # side_effects: status/next_charge_at update + commit, expiry log.
+        # error_behavior: none (idempotent no-op when nothing is due).
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._expire_non_renewing
+        now = datetime.now(UTC)
+        stmt = select(Subscription).where(
+            Subscription.status == "active",
+            Subscription.payment_method_id.is_(None),
+            Subscription.current_period_end.is_not(None),
+            Subscription.current_period_end <= now,
+        )
+        if user_id is not None:
+            stmt = stmt.where(Subscription.user_id == user_id)
+        result = await self.db.execute(stmt)
+        rows = list(result.scalars().all())
+        for sub in rows:
+            sub.status = "expired"
+            sub.next_charge_at = None
+            log_event(
+                "billing.subscription_expired",
+                msg="non-renewing subscription expired at period end",
+                payload={"subscription_id": str(sub.id)},
+            )
+        if rows:
+            await self.db.commit()
+        return len(rows)
 
     @staticmethod
     def _require_idempotence_key(payment: Payment) -> str:

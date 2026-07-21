@@ -75,6 +75,33 @@ describe("AccessCard billing contract", () => {
     expect(b.onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it("subscription state shows honest non-renewing semantics when renewal is off", () => {
+    const b = billing()
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+        renewal={{ renewing: false }}
+      />,
+    )
+    expect(screen.getByText(/Без автопродления/)).toBeTruthy()
+    expect(screen.queryByText(/Автопродление активно/)).toBeNull()
+  })
+
+  it("subscription state shows auto-renew note when renewal is on", () => {
+    const b = billing()
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+        renewal={{ renewing: true }}
+      />,
+    )
+    expect(screen.getByText(/Автопродление активно/)).toBeTruthy()
+  })
+
   it("keeps the test-only monetization stub copy unchanged", () => {
     const onSubscribe = vi.fn()
     render(

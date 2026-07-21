@@ -21,7 +21,7 @@
 // END_MODULE_CONTRACT
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Calendar,
   Clock,
@@ -42,6 +42,7 @@ import {
   formatPriceRubles,
   useSubscriptionPurchase,
 } from "@/lib/hooks/use-subscription-purchase"
+import { getSubscriptionStatus } from "@/lib/api/payment"
 
 import { AccessCard } from "./access-card"
 import { Avatar } from "./avatar"
@@ -79,6 +80,28 @@ export function ProfileScreen({
   const { profile, update, loaded, saving, error } = useProfile()
   const [editField, setEditField] = useState<EditField | null>(null)
   const billingFlow = useSubscriptionPurchase(onAccessChanged)
+  const [renewing, setRenewing] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    // Honest renewal semantics for an active subscription: auto-renew only
+    // when the backend reports an active sub with a scheduled charge.
+    if (currentState !== "subscription" || !billingFlow.ready || billingFlow.unavailable) {
+      setRenewing(null)
+      return
+    }
+    let cancelled = false
+    getSubscriptionStatus()
+      .then((status) => {
+        if (!cancelled) {
+          setRenewing(status.status === "active" && status.nextChargeAt != null)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [currentState, billingFlow.ready, billingFlow.unavailable])
+
   const billingBusy = billingFlow.phase === "starting" || billingFlow.phase === "waiting"
   const billing = {
     ready: billingFlow.ready,
@@ -138,6 +161,7 @@ export function ProfileScreen({
           access={access}
           currentState={currentState}
           billing={billing}
+          renewal={renewing === null ? undefined : { renewing }}
         />
         {billingFlow.errorMessage ? (
           <p className="mt-2 px-1 text-[12px] text-destructive" role="alert" data-testid="profile-billing-error">

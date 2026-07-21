@@ -32,6 +32,7 @@ type Props = {
   access: AccessInfo
   currentState: AccessState
   billing?: AccessCardBilling
+  renewal?: { renewing: boolean }
 }
 
 export type AccessCardBilling = {
@@ -73,6 +74,7 @@ function buildVariant(
   state: AccessState,
   billing: AccessCardBilling | undefined,
   onInvite?: () => void,
+  renewal?: { renewing: boolean },
 ): Variant {
   const unavailableButtons: Pick<Variant, "primary" | "secondary"> = {
     primary: { label: billing?.ready === false && !billing.unavailable ? "Загружаем тарифы…" : "Оплата временно недоступна", disabled: true },
@@ -96,14 +98,18 @@ function buildVariant(
 
   if (state === "subscription") {
     const ending = access.accessEnd ? `до ${formatLong(access.accessEnd)}` : ""
+    const footnote = renewal
+      ? renewal.renewing
+        ? "Автопродление активно. Отмена подписки не отзывает уже оплаченный период."
+        : "Без автопродления — доступ до конца оплаченного периода. Новую подписку можно оформить после его завершения."
+      : "Доступ активен. Отмена подписки не отзывает уже оплаченный период."
     return {
       icon: Crown,
       tone: "active",
       label: "Доступ",
       title: "Подписка активна",
       subtitle: ending || "Доступ к прошлому и будущему",
-      footnote:
-        "Доступ активен. Отмена подписки не отзывает уже оплаченный период.",
+      footnote,
       primary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
       secondary: billing && !billing.unavailable && billing.ready
         ? { label: billing.busy ? "Ждём подтверждение…" : "Отменить подписку", onClick: billing.busy ? undefined : billing.onCancel, disabled: billing.busy }
@@ -146,9 +152,9 @@ function pluralDays(n: number) {
   return "дней"
 }
 
-export function AccessCard({ access, currentState, billing }: Props) {
+export function AccessCard({ access, currentState, billing, renewal }: Props) {
   const share = useShareInvite()
-  const v = buildVariant(access, currentState, billing, share)
+  const v = buildVariant(access, currentState, billing, share, renewal)
   const Icon = v.icon
   const PrimaryIcon = v.primary.icon
   const SecondaryIcon = v.secondary.icon
