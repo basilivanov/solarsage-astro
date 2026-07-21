@@ -150,6 +150,21 @@ describe("AccessCard billing contract", () => {
     expect(root.getAttribute("data-cancelable")).toBe("false")
   })
 
+  it("subscription state with tariffs still loading also checks renewal, never a fake label", () => {
+    const b = billing({ ready: false })
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+      />,
+    )
+    const secondary = screen.getByTestId("access-card-secondary")
+    expect(secondary.textContent).toContain("Проверяем автопродление")
+    expect(secondary.textContent).not.toContain("Загружаем тарифы")
+    expect((secondary as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it("subscription state with unavailable billing shows an honest unavailable secondary", () => {
     const b = billing({ unavailable: true })
     render(

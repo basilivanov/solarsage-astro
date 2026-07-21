@@ -326,3 +326,119 @@ def test_canary_safe_exceptions():
     with pytest.raises(ValueError) as excinfo:
         build_runtime_security_policy(s2)
     assert canary not in str(excinfo.value)
+
+
+def _deployed_settings(**overrides):
+    """Valid deployed (production) baseline for billing-policy tests."""
+    base = {
+        "_env_file": None,
+        "APP_ENV": "production",
+        "APP_DOMAIN": "astro.vasiliy-ivanov.ru",
+        "CORS_ALLOWED_ORIGINS": "https://astro.vasiliy-ivanov.ru",
+        "DEV_MODE": False,
+        "SESSION_COOKIE_SECURE": True,
+        "TELEGRAM_BOT_TOKEN": "real_token_here",
+        "GRACE_USER_SALT": "a" * 32,
+        "DATABASE_URL": "postgresql+asyncpg://astro:astro@127.0.0.1:5432/astro",
+        "YOOKASSA_MODE": "test",
+        "YOOKASSA_TRUSTED_PROXY_CIDRS": "172.31.235.1/32",
+    }
+    base.update(overrides)
+    return Settings(**base)
+
+
+def test_billing_off_keeps_empty_credentials_valid():
+    policy = build_runtime_security_policy(_deployed_settings())
+    assert policy.environment == "production"
+    # Recurrent without master is rejected even with billing off.
+    with pytest.raises(ValueError, match="YOOKASSA_RECURRENT:without-master"):
+        build_runtime_security_policy(
+            _deployed_settings(YOOKASSA_RECURRENT_ENABLED=True)
+        )
+
+
+def test_billing_mode_must_be_exact_test_or_live():
+    with pytest.raises(ValueError, match="YOOKASSA_MODE:invalid-deployed"):
+        build_runtime_security_policy(_deployed_settings(YOOKASSA_MODE="sandbox"))
+    with pytest.raises(ValueError, match="YOOKASSA_MODE:invalid-deployed"):
+        build_runtime_security_policy(_deployed_settings(YOOKASSA_MODE="TEST"))
+    policy = build_runtime_security_policy(_deployed_settings(YOOKASSA_MODE="live"))
+    assert policy.environment == "production"
+
+
+def test_billing_enabled_requires_credentials_and_https_return_url():
+    enabled = {
+        "YOOKASSA_ENABLED": True,
+        "YOOKASSA_TEST_SHOP_ID": "shop-synthetic",
+        "YOOKASSA_TEST_SECRET_KEY": "synthetic-secret",
+        "YOOKASSA_RETURN_URL": "https://astro.vasiliy-ivanov.ru/profile",
+    }
+    policy = build_runtime_security_policy(_deployed_settings(**enabled))
+    assert policy.environment == "production"
+
+    with pytest.raises(ValueError, match="YOOKASSA_SHOP_ID:empty-billing"):
+        build_runtime_security_policy(_deployed_settings(**{**enabled, "YOOKASSA_TEST_SHOP_ID": "  "}))
+    with pytest.raises(ValueError, match="YOOKASSA_SECRET_KEY:empty-billing"):
+        build_runtime_security_policy(_deployed_settings(**{**enabled, "YOOKASSA_TEST_SECRET_KEY": ""}))
+    with pytest.raises(ValueError, match="YOOKASSA_RETURN_URL:invalid-billing"):
+        build_runtime_security_policy(_deployed_settings(**{**enabled, "YOOKASSA_RETURN_URL": "http://astro.vasiliy-ivanov.ru"}))
+    with pytest.raises(ValueError, match="YOOKASSA_RETURN_URL:invalid-billing"):
+        build_runtime_security_policy(_deployed_settings(**{**enabled, "YOOKASSA_RETURN_URL": ""}))
+
+    # Live mode picks the LIVE credential pair, not the test pair.
+    with pytest.raises(ValueError, match="YOOKASSA_SHOP_ID:empty-billing"):
+        build_runtime_security_policy(_deployed_settings(**{**enabled, "YOOKASSA_MODE": "live"}))
+
+
+def test_natal_report_requires_billing_in_deployed_env():
+    with pytest.raises(ValueError, match="NATAL_REPORT_ENABLED:requires-billing"):
+        build_runtime_security_policy(_deployed_settings(NATAL_REPORT_ENABLED=True))
+    policy = build_runtime_security_policy(
+        _deployed_settings(
+            NATAL_REPORT_ENABLED=True,
+            YOOKASSA_ENABLED=True,
+            YOOKASSA_TEST_SHOP_ID="shop-synthetic",
+            YOOKASSA_TEST_SECRET_KEY="synthetic-secret",
+            YOOKASSA_RETURN_URL="https://astro.vasiliy-ivanov.ru/profile",
+        )
+    )
+    assert policy.environment == "production"
+
+
+def test_production_billing_pins_webhook_allowlist_and_trusted_proxy():
+    enabled = {
+        "YOOKASSA_ENABLED": True,
+        "YOOKASSA_TEST_SHOP_ID": "shop-synthetic",
+        "YOOKASSA_TEST_SECRET_KEY": "synthetic-secret",
+        "YOOKASSA_RETURN_URL": "https://astro.vasiliy-ivanov.ru/profile",
+    }
+    # Override of the official webhook ranges is forbidden in production.
+    with pytest.raises(ValueError, match="YOOKASSA_WEBHOOK_IP_ALLOWLIST:nonempty-production"):
+        build_runtime_security_policy(
+            _deployed_settings(**{**enabled, "YOOKASSA_WEBHOOK_IP_ALLOWLIST": "185.71.76.0/27"})
+        )
+    # Trusted proxy must be EXACTLY the canonical gateway /32.
+    with pytest.raises(ValueError, match="YOOKASSA_TRUSTED_PROXY_CIDRS:non-canonical-production"):
+        build_runtime_security_policy(
+            _deployed_settings(**{**enabled, "YOOKASSA_TRUSTED_PROXY_CIDRS": ""})
+        )
+    with pytest.raises(ValueError, match="YOOKASSA_TRUSTED_PROXY_CIDRS:non-canonical-production"):
+        build_runtime_security_policy(
+            _deployed_settings(**{**enabled, "YOOKASSA_TRUSTED_PROXY_CIDRS": "172.31.235.0/24"})
+        )
+    with pytest.raises(ValueError, match="YOOKASSA_TRUSTED_PROXY_CIDRS:non-canonical-production"):
+        build_runtime_security_policy(
+            _deployed_settings(**{**enabled, "YOOKASSA_TRUSTED_PROXY_CIDRS": "10.0.0.0/8"})
+        )
+    with pytest.raises(ValueError, match="YOOKASSA_TRUSTED_PROXY_CIDRS:invalid"):
+        build_runtime_security_policy(
+            _deployed_settings(**{**enabled, "YOOKASSA_TRUSTED_PROXY_CIDRS": "not-a-cidr"})
+        )
+    # Staging does NOT pin the production gateway.
+    staging = _deployed_settings(
+        APP_ENV="staging",
+        YOOKASSA_TRUSTED_PROXY_CIDRS="127.0.0.1/32,::1/128",
+        **enabled,
+    )
+    policy = build_runtime_security_policy(staging)
+    assert policy.environment == "staging"

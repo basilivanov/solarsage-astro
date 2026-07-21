@@ -22,8 +22,13 @@
 #   - Any invalid or empty raw APP_ENV throws ValueError.
 #   - deployed is True only for staging and production.
 #   - In deployed environments, invalid settings crash startup (ValueError).
+#   - Deployed billing contract: YOOKASSA_MODE exactly test|live; enabled
+#     billing requires non-empty mode credentials + HTTPS return URL;
+#     NATAL_REPORT_ENABLED requires YOOKASSA_ENABLED; production billing pins
+#     webhook allowlist to official ranges (no override) and the trusted
+#     proxy to exactly 172.31.235.1/32; recurrent requires the master switch.
 # failure_policy:
-#   - Throws ValueError on validation failure.
+#   - Throws ValueError on validation failure (never with secret values).
 # END_MODULE_CONTRACT: M-RUNTIME-SECURITY
 
 # START_MODULE_MAP: M-RUNTIME-SECURITY
@@ -212,6 +217,45 @@ def build_runtime_security_policy(settings: Settings) -> RuntimeSecurityPolicy:
         db_url = settings.database_url.lower()
         if "sqlite" in db_url:
             raise ValueError("DATABASE_URL:sqlite-deployed")
+
+        # START_BLOCK: BILLING_POLICY
+        # Billing (YooKassa) fail-closed runtime contract. Error codes NEVER
+        # carry secret values.
+        # Mode is exactly test|live — no silent fallback.
+        if settings.yookassa_mode not in ("test", "live"):
+            raise ValueError("YOOKASSA_MODE:invalid-deployed")
+        if settings.yookassa_enabled:
+            # Chosen mode credentials must be present and the return URL a
+            # valid HTTPS URL. (Billing OFF keeps empty values valid.)
+            if not settings.yookassa_shop_id.strip():
+                raise ValueError("YOOKASSA_SHOP_ID:empty-billing")
+            if not settings.yookassa_secret_key.strip():
+                raise ValueError("YOOKASSA_SECRET_KEY:empty-billing")
+            return_url = settings.yookassa_return_url.strip()
+            parsed_return = urllib.parse.urlparse(return_url)
+            if parsed_return.scheme != "https" or not parsed_return.netloc:
+                raise ValueError("YOOKASSA_RETURN_URL:invalid-billing")
+        # The natal full report is sold only through billing: the feature
+        # flag requires the master switch in deployed env.
+        if settings.natal_report_enabled and not settings.yookassa_enabled:
+            raise ValueError("NATAL_REPORT_ENABLED:requires-billing")
+        if canonical_env == "production" and settings.yookassa_enabled:
+            # Webhook source policy is pinned in production: official
+            # YooKassa ranges only (no override) and exactly the canonical
+            # trusted proxy gateway /32.
+            if settings.yookassa_webhook_ip_allowlist.strip():
+                raise ValueError("YOOKASSA_WEBHOOK_IP_ALLOWLIST:nonempty-production")
+            try:
+                proxy_nets = {
+                    ipaddress.ip_network(c.strip(), strict=False)
+                    for c in settings.yookassa_trusted_proxy_cidrs.split(",")
+                    if c.strip()
+                }
+            except ValueError as exc:
+                raise ValueError("YOOKASSA_TRUSTED_PROXY_CIDRS:invalid") from exc
+            if proxy_nets != {ipaddress.ip_network("172.31.235.1/32")}:
+                raise ValueError("YOOKASSA_TRUSTED_PROXY_CIDRS:non-canonical-production")
+        # END_BLOCK: BILLING_POLICY
     else:
         # Development environment domain restriction:
         # Development mode is only allowed on localhost/loopback domain. Public development is forbidden.
@@ -236,6 +280,11 @@ def build_runtime_security_policy(settings: Settings) -> RuntimeSecurityPolicy:
             "http://localhost:3003",
             "http://127.0.0.1:3003",
         ]
+
+    # Recurrent charging is a child of the master switch, in ANY env:
+    # recurrent=true without billing enabled is an invalid runtime config.
+    if settings.yookassa_recurrent_enabled and not settings.yookassa_enabled:
+        raise ValueError("YOOKASSA_RECURRENT:without-master")
 
     # 4. Internal routes policy
     # internal_routes_enabled = True only when:

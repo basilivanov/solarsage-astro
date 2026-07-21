@@ -68,17 +68,28 @@ def _kopecks_to_value(kopecks: int) -> str:
 class YooKassaClient:
     """Async-safe YooKassa API client (httpx; Basic Auth; no sync SDK)."""
 
-    def __init__(self, shop_id: str, secret_key: str) -> None:
+    def __init__(
+        self,
+        shop_id: str,
+        secret_key: str,
+        *,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
         if not shop_id or not secret_key:
             raise YooKassaError("YooKassa shop_id/secret_key are not configured")
         self._auth = httpx.BasicAuth(shop_id, secret_key)
+        # Test-only seam: production passes nothing (real network); tests
+        # inject httpx.MockTransport. BillingService signatures are unchanged.
+        self._transport = transport
 
     # START_BLOCK: YK_CREATE
     async def _post(self, path: str, payload: dict, idempotence_key: str) -> dict:
         if len(idempotence_key) > _MAX_IDEMPOTENCE_KEY:
             raise YooKassaError("idempotence key exceeds 64 chars")
         try:
-            async with httpx.AsyncClient(auth=self._auth, timeout=httpx.Timeout(15.0)) as client:
+            async with httpx.AsyncClient(
+                auth=self._auth, transport=self._transport, timeout=httpx.Timeout(15.0)
+            ) as client:
                 response = await client.post(
                     f"{_API_BASE}{path}",
                     json=payload,
@@ -87,8 +98,19 @@ class YooKassaClient:
         except httpx.HTTPError as exc:
             raise YooKassaError(f"yookassa transport error: {type(exc).__name__}") from exc
         if response.status_code >= 400:
+            # Never re-raise the provider body (may echo request/secrets).
             raise YooKassaError(f"yookassa http {response.status_code}")
-        return response.json()
+        try:
+            return response.json()
+        except ValueError:
+            raise YooKassaError("yookassa malformed response") from None
+
+    @staticmethod
+    def _payment_id(payment: dict) -> str:
+        provider_payment_id = payment.get("id")
+        if not provider_payment_id or not isinstance(provider_payment_id, str):
+            raise YooKassaError("yookassa malformed response: missing payment id")
+        return provider_payment_id
 
     @staticmethod
     def _confirmation_url(payment: dict) -> str | None:
@@ -133,7 +155,7 @@ class YooKassaClient:
         }
         payment = await self._post("/payments", payload, idempotence_key)
         return {
-            "provider_payment_id": payment["id"],
+            "provider_payment_id": self._payment_id(payment),
             "confirmation_url": self._confirmation_url(payment),
             "status": payment.get("status", "pending"),
         }
@@ -171,7 +193,7 @@ class YooKassaClient:
         }
         payment = await self._post("/payments", payload, idempotence_key)
         return {
-            "provider_payment_id": payment["id"],
+            "provider_payment_id": self._payment_id(payment),
             "confirmation_url": self._confirmation_url(payment),
             "status": payment.get("status", "pending"),
         }
@@ -212,7 +234,7 @@ class YooKassaClient:
         }
         payment = await self._post("/payments", payload, idempotence_key)
         return {
-            "provider_payment_id": payment["id"],
+            "provider_payment_id": self._payment_id(payment),
             "status": payment.get("status", "pending"),
         }
     # END_BLOCK: YK_CREATE
@@ -230,16 +252,21 @@ class YooKassaClient:
         # error_behavior: YooKassaError on transport/HTTP failure.
         # END_FUNCTION_CONTRACT: F-M-YOOKASSA-CLIENT.get_payment
         try:
-            async with httpx.AsyncClient(auth=self._auth, timeout=httpx.Timeout(10.0)) as client:
+            async with httpx.AsyncClient(
+                auth=self._auth, transport=self._transport, timeout=httpx.Timeout(10.0)
+            ) as client:
                 response = await client.get(f"{_API_BASE}/payments/{provider_payment_id}")
         except httpx.HTTPError as exc:
             raise YooKassaError(f"yookassa transport error: {type(exc).__name__}") from exc
         if response.status_code >= 400:
             raise YooKassaError(f"yookassa http {response.status_code}")
-        payment = response.json()
+        try:
+            payment = response.json()
+        except ValueError:
+            raise YooKassaError("yookassa malformed response") from None
         method = payment.get("payment_method") or {}
         return {
-            "provider_payment_id": payment["id"],
+            "provider_payment_id": self._payment_id(payment),
             "status": payment.get("status"),
             "paid": bool(payment.get("paid")),
             "amount_value": str((payment.get("amount") or {}).get("value", "")),

@@ -88,6 +88,15 @@ Billing secrets live ONLY in this root-owned env file, never in the repository. 
 - **YOOKASSA_TRUSTED_PROXY_CIDRS** (default empty = fail closed): exact CIDR of the ONE trusted proxy whose `X-Real-IP`/`X-Forwarded-For` may be believed for the webhook source check. In the canonical path the host nginx proxies to the API container through the pinned compose app network (`172.31.235.0/24`), so the API sees the network gateway as its peer: set exactly `172.31.235.1/32`. NEVER a broad private range (`10.0.0.0/8`, `172.16.0.0/12`, …) — any host in such a range could forge forwarded headers. While empty, forwarded headers are rejected and webhooks via nginx fail closed with 403, so set this BEFORE enabling billing.
 - **NATAL_REPORT_ENABLED** (default `false`): natal full-report generation feature flag. Enable together with billing — selling the report while the flag is off is blocked (purchase start is rejected and the product is hidden, so a 501 feature is never sold).
 
+Startup fail-closed validation (the API refuses to boot on violation, deployed env):
+
+- `YOOKASSA_MODE` must be exactly `test` or `live` (no fallback).
+- With `YOOKASSA_ENABLED=true`: the mode-selected shop id/secret must be non-empty and `YOOKASSA_RETURN_URL` must be a valid HTTPS URL.
+- `YOOKASSA_RECURRENT_ENABLED=true` is invalid while `YOOKASSA_ENABLED=false`.
+- `NATAL_REPORT_ENABLED=true` requires `YOOKASSA_ENABLED=true` in deployed env.
+- Production + billing enabled: `YOOKASSA_WEBHOOK_IP_ALLOWLIST` MUST stay empty (official YooKassa ranges only, no override) and `YOOKASSA_TRUSTED_PROXY_CIDRS` MUST be exactly `172.31.235.1/32` (canonical gateway, verified after safe CIDR parse).
+- Billing off keeps empty credentials/return URL valid.
+
 ### 2.2 Recurrent rebill job
 
 Auto-renewal runs ONLY through the canonical orchestrator subcommand `billing-rebill` of the installed prod-orchestrator. The subcommand PARSES (never sources/evals) the release record, requires the running `solarsage-api` container to match the active record exactly, and then runs the fixed job argv (`python -m app.jobs.billing_rebill`) in a throwaway container of the pinned active api image via the compose one-shot `billing-rebill` profile — no mutable checkout, no Prefect/new harness, no shell from state files. It is hard-gated by `YOOKASSA_RECURRENT_ENABLED` and exits 0 doing nothing while the flag is off. Schedule it only after the first manual payment is proven, via cron on the host:

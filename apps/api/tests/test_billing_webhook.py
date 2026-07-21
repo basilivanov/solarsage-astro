@@ -234,6 +234,44 @@ async def test_webhook_amount_mismatch_rejected(
 
 
 @pytest.mark.asyncio
+async def test_webhook_provider_get_failure_is_retryable_502(
+    async_client: AsyncClient, db_session, monkeypatch
+) -> None:
+    """Provider GET failure on the webhook is a STABLE retryable 502 — never
+    a raw 500, never a false 200 ack, never provider text."""
+    from app.services.yookassa_client import YooKassaError
+
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+    monkeypatch.setattr("app.api.payment._webhook_source_allowed", lambda request: True)
+    remote: dict = {}
+    monkeypatch.setattr(
+        "app.services.billing_service.get_yookassa_client",
+        lambda: FakeClient(remote),
+    )
+    user, payment, subscription_id = await _make_pending_payment(db_session, 900024)
+
+    class FailingClient:
+        async def get_payment(self, provider_payment_id: str) -> dict:
+            raise YooKassaError("yookassa transport error: raw internal text with 10.0.0.1")
+
+    # The provider starts failing only NOW (after a clean local reservation).
+    monkeypatch.setattr(
+        "app.services.billing_service.get_yookassa_client",
+        lambda: FailingClient(),
+    )
+    r = await async_client.post(
+        "/api/payment/webhook/yookassa",
+        json={"type": "notification", "event": "payment.succeeded", "object": {"id": payment.provider_payment_id}},
+    )
+    assert r.status_code == 502
+    assert r.json()["detail"]["code"] == "PROVIDER_UNAVAILABLE"
+    assert "10.0.0.1" not in r.text
+    await db_session.refresh(payment)
+    assert payment.status == "pending"  # no fulfillment, no state change
+    assert (await db_session.execute(select(AccessLedger))).scalars().all() == []
+
+
+@pytest.mark.asyncio
 async def test_webhook_unknown_payment_is_retryable(
     async_client: AsyncClient, db_session, monkeypatch
 ) -> None:

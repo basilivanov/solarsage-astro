@@ -109,9 +109,9 @@ function buildVariant(
     let secondary: Variant["secondary"]
     if (!billing || billing.unavailable) {
       secondary = { label: "Управление подпиской недоступно", disabled: true }
-    } else if (!billing.ready) {
-      secondary = { label: "Загружаем тарифы…", disabled: true }
     } else if (!renewal) {
+      // Flags are not known yet (also while tariffs still load): the honest
+      // state is "checking", never a fake action.
       secondary = { label: "Проверяем автопродление…", disabled: true }
     } else if (renewal.cancelable) {
       secondary = {

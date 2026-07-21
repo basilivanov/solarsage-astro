@@ -39,7 +39,8 @@
 #   - synastry stays fail-closed (not sellable).
 # failure_policy: 400/404/409 domain mapping; 503 when disabled; 403 for a
 #   non-allowlisted webhook source; 500 for a TRANSIENT webhook gap so
-#   YooKassa redelivers (up to 24h per the official webhook contract).
+#   YooKassa redelivers (up to 24h per the official webhook contract);
+#   502 PROVIDER_UNAVAILABLE on provider create/GET failure (never raw text).
 # END_MODULE_CONTRACT: M-API-PAYMENT
 
 # START_MODULE_MAP: M-API-PAYMENT
@@ -88,8 +89,19 @@ from app.schemas.payment import (
     YooKassaWebhookEvent,
 )
 from app.services.billing_service import BillingService
+from app.services.yookassa_client import YooKassaError
 
 router = APIRouter()
+
+
+def _provider_unavailable() -> HTTPException:
+    # Stable provider-failure contract: the API boundary NEVER leaks
+    # YooKassaError text as a raw 500. For the webhook this 502 is the
+    # retryable non-2xx (YooKassa redelivers up to 24h).
+    return HTTPException(
+        status_code=502,
+        detail={"code": "PROVIDER_UNAVAILABLE", "message": "Payment provider is temporarily unavailable"},
+    )
 
 # Official YooKassa notification source ranges
 # (https://yookassa.ru/developers/using-api/webhooks — "Проверка IP-адреса").
@@ -230,6 +242,8 @@ async def start_subscription(
         result = await service.start_subscription(user.id, body.product_slug)
     except ValueError as exc:
         raise _domain_error(exc) from exc
+    except YooKassaError as exc:
+        raise _provider_unavailable() from exc
     if result.get("status") == "already_active":
         raise HTTPException(status_code=409, detail={"code": "ALREADY_ACTIVE", "message": "Subscription is already active"})
     return SubscriptionStartResponse(**result)
@@ -275,6 +289,8 @@ async def start_purchase(
         result = await service.start_purchase(user.id, body.product_slug)
     except ValueError as exc:
         raise _domain_error(exc) from exc
+    except YooKassaError as exc:
+        raise _provider_unavailable() from exc
     if result.get("status") == "already_entitled":
         raise HTTPException(status_code=409, detail={"code": "ALREADY_ENTITLED", "message": "Report already purchased for the current context"})
     return PurchaseStartResponse(**result)
@@ -365,7 +381,12 @@ async def yookassa_webhook(
         raise HTTPException(status_code=400, detail="Malformed notification")
 
     service = BillingService(db)
-    result = await service.verify_and_process_webhook(provider_payment_id)
+    try:
+        result = await service.verify_and_process_webhook(provider_payment_id)
+    except YooKassaError as exc:
+        # Provider GET failed: retryable non-2xx (YooKassa redelivers),
+        # never a false 200 ack and never raw provider text.
+        raise _provider_unavailable() from exc
     if not result.get("processed"):
         reason = str(result.get("reason", ""))
         if reason in _RETRYABLE_WEBHOOK_REASONS or reason.startswith("provider_status_"):
