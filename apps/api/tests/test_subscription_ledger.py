@@ -33,64 +33,6 @@ from app.services.access_service import AccessService
 
 
 @pytest.mark.asyncio
-async def test_payment_intent_unavailable_without_ledger_side_effects(
-    async_client: AsyncClient,
-    make_initdata,
-    db_session,
-):
-    """Disabled payment intent creates no payment, access, or chat quota rows."""
-    user_raw = make_initdata(user_id=12347, username="subuser")
-    await async_client.post("/api/auth/telegram", json={"initData": user_raw})
-
-    response = await async_client.post(
-        "/api/payment/create-intent",
-        json={
-            "amount": 29900,
-            "currency": "RUB",
-            "description": "Подписка на 1 месяц",
-        },
-    )
-
-    assert response.status_code == 503
-    assert response.json()["detail"]["code"] == "PAYMENT_UNAVAILABLE"
-
-    payments = (await db_session.execute(select(Payment))).scalars().all()
-    access_entries = (await db_session.execute(select(AccessLedger))).scalars().all()
-    chat_quotas = (await db_session.execute(select(ChatQuota))).scalars().all()
-
-    assert payments == []
-    assert access_entries == []
-    assert chat_quotas == []
-
-
-@pytest.mark.asyncio
-async def test_payment_webhook_unavailable_without_ledger_side_effects(
-    async_client: AsyncClient,
-    db_session,
-):
-    """Unverified webhook creates no payment, access, or chat quota rows."""
-    response = await async_client.post(
-        "/api/payment/webhook",
-        json={
-            "event_type": "payment.succeeded",
-            "payment_id": "1",
-            "status": "succeeded",
-        },
-    )
-
-    assert response.status_code == 503
-    assert response.json()["detail"]["code"] == "PAYMENT_UNAVAILABLE"
-
-    payments = (await db_session.execute(select(Payment))).scalars().all()
-    access_entries = (await db_session.execute(select(AccessLedger))).scalars().all()
-    chat_quotas = (await db_session.execute(select(ChatQuota))).scalars().all()
-
-    assert payments == []
-    assert access_entries == []
-    assert chat_quotas == []
-
-
-@pytest.mark.asyncio
 async def test_direct_subscription_grant_covers_requested_days(
     async_client: AsyncClient,
     make_initdata,

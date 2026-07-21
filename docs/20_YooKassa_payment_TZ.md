@@ -4,21 +4,20 @@
 
 Подключить ЮKassa для приёма оплаты нескольких продуктов с рекуррентной подпиской.
 
-### Каталог продуктов
+### Каталог продуктов (актуальные цены, единый источник истины — `apps/api/app/services/product_catalog.py`)
 
 | Slug | Название | Тип | Цена | Период | Что даёт |
 |------|----------|-----|------|--------|----------|
-| `subscription_month` | Подписка на 1 месяц | рекуррентная | 199 ₽ | 30 дней | Полный доступ ко всем разборам + хорарные вопросы |
-| `subscription_year` | Подписка на 1 год | рекуррентная | 1990 ₽ | 365 дней | То же, со скидкой ~17% |
-| `horary_1` | 1 хорарный вопрос | разовая | 50 ★ | — | 1 вопрос |
-| `horary_3` | 3 хорарных вопроса | разовая | 120 ★ | — | 3 вопроса (−20%) |
-| `horary_5` | 5 хорарных вопросов | разовая | 180 ★ | — | 5 вопросов (−28%) |
-| `horary_10` | 10 хорарных вопросов | разовая | 300 ★ | — | 10 вопросов (−40%) |
-| `synastry` | Синастрия (совместимость) | разовая | 399 ₽ | — | Полный разбор совместимости двух натальных карт |
+| `subscription_month` | Подписка на 1 месяц | рекуррентная | 99 ₽ (9900 коп) | 30 дней | Полный доступ ко всем разборам + хорарные вопросы |
+| `subscription_year` | Подписка на 1 год | рекуррентная | 999 ₽ (99900 коп) | 365 дней | То же, на год |
+| `natal_full_report` | Полный натальный разбор | разовая | 399 ₽ (39900 коп) | — | Право на один full report для текущего natal context; повторная генерация того же контекста — бесплатно |
+| `horary_1` | 1 хорарный вопрос | разовая | 50 ₽ (5000 коп) | — | 1 вопрос |
+| `horary_3` | 3 хорарных вопроса | разовая | 120 ₽ (12000 коп) | — | 3 вопроса |
+| `horary_5` | 5 хорарных вопросов | разовая | 180 ₽ (18000 коп) | — | 5 вопросов |
+| `horary_10` | 10 хорарных вопросов | разовая | 300 ₽ (30000 коп) | — | 10 вопросов |
+| `synastry` | Синастрия (совместимость) | разовая | 399 ₽ (39900 коп) | — | НЕ ПРОДАЁТСЯ (`is_active=false`, fail-closed) пока нет реального fulfillment |
 
-**★** = Хорарные вопросы продаются за звезды (внутренняя валюта) или за рубли. В MVP — за рубли, цена та же (50/120/180/300 ₽). Звёзды — future feature.
-
-**Архитектурный принцип**: каждый продукт — отдельный `product_slug`. Подписка — рекуррентная (автопродление). Хорарные вопросы и синастрия — разовые покупки.
+**Архитектурный принцип**: каждый продукт — отдельный `product_slug`. Цены живут ТОЛЬКО в `product_catalog.py` (миграция 0020 сидит их в таблицу `products`); никаких цен в env-переменных. Подписка — рекуррентная (автопродление). Хорарные вопросы и натальный разбор — разовые покупки. Chat вне scope.
 
 Сейчас в проекте:
 - `Payment` модель — 6 полей, `provider="telegram"`, statuses: `pending/succeeded/failed`
@@ -38,9 +37,8 @@ YOOKASSA_MODE=test
 YOOKASSA_TEST_SHOP_ID=
 YOOKASSA_TEST_SECRET_KEY=
 YOOKASSA_RETURN_URL=http://localhost:3000/profile
-YOOKASSA_WEBHOOK_SECRET=
-YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS=19900
-YOOKASSA_SUBSCRIPTION_CURRENCY=RUB
+# Только для тестов: переопределение webhook IP allowlist (CIDR через запятую)
+YOOKASSA_WEBHOOK_IP_ALLOWLIST=
 ```
 
 ### `.env.production` (prod)
@@ -52,9 +50,6 @@ YOOKASSA_MODE=live
 YOOKASSA_LIVE_SHOP_ID=<set-in-secret-store>
 YOOKASSA_LIVE_SECRET_KEY=<set-in-secret-store>
 YOOKASSA_RETURN_URL=https://astro.vasiliy-ivanov.ru/profile
-YOOKASSA_WEBHOOK_SECRET=
-YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS=19900
-YOOKASSA_SUBSCRIPTION_CURRENCY=RUB
 YOOKASSA_RECURRENT_ENABLED=false
 ```
 
@@ -62,7 +57,9 @@ Tracked documentation must not contain live YooKassa credentials. If the
 previous values were copied from a real shop, rotate them in YooKassa before
 enabling production payments.
 
-`YOOKASSA_RECURRENT_ENABLED=false` — флаг-killswitch для автоплатежей. Пока `false`, рекуррент не списывается. Переключим на `true` после тестирования первого платежа вручную.
+`YOOKASSA_RECURRENT_ENABLED=false` — флаг-killswitch для автоплатежей. Пока `false`, рекуррент не списывается (rebill возвращает 0 и ничего не создаёт). Переключим на `true` после тестирования первого платежа вручную.
+
+Цен в env НЕТ: каталог цен — только `apps/api/app/services/product_catalog.py` (сидится миграцией в `products`).
 
 ## 3. Backend
 
@@ -79,10 +76,8 @@ yookassa_test_secret_key: str = Field("", alias="YOOKASSA_TEST_SECRET_KEY")
 yookassa_live_shop_id: str = Field("", alias="YOOKASSA_LIVE_SHOP_ID")
 yookassa_live_secret_key: str = Field("", alias="YOOKASSA_LIVE_SECRET_KEY")
 yookassa_return_url: str = Field("", alias="YOOKASSA_RETURN_URL")
-yookassa_webhook_secret: str = Field("", alias="YOOKASSA_WEBHOOK_SECRET")
-yookassa_subscription_price_kopecks: int = Field(19900, alias="YOOKASSA_SUBSCRIPTION_PRICE_KOPECKS")
-yookassa_subscription_currency: str = Field("RUB", alias="YOOKASSA_SUBSCRIPTION_CURRENCY")
 yookassa_recurrent_enabled: bool = Field(False, alias="YOOKASSA_RECURRENT_ENABLED")
+yookassa_webhook_ip_allowlist: str = Field("", alias="YOOKASSA_WEBHOOK_IP_ALLOWLIST")
 
 @property
 def yookassa_shop_id(self) -> str:
@@ -93,19 +88,13 @@ def yookassa_secret_key(self) -> str:
     return self.yookassa_live_secret_key if self.yookassa_mode == "live" else self.yookassa_test_secret_key
 ```
 
+Цены в env отсутствуют: единый источник истины — `apps/api/app/services/product_catalog.py` (сидится миграцией в `products`).
+
 ### 3.2. Зависимость (`apps/api/pyproject.toml`)
 
-Добавить в `dependencies`:
-
-```
-"yookassa>=3,<4",
-```
-
-Установить:
-
-```bash
-cd apps/api && pip install yookassa>=3
-```
+Зависимость от официального sync SDK НЕ добавляется: клиент реализован на
+async `httpx` (уже в зависимостях), чтобы ни один sync вызов не блокировал
+event loop. Basic Auth собирается вручную (`httpx.BasicAuth(shop_id, secret_key)`).
 
 ### 3.3. YooKassa клиент (`apps/api/app/services/yookassa_client.py`)
 
@@ -237,14 +226,14 @@ def get_yookassa_client() -> YooKassaClient:
     return YooKassaClient()
 ```
 
-### 3.4. Миграция `0011_add_yookassa_fields.py`
+### 3.4. Миграция `0020_add_yookassa_billing.py`
 
-Номер 0011 потому что 0010 занят профилем (три локации).
+Номер 0020 потому что текущий head — 0019. Сид каталога идёт из `apps/api/app/services/product_catalog.py` (единственный источник цен).
 
 ```python
 """add yookassa payment fields, products, and subscriptions
 
-Revision ID: 0011_add_yookassa_fields
+Revision ID: 0020_add_yookassa_billing
 Revises: 0010_add_profile_locations
 """
 
@@ -252,7 +241,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "0011_add_yookassa_fields"
+revision = "0020_add_yookassa_billing"
 down_revision = "0010_add_profile_locations"
 branch_labels = None
 depends_on = None
@@ -438,7 +427,7 @@ class Purchase(Base):
 Расширить `Payment` (добавить после существующих колонок `completed_at`):
 
 ```python
-    # YooKassa fields (added by 0011)
+    # YooKassa fields (added by 0020)
     product_slug: Mapped[str | None] = mapped_column(String(50), ForeignKey("products.slug"), nullable=True)
     provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
     idempotence_key: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
@@ -465,7 +454,7 @@ class Purchase(Base):
 Расширить `Payment`:
 
 ```python
-    # YooKassa fields (added by 0011_add_yookassa_fields)
+    # YooKassa fields (added by 0020_add_yookassa_billing)
     provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
     idempotence_key: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     confirmation_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -963,7 +952,7 @@ class SubscriptionService:
                 "subscription_id": None,
                 "product_slug": None,
                 "status": "none",
-                "price_kopecks": settings.yookassa_subscription_price_kopecks,
+                "price_kopecks": subscription.price_kopecks,
                 "currency": settings.yookassa_subscription_currency,
                 "current_period_start": None,
                 "current_period_end": None,
@@ -1150,10 +1139,9 @@ async def yookassa_webhook(
     payload = await request.json()
     event_type = payload.get("type", "")
 
-    # Verify webhook signature if WEBHOOK_SECRET is set
-    # (YooKassa sends HTTP header with signature)
-    # For MVP, we just process the event.
-    # TODO: Verify webhook authenticity if YOOKASSA_WEBHOOK_SECRET is set.
+    # Webhook contract: source IP allowlist + authenticated GET payment by id
+    # + amount/status/metadata comparison. Payload is NEVER trusted and there is
+    # no YOOKASSA_WEBHOOK_SECRET anywhere.
 
     service = SubscriptionService(db)
 
@@ -1384,7 +1372,7 @@ export function YookassaPaywall({ onSuccess, onError }: Props) {
       disabled={loading}
       className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[13px] font-medium text-background transition active:scale-[0.99] disabled:opacity-50"
     >
-      {loading ? "Перенаправляем..." : "Оформить подписку · 199 ₽/мес"}
+      {loading ? "Перенаправляем..." : "Оформить подписку · 99 ₽/мес"}
     </button>
   )
 }
@@ -1403,16 +1391,27 @@ export function YookassaPaywall({ onSuccess, onError }: Props) {
 2. Если `hasAccess === true` — показать «Подписка активна».
 3. Если `status === "pending"` — показать «Проверяем оплату...» с поллингом каждые 3 сек, таймаут 2 мин.
 
-## 5. Инварианты
+## 5. Инварианты и security contract (актуальный)
 
-1. **Один payment per subscription period**: `idempotence_key = "init-{subscription_id}-first"` гарантирует, что повторный запрос не создаст дубль.
-2. **Idempotent webhook**: если `payment.status == "succeeded"` — пропускаем обработку.
-3. **Один активный subscription per user**: если у пользователя уже есть `active` подписка — `start_subscription` возвращает 409.
-4. **Cancel ≠ revoke**: отмена подписки НЕ отзывает текущий период. Доступ сохраняется до `current_period_end`.
-5. **YOOKASSA_ENABLED**: при `false` все/payment endpoints возвращают 503.
-6. **YOOKASSA_RECURRENT_ENABLED**: при `false` `rebill_due_subscriptions()` логирует и возвращает 0. Kill-switch.
-7. **Webhook не требует авторизации**: `/api/payment/webhook/yookassa` НЕ использует `require_session`. YooKassa вызывает его со своим IP-адресом. При `YOOKASSA_WEBHOOK_SECRET` — проверять签名.
-8. **Все суммы в копейках**: `price_kopecks = 19900` = 199.00 ₽. В YooKassa передаём `"199.00"`.
+1. **Provider contract (официальная документация YooKassa):**
+   - Basic Auth `shop_id:secret_key` — только server-side, никогда не логируется.
+   - `Idempotence-Key` заголовок ≤ 64 символов на каждый create.
+   - Первый рекуррентный платёж: `save_payment_method=true` + `merchant_customer_id` + `capture=true` + redirect `return_url`.
+   - Rebill: заряжаем по `payment_method_id` с `capture=true`, стабильный ключ `rebill-{subscription_id}-{period}`.
+   - HTTP-клиент — полностью async (httpx); никаких sync SDK-вызовов в event loop.
+2. **Webhook security contract:**
+   - Payload webhook НЕ доверяем никогда. Порядок проверки:
+     a. Source IP обязан попадать в официальный allowlist YooKassa (185.71.76.0/27, 185.71.77.0/27, 77.75.153.0/25, 77.75.156.11, 77.75.156.35, 77.75.154.128/25, 2a02:5180::/32); учитываем только прямого peer (X-Forwarded-For из интернета не доверяем; override через `YOOKASSA_WEBHOOK_IP_ALLOWLIST` только для тестов).
+     b. Обязательный authenticated GET payment by id в YooKassa API (Basic Auth).
+     c. Сверка: provider status=succeeded, paid=true, amount/currency == локальному платежу, shop metadata (user_id/owner_id/product_slug) == локальному. Любой mismatch → reject без изменения состояния.
+   - Вымышленного `YOOKASSA_WEBHOOK_SECRET` как единственной проверки НЕТ — секрет не используется вообще.
+3. **Идемпотентность:** `idempotence_key` уникален (DB), `provider_payment_id` уникален (DB); повторный start возвращает pending вместо дубля; повторный webhook/rebill не создаёт второй AccessLedger/HoraryCredit/natal entitlement.
+4. **Один активный subscription per user**: start при активной подписке → 409.
+5. **Cancel ≠ revoke**: отмена подписки НЕ отзывает оплаченный период; доступ остаётся до конца ledger-периода.
+6. **Kill-switches:** `YOOKASSA_ENABLED=false` → все payment endpoints 503 (natal payment gate выключен); `YOOKASSA_RECURRENT_ENABLED=false` → rebill возвращает 0, ноль списаний.
+7. **Все суммы в копейках**: `price_kopecks = 9900` = 99.00 ₽.
+8. **Natal payment gate:** перед НОВОЙ генерацией full report требуется fulfilled entitlement (Purchase `natal_full_report` с `context_hash` текущего контекста), иначе 402 `NATAL_PAYMENT_REQUIRED`; повторная генерация уже купленного контекста — бесплатно.
+9. **Нет параллельных ledgers:** доступ к подписке — только через `AccessService.grant_subscription`; хорарная квота — только через `HoraryCredit(source="paid")`; natal entitlement — только через `Purchase(context_hash)`.
 
 ## 6. Порядок реализации
 
@@ -1421,7 +1420,7 @@ export function YookassaPaywall({ onSuccess, onError }: Props) {
 | 1 | `.env`, `.env.production` | Добавить YooKassa env vars |
 | 2 | `apps/api/pyproject.toml` | Добавить `yookassa` dependency |
 | 3 | `apps/api/app/core/config.py` | Добавить YooKassa settings |
-| 4 | `apps/api/alembic/versions/0011_add_yookassa_fields.py` | Миграция: расширить payments + создать subscriptions |
+| 4 | `apps/api/alembic/versions/0020_add_yookassa_billing.py` | Миграция: products/subscriptions/purchases + расширение payments |
 | 5 | `apps/api/app/db/models.py` | +8 колонок в Payment, +Subscription модель |
 | 6 | `apps/api/app/schemas/payment.py` | Переписать: SubscriptionStart*, Status*, Cancel*, Webhook |
 | 7 | `apps/api/app/services/yookassa_client.py` | Новый: YooKassa HTTP клиент |

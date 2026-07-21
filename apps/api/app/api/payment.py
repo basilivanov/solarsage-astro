@@ -1,135 +1,255 @@
 # ############################################################################
-# AI_HEADER: MODULE_API_PAYMENT
-# ROLE: Disabled payment endpoints
-# DEPENDENCIES: fastapi, sqlalchemy, app.services.payment_service
-# GRACE_ANCHORS: [CREATE_PAYMENT_ENDPOINT, PAYMENT_WEBHOOK_ENDPOINT]
-# WAVE: W-6.1, W-6.2
+# AI_HEADER: MODULE_API_PAYMENT — billing endpoints (YooKassa).
+# ROLE: Product catalog, subscription start/status/cancel, one-time purchase
+#       start, and the verified YooKassa webhook (IP allowlist + authenticated
+#       provider GET before any grant).
+# DEPENDENCIES: fastapi, sqlalchemy, app.services.billing_service
+# GRACE_ANCHORS: [BILLING_PRODUCTS_ENDPOINT, SUBSCRIPTION_ENDPOINTS,
+#                 PURCHASE_ENDPOINT, YOOKASSA_WEBHOOK_ENDPOINT]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-API-PAYMENT
-# purpose: Reject payment requests until real fulfillment exists.
+# purpose: Billing endpoints backed by YooKassa with a strict webhook
+#   verification contract. Nothing is granted from the webhook payload.
 # owns:
 #   - apps/api/app/api/payment.py
 # inputs:
-#   - POST /api/payment/create-intent: PaymentIntent
-#   - POST /api/payment/webhook: PaymentWebhook
-# outputs:
-#   - HTTP 503 PAYMENT_UNAVAILABLE
+#   - GET /api/payment/products
+#   - POST /api/payment/subscription/start: SubscriptionStartRequest
+#   - GET /api/payment/subscription/status
+#   - POST /api/payment/subscription/cancel: SubscriptionCancelRequest
+#   - POST /api/payment/purchase/start: PurchaseStartRequest
+#   - POST /api/payment/webhook/yookassa: YooKassa notification
+# outputs: catalog, start payloads, status, cancel result, webhook ack.
 # dependencies:
-#   - M-PAYMENT-SERVICE
+#   - M-BILLING-SERVICE
 #   - M-DB-SESSION
 #   - M-AUTH-DEPENDENCIES
-# side_effects:
-#   - none
+# side_effects: payment/subscription/purchase creation via provider;
+#   fulfillment only after verified webhook.
+# emitted_logs: none (service owns events).
 # invariants:
-#   - create-intent requires authentication
-#   - neither endpoint creates or grants anything
-# failure_policy:
-#   - both endpoints return explicit 503 unavailable responses
-# non_goals:
-#   - no real payment provider (MVP stub)
+#   - All non-webhook endpoints require a session and return 503 when
+#     YOOKASSA_ENABLED=false.
+#   - The webhook requires no session but only processes events whose source
+#     IP is in the official YooKassa allowlist (trusted direct peer as seen
+#     by our nginx; X-Forwarded-For from the internet is never trusted) AND
+#     whose provider state matches an authenticated GET by id.
+#   - synastry stays fail-closed (not sellable).
+# failure_policy: 400/404/409 domain mapping; 503 when disabled; 403 for a
+#   non-allowlisted webhook source.
 # END_MODULE_CONTRACT: M-API-PAYMENT
 
 # START_MODULE_MAP: M-API-PAYMENT
 # public_entrypoints:
-#   - create_payment_intent
-#   - payment_webhook
+#   - list_products
+#   - start_subscription
+#   - get_subscription_status
+#   - cancel_subscription
+#   - start_purchase
+#   - yookassa_webhook
 # semantic_blocks:
-#   - CREATE_PAYMENT_ENDPOINT: POST /api/payment/create-intent
-#   - PAYMENT_WEBHOOK_ENDPOINT: POST /api/payment/webhook
+#   - BILLING_PRODUCTS_ENDPOINT: GET /api/payment/products
+#   - SUBSCRIPTION_ENDPOINTS: start/status/cancel
+#   - PURCHASE_ENDPOINT: POST /api/payment/purchase/start
+#   - YOOKASSA_WEBHOOK_ENDPOINT: POST /api/payment/webhook/yookassa
+# owned_tests:
+#   - apps/api/tests/test_billing_products.py
+#   - apps/api/tests/test_billing_webhook.py
+#   - apps/api/tests/test_billing_endpoints.py
 # END_MODULE_MAP: M-API-PAYMENT
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from __future__ import annotations
+
+import ipaddress
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_session
+from app.core.config import settings
 from app.core.dependencies import require_session
-from app.services.payment_service import PaymentService, PaymentUnavailableError
-from app.schemas.payment import PaymentIntent, PaymentWebhook
 from app.db.models import User
+from app.db.session import get_session
+from app.schemas.payment import (
+    ProductsListResponse,
+    PurchaseStartRequest,
+    PurchaseStartResponse,
+    SubscriptionCancelRequest,
+    SubscriptionCancelResponse,
+    SubscriptionStartRequest,
+    SubscriptionStartResponse,
+    SubscriptionStatusResponse,
+    YooKassaWebhookEvent,
+)
+from app.services.billing_service import BillingService
 
 router = APIRouter()
 
+# Official YooKassa notification source ranges
+# (https://yookassa.ru/developers/using-api/webhooks — "Проверка IP-адреса").
+_YOOKASSA_IP_RANGES: tuple[str, ...] = (
+    "185.71.76.0/27",
+    "185.71.77.0/27",
+    "77.75.153.0/25",
+    "77.75.156.11/32",
+    "77.75.156.35/32",
+    "77.75.154.128/25",
+    "2a02:5180::/32",
+)
 
-def _payment_unavailable() -> HTTPException:
-    return HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail={
-            "code": "PAYMENT_UNAVAILABLE",
-            "message": (
-                "Payment fulfillment is disabled until a real provider catalog, "
-                "provider confirmation, verified webhook, and idempotent grant exist."
-            ),
-        },
-    )
+
+def _webhook_allowlist() -> list[ipaddress._BaseNetwork]:
+    override = (settings.yookassa_webhook_ip_allowlist or "").strip()
+    ranges = [r.strip() for r in override.split(",") if r.strip()] if override else list(_YOOKASSA_IP_RANGES)
+    return [ipaddress.ip_network(r) for r in ranges]
 
 
-# START_BLOCK: CREATE_PAYMENT_ENDPOINT
-@router.post("/api/payment/create-intent")
-async def create_payment_intent(
-    intent: PaymentIntent,
+def _webhook_source_allowed(request: Request) -> bool:
+    if request.client is None:
+        return False
+    try:
+        source = ipaddress.ip_address(request.client.host)
+    except ValueError:
+        return False
+    return any(source in network for network in _webhook_allowlist())
+
+
+def _require_enabled() -> None:
+    if not settings.yookassa_enabled:
+        raise HTTPException(status_code=503, detail="Payments are not available")
+
+
+def _domain_error(exc: ValueError) -> HTTPException:
+    code = str(exc)
+    if code == "PRODUCT_NOT_FOUND":
+        return HTTPException(status_code=404, detail={"code": code, "message": "Product not found or inactive"})
+    if code == "NATAL_CONTEXT_MISSING":
+        return HTTPException(status_code=400, detail={"code": code, "message": "Natal context is missing"})
+    return HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": code})
+
+
+# START_BLOCK: BILLING_PRODUCTS_ENDPOINT
+@router.get("/api/payment/products", response_model=ProductsListResponse)
+async def list_products(
     db: AsyncSession = Depends(get_session),
     user: User = Depends(require_session),
 ):
-    # START_FUNCTION_CONTRACT: F-M-API-PAYMENT.create_payment_intent
-    # purpose: Reject payment intent creation until real fulfillment exists.
-    # inputs: intent (PaymentIntent), db session, authenticated user
-    # returns: HTTP 503 PAYMENT_UNAVAILABLE
-    # side_effects: none
-    # emitted_logs: none
-    # error_behavior: 401 if not authenticated; otherwise 503
-    # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.create_payment_intent
-    """
-    Reject payment intent creation until real provider fulfillment exists.
-    """
-    service = PaymentService(db)
+    _require_enabled()
+    service = BillingService(db)
+    products = await service.get_products()
+    return ProductsListResponse(
+        products=[
+            {
+                "slug": p.slug,
+                "name": p.name,
+                "description": p.description,
+                "product_type": p.product_type,
+                "price_kopecks": p.price_kopecks,
+                "currency": p.currency,
+                "period_days": p.period_days,
+                "horary_quota": p.horary_quota,
+            }
+            for p in products
+        ]
+    )
+# END_BLOCK: BILLING_PRODUCTS_ENDPOINT
 
+
+# START_BLOCK: SUBSCRIPTION_ENDPOINTS
+@router.post("/api/payment/subscription/start", response_model=SubscriptionStartResponse)
+async def start_subscription(
+    body: SubscriptionStartRequest,
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(require_session),
+):
+    _require_enabled()
+    service = BillingService(db)
     try:
-        payment = await service.create_payment_intent(
-            user_id=user.id,
-            amount=intent.amount,
-            currency=intent.currency,
-            description=intent.description,
-        )
-    except PaymentUnavailableError:
-        raise _payment_unavailable()
-
-    return {
-        "payment_id": payment.id,
-        "status": payment.status,
-        "amount": payment.amount,
-        "currency": payment.currency,
-    }
+        result = await service.start_subscription(user.id, body.product_slug)
+    except ValueError as exc:
+        raise _domain_error(exc) from exc
+    if result.get("status") == "already_active":
+        raise HTTPException(status_code=409, detail={"code": "ALREADY_ACTIVE", "message": "Subscription is already active"})
+    return SubscriptionStartResponse(**result)
 
 
-# END_BLOCK: CREATE_PAYMENT_ENDPOINT
+@router.get("/api/payment/subscription/status", response_model=SubscriptionStatusResponse)
+async def get_subscription_status(
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(require_session),
+):
+    _require_enabled()
+    service = BillingService(db)
+    result = await service.get_subscription_status(user.id)
+    return SubscriptionStatusResponse(**result)
 
-# START_BLOCK: PAYMENT_WEBHOOK_ENDPOINT
-@router.post("/api/payment/webhook")
-async def payment_webhook(
-    webhook: PaymentWebhook,
+
+@router.post("/api/payment/subscription/cancel", response_model=SubscriptionCancelResponse)
+async def cancel_subscription(
+    body: SubscriptionCancelRequest,
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(require_session),
+):
+    _require_enabled()
+    service = BillingService(db)
+    result = await service.cancel_subscription(user.id, body.reason)
+    return SubscriptionCancelResponse(**result)
+# END_BLOCK: SUBSCRIPTION_ENDPOINTS
+
+
+# START_BLOCK: PURCHASE_ENDPOINT
+@router.post("/api/payment/purchase/start", response_model=PurchaseStartResponse)
+async def start_purchase(
+    body: PurchaseStartRequest,
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(require_session),
+):
+    _require_enabled()
+    service = BillingService(db)
+    try:
+        result = await service.start_purchase(user.id, body.product_slug)
+    except ValueError as exc:
+        raise _domain_error(exc) from exc
+    if result.get("status") == "already_entitled":
+        raise HTTPException(status_code=409, detail={"code": "ALREADY_ENTITLED", "message": "Report already purchased for the current context"})
+    return PurchaseStartResponse(**result)
+# END_BLOCK: PURCHASE_ENDPOINT
+
+
+# START_BLOCK: YOOKASSA_WEBHOOK_ENDPOINT
+@router.post("/api/payment/webhook/yookassa")
+async def yookassa_webhook(
+    request: Request,
     db: AsyncSession = Depends(get_session),
 ):
-    # START_FUNCTION_CONTRACT: F-M-API-PAYMENT.payment_webhook
-    # purpose: Reject webhook payloads until provider verification exists.
-    # inputs: webhook (PaymentWebhook), db session
-    # returns: HTTP 503 PAYMENT_UNAVAILABLE
-    # side_effects: none
-    # emitted_logs: none
-    # error_behavior: always 503
-    # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.payment_webhook
-    """
-    Reject payment webhooks until provider verification and fulfillment exist.
-    """
-    service = PaymentService(db)
-    
+    # START_FUNCTION_CONTRACT: F-M-API-PAYMENT.yookassa_webhook
+    # purpose: Process YooKassa notifications ONLY from allowlisted source
+    #   IPs and ONLY after an authenticated provider GET by id (the payload
+    #   alone never grants anything).
+    # inputs: raw YooKassa notification (no session, no trust).
+    # returns: {"ok": true} (always 200 for a well-formed allowlisted event;
+    #   403 for a non-allowlisted source; 503 when payments are disabled).
+    # side_effects: idempotent fulfillment via BillingService.
+    # error_behavior: 403 non-allowlisted source; 400 malformed body.
+    # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.yookassa_webhook
+    if not settings.yookassa_enabled:
+        raise HTTPException(status_code=503, detail="Payments are not available")
+    if not _webhook_source_allowed(request):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     try:
-        await service.handle_webhook(
-            payment_id=webhook.payment_id,
-            status=webhook.status,
-        )
-    except PaymentUnavailableError:
-        raise _payment_unavailable()
-    
+        event = YooKassaWebhookEvent.model_validate(await request.json())
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Malformed notification") from exc
+
+    if event.event not in ("payment.succeeded", "payment.canceled"):
+        return {"ok": True}
+
+    provider_payment_id = str((event.object or {}).get("id", ""))
+    if not provider_payment_id:
+        raise HTTPException(status_code=400, detail="Malformed notification")
+
+    service = BillingService(db)
+    await service.verify_and_process_webhook(provider_payment_id)
     return {"ok": True}
-# END_BLOCK: PAYMENT_WEBHOOK_ENDPOINT
+# END_BLOCK: YOOKASSA_WEBHOOK_ENDPOINT

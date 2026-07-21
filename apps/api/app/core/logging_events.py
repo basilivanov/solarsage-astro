@@ -75,6 +75,14 @@ LogEventName = Literal[
     "payment.succeeded",
     "payment.failed",
     "payment.webhook_received",
+    # billing (YooKassa)
+    "billing.subscription_started",
+    "billing.purchase_started",
+    "billing.payment_fulfilled",
+    "billing.subscription_canceled",
+    "billing.rebill_skipped",
+    "billing.rebill_started",
+    "billing.webhook_rejected",
     # horary
     "horary.question_created",
     "horary.question_create_failed",

@@ -143,6 +143,12 @@ class User(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    subscriptions: Mapped[list["Subscription"]] = relationship(
+        "Subscription",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
     access_entries: Mapped[list["AccessLedger"]] = relationship(
         "AccessLedger",
         back_populates="user",
@@ -432,7 +438,7 @@ class Payment(Base):
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False)  # "pending", "succeeded", "failed"
     provider: Mapped[str] = mapped_column(String(50), nullable=False, default="telegram")
-    provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -441,8 +447,103 @@ class Payment(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # YooKassa fields (migration 0020)
+    product_slug: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    idempotence_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    confirmation_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    confirmation_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payment_method_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payment_method_saved: Mapped[bool] = mapped_column(nullable=False, default=False)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     user: Mapped["User"] = relationship("User")
 # END_BLOCK: PAYMENTS_TABLE
+
+
+# START_BLOCK: BILLING_TABLES
+class Product(Base):
+    """Paid product catalog row (seeded from product_catalog by migration 0020)."""
+
+    __tablename__ = "products"
+
+    slug: Mapped[str] = mapped_column(String(50), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    product_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    # "subscription_recurrent" | "one_time"
+    price_kopecks: Mapped[int] = mapped_column(nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="RUB")
+    period_days: Mapped[int | None] = mapped_column(nullable=True)
+    horary_quota: Mapped[int | None] = mapped_column(nullable=True)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Subscription(Base):
+    """Recurrent subscription state. Exactly one ACTIVE per user at a time."""
+
+    __tablename__ = "subscriptions"
+    __table_args__ = (
+        Index("ix_subscriptions_user_id_status", "user_id", "status"),
+        Index("ix_subscriptions_next_charge_at", "next_charge_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    product_slug: Mapped[str] = mapped_column(String(50), ForeignKey("products.slug"), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending")
+    # pending -> active -> past_due -> canceled | expired
+    price_kopecks: Mapped[int] = mapped_column(nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="RUB")
+    provider: Mapped[str] = mapped_column(String(30), nullable=False, default="yookassa")
+    payment_method_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    current_period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_charge_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancellation_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="subscriptions")
+    product: Mapped["Product"] = relationship("Product")
+
+
+class Purchase(Base):
+    """One-time purchase: horary packs, natal full report entitlement."""
+
+    __tablename__ = "purchases"
+    __table_args__ = (
+        Index("ix_purchases_user_id_status", "user_id", "status"),
+        UniqueConstraint("user_id", "product_slug", "context_hash", name="uq_purchases_natal_entitlement"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    product_slug: Mapped[str] = mapped_column(String(50), ForeignKey("products.slug"), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending")
+    # pending -> succeeded -> consumed (horary) / delivered (natal)
+    horary_quota_added: Mapped[int | None] = mapped_column(nullable=True)
+    # Natal entitlement binding: the natal context hash this purchase unlocks
+    # (NULL for non-natal products). One succeeded entitlement per context.
+    context_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User")
+    product: Mapped["Product"] = relationship("Product")
+# END_BLOCK: BILLING_TABLES
 
 
 # START_BLOCK: EVENING_CHECKINS_TABLE

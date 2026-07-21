@@ -187,6 +187,27 @@ class Settings(BaseSettings):
     solarsage_v2_frontend_enabled: bool = Field(False, alias="SOLARSAGE_V2_FRONTEND_ENABLED")
     solarsage_audit_artifacts_enabled: bool = Field(False, alias="SOLARSAGE_AUDIT_ARTIFACTS_ENABLED")
 
+    # --- YooKassa (secrets live only in env files, never in git) ---
+    yookassa_enabled: bool = Field(False, alias="YOOKASSA_ENABLED")
+    yookassa_mode: str = Field("test", alias="YOOKASSA_MODE")  # "test" | "live"
+    yookassa_test_shop_id: str = Field("", alias="YOOKASSA_TEST_SHOP_ID")
+    yookassa_test_secret_key: str = Field("", alias="YOOKASSA_TEST_SECRET_KEY")
+    yookassa_live_shop_id: str = Field("", alias="YOOKASSA_LIVE_SHOP_ID")
+    yookassa_live_secret_key: str = Field("", alias="YOOKASSA_LIVE_SECRET_KEY")
+    yookassa_return_url: str = Field("", alias="YOOKASSA_RETURN_URL")
+    yookassa_recurrent_enabled: bool = Field(False, alias="YOOKASSA_RECURRENT_ENABLED")
+    # Comma-separated CIDR allowlist override for the webhook source check
+    # (tests/dev only; production default = official YooKassa ranges).
+    yookassa_webhook_ip_allowlist: str = Field("", alias="YOOKASSA_WEBHOOK_IP_ALLOWLIST")
+
+    @property
+    def yookassa_shop_id(self) -> str:
+        return self.yookassa_live_shop_id if self.yookassa_mode == "live" else self.yookassa_test_shop_id
+
+    @property
+    def yookassa_secret_key(self) -> str:
+        return self.yookassa_live_secret_key if self.yookassa_mode == "live" else self.yookassa_test_secret_key
+
     @property
     def git_sha(self) -> str:
         # START_FUNCTION_CONTRACT: M-CONFIG.Settings.git_sha

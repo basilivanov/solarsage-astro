@@ -24,8 +24,12 @@
 #   - LLM only writes narrative text; chart facts come from NatalContextData
 #   - Failed generation produces FAILED_RETRYABLE, never a fake READY report
 #   - No transit contamination in natal report
+#   - Payment gate: a NEW generation for the current context requires a
+#     fulfilled natal_full_report entitlement when YooKassa is enabled;
+#     repeat generation of an already-purchased context is free
 # failure_policy:
 #   - LLM failure → FAILED_RETRYABLE
+#   - missing entitlement → 402 NATAL_PAYMENT_REQUIRED
 #   - Invalid LLM JSON → FAILED_RETRYABLE
 #   - Repeated LLM failure → FAILED_PERMANENT after 3 attempts
 # non_goals:
@@ -258,7 +262,24 @@ class NatalReportService:
                     error_message=existing.error_message_sanitized,
                 )
 
-        # 4. Check FAILED_RETRYABLE count
+        # 4. Payment gate (billing wave): a NEW generation for the current
+        # context requires a fulfilled natal_full_report entitlement. Repeat
+        # reads/regeneration of an already-purchased context need no new
+        # payment. Gate is active only when YooKassa is enabled.
+        from app.core.config import settings
+        if settings.yookassa_enabled:
+            from app.services.billing_service import BillingService
+            billing = BillingService(self.db)
+            if not await billing.has_natal_entitlement(user_id, profile_hash):
+                raise HTTPException(
+                    status_code=402,
+                    detail={
+                        "code": "NATAL_PAYMENT_REQUIRED",
+                        "message": "Полный натальный разбор доступен после оплаты.",
+                    },
+                )
+
+        # 5. Check FAILED_RETRYABLE count
         retry_count = await self._count_failed_attempts(user_id, cache_entry.id)
         if retry_count >= MAX_RETRY_ATTEMPTS:
             # Mark as permanent failure
