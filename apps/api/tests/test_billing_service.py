@@ -197,6 +197,32 @@ async def test_webhook_fulfill_subscription_grants_access_and_method(db_session,
     assert len(ledger) == 1
 
 
+# ---- start_purchase: idempotency ----
+
+@pytest.mark.asyncio
+async def test_start_purchase_repeat_reuses_pending(db_session, fake_client) -> None:
+    """Retry of start_purchase with an existing pending payment must NOT call
+    the provider again and must return the SAME payment/confirmation (this
+    path previously dereferenced an unbound `result`)."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900017)
+    service = BillingService(db_session)
+
+    first = await service.start_purchase(user.id, "horary_3")
+    second = await service.start_purchase(user.id, "horary_3")
+
+    assert second["status"] == "pending"
+    assert second["purchase_id"] == first["purchase_id"]
+    assert second["provider_payment_id"] == first["provider_payment_id"]
+    assert second["confirmation_url"] == first["confirmation_url"]
+    assert len(fake_client.calls) == 1  # no duplicate provider payment
+
+    purchases = (await db_session.execute(select(Purchase))).scalars().all()
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(purchases) == 1
+    assert len(payments) == 1
+
+
 # ---- Fulfillment: horary ----
 
 @pytest.mark.asyncio
@@ -505,3 +531,66 @@ async def test_pending_unique_index_blocks_concurrent_start_rows(db_session) -> 
     )
     with pytest.raises(SQLIntegrityError):
         await db_session.commit()
+
+
+class TimeoutThenSuccessClient(FakeYooKassaClient):
+    """First create call times out; the retry succeeds."""
+
+    def __init__(self):
+        super().__init__()
+        self.initial_calls = 0
+
+    async def create_initial_payment(self, **kwargs):
+        self.initial_calls += 1
+        self.calls.append(("initial", kwargs))
+        if self.initial_calls == 1:
+            from app.services.yookassa_client import YooKassaError
+            raise YooKassaError("yookassa transport error: timeout")
+        return {
+            "provider_payment_id": f"prov-{len(self.calls):04d}",
+            "confirmation_url": "https://pay.example/init",
+            "status": "pending",
+        }
+
+
+@pytest.mark.asyncio
+async def test_provider_timeout_retry_reuses_same_key_and_owner(db_session, monkeypatch) -> None:
+    """Timeout/unknown outcome: reservation stays committed; retry reconciles
+    with the SAME idempotence key — no second local owner, no second charge."""
+    client = TimeoutThenSuccessClient()
+    monkeypatch.setattr("app.services.billing_service.get_yookassa_client", lambda: client)
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+    monkeypatch.setattr(settings, "yookassa_return_url", "https://app.example/return")
+    await seed_products(db_session)
+    user = await _user(db_session, 900016)
+    from app.services.yookassa_client import YooKassaError
+
+    service = BillingService(db_session)
+    with pytest.raises(YooKassaError):
+        await service.start_subscription(user.id, "subscription_month")
+
+    # The reservation is durably committed despite the failed POST.
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(subs) == 1
+    assert len(payments) == 1
+    assert payments[0].status == "pending"
+    assert payments[0].provider_payment_id is None
+    stable_key = payments[0].idempotence_key
+
+    # A FRESH service instance (new request) sees the same committed state.
+    service_retry = BillingService(db_session)
+    result = await service_retry.start_subscription(user.id, "subscription_month")
+
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(subs) == 1, "retry must never create a second local owner"
+    assert len(payments) == 1, "retry must never create a second local payment"
+    assert payments[0].idempotence_key == stable_key
+    assert payments[0].provider_payment_id is not None
+    assert result["confirmation_url"] == "https://pay.example/init"
+
+    # Both provider calls used the SAME idempotence key (dedupe contract).
+    assert len(client.calls) == 2
+    keys = {kwargs["idempotence_key"] for _kind, kwargs in client.calls}
+    assert keys == {stable_key}

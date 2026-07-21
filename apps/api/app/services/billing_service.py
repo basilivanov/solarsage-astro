@@ -113,16 +113,19 @@ class BillingService:
     async def start_subscription(self, user_id: uuid.UUID, product_slug: str) -> dict:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.start_subscription
         # purpose: Create the initial recurrent payment for a subscription.
-        #   Idempotent: an already-active subscription returns
-        #   {"status": "already_active"}; a pending one is reused, never
-        #   duplicated.
+        #   Durable-first: the owner Subscription AND the pending Payment with
+        #   a stable idempotence_key are COMMITTED before the external
+        #   provider POST. A timeout/unknown outcome leaves the pending rows;
+        #   any retry reuses the SAME key (YooKassa dedupes) and reconciles
+        #   instead of charging twice.
         # inputs: user_id, product_slug (subscription_month|subscription_year).
         # returns: dict with subscription_id, product_slug,
         #   provider_payment_id, confirmation_url, status.
-        # side_effects: inserts Subscription + Payment rows; POST to YooKassa
-        #   with save_payment_method=true, merchant_customer_id, capture=true.
+        # side_effects: commits Subscription + Payment reservations; POST to
+        #   YooKassa with save_payment_method=true, merchant_customer_id,
+        #   capture=true.
         # error_behavior: ValueError on unknown/wrong product; YooKassaError
-        #   on provider failure.
+        #   on provider failure (reservation stays pending for retry).
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.start_subscription
         product = await self._get_product(product_slug)
         if product is None or product.product_type != "subscription_recurrent":
@@ -132,90 +135,51 @@ class BillingService:
         if active is not None:
             return {"status": "already_active", "subscription_id": active.id}
 
-        pending = await self._get_pending_subscription(user_id, product_slug)
-        if pending is not None:
-            payment = await self._get_pending_payment_for(
-                user_id, product_slug, f"init-{pending.id}-first"
-            )
-            if payment is not None:
-                return {
-                    "subscription_id": pending.id,
-                    "product_slug": product_slug,
-                    "provider_payment_id": payment.provider_payment_id,
-                    "confirmation_url": payment.confirmation_url,
-                    "status": "pending",
-                }
-
-        subscription = Subscription(
+        subscription = await self._reserve_subscription(user_id, product)
+        attempt_key = await self._next_attempt_key(subscription.id, product_slug)
+        payment = await self._reserve_payment(
             user_id=user_id,
-            product_slug=product_slug,
-            status="pending",
-            price_kopecks=product.price_kopecks,
-            currency=product.currency,
-        )
-        self.db.add(subscription)
-        # Reserve the owner row BEFORE the external POST. A concurrent start
-        # hits the partial unique index (one pending per user+product) and is
-        # converted into the same reuse path instead of a second charge.
-        from sqlalchemy.exc import IntegrityError as SQLIntegrityError
-
-        try:
-            async with self.db.begin_nested():
-                await self.db.flush()
-        except SQLIntegrityError:
-            # The failed savepoint is rolled back; drop the in-memory copy
-            # before re-reading the row a concurrent start reserved.
-            self.db.expunge(subscription)
-            pending = await self._get_pending_subscription(user_id, product_slug)
-            if pending is None:
-                raise
-            subscription = pending
-
-        client = get_yookassa_client()
-        result = await client.create_initial_payment(
-            user_id=user_id,
-            owner_id=subscription.id,
-            amount_kopecks=product.price_kopecks,
-            currency=product.currency,
-            description=product.name,
-            return_url=settings.yookassa_return_url,
-            product_slug=product_slug,
-            idempotence_key=f"init-{subscription.id}-first",
-        )
-
-        payment = Payment(
-            user_id=user_id,
-            amount=product.price_kopecks,
-            currency=product.currency,
-            status="pending",
-            provider="yookassa",
-            description=product.name,
-            product_slug=product_slug,
-            provider_payment_id=result["provider_payment_id"],
-            idempotence_key=f"init-{subscription.id}-first",
-            confirmation_url=result.get("confirmation_url"),
+            product=product,
+            idempotence_key=attempt_key,
             subscription_id=subscription.id,
         )
-        self.db.add(payment)
-        try:
-            async with self.db.begin_nested():
-                await self.db.flush()
-        except SQLIntegrityError:
-            # A concurrent start already stored this exact payment (stable
-            # idempotence key + provider dedupe); reuse it, never charge twice.
-            self.db.expunge(payment)
-            payment = await self._get_payment_by_idempotence_key(f"init-{subscription.id}-first")
-            if payment is None:
-                raise
-        await self.db.commit()
+        if payment.status == "canceled":
+            # Previous attempt was canceled at the provider: move to a fresh
+            # attempt key (never reuses a dead idempotence key).
+            payment = await self._reserve_payment(
+                user_id=user_id,
+                product=product,
+                idempotence_key=await self._next_attempt_key(subscription.id, product_slug, force_new=True),
+                subscription_id=subscription.id,
+            )
+
+        if payment.provider_payment_id is None:
+            # First external attempt (or reconciliation after a timeout): the
+            # SAME idempotence key makes YooKassa dedupe the charge, so a
+            # retry merges into the existing payment instead of doubling it.
+            client = get_yookassa_client()
+            result = await client.create_initial_payment(
+                user_id=user_id,
+                owner_id=subscription.id,
+                amount_kopecks=product.price_kopecks,
+                currency=product.currency,
+                description=product.name,
+                return_url=settings.yookassa_return_url,
+                product_slug=product_slug,
+                idempotence_key=payment.idempotence_key or attempt_key,
+            )
+            payment.provider_payment_id = result["provider_payment_id"]
+            payment.confirmation_url = result.get("confirmation_url")
+            await self.db.commit()
+
         log_event("billing.subscription_started", msg="subscription started", payload={"payment_id": payment.id})
 
         return {
             "subscription_id": subscription.id,
             "product_slug": product_slug,
-            "provider_payment_id": result["provider_payment_id"],
-            "confirmation_url": result.get("confirmation_url"),
-            "status": result["status"],
+            "provider_payment_id": payment.provider_payment_id,
+            "confirmation_url": payment.confirmation_url,
+            "status": "pending",
         }
 
     async def start_purchase(self, user_id: uuid.UUID, product_slug: str) -> dict:
@@ -249,83 +213,47 @@ class BillingService:
             if entitled:
                 return {"status": "already_entitled"}
 
-        pending = await self._get_pending_purchase(user_id, product_slug, context_hash)
-        if pending is not None:
-            payment = await self._get_pending_payment_for(
-                user_id, product_slug, f"purchase-{pending.id}"
+        purchase = await self._reserve_purchase(user_id, product, context_hash)
+        attempt_key = await self._next_attempt_key(purchase.id, product_slug, prefix="purchase")
+        payment = await self._reserve_payment(
+            user_id=user_id,
+            product=product,
+            idempotence_key=attempt_key,
+        )
+        if payment.status == "canceled":
+            payment = await self._reserve_payment(
+                user_id=user_id,
+                product=product,
+                idempotence_key=await self._next_attempt_key(purchase.id, product_slug, prefix="purchase", force_new=True),
             )
-            if payment is not None:
-                return {
-                    "purchase_id": pending.id,
-                    "product_slug": product_slug,
-                    "provider_payment_id": payment.provider_payment_id,
-                    "confirmation_url": payment.confirmation_url,
-                    "status": "pending",
-                }
 
-        purchase = Purchase(
-            user_id=user_id,
-            product_slug=product_slug,
-            status="pending",
-            horary_quota_added=product.horary_quota,
-            context_hash=context_hash,
-        )
-        self.db.add(purchase)
-        from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+        if payment.provider_payment_id is None:
+            client = get_yookassa_client()
+            result = await client.create_one_time_payment(
+                user_id=user_id,
+                owner_id=purchase.id,
+                amount_kopecks=product.price_kopecks,
+                currency=product.currency,
+                description=product.name,
+                return_url=settings.yookassa_return_url,
+                product_slug=product_slug,
+                idempotence_key=payment.idempotence_key or attempt_key,
+            )
+            payment.provider_payment_id = result["provider_payment_id"]
+            payment.confirmation_url = result.get("confirmation_url")
+            await self.db.commit()
 
-        try:
-            async with self.db.begin_nested():
-                await self.db.flush()
-        except SQLIntegrityError:
-            self.db.expunge(purchase)
-            pending = await self._get_pending_purchase(user_id, product_slug, context_hash)
-            if pending is None:
-                raise
-            purchase = pending
-
-        client = get_yookassa_client()
-        result = await client.create_one_time_payment(
-            user_id=user_id,
-            owner_id=purchase.id,
-            amount_kopecks=product.price_kopecks,
-            currency=product.currency,
-            description=product.name,
-            return_url=settings.yookassa_return_url,
-            product_slug=product_slug,
-            idempotence_key=f"purchase-{purchase.id}",
-        )
-
-        payment = Payment(
-            user_id=user_id,
-            amount=product.price_kopecks,
-            currency=product.currency,
-            status="pending",
-            provider="yookassa",
-            description=product.name,
-            product_slug=product_slug,
-            provider_payment_id=result["provider_payment_id"],
-            idempotence_key=f"purchase-{purchase.id}",
-            confirmation_url=result.get("confirmation_url"),
-        )
-        self.db.add(payment)
-        try:
-            async with self.db.begin_nested():
-                await self.db.flush()
-        except SQLIntegrityError:
-            self.db.expunge(payment)
-            payment = await self._get_payment_by_idempotence_key(f"purchase-{purchase.id}")
-            if payment is None:
-                raise
-        purchase.payment_id = payment.id
-        await self.db.commit()
+        if purchase.payment_id is None:
+            purchase.payment_id = payment.id
+            await self.db.commit()
         log_event("billing.purchase_started", msg="purchase started", payload={"payment_id": payment.id})
 
         return {
             "purchase_id": purchase.id,
             "product_slug": product_slug,
-            "provider_payment_id": result["provider_payment_id"],
-            "confirmation_url": result.get("confirmation_url"),
-            "status": result["status"],
+            "provider_payment_id": payment.provider_payment_id,
+            "confirmation_url": payment.confirmation_url,
+            "status": "pending",
         }
     # END_BLOCK: BILLING_START
 
@@ -573,41 +501,57 @@ class BillingService:
             cycle_end = sub.current_period_end or sub.next_charge_at or now
             period_label = cycle_end.date().isoformat()
             idempotence_key = f"rebill-{sub.id}-{period_label}"[:64]
-            try:
-                result_payment = await client.create_recurrent_payment(
+            # Durable reservation BEFORE the external POST; a prior attempt
+            # that died after charging reconciles through this same key.
+            payment = await self._get_payment_by_idempotence_key(idempotence_key)
+            if payment is None:
+                payment = Payment(
                     user_id=sub.user_id,
-                    owner_id=sub.id,
-                    payment_method_id=payment_method_id,
-                    amount_kopecks=sub.price_kopecks,
+                    amount=sub.price_kopecks,
                     currency=sub.currency,
-                    description="Подписка SolarSage — автопродление",
+                    status="pending",
+                    provider="yookassa",
+                    description="Автопродление подписки",
                     product_slug=sub.product_slug,
-                    period_label=period_label,
                     idempotence_key=idempotence_key,
+                    subscription_id=sub.id,
                 )
-            except YooKassaError:
-                # Explicit provider failure: demote and retry tomorrow; DB
-                # stays consistent (no half-written payment row).
-                sub.status = "past_due"
-                sub.next_charge_at = now + timedelta(days=1)
-                log_event("system.error", msg="rebill provider failure", level="error")
-                continue
-            payment = Payment(
-                user_id=sub.user_id,
-                amount=sub.price_kopecks,
-                currency=sub.currency,
-                status="pending",
-                provider="yookassa",
-                description="Автопродление подписки",
-                product_slug=sub.product_slug,
-                provider_payment_id=result_payment["provider_payment_id"],
-                idempotence_key=idempotence_key,
-                subscription_id=sub.id,
-            )
-            self.db.add(payment)
-            sub.next_charge_at = now + timedelta(days=1)
-            attempts += 1
-            log_event("billing.rebill_started", msg="rebill started")
+                self.db.add(payment)
+                from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+                try:
+                    await self.db.commit()
+                except SQLIntegrityError:
+                    await self.db.rollback()
+                    payment = await self._get_payment_by_idempotence_key(idempotence_key)
+                    if payment is None:
+                        raise
+
+            if payment.provider_payment_id is None:
+                try:
+                    result_payment = await client.create_recurrent_payment(
+                        user_id=sub.user_id,
+                        owner_id=sub.id,
+                        payment_method_id=payment_method_id,
+                        amount_kopecks=sub.price_kopecks,
+                        currency=sub.currency,
+                        description="Подписка SolarSage — автопродление",
+                        product_slug=sub.product_slug,
+                        period_label=period_label,
+                        idempotence_key=idempotence_key,
+                    )
+                except YooKassaError:
+                    # Explicit provider failure: demote and retry next cycle
+                    # with the SAME key (dedupe), never a fresh charge.
+                    sub.status = "past_due"
+                    sub.next_charge_at = now + timedelta(days=1)
+                    await self.db.commit()
+                    log_event("system.error", msg="rebill provider failure", level="error")
+                    continue
+                payment.provider_payment_id = result_payment["provider_payment_id"]
+                await self.db.commit()
+                attempts += 1
+                log_event("billing.rebill_started", msg="rebill started")
         await self.db.commit()
         return attempts
     # END_BLOCK: BILLING_REBILL
@@ -686,6 +630,141 @@ class BillingService:
             select(Payment).where(Payment.idempotence_key == idempotence_key)
         )
         return result.scalar_one_or_none()
+
+    # ---- Durable reservations (commit BEFORE any external provider POST) ----
+
+    async def _reserve_subscription(self, user_id: uuid.UUID, product: Product) -> Subscription:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reserve_subscription
+        # purpose: Get-or-create the pending Subscription and COMMIT it, so
+        #   the owner exists durably before any external charge attempt. A
+        #   concurrent start collides on the partial unique index and is
+        #   converted to the same reuse path.
+        # inputs: user_id, product (subscription product).
+        # returns: the pending Subscription row (committed).
+        # side_effects: commits the reservation.
+        # error_behavior: re-raises if the row cannot be reserved or reused.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reserve_subscription
+        from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+        pending = await self._get_pending_subscription(user_id, product.slug)
+        if pending is not None:
+            return pending
+        subscription = Subscription(
+            user_id=user_id,
+            product_slug=product.slug,
+            status="pending",
+            price_kopecks=product.price_kopecks,
+            currency=product.currency,
+        )
+        self.db.add(subscription)
+        try:
+            await self.db.commit()
+        except SQLIntegrityError:
+            await self.db.rollback()
+            pending = await self._get_pending_subscription(user_id, product.slug)
+            if pending is None:
+                raise
+            return pending
+        return subscription
+
+    async def _reserve_purchase(
+        self, user_id: uuid.UUID, product: Product, context_hash: str
+    ) -> Purchase:
+        # Same durable get-or-create contract for one-time purchases.
+        from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+        pending = await self._get_pending_purchase(user_id, product.slug, context_hash)
+        if pending is not None:
+            return pending
+        purchase = Purchase(
+            user_id=user_id,
+            product_slug=product.slug,
+            status="pending",
+            horary_quota_added=product.horary_quota,
+            context_hash=context_hash,
+        )
+        self.db.add(purchase)
+        try:
+            await self.db.commit()
+        except SQLIntegrityError:
+            await self.db.rollback()
+            pending = await self._get_pending_purchase(user_id, product.slug, context_hash)
+            if pending is None:
+                raise
+            return pending
+        return purchase
+
+    async def _reserve_payment(
+        self,
+        *,
+        user_id: uuid.UUID,
+        product: Product,
+        idempotence_key: str,
+        subscription_id: uuid.UUID | None = None,
+    ) -> Payment:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reserve_payment
+        # purpose: Get-or-create the pending Payment with a STABLE
+        #   idempotence_key and COMMIT it before the external POST. Timeout
+        #   or unknown provider outcome leaves this row pending; every retry
+        #   reuses the same key (provider dedupe) instead of a new charge.
+        # inputs: user_id, product, idempotence_key, optional subscription link.
+        # returns: the pending Payment row (committed).
+        # side_effects: commits the reservation.
+        # error_behavior: re-raises if the row cannot be reserved or reused.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reserve_payment
+        from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+        existing = await self._get_payment_by_idempotence_key(idempotence_key)
+        if existing is not None:
+            return existing
+        payment = Payment(
+            user_id=user_id,
+            amount=product.price_kopecks,
+            currency=product.currency,
+            status="pending",
+            provider="yookassa",
+            description=product.name,
+            product_slug=product.slug,
+            idempotence_key=idempotence_key,
+            subscription_id=subscription_id,
+        )
+        self.db.add(payment)
+        try:
+            await self.db.commit()
+        except SQLIntegrityError:
+            await self.db.rollback()
+            existing = await self._get_payment_by_idempotence_key(idempotence_key)
+            if existing is None:
+                raise
+            return existing
+        return payment
+
+    async def _next_attempt_key(
+        self, owner_id: uuid.UUID, product_slug: str, *, prefix: str = "init", force_new: bool = False
+    ) -> str:
+        # Attempt keys are stable per pending owner: init-<owner>-first (or
+        # purchase-<owner>). After a canceled attempt, a NEW suffix is used so
+        # a dead idempotence key is never reused for a fresh charge.
+        from sqlalchemy import func
+
+        if not force_new:
+            return f"{prefix}-{owner_id}-first" if prefix == "init" else f"purchase-{owner_id}"
+        result = await self.db.execute(
+            select(func.count(Payment.id)).where(
+                Payment.user_id == (await self._owner_user_id(owner_id, prefix)),
+                Payment.product_slug == product_slug,
+                Payment.idempotence_key.like(f"{prefix}-{owner_id}-attempt-%" if prefix == "init" else f"purchase-{owner_id}-attempt-%"),
+            )
+        )
+        attempt = (result.scalar_one() or 0) + 1
+        return f"{prefix}-{owner_id}-attempt-{attempt}" if prefix == "init" else f"purchase-{owner_id}-attempt-{attempt}"
+
+    async def _owner_user_id(self, owner_id: uuid.UUID, prefix: str) -> uuid.UUID:
+        if prefix == "init":
+            result = await self.db.execute(select(Subscription.user_id).where(Subscription.id == owner_id))
+        else:
+            result = await self.db.execute(select(Purchase.user_id).where(Purchase.id == owner_id))
+        return result.scalar_one()
 
     async def _current_natal_context_hash(self, user_id: uuid.UUID) -> str | None:
         # Compute the entitlement hash from the REAL current profile — the
