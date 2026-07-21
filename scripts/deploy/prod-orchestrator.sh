@@ -693,8 +693,10 @@ billing_rebill_cmd() {
   #   cron). The release record is PARSED and format-validated by
   #   read_record_tuple — never sourced/evaluated, so a tampered state file
   #   can never become shell code. The running api container must exist and
-  #   match the active record exactly; the job then runs as a FIXED argv in a
-  #   throwaway container of the pinned active api image (compose one-shot
+  #   match the active record exactly, AND the live api must report the
+  #   record SHA on /api/health (a tampered active SHA fails even when the
+  #   image field matches). The job then runs as a FIXED argv in a throwaway
+  #   container of the pinned active api image (compose one-shot
   #   billing-rebill profile).
   # inputs: none (no arguments, no confirmation gate — the operator's cron is
   #   the explicit scheduling decision; YOOKASSA_RECURRENT_ENABLED gates all
@@ -716,6 +718,12 @@ billing_rebill_cmd() {
   cimage=${cinfo#* }
   [ "$crunning" = "true" ] || fail "api container solarsage-api is not running"
   [ "$cimage" = "$REC_ACTIVE_API" ] || fail "api container image does not match the active release record"
+  # Bind the record to the LIVE api identity: a tampered record can fake the
+  # image field but not what the running release reports about itself.
+  local live_sha
+  live_sha=$(health_release_sha 8000 /api/health)
+  [ -n "$live_sha" ] || fail "api /api/health did not report a release SHA"
+  [ "$live_sha" = "$REC_ACTIVE" ] || fail "api health release SHA does not match the active release record"
   export RELEASE_SHA="$REC_ACTIVE"
   load_env_file
   RELEASE_SHA="$REC_ACTIVE" API_IMAGE="$REC_ACTIVE_API" SIDECAR_IMAGE="$REC_ACTIVE_SIDECAR" FRONTEND_IMAGE="$REC_ACTIVE_FRONTEND" \

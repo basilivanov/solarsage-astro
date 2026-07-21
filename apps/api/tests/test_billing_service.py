@@ -954,10 +954,63 @@ async def test_rebill_known_canceled_gets_fresh_attempt_key(db_session, fake_cli
     assert len(payments) == 2
     keys = sorted(p.idempotence_key for p in payments)
     assert keys[0] == first_key
-    assert keys[1].startswith(f"{first_key}-attempt-")
+    assert keys[1] == f"{first_key}-a1"
     rebill_calls = [c for c in fake_client.calls if c[0] == "rebill"]
     assert len(rebill_calls) == 2
     assert rebill_calls[1][1]["idempotence_key"] != first_key
+
+
+@pytest.mark.asyncio
+async def test_rebill_attempt_key_tenth_attempt_no_collision(db_session) -> None:
+    """Regression: with a 54-char base the old [:64] truncation collapsed
+    -attempt-10 into -attempt-1 (a DEAD key -> double-charge risk). The
+    compact suffix keeps the 10th fresh key distinct and <=64."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900042)
+    sub = Subscription(
+        user_id=user.id,
+        product_slug="subscription_month",
+        status="past_due",
+        price_kopecks=9900,
+        currency="RUB",
+        payment_method_id="pm-saved-1",
+        current_period_start=datetime.now(UTC) - timedelta(days=29),
+        current_period_end=datetime.now(UTC),
+        next_charge_at=datetime.now(UTC) - timedelta(hours=1),
+    )
+    db_session.add(sub)
+    await db_session.commit()
+
+    label = sub.current_period_end.date().isoformat()
+    base = f"rebill-{sub.id}-{label}"
+    assert len(base) == 54  # the truncation boundary of the old scheme
+    # The old scheme really collided: prove it before proving the fix.
+    assert f"{base}-attempt-10"[:64] == f"{base}-attempt-1"
+
+    existing: list[str] = []
+    for n in range(1, 10):
+        key = f"{base}-a{n}"
+        existing.append(key)
+        db_session.add(
+            Payment(
+                user_id=user.id,
+                amount=9900,
+                currency="RUB",
+                status="canceled",
+                provider="yookassa",
+                product_slug="subscription_month",
+                idempotence_key=key,
+                subscription_id=sub.id,
+            )
+        )
+    await db_session.commit()
+
+    service = BillingService(db_session)
+    key10 = await service._next_rebill_attempt_key(sub, label)
+    assert len(key10) <= 64
+    assert key10 == f"{base}-a10"
+    assert key10 not in existing
+    assert key10 != f"{base}-attempt-10"[:64]
 
 
 # ---- Fulfillment safety: no is_active filter, recoverable owner gaps ----

@@ -1220,6 +1220,18 @@ oc31() {
     case_fail "OC31 ran the job against a mismatched container"
     rc=1
   fi
+  # Image matches the record but the record SHA is a DIFFERENT valid SHA than
+  # the live api reports: the health identity proof must stop the job.
+  reset_sandbox
+  write_record_fixture "$SHA_C" ""
+  printf '%s\n' "$(digest_for api "$SHA_C")" > "$TEST_DIR/active-api-image"
+  run_orch billing-rebill
+  expect_rc 78 "OC31-shamismatch" || rc=1
+  assert_err_has "api health release SHA does not match the active release record" || rc=1
+  if grep -qF "billing-rebill" "$TEST_DIR/ledger"; then
+    case_fail "OC31 ran the job despite the live SHA mismatch"
+    rc=1
+  fi
   # Job failure propagates non-zero.
   reset_sandbox
   write_record_fixture "$SHA_A" ""

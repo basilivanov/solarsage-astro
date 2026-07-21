@@ -749,16 +749,28 @@ class BillingService:
 
     async def _next_rebill_attempt_key(self, sub: Subscription, period_label: str) -> str:
         # Fresh key for the SAME cycle after a KNOWN canceled attempt:
-        # rebill-<sub>-<period_label>-attempt-N (N counts prior attempts), so
-        # a dead idempotence key is never reused for a fresh charge.
+        # rebill-<sub>-<period_label>-a<N> (N counts prior attempts), so a
+        # dead idempotence key is never reused for a fresh charge. The
+        # compact -a<N> suffix keeps multi-digit N inside the 64-char column
+        # WITHOUT truncation — the old [:64] silently collapsed -attempt-10
+        # into -attempt-1. Overflow fails closed instead of colliding.
         from sqlalchemy import func
 
         base = f"rebill-{sub.id}-{period_label}"
         result = await self.db.execute(
-            select(func.count(Payment.id)).where(Payment.idempotence_key.like(f"{base}-attempt-%"))
+            select(func.count(Payment.id)).where(Payment.idempotence_key.like(f"{base}-a%"))
         )
         attempt = (result.scalar_one() or 0) + 1
-        return f"{base}-attempt-{attempt}"[:64]
+        key = f"{base}-a{attempt}"
+        if len(key) > 64:
+            log_event(
+                "system.error",
+                msg="rebill attempt key overflow",
+                level="error",
+                payload={"subscription_id": str(sub.id)},
+            )
+            raise RuntimeError("REBILL_KEY_OVERFLOW")
+        return key
     # END_BLOCK: BILLING_REBILL
 
     # ---- Natal entitlement ----

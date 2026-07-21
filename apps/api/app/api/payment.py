@@ -166,7 +166,10 @@ def _domain_error(exc: ValueError) -> HTTPException:
     if code == "PENDING_SUBSCRIPTION_NOT_CANCELABLE":
         return HTTPException(
             status_code=409,
-            detail={"code": code, "message": "An unpaid pending start cannot be canceled; it expires at the provider"},
+            detail={
+                "code": code,
+                "message": "The pending payment remains open and payable; retry the same plan or wait for the provider's final status",
+            },
         )
     return HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": code})
 
