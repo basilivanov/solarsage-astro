@@ -41,8 +41,10 @@
 #   - Same-key provider retries happen only inside the 24h YooKassa
 #     Idempotence-Key dedupe window anchored by payments.first_attempt_at;
 #     past the window an ambiguous rebill is NEVER auto-charged again.
-#   - A known-canceled attempt key is dead: the cycle continues on a fresh
-#     -attempt-N key, never reusing the canceled one.
+#   - A rebill cycle always resolves its LATEST attempt first: a live
+#     (non-canceled) latest attempt is reused/skipped, never re-charged; a
+#     fresh -a<N> key is reserved ONLY when the latest attempt is known
+#     canceled (dead keys are never reused for a charge).
 #   - YOOKASSA_ENABLED=false => all start/status paths fail 503 upstream.
 #   - YOOKASSA_RECURRENT_ENABLED=false => rebill performs zero charges.
 #   - Cancel never revokes the already-paid period; cancel applies only to
@@ -84,7 +86,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -601,8 +603,10 @@ class BillingService:
         # side_effects: POST /payments per due subscription; marks failures
         #   past_due with next_charge_at +1 day; anchors first_attempt_at.
         # error_behavior: provider failures demote to past_due, never raise.
-        #   A known-canceled cycle payment is retried on a FRESH -attempt-N
-        #   key. An ambiguous payment whose 24h dedupe window expired is NEVER
+        #   The cycle resolves its LATEST attempt: a live latest attempt is
+        #   reused/skipped (no second charge before the webhook), a
+        #   known-canceled latest attempt is retried on a FRESH -a<N> key.
+        #   An ambiguous payment whose 24h dedupe window expired is NEVER
         #   auto-charged again — it stays pending for manual reconciliation
         #   (system.error log), subscription past_due.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.rebill_due_subscriptions
@@ -631,12 +635,20 @@ class BillingService:
             cycle_end = sub.current_period_end or sub.next_charge_at or now
             period_label = cycle_end.date().isoformat()
             idempotence_key = f"rebill-{sub.id}-{period_label}"[:64]
-            # Durable reservation BEFORE the external POST; a prior attempt
-            # that died after charging reconciles through this same key.
-            payment = await self._reserve_rebill_payment(sub, idempotence_key)
-            if payment.status == "canceled":
-                # KNOWN dead key: a canceled payment blocks its cycle key
-                # forever — the cycle continues on a FRESH attempt key.
+            # Resolve the LATEST payment of this cycle first: a live
+            # (non-canceled) attempt is always reused/skipped, so a second
+            # cron run before the webhook can never start -a2 and double
+            # charge. A fresh key is reserved ONLY when the latest attempt
+            # of the cycle is KNOWN canceled.
+            payment = await self._latest_cycle_payment(sub, period_label)
+            if payment is None:
+                # Durable reservation BEFORE the external POST; a prior
+                # attempt that died after charging reconciles through this
+                # same key.
+                payment = await self._reserve_rebill_payment(sub, idempotence_key)
+            elif payment.status == "canceled":
+                # KNOWN dead latest attempt: the cycle continues on a FRESH
+                # key (dead keys are never reused for a charge).
                 idempotence_key = await self._next_rebill_attempt_key(sub, period_label)
                 payment = await self._reserve_rebill_payment(sub, idempotence_key)
 
@@ -707,6 +719,30 @@ class BillingService:
             log_event("billing.rebill_started", msg="rebill started")
         await self.db.commit()
         return attempts
+
+    async def _latest_cycle_payment(self, sub: Subscription, period_label: str) -> Payment | None:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._latest_cycle_payment
+        # purpose: Return the LATEST reserved payment of one rebill cycle —
+        #   the base key or any -a<N> attempt (payments.id is monotonic with
+        #   reservation order). This is the anti-double-charge selector: the
+        #   caller reuses/skips a live latest attempt and reserves a fresh
+        #   key ONLY when this latest one is known canceled.
+        # inputs: sub (due subscription), period_label (cycle label).
+        # returns: newest cycle Payment or None when the cycle never started.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._latest_cycle_payment
+        base = f"rebill-{sub.id}-{period_label}"
+        result = await self.db.execute(
+            select(Payment)
+            .where(
+                Payment.subscription_id == sub.id,
+                or_(
+                    Payment.idempotence_key == base,
+                    Payment.idempotence_key.like(f"{base}-a%"),
+                ),
+            )
+            .order_by(Payment.id.desc())
+        )
+        return result.scalars().first()
 
     async def _reserve_rebill_payment(self, sub: Subscription, idempotence_key: str) -> Payment:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reserve_rebill_payment

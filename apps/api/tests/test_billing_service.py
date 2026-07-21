@@ -1013,6 +1013,67 @@ async def test_rebill_attempt_key_tenth_attempt_no_collision(db_session) -> None
     assert key10 != f"{base}-attempt-10"[:64]
 
 
+@pytest.mark.asyncio
+async def test_rebill_cycle_reuses_live_attempt_until_known_canceled(db_session, fake_client, monkeypatch) -> None:
+    """Anti-double-charge cycle resolution: base canceled -> next run creates
+    exactly ONE fresh attempt + ONE provider call; a second cron run BEFORE
+    the webhook reuses that live attempt (no new row, no provider call);
+    known-cancel of the fresh attempt then allows exactly the NEXT unique
+    key. All keys <=64 and unique."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900043)
+    service = BillingService(db_session)
+
+    # Run 1: base cycle payment charged.
+    assert await service.rebill_due_subscriptions() == 1
+    base_payment = (await db_session.execute(select(Payment))).scalar_one()
+    base_key = base_payment.idempotence_key
+
+    # Webhook: base canceled (e.g. card declined) -> sub past_due.
+    fake_client.remote[base_payment.provider_payment_id] = _remote_for(
+        base_payment, str(sub.id), status="canceled", paid=False
+    )
+    assert (await service.verify_and_process_webhook(base_payment.provider_payment_id))["reason"] == "canceled"
+
+    # Run 2: exactly ONE fresh attempt and ONE provider call.
+    await db_session.refresh(sub)
+    sub.next_charge_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+    assert await service.rebill_due_subscriptions() == 1
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(payments) == 2
+    attempt1 = next(p for p in payments if p.idempotence_key != base_key)
+    assert attempt1.idempotence_key == f"{base_key}-a1"
+    assert attempt1.provider_payment_id is not None
+    rebill_calls = [c for c in fake_client.calls if c[0] == "rebill"]
+    assert len(rebill_calls) == 2
+
+    # Run 3 BEFORE the webhook: the live attempt is reused — no new row, no
+    # provider call, no charge.
+    assert await service.rebill_due_subscriptions() == 0
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(payments) == 2
+    assert len([c for c in fake_client.calls if c[0] == "rebill"]) == 2
+
+    # Known-cancel the fresh attempt: the next run allows exactly the NEXT
+    # unique key, nothing else.
+    fake_client.remote[attempt1.provider_payment_id] = _remote_for(
+        attempt1, str(sub.id), status="canceled", paid=False
+    )
+    assert (await service.verify_and_process_webhook(attempt1.provider_payment_id))["reason"] == "canceled"
+    await db_session.refresh(sub)
+    sub.next_charge_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+    assert await service.rebill_due_subscriptions() == 1
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(payments) == 3
+    keys = [p.idempotence_key for p in payments]
+    assert len(set(keys)) == 3
+    assert all(len(k) <= 64 for k in keys)
+    assert f"{base_key}-a2" in keys
+    assert len([c for c in fake_client.calls if c[0] == "rebill"]) == 3
+
+
 # ---- Fulfillment safety: no is_active filter, recoverable owner gaps ----
 
 @pytest.mark.asyncio
