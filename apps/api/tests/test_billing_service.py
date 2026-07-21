@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import inspect
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -1603,7 +1603,7 @@ async def test_initial_fulfill_defers_paid_period_after_existing_access(db_sessi
     (period end exclusive vs ledger inclusive)."""
     await seed_products(db_session)
     user = await _user(db_session, 900056)
-    today = date.today()
+    today = datetime.now(UTC).date()  # same clock as the service (UTC), not local TZ
     db_session.add(
         AccessLedger(
             user_id=user.id, entry_type="referral_bonus", days_granted=14,
@@ -1656,7 +1656,7 @@ async def test_initial_fulfill_without_prior_access_starts_today(db_session, fak
     fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["subscription_id"]))
     await service.verify_and_process_webhook(payment.provider_payment_id)
 
-    today = date.today()
+    today = datetime.now(UTC).date()  # same clock as the service (UTC), not local TZ
     paid = (await db_session.execute(select(AccessLedger))).scalar_one()
     assert paid.start_date == today
     assert paid.end_date == today + timedelta(days=29)

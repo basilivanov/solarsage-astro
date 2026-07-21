@@ -643,7 +643,10 @@ class BillingService:
 
         days = product.period_days or 30
         now = datetime.now(UTC)
-        grant_start = date.today()
+        # All ledger dates derive from the SAME UTC clock as the period
+        # timestamps — date.today() (local TZ) would diverge from
+        # current_period_end around local midnight and shift the paid window.
+        grant_start = now.date()
         if subscription.status in ("pending", "past_due"):
             # First activation: bonus/referral days and any leftover paid
             # access are consumed FIRST (the AccessCard promise). The paid
@@ -653,13 +656,13 @@ class BillingService:
             # (inclusive) is the day before current_period_end (exclusive).
             latest_end = await self._latest_access_end_date(payment.user_id)
             defer_days = 0
-            if latest_end is not None and latest_end >= date.today():
-                defer_days = (latest_end - date.today()).days + 1
+            if latest_end is not None and latest_end >= now.date():
+                defer_days = (latest_end - now.date()).days + 1
             subscription.status = "active"
             subscription.current_period_start = now + timedelta(days=defer_days)
             subscription.current_period_end = now + timedelta(days=defer_days + days)
             subscription.next_charge_at = now + timedelta(days=defer_days + days)
-            grant_start = date.today() + timedelta(days=defer_days)
+            grant_start = now.date() + timedelta(days=defer_days)
         elif subscription.status == "active":
             # Renewal: extend strictly FROM the current period end, so a
             # renewal payment can never shorten or duplicate a period. The
@@ -668,7 +671,7 @@ class BillingService:
             base_end = subscription.current_period_end or now
             subscription.current_period_end = base_end + timedelta(days=days)
             subscription.next_charge_at = base_end + timedelta(days=days)
-            grant_start = max(date.today(), base_end.date())
+            grant_start = max(now.date(), base_end.date())
         elif self._is_paid_canceled_renewal(payment, subscription):
             # In-flight renewal that succeeded AFTER the user's cancel: honor
             # exactly the paid period (extend access from the paid period
@@ -677,7 +680,7 @@ class BillingService:
             base_end = subscription.current_period_end or now
             subscription.current_period_end = base_end + timedelta(days=days)
             subscription.next_charge_at = None
-            grant_start = max(date.today(), base_end.date())
+            grant_start = max(now.date(), base_end.date())
         else:
             # canceled initial payment / expired: never resurrect via webhook.
             log_event("billing.webhook_rejected", msg="webhook for inactive subscription", level="warning")
