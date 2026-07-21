@@ -15,6 +15,9 @@
 # invariants:
 #   - exactly 20 measured runs follow 3 warmups.
 #   - p95 is under 100ms and cartesian combinations never exceed 1728.
+#   - The CI coverage-gate run excludes this file (benchmark marker): coverage
+#     tracing inflates wall-clock timings; CI measures it in a separate step
+#     WITHOUT instrumentation.
 # failure_policy: assertion failure on performance or bound regression.
 # END_MODULE_CONTRACT: M-TEST-HORIZON-SELECTION-BENCHMARK
 
@@ -34,10 +37,14 @@ from __future__ import annotations
 import math
 import time
 
+import pytest
+
 from app.schemas.activation import ActivationEvidence, ActivationLayer
 from app.schemas.scoring_v2 import ScoringV2Result, SphereContribution, SphereScoreV2
 from app.services.horizon_selection_service import HorizonSelectionService
 # END_BLOCK: HORIZON_SELECTION_BENCHMARK_FIXTURES
+
+pytestmark = pytest.mark.benchmark
 
 
 def _activation(index: int) -> ActivationEvidence:
