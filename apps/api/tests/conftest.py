@@ -64,14 +64,19 @@ def _force_test_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest_asyncio.fixture()
-async def db_session() -> AsyncIterator[AsyncSession]:
+async def db_engine() -> AsyncIterator:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    factory = async_sessionmaker(engine, expire_on_commit=False)
+    yield engine
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture()
+async def db_session(db_engine) -> AsyncIterator[AsyncSession]:
+    factory = async_sessionmaker(db_engine, expire_on_commit=False)
     async with factory() as session:
         yield session
-    await engine.dispose()
 
 
 @pytest_asyncio.fixture()

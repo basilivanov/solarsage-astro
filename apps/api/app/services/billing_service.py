@@ -21,7 +21,8 @@
 # side_effects: creates/updates Payment/Subscription/Purchase/AccessLedger/
 #   HoraryCredit rows; calls the YooKassa API via the client.
 # emitted_logs: billing.subscription_started, billing.purchase_started,
-#   billing.payment_fulfilled, billing.subscription_canceled,
+#   billing.payment_fulfilled, billing.payment_reconciled,
+#   billing.subscription_canceled,
 #   billing.subscription_expired,
 #   billing.rebill_skipped, billing.rebill_started, billing.webhook_rejected,
 #   billing.fulfillment_blocked, system.error
@@ -584,21 +585,33 @@ class BillingService:
         #   created/captured a payment whose create response we never saw
         #   (unknown outcome, local provider_payment_id NULL) and the user
         #   did NOT retry start. The webhook alone can now link it.
-        #   Verification order: authenticated provider GET first; then match
-        #   remote metadata + amount + currency + exact durable owner
-        #   (Payment.subscription_id for subscriptions, Purchase.payment_id
-        #   for one-time) against pending UNBOUND local payments; bind only
-        #   on EXACTLY ONE exact candidate. No bind => no grant.
+        #   Verification order: authenticated provider GET first (its id must
+        #   equal the requested one); then match remote metadata + amount +
+        #   currency + exact durable owner (Payment.subscription_id for
+        #   subscriptions, Purchase.payment_id for one-time) + exact charge
+        #   kind (init -> initial_recurrent, rebill -> recurrent with the
+        #   exact cycle period, purchase -> one_time) against pending UNBOUND
+        #   local payments; bind ONLY on EXACTLY ONE exact candidate.
+        #   ATOMICITY: the binding is NOT committed here — it commits
+        #   together with verification + fulfillment in the caller's single
+        #   transaction under this Payment row lock, so a crash stays safely
+        #   retryable and a concurrent binder reads the ACTUAL state after
+        #   its lock wait (bound+succeeded -> already_fulfilled, never a
+        #   false unknown, never a double grant).
         # inputs: provider client, provider_payment_id from the webhook.
-        # returns: the locally-bound Payment (provider_payment_id set and
-        #   committed) or None when the exact candidate is absent/mismatched.
-        # side_effects: provider GET; single UPDATE committing the binding.
+        # returns: the Payment to continue with (bound in-memory, uncommitted)
+        #   or None when the exact candidate is absent/mismatched.
+        # side_effects: provider GET; SELECT ... FOR UPDATE on the candidate.
         # error_behavior: any mismatch/ambiguity -> None (no state change);
         #   a provider GET failure (e.g. truly unknown id) also -> None.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reconcile_unknown_payment
         try:
             remote = await client.get_payment(provider_payment_id)
         except YooKassaError:
+            return None
+        # Strict remote identity: the authenticated GET must answer for the
+        # EXACT id we asked about.
+        if remote.get("provider_payment_id") != provider_payment_id:
             return None
         metadata = remote.get("metadata") or {}
         remote_user = metadata.get("user_id")
@@ -626,17 +639,18 @@ class BillingService:
                 continue
             if remote["currency"] != candidate.currency:
                 continue
+            # Exact charge-kind identity from the LOCAL key.
+            expected_type = self._expected_charge_type(candidate)
+            if expected_type is None or remote_type != expected_type:
+                continue
+            if expected_type == "recurrent" and metadata.get("period") != self._rebill_cycle_label(candidate):
+                continue
             if candidate.subscription_id is not None:
-                # Subscription charge (initial or recurrent): owner is the
-                # durable FK link; type must be a subscription charge.
-                if remote_type not in ("initial_recurrent", "recurrent"):
-                    continue
+                # Subscription charge: owner is the durable FK link.
                 if str(candidate.subscription_id) != str(remote_owner):
                     continue
             else:
                 # One-time charge: owner is the Purchase linked by payment_id.
-                if remote_type != "one_time":
-                    continue
                 purchase_result = await self.db.execute(
                     select(Purchase).where(Purchase.payment_id == candidate.id)
                 )
@@ -648,23 +662,57 @@ class BillingService:
         if len(candidates) != 1:
             return None
 
-        # Atomic bind: lock the row and re-verify it is still unbound.
+        # Lock the row and re-verify its ACTUAL state after any lock wait.
         locked = await self.db.execute(
             select(Payment).where(Payment.id == candidates[0].id).with_for_update()
         )
         payment = locked.scalar_one_or_none()
-        if payment is None or payment.provider_payment_id is not None or payment.status != "pending":
+        if payment is None:
             return None
+        if payment.provider_payment_id == provider_payment_id:
+            # A concurrent binder already linked it (its transaction commits
+            # binding+verification+fulfillment atomically): continue by actual
+            # state — the caller's succeeded check yields already_fulfilled.
+            return payment
+        if payment.provider_payment_id is not None or payment.status != "pending":
+            return None
+        # Bind WITHOUT committing: the caller's final commit covers
+        # binding + verification + fulfillment atomically.
         payment.provider_payment_id = provider_payment_id
-        await self.db.commit()
         log_event(
-            "billing.payment_fulfilled",
-            msg="reconciled unknown provider payment to durable local payment",
+            "billing.payment_reconciled",
+            msg="bound unknown provider payment to durable local payment",
             payload={"payment_id": payment.id},
         )
         return payment
 
+    @staticmethod
+    def _expected_charge_type(payment: Payment) -> str | None:
+        # Charge-kind contract from the local idempotence key:
+        # init-* -> initial_recurrent, rebill-* -> recurrent, purchase-* -> one_time.
+        key = payment.idempotence_key or ""
+        if key.startswith("rebill-"):
+            return "recurrent"
+        if key.startswith("init-"):
+            return "initial_recurrent"
+        if key.startswith("purchase-"):
+            return "one_time"
+        return None
+
+    @staticmethod
+    def _rebill_cycle_label(payment: Payment) -> str | None:
+        # The cycle label embedded in a rebill key: rebill-<sub>-<label>[-a<N>].
+        key = payment.idempotence_key or ""
+        base = f"rebill-{payment.subscription_id}-"
+        if not key.startswith(base):
+            return None
+        return re.sub(r"-a\d+$", "", key[len(base):])
+
     def _payment_matches(self, payment: Payment, remote: dict) -> bool:
+        # Strict remote identity: the authenticated GET answered for the SAME
+        # id as the local binding, and the charge kind matches the local key.
+        if remote.get("provider_payment_id") != payment.provider_payment_id:
+            return False
         if not remote["paid"]:
             return False
         if remote["amount_value"] != _kopecks_str(payment.amount):
@@ -675,6 +723,11 @@ class BillingService:
         if str(metadata.get("user_id")) != str(payment.user_id):
             return False
         if metadata.get("product_slug") != payment.product_slug:
+            return False
+        expected_type = self._expected_charge_type(payment)
+        if expected_type is None or metadata.get("type") != expected_type:
+            return False
+        if expected_type == "recurrent" and metadata.get("period") != self._rebill_cycle_label(payment):
             return False
         # Strict owner check: subscription payments are linked by FK; purchase
         # payments by the purchase key prefix.
@@ -956,7 +1009,12 @@ class BillingService:
             )
             locked_sub = locked_sub_result.scalar_one_or_none()
             if locked_sub is None:
+                await self.db.rollback()  # release any lock state promptly
                 continue
+            # Fresh locked read: production sessions run expire_on_commit=
+            # False, so a plain select can serve a STALE row from the
+            # identity map. refresh(with_for_update) forces the real state.
+            await self.db.refresh(locked_sub, with_for_update=True)
             next_charge_at = locked_sub.next_charge_at
             if next_charge_at is not None and next_charge_at.tzinfo is None:
                 next_charge_at = next_charge_at.replace(tzinfo=UTC)
@@ -966,6 +1024,8 @@ class BillingService:
                 or next_charge_at > now
                 or not locked_sub.payment_method_id
             ):
+                # Release the row lock NOW; never hold it across other users.
+                await self.db.rollback()
                 continue
             sub = locked_sub
             payment_method_id = locked_sub.payment_method_id

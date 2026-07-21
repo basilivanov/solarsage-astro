@@ -113,17 +113,30 @@ class FakeClient:
 
 
 def _remote(payment: Payment, owner_id: str, **overrides) -> dict:
+    # Mirror the client metadata contract (type is enforced by _payment_matches).
+    key = payment.idempotence_key or ""
+    if key.startswith("rebill-"):
+        charge_type = "recurrent"
+    elif key.startswith("init-"):
+        charge_type = "initial_recurrent"
+    elif key.startswith("purchase-"):
+        charge_type = "one_time"
+    else:
+        charge_type = None
+    metadata = {
+        "user_id": str(payment.user_id),
+        "owner_id": owner_id,
+        "product_slug": payment.product_slug,
+    }
+    if charge_type:
+        metadata["type"] = charge_type
     remote = {
         "provider_payment_id": payment.provider_payment_id,
         "status": "succeeded",
         "paid": True,
         "amount_value": f"{payment.amount // 100}.{payment.amount % 100:02d}",
         "currency": payment.currency,
-        "metadata": {
-            "user_id": str(payment.user_id),
-            "owner_id": owner_id,
-            "product_slug": payment.product_slug,
-        },
+        "metadata": metadata,
         "payment_method_id": "pm-1",
         "payment_method_saved": True,
     }

@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import inspect
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -164,18 +165,39 @@ def test_fake_client_mirrors_real_provider_signatures() -> None:
         ), name
 
 
+def _charge_type_and_period(payment: Payment) -> tuple[str | None, str | None]:
+    """Mirror of the client metadata contract: init -> initial_recurrent,
+    rebill -> recurrent (+ exact cycle period), purchase -> one_time."""
+    key = payment.idempotence_key or ""
+    if key.startswith("rebill-"):
+        base = f"rebill-{payment.subscription_id}-"
+        period = re.sub(r"-a\d+$", "", key[len(base):]) if key.startswith(base) else None
+        return "recurrent", period
+    if key.startswith("init-"):
+        return "initial_recurrent", None
+    if key.startswith("purchase-"):
+        return "one_time", None
+    return None, None
+
+
 def _remote_for(payment: Payment, owner_id: str, **overrides) -> dict:
+    charge_type, period = _charge_type_and_period(payment)
+    metadata = {
+        "user_id": str(payment.user_id),
+        "owner_id": owner_id,
+        "product_slug": payment.product_slug,
+    }
+    if charge_type:
+        metadata["type"] = charge_type
+    if period:
+        metadata["period"] = period
     remote = {
         "provider_payment_id": payment.provider_payment_id,
         "status": "succeeded",
         "paid": True,
         "amount_value": f"{payment.amount // 100}.{payment.amount % 100:02d}",
         "currency": payment.currency,
-        "metadata": {
-            "user_id": str(payment.user_id),
-            "owner_id": owner_id,
-            "product_slug": payment.product_slug,
-        },
+        "metadata": metadata,
         "payment_method_id": "pm-saved-1",
         "payment_method_saved": True,
     }
@@ -1875,11 +1897,15 @@ async def test_rebill_unknown_outcome_retry_interval_and_same_key(db_session, fa
 # ---- P0: stale-due race with cancel at the charge boundary ----
 
 @pytest.mark.asyncio
-async def test_rebill_cancel_committed_before_claim_no_charge(db_session, fake_client, monkeypatch) -> None:
-    """A cancel committed BEFORE the charge boundary (right after the durable
-    claim) is seen by the row-locked re-read: ZERO provider calls. The
-    reverse order (claim first, cancel later) is covered by the
-    paid-after-cancel rule elsewhere."""
+async def test_rebill_cancel_committed_before_claim_no_charge(db_session, db_engine, fake_client, monkeypatch) -> None:
+    """A cancel committed in an INDEPENDENT session BEFORE the charge
+    boundary (after the durable claim) is seen by the fresh locked re-read:
+    ZERO provider calls. The main session's identity map keeps the STALE
+    active/due row, so a plain (non-refreshed) select would have charged —
+    this test catches that old implementation. The reverse order (claim
+    first, cancel later) stays covered by the paid-after-cancel rule."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
     monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
     _, sub = await _make_due_subscription(db_session, 900065)
     service = BillingService(db_session)
@@ -1888,13 +1914,64 @@ async def test_rebill_cancel_committed_before_claim_no_charge(db_session, fake_c
 
     async def reserve_then_competing_cancel(self, s, key):
         payment = await original_reserve(self, s, key)
-        raced = (await self.db.execute(select(Subscription).where(Subscription.id == s.id))).scalar_one()
-        raced.status = "canceled"
-        raced.next_charge_at = None
-        await self.db.commit()
+        # The cancel commits in a SECOND, independent session — the main
+        # session's identity map keeps the stale active/due row.
+        factory = async_sessionmaker(db_engine, expire_on_commit=False)
+        async with factory() as other:
+            raced = (await other.execute(select(Subscription).where(Subscription.id == s.id))).scalar_one()
+            raced.status = "canceled"
+            raced.next_charge_at = None
+            await other.commit()
         return payment
 
     monkeypatch.setattr(BillingService, "_reserve_rebill_payment", reserve_then_competing_cancel)
     attempts = await service.rebill_due_subscriptions()
     assert attempts == 0
     assert fake_client.calls == []  # zero provider calls
+
+
+# ---- P0: reconcile binding+grant atomicity ----
+
+@pytest.mark.asyncio
+async def test_reconcile_binding_and_grant_are_atomic(db_session, fake_client, monkeypatch) -> None:
+    """A crash between bind and grant must roll back BOTH (no intermediate
+    commit of the binding): the webhook retry then binds+grants cleanly,
+    exactly once, and a duplicate delivery stays already_fulfilled."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900066)
+    service = BillingService(db_session)
+
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+
+    fake_client.remote["prov-atomic"] = _remote_with_type(
+        payment, str(started["purchase_id"]), "one_time", provider_payment_id="prov-atomic"
+    )
+
+    real_fulfill = BillingService._fulfill_one_time
+
+    async def crashing_fulfill(self, p, product, remote):
+        raise RuntimeError("crash between bind and grant")
+
+    monkeypatch.setattr(BillingService, "_fulfill_one_time", crashing_fulfill)
+    with pytest.raises(RuntimeError, match="crash between bind and grant"):
+        await service.verify_and_process_webhook("prov-atomic")
+    await db_session.rollback()  # what get_session does on an endpoint error
+
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id is None  # the binding rolled back too
+    assert (await db_session.execute(select(HoraryCredit))).scalars().all() == []
+
+    monkeypatch.setattr(BillingService, "_fulfill_one_time", real_fulfill)
+    result = await service.verify_and_process_webhook("prov-atomic")
+    assert result["processed"] is True
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id == "prov-atomic"
+    assert payment.status == "succeeded"
+    assert (await db_session.execute(select(HoraryCredit))).scalar_one().amount == 1
+
+    again = await service.verify_and_process_webhook("prov-atomic")
+    assert again["reason"] == "already_fulfilled"
+    assert len((await db_session.execute(select(HoraryCredit))).scalars().all()) == 1
