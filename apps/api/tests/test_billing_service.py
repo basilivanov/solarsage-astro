@@ -1975,3 +1975,240 @@ async def test_reconcile_binding_and_grant_are_atomic(db_session, fake_client, m
     again = await service.verify_and_process_webhook("prov-atomic")
     assert again["reason"] == "already_fulfilled"
     assert len((await db_session.execute(select(HoraryCredit))).scalars().all()) == 1
+
+
+# ---- P0-corrective: fresh locked read on the Payment binding boundary ----
+
+@pytest.mark.asyncio
+async def test_reconcile_locked_read_sees_concurrent_binder_same_id(db_session, db_engine, fake_client) -> None:
+    """The locked candidate read must be FRESH: a concurrent binder that
+    committed the SAME id must be seen as bound+succeeded (the
+    already_fulfilled path), never as a stale unbound row to re-bind. Without
+    refresh(with_for_update) this test fails on the stale snapshot."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    await seed_products(db_session)
+    user = await _user(db_session, 900070)
+    service = BillingService(db_session)
+    await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+    # Stale snapshot in THIS session's identity map (provider_payment_id None).
+    stale = (await db_session.execute(select(Payment).where(Payment.id == payment.id))).scalar_one()
+    assert stale.provider_payment_id is None
+
+    factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with factory() as other:
+        row = (await other.execute(select(Payment).where(Payment.id == payment.id))).scalar_one()
+        row.provider_payment_id = "prov-x"
+        row.status = "succeeded"
+        await other.commit()
+
+    locked = await service._lock_candidate_for_bind(payment.id, "prov-x")
+    assert locked is not None
+    payment_out, bound_here = locked
+    assert bound_here is False
+    assert payment_out.provider_payment_id == "prov-x"
+    assert payment_out.status == "succeeded"  # ACTUAL state, never the stale snapshot
+
+
+@pytest.mark.asyncio
+async def test_reconcile_locked_read_rejects_foreign_bound_id(db_session, db_engine, fake_client) -> None:
+    """A concurrent binder of a DIFFERENT id must be rejected, never
+    overwritten with ours."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    await seed_products(db_session)
+    user = await _user(db_session, 900071)
+    service = BillingService(db_session)
+    await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+
+    factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with factory() as other:
+        row = (await other.execute(select(Payment).where(Payment.id == payment.id))).scalar_one()
+        row.provider_payment_id = "prov-OTHER"
+        await other.commit()
+
+    locked = await service._lock_candidate_for_bind(payment.id, "prov-x")
+    assert locked is None
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id == "prov-OTHER"  # untouched
+
+
+# ---- P0-corrective: guard lock release without expiring the due list ----
+
+@pytest.mark.asyncio
+async def test_rebill_two_due_users_first_canceled_job_continues(db_session, db_engine, fake_client, monkeypatch) -> None:
+    """Two due users in ONE run: the first is canceled externally before its
+    claim and is skipped (zero calls for it), the second is charged once and
+    the job does NOT crash. With rollback-based lock release the due list
+    would expire and the second user's attribute access would raise
+    MissingGreenlet."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub1 = await _make_due_subscription(db_session, 900067)
+    _, sub2 = await _make_due_subscription(db_session, 900068)
+    service = BillingService(db_session)
+
+    original_reserve = BillingService._reserve_rebill_payment
+
+    async def reserve_and_cancel_first(self, s, key):
+        payment = await original_reserve(self, s, key)
+        if s.id == sub1.id:
+            factory = async_sessionmaker(db_engine, expire_on_commit=False)
+            async with factory() as other:
+                raced = (await other.execute(select(Subscription).where(Subscription.id == s.id))).scalar_one()
+                raced.status = "canceled"
+                raced.next_charge_at = None
+                await other.commit()
+        return payment
+
+    monkeypatch.setattr(BillingService, "_reserve_rebill_payment", reserve_and_cancel_first)
+    attempts = await service.rebill_due_subscriptions()
+    assert attempts == 1
+    rebill_calls = [c for c in fake_client.calls if c[0] == "rebill"]
+    assert len(rebill_calls) == 1
+    assert rebill_calls[0][1]["owner_id"] == sub2.id
+
+
+# ---- P0-corrective: subscription-path atomicity (non-committing grant) ----
+
+@pytest.mark.asyncio
+async def test_subscription_reconcile_binding_and_grant_are_atomic(db_session, fake_client, monkeypatch) -> None:
+    """Crash AFTER staging the subscription grant but BEFORE the outer
+    commit: rollback must leave binding NULL, payment pending, subscription
+    pending and the ledger EMPTY (with the old self-committing grant the
+    ledger would survive). Retry grants exactly one ledger."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900069)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+
+    fake_client.remote["prov-atomic-sub"] = _remote_with_type(
+        payment, str(started["subscription_id"]), "initial_recurrent",
+        provider_payment_id="prov-atomic-sub",
+    )
+
+    real_fulfill = BillingService._fulfill_subscription
+
+    async def crashing_fulfill(self, p, product, remote):
+        await real_fulfill(self, p, product, remote)
+        raise RuntimeError("crash after staging the subscription grant")
+
+    monkeypatch.setattr(BillingService, "_fulfill_subscription", crashing_fulfill)
+    with pytest.raises(RuntimeError, match="crash after staging"):
+        await service.verify_and_process_webhook("prov-atomic-sub")
+    await db_session.rollback()  # what get_session does on an endpoint error
+
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id is None
+    assert payment.status == "pending"
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "pending"
+    assert (await db_session.execute(select(AccessLedger))).scalars().all() == []
+
+    monkeypatch.setattr(BillingService, "_fulfill_subscription", real_fulfill)
+    result = await service.verify_and_process_webhook("prov-atomic-sub")
+    assert result["processed"] is True
+    assert len((await db_session.execute(select(AccessLedger))).scalars().all()) == 1
+
+    again = await service.verify_and_process_webhook("prov-atomic-sub")
+    assert again["reason"] == "already_fulfilled"
+    assert len((await db_session.execute(select(AccessLedger))).scalars().all()) == 1
+
+
+# ---- P0-corrective: strict identity negative tests ----
+
+@pytest.mark.asyncio
+async def test_reconcile_rejects_wrong_returned_provider_id(db_session, fake_client) -> None:
+    """The authenticated GET must answer for the EXACT requested id; a
+    different returned id means no bind and no grant."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900072)
+    service = BillingService(db_session)
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+
+    fake_client.remote["prov-asked"] = _remote_with_type(
+        payment, str(started["purchase_id"]), "one_time",
+        provider_payment_id="prov-DIFFERENT",
+    )
+    result = await service.verify_and_process_webhook("prov-asked")
+    assert result == {"processed": False, "reason": "unknown_payment"}
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id is None
+    assert (await db_session.execute(select(HoraryCredit))).scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_reconcile_rejects_wrong_metadata_type(db_session, fake_client) -> None:
+    """metadata.type must match the local key kind; a purchase payment with
+    an initial_recurrent remote type is never bound."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900073)
+    service = BillingService(db_session)
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+
+    fake_client.remote["prov-type"] = _remote_with_type(
+        payment, str(started["purchase_id"]), "initial_recurrent",
+        provider_payment_id="prov-type",
+    )
+    result = await service.verify_and_process_webhook("prov-type")
+    assert result == {"processed": False, "reason": "unknown_payment"}
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id is None
+    assert (await db_session.execute(select(HoraryCredit))).scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_recurrent_period_mismatch_no_grant(db_session, fake_client, monkeypatch) -> None:
+    """For an already BOUND rebill payment, a wrong remote metadata.period
+    is a hard mismatch: no grant, payment stays pending."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900074)
+    service = BillingService(db_session)
+    assert await service.rebill_due_subscriptions() == 1
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+
+    remote = _remote_for(payment, str(sub.id))
+    remote["metadata"]["period"] = "1999-01-01"
+    fake_client.remote[payment.provider_payment_id] = remote
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result == {"processed": False, "reason": "mismatch"}
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    assert (await db_session.execute(select(AccessLedger))).scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_charge_type_mismatch_no_grant(db_session, fake_client, monkeypatch) -> None:
+    """For an already BOUND rebill payment, a wrong remote metadata.type is
+    a hard mismatch: no grant, payment stays pending."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900075)
+    service = BillingService(db_session)
+    assert await service.rebill_due_subscriptions() == 1
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+
+    remote = _remote_for(payment, str(sub.id))
+    remote["metadata"]["type"] = "one_time"
+    fake_client.remote[payment.provider_payment_id] = remote
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result == {"processed": False, "reason": "mismatch"}
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    assert (await db_session.execute(select(AccessLedger))).scalars().all() == []

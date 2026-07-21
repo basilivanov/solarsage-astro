@@ -488,15 +488,24 @@ class BillingService:
         )
         payment = result.scalar_one_or_none()
         client = get_yookassa_client()
+        bound_here = False
         if payment is None:
             # Fail-closed self-reconciliation: a local durable payment may be
             # unbound (unknown create outcome). Bind ONLY after an
             # authenticated provider GET and an exact owner match — never by
             # the webhook payload, never by a broad search.
-            payment = await self._reconcile_unknown_payment(client, provider_payment_id)
-            if payment is None:
+            outcome = await self._reconcile_unknown_payment(client, provider_payment_id)
+            if outcome is None:
                 log_event("billing.webhook_rejected", msg="unknown provider payment", level="warning")
                 return {"processed": False, "reason": "unknown_payment"}
+            payment, bound_here = outcome
+
+        def _abort_uncommitted() -> None:
+            # A binding that never reached a durable commit must not linger
+            # even in-memory (shared-session safety); the row was never
+            # committed, so clearing mirrors the DB exactly.
+            if bound_here:
+                payment.provider_payment_id = None
 
         if payment.status == "succeeded":
             return {"processed": False, "reason": "already_fulfilled"}
@@ -530,12 +539,22 @@ class BillingService:
                     sub.cancellation_reason = "provider_canceled"
                     sub.next_charge_at = None
             await self.db.commit()
+            if bound_here:
+                # Durable canceled bind committed: the reconciliation event
+                # is truthful only NOW (never on rollback/abort paths).
+                log_event(
+                    "billing.payment_reconciled",
+                    msg="reconciled unknown provider payment (canceled)",
+                    payload={"payment_id": payment.id},
+                )
             return {"processed": False, "reason": "canceled"}
 
         if remote["status"] != "succeeded":
+            _abort_uncommitted()
             return {"processed": False, "reason": f"provider_status_{remote['status']}"}
 
         if not self._payment_matches(payment, remote):
+            _abort_uncommitted()
             log_event("billing.webhook_rejected", msg="webhook/provider mismatch", level="warning")
             return {"processed": False, "reason": "mismatch"}
 
@@ -547,6 +566,7 @@ class BillingService:
         # already_fulfilled early-return.
         product = await self._get_product_any(payment.product_slug) if payment.product_slug else None
         if product is None:
+            _abort_uncommitted()
             log_event(
                 "billing.fulfillment_blocked",
                 msg="payment product row missing",
@@ -556,6 +576,7 @@ class BillingService:
             return {"processed": False, "reason": "product_missing"}
         block_reason = await self._fulfillment_block_reason(payment, product)
         if block_reason is not None:
+            _abort_uncommitted()
             log_event(
                 "billing.fulfillment_blocked",
                 msg=block_reason,
@@ -576,6 +597,14 @@ class BillingService:
             await self._fulfill_one_time(payment, product, remote)
 
         await self.db.commit()
+        if bound_here:
+            # The reconciliation event is emitted ONLY after the durable
+            # commit of binding+verification+fulfillment — never before.
+            log_event(
+                "billing.payment_reconciled",
+                msg="reconciled unknown provider payment",
+                payload={"payment_id": payment.id},
+            )
         log_event("billing.payment_fulfilled", msg="payment fulfilled", payload={"payment_id": payment.id})
         return {"processed": True, "reason": "fulfilled"}
 
@@ -599,8 +628,8 @@ class BillingService:
         #   its lock wait (bound+succeeded -> already_fulfilled, never a
         #   false unknown, never a double grant).
         # inputs: provider client, provider_payment_id from the webhook.
-        # returns: the Payment to continue with (bound in-memory, uncommitted)
-        #   or None when the exact candidate is absent/mismatched.
+        # returns: (payment, bound_here) to continue with (bound in-memory,
+        #   uncommitted) or None when the exact candidate is absent/mismatched.
         # side_effects: provider GET; SELECT ... FOR UPDATE on the candidate.
         # error_behavior: any mismatch/ambiguity -> None (no state change);
         #   a provider GET failure (e.g. truly unknown id) also -> None.
@@ -663,28 +692,38 @@ class BillingService:
             return None
 
         # Lock the row and re-verify its ACTUAL state after any lock wait.
+        return await self._lock_candidate_for_bind(candidates[0].id, provider_payment_id)
+
+    async def _lock_candidate_for_bind(self, candidate_id: int, provider_payment_id: str) -> tuple[Payment, bool] | None:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._lock_candidate_for_bind
+        # purpose: The ONLY binding boundary for self-reconciliation. After
+        #   SELECT ... FOR UPDATE the row is REFRESHED under the same lock —
+        #   the identity map can hold a stale unbound snapshot taken before a
+        #   concurrent binder committed. Decision strictly by actual state:
+        #   same id -> concurrent binder, return for the already_fulfilled
+        #   path; foreign id/non-pending -> reject; unbound pending -> bind.
+        # inputs: candidate Payment.id, provider_payment_id to bind.
+        # returns: (payment, bound_here) or None on reject.
+        # side_effects: locked refresh read; in-memory bind (NO commit).
+        # error_behavior: None on any non-exact state.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._lock_candidate_for_bind
         locked = await self.db.execute(
-            select(Payment).where(Payment.id == candidates[0].id).with_for_update()
+            select(Payment).where(Payment.id == candidate_id).with_for_update()
         )
         payment = locked.scalar_one_or_none()
         if payment is None:
             return None
+        await self.db.refresh(payment, with_for_update=True)
         if payment.provider_payment_id == provider_payment_id:
-            # A concurrent binder already linked it (its transaction commits
-            # binding+verification+fulfillment atomically): continue by actual
-            # state — the caller's succeeded check yields already_fulfilled.
-            return payment
+            # A concurrent binder already linked it: continue by ACTUAL state
+            # (the caller's succeeded check yields already_fulfilled).
+            return (payment, False)
         if payment.provider_payment_id is not None or payment.status != "pending":
             return None
         # Bind WITHOUT committing: the caller's final commit covers
         # binding + verification + fulfillment atomically.
         payment.provider_payment_id = provider_payment_id
-        log_event(
-            "billing.payment_reconciled",
-            msg="bound unknown provider payment to durable local payment",
-            payload={"payment_id": payment.id},
-        )
-        return payment
+        return (payment, True)
 
     @staticmethod
     def _expected_charge_type(payment: Payment) -> str | None:
@@ -866,7 +905,9 @@ class BillingService:
             subscription.payment_method_id = remote["payment_method_id"]
 
         access = AccessService(self.db)
-        await access.grant_subscription(user_id=payment.user_id, start_date=grant_start, days=days)
+        # Non-committing grant: THIS service owns the single final commit
+        # (binding + succeeded + subscription + ledger in one transaction).
+        await access.grant_subscription(user_id=payment.user_id, start_date=grant_start, days=days, commit=False)
 
     async def _fulfill_one_time(self, payment: Payment, product: Product, remote: dict) -> None:
         result = await self.db.execute(
@@ -1009,7 +1050,10 @@ class BillingService:
             )
             locked_sub = locked_sub_result.scalar_one_or_none()
             if locked_sub is None:
-                await self.db.rollback()  # release any lock state promptly
+                # End the transaction WITHOUT expiring the due-list rows
+                # (Session.rollback would expire them all and break the job
+                # with MissingGreenlet on the next user's attribute access).
+                await self.db.commit()
                 continue
             # Fresh locked read: production sessions run expire_on_commit=
             # False, so a plain select can serve a STALE row from the
@@ -1024,8 +1068,10 @@ class BillingService:
                 or next_charge_at > now
                 or not locked_sub.payment_method_id
             ):
-                # Release the row lock NOW; never hold it across other users.
-                await self.db.rollback()
+                # Release the row lock NOW (commit ends the tx but keeps ORM
+                # rows usable for the remaining due users); never hold it
+                # across other users.
+                await self.db.commit()
                 continue
             sub = locked_sub
             payment_method_id = locked_sub.payment_method_id

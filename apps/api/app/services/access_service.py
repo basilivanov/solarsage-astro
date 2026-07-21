@@ -251,12 +251,16 @@ class AccessService:
         self.db.add(entry)
         await self.db.commit()
 
-    async def grant_subscription(self, user_id: UUID, start_date: Date, days: int = 30) -> None:
+    async def grant_subscription(self, user_id: UUID, start_date: Date, days: int = 30, *, commit: bool = True) -> None:
         # START_FUNCTION_CONTRACT: F-M-ACCESS.service.grant_subscription
         # purpose: Grant subscription access for specified days.
-        # inputs: user_id (UUID), start_date (Date), days (int, default 30)
+        # inputs: user_id (UUID), start_date (Date), days (int, default 30),
+        #   commit (bool, default True for legacy callers).
         # returns: None
-        # side_effects: creates AccessLedger row of type subscription
+        # side_effects: creates AccessLedger row of type subscription; with
+        #   commit=False only STAGES it — the caller owns the single atomic
+        #   commit (BillingService webhook fulfillment: binding+succeeded+
+        #   subscription+ledger in one transaction).
         # emitted_logs: none (TODO: W-1.6 — add access.subscription_granted event)
         # error_behavior: DB errors propagate
         # END_FUNCTION_CONTRACT: F-M-ACCESS.service.grant_subscription
@@ -276,5 +280,8 @@ class AccessService:
         )
 
         self.db.add(entry)
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
 # END_BLOCK: ACCESS_GRANT
