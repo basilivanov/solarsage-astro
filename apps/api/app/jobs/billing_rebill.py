@@ -1,16 +1,18 @@
-#!/usr/bin/env python3
 # ############################################################################
-# AI_HEADER: SCRIPT_BILLING_REBILL — operator-runnable recurrent rebill job.
+# AI_HEADER: MODULE_JOBS_BILLING_REBILL — operator-runnable recurrent rebill job.
 # ROLE: Runs BillingService.rebill_due_subscriptions once through the
 #       canonical app session; hard-gated by YOOKASSA_RECURRENT_ENABLED.
-# DEPENDENCIES: apps/api app package, DATABASE_URL env
+#       Lives INSIDE the installed app package so the canonical invocation is
+#       `python -m app.jobs.billing_rebill` in the API container (one-shot
+#       compose profile), never a mutable host checkout.
+# DEPENDENCIES: app package, DATABASE_URL env
 # ############################################################################
 
-# START_MODULE_CONTRACT: M-SCRIPT-BILLING-REBILL
-# purpose: Single-shot operator job for recurrent rebilling (cron/systemd
-#   timer equivalent, no Prefect/new harness).
+# START_MODULE_CONTRACT: M-JOBS-BILLING-REBILL
+# purpose: Single-shot operator job for recurrent rebilling (cron-driven via
+#   the canonical compose one-shot profile; no Prefect/new harness).
 # owns:
-#   - scripts/billing_rebill.py
+#   - apps/api/app/jobs/billing_rebill.py
 # inputs: DATABASE_URL (+ standard app env), YOOKASSA_RECURRENT_ENABLED.
 # outputs: exit 0 with the attempts count on stdout; non-zero on errors.
 # dependencies: app.db.session.SessionLocal, BillingService.
@@ -19,9 +21,10 @@
 # emitted_logs: billing.rebill_started / billing.rebill_skipped (via service).
 # invariants:
 #   - Kill-switch first: disabled recurrent means zero charges, always.
-#   - No scheduler of its own — the operator's cron/timer invokes it.
+#   - No scheduler of its own — the operator's cron/timer invokes it through
+#     the canonical compose one-shot profile (runbook §2.2).
 # failure_policy: exit 1 on unexpected failure (safe to re-run next cycle).
-# END_MODULE_CONTRACT: M-SCRIPT-BILLING-REBILL
+# END_MODULE_CONTRACT: M-JOBS-BILLING-REBILL
 
 from __future__ import annotations
 

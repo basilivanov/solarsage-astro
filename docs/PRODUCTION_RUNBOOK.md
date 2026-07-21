@@ -84,19 +84,26 @@ Billing secrets live ONLY in this root-owned env file, never in the repository. 
 - **YOOKASSA_TEST_SHOP_ID** / **YOOKASSA_TEST_SECRET_KEY**: sandbox credentials (required only when `YOOKASSA_MODE=test` and billing is enabled; client creation fails closed without them).
 - **YOOKASSA_LIVE_SHOP_ID** / **YOOKASSA_LIVE_SECRET_KEY**: production credentials, operator-placed (required only when `YOOKASSA_MODE=live` and billing is enabled).
 - **YOOKASSA_RETURN_URL**: return URL after payment (e.g. `https://astro.vasiliy-ivanov.ru/profile`).
-- **YOOKASSA_RECURRENT_ENABLED** (default `false`): recurrent charging kill-switch; while `false` the rebill path performs zero charges. Enable only after the rebill wrapper is scheduled (runbook §5.2) and the first manual payment is proven.
+- **YOOKASSA_RECURRENT_ENABLED** (default `false`): recurrent charging kill-switch; while `false` the rebill path performs zero charges. Enable only after the rebill wrapper is scheduled (runbook §2.2) and the first manual payment is proven.
+- **YOOKASSA_TRUSTED_PROXY_CIDRS** (default empty = fail closed): exact CIDR of the ONE trusted proxy whose `X-Real-IP`/`X-Forwarded-For` may be believed for the webhook source check. In the canonical path the host nginx proxies to the API container through the pinned compose app network (`172.31.235.0/24`), so the API sees the network gateway as its peer: set exactly `172.31.235.1/32`. NEVER a broad private range (`10.0.0.0/8`, `172.16.0.0/12`, …) — any host in such a range could forge forwarded headers. While empty, forwarded headers are rejected and webhooks via nginx fail closed with 403, so set this BEFORE enabling billing.
 - **NATAL_REPORT_ENABLED** (default `false`): natal full-report generation feature flag. Enable together with billing — selling the report while the flag is off is blocked (purchase start is rejected and the product is hidden, so a 501 feature is never sold).
 
 ### 2.2 Recurrent rebill job
 
-Auto-renewal runs ONLY through the operator-runnable wrapper `scripts/billing_rebill.py` (single-shot, uses the canonical app session and `BillingService.rebill_due_subscriptions`; no Prefect/new harness). It is hard-gated by `YOOKASSA_RECURRENT_ENABLED` and exits 0 doing nothing while the flag is off. Schedule it only after the first manual payment is proven, e.g. via cron on the host:
+Auto-renewal runs ONLY through the canonical one-shot compose profile `billing-rebill` (the installed `app.jobs.billing_rebill` module inside the immutable API image — no mutable checkout, no Prefect/new harness). It is hard-gated by `YOOKASSA_RECURRENT_ENABLED` and exits 0 doing nothing while the flag is off. Schedule it only after the first manual payment is proven, e.g. via cron on the host:
 
 ```bash
 # /etc/cron.d/solarsage-billing-rebill (runs every 30 minutes)
-*/30 * * * * root bash -lc 'set -a && . /etc/solarsage/app.env && set +a && cd /opt/solarsage-astro/apps/api && .venv/bin/python ../../scripts/billing_rebill.py'
+# Image/SHA come from the orchestrator release record (the running release),
+# NOT from app.env, which deliberately never carries RELEASE_SHA.
+*/30 * * * * root bash -lc 'set -a && . /etc/solarsage/app.env && . /var/lib/solarsage/orchestrator/release-record && set +a && RELEASE_SHA="$active" API_IMAGE="$active_api_image" SIDECAR_IMAGE="$active_sidecar_image" FRONTEND_IMAGE="$active_frontend_image" docker compose -f /etc/solarsage/compose/docker-compose.app.yml --profile billing-rebill run --rm --no-deps billing-rebill'
 ```
 
+Equivalent fallback when the API container is already running the target release: `docker exec solarsage-api python -m app.jobs.billing_rebill`.
+
 Until this job is actually scheduled, `YOOKASSA_RECURRENT_ENABLED` MUST stay `false` — the launch never silently advertises auto-renewal without a scheduler.
+
+Rebill safety contract (enforced by `BillingService.rebill_due_subscriptions`): a failed attempt is retried with the SAME idempotence key only inside the 24h YooKassa dedupe window anchored by `payments.first_attempt_at`; past the window the payment is NEVER auto-charged again and stays `pending` for manual reconciliation (visible via the `system.error` log "rebill needs manual reconciliation", subscription `past_due`). A known-canceled attempt is dead — the cycle continues automatically on a fresh `-attempt-N` key.
 
 Optional keys: `APP_VERSION`, `LLM_MODEL`.
 

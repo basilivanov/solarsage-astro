@@ -24,6 +24,8 @@
 #     registry/repo@sha256:<64 lowercase hex>; no latest/branch/tag/mutable refs.
 #   - No secret values in this file; only required-variable interpolation.
 #   - api image never runs Alembic on ordinary start; migrate is a one-shot profile.
+#   - The app network subnet is pinned (172.31.235.0/24) so the YooKassa
+#     webhook trusted-proxy CIDR is a stable exact gateway /32.
 #   - No DB volume is created or deleted by this stack.
 # failure_policy: compose config fails on any missing required variable.
 # END_MODULE_CONTRACT: M-INFRA-PRODUCTION-APP
@@ -34,6 +36,7 @@
 #   - sidecar
 #   - frontend
 #   - migrate (profile)
+#   - billing-rebill (profile)
 # semantic_blocks:
 #   - PRODUCTION_APP_SERVICES: canonical loopback services from immutable images
 # END_MODULE_MAP: M-INFRA-PRODUCTION-APP
@@ -42,6 +45,11 @@ name: solarsage-app
 
 networks:
   app:
+    # Pinned subnet: the webhook trusted-proxy CIDR must be a STABLE exact
+    # /32 (this network's gateway, 172.31.235.1/32), never a broad range.
+    ipam:
+      config:
+        - subnet: 172.31.235.0/24
   db:
     external: true
     name: solarsage-prod_default
@@ -80,6 +88,11 @@ x-api-common: &api-common
     YOOKASSA_LIVE_SECRET_KEY: ${YOOKASSA_LIVE_SECRET_KEY:-}
     YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-}
     YOOKASSA_RECURRENT_ENABLED: ${YOOKASSA_RECURRENT_ENABLED:-false}
+    # Trusted proxy for the webhook source check: the EXACT gateway CIDR of
+    # the pinned app network below (host nginx -> published loopback port ->
+    # container). Empty fails closed (all forwarded headers rejected). Never
+    # a broad private range — see runbook §2.1.
+    YOOKASSA_TRUSTED_PROXY_CIDRS: ${YOOKASSA_TRUSTED_PROXY_CIDRS:-}
 
 services:
   api:
@@ -171,3 +184,16 @@ services:
     networks:
       - db
     command: ["alembic", "upgrade", "head"]
+
+  billing-rebill:
+    # Canonical one-shot rebill entrypoint: the installed app package runs
+    # inside the same immutable API image (no mutable checkout on the host).
+    # Operator schedules: docker compose -f /etc/solarsage/compose/docker-compose.app.yml \
+    #   --profile billing-rebill run --rm --no-deps billing-rebill
+    <<: *api-common
+    container_name: solarsage-billing-rebill
+    profiles: ["billing-rebill"]
+    restart: "no"
+    networks:
+      - db
+    command: ["python", "-m", "app.jobs.billing_rebill"]

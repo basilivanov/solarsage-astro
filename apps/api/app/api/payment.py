@@ -158,6 +158,11 @@ def _domain_error(exc: ValueError) -> HTTPException:
         return HTTPException(status_code=404, detail={"code": code, "message": "Product not found or inactive"})
     if code == "NATAL_CONTEXT_MISSING":
         return HTTPException(status_code=400, detail={"code": code, "message": "Natal context is missing"})
+    if code == "LIVE_SUBSCRIPTION_EXISTS":
+        return HTTPException(
+            status_code=409,
+            detail={"code": code, "message": "A live subscription already exists; cancel it before starting another"},
+        )
     return HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": code})
 
 

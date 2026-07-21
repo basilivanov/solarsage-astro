@@ -37,7 +37,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from typing import Literal
 
 
 LogEventName = Literal[
@@ -83,6 +83,7 @@ LogEventName = Literal[
     "billing.rebill_skipped",
     "billing.rebill_started",
     "billing.webhook_rejected",
+    "billing.fulfillment_blocked",
     # horary
     "horary.question_created",
     "horary.question_create_failed",

@@ -457,6 +457,11 @@ class Payment(Base):
     payment_method_saved: Mapped[bool] = mapped_column(nullable=False, default=False)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     canceled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # First external charge attempt with the CURRENT idempotence key.
+    # YooKassa guarantees Idempotence-Key dedupe only for 24h, so same-key
+    # retries are allowed strictly inside this window; afterwards an
+    # ambiguous payment is NEVER auto-charged again (manual reconciliation).
+    first_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Strict owner link for subscription payments (initial + rebill).
     subscription_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("subscriptions.id"), nullable=True, index=True
@@ -488,19 +493,21 @@ class Product(Base):
 
 
 class Subscription(Base):
-    """Recurrent subscription state. Exactly one ACTIVE per user at a time."""
+    """Recurrent subscription state. At most one LIVE row per user."""
 
     __tablename__ = "subscriptions"
     __table_args__ = (
         Index("ix_subscriptions_user_id_status", "user_id", "status"),
         Index("ix_subscriptions_next_charge_at", "next_charge_at"),
+        # One LIVE (pending/active/past_due) subscription per user, DB-level:
+        # parallel month+year starts or a new start beside an active/past_due
+        # row can never produce two charge owners.
         Index(
-            "uq_subscriptions_pending_user_product",
+            "uq_subscriptions_one_live_per_user",
             "user_id",
-            "product_slug",
             unique=True,
-            sqlite_where=sa_text("status = 'pending'"),
-            postgresql_where=sa_text("status = 'pending'"),
+            sqlite_where=sa_text("status IN ('pending', 'active', 'past_due')"),
+            postgresql_where=sa_text("status IN ('pending', 'active', 'past_due')"),
         ),
     )
 

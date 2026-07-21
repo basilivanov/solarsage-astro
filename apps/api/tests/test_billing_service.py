@@ -35,13 +35,14 @@ from app.db.models import (
     AccessLedger,
     HoraryCredit,
     Payment,
+    Product,
     Purchase,
     Subscription,
     User,
 )
 from app.services.billing_service import BillingService
 from app.services.product_catalog import seed_products
-from app.services.yookassa_client import YooKassaClient
+from app.services.yookassa_client import YooKassaClient, YooKassaError
 
 
 class FakeYooKassaClient:
@@ -55,6 +56,9 @@ class FakeYooKassaClient:
         self.calls: list[tuple[str, dict]] = []
         self.remote = remote or {}
         self.next_id = 0
+        # >0: the next N recurrent create calls raise YooKassaError BEFORE
+        # recording — an injected transport failure with unknown outcome.
+        self.fail_recurrent_times = 0
 
     def _new_id(self) -> str:
         self.next_id += 1
@@ -121,6 +125,9 @@ class FakeYooKassaClient:
         period_label: str,
         idempotence_key: str,
     ) -> dict:
+        if self.fail_recurrent_times > 0:
+            self.fail_recurrent_times -= 1
+            raise YooKassaError("injected transport failure (unknown outcome)")
         self.calls.append(("rebill", {
             "user_id": user_id,
             "owner_id": owner_id,
@@ -181,6 +188,26 @@ async def _user(db_session, tg: int) -> User:
     db_session.add(user)
     await db_session.commit()
     return user
+
+
+async def _make_due_subscription(db_session, tg: int, *, status: str = "active") -> tuple[User, Subscription]:
+    """An active/past_due subscription due for renewal RIGHT NOW."""
+    await seed_products(db_session)
+    user = await _user(db_session, tg)
+    sub = Subscription(
+        user_id=user.id,
+        product_slug="subscription_month",
+        status=status,
+        price_kopecks=9900,
+        currency="RUB",
+        payment_method_id="pm-saved-1",
+        current_period_start=datetime.now(UTC) - timedelta(days=29),
+        current_period_end=datetime.now(UTC),
+        next_charge_at=datetime.now(UTC) - timedelta(hours=1),
+    )
+    db_session.add(sub)
+    await db_session.commit()
+    return user, sub
 
 
 @pytest.fixture
@@ -603,9 +630,9 @@ async def test_renewal_webhook_extends_active_period(db_session, fake_client, mo
 
 
 @pytest.mark.asyncio
-async def test_pending_unique_index_blocks_concurrent_start_rows(db_session) -> None:
-    """DB-level concurrency guard: two pending subscriptions for the same
-    user+product violate the partial unique index."""
+async def test_live_unique_index_blocks_concurrent_pending_rows(db_session) -> None:
+    """DB-level concurrency guard: two live subscriptions for the same user
+    violate the one-live-per-user partial unique index."""
     from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 
     user = await _user(db_session, 900015)
@@ -620,6 +647,24 @@ async def test_pending_unique_index_blocks_concurrent_start_rows(db_session) -> 
         await db_session.commit()
 
 
+@pytest.mark.asyncio
+async def test_live_unique_index_blocks_two_live_rows_across_plans(db_session) -> None:
+    """The guard is per USER, not per product: pending month + active year
+    must also violate the index (two charge owners are impossible)."""
+    from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+    user = await _user(db_session, 900031)
+    db_session.add(
+        Subscription(user_id=user.id, product_slug="subscription_month", status="pending", price_kopecks=9900, currency="RUB")
+    )
+    await db_session.commit()
+    db_session.add(
+        Subscription(user_id=user.id, product_slug="subscription_year", status="active", price_kopecks=99900, currency="RUB")
+    )
+    with pytest.raises(SQLIntegrityError):
+        await db_session.commit()
+
+
 class TimeoutThenSuccessClient(FakeYooKassaClient):
     """First create call times out; the retry succeeds."""
 
@@ -627,11 +672,30 @@ class TimeoutThenSuccessClient(FakeYooKassaClient):
         super().__init__()
         self.initial_calls = 0
 
-    async def create_initial_payment(self, **kwargs):
+    async def create_initial_payment(
+        self,
+        *,
+        user_id: uuid.UUID,
+        owner_id: uuid.UUID,
+        amount_kopecks: int,
+        currency: str,
+        description: str,
+        return_url: str,
+        product_slug: str,
+        idempotence_key: str,
+    ) -> dict:
         self.initial_calls += 1
-        self.calls.append(("initial", kwargs))
+        self.calls.append(("initial", {
+            "user_id": user_id,
+            "owner_id": owner_id,
+            "amount_kopecks": amount_kopecks,
+            "currency": currency,
+            "description": description,
+            "return_url": return_url,
+            "product_slug": product_slug,
+            "idempotence_key": idempotence_key,
+        }))
         if self.initial_calls == 1:
-            from app.services.yookassa_client import YooKassaError
             raise YooKassaError("yookassa transport error: timeout")
         return {
             "provider_payment_id": f"prov-{len(self.calls):04d}",
@@ -650,7 +714,6 @@ async def test_provider_timeout_retry_reuses_same_key_and_owner(db_session, monk
     monkeypatch.setattr(settings, "yookassa_return_url", "https://app.example/return")
     await seed_products(db_session)
     user = await _user(db_session, 900016)
-    from app.services.yookassa_client import YooKassaError
 
     service = BillingService(db_session)
     with pytest.raises(YooKassaError):
@@ -681,3 +744,280 @@ async def test_provider_timeout_retry_reuses_same_key_and_owner(db_session, monk
     assert len(client.calls) == 2
     keys = {kwargs["idempotence_key"] for _kind, kwargs in client.calls}
     assert keys == {stable_key}
+
+
+# ---- Webhook race: owner link is durable BEFORE the provider create ----
+
+@pytest.mark.asyncio
+async def test_purchase_payment_link_durable_before_provider_create(db_session, fake_client) -> None:
+    """Regression: purchase.payment_id must be COMMITTED before the provider
+    create returns, so a webhook arriving mid-charge resolves the owner
+    through the FK. The fake checks the link INSIDE the create call itself —
+    with the old post-POST linking this records False."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900040)
+    service = BillingService(db_session)
+
+    original_create = fake_client.create_one_time_payment
+    link_state_at_create: list[bool] = []
+
+    async def create_and_check_link(**kwargs):
+        purchase = (await db_session.execute(select(Purchase))).scalar_one()
+        payment = (await db_session.execute(select(Payment))).scalar_one()
+        link_state_at_create.append(purchase.payment_id == payment.id)
+        return await original_create(**kwargs)
+
+    fake_client.create_one_time_payment = create_and_check_link
+    started = await service.start_purchase(user.id, "horary_1")
+    assert link_state_at_create == [True]
+
+    # The immediate webhook then fulfills normally (link was already there).
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["purchase_id"]))
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result["processed"] is True
+
+
+# ---- One live subscription per user (service guard) ----
+
+@pytest.mark.asyncio
+async def test_cross_plan_start_blocked_by_live_pending(db_session, fake_client) -> None:
+    await seed_products(db_session)
+    user = await _user(db_session, 900032)
+    service = BillingService(db_session)
+
+    await service.start_subscription(user.id, "subscription_month")
+    with pytest.raises(ValueError, match="LIVE_SUBSCRIPTION_EXISTS"):
+        await service.start_subscription(user.id, "subscription_year")
+
+    assert len(fake_client.calls) == 1  # no second provider payment
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    assert len(subs) == 1
+
+
+@pytest.mark.asyncio
+async def test_past_due_subscription_blocks_new_start(db_session, fake_client) -> None:
+    await seed_products(db_session)
+    user = await _user(db_session, 900033)
+    service = BillingService(db_session)
+
+    await service.start_subscription(user.id, "subscription_month")
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    sub.status = "past_due"
+    sub.next_charge_at = datetime.now(UTC) + timedelta(days=1)
+    await db_session.commit()
+
+    with pytest.raises(ValueError, match="LIVE_SUBSCRIPTION_EXISTS"):
+        await service.start_subscription(user.id, "subscription_year")
+    with pytest.raises(ValueError, match="LIVE_SUBSCRIPTION_EXISTS"):
+        await service.start_subscription(user.id, "subscription_month")
+
+
+@pytest.mark.asyncio
+async def test_cancel_past_due_keeps_paid_period(db_session, fake_client) -> None:
+    """Cancel must work on past_due (not only active) and never revoke the
+    already-paid access ledger."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900034)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["subscription_id"]))
+    await service.verify_and_process_webhook(payment.provider_payment_id)
+
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    sub.status = "past_due"
+    sub.next_charge_at = datetime.now(UTC) + timedelta(days=1)
+    await db_session.commit()
+
+    result = await service.cancel_subscription(user.id, "too_expensive")
+    assert result["status"] == "canceled"
+    await db_session.refresh(sub)
+    assert sub.status == "canceled"
+    assert sub.next_charge_at is None  # no further rebill attempts
+    ledger = (await db_session.execute(select(AccessLedger))).scalars().all()
+    assert len(ledger) == 1  # paid period untouched
+
+
+@pytest.mark.asyncio
+async def test_cancel_pending_frees_plan_switch(db_session, fake_client) -> None:
+    """Canceling an UNPAID pending start abandons it and frees the one-live
+    slot, so the user can switch plans."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900035)
+    service = BillingService(db_session)
+
+    await service.start_subscription(user.id, "subscription_month")
+    canceled = await service.cancel_subscription(user.id, None)
+    assert canceled["status"] == "canceled"
+
+    started = await service.start_subscription(user.id, "subscription_year")
+    assert started["status"] == "pending"
+    assert started["product_slug"] == "subscription_year"
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    assert sorted(s.status for s in subs) == ["canceled", "pending"]
+
+
+# ---- Rebill: 24h dedupe window + known-canceled fresh key ----
+
+@pytest.mark.asyncio
+async def test_rebill_retry_within_24h_reuses_same_key(db_session, fake_client, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900036)
+    service = BillingService(db_session)
+
+    fake_client.fail_recurrent_times = 1  # first attempt: unknown outcome
+    assert await service.rebill_due_subscriptions() == 0
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    assert payment.status == "pending"
+    assert payment.provider_payment_id is None
+    assert payment.first_attempt_at is not None
+    await db_session.refresh(sub)
+    assert sub.status == "past_due"
+
+    # Retry INSIDE the dedupe window: SAME key, provider dedupes the charge.
+    sub.next_charge_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+    assert await service.rebill_due_subscriptions() == 1
+    rebill_calls = [c for c in fake_client.calls if c[0] == "rebill"]
+    assert len(rebill_calls) == 1
+    assert rebill_calls[0][1]["idempotence_key"] == payment.idempotence_key
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id is not None
+
+
+@pytest.mark.asyncio
+async def test_rebill_after_24h_window_no_second_charge(db_session, fake_client, monkeypatch) -> None:
+    """YooKassa dedupes an Idempotence-Key only for 24h. Past the window the
+    ambiguous payment is NEVER auto-charged again: no provider call, payment
+    stays pending for manual reconciliation, subscription past_due."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900037)
+    service = BillingService(db_session)
+
+    fake_client.fail_recurrent_times = 1
+    assert await service.rebill_due_subscriptions() == 0
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+
+    # The first attempt happened >24h ago: the dedupe window has expired.
+    payment.first_attempt_at = datetime.now(UTC) - timedelta(hours=25)
+    await db_session.refresh(sub)
+    sub.next_charge_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+
+    calls_before = list(fake_client.calls)
+    assert await service.rebill_due_subscriptions() == 0
+    assert fake_client.calls == calls_before  # NO second charge
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    assert payment.provider_payment_id is None
+    await db_session.refresh(sub)
+    assert sub.status == "past_due"
+
+
+@pytest.mark.asyncio
+async def test_rebill_known_canceled_gets_fresh_attempt_key(db_session, fake_client, monkeypatch) -> None:
+    """A KNOWN canceled renewal must not block its cycle key forever: the
+    webhook demotes the subscription to past_due and the next rebill run
+    charges the SAME cycle on a fresh -attempt-N key (dead key never reused)."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900038)
+    service = BillingService(db_session)
+
+    assert await service.rebill_due_subscriptions() == 1
+    first_payment = (await db_session.execute(select(Payment))).scalar_one()
+    first_key = first_payment.idempotence_key
+
+    # Provider reports the renewal canceled (e.g. card declined).
+    fake_client.remote[first_payment.provider_payment_id] = _remote_for(
+        first_payment, str(sub.id), status="canceled", paid=False
+    )
+    result = await service.verify_and_process_webhook(first_payment.provider_payment_id)
+    assert result["reason"] == "canceled"
+    await db_session.refresh(sub)
+    assert sub.status == "past_due"
+
+    sub.next_charge_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+    assert await service.rebill_due_subscriptions() == 1
+
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(payments) == 2
+    keys = sorted(p.idempotence_key for p in payments)
+    assert keys[0] == first_key
+    assert keys[1].startswith(f"{first_key}-attempt-")
+    rebill_calls = [c for c in fake_client.calls if c[0] == "rebill"]
+    assert len(rebill_calls) == 2
+    assert rebill_calls[1][1]["idempotence_key"] != first_key
+
+
+# ---- Fulfillment safety: no is_active filter, recoverable owner gaps ----
+
+@pytest.mark.asyncio
+async def test_webhook_fulfills_despite_deactivated_product(db_session, fake_client) -> None:
+    """Deactivating a product stops NEW sales but must never strand an
+    already-accepted payment: fulfillment reads the catalog row WITHOUT the
+    is_active sales filter (amount verified against the payment snapshot)."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900039)
+    service = BillingService(db_session)
+
+    started = await service.start_purchase(user.id, "horary_3")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    product = (await db_session.execute(select(Product).where(Product.slug == "horary_3"))).scalar_one()
+    product.is_active = False  # operator deactivates AFTER the payment started
+    await db_session.commit()
+
+    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["purchase_id"]))
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result["processed"] is True
+    credit = (await db_session.execute(select(HoraryCredit))).scalar_one()
+    assert credit.amount == 3
+
+
+@pytest.mark.asyncio
+async def test_webhook_missing_owner_is_recoverable(db_session, fake_client) -> None:
+    """A missing owner link must NOT become succeeded-without-grant: the
+    payment stays pending (observable/recoverable), and after the link is
+    repaired a later webhook fulfills exactly once."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900041)
+    service = BillingService(db_session)
+
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    purchase = (await db_session.execute(select(Purchase))).scalar_one()
+    purchase.payment_id = None  # damaged/missing link
+    await db_session.commit()
+
+    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["purchase_id"]))
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result == {"processed": False, "reason": "owner_missing"}
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    assert (await db_session.execute(select(HoraryCredit))).scalars().all() == []
+
+    purchase.payment_id = payment.id  # operator repairs the link
+    await db_session.commit()
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result["processed"] is True
+    assert (await db_session.execute(select(HoraryCredit))).scalar_one().amount == 1
+
+
+# ---- Charge boundary invariant: never mask a broken reservation ----
+
+@pytest.mark.asyncio
+async def test_missing_idempotence_key_fails_closed(db_session) -> None:
+    """No silent `or attempt_key` masking: a reserved payment without its key
+    raises BEFORE any provider call (fail closed + system.error log)."""
+    payment = Payment(
+        user_id=uuid.uuid4(),
+        amount=100,
+        currency="RUB",
+        status="pending",
+        provider="yookassa",
+        idempotence_key=None,
+    )
+    with pytest.raises(RuntimeError, match="PAYMENT_INVARIANT_VIOLATION"):
+        BillingService._require_idempotence_key(payment)

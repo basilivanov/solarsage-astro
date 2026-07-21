@@ -22,7 +22,8 @@
 #   HoraryCredit rows; calls the YooKassa API via the client.
 # emitted_logs: billing.subscription_started, billing.purchase_started,
 #   billing.payment_fulfilled, billing.subscription_canceled,
-#   billing.rebill_skipped, billing.rebill_started, system.error
+#   billing.rebill_skipped, billing.rebill_started, billing.webhook_rejected,
+#   billing.fulfillment_blocked, system.error
 # invariants:
 #   - No parallel access/quota ledgers: subscription access goes ONLY through
 #     AccessService.grant_subscription; horary quota ONLY via HoraryCredit
@@ -30,12 +31,27 @@
 #   - Idempotent everywhere: duplicate start reuses the pending row;
 #     duplicate webhook/fulfill grants nothing twice; unique
 #     idempotence_key/provider_payment_id enforced by DB constraints.
+#   - At most ONE live (pending/active/past_due) subscription per user,
+#     enforced by the uq_subscriptions_one_live_per_user partial unique index
+#     and by the service guard (reuse pending-same-plan, else domain 409).
+#   - A payment is marked succeeded ONLY when its fulfillment target
+#     (product row without the is_active sales filter + owner row) exists;
+#     otherwise it stays pending and observable (billing.fulfillment_blocked)
+#     so a later webhook/reconciliation can still grant.
+#   - Same-key provider retries happen only inside the 24h YooKassa
+#     Idempotence-Key dedupe window anchored by payments.first_attempt_at;
+#     past the window an ambiguous rebill is NEVER auto-charged again.
+#   - A known-canceled attempt key is dead: the cycle continues on a fresh
+#     -attempt-N key, never reusing the canceled one.
 #   - YOOKASSA_ENABLED=false => all start/status paths fail 503 upstream.
 #   - YOOKASSA_RECURRENT_ENABLED=false => rebill performs zero charges.
 #   - Cancel never revokes the already-paid period.
+#   - A reserved payment without idempotence_key is corrupted state: fail
+#     closed (RuntimeError), never charge on a silently substituted key.
 #   - No secrets, shop keys or raw provider payloads in logs.
 # failure_policy: ValueError on domain violations (unknown product, wrong
-#   state); YooKassaError on provider failure; webhook mismatches are
+#   state, LIVE_SUBSCRIPTION_EXISTS); RuntimeError on reservation invariant
+#   violations; YooKassaError on provider failure; webhook mismatches are
 #   rejected silently (no state change) with a warning log.
 # END_MODULE_CONTRACT: M-BILLING-SERVICE
 
@@ -107,6 +123,13 @@ class BillingService:
             select(Product).where(Product.slug == slug, Product.is_active.is_(True))
         )
         return result.scalar_one_or_none()
+
+    async def _get_product_any(self, slug: str) -> Product | None:
+        # Fulfillment path ONLY: no is_active sales filter. Deactivating a
+        # product stops NEW sales but must never strand an already-accepted
+        # payment (amount/currency are verified against the payment snapshot).
+        result = await self.db.execute(select(Product).where(Product.slug == slug))
+        return result.scalar_one_or_none()
     # END_BLOCK: BILLING_PRODUCTS
 
     # START_BLOCK: BILLING_START
@@ -124,18 +147,27 @@ class BillingService:
         # side_effects: commits Subscription + Payment reservations; POST to
         #   YooKassa with save_payment_method=true, merchant_customer_id,
         #   capture=true.
-        # error_behavior: ValueError on unknown/wrong product; YooKassaError
-        #   on provider failure (reservation stays pending for retry).
+        # error_behavior: ValueError on unknown/wrong product or when another
+        #   live subscription exists (LIVE_SUBSCRIPTION_EXISTS -> 409);
+        #   RuntimeError on a broken reservation (missing idempotence key);
+        #   YooKassaError on provider failure (reservation stays pending).
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.start_subscription
         product = await self._get_product(product_slug)
         if product is None or product.product_type != "subscription_recurrent":
             raise ValueError("PRODUCT_NOT_FOUND")
 
-        active = await self._get_active_subscription(user_id)
-        if active is not None:
-            return {"status": "already_active", "subscription_id": active.id}
-
-        subscription = await self._reserve_subscription(user_id, product)
+        live = await self._get_live_subscription(user_id)
+        if live is not None:
+            if live.status == "active":
+                return {"status": "already_active", "subscription_id": live.id}
+            if live.status == "pending" and live.product_slug == product_slug:
+                subscription = live
+            else:
+                # past_due OR a pending start for a DIFFERENT plan: exactly
+                # one live subscription per user — never a second charge owner.
+                raise ValueError("LIVE_SUBSCRIPTION_EXISTS")
+        else:
+            subscription = await self._reserve_subscription(user_id, product)
         attempt_key = await self._next_attempt_key(subscription.id, product_slug)
         payment = await self._reserve_payment(
             user_id=user_id,
@@ -166,7 +198,7 @@ class BillingService:
                 description=product.name,
                 return_url=settings.yookassa_return_url,
                 product_slug=product_slug,
-                idempotence_key=payment.idempotence_key or attempt_key,
+                idempotence_key=self._require_idempotence_key(payment),
             )
             payment.provider_payment_id = result["provider_payment_id"]
             payment.confirmation_url = result.get("confirmation_url")
@@ -188,13 +220,17 @@ class BillingService:
         #   entitlement). Idempotent per pending purchase; natal entitlement
         #   is bound to the CURRENT natal context hash and an existing
         #   succeeded entitlement returns {"status": "already_entitled"}.
+        #   Durable-first: the Purchase AND its payment_id link are COMMITTED
+        #   BEFORE the external POST, so a webhook arriving while the provider
+        #   processes the charge already resolves the owner (no lost grant).
         # inputs: user_id, product_slug (natal_full_report | horary_*).
         # returns: dict with purchase_id, product_slug, provider_payment_id,
         #   confirmation_url, status.
-        # side_effects: inserts Purchase + Payment rows; POST to YooKassa
-        #   with capture=true.
+        # side_effects: commits Purchase + Payment reservation and the
+        #   purchase.payment_id link; POST to YooKassa with capture=true.
         # error_behavior: ValueError on unknown/inactive product (synastry is
-        #   fail-closed) or missing natal context; YooKassaError upstream.
+        #   fail-closed) or missing natal context; RuntimeError on a broken
+        #   reservation (missing idempotence key); YooKassaError upstream.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.start_purchase
         product = await self._get_product(product_slug)
         if product is None or product.product_type != "one_time":
@@ -227,6 +263,15 @@ class BillingService:
                 idempotence_key=await self._next_attempt_key(purchase.id, product_slug, prefix="purchase", force_new=True),
             )
 
+        if purchase.payment_id != payment.id:
+            # The owner link MUST be durable BEFORE the external POST: a
+            # webhook can arrive while the provider is still processing the
+            # charge, and _fulfill_one_time resolves the purchase strictly
+            # through this FK. Linking only after the POST loses that webhook
+            # behind the already_fulfilled early-return.
+            purchase.payment_id = payment.id
+            await self.db.commit()
+
         if payment.provider_payment_id is None:
             client = get_yookassa_client()
             result = await client.create_one_time_payment(
@@ -237,15 +282,12 @@ class BillingService:
                 description=product.name,
                 return_url=settings.yookassa_return_url,
                 product_slug=product_slug,
-                idempotence_key=payment.idempotence_key or attempt_key,
+                idempotence_key=self._require_idempotence_key(payment),
             )
             payment.provider_payment_id = result["provider_payment_id"]
             payment.confirmation_url = result.get("confirmation_url")
             await self.db.commit()
 
-        if purchase.payment_id is None:
-            purchase.payment_id = payment.id
-            await self.db.commit()
         log_event("billing.purchase_started", msg="purchase started", payload={"payment_id": payment.id})
 
         return {
@@ -295,19 +337,24 @@ class BillingService:
 
     async def cancel_subscription(self, user_id: uuid.UUID, reason: str | None) -> dict:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.cancel_subscription
-        # purpose: Cancel an active subscription. The already-paid period is
-        #   NEVER revoked — access stays until the ledger end date.
+        # purpose: Cancel the user's LIVE subscription (pending/active/
+        #   past_due). The already-paid period is NEVER revoked — access
+        #   stays until the ledger end date. Canceling a pending (unpaid)
+        #   start simply abandons it and frees the one-live slot for a plan
+        #   switch.
         # inputs: user_id, reason.
         # returns: {"subscription_id": id|None, "status": "canceled"|"no_active_subscription"}
-        # side_effects: updates Subscription.status to canceled.
+        # side_effects: updates Subscription.status to canceled and clears
+        #   next_charge_at (no further rebill attempts).
         # error_behavior: none raised for missing subscription.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.cancel_subscription
-        subscription = await self._get_active_subscription(user_id)
+        subscription = await self._get_live_subscription(user_id)
         if subscription is None:
             return {"subscription_id": None, "status": "no_active_subscription"}
         subscription.status = "canceled"
         subscription.canceled_at = datetime.now(UTC)
         subscription.cancellation_reason = reason or "user_request"
+        subscription.next_charge_at = None
         await self.db.commit()
         log_event("billing.subscription_canceled", msg="subscription canceled")
         return {"subscription_id": subscription.id, "status": "canceled"}
@@ -324,7 +371,11 @@ class BillingService:
         # side_effects: fulfills Payment/Subscription/Purchase/AccessLedger/
         #   HoraryCredit exactly once.
         # error_behavior: mismatches are rejected without state change;
-        #   provider errors propagate as YooKassaError.
+        #   provider errors propagate as YooKassaError; a missing/deactivated
+        #   fulfillment target (product row, owner row, inactive subscription)
+        #   leaves the payment PENDING with billing.fulfillment_blocked so the
+        #   grant stays recoverable, and a canceled renewal demotes an active
+        #   subscription to past_due for a fresh-key retry.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.verify_and_process_webhook
         result = await self.db.execute(
             select(Payment)
@@ -345,6 +396,19 @@ class BillingService:
         if remote["status"] == "canceled":
             payment.status = "canceled"
             payment.canceled_at = datetime.now(UTC)
+            # A canceled RENEWAL demotes an active subscription to past_due so
+            # the rebill loop retries the cycle on a FRESH attempt key. An
+            # INITIAL payment (subscription still pending) leaves the
+            # subscription pending — the start flow rekeys it on the user's
+            # next attempt instead of deadlocking the one-live slot.
+            if payment.subscription_id is not None:
+                linked = await self.db.execute(
+                    select(Subscription).where(Subscription.id == payment.subscription_id)
+                )
+                sub = linked.scalar_one_or_none()
+                if sub is not None and sub.status == "active":
+                    sub.status = "past_due"
+                    sub.next_charge_at = datetime.now(UTC) + timedelta(days=1)
             await self.db.commit()
             return {"processed": False, "reason": "canceled"}
 
@@ -355,16 +419,36 @@ class BillingService:
             log_event("billing.webhook_rejected", msg="webhook/provider mismatch", level="warning")
             return {"processed": False, "reason": "mismatch"}
 
+        # Fulfillment target gate BEFORE marking succeeded: the payment is
+        # marked succeeded ONLY when the grant can actually happen. A missing
+        # product row (lookup has NO is_active sales filter here) or a missing
+        # owner leaves the payment pending and observable, so a later webhook
+        # or manual reconciliation can still fulfill — never lost behind the
+        # already_fulfilled early-return.
+        product = await self._get_product_any(payment.product_slug) if payment.product_slug else None
+        if product is None:
+            log_event(
+                "billing.fulfillment_blocked",
+                msg="payment product row missing",
+                level="error",
+                payload={"payment_id": payment.id},
+            )
+            return {"processed": False, "reason": "product_missing"}
+        block_reason = await self._fulfillment_block_reason(payment, product)
+        if block_reason is not None:
+            log_event(
+                "billing.fulfillment_blocked",
+                msg=block_reason,
+                level="error",
+                payload={"payment_id": payment.id},
+            )
+            return {"processed": False, "reason": block_reason}
+
         payment.status = "succeeded"
         payment.completed_at = datetime.now(UTC)
         payment.payment_method_saved = remote["payment_method_saved"]
         if remote["payment_method_saved"] and remote["payment_method_id"]:
             payment.payment_method_id = remote["payment_method_id"]
-
-        product = await self._get_product(payment.product_slug) if payment.product_slug else None
-        if product is None:
-            await self.db.commit()
-            return {"processed": False, "reason": "product_not_found"}
 
         if product.product_type == "subscription_recurrent":
             await self._fulfill_subscription(payment, product, remote)
@@ -400,6 +484,36 @@ class BillingService:
         if key.startswith("purchase-"):
             return key[len("purchase-"):]
         return ""
+
+    async def _fulfillment_block_reason(self, payment: Payment, product: Product) -> str | None:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._fulfillment_block_reason
+        # purpose: Decide whether a verified succeeded payment can be granted
+        #   RIGHT NOW. Any gap returns a stable reason string and the caller
+        #   keeps the payment pending (recoverable + observable).
+        # inputs: payment (locked row), product (unfiltered catalog row).
+        # returns: None when fulfillment may proceed, else one of
+        #   owner_missing | subscription_inactive | unknown_product_type.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._fulfillment_block_reason
+        if product.product_type == "subscription_recurrent":
+            if payment.subscription_id is None:
+                return "owner_missing"
+            result = await self.db.execute(
+                select(Subscription).where(Subscription.id == payment.subscription_id)
+            )
+            subscription = result.scalar_one_or_none()
+            if subscription is None:
+                return "owner_missing"
+            if subscription.status not in ("pending", "past_due", "active"):
+                # canceled/expired: never resurrect via webhook.
+                return "subscription_inactive"
+            return None
+        if product.product_type == "one_time":
+            result = await self.db.execute(
+                select(Purchase).where(Purchase.payment_id == payment.id)
+            )
+            purchase = result.scalar_one_or_none()
+            return None if purchase is not None else "owner_missing"
+        return "unknown_product_type"
 
     async def _fulfill_subscription(self, payment: Payment, product: Product, remote: dict) -> None:
         # Strict owner: the payment is FK-linked to exactly one subscription.
@@ -465,6 +579,10 @@ class BillingService:
     # END_BLOCK: BILLING_FULFILL
 
     # START_BLOCK: BILLING_REBILL
+    # YooKassa guarantees Idempotence-Key dedupe only for 24h after the first
+    # attempt. Same-key retries are allowed strictly inside this window.
+    _REBILL_KEY_DEDUPE_WINDOW = timedelta(hours=24)
+
     async def rebill_due_subscriptions(self) -> int:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.rebill_due_subscriptions
         # purpose: Charge all due subscriptions with their saved
@@ -473,8 +591,12 @@ class BillingService:
         # inputs: none (scans due subscriptions).
         # returns: number of rebill attempts made.
         # side_effects: POST /payments per due subscription; marks failures
-        #   past_due with next_charge_at +1 day.
+        #   past_due with next_charge_at +1 day; anchors first_attempt_at.
         # error_behavior: provider failures demote to past_due, never raise.
+        #   A known-canceled cycle payment is retried on a FRESH -attempt-N
+        #   key. An ambiguous payment whose 24h dedupe window expired is NEVER
+        #   auto-charged again — it stays pending for manual reconciliation
+        #   (system.error log), subscription past_due.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.rebill_due_subscriptions
         if not settings.yookassa_recurrent_enabled:
             log_event("billing.rebill_skipped", msg="recurrent disabled by kill-switch")
@@ -503,57 +625,132 @@ class BillingService:
             idempotence_key = f"rebill-{sub.id}-{period_label}"[:64]
             # Durable reservation BEFORE the external POST; a prior attempt
             # that died after charging reconciles through this same key.
-            payment = await self._get_payment_by_idempotence_key(idempotence_key)
-            if payment is None:
-                payment = Payment(
-                    user_id=sub.user_id,
-                    amount=sub.price_kopecks,
-                    currency=sub.currency,
-                    status="pending",
-                    provider="yookassa",
-                    description="Автопродление подписки",
-                    product_slug=sub.product_slug,
-                    idempotence_key=idempotence_key,
-                    subscription_id=sub.id,
-                )
-                self.db.add(payment)
-                from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+            payment = await self._reserve_rebill_payment(sub, idempotence_key)
+            if payment.status == "canceled":
+                # KNOWN dead key: a canceled payment blocks its cycle key
+                # forever — the cycle continues on a FRESH attempt key.
+                idempotence_key = await self._next_rebill_attempt_key(sub, period_label)
+                payment = await self._reserve_rebill_payment(sub, idempotence_key)
 
-                try:
-                    await self.db.commit()
-                except SQLIntegrityError:
-                    await self.db.rollback()
-                    payment = await self._get_payment_by_idempotence_key(idempotence_key)
-                    if payment is None:
-                        raise
+            if payment.provider_payment_id is not None:
+                # Created at the provider; the webhook drives fulfillment.
+                continue
 
-            if payment.provider_payment_id is None:
-                try:
-                    result_payment = await client.create_recurrent_payment(
-                        user_id=sub.user_id,
-                        owner_id=sub.id,
-                        payment_method_id=payment_method_id,
-                        amount_kopecks=sub.price_kopecks,
-                        currency=sub.currency,
-                        description="Подписка SolarSage — автопродление",
-                        product_slug=sub.product_slug,
-                        period_label=period_label,
-                        idempotence_key=idempotence_key,
-                    )
-                except YooKassaError:
-                    # Explicit provider failure: demote and retry next cycle
-                    # with the SAME key (dedupe), never a fresh charge.
-                    sub.status = "past_due"
-                    sub.next_charge_at = now + timedelta(days=1)
-                    await self.db.commit()
-                    log_event("system.error", msg="rebill provider failure", level="error")
-                    continue
-                payment.provider_payment_id = result_payment["provider_payment_id"]
+            first_attempt_at = payment.first_attempt_at
+            # SQLite returns tz-naive datetimes; Postgres returns aware ones.
+            if first_attempt_at is not None and first_attempt_at.tzinfo is None:
+                first_attempt_at = first_attempt_at.replace(tzinfo=UTC)
+            if (
+                first_attempt_at is not None
+                and now - first_attempt_at >= self._REBILL_KEY_DEDUPE_WINDOW
+            ):
+                # Past the dedupe window the first attempt's outcome is
+                # unknowable client-side and the provider no longer dedupes
+                # the key: NEVER auto-charge again — manual reconciliation.
+                sub.status = "past_due"
+                sub.next_charge_at = now + timedelta(days=1)
                 await self.db.commit()
-                attempts += 1
-                log_event("billing.rebill_started", msg="rebill started")
+                log_event(
+                    "system.error",
+                    msg="rebill needs manual reconciliation: idempotence window expired",
+                    level="error",
+                    payload={"subscription_id": str(sub.id)},
+                )
+                continue
+
+            if payment.first_attempt_at is None:
+                # Durable attempt anchor BEFORE the POST: the 24h window is
+                # computed from the committed row, not from process memory.
+                payment.first_attempt_at = now
+                await self.db.commit()
+            try:
+                result_payment = await client.create_recurrent_payment(
+                    user_id=sub.user_id,
+                    owner_id=sub.id,
+                    payment_method_id=payment_method_id,
+                    amount_kopecks=sub.price_kopecks,
+                    currency=sub.currency,
+                    description="Подписка SolarSage — автопродление",
+                    product_slug=sub.product_slug,
+                    period_label=period_label,
+                    idempotence_key=idempotence_key,
+                )
+            except YooKassaError:
+                # Unknown outcome: demote and retry next cycle with the SAME
+                # key inside the dedupe window, never a fresh charge.
+                sub.status = "past_due"
+                sub.next_charge_at = now + timedelta(days=1)
+                await self.db.commit()
+                log_event("system.error", msg="rebill provider failure", level="error")
+                continue
+            payment.provider_payment_id = result_payment["provider_payment_id"]
+            if result_payment.get("status") == "canceled":
+                # Canceled AT CREATE: mark immediately so the next run moves
+                # to a fresh attempt key instead of blocking the cycle.
+                payment.status = "canceled"
+                payment.canceled_at = datetime.now(UTC)
+                sub.status = "past_due"
+                sub.next_charge_at = now + timedelta(days=1)
+                await self.db.commit()
+                log_event("billing.webhook_rejected", msg="rebill canceled at create", level="warning")
+                continue
+            await self.db.commit()
+            attempts += 1
+            log_event("billing.rebill_started", msg="rebill started")
         await self.db.commit()
         return attempts
+
+    async def _reserve_rebill_payment(self, sub: Subscription, idempotence_key: str) -> Payment:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reserve_rebill_payment
+        # purpose: Durable get-or-create of the renewal Payment with a stable
+        #   idempotence key (amount/description from the subscription),
+        #   committed BEFORE any external POST — same contract as
+        #   _reserve_payment, specialised for renewal charges.
+        # inputs: sub (due subscription), idempotence_key (cycle/attempt key).
+        # returns: the pending Payment row (committed).
+        # side_effects: commits the reservation; a concurrent collision on the
+        #   unique idempotence_key is converted to the reuse path.
+        # error_behavior: re-raises if the row cannot be reserved or reused.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reserve_rebill_payment
+        from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+
+        existing = await self._get_payment_by_idempotence_key(idempotence_key)
+        if existing is not None:
+            return existing
+        payment = Payment(
+            user_id=sub.user_id,
+            amount=sub.price_kopecks,
+            currency=sub.currency,
+            status="pending",
+            provider="yookassa",
+            description="Автопродление подписки",
+            product_slug=sub.product_slug,
+            idempotence_key=idempotence_key,
+            subscription_id=sub.id,
+        )
+        self.db.add(payment)
+        try:
+            await self.db.commit()
+        except SQLIntegrityError:
+            await self.db.rollback()
+            existing = await self._get_payment_by_idempotence_key(idempotence_key)
+            if existing is None:
+                raise
+            return existing
+        return payment
+
+    async def _next_rebill_attempt_key(self, sub: Subscription, period_label: str) -> str:
+        # Fresh key for the SAME cycle after a KNOWN canceled attempt:
+        # rebill-<sub>-<period_label>-attempt-N (N counts prior attempts), so
+        # a dead idempotence key is never reused for a fresh charge.
+        from sqlalchemy import func
+
+        base = f"rebill-{sub.id}-{period_label}"
+        result = await self.db.execute(
+            select(func.count(Payment.id)).where(Payment.idempotence_key.like(f"{base}-attempt-%"))
+        )
+        attempt = (result.scalar_one() or 0) + 1
+        return f"{base}-attempt-{attempt}"[:64]
     # END_BLOCK: BILLING_REBILL
 
     # ---- Natal entitlement ----
@@ -580,14 +777,39 @@ class BillingService:
 
     # ---- Helpers ----
 
-    async def _get_active_subscription(self, user_id: uuid.UUID) -> Subscription | None:
+    async def _get_live_subscription(self, user_id: uuid.UUID) -> Subscription | None:
+        # LIVE = pending | active | past_due. The partial unique index
+        # uq_subscriptions_one_live_per_user guarantees at most one such row.
         result = await self.db.execute(
             select(Subscription).where(
                 Subscription.user_id == user_id,
-                Subscription.status == "active",
-            )
+                Subscription.status.in_(["pending", "active", "past_due"]),
+            ).order_by(Subscription.created_at.desc())
         )
-        return result.scalar_one_or_none()
+        return result.scalars().first()
+
+    @staticmethod
+    def _require_idempotence_key(payment: Payment) -> str:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._require_idempotence_key
+        # purpose: Fail-closed guard at the charge boundary. A reserved
+        #   payment row without its idempotence key is corrupted state; the
+        #   old `payment.idempotence_key or attempt_key` silently masked it
+        #   and could charge on a key the row never persisted.
+        # inputs: payment (reserved row about to be charged).
+        # returns: the persisted idempotence key.
+        # side_effects: system.error log on violation.
+        # error_behavior: raises RuntimeError PAYMENT_INVARIANT_VIOLATION —
+        #   no provider call happens on a broken reservation.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._require_idempotence_key
+        if payment.idempotence_key is None:
+            log_event(
+                "system.error",
+                msg="payment reservation missing idempotence_key",
+                level="error",
+                payload={"payment_id": payment.id},
+            )
+            raise RuntimeError("PAYMENT_INVARIANT_VIOLATION")
+        return payment.idempotence_key
 
     async def _get_pending_subscription(self, user_id: uuid.UUID, product_slug: str) -> Subscription | None:
         result = await self.db.execute(
@@ -660,11 +882,15 @@ class BillingService:
         try:
             await self.db.commit()
         except SQLIntegrityError:
+            # Collided with the one-live-per-user index: reuse the pending row
+            # for the SAME plan; any other live row is a domain conflict.
             await self.db.rollback()
-            pending = await self._get_pending_subscription(user_id, product.slug)
-            if pending is None:
-                raise
-            return pending
+            live = await self._get_live_subscription(user_id)
+            if live is not None and live.status == "pending" and live.product_slug == product.slug:
+                return live
+            if live is not None:
+                raise ValueError("LIVE_SUBSCRIPTION_EXISTS")
+            raise
         return subscription
 
     async def _reserve_purchase(
