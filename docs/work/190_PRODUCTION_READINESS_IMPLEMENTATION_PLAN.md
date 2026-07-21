@@ -12,7 +12,8 @@ Makefile, `scripts/audit_today.py`, `scripts/deploy/prod-orchestrator.sh`,
 with green liveness but without production-readiness proof (Moshier math at
 deploy time, Telegram webhook ingress blocked pending=2, and it was deployed
 while CI was red). The branch now HAS the source-quality/tag gates, but the
-full artifact-acceptance contour remains incomplete (P1-2/P1-3) — so the
+full artifact-acceptance contour remains incomplete (P1-3 payload; P1-2
+exact-SHA oracle proof pending) — so the
 live release is not yet proof of the new gate.
 
 ## Current launch scope
@@ -66,7 +67,8 @@ their text below is kept as the design for those later slices.
 
 - **Goal:** red code can never reach build/deploy again.
 - **Status: PARTIAL.** Sub-parts: `source-quality` ✅ (implemented),
-  `tag` ✅ (implemented), artifact-acceptance BLOCKED (P1-2/P1-3).
+  `tag` ✅ (implemented), artifact-acceptance BLOCKED (P1-3 payload;
+  P1-2 exact-SHA oracle proof pending).
   Details: `source-quality` job in
   `deploy-production.yml` is a LOCAL REUSABLE call to the whole existing CI
   (`uses: ./.github/workflows/ci.yml` — no duplicated commands); `build`
@@ -83,11 +85,13 @@ their text below is kept as the design for those later slices.
 - **Smoke/rollback authority:** the canonical health + front/geo smoke +
   recorded rollback already run INSIDE the orchestrator during deploy
   (proven by OC28); no second functional-smoke job was added.
-- **artifact-acceptance: PARTIAL, blocked** by P1-2 (independent oracle,
-  owner input) and P1-3 (V2 same-payload UI proof needs an owner-approved
-  committed today.v2.x payload). The blocking acceptance full gate
-  (audit-day-freeze + oracle + same-payload proof) MUST block deploy/tag
-  until those pass.
+- **artifact-acceptance: PARTIAL** — P1-2 mechanics exist and are
+  fail-closed (astronomy/scoring oracles exit non-zero on houses/scoring/
+  top_signals mismatch); exact-SHA oracle proof is pending with the P1-1
+  freeze gate. Blocked by P1-3 (V2 same-payload UI proof needs an
+  owner-approved committed today.v2.x payload). The blocking acceptance
+  full gate (audit-day-freeze + oracle + same-payload proof) MUST block
+  deploy/tag until those pass.
 - **Files:** `.github/workflows/deploy-production.yml` (add jobs/needs);
   reuse `ci.yml` commands verbatim.
 - **Companion CI fixes so the gate can pass:** run sidecar in backend CI
@@ -99,8 +103,9 @@ their text below is kept as the design for those later slices.
 - **Responsible:** Kimi implements; owner approves PR.
 - **Blockers:** source-quality/tag — none (private-plan branch protection
   irrelevant, the gate lives in the workflow itself). Full artifact
-  acceptance remains blocked by P1-2 (independent oracle, owner input) and
-  P1-3 (owner-approved committed today.v2.x payload).
+  acceptance remains blocked by P1-3 (owner-approved committed
+  today.v2.x payload); the P1-2 oracle gate needs no owner input — its
+  proof is the exact-SHA freeze run.
 - **Artifacts:** workflow run evidence per job; pass = all jobs green for
   the exact SHA; fail = no build, no deploy.
 
@@ -256,7 +261,9 @@ their text below is kept as the design for those later slices.
   section-view) with data-state + role + aria-busy; `horary-screen` gained
   `data-access-state` (unlocked|locked). No business-logic changes.
 - Remote candidate runs: PENDING (not yet executed on GitHub).
-- P1-2 (oracle), P1-3 (V2 same-payload), P1-6 (full real E2E) stay OPEN.
+- P1-3 (V2 same-payload), P1-6 (full real E2E) stay OPEN; P1-2 is
+  redefined (2026-07-20) as independent-from-pipeline verification via the
+  existing fail-closed oracles — exact-SHA proof pending with P1-1.
 
 ### Status note 2 (2026-07-19, P1-4/P1-5 slice)
 
@@ -315,23 +322,44 @@ their text below is kept as the design for those later slices.
   artifact is `today/v1` — it requires an owner-approved committed
   `today.v2.x` `11_final_today_payload.json` (live audit refresh). Evidence
   screenshot is not a visual baseline; P1-3 stays open.
-- **P1-2 NOT started:** independent oracle source + tolerances need owner
-  input; nothing invented.
+- **P1-2 (redefined 2026-07-20):** independent-from-product-pipeline
+  verification via the EXISTING fail-closed oracles (transit longitudes,
+  retrograde flags, moon phase, houses; day_status, sphere_scores,
+  top_signals) — no external source, no owner tolerances. Mechanics exist;
+  exact-SHA proof pending with P1-1.
 
-### P1-2. Independent calculation oracle
+### P1-2. Independent-from-pipeline calculation verification
 
-- **Goal:** owner-approved independent reference for positions/houses/
-  aspects/timezone with recorded engine flag, artifact hash, UTC, tzdata
-  version, and owner-approved tolerances (not invented by us).
-- **Constraint (from 189 R1):** reference must be neither product code nor
-  the same runtime installation; existing `audit_astronomy_oracle.py` is
-  same-engine and flag-blind — insufficient alone.
-- **Steps:** owner/domain approves source + tolerances; implement as an
-  EXTERNAL oracle/adapter or a separate authority artifact that the
-  existing audit flow invokes (no modification or rewrite of
-  `audit_today.py`); record provenance in the audit artifact.
-- **Pass/fail:** all fixed-UTC/coordinate cases within approved tolerances;
-  engine flag SWIEPH recorded per case.
+- **Goal:** the calculation path is verified independently of the product
+  pipeline — NOT by an alternative source to Swiss Ephemeris, but by the
+  existing audit tooling recomputing and comparing on the same engine.
+- **Design (owner decision 2026-07-20):** P1-2 is NOT an external
+  ephemeris source and needs NO owner-approved source or tolerances.
+  Verification runs through the existing `make audit-day-live` /
+  `make audit-day-freeze` flow (`scripts/audit_today.py`, unmodified),
+  which invokes both oracle scripts as fail-closed subprocesses:
+  - `scripts/audit_astronomy_oracle.py` — recomputes and compares transit
+    longitudes, retrograde flags, moon phase and house placements against
+    the pipeline output; exits non-zero on any mismatch
+    (`longitude_pass` / `retrograde_flag_pass` / `house_pass` /
+    `moon_phase`).
+  - `scripts/audit_scoring_oracle.py` — recomputes and compares
+    `day_status`, `sphere_scores` and `top_signals` against the
+    production scoring; exits non-zero on any mismatch.
+- **Artifacts:** `13_astronomy_oracle_summary.json`,
+  `12_scoring_oracle_comparison.json` (root; debug copy
+  `scoring_oracle_comparison.json`), `trace_map.json` (debug),
+  `final_today_payload.json` (debug), root `11_final_today_payload.json`.
+- **Truth today:** the current oracle artifacts are ALREADY fail-closed
+  on mismatch — both scripts `sys.exit(1)` on any failed comparison and
+  `audit_today.py` invokes them with `check=True`, so a houses / scoring /
+  top_signals mismatch returns non-zero and fails the audit gate. No new
+  harness and no `make audit-day` rewrite.
+- **Status: PARTIAL (2026-07-20).** Verification mechanics exist and are
+  fail-closed; the exact-SHA proof via `make audit-day-freeze` in artifact
+  acceptance is pending together with P1-1.
+- **Pass/fail:** both oracle summaries green on the exact release SHA in
+  artifact acceptance; any mismatch blocks.
 
 ### P1-3. Same-payload UI proof
 
@@ -469,7 +497,7 @@ their text below is kept as the design for those later slices.
   final docs SHA are still PENDING and will be recorded in the handoff —
   without a next docs commit. All other blockers stay open: P0-2 licensed
   bundle/identity production proof, P0-3 external Telegram ingress, P0-4
-  host apply/deploy-workflow proof, P1-2 independent oracle owner input,
+  host apply/deploy-workflow proof, P1-2 exact-SHA oracle proof,
   P1-3 owner-approved today.v2 payload, P1-5 PR diff-cover acceptance,
   chat/payments/provider sandbox follow-ups, manual launch gates.
 - **Goal:** every user-facing capability has real-path evidence.
