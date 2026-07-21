@@ -297,6 +297,7 @@ async def test_webhook_fulfill_subscription_grants_access_and_method(db_session,
     sub = (await db_session.execute(select(Subscription))).scalar_one()
     assert sub.status == "active"
     assert sub.payment_method_id == "pm-saved-1"
+    assert sub.next_charge_at == sub.current_period_end  # renewing: charge at period end
     assert sub.current_period_end is not None
 
     ledger = (await db_session.execute(select(AccessLedger))).scalars().all()
@@ -1381,6 +1382,10 @@ async def test_initial_success_without_saved_method_expires_and_new_start_works(
     sub = (await db_session.execute(select(Subscription))).scalar_one()
     assert sub.status == "active"
     assert sub.payment_method_id is None  # cannot ever renew
+    assert sub.next_charge_at is None  # non-renewing from the start: no auto-renew flag
+    status = await service.get_subscription_status(user.id)
+    assert status["status"] == "active"
+    assert status["next_charge_at"] is None
     assert len((await db_session.execute(select(AccessLedger))).scalars().all()) == 1
 
     # The paid period ends.
@@ -1663,3 +1668,233 @@ async def test_initial_fulfill_without_prior_access_starts_today(db_session, fak
     sub = (await db_session.execute(select(Subscription))).scalar_one()
     assert sub.current_period_end.date() == today + timedelta(days=30)
     assert sub.next_charge_at == sub.current_period_end
+
+
+# ---- P0: charge-without-grant self-reconciliation ----
+
+def _remote_with_type(payment: Payment, owner_id: str, charge_type: str, **overrides) -> dict:
+    """Remote dict including the metadata.type our client always sends."""
+    remote = _remote_for(payment, owner_id)
+    remote["metadata"] = {
+        "user_id": str(payment.user_id),
+        "owner_id": owner_id,
+        "product_slug": payment.product_slug,
+        "type": charge_type,
+    }
+    remote.update(overrides)
+    return remote
+
+
+@pytest.mark.asyncio
+async def test_reconcile_unknown_initial_payment_grants_once(db_session, fake_client) -> None:
+    """Provider created the initial payment but its create outcome was
+    UNKNOWN locally (provider_payment_id NULL, user never retries start).
+    The webhook with the remote id must bind + fulfill exactly once."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900058)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None  # unknown create outcome
+    payment.confirmation_url = None
+    await db_session.commit()
+
+    fake_client.remote["prov-real-1"] = _remote_with_type(
+        payment, str(started["subscription_id"]), "initial_recurrent",
+        provider_payment_id="prov-real-1",
+    )
+    result = await service.verify_and_process_webhook("prov-real-1")
+    assert result["processed"] is True
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id == "prov-real-1"
+    assert payment.status == "succeeded"
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "active"
+    assert len((await db_session.execute(select(AccessLedger))).scalars().all()) == 1
+
+    again = await service.verify_and_process_webhook("prov-real-1")
+    assert again["reason"] == "already_fulfilled"
+    assert len((await db_session.execute(select(AccessLedger))).scalars().all()) == 1
+
+
+@pytest.mark.asyncio
+async def test_reconcile_unknown_one_time_payment_grants_once(db_session, fake_client) -> None:
+    await seed_products(db_session)
+    user = await _user(db_session, 900062)
+    service = BillingService(db_session)
+
+    started = await service.start_purchase(user.id, "horary_3")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+
+    fake_client.remote["prov-real-2"] = _remote_with_type(
+        payment, str(started["purchase_id"]), "one_time",
+        provider_payment_id="prov-real-2",
+    )
+    result = await service.verify_and_process_webhook("prov-real-2")
+    assert result["processed"] is True
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id == "prov-real-2"
+    credit = (await db_session.execute(select(HoraryCredit))).scalar_one()
+    assert credit.amount == 3
+
+    again = await service.verify_and_process_webhook("prov-real-2")
+    assert again["reason"] == "already_fulfilled"
+    assert len((await db_session.execute(select(HoraryCredit))).scalars().all()) == 1
+
+
+@pytest.mark.asyncio
+async def test_reconcile_rejects_foreign_owner_and_amount_mismatch(db_session, fake_client) -> None:
+    """No exact candidate => no bind, no grant, payment stays pending."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900063)
+    service = BillingService(db_session)
+
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+
+    # Foreign owner in the remote metadata.
+    fake_client.remote["prov-foreign"] = _remote_with_type(
+        payment, str(uuid.uuid4()), "one_time", provider_payment_id="prov-foreign"
+    )
+    result = await service.verify_and_process_webhook("prov-foreign")
+    assert result == {"processed": False, "reason": "unknown_payment"}
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id is None
+    assert payment.status == "pending"
+
+    # Right owner, wrong amount.
+    fake_client.remote["prov-bad-amount"] = _remote_with_type(
+        payment, str(started["purchase_id"]), "one_time",
+        provider_payment_id="prov-bad-amount", amount_value="1.00",
+    )
+    result = await service.verify_and_process_webhook("prov-bad-amount")
+    assert result == {"processed": False, "reason": "unknown_payment"}
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id is None
+    assert (await db_session.execute(select(HoraryCredit))).scalars().all() == []
+
+
+# ---- P0: provider-canceled initial closes the pending subscription ----
+
+@pytest.mark.asyncio
+async def test_initial_canceled_closes_pending_and_frees_same_plan(db_session, fake_client) -> None:
+    """Authoritative canceled INITIAL: the pending owner is closed terminally
+    (not left pending forever), next_charge_at NULL, and a new same-plan
+    start works on a FRESH owner+key (dead key never reused)."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900059)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    dead_key = payment.idempotence_key
+    fake_client.remote[payment.provider_payment_id] = _remote_for(
+        payment, str(started["subscription_id"]), status="canceled", paid=False
+    )
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result["reason"] == "canceled"
+
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "canceled"
+    assert sub.next_charge_at is None
+
+    again = await service.start_subscription(user.id, "subscription_month")
+    assert again["status"] == "pending"
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    assert len(subs) == 2
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(payments) == 2
+    keys = {p.idempotence_key for p in payments}
+    assert dead_key in keys
+    assert len(keys) == 2  # the dead key is never reused
+
+
+@pytest.mark.asyncio
+async def test_initial_canceled_frees_different_plan(db_session, fake_client) -> None:
+    """After the initial month is canceled at the provider, a YEAR start is
+    equally free (no one-live deadlock)."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900060)
+    service = BillingService(db_session)
+
+    started = await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[payment.provider_payment_id] = _remote_for(
+        payment, str(started["subscription_id"]), status="canceled", paid=False
+    )
+    await service.verify_and_process_webhook(payment.provider_payment_id)
+
+    year = await service.start_subscription(user.id, "subscription_year")
+    assert year["status"] == "pending"
+    assert year["product_slug"] == "subscription_year"
+    subs = (await db_session.execute(select(Subscription))).scalars().all()
+    assert sorted(s.status for s in subs) == ["canceled", "pending"]
+
+
+# ---- P0: bounded rebill retry interval strictly inside the dedupe window ----
+
+@pytest.mark.asyncio
+async def test_rebill_unknown_outcome_retry_interval_and_same_key(db_session, fake_client, monkeypatch) -> None:
+    """After an unknown-outcome failure the retry is scheduled STRICTLY
+    INSIDE the 24h dedupe window (about 1h, not +1 day at/past the
+    boundary), and the next run retries with the SAME key."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900064)
+    service = BillingService(db_session)
+
+    fake_client.fail_recurrent_times = 1
+    assert await service.rebill_due_subscriptions() == 0
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    stable_key = payment.idempotence_key
+
+    await db_session.refresh(sub)
+    assert sub.status == "past_due"
+    next_charge_at = sub.next_charge_at
+    if next_charge_at.tzinfo is None:  # SQLite returns tz-naive
+        next_charge_at = next_charge_at.replace(tzinfo=UTC)
+    delta = next_charge_at - datetime.now(UTC)
+    assert timedelta(minutes=30) < delta < timedelta(hours=2)  # ~1h, strictly < 24h
+
+    # Cron fires at/after the scheduled time; the anchor is NOT touched, so
+    # the dedupe window is still open and the SAME key is retried.
+    sub.next_charge_at = datetime.now(UTC) - timedelta(minutes=1)
+    await db_session.commit()
+    assert await service.rebill_due_subscriptions() == 1
+    rebill_calls = [c for c in fake_client.calls if c[0] == "rebill"]
+    assert len(rebill_calls) == 1
+    assert rebill_calls[0][1]["idempotence_key"] == stable_key
+    await db_session.refresh(payment)
+    assert payment.provider_payment_id is not None
+
+
+# ---- P0: stale-due race with cancel at the charge boundary ----
+
+@pytest.mark.asyncio
+async def test_rebill_cancel_committed_before_claim_no_charge(db_session, fake_client, monkeypatch) -> None:
+    """A cancel committed BEFORE the charge boundary (right after the durable
+    claim) is seen by the row-locked re-read: ZERO provider calls. The
+    reverse order (claim first, cancel later) is covered by the
+    paid-after-cancel rule elsewhere."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900065)
+    service = BillingService(db_session)
+
+    original_reserve = BillingService._reserve_rebill_payment
+
+    async def reserve_then_competing_cancel(self, s, key):
+        payment = await original_reserve(self, s, key)
+        raced = (await self.db.execute(select(Subscription).where(Subscription.id == s.id))).scalar_one()
+        raced.status = "canceled"
+        raced.next_charge_at = None
+        await self.db.commit()
+        return payment
+
+    monkeypatch.setattr(BillingService, "_reserve_rebill_payment", reserve_then_competing_cancel)
+    attempts = await service.rebill_due_subscriptions()
+    assert attempts == 0
+    assert fake_client.calls == []  # zero provider calls

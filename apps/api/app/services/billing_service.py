@@ -45,7 +45,16 @@
 #   - Initial activation defers the paid period AFTER the latest existing
 #     access end (referral bonus or leftover paid): bonus days are consumed
 #     first, the paid ledger starts the next day with no overlap and no gap,
-#     and current_period_*/next_charge_at shift with the same deferral.
+#     and current_period_*/next_charge_at shift with the same deferral. A
+#     non-renewing initial (payment_method_saved=false) carries
+#     next_charge_at=NULL from the start.
+#   - An unknown provider payment id is reconciled ONLY via authenticated
+#     GET + exact durable owner match (subscription FK or Purchase link) —
+#     never from the webhook body, never via broad search; no exact
+#     candidate means no bind and no grant.
+#   - A provider-canceled INITIAL payment closes its pending subscription
+#     terminally (a new start of any plan is then free); a canceled renewal
+#     demotes to past_due and retries on a fresh attempt key.
 #   - Same-key provider retries happen only inside the 24h YooKassa
 #     Idempotence-Key dedupe window anchored by payments.first_attempt_at
 #     (committed BEFORE the POST in every charge path: initial, one-time,
@@ -455,7 +464,11 @@ class BillingService:
         # purpose: Mandatory second webhook verification step: authenticated
         #   provider GET by id, strict comparison (status, paid, amount,
         #   currency, shop metadata vs the LOCAL payment), then idempotent
-        #   fulfillment. The webhook payload itself is NEVER trusted.
+        #   fulfillment. The webhook payload itself is NEVER trusted. An
+        #   unknown provider id first goes through fail-closed
+        #   self-reconciliation (authenticated GET + exact durable owner
+        #   match) so a charge with an unknown create outcome still grants
+        #   exactly once; no exact candidate means no bind and no grant.
         # inputs: provider_payment_id from the webhook envelope.
         # returns: {"processed": bool, "reason": str}
         # side_effects: fulfills Payment/Subscription/Purchase/AccessLedger/
@@ -473,24 +486,31 @@ class BillingService:
             .with_for_update()
         )
         payment = result.scalar_one_or_none()
+        client = get_yookassa_client()
         if payment is None:
-            log_event("billing.webhook_rejected", msg="unknown provider payment", level="warning")
-            return {"processed": False, "reason": "unknown_payment"}
+            # Fail-closed self-reconciliation: a local durable payment may be
+            # unbound (unknown create outcome). Bind ONLY after an
+            # authenticated provider GET and an exact owner match — never by
+            # the webhook payload, never by a broad search.
+            payment = await self._reconcile_unknown_payment(client, provider_payment_id)
+            if payment is None:
+                log_event("billing.webhook_rejected", msg="unknown provider payment", level="warning")
+                return {"processed": False, "reason": "unknown_payment"}
 
         if payment.status == "succeeded":
             return {"processed": False, "reason": "already_fulfilled"}
 
-        client = get_yookassa_client()
         remote = await client.get_payment(provider_payment_id)
 
         if remote["status"] == "canceled":
             payment.status = "canceled"
             payment.canceled_at = datetime.now(UTC)
             # A canceled RENEWAL demotes an active subscription to past_due so
-            # the rebill loop retries the cycle on a FRESH attempt key. An
-            # INITIAL payment (subscription still pending) leaves the
-            # subscription pending — the start flow rekeys it on the user's
-            # next attempt instead of deadlocking the one-live slot.
+            # the rebill loop retries the cycle on a FRESH attempt key. A
+            # provider-authoritative canceled INITIAL payment (subscription
+            # still pending) closes the pending owner TERMINALLY: otherwise
+            # the one-live index would block any future plan forever. Its dead
+            # key is never reused — a new start creates a fresh owner+key.
             if payment.subscription_id is not None:
                 linked = await self.db.execute(
                     select(Subscription).where(Subscription.id == payment.subscription_id)
@@ -499,6 +519,15 @@ class BillingService:
                 if sub is not None and sub.status == "active":
                     sub.status = "past_due"
                     sub.next_charge_at = datetime.now(UTC) + timedelta(days=1)
+                elif (
+                    sub is not None
+                    and sub.status == "pending"
+                    and (payment.idempotence_key or "").startswith("init-")
+                ):
+                    sub.status = "canceled"
+                    sub.canceled_at = datetime.now(UTC)
+                    sub.cancellation_reason = "provider_canceled"
+                    sub.next_charge_at = None
             await self.db.commit()
             return {"processed": False, "reason": "canceled"}
 
@@ -548,6 +577,92 @@ class BillingService:
         await self.db.commit()
         log_event("billing.payment_fulfilled", msg="payment fulfilled", payload={"payment_id": payment.id})
         return {"processed": True, "reason": "fulfilled"}
+
+    async def _reconcile_unknown_payment(self, client, provider_payment_id: str) -> Payment | None:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reconcile_unknown_payment
+        # purpose: Recover from a CHARGE-WITHOUT-GRANT window: the provider
+        #   created/captured a payment whose create response we never saw
+        #   (unknown outcome, local provider_payment_id NULL) and the user
+        #   did NOT retry start. The webhook alone can now link it.
+        #   Verification order: authenticated provider GET first; then match
+        #   remote metadata + amount + currency + exact durable owner
+        #   (Payment.subscription_id for subscriptions, Purchase.payment_id
+        #   for one-time) against pending UNBOUND local payments; bind only
+        #   on EXACTLY ONE exact candidate. No bind => no grant.
+        # inputs: provider client, provider_payment_id from the webhook.
+        # returns: the locally-bound Payment (provider_payment_id set and
+        #   committed) or None when the exact candidate is absent/mismatched.
+        # side_effects: provider GET; single UPDATE committing the binding.
+        # error_behavior: any mismatch/ambiguity -> None (no state change);
+        #   a provider GET failure (e.g. truly unknown id) also -> None.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reconcile_unknown_payment
+        try:
+            remote = await client.get_payment(provider_payment_id)
+        except YooKassaError:
+            return None
+        metadata = remote.get("metadata") or {}
+        remote_user = metadata.get("user_id")
+        remote_owner = metadata.get("owner_id")
+        remote_slug = metadata.get("product_slug")
+        remote_type = metadata.get("type")
+        if not remote_user or not remote_owner or not remote_slug:
+            return None
+        try:
+            remote_user_uuid = uuid.UUID(str(remote_user))
+        except (ValueError, AttributeError, TypeError):
+            return None
+
+        result = await self.db.execute(
+            select(Payment).where(
+                Payment.user_id == remote_user_uuid,
+                Payment.product_slug == remote_slug,
+                Payment.status == "pending",
+                Payment.provider_payment_id.is_(None),
+            )
+        )
+        candidates = []
+        for candidate in result.scalars().all():
+            if remote["amount_value"] != _kopecks_str(candidate.amount):
+                continue
+            if remote["currency"] != candidate.currency:
+                continue
+            if candidate.subscription_id is not None:
+                # Subscription charge (initial or recurrent): owner is the
+                # durable FK link; type must be a subscription charge.
+                if remote_type not in ("initial_recurrent", "recurrent"):
+                    continue
+                if str(candidate.subscription_id) != str(remote_owner):
+                    continue
+            else:
+                # One-time charge: owner is the Purchase linked by payment_id.
+                if remote_type != "one_time":
+                    continue
+                purchase_result = await self.db.execute(
+                    select(Purchase).where(Purchase.payment_id == candidate.id)
+                )
+                purchase = purchase_result.scalar_one_or_none()
+                if purchase is None or str(purchase.id) != str(remote_owner):
+                    continue
+            candidates.append(candidate)
+
+        if len(candidates) != 1:
+            return None
+
+        # Atomic bind: lock the row and re-verify it is still unbound.
+        locked = await self.db.execute(
+            select(Payment).where(Payment.id == candidates[0].id).with_for_update()
+        )
+        payment = locked.scalar_one_or_none()
+        if payment is None or payment.provider_payment_id is not None or payment.status != "pending":
+            return None
+        payment.provider_payment_id = provider_payment_id
+        await self.db.commit()
+        log_event(
+            "billing.payment_fulfilled",
+            msg="reconciled unknown provider payment to durable local payment",
+            payload={"payment_id": payment.id},
+        )
+        return payment
 
     def _payment_matches(self, payment: Payment, remote: dict) -> bool:
         if not remote["paid"]:
@@ -643,6 +758,12 @@ class BillingService:
 
         days = product.period_days or 30
         now = datetime.now(UTC)
+        # Whether THIS payment can ever renew: only a saved method allows a
+        # future charge. A non-renewing initial must carry next_charge_at=NULL
+        # from the start (the UI's auto-renew flag derives from it) while
+        # current_period_end and the paid ledger are fully honored; expiry at
+        # period end is handled by _expire_non_renewing.
+        renewing = bool(remote["payment_method_saved"] and remote["payment_method_id"])
         # All ledger dates derive from the SAME UTC clock as the period
         # timestamps — date.today() (local TZ) would diverge from
         # current_period_end around local midnight and shift the paid window.
@@ -661,7 +782,9 @@ class BillingService:
             subscription.status = "active"
             subscription.current_period_start = now + timedelta(days=defer_days)
             subscription.current_period_end = now + timedelta(days=defer_days + days)
-            subscription.next_charge_at = now + timedelta(days=defer_days + days)
+            subscription.next_charge_at = (
+                now + timedelta(days=defer_days + days) if renewing else None
+            )
             grant_start = now.date() + timedelta(days=defer_days)
         elif subscription.status == "active":
             # Renewal: extend strictly FROM the current period end, so a
@@ -721,6 +844,10 @@ class BillingService:
     # attempt. Same-key retries are allowed strictly inside this window —
     # for rebill AND for initial/one-time start charges alike.
     _KEY_DEDUPE_WINDOW = timedelta(hours=24)
+    # Unknown-outcome retry cadence: strictly INSIDE the dedupe window so a
+    # real same-key retry actually happens (a +1 day reschedule would land on
+    #/past the 24h boundary and make every first failure terminal).
+    _REBILL_RETRY_INTERVAL = timedelta(hours=1)
 
     async def rebill_due_subscriptions(self) -> int:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.rebill_due_subscriptions
@@ -730,7 +857,9 @@ class BillingService:
         # inputs: none (scans due subscriptions).
         # returns: number of rebill attempts made.
         # side_effects: POST /payments per due subscription; marks failures
-        #   past_due with next_charge_at +1 day; anchors first_attempt_at.
+        #   past_due with a bounded retry interval strictly inside the dedupe
+        #   window; anchors first_attempt_at; re-verifies the due subscription
+        #   under a row lock immediately before every charge.
         # error_behavior: provider failures demote to past_due, never raise.
         #   The cycle resolves its LATEST attempt: a live latest attempt is
         #   reused/skipped (no second charge before the webhook), a
@@ -817,6 +946,29 @@ class BillingService:
                 # computed from the committed row, not from process memory.
                 payment.first_attempt_at = now
                 await self.db.commit()
+            # Stale-due race guard at the charge boundary: re-read the due
+            # subscription under a row lock right before the provider POST.
+            # A cancel committed BEFORE this claim means zero provider calls;
+            # a cancel committed after it leaves the payment in-flight and
+            # the paid-after-cancel rule honors it honestly.
+            locked_sub_result = await self.db.execute(
+                select(Subscription).where(Subscription.id == sub.id).with_for_update()
+            )
+            locked_sub = locked_sub_result.scalar_one_or_none()
+            if locked_sub is None:
+                continue
+            next_charge_at = locked_sub.next_charge_at
+            if next_charge_at is not None and next_charge_at.tzinfo is None:
+                next_charge_at = next_charge_at.replace(tzinfo=UTC)
+            if (
+                locked_sub.status not in ("active", "past_due")
+                or next_charge_at is None
+                or next_charge_at > now
+                or not locked_sub.payment_method_id
+            ):
+                continue
+            sub = locked_sub
+            payment_method_id = locked_sub.payment_method_id
             try:
                 result_payment = await client.create_recurrent_payment(
                     user_id=sub.user_id,
@@ -830,10 +982,11 @@ class BillingService:
                     idempotence_key=idempotence_key,
                 )
             except YooKassaError:
-                # Unknown outcome: demote and retry next cycle with the SAME
-                # key inside the dedupe window, never a fresh charge.
+                # Unknown outcome: demote and retry on a bounded interval
+                # STRICTLY INSIDE the dedupe window with the SAME key, never
+                # a fresh charge.
                 sub.status = "past_due"
-                sub.next_charge_at = now + timedelta(days=1)
+                sub.next_charge_at = now + self._REBILL_RETRY_INTERVAL
                 await self.db.commit()
                 log_event("system.error", msg="rebill provider failure", level="error")
                 continue

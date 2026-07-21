@@ -106,6 +106,9 @@ class FakeClient:
         }
 
     async def get_payment(self, provider_payment_id: str) -> dict:
+        if provider_payment_id not in self.remote:
+            from app.services.yookassa_client import YooKassaError
+            raise YooKassaError("provider payment not found")
         return self.remote[provider_payment_id]
 
 
