@@ -1188,8 +1188,14 @@ async def test_inflight_rebill_fulfilled_after_cancel_keeps_canceled(db_session,
     assert sub.status == "canceled"
     assert sub.next_charge_at is None
     assert sub.current_period_end == first_end + timedelta(days=30)
-    ledgers = (await db_session.execute(select(AccessLedger))).scalars().all()
+    # AccessLedger.id is a UUID — order by start_date, never by id.
+    ledgers = (await db_session.execute(select(AccessLedger).order_by(AccessLedger.start_date))).scalars().all()
     assert len(ledgers) == 2
+    # The renewal ledger covers the EXTENDED period (start at the prior
+    # period end, which is still in the future), not blindly today.
+    assert ledgers[0].start_date == datetime.now(UTC).date()
+    assert ledgers[1].start_date == first_end.date()
+    assert ledgers[1].end_date == first_end.date() + timedelta(days=29)
 
     # Duplicate delivery: idempotent — no second extension.
     again = await service.verify_and_process_webhook(renewal.provider_payment_id)
@@ -1224,3 +1230,124 @@ async def test_canceled_initial_payment_not_resurrected(db_session, fake_client)
     await db_session.refresh(payment)
     assert payment.status == "pending"
     assert (await db_session.execute(select(AccessLedger))).scalars().all() == []
+
+
+# ---- One-time retry after a known-canceled attempt ----
+
+@pytest.mark.asyncio
+async def test_one_time_retry_after_cancel_fulfills_fresh_attempt(db_session, fake_client) -> None:
+    """Regression: the fresh attempt key is purchase-<uuid>-attempt-N, but the
+    provider metadata always carries the PLAIN purchase UUID. The owner
+    invariant must strip the exact -attempt-N suffix — otherwise every
+    verified retry is a permanent mismatch (money without grant)."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900046)
+    service = BillingService(db_session)
+
+    started = await service.start_purchase(user.id, "horary_1")
+    base_payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[base_payment.provider_payment_id] = _remote_for(
+        base_payment, str(started["purchase_id"]), status="canceled", paid=False
+    )
+    assert (await service.verify_and_process_webhook(base_payment.provider_payment_id))["reason"] == "canceled"
+
+    # Retry of the same purchase: FRESH attempt payment, same linked purchase.
+    retried = await service.start_purchase(user.id, "horary_1")
+    assert retried["status"] == "pending"
+    assert retried["purchase_id"] == started["purchase_id"]
+    payments = (await db_session.execute(select(Payment))).scalars().all()
+    assert len(payments) == 2
+    fresh = next(p for p in payments if p.id != base_payment.id)
+    assert fresh.idempotence_key == f"purchase-{started['purchase_id']}-attempt-1"
+    purchase = (await db_session.execute(select(Purchase))).scalar_one()
+    assert purchase.payment_id == fresh.id
+
+    # Verified succeeded webhook on the fresh attempt fulfills exactly once.
+    fake_client.remote[fresh.provider_payment_id] = _remote_for(fresh, str(started["purchase_id"]))
+    result = await service.verify_and_process_webhook(fresh.provider_payment_id)
+    assert result["processed"] is True
+    credit = (await db_session.execute(select(HoraryCredit))).scalar_one()
+    assert credit.amount == 1
+    assert credit.source == "paid"
+
+    again = await service.verify_and_process_webhook(fresh.provider_payment_id)
+    assert again["reason"] == "already_fulfilled"
+    assert len((await db_session.execute(select(HoraryCredit))).scalars().all()) == 1
+
+
+@pytest.mark.asyncio
+async def test_natal_retry_after_cancel_fulfills_entitlement(db_session, fake_client, monkeypatch) -> None:
+    """Same retry-owner path for the natal entitlement: canceled base -> fresh
+    attempt -> fulfilled entitlement bound to the CURRENT context hash."""
+    from datetime import date as Date, time as dtime
+    from decimal import Decimal
+
+    from app.db.models import UserProfile
+    from app.services.natal_context_service import NatalContextService
+
+    monkeypatch.setattr(settings, "natal_report_enabled", True)
+    await seed_products(db_session)
+    user = await _user(db_session, 900047)
+    db_session.add(
+        UserProfile(
+            user_id=user.id, first_name="Nat", gender="female",
+            birthday=Date(1993, 1, 7), birth_time=dtime(10, 33),
+            birth_city="Chirchiq", birth_lat=Decimal("41.46890"),
+            birth_lon=Decimal("69.58220"), birth_tz="Asia/Tashkent",
+            is_onboarded=True,
+        )
+    )
+    await db_session.commit()
+    real_hash = NatalContextService.compute_profile_hash(
+        (await db_session.execute(select(UserProfile).where(UserProfile.user_id == user.id))).scalar_one()
+    )
+    service = BillingService(db_session)
+
+    started = await service.start_purchase(user.id, "natal_full_report")
+    base_payment = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[base_payment.provider_payment_id] = _remote_for(
+        base_payment, str(started["purchase_id"]), status="canceled", paid=False
+    )
+    await service.verify_and_process_webhook(base_payment.provider_payment_id)
+
+    retried = await service.start_purchase(user.id, "natal_full_report")
+    assert retried["status"] == "pending"  # not yet entitled
+    fresh = (
+        await db_session.execute(select(Payment).where(Payment.id != base_payment.id))
+    ).scalar_one()
+    fake_client.remote[fresh.provider_payment_id] = _remote_for(fresh, str(started["purchase_id"]))
+    result = await service.verify_and_process_webhook(fresh.provider_payment_id)
+    assert result["processed"] is True
+    assert await service.has_natal_entitlement(user.id, real_hash) is True
+
+    entitled_again = await service.start_purchase(user.id, "natal_full_report")
+    assert entitled_again["status"] == "already_entitled"
+
+
+# ---- Renewal ledger covers the EXTENDED period ----
+
+@pytest.mark.asyncio
+async def test_renewal_ledger_covers_extended_period(db_session, fake_client, monkeypatch) -> None:
+    """Renewal extends current_period_end FROM the prior base_end; the access
+    ledger must cover that same extended period (start = max(today, prior
+    base_end)), not blindly today — asserted on DATES, not just row count."""
+    monkeypatch.setattr(settings, "yookassa_recurrent_enabled", True)
+    _, sub = await _make_due_subscription(db_session, 900048)
+    # Prior period still has 10 days left (future base_end).
+    sub.current_period_end = datetime.now(UTC) + timedelta(days=10)
+    await db_session.commit()
+    await db_session.refresh(sub)
+    base_end = sub.current_period_end  # DB-normalized (tz-naive on SQLite)
+    service = BillingService(db_session)
+
+    assert await service.rebill_due_subscriptions() == 1
+    renewal = (await db_session.execute(select(Payment))).scalar_one()
+    fake_client.remote[renewal.provider_payment_id] = _remote_for(renewal, str(sub.id))
+    result = await service.verify_and_process_webhook(renewal.provider_payment_id)
+    assert result["processed"] is True
+
+    await db_session.refresh(sub)
+    assert sub.current_period_end == base_end + timedelta(days=30)
+    ledger = (await db_session.execute(select(AccessLedger))).scalar_one()
+    assert ledger.start_date == base_end.date()
+    assert ledger.end_date == base_end.date() + timedelta(days=29)

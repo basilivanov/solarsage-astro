@@ -279,6 +279,10 @@ _RETRYABLE_WEBHOOK_REASONS = frozenset(
         "owner_missing",
         "product_missing",
         "unknown_product_type",
+        # Verified money against an inactive subscription is NOT a terminal
+        # success: the operator reconciles/refunds within the 24h redelivery
+        # window instead of the grant being lost behind a false 200.
+        "subscription_inactive",
     }
 )
 
@@ -294,11 +298,12 @@ async def yookassa_webhook(
     #   alone never grants anything).
     # inputs: raw YooKassa notification (no session, no trust).
     # returns: {"ok": true} with 200 for terminal outcomes (fulfilled,
-    #   duplicate, mismatch, canceled, inactive, untracked event); 500 for a
-    #   TRANSIENT local gap (unknown_payment / owner_missing / product_missing
-    #   / unknown_product_type / provider non-final) so YooKassa's redelivery
-    #   (up to 24h) can complete the grant; 403 non-allowlisted source; 503
-    #   when payments are disabled.
+    #   duplicate, mismatch, canceled, untracked event); 500 for a TRANSIENT
+    #   local gap (unknown_payment / owner_missing / product_missing /
+    #   unknown_product_type / subscription_inactive / provider non-final) so
+    #   YooKassa's redelivery (up to 24h) can complete the grant or the
+    #   operator can reconcile; 403 non-allowlisted source; 503 when payments
+    #   are disabled.
     # side_effects: idempotent fulfillment via BillingService.
     # error_behavior: 403 non-allowlisted source; 400 malformed body.
     # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.yookassa_webhook

@@ -31,7 +31,7 @@ from sqlalchemy import select
 
 from app.api.payment import _webhook_source_allowed
 from app.core.config import settings
-from app.db.models import AccessLedger, HoraryCredit, Payment, Purchase, User
+from app.db.models import AccessLedger, HoraryCredit, Payment, Purchase, Subscription, User
 from app.services.billing_service import BillingService
 from app.services.product_catalog import seed_products
 
@@ -273,3 +273,31 @@ async def test_webhook_transient_owner_gap_retried_then_acked(
     r = await async_client.post("/api/payment/webhook/yookassa", json=body)
     assert r.status_code == 200
     assert (await db_session.execute(select(HoraryCredit))).scalar_one().amount == 1
+
+
+@pytest.mark.asyncio
+async def test_webhook_subscription_inactive_is_retryable(
+    async_client: AsyncClient, db_session, monkeypatch
+) -> None:
+    """Verified money against an inactive subscription is NOT a terminal
+    success: 500, so the operator reconciles/refunds inside YooKassa's 24h
+    redelivery window instead of the grant being lost behind a false 200."""
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+    monkeypatch.setattr("app.api.payment._webhook_source_allowed", lambda request: True)
+    remote: dict = {}
+    monkeypatch.setattr(
+        "app.services.billing_service.get_yookassa_client",
+        lambda: FakeClient(remote),
+    )
+    user, payment, subscription_id = await _make_pending_payment(db_session, 900023)
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    sub.status = "canceled"  # legacy canceled initial start
+    await db_session.commit()
+
+    remote[payment.provider_payment_id] = _remote(payment, subscription_id)
+    r = await async_client.post(
+        "/api/payment/webhook/yookassa",
+        json={"type": "notification", "event": "payment.succeeded", "object": {"id": payment.provider_payment_id}},
+    )
+    assert r.status_code == 500
+    assert (await db_session.execute(select(AccessLedger))).scalars().all() == []

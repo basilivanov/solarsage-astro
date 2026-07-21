@@ -86,6 +86,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
@@ -493,10 +494,16 @@ class BillingService:
 
     @staticmethod
     def _expected_purchase_owner_id(payment: Payment) -> str:
+        # Owner is encoded in the idempotence key: purchase-<uuid> with an
+        # optional exact -attempt-<N> retry suffix. Only the exact suffix is
+        # stripped — the provider metadata always carries the PLAIN purchase
+        # UUID, so a fresh payment after a known-canceled attempt must
+        # resolve to the same owner (the old raw strip returned
+        # <uuid>-attempt-1 -> permanent mismatch -> money without grant).
         key = payment.idempotence_key or ""
-        if key.startswith("purchase-"):
-            return key[len("purchase-"):]
-        return ""
+        if not key.startswith("purchase-"):
+            return ""
+        return re.sub(r"-attempt-\d+$", "", key[len("purchase-"):])
 
     @staticmethod
     def _is_paid_canceled_renewal(payment: Payment, subscription: Subscription) -> bool:
@@ -560,6 +567,7 @@ class BillingService:
 
         days = product.period_days or 30
         now = datetime.now(UTC)
+        grant_start = date.today()
         if subscription.status in ("pending", "past_due"):
             # First activation: a new period starts now.
             subscription.status = "active"
@@ -568,10 +576,13 @@ class BillingService:
             subscription.next_charge_at = now + timedelta(days=days)
         elif subscription.status == "active":
             # Renewal: extend strictly FROM the current period end, so a
-            # renewal payment can never shorten or duplicate a period.
+            # renewal payment can never shorten or duplicate a period. The
+            # ledger must cover the EXTENDED period: when the prior period
+            # end is still in the future the grant starts there, not today.
             base_end = subscription.current_period_end or now
             subscription.current_period_end = base_end + timedelta(days=days)
             subscription.next_charge_at = base_end + timedelta(days=days)
+            grant_start = max(date.today(), base_end.date())
         elif self._is_paid_canceled_renewal(payment, subscription):
             # In-flight renewal that succeeded AFTER the user's cancel: honor
             # exactly the paid period (extend access from the paid period
@@ -580,6 +591,7 @@ class BillingService:
             base_end = subscription.current_period_end or now
             subscription.current_period_end = base_end + timedelta(days=days)
             subscription.next_charge_at = None
+            grant_start = max(date.today(), base_end.date())
         else:
             # canceled initial payment / expired: never resurrect via webhook.
             log_event("billing.webhook_rejected", msg="webhook for inactive subscription", level="warning")
@@ -589,7 +601,7 @@ class BillingService:
             subscription.payment_method_id = remote["payment_method_id"]
 
         access = AccessService(self.db)
-        await access.grant_subscription(user_id=payment.user_id, start_date=date.today(), days=days)
+        await access.grant_subscription(user_id=payment.user_id, start_date=grant_start, days=days)
 
     async def _fulfill_one_time(self, payment: Payment, product: Product, remote: dict) -> None:
         result = await self.db.execute(
