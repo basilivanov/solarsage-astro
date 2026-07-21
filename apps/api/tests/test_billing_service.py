@@ -2212,3 +2212,133 @@ async def test_charge_type_mismatch_no_grant(db_session, fake_client, monkeypatc
     await db_session.refresh(payment)
     assert payment.status == "pending"
     assert (await db_session.execute(select(AccessLedger))).scalars().all() == []
+
+
+# ---- P0-final: false-unknown race recovery ----
+
+@pytest.mark.asyncio
+async def test_webhook_false_unknown_race_recovers_actual_state(db_session, db_engine, fake_client) -> None:
+    """A concurrent binder commits BETWEEN the initial SELECT-by-provider-id
+    and the candidate lookup: the fresh locked re-read must recover the
+    actual bound+succeeded row (already_fulfilled), never a false
+    unknown_payment. Without the re-read this test returns unknown_payment."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    await seed_products(db_session)
+    user = await _user(db_session, 900076)
+    service = BillingService(db_session)
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+    payment.provider_payment_id = None
+    await db_session.commit()
+
+    fake_client.remote["prov-race"] = _remote_with_type(
+        payment, str(started["purchase_id"]), "one_time", provider_payment_id="prov-race"
+    )
+
+    original_get = fake_client.get_payment
+    committed = {"done": False}
+
+    async def get_with_concurrent_bind(pid):
+        if not committed["done"]:
+            committed["done"] = True
+            # Concurrent binder commits BETWEEN the initial miss and the
+            # candidate lookup (the provider GET sits exactly between them).
+            factory = async_sessionmaker(db_engine, expire_on_commit=False)
+            async with factory() as other:
+                row = (await other.execute(select(Payment).where(Payment.id == payment.id))).scalar_one()
+                row.provider_payment_id = "prov-race"
+                row.status = "succeeded"
+                await other.commit()
+        return await original_get(pid)
+
+    fake_client.get_payment = get_with_concurrent_bind
+
+    result = await service.verify_and_process_webhook("prov-race")
+    assert result == {"processed": False, "reason": "already_fulfilled"}
+    # No double grant and no false unknown.
+    assert (await db_session.execute(select(HoraryCredit))).scalars().all() == []
+
+
+# ---- P0-final: identity-first canceled negatives (known-bound) ----
+
+@pytest.mark.asyncio
+async def test_canceled_wrong_returned_id_no_state_change(db_session, fake_client) -> None:
+    """A canceled remote answering for a DIFFERENT id must change NOTHING:
+    no canceled marks, no reconcile commit."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900077)
+    service = BillingService(db_session)
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+
+    fake_client.remote[payment.provider_payment_id] = _remote_with_type(
+        payment, str(started["purchase_id"]), "one_time",
+        provider_payment_id="prov-OTHER", status="canceled", paid=False,
+    )
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result == {"processed": False, "reason": "mismatch"}
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    assert payment.canceled_at is None
+
+
+@pytest.mark.asyncio
+async def test_canceled_wrong_owner_no_state_change(db_session, fake_client) -> None:
+    """A canceled remote with a foreign owner must NOT close the pending
+    subscription (identity is enforced before canceled handling)."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900078)
+    service = BillingService(db_session)
+    await service.start_subscription(user.id, "subscription_month")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+
+    fake_client.remote[payment.provider_payment_id] = _remote_with_type(
+        payment, str(uuid.uuid4()), "initial_recurrent",
+        status="canceled", paid=False,
+    )
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result == {"processed": False, "reason": "mismatch"}
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    sub = (await db_session.execute(select(Subscription))).scalar_one()
+    assert sub.status == "pending"  # NOT closed by a forged cancel
+
+
+@pytest.mark.asyncio
+async def test_canceled_wrong_type_no_state_change(db_session, fake_client) -> None:
+    """A canceled remote with the wrong charge kind changes nothing."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900079)
+    service = BillingService(db_session)
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+
+    fake_client.remote[payment.provider_payment_id] = _remote_with_type(
+        payment, str(started["purchase_id"]), "initial_recurrent",
+        status="canceled", paid=False,
+    )
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result == {"processed": False, "reason": "mismatch"}
+    await db_session.refresh(payment)
+    assert payment.status == "pending"
+    assert payment.canceled_at is None
+
+
+@pytest.mark.asyncio
+async def test_canceled_valid_identity_still_applies(db_session, fake_client) -> None:
+    """The valid canceled flow stays green with identity-first ordering."""
+    await seed_products(db_session)
+    user = await _user(db_session, 900080)
+    service = BillingService(db_session)
+    started = await service.start_purchase(user.id, "horary_1")
+    payment = (await db_session.execute(select(Payment))).scalar_one()
+
+    fake_client.remote[payment.provider_payment_id] = _remote_for(
+        payment, str(started["purchase_id"]), status="canceled", paid=False
+    )
+    result = await service.verify_and_process_webhook(payment.provider_payment_id)
+    assert result == {"processed": False, "reason": "canceled"}
+    await db_session.refresh(payment)
+    assert payment.status == "canceled"
+    assert payment.canceled_at is not None

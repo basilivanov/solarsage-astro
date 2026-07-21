@@ -474,12 +474,15 @@ class BillingService:
         # returns: {"processed": bool, "reason": str}
         # side_effects: fulfills Payment/Subscription/Purchase/AccessLedger/
         #   HoraryCredit exactly once.
-        # error_behavior: mismatches are rejected without state change;
-        #   provider errors propagate as YooKassaError; a missing/deactivated
-        #   fulfillment target (product row, owner row, inactive subscription)
-        #   leaves the payment PENDING with billing.fulfillment_blocked so the
-        #   grant stays recoverable, and a canceled renewal demotes an active
-        #   subscription to past_due for a fresh-key retry.
+        # error_behavior: mismatches are rejected WITHOUT any state change —
+        #   strict identity (provider id/amount/currency/user/product/owner/
+        #   charge kind/period) is enforced BEFORE canceled or succeeded
+        #   handling; provider errors propagate as YooKassaError; a
+        #   missing/deactivated fulfillment target (product row, owner row,
+        #   inactive subscription) leaves the payment PENDING with
+        #   billing.fulfillment_blocked so the grant stays recoverable, and a
+        #   canceled renewal demotes an active subscription to past_due for a
+        #   fresh-key retry.
         # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE.verify_and_process_webhook
         result = await self.db.execute(
             select(Payment)
@@ -496,9 +499,17 @@ class BillingService:
             # the webhook payload, never by a broad search.
             outcome = await self._reconcile_unknown_payment(client, provider_payment_id)
             if outcome is None:
-                log_event("billing.webhook_rejected", msg="unknown provider payment", level="warning")
-                return {"processed": False, "reason": "unknown_payment"}
-            payment, bound_here = outcome
+                # False-unknown race: a concurrent binder may have committed
+                # BETWEEN the initial SELECT and the candidate lookup. One
+                # fresh locked re-read by provider id decides by ACTUAL
+                # state — never answer a false unknown for a row that now
+                # exists.
+                payment = await self._reread_by_provider_id(provider_payment_id)
+                if payment is None:
+                    log_event("billing.webhook_rejected", msg="unknown provider payment", level="warning")
+                    return {"processed": False, "reason": "unknown_payment"}
+            else:
+                payment, bound_here = outcome
 
         def _abort_uncommitted() -> None:
             # A binding that never reached a durable commit must not linger
@@ -511,6 +522,15 @@ class BillingService:
             return {"processed": False, "reason": "already_fulfilled"}
 
         remote = await client.get_payment(provider_payment_id)
+
+        # STRICT identity BEFORE any local mutation: provider id + amount +
+        # currency + user/product + exact owner + charge kind (+ recurrent
+        # period). A canceled/pending remote with a forged identity must
+        # change NOTHING (no canceled marks, no reconcile commit).
+        if not self._identity_matches(payment, remote):
+            _abort_uncommitted()
+            log_event("billing.webhook_rejected", msg="webhook/provider identity mismatch", level="warning")
+            return {"processed": False, "reason": "mismatch"}
 
         if remote["status"] == "canceled":
             payment.status = "canceled"
@@ -553,9 +573,9 @@ class BillingService:
             _abort_uncommitted()
             return {"processed": False, "reason": f"provider_status_{remote['status']}"}
 
-        if not self._payment_matches(payment, remote):
+        if not remote["paid"]:
             _abort_uncommitted()
-            log_event("billing.webhook_rejected", msg="webhook/provider mismatch", level="warning")
+            log_event("billing.webhook_rejected", msg="webhook/provider paid flag mismatch", level="warning")
             return {"processed": False, "reason": "mismatch"}
 
         # Fulfillment target gate BEFORE marking succeeded: the payment is
@@ -608,7 +628,31 @@ class BillingService:
         log_event("billing.payment_fulfilled", msg="payment fulfilled", payload={"payment_id": payment.id})
         return {"processed": True, "reason": "fulfilled"}
 
-    async def _reconcile_unknown_payment(self, client, provider_payment_id: str) -> Payment | None:
+    async def _reread_by_provider_id(self, provider_payment_id: str) -> Payment | None:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reread_by_provider_id
+        # purpose: The false-unknown guard: one fresh LOCKED re-read by
+        #   provider_payment_id after reconciliation found no candidate. A
+        #   concurrent binder's committed row is seen in its ACTUAL state
+        #   (never a stale identity-map snapshot); the caller continues by
+        #   that state (already_fulfilled or normal verification) instead of
+        #   a false unknown_payment.
+        # inputs: provider_payment_id from the webhook.
+        # returns: the fresh locked Payment or None when it truly does not
+        #   exist locally.
+        # side_effects: locked refresh read only; no mutation.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reread_by_provider_id
+        result = await self.db.execute(
+            select(Payment)
+            .where(Payment.provider_payment_id == provider_payment_id)
+            .with_for_update()
+        )
+        payment = result.scalar_one_or_none()
+        if payment is None:
+            return None
+        await self.db.refresh(payment, with_for_update=True)
+        return payment
+
+    async def _reconcile_unknown_payment(self, client, provider_payment_id: str) -> tuple[Payment, bool] | None:
         # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._reconcile_unknown_payment
         # purpose: Recover from a CHARGE-WITHOUT-GRANT window: the provider
         #   created/captured a payment whose create response we never saw
@@ -747,12 +791,18 @@ class BillingService:
             return None
         return re.sub(r"-a\d+$", "", key[len(base):])
 
-    def _payment_matches(self, payment: Payment, remote: dict) -> bool:
-        # Strict remote identity: the authenticated GET answered for the SAME
-        # id as the local binding, and the charge kind matches the local key.
+    def _identity_matches(self, payment: Payment, remote: dict) -> bool:
+        # START_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._identity_matches
+        # purpose: The strict remote-vs-local identity check, INDEPENDENT of
+        #   the paid flag: provider id + amount/currency + user/product +
+        #   exact owner + charge kind (init -> initial_recurrent, rebill ->
+        #   recurrent with the exact cycle period, purchase -> one_time).
+        #   Runs BEFORE any local mutation (canceled handling included).
+        # inputs: payment (locked local row), remote (authenticated GET dict).
+        # returns: True only on exact identity; any mismatch means the caller
+        #   must not change state at all.
+        # END_FUNCTION_CONTRACT: F-M-BILLING-SERVICE._identity_matches
         if remote.get("provider_payment_id") != payment.provider_payment_id:
-            return False
-        if not remote["paid"]:
             return False
         if remote["amount_value"] != _kopecks_str(payment.amount):
             return False
@@ -774,6 +824,10 @@ class BillingService:
         if payment.subscription_id is not None:
             return owner == str(payment.subscription_id)
         return owner == self._expected_purchase_owner_id(payment)
+
+    def _payment_matches(self, payment: Payment, remote: dict) -> bool:
+        # Succeeded-path matcher: the strict identity plus the paid flag.
+        return bool(remote["paid"]) and self._identity_matches(payment, remote)
 
     @staticmethod
     def _expected_purchase_owner_id(payment: Payment) -> str:
