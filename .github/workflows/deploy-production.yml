@@ -17,6 +17,10 @@
 #   - workflow_dispatch (manual only)
 #   - REGISTRY_NAMESPACE: repository-level Actions variable (e.g. ghcr.io/owner,
 #     no tag; required because the build job has no environment)
+#   - EPHEMERIS_BUNDLE_URL / EPHEMERIS_BUNDLE_SHA256: repository variables for
+#     the licensed bundle source/checksum; EPHEMERIS_BUNDLE_CREDENTIAL secret
+#     optional (falls back to github.token; GitHub API asset URLs get the
+#     octet-stream Accept header, other https URLs keep Bearer-only behavior)
 #   - PROD_HOST / PROD_USER / PROD_SSH_PRIVATE_KEY / PROD_KNOWN_HOSTS: production
 #     environment secrets
 # outputs: immutable per-SHA images in GHCR, acceptance evidence bundle,
@@ -165,7 +169,9 @@ jobs:
         env:
           EPHEMERIS_BUNDLE_URL: ${{ vars.EPHEMERIS_BUNDLE_URL }}
           EPHEMERIS_BUNDLE_SHA256: ${{ vars.EPHEMERIS_BUNDLE_SHA256 }}
-          EPHEMERIS_BUNDLE_CREDENTIAL: ${{ secrets.EPHEMERIS_BUNDLE_CREDENTIAL }}
+          # Private release assets need a token: the explicit secret wins,
+          # otherwise the workflow GITHUB_TOKEN is used (never printed).
+          EPHEMERIS_BUNDLE_CREDENTIAL: ${{ secrets.EPHEMERIS_BUNDLE_CREDENTIAL || github.token }}
         run: |
           set -euo pipefail
           : "${EPHEMERIS_BUNDLE_URL:?missing required repository variable EPHEMERIS_BUNDLE_URL (OCI/release-asset source of the licensed bundle tar) — sidecar image cannot be proven without it}"
@@ -181,6 +187,13 @@ jobs:
           if [ -n "${EPHEMERIS_BUNDLE_CREDENTIAL:-}" ]; then
             auth_args=(-H "Authorization: Bearer ${EPHEMERIS_BUNDLE_CREDENTIAL}")
           fi
+          # GitHub API release-asset URLs require the octet-stream Accept
+          # header (browser_download_url rejects tokens on private releases);
+          # every other https URL keeps the previous behavior.
+          case "$EPHEMERIS_BUNDLE_URL" in
+            https://api.github.com/repos/*/releases/assets/*)
+              auth_args+=(-H "Accept: application/octet-stream") ;;
+          esac
           curl -fsSL --retry 3 "${auth_args[@]}" -o /tmp/ephemeris-bundle.tar "$EPHEMERIS_BUNDLE_URL"
           echo "$EPHEMERIS_BUNDLE_SHA256  /tmp/ephemeris-bundle.tar" | sha256sum -c -
           mkdir -p /tmp/ephemeris-bundle
