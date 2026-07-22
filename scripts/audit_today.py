@@ -800,15 +800,20 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
                 mapping=mapping,
             )
 
-        # artifact_source.json — honest provenance for acceptance evidence
-        try:
-            git_head = subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"],
-                cwd=REPO_ROOT,
-                text=True,
-            ).strip()
-        except Exception:
-            git_head = None
+        # artifact_source.json — honest provenance for acceptance evidence.
+        # git_head is recorded ONLY for live runs: the frozen tracked artifact
+        # must stay byte-stable across commits (a commit can never know its
+        # own SHA in advance; live timestamp evidence keeps runtime SHA).
+        git_head = None
+        if is_live:
+            try:
+                git_head = subprocess.check_output(
+                    ["git", "rev-parse", "--short", "HEAD"],
+                    cwd=REPO_ROOT,
+                    text=True,
+                ).strip()
+            except Exception:
+                git_head = None
 
         meta = _get_meta(payload_json if isinstance(payload_json, dict) else {})
         selected_scoring_version = _meta_get(meta, "scoring_version", "scoringVersion")
@@ -889,6 +894,28 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         shutil.copy2(debug_dir / "sidecar_activation_layer.json", root_dir / "16_activation_layer.json")
     elif activation_layer_source == "sidecar" and (debug_dir / "activation_layer.json").exists():
         shutil.copy2(debug_dir / "activation_layer.json", root_dir / "16_activation_layer.json")
+
+    # Downstream V2 audit: the FINAL payload must equal the independently
+    # recomputed V2 (dayStatus, scoreBreakdown, topFlags). Fail-closed part
+    # of the canonical contour in BOTH modes.
+    subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "audit_downstream_v2.py"),
+            "--input-activation-layer",
+            str(root_dir / "16_activation_layer.json"),
+            "--input-final-payload",
+            str(root_dir / "11_final_today_payload.json"),
+            "--input-day-signals",
+            str(debug_dir / "day_scored_signals_after_filter.json"),
+            "--fail-on-unmapped",
+            "false",
+            "--out",
+            str(root_dir / "downstream"),
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+    )
 
     # Generate 14_claims_audit.md only in live mode; in frozen mode keep baseline claims.
     if is_live:

@@ -72,12 +72,13 @@ from app.core.versions import (  # noqa: E402
     TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
     TODAY_V2_PAYLOAD_VERSION,
 )
-from app.schemas.activation import ActivationLayer  # noqa: E402
 from app.schemas.normalization import AstroSignal  # noqa: E402
 from app.services.activation_layer_service import ActivationLayerService  # noqa: E402
 from app.services.canon_service import get_canon_versions  # noqa: E402
+from app.services.scoring_service import ScoringService  # noqa: E402
 from app.services.scoring_v2_service import ScoringV2Service  # noqa: E402
 from app.services.semantic_v2_service import SemanticV2Service  # noqa: E402
+from app.services.today_service import TodayService as TodayServiceForFlags  # noqa: E402
 
 TOL = 0.0001
 MAJOR_ASPECTS = {"conjunction", "opposition", "square", "trine"}
@@ -1355,7 +1356,14 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             message="payload.v2 missing sidecar activation ids",
         )
     if extra_payload:
-        state.warn(kind="extra_payload_ids", actual=extra_payload, message="payload has activation ids not in sidecar")
+        # Fabricated evidence is a hard mismatch, not a warning: the payload
+        # activation evidence set must equal the sidecar set exactly.
+        state.error(
+            kind="extra_payload_ids",
+            expected=sorted(sidecar_id_set),
+            actual=sorted(payload_id_set),
+            message="payload has activation ids not in sidecar",
+        )
 
     # payload score breakdown source/id policy — unknown/missing source is hard failure
     known_payload_sources = {"activation", "base_signal", "convergence", "cap"}
@@ -1403,6 +1411,107 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             actual=unknown_why,
             message="whyToday references activation ids not present in activationEvidence",
         )
+
+    # START_BLOCK: PAYLOAD_VS_RECOMPUTED_V2
+    # The FINAL SELECTED payload must equal the independently recomputed V2
+    # it was verified against: dayStatus, every scoreBreakdown sphere
+    # (numeric fields + contributions), sphere sorting, and topFlags/top
+    # selected signals in exact order. Legacy v1 status is irrelevant here.
+    payload_day_status = None
+    if isinstance(payload_json, dict):
+        payload_day_status = payload_json.get("dayStatus") or payload_json.get("day_status")
+    if payload_day_status != scoring_result.day_status:
+        state.error(
+            kind="payload_day_status_mismatch",
+            expected=scoring_result.day_status,
+            actual=payload_day_status,
+            message="payload dayStatus differs from recomputed V2 day status",
+        )
+
+    payload_sb = (payload_v2 or {}).get("scoreBreakdown") or {}
+    service_spheres = list(scoring_result.sphere_scores.keys())
+    payload_spheres = list(payload_sb.keys())
+    if payload_spheres != service_spheres:
+        state.error(
+            kind="payload_score_breakdown_order_mismatch",
+            expected=service_spheres,
+            actual=payload_spheres,
+            message="payload scoreBreakdown sphere order mismatch",
+        )
+    _numeric_fields = (
+        ("baseScore", "base_score"),
+        ("activationScore", "activation_score"),
+        ("convergenceBonus", "convergence_bonus"),
+        ("rawScore", "raw_score"),
+        ("finalScore", "final_score"),
+    )
+    for skey in service_spheres:
+        ss = scoring_result.sphere_scores[skey]
+        entry = payload_sb.get(skey)
+        if not isinstance(entry, dict):
+            state.error(
+                kind="payload_score_breakdown_missing",
+                sphere=skey,
+                message="scoreBreakdown sphere missing from payload",
+            )
+            continue
+        for wire_name, attr in _numeric_fields:
+            wire_val = entry.get(wire_name)
+            svc_val = getattr(ss, attr, None)
+            if wire_val is None and svc_val is None:
+                continue
+            if not isinstance(wire_val, (int, float)) or svc_val is None or abs(float(wire_val) - float(svc_val)) > TOL:
+                state.error(
+                    kind="payload_score_field_mismatch",
+                    sphere=skey,
+                    expected={"field": wire_name, "value": svc_val},
+                    actual={"field": wire_name, "value": wire_val},
+                    message="payload scoreBreakdown numeric field mismatch",
+                )
+        if bool(ss.dominance_capped) != bool(entry.get("dominanceCapped")):
+            state.error(
+                kind="payload_dominance_capped_mismatch",
+                sphere=skey,
+                expected=ss.dominance_capped,
+                actual=entry.get("dominanceCapped"),
+                message="payload dominanceCapped mismatch",
+            )
+        exp_contribs = sorted((c.source, c.source_id, round(float(c.amount), 4)) for c in ss.contributions)
+        act_contribs = sorted(
+            (
+                c.get("source"),
+                c.get("sourceId") or c.get("source_id"),
+                round(float(c.get("amount", 0.0)), 4),
+            )
+            for c in (entry.get("contributions") or [])
+        )
+        if act_contribs != exp_contribs:
+            state.error(
+                kind="payload_contributions_mismatch",
+                sphere=skey,
+                expected=exp_contribs,
+                actual=act_contribs,
+                message="payload scoreBreakdown contributions mismatch",
+            )
+
+    # topFlags: exact ordered equality with flags rebuilt from the audit's
+    # own v1-selected top signals through the production builder.
+    payload_top_flags = payload_json.get("topFlags") or payload_json.get("top_flags") or []
+    v1_result = ScoringService().score_day(day_signals)
+    expected_flag_pairs = [
+        (f.icon_name, f.title) for f in TodayServiceForFlags._build_top_flags(v1_result.get("top_signals", []))
+    ]
+    actual_flag_pairs = [
+        (f.get("iconName") or f.get("icon_name"), f.get("title")) for f in payload_top_flags
+    ]
+    if actual_flag_pairs != expected_flag_pairs:
+        state.error(
+            kind="payload_top_flags_mismatch",
+            expected=expected_flag_pairs,
+            actual=actual_flag_pairs,
+            message="payload topFlags differ from recomputed selected top signals",
+        )
+    # END_BLOCK: PAYLOAD_VS_RECOMPUTED_V2
 
     mapping = {
         "sidecar_activation_count": len(sidecar_ids),
@@ -1474,6 +1583,18 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         "convergence_matches_canon": not any(f.kind.startswith("convergence_") for f in state.failures),
         "dominance_cap_matches_canon": not any(f.kind.startswith("dominance_cap_") for f in state.failures),
         "day_status_matches_recalc": not any(f.kind == "day_status_mismatch" for f in state.failures),
+        "payload_day_status_matches_recalc": not any(f.kind == "payload_day_status_mismatch" for f in state.failures),
+        "payload_score_breakdown_matches_recalc": not any(
+            f.kind in (
+                "payload_score_breakdown_order_mismatch",
+                "payload_score_breakdown_missing",
+                "payload_score_field_mismatch",
+                "payload_dominance_capped_mismatch",
+                "payload_contributions_mismatch",
+            )
+            for f in state.failures
+        ),
+        "payload_top_flags_match_recalc": not any(f.kind == "payload_top_flags_mismatch" for f in state.failures),
         "payload_preserves_sidecar_ids": not bool(missing_in_payload) and payload_v2 is not None and v2_selected,
         "frontend_fixture_written": True,
     }
@@ -1485,6 +1606,10 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         "status": "failed" if state.failures else "ok",
         "failure_count": len(state.failures),
         "warning_count": len(state.warnings),
+        # The unmapped policy is pinned here, never silently weakened:
+        # "warn" = intentional unmapped activations are reported as warnings,
+        # "fail" = they are hard failures. Mismatches are ALWAYS errors.
+        "unmapped_policy": "fail" if args.fail_on_unmapped else "warn",
         "checked": checked,
         "failures": [f.as_dict() for f in state.failures],
         "warnings": [w.as_dict() for w in state.warnings],
