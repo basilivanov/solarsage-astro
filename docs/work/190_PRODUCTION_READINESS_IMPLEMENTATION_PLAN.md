@@ -380,6 +380,25 @@ their text below is kept as the design for those later slices.
   oracle on the pinned bundle (swieph=true, flags=258); provenance
   coherence asserts the exact full SHAs; freeze ×2 stays byte-clean on
   the final commit. GitHub exact-SHA run stays PENDING.
+- **P1-2 fourth-review hardening (2026-07-22, local):** three more
+  proven gaps closed. (a) The engine summary persisted the absolute
+  runner ephemeris path, which would have made the exact-SHA freeze
+  dirty on any other runner; it now records only a stable source marker
+  (argument/env/default) — proven byte-clean across two different
+  bundle paths on the same commit. (b) contract_diff is JSON-type-strict
+  (false != 0, true != 1) and the ACTUAL payload v2 block is validated
+  against the public TodayV2Block (extra=forbid) — ValidationError is
+  the diagnostic failure payload_v2_contract_invalid; directed
+  mutations: dominanceCapped false->0, activationEvidence.active
+  true->1, v2-root extra key. (c) Astronomy retrograde compares with
+  exact boolean type; wrong container shapes (day_chart /
+  transit_planets / houses / facts) are normalized to empty structures
+  — summary written, rc=1, no traceback (directed tests); swieph
+  engine_pass requires FLG_SWIEPH on every calc AND zero FLG_MOSEPH;
+  the fail-closed engine test uses an explicit empty ephe dir. The
+  wave-17 coherence test now asserts exact full-layer equality vs the
+  canonical HTTP layer (except _audit_meta, whose current_location is
+  asserted exactly). GitHub exact-SHA run stays PENDING.
 - **P1-2 second-review hardening (2026-07-22, local):** an independent
   mutation sweep showed 9 further probes passing rc=0 (topFlags summary,
   normalizedScore, contribution before, activationEvidence strength,
