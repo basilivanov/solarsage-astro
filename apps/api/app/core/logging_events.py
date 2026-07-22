@@ -82,6 +82,7 @@ LogEventName = Literal[
     "billing.subscription_canceled",
     "billing.rebill_skipped",
     "billing.rebill_started",
+    "billing.rebill_completed",
     "billing.webhook_rejected",
     "billing.fulfillment_blocked",
     "billing.subscription_expired",

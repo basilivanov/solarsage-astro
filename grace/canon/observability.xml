@@ -277,6 +277,33 @@
     </event>
     <event name="payment.webhook_received" owner="W-6.1" desc="Payment provider webhook received." />
 
+    <!-- ================ billing (YooKassa) ============================ -->
+    <event name="billing.subscription_started" owner="W-6.1" desc="Subscription initial payment created and durable attempt anchored.">
+      <payload-field name="payment_id" type="string" required="true" />
+    </event>
+    <event name="billing.purchase_started" owner="W-6.1" desc="One-time purchase payment created and durable attempt anchored.">
+      <payload-field name="payment_id" type="string" required="true" />
+    </event>
+    <event name="billing.payment_fulfilled" owner="W-6.1" desc="Verified provider payment fulfilled (access granted / credits added) after durable commit.">
+      <payload-field name="payment_id" type="string" required="true" />
+    </event>
+    <event name="billing.payment_reconciled" owner="W-6.1" desc="Unknown provider payment self-reconciled and bound after durable commit (never on rollback).">
+      <payload-field name="payment_id" type="string" required="true" />
+    </event>
+    <event name="billing.subscription_canceled" owner="W-6.1" desc="Subscription auto-renewal canceled by the user." />
+    <event name="billing.subscription_expired" owner="W-6.1" desc="Non-renewing subscription expired at paid period end.">
+      <payload-field name="subscription_id" type="string" required="true" />
+    </event>
+    <event name="billing.webhook_rejected" owner="W-6.1" desc="Webhook rejected: unknown payment or provider identity mismatch (no bind, no grant)." />
+    <event name="billing.fulfillment_blocked" owner="W-6.1" desc="Payment fulfillment blocked (product/owner missing); payment stays pending and observable.">
+      <payload-field name="payment_id" type="string" required="true" />
+    </event>
+    <event name="billing.rebill_started" owner="W-6.1" desc="Recurrent rebill attempt started for a due subscription." />
+    <event name="billing.rebill_skipped" owner="W-6.1" desc="Rebill skipped: recurrent kill-switch disabled or subscription no longer due." />
+    <event name="billing.rebill_completed" owner="W-6.1" desc="Rebill job finished; total due subscriptions attempted this run.">
+      <payload-field name="attempts" type="number" required="true" />
+    </event>
+
     <!-- ================ horary ========================================== -->
     <event name="horary.question_created" owner="W-HORARY" desc="Horary question created and credit spent.">
       <payload-field name="question_id_hash" type="string" required="true" />

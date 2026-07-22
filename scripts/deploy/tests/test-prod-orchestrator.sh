@@ -186,7 +186,8 @@ case "$args" in
     env | grep -E '^(API|SIDECAR|FRONTEND)_IMAGE=' >> "$TEST_DIR/env-ledger" || true
     env | grep -E '^RELEASE_SHA=' >> "$TEST_DIR/env-ledger" || true
     [ -f "$TEST_DIR/fail-billing-rebill" ] && exit 1
-    printf 'rebill skipped: YOOKASSA_RECURRENT_ENABLED=false\n'
+    # Mirror the real job contract: canonical structured envelope, never raw print.
+    printf '%s\n' '{"event":"billing.rebill_skipped","level":"info","msg":"rebill skipped: YOOKASSA_RECURRENT_ENABLED=false","module":"M-JOBS-BILLING-REBILL","block":"REBILL_JOB","slice":"W-6.1"}'
     exit 0
     ;;
   "run -d --name solarsage-restore-rehearsal-"*)
@@ -1166,6 +1167,7 @@ oc31() {
   printf '%s\n' "$(digest_for api "$SHA_A")" > "$TEST_DIR/active-api-image"
   run_orch billing-rebill
   expect_rc 0 "OC31" || rc=1
+  assert_out_has '"event":"billing.rebill_skipped"' || rc=1
   assert_out_has "rebill skipped: YOOKASSA_RECURRENT_ENABLED=false" || rc=1
   grep -qF -- "--profile billing-rebill run --rm --no-deps billing-rebill" "$TEST_DIR/ledger" || { case_fail "OC31 rebill run missing"; rc=1; }
   grep -qF "API_IMAGE=$(digest_for api "$SHA_A")" "$TEST_DIR/env-ledger" || { case_fail "OC31 rebill did not use the record api digest"; rc=1; }

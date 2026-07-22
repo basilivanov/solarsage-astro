@@ -54,6 +54,18 @@ export type LogEventName =
   | "payment.succeeded"
   | "payment.failed"
   | "payment.webhook_received"
+  // billing (YooKassa)
+  | "billing.subscription_started"
+  | "billing.purchase_started"
+  | "billing.payment_fulfilled"
+  | "billing.subscription_canceled"
+  | "billing.rebill_skipped"
+  | "billing.rebill_started"
+  | "billing.rebill_completed"
+  | "billing.webhook_rejected"
+  | "billing.fulfillment_blocked"
+  | "billing.subscription_expired"
+  | "billing.payment_reconciled"
   // horary
   | "horary.question_created"
   | "horary.question_create_failed"
