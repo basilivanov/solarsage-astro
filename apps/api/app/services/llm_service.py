@@ -205,6 +205,48 @@ def _horary_narrative_requirements_prompt() -> str:
 
 # END_BLOCK: HORARY_NARRATIVE_CONTRACT
 
+# Provider-enforced Structured Outputs for the 12-sphere concrete advice
+# batch: exactly the 12 canonical string keys, all required, no extras.
+# The DeepSeek fallback stays plain; local parse/type/key/claim/row
+# validation remains the fail-closed boundary regardless of provider.
+_CONCRETE_ADVICE_JSON_SCHEMA = {
+    "name": "today_concrete_advice",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "work": {"type": "string"},
+            "money": {"type": "string"},
+            "documents": {"type": "string"},
+            "relationships": {"type": "string"},
+            "sport": {"type": "string"},
+            "communication": {"type": "string"},
+            "health": {"type": "string"},
+            "decisions": {"type": "string"},
+            "travel": {"type": "string"},
+            "creativity": {"type": "string"},
+            "study": {"type": "string"},
+            "shopping": {"type": "string"},
+        },
+        "required": [
+            "work",
+            "money",
+            "documents",
+            "relationships",
+            "sport",
+            "communication",
+            "health",
+            "decisions",
+            "travel",
+            "creativity",
+            "study",
+            "shopping",
+        ],
+        "additionalProperties": False,
+    },
+}
+
+
 class LLMService:
 
     def __init__(self):
@@ -1241,7 +1283,9 @@ JSON:"""
         # truncated response loses the closing brace and is unparseable
         # (observed in release E2E run 29890349759: 1083 chars, no final "}").
         # Only THIS output budget is raised; every other LLM budget is untouched.
-        response_text = await self._generate_text(prompt, max_tokens=2400)
+        response_text = await self._generate_text(
+            prompt, max_tokens=2400, json_schema=_CONCRETE_ADVICE_JSON_SCHEMA
+        )
         if not response_text:
             return None
 

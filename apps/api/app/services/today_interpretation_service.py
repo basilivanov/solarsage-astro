@@ -14,14 +14,12 @@
 #     and planet-interpretation batch calls run concurrently via asyncio.gather
 #     once both deterministic contexts are built; result application order is
 #     unchanged.
-#   - concrete advice retry semantics: when the first batch result is None,
-#     malformed, has a wrong exact key set, or yields fewer than 9 valid rows
-#     after the claim/row validators, exactly ONE bounded retry of
-#     generate_concrete_advice runs with the same deterministic
-#     contexts/evidence (planet interpretations and the other LLM calls are
-#     never re-run). Every attempt is validated atomically and applied to rows
-#     only when accepted (>= 9 valid rows); valid rows of an accepted attempt
-#     are applied, the rest keep the honest fallback.
+#   - concrete advice single-call semantics: exactly ONE external batch
+#     call per cold day (inside the concurrent gather). When the result is
+#     None, malformed, has a wrong exact key set, or yields fewer than 9
+#     valid rows after the claim/row validators, the batch is rejected
+#     atomically and every row keeps the honest fallback — no second paid
+#     attempt is ever made.
 #   - degraded semantics: when both attempts are unacceptable the build NEVER
 #     raises and NEVER shows invalid LLM text — all 12 rows keep
 #     CONCRETE_ADVICE_FALLBACK_TEXT and the Today endpoint returns 200.
@@ -353,7 +351,11 @@ class TodayInterpretationService:
         lunar: dict | None = None,
         activation_layer: Any | None = None,
         scoring_v2_result: Any | None = None,
+        force_no_llm: bool = False,
     ) -> tuple[ConcreteAdviceBlock, DaySummaryBlock, DayChart | None]:
+        # force_no_llm: the deadline fallback path — the same deterministic
+        # computation with every LLM call disabled (advice fallback rows,
+        # planet interpretation fallback). Never makes external calls.
         llm_service = LLMService()
 
         # 1. Deterministic Concrete Advice builder
@@ -462,12 +464,27 @@ class TodayInterpretationService:
                     )
                     evidence_list.extend(v2_evidences)
 
+            # LLM projection ONLY: at most 3 unique (kind, title) evidence
+            # entries per product sphere, deterministic first-in-relevance
+            # order. The full row.evidence above stays untouched — claim/row
+            # validators and the wire payload keep the complete set.
+            projected_evidence = []
+            seen_evidence_keys = set()
+            for ev in evidence_list:
+                ev_key = (ev.kind, ev.title)
+                if ev_key in seen_evidence_keys:
+                    continue
+                seen_evidence_keys.add(ev_key)
+                projected_evidence.append(ev.model_dump())
+                if len(projected_evidence) >= 3:
+                    break
+
             # Context for LLM wording
             advice_contexts.append({
                 "key": key,
                 "label": label,
                 "verdict": verdict,
-                "evidence": [ev.model_dump() for ev in evidence_list]
+                "evidence": projected_evidence,
             })
 
             rows.append(
@@ -486,7 +503,7 @@ class TodayInterpretationService:
         # Check if we have LLM keys configured
         llm_texts = None
         from app.core.config import settings
-        has_llm_keys = any(
+        has_llm_keys = (not force_no_llm) and any(
             bool((key or "").strip())
             for key in (
                 settings.openrouter_api_key,
@@ -579,27 +596,13 @@ class TodayInterpretationService:
 
         if has_llm_keys:
             from app.core.logging import log_block, log_event
+            # Exactly ONE external advice call per cold day (already made in
+            # the concurrent gather above — no second paid attempt). A
+            # rejected batch keeps the honest fallback on all 12 rows, and
+            # the degraded payload is never cached (TodayService requires
+            # >= 9 non-fallback rows before writing the payload cache).
             valid_llm_count = _apply_advice_attempt(llm_texts)
             if valid_llm_count < 9:
-                # Exactly one bounded retry of the advice batch ONLY, with the
-                # same deterministic contexts/evidence; planet interpretations
-                # and the other Today LLM calls are never re-run.
-                with log_block(slice="W-5.1", module="M-TODAY-INTERPRETATION-SERVICE", block="CONCRETE_ADVICE_RETRY"):
-                    log_event(
-                        "llm.response_rejected",
-                        level="warn",
-                        msg="[LLM] concrete advice first attempt unacceptable; one bounded retry",
-                        payload={"reason": "schema_invalid"},
-                    )
-                retry_texts = await llm_service.generate_concrete_advice(
-                    advice_contexts, evidence_packet=evidence_packet
-                )
-                valid_llm_count = _apply_advice_attempt(retry_texts)
-            if valid_llm_count < 9:
-                # Degraded: never raise, never show invalid LLM text — all 12
-                # rows keep the honest fallback (rejected attempts wrote
-                # nothing). TodayService skips the payload cache for this
-                # degraded batch (< 9 non-fallback rows).
                 with log_block(slice="W-5.1", module="M-TODAY-INTERPRETATION-SERVICE", block="CONCRETE_ADVICE_FALLBACK"):
                     log_event(
                         "llm.response_rejected",

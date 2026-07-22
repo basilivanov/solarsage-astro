@@ -130,6 +130,10 @@ from app.services.today_horizon_integration_service import TodayHorizonIntegrati
 from app.services.today_selection_context import TodaySelectionContext
 from app.core.logging import log_event, log_block
 
+# Request-local hard deadline for the Today foreground LLM phase (seconds).
+# Ceiling for the LLM work only; sidecar/DB are outside it.
+LLM_PHASE_DEADLINE_SECONDS = 10.0
+
 
 PLANET_LABELS_RU = {
     "Sun": "Солнце",
@@ -440,37 +444,39 @@ class TodayService:
         planet_influences = self._build_planet_influences(day_signals)
         sphere_scores = self._build_sphere_scores(scoring_result["sphere_scores"])
 
-        # W-5.1 + W-4.2 + interpretation: concurrent LLM generation.
+        # W-5.1 + W-4.2 + interpretation: concurrent LLM generation with one
+        # request-local hard deadline for the whole foreground LLM phase.
+        # All branches start concurrently; completed results are kept;
+        # pending branches are cancelled AND awaited at the deadline (no
+        # leaked tasks); the existing deterministic/honest fallbacks then
+        # apply. Target typical 7-8s, hard LLM phase ceiling 10s — the
+        # sidecar/DB work is OUTSIDE this ceiling.
         from app.services.today_interpretation_service import TodayInterpretationService
         llm_service = LLMService()
         interpretation_service = TodayInterpretationService()
-        (
-            headline,
-            reading_paragraphs,
-            notes_text,
-            why_sections,
-            interpretation_result,
-        ) = await asyncio.gather(
-            llm_service.generate_headline(
+
+        llm_phase_started = datetime.now(UTC)
+        llm_tasks: dict[str, asyncio.Task] = {
+            "headline": asyncio.create_task(llm_service.generate_headline(
                 scoring_result["day_status"],
                 scoring_result["top_signals"],
-            ),
-            llm_service.generate_reading(
+            )),
+            "reading": asyncio.create_task(llm_service.generate_reading(
                 scoring_result["day_status"],
                 scoring_result["top_signals"],
                 scoring_result["sphere_scores"],
-            ),
-            llm_service.generate_notes(
+            )),
+            "notes": asyncio.create_task(llm_service.generate_notes(
                 scoring_result["day_status"],
                 scoring_result["sphere_scores"],
                 semantic_layer.model_dump(),
-            ),
-            llm_service.generate_why_sections(
+            )),
+            "why": asyncio.create_task(llm_service.generate_why_sections(
                 why_contexts,
                 semantic_layer,
                 evidence_packet=why_evidence_packet,
-            ),
-            interpretation_service.build(
+            )),
+            "interpretation": asyncio.create_task(interpretation_service.build(
                 target_date=target_date,
                 day_status=scoring_result["day_status"],
                 scoring_result=scoring_result,
@@ -483,8 +489,59 @@ class TodayService:
                 lunar=None,
                 activation_layer=activation_layer if v2_selected else None,
                 scoring_v2_result=dual.v2_result if v2_selected else None,
-            ),
+            )),
+        }
+        done, pending = await asyncio.wait(
+            llm_tasks.values(), timeout=LLM_PHASE_DEADLINE_SECONDS
         )
+        timed_out_names = sorted(
+            name for name, task in llm_tasks.items() if task in pending
+        )
+        for task in pending:
+            task.cancel()
+        if pending:
+            # Await every cancellation so no task leaks past the deadline.
+            await asyncio.wait(pending)
+
+        headline = llm_tasks["headline"].result() if llm_tasks["headline"] in done else None
+        reading_paragraphs = llm_tasks["reading"].result() if llm_tasks["reading"] in done else None
+        notes_text = llm_tasks["notes"].result() if llm_tasks["notes"] in done else None
+        why_sections = llm_tasks["why"].result() if llm_tasks["why"] in done else None
+        if llm_tasks["interpretation"] in done:
+            interpretation_result = llm_tasks["interpretation"].result()
+        else:
+            # Honest deterministic fallback for the whole interpretation
+            # tuple: the same builder with LLM disabled (advice fallback
+            # rows, planet interpretation fallback, deterministic summary).
+            interpretation_result = await interpretation_service.build(
+                target_date=target_date,
+                day_status=scoring_result["day_status"],
+                scoring_result=scoring_result,
+                signals=day_signals,
+                semantic_layer=semantic_layer,
+                day_chart=day_chart,
+                planet_influences=planet_influences,
+                sphere_scores=sphere_scores,
+                important_items=important_items,
+                lunar=None,
+                activation_layer=activation_layer if v2_selected else None,
+                scoring_v2_result=dual.v2_result if v2_selected else None,
+                force_no_llm=True,
+            )
+
+        if timed_out_names:
+            with log_block(slice="W-5.1", module="M-TODAY-SERVICE", block="LLM_PHASE_DEADLINE"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=(
+                        f"[LLM] today llm phase deadline: "
+                        f"completed={len(done)} timed_out={len(pending)} branches={','.join(timed_out_names)}"
+                    ),
+                    payload={"reason": "timeout"},
+                    duration_ms=(datetime.now(UTC) - llm_phase_started).total_seconds() * 1000,
+                )
+
         concrete_advice, day_summary, updated_day_chart = interpretation_result
 
         # W-4.2: Build top_flags from top signals
@@ -840,7 +897,7 @@ class TodayService:
                 activation_layer_version=cache_key.activation_layer_version if cache_key else None,
                 scoring_version=str(cache_key.scoring_version) if cache_key else "1",
                 canon_versions_hash=cache_key.canon_versions_hash if cache_key else "",
-                llm_prompt_version=cache_key.llm_prompt_version if cache_key else 2,
+                llm_prompt_version=cache_key.llm_prompt_version if cache_key else 3,
                 frontend_payload_version=cache_key.frontend_payload_version if cache_key else 1,
             )
             self.db.add(cache_entry)
@@ -876,7 +933,7 @@ class TodayService:
             "activation_layer_version": cache_key.activation_layer_version if cache_key else None,
             "scoring_version": str(cache_key.scoring_version) if cache_key else "1",
             "canon_versions_hash": cache_key.canon_versions_hash if cache_key else "",
-            "llm_prompt_version": cache_key.llm_prompt_version if cache_key else 2,
+            "llm_prompt_version": cache_key.llm_prompt_version if cache_key else 3,
             "frontend_payload_version": cache_key.frontend_payload_version if cache_key else 1,
         }
         semantic_json = json.dumps(cache_data)

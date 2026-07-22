@@ -131,7 +131,7 @@ async def test_llm_concrete_advice_validation_and_fallback():
                 sphere_scores=[],
                 important_items=[],
             )
-            assert mock_llm.call_count == 2  # exactly one bounded retry
+            assert mock_llm.call_count == 1  # single call, no hidden retry
             for row in concrete_advice.rows:
                 assert row.text == "Рекомендация временно недоступна."
                 assert "СЕНТИНЕЛ" not in row.text
@@ -226,7 +226,7 @@ async def test_today_interpretation_service_allowed_evidence_planets():
             sphere_scores=[],
             important_items=[],
         )
-        assert mock_llm.call_count == 2
+        assert mock_llm.call_count == 1
         for row in concrete_advice.rows:
             assert row.text == "Рекомендация временно недоступна."
             assert "Венера" not in row.text

@@ -1,40 +1,28 @@
 // ############################################################################
-// AI_HEADER: TEST_WEEK_STRIP — intent-based day-status warmup contract tests
-// ROLE: Proves zero mount-time batch status loads and idempotent user-intent warmup.
+// AI_HEADER: TEST_WEEK_STRIP — zero-remote week strip contract tests.
+// ROLE: Proves WeekStrip never calls /api/day (mount/hover/focus) and that
+//       click only invokes onSelect once — the component itself never fetches.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-WEEK-STRIP
-// purpose: Verify WeekStrip issues no day-status requests on mount, exactly one
-//   on first pointer/focus intent, never duplicates hover+focus, and never
-//   prefetches locked or active days.
+// purpose: Verify the no-remote-fetching WeekStrip contract.
 // owns:
 //   - __tests__/components/WeekStrip.test.tsx
-// inputs: rendered WeekStrip with mocked getDayStatus
-// outputs: vitest assertions
-// dependencies: @testing-library/react, vitest
-// side_effects: none
-// emitted_logs: none
+// inputs: rendered WeekStrip with a global fetch spy and onSelect spy.
+// outputs: vitest assertions.
+// dependencies: @testing-library/react, vitest.
+// side_effects: none.
+// emitted_logs: none.
 // invariants:
-//   - Mount performs 0 status calls; first intent performs exactly 1; repeated
-//     hover and focus keep the count at 1; locked/active days perform 0.
+//   - Mount, pointer enter and keyboard focus perform ZERO remote calls.
+//   - Click invokes onSelect exactly once; the component issues no fetch.
+//   - Public contract preserved: week-strip testid, aria labels/pressed, lock.
 // failure_policy: assertion failure on any contract violation.
 // END_MODULE_CONTRACT: M-TEST-WEEK-STRIP
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AccessInfo } from '@/lib/access'
-
-const { mockGetDayStatus } = vi.hoisted(() => ({
-  mockGetDayStatus: vi.fn(),
-}))
-
-vi.mock('@/lib/api/calendar', () => ({
-  getDayStatus: mockGetDayStatus,
-}))
-
-vi.mock('@/lib/log', () => ({
-  logEvent: vi.fn(),
-}))
 
 import { WeekStrip } from '@/components/today/week-strip'
 
@@ -56,97 +44,56 @@ const lockedAccess: AccessInfo = {
 
 const SELECTED = new Date('2026-07-07T12:00:00Z')
 
-function inactiveDayButtonIndex(): number {
-  // The selected day is at monday-first index 1 (2026-07-07 is Tuesday);
-  // index 0 (Monday) is an inactive accessible day.
-  return 0
-}
+describe('WeekStrip — zero remote fetching', () => {
+  let fetchSpy: ReturnType<typeof vi.fn>
 
-describe('WeekStrip intent warmup', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
   })
 
-  it('performs zero day-status calls on mount', () => {
-    mockGetDayStatus.mockResolvedValue('ровный')
-    render(<WeekStrip selectedDate={SELECTED} access={fullAccess} />)
-    expect(mockGetDayStatus).not.toHaveBeenCalled()
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
-  it('warms exactly one status on first pointer intent and applies it', async () => {
-    mockGetDayStatus.mockResolvedValue('ровный')
+  it('performs zero remote calls on mount, hover and focus', () => {
     render(<WeekStrip selectedDate={SELECTED} access={fullAccess} />)
     const buttons = screen.getAllByRole('button')
-    fireEvent.pointerEnter(buttons[inactiveDayButtonIndex()])
-    await waitFor(() => expect(mockGetDayStatus).toHaveBeenCalledTimes(1))
-    await waitFor(() =>
-      expect(buttons[inactiveDayButtonIndex()].getAttribute('aria-label')).toContain('ровный день'),
-    )
-  })
 
-  it('does not duplicate on repeated hover and keyboard focus for the same day', async () => {
-    mockGetDayStatus.mockResolvedValue('ровный')
-    render(<WeekStrip selectedDate={SELECTED} access={fullAccess} />)
-    const buttons = screen.getAllByRole('button')
-    const dayButton = buttons[inactiveDayButtonIndex()]
-    fireEvent.pointerEnter(dayButton)
-    await waitFor(() => expect(mockGetDayStatus).toHaveBeenCalledTimes(1))
-    fireEvent.pointerEnter(dayButton)
-    fireEvent.focus(dayButton)
-    fireEvent.pointerEnter(dayButton)
-    fireEvent.focus(dayButton)
-    expect(mockGetDayStatus).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not duplicate when two different days receive intent', async () => {
-    mockGetDayStatus.mockResolvedValue('ровный')
-    render(<WeekStrip selectedDate={SELECTED} access={fullAccess} />)
-    const buttons = screen.getAllByRole('button')
     fireEvent.pointerEnter(buttons[0])
+    fireEvent.focus(buttons[1])
     fireEvent.pointerEnter(buttons[2])
-    await waitFor(() => expect(mockGetDayStatus).toHaveBeenCalledTimes(2))
+    fireEvent.focus(buttons[3])
+
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('never prefetches the active (selected) day', () => {
-    mockGetDayStatus.mockResolvedValue('ровный')
-    render(<WeekStrip selectedDate={SELECTED} access={fullAccess} />)
+  it('click invokes onSelect exactly once and the component never fetches', () => {
+    const onSelect = vi.fn()
+    render(<WeekStrip selectedDate={SELECTED} access={fullAccess} onSelect={onSelect} />)
     const buttons = screen.getAllByRole('button')
-    const activeButton = buttons.find((b) => b.getAttribute('aria-pressed') === 'true')!
-    fireEvent.pointerEnter(activeButton)
-    fireEvent.focus(activeButton)
-    expect(mockGetDayStatus).not.toHaveBeenCalled()
+
+    fireEvent.click(buttons[0])
+
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith(expect.any(Date))
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('never prefetches locked days', () => {
-    mockGetDayStatus.mockResolvedValue('ровный')
+  it('keeps the public semantic contract: root testid, aria labels/pressed, lock for inaccessible days', () => {
     render(<WeekStrip selectedDate={SELECTED} access={lockedAccess} />)
-    const buttons = screen.getAllByRole('button')
-    for (const b of buttons) {
-      fireEvent.pointerEnter(b)
-      fireEvent.focus(b)
-    }
-    expect(mockGetDayStatus).not.toHaveBeenCalled()
-  })
+    expect(screen.getByTestId('week-strip')).toBeTruthy()
 
-  it('disables warmup entirely when disableRemoteStatusFetch is set', () => {
-    mockGetDayStatus.mockResolvedValue('ровный')
-    render(<WeekStrip selectedDate={SELECTED} access={fullAccess} disableRemoteStatusFetch />)
     const buttons = screen.getAllByRole('button')
-    for (const b of buttons) {
-      fireEvent.pointerEnter(b)
-      fireEvent.focus(b)
+    expect(buttons).toHaveLength(7)
+    // The selected day is 2026-07-07 (Tuesday, monday-first index 1).
+    expect(buttons[1].getAttribute('aria-pressed')).toBe('true')
+    expect(buttons[0].getAttribute('aria-pressed')).toBe('false')
+    // Locked days are labelled with the access requirement, and every day
+    // honestly reports the unloaded status (no remote warmup).
+    for (const button of buttons) {
+      expect(button.getAttribute('aria-label')).toContain('статус недоступен')
     }
-    expect(mockGetDayStatus).not.toHaveBeenCalled()
-  })
-
-  it('marks a failed warmup as status unavailable for that day only', async () => {
-    mockGetDayStatus.mockRejectedValue(new Error('network down'))
-    render(<WeekStrip selectedDate={SELECTED} access={fullAccess} />)
-    const buttons = screen.getAllByRole('button')
-    fireEvent.pointerEnter(buttons[inactiveDayButtonIndex()])
-    await waitFor(() => expect(mockGetDayStatus).toHaveBeenCalledTimes(1))
-    await waitFor(() =>
-      expect(buttons[inactiveDayButtonIndex()].getAttribute('aria-label')).toContain('статус недоступен'),
-    )
+    expect(buttons[0].getAttribute('aria-label')).toContain('требуется доступ')
   })
 })

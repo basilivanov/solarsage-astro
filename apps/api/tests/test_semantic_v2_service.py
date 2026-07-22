@@ -182,3 +182,78 @@ def test_techniques_list_is_sorted(empty_activation_layer, empty_scoring_v2_resu
     block = service.build_v2_block(activation_layer=empty_activation_layer, scoring_result=empty_scoring_v2_result)
     target = block.activation_summary.top_activated_targets[0]
     assert target.techniques == ["annual_profection", "transit_to_natal"]
+
+
+def _activation(act_id: str, strength: float, evidence: str | None = None) -> ActivationEvidence:
+    return ActivationEvidence(
+        id=act_id,
+        technique="transit_to_natal",
+        technique_family="transit",
+        target_type="planet",
+        target_key="SUN",
+        kind="aspect",
+        strength=strength,
+        evidence=evidence or f"evidence {act_id}",
+    )
+
+
+def test_evidence_packet_caps_twelve_strongest_with_stable_tiebreak(empty_activation_layer):
+    # 15 activations: the packet keeps at most 12 STRONGEST, strength desc,
+    # id asc as the deterministic tie-break — never a random subset.
+    acts = [_activation(f"act-{i:02d}", strength=round(0.05 * i, 2)) for i in range(1, 16)]
+    layer = empty_activation_layer.model_copy(update={"activations": acts})
+    contexts = []
+
+    packet = SemanticV2Service().build_llm_evidence_packet(
+        day_status="steady",
+        activation_layer=layer,
+        scoring_result=None,
+        contexts=contexts,
+    )
+
+    top = packet["top_activations"]
+    assert len(top) == 12
+    assert [a["id"] for a in top] == [
+        "act-15", "act-14", "act-13", "act-12", "act-11", "act-10",
+        "act-09", "act-08", "act-07", "act-06", "act-05", "act-04",
+    ]
+
+
+def test_evidence_packet_tiebreak_is_deterministic_by_id(empty_activation_layer):
+    acts = [
+        _activation("z-last", 0.5),
+        _activation("a-first", 0.5),
+        _activation("m-mid", 0.5),
+    ]
+    layer = empty_activation_layer.model_copy(update={"activations": acts})
+    packet = SemanticV2Service().build_llm_evidence_packet(
+        day_status="steady", activation_layer=layer, scoring_result=None, contexts=[],
+    )
+    assert [a["id"] for a in packet["top_activations"]] == ["a-first", "m-mid", "z-last"]
+
+
+def test_evidence_packet_row_titles_capped_at_three_unique(empty_activation_layer):
+    contexts = [{
+        "key": "work",
+        "verdict": "good",
+        "evidence": [
+            {"title": "Аспект Солнца к Юпитеру"},
+            {"title": "Солнце в 10 доме"},
+            {"title": "Аспект Солнца к Юпитеру"},  # duplicate title — dedup
+            {"title": "Луна усиливает фон"},
+            {"title": "Меркурий поддерживает документы"},
+        ],
+    }]
+    packet = SemanticV2Service().build_llm_evidence_packet(
+        day_status="steady",
+        activation_layer=empty_activation_layer,
+        scoring_result=None,
+        contexts=contexts,
+    )
+    rows = packet["concrete_rows"]
+    assert len(rows) == 1
+    assert rows[0]["evidence"] == [
+        "Аспект Солнца к Юпитеру",
+        "Солнце в 10 доме",
+        "Луна усиливает фон",
+    ]

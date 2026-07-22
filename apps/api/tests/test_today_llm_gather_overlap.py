@@ -189,3 +189,143 @@ async def test_six_llm_calls_overlap_with_preserved_semantics(
     ]
     assert not leaked, f"coroutine leak after gather: {leaked}"
     # END_BLOCK: OVERLAP_PROOF
+
+
+@pytest.mark.asyncio
+async def test_slow_branch_cancelled_at_deadline_fast_siblings_kept(
+    async_client: AsyncClient, make_initdata, db_session, monkeypatch
+):
+    # START_BLOCK: DEADLINE_PROOF
+    # A slow why-branch must be cancelled+awaited at the request-local LLM
+    # phase deadline while fast siblings keep their results; the endpoint
+    # completes near the deadline (never the slow branch's full duration)
+    # and no task leaks.
+    raw = make_initdata(user_id=8005, username="deadline")
+    await async_client.post("/api/auth/telegram", json={"initData": raw})
+    await async_client.put("/api/profile", json={
+        "gender": "male",
+        "birth": {
+            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
+            "birthTz": "Europe/Moscow",
+        }
+    })
+
+    from app.services import today_service as ts_module
+    monkeypatch.setattr(ts_module, "LLM_PHASE_DEADLINE_SECONDS", 0.5)
+
+    completed: list[str] = []
+
+    async def fast(name):
+        async def _impl(*args, **kwargs):
+            await asyncio.sleep(0.01)
+            completed.append(name)
+            return None
+        return _impl
+
+    slow_started = asyncio.Event()
+
+    async def slow_why(*args, **kwargs):
+        slow_started.set()
+        await asyncio.sleep(5)
+        return None
+
+    with patch("app.services.natal_context_service.get_solarsage_client") as client_factory, \
+         patch("app.services.today_service.get_solarsage_client", client_factory), \
+         patch("app.services.today_service.LLMService") as ts_llm_class, \
+         patch("app.services.today_interpretation_service.LLMService") as ti_llm_class, \
+         patch.object(settings, "openrouter_api_key", "test-key"):
+        client_factory.return_value = _sidecar_client_mock()
+
+        ts = ts_llm_class.return_value
+        ts.generate_headline = await fast("headline")
+        ts.generate_reading = await fast("reading")
+        ts.generate_notes = await fast("notes")
+        ts.generate_why_sections = slow_why
+
+        ti = ti_llm_class.return_value
+        ti.generate_concrete_advice = await fast("advice")
+        ti.generate_planet_interpretations = await fast("planets")
+
+        t0 = time.perf_counter()
+        resp = await async_client.get("/api/day/today")
+        elapsed = time.perf_counter() - t0
+
+    assert resp.status_code == 200, resp.text
+    # Completed near the logical deadline (0.5s), never the 5s slow branch.
+    assert elapsed < 3.0, f"endpoint took {elapsed:.2f}s — slow branch not cancelled"
+    # Fast siblings finished; the slow branch started but was cancelled.
+    assert "headline" in completed and "notes" in completed
+    assert slow_started.is_set()
+
+    await asyncio.sleep(0.05)
+    pending = [t for t in asyncio.all_tasks() if not t.done()]
+    leaked = [
+        t.get_coro().__qualname__ for t in pending
+        if t.get_coro() is not None and "slow_why" in t.get_coro().__qualname__
+    ]
+    assert not leaked, f"leaked cancelled branch: {leaked}"
+    # END_BLOCK: DEADLINE_PROOF
+
+
+@pytest.mark.asyncio
+async def test_interpretation_cancel_falls_back_deterministically(
+    async_client: AsyncClient, make_initdata, db_session, monkeypatch
+):
+    # The interpretation branch itself is slow: it is cancelled at the
+    # deadline and rebuilt via the honest deterministic force_no_llm path
+    # (advice fallback rows), with exactly zero extra external calls.
+    raw = make_initdata(user_id=8006, username="deadline2")
+    await async_client.post("/api/auth/telegram", json={"initData": raw})
+    await async_client.put("/api/profile", json={
+        "gender": "male",
+        "birth": {
+            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
+            "birthTz": "Europe/Moscow",
+        }
+    })
+
+    from app.services import today_service as ts_module
+    monkeypatch.setattr(ts_module, "LLM_PHASE_DEADLINE_SECONDS", 0.5)
+
+    advice_calls = 0
+
+    async def fast_none(*args, **kwargs):
+        await asyncio.sleep(0.01)
+        return None
+
+    async def slow_advice(*args, **kwargs):
+        nonlocal advice_calls
+        advice_calls += 1
+        await asyncio.sleep(5)
+        return None
+
+    with patch("app.services.natal_context_service.get_solarsage_client") as client_factory, \
+         patch("app.services.today_service.get_solarsage_client", client_factory), \
+         patch("app.services.today_service.LLMService") as ts_llm_class, \
+         patch("app.services.today_interpretation_service.LLMService") as ti_llm_class, \
+         patch.object(settings, "openrouter_api_key", "test-key"):
+        client_factory.return_value = _sidecar_client_mock()
+
+        ts = ts_llm_class.return_value
+        ts.generate_headline = fast_none
+        ts.generate_reading = fast_none
+        ts.generate_notes = fast_none
+        ts.generate_why_sections = fast_none
+
+        ti = ti_llm_class.return_value
+        ti.generate_concrete_advice = slow_advice
+        ti.generate_planet_interpretations = fast_none
+
+        t0 = time.perf_counter()
+        resp = await async_client.get("/api/day/today")
+        elapsed = time.perf_counter() - t0
+
+    assert resp.status_code == 200, resp.text
+    assert elapsed < 3.0
+    # Exactly one slow advice attempt; the force_no_llm fallback makes NO
+    # further external calls (count stays 1).
+    assert advice_calls == 1
+    rows = resp.json()["concreteAdvice"]["rows"]
+    assert len(rows) == 12

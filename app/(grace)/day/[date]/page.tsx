@@ -123,7 +123,6 @@ function TimingFixtureDayPage({ dateStr }: { dateStr: string }) {
         selectedDate={selectedDate}
         calendarLunar={null}
         onDateChange={onDateChange}
-        disableRemoteStatusFetch
       />
     </div>
   )
@@ -136,7 +135,6 @@ function LoadedDay({
   selectedDate,
   calendarLunar,
   onDateChange,
-  disableRemoteStatusFetch = false,
 }: {
   data: TodayPayload | null
   loading: boolean
@@ -144,7 +142,6 @@ function LoadedDay({
   selectedDate: Date
   calendarLunar: CalendarLunarFields | null
   onDateChange: (date: Date) => void
-  disableRemoteStatusFetch?: boolean
 }) {
   const ready = Boolean(data) && !loading
 
@@ -176,7 +173,6 @@ function LoadedDay({
       calendarLunar={calendarLunar}
       onDateChange={onDateChange}
       importantToday={data.importantToday || []}
-      disableRemoteStatusFetch={disableRemoteStatusFetch}
     />
   )
 }

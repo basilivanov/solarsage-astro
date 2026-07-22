@@ -15,7 +15,7 @@
 //   - components/today/today-screen.tsx
 // inputs:
 //   - selectedDate, access, payload (AdaptedTodayPayload), calendarLunar,
-//     onDateChange, importantToday, optional disableRemoteStatusFetch
+//     onDateChange, importantToday
 // outputs:
 //   - TSX layout with data-testid="today-screen" and data-state="ready|locked"
 // dependencies:
@@ -32,7 +32,6 @@
 //   - data-testid attributes present on all major sections
 //   - V2 sphere/Why state resets to the current deeplink default on date changes
 //   - Loading/error states handled by the parent page
-//   - disableRemoteStatusFetch defaults to false, preserving ordinary WeekStrip behavior
 //   - payload.wireIdentity passed to WhyExpanded unchanged.
 //   - selectPersonalStorySphere guards against non-existent row keys.
 //   - scrollAndFocusSphere targets exact matching row (not container) with smooth/center + preventScroll.
@@ -82,7 +81,6 @@ type Props = {
   calendarLunar?: CalendarLunarFields | null
   onDateChange: (_d: Date) => void
   importantToday?: TodayImportantEvent[]
-  disableRemoteStatusFetch?: boolean
 }
 
 // Порог срабатывания свайпа — чтобы случайные жесты не перелистывали день
@@ -96,7 +94,6 @@ export function TodayScreen({
   access,
   payload,
   onDateChange,
-  disableRemoteStatusFetch,
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-TODAY-SCREEN.TodayScreen
   // purpose: Render the main screen for a specific day, handling access check, checkin, summary, advice, reading, why-expanded, and week strip sections.
@@ -319,7 +316,6 @@ export function TodayScreen({
             selectedDate={selectedDate}
             access={access}
             onSelect={onDateChange}
-            disableRemoteStatusFetch={disableRemoteStatusFetch}
           />
 
           <AstroHistoryWidget date={selectedDate} />
@@ -352,7 +348,6 @@ export function TodayScreen({
             selectedDate={selectedDate}
             access={access}
             onSelect={onDateChange}
-            disableRemoteStatusFetch={disableRemoteStatusFetch}
           />
 
           <AstroHistoryWidget date={selectedDate} />

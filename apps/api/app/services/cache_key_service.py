@@ -121,7 +121,7 @@ def build_today_cache_key(
     calculation_version: str = LEGACY_CALCULATION_VERSION,
     activation_layer_version: str | None = None,
     scoring_version: int | str = LEGACY_SCORING_VERSION,
-    llm_prompt_version: int = 2,
+    llm_prompt_version: int = 3,
     content_version: int = TODAY_CONTENT_VERSION,
     frontend_payload_version: int = LEGACY_FRONTEND_PAYLOAD_VERSION,
 ) -> TodayCacheKey:

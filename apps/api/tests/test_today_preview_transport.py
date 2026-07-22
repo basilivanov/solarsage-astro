@@ -877,14 +877,23 @@ def test_today_service_has_no_background_week_prefetch_surface() -> None:
     # side_effects: reads today_service.py source.
     # emitted_logs: none.
     # error_behavior: pytest assertion failure on prefetch code presence.
-    # notes: foreground, request-local `asyncio.gather` of the six same-day LLM
-    #   calls is permitted (no background task, no adjacent-day fan-out);
-    #   background task creation and any week prefetch surface stay forbidden.
+    # notes: a foreground, request-local, BOUNDED LLM task group (tasks
+    #   captured into a dict and awaited/cancelled at a hard deadline) is
+    #   permitted — it is not a background task and fans out zero adjacent
+    #   days. Fire-and-forget task creation and any week prefetch surface
+    #   stay forbidden.
     # END_FUNCTION_CONTRACT: F-M-TEST-TODAY-PREVIEW-TRANSPORT.test_today_service_has_no_background_week_prefetch_surface
     source = inspect.getsource(today_service_module)
     assert "_prefetch_week" not in source
     assert "_TODAY_PREFETCH_TASKS" not in source
-    assert "asyncio.create_task" not in source
+    # Every task the service creates must be captured into the bounded
+    # request-local llm_tasks group (created, awaited, cancelled at the
+    # deadline) — never fire-and-forget background work.
+    task_calls = [line.strip() for line in source.splitlines() if "asyncio.create_task" in line]
+    assert task_calls, "expected the bounded llm_tasks group to exist"
+    assert "llm_tasks: dict[str, asyncio.Task] = {" in source
+    assert "await asyncio.wait(" in source
+    assert "task.cancel()" in source
     assert "SessionLocal" not in source
 # END_BLOCK: SERVICE_BOUNDARIES
 

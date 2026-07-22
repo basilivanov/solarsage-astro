@@ -10,35 +10,33 @@
 // purpose: UI week-strip — component
 // owns:
 //   - components/today/week-strip.tsx
-// inputs: selectedDate, access, onSelect, optional disableRemoteStatusFetch
+// inputs: selectedDate, access, onSelect
 // outputs: TSX render / values
 // dependencies: local modules
-// side_effects: Fetches one remote day status per explicit user intent (pointer
-//   hover/enter or keyboard focus on an accessible, inactive day); at most one
-//   request per date per mount; logging via v2 logging spine; React state management
-// emitted_logs: system.error
+// side_effects: NONE (pure render + onSelect callback). The component never
+//   calls /api/day — no mount-time load, no hover/focus warmup. A full day is
+//   fetched ONLY by explicit navigation after a click (page flow owns it).
+// emitted_logs: none
 // invariants:
-//   - No mount-time or week-change batch status load; warmup happens only on
-//     explicit user intent for an accessible, non-active, unlocked day.
-//   - Idempotent: at most one status request per date per mount; hover and
-//     focus for the same day never duplicate it; locked and active days are
-//     never prefetched; disableRemoteStatusFetch disables warmup entirely.
-// failure_policy: per-day failure -> unknown; unexpected failure logs and
-//                 keeps the week UI usable; no exception is intentionally raised
+//   - Zero remote calls on mount, on pointer enter and on keyboard focus.
+//   - Click invokes onSelect at most once per click; the component itself
+//     never fetches.
+//   - Public semantic contract preserved: data-testid, aria labels/pressed,
+//     lock for inaccessible days.
+// failure_policy: pure render; nothing to fail.
 // END_MODULE_CONTRACT: M-TODAY-WEEK-STRIP
 
 // START_MODULE_MAP: M-TODAY-WEEK-STRIP
 // public_entrypoints:
 //   - WeekStrip
 // semantic_blocks:
-//   - STATUS_FETCH: default remote week-status loading or local fixture suppression.
-//   - WEEK_RENDER: accessible seven-day navigation.
+//   - WEEK_RENDER: accessible seven-day navigation (no fetching).
 // owned_tests:
-//   - e2e/dev-timing-fixture.spec.ts
+//   - __tests__/components/WeekStrip.test.tsx
 // END_MODULE_MAP: M-TODAY-WEEK-STRIP
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useMemo } from "react"
 import { Lock, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -49,29 +47,23 @@ import {
 } from "@/lib/date"
 import { addDays, sameDay } from "@/lib/today"
 import { isDayAccessible, type AccessInfo } from "@/lib/access"
-import { statusLabel } from "@/lib/calendar"
-import { getDayStatus, type DayStatus } from "@/lib/api/calendar"
-import { logEvent } from "@/lib/log"
-import { MoodIcon } from "@/components/calendar/mood-icon"
 
 type Props = {
   selectedDate: Date
   access: AccessInfo
   onSelect?: (_d: Date) => void
-  disableRemoteStatusFetch?: boolean
 }
 
-type WeekStatus = DayStatus | "unknown"
-
 // START_BLOCK: WEEK_RENDER
-export function WeekStrip({ selectedDate, access, onSelect, disableRemoteStatusFetch = false }: Props) {
+export function WeekStrip({ selectedDate, access, onSelect }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-WEEK-STRIP.WeekStrip
   // purpose: Render a horizontal calendar strip for seven days of the current week.
-  // inputs: selectedDate, access state, onSelect date callback, disableRemoteStatusFetch flag.
+  // inputs: selectedDate, access state, onSelect date callback.
   // returns: Calendar strip JSX.
-  // side_effects: Warms one day status per explicit user intent (hover/pointer-enter or keyboard focus) for an accessible inactive day; never a mount-time batch load.
-  // emitted_logs: system.error if a warmup request fails.
-  // error_behavior: per-day fetch failure becomes unknown; unexpected failure logs system.error and leaves week UI usable; no exception is intentionally raised.
+  // side_effects: none — the component never calls /api/day (no mount load,
+  //   no hover/focus warmup); full days load only via explicit navigation.
+  // emitted_logs: none.
+  // error_behavior: pure render; nothing to fail.
   // END_FUNCTION_CONTRACT: F-M-TODAY-WEEK-STRIP.WeekStrip
   const startKey = startOfWeek(selectedDate).getTime()
   const days = useMemo(() => {
@@ -79,31 +71,6 @@ export function WeekStrip({ selectedDate, access, onSelect, disableRemoteStatusF
     return Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
   }, [startKey])
   const range = formatWeekRange(new Date(startKey))
-
-  const [statuses, setStatuses] = useState<Record<string, WeekStatus>>({})
-  const requestedDates = useRef<Set<string>>(new Set())
-
-  // START_BLOCK: INTENT_WARMUP
-  // User-intent status warmup: fires only on explicit hover/pointer-enter or
-  // keyboard focus of an accessible, inactive, unlocked day. At most one
-  // request per date per mount; hover+focus never duplicates; locked and
-  // active days are never prefetched.
-  function warmDay(d: Date, accessible: boolean, active: boolean) {
-    if (disableRemoteStatusFetch) return
-    if (!accessible || active) return
-    const key = d.toDateString()
-    if (requestedDates.current.has(key)) return
-    requestedDates.current.add(key)
-    getDayStatus(d)
-      .then((value) => {
-        setStatuses((prev) => ({ ...prev, [key]: value ?? "unknown" }))
-      })
-      .catch((err) => {
-        logEvent("system.error", { error: String(err) }, { msg: "Failed to warm day status", slice: "W-DAY", module: "M-WEEK-STRIP", block: "INTENT_WARMUP" })
-        setStatuses((prev) => ({ ...prev, [key]: "unknown" }))
-      })
-  }
-  // END_BLOCK: INTENT_WARMUP
 
   return (
     <section className="px-5" aria-label="Неделя" data-testid="week-strip">
@@ -118,16 +85,14 @@ export function WeekStrip({ selectedDate, access, onSelect, disableRemoteStatusF
         {days.map((d) => {
           const active = sameDay(d, selectedDate)
           const accessible = isDayAccessible(d, access)
-          const status = statuses[d.toDateString()] ?? "unknown"
-          const statusText = status === "unknown" ? "статус недоступен" : `${statusLabel(status)} день`
+          // No remote warmup: per-day status loads only on explicit navigation.
+          const statusText = "статус недоступен"
           const labelIdx = mondayFirstIndex(d)
           return (
             <li key={d.toISOString()}>
               <button
                 type="button"
                 onClick={() => onSelect?.(d)}
-                onPointerEnter={() => warmDay(d, accessible, active)}
-                onFocus={() => warmDay(d, accessible, active)}
                 aria-label={`${WEEKDAYS_MINI[labelIdx]} ${d.getDate()}, ${statusText}${
                   accessible ? "" : ", требуется доступ"
                 }`}
@@ -155,15 +120,7 @@ export function WeekStrip({ selectedDate, access, onSelect, disableRemoteStatusF
                 </span>
                 <span className="font-serif text-[19px] leading-none">{d.getDate()}</span>
                 <span className="flex h-4 items-center justify-center">
-                  {accessible && status !== "unknown" ? (
-                    <MoodIcon
-                      status={status}
-                      className={cn(
-                        "h-4 w-4",
-                        active ? "text-primary-foreground" : "text-foreground",
-                      )}
-                    />
-                  ) : accessible ? (
+                  {accessible ? (
                     <Minus
                       aria-hidden
                       className={cn(

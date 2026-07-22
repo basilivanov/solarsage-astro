@@ -122,7 +122,7 @@ def test_cache_key_field_consistency():
         calculation_version="1",
         activation_layer_version="al-1.0",
         scoring_version=1,
-        llm_prompt_version=2,
+        llm_prompt_version=3,
         frontend_payload_version=1,
     )
     assert k.user_id == uid
@@ -131,7 +131,7 @@ def test_cache_key_field_consistency():
     assert k.calculation_version == "1"
     assert k.activation_layer_version == "al-1.0"
     assert k.scoring_version == 1
-    assert k.llm_prompt_version == 2
+    assert k.llm_prompt_version == 3
     assert k.content_version == TODAY_CONTENT_VERSION
     assert k.frontend_payload_version == 1
 

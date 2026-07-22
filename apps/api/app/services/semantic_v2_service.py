@@ -392,6 +392,13 @@ class SemanticV2Service:
         # emitted_logs: none.
         # error_behavior: malformed context or schema values may propagate lookup/attribute errors.
         # END_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.build_llm_evidence_packet
+        # LLM projection ONLY: at most 12 strongest unique activations
+        # (strength desc, stable tie-break by id asc). The full layer and the
+        # audit payloads are untouched.
+        strongest = sorted(
+            activation_layer.activations,
+            key=lambda act: (-act.strength, act.id),
+        )[:12]
         top_activations = [
             {
                 "id": act.id,
@@ -402,7 +409,7 @@ class SemanticV2Service:
                 "strength": act.strength,
                 "evidence": act.evidence,
             }
-            for act in activation_layer.activations
+            for act in strongest
         ]
 
         sphere_scores = {}
@@ -414,10 +421,22 @@ class SemanticV2Service:
         for ctx in contexts:
             key = ctx.get("key")
             verdict = ctx.get("verdict")
+            # At most 3 unique evidence titles per concrete row (LLM
+            # projection only; the full row evidence is untouched).
+            row_titles: list = []
+            seen_titles = set()
+            for ev in ctx.get("evidence", []):
+                title = ev.get("title")
+                if title in seen_titles:
+                    continue
+                seen_titles.add(title)
+                row_titles.append(title)
+                if len(row_titles) >= 3:
+                    break
             concrete_rows.append({
                 "key": key,
                 "verdict": verdict,
-                "evidence": [ev.get("title") for ev in ctx.get("evidence", [])]
+                "evidence": row_titles,
             })
             if verdict == "avoid":
                 if key == "relationships":

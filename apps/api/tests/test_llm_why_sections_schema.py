@@ -200,7 +200,7 @@ async def test_endpoint_malformed_why_batch_returns_200_with_fallback(async_clie
     }
     valid_planets = {"Sun": "Солнце помогает делам."}
 
-    async def fake_generate_text(prompt: str, max_tokens: int):
+    async def fake_generate_text(prompt: str, max_tokens: int, json_schema=None):
         if "Почему так у меня" in prompt:
             return ci_form  # exact malformed CI form through the REAL parser
         if "рекомендации на русском" in prompt:

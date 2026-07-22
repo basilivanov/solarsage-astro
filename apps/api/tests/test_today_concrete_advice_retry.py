@@ -89,31 +89,11 @@ async def test_valid_first_attempt_single_advice_call():
 
 
 @pytest.mark.asyncio
-async def test_malformed_first_then_valid_retry():
+async def test_malformed_single_call_no_hidden_retry():
+    # Single-call contract: a malformed batch is rejected ONCE; no second
+    # paid attempt is ever made (the valid "next" response is never consumed).
     (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([None, VALID_TEXTS])
-    assert mock_advice.call_count == 2  # exactly one bounded retry
-    assert mock_planets.call_count == 1  # never re-run
-    for row in concrete_advice.rows:
-        assert row.text == VALID_TEXTS[row.key]
-
-
-@pytest.mark.asyncio
-async def test_semantic_invalid_first_then_valid_retry():
-    invalid = VALID_TEXTS.copy()
-    for k in ["work", "money", "documents", "relationships"]:
-        invalid[k] = "Latin words inside text."
-    (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([invalid, VALID_TEXTS])
-    assert mock_advice.call_count == 2
-    assert mock_planets.call_count == 1
-    for row in concrete_advice.rows:
-        assert row.text == VALID_TEXTS[row.key]
-        assert "Latin" not in row.text
-
-
-@pytest.mark.asyncio
-async def test_both_malformed_degraded_no_raise_no_bad_text():
-    (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([None, None])
-    assert mock_advice.call_count == 2
+    assert mock_advice.call_count == 1
     assert mock_planets.call_count == 1
     assert len(concrete_advice.rows) == 12
     for row in concrete_advice.rows:
@@ -121,28 +101,37 @@ async def test_both_malformed_degraded_no_raise_no_bad_text():
 
 
 @pytest.mark.asyncio
-async def test_both_semantic_invalid_degraded():
+async def test_semantic_invalid_single_call_degraded():
     invalid = VALID_TEXTS.copy()
     for k in ["work", "money", "documents", "relationships"]:
         invalid[k] = "Latin words inside text."
-    (concrete_advice, _, _), mock_advice, _ = await _build_with_mocks([invalid, invalid])
-    assert mock_advice.call_count == 2
+    (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([invalid])
+    assert mock_advice.call_count == 1
+    assert mock_planets.call_count == 1
     for row in concrete_advice.rows:
         assert row.text == CONCRETE_ADVICE_FALLBACK_TEXT
         assert "Latin" not in row.text
 
 
 @pytest.mark.asyncio
-async def test_retry_partial_accept_applies_valid_rows_only():
-    invalid = VALID_TEXTS.copy()
-    for k in ["work", "money", "documents", "relationships", "sport"]:
-        invalid[k] = "garbage"
+async def test_malformed_degraded_no_raise_no_bad_text():
+    (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([None])
+    assert mock_advice.call_count == 1
+    assert mock_planets.call_count == 1
+    assert len(concrete_advice.rows) == 12
+    for row in concrete_advice.rows:
+        assert row.text == CONCRETE_ADVICE_FALLBACK_TEXT
+
+
+@pytest.mark.asyncio
+async def test_partial_accept_single_attempt_applies_valid_rows_only():
     partial = VALID_TEXTS.copy()
-    # 9 valid + 3 invalid (Latin) -> accepted with >= 9 valid rows.
+    # 9 valid + 3 invalid (Latin) -> the SINGLE attempt is accepted with
+    # >= 9 valid rows; valid rows applied, the rest keep the fallback.
     for k in ["work", "money", "documents"]:
         partial[k] = "Latin words inside text."
-    (concrete_advice, _, _), mock_advice, _ = await _build_with_mocks([invalid, partial])
-    assert mock_advice.call_count == 2
+    (concrete_advice, _, _), mock_advice, _ = await _build_with_mocks([partial])
+    assert mock_advice.call_count == 1
     by_key = {row.key: row.text for row in concrete_advice.rows}
     for k in ["work", "money", "documents"]:
         assert by_key[k] == CONCRETE_ADVICE_FALLBACK_TEXT
@@ -209,24 +198,24 @@ async def _day_request(async_client, make_initdata, advice_side_effect, cache_sp
 @pytest.mark.asyncio
 async def test_endpoint_degraded_returns_200_and_skips_cache(async_client, make_initdata, db_session):
     cache_spy = AsyncMock()
-    resp, mock_advice = await _day_request(async_client, make_initdata, [None, None], cache_spy)
+    resp, mock_advice = await _day_request(async_client, make_initdata, [None], cache_spy)
     assert resp.status_code == 200, resp.text
     rows = resp.json()["concreteAdvice"]["rows"]
     assert len(rows) == 12
     assert all(r["text"] == CONCRETE_ADVICE_FALLBACK_TEXT for r in rows)
-    assert mock_advice.call_count == 2
+    assert mock_advice.call_count == 1
     cache_spy.assert_not_called()  # degraded batch never poisons the cache
 
 
 @pytest.mark.asyncio
 async def test_endpoint_accepted_result_is_cached(async_client, make_initdata, db_session):
     cache_spy = AsyncMock()
-    resp, mock_advice = await _day_request(async_client, make_initdata, [None, VALID_TEXTS], cache_spy)
+    resp, mock_advice = await _day_request(async_client, make_initdata, [VALID_TEXTS], cache_spy)
     assert resp.status_code == 200, resp.text
     rows = resp.json()["concreteAdvice"]["rows"]
     assert all(r["text"] == VALID_TEXTS[r["key"]] for r in rows)
-    assert mock_advice.call_count == 2  # retry accepted
-    cache_spy.assert_called_once()  # valid retry result stays cacheable
+    assert mock_advice.call_count == 1  # exactly one external advice call
+    cache_spy.assert_called_once()  # valid result stays cacheable
 
 
 # -- llm_service level: output budget + safe rejection log --------------------
@@ -265,3 +254,77 @@ async def test_parse_rejection_log_has_no_raw_response():
         assert "response" not in kwargs["payload"]
         # The raw model response must never reach the log envelope.
         assert raw_bad not in str(kwargs)
+
+
+# -- evidence projection caps + provider schema request -----------------------
+
+@pytest.mark.asyncio
+async def test_advice_contexts_capped_three_unique_but_wire_evidence_full():
+    # The LLM projection carries at most 3 unique evidence entries per
+    # sphere; the wire row.evidence keeps the complete set.
+    from app.schemas.today import ConcreteAdviceEvidence
+    from app.services.today_interpretation_service import TodayInterpretationService
+    from app.schemas.normalization import AstroSignal
+
+    many_signals = [
+        AstroSignal(type="aspect", planet="Transit_Sun", target_planet=t,
+                    aspect_type="trine", orb=1.0, strength=0.9)
+        for t in ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Pluto"]
+    ]
+    service = TodayInterpretationService()
+    captured = {}
+
+    with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_advice, \
+         patch("app.services.llm_service.LLMService.generate_planet_interpretations", new_callable=AsyncMock) as mock_planets, \
+         patch("app.core.config.settings.openrouter_api_key", "test-key"):
+        mock_advice.return_value = VALID_TEXTS
+        mock_planets.return_value = None
+
+        async def capture(contexts, evidence_packet=None):
+            captured["contexts"] = contexts
+            return VALID_TEXTS
+        mock_advice.side_effect = capture
+
+        concrete_advice, _, _ = await service.build(
+            target_date=date(2026, 7, 5),
+            day_status="supportive",
+            scoring_result={"day_status": "supportive", "sphere_scores": {}},
+            signals=many_signals,
+            semantic_layer=None,
+            day_chart=None,
+            planet_influences=[],
+            sphere_scores=[],
+            important_items=[],
+        )
+
+    # Wire evidence untouched: the aspect-signal sphere rows keep all their
+    # evidence entries (no cap on the payload side).
+    total_wire = sum(len(row.evidence) for row in concrete_advice.rows)
+    assert total_wire >= 6
+
+    # LLM projection: at most 3 unique entries per sphere, deterministic.
+    for ctx in captured["contexts"]:
+        titles = [ev.get("title") for ev in ctx["evidence"]]
+        assert len(ctx["evidence"]) <= 3
+        assert len(titles) == len(set(titles))
+
+
+@pytest.mark.asyncio
+async def test_generate_concrete_advice_sends_strict_schema():
+    from app.services.llm_service import LLMService, _CONCRETE_ADVICE_JSON_SCHEMA
+
+    service = LLMService()
+    with patch.object(LLMService, "_generate_text", new_callable=AsyncMock) as mock_gen:
+        mock_gen.return_value = '{"work": "текст"}'
+        await service.generate_concrete_advice(
+            [{"key": "work", "label": "Работа", "verdict": "good", "evidence": []}]
+        )
+        mock_gen.assert_called_once()
+        schema = mock_gen.call_args.kwargs.get("json_schema")
+        assert schema is _CONCRETE_ADVICE_JSON_SCHEMA
+        assert schema["strict"] is True
+        assert schema["schema"]["additionalProperties"] is False
+        assert len(schema["schema"]["required"]) == 12
+        assert set(schema["schema"]["properties"].keys()) == set(schema["schema"]["required"])
+        for field_schema in schema["schema"]["properties"].values():
+            assert field_schema == {"type": "string"}
