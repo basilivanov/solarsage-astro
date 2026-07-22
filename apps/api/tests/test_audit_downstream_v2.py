@@ -165,3 +165,77 @@ def test_extra_activation_id_fails(tmp_path) -> None:
     args, out = _replay(tmp_path, mutate)
     assert _run(args) != 0
     assert "extra_payload_ids" in _failure_kinds(out)
+
+
+def test_top_flags_summary_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["topFlags"][0]["summary"] = "CORRUPTED"
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_top_flags_mismatch" in _failure_kinds(out)
+
+
+def test_normalized_score_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["normalizedScore"] = 999
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_score_field_mismatch" in _failure_kinds(out)
+
+
+def test_contribution_before_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        contribs = p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["contributions"]
+        contribs[0]["before"] = 999.0
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contributions_mismatch" in _failure_kinds(out)
+
+
+def test_contributions_order_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        sb = p["v2"]["scoreBreakdown"]["thinking_speech_learning"]
+        sb["contributions"] = list(reversed(sb["contributions"]))
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contributions_mismatch" in _failure_kinds(out)
+
+
+def test_activation_evidence_strength_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["v2"]["activationEvidence"][0]["strength"] = 999.0
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_activation_evidence_mismatch" in _failure_kinds(out)
+
+
+def test_activation_evidence_order_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["v2"]["activationEvidence"] = list(reversed(p["v2"]["activationEvidence"]))
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_activation_evidence_mismatch" in _failure_kinds(out)
+
+
+def test_top_level_sphere_scores_reversed_fails(tmp_path) -> None:
+    def mutate(p):
+        p["sphereScores"] = list(reversed(p["sphereScores"]))
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_sphere_scores_mismatch" in _failure_kinds(out)
+
+
+def test_top_level_sphere_scores_value_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["sphereScores"][0]["score"] = 999
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_sphere_scores_mismatch" in _failure_kinds(out)

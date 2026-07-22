@@ -75,12 +75,26 @@ from app.core.versions import (  # noqa: E402
 from app.schemas.normalization import AstroSignal  # noqa: E402
 from app.services.activation_layer_service import ActivationLayerService  # noqa: E402
 from app.services.canon_service import get_canon_versions  # noqa: E402
+from app.services.day_scoring_runtime_service import DayScoringRuntimeService  # noqa: E402
 from app.services.scoring_service import ScoringService  # noqa: E402
 from app.services.scoring_v2_service import ScoringV2Service  # noqa: E402
 from app.services.semantic_v2_service import SemanticV2Service  # noqa: E402
 from app.services.today_service import TodayService as TodayServiceForFlags  # noqa: E402
 
 TOL = 0.0001
+
+_EVIDENCE_SNAKE_TO_CAMEL = {
+    "active_from": "activeFrom",
+    "active_until": "activeUntil",
+    "exact_at": "exactAt",
+    "source_frame": "sourceFrame",
+    "source_planet": "sourcePlanet",
+    "target_frame": "targetFrame",
+    "target_key": "targetKey",
+    "target_planet": "targetPlanet",
+    "target_type": "targetType",
+    "technique_family": "techniqueFamily",
+}
 MAJOR_ASPECTS = {"conjunction", "opposition", "square", "trine"}
 POSITIVE_ASPECTS = {"trine", "sextile"}
 NEGATIVE_ASPECTS = {"square", "opposition"}
@@ -644,6 +658,8 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
     sidecar_layer_raw: dict[str, Any]
     day_signals: list[AstroSignal] = []
     payload_json: dict[str, Any] | None = None
+    natal_context_dict: dict[str, Any] | None = None
+    transits_dict: dict[str, Any] | None = None
 
     if args.synthetic_fixture:
         mode = "synthetic_fixture"
@@ -659,6 +675,10 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         sidecar_layer_raw = json.loads(Path(args.input_activation_layer).read_text(encoding="utf-8"))
         if args.input_day_signals:
             day_signals = parse_day_signals(Path(args.input_day_signals))
+        if args.input_natal_context:
+            natal_context_dict = json.loads(Path(args.input_natal_context).read_text(encoding="utf-8"))
+        if args.input_transits:
+            transits_dict = json.loads(Path(args.input_transits).read_text(encoding="utf-8"))
         if not args.input_final_payload:
             raise SystemExit("artifact_replay requires --input-final-payload")
         payload_json = json.loads(Path(args.input_final_payload).read_text(encoding="utf-8"))
@@ -727,6 +747,8 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 return layer, payload.model_dump(mode="json", by_alias=False), day_sigs
 
         sidecar_layer_raw, payload_json, day_signals = asyncio.run(_live())
+        natal_context_dict = json.loads(Path(args.input_natal_context).read_text(encoding="utf-8")) if args.input_natal_context else None
+        transits_dict = json.loads(Path(args.input_transits).read_text(encoding="utf-8")) if args.input_transits else None
 
     write_json(out_dir / "01_sidecar_activation_layer.json", sidecar_layer_raw)
     write_json(debug_dir / "day_signals.json", [to_jsonable(s) for s in day_signals])
@@ -1306,7 +1328,16 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         },
     )
 
-    # Payload handling — no synthesis in replay/live
+    # Payload handling — no synthesis in replay/live. The dual runtime
+    # selection (production selection path) is computed ONCE and shared by
+    # synthetic payload completion and the payload-vs-recompute check.
+    dual = DayScoringRuntimeService().compute(
+        day_signals=day_signals,
+        activation_layer=api_layer,
+        user_id="downstream-audit",
+        target_date=args.date,
+        force_v2=True,
+    )
     if mode == "synthetic_fixture":
         v2_block = SemanticV2Service().build_v2_block(
             activation_layer=api_layer,
@@ -1314,10 +1345,18 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             v1_v2_diff=None,
             trace_id="downstream-audit-synthetic",
         )
-        # The synthetic payload is completed from the SAME recomputation, so
-        # the payload-vs-recompute check below applies honestly (dayStatus,
-        # topFlags) instead of being exempted.
-        v1_result = ScoringService().score_day(day_signals)
+        # The synthetic payload is completed from the SAME validated layer
+        # and selection as production (dayStatus, topFlags, sphereScores,
+        # activationEvidence), so the payload-vs-recompute check applies
+        # honestly instead of being exempted.
+        v2_block_dict = to_jsonable(v2_block)
+        v2_block_dict["activationEvidence"] = [
+            {
+                _EVIDENCE_SNAKE_TO_CAMEL.get(k, k): v
+                for k, v in entry.items()
+            }
+            for entry in (api_layer_json.get("activations") or [])
+        ]
         payload_json = {
             "meta": {
                 "payload_version": TODAY_V2_PAYLOAD_VERSION,
@@ -1330,11 +1369,15 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             },
             "date": args.date,
             "dayStatus": scoring_result.day_status,
+            "sphereScores": [
+                s.model_dump(by_alias=True)
+                for s in TodayServiceForFlags._build_sphere_scores(dual.selected_result["sphere_scores"])
+            ],
             "topFlags": [
                 f.model_dump(by_alias=True)
-                for f in TodayServiceForFlags._build_top_flags(v1_result.get("top_signals", []))
+                for f in TodayServiceForFlags._build_top_flags(dual.selected_result.get("top_signals", []))
             ],
-            "v2": to_jsonable(v2_block),
+            "v2": v2_block_dict,
         }
     elif payload_json is None:
         raise SystemExit("payload missing for non-synthetic mode")
@@ -1423,9 +1466,11 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
 
     # START_BLOCK: PAYLOAD_VS_RECOMPUTED_V2
     # The FINAL SELECTED payload must equal the independently recomputed V2
-    # it was verified against: dayStatus, every scoreBreakdown sphere
-    # (numeric fields + contributions), sphere sorting, and topFlags/top
-    # selected signals in exact order. Legacy v1 status is irrelevant here.
+    # it was verified against: dayStatus, every scoreBreakdown sphere (FULL
+    # public SphereScoreV2: key/title/base/activation/convergence/raw/final/
+    # normalized/dominance + ordered contributions), sphere sorting,
+    # top-level sphereScores, full ordered topFlags, activationEvidence
+    # (full ordered entries) and dayChart. Legacy v1 status is irrelevant.
     payload_day_status = None
     if isinstance(payload_json, dict):
         payload_day_status = payload_json.get("dayStatus") or payload_json.get("day_status")
@@ -1437,6 +1482,14 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             message="payload dayStatus differs from recomputed V2 day status",
         )
 
+    def _num_eq(wire_val: Any, svc_val: Any) -> bool:
+        if wire_val is None and svc_val is None:
+            return True
+        if not isinstance(wire_val, (int, float)) or svc_val is None:
+            return False
+        return abs(float(wire_val) - float(svc_val)) <= TOL
+
+    # -- scoreBreakdown: full public SphereScoreV2, exact order ------------
     payload_sb = (payload_v2 or {}).get("scoreBreakdown") or (payload_v2 or {}).get("score_breakdown") or {}
     service_spheres = list(scoring_result.sphere_scores.keys())
     payload_spheres = list(payload_sb.keys())
@@ -1453,6 +1506,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         ("convergenceBonus", "convergence_bonus"),
         ("rawScore", "raw_score"),
         ("finalScore", "final_score"),
+        ("normalizedScore", "normalized_score"),
     )
     for skey in service_spheres:
         ss = scoring_result.sphere_scores[skey]
@@ -1464,14 +1518,26 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 message="scoreBreakdown sphere missing from payload",
             )
             continue
+        if entry.get("key") is not None and entry.get("key") != skey:
+            state.error(
+                kind="payload_score_field_mismatch",
+                sphere=skey,
+                expected={"field": "key", "value": skey},
+                actual={"field": "key", "value": entry.get("key")},
+                message="payload scoreBreakdown key mismatch",
+            )
+        if entry.get("title") is not None and entry.get("title") != ss.title:
+            state.error(
+                kind="payload_score_field_mismatch",
+                sphere=skey,
+                expected={"field": "title", "value": ss.title},
+                actual={"field": "title", "value": entry.get("title")},
+                message="payload scoreBreakdown title mismatch",
+            )
         for wire_name, attr in _numeric_fields:
-            # Accept wire camelCase and internal snake_case alike (the
-            # production payload is camel; the audit's own dump is snake).
             wire_val = entry.get(wire_name) if wire_name in entry else entry.get(attr)
             svc_val = getattr(ss, attr, None)
-            if wire_val is None and svc_val is None:
-                continue
-            if not isinstance(wire_val, (int, float)) or svc_val is None or abs(float(wire_val) - float(svc_val)) > TOL:
+            if not _num_eq(wire_val, svc_val):
                 state.error(
                     kind="payload_score_field_mismatch",
                     sphere=skey,
@@ -1488,41 +1554,133 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 actual=capped_val,
                 message="payload dominanceCapped mismatch",
             )
-        exp_contribs = sorted((c.source, c.source_id, round(float(c.amount), 4)) for c in ss.contributions)
-        act_contribs = sorted(
-            (
-                c.get("source"),
-                c.get("sourceId") or c.get("source_id"),
-                round(float(c.get("amount", 0.0)), 4),
-            )
-            for c in (entry.get("contributions") or [])
-        )
-        if act_contribs != exp_contribs:
+        # Full ORDERED contributions: sphere/source/sourceId/amount/before/after/evidence.
+        payload_contribs = entry.get("contributions") or []
+        if len(payload_contribs) != len(ss.contributions):
             state.error(
                 kind="payload_contributions_mismatch",
                 sphere=skey,
-                expected=exp_contribs,
-                actual=act_contribs,
-                message="payload scoreBreakdown contributions mismatch",
+                expected=len(ss.contributions),
+                actual=len(payload_contribs),
+                message="payload contributions count mismatch",
             )
+        for idx, svc_c in enumerate(ss.contributions):
+            if idx >= len(payload_contribs):
+                break
+            pc = payload_contribs[idx]
+            svc_dump = svc_c.model_dump(by_alias=True)
+            mismatches: dict[str, dict[str, Any]] = {}
+            for field_name in ("sphere", "source", "sourceId", "amount", "before", "after", "evidence"):
+                wire_key = field_name if field_name in pc else ("source_id" if field_name == "sourceId" else field_name)
+                wire_val = pc.get(wire_key)
+                svc_val = svc_dump[field_name]
+                if field_name in ("amount", "before", "after"):
+                    ok = _num_eq(wire_val, svc_val)
+                else:
+                    ok = wire_val == svc_val
+                if not ok:
+                    mismatches[field_name] = {"expected": svc_val, "actual": wire_val}
+            if mismatches:
+                state.error(
+                    kind="payload_contributions_mismatch",
+                    sphere=skey,
+                    expected={"index": idx, "fields": mismatches},
+                    actual="payload contribution entry mismatch",
+                    message="payload contribution entry mismatch",
+                )
 
-    # topFlags: exact ordered equality with flags rebuilt from the audit's
-    # own v1-selected top signals through the production builder.
+    # -- top-level sphereScores: exact ordered key/score/rank vs the dual
+    # runtime selection (the production selection path, computed above).
+    payload_sphere_scores = payload_json.get("sphereScores") or payload_json.get("sphere_scores") or []
+    expected_sphere_scores = TodayServiceForFlags._build_sphere_scores(dual.selected_result["sphere_scores"])
+    expected_ss_list = [{"key": s.key, "score": s.score, "rank": s.rank} for s in expected_sphere_scores]
+    actual_ss_list = [
+        {"key": s.get("key"), "score": s.get("score"), "rank": s.get("rank")}
+        for s in payload_sphere_scores
+    ]
+    if actual_ss_list != expected_ss_list:
+        state.error(
+            kind="payload_sphere_scores_mismatch",
+            expected=expected_ss_list,
+            actual=actual_ss_list,
+            message="payload top-level sphereScores mismatch (value/rank/order)",
+        )
+
+    # -- topFlags: full ordered objects (icon/title/summary/hint), rebuilt
+    # from the dual-selected top signals through the production builder.
     payload_top_flags = payload_json.get("topFlags") or payload_json.get("top_flags") or []
-    v1_result = ScoringService().score_day(day_signals)
-    expected_flag_pairs = [
-        (f.icon_name, f.title) for f in TodayServiceForFlags._build_top_flags(v1_result.get("top_signals", []))
+    from app.schemas.normalization import normalize_top_signals
+
+    selected_top_signals = normalize_top_signals(dual.selected_result.get("top_signals", []))
+    expected_flags = TodayServiceForFlags._build_top_flags(selected_top_signals)
+    expected_flag_objs = [f.model_dump(by_alias=True) for f in expected_flags]
+    actual_flag_objs = [
+        {
+            "iconName": f.get("iconName") or f.get("icon_name"),
+            "title": f.get("title"),
+            "summary": f.get("summary"),
+            "hint": f.get("hint"),
+        }
+        for f in payload_top_flags
     ]
-    actual_flag_pairs = [
-        (f.get("iconName") or f.get("icon_name"), f.get("title")) for f in payload_top_flags
-    ]
-    if actual_flag_pairs != expected_flag_pairs:
+    if actual_flag_objs != expected_flag_objs:
         state.error(
             kind="payload_top_flags_mismatch",
-            expected=expected_flag_pairs,
-            actual=actual_flag_pairs,
+            expected=expected_flag_objs,
+            actual=actual_flag_objs,
             message="payload topFlags differ from recomputed selected top signals",
         )
+
+    # -- activationEvidence: full ordered entries vs validated layer -------
+    expected_evidence = (api_layer_json.get("activations") or [])
+    payload_evidence = (payload_v2 or {}).get("activationEvidence") or (payload_v2 or {}).get("activation_evidence") or []
+    # The validated layer dump is snake_case; the payload evidence is camel.
+    _evidence_alias = {
+        "active_from": "activeFrom",
+        "active_until": "activeUntil",
+        "exact_at": "exactAt",
+        "source_frame": "sourceFrame",
+        "source_planet": "sourcePlanet",
+        "target_frame": "targetFrame",
+        "target_key": "targetKey",
+        "target_planet": "targetPlanet",
+        "target_type": "targetType",
+        "technique_family": "techniqueFamily",
+    }
+    if len(payload_evidence) != len(expected_evidence):
+        state.error(
+            kind="payload_activation_evidence_mismatch",
+            expected=len(expected_evidence),
+            actual=len(payload_evidence),
+            message="activationEvidence count mismatch",
+        )
+    for idx, exp_entry in enumerate(expected_evidence):
+        if idx >= len(payload_evidence):
+            break
+        act_entry = payload_evidence[idx]
+        mismatches = {}
+        for field_name, exp_val in exp_entry.items():
+            if field_name == "debug":
+                continue  # diagnostic-only field, provenance noise allowed
+            wire_key = _evidence_alias.get(field_name, field_name)
+            wire_val = act_entry.get(wire_key)
+            if isinstance(exp_val, float):
+                ok = _num_eq(wire_val, exp_val)
+            else:
+                ok = wire_val == exp_val
+            if not ok:
+                mismatches[wire_key] = {"expected": exp_val, "actual": wire_val}
+        if mismatches:
+            state.error(
+                kind="payload_activation_evidence_mismatch",
+                expected={"index": idx, "id": exp_entry.get("id"), "fields": mismatches},
+                actual="activationEvidence entry mismatch",
+                message="activationEvidence entry mismatch",
+            )
+
+    # NOTE: the final dayChart (transit longitudes/signs/motion + serialized
+    # houses) is verified independently by the astronomy oracle against the
+    # Swiss Ephemeris result — that is its domain, not this audit's.
     # END_BLOCK: PAYLOAD_VS_RECOMPUTED_V2
 
     mapping = {
@@ -1607,7 +1765,9 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             for f in state.failures
         ),
         "payload_top_flags_match_recalc": not any(f.kind == "payload_top_flags_mismatch" for f in state.failures),
-        "payload_preserves_sidecar_ids": not bool(missing_in_payload) and payload_v2 is not None and v2_selected,
+        "payload_preserves_sidecar_ids": (
+            not bool(missing_in_payload) and not bool(extra_payload) and payload_v2 is not None and v2_selected
+        ),
         "frontend_fixture_written": True,
     }
     # fix payload_preserves for synthetic where v2_selected true
@@ -1664,6 +1824,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--input-activation-layer", default=None)
     p.add_argument("--input-final-payload", default=None)
     p.add_argument("--input-day-signals", default=None)
+    p.add_argument("--input-natal-context", default=None)
+    p.add_argument("--input-transits", default=None)
     p.add_argument("--synthetic-fixture", default=None)
     p.add_argument("--fail-on-unmapped", default="true", choices=["true", "false"])
     p.add_argument("--skip-live-today-service", action="store_true")

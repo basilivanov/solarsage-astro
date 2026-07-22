@@ -192,8 +192,11 @@ def planet_by_name(planets: list[dict[str, Any]], name: str) -> dict[str, Any] |
 
 
 def final_chart_planet(payload: dict[str, Any], name: str) -> dict[str, Any] | None:
-    chart = payload.get("day_chart") or {}
-    return next((p for p in chart.get("transit_planets", []) if p.get("name") == name), None)
+    # The oracle's final payload may be the debug (snake_case) dump or the
+    # root (camelCase) wire payload — both carry the same day chart.
+    chart = payload.get("dayChart") or payload.get("day_chart") or {}
+    planets = chart.get("transitPlanets") or chart.get("transit_planets") or []
+    return next((p for p in planets if p.get("name") == name), None)
 
 
 def run_astronomy_oracle(
@@ -297,11 +300,95 @@ def run_astronomy_oracle(
             }
         )
 
+    # START_BLOCK: FINAL_CHART_PROOF
+    # The FINAL serialized dayChart must equal the independent Swiss result:
+    # transit longitudes/signs/retrograde+motion and the serialized house
+    # list (number/order/cusp/sign). Raw transit proof above is necessary but
+    # NOT sufficient — the payload itself is the money boundary.
+    final_chart = payload.get("dayChart") or payload.get("day_chart") or {}
+    final_planets = final_chart.get("transitPlanets") or final_chart.get("transit_planets") or []
+    final_rows: list[dict[str, Any]] = []
+    for name in PLANETS:
+        oracle = oracle_positions[name]
+        final_planet = next((p for p in final_planets if p.get("name") == name), None) or {}
+        final_lon = final_planet.get("longitude")
+        final_delta = shortest_delta(oracle["longitude"], float(final_lon)) if isinstance(final_lon, (int, float)) else None
+        final_motion = final_planet.get("motion")
+        # Mirror the payload's own motion derivation: stationary beats
+        # retrograde when |speed| < 0.01, retrograde on negative speed or the
+        # retrograde flag, else direct.
+        oracle_speed = float(oracle["speed"])
+        if abs(oracle_speed) < 0.01:
+            expected_motion = "stationary"
+        elif oracle_speed < 0 or oracle["retrograde"]:
+            expected_motion = "retrograde"
+        else:
+            expected_motion = "direct"
+        final_rows.append(
+            {
+                "planet": name,
+                "oracle_longitude": round(oracle["longitude"], 8),
+                "final_longitude": final_lon,
+                "final_longitude_delta_deg": round(final_delta, 8) if final_delta is not None else "",
+                "final_longitude_pass": final_delta is not None and final_delta <= LONGITUDE_TOLERANCE_DEG,
+                "oracle_sign": oracle["sign"],
+                "final_sign": final_planet.get("sign"),
+                "final_sign_pass": final_planet.get("sign") == oracle["sign"],
+                "oracle_speed": round(oracle_speed, 8),
+                "oracle_retrograde": oracle["retrograde"],
+                "final_motion": final_motion,
+                "expected_motion": expected_motion,
+                "final_motion_pass": final_motion == expected_motion,
+            }
+        )
+    final_houses = final_chart.get("houses") or []
+    final_house_rows: list[dict[str, Any]] = []
+    if len(final_houses) != len(oracle_houses):
+        final_house_rows.append(
+            {
+                "number": None,
+                "oracle_cusp": "",
+                "final_cusp": "",
+                "final_house_pass": False,
+                "reason": f"house count mismatch: oracle {len(oracle_houses)} vs final {len(final_houses)}",
+            }
+        )
+    for idx, oracle_house in enumerate(oracle_houses):
+        final_house = final_houses[idx] if idx < len(final_houses) else {}
+        oracle_cusp = float(oracle_house["longitude"])
+        final_cusp = (
+            final_house["cuspLongitude"]
+            if "cuspLongitude" in final_house
+            else final_house.get("cusp_longitude")
+        )
+        final_house_rows.append(
+            {
+                "number": oracle_house["number"],
+                "oracle_cusp": round(oracle_cusp, 8),
+                "final_cusp": final_cusp,
+                "final_cusp_pass": (
+                    final_house.get("number") == oracle_house["number"]
+                    and isinstance(final_cusp, (int, float))
+                    and shortest_delta(oracle_cusp, float(final_cusp)) <= LONGITUDE_TOLERANCE_DEG
+                ),
+                "oracle_sign": oracle_house["sign"],
+                "final_sign": final_house.get("sign"),
+                "final_house_sign_pass": final_house.get("sign") == oracle_house["sign"],
+            }
+        )
+    # END_BLOCK: FINAL_CHART_PROOF
+
     summary = {
         "target": {"date": target_date, "time": target_time, "timezone": tz_name, "jd": jd},
         "longitude_pass": all(row["longitude_pass"] for row in rows),
+        "sign_pass": all(row["sign_pass"] for row in rows),
         "retrograde_flag_pass": all(row["retrograde_flag_pass"] for row in rows),
         "house_pass": all(row["house_pass"] for row in house_rows),
+        "final_transit_longitude_pass": all(row["final_longitude_pass"] for row in final_rows),
+        "final_transit_sign_pass": all(row["final_sign_pass"] for row in final_rows),
+        "final_motion_pass": all(row["final_motion_pass"] for row in final_rows),
+        "final_house_cusp_pass": all(row["final_cusp_pass"] for row in final_house_rows),
+        "final_house_sign_pass": all(row["final_house_sign_pass"] for row in final_house_rows),
         "moon_phase": {
             "oracle_percent": round(moon_phase, 4),
             "production_percent": prod_phase,
@@ -324,6 +411,8 @@ def run_astronomy_oracle(
     out_dir.mkdir(parents=True, exist_ok=True)
     write_csv(out_dir / "astronomy_oracle.csv", rows)
     write_csv(out_dir / "house_placements_oracle.csv", house_rows)
+    write_csv(out_dir / "final_transit_oracle.csv", final_rows)
+    write_csv(out_dir / "final_houses_oracle.csv", final_house_rows)
     write_json(out_dir / "astronomy_oracle_summary.json", summary)
     write_json(out_dir / "astronomy_oracle_positions.json", oracle_positions)
     write_json(out_dir / "astronomy_oracle_houses.json", oracle_houses)
@@ -362,8 +451,14 @@ def main() -> None:
     # Propagate failures
     has_failed = (
         not summary["longitude_pass"]
+        or not summary["sign_pass"]
         or not summary["retrograde_flag_pass"]
         or not summary["house_pass"]
+        or not summary["final_transit_longitude_pass"]
+        or not summary["final_transit_sign_pass"]
+        or not summary["final_motion_pass"]
+        or not summary["final_house_cusp_pass"]
+        or not summary["final_house_sign_pass"]
     )
     if summary["moon_phase"]["pass"] is False:
         has_failed = True
