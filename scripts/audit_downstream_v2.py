@@ -1624,7 +1624,9 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             "mode": mode,
             "user_id": args.user_id,
             "target_date": args.date,
-            "git_head": get_git_head(),
+            # Deterministic for replay/frozen (a commit never knows its own
+            # SHA); only the live mode records the runtime SHA.
+            "git_head": get_git_head() if mode == "live" else None,
             "sidecar_trusted": True,
             "sidecar_source": sidecar_source,
             "today_payload_source": today_payload_source,
