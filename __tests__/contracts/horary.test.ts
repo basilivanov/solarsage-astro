@@ -172,4 +172,96 @@ describe('generated horary contracts', () => {
     expect(HoraryQuestionSchema.safeParse(missingChart).success).toBe(false)
     expect(HoraryQuestionSchema.safeParse({ ...failedQuestion, chart: null }).success).toBe(true)
   })
+
+  it('parses the production-shaped answered payload with verdict_card label:null', () => {
+    // Exact backend assembly shape (8 fixed blocks; engine-owned fields
+    // verbatim). Release E2E 29899344820 failed here: the manual contract
+    // rejected label:null, the screen kept polling and waitForURL expired.
+    const answeredQuestion = {
+      id: 'q-29899344820',
+      text: 'Стоит ли принимать новое предложение о работе?',
+      category: 'career',
+      status: 'answered',
+      spentCreditSource: null,
+      creditRefunded: false,
+      clientTimezone: 'Europe/Moscow',
+      clientLocalTime: null,
+      questionLocationName: null,
+      createdAt: '2026-07-22T10:00:00Z',
+      chart: null,
+      answer: {
+        verdict: 'yes',
+        confidence: 0.7,
+        confidenceLabel: 'medium',
+        confidenceExplanation: 'Карта согласована и не содержит критичных противоречий по теме.',
+        planets: ['Venus', 'Moon'],
+        generatedAt: '2026-07-22T10:00:03Z',
+        blocks: [
+          {
+            type: 'verdict_card',
+            verdict: 'yes',
+            confidence: 0.7,
+            label: null,
+            confidenceLabel: 'medium',
+            confidenceExplanation: 'Карта согласована и не содержит критичных противоречий по теме.',
+          },
+          { type: 'lead', text: 'Карта поддерживает твоё решение, потому что основные факторы согласованы.' },
+          { type: 'paragraph', text: 'Венера представляет тебя, а Юпитер — тему предложения о работе.' },
+          {
+            type: 'testimonies',
+            prosLabel: 'Свидетельства «за»',
+            consLabel: 'Свидетельства «против»',
+            neutralLabel: 'Нейтральные факторы',
+            pros: [
+              {
+                title: 'Гармоничный аспект',
+                explanation: 'Поддержка темы вопроса сильным аспектом.',
+                weight: 0.5,
+                planets: ['Venus', 'Jupiter'],
+                aspectType: 'trine',
+                orb: 1.2,
+              },
+            ],
+            cons: [
+              {
+                title: 'Слабый дом',
+                explanation: 'Тема попадает в слабый дом карты.',
+                weight: -0.2,
+                planets: ['Moon'],
+                aspectType: null,
+                orb: null,
+              },
+            ],
+            neutral: [],
+          },
+          { type: 'paragraph', text: 'Исход может измениться при новых сдерживающих факторах.' },
+          {
+            type: 'timing',
+            status: 'known',
+            timeRange: 'несколько недель',
+            text: 'Срок выведен из орба главного аспекта. Основание: орб 1.2°.',
+          },
+          {
+            type: 'callout',
+            tone: 'insight',
+            title: 'Совет',
+            text: 'Действуй спокойно и проверь детали предложения перед решением.',
+          },
+          { type: 'paragraph', text: 'Итог благоприятный при сохранении текущего курса действий.' },
+        ],
+      },
+    }
+
+    const parsed = HoraryQuestionSchema.parse(answeredQuestion)
+    expect(parsed.answer?.blocks.map((block) => block.type)).toEqual([
+      'verdict_card',
+      'lead',
+      'paragraph',
+      'testimonies',
+      'paragraph',
+      'timing',
+      'callout',
+      'paragraph',
+    ])
+  })
 })

@@ -43,7 +43,9 @@ export const VerdictCardBlockSchema = z.object({
   type: z.literal("verdict_card"),
   verdict: z.enum(["yes", "no", "maybe"]),
   confidence: z.number().min(0).max(1),
-  label: z.string().optional(),
+  // OpenAPI VerdictCardBlock allows null here (backend assembles label=null);
+  // the manual contract must match or answered payloads fail to parse.
+  label: z.string().optional().nullable(),
   confidenceLabel: z.enum(["low", "medium", "high"]),
   confidenceExplanation: z.string(),
 })

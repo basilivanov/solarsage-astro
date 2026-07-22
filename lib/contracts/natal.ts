@@ -125,8 +125,9 @@ export const CalloutToneSchema = z.enum(["neutral", "strength", "risk", "insight
 
 export const CalloutBlockSchema = z.object({
   type: z.literal("callout"),
-  tone: CalloutToneSchema.optional(),
-  title: z.string().optional(),
+  // OpenAPI CalloutBlock allows null for tone/title — match it narrowly.
+  tone: CalloutToneSchema.optional().nullable(),
+  title: z.string().optional().nullable(),
   text: z.string().min(1),
 })
 
