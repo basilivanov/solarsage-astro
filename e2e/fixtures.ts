@@ -459,12 +459,15 @@ export async function paySandboxCheckout(popup: Page) {
     return null;
   };
 
-  // 1) Bounded wait for one of the TWO NORMAL states: (a) the card form
-  //    already open, or (b) the method chooser with the bank-card option
-  //    (selected once, with a semantic text fallback). The chooser is NOT
-  //    unconditionally required. A chrome-error page is an EXTERNAL provider
-  //    navigation failure — reported as itself, never masked.
+  // 1) Bounded state loop: the card form is checked on EVERY iteration
+  //    (the real trace shows it appearing ~360 ms AFTER the chooser click).
+  //    The chooser is clicked AT MOST once, and a successful chooser click
+  //    never breaks the loop — the bounded wait for the form continues.
+  //    The semantic exact-text fallback is probed independently whenever
+  //    the primary data-qa selector is not found. A chrome-error page is an
+  //    EXTERNAL provider navigation failure — reported as itself.
   let formFrame: import('@playwright/test').Frame | null = null;
+  let chooserClicked = false;
   for (let attempt = 0; attempt < 12 && !formFrame; attempt += 1) {
     if (popup.url().startsWith('chrome-error://')) {
       throw new Error('external provider navigation failure: checkout failed to load');
@@ -474,16 +477,21 @@ export async function paySandboxCheckout(popup: Page) {
 
     const chooser = popup.locator('[data-qa="bankcard-show-other-cards-payment-option"]').first();
     if (await chooser.isVisible().catch(() => false)) {
-      await chooser.click({ timeout: 3000 }).catch(() => {});
-      formFrame = await cardNumberVisible();
-      if (!formFrame) {
-        for (const frame of popup.frames()) {
-          const option = frame.getByText(/^(New card|Новая карта|Банковская карта)$/).first();
-          await option.click({ timeout: 2000 }).catch(() => {});
-        }
-        formFrame = await cardNumberVisible();
+      if (!chooserClicked) {
+        await chooser.click({ timeout: 3000 }).catch(() => {});
+        chooserClicked = true;
+        // No break: the form needs time to render — keep waiting below.
       }
-      break;
+    } else if (!chooserClicked) {
+      // Primary selector not found: independent semantic exact-text probe.
+      for (const frame of popup.frames()) {
+        const option = frame.getByText(/^(New card|Новая карта|Банковская карта)$/).first();
+        if (await option.isVisible().catch(() => false)) {
+          await option.click({ timeout: 2000 }).catch(() => {});
+          chooserClicked = true;
+          break;
+        }
+      }
     }
     await popup.waitForTimeout(1000);
   }
@@ -493,14 +501,23 @@ export async function paySandboxCheckout(popup: Page) {
 
   // 2) Fill. The real checkout uses SPLIT expiry fields (trace-proven
   //    data-qa field-expiry-month / field-expiry-year / security-code);
-  //    a combined field is only a fallback.
+  //    a combined field is only a fallback. Split shape is detected
+  //    BEFORE any fill: split mode ONLY when BOTH split fields exist;
+  //    exactly one is an incomplete split form — fail closed with an
+  //    empty form, never fill/fallback blindly.
+  const monthField = formFrame.locator(expiryMonthSel).first();
+  const yearField = formFrame.locator(expiryYearSel).first();
+  const monthCount = await monthField.count();
+  const yearCount = await yearField.count();
+  const splitMode = monthCount > 0 && yearCount > 0;
+  if (monthCount + yearCount === 1) {
+    throw new Error('sandbox checkout: incomplete split expiry form (only one of month/year present)');
+  }
+
   const cardNumber = formFrame.locator(cardNumberSel).first();
   await cardNumber.fill(SANDBOX_TEST_CARD.number);
 
-  const monthField = formFrame.locator(expiryMonthSel).first();
-  const yearField = formFrame.locator(expiryYearSel).first();
-  const splitCount = (await monthField.count()) + (await yearField.count());
-  if (splitCount > 0) {
+  if (splitMode) {
     await monthField.fill(SANDBOX_TEST_CARD.expiryMonth);
     await yearField.fill(SANDBOX_TEST_CARD.expiryYear);
   } else {
@@ -518,7 +535,7 @@ export async function paySandboxCheckout(popup: Page) {
   if (!numberValue.endsWith('4444')) {
     throw new Error('sandbox checkout: card number field did not hold the card');
   }
-  if (splitCount > 0) {
+  if (splitMode) {
     if ((await monthField.inputValue()).trim() !== SANDBOX_TEST_CARD.expiryMonth) {
       throw new Error('sandbox checkout: expiry month field not filled');
     }
@@ -532,8 +549,8 @@ export async function paySandboxCheckout(popup: Page) {
     }
   }
   const cvcValue = await formFrame.locator(cvcSel).first().inputValue();
-  if (cvcValue.trim().length < 3) {
-    throw new Error('sandbox checkout: security code field not filled');
+  if (cvcValue.replace(/\D/g, '') !== SANDBOX_TEST_CARD.cvc) {
+    throw new Error('sandbox checkout: security code field did not hold the CVC');
   }
 
   // 4) Single pay click (bounded search across frames).
