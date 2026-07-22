@@ -21,7 +21,7 @@
     "calc_flags": 258,
     "swieph": true,
     "moseph": false,
-    "ephemeris_path": "/tmp/bundle/ephe",
+    "ephemeris_source": "argument",
     "policy": "swieph",
     "engine_pass": true
   },

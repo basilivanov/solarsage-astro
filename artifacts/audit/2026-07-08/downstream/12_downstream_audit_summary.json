@@ -11,6 +11,7 @@
     "dominance_cap_matches_canon": true,
     "day_status_matches_recalc": true,
     "payload_day_status_matches_recalc": true,
+    "payload_v2_contract_valid": true,
     "payload_score_breakdown_matches_recalc": true,
     "payload_top_flags_match_recalc": true,
     "payload_sphere_scores_match_recalc": true,
