@@ -89,10 +89,13 @@ their text below is kept as the design for those later slices.
   (proven by OC28); no second functional-smoke job was added.
 - **artifact-acceptance: PARTIAL** — P1-2 mechanics exist and are
   fail-closed (astronomy/scoring oracles exit non-zero on houses/scoring/
-  top_signals mismatch); exact-SHA oracle proof is pending with the P1-1
-  freeze gate. P1-3 is locally proven (2026-07-22): the committed
-  `11_final_today_payload.json` is now a real `today.v2.1` camelCase wire
-  artifact from the live audit contour, the acceptance spec discriminates
+  top_signals mismatch; 2026-07-22 second-review hardening added the
+  final-dayChart proof and full-object downstream compares with directed
+  mutation proofs, all exiting non-zero); exact-SHA oracle proof is
+  pending with the P1-1 freeze gate. P1-3 is locally proven (2026-07-22):
+  the committed `11_final_today_payload.json` is a real `today.v2.1`
+  camelCase wire artifact from the live audit contour on the pinned
+  proven sidecar image, the acceptance spec discriminates
   `meta.payloadVersion` (never `schemaVersion`, canonically `today/v1`),
   and the local same-payload UI proof is green. The GitHub acceptance run
   on the exact SHA stays pending. The blocking acceptance
@@ -347,6 +350,35 @@ their text below is kept as the design for those later slices.
   amount/contribution, sphere order, topFlags, lost/extra ids) all exit
   non-zero. Combined audit is green on the exact same artifact LOCALLY;
   the exact-SHA GitHub proof stays pending with P1-1.
+- **P1-2 second-review hardening (2026-07-22, local):** an independent
+  mutation sweep showed 9 further probes passing rc=0 (topFlags summary,
+  normalizedScore, contribution before, activationEvidence strength,
+  sphereScores order, dayChart aspect orb, debug longitude/sign, house
+  cusp). The EXISTING oracles were strengthened fail-closed, no new
+  harness: downstream now compares the full public `SphereScoreV2`
+  (all fields + ordered full-field contributions), full ordered topFlags
+  objects, top-level sphereScores value/rank/order vs the selected
+  recompute, and ordered activationEvidence entries vs the validated
+  layer dump (missing AND extra ids fail); the astronomy oracle gained a
+  FINAL_CHART_PROOF block (final dayChart transit longitude/sign/motion
+  and serialized house number/order/cusp/sign vs the independent Swiss
+  result, aggregated into the exit code). Every listed mutation now
+  exits non-zero with its own failure kind. The canonical package was
+  regenerated as ONE generation via the pinned image
+  `solarsage-sidecar-readiness:62b756a` (health: engine=swieph,
+  fallback=false, release_sha=62b756a6…, calculation_version
+  ss-calc-1.2.0, ephemeris se-stellium-1800-2399-20260721, manifest
+  768d5fc9…) on an ephemeral DB; the accidentally committed `live/`
+  duplicate was removed and replaced by compact
+  `provenance_sidecar.json`; the stale older-sidecar wave artifacts
+  17-21 and V2 scoring artifacts 22-23 were regenerated with the same
+  proven contour. Frozen `artifact_source.json` carries no dynamic git
+  HEAD (self-reference fixed): `audit-day-freeze` ×2 on the final
+  commit leaves `git status/diff -- artifacts/` clean. Coherence tests
+  assert all downstream checked flags true, exactly 24 pinned unmapped
+  warnings, scoring-oracle all-pass, the astronomy final_* keys, and
+  the pinned sidecar provenance identity. P1-2 is locally complete on
+  the exact same artifact; the GitHub exact-SHA run stays PENDING.
 
 ### P1-2. Independent-from-pipeline calculation verification
 
