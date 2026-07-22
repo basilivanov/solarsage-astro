@@ -9,7 +9,7 @@ import { test, expect, waitForTodayState } from './fixtures';
 
 test.describe('Calendar Screen - Real Auth', () => {
   test('calendar renders real payload grid, lunar state, and CTA navigation', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(150000);
 
     await page.addInitScript(() => {
       localStorage.setItem('lumen:onboarded', '1');

@@ -7,6 +7,13 @@
 
 import { test, expect, completeOnboarding, waitForTodayState } from './fixtures';
 
+// Evidence-based budgets: a single terminal-day wait may take up to 90s
+// (observed real first pass 8.3–67.5s); the two navigation tests perform
+// TWO terminal-day waits (initial + navigated day; the degraded-payload
+// cache is intentionally not guaranteed), so they get 2x90 plus headroom.
+const SINGLE_DAY_TEST_BUDGET_MS = 150000; // 90s wait + onboarding/assertions
+const TWO_DAY_TEST_BUDGET_MS = 240000; // 2x90s waits + onboarding/calendar/navigation
+
 // START_BLOCK: ENSURE_ONBOARDED
 // Every test reaches a real profile: if the app redirects to onboarding,
 // the REAL onboarding flow is completed instead of returning green early.
@@ -24,7 +31,7 @@ async function ensureOnboarded(page: import('@playwright/test').Page) {
 
 test.describe('Today Screen - Real Auth', () => {
   test('fresh user gets the honest locked preview (no fabricated access)', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(SINGLE_DAY_TEST_BUDGET_MS);
     await ensureOnboarded(page);
 
     // A fresh user intentionally has NO access ledger: Today is locked with
@@ -47,7 +54,7 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('no placeholder when API returns real data', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(SINGLE_DAY_TEST_BUDGET_MS);
     await ensureOnboarded(page);
 
     // Wait for the terminal locked preview first — otherwise the check is
@@ -61,7 +68,7 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('calendar navigation with real auth', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(TWO_DAY_TEST_BUDGET_MS);
     await ensureOnboarded(page);
 
     await page.goto('/calendar');
@@ -82,7 +89,7 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('week strip navigation with real auth', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(TWO_DAY_TEST_BUDGET_MS);
     await ensureOnboarded(page);
 
     // Canonical day URL is /day/YYYY-MM-DD (the root route redirects there).

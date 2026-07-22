@@ -651,10 +651,11 @@ their text below is kept as the design for those later slices.
   Today first pass returned HTTP 200 in 67.515s against the 60s test
   budget (day.payload_built at request start, no 4xx/5xx/deadlock; retry
   user 6.7s green) — a test-budget mismatch, corrected here
-  (waitForTodayState terminal budget 90s evidence-based; outer budgets of
-  the onboarding/today/calendar/cross-feature/payment-catalog specs raised
-  so they exceed the inner budget plus form work; assertions unchanged,
-  loading never passes).
+  (waitForTodayState terminal budget 90s evidence-based; outer budgets
+  honestly exceed the inner waits: single-day specs 150s, the two-day
+  navigation specs with two terminal-day waits 240s — the
+  degraded-payload cache is intentionally not guaranteed; assertions
+  unchanged, loading never passes).
   Remaining P1-6 items: chat product follow-up (intentional locked
   placeholder), the external /start Telegram-client ingress path (owner
   ingress, P0-3).
