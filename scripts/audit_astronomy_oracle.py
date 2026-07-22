@@ -310,7 +310,7 @@ def run_astronomy_oracle(
     final_rows: list[dict[str, Any]] = []
     for name in PLANETS:
         oracle = oracle_positions[name]
-        final_planet = next((p for p in final_planets if p.get("name") == name), None) or {}
+        final_planet = next((p for p in final_planets if p.get("name") == name), {})
         final_lon = final_planet.get("longitude")
         final_delta = shortest_delta(oracle["longitude"], float(final_lon)) if isinstance(final_lon, (int, float)) else None
         final_motion = final_planet.get("motion")
@@ -353,9 +353,9 @@ def run_astronomy_oracle(
                 "reason": f"house count mismatch: oracle {len(oracle_houses)} vs final {len(final_houses)}",
             }
         )
-    for idx, oracle_house in enumerate(oracle_houses):
+    for idx, oracle_house_row in enumerate(oracle_houses):
         final_house = final_houses[idx] if idx < len(final_houses) else {}
-        oracle_cusp = float(oracle_house["longitude"])
+        oracle_cusp = float(oracle_house_row["longitude"])
         final_cusp = (
             final_house["cuspLongitude"]
             if "cuspLongitude" in final_house
@@ -363,17 +363,17 @@ def run_astronomy_oracle(
         )
         final_house_rows.append(
             {
-                "number": oracle_house["number"],
+                "number": oracle_house_row["number"],
                 "oracle_cusp": round(oracle_cusp, 8),
                 "final_cusp": final_cusp,
                 "final_cusp_pass": (
-                    final_house.get("number") == oracle_house["number"]
+                    final_house.get("number") == oracle_house_row["number"]
                     and isinstance(final_cusp, (int, float))
                     and shortest_delta(oracle_cusp, float(final_cusp)) <= LONGITUDE_TOLERANCE_DEG
                 ),
-                "oracle_sign": oracle_house["sign"],
+                "oracle_sign": oracle_house_row["sign"],
                 "final_sign": final_house.get("sign"),
-                "final_house_sign_pass": final_house.get("sign") == oracle_house["sign"],
+                "final_house_sign_pass": final_house.get("sign") == oracle_house_row["sign"],
             }
         )
     # END_BLOCK: FINAL_CHART_PROOF

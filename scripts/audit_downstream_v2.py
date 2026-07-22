@@ -76,7 +76,6 @@ from app.schemas.normalization import AstroSignal  # noqa: E402
 from app.services.activation_layer_service import ActivationLayerService  # noqa: E402
 from app.services.canon_service import get_canon_versions  # noqa: E402
 from app.services.day_scoring_runtime_service import DayScoringRuntimeService  # noqa: E402
-from app.services.scoring_service import ScoringService  # noqa: E402
 from app.services.scoring_v2_service import ScoringV2Service  # noqa: E402
 from app.services.semantic_v2_service import SemanticV2Service  # noqa: E402
 from app.services.today_service import TodayService as TodayServiceForFlags  # noqa: E402
@@ -658,8 +657,6 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
     sidecar_layer_raw: dict[str, Any]
     day_signals: list[AstroSignal] = []
     payload_json: dict[str, Any] | None = None
-    natal_context_dict: dict[str, Any] | None = None
-    transits_dict: dict[str, Any] | None = None
 
     if args.synthetic_fixture:
         mode = "synthetic_fixture"
@@ -675,10 +672,6 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         sidecar_layer_raw = json.loads(Path(args.input_activation_layer).read_text(encoding="utf-8"))
         if args.input_day_signals:
             day_signals = parse_day_signals(Path(args.input_day_signals))
-        if args.input_natal_context:
-            natal_context_dict = json.loads(Path(args.input_natal_context).read_text(encoding="utf-8"))
-        if args.input_transits:
-            transits_dict = json.loads(Path(args.input_transits).read_text(encoding="utf-8"))
         if not args.input_final_payload:
             raise SystemExit("artifact_replay requires --input-final-payload")
         payload_json = json.loads(Path(args.input_final_payload).read_text(encoding="utf-8"))
@@ -747,8 +740,6 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 return layer, payload.model_dump(mode="json", by_alias=False), day_sigs
 
         sidecar_layer_raw, payload_json, day_signals = asyncio.run(_live())
-        natal_context_dict = json.loads(Path(args.input_natal_context).read_text(encoding="utf-8")) if args.input_natal_context else None
-        transits_dict = json.loads(Path(args.input_transits).read_text(encoding="utf-8")) if args.input_transits else None
 
     write_json(out_dir / "01_sidecar_activation_layer.json", sidecar_layer_raw)
     write_json(debug_dir / "day_signals.json", [to_jsonable(s) for s in day_signals])
@@ -1334,7 +1325,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
     dual = DayScoringRuntimeService().compute(
         day_signals=day_signals,
         activation_layer=api_layer,
-        user_id="downstream-audit",
+        user_id=None,  # audit replay: scoring does not consume user_id
         target_date=args.date,
         force_v2=True,
     )
@@ -1828,8 +1819,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--input-activation-layer", default=None)
     p.add_argument("--input-final-payload", default=None)
     p.add_argument("--input-day-signals", default=None)
-    p.add_argument("--input-natal-context", default=None)
-    p.add_argument("--input-transits", default=None)
     p.add_argument("--synthetic-fixture", default=None)
     p.add_argument("--fail-on-unmapped", default="true", choices=["true", "false"])
     p.add_argument("--skip-live-today-service", action="store_true")
