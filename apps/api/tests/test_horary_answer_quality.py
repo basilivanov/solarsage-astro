@@ -125,6 +125,18 @@ def test_engine_timing_preserves_explicit_timeframe():
     assert "год" in (a.timing.time_range or "").lower()
 
 
+
+
+def _valid_narrative() -> dict:
+    return {
+        "lead": "Ответ скорее положительный, потому что карта показывает больше поддерживающих факторов, чем ослабляющих указаний.",
+        "significator_paragraph": "Сигнификаторы пользователя и вопроса описывают ситуацию без явных противоречий и позволяют рассматривать развитие как рабочее и реалистичное.",
+        "change_paragraph": "Исход может измениться, если появятся новые сдерживающие факторы или если участники начнут действовать менее последовательно, чем сейчас.",
+        "advice_callout": "Действуй спокойно и не форсируй процесс: лучше закрепить уже имеющиеся преимущества, проверить детали и дать ситуации раскрыться естественным образом.",
+        "final_summary": "Итог указывает на благоприятное развитие при сохранении текущего курса, особенно если не создавать лишнего давления и не торопить события.",
+    }
+
+
 # 4. No timing evidence => not_enough_evidence
 def test_engine_timing_not_enough_evidence():
     horary_chart = {
@@ -156,7 +168,7 @@ async def test_llm_invalid_json_raises_horary_generation_error(monkeypatch):
         neutral_factors=[],
         timing=TimingInfo(status="not_enough_evidence", text="нет срока"),
     )
-    async def fake_gen(prompt, max_tokens):
+    async def fake_gen(prompt, max_tokens, json_schema=None):
         return "not json"
     monkeypatch.setattr(svc, "_generate_text", fake_gen)
     with pytest.raises(HoraryGenerationError):
@@ -183,7 +195,7 @@ async def test_llm_unavailable_raises_horary_generation_error(monkeypatch):
         neutral_factors=[],
         timing=TimingInfo(status="not_enough_evidence", text="нет срока"),
     )
-    async def fake_gen(prompt, max_tokens):
+    async def fake_gen(prompt, max_tokens, json_schema=None):
         return None
     monkeypatch.setattr(svc, "_generate_text", fake_gen)
     with pytest.raises(HoraryGenerationError):
@@ -194,9 +206,9 @@ async def test_llm_unavailable_raises_horary_generation_error(monkeypatch):
         )
 
 
-# 7. LLM JSON missing required block types => rejected
+# 7. Narrative JSON with missing narrative fields => rejected
 @pytest.mark.asyncio
-async def test_llm_response_missing_required_blocks_is_rejected(monkeypatch):
+async def test_llm_missing_narrative_fields_is_rejected(monkeypatch):
     monkeypatch.setattr(LLMService, "__init__", lambda self: None)
     svc = LLMService()
     analysis = HoraryAnalysis(
@@ -210,13 +222,8 @@ async def test_llm_response_missing_required_blocks_is_rejected(monkeypatch):
         neutral_factors=[],
         timing=TimingInfo(status="known", time_range="1 неделя", text="ок"),
     )
-    bad_response = {
-        "blocks": [
-            {"type": "verdict_card", "verdict": "yes", "confidence": 0.5,
-             "confidenceLabel": "medium", "confidenceExplanation": "x"}
-        ]
-    }
-    async def fake_gen(prompt, max_tokens):
+    bad_response = {"lead": "Неполный ответ движка с достаточной длиной текста для прохождения порога."}
+    async def fake_gen(prompt, max_tokens, json_schema=None):
         return json.dumps(bad_response, ensure_ascii=False)
     monkeypatch.setattr(svc, "_generate_text", fake_gen)
     with pytest.raises(HoraryGenerationError):
@@ -227,9 +234,9 @@ async def test_llm_response_missing_required_blocks_is_rejected(monkeypatch):
         )
 
 
-# 8. Valid LLM response with full block set passes
+# 8. Valid narrative builds the assembled public block set
 @pytest.mark.asyncio
-async def test_llm_valid_response_with_full_block_set_passes(monkeypatch):
+async def test_llm_valid_narrative_builds_block_set(monkeypatch):
     monkeypatch.setattr(LLMService, "__init__", lambda self: None)
     svc = LLMService()
     analysis = HoraryAnalysis(
@@ -243,25 +250,8 @@ async def test_llm_valid_response_with_full_block_set_passes(monkeypatch):
         neutral_factors=[],
         timing=TimingInfo(status="known", time_range="1 неделя", text="ок"),
     )
-    valid_response = {
-        "blocks": [
-            {"type": "verdict_card", "verdict": "yes", "confidence": 0.5,
-             "label": "Да", "confidenceLabel": "medium", "confidenceExplanation": "Данных достаточно для умеренной уверенности, потому что карта показывает согласованные указания без критичных противоречий."},
-            {"type": "lead", "text": "Ответ скорее положительный, потому что карта показывает больше поддерживающих факторов, чем ослабляющих указаний."},
-            {"type": "paragraph", "text": "Сигнификаторы пользователя и вопроса описывают ситуацию без явных противоречий и позволяют рассматривать развитие как рабочее и реалистичное."},
-            {"type": "testimonies",
-             "prosLabel": "За", "consLabel": "Против", "neutralLabel": "Нейтр",
-             "pros": [{"title": "Поддержка", "explanation": "Есть показатель, который говорит в пользу благоприятного исхода.", "weight": 0.5, "planets": [], "aspectType": None, "orb": None}],
-             "cons": [],
-             "neutral": []},
-            {"type": "paragraph", "text": "Исход может измениться, если появятся новые сдерживающие факторы или если участники начнут действовать менее последовательно, чем сейчас."},
-            {"type": "timing", "status": "known", "timeRange": "1 неделя", "text": "Вероятное проявление видно в течение недели, потому что карта показывает достаточно ясный и относительно близкий временной ориентир."},
-            {"type": "callout", "tone": "insight", "title": "Совет", "text": "Действуй спокойно и не форсируй процесс: лучше закрепить уже имеющиеся преимущества, проверить детали и дать ситуации раскрыться естественным образом."},
-            {"type": "paragraph", "text": "Итог указывает на благоприятное развитие при сохранении текущего курса, особенно если не создавать лишнего давления и не торопить события."},
-        ]
-    }
-    async def fake_gen(prompt, max_tokens):
-        return json.dumps(valid_response, ensure_ascii=False)
+    async def fake_gen(prompt, max_tokens, json_schema=None):
+        return json.dumps(_valid_narrative(), ensure_ascii=False)
     monkeypatch.setattr(svc, "_generate_text", fake_gen)
     out = await svc.generate_horary_answer(
         question_text="Q",
@@ -315,19 +305,21 @@ def _make_analysis() -> HoraryAnalysis:
     )
 
 
-# 9. Malformed LLM output (missing neutral testimony weight) is rejected at
-# the contract boundary; the valid second attempt is accepted (provider x2).
+# 9. Sub-floor narrative is rejected by the quality floor; the valid
+# second attempt is accepted (exactly two provider calls).
 @pytest.mark.asyncio
-async def test_llm_malformed_missing_weight_is_retried_and_second_valid_accepted(monkeypatch):
+async def test_llm_short_narrative_is_retried_and_second_valid_accepted(monkeypatch):
     monkeypatch.setattr(LLMService, "__init__", lambda self: None)
     svc = LLMService()
     calls: list = []
+    short_narrative = _valid_narrative()
+    short_narrative["lead"] = "коротко"
     responses = iter([
-        json.dumps({"blocks": _blocks_missing_neutral_weight()}, ensure_ascii=False),
-        json.dumps({"blocks": _valid_llm_blocks()}, ensure_ascii=False),
+        json.dumps(short_narrative, ensure_ascii=False),
+        json.dumps(_valid_narrative(), ensure_ascii=False),
     ])
 
-    async def fake_gen(prompt, max_tokens):
+    async def fake_gen(prompt, max_tokens, json_schema=None):
         calls.append(prompt)
         return next(responses)
 
@@ -342,18 +334,20 @@ async def test_llm_malformed_missing_weight_is_retried_and_second_valid_accepted
     assert len(out["blocks"]) == 8
 
 
-# 10. Two malformed outputs (missing neutral testimony weight) are both
-# rejected at the contract boundary: domain HoraryGenerationError after
-# exactly 2 attempts.
+# 10. Two sub-floor narratives are both rejected: domain
+# HoraryGenerationError after exactly 2 attempts.
 @pytest.mark.asyncio
-async def test_llm_two_malformed_missing_weight_raises_horary_generation_error(monkeypatch):
+async def test_llm_two_short_narratives_raise_horary_generation_error(monkeypatch):
     monkeypatch.setattr(LLMService, "__init__", lambda self: None)
     svc = LLMService()
     calls: list = []
 
-    async def fake_gen(prompt, max_tokens):
+    short_narrative = _valid_narrative()
+    short_narrative["lead"] = "коротко"
+
+    async def fake_gen(prompt, max_tokens, json_schema=None):
         calls.append(prompt)
-        return json.dumps({"blocks": _blocks_missing_neutral_weight()}, ensure_ascii=False)
+        return json.dumps(short_narrative, ensure_ascii=False)
 
     monkeypatch.setattr(svc, "_generate_text", fake_gen)
     with pytest.raises(HoraryGenerationError):
@@ -437,26 +431,11 @@ async def test_horary_prompt_contains_astro_boundary_rules(monkeypatch):
         neutral_factors=[],
         timing=TimingInfo(status="known", time_range="1 неделя", text="ок"),
     )
-    valid_response = {
-        "blocks": [
-            {"type": "verdict_card", "verdict": "yes", "confidence": 0.5,
-             "label": "Да", "confidenceLabel": "medium", "confidenceExplanation": "Данных достаточно для умеренной уверенности, потому что карта показывает согласованные указания без критичных противоречий."},
-            {"type": "lead", "text": "Ответ скорее положительный, потому что карта показывает больше поддерживающих факторов, чем ослабляющих указаний."},
-            {"type": "paragraph", "text": "Сигнификаторы пользователя и вопроса описывают ситуацию без явных противоречий и позволяют рассматривать развитие как рабочее и реалистичное."},
-            {"type": "testimonies",
-             "prosLabel": "За", "consLabel": "Против", "neutralLabel": "Нейтр",
-             "pros": [], "cons": [], "neutral": []},
-            {"type": "paragraph", "text": "Исход может измениться, если появятся новые сдерживающие факторы или если участники начнут действовать менее последовательно, чем сейчас."},
-            {"type": "timing", "status": "known", "timeRange": "1 неделя", "text": "Вероятное проявление видно в течение недели, потому что карта показывает достаточно ясный и относительно близкий временной ориентир."},
-            {"type": "callout", "tone": "insight", "title": "Совет", "text": "Действуй спокойно и не форсируй процесс: лучше закрепить уже имеющиеся преимущества, проверить детали и дать ситуации раскрыться естественным образом."},
-            {"type": "paragraph", "text": "Итог указывает на благоприятное развитие при сохранении текущего курса, особенно если не создавать лишнего давления и не торопить события."},
-        ]
-    }
     captured = {}
 
-    async def fake_gen(prompt, max_tokens):
+    async def fake_gen(prompt, max_tokens, json_schema=None):
         captured["prompt"] = prompt
-        return json.dumps(valid_response, ensure_ascii=False)
+        return json.dumps(_valid_narrative(), ensure_ascii=False)
 
     monkeypatch.setattr(svc, "_generate_text", fake_gen)
     await svc.generate_horary_answer(

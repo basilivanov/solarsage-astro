@@ -24,9 +24,16 @@
 # invariants:
 #   - falls back through providers: OpenRouter → DeepSeek → None
 #   - horary generation has 2 retry attempts
-#   - horary blocks are validated against the shared public HoraryBlock
-#     contract (validate_horary_llm_blocks); malformed output is rejected,
-#     never persisted as an unreadable "answered" report
+#   - horary: the LLM writes ONLY five narrative strings through
+#     provider-enforced Structured Outputs (OpenRouter response_format
+#     json_schema strict + provider.require_parameters=true, Horary-only);
+#     the backend assembles the public 8 blocks with engine-owned
+#     verdict/confidence/testimonies/timing verbatim from the HoraryAnalysis
+#     (no LLM-substituted engine fields; unclear timing never exposes the
+#     internal hint)
+#   - assembled horary blocks are re-validated against the shared public
+#     HoraryBlock contract (validate_horary_llm_blocks); malformed output is
+#     rejected, never persisted as an unreadable "answered" report
 # failure_policy:
 #   - returns None if all providers fail
 #   - raises HoraryGenerationError if horary fails after 2 attempts
@@ -121,6 +128,82 @@ class HoraryGenerationError(RuntimeError):
     """
 
 
+# START_BLOCK: HORARY_NARRATIVE_CONTRACT
+# The LLM writes ONLY the five narrative strings; every engine-owned
+# field (verdict/confidence/testimonies/timing) is assembled by the
+# backend verbatim from the HoraryAnalysis. Provider-enforced Structured
+# Outputs (OpenRouter response_format json_schema, strict=true,
+# provider.require_parameters=true) pin the wire shape AND the per-field
+# minimum length (regex pattern derived from _HORARY_NARRATIVE_MIN_LENGTH
+# — the single source of numbers); the local validator re-checks the
+# same floors fail-closed regardless of provider.
+_HORARY_NARRATIVE_FIELDS = (
+    "lead",
+    "significator_paragraph",
+    "change_paragraph",
+    "advice_callout",
+    "final_summary",
+)
+_HORARY_NARRATIVE_MIN_LENGTH = {
+    "lead": 60,
+    "significator_paragraph": 60,
+    "change_paragraph": 60,
+    "advice_callout": 80,
+    "final_summary": 60,
+}
+_HORARY_NARRATIVE_DESCRIPTIONS = {
+    "lead": "Одно предложение — главный вывод по вопросу.",
+    "significator_paragraph": "Что представляет пользователя и что — тему вопроса.",
+    "change_paragraph": "Что может изменить исход.",
+    "advice_callout": "Практический совет.",
+    "final_summary": "Итоговое резюме.",
+}
+
+
+def _horary_narrative_pattern(field: str) -> str:
+    """Newline-safe length pattern derived from the single floor map."""
+    return rf"^[\s\S]{{{_HORARY_NARRATIVE_MIN_LENGTH[field]},}}$"
+
+
+def _build_horary_narrative_json_schema() -> dict:
+    """Build the strict schema from the floor map so the provider-enforced
+    per-field minimums can never drift from the local validator."""
+    return {
+        "name": "horary_narrative",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                field: {
+                    "type": "string",
+                    "pattern": _horary_narrative_pattern(field),
+                    "description": (
+                        f"{_HORARY_NARRATIVE_DESCRIPTIONS[field]} "
+                        f"Минимум {_HORARY_NARRATIVE_MIN_LENGTH[field]} символов."
+                    ),
+                }
+                for field in _HORARY_NARRATIVE_FIELDS
+            },
+            "required": list(_HORARY_NARRATIVE_FIELDS),
+            "additionalProperties": False,
+        },
+    }
+
+
+_HORARY_NARRATIVE_JSON_SCHEMA = _build_horary_narrative_json_schema()
+
+
+def _horary_narrative_requirements_prompt() -> str:
+    """Russian length requirements line, derived from the same floor map."""
+    parts = ", ".join(
+        f"{field} — не короче {_HORARY_NARRATIVE_MIN_LENGTH[field]} символов"
+        for field in _HORARY_NARRATIVE_FIELDS
+    )
+    return f"Требования к длине (строго): {parts}."
+
+
+# END_BLOCK: HORARY_NARRATIVE_CONTRACT
+
 class LLMService:
 
     def __init__(self):
@@ -135,7 +218,19 @@ class LLMService:
         elif self.provider != "openrouter":
             raise ValueError(f"Unknown LLM provider: {self.provider}")
 
-    async def _openrouter_generate(self, prompt: str, max_tokens: int) -> str:
+    async def _openrouter_generate(
+        self, prompt: str, max_tokens: int, *, json_schema: dict | None = None
+    ) -> str:
+        body: dict = {
+            "model": settings.llm_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+        }
+        if json_schema is not None:
+            # Provider-enforced Structured Outputs (Horary narrative only;
+            # ordinary calls keep the byte-identical body).
+            body["response_format"] = {"type": "json_schema", "json_schema": json_schema}
+            body["provider"] = {"require_parameters": True}
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{settings.openrouter_base_url}/chat/completions",
@@ -145,15 +240,15 @@ class LLMService:
                     "HTTP-Referer": settings.openrouter_site_url or "",
                     "X-Title": settings.openrouter_app_name,
                 },
-                json={
-                    "model": settings.llm_model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": max_tokens,
-                },
+                json=body,
                 timeout=60.0,
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"].strip()
+            content = resp.json()["choices"][0]["message"]["content"]
+            # Structured-output refusal/empty shapes must not crash on
+            # .strip() of a non-string; ordinary string content keeps the
+            # byte-identical .strip() behavior.
+            return content.strip() if isinstance(content, str) else ""
 
     async def _deepseek_generate(self, prompt: str, max_tokens: int) -> str:
         key = getattr(settings, "deepseek_api_key", None)
@@ -184,11 +279,19 @@ class LLMService:
         )
         return resp.content[0].text.strip()
 
-    async def _generate_text(self, prompt: str, max_tokens: int) -> str | None:
-        """Generate text with fallback: OpenRouter → DeepSeek → None."""
+    async def _generate_text(
+        self, prompt: str, max_tokens: int, *, json_schema: dict | None = None
+    ) -> str | None:
+        """Generate text with fallback: OpenRouter → DeepSeek → None.
+
+        json_schema (Horary narrative only) is enforced provider-side via
+        OpenRouter Structured Outputs; the DeepSeek fallback always runs the
+        plain prompt (no strict declaration without provider proof) — final
+        local validation runs regardless of provider.
+        """
         # 1. Primary: OpenRouter
         try:
-            return await self._openrouter_generate(prompt, max_tokens)
+            return await self._openrouter_generate(prompt, max_tokens, json_schema=json_schema)
         except Exception as e:
             with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="LLM_CLIENT"):
                 log_event(
@@ -767,6 +870,7 @@ JSON:"""
 
     # ── Horary generation ──────────────────────────────────────────
 
+
     async def generate_horary_answer(
         self,
         question_text: str,
@@ -774,27 +878,33 @@ JSON:"""
         analysis,
     ) -> dict:
         # START_FUNCTION_CONTRACT: LLMService.generate_horary_answer
-        # purpose: Build a horary LLM prompt from a structured analysis and
-        #          parse the response. Returns the validated blocks dict.
+        # purpose: Produce the public 8-block horary answer. The LLM writes
+        #          ONLY five narrative strings (lead / significator paragraph /
+        #          change paragraph / advice callout / final summary) through
+        #          provider-enforced Structured Outputs (OpenRouter
+        #          response_format json_schema strict + require_parameters);
+        #          the backend assembles the 8 blocks in fixed order with ALL
+        #          engine-owned fields (verdict, confidence, testimonies,
+        #          timing) taken verbatim from the HoraryAnalysis — no
+        #          LLM-substituted verdict/evidence/timing ever.
         # inputs:
         #   - question_text (str)
         #   - category (str | None)
         #   - analysis (HoraryAnalysis with verdict, confidence, testimonies,
         #     timing, warnings)
         # returns:
-        #   - dict with key "blocks" -> list of block dicts
+        #   - dict with key "blocks" -> list of 8 block dicts (fixed order)
         # side_effects:
-        #   - calls external LLM provider (OpenRouter / DeepSeek / Anthropic)
+        #   - calls external LLM provider (OpenRouter / DeepSeek fallback)
         # emitted_logs:
-        #   - warnings on each failed parse attempt
+        #   - llm.response_rejected per rejected attempt with a sanitized
+        #     reject code (empty/parse/type/missing/quality/provider); payload
+        #     carries only reason=schema_invalid (never raw model/user text)
         # error_behavior:
-        #   - raises HoraryGenerationError on 2 failed attempts (no fallback)
+        #   - raises HoraryGenerationError on 2 failed attempts (no fallback
+        #     answer; the service keeps the honest failed/refund path)
         # END_FUNCTION_CONTRACT: LLMService.generate_horary_answer
-        from app.schemas.horary_analysis import (
-            EvidenceItem,
-            HoraryAnalysis,
-            TimingInfo,
-        )
+        from app.schemas.horary_analysis import HoraryAnalysis
 
         if not isinstance(analysis, HoraryAnalysis):
             raise TypeError("analysis must be a HoraryAnalysis instance")
@@ -819,25 +929,10 @@ JSON:"""
             "- Используй ТОЛЬКО астрологические факты из раздела «СВИДЕТЕЛЬСТВА».\n"
             "- НЕ выдумывай аспекты, дома, орбы, фазы или причины.\n"
             "- Если в свидетельствах чего-то нет — не упоминай это.\n"
-            "- Срок реализации (timing) бери ТОЛЬКО из раздела «СРОК ПО КАРТЕ».\n"
-            "- Не выдумывай временной диапазон. Если статус timing "
-            "«not_enough_evidence», timeRange НЕ указывай.\n"
+            "- Вердикт, уверенность, свидетельства и срок УЖЕ вычислены движком.\n"
+            "- Твоя задача — ТОЛЬКО живой русский narrative для пяти полей JSON.\n"
             "- Все имена планет — на русском, в творительном падеже после «с».\n"
-            "- Верни ТОЛЬКО валидный JSON без markdown-обёрток.\n\n"
-            "Обязательная структура blocks (порядок важен):\n"
-            "1. verdict_card — verdict, confidence 0..1, label (короткая подпись),\n"
-            "   confidenceLabel (low|medium|high), confidenceExplanation (1-2 предложения).\n"
-            "2. lead — одно предложение, главный вывод.\n"
-            "3. paragraph — что представляет пользователя и что — тему вопроса.\n"
-            "4. testimonies — prosLabel='Свидетельства «за»',\n"
-            "   consLabel='Свидетельства «против»', neutralLabel='Нейтральные факторы'.\n"
-            "   В pros/cons/neutral клади [{title, explanation, weight, planets, aspectType, orb}].\n"
-            "   Не повторяй pros в cons.\n"
-            "5. paragraph — что может изменить исход.\n"
-            "6. timing — status: 'known'|'unclear'|'not_enough_evidence'.\n"
-            "   timeRange: только если status='known'. text — всегда.\n"
-            "7. callout (tone='insight', title='Совет') — практический совет.\n"
-            "8. paragraph — итоговое резюме."
+            "- Верни ТОЛЬКО валидный JSON без markdown-обёрток.\n"
         )
 
         timing_block = self._format_timing(analysis.timing)
@@ -846,7 +941,7 @@ JSON:"""
             f"Вопрос: {question_text}\n"
             f"Категория: {category or 'не указана'}\n"
             f"Вердикт движка: {verdict_ru} ({verdict})\n"
-            f"Уровень уверенности движка: {analysis.confidence_label} "
+            f"Уровень уверенности движка (low|medium|high): {analysis.confidence_label} "
             f"({analysis.confidence_score}/100)\n"
             f"Пояснение движка: {analysis.confidence_explanation}\n"
             f"Задействованные планеты: "
@@ -860,77 +955,185 @@ JSON:"""
             f"СРОК ПО КАРТЕ:\n{timing_block}\n\n"
             f"ПРЕДУПРЕЖДЕНИЯ ДВИЖКА:\n"
             f"{chr(10).join(warnings) if warnings else '— нет'}\n\n"
-            "Верни ТОЛЬКО валидный JSON со схемой:\n"
+            "Верни ТОЛЬКО валидный JSON РОВНО с пятью строковыми полями:\n"
             "{\n"
-            "  \"blocks\": [\n"
-            "    {\"type\": \"verdict_card\", \"verdict\": \"yes|no|maybe\",\n"
-            "     \"confidence\": 0.0-1.0, \"label\": \"...\",\n"
-            "     \"confidenceLabel\": \"low|medium|high\",\n"
-            "     \"confidenceExplanation\": \"...\"},\n"
-            "    {\"type\": \"lead\", \"text\": \"...\"},\n"
-            "    {\"type\": \"paragraph\", \"text\": \"...\"},\n"
-            "    {\"type\": \"testimonies\",\n"
-            "     \"prosLabel\": \"...\", \"consLabel\": \"...\", \"neutralLabel\": \"...\",\n"
-            "     \"pros\": [{\"title\": \"...\", \"explanation\": \"...\",\n"
-            "                \"weight\": 0.0, \"planets\": [\"...\"], \"aspectType\": \"...\", \"orb\": 0.0}],\n"
-            "     \"cons\": [{\"title\": \"...\", \"explanation\": \"...\",\n"
-            "                \"weight\": 0.0, \"planets\": [\"...\"], \"aspectType\": \"...\", \"orb\": 0.0}],\n"
-            "     \"neutral\": [{\"title\": \"...\", \"explanation\": \"...\",\n"
-            "                   \"weight\": 0.0, \"planets\": [], \"aspectType\": null, \"orb\": null}]},\n"
-            "    {\"type\": \"paragraph\", \"text\": \"...\"},\n"
-            "    {\"type\": \"timing\", \"status\": \"known|unclear|not_enough_evidence\",\n"
-            "     \"timeRange\": \"...\" | null, \"text\": \"...\"},\n"
-            "    {\"type\": \"callout\", \"tone\": \"insight\", \"title\": \"Совет\", \"text\": \"...\"},\n"
-            "    {\"type\": \"paragraph\", \"text\": \"...\"}\n"
-            "  ]\n"
-            "}"
+            '  "lead": "одно предложение — главный вывод по вопросу",\n'
+            '  "significator_paragraph": "что представляет пользователя и что — тему вопроса",\n'
+            '  "change_paragraph": "что может изменить исход",\n'
+            '  "advice_callout": "практический совет",\n'
+            '  "final_summary": "итоговое резюме"\n'
+            "}\n\n"
+            f"{_horary_narrative_requirements_prompt()}\n"
+            "Не переопределяй и не пересчитывай вердикт, уверенность и срок "
+            "движка: narrative только поясняет их, без других чисел, процентов "
+            "и иных выводов."
         )
 
         prompt = f"{system_prompt}\n\n{user_prompt}"
 
-        last_error: Exception | None = None
+        last_reject_code = "unknown"
         for attempt in range(2):
             try:
-                text = await self._generate_text(prompt, max_tokens=1800)
-                if not text:
-                    last_error = HoraryGenerationError("LLM returned empty response")
-                    continue
-                for marker in ['```json', '```']:
-                    if marker in text:
-                        text = text.split(marker, 1)[1].rsplit('```', 1)[0].strip()
-                        break
-                data = json_lib.loads(text)
-                if not isinstance(data, dict) or "blocks" not in data:
-                    raise HoraryGenerationError("LLM response missing 'blocks'")
-                if not isinstance(data["blocks"], list):
-                    raise HoraryGenerationError("LLM response 'blocks' is not a list")
-                if not self._validate_horary_blocks(data["blocks"]):
-                    raise HoraryGenerationError("LLM response failed block schema validation")
-                return data
-            except (json_lib.JSONDecodeError, HoraryGenerationError) as e:
-                last_error = e
-                with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="HORARY_GENERATION"):
-                    log_event(
-                        "llm.response_rejected",
-                        level="warn",
-                        msg=f"[Horary LLM] Attempt {attempt+1} failed: {type(e).__name__}",
-                        payload={"reason": "schema_invalid"},
-                    )
-                continue
+                text = await self._generate_text(
+                    prompt,
+                    max_tokens=1800,
+                    json_schema=_HORARY_NARRATIVE_JSON_SCHEMA,
+                )
             except Exception as e:
-                last_error = e
-                with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="HORARY_GENERATION"):
-                    log_event(
-                        "llm.response_rejected",
-                        level="warn",
-                        msg=f"[Horary LLM] Attempt {attempt+1} error: {type(e).__name__}",
-                        payload={"reason": "timeout"},
-                    )
+                last_reject_code = "provider"
+                self._log_horary_reject(attempt, "provider", type(e).__name__)
                 continue
+            if not text:
+                last_reject_code = "empty"
+                self._log_horary_reject(attempt, "empty")
+                continue
+            for marker in ['```json', '```']:
+                if marker in text:
+                    text = text.split(marker, 1)[1].rsplit('```', 1)[0].strip()
+                    break
+            try:
+                data = json_lib.loads(text)
+            except json_lib.JSONDecodeError:
+                last_reject_code = "parse"
+                self._log_horary_reject(attempt, "parse")
+                continue
+            narrative, reject_code = self._validate_horary_narrative(data)
+            if narrative is None:
+                last_reject_code = reject_code
+                self._log_horary_reject(attempt, reject_code)
+                continue
+            return {"blocks": self._assemble_horary_blocks(analysis, narrative)}
 
         raise HoraryGenerationError(
-            f"horary answer generation failed after 2 attempts: {last_error}"
+            f"horary answer generation failed after 2 attempts: {last_reject_code}"
         )
+
+    @staticmethod
+    def _log_horary_reject(attempt: int, code: str, detail: str | None = None) -> None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE._log_horary_reject
+        # purpose: Emit the canonical per-attempt rejection with a sanitized
+        #   reject code (empty/parse/type/missing/quality/provider). The msg
+        #   distinguishes reject classes without raw model/user content; the
+        #   payload stays reason=schema_invalid only.
+        # inputs: attempt (0-based), code (sanitized), detail (exception type
+        #   name only, never a message).
+        # returns: None.
+        # side_effects: structured log event.
+        # emitted_logs: llm.response_rejected.
+        # error_behavior: never raises.
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE._log_horary_reject
+        suffix = f" ({detail})" if detail else ""
+        with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="HORARY_GENERATION"):
+            log_event(
+                "llm.response_rejected",
+                level="warn",
+                msg=f"[Horary LLM] Attempt {attempt + 1} rejected: {code}{suffix}",
+                payload={"reason": "schema_invalid"},
+            )
+
+    @staticmethod
+    def _validate_horary_narrative(data) -> tuple[dict | None, str]:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE._validate_horary_narrative
+        # purpose: Validate the raw parsed narrative object: it must be a dict
+        #   with EXACTLY the five narrative fields, every value a non-blank
+        #   string meeting the narrative quality floor. Returns the sanitized
+        #   narrative dict plus an empty code, or (None, reject_code) with
+        #   code in {type, missing, quality}.
+        # inputs: data — parsed JSON value from the LLM response.
+        # returns: (narrative | None, reject_code).
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: never raises.
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE._validate_horary_narrative
+        if not isinstance(data, dict):
+            return None, "type"
+        if set(data.keys()) != set(_HORARY_NARRATIVE_FIELDS):
+            return None, "missing"
+        narrative: dict = {}
+        for field_name in _HORARY_NARRATIVE_FIELDS:
+            value = data[field_name]
+            if not isinstance(value, str):
+                return None, "type"
+            value = value.strip()
+            if len(value) < _HORARY_NARRATIVE_MIN_LENGTH[field_name]:
+                return None, "quality"
+            narrative[field_name] = value
+        return narrative, ""
+
+    @staticmethod
+    def _assemble_horary_blocks(analysis, narrative: dict) -> list[dict]:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE._assemble_horary_blocks
+        # purpose: Assemble the public 8 horary blocks in fixed order. ALL
+        #   engine-owned fields are taken verbatim from the HoraryAnalysis:
+        #   verdict/confidence/labels/explanation; testimony
+        #   title/explanation/weight/planets/aspectType/orb; timing status.
+        #   timeRange is exposed ONLY for status=known so the internal
+        #   category hint (e.g. "weeks-months") never leaks when unclear.
+        #   timing text is honestly augmented with the computed basis when
+        #   the basis is not already part of the text. Assembled blocks are
+        #   re-validated against the shared public contract as
+        #   defense-in-depth.
+        # inputs: analysis (HoraryAnalysis), narrative (validated 5 fields).
+        # returns: ordered list of 8 public block dicts.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: raises HoraryGenerationError (no raw leak) if the
+        #   assembled blocks violate the public contract — an internal bug,
+        #   never model input.
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE._assemble_horary_blocks
+        timing = analysis.timing
+        timing_text = timing.text.strip()
+        basis = (timing.basis or "").strip()
+        if basis and basis.lower() not in timing_text.lower():
+            timing_text = f"{timing_text} Основание: {basis}."
+
+        def _testimony(item) -> dict:
+            return {
+                "title": item.title,
+                "explanation": item.explanation,
+                "weight": item.weight,
+                "planets": list(item.planets_involved),
+                "aspectType": item.aspect_type,
+                "orb": item.orb,
+            }
+
+        blocks = [
+            {
+                "type": "verdict_card",
+                "verdict": analysis.verdict,
+                "confidence": analysis.confidence_score / 100.0,
+                "label": None,
+                "confidenceLabel": analysis.confidence_label,
+                "confidenceExplanation": analysis.confidence_explanation,
+            },
+            {"type": "lead", "text": narrative["lead"]},
+            {"type": "paragraph", "text": narrative["significator_paragraph"]},
+            {
+                "type": "testimonies",
+                "prosLabel": "Свидетельства «за»",
+                "consLabel": "Свидетельства «против»",
+                "neutralLabel": "Нейтральные факторы",
+                "pros": [_testimony(e) for e in analysis.testimonies_for],
+                "cons": [_testimony(e) for e in analysis.testimonies_against],
+                "neutral": [_testimony(e) for e in analysis.neutral_factors],
+            },
+            {"type": "paragraph", "text": narrative["change_paragraph"]},
+            {
+                "type": "timing",
+                "status": timing.status,
+                "timeRange": timing.time_range if timing.status == "known" else None,
+                "text": timing_text,
+            },
+            {
+                "type": "callout",
+                "tone": "insight",
+                "title": "Совет",
+                "text": narrative["advice_callout"],
+            },
+            {"type": "paragraph", "text": narrative["final_summary"]},
+        ]
+        LLMService._validate_horary_blocks(blocks)
+        return blocks
 
     @staticmethod
     def _format_evidence(item) -> str:
@@ -954,90 +1157,18 @@ JSON:"""
 
     @staticmethod
     def _validate_horary_blocks(blocks: list) -> bool:
-        """Validate that LLM-produced blocks contain the required types and
-        the required fields per type. Does not invent missing data — simply
-        fails the request so the service marks it failed."""
+        """Defense-in-depth: validate the ASSEMBLED blocks against the shared
+        public HoraryBlock contract (e.g. every testimony item requires
+        weight). A violation means an internal assembly bug, never model
+        input — the pydantic error text (which embeds input fragments) is
+        converted to the domain error WITHOUT chaining, so no raw content
+        leaks."""
         if not isinstance(blocks, list):
-            raise HoraryGenerationError("LLM response 'blocks' is not a list")
-        if len(blocks) < 7:
-            raise HoraryGenerationError("LLM response must contain at least 7 blocks")
-
-        # Contract boundary: every block must satisfy the public HoraryBlock
-        # schema (e.g. testimony items require weight). Malformed output is
-        # rejected here, never persisted as an unreadable "answered" report;
-        # raw LLM content is never leaked into the error (no __cause__ chain:
-        # pydantic error text embeds input_value fragments).
+            raise HoraryGenerationError("assembled blocks must be a list")
         try:
             validate_horary_llm_blocks(blocks)
         except ValidationError:
-            raise HoraryGenerationError("LLM response failed block schema validation") from None
-
-        types_seen: set[str] = set()
-        paragraph_count = 0
-
-        for b in blocks:
-            if not isinstance(b, dict) or "type" not in b:
-                raise HoraryGenerationError("LLM block must be an object with a type")
-            t = b["type"]
-            types_seen.add(t)
-
-            if t == "verdict_card":
-                if b.get("verdict") not in ("yes", "no", "maybe"):
-                    raise HoraryGenerationError("verdict_card.verdict is invalid")
-                if not isinstance(b.get("confidence"), (int, float)):
-                    raise HoraryGenerationError("verdict_card.confidence must be numeric")
-                if not (0.0 <= float(b["confidence"]) <= 1.0):
-                    raise HoraryGenerationError("verdict_card.confidence must be between 0 and 1")
-                if b.get("confidenceLabel") not in ("low", "medium", "high"):
-                    raise HoraryGenerationError("verdict_card.confidenceLabel is invalid")
-                if not isinstance(b.get("confidenceExplanation"), str):
-                    raise HoraryGenerationError("verdict_card.confidenceExplanation must be a string")
-                if len(b["confidenceExplanation"].strip()) < 60:
-                    raise HoraryGenerationError("verdict_card.confidenceExplanation is too short")
-            elif t == "lead":
-                if not isinstance(b.get("text"), str):
-                    raise HoraryGenerationError("lead.text must be a string")
-                if len(b["text"].strip()) < 60:
-                    raise HoraryGenerationError("lead.text is too short")
-            elif t == "paragraph":
-                if not isinstance(b.get("text"), str):
-                    raise HoraryGenerationError("paragraph.text must be a string")
-                if b["text"].strip():
-                    paragraph_count += 1
-            elif t == "timing":
-                if b.get("status") not in ("known", "unclear", "not_enough_evidence"):
-                    raise HoraryGenerationError("timing.status is invalid")
-                if not isinstance(b.get("text"), str):
-                    raise HoraryGenerationError("timing.text must be a string")
-                if len(b["text"].strip()) < 60:
-                    raise HoraryGenerationError("timing.text is too short")
-                if b["status"] == "known" and not b.get("timeRange"):
-                    raise HoraryGenerationError("timing.timeRange is required for known status")
-            elif t == "callout":
-                if not isinstance(b.get("text"), str):
-                    raise HoraryGenerationError("callout.text must be a string")
-                if len(b["text"].strip()) < 80:
-                    raise HoraryGenerationError("callout.text is too short")
-            elif t == "testimonies":
-                for bucket in ("pros", "cons", "neutral"):
-                    items = b.get(bucket) or []
-                    if not isinstance(items, list):
-                        raise HoraryGenerationError(f"testimonies.{bucket} must be a list")
-                    for it in items:
-                        if not isinstance(it, dict):
-                            raise HoraryGenerationError(f"testimonies.{bucket} item must be an object")
-                        if not isinstance(it.get("title"), str):
-                            raise HoraryGenerationError(f"testimonies.{bucket} item title must be a string")
-                        if not isinstance(it.get("explanation"), str):
-                            raise HoraryGenerationError(f"testimonies.{bucket} item explanation must be a string")
-                        if not it["explanation"].strip():
-                            raise HoraryGenerationError(f"testimonies.{bucket} item explanation must not be empty")
-
-        required = {"verdict_card", "lead", "testimonies", "timing", "callout"}
-        if not required.issubset(types_seen):
-            raise HoraryGenerationError("LLM response is missing required horary blocks")
-        if paragraph_count < 2:
-            raise HoraryGenerationError("LLM response must contain at least 2 paragraph blocks")
+            raise HoraryGenerationError("assembled blocks failed public schema validation") from None
         return True
 
     # START_BLOCK: CONCRETE_ADVICE_GENERATION
