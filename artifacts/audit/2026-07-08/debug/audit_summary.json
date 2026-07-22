@@ -1,12 +1,15 @@
 {
-  "user_id": "eb3876be-e1b4-43d6-b887-1f8554e33150",
+  "user_id": "fe2fd7de-4450-4e25-836a-571e7e555c29",
   "date": "2026-07-08",
+  "mode": "frozen-baseline",
   "out_dir": "/opt/solarsage-astro/artifacts/audit/2026-07-08",
   "target_time": "12:00",
   "target_timezone": "Europe/Moscow",
   "signal_count": 77,
   "day_scored_signal_count": 47,
   "day_status": "supportive",
-  "final_headline": "Сегодня подбери слова аккуратно, чтобы избежать глубоких конфликтов.",
-  "final_cached": false
+  "final_headline": "Сегодня важно балансировать эмоции и избегать конфликтов с близкими.",
+  "final_cached": false,
+  "final_payload_source": "committed_baseline_fixture",
+  "activation_layer_source": "sidecar"
 }

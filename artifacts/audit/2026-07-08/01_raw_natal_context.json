@@ -35,7 +35,7 @@
       "sign": "Scorpio",
       "degree": 15.7,
       "house": null,
-      "retrograde": false,
+      "retrograde": true,
       "longitude": 225.7046
     },
     {

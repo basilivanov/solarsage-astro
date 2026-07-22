@@ -1,3 +1,7 @@
+# Frozen baseline claims note
+
+This is a frozen baseline payload review. It is not a fresh TodayService production payload.
+
 # W0 Claims Audit: User eb3876be-e1b4-43d6-b887-1f8554e33150, 2026-07-08
 
 This document contains actual production payload excerpts generated for manual review and claims verification.

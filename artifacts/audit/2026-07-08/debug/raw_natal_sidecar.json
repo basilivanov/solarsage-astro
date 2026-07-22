@@ -24,7 +24,7 @@
       "longitude": 225.7046040297704,
       "sign": "Scorpio",
       "house": null,
-      "retrograde": false,
+      "retrograde": true,
       "speed": -1.094834191778563,
       "latitude": -1.604369844652105
     },

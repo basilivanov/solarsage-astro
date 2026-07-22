@@ -11,9 +11,11 @@ Makefile, `scripts/audit_today.py`, `scripts/deploy/prod-orchestrator.sh`,
 **Current truth:** live release `72871dbd` predates this gate; it runs
 with green liveness but without production-readiness proof (Moshier math at
 deploy time, Telegram webhook ingress blocked pending=2, and it was deployed
-while CI was red). The branch now HAS the source-quality/tag gates, but the
-full artifact-acceptance contour remains incomplete (P1-3 payload; P1-2
-exact-SHA oracle proof pending) — so the
+while CI was red). The branch now HAS the source-quality/tag gates, and the
+P1-3 payload now EXISTS (committed `today.v2.1` camelCase wire artifact
+produced by the live audit contour on 2026-07-22, local same-payload UI
+proof green); what remains pending is the exact-SHA acceptance run on
+GitHub — so the
 live release is not yet proof of the new gate.
 
 ## Current launch scope
@@ -67,8 +69,8 @@ their text below is kept as the design for those later slices.
 
 - **Goal:** red code can never reach build/deploy again.
 - **Status: PARTIAL.** Sub-parts: `source-quality` ✅ (implemented),
-  `tag` ✅ (implemented), artifact-acceptance BLOCKED (P1-3 payload;
-  P1-2 exact-SHA oracle proof pending).
+  `tag` ✅ (implemented), artifact-acceptance PARTIAL (P1-3 payload
+  produced and locally proven; exact-SHA GitHub acceptance run pending).
   Details: `source-quality` job in
   `deploy-production.yml` is a LOCAL REUSABLE call to the whole existing CI
   (`uses: ./.github/workflows/ci.yml` — no duplicated commands); `build`
@@ -88,8 +90,12 @@ their text below is kept as the design for those later slices.
 - **artifact-acceptance: PARTIAL** — P1-2 mechanics exist and are
   fail-closed (astronomy/scoring oracles exit non-zero on houses/scoring/
   top_signals mismatch); exact-SHA oracle proof is pending with the P1-1
-  freeze gate. Blocked by P1-3 (V2 same-payload UI proof needs an
-  owner-approved committed today.v2.x payload). The blocking acceptance
+  freeze gate. P1-3 is locally proven (2026-07-22): the committed
+  `11_final_today_payload.json` is now a real `today.v2.1` camelCase wire
+  artifact from the live audit contour, the acceptance spec discriminates
+  `meta.payloadVersion` (never `schemaVersion`, canonically `today/v1`),
+  and the local same-payload UI proof is green. The GitHub acceptance run
+  on the exact SHA stays pending. The blocking acceptance
   full gate (audit-day-freeze + oracle + same-payload proof) MUST block
   deploy/tag until those pass.
 - **Files:** `.github/workflows/deploy-production.yml` (add jobs/needs);
@@ -103,9 +109,9 @@ their text below is kept as the design for those later slices.
 - **Responsible:** Kimi implements; owner approves PR.
 - **Blockers:** source-quality/tag — none (private-plan branch protection
   irrelevant, the gate lives in the workflow itself). Full artifact
-  acceptance remains blocked by P1-3 (owner-approved committed
-  today.v2.x payload); the P1-2 oracle gate needs no owner input — its
-  proof is the exact-SHA freeze run.
+  acceptance pending only on the exact-SHA GitHub run (P1-3 payload now
+  exists and is locally proven); the P1-2 oracle gate needs no owner
+  input — its proof is the exact-SHA freeze run.
 - **Artifacts:** workflow run evidence per job; pass = all jobs green for
   the exact SHA; fail = no build, no deploy.
 
@@ -252,7 +258,8 @@ their text below is kept as the design for those later slices.
   indicator in regenerated baselines). Error baseline is localized
   ("Не удалось загрузить отчёт").
 - Workflow: `visual-regression.yml` reusable (`workflow_call`), baseline
-  suite only (acceptance-day excluded — P1-3 blocked on v1);
+  suite (acceptance-day now discriminates `payloadVersion` and has a real
+  V2.1 artifact; CI inclusion is a separate workflow decision);
   `deploy-production.yml` job `visual-baselines` (reusable), `build` now
   `needs: [source-quality, visual-baselines]`. Single production workflow
   and manual trigger preserved.
@@ -261,7 +268,9 @@ their text below is kept as the design for those later slices.
   section-view) with data-state + role + aria-busy; `horary-screen` gained
   `data-access-state` (unlocked|locked). No business-logic changes.
 - Remote candidate runs: PENDING (not yet executed on GitHub).
-- P1-3 (V2 same-payload), P1-6 (full real E2E) stay OPEN; P1-2 is
+- P1-3 (V2 same-payload) is locally proven on the real `today.v2.1` wire
+  artifact (2026-07-22), GitHub acceptance run pending; P1-6 (full real
+  E2E) stays OPEN; P1-2 is
   redefined (2026-07-20) as independent-from-pipeline verification via the
   existing fail-closed oracles — exact-SHA proof pending with P1-1.
 
@@ -316,12 +325,17 @@ their text below is kept as the design for those later slices.
   cleanliness, `check_audit_golden.py`, `prove_today_v2_real_api.py`
   (explicit dev env). No OpenRouter dependency for frozen mode (it uses the
   committed baseline).
-- **P1-3 BLOCKED (honest):** the V2 same-payload UI proof
-  (`e2e/mock-visual/acceptance-day.spec.ts` + preview
-  `ACCEPTANCE_PAYLOAD_PATH` override) fails closed while the committed
-  artifact is `today/v1` — it requires an owner-approved committed
-  `today.v2.x` `11_final_today_payload.json` (live audit refresh). Evidence
-  screenshot is not a visual baseline; P1-3 stays open.
+- **P1-3 PROVEN LOCALLY (2026-07-22):** the acceptance gate now
+  discriminates `meta.payloadVersion` (coherent `frontendPayloadVersion`
+  + non-null v2 block + `TodayPayloadWireSchema` as final validation) —
+  never `schemaVersion`, which is canonically `today/v1` for every series.
+  The committed `11_final_today_payload.json` was refreshed by the live
+  audit contour (ephemeral DB + local image-baked sidecar + real
+  TodayService/LLM, no fixture payload) into a real `today.v2.1` camelCase
+  wire artifact; oracles green (astronomy + scoring), `audit-day-freeze`
+  ×2 byte-stable, same-payload Playwright acceptance passed locally.
+  Evidence screenshot is not a visual baseline; the GitHub acceptance run
+  on the exact SHA stays pending.
 - **P1-2 (redefined 2026-07-20):** independent-from-product-pipeline
   verification via the EXISTING fail-closed oracles (transit longitudes,
   retrograde flags, moon phase, houses; day_status, sphere_scores,
@@ -368,6 +382,14 @@ their text below is kept as the design for those later slices.
 - **Steps:** feed the payload artifact into the existing Playwright route
   fixture (mock-visual harness); validate schema + key DOM states + one
   screenshot per key state; reuse, no new harness.
+- **Gate contract (fixed 2026-07-22):** the discriminator is
+  `meta.payloadVersion` (`today.v2`/`today.v2.1`) with the coherent
+  `frontendPayloadVersion` pair and a non-null v2 block; final validation
+  is `TodayPayloadWireSchema`. `meta.schemaVersion` is canonically
+  `today/v1` for every series and is never used. The root artifact is the
+  real API wire payload (camelCase `by_alias=True`, normalized
+  `generatedAt`/`cached`); astronomy/scoring oracles consume the derived
+  internal snake_case debug dump.
 - **Files:** `e2e/mock-visual/` (fixture + spec additions), acceptance job.
 - **Pass/fail:** schema valid, DOM contract (data-testid/data-state) exact,
   screenshot matches baseline.
@@ -498,7 +520,7 @@ their text below is kept as the design for those later slices.
   without a next docs commit. All other blockers stay open: P0-2 licensed
   bundle/identity production proof, P0-3 external Telegram ingress, P0-4
   host apply/deploy-workflow proof, P1-2 exact-SHA oracle proof,
-  P1-3 owner-approved today.v2 payload, P1-5 PR diff-cover acceptance,
+  P1-3 GitHub acceptance run on the exact SHA, P1-5 PR diff-cover acceptance,
   chat/payments/provider sandbox follow-ups, manual launch gates.
 - **Goal:** every user-facing capability has real-path evidence.
 - **Steps:** add specs for readings list + horary lifecycle (no

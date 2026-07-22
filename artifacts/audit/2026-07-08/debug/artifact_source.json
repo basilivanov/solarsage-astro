@@ -1,0 +1,23 @@
+{
+  "mode": "frozen-baseline",
+  "final_payload_source": "committed_baseline_fixture",
+  "activation_layer_source": "sidecar",
+  "uses_llm_live_text": false,
+  "cache_invalidated_before_payload": false,
+  "target_date": "2026-07-08",
+  "target_time": "12:00",
+  "target_tz": "Europe/Moscow",
+  "git_head": "11c2435",
+  "solarsage_v2_enabled": true,
+  "solarsage_v2_dual_run": true,
+  "solarsage_v2_frontend_enabled": true,
+  "selected_scoring_version": "ss-scoring-2.0",
+  "final_payload_version": "today.v2.1",
+  "final_frontend_payload_version": 3,
+  "final_has_v2_block": true,
+  "final_v2_activation_evidence_count": 143,
+  "sidecar_activation_count": 143,
+  "sidecar_activation_ids_sha256": "b9e1805ddc033c07d7706763ab1872a01c9aeb843d5aed59161e2caca1fa4896",
+  "payload_activation_ids_sha256": "b9e1805ddc033c07d7706763ab1872a01c9aeb843d5aed59161e2caca1fa4896",
+  "activation_evidence_unmapped_count": 0
+}
