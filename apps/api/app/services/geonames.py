@@ -16,7 +16,7 @@
 #   - List[dict] of location suggestions
 #   - dict with timezone data
 # dependencies:
-#   - standard library: json, urllib, os
+#   - standard library: json, urllib, os, copy, functools.lru_cache
 # side_effects:
 #   - HTTP requests to GeoNames API
 # invariants:
@@ -180,12 +180,13 @@ def search_geonames(query: str, limit: int = 8) -> List[dict]:
     if not query or len(query.strip()) < 2:
         return []
 
-    # Bounded in-process dedup: identical autocomplete bursts (same stripped
-    # query, same limit, same username) cost ONE upstream search. Cold
-    # process and every first unique query still call GeoNames for real;
-    # exceptions are never cached (lru_cache re-raises on every miss), so a
-    # cold-miss provider failure stays fail-closed. GeoNames data is
-    # effectively static and a process restart clears the cache.
+    # Bounded in-process dedup: after a COMPLETED successful miss,
+    # identical autocomplete bursts (same stripped query, same limit, same
+    # username) reuse the cached result; concurrent cold misses may still
+    # duplicate the upstream call (no single-flight). Exceptions are never
+    # cached (lru_cache re-raises on every miss), so a cold-miss provider
+    # failure stays fail-closed. GeoNames data is effectively static and a
+    # process restart clears the cache.
     return copy.deepcopy(
         _search_geonames_cached(query.strip(), limit, _get_username())
     )
@@ -201,8 +202,8 @@ def _search_geonames_cached(stripped_query: str, limit: int, username: str) -> L
     #   upstream fetch reads the env username itself).
     # returns: the cached result list (callers receive deep copies only).
     # side_effects: upstream searches only on cache misses (one completed
-#   successful miss per key is then reused; concurrent cold misses may
-#   duplicate the upstream call — no single-flight guarantee).
+    #   successful miss per key is then reused; concurrent cold misses may
+    #   duplicate the upstream call — no single-flight guarantee).
     # emitted_logs: none.
     # error_behavior: GeoNamesError propagates and is NEVER cached — the
     #   next identical call retries the provider for real.
