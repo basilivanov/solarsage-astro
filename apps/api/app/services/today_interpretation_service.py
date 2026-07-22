@@ -12,8 +12,21 @@
 # invariants:
 #   - concrete advice remains one 12-sphere batch call; the concrete-advice
 #     and planet-interpretation batch calls run concurrently via asyncio.gather
-#     once both deterministic contexts are built; fallback/validation/error
-#     semantics and result application order are unchanged.
+#     once both deterministic contexts are built; result application order is
+#     unchanged.
+#   - concrete advice retry semantics: when the first batch result is None,
+#     malformed, has a wrong exact key set, or yields fewer than 9 valid rows
+#     after the claim/row validators, exactly ONE bounded retry of
+#     generate_concrete_advice runs with the same deterministic
+#     contexts/evidence (planet interpretations and the other LLM calls are
+#     never re-run). Every attempt is validated atomically and applied to rows
+#     only when accepted (>= 9 valid rows); valid rows of an accepted attempt
+#     are applied, the rest keep the honest fallback.
+#   - degraded semantics: when both attempts are unacceptable the build NEVER
+#     raises and NEVER shows invalid LLM text — all 12 rows keep
+#     CONCRETE_ADVICE_FALLBACK_TEXT and the Today endpoint returns 200.
+#     A degraded batch is not cacheable (TodayService checks >= 9 non-fallback
+#     rows before writing the payload cache).
 # END_MODULE_CONTRACT: M-TODAY-INTERPRETATION-SERVICE
 
 from __future__ import annotations
@@ -97,6 +110,12 @@ CANONICAL_PRODUCT_SPHERES = [
     {"key": "study", "label": "Учёба", "icon_name": "layers"},
     {"key": "shopping", "label": "Покупки", "icon_name": "zap"},
 ]
+
+# Shared honest fallback for concrete advice rows. A payload whose concrete
+# advice has fewer than CONCRETE_ADVICE_CACHEABLE_MIN_ROWS non-fallback rows
+# is degraded and must never be written to the Today payload cache.
+CONCRETE_ADVICE_FALLBACK_TEXT = "Рекомендация временно недоступна."
+CONCRETE_ADVICE_CACHEABLE_MIN_ROWS = 9
 
 PLANET_TO_SPHERES_MAP = {
     "Sun": ["work", "creativity", "health"],
@@ -459,7 +478,7 @@ class TodayInterpretationService:
                     rank=rank,
                     verdict=verdict,
                     confidence=confidence,
-                    text="Рекомендация временно недоступна.",
+                    text=CONCRETE_ADVICE_FALLBACK_TEXT,
                     evidence=evidence_list,
                 )
             )
@@ -498,8 +517,9 @@ class TodayInterpretationService:
 
         # Concurrent independent batch calls: one 12-sphere concrete advice
         # batch and one planet interpretations batch (never split per-row).
+        llm_texts = None
+        evidence_packet = None
         if has_llm_keys:
-            evidence_packet = None
             if activation_layer:
                 from app.services.semantic_v2_service import SemanticV2Service
                 evidence_packet = SemanticV2Service().build_llm_evidence_packet(
@@ -515,37 +535,79 @@ class TodayInterpretationService:
         else:
             llm_interpretations = None
 
-        valid_llm_count = 0
-        if llm_texts and isinstance(llm_texts, dict):
-            # Check exactly canonical 12 keys
-            expected_keys = {c["key"] for c in CANONICAL_PRODUCT_SPHERES}
-            actual_keys = set(llm_texts.keys())
+        expected_keys = {c["key"] for c in CANONICAL_PRODUCT_SPHERES}
 
-            if expected_keys == actual_keys:
-                for row in rows:
-                    text = llm_texts.get(row.key)
-                    if text and isinstance(text, str) and text.strip():
-                        from app.services.llm_claim_validator import LLMClaimValidator
-                        sanitized_text = LLMClaimValidator().validate_concrete_advice_text(
-                            row_key=row.key,
-                            verdict=row.verdict,
-                            text=text,
-                            evidence=row.evidence,
-                        )
-                        if sanitized_text:
-                            text = sanitized_text
-                        if validate_row_text(row, text):
-                            row.text = text.strip()
-                            valid_llm_count += 1
+        def _apply_advice_attempt(candidate: dict | None) -> int:
+            # START_FUNCTION_CONTRACT: F-M-TODAY-INTERPRETATION-SERVICE._apply_advice_attempt
+            # purpose: Atomically validate ONE concrete-advice attempt: the
+            #   candidate is applied to rows ONLY when it carries the exact 12
+            #   canonical keys AND yields >= 9 valid rows after the existing
+            #   claim/row validators. Accepted attempts apply their valid rows
+            #   (the rest keep the honest fallback); a rejected attempt leaves
+            #   every row untouched.
+            # inputs: candidate — raw dict from generate_concrete_advice.
+            # returns: number of applied rows (0 = attempt rejected).
+            # side_effects: mutates row.text only for accepted attempts.
+            # emitted_logs: none.
+            # error_behavior: never raises; malformed candidates are rejected.
+            # END_FUNCTION_CONTRACT: F-M-TODAY-INTERPRETATION-SERVICE._apply_advice_attempt
+            if not candidate or not isinstance(candidate, dict):
+                return 0
+            if set(candidate.keys()) != expected_keys:
+                return 0
+            from app.services.llm_claim_validator import LLMClaimValidator
+            staged: list[tuple[ConcreteAdviceRow, str]] = []
+            for row in rows:
+                text = candidate.get(row.key)
+                if not text or not isinstance(text, str) or not text.strip():
+                    continue
+                sanitized_text = LLMClaimValidator().validate_concrete_advice_text(
+                    row_key=row.key,
+                    verdict=row.verdict,
+                    text=text,
+                    evidence=row.evidence,
+                )
+                if sanitized_text:
+                    text = sanitized_text
+                if validate_row_text(row, text):
+                    staged.append((row, text.strip()))
+            if len(staged) < 9:
+                return 0
+            for row, text in staged:
+                row.text = text
+            return len(staged)
 
-        # Fallback check: if fewer than 9 rows are valid, raise in prod/dev with keys
-        if valid_llm_count < 9:
-            if has_llm_keys:
-                raise ValueError(f"LLM generated only {valid_llm_count}/12 valid recommendations.")
-            else:
-                # Fallback on LLM failure / missing keys
-                for row in rows:
-                    row.text = "Рекомендация временно недоступна."
+        if has_llm_keys:
+            from app.core.logging import log_block, log_event
+            valid_llm_count = _apply_advice_attempt(llm_texts)
+            if valid_llm_count < 9:
+                # Exactly one bounded retry of the advice batch ONLY, with the
+                # same deterministic contexts/evidence; planet interpretations
+                # and the other Today LLM calls are never re-run.
+                with log_block(slice="W-5.1", module="M-TODAY-INTERPRETATION-SERVICE", block="CONCRETE_ADVICE_RETRY"):
+                    log_event(
+                        "llm.response_rejected",
+                        level="warn",
+                        msg="[LLM] concrete advice first attempt unacceptable; one bounded retry",
+                        payload={"reason": "schema_invalid"},
+                    )
+                retry_texts = await llm_service.generate_concrete_advice(
+                    advice_contexts, evidence_packet=evidence_packet
+                )
+                valid_llm_count = _apply_advice_attempt(retry_texts)
+            if valid_llm_count < 9:
+                # Degraded: never raise, never show invalid LLM text — all 12
+                # rows keep the honest fallback (rejected attempts wrote
+                # nothing). TodayService skips the payload cache for this
+                # degraded batch (< 9 non-fallback rows).
+                with log_block(slice="W-5.1", module="M-TODAY-INTERPRETATION-SERVICE", block="CONCRETE_ADVICE_FALLBACK"):
+                    log_event(
+                        "llm.response_rejected",
+                        level="warn",
+                        msg="[LLM] concrete advice degraded: all rows keep fallback text",
+                        payload={"reason": "schema_invalid"},
+                    )
+        # No LLM keys: rows keep the honest fallback by construction.
 
         # Compute row counts
         good_count = sum(1 for r in rows if r.verdict == "good")

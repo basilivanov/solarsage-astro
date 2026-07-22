@@ -854,7 +854,15 @@ async def test_v1_only_payload_and_cache_identity_not_polluted_by_v2_calc(db_ses
          patch("app.services.today_service.NormalizationService.normalize_day", return_value=deterministic_signals), \
          patch.object(TodayService, "_get_yesterday_signals", AsyncMock(return_value=None)), \
          patch.object(TodayService, "_cache_payload", new=capture_cache), \
-         patch.object(TodayService, "_cache_semantic_layer", AsyncMock()):
+         patch.object(TodayService, "_cache_semantic_layer", AsyncMock()), \
+         patch("app.services.llm_service.LLMService.generate_concrete_advice", AsyncMock(return_value={
+             k: f"Спокойный день для дела номер {i}."
+             for i, k in enumerate([
+                 "work", "money", "documents", "relationships", "sport", "communication",
+                 "health", "decisions", "travel", "creativity", "study", "shopping",
+             ])
+         })), \
+         patch.object(settings, "openrouter_api_key", "test-meta-key"):
         service = TodayService(db_session)
         access = ContentAccessState(state="preview", reason="expired_access")
         payload = await service.get_today_payload(
@@ -1090,6 +1098,14 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
              "app.services.today_service.ActivationLayerService.build",
              return_value=sentinel_activation_layer,
          ), \
+         patch("app.services.llm_service.LLMService.generate_concrete_advice", AsyncMock(return_value={
+             k: f"Спокойный день для дела номер {i}."
+             for i, k in enumerate([
+                 "work", "money", "documents", "relationships", "sport", "communication",
+                 "health", "decisions", "travel", "creativity", "study", "shopping",
+             ])
+         })), \
+         patch.object(settings, "openrouter_api_key", "test-meta-key"), \
          patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual):
         service = TodayService(db_session, horizon_integration_service=integration_spy)
         access = ContentAccessState(state="preview", reason="expired_access")

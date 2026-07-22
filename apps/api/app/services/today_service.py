@@ -40,6 +40,9 @@
 #     runtime force propagation, public identity, cache write, and horizons.
 #   - Runtime selection must match the pre-cache family or fail closed before
 #     public payload construction and cache write.
+#   - A degraded concrete-advice batch (< 9 non-fallback rows) is never written
+#     to the payload cache (conservative false-negative skip allowed; cache
+#     poisoning never). Valid first/valid retry results stay cached.
 #   - A foreground Today request never schedules calculations for adjacent dates.
 #   - The six independent LLM calls (headline, reading, notes, why, concrete
 #     advice batch, planet interpretations) are issued concurrently via
@@ -592,8 +595,22 @@ class TodayService:
         if payload.meta.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION and payload.v2 is None:
             raise RuntimeError("current frontend V2 identity requires v2 block")
 
-        # W-5.2: Cache payload (with profile_hash in key)
-        await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
+        # W-5.2: Cache payload (with profile_hash in key) — but NEVER cache a
+        # degraded concrete-advice batch: fewer than 9 non-fallback rows means
+        # both LLM attempts were unacceptable and the payload carries the
+        # honest fallback text. A conservative false-negative skip is fine;
+        # cache poisoning is not. Valid first/valid retry results stay cached.
+        from app.services.today_interpretation_service import (
+            CONCRETE_ADVICE_CACHEABLE_MIN_ROWS,
+            CONCRETE_ADVICE_FALLBACK_TEXT,
+        )
+        non_fallback_advice = len([
+            advice_row
+            for advice_row in (payload.concrete_advice.rows if payload.concrete_advice else [])
+            if advice_row.text != CONCRETE_ADVICE_FALLBACK_TEXT
+        ])
+        if non_fallback_advice >= CONCRETE_ADVICE_CACHEABLE_MIN_ROWS:
+            await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
 
         return payload
 

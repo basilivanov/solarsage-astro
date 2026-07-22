@@ -113,51 +113,58 @@ async def test_llm_concrete_advice_validation_and_fallback():
         for row in concrete_advice.rows:
             assert row.text == valid_mock_texts[row.key]
 
-    # Helper to assert validation failure (raises ValueError)
-    async def assert_fails(mock_output):
+    # Helper: under the new degraded contract an attempt with < 9 valid rows
+    # is rejected atomically; BOTH attempts reject => no raise, all 12 rows
+    # keep the honest fallback and no invalid text is ever shown.
+    async def assert_degraded(mock_output):
         with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
              patch("app.core.config.settings.openrouter_api_key", "abc123xyz"):
             mock_llm.return_value = mock_output
-            with pytest.raises(ValueError):
-                await service.build(
-                    target_date=date(2026, 7, 5),
-                    day_status="supportive",
-                    scoring_result={"day_status": "supportive", "sphere_scores": {}},
-                    signals=[],
-                    semantic_layer=None,
-                    day_chart=None,
-                    planet_influences=[],
-                    sphere_scores=[],
-                    important_items=[],
-                )
+            concrete_advice, _, _ = await service.build(
+                target_date=date(2026, 7, 5),
+                day_status="supportive",
+                scoring_result={"day_status": "supportive", "sphere_scores": {}},
+                signals=[],
+                semantic_layer=None,
+                day_chart=None,
+                planet_influences=[],
+                sphere_scores=[],
+                important_items=[],
+            )
+            assert mock_llm.call_count == 2  # exactly one bounded retry
+            for row in concrete_advice.rows:
+                assert row.text == "Рекомендация временно недоступна."
+                assert "СЕНТИНЕЛ" not in row.text
+                assert "Transit_" not in row.text
+                assert "Марс" not in row.text
 
-    # 1. Latin text fails (invalidate 4 keys)
+    # 1. Latin text rejected (invalidate 4 keys -> 8 valid < 9)
     invalid_latin = valid_mock_texts.copy()
     for k in ["work", "money", "documents", "relationships"]:
         invalid_latin[k] = "СЕНТИНЕЛ work СЕНТИНЕЛ"
-    await assert_fails(invalid_latin)
+    await assert_degraded(invalid_latin)
 
-    # 2. Transit_ / Natal_ fails (invalidate 4 keys)
+    # 2. Transit_ / Natal_ rejected (invalidate 4 keys)
     invalid_prefix = valid_mock_texts.copy()
     for k in ["work", "money", "documents", "relationships"]:
         invalid_prefix[k] = "СЕНТИНЕЛ Transit_Moon СЕНТИНЕЛ"
-    await assert_fails(invalid_prefix)
+    await assert_degraded(invalid_prefix)
 
-    # 3. Missing key fails
+    # 3. Missing key rejected (wrong exact key set)
     invalid_missing = valid_mock_texts.copy()
     del invalid_missing["work"]
-    await assert_fails(invalid_missing)
+    await assert_degraded(invalid_missing)
 
-    # 4. Extra key fails
+    # 4. Extra key rejected (wrong exact key set)
     invalid_extra = valid_mock_texts.copy()
     invalid_extra["extra_key"] = "СЕНТИНЕЛ"
-    await assert_fails(invalid_extra)
+    await assert_degraded(invalid_extra)
 
-    # 5. Hallucinated planet fails
+    # 5. Hallucinated planet rejected (invalidate 4 keys)
     invalid_hallucination = valid_mock_texts.copy()
     for k in ["work", "money", "documents", "relationships"]:
         invalid_hallucination[k] = "СЕНТИНЕЛ Марс СЕНТИНЕЛ"
-    await assert_fails(invalid_hallucination)
+    await assert_degraded(invalid_hallucination)
 
 
 @pytest.mark.asyncio
@@ -199,28 +206,30 @@ async def test_today_interpretation_service_allowed_evidence_planets():
 
         assert concrete_advice.rows[0].text == "Марс дает энергию."
 
-    # Test that mentioning Venus (not in evidence) fails
+    # Test that mentioning Venus (not in evidence) is rejected — under the
+    # degraded contract both attempts reject => all rows keep the fallback.
     invalid_output = mock_output.copy()
-    invalid_output["work"] = "Венера помогает."
+    for k in ["work", "money", "documents", "relationships"]:
+        invalid_output[k] = "Венера помогает."
 
     with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
          patch("app.core.config.settings.openrouter_api_key", "abc123xyz"):
         mock_llm.return_value = invalid_output
-        with pytest.raises(ValueError):
-            # Invalidate 4 keys to trigger ValueError
-            for k in ["work", "money", "documents", "relationships"]:
-                invalid_output[k] = "Венера помогает."
-            await service.build(
-                target_date=date(2026, 7, 5),
-                day_status="supportive",
-                scoring_result={"day_status": "supportive", "sphere_scores": {}},
-                signals=[],
-                semantic_layer=None,
-                day_chart=None,
-                planet_influences=[PlanetInfluence(name="Mars", score=6.5, rank=1)],
-                sphere_scores=[],
-                important_items=[],
-            )
+        concrete_advice, _, _ = await service.build(
+            target_date=date(2026, 7, 5),
+            day_status="supportive",
+            scoring_result={"day_status": "supportive", "sphere_scores": {}},
+            signals=[],
+            semantic_layer=None,
+            day_chart=None,
+            planet_influences=[PlanetInfluence(name="Mars", score=6.5, rank=1)],
+            sphere_scores=[],
+            important_items=[],
+        )
+        assert mock_llm.call_count == 2
+        for row in concrete_advice.rows:
+            assert row.text == "Рекомендация временно недоступна."
+            assert "Венера" not in row.text
 
 
 @pytest.mark.asyncio

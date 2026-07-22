@@ -112,7 +112,8 @@ jobs:
         run: |
           set -o pipefail
           # -n 2 --dist=loadfile: measured 131.6s -> 80.6s (-39%) on the same
-          # suite with identical coverage totals (2026-07-22, local 4-CPU).
+          # suite with no coverage regression and totals deterministic
+          # across xdist repeats (2026-07-22, local 4-CPU).
           python -m pytest apps/api/tests -q -m "not integration and not benchmark" \
             -n 2 --dist=loadfile \
             --cov=apps/api/app --cov-branch \
@@ -200,7 +201,8 @@ jobs:
         run: |
           set -o pipefail
           # -n 2 --dist=loadfile: measured 38.8s -> 20.1s (-48%) on the same
-          # suite with byte-identical coverage totals (2026-07-22, local 4-CPU).
+          # suite with byte-identical coverage totals and totals deterministic
+          # across xdist repeats (2026-07-22, local 4-CPU).
           python -m pytest apps/solarsage/tests -q \
             -n 2 --dist=loadfile \
             --cov=apps/solarsage/solarsage --cov-branch \

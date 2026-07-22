@@ -1065,7 +1065,11 @@ JSON:"""
 
 Твой JSON-ответ:"""
 
-        response_text = await self._generate_text(prompt, max_tokens=1500)
+        # 12 short recommendations need more than the old 1500 budget: a
+        # truncated response loses the closing brace and is unparseable
+        # (observed in release E2E run 29890349759: 1083 chars, no final "}").
+        # Only THIS output budget is raised; every other LLM budget is untouched.
+        response_text = await self._generate_text(prompt, max_tokens=2400)
         if not response_text:
             return None
 
@@ -1084,7 +1088,9 @@ JSON:"""
                     "llm.response_rejected",
                     level="warn",
                     msg=f"[LLM] Failed to parse concrete advice JSON: {type(e).__name__}",
-                    payload={"response": response_text},
+                    # Never log the raw model response (may carry unvalidated
+                    # user-facing text); the rejection reason only.
+                    payload={"reason": "schema_invalid"},
                 )
             return None
     # END_BLOCK: CONCRETE_ADVICE_GENERATION

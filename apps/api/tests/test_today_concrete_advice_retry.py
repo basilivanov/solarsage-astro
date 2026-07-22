@@ -1,0 +1,267 @@
+# ############################################################################
+# AI_HEADER: MODULE_TESTS_TEST_TODAY_CONCRETE_ADVICE_RETRY — retry/degraded proofs.
+# ROLE: Proves the concrete-advice bounded-retry and degraded-cache contracts:
+#       exactly one advice-only retry on unacceptable first attempts, atomic
+#       application, 12-row honest fallback without ValueError, endpoint 200,
+#       and no payload-cache write on degraded batches.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-TESTS-TODAY-CONCRETE-ADVICE-RETRY
+# purpose: Directed regression tests for the concrete advice retry/fallback/
+#   cacheability contract (release E2E 29890349759 root cause).
+# owns:
+#   - apps/api/tests/test_today_concrete_advice_retry.py
+# inputs: mocked LLMService batch methods, endpoint harness mocks.
+# outputs: call-count, row-content, log-shape and cache-call assertions.
+# dependencies: conftest fixtures (async_client, make_initdata, db_session).
+# side_effects: none (all externals mocked).
+# emitted_logs: none.
+# invariants:
+#   - Planet interpretations are never re-run by an advice retry.
+#   - Degraded batches never raise and never reach the payload cache.
+# failure_policy: assertion failure.
+# END_MODULE_CONTRACT: M-TESTS-TODAY-CONCRETE-ADVICE-RETRY
+
+from __future__ import annotations
+
+from datetime import date
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from app.core.config import settings
+from app.schemas.today import DayChart, DayChartTransitPlanet
+from app.services.today_interpretation_service import (
+    CONCRETE_ADVICE_FALLBACK_TEXT,
+    TodayInterpretationService,
+)
+
+CANONICAL_12_KEYS = [
+    "work", "money", "documents", "relationships", "sport", "communication",
+    "health", "decisions", "travel", "creativity", "study", "shopping",
+]
+
+VALID_TEXTS = {k: f"Спокойный день для дела номер {i}." for i, k in enumerate(CANONICAL_12_KEYS)}
+
+BUILD_KWARGS = dict(
+    target_date=date(2026, 7, 5),
+    day_status="supportive",
+    scoring_result={"day_status": "supportive", "sphere_scores": {}},
+    signals=[],
+    semantic_layer=None,
+    planet_influences=[],
+    sphere_scores=[],
+    important_items=[],
+)
+
+
+def _day_chart() -> DayChart:
+    return DayChart(
+        source="solarsage",
+        houses=[],
+        transit_planets=[
+            DayChartTransitPlanet(name="Sun", longitude=150.0, sign="Virgo", house=1),
+        ],
+        aspects=[],
+    )
+
+
+async def _build_with_mocks(advice_side_effect, planet_return=None):
+    service = TodayInterpretationService()
+    with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_advice, \
+         patch("app.services.llm_service.LLMService.generate_planet_interpretations", new_callable=AsyncMock) as mock_planets, \
+         patch("app.core.config.settings.openrouter_api_key", "test-key"):
+        mock_advice.side_effect = advice_side_effect
+        mock_planets.return_value = planet_return or {"Sun": "Солнце помогает делам."}
+        result = await service.build(day_chart=_day_chart(), **BUILD_KWARGS)
+    return result, mock_advice, mock_planets
+
+
+# -- call-count contract ------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_valid_first_attempt_single_advice_call():
+    (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([VALID_TEXTS])
+    assert mock_advice.call_count == 1  # valid first: no retry
+    assert mock_planets.call_count == 1  # planet batch untouched by advice logic
+    for row in concrete_advice.rows:
+        assert row.text == VALID_TEXTS[row.key]
+
+
+@pytest.mark.asyncio
+async def test_malformed_first_then_valid_retry():
+    (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([None, VALID_TEXTS])
+    assert mock_advice.call_count == 2  # exactly one bounded retry
+    assert mock_planets.call_count == 1  # never re-run
+    for row in concrete_advice.rows:
+        assert row.text == VALID_TEXTS[row.key]
+
+
+@pytest.mark.asyncio
+async def test_semantic_invalid_first_then_valid_retry():
+    invalid = VALID_TEXTS.copy()
+    for k in ["work", "money", "documents", "relationships"]:
+        invalid[k] = "Latin words inside text."
+    (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([invalid, VALID_TEXTS])
+    assert mock_advice.call_count == 2
+    assert mock_planets.call_count == 1
+    for row in concrete_advice.rows:
+        assert row.text == VALID_TEXTS[row.key]
+        assert "Latin" not in row.text
+
+
+@pytest.mark.asyncio
+async def test_both_malformed_degraded_no_raise_no_bad_text():
+    (concrete_advice, _, _), mock_advice, mock_planets = await _build_with_mocks([None, None])
+    assert mock_advice.call_count == 2
+    assert mock_planets.call_count == 1
+    assert len(concrete_advice.rows) == 12
+    for row in concrete_advice.rows:
+        assert row.text == CONCRETE_ADVICE_FALLBACK_TEXT
+
+
+@pytest.mark.asyncio
+async def test_both_semantic_invalid_degraded():
+    invalid = VALID_TEXTS.copy()
+    for k in ["work", "money", "documents", "relationships"]:
+        invalid[k] = "Latin words inside text."
+    (concrete_advice, _, _), mock_advice, _ = await _build_with_mocks([invalid, invalid])
+    assert mock_advice.call_count == 2
+    for row in concrete_advice.rows:
+        assert row.text == CONCRETE_ADVICE_FALLBACK_TEXT
+        assert "Latin" not in row.text
+
+
+@pytest.mark.asyncio
+async def test_retry_partial_accept_applies_valid_rows_only():
+    invalid = VALID_TEXTS.copy()
+    for k in ["work", "money", "documents", "relationships", "sport"]:
+        invalid[k] = "garbage"
+    partial = VALID_TEXTS.copy()
+    # 9 valid + 3 invalid (Latin) -> accepted with >= 9 valid rows.
+    for k in ["work", "money", "documents"]:
+        partial[k] = "Latin words inside text."
+    (concrete_advice, _, _), mock_advice, _ = await _build_with_mocks([invalid, partial])
+    assert mock_advice.call_count == 2
+    by_key = {row.key: row.text for row in concrete_advice.rows}
+    for k in ["work", "money", "documents"]:
+        assert by_key[k] == CONCRETE_ADVICE_FALLBACK_TEXT
+    for k in ["relationships", "sport", "communication", "health", "decisions",
+              "travel", "creativity", "study", "shopping"]:
+        assert by_key[k] == VALID_TEXTS[k]
+
+
+# -- endpoint + cache contract ------------------------------------------------
+
+def _sidecar_client_mock() -> MagicMock:
+    mock_client = MagicMock()
+    mock_client.get_natal = AsyncMock(return_value={
+        "planets": [{"name": "Sun", "longitude": 69.5, "latitude": 0.0, "speed": 1.0, "sign": "Gemini"}],
+        "houses": [
+            {"number": i + 1, "cusp": float(30 * i), "sign": s}
+            for i, s in enumerate([
+                "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+                "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+            ])
+        ],
+        "special_points": [],
+        "house_system": "PLACIDUS",
+    })
+    mock_client.get_transits = AsyncMock(return_value={
+        "planets": [{"name": "Sun", "longitude": 150.0, "latitude": 0.0, "speed": 1.0, "sign": "Virgo"}],
+        "special_points": [],
+    })
+    return mock_client
+
+
+async def _day_request(async_client, make_initdata, advice_side_effect, cache_spy):
+    raw = make_initdata(user_id=8003, username="advice-retry")
+    await async_client.post("/api/auth/telegram", json={"initData": raw})
+    await async_client.put("/api/profile", json={
+        "gender": "male",
+        "birth": {
+            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
+            "birthTz": "Europe/Moscow",
+        }
+    })
+    with patch("app.services.natal_context_service.get_solarsage_client") as client_factory, \
+         patch("app.services.today_service.get_solarsage_client", client_factory), \
+         patch("app.services.today_service.TodayService._cache_payload", cache_spy), \
+         patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_advice, \
+         patch("app.services.llm_service.LLMService.generate_planet_interpretations", new_callable=AsyncMock) as mock_planets, \
+         patch("app.services.llm_service.LLMService.generate_headline", new_callable=AsyncMock) as mock_headline, \
+         patch("app.services.llm_service.LLMService.generate_reading", new_callable=AsyncMock) as mock_reading, \
+         patch("app.services.llm_service.LLMService.generate_notes", new_callable=AsyncMock) as mock_notes, \
+         patch("app.services.llm_service.LLMService.generate_why_sections", new_callable=AsyncMock) as mock_why, \
+         patch.object(settings, "openrouter_api_key", "test-key"):
+        client_factory.return_value = _sidecar_client_mock()
+        mock_advice.side_effect = advice_side_effect
+        mock_planets.return_value = {"Sun": "Солнце помогает делам."}
+        mock_headline.return_value = None
+        mock_reading.return_value = None
+        mock_notes.return_value = None
+        mock_why.return_value = None
+        resp = await async_client.get("/api/day/today")
+    return resp, mock_advice
+
+
+@pytest.mark.asyncio
+async def test_endpoint_degraded_returns_200_and_skips_cache(async_client, make_initdata, db_session):
+    cache_spy = AsyncMock()
+    resp, mock_advice = await _day_request(async_client, make_initdata, [None, None], cache_spy)
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()["concreteAdvice"]["rows"]
+    assert len(rows) == 12
+    assert all(r["text"] == CONCRETE_ADVICE_FALLBACK_TEXT for r in rows)
+    assert mock_advice.call_count == 2
+    cache_spy.assert_not_called()  # degraded batch never poisons the cache
+
+
+@pytest.mark.asyncio
+async def test_endpoint_accepted_result_is_cached(async_client, make_initdata, db_session):
+    cache_spy = AsyncMock()
+    resp, mock_advice = await _day_request(async_client, make_initdata, [None, VALID_TEXTS], cache_spy)
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()["concreteAdvice"]["rows"]
+    assert all(r["text"] == VALID_TEXTS[r["key"]] for r in rows)
+    assert mock_advice.call_count == 2  # retry accepted
+    cache_spy.assert_called_once()  # valid retry result stays cacheable
+
+
+# -- llm_service level: output budget + safe rejection log --------------------
+
+@pytest.mark.asyncio
+async def test_concrete_advice_output_budget_2400():
+    from app.services.llm_service import LLMService
+
+    service = LLMService()
+    with patch.object(LLMService, "_generate_text", new_callable=AsyncMock) as mock_gen:
+        mock_gen.return_value = '{"work": "текст"}'
+        await service.generate_concrete_advice(
+            [{"key": "work", "label": "Работа", "verdict": "good", "evidence": []}]
+        )
+        mock_gen.assert_called_once()
+        assert mock_gen.call_args.kwargs["max_tokens"] == 2400
+
+
+@pytest.mark.asyncio
+async def test_parse_rejection_log_has_no_raw_response():
+    from app.services.llm_service import LLMService
+
+    service = LLMService()
+    raw_bad = '{"work": "обрезанный ответ без закрывающей скобки'
+    with patch.object(LLMService, "_generate_text", new_callable=AsyncMock) as mock_gen, \
+         patch("app.services.llm_service.log_event") as mock_log:
+        mock_gen.return_value = raw_bad
+        result = await service.generate_concrete_advice(
+            [{"key": "work", "label": "Работа", "verdict": "good", "evidence": []}]
+        )
+        assert result is None
+        mock_log.assert_called_once()
+        _, kwargs = mock_log.call_args
+        assert mock_log.call_args.args[0] == "llm.response_rejected"
+        assert kwargs["payload"] == {"reason": "schema_invalid"}
+        assert "response" not in kwargs["payload"]
+        # The raw model response must never reach the log envelope.
+        assert raw_bad not in str(kwargs)

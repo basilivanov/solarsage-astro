@@ -27,8 +27,28 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import AsyncMock, patch
 
 from app.db.models import User, UserProfile
+
+# A payload with an all-fallback concrete-advice batch is degraded and never
+# cached (bounded-retry contract). Cache-mechanics tests therefore pin a
+# valid 12-key advice batch so the payload stays cacheable.
+_VALID_ADVICE = {
+    k: f"Спокойный день для дела номер {i}."
+    for i, k in enumerate([
+        "work", "money", "documents", "relationships", "sport", "communication",
+        "health", "decisions", "travel", "creativity", "study", "shopping",
+    ])
+}
+
+
+def _cacheable_advice_patches():
+    return (
+        patch("app.services.llm_service.LLMService.generate_concrete_advice",
+              AsyncMock(return_value=_VALID_ADVICE)),
+        patch("app.core.config.settings.openrouter_api_key", "test-cache-key"),
+    )
 
 
 @pytest.mark.asyncio
@@ -60,7 +80,9 @@ async def test_cache_miss_then_hit(async_client: AsyncClient, make_initdata, db_
         await db_session.commit()
 
     # First call (cache miss)
-    response1 = await async_client.get("/api/day/today")
+    advice_patch, key_patch = _cacheable_advice_patches()
+    with advice_patch, key_patch:
+        response1 = await async_client.get("/api/day/today")
     if response1.status_code != 200:
         print(f"Response status: {response1.status_code}")
         print(f"Response body: {response1.text}")
@@ -106,8 +128,11 @@ async def test_cache_invalidation_on_profile_edit(async_client: AsyncClient, mak
         await db_session.execute(stmt)
         await db_session.commit()
 
-    # First call (cache miss)
-    response1 = await async_client.get("/api/day/today")
+    # First call (cache miss) — cacheable advice so the invalidation below
+    # really exercises a cached entry, not a never-cached degraded one.
+    advice_patch, key_patch = _cacheable_advice_patches()
+    with advice_patch, key_patch:
+        response1 = await async_client.get("/api/day/today")
     assert response1.status_code == 200
     assert response1.json()["meta"]["cached"] is False
 

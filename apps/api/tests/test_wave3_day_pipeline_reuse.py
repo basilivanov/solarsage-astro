@@ -139,6 +139,12 @@ def _mock_all_services():
         "scoring": patch("app.services.today_service.ScoringService"),
         "semantic": patch("app.services.today_service.SemanticService"),
         "llm": patch("app.services.today_service.LLMService"),
+        # The interpretation service has its own LLMService reference; the
+        # concrete-advice batch must be a valid 12-key payload so the built
+        # payload stays cacheable (a degraded all-fallback advice batch is
+        # never written to the TodayPayload cache by contract).
+        "llm_interpretation": patch("app.services.today_interpretation_service.LLMService"),
+        "llm_key": patch("app.core.config.settings.openrouter_api_key", "test-wave3-key"),
         "important": patch("app.services.today_service.TodayImportantService"),
         "yesterday": patch.object(TodayService, "_get_yesterday_signals", new=AsyncMock(return_value=None)),
         "cache_semantic": patch.object(TodayService, "_cache_semantic_layer", new=AsyncMock(return_value=None)),
@@ -172,6 +178,17 @@ def _setup_service_mocks(mocks):
     mock_llm.return_value.generate_notes = AsyncMock(return_value="Notes")
     mock_llm.return_value.generate_why_sections = AsyncMock(return_value=[])
 
+    mock_llm_interpretation = mocks["llm_interpretation"].__enter__()
+    mock_llm_interpretation.return_value.generate_concrete_advice = AsyncMock(return_value={
+        k: f"Спокойный день для дела номер {i}."
+        for i, k in enumerate([
+            "work", "money", "documents", "relationships", "sport", "communication",
+            "health", "decisions", "travel", "creativity", "study", "shopping",
+        ])
+    })
+    mock_llm_interpretation.return_value.generate_planet_interpretations = AsyncMock(return_value=None)
+    mocks["llm_key"].__enter__()
+
     mock_important = mocks["important"].__enter__()
     mock_important.return_value.build_items.return_value = []
 
@@ -183,8 +200,8 @@ def _setup_service_mocks(mocks):
 
 def _teardown_service_mocks(mocks):
     """Exit all context managers."""
-    for key in ["normalization", "scoring", "semantic", "llm", "important",
-                "yesterday", "cache_semantic"]:
+    for key in ["normalization", "scoring", "semantic", "llm", "llm_interpretation",
+                "llm_key", "important", "yesterday", "cache_semantic"]:
         mocks[key].__exit__(None, None, None)
 
 
