@@ -470,8 +470,15 @@ class LLMService:
         # inputs: contexts (list[dict]), semantic_layer (optional), evidence_packet (optional)
         # returns: list[dict] | None — sections with LLM text or None on failure
         # side_effects: calls external LLM provider
-        # emitted_logs: llm.response_rejected on JSON parse failure
-        # error_behavior: returns None if LLM fails or JSON parse fails
+        # emitted_logs: llm.response_rejected on JSON parse failure or any
+        #   schema violation (payload only reason=schema_invalid, never the
+        #   raw model response)
+        # error_behavior: returns None (never raises) when the LLM call fails,
+        #   the JSON is malformed, the top level is not an object, sections is
+        #   not a list, a consumed section is not an object, or an explicitly
+        #   provided text value is not a non-blank string. Absent trailing
+        #   sections and absent text fields keep the deterministic ctx
+        #   fallback; a non-usable internal fallback also rejects the batch.
         # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_why_sections
         """LLM writes narrative text for each pre-computed context.
         All numbers, planets, houses are pre-computed — LLM cannot hallucinate."""
@@ -605,41 +612,72 @@ JSON:"""
                 text = text.split(marker, 1)[1].rsplit('```', 1)[0].strip()
                 break
 
-        try:
-            data = json_lib.loads(text)
-            llm_sections = data.get("sections", [])
-
-            # Merge pre-computed metadata with LLM text
-            sections = []
-            for i, ctx in enumerate(contexts):
-                text = llm_sections[i].get("text", ctx["context"]) if i < len(llm_sections) else ctx["context"]
-                blocks = []
-                if ctx["blocks_kind"] == "bullets":
-                    items = [line.strip("- ") for line in text.split("\n") if line.strip()]
-                    if items:
-                        blocks.append({"kind": "bullets", "items": items})
-                    else:
-                        blocks.append({"kind": "paragraph", "text": text})
-                else:
-                    blocks.append({"kind": "paragraph", "text": text})
-
-                sections.append({
-                    "id": f"why-{i+1}",
-                    "layer": ctx["layer"],
-                    "title": ctx["title"],
-                    "blocks": blocks,
-                })
-
-            return sections
-        except (json_lib.JSONDecodeError, KeyError, IndexError) as e:
+        def _reject(exc_type: str) -> list[dict] | None:
             with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="WHY_GENERATION"):
                 log_event(
                     "llm.response_rejected",
                     level="warn",
-                    msg=f"[LLM] Failed to parse why-sections JSON: {type(e).__name__}",
+                    msg=f"[LLM] Rejected why-sections payload: {exc_type}",
+                    # Never the raw model response — the rejection reason only.
                     payload={"reason": "schema_invalid"},
                 )
             return None
+
+        try:
+            data = json_lib.loads(text)
+        except json_lib.JSONDecodeError as e:
+            return _reject(type(e).__name__)
+
+        # Fail-closed schema boundary: the model may return valid JSON with
+        # wrong TYPES (observed in release E2E 29894386844: sections[i].text
+        # was a JSON array and text.split raised AttributeError -> /api/day
+        # 500). Any explicitly provided wrong type or blank text rejects the
+        # whole batch; absent trailing sections and absent text fields keep
+        # the deterministic ctx fallback below.
+        if not isinstance(data, dict):
+            return _reject("top_level_not_object")
+        llm_sections = data.get("sections", [])
+        if not isinstance(llm_sections, list):
+            return _reject("sections_not_list")
+        for section in llm_sections[: len(contexts)]:
+            if not isinstance(section, dict):
+                return _reject("section_not_object")
+            if "text" in section:
+                value = section["text"]
+                if not isinstance(value, str) or not value.strip():
+                    return _reject("text_not_nonblank_string")
+
+        # Merge pre-computed metadata with LLM text
+        sections = []
+        for i, ctx in enumerate(contexts):
+            if i < len(llm_sections):
+                candidate = llm_sections[i].get("text")
+                chosen = candidate if isinstance(candidate, str) and candidate.strip() else ctx["context"]
+            else:
+                # Missing trailing section: deterministic fallback (unchanged).
+                chosen = ctx["context"]
+            if not isinstance(chosen, str) or not chosen.strip():
+                # Internal deterministic fallback must itself be usable;
+                # otherwise fail closed instead of emitting empty text.
+                return _reject("empty_fallback_context")
+            blocks = []
+            if ctx["blocks_kind"] == "bullets":
+                items = [line.strip("- ") for line in chosen.split("\n") if line.strip()]
+                if items:
+                    blocks.append({"kind": "bullets", "items": items})
+                else:
+                    blocks.append({"kind": "paragraph", "text": chosen})
+            else:
+                blocks.append({"kind": "paragraph", "text": chosen})
+
+            sections.append({
+                "id": f"why-{i+1}",
+                "layer": ctx["layer"],
+                "title": ctx["title"],
+                "blocks": blocks,
+            })
+
+        return sections
     # END_BLOCK: WHY_GENERATION
 
     # ── Important today details ─────────────────────────────────────
