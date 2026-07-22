@@ -383,7 +383,8 @@ const WEBHOOK_URL = `${API_BASE}/api/payment/webhook/yookassa`;
 // 5555 5555 5555 4477 explicitly HAS 3-D Secure and is NOT used here).
 const SANDBOX_TEST_CARD = {
   number: '5555 5555 5555 4444',
-  expiry: '12/30',
+  expiryMonth: '12',
+  expiryYear: '30',
   cvc: '123',
 };
 
@@ -416,85 +417,126 @@ export async function shimTelegramOpenLink(page: Page) {
 }
 
 // START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.paySandboxCheckout
-// purpose: Fill the official public no-3DS success card on the real YooKassa
-//   sandbox checkout and click pay once. The checkout first shows a payment
-//   METHOD chooser (YooMoney / Wallet / bank card) — the mandatory first
-//   step selects the bank-card option via the stable provider selector
-//   data-qa="bankcard-show-other-cards-payment-option" (bounded semantic
-//   fallback on exact option text, never CSS classes). Then a bounded frame
-//   search (the card iframe may be created late) fills the card fields.
-//   Never logs URL/order/provider ids.
+// purpose: Pay the real YooKassa sandbox checkout with the official public
+//   no-3DS success card. Handles BOTH normal states: the card form already
+//   open OR the method chooser with the stable provider selector
+//   data-qa="bankcard-show-other-cards-payment-option" (chooser is NOT
+//   unconditionally required). The real card form has SPLIT expiry inputs
+//   (expiry-month/expiry-year/security-code, all data-qa'd in the provider
+//   trace) — they are filled separately and every field is verified to
+//   actually hold the value (fail-closed) BEFORE the single pay click.
+//   A chrome-error page is reported as an EXTERNAL provider navigation
+//   failure (never masked as a missing option). Never logs URL/order/
+//   provider ids.
 // inputs: popup — the provider checkout page (kept open by the caller).
-// returns: void (throws when the card form or pay button is not found).
+// returns: void (throws on missing card form / pay button, an incomplete
+//   fill, or an external navigation failure).
 // side_effects: real provider interaction (sandbox payment).
 // emitted_logs: none.
-// error_behavior: throws Error on missing card form / pay button.
+// error_behavior: throws Error (no partial payment attempts, no retries).
 // END_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.paySandboxCheckout
 export async function paySandboxCheckout(popup: Page) {
-  // Fill the official no-3DS success card on the real provider checkout.
-  // Never log the URL, order id or any provider identifier. Bounded search:
-  // re-read the frame list every attempt (the card iframe is often created
-  // late) instead of a one-shot snapshot that also duplicated the main frame.
-  // MANDATORY method selection: the checkout opens on a payment-method
-  // chooser (YooMoney / Wallet / bank card), not the card form. Select the
-  // bank-card option via the stable provider selector first; a bounded
-  // semantic fallback on exact option text follows. No CSS classes, no
-  // other payment methods.
-  const bankCardOption = popup.locator('[data-qa="bankcard-show-other-cards-payment-option"]').first();
-  let methodSelected = false;
-  for (let attempt = 0; attempt < 10 && !methodSelected; attempt += 1) {
-    try {
-      await bankCardOption.click({ timeout: 3000 });
-      methodSelected = true;
+  const cardNumberSel =
+    'input[name="card-number"], input[autocomplete="cc-number"], input[name="cardNumber"], input[name="card"], input[placeholder*="0000"]';
+  const expiryMonthSel =
+    'input[data-qa="field-expiry-month"], input[autocomplete="cc-exp-month"], input[name="expiry-month"]';
+  const expiryYearSel =
+    'input[data-qa="field-expiry-year"], input[autocomplete="cc-exp-year"], input[name="expiry-year"]';
+  const combinedExpirySel =
+    'input[name="expiry"], input[name="expiryDate"], input[placeholder*="ММ"], input[placeholder*="MM"], input[autocomplete="cc-exp"]';
+  const cvcSel =
+    'input[data-qa-bankcard-field-name="security-code"], input[name="security-code"], input[autocomplete="cc-csc"], input[name="cvc"], input[name="cvv"], input[placeholder*="CVC"], input[placeholder*="CVV"]';
+
+  const cardNumberVisible = async () => {
+    for (const frame of popup.frames()) {
+      const visible = await frame
+        .locator(cardNumberSel)
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (visible) return frame;
+    }
+    return null;
+  };
+
+  // 1) Bounded wait for one of the TWO NORMAL states: (a) the card form
+  //    already open, or (b) the method chooser with the bank-card option
+  //    (selected once, with a semantic text fallback). The chooser is NOT
+  //    unconditionally required. A chrome-error page is an EXTERNAL provider
+  //    navigation failure — reported as itself, never masked.
+  let formFrame: import('@playwright/test').Frame | null = null;
+  for (let attempt = 0; attempt < 12 && !formFrame; attempt += 1) {
+    if (popup.url().startsWith('chrome-error://')) {
+      throw new Error('external provider navigation failure: checkout failed to load');
+    }
+    formFrame = await cardNumberVisible();
+    if (formFrame) break;
+
+    const chooser = popup.locator('[data-qa="bankcard-show-other-cards-payment-option"]').first();
+    if (await chooser.isVisible().catch(() => false)) {
+      await chooser.click({ timeout: 3000 }).catch(() => {});
+      formFrame = await cardNumberVisible();
+      if (!formFrame) {
+        for (const frame of popup.frames()) {
+          const option = frame.getByText(/^(New card|Новая карта|Банковская карта)$/).first();
+          await option.click({ timeout: 2000 }).catch(() => {});
+        }
+        formFrame = await cardNumberVisible();
+      }
       break;
-    } catch {
-      // chooser not rendered yet — retry below or fall back to text
     }
     await popup.waitForTimeout(1000);
   }
-  if (!methodSelected) {
-    for (const frame of popup.frames()) {
-      const option = frame
-        .getByText(/^(New card|Новая карта|Банковская карта)$/)
-        .first();
-      try {
-        await option.click({ timeout: 3000 });
-        methodSelected = true;
-        break;
-      } catch {
-        // keep searching
-      }
-    }
-  }
-  if (!methodSelected) {
-    throw new Error('sandbox checkout bank-card payment option not found');
+  if (!formFrame) {
+    throw new Error('sandbox checkout: neither card form nor bank-card chooser appeared');
   }
 
-  const fieldSel =
-    'input[name="cardNumber"], input[name="card"], input[placeholder*="0000"], input[autocomplete="cc-number"]';
-  const expirySel =
-    'input[name="expiry"], input[name="expiryDate"], input[placeholder*="ММ"], input[placeholder*="MM"], input[autocomplete="cc-exp"]';
-  const cvcSel = 'input[name="cvc"], input[name="cvv"], input[placeholder*="CVC"], input[placeholder*="CVV"], input[autocomplete="cc-csc"]';
+  // 2) Fill. The real checkout uses SPLIT expiry fields (trace-proven
+  //    data-qa field-expiry-month / field-expiry-year / security-code);
+  //    a combined field is only a fallback.
+  const cardNumber = formFrame.locator(cardNumberSel).first();
+  await cardNumber.fill(SANDBOX_TEST_CARD.number);
 
-  let filled = false;
-  for (let attempt = 0; attempt < 10 && !filled; attempt += 1) {
-    for (const frame of popup.frames()) {
-      const cardNumber = frame.locator(fieldSel).first();
-      try {
-        await cardNumber.waitFor({ state: 'visible', timeout: 3000 });
-        await cardNumber.fill(SANDBOX_TEST_CARD.number);
-        await frame.locator(expirySel).first().fill(SANDBOX_TEST_CARD.expiry);
-        await frame.locator(cvcSel).first().fill(SANDBOX_TEST_CARD.cvc);
-        filled = true;
-        break;
-      } catch {
-        // frame not ready / no form here — keep searching
-      }
+  const monthField = formFrame.locator(expiryMonthSel).first();
+  const yearField = formFrame.locator(expiryYearSel).first();
+  const splitCount = (await monthField.count()) + (await yearField.count());
+  if (splitCount > 0) {
+    await monthField.fill(SANDBOX_TEST_CARD.expiryMonth);
+    await yearField.fill(SANDBOX_TEST_CARD.expiryYear);
+  } else {
+    await formFrame
+      .locator(combinedExpirySel)
+      .first()
+      .fill(`${SANDBOX_TEST_CARD.expiryMonth}/${SANDBOX_TEST_CARD.expiryYear}`);
+  }
+  await formFrame.locator(cvcSel).first().fill(SANDBOX_TEST_CARD.cvc);
+
+  // 3) FAIL-CLOSED fill verification before the single pay click: masked
+  //    inputs can silently drop input (observed: "12/30" into the month
+  //    field left the year empty -> payment stuck pending).
+  const numberValue = (await cardNumber.inputValue()).replace(/\D/g, '');
+  if (!numberValue.endsWith('4444')) {
+    throw new Error('sandbox checkout: card number field did not hold the card');
+  }
+  if (splitCount > 0) {
+    if ((await monthField.inputValue()).trim() !== SANDBOX_TEST_CARD.expiryMonth) {
+      throw new Error('sandbox checkout: expiry month field not filled');
+    }
+    if ((await yearField.inputValue()).trim() !== SANDBOX_TEST_CARD.expiryYear) {
+      throw new Error('sandbox checkout: expiry year field not filled');
+    }
+  } else {
+    const combined = await formFrame.locator(combinedExpirySel).first().inputValue();
+    if (!combined.replace(/\D/g, '').startsWith(`${SANDBOX_TEST_CARD.expiryMonth}${SANDBOX_TEST_CARD.expiryYear}`)) {
+      throw new Error('sandbox checkout: expiry field not filled');
     }
   }
-  if (!filled) {
-    throw new Error('sandbox checkout card form not found in any frame');
+  const cvcValue = await formFrame.locator(cvcSel).first().inputValue();
+  if (cvcValue.trim().length < 3) {
+    throw new Error('sandbox checkout: security code field not filled');
   }
+
+  // 4) Single pay click (bounded search across frames).
   for (let attempt = 0; attempt < 5; attempt += 1) {
     for (const frame of popup.frames()) {
       const payButton = frame.getByRole('button', { name: /оплатить|заплатить|pay/i }).first();
