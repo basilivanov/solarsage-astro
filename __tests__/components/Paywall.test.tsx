@@ -118,6 +118,24 @@ describe('Paywall', () => {
     expect(screen.queryByText(/скоро появится/i)).toBeNull()
   })
 
+  it('shows the recurring-consent copy with the exact catalog amount before the CTA', async () => {
+    render(<Paywall />)
+    const consent = await screen.findByTestId('paywall-recurring-consent')
+    expect(consent.textContent).toContain('Подписка с автопродлением: 99 ₽ каждый месяц')
+    expect(consent.textContent).toContain('Отменить можно в любой момент в профиле')
+    expect(consent.textContent).toContain('оплаченный период сохранится')
+  })
+
+  it('hides the consent copy when billing is unavailable', async () => {
+    mockGetPaymentProducts.mockRejectedValue(new Error('503'))
+    render(<Paywall />)
+    await screen.findByTestId('paywall-subscribe-cta')
+    await waitFor(() => {
+      expect(screen.getByTestId('paywall-subscribe-cta').textContent).toContain('Оплата временно недоступна')
+    })
+    expect(screen.queryByTestId('paywall-recurring-consent')).toBeNull()
+  })
+
   it('disables the CTA honestly when billing is unavailable', async () => {
     mockGetPaymentProducts.mockRejectedValue(new Error('503'))
     render(<Paywall />)

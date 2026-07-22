@@ -68,6 +68,7 @@ async def test_initial_recurrent_exact_payload_and_mapping() -> None:
             200,
             json={
                 "id": "prov-1",
+                "test": True,
                 "status": "pending",
                 "confirmation": {"confirmation_url": "https://pay.example/c"},
             },
@@ -114,6 +115,7 @@ async def test_one_time_exact_payload() -> None:
             200,
             json={
                 "id": "prov-2",
+                "test": True,
                 "status": "pending",
                 "confirmation": {"confirmation_url": "https://pay.example/once"},
             },
@@ -157,7 +159,7 @@ async def test_one_time_exact_payload() -> None:
 @pytest.mark.asyncio
 async def test_rebill_exact_payload() -> None:
     captured, handler = _capture(
-        lambda request: httpx.Response(200, json={"id": "prov-3", "status": "succeeded"})
+        lambda request: httpx.Response(200, json={"id": "prov-3", "test": True, "status": "succeeded"})
     )
     client = _client(handler)
     result = await client.create_recurrent_payment(
@@ -199,6 +201,7 @@ async def test_get_payment_auth_endpoint_and_mapping() -> None:
             200,
             json={
                 "id": "prov-9",
+                "test": True,
                 "status": "succeeded",
                 "paid": True,
                 "amount": {"value": "99.00", "currency": "RUB"},
@@ -224,7 +227,7 @@ async def test_get_payment_auth_endpoint_and_mapping() -> None:
 
 @pytest.mark.asyncio
 async def test_description_truncated_to_128() -> None:
-    captured, handler = _capture(lambda request: httpx.Response(200, json={"id": "prov-4"}))
+    captured, handler = _capture(lambda request: httpx.Response(200, json={"id": "prov-4", "test": True}))
     client = _client(handler)
     await client.create_one_time_payment(
         user_id=USER_ID,
@@ -245,7 +248,7 @@ async def test_idempotence_key_over_64_rejects_before_http() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request)
-        return httpx.Response(200, json={"id": "prov-5"})
+        return httpx.Response(200, json={"id": "prov-5", "test": True})
 
     client = _client(handler)
     with pytest.raises(YooKassaError, match="64"):
@@ -298,6 +301,7 @@ async def test_malformed_json_and_missing_id_are_sanitized() -> None:
     client2 = _client(lambda request: httpx.Response(
         200,
         json={
+            "test": True,
             "status": "succeeded",
             "paid": True,
             "amount": {"value": "99.00", "currency": "RUB"},
@@ -333,7 +337,7 @@ async def test_top_level_list_is_sanitized_on_post_and_get() -> None:
 async def test_nested_shape_strings_are_sanitized() -> None:
     # confirmation as a string (POST path)
     client = _client(
-        lambda request: httpx.Response(200, json={"id": "prov-7", "status": "pending", "confirmation": "bad"})
+        lambda request: httpx.Response(200, json={"id": "prov-7", "test": True, "status": "pending", "confirmation": "bad"})
     )
     with pytest.raises(YooKassaError, match="invalid confirmation"):
         await client.create_one_time_payment(
@@ -351,7 +355,7 @@ async def test_nested_shape_strings_are_sanitized() -> None:
     client2 = _client(
         lambda request: httpx.Response(
             200,
-            json={"id": "prov-8", "status": "succeeded", "paid": True, "amount": "bad"},
+            json={"id": "prov-8", "test": True, "status": "succeeded", "paid": True, "amount": "bad"},
         )
     )
     with pytest.raises(YooKassaError, match="invalid amount"):
@@ -363,6 +367,7 @@ async def test_nested_shape_strings_are_sanitized() -> None:
             200,
             json={
                 "id": "prov-9",
+                "test": True,
                 "status": "succeeded",
                 "paid": True,
                 "amount": {"value": "99.00", "currency": "RUB"},
@@ -380,6 +385,7 @@ async def test_nested_shape_strings_are_sanitized() -> None:
             200,
             json={
                 "id": "prov-10",
+                "test": True,
                 "status": "succeeded",
                 "paid": True,
                 "amount": {"value": "99.00", "currency": "RUB"},
@@ -421,6 +427,7 @@ def _get_client(body: dict) -> YooKassaClient:
 def _valid_get_body(**overrides) -> dict:
     body = {
         "id": "prov-ok",
+        "test": True,
         "status": "succeeded",
         "paid": True,
         "amount": {"value": "99.00", "currency": "RUB"},
@@ -504,7 +511,7 @@ async def test_strict_payment_method_scalars() -> None:
 @pytest.mark.asyncio
 async def test_strict_create_response_status() -> None:
     # Non-string status in a create response is rejected.
-    client = _client(lambda request: httpx.Response(200, json={"id": "prov-5", "status": 123}))
+    client = _client(lambda request: httpx.Response(200, json={"id": "prov-5", "test": True, "status": 123}))
     with pytest.raises(YooKassaError, match="invalid status"):
         await client.create_one_time_payment(
             user_id=USER_ID,
@@ -517,7 +524,7 @@ async def test_strict_create_response_status() -> None:
             idempotence_key="purchase-owner",
         )
     # Absent status takes the documented pending default.
-    client2 = _client(lambda request: httpx.Response(200, json={"id": "prov-6", "confirmation": {}}))
+    client2 = _client(lambda request: httpx.Response(200, json={"id": "prov-6", "test": True, "confirmation": {}}))
     result = await client2.create_one_time_payment(
         user_id=USER_ID,
         owner_id=OWNER_ID,
@@ -529,3 +536,103 @@ async def test_strict_create_response_status() -> None:
         idempotence_key="purchase-owner",
     )
     assert result["status"] == "pending"
+
+
+# -- Provider-mode boundary (sandbox vs live, fail-closed) --------------------
+
+@pytest.mark.asyncio
+async def test_create_rejects_missing_test_flag() -> None:
+    client = _client(lambda request: httpx.Response(200, json={"id": "prov-m1", "status": "pending"}))
+    with pytest.raises(YooKassaError, match="invalid test flag"):
+        await client.create_one_time_payment(
+            user_id=USER_ID,
+            owner_id=OWNER_ID,
+            amount_kopecks=5000,
+            currency="RUB",
+            description="d",
+            return_url="https://app.example/return",
+            product_slug="horary_1",
+            idempotence_key="purchase-owner",
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_non_boolean_test_flag() -> None:
+    client = _client(lambda request: httpx.Response(200, json={"id": "prov-m2", "test": "true", "status": "pending"}))
+    with pytest.raises(YooKassaError, match="invalid test flag"):
+        await client.create_one_time_payment(
+            user_id=USER_ID,
+            owner_id=OWNER_ID,
+            amount_kopecks=5000,
+            currency="RUB",
+            description="d",
+            return_url="https://app.example/return",
+            product_slug="horary_1",
+            idempotence_key="purchase-owner",
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_mode_mismatch() -> None:
+    # Sandbox client (expected test=true) gets a LIVE-shaped response.
+    client = _client(lambda request: httpx.Response(200, json={"id": "prov-m3", "test": False, "status": "pending"}))
+    with pytest.raises(YooKassaError, match="mode mismatch"):
+        await client.create_one_time_payment(
+            user_id=USER_ID,
+            owner_id=OWNER_ID,
+            amount_kopecks=5000,
+            currency="RUB",
+            description="d",
+            return_url="https://app.example/return",
+            product_slug="horary_1",
+            idempotence_key="purchase-owner",
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_rejects_mode_mismatch() -> None:
+    client = _client(lambda request: httpx.Response(200, json={"id": "prov-m4", "test": False, "status": "succeeded"}))
+    with pytest.raises(YooKassaError, match="mode mismatch"):
+        await client.get_payment("prov-m4")
+
+
+@pytest.mark.asyncio
+async def test_live_mode_client_accepts_test_false() -> None:
+    client = YooKassaClient(
+        "shop-1",
+        "secret-1",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={
+                    "id": "prov-live",
+                    "test": False,
+                    "status": "succeeded",
+                    "paid": True,
+                    "amount": {"value": "99.00", "currency": "RUB"},
+                    "metadata": {},
+                },
+            )
+        ),
+        expected_test_mode=False,
+    )
+    result = await client.get_payment("prov-live")
+    assert result["provider_payment_id"] == "prov-live"
+    assert result["status"] == "succeeded"
+
+
+def test_factory_maps_yookassa_mode_to_expected_flag(monkeypatch) -> None:
+    from app.core.config import settings
+    from app.services.yookassa_client import get_yookassa_client
+
+    monkeypatch.setattr(settings, "yookassa_enabled", True)
+    monkeypatch.setattr(settings, "yookassa_test_shop_id", "shop-t")
+    monkeypatch.setattr(settings, "yookassa_test_secret_key", "secret-t")
+    monkeypatch.setattr(settings, "yookassa_live_shop_id", "shop-l")
+    monkeypatch.setattr(settings, "yookassa_live_secret_key", "secret-l")
+
+    monkeypatch.setattr(settings, "yookassa_mode", "test")
+    assert get_yookassa_client()._expected_test_mode is True
+
+    monkeypatch.setattr(settings, "yookassa_mode", "live")
+    assert get_yookassa_client()._expected_test_mode is False

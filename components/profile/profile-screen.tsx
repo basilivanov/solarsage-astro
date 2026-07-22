@@ -115,6 +115,12 @@ export function ProfileScreen({
     yearLabel: billingFlow.year
       ? `Подписка · ${formatPriceRubles(billingFlow.year.priceKopecks)} ₽/год`
       : "Подписка на год",
+    // Recurring-consent copy shown BEFORE the buy click (save-during-payment
+    // scheme): exact amount/period of auto-renewal from the API catalog and
+    // how to cancel. Never a legal wall of text.
+    consent: billingFlow.month && billingFlow.year
+      ? `Подписка с автопродлением: ${formatPriceRubles(billingFlow.month.priceKopecks)} ₽ каждый месяц или ${formatPriceRubles(billingFlow.year.priceKopecks)} ₽ в год. Отменить можно в любой момент в профиле — уже оплаченный период сохранится.`
+      : null,
     onBuy: (slug: "subscription_month" | "subscription_year") => void billingFlow.buy(slug),
     onCancel: () => void billingFlow.cancel(),
   }

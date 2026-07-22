@@ -27,6 +27,10 @@
 #     save_payment_method=true + merchant_customer_id; rebill charges by
 #     payment_method_id without user confirmation.
 #   - No synchronous YooKassa SDK calls inside the event loop.
+#   - Provider-mode boundary: every payment response must carry a boolean
+#     `test` field matching the configured mode (YOOKASSA_MODE); a missing,
+#     non-boolean or mismatched flag is a sanitized YooKassaError before any
+#     checkout mapping or webhook fulfillment.
 # failure_policy: raises YooKassaError on transport/HTTP errors; the caller
 #   maps it to domain errors. 4xx/5xx bodies are never re-raised raw to users.
 # END_MODULE_CONTRACT: M-YOOKASSA-CLIENT
@@ -75,6 +79,7 @@ class YooKassaClient:
         secret_key: str,
         *,
         transport: httpx.AsyncBaseTransport | None = None,
+        expected_test_mode: bool = True,
     ) -> None:
         if not shop_id or not secret_key:
             raise YooKassaError("YooKassa shop_id/secret_key are not configured")
@@ -82,6 +87,18 @@ class YooKassaClient:
         # Test-only seam: production passes nothing (real network); tests
         # inject httpx.MockTransport. BillingService signatures are unchanged.
         self._transport = transport
+        # Provider-mode boundary: every payment response MUST carry a boolean
+        # `test` field matching the configured mode (sandbox=true, live=false)
+        # — a missing/wrong-typed/mismatched flag is rejected BEFORE any
+        # checkout mapping or webhook fulfillment.
+        self._expected_test_mode = expected_test_mode
+
+    def _check_test_mode(self, payment: dict) -> None:
+        test_flag = payment.get("test")
+        if not isinstance(test_flag, bool):
+            raise YooKassaError("yookassa malformed response: invalid test flag")
+        if test_flag is not self._expected_test_mode:
+            raise YooKassaError("yookassa mode mismatch")
 
     # START_BLOCK: YK_CREATE
     async def _post(self, path: str, payload: dict, idempotence_key: str) -> dict:
@@ -101,7 +118,9 @@ class YooKassaClient:
         if response.status_code >= 400:
             # Never re-raise the provider body (may echo request/secrets).
             raise YooKassaError(f"yookassa http {response.status_code}")
-        return self._json_object(response)
+        payment = self._json_object(response)
+        self._check_test_mode(payment)
+        return payment
 
     @staticmethod
     def _json_object(response: httpx.Response) -> dict:
@@ -296,6 +315,7 @@ class YooKassaClient:
         if response.status_code >= 400:
             raise YooKassaError(f"yookassa http {response.status_code}")
         payment = self._json_object(response)
+        self._check_test_mode(payment)
         # Strict scalar contract at the money boundary: NO bool()/str()
         # coercions of provider data. Any shape/type violation is a sanitized
         # YooKassaError (the webhook boundary maps it to a retryable 502).
@@ -352,4 +372,8 @@ def get_yookassa_client() -> YooKassaClient:
     """Factory: build the client from env config or fail closed."""
     if not settings.yookassa_enabled:
         raise YooKassaError("YooKassa is not enabled (YOOKASSA_ENABLED=false)")
-    return YooKassaClient(settings.yookassa_shop_id, settings.yookassa_secret_key)
+    return YooKassaClient(
+        settings.yookassa_shop_id,
+        settings.yookassa_secret_key,
+        expected_test_mode=settings.yookassa_mode == "test",
+    )

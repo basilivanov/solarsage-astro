@@ -17,7 +17,10 @@
 #   - workflow_call: suite string (required) and required secrets
 #     E2E_TELEGRAM_BOT_TOKEN / E2E_OPENROUTER_API_KEY /
 #     E2E_GEONAMES_USERNAME (real GeoNames account for the ephemeral API
-#     only, scrubbed from the frontend build)
+#     only, scrubbed from the frontend build) /
+#     YOOKASSA_TEST_SHOP_ID / YOOKASSA_TEST_SECRET_KEY (sandbox billing
+#     credentials, API subshell only, scrubbed from the frontend build/start
+#     and the test runner; recurrent stays disabled)
 # outputs: Playwright pass/fail; uploaded reports/artifacts; cleaned-up users.
 # dependencies: scripts/generate-telegram-test-initdata.py,
 #   scripts/acceptance/cleanup_e2e_users.py, e2e/* specs.
@@ -25,8 +28,8 @@
 #   - The release suite runs ONLY existing real-HMAC specs without route
 #     interception: onboarding-real, today, calendar,
 #     cross-feature-navigation, profile-city-checkin, readings-horary,
-#     natal-report, referral-deeplink (dev-v2 and edge-cases are
-#     intentionally excluded from the gate).
+#     natal-report, referral-deeplink, payment-sandbox (dev-v2 and
+#     edge-cases are intentionally excluded from the gate).
 #   - The ephemeral sidecar runs ONLY in explicit Moshier-only mode
 #     (SOLARSAGE_EPHEMERIS_ALLOW_MOSHIER=1 + SOLARSAGE_APP_ENV=development,
 #     identical to ci.yml); the production SWIEPH fail-closed proof stays
@@ -73,6 +76,10 @@ on:
         required: true
       E2E_GEONAMES_USERNAME:
         required: true
+      YOOKASSA_TEST_SHOP_ID:
+        required: true
+      YOOKASSA_TEST_SECRET_KEY:
+        required: true
 
 permissions:
   contents: read
@@ -116,6 +123,8 @@ jobs:
           E2E_TELEGRAM_BOT_TOKEN: ${{ secrets.E2E_TELEGRAM_BOT_TOKEN }}
           E2E_OPENROUTER_API_KEY: ${{ secrets.E2E_OPENROUTER_API_KEY }}
           E2E_GEONAMES_USERNAME: ${{ secrets.E2E_GEONAMES_USERNAME }}
+          YOOKASSA_TEST_SHOP_ID: ${{ secrets.YOOKASSA_TEST_SHOP_ID }}
+          YOOKASSA_TEST_SECRET_KEY: ${{ secrets.YOOKASSA_TEST_SECRET_KEY }}
         run: |
           if [ -z "$E2E_TELEGRAM_BOT_TOKEN" ]; then
             echo "Error: E2E_TELEGRAM_BOT_TOKEN secret is empty" >&2
@@ -127,6 +136,14 @@ jobs:
           fi
           if [ -z "$E2E_GEONAMES_USERNAME" ]; then
             echo "Error: E2E_GEONAMES_USERNAME secret is empty (real geo autocomplete cannot work without it)" >&2
+            exit 1
+          fi
+          if [ -z "$YOOKASSA_TEST_SHOP_ID" ]; then
+            echo "Error: YOOKASSA_TEST_SHOP_ID secret is empty (sandbox release proof cannot run)" >&2
+            exit 1
+          fi
+          if [ -z "$YOOKASSA_TEST_SECRET_KEY" ]; then
+            echo "Error: YOOKASSA_TEST_SECRET_KEY secret is empty (sandbox release proof cannot run)" >&2
             exit 1
           fi
 
@@ -177,6 +194,8 @@ jobs:
           E2E_TELEGRAM_BOT_TOKEN: ${{ secrets.E2E_TELEGRAM_BOT_TOKEN }}
           E2E_OPENROUTER_API_KEY: ${{ secrets.E2E_OPENROUTER_API_KEY }}
           E2E_GEONAMES_USERNAME: ${{ secrets.E2E_GEONAMES_USERNAME }}
+          YOOKASSA_TEST_SHOP_ID: ${{ secrets.YOOKASSA_TEST_SHOP_ID }}
+          YOOKASSA_TEST_SECRET_KEY: ${{ secrets.YOOKASSA_TEST_SECRET_KEY }}
         shell: bash
         run: |
           # 1. Define cleanup function
@@ -246,10 +265,29 @@ jobs:
             # (production default stays false) so the real generate path is
             # exercised by the release gate.
             export NATAL_REPORT_ENABLED=true
+            # YooKassa SANDBOX billing for the release proof: test-mode
+            # credentials scoped to this API subshell ONLY (scrubbed from the
+            # frontend build/start and the test runner). Recurrent stays OFF
+            # (no real rebill); the loopback webhook allowlist exists only
+            # because APP_ENV=test — production keeps the empty override.
+            export YOOKASSA_ENABLED=true
+            export YOOKASSA_MODE=test
+            export YOOKASSA_TEST_SHOP_ID="$YOOKASSA_TEST_SHOP_ID"
+            export YOOKASSA_TEST_SECRET_KEY="$YOOKASSA_TEST_SECRET_KEY"
+            export YOOKASSA_RECURRENT_ENABLED=false
+            export YOOKASSA_RETURN_URL="https://localhost/billing/return"
+            export YOOKASSA_WEBHOOK_IP_ALLOWLIST="127.0.0.1/32"
 
             python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir apps/api > /tmp/solarsage-e2e-api.log 2>&1 &
             echo $! > /tmp/solarsage-e2e-api.pid
           )
+
+          # The sandbox credentials were consumed ONLY by the API subshell
+          # above (subshell exports never propagate back). Scrub them from
+          # the remaining shell so the frontend build/start AND the
+          # Playwright test runner never inherit them (the env -u wrappers
+          # below cover build/start; this unset covers the runner).
+          unset YOOKASSA_TEST_SHOP_ID YOOKASSA_TEST_SECRET_KEY
 
           # Wait for API
           for i in {1..30}; do
@@ -268,9 +306,9 @@ jobs:
           # 4. Build and Start Frontend (port 3002)
           # We use production build to test production assets and real routing.
           # Explicitly unsetting/removing secrets from build child environment using env -u
-          env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u E2E_GEONAMES_USERNAME -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY -u GEONAMES_USERNAME pnpm run build
+          env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u E2E_GEONAMES_USERNAME -u YOOKASSA_TEST_SHOP_ID -u YOOKASSA_TEST_SECRET_KEY -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY -u GEONAMES_USERNAME pnpm run build
 
-          env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u E2E_GEONAMES_USERNAME -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY -u GEONAMES_USERNAME pnpm exec next start -H 127.0.0.1 -p 3002 > /tmp/solarsage-e2e-frontend.log 2>&1 &
+          env -u E2E_TELEGRAM_BOT_TOKEN -u E2E_OPENROUTER_API_KEY -u E2E_GEONAMES_USERNAME -u YOOKASSA_TEST_SHOP_ID -u YOOKASSA_TEST_SECRET_KEY -u TELEGRAM_BOT_TOKEN -u OPENROUTER_API_KEY -u GEONAMES_USERNAME pnpm exec next start -H 127.0.0.1 -p 3002 > /tmp/solarsage-e2e-frontend.log 2>&1 &
           echo $! > /tmp/solarsage-e2e-frontend.pid
 
           # Wait for Frontend
@@ -303,7 +341,7 @@ jobs:
               echo "Running E2E release gate suite..."
               # Release gate must not accept flaky passes: a retried green is
               # still a release-blocking failure (retries stay for diagnosis).
-              pnpm exec playwright test e2e/onboarding-real.spec.ts e2e/today.spec.ts e2e/calendar.spec.ts e2e/cross-feature-navigation.spec.ts e2e/profile-city-checkin.spec.ts e2e/readings-horary.spec.ts e2e/natal-report.spec.ts e2e/referral-deeplink.spec.ts --project=chromium --fail-on-flaky-tests
+              pnpm exec playwright test e2e/onboarding-real.spec.ts e2e/today.spec.ts e2e/calendar.spec.ts e2e/cross-feature-navigation.spec.ts e2e/profile-city-checkin.spec.ts e2e/readings-horary.spec.ts e2e/natal-report.spec.ts e2e/referral-deeplink.spec.ts e2e/payment-sandbox.spec.ts --project=chromium --fail-on-flaky-tests
             else
               echo "Running E2E full suite..."
               pnpm exec playwright test e2e/*.spec.ts --project=chromium

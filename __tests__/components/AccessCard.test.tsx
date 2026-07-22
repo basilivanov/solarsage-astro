@@ -50,6 +50,28 @@ describe("AccessCard billing contract", () => {
     expect(b.onBuy).toHaveBeenCalledWith("subscription_year")
   })
 
+  it("shows the recurring-consent copy with exact amounts before the buy click", () => {
+    const b = billing({
+      consent:
+        "Подписка с автопродлением: 99 ₽ каждый месяц или 999 ₽ в год. Отменить можно в любой момент в профиле — уже оплаченный период сохранится.",
+    })
+    render(<ProfileAccessCard access={access} currentState="none" billing={b} />)
+    const consent = screen.getByTestId("access-card-recurring-consent")
+    expect(consent.textContent).toContain("99 ₽ каждый месяц")
+    expect(consent.textContent).toContain("999 ₽ в год")
+    expect(consent.textContent).toContain("Отменить можно в любой момент")
+  })
+
+  it("hides the consent line when billing is unavailable or consent is null", () => {
+    const b = billing({ unavailable: true })
+    render(<ProfileAccessCard access={access} currentState="none" billing={b} />)
+    expect(screen.queryByTestId("access-card-recurring-consent")).toBeNull()
+
+    const b2 = billing({ consent: null })
+    render(<ProfileAccessCard access={access} currentState="none" billing={b2} />)
+    expect(screen.queryByTestId("access-card-recurring-consent")).toBeNull()
+  })
+
   it("busy state disables both CTAs with a waiting label", () => {
     const b = billing({ busy: true })
     render(<ProfileAccessCard access={access} currentState="none" billing={b} />)

@@ -3,7 +3,10 @@
 // wave: W-TEST-3
 // purpose: Playwright fixtures with real Telegram auth (no mocks, real HMAC);
 //   createAuthedUserPage adds isolated extra users for multi-user flows
-//   (same run-salted ids, same cleanup ledger, no duplicated crypto)
+//   (same run-salted ids, same cleanup ledger, no duplicated crypto);
+//   PAYMENT_SANDBOX_HELPERS adds the shared YooKassa sandbox proof helpers
+//   (openLink shim, official no-3DS card fill, local webhook delivery,
+//   authenticated JSON reads) for the billing release specs
 
 import { test as base, expect, request, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 import { execFileSync } from 'child_process';
@@ -364,3 +367,182 @@ export async function completeOnboarding(page: Page) {
   const onboarded = await page.evaluate(() => localStorage.getItem('lumen:onboarded'));
   expect(['true', '1']).toContain(onboarded);
 }
+
+
+// ############################################################################
+// START_BLOCK: PAYMENT_SANDBOX_HELPERS
+// Small shared helpers for the YooKassa sandbox release proof (specs only —
+// no second harness): official no-3DS card fill, local webhook delivery and
+// authenticated JSON reads. Never logs confirmation URLs or provider ids.
+
+const API_BASE = (process.env.E2E_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+const WEBHOOK_URL = `${API_BASE}/api/payment/webhook/yookassa`;
+
+// Official public YooKassa sandbox card: SUCCESS WITHOUT 3-D Secure per the
+// official YooKassa test-card table (5555 5555 5555 4444; note that
+// 5555 5555 5555 4477 explicitly HAS 3-D Secure and is NOT used here).
+const SANDBOX_TEST_CARD = {
+  number: '5555 5555 5555 4444',
+  expiry: '12/30',
+  cvc: '123',
+};
+
+// START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.shimTelegramOpenLink
+// purpose: Make the Telegram stub's openLink behave like the real one
+//   (opens an external page) for provider-checkout flows; never a mock of
+//   app code.
+// inputs: page — the TARGET page right before the CTA (the patch never
+//   survives a navigation).
+// returns: void.
+// side_effects: evaluates window.Telegram.WebApp.openLink in the page.
+// emitted_logs: none.
+// error_behavior: no-op when the Telegram stub is absent.
+// END_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.shimTelegramOpenLink
+export async function shimTelegramOpenLink(page: Page) {
+  // The fixtures' Telegram stub ships openLink as a no-op (there is no real
+  // Telegram shell in CI). The faithful test-only behavior of the real shim
+  // is opening an external page — exactly what production openLink does.
+  // This is NOT a mock of app code: the product flow runs unchanged. Apply
+  // it on the TARGET page right before the CTA (it never survives a
+  // navigation).
+  await page.evaluate(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      tg.openLink = (url: string) => {
+        window.open(url, '_blank');
+      };
+    }
+  });
+}
+
+// START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.paySandboxCheckout
+// purpose: Fill the official public no-3DS success card on the real YooKassa
+//   sandbox checkout and click pay once. Bounded frame search (the card
+//   iframe may be created late); never logs URL/order/provider ids.
+// inputs: popup — the provider checkout page (kept open by the caller).
+// returns: void (throws when the card form or pay button is not found).
+// side_effects: real provider interaction (sandbox payment).
+// emitted_logs: none.
+// error_behavior: throws Error on missing card form / pay button.
+// END_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.paySandboxCheckout
+export async function paySandboxCheckout(popup: Page) {
+  // Fill the official no-3DS success card on the real provider checkout.
+  // Never log the URL, order id or any provider identifier. Bounded search:
+  // re-read the frame list every attempt (the card iframe is often created
+  // late) instead of a one-shot snapshot that also duplicated the main frame.
+  const fieldSel =
+    'input[name="cardNumber"], input[name="card"], input[placeholder*="0000"], input[autocomplete="cc-number"]';
+  const expirySel =
+    'input[name="expiry"], input[name="expiryDate"], input[placeholder*="ММ"], input[placeholder*="MM"], input[autocomplete="cc-exp"]';
+  const cvcSel = 'input[name="cvc"], input[name="cvv"], input[placeholder*="CVC"], input[placeholder*="CVV"], input[autocomplete="cc-csc"]';
+
+  let filled = false;
+  for (let attempt = 0; attempt < 10 && !filled; attempt += 1) {
+    for (const frame of popup.frames()) {
+      const cardNumber = frame.locator(fieldSel).first();
+      try {
+        await cardNumber.waitFor({ state: 'visible', timeout: 3000 });
+        await cardNumber.fill(SANDBOX_TEST_CARD.number);
+        await frame.locator(expirySel).first().fill(SANDBOX_TEST_CARD.expiry);
+        await frame.locator(cvcSel).first().fill(SANDBOX_TEST_CARD.cvc);
+        filled = true;
+        break;
+      } catch {
+        // frame not ready / no form here — keep searching
+      }
+    }
+  }
+  if (!filled) {
+    throw new Error('sandbox checkout card form not found in any frame');
+  }
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    for (const frame of popup.frames()) {
+      const payButton = frame.getByRole('button', { name: /оплатить|заплатить|pay/i }).first();
+      try {
+        await payButton.click({ timeout: 3000 });
+        return;
+      } catch {
+        // keep searching
+      }
+    }
+  }
+  throw new Error('sandbox checkout pay button not found');
+}
+
+// START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.deliverWebhookUntilFulfilled
+// purpose: Deliver the minimal REAL payment.succeeded event to the local
+//   webhook endpoint until the endpoint (via its own authenticated provider
+//   GET) fulfills it; bounded redelivery of the SAME event while the
+//   provider payment is not final (retryable 500).
+// inputs: providerPaymentId, timeoutMs (default 90s).
+// returns: void (throws on timeout with the last HTTP status).
+// side_effects: POST /api/payment/webhook/yookassa from the runner loopback.
+// emitted_logs: none.
+// error_behavior: throws Error on timeout.
+// END_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.deliverWebhookUntilFulfilled
+export async function deliverWebhookUntilFulfilled(providerPaymentId: string, timeoutMs = 90000): Promise<void> {
+  // The runner cannot receive the provider's ingress webhook, so the spec
+  // delivers the minimal REAL event to the existing local endpoint — which
+  // itself performs the authenticated provider GET before granting anything.
+  // While the sandbox payment is not final yet the endpoint answers a
+  // retryable 500; the bounded loop redelivers the SAME event (which is also
+  // the first half of the idempotency proof).
+  const deadline = Date.now() + timeoutMs;
+  const ctx = await request.newContext();
+  try {
+    for (;;) {
+      const resp = await ctx.post(WEBHOOK_URL, {
+        data: { type: 'notification', event: 'payment.succeeded', object: { id: providerPaymentId } },
+      });
+      const status = resp.status();
+      await resp.dispose();
+      if (status === 200) return;
+      if (Date.now() > deadline) {
+        throw new Error(`webhook was not fulfilled within ${timeoutMs}ms (last status ${status})`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  } finally {
+    await ctx.dispose();
+  }
+}
+
+// START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.deliverWebhookOnce
+// purpose: Deliver the minimal REAL payment.succeeded event exactly once
+//   and return the endpoint HTTP status (200 expected, incl. idempotent
+//   repeats). Request context is always disposed.
+// inputs: providerPaymentId.
+// returns: HTTP status code.
+// side_effects: POST /api/payment/webhook/yookassa from the runner loopback.
+// emitted_logs: none.
+// error_behavior: request context disposed in finally.
+// END_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.deliverWebhookOnce
+export async function deliverWebhookOnce(providerPaymentId: string): Promise<number> {
+  const ctx = await request.newContext();
+  try {
+    const resp = await ctx.post(WEBHOOK_URL, {
+      data: { type: 'notification', event: 'payment.succeeded', object: { id: providerPaymentId } },
+    });
+    const status = resp.status();
+    await resp.dispose();
+    return status;
+  } finally {
+    await ctx.dispose();
+  }
+}
+
+// START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.authedJson
+// purpose: Authenticated GET against the ephemeral API returning parsed
+//   JSON; fails the test on any non-200.
+// inputs: page (carries the session cookies), path (API path).
+// returns: parsed JSON body.
+// side_effects: one API request.
+// emitted_logs: none.
+// error_behavior: expect-failure on non-200.
+// END_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.authedJson
+export async function authedJson(page: Page, path: string) {
+  const resp = await page.request.get(`${API_BASE}${path}`);
+  expect(resp.status(), `GET ${path} failed with ${resp.status()}`).toBe(200);
+  return resp.json();
+}
+// END_BLOCK: PAYMENT_SANDBOX_HELPERS

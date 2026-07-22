@@ -380,6 +380,7 @@ async def test_webhook_malformed_paid_scalar_is_retryable_502_no_grant(
             200,
             json={
                 "id": payment.provider_payment_id,
+                "test": True,
                 "status": "succeeded",
                 "paid": "false",  # malformed scalar: must be a real bool
                 "amount": {"value": "99.00", "currency": "RUB"},

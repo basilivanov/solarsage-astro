@@ -41,6 +41,9 @@ export type AccessCardBilling = {
   busy: boolean
   monthLabel: string
   yearLabel: string
+  // Recurring-consent copy (exact amount/period + cancel hint) shown before
+  // the buy click when subscribe buttons are visible; null hides the line.
+  consent?: string | null
   onBuy: (_slug: "subscription_month" | "subscription_year") => void
   onCancel: () => void
 }
@@ -252,6 +255,15 @@ export function AccessCard({ access, currentState, billing, renewal }: Props) {
           {v.secondary.label}
         </button>
       </div>
+
+      {billing && billing.ready && !billing.unavailable && billing.consent && currentState !== "subscription" ? (
+        <p
+          className="mt-3 text-[11.5px] leading-relaxed text-muted-foreground"
+          data-testid="access-card-recurring-consent"
+        >
+          {billing.consent}
+        </p>
+      ) : null}
     </div>
   )
 }

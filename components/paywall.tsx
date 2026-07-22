@@ -104,6 +104,14 @@ export function Paywall({
           <Crown className="h-4 w-4" strokeWidth={1.75} />
           {ctaLabel}
         </button>
+        {flow.ready && !flow.unavailable && flow.month ? (
+          <p
+            className="text-center text-[11.5px] leading-relaxed text-muted-foreground"
+            data-testid="paywall-recurring-consent"
+          >
+            {`Подписка с автопродлением: ${formatPriceRubles(flow.month.priceKopecks)} ₽ каждый месяц. Отменить можно в любой момент в профиле — уже оплаченный период сохранится.`}
+          </p>
+        ) : null}
         {flow.errorMessage ? (
           <p className="text-center text-[12px] text-destructive" role="alert" data-testid="paywall-billing-error">
             {flow.errorMessage}
