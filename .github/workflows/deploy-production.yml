@@ -321,7 +321,7 @@ jobs:
           set -euo pipefail
           rm -rf /tmp/audit-ephe && mkdir -p /tmp/audit-ephe
           docker cp acceptance-sidecar:/opt/solarsage-ephemeris/bundle/. /tmp/audit-ephe/
-          echo "AUDIT_EPHEMERIS_PATH=/tmp/audit-ephe" >> "$GITHUB_ENV"
+          echo "AUDIT_EPHEMERIS_PATH=/tmp/audit-ephe/ephe" >> "$GITHUB_ENV"
           python3 - <<'EOF'
           import hashlib, json
           manifest_bytes = open("/tmp/audit-ephe/manifest.json", "rb").read()
