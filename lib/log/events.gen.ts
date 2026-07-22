@@ -44,6 +44,7 @@ export type LogEventName =
   // day / calendar
   | "day.viewed"
   | "day.payload_built"
+  | "day.llm_phase_completed"
   | "calendar.viewed"
   // access / referral / payments
   | "access.checked"

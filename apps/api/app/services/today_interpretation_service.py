@@ -11,7 +11,8 @@
 #   - apps/api/app/services/today_interpretation_service.py
 # invariants:
 #   - concrete advice remains one 12-sphere batch call; the concrete-advice
-#     and planet-interpretation batch calls run concurrently via asyncio.gather
+#     and planet-interpretation batch calls run concurrently inside the
+#     bounded LLM phase (10s request-local deadline) via asyncio.gather
 #     once both deterministic contexts are built; result application order is
 #     unchanged.
 #   - concrete advice single-call semantics: exactly ONE external batch
@@ -20,8 +21,8 @@
 #     valid rows after the claim/row validators, the batch is rejected
 #     atomically and every row keeps the honest fallback — no second paid
 #     attempt is ever made.
-#   - degraded semantics: when both attempts are unacceptable the build NEVER
-#     raises and NEVER shows invalid LLM text — all 12 rows keep
+#   - degraded semantics: when the single batch attempt is unacceptable the
+#     build NEVER raises and NEVER shows invalid LLM text — all 12 rows keep
 #     CONCRETE_ADVICE_FALLBACK_TEXT and the Today endpoint returns 200.
 #     A degraded batch is not cacheable (TodayService checks >= 9 non-fallback
 #     rows before writing the payload cache).

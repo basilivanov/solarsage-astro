@@ -257,6 +257,13 @@
       <payload-field name="contract_version" type="string" required="true" />
       <payload-field name="duration_ms"      type="number" required="true" />
     </event>
+    <event name="day.llm_phase_completed" owner="W-5.1" desc="Foreground Today LLM phase finished (success or deadline); emitted exactly once per phase.">
+      <payload-field name="outcome"            type="string" enum="completed,deadline" required="true" />
+      <payload-field name="total_branches"     type="number" required="true" />
+      <payload-field name="completed_branches" type="number" required="true" />
+      <payload-field name="timed_out_branches" type="number" required="true" />
+      <payload-field name="deadline_ms"        type="number" required="true" />
+    </event>
     <event name="calendar.viewed"         owner="W-1.4">
       <payload-field name="month" type="string" format="YYYY-MM" required="true" />
     </event>

@@ -71,3 +71,7 @@ V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS = frozenset({
 
 # Today public content identity
 TODAY_CONTENT_VERSION = 10
+
+# LLM prompt/content identity for Today: bumped when the prompt shape or
+# content policy changes so stale cached payloads never pass as current.
+TODAY_LLM_PROMPT_VERSION = 3

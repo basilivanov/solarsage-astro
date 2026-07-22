@@ -262,7 +262,6 @@ async def test_parse_rejection_log_has_no_raw_response():
 async def test_advice_contexts_capped_three_unique_but_wire_evidence_full():
     # The LLM projection carries at most 3 unique evidence entries per
     # sphere; the wire row.evidence keeps the complete set.
-    from app.schemas.today import ConcreteAdviceEvidence
     from app.services.today_interpretation_service import TodayInterpretationService
     from app.schemas.normalization import AstroSignal
 
@@ -328,3 +327,44 @@ async def test_generate_concrete_advice_sends_strict_schema():
         assert set(schema["schema"]["properties"].keys()) == set(schema["schema"]["required"])
         for field_schema in schema["schema"]["properties"].values():
             assert field_schema == {"type": "string"}
+
+
+@pytest.mark.asyncio
+async def test_concrete_advice_request_body_has_strict_json_schema():
+    # Real request-body proof over httpx (no network): the advice batch goes
+    # out with provider-enforced Structured Outputs, and ONLY that.
+    from app.services.llm_service import LLMService, _CONCRETE_ADVICE_JSON_SCHEMA
+
+    mock_resp = MagicMock()
+    mock_resp.json = MagicMock(return_value={
+        "choices": [{"message": {"content": '{"work": "текст"}'}}]
+    })
+    mock_resp.raise_for_status = MagicMock()
+    mock_client = MagicMock()
+    mock_client.post = AsyncMock(return_value=mock_resp)
+
+    service = LLMService()
+    with patch("app.services.llm_service.httpx.AsyncClient") as mock_class, \
+         patch("app.services.llm_service.settings") as mock_settings:
+        mock_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_settings.openrouter_api_key = "test-key"
+        mock_settings.openrouter_base_url = "https://openrouter.example/api/v1"
+        mock_settings.openrouter_site_url = ""
+        mock_settings.openrouter_app_name = "test"
+        mock_settings.llm_model = "openai/gpt-4.1-nano"
+        await service.generate_concrete_advice(
+            [{"key": "work", "label": "Работа", "verdict": "good", "evidence": []}]
+        )
+
+    body = mock_client.post.call_args.kwargs["json"]
+    assert body["response_format"] == {
+        "type": "json_schema",
+        "json_schema": _CONCRETE_ADVICE_JSON_SCHEMA,
+    }
+    assert body["provider"] == {"require_parameters": True}
+    schema = body["response_format"]["json_schema"]
+    assert schema["strict"] is True
+    assert schema["schema"]["additionalProperties"] is False
+    assert len(schema["schema"]["required"]) == 12
+    assert set(schema["schema"]["properties"].keys()) == set(schema["schema"]["required"])

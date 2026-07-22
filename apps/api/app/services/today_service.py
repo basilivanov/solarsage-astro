@@ -42,13 +42,17 @@
 #     public payload construction and cache write.
 #   - A degraded concrete-advice batch (< 9 non-fallback rows) is never written
 #     to the payload cache (conservative false-negative skip allowed; cache
-#     poisoning never). Valid first/valid retry results stay cached.
+#     poisoning never); any deadline-degraded phase is never cached.
 #   - A foreground Today request never schedules calculations for adjacent dates.
 #   - The six independent LLM calls (headline, reading, notes, why, concrete
 #     advice batch, planet interpretations) are issued concurrently via
-#     asyncio.gather once their deterministic contexts are ready; concrete
+#     a bounded request-local task group (10s LLM phase deadline,
+#     cancelled+awaited) once their deterministic contexts are ready; concrete
 #     advice remains a single 12-sphere batch call and DB session operations
-#     stay sequential.
+#     stay sequential. A request-level cancellation cancels every child task
+#     and consumes all results before re-raise; the phase emits exactly one
+#     day.llm_phase_completed event per run (completed|deadline counts).
+# emitted_logs: day.payload_built, day.llm_phase_completed.
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
@@ -77,6 +81,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import json
 from datetime import UTC, date as Date, datetime, timedelta
 
@@ -122,6 +127,7 @@ from app.core.versions import (
     TODAY_V2_PAYLOAD_VERSION,
     V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS,
     V2_FRONTEND_PAYLOAD_VERSION,
+    TODAY_LLM_PROMPT_VERSION,
 )
 from app.services.natal_context_service import NatalContextService
 from app.services.canon_service import get_canon_versions
@@ -455,7 +461,7 @@ class TodayService:
         llm_service = LLMService()
         interpretation_service = TodayInterpretationService()
 
-        llm_phase_started = datetime.now(UTC)
+        llm_phase_started = time.perf_counter()
         llm_tasks: dict[str, asyncio.Task] = {
             "headline": asyncio.create_task(llm_service.generate_headline(
                 scoring_result["day_status"],
@@ -491,17 +497,31 @@ class TodayService:
                 scoring_v2_result=dual.v2_result if v2_selected else None,
             )),
         }
-        done, pending = await asyncio.wait(
-            llm_tasks.values(), timeout=LLM_PHASE_DEADLINE_SECONDS
-        )
+        try:
+            done, pending = await asyncio.wait(
+                llm_tasks.values(), timeout=LLM_PHASE_DEADLINE_SECONDS
+            )
+        except BaseException:
+            # The request itself was cancelled (or any unexpected failure
+            # happened) while the LLM phase was in flight: cancel EVERY
+            # unfinished child, consume all results, and re-raise the
+            # original exception. No paid provider request keeps running in
+            # the background, and force_no_llm never rebuilds after a
+            # request-level cancellation.
+            for task in llm_tasks.values():
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*llm_tasks.values(), return_exceptions=True)
+            raise
         timed_out_names = sorted(
             name for name, task in llm_tasks.items() if task in pending
         )
         for task in pending:
             task.cancel()
         if pending:
-            # Await every cancellation so no task leaks past the deadline.
-            await asyncio.wait(pending)
+            # Await every cancellation so no task leaks past the deadline
+            # and every result/cancellation is consumed.
+            await asyncio.gather(*pending, return_exceptions=True)
 
         headline = llm_tasks["headline"].result() if llm_tasks["headline"] in done else None
         reading_paragraphs = llm_tasks["reading"].result() if llm_tasks["reading"] in done else None
@@ -529,6 +549,26 @@ class TodayService:
                 force_no_llm=True,
             )
 
+        llm_phase_duration_ms = (time.perf_counter() - llm_phase_started) * 1000
+        with log_block(slice="W-5.1", module="M-TODAY-SERVICE", block="LLM_PHASE_DEADLINE"):
+            # Exactly once per foreground LLM phase, on success AND on
+            # deadline: structured counts only, never model text/user data.
+            log_event(
+                "day.llm_phase_completed",
+                level="warn" if timed_out_names else "info",
+                msg=(
+                    f"[LLM] today llm phase {'deadline' if timed_out_names else 'completed'}: "
+                    f"completed={len(done)}/{len(llm_tasks)} timed_out={len(pending)}"
+                ),
+                payload={
+                    "outcome": "deadline" if timed_out_names else "completed",
+                    "total_branches": len(llm_tasks),
+                    "completed_branches": len(done),
+                    "timed_out_branches": len(pending),
+                    "deadline_ms": int(LLM_PHASE_DEADLINE_SECONDS * 1000),
+                },
+                duration_ms=llm_phase_duration_ms,
+            )
         if timed_out_names:
             with log_block(slice="W-5.1", module="M-TODAY-SERVICE", block="LLM_PHASE_DEADLINE"):
                 log_event(
@@ -539,7 +579,7 @@ class TodayService:
                         f"completed={len(done)} timed_out={len(pending)} branches={','.join(timed_out_names)}"
                     ),
                     payload={"reason": "timeout"},
-                    duration_ms=(datetime.now(UTC) - llm_phase_started).total_seconds() * 1000,
+                    duration_ms=llm_phase_duration_ms,
                 )
 
         concrete_advice, day_summary, updated_day_chart = interpretation_result
@@ -606,7 +646,7 @@ class TodayService:
                 calculation_version=identity.calculation_version,
                 normalization_version=1,
                 scoring_version=identity.scoring_version,
-                prompt_version=2,
+                prompt_version=TODAY_LLM_PROMPT_VERSION,
                 content_version=identity.content_version,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,  # W-5.2: Fresh generation
@@ -653,10 +693,11 @@ class TodayService:
             raise RuntimeError("current frontend V2 identity requires v2 block")
 
         # W-5.2: Cache payload (with profile_hash in key) — but NEVER cache a
-        # degraded concrete-advice batch: fewer than 9 non-fallback rows means
-        # both LLM attempts were unacceptable and the payload carries the
-        # honest fallback text. A conservative false-negative skip is fine;
-        # cache poisoning is not. Valid first/valid retry results stay cached.
+        # degraded concrete-advice batch (fewer than 9 non-fallback rows after
+        # the single advice call is rejected) and NEVER cache a
+        # deadline-degraded phase (any timed-out branch leaves placeholder
+        # text). A conservative false-negative skip is fine; cache poisoning
+        # is not.
         from app.services.today_interpretation_service import (
             CONCRETE_ADVICE_CACHEABLE_MIN_ROWS,
             CONCRETE_ADVICE_FALLBACK_TEXT,
@@ -666,7 +707,10 @@ class TodayService:
             for advice_row in (payload.concrete_advice.rows if payload.concrete_advice else [])
             if advice_row.text != CONCRETE_ADVICE_FALLBACK_TEXT
         ])
-        if non_fallback_advice >= CONCRETE_ADVICE_CACHEABLE_MIN_ROWS:
+        # A deadline-degraded phase is also never cached: a payload carrying
+        # placeholder text from any timed-out branch would poison every
+        # later read, even when the advice batch itself validated.
+        if non_fallback_advice >= CONCRETE_ADVICE_CACHEABLE_MIN_ROWS and not timed_out_names:
             await self._cache_payload(user_id, target_date, payload, profile_hash, cache_key)
 
         return payload
@@ -897,7 +941,7 @@ class TodayService:
                 activation_layer_version=cache_key.activation_layer_version if cache_key else None,
                 scoring_version=str(cache_key.scoring_version) if cache_key else "1",
                 canon_versions_hash=cache_key.canon_versions_hash if cache_key else "",
-                llm_prompt_version=cache_key.llm_prompt_version if cache_key else 3,
+                llm_prompt_version=cache_key.llm_prompt_version if cache_key else TODAY_LLM_PROMPT_VERSION,
                 frontend_payload_version=cache_key.frontend_payload_version if cache_key else 1,
             )
             self.db.add(cache_entry)
@@ -933,7 +977,7 @@ class TodayService:
             "activation_layer_version": cache_key.activation_layer_version if cache_key else None,
             "scoring_version": str(cache_key.scoring_version) if cache_key else "1",
             "canon_versions_hash": cache_key.canon_versions_hash if cache_key else "",
-            "llm_prompt_version": cache_key.llm_prompt_version if cache_key else 3,
+            "llm_prompt_version": cache_key.llm_prompt_version if cache_key else TODAY_LLM_PROMPT_VERSION,
             "frontend_payload_version": cache_key.frontend_payload_version if cache_key else 1,
         }
         semantic_json = json.dumps(cache_data)
@@ -974,7 +1018,7 @@ class TodayService:
                 calculation_version=1,
                 normalization_version=1,
                 scoring_version=1,
-                prompt_version=2,
+                prompt_version=TODAY_LLM_PROMPT_VERSION,
                 content_version=TODAY_CONTENT_VERSION,
                 generated_at=datetime.now(UTC).isoformat(),
                 cached=False,
