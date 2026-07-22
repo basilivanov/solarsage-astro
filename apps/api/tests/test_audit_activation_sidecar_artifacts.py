@@ -125,6 +125,7 @@ def _common_monkeypatch(monkeypatch, *, sidecar_ok: bool, v2_enabled: bool = Tru
         (d / "scoring_oracle_comparison.json").write_text("{}", encoding="utf-8")
         (d / "astronomy_oracle_summary.json").write_text("{}", encoding="utf-8")
     monkeypatch.setattr(audit_mod, "run_oracles", _oracles)
+    monkeypatch.setattr(audit_mod, "run_downstream_audit_step", lambda *a, **k: None)
 
     from app.core import config as cfg
     monkeypatch.setattr(cfg.settings, "solarsage_v2_enabled", v2_enabled)

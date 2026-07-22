@@ -516,6 +516,37 @@ async def run_oracles(
         )
 
 
+def run_downstream_audit_step(root_dir: Path, debug_dir: Path) -> None:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-TODAY.run_downstream_audit_step
+    # purpose: Fail-closed downstream payload-vs-recomputed-V2 audit step of
+    #   the canonical contour (both modes). Kept as a module-level seam so
+    #   mode tests can substitute it like run_oracles.
+    # inputs: root_dir (11_final payload + 16 activation layer), debug_dir
+    #   (day_scored_signals_after_filter.json).
+    # side_effects: subprocess run of scripts/audit_downstream_v2.py with
+    #   check=True; writes root_dir/downstream.
+    # error_behavior: CalledProcessError on any audit failure.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-TODAY.run_downstream_audit_step
+    subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "audit_downstream_v2.py"),
+            "--input-activation-layer",
+            str(root_dir / "16_activation_layer.json"),
+            "--input-final-payload",
+            str(root_dir / "11_final_today_payload.json"),
+            "--input-day-signals",
+            str(debug_dir / "day_scored_signals_after_filter.json"),
+            "--fail-on-unmapped",
+            "false",
+            "--out",
+            str(root_dir / "downstream"),
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+    )
+
+
 # W9 rework01: frozen baseline materializes debug payload before oracles
 async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     # START_FUNCTION_CONTRACT: F-M-AUDIT-TODAY.run_audit
@@ -898,24 +929,7 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     # Downstream V2 audit: the FINAL payload must equal the independently
     # recomputed V2 (dayStatus, scoreBreakdown, topFlags). Fail-closed part
     # of the canonical contour in BOTH modes.
-    subprocess.run(
-        [
-            sys.executable,
-            str(REPO_ROOT / "scripts" / "audit_downstream_v2.py"),
-            "--input-activation-layer",
-            str(root_dir / "16_activation_layer.json"),
-            "--input-final-payload",
-            str(root_dir / "11_final_today_payload.json"),
-            "--input-day-signals",
-            str(debug_dir / "day_scored_signals_after_filter.json"),
-            "--fail-on-unmapped",
-            "false",
-            "--out",
-            str(root_dir / "downstream"),
-        ],
-        cwd=REPO_ROOT,
-        check=True,
-    )
+    run_downstream_audit_step(root_dir, debug_dir)
 
     # Generate 14_claims_audit.md only in live mode; in frozen mode keep baseline claims.
     if is_live:

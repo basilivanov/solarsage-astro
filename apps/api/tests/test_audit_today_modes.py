@@ -168,6 +168,7 @@ async def test_live_mode_calls_today_service_and_writes_artifact_source(tmp_path
     ))
     monkeypatch.setattr(audit_mod, "TodayService", lambda db: today_svc)
     monkeypatch.setattr(audit_mod, "run_oracles", AsyncMock())
+    monkeypatch.setattr(audit_mod, "run_downstream_audit_step", lambda *a, **k: None)
 
     # Ensure intermediate oracle files exist so copy steps don't fail hard.
     async def _oracles(**kwargs):
@@ -176,6 +177,7 @@ async def test_live_mode_calls_today_service_and_writes_artifact_source(tmp_path
         (d / "scoring_oracle_comparison.json").write_text("{}", encoding="utf-8")
         (d / "astronomy_oracle_summary.json").write_text("{}", encoding="utf-8")
     monkeypatch.setattr(audit_mod, "run_oracles", _oracles)
+    monkeypatch.setattr(audit_mod, "run_downstream_audit_step", lambda *a, **k: None)
 
     args = audit_mod.parse_args([
         "--user-id", "user-1",
@@ -330,6 +332,7 @@ async def test_frozen_mode_does_not_call_today_service(tmp_path, monkeypatch):
         (d / "scoring_oracle_comparison.json").write_text("{}", encoding="utf-8")
         (d / "astronomy_oracle_summary.json").write_text("{}", encoding="utf-8")
     monkeypatch.setattr(audit_mod, "run_oracles", _oracles)
+    monkeypatch.setattr(audit_mod, "run_downstream_audit_step", lambda *a, **k: None)
 
     args = audit_mod.parse_args([
         "--user-id", "user-1",
@@ -469,6 +472,7 @@ async def test_live_audit_records_v2_runtime_flags(tmp_path, monkeypatch):
         (d / "scoring_oracle_comparison.json").write_text("{}", encoding="utf-8")
         (d / "astronomy_oracle_summary.json").write_text("{}", encoding="utf-8")
     monkeypatch.setattr(audit_mod, "run_oracles", _oracles)
+    monkeypatch.setattr(audit_mod, "run_downstream_audit_step", lambda *a, **k: None)
 
     from app.core import config as cfg
     monkeypatch.setattr(cfg.settings, "solarsage_v2_enabled", True)
@@ -562,6 +566,7 @@ async def test_live_audit_v2_payload_missing_v2_block_fails(tmp_path, monkeypatc
     monkeypatch.setattr(audit_mod, "SemanticService", lambda: MagicMock(build_semantic_layer=MagicMock(return_value={}), build_why_contexts=MagicMock(return_value={})))
     monkeypatch.setattr(audit_mod, "TodayService", lambda db: today_svc)
     monkeypatch.setattr(audit_mod, "run_oracles", AsyncMock())
+    monkeypatch.setattr(audit_mod, "run_downstream_audit_step", lambda *a, **k: None)
 
     args = audit_mod.parse_args(["--user-id", "u", "--date", "2026-07-08", "--out", str(out), "--mode", "live-production", "--skip-oracles"])
     args.resolved_mode = "live-production"
@@ -635,6 +640,7 @@ async def test_live_audit_v2_payload_unmapped_sidecar_activation_fails(tmp_path,
     monkeypatch.setattr(audit_mod, "SemanticService", lambda: MagicMock(build_semantic_layer=MagicMock(return_value={}), build_why_contexts=MagicMock(return_value={})))
     monkeypatch.setattr(audit_mod, "TodayService", lambda db: today_svc)
     monkeypatch.setattr(audit_mod, "run_oracles", AsyncMock())
+    monkeypatch.setattr(audit_mod, "run_downstream_audit_step", lambda *a, **k: None)
 
     args = audit_mod.parse_args(["--user-id", "u", "--date", "2026-07-08", "--out", str(out), "--mode", "live-production", "--skip-oracles"])
     args.resolved_mode = "live-production"

@@ -1314,6 +1314,10 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             v1_v2_diff=None,
             trace_id="downstream-audit-synthetic",
         )
+        # The synthetic payload is completed from the SAME recomputation, so
+        # the payload-vs-recompute check below applies honestly (dayStatus,
+        # topFlags) instead of being exempted.
+        v1_result = ScoringService().score_day(day_signals)
         payload_json = {
             "meta": {
                 "payload_version": TODAY_V2_PAYLOAD_VERSION,
@@ -1325,6 +1329,11 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 "headline": "Synthetic downstream fixture",
             },
             "date": args.date,
+            "dayStatus": scoring_result.day_status,
+            "topFlags": [
+                f.model_dump(by_alias=True)
+                for f in TodayServiceForFlags._build_top_flags(v1_result.get("top_signals", []))
+            ],
             "v2": to_jsonable(v2_block),
         }
     elif payload_json is None:
@@ -1428,7 +1437,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             message="payload dayStatus differs from recomputed V2 day status",
         )
 
-    payload_sb = (payload_v2 or {}).get("scoreBreakdown") or {}
+    payload_sb = (payload_v2 or {}).get("scoreBreakdown") or (payload_v2 or {}).get("score_breakdown") or {}
     service_spheres = list(scoring_result.sphere_scores.keys())
     payload_spheres = list(payload_sb.keys())
     if payload_spheres != service_spheres:
@@ -1456,7 +1465,9 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             )
             continue
         for wire_name, attr in _numeric_fields:
-            wire_val = entry.get(wire_name)
+            # Accept wire camelCase and internal snake_case alike (the
+            # production payload is camel; the audit's own dump is snake).
+            wire_val = entry.get(wire_name) if wire_name in entry else entry.get(attr)
             svc_val = getattr(ss, attr, None)
             if wire_val is None and svc_val is None:
                 continue
@@ -1468,12 +1479,13 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                     actual={"field": wire_name, "value": wire_val},
                     message="payload scoreBreakdown numeric field mismatch",
                 )
-        if bool(ss.dominance_capped) != bool(entry.get("dominanceCapped")):
+        capped_val = entry.get("dominanceCapped") if "dominanceCapped" in entry else entry.get("dominance_capped")
+        if bool(ss.dominance_capped) != bool(capped_val):
             state.error(
                 kind="payload_dominance_capped_mismatch",
                 sphere=skey,
                 expected=ss.dominance_capped,
-                actual=entry.get("dominanceCapped"),
+                actual=capped_val,
                 message="payload dominanceCapped mismatch",
             )
         exp_contribs = sorted((c.source, c.source_id, round(float(c.amount), 4)) for c in ss.contributions)
