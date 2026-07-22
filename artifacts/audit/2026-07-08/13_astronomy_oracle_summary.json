@@ -9,11 +9,22 @@
   "sign_pass": true,
   "retrograde_flag_pass": true,
   "house_pass": true,
+  "final_transit_structure_pass": true,
   "final_transit_longitude_pass": true,
   "final_transit_sign_pass": true,
+  "final_transit_retrograde_pass": true,
   "final_motion_pass": true,
+  "final_house_structure_pass": true,
   "final_house_cusp_pass": true,
   "final_house_sign_pass": true,
+  "engine": {
+    "calc_flags": 258,
+    "swieph": true,
+    "moseph": false,
+    "ephemeris_path": "/tmp/bundle/ephe",
+    "policy": "swieph",
+    "engine_pass": true
+  },
   "moon_phase": {
     "oracle_percent": 43.792,
     "production_percent": 44,

@@ -1,82 +1,92 @@
 {
   "Sun": {
     "name": "Sun",
-    "longitude": 106.23364219241522,
-    "latitude": 0.00015868843535943373,
-    "speed": 0.953596345090284,
+    "longitude": 106.23364360927502,
+    "latitude": 0.00014961222473107772,
+    "speed": 0.9535974591526841,
     "retrograde": false,
-    "sign": "Cancer"
+    "sign": "Cancer",
+    "calc_flags": 258
   },
   "Moon": {
     "name": "Moon",
-    "longitude": 23.36586470526968,
-    "latitude": 4.102885347937189,
-    "speed": 13.731556479109154,
+    "longitude": 23.365919326816012,
+    "latitude": 4.102972137576481,
+    "speed": 13.731618114174845,
     "retrograde": false,
-    "sign": "Aries"
+    "sign": "Aries",
+    "calc_flags": 258
   },
   "Mercury": {
     "name": "Mercury",
-    "longitude": 113.61109942330512,
-    "latitude": -4.22907002780615,
-    "speed": -0.560803350158497,
+    "longitude": 113.611095892617,
+    "latitude": -4.229085167313324,
+    "speed": -0.5608058362393291,
     "retrograde": true,
-    "sign": "Cancer"
+    "sign": "Cancer",
+    "calc_flags": 258
   },
   "Venus": {
     "name": "Venus",
-    "longitude": 148.49533903847725,
-    "latitude": 1.509364648179005,
-    "speed": 1.1172571709985748,
+    "longitude": 148.49533335292645,
+    "latitude": 1.509364055116846,
+    "speed": 1.1172580577908473,
     "retrograde": false,
-    "sign": "Leo"
+    "sign": "Leo",
+    "calc_flags": 258
   },
   "Mars": {
     "name": "Mars",
-    "longitude": 66.7744604905792,
-    "latitude": -0.21112222712514953,
-    "speed": 0.7033331382063063,
+    "longitude": 66.77445318414603,
+    "latitude": -0.21112464713598397,
+    "speed": 0.7033337694910643,
     "retrograde": false,
-    "sign": "Gemini"
+    "sign": "Gemini",
+    "calc_flags": 258
   },
   "Jupiter": {
     "name": "Jupiter",
-    "longitude": 121.7543306474727,
-    "latitude": 0.44700071445662753,
-    "speed": 0.21759326605127732,
+    "longitude": 121.7543090271786,
+    "latitude": 0.4469856617125438,
+    "speed": 0.21759373636855897,
     "retrograde": false,
-    "sign": "Leo"
+    "sign": "Leo",
+    "calc_flags": 258
   },
   "Saturn": {
     "name": "Saturn",
-    "longitude": 14.460589369229297,
-    "latitude": -2.416000099165043,
-    "speed": 0.03117685073646245,
+    "longitude": 14.46059749655143,
+    "latitude": -2.4160232188187676,
+    "speed": 0.03117653482231039,
     "retrograde": false,
-    "sign": "Aries"
+    "sign": "Aries",
+    "calc_flags": 258
   },
   "Uranus": {
     "name": "Uranus",
-    "longitude": 64.06427017287449,
-    "latitude": -0.1558844702108193,
-    "speed": 0.04665653478855669,
+    "longitude": 64.0642531615111,
+    "latitude": -0.15589147344521426,
+    "speed": 0.04665633457149852,
     "retrograde": false,
-    "sign": "Gemini"
+    "sign": "Gemini",
+    "calc_flags": 258
   },
   "Neptune": {
     "name": "Neptune",
-    "longitude": 4.41773974782364,
-    "latitude": -1.372826733199455,
-    "speed": -0.0004911322446523909,
+    "longitude": 4.417842826960104,
+    "latitude": -1.372892783098987,
+    "speed": -0.0004911556022801258,
     "retrograde": true,
-    "sign": "Aries"
+    "sign": "Aries",
+    "calc_flags": 258
   },
   "Pluto": {
     "name": "Pluto",
-    "longitude": 304.71905881979234,
-    "latitude": -4.239970239805911,
-    "speed": -0.021930265804833933,
+    "longitude": 304.7191633162986,
+    "latitude": -4.239974069267963,
+    "speed": -0.02193015030633801,
     "retrograde": true,
-    "sign": "Aquarius"
+    "sign": "Aquarius",
+    "calc_flags": 258
   }
 }

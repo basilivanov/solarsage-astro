@@ -26,6 +26,8 @@
       "severity": "warning",
       "activation_id": "t2n__MOON__QUINCUNX__URANUS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -35,6 +37,8 @@
       "severity": "warning",
       "activation_id": "t2n__MERCURY__TRINE__URANUS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -44,6 +48,8 @@
       "severity": "warning",
       "activation_id": "t2n__VENUS__SQUARE__URANUS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -53,6 +59,8 @@
       "severity": "warning",
       "activation_id": "t2n__SATURN__SESQUI_QUADRATE__URANUS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -62,6 +70,8 @@
       "severity": "warning",
       "activation_id": "t2l__SUN__SEMI_SEXTILE__NECESSITY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -71,6 +81,8 @@
       "severity": "warning",
       "activation_id": "t2l__SUN__SESQUI_QUADRATE__VICTORY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -80,6 +92,8 @@
       "severity": "warning",
       "activation_id": "t2l__MOON__TRINE__NECESSITY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -89,6 +103,8 @@
       "severity": "warning",
       "activation_id": "t2l__MOON__SEXTILE__VICTORY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -98,6 +114,8 @@
       "severity": "warning",
       "activation_id": "t2l__MERCURY__QUINCUNX__VICTORY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -107,6 +125,8 @@
       "severity": "warning",
       "activation_id": "t2l__VENUS__OPPOSITION__VICTORY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -116,6 +136,8 @@
       "severity": "warning",
       "activation_id": "t2l__MARS__SEMI_SEXTILE__NEMESIS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -125,6 +147,8 @@
       "severity": "warning",
       "activation_id": "t2l__JUPITER__QUINCUNX__VICTORY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -134,6 +158,8 @@
       "severity": "warning",
       "activation_id": "t2l__JUPITER__SEMI_SEXTILE__NEMESIS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -143,6 +169,8 @@
       "severity": "warning",
       "activation_id": "t2l__SATURN__TRINE__NECESSITY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -152,6 +180,8 @@
       "severity": "warning",
       "activation_id": "t2l__SATURN__SEMI_SQUARE__VICTORY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -161,6 +191,8 @@
       "severity": "warning",
       "activation_id": "t2l__URANUS__SEMI_SEXTILE__NEMESIS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -170,6 +202,8 @@
       "severity": "warning",
       "activation_id": "t2l__NEPTUNE__SESQUI_QUADRATE__NECESSITY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -179,6 +213,8 @@
       "severity": "warning",
       "activation_id": "t2l__NEPTUNE__SQUARE__NEMESIS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -188,6 +224,8 @@
       "severity": "warning",
       "activation_id": "t2l__PLUTO__QUINCUNX__NEMESIS",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -197,6 +235,8 @@
       "severity": "warning",
       "activation_id": "solar_return__ANGLE_ASC__NATAL_HOUSE_11",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -206,6 +246,8 @@
       "severity": "warning",
       "activation_id": "lunar_return__ANGULAR_PLANET__URANUS__HOUSE_1",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -215,6 +257,8 @@
       "severity": "warning",
       "activation_id": "solar_arc__JUPITER__SQUARE__NATAL_LOT_NECESSITY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -224,6 +268,8 @@
       "severity": "warning",
       "activation_id": "solar_arc__VENUS__SQUARE__NATAL_LOT_NECESSITY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
@@ -233,6 +279,8 @@
       "severity": "warning",
       "activation_id": "secondary_progression__MOON__SEMI_SEXTILE__NATAL_LOT_VICTORY",
       "sphere": null,
+      "block": null,
+      "path": null,
       "expected": null,
       "actual": null,
       "message": "active unmapped activation"
