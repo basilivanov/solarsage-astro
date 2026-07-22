@@ -658,7 +658,7 @@ class NatalReportService:
   "blocks": [
     {{"type": "lead", "text": "Главный вывод раздела в одном-двух предложениях"}},
     {{"type": "paragraph", "text": "Развёрнутый абзац с анализом"}},
-    {{"type": "pros_cons", "prosLabel": "Сильные стороны", "consLabel": "Зоны роста", "pros": {{"title": "...", "text": "..."}}, "cons": {{"title": "...", "text": "..."}}}},
+    {{"type": "pros_cons", "prosLabel": "Сильные стороны", "consLabel": "Зоны роста", "pros": [{{"title": "...", "text": "..."}}], "cons": [{{"title": "...", "text": "..."}}]}},
     {{"type": "callout", "title": "Совет", "text": "Практический совет", "tone": "insight"}},
     {{"type": "paragraph", "text": "Итоговый абзац"}}
   ]
@@ -686,7 +686,16 @@ JSON:"""
 
         try:
             data = json.loads(text)
-            raw_blocks = data.get("blocks", [])
+            # Structural fail-closed normalization: syntactically valid JSON
+            # with a wrong root (e.g. a top-level list) or a non-list blocks
+            # field is a REJECT (retryable ValueError), never an
+            # AttributeError/TypeError that would bypass the bounded retry.
+            # Arbitrary unexpected exceptions are never swallowed.
+            if not isinstance(data, dict):
+                raise ValueError(f"Section {section_id}: invalid JSON from LLM")
+            raw_blocks = data.get("blocks")
+            if not isinstance(raw_blocks, list):
+                raise ValueError(f"Section {section_id}: invalid JSON from LLM")
             blocks = self._parse_blocks(raw_blocks)
             # W-NATAL-FULL: Reject empty parsed blocks — no placeholder.
             if not blocks:
@@ -716,23 +725,23 @@ JSON:"""
                 elif b_type == "lead":
                     blocks.append(LeadBlock(type="lead", text=b.get("text", "")))
                 elif b_type == "heading":
-                    blocks.append(HeadingBlock(type="heading", text=b.get("text", ""), level=b.get("level", 2)))
+                    blocks.append(HeadingBlock(type="heading", text=b.get("text", ""), level=b.get("level") or 2))
                 elif b_type == "list":
-                    blocks.append(ListBlock(type="list", items=b.get("items", []), ordered=b.get("ordered", False)))
+                    blocks.append(ListBlock(type="list", items=b.get("items", []), ordered=b.get("ordered") or False))
                 elif b_type == "callout":
                     blocks.append(CalloutBlock(
                         type="callout",
                         title=b.get("title"),
                         text=b.get("text", ""),
-                        tone=b.get("tone", "info"),
+                        tone=b.get("tone") or "info",
                     ))
                 elif b_type == "pros_cons":
                     pros = b.get("pros", [])
                     cons = b.get("cons", [])
                     blocks.append(ProsConsBlock(
                         type="pros_cons",
-                        pros_label=b.get("prosLabel", "Сильные стороны"),
-                        cons_label=b.get("consLabel", "Зоны роста"),
+                        pros_label=b.get("prosLabel") or "Сильные стороны",
+                        cons_label=b.get("consLabel") or "Зоны роста",
                         pros=pros if isinstance(pros, list) and all(isinstance(p, dict) for p in pros) else [],
                         cons=cons if isinstance(cons, list) and all(isinstance(c, dict) for c in cons) else [],
                     ))
@@ -742,7 +751,7 @@ JSON:"""
                     blocks.append(DividerBlock(type="divider"))
                 else:
                     # W-NATAL-FULL: unknown block type is a hard error.
-                    # LLM must only emit the 8+2 valid block types.
+                    # LLM must only emit the 8 valid block types.
                     raise ValueError(f"Unknown natal report block type: {b_type}")
             except ValueError:
                 # Re-raise validation errors (unknown types, bad data)

@@ -131,24 +131,23 @@ test.describe('Natal preview + full report — Real API (P1-6)', () => {
     // --- GENERATE_AND_VIEW: the product's own generation route ---
     // The app's purchase-status poll navigates to /readings/natal/generating
     // after the confirmed fulfillment; the route then polls and redirects to
-    // /readings/natal/<id> on READY. Fail-fast race: a terminal semantic
-    // error (data-state=error on the unified root) fails the test
-    // IMMEDIATELY instead of burning the full 600s budget; a genuinely
-    // generating report keeps the whole budget.
+    // /readings/natal/<id> on READY. ONE terminal semantic waiter on the
+    // public DOM contract: the unified natal-report-screen reaching
+    // data-state ready OR error — an error fails the test immediately
+    // (fail-fast), no 600s loser waiter left pending.
     await page.waitForURL(/\/readings\/natal\/generating/, { timeout: 120000 });
-    const outcome = await Promise.race([
-      page
-        .waitForURL(/\/readings\/natal\/[0-9a-f-]{36}$/, { timeout: NATAL_GENERATION_WAIT_MS })
-        .then(() => 'ready' as const),
-      page
-        .locator('[data-testid="natal-report-screen"][data-state="error"]')
-        .waitFor({ state: 'attached', timeout: NATAL_GENERATION_WAIT_MS })
-        .then(() => 'error' as const),
-    ]);
+    const terminal = page
+      .locator(
+        '[data-testid="natal-report-screen"][data-state="ready"], [data-testid="natal-report-screen"][data-state="error"]',
+      )
+      .first();
+    await terminal.waitFor({ state: 'attached', timeout: NATAL_GENERATION_WAIT_MS });
+    const terminalState = await terminal.getAttribute('data-state');
     expect(
-      outcome,
+      terminalState,
       'natal generation reached the terminal error state instead of a ready report',
     ).toBe('ready');
+    await expect(page).toHaveURL(/\/readings\/natal\/[0-9a-f-]{36}$/);
     const reportId = page.url().match(/\/readings\/natal\/([0-9a-f-]{36})$/)![1];
 
     // The ready report renders through the real UI on the unified root.

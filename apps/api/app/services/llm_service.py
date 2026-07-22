@@ -26,7 +26,8 @@
 #   - horary generation has 2 retry attempts
 #   - horary: the LLM writes ONLY five narrative strings through
 #     provider-enforced Structured Outputs (OpenRouter response_format
-#     json_schema strict + provider.require_parameters=true, Horary-only);
+#     json_schema strict + provider.require_parameters=true, Horary and
+#     Natal sections only);
 #     the backend assembles the public 8 blocks with engine-owned
 #     verdict/confidence/testimonies/timing verbatim from the HoraryAnalysis
 #     (no LLM-substituted engine fields; unclear timing never exposes the
@@ -227,7 +228,8 @@ class LLMService:
             "max_tokens": max_tokens,
         }
         if json_schema is not None:
-            # Provider-enforced Structured Outputs (Horary narrative only;
+            # Provider-enforced Structured Outputs (Horary narrative and
+            # natal report sections only;
             # ordinary calls keep the byte-identical body).
             body["response_format"] = {"type": "json_schema", "json_schema": json_schema}
             body["provider"] = {"require_parameters": True}
@@ -284,7 +286,8 @@ class LLMService:
     ) -> str | None:
         """Generate text with fallback: OpenRouter → DeepSeek → None.
 
-        json_schema (Horary narrative only) is enforced provider-side via
+        json_schema (Horary narrative and natal report sections only) is
+        enforced provider-side via
         OpenRouter Structured Outputs; the DeepSeek fallback always runs the
         plain prompt (no strict declaration without provider proof) — final
         local validation runs regardless of provider.

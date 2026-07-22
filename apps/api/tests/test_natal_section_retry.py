@@ -40,8 +40,36 @@ from app.db.session import Base
 from app.schemas.natal import NatalChartAngle, NatalChartHouse, NatalChartPlanet, NatalContextData
 from app.services.natal_report_service import _NATAL_SECTION_JSON_SCHEMA, NatalReportService
 
+def _provider_block(block_type: str, **fields) -> dict:
+    """Provider-shaped flattened block: every schema key present, null for
+    inapplicable fields (strict json_schema requires all flattened keys)."""
+    block = {
+        "type": block_type,
+        "text": None,
+        "level": None,
+        "items": None,
+        "ordered": None,
+        "title": None,
+        "tone": None,
+        "prosLabel": None,
+        "consLabel": None,
+        "pros": None,
+        "cons": None,
+        "source": None,
+    }
+    block.update(fields)
+    return block
+
+
 VALID_SECTION_JSON = json.dumps(
-    {"blocks": [{"type": "paragraph", "text": "Конкретный текст раздела о характере человека."}]},
+    {
+        "blocks": [
+            _provider_block("paragraph", text="Конкретный текст раздела о характере человека."),
+            # Flattened nulls on optional properties must parse cleanly.
+            _provider_block("heading", text="Подзаголовок раздела", level=None),
+            _provider_block("callout", title="Совет", text="Практический совет.", tone=None),
+        ]
+    },
     ensure_ascii=False,
 )
 
@@ -144,3 +172,32 @@ async def test_every_section_call_carries_strict_json_schema() -> None:
         assert set(block_types) == {
             "lead", "paragraph", "heading", "list", "callout", "pros_cons", "quote", "divider",
         }
+
+
+@pytest.mark.asyncio
+async def test_structural_reject_then_provider_shaped_valid_succeeds() -> None:
+    # First attempt: syntactically VALID JSON with a wrong root (top-level
+    # list) — previously an AttributeError that bypassed the retry; now a
+    # normalized structural rejection. Second attempt: valid provider-shaped
+    # response with flattened null keys -> READY after exactly one retry.
+    responses = (
+        [VALID_SECTION_JSON, VALID_SECTION_JSON]
+        + ["[]", VALID_SECTION_JSON]
+        + [VALID_SECTION_JSON] * 5
+    )
+    result, mock_llm = await _run_generation(responses)
+
+    assert result.status == "READY", f"expected READY after structural retry, got {result.status}"
+    assert mock_llm._generate_text.call_count == 9
+
+
+@pytest.mark.asyncio
+async def test_two_structural_rejects_produce_failed_retryable() -> None:
+    # Root wrong on attempt 1, blocks:null on attempt 2 — both are
+    # normalized structural rejections: FAILED_RETRYABLE with exactly 2
+    # calls, no partial sections.
+    result, mock_llm = await _run_generation(["[]", '{"blocks": null}'])
+
+    assert result.status == "FAILED_RETRYABLE"
+    assert not result.sections_available
+    assert mock_llm._generate_text.call_count == 2
