@@ -117,17 +117,33 @@ def test_honest_final_chart_all_pass(tmp_path) -> None:
     assert summary["moon_phase"]["pass"] is True
     assert summary["engine"]["engine_pass"] is True
     assert summary["engine"]["policy"] == "allow-moshier"
+    # The summary never persists an absolute runner path (byte-stability).
+    assert "ephemeris_path" not in summary["engine"]
 
 
-def test_default_engine_policy_fails_closed_without_swieph(tmp_path) -> None:
-    # No --engine-policy flag: the default swieph policy must reject the
-    # moshier fallback (no pinned bundle in this test environment).
-    rc, summary, _ = _run(tmp_path, extra_args=[])
-    if summary["engine"]["swieph"]:
-        pytest.skip("environment unexpectedly has the pinned Swiss artifact")
-    assert rc != 0
-    assert summary["engine"]["engine_pass"] is False
+def test_default_engine_policy_fails_closed_on_empty_ephe_dir(tmp_path) -> None:
+    # Explicit EMPTY ephemeris dir => moshier is guaranteed, no conditional
+    # skip: the default swieph policy must fail closed.
+    empty_ephe = tmp_path / "empty-ephe"
+    empty_ephe.mkdir()
+    payload = json.loads((BASE / "debug" / "final_today_payload.json").read_text(encoding="utf-8"))
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+    out = tmp_path / "out"
+    result = subprocess.run(
+        [*_oracle_cmd(payload_path, out), "--ephemeris-path", str(empty_ephe)],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    summary_path = out / "astronomy_oracle_summary.json"
+    assert summary_path.exists(), f"summary not written (traceback?):\n{result.stderr[-2000:]}"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
     assert summary["engine"]["moseph"] is True
+    assert summary["engine"]["swieph"] is False
+    assert summary["engine"]["engine_pass"] is False
+    assert summary["engine"]["policy"] == "swieph"
+    assert result.returncode != 0
 
 
 def test_final_transit_longitude_mutation_fails(tmp_path) -> None:
@@ -255,3 +271,57 @@ def test_raw_transit_sign_mutation_fails(tmp_path) -> None:
     summary = json.loads((out / "astronomy_oracle_summary.json").read_text(encoding="utf-8"))
     assert result.returncode != 0
     assert summary["sign_pass"] is False
+
+
+# -- Container-shape and bool-strict mutations (third-review blockers) ------
+
+def test_final_retrograde_bool_to_int_fails(tmp_path) -> None:
+    def mutate(p):
+        planet = p["day_chart"]["transit_planets"][0]
+        assert planet["retrograde"] is False
+        planet["retrograde"] = 0  # JSON 0 is not JSON false
+
+    rc, summary, _ = _run(tmp_path, mutate)
+    assert rc != 0
+    assert summary["final_transit_retrograde_pass"] is False
+
+
+def test_transit_planets_wrong_container_no_traceback(tmp_path) -> None:
+    def mutate(p):
+        p["day_chart"]["transit_planets"] = {"bad": 1}
+
+    rc, summary, result = _run(tmp_path, mutate)
+    assert rc != 0
+    assert "Traceback" not in result.stderr
+    assert summary["final_transit_structure_pass"] is False
+
+
+def test_houses_wrong_container_no_traceback(tmp_path) -> None:
+    def mutate(p):
+        p["day_chart"]["houses"] = {"bad": 1}
+
+    rc, summary, result = _run(tmp_path, mutate)
+    assert rc != 0
+    assert "Traceback" not in result.stderr
+    assert summary["final_house_structure_pass"] is False
+
+
+def test_day_chart_wrong_container_no_traceback(tmp_path) -> None:
+    def mutate(p):
+        p["day_chart"] = ["bad"]
+
+    rc, summary, result = _run(tmp_path, mutate)
+    assert rc != 0
+    assert "Traceback" not in result.stderr
+    assert summary["final_transit_structure_pass"] is False
+    assert summary["final_house_structure_pass"] is False
+
+
+def test_facts_wrong_container_no_traceback(tmp_path) -> None:
+    def mutate(p):
+        p["day_summary"]["facts"] = ["bad"]
+
+    rc, summary, result = _run(tmp_path, mutate)
+    assert rc != 0
+    assert "Traceback" not in result.stderr
+    assert summary["moon_phase"]["pass"] is None

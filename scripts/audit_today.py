@@ -486,8 +486,7 @@ def resolve_astronomy_python(requested: Path) -> Path:
 
 
 async def run_oracles(
-    *
-,
+    *,
     out_dir: Path,
     target_date: Date,
     target_tz: str,

@@ -207,7 +207,15 @@ def moon_phase_percent(sun_lon: float, moon_lon: float) -> float:
 
 
 def production_lunar_percent(payload: dict[str, Any]) -> int | None:
-    for fact in (payload.get("day_summary") or {}).get("facts", []):
+    day_summary = payload.get("day_summary")
+    if not isinstance(day_summary, dict):
+        return None
+    facts = day_summary.get("facts")
+    if not isinstance(facts, list):
+        return None
+    for fact in facts:
+        if not isinstance(fact, dict):
+            continue
         if fact.get("kind") == "lunar_phase":
             match = re.search(r"(\d+)\s*%", fact.get("title") or "")
             if match:
@@ -221,10 +229,16 @@ def planet_by_name(planets: list[dict[str, Any]], name: str) -> dict[str, Any] |
 
 def final_chart_planet(payload: dict[str, Any], name: str) -> dict[str, Any] | None:
     # The oracle's final payload may be the debug (snake_case) dump or the
-    # root (camelCase) wire payload — both carry the same day chart.
-    chart = payload.get("dayChart") or payload.get("day_chart") or {}
-    planets = chart.get("transitPlanets") or chart.get("transit_planets") or []
-    return next((p for p in planets if p.get("name") == name), None)
+    # root (camelCase) wire payload — both carry the same day chart. Wrong
+    # container shapes (dict-instead-of-list, list-instead-of-dict) are a
+    # missing planet, never a traceback.
+    chart = payload.get("dayChart") or payload.get("day_chart")
+    if not isinstance(chart, dict):
+        return None
+    planets = chart.get("transitPlanets") or chart.get("transit_planets")
+    if not isinstance(planets, list):
+        return None
+    return next((p for p in planets if isinstance(p, dict) and p.get("name") == name), None)
 
 
 def run_astronomy_oracle(
@@ -337,10 +351,12 @@ def run_astronomy_oracle(
     # exact transit structure/order/count (longitude/sign/retrograde/motion)
     # and the exact serialized house list (structure/count/order/number/cusp/
     # sign). Raw transit proof above is necessary but NOT sufficient — the
-    # payload itself is the money boundary. Structural defects are recorded
-    # as failed rows, never tracebacks.
-    final_chart = payload.get("dayChart") or payload.get("day_chart") or {}
-    final_planets = final_chart.get("transitPlanets") or final_chart.get("transit_planets") or []
+    # payload itself is the money boundary. Wrong container shapes are
+    # normalized to empty structures (=> failed rows), never tracebacks.
+    final_chart_raw = payload.get("dayChart") or payload.get("day_chart")
+    final_chart = final_chart_raw if isinstance(final_chart_raw, dict) else {}
+    final_planets_raw = final_chart.get("transitPlanets") or final_chart.get("transit_planets")
+    final_planets = final_planets_raw if isinstance(final_planets_raw, list) else []
     expected_planet_order = list(PLANETS.keys())
     final_planet_order = [p.get("name") for p in final_planets if isinstance(p, dict)]
     final_transit_structure_pass = final_planet_order == expected_planet_order
@@ -375,13 +391,16 @@ def run_astronomy_oracle(
                 "oracle_speed": round(oracle_speed, 8),
                 "oracle_retrograde": oracle["retrograde"],
                 "final_retrograde": final_retrograde,
-                "final_retrograde_pass": final_retrograde == oracle["retrograde"],
+                "final_retrograde_pass": (
+                    isinstance(final_retrograde, bool) and final_retrograde == oracle["retrograde"]
+                ),
                 "final_motion": final_motion,
                 "expected_motion": expected_motion,
                 "final_motion_pass": final_motion == expected_motion,
             }
         )
-    final_houses = final_chart.get("houses") or []
+    final_houses_raw = final_chart.get("houses")
+    final_houses = final_houses_raw if isinstance(final_houses_raw, list) else []
     expected_house_numbers = [h["number"] for h in oracle_houses]
     final_house_numbers = [h.get("number") for h in final_houses if isinstance(h, dict)]
     final_house_structure_pass = (
@@ -433,10 +452,17 @@ def run_astronomy_oracle(
             "calc_flags": engine_proof["calc_flags"],
             "swieph": engine_proof["swieph"],
             "moseph": engine_proof["moseph"],
-            "ephemeris_path": effective_ephe,
+            # Path-independent by contract: the absolute runner path is
+            # never persisted (tracked summaries must be byte-identical on
+            # any runner); only the stable source marker is recorded. The
+            # ephemeris identity itself is proven by the manifest SHA +
+            # sidecar health check in the contour, not by this path.
+            "ephemeris_source": (
+                "argument" if ephemeris_path else ("env" if os.getenv("SWEPH_PATH") else "default")
+            ),
             "policy": engine_policy,
             "engine_pass": (
-                engine_proof["swieph"]
+                (engine_proof["swieph"] and not engine_proof["moseph"])
                 if engine_policy == "swieph"
                 else engine_proof["swieph"] or engine_proof["moseph"]
             ),

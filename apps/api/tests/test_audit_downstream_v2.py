@@ -343,3 +343,32 @@ def test_activation_evidence_unexpected_key_fails(tmp_path) -> None:
     args, out = _replay(tmp_path, mutate)
     assert _run(args) != 0
     assert "payload_contract_extra_key" in _failure_kinds(out)
+
+
+# -- Type-strict and actual-contract mutations (third-review blockers) ------
+
+def test_dominance_capped_bool_to_int_fails(tmp_path) -> None:
+    def mutate(p):
+        p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["dominanceCapped"] = 0
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_score_field_mismatch" in _failure_kinds(out)
+
+
+def test_activation_evidence_active_bool_to_int_fails(tmp_path) -> None:
+    def mutate(p):
+        p["v2"]["activationEvidence"][0]["active"] = 1
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_activation_evidence_mismatch" in _failure_kinds(out)
+
+
+def test_v2_root_extra_key_fails(tmp_path) -> None:
+    def mutate(p):
+        p["v2"]["unexpectedRootKey"] = 1
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_v2_contract_invalid" in _failure_kinds(out)

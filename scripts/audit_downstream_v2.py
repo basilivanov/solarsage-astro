@@ -67,6 +67,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError  # noqa: E402
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = _REPO_ROOT
@@ -85,7 +86,7 @@ from app.core.versions import (  # noqa: E402
 )
 from app.schemas.activation import ActivationEvidence  # noqa: E402
 from app.schemas.normalization import AstroSignal, normalize_top_signals  # noqa: E402
-from app.schemas.today import DayChartAspect, SphereScore, TopFlag  # noqa: E402
+from app.schemas.today import DayChartAspect, SphereScore, TodayV2Block, TopFlag  # noqa: E402
 from app.services.activation_layer_service import ActivationLayerService  # noqa: E402
 from app.services.astro_utils import strip_prefix  # noqa: E402
 from app.services.canon_service import get_canon_versions  # noqa: E402
@@ -231,7 +232,9 @@ def contract_diff(expected: Any, actual: Any, path: str = "") -> list[dict[str, 
     # purpose: Ordered structural diff between a canonical expected dump and
     #   an actual payload fragment. Classifies every difference as
     #   missing_key / extra_key / value_mismatch with a dotted path; list
-    #   order and length are significant; scalar equality is exact.
+    #   order and length are significant; scalar equality is exact AND
+    #   JSON-type-strict (boolean is never equal to a number: true != 1,
+    #   false != 0 — Python's == equates them, JSON does not).
     # inputs: expected — canonical model dump; actual — payload JSON value.
     # returns: list of issue dicts (class/path/expected/actual).
     # side_effects: none.
@@ -271,6 +274,13 @@ def contract_diff(expected: Any, actual: Any, path: str = "") -> list[dict[str, 
             )
         for index, (exp_item, act_item) in enumerate(zip(expected, actual)):
             issues.extend(contract_diff(exp_item, act_item, f"{path}[{index}]"))
+        return issues
+    if isinstance(expected, bool) or isinstance(actual, bool):
+        # JSON-type-strict: a boolean only ever equals the same boolean.
+        if not (isinstance(expected, bool) and isinstance(actual, bool) and expected == actual):
+            issues.append(
+                {"class": "value_mismatch", "path": path, "expected": expected, "actual": actual}
+            )
         return issues
     if expected != actual:
         issues.append({"class": "value_mismatch", "path": path, "expected": expected, "actual": actual})
@@ -1595,6 +1605,22 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             expected="today.v2.1 non-null body",
             actual={"v2_selected": v2_selected, "has_v2": payload_v2 is not None},
         )
+    # START_BLOCK: VALIDATE_ACTUAL_V2
+    # The ACTUAL payload v2 block must satisfy the public TodayV2Block
+    # contract (extra=forbid): unknown keys at the wire boundary and
+    # structural type violations are diagnostic failures, never tracebacks.
+    if payload_v2 is not None:
+        try:
+            TodayV2Block.model_validate(payload_v2)
+        except ValidationError as exc:
+            state.error(
+                kind="payload_v2_contract_invalid",
+                block="v2",
+                expected="TodayV2Block (extra=forbid)",
+                actual=json.loads(exc.json())[:10],
+                message="payload v2 block violates the public TodayV2Block contract",
+            )
+    # END_BLOCK: VALIDATE_ACTUAL_V2
     sidecar_id_set = set(sidecar_ids)
     payload_id_set = set(payload_ids)
     missing_in_payload = sorted(sidecar_id_set - payload_id_set)
@@ -1846,6 +1872,7 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         "dominance_cap_matches_canon": not any(f.kind.startswith("dominance_cap_") for f in state.failures),
         "day_status_matches_recalc": not any(f.kind == "day_status_mismatch" for f in state.failures),
         "payload_day_status_matches_recalc": not any(f.kind == "payload_day_status_mismatch" for f in state.failures),
+        "payload_v2_contract_valid": not any(f.kind in ("payload_v2_contract_invalid", "payload_v2_missing") for f in state.failures),
         "payload_score_breakdown_matches_recalc": not any(
             f.kind in (
                 "payload_score_breakdown_order_mismatch",

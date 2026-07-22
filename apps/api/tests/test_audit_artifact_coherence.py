@@ -134,13 +134,19 @@ def test_oracle_artifacts_green() -> None:
 def test_wave17_layer_matches_canonical_http_layer() -> None:
     """The standalone wave artifact 17 is generated with the same profile,
     current location and house system as the canonical HTTP layer 16, so
-    their ordered activation ids are identical (no return-location fallback)."""
+    the two layers are exactly equal except for the 17-side _audit_meta
+    provenance note (whose current_location must be the profile's)."""
     canonical = _read("16_activation_layer.json")
     wave = _read("17_sidecar_activation_layer.json")
-    canonical_ids = [a["id"] for a in canonical["activations"]]
-    wave_ids = [a["id"] for a in wave["activations"]]
-    assert wave_ids == canonical_ids
-    assert wave.get("house_system") == canonical.get("house_system")
+    audit_meta = wave.pop("_audit_meta", None)
+    canonical.pop("_audit_meta", None)
+    assert wave == canonical
+    assert audit_meta is not None
+    assert audit_meta["current_location"] == {
+        "lat": 43.59699,
+        "lon": 39.72477,
+        "tz": "Europe/Moscow",
+    }
     assert not any("return_location_fallback" in w for w in wave.get("warnings", []))
 
 
