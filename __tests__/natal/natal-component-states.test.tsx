@@ -386,6 +386,58 @@ describe("NatalReadingPage — natal chart preview", () => {
   })
 })
 
+describe("NatalGeneratingPage — semantic state contract", () => {
+  beforeEach(() => {
+    mockPush.mockReset()
+    mockReplace.mockReset()
+    mockFetchNatalGenerate.mockReset()
+    mockFetchNatalReport.mockReset()
+    mockFetchNatalPreview.mockReset()
+    mockFetchNatalPreview.mockResolvedValue({
+      ok: true,
+      data: {
+        meta: { name: "Backend User", birthDate: "2000-01-01", gender: "female" },
+        fullReportPurchasable: false,
+        fullReportPriceKopecks: 39900,
+      },
+    })
+  })
+
+  it("generating state exposes natal-report-screen data-state=generating with role=status and aria-busy", async () => {
+    const NatalGeneratingPage = (await import("@/app/(grace)/readings/natal/generating/page")).default
+    mockFetchNatalGenerate.mockResolvedValue({
+      ok: true,
+      data: { reportId: "gen-123", status: "GENERATING" },
+    })
+
+    render(<NatalGeneratingPage />)
+
+    const root = await screen.findByTestId("natal-report-screen")
+    await waitFor(() => {
+      expect(root.getAttribute("data-state")).toBe("generating")
+    })
+    expect(root.getAttribute("role")).toBe("status")
+    expect(root.getAttribute("aria-busy")).toBe("true")
+  })
+
+  it("terminal error exposes data-state=error with role=alert and no aria-busy", async () => {
+    const NatalGeneratingPage = (await import("@/app/(grace)/readings/natal/generating/page")).default
+    mockFetchNatalGenerate.mockResolvedValue({
+      ok: true,
+      data: { reportId: "fail-123", status: "FAILED_RETRYABLE", errorMessage: "LLM timeout" },
+    })
+
+    render(<NatalGeneratingPage />)
+
+    const root = await screen.findByTestId("natal-report-screen")
+    await waitFor(() => {
+      expect(root.getAttribute("data-state")).toBe("error")
+    })
+    expect(root.getAttribute("role")).toBe("alert")
+    expect(root.getAttribute("aria-busy")).toBe("false")
+  })
+})
+
 describe("NatalGeneratingPage — retry behavior", () => {
   beforeEach(() => {
     mockPush.mockReset()

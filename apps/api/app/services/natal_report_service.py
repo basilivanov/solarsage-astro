@@ -82,6 +82,94 @@ from app.services.natal_context_service import NatalContextService
 from app.core.logging import log_event, log_block
 
 # ── Required section IDs for this wave ────────────────────────────
+# Provider-enforced Structured Outputs for natal section generation. The
+# schema matches the real allowed natal blocks (fail-closed): local parse,
+# Pydantic and semantic validation stay mandatory regardless of provider.
+_NATAL_SECTION_JSON_SCHEMA = {
+    "name": "natal_report_section",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "blocks": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "lead",
+                                "paragraph",
+                                "heading",
+                                "list",
+                                "callout",
+                                "pros_cons",
+                                "quote",
+                                "divider",
+                            ],
+                        },
+                        "text": {"type": ["string", "null"]},
+                        "level": {"type": ["integer", "null"]},
+                        "items": {
+                            "type": ["array", "null"],
+                            "items": {"type": "string"},
+                        },
+                        "ordered": {"type": ["boolean", "null"]},
+                        "title": {"type": ["string", "null"]},
+                        "tone": {"type": ["string", "null"]},
+                        "prosLabel": {"type": ["string", "null"]},
+                        "consLabel": {"type": ["string", "null"]},
+                        "pros": {
+                            "type": ["array", "null"],
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {"type": "string"},
+                                    "text": {"type": "string"},
+                                },
+                                "required": ["title", "text"],
+                                "additionalProperties": False,
+                            },
+                        },
+                        "cons": {
+                            "type": ["array", "null"],
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {"type": "string"},
+                                    "text": {"type": "string"},
+                                },
+                                "required": ["title", "text"],
+                                "additionalProperties": False,
+                            },
+                        },
+                        "source": {"type": ["string", "null"]},
+                    },
+                    "required": [
+                        "type",
+                        "text",
+                        "level",
+                        "items",
+                        "ordered",
+                        "title",
+                        "tone",
+                        "prosLabel",
+                        "consLabel",
+                        "pros",
+                        "cons",
+                        "source",
+                    ],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["blocks"],
+        "additionalProperties": False,
+    },
+}
+
+
 REQUIRED_SECTIONS = [
     "portrait",
     "ascendant",
@@ -480,13 +568,35 @@ class NatalReportService:
 
         for section_id in REQUIRED_SECTIONS:
             section_title = _SECTION_TITLES[section_id]
-            section_blocks = await self._generate_section_blocks(
-                llm, chart_facts, section_id, section_title, gender, user_name
-            )
-            # W-NATAL-FULL: No placeholder sections — if LLM fails, raise.
-            # The caller catches the exception and sets status=FAILED_RETRYABLE.
+            # W-NATAL-FULL: exactly one bounded retry for the CURRENT failed
+            # section (empty/provider/JSON/block-schema rejection); sections
+            # already generated are never regenerated. A second rejection
+            # raises and the caller sets FAILED_RETRYABLE — never a fake
+            # partial or READY report.
+            last_reject_reason = "unknown"
+            section_blocks = None
+            for attempt in range(1, 3):
+                try:
+                    section_blocks = await self._generate_section_blocks(
+                        llm, chart_facts, section_id, section_title, gender, user_name
+                    )
+                    break
+                except ValueError as exc:
+                    last_reject_reason = self._classify_section_reject(exc)
+                    with log_block(slice="W-NATAL-FULL", module="M-NATAL-REPORT-SERVICE", block="GENERATE_SECTION"):
+                        log_event(
+                            "llm.response_rejected",
+                            level="warn",
+                            msg=(
+                                f"natal section rejected: section={section_id} "
+                                f"attempt={attempt} reason={last_reject_reason}"
+                            ),
+                            payload={"reason": "schema_invalid"},
+                        )
             if not section_blocks:
-                raise ValueError(f"Section {section_id} produced no blocks")
+                raise ValueError(
+                    f"Section {section_id} produced no blocks after 2 attempts: {last_reject_reason}"
+                )
             sections.append(NatalReportSectionRead(
                 id=section_id,
                 title=section_title,
@@ -495,6 +605,26 @@ class NatalReportService:
             ))
 
         return sections
+
+    @staticmethod
+    def _classify_section_reject(exc: ValueError) -> str:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE._classify_section_reject
+        # purpose: Map a section generation rejection to a sanitized reason
+        #   code for structured logs (never the raw model output).
+        # inputs: exc — ValueError raised by _generate_section_blocks.
+        # returns: short reason code (empty|json|block_schema|unknown_block).
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: pure mapping, never raises.
+        # END_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE._classify_section_reject
+        message = str(exc).lower()
+        if "unknown natal report block type" in message:
+            return "unknown_block"
+        if "invalid json" in message or "jsondecodeerror" in message:
+            return "json"
+        if "empty response" in message or "no valid blocks" in message or "no blocks" in message:
+            return "empty"
+        return "block_schema"
 
     async def _generate_section_blocks(
         self, llm, chart_facts: str, section_id: str, section_title: str,
@@ -538,7 +668,11 @@ class NatalReportService:
 
 JSON:"""
 
-        text = await llm._generate_text(prompt, max_tokens=2000)
+        text = await llm._generate_text(
+            prompt,
+            max_tokens=2000,
+            json_schema=_NATAL_SECTION_JSON_SCHEMA,
+        )
         # W-NATAL-FULL: No placeholder text — raise on LLM failure.
         # Caller catches and sets FAILED_RETRYABLE.
         if not text:

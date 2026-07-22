@@ -1,0 +1,146 @@
+# ############################################################################
+# AI_HEADER: MODULE_TESTS_TEST_NATAL_SECTION_RETRY — per-section retry proofs.
+# ROLE: Proves the natal section generation contract: strict provider JSON
+#       schema on every section call, exactly one bounded retry for the
+#       CURRENT failed section (successful sections never regenerated), and
+#       FAILED_RETRYABLE after two rejected attempts — never a partial/READY.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-TESTS-NATAL-SECTION-RETRY
+# purpose: Directed tests for the natal section retry + structured-output
+#   boundary (release run 29916959921 class: one rejected section killing
+#   the whole report).
+# owns:
+#   - apps/api/tests/test_natal_section_retry.py
+# inputs: mocked LLMService._generate_text and NatalContextService.
+# outputs: call-count, json_schema and status assertions.
+# dependencies: sqlite in-memory DB; app services.
+# side_effects: none.
+# emitted_logs: none.
+# invariants:
+#   - Only the failed section is retried (exactly one extra call).
+#   - Two rejected attempts keep FAILED_RETRYABLE without partial sections.
+#   - Every section call carries the strict natal json_schema.
+# failure_policy: assertion failure.
+# END_MODULE_CONTRACT: M-TESTS-NATAL-SECTION-RETRY
+
+from __future__ import annotations
+
+import json
+import uuid
+from datetime import date as Date, time
+from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from app.db.models import NatalChartCache, User, UserProfile
+from app.db.session import Base
+from app.schemas.natal import NatalChartAngle, NatalChartHouse, NatalChartPlanet, NatalContextData
+from app.services.natal_report_service import _NATAL_SECTION_JSON_SCHEMA, NatalReportService
+
+VALID_SECTION_JSON = json.dumps(
+    {"blocks": [{"type": "paragraph", "text": "Конкретный текст раздела о характере человека."}]},
+    ensure_ascii=False,
+)
+
+
+async def _run_generation(llm_side_effect):
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as session:
+        user_id = uuid.uuid4()
+        session.add(User(id=user_id, tg_user_id=hash(str(user_id)) % (10**18)))
+        await session.commit()
+        session.add(UserProfile(
+            user_id=user_id, first_name="Test", gender="female",
+            birthday=Date(1993, 1, 7), birth_time=time(10, 33),
+            birth_city="Chirchiq", birth_lat=Decimal("41.46890"),
+            birth_lon=Decimal("69.58220"), birth_tz="Asia/Tashkent",
+            is_onboarded=True,
+        ))
+        profile_hash = "testhash123"
+        session.add(NatalChartCache(
+            user_id=user_id, profile_hash=profile_hash,
+            raw_chart_json="{}", normalized_context_json="{}",
+        ))
+        await session.commit()
+
+        service = NatalReportService(session)
+        mock_context = NatalContextData(
+            planets=[
+                NatalChartPlanet(name="Sun", sign="Capricorn", degree=16.9, house=11, longitude=286.9, retrograde=False),
+                NatalChartPlanet(name="Moon", sign="Gemini", degree=29.6, house=4, longitude=119.6, retrograde=False),
+            ],
+            houses=[
+                NatalChartHouse(number=i, sign="Aries", degree=0.0, longitude=float((i - 1) * 30))
+                for i in range(1, 13)
+            ],
+            aspects=[],
+            angles=[NatalChartAngle(name="ASC", sign="Pisces", degree=11.9, longitude=341.9)],
+        )
+
+        with patch("app.services.natal_report_service.NatalContextService") as MockCtxSvc, \
+             patch("app.services.llm_service.LLMService") as MockLLM:
+            mock_ctx_instance = AsyncMock()
+            mock_ctx_instance.get_or_build_natal_context.return_value = mock_context
+            MockCtxSvc.return_value = mock_ctx_instance
+            MockCtxSvc.compute_profile_hash = MagicMock(return_value=profile_hash)
+
+            mock_llm = AsyncMock()
+            mock_llm._generate_text.side_effect = llm_side_effect
+            MockLLM.return_value = mock_llm
+
+            result = await service.generate_report(user_id)
+    await engine.dispose()
+    return result, mock_llm
+
+
+@pytest.mark.asyncio
+async def test_failed_section_retried_once_then_succeeds() -> None:
+    # 8 sections: first two succeed, the THIRD fails once then succeeds,
+    # the rest succeed — exactly ONE extra call total (no regeneration of
+    # the already-successful sections).
+    responses = (
+        [VALID_SECTION_JSON, VALID_SECTION_JSON]
+        + ["not json at all", VALID_SECTION_JSON]
+        + [VALID_SECTION_JSON] * 5
+    )
+    result, mock_llm = await _run_generation(responses)
+
+    assert result.status == "READY", f"expected READY after one bounded retry, got {result.status}"
+    assert result.sections_available
+    assert mock_llm._generate_text.call_count == 9  # 8 sections + 1 retry of the failed one
+
+
+@pytest.mark.asyncio
+async def test_two_rejected_attempts_produce_failed_retryable_without_partial() -> None:
+    # The FIRST section rejects twice -> immediate FAILED_RETRYABLE; no
+    # further sections are attempted, nothing partial or READY persists.
+    result, mock_llm = await _run_generation(["not json at all", "still not json"])
+
+    assert result.status == "FAILED_RETRYABLE"
+    assert not result.sections_available
+    assert mock_llm._generate_text.call_count == 2  # exactly two attempts of the failed section
+
+
+@pytest.mark.asyncio
+async def test_every_section_call_carries_strict_json_schema() -> None:
+    result, mock_llm = await _run_generation([VALID_SECTION_JSON] * 8)
+
+    assert result.status == "READY"
+    assert mock_llm._generate_text.call_count == 8
+    for call in mock_llm._generate_text.call_args_list:
+        schema = call.kwargs.get("json_schema")
+        assert schema is not None, "natal section call missing strict json_schema"
+        assert schema is _NATAL_SECTION_JSON_SCHEMA
+        assert schema["strict"] is True
+        assert schema["schema"]["additionalProperties"] is False
+        assert schema["schema"]["required"] == ["blocks"]
+        block_types = schema["schema"]["properties"]["blocks"]["items"]["properties"]["type"]["enum"]
+        assert set(block_types) == {
+            "lead", "paragraph", "heading", "list", "callout", "pros_cons", "quote", "divider",
+        }

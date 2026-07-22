@@ -131,9 +131,24 @@ test.describe('Natal preview + full report — Real API (P1-6)', () => {
     // --- GENERATE_AND_VIEW: the product's own generation route ---
     // The app's purchase-status poll navigates to /readings/natal/generating
     // after the confirmed fulfillment; the route then polls and redirects to
-    // /readings/natal/<id> on READY.
+    // /readings/natal/<id> on READY. Fail-fast race: a terminal semantic
+    // error (data-state=error on the unified root) fails the test
+    // IMMEDIATELY instead of burning the full 600s budget; a genuinely
+    // generating report keeps the whole budget.
     await page.waitForURL(/\/readings\/natal\/generating/, { timeout: 120000 });
-    await page.waitForURL(/\/readings\/natal\/[0-9a-f-]{36}$/, { timeout: NATAL_GENERATION_WAIT_MS });
+    const outcome = await Promise.race([
+      page
+        .waitForURL(/\/readings\/natal\/[0-9a-f-]{36}$/, { timeout: NATAL_GENERATION_WAIT_MS })
+        .then(() => 'ready' as const),
+      page
+        .locator('[data-testid="natal-report-screen"][data-state="error"]')
+        .waitFor({ state: 'attached', timeout: NATAL_GENERATION_WAIT_MS })
+        .then(() => 'error' as const),
+    ]);
+    expect(
+      outcome,
+      'natal generation reached the terminal error state instead of a ready report',
+    ).toBe('ready');
     const reportId = page.url().match(/\/readings\/natal\/([0-9a-f-]{36})$/)![1];
 
     // The ready report renders through the real UI on the unified root.

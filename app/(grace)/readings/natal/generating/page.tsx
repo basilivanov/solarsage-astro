@@ -18,6 +18,9 @@
 //   - READY routes to /readings/natal/<reportId>.
 //   - Timeout and retryable/permanent failures remain distinguishable.
 //   - Timers and cancelled async work are cleaned up.
+//   - Public semantic contract on the unified root: data-testid
+//     natal-report-screen with data-state starting|generating|error,
+//     role=status + aria-busy while active and role=alert on terminal error.
 // failure_policy: Typed API failures become explicit GenState/PreviewState UI; unexpected render errors bubble to the route boundary.
 // END_MODULE_CONTRACT: M-APP-NATAL-GENERATING-PAGE
 
@@ -258,8 +261,24 @@ export default function NatalGeneratingPage() {
       ? { status: "error", message: previewState.message }
       : genState
 
+  // Public semantic/test contract (natal-report-screen unified root):
+  // starting = preview/generation boot; generating = work in flight
+  // (role=status + aria-busy); error = terminal failure (role=alert).
+  const semanticState: "starting" | "generating" | "error" =
+    visibleState.status === "generating"
+      ? "generating"
+      : visibleState.status === "starting" || previewState.status === "loading"
+        ? "starting"
+        : "error"
+
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
+    <div
+      className="flex h-full w-full flex-col bg-background overflow-y-auto"
+      data-testid="natal-report-screen"
+      data-state={semanticState}
+      role={semanticState === "error" ? "alert" : "status"}
+      aria-busy={semanticState !== "error"}
+    >
       <header
         className="flex-none px-4 pb-4 border-b border-border/40"
         style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)" }}
