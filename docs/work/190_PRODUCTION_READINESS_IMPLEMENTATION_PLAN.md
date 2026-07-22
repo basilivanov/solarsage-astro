@@ -362,8 +362,11 @@ their text below is kept as the design for those later slices.
   layer dump (missing AND extra ids fail); the astronomy oracle gained a
   FINAL_CHART_PROOF block (final dayChart transit longitude/sign/motion
   and serialized house number/order/cusp/sign vs the independent Swiss
-  result, aggregated into the exit code). Every listed mutation now
-  exits non-zero with its own failure kind. The canonical package was
+  result, aggregated into the exit code). The downstream audit also
+  verifies dayChart.aspects as the exact ordered day-signals projection
+  (production _build_day_chart rules) — the last of the 9 probes
+  (aspects[0].orb) now exits non-zero with its own failure kind. Every
+  listed mutation now exits non-zero with its own failure kind. The canonical package was
   regenerated as ONE generation via the pinned image
   `solarsage-sidecar-readiness:62b756a` (health: engine=swieph,
   fallback=false, release_sha=62b756a6…, calculation_version
