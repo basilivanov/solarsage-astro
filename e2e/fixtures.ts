@@ -548,17 +548,13 @@ export async function paySandboxCheckout(popup: Page) {
     return mismatches;
   };
 
-  // Bounded fill-and-verify stabilization (pre-submit only): refill the
-  // mismatched fields and re-read, up to 3 short attempts. Pay is clicked
+  // Bounded fill-and-verify stabilization (pre-submit only): up to 3
+  // refills of the mismatched fields, and EVERY refill — including the
+  // third — is confirmed by its own verifyAll re-read. Pay is clicked
   // exactly once and ONLY after ALL fields hold simultaneously.
-  let verified = false;
-  let lastMismatches: string[] = [];
+  let lastMismatches = await verifyAll();
+  let verified = lastMismatches.length === 0;
   for (let attempt = 0; attempt < 3 && !verified; attempt += 1) {
-    lastMismatches = await verifyAll();
-    if (lastMismatches.length === 0) {
-      verified = true;
-      break;
-    }
     for (const field of lastMismatches) {
       if (field === 'cardNumber') {
         await cardNumber.fill(SANDBOX_TEST_CARD.number);
@@ -573,6 +569,8 @@ export async function paySandboxCheckout(popup: Page) {
       }
     }
     await popup.waitForTimeout(400);
+    lastMismatches = await verifyAll();
+    verified = lastMismatches.length === 0;
   }
   if (!verified) {
     throw new Error(
@@ -580,19 +578,26 @@ export async function paySandboxCheckout(popup: Page) {
     );
   }
 
-  // 4) Single pay click (bounded search across frames).
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  // 4) Pay: bounded DISCOVERY of the visible button across frames, then a
+  //    SINGLE click action — never a click inside a retry/catch loop (a
+  //    dispatched-then-timed-out click must not be repeated).
+  let payButton: import('@playwright/test').Locator | null = null;
+  for (let attempt = 0; attempt < 10 && !payButton; attempt += 1) {
     for (const frame of popup.frames()) {
-      const payButton = frame.getByRole('button', { name: /оплатить|заплатить|pay/i }).first();
-      try {
-        await payButton.click({ timeout: 3000 });
-        return;
-      } catch {
-        // keep searching
+      const candidate = frame.getByRole('button', { name: /оплатить|заплатить|pay/i }).first();
+      if (await candidate.isVisible().catch(() => false)) {
+        payButton = candidate;
+        break;
       }
     }
+    if (!payButton) {
+      await popup.waitForTimeout(500);
+    }
   }
-  throw new Error('sandbox checkout pay button not found');
+  if (!payButton) {
+    throw new Error('sandbox checkout pay button not found');
+  }
+  await payButton.click();
 }
 
 // START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.deliverWebhookUntilFulfilled
