@@ -58,7 +58,9 @@ def outbound(monkeypatch):
 
 def test_identical_search_uses_single_outbound_call_and_defensive_copies(outbound):
     first = geonames.search_geonames("Москва", limit=8)
-    second = geonames.search_geonames("Москва", limit=8)
+    # Stripped-query normalization shares the key: surrounding whitespace
+    # must NOT cause a second upstream call.
+    second = geonames.search_geonames("  Москва  ", limit=8)
 
     # One upstream fetch for the identical key (cold first call is real).
     assert outbound == [("Москва", 8, "startswith")]

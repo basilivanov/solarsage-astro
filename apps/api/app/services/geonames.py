@@ -1,8 +1,8 @@
 # ############################################################################
 # AI_HEADER: MODULE_GEONAMES
 # ROLE: GeoNames autocomplete integration.
-# DEPENDENCIES: standard library (json, urllib).
-# GRACE_ANCHORS: [GEONAMES_FETCH, GEONAMES_PARSE]
+# DEPENDENCIES: standard library (json, urllib, copy, functools.lru_cache).
+# GRACE_ANCHORS: [GEONAMES_FETCH, GEONAMES_PARSE, GEONAMES_CACHE]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-GEONAMES
@@ -25,10 +25,12 @@
 #   - search uses style=FULL; an inline item.timezone.timeZoneId is used as
 #     timezone_id directly, otherwise _fetch_timezone (timezoneJSON) is the
 #     per-item fallback
-#   - identical (stripped query, limit, username) searches within one
-#     process share ONE upstream call via a bounded lru_cache (256); cold
-#     process and every first unique query always hit GeoNames, exceptions
-#     are never cached, callers get defensive deep copies
+#   - search results are memoized by a bounded lru_cache (256) keyed by
+#     (stripped query, limit, username): after a COMPLETED successful miss,
+#     subsequent same-key calls reuse the cache (concurrent cold misses may
+#     still duplicate the upstream call — lru_cache is thread-safe but NOT
+#     a single-flight); exceptions are never cached, callers get defensive
+#     deep copies
 # failure_policy:
 #   - GeoNamesError on API failure
 #   - returns empty list if no results
@@ -198,7 +200,9 @@ def _search_geonames_cached(stripped_query: str, limit: int, username: str) -> L
     # inputs: stripped_query, limit, username (key material only — the
     #   upstream fetch reads the env username itself).
     # returns: the cached result list (callers receive deep copies only).
-    # side_effects: at most one upstream search per key per process.
+    # side_effects: upstream searches only on cache misses (one completed
+#   successful miss per key is then reused; concurrent cold misses may
+#   duplicate the upstream call — no single-flight guarantee).
     # emitted_logs: none.
     # error_behavior: GeoNamesError propagates and is NEVER cached — the
     #   next identical call retries the provider for real.
