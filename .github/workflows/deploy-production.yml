@@ -354,6 +354,11 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
           SOLARSAGE_URL: http://127.0.0.1:18091
+          # Same V2 contour the committed baseline was frozen with; without it
+          # artifact_source.json flips solarsage_v2_* to defaults (run 29945668331).
+          SOLARSAGE_V2_ENABLED: "true"
+          SOLARSAGE_V2_DUAL_RUN: "true"
+          SOLARSAGE_V2_FRONTEND_ENABLED: "true"
         run: |
           make audit-day-freeze USER_ID="$AUDIT_USER_UUID" DATE=2026-07-08
           find artifacts/audit/2026-07-08 -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/audit-hash-1.txt
@@ -362,6 +367,9 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
           SOLARSAGE_URL: http://127.0.0.1:18091
+          SOLARSAGE_V2_ENABLED: "true"
+          SOLARSAGE_V2_DUAL_RUN: "true"
+          SOLARSAGE_V2_FRONTEND_ENABLED: "true"
         run: |
           make audit-day-freeze USER_ID="$AUDIT_USER_UUID" DATE=2026-07-08
           find artifacts/audit/2026-07-08 -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/audit-hash-2.txt

@@ -31,6 +31,9 @@
 #     `docker cp`, and keeps AUDIT_EPHEMERIS_PATH=/tmp/audit-ephe/ephe plus the
 #     manifest artifact_id/sha256-vs-health assertions.
 #   - The sidecar Dockerfile keeps the bundle root-owned 0555/0444.
+#   - Both audit-day-freeze steps pin SOLARSAGE_V2_ENABLED/DUAL_RUN/
+#     FRONTEND_ENABLED=true (the contour the committed baseline was frozen
+#     with).
 # failure_policy: assertion failure.
 # END_MODULE_CONTRACT: M-TESTS-DEPLOY-WORKFLOW-CONTRACTS
 
@@ -125,3 +128,35 @@ def test_sidecar_image_keeps_readonly_ephemeris_bake() -> None:
     assert "find /opt/solarsage-ephemeris/bundle -type d -exec chmod 0555" in dockerfile
     assert "find /opt/solarsage-ephemeris/bundle -type f -exec chmod 0444" in dockerfile
 # END_BLOCK: EPHEMERIS_EXTRACTION_CONTRACT
+
+
+# START_BLOCK: AUDIT_FREEZE_V2_CONTOUR
+def test_audit_freeze_steps_pin_same_v2_contour() -> None:
+    # START_FUNCTION_CONTRACT: F-M-TESTS-DEPLOY-WORKFLOW-CONTRACTS.test_audit_freeze_steps_pin_same_v2_contour
+    # purpose: Prove both audit-day-freeze steps pin the same V2 contour the
+    #   committed baseline was frozen with. Without it artifact_source.json
+    #   flips solarsage_v2_* to settings defaults and the tracked-clean gate
+    #   fails on env drift alone (run 29945668331).
+    # inputs: .github/workflows/deploy-production.yml (read-only).
+    # returns: None; raises AssertionError on any violation.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: assertion failure on missing/mismatched V2 flags.
+    # END_FUNCTION_CONTRACT: F-M-TESTS-DEPLOY-WORKFLOW-CONTRACTS.test_audit_freeze_steps_pin_same_v2_contour
+    jobs = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    steps = jobs["artifact-acceptance"]["steps"]
+    freeze_steps = [
+        s for s in steps
+        if isinstance(s, dict) and str(s.get("name", "")).startswith("Audit day freeze")
+    ]
+    assert len(freeze_steps) == 2, [s.get("name") for s in freeze_steps]
+    expected = {
+        "SOLARSAGE_V2_ENABLED": "true",
+        "SOLARSAGE_V2_DUAL_RUN": "true",
+        "SOLARSAGE_V2_FRONTEND_ENABLED": "true",
+    }
+    for step in freeze_steps:
+        env = step.get("env") or {}
+        for key, value in expected.items():
+            assert env.get(key) == value, (step.get("name"), key, env.get(key))
+# END_BLOCK: AUDIT_FREEZE_V2_CONTOUR

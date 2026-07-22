@@ -81,6 +81,24 @@ API_ROOT = REPO_ROOT / "apps" / "api"
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
+
+def summary_out_dir_provenance(
+    out_dir: Path, is_live: bool, repo_root: Path = REPO_ROOT
+) -> str:
+    """Pure function: provenance path recorded in debug/audit_summary.json.
+
+    Frozen baselines record the repo-relative logical path so the committed
+    artifact stays byte-stable across checkout roots (local clone vs GitHub
+    runner workspace). Live evidence keeps the actual absolute path. When a
+    frozen out_dir lives outside repo_root, the absolute path is kept — an
+    honest value beats a misleading relative guess."""
+    if is_live:
+        return str(out_dir)
+    try:
+        return out_dir.relative_to(repo_root).as_posix()
+    except ValueError:
+        return str(out_dir)
+
 from sqlalchemy import select  # noqa: E402
 
 from app.clients.solarsage_client import get_solarsage_client  # noqa: E402
@@ -1060,7 +1078,7 @@ See `trace_map.json` for details.
         "user_id": args.user_id,
         "date": target_date.isoformat(),
         "mode": mode,
-        "out_dir": str(out_dir),
+        "out_dir": summary_out_dir_provenance(out_dir, is_live),
         "target_time": "12:00",
         "target_timezone": target_tz,
         "signal_count": len(all_signal_rows),

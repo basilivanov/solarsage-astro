@@ -2,7 +2,7 @@
   "user_id": "7dd0c1ad-0294-4f0e-b6d9-67f8f53410ee",
   "date": "2026-07-08",
   "mode": "frozen-baseline",
-  "out_dir": "/opt/solarsage-astro/artifacts/audit/2026-07-08",
+  "out_dir": "artifacts/audit/2026-07-08",
   "target_time": "12:00",
   "target_timezone": "Europe/Moscow",
   "signal_count": 77,

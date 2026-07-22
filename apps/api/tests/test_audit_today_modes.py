@@ -40,6 +40,31 @@ def test_parse_args_accepts_mode():
     assert args.user_id == "u1"
 
 
+def test_summary_out_dir_frozen_is_repo_relative_across_checkout_roots():
+    """Frozen baseline must not leak the absolute checkout root into the
+    committed artifact (run 29945668331: /opt/solarsage-astro vs runner)."""
+    f = audit_mod.summary_out_dir_provenance
+    assert (
+        f(Path("/opt/solarsage-astro/artifacts/audit/2026-07-08"), False, repo_root=Path("/opt/solarsage-astro"))
+        == "artifacts/audit/2026-07-08"
+    )
+    runner_root = Path("/home/runner/work/solarsage-astro/solarsage-astro")
+    assert (
+        f(runner_root / "artifacts/audit/2026-07-08", False, repo_root=runner_root)
+        == "artifacts/audit/2026-07-08"
+    )
+
+
+def test_summary_out_dir_live_keeps_actual_absolute_path():
+    p = Path("/opt/solarsage-astro/artifacts/audit/2026-07-08")
+    assert audit_mod.summary_out_dir_provenance(p, True, repo_root=Path("/opt/solarsage-astro")) == str(p)
+
+
+def test_summary_out_dir_frozen_outside_repo_falls_back_to_absolute():
+    p = Path("/tmp/external-audit-out")
+    assert audit_mod.summary_out_dir_provenance(p, False, repo_root=Path("/opt/solarsage-astro")) == str(p)
+
+
 @pytest.mark.asyncio
 async def test_live_mode_calls_today_service_and_writes_artifact_source(tmp_path, monkeypatch):
     """live-production must call TodayService.get_today_payload and label source honestly."""
