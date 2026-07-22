@@ -208,15 +208,18 @@ async def test_live_mode_calls_today_service_and_writes_artifact_source(tmp_path
 @pytest.mark.asyncio
 async def test_frozen_mode_does_not_call_today_service(tmp_path, monkeypatch):
     """frozen-baseline must use committed fixture and not call TodayService."""
+    from tests.test_today_horizons_contract import build_complete_today_payload
+
     out = tmp_path / "audit"
     out.mkdir()
-    baseline = {
-        "meta": {"generated_at": "2026-07-08T12:00:00Z"},
-        "headline": "frozen",
-        "day_status": "steady",
-        "concrete_advice": {"rows": []},
-        "why_this_happens": {"sections": []},
-    }
+    baseline = build_complete_today_payload(
+        payload_version="today.v1",
+        frontend_payload_version=1,
+        audit_payload_version="today.v1",
+        include_pipeline_audit=False,
+    )
+    baseline["v2"] = None
+    baseline["headline"] = "frozen"
     (out / "11_final_today_payload.json").write_text(json.dumps(baseline), encoding="utf-8")
 
     fake_user = SimpleNamespace(id="user-1", tg_user_id=1, tg_username="u")

@@ -90,6 +90,7 @@ from app.core.versions import (  # noqa: E402
 from app.db.models import NatalChartCache, User, UserProfile  # noqa: E402
 from app.db.session import SessionLocal  # noqa: E402
 from app.schemas.normalization import AstroSignal  # noqa: E402
+from app.schemas.today import TodayPayload  # noqa: E402
 from app.services.access_service import AccessService  # noqa: E402
 from app.services.astro_utils import strip_prefix  # noqa: E402
 from app.services.day_delta_service import DayDeltaService  # noqa: E402
@@ -734,6 +735,7 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
         # TodayService/payload generation: only in live-production mode.
         # In frozen-baseline mode, the payload is the committed baseline fixture.
         payload_json = None
+        wire_root_payload = None
         cache_invalidated = False
         if is_live:
             if not getattr(args, "allow_cache", False):
@@ -745,6 +747,17 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
                 access_state=access_state,
                 skip_prefetch=True,
             )
+            # The canonical root artifact is the REAL API wire payload
+            # (camelCase, by_alias=True) with normalized generatedAt/cached —
+            # exactly what the frontend wire schema consumes.
+            wire_payload = today_payload.model_dump(mode="json", by_alias=True)
+            wire_meta = wire_payload.get("meta", {}) or {}
+            wire_meta["generatedAt"] = f"{target_date.isoformat()}T12:00:00Z"
+            wire_meta["cached"] = False
+            wire_payload["meta"] = wire_meta
+            write_json(debug_dir / "final_today_payload.wire.json", wire_payload)
+            wire_root_payload = wire_payload
+            # Debug/oracle input stays the INTERNAL snake_case form.
             payload_json = today_payload.model_dump(mode="json", by_alias=False)
             write_json(debug_dir / "final_today_payload.raw.json", payload_json)
             normalized = json.loads(json.dumps(payload_json))
@@ -757,10 +770,12 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             payload_json = normalized
             final_payload_source = "TodayService.get_today_payload"
         else:
-            # Frozen baseline mode: use committed baseline payload (already validated).
-            # Materialize it under debug/ *before* oracle runners so they never
-            # depend on stale files from a previous live run.
-            payload_json = _baseline
+            # Frozen baseline mode: the committed root artifact is the wire
+            # payload. Validate it through the PRODUCTION TodayPayload model,
+            # then materialize the INTERNAL snake_case debug dump the oracles
+            # consume — the debug dump is derived, never the root.
+            baseline_model = TodayPayload.model_validate(_baseline)
+            payload_json = baseline_model.model_dump(mode="json", by_alias=False)
             final_payload_source = "committed_baseline_fixture"
             write_json(debug_dir / "final_today_payload.json", payload_json)
             write_json(debug_dir / "final_today_payload.normalized.json", payload_json)
@@ -857,9 +872,10 @@ async def run_audit(args: argparse.Namespace) -> dict[str, Any]:
     shutil.copy2(debug_dir / "top_signals.csv", root_dir / "08_top_signals.csv")
     shutil.copy2(debug_dir / "semantic_layer.json", root_dir / "09_semantic_layer.json")
     shutil.copy2(debug_dir / "why_contexts.json", root_dir / "10_why_contexts.json")
-    # 11: in live mode, write the live payload; in default mode, keep the frozen baseline
+    # 11: in live mode, write the live WIRE payload (camelCase API form);
+    # in default mode, keep the frozen baseline
     if is_live:
-        write_json(root_dir / "11_final_today_payload.json", payload_json)
+        write_json(root_dir / "11_final_today_payload.json", wire_root_payload)
     # else: 11_final_today_payload.json already exists in out_dir (baseline fixture), don't touch it
 
     if (debug_dir / "scoring_oracle_comparison.json").exists():

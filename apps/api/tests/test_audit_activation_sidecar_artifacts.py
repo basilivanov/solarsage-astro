@@ -131,16 +131,26 @@ def _common_monkeypatch(monkeypatch, *, sidecar_ok: bool, v2_enabled: bool = Tru
     return mock_client, today_svc
 
 
+def _valid_baseline() -> dict:
+    from tests.test_today_horizons_contract import build_complete_today_payload
+
+    baseline = build_complete_today_payload(
+        payload_version="today.v1",
+        frontend_payload_version=1,
+        audit_payload_version="today.v1",
+        include_pipeline_audit=False,
+    )
+    baseline["v2"] = None
+    baseline["headline"] = "f"
+    return baseline
+
+
 @pytest.mark.asyncio
 async def test_audit_writes_sidecar_as_root_16(tmp_path, monkeypatch):
     mock_client, _ = _common_monkeypatch(monkeypatch, sidecar_ok=True)
     out = tmp_path / "audit"
     out.mkdir()
-    baseline = {
-        "meta": {}, "headline": "f", "day_status": "steady",
-        "concrete_advice": {}, "why_this_happens": {},
-    }
-    (out / "11_final_today_payload.json").write_text(json.dumps(baseline), encoding="utf-8")
+    (out / "11_final_today_payload.json").write_text(json.dumps(_valid_baseline()), encoding="utf-8")
 
     args = audit_mod.parse_args([
         "--user-id", "u", "--date", "2026-07-08", "--out", str(out),
@@ -177,11 +187,7 @@ async def test_fallback_only_with_explicit_flag(tmp_path, monkeypatch):
     _common_monkeypatch(monkeypatch, sidecar_ok=False, v2_enabled=False)
     out = tmp_path / "audit"
     out.mkdir()
-    baseline = {
-        "meta": {}, "headline": "f", "day_status": "steady",
-        "concrete_advice": {}, "why_this_happens": {},
-    }
-    (out / "11_final_today_payload.json").write_text(json.dumps(baseline), encoding="utf-8")
+    (out / "11_final_today_payload.json").write_text(json.dumps(_valid_baseline()), encoding="utf-8")
 
     args = audit_mod.parse_args([
         "--user-id", "u", "--date", "2026-07-08", "--out", str(out),
