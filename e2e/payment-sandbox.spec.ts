@@ -64,17 +64,32 @@ test.describe('YooKassa sandbox release proof — real API (no mocks)', () => {
     await completeOnboarding(page);
 
     const data = await authedJson(page, '/api/payment/products');
+    // Only real ProductRead wire fields (the API already filters is_active;
+    // there is no public isActive flag to assert).
     const bySlug = Object.fromEntries(
-      (data.products as Array<{ slug: string; priceKopecks: number; currency: string; isActive: boolean }>)
-        .map((p) => [p.slug, p]),
+      (data.products as Array<{
+        slug: string;
+        priceKopecks: number;
+        currency: string;
+        productType: string;
+        periodDays: number | null;
+      }>).map((p) => [p.slug, p]),
     );
+    for (const slug of ['subscription_month', 'subscription_year', 'natal_full_report']) {
+      expect(bySlug[slug], `catalog must expose ${slug}`).toBeTruthy();
+    }
     expect(bySlug.subscription_month.priceKopecks).toBe(9900);
     expect(bySlug.subscription_year.priceKopecks).toBe(99900);
     expect(bySlug.natal_full_report.priceKopecks).toBe(39900);
     expect(bySlug.subscription_month.currency).toBe('RUB');
-    expect(bySlug.subscription_month.isActive).toBe(true);
-    expect(bySlug.subscription_year.isActive).toBe(true);
-    expect(bySlug.natal_full_report.isActive).toBe(true);
+    expect(bySlug.subscription_year.currency).toBe('RUB');
+    expect(bySlug.natal_full_report.currency).toBe('RUB');
+    expect(bySlug.subscription_month.productType).toBe('subscription_recurrent');
+    expect(bySlug.subscription_year.productType).toBe('subscription_recurrent');
+    expect(bySlug.natal_full_report.productType).toBe('one_time');
+    expect(bySlug.subscription_month.periodDays).toBe(30);
+    expect(bySlug.subscription_year.periodDays).toBe(365);
+    expect(bySlug.natal_full_report.periodDays).toBeNull();
   });
 
   test('month subscription: checkout, idempotent webhook, exact 30-day active semantics', async ({ page }) => {

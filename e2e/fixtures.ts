@@ -417,8 +417,13 @@ export async function shimTelegramOpenLink(page: Page) {
 
 // START_FUNCTION_CONTRACT: F-M-TEST-E2E-FIXTURES.paySandboxCheckout
 // purpose: Fill the official public no-3DS success card on the real YooKassa
-//   sandbox checkout and click pay once. Bounded frame search (the card
-//   iframe may be created late); never logs URL/order/provider ids.
+//   sandbox checkout and click pay once. The checkout first shows a payment
+//   METHOD chooser (YooMoney / Wallet / bank card) — the mandatory first
+//   step selects the bank-card option via the stable provider selector
+//   data-qa="bankcard-show-other-cards-payment-option" (bounded semantic
+//   fallback on exact option text, never CSS classes). Then a bounded frame
+//   search (the card iframe may be created late) fills the card fields.
+//   Never logs URL/order/provider ids.
 // inputs: popup — the provider checkout page (kept open by the caller).
 // returns: void (throws when the card form or pay button is not found).
 // side_effects: real provider interaction (sandbox payment).
@@ -430,6 +435,41 @@ export async function paySandboxCheckout(popup: Page) {
   // Never log the URL, order id or any provider identifier. Bounded search:
   // re-read the frame list every attempt (the card iframe is often created
   // late) instead of a one-shot snapshot that also duplicated the main frame.
+  // MANDATORY method selection: the checkout opens on a payment-method
+  // chooser (YooMoney / Wallet / bank card), not the card form. Select the
+  // bank-card option via the stable provider selector first; a bounded
+  // semantic fallback on exact option text follows. No CSS classes, no
+  // other payment methods.
+  const bankCardOption = popup.locator('[data-qa="bankcard-show-other-cards-payment-option"]').first();
+  let methodSelected = false;
+  for (let attempt = 0; attempt < 10 && !methodSelected; attempt += 1) {
+    try {
+      await bankCardOption.click({ timeout: 3000 });
+      methodSelected = true;
+      break;
+    } catch {
+      // chooser not rendered yet — retry below or fall back to text
+    }
+    await popup.waitForTimeout(1000);
+  }
+  if (!methodSelected) {
+    for (const frame of popup.frames()) {
+      const option = frame
+        .getByText(/^(New card|Новая карта|Банковская карта)$/)
+        .first();
+      try {
+        await option.click({ timeout: 3000 });
+        methodSelected = true;
+        break;
+      } catch {
+        // keep searching
+      }
+    }
+  }
+  if (!methodSelected) {
+    throw new Error('sandbox checkout bank-card payment option not found');
+  }
+
   const fieldSel =
     'input[name="cardNumber"], input[name="card"], input[placeholder*="0000"], input[autocomplete="cc-number"]';
   const expirySel =
