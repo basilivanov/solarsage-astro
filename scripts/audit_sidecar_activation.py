@@ -81,6 +81,15 @@ def main() -> None:
     birth_lat = 67.9394
     birth_lon = 32.8144
     birth_tz = "Europe/Moscow"
+    # Current location (Сочи) — the same profile field the API passes via
+    # get_activation_layer(current_location=...); without it the return
+    # techniques fall back to the birth location and the wave artifacts
+    # diverge from the canonical HTTP layer (16_activation_layer.json).
+    current_location = {
+        "lat": 43.59699,
+        "lon": 39.72477,
+        "tz": "Europe/Moscow",
+    }
 
     target_date = args.date
     target_time = "12:00"
@@ -99,8 +108,11 @@ def main() -> None:
         target_date=target_date,
         target_time=target_time,
         target_tz=target_tz,
-        house_system="PLACIDUS",
+        # Match the canonical contour: the API passes the natal context house
+        # system (WHOLE_SIGN for this profile), not a hardcoded default.
+        house_system="WHOLE_SIGN",
         techniques=techniques,
+        current_location=current_location,
     )
 
     # Serialize
@@ -114,6 +126,7 @@ def main() -> None:
             "lon": birth_lon,
             "tz": birth_tz,
         },
+        "current_location": current_location,
         "target": {
             "date": target_date,
             "time": target_time,

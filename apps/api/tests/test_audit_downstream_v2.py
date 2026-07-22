@@ -266,3 +266,80 @@ def test_daychart_aspects_removed_mutation_fails(tmp_path) -> None:
     args, out = _replay(tmp_path, mutate)
     assert _run(args) != 0
     assert "payload_daychart_aspects_mismatch" in _failure_kinds(out)
+
+
+# -- Strict full-object contract mutations (second-review blockers) --------
+
+def test_score_key_removed_fails(tmp_path) -> None:
+    def mutate(p):
+        del p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["key"]
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contract_missing_key" in _failure_kinds(out)
+
+
+def test_score_title_removed_fails(tmp_path) -> None:
+    def mutate(p):
+        del p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["title"]
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contract_missing_key" in _failure_kinds(out)
+
+
+def test_score_normalized_null_removed_fails(tmp_path) -> None:
+    def mutate(p):
+        # normalizedScore is legitimately null here — null-presence is contractual.
+        assert p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["normalizedScore"] is None
+        del p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["normalizedScore"]
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contract_missing_key" in _failure_kinds(out)
+
+
+def test_score_dominance_capped_false_removed_fails(tmp_path) -> None:
+    def mutate(p):
+        assert p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["dominanceCapped"] is False
+        del p["v2"]["scoreBreakdown"]["thinking_speech_learning"]["dominanceCapped"]
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contract_missing_key" in _failure_kinds(out)
+
+
+def test_activation_evidence_debug_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["v2"]["activationEvidence"][0]["debug"]["aspect_weight"] = 999
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_activation_evidence_mismatch" in _failure_kinds(out)
+
+
+def test_activation_evidence_nullable_house_removed_fails(tmp_path) -> None:
+    def mutate(p):
+        del p["v2"]["activationEvidence"][0]["house"]
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contract_missing_key" in _failure_kinds(out)
+
+
+def test_top_flag_unexpected_key_fails(tmp_path) -> None:
+    def mutate(p):
+        p["topFlags"][0]["unexpectedField"] = "x"
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contract_extra_key" in _failure_kinds(out)
+
+
+def test_activation_evidence_unexpected_key_fails(tmp_path) -> None:
+    def mutate(p):
+        p["v2"]["activationEvidence"][0]["unexpectedField"] = "x"
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_contract_extra_key" in _failure_kinds(out)

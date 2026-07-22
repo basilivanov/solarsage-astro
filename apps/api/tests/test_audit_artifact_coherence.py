@@ -108,16 +108,40 @@ def test_oracle_artifacts_green() -> None:
     assert astronomy["retrograde_flag_pass"] is True
     assert astronomy["house_pass"] is True
     assert astronomy["moon_phase"]["pass"] is True
-    # FINAL dayChart proof: transit longitude/sign/motion and serialized
-    # houses (number/order/cusp/sign) against the independent Swiss result.
+    # FINAL dayChart proof: exact structure/order/count, transit
+    # longitude/sign/retrograde/motion and serialized houses
+    # (number/order/cusp/sign) against the independent Swiss result.
+    assert astronomy["final_transit_structure_pass"] is True
     assert astronomy["final_transit_longitude_pass"] is True
     assert astronomy["final_transit_sign_pass"] is True
+    assert astronomy["final_transit_retrograde_pass"] is True
     assert astronomy["final_motion_pass"] is True
+    assert astronomy["final_house_structure_pass"] is True
     assert astronomy["final_house_cusp_pass"] is True
     assert astronomy["final_house_sign_pass"] is True
+    # Engine proof: the canonical audit runs on the pinned Swiss artifact,
+    # never on the moshier fallback.
+    engine = astronomy["engine"]
+    assert engine["swieph"] is True
+    assert engine["moseph"] is False
+    assert engine["engine_pass"] is True
+    assert engine["policy"] == "swieph"
 
     scoring = _read("12_scoring_oracle_comparison.json")
     assert "oracle" in scoring and "comparison" in scoring
+
+
+def test_wave17_layer_matches_canonical_http_layer() -> None:
+    """The standalone wave artifact 17 is generated with the same profile,
+    current location and house system as the canonical HTTP layer 16, so
+    their ordered activation ids are identical (no return-location fallback)."""
+    canonical = _read("16_activation_layer.json")
+    wave = _read("17_sidecar_activation_layer.json")
+    canonical_ids = [a["id"] for a in canonical["activations"]]
+    wave_ids = [a["id"] for a in wave["activations"]]
+    assert wave_ids == canonical_ids
+    assert wave.get("house_system") == canonical.get("house_system")
+    assert not any("return_location_fallback" in w for w in wave.get("warnings", []))
 
 
 def test_sidecar_provenance_identity_pinned() -> None:
@@ -126,11 +150,15 @@ def test_sidecar_provenance_identity_pinned() -> None:
     assert provenance["image_id"] == (
         "sha256:6d20eb612c79660cfb1068fae4bed8a31c17d8ab7f600a81975654277ee1ca7d"
     )
-    assert provenance["revision"] == provenance["release_sha"]
+    # Exact full identity, not just internal consistency.
+    assert provenance["revision"] == "62b756a6559ba4a0f501fffe56dca51eb52872b2"
+    assert provenance["release_sha"] == "62b756a6559ba4a0f501fffe56dca51eb52872b2"
     assert provenance["engine"] == "swieph"
     assert provenance["fallback"] is False
     assert provenance["calculation_version"] == "ss-calc-1.2.0"
     assert provenance["ephemeris_artifact_id"] == "se-stellium-1800-2399-20260721"
-    assert len(provenance["ephemeris_manifest_sha256"]) == 64
+    assert provenance["ephemeris_manifest_sha256"] == (
+        "768d5fc920c762028437ad0bff43013c800ff027911a2dc02cb7d45d7ea9db59"
+    )
     # The live run directory must not be re-committed next to this file.
     assert not (BASE / "live").exists()

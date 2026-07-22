@@ -15,7 +15,12 @@
 # emitted_logs: none (stdout summary only).
 # invariants:
 #   - sidecar ActivationLayer is trusted astronomy boundary.
-#   - expected values are recomputed from canon YAML only (no private production helpers).
+#   - expected values are recomputed from canon YAML plus audit-local
+#     projections over the actual ScoringV2Result; no private production
+#     helpers (projections use only public contracts/canon constants).
+#   - payload blocks are compared as canonical model_dump(by_alias=True,
+#     mode="json") with exact ordered equality; missing/extra keys and
+#     null-presence are hard diagnostic failures.
 #   - production ScoringV2Service.score_day is called once for actual results only.
 #   - replay/live never synthesize a missing V2 payload body.
 # failure_policy: exit non-zero on hard invariant failures.
@@ -29,11 +34,17 @@
 #   - expected_activation_amount
 #   - expected_convergence_bonus
 #   - independent_day_status
+#   - project_sphere_scores
+#   - project_top_flags
+#   - project_day_chart_aspects
+#   - project_activation_evidence
+#   - contract_diff
 # semantic_blocks:
 #   - CANON_LOAD: load spheres/scoring_v2/activation_rules/aspect_rules
 #   - INPUT_LOAD: live / artifact_replay / synthetic_fixture
 #   - ACTUAL_SCORE: one ScoringV2Service.score_day call
 #   - EXPECTED_MATH: independent mapping/amount/convergence/cap/status
+#   - INDEPENDENT_PROJECTIONS: audit-local public-model payload projections
 #   - PAYLOAD_TRACE: payload evidence/score/why id checks without synthesis
 #   - FIXTURE_WRITE: AdaptedTodayPayload-compatible frontend fixture
 # owned_tests:
@@ -72,28 +83,236 @@ from app.core.versions import (  # noqa: E402
     TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
     TODAY_V2_PAYLOAD_VERSION,
 )
-from app.schemas.normalization import AstroSignal  # noqa: E402
+from app.schemas.activation import ActivationEvidence  # noqa: E402
+from app.schemas.normalization import AstroSignal, normalize_top_signals  # noqa: E402
+from app.schemas.today import DayChartAspect, SphereScore, TopFlag  # noqa: E402
 from app.services.activation_layer_service import ActivationLayerService  # noqa: E402
+from app.services.astro_utils import strip_prefix  # noqa: E402
 from app.services.canon_service import get_canon_versions  # noqa: E402
-from app.services.day_scoring_runtime_service import DayScoringRuntimeService  # noqa: E402
 from app.services.scoring_v2_service import ScoringV2Service  # noqa: E402
 from app.services.semantic_v2_service import SemanticV2Service  # noqa: E402
-from app.services.today_service import TodayService as TodayServiceForFlags  # noqa: E402
+from app.services.today_service import (  # noqa: E402
+    ASPECT_LABELS_RU,
+    PLANET_LABELS_RU,
+    SOFT_ASPECTS,
+    TENSE_ASPECTS,
+)
 
 TOL = 0.0001
 
-_EVIDENCE_SNAKE_TO_CAMEL = {
-    "active_from": "activeFrom",
-    "active_until": "activeUntil",
-    "exact_at": "exactAt",
-    "source_frame": "sourceFrame",
-    "source_planet": "sourcePlanet",
-    "target_frame": "targetFrame",
-    "target_key": "targetKey",
-    "target_planet": "targetPlanet",
-    "target_type": "targetType",
-    "technique_family": "techniqueFamily",
-}
+# START_BLOCK: INDEPENDENT_PROJECTIONS
+# Audit-local projections from the already-verified ScoringV2Result plus the
+# public canon label constants. No private production helpers are called:
+# the sort/rank and flag-mapping rules are restated here from the public UI
+# contract and the results are validated through the public Pydantic models
+# (SphereScore / TopFlag / DayChartAspect / ActivationEvidence), then compared
+# as canonical model_dump(by_alias=True, mode="json") with exact ordered
+# equality — missing keys, extra keys and null-presence are hard failures.
+_TOP_FLAG_SUMMARY_SOFT = "Поддерживающий аспект: легче договориться, связать идеи и действия."
+_TOP_FLAG_SUMMARY_TENSE = "Напряжённый аспект: лучше снизить резкость и перепроверить реакцию."
+_TOP_FLAG_SUMMARY_NEUTRAL = "Заметный аспект: тема дня может звучать сильнее обычного, лучше действовать без спешки."
+_TOP_FLAG_SUMMARY_HOUSE = "Акцент дня: эта тема заметнее обычного, полезно выбрать один практический шаг."
+
+
+def project_sphere_scores(scores: dict[str, float]) -> list[dict[str, Any]]:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.project_sphere_scores
+    # purpose: Restate the top-level sphereScores read model from a
+    #   {sphere: score} mapping: sort by (-score, key), rank from 1, validate
+    #   through the public SphereScore model and dump canonical camelCase.
+    # inputs: scores — final per-sphere scores from the verified V2 result.
+    # returns: ordered list of canonical SphereScore dumps.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: raises pydantic ValidationError on invalid shapes.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.project_sphere_scores
+    ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+    return [
+        SphereScore(key=key, score=round(float(score), 4), rank=index).model_dump(
+            by_alias=True, mode="json"
+        )
+        for index, (key, score) in enumerate(ranked, start=1)
+    ]
+
+
+def project_top_flags(top_signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.project_top_flags
+    # purpose: Restate the public topFlags projection from selected V2 top
+    #   signals (first three; aspect and planet_in_house kinds) using the
+    #   public canon label constants; validated through the TopFlag model.
+    # inputs: top_signals — raw selected top signals from the V2 result.
+    # returns: ordered list of canonical TopFlag dumps (may be shorter than 3
+    #   when a signal kind has no flag mapping).
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: raises pydantic ValidationError on invalid shapes.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.project_top_flags
+    flags: list[TopFlag] = []
+    for signal in normalize_top_signals(top_signals)[:3]:
+        stripped_planet = strip_prefix(signal.planet)
+        planet = PLANET_LABELS_RU.get(stripped_planet, "Планета") if stripped_planet else "Планета"
+        icon_planet = stripped_planet or "planet"
+        if signal.type == "aspect" and signal.aspect_type and signal.target_planet:
+            stripped_target = strip_prefix(signal.target_planet)
+            target = PLANET_LABELS_RU.get(stripped_target, "Планета") if stripped_target else "Планета"
+            aspect = ASPECT_LABELS_RU.get(signal.aspect_type, "аспект")
+            if signal.aspect_type in SOFT_ASPECTS:
+                summary = _TOP_FLAG_SUMMARY_SOFT
+            elif signal.aspect_type in TENSE_ASPECTS:
+                summary = _TOP_FLAG_SUMMARY_TENSE
+            else:
+                summary = _TOP_FLAG_SUMMARY_NEUTRAL
+            flags.append(
+                TopFlag(
+                    icon_name=f"{icon_planet}-{signal.aspect_type}",
+                    title=f"{planet} {aspect} {target}",
+                    summary=summary,
+                    hint=None,
+                )
+            )
+        elif signal.type == "planet_in_house" and signal.house:
+            flags.append(
+                TopFlag(
+                    icon_name=f"{icon_planet}-house",
+                    title=f"{planet} в {signal.house} доме",
+                    summary=_TOP_FLAG_SUMMARY_HOUSE,
+                    hint=None,
+                )
+            )
+    return [f.model_dump(by_alias=True, mode="json") for f in flags]
+
+
+def project_day_chart_aspects(day_signals: list[AstroSignal]) -> list[dict[str, Any]]:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.project_day_chart_aspects
+    # purpose: Restate the dayChart.aspects read model as the exact ordered
+    #   day-signals projection (type "aspect" + Transit_* planet + aspect_type
+    #   + target_planet; stripped prefixes; orb/strength rounded to 4),
+    #   validated through the public DayChartAspect model.
+    # inputs: day_signals — committed day-scored signals.
+    # returns: ordered list of canonical DayChartAspect dumps.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: raises pydantic ValidationError on invalid shapes.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.project_day_chart_aspects
+    return [
+        DayChartAspect(
+            planet=strip_prefix(signal.planet),
+            target_planet=strip_prefix(signal.target_planet),
+            aspect_type=signal.aspect_type or "",
+            orb=round(float(signal.orb), 4) if signal.orb is not None else None,
+            strength=round(float(signal.strength), 4),
+        ).model_dump(by_alias=True, mode="json")
+        for signal in day_signals
+        if signal.type == "aspect"
+        and signal.aspect_type
+        and signal.target_planet
+        and (signal.planet or "").startswith("Transit_")
+    ]
+
+
+def project_activation_evidence(layer_activations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.project_activation_evidence
+    # purpose: Validate every sidecar layer activation through the public API
+    #   ActivationEvidence contract and dump canonical camelCase (INCLUDING
+    #   debug and nullable fields) for exact ordered equality.
+    # inputs: layer_activations — validated sidecar layer dump (snake_case).
+    # returns: ordered list of canonical ActivationEvidence dumps.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: raises pydantic ValidationError on contract violations.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.project_activation_evidence
+    return [
+        ActivationEvidence.model_validate(entry).model_dump(by_alias=True, mode="json")
+        for entry in layer_activations
+    ]
+
+
+def contract_diff(expected: Any, actual: Any, path: str = "") -> list[dict[str, Any]]:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.contract_diff
+    # purpose: Ordered structural diff between a canonical expected dump and
+    #   an actual payload fragment. Classifies every difference as
+    #   missing_key / extra_key / value_mismatch with a dotted path; list
+    #   order and length are significant; scalar equality is exact.
+    # inputs: expected — canonical model dump; actual — payload JSON value.
+    # returns: list of issue dicts (class/path/expected/actual).
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: type-vs-container mismatches are value_mismatch issues,
+    #   never exceptions.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.contract_diff
+    issues: list[dict[str, Any]] = []
+
+    def _join(key: str) -> str:
+        return f"{path}.{key}" if path else key
+
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        for key in expected:
+            if key not in actual:
+                issues.append(
+                    {"class": "missing_key", "path": _join(key), "expected": expected[key], "actual": None}
+                )
+        for key in actual:
+            if key not in expected:
+                issues.append(
+                    {"class": "extra_key", "path": _join(key), "expected": None, "actual": actual[key]}
+                )
+        for key in expected:
+            if key in actual:
+                issues.extend(contract_diff(expected[key], actual[key], _join(key)))
+        return issues
+    if isinstance(expected, list) and isinstance(actual, list):
+        if len(expected) != len(actual):
+            issues.append(
+                {
+                    "class": "value_mismatch",
+                    "path": f"{path}.length" if path else "length",
+                    "expected": len(expected),
+                    "actual": len(actual),
+                }
+            )
+        for index, (exp_item, act_item) in enumerate(zip(expected, actual)):
+            issues.extend(contract_diff(exp_item, act_item, f"{path}[{index}]"))
+        return issues
+    if expected != actual:
+        issues.append({"class": "value_mismatch", "path": path, "expected": expected, "actual": actual})
+    return issues
+
+
+def emit_contract_issues(
+    state: Any,
+    issues: list[dict[str, Any]],
+    *,
+    block: str,
+    value_kind: str,
+) -> None:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.emit_contract_issues
+    # purpose: Turn contract_diff issues into diagnostic audit failures:
+    #   missing/extra keys get dedicated kinds, value mismatches get the
+    #   block-specific kind. Never raises, never tracebacks.
+    # inputs: state — failure collector; issues — contract_diff output;
+    #   block — logical block name; value_kind — failure kind for values.
+    # returns: None.
+    # side_effects: records failures into state.
+    # emitted_logs: none.
+    # error_behavior: records one failure per issue.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-DOWNSTREAM-V2.emit_contract_issues
+    for issue in issues:
+        if issue["class"] == "missing_key":
+            kind = "payload_contract_missing_key"
+        elif issue["class"] == "extra_key":
+            kind = "payload_contract_extra_key"
+        else:
+            kind = value_kind
+        state.error(
+            kind=kind,
+            block=block,
+            path=issue["path"],
+            expected=issue["expected"],
+            actual=issue["actual"],
+            message=f"{block}: {issue['class']} at {issue['path']}",
+        )
+
+# END_BLOCK: INDEPENDENT_PROJECTIONS
+
 MAJOR_ASPECTS = {"conjunction", "opposition", "square", "trine"}
 POSITIVE_ASPECTS = {"trine", "sextile"}
 NEGATIVE_ASPECTS = {"square", "opposition"}
@@ -140,6 +359,8 @@ class AuditIssue:
     severity: str
     activation_id: str | None = None
     sphere: str | None = None
+    block: str | None = None
+    path: str | None = None
     expected: Any = None
     actual: Any = None
     message: str = ""
@@ -150,6 +371,8 @@ class AuditIssue:
             "severity": self.severity,
             "activation_id": self.activation_id,
             "sphere": self.sphere,
+            "block": self.block,
+            "path": self.path,
             "expected": self.expected,
             "actual": self.actual,
             "message": self.message,
@@ -1319,16 +1542,12 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         },
     )
 
-    # Payload handling — no synthesis in replay/live. The dual runtime
-    # selection (production selection path) is computed ONCE and shared by
-    # synthetic payload completion and the payload-vs-recompute check.
-    dual = DayScoringRuntimeService().compute(
-        day_signals=day_signals,
-        activation_layer=api_layer,
-        user_id=None,  # audit replay: scoring does not consume user_id
-        target_date=args.date,
-        force_v2=True,
-    )
+    # Payload handling — no synthesis in replay/live. Expected projections
+    # are derived from the SAME actual ScoringV2Result that the ACTUAL_SCORE
+    # block computed (verified independently by EXPECTED_MATH), restated via
+    # the audit-local INDEPENDENT_PROJECTIONS helpers — no private production
+    # helpers and no runtime-selection re-execution.
+    v2_sphere_score_map = {k: round(v.final_score, 4) for k, v in scoring_result.sphere_scores.items()}
     if mode == "synthetic_fixture":
         v2_block = SemanticV2Service().build_v2_block(
             activation_layer=api_layer,
@@ -1337,17 +1556,12 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             trace_id="downstream-audit-synthetic",
         )
         # The synthetic payload is completed from the SAME validated layer
-        # and selection as production (dayStatus, topFlags, sphereScores,
-        # activationEvidence), so the payload-vs-recompute check applies
-        # honestly instead of being exempted.
-        v2_block_dict = to_jsonable(v2_block)
-        v2_block_dict["activationEvidence"] = [
-            {
-                _EVIDENCE_SNAKE_TO_CAMEL.get(k, k): v
-                for k, v in entry.items()
-            }
-            for entry in (api_layer_json.get("activations") or [])
-        ]
+        # and V2 result as production (dayStatus, topFlags, sphereScores,
+        # activationEvidence — build_v2_block already carries the full layer
+        # evidence), so the payload-vs-recompute check applies honestly
+        # instead of being exempted. It is materialized in the canonical
+        # wire form (by_alias=True), like the real TodayPayload.
+        v2_block_dict = v2_block.model_dump(mode="json", by_alias=True)
         payload_json = {
             "meta": {
                 "payload_version": TODAY_V2_PAYLOAD_VERSION,
@@ -1360,14 +1574,8 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             },
             "date": args.date,
             "dayStatus": scoring_result.day_status,
-            "sphereScores": [
-                s.model_dump(by_alias=True)
-                for s in TodayServiceForFlags._build_sphere_scores(dual.selected_result["sphere_scores"])
-            ],
-            "topFlags": [
-                f.model_dump(by_alias=True)
-                for f in TodayServiceForFlags._build_top_flags(dual.selected_result.get("top_signals", []))
-            ],
+            "sphereScores": project_sphere_scores(v2_sphere_score_map),
+            "topFlags": project_top_flags(scoring_result.top_signals),
             "v2": v2_block_dict,
         }
     elif payload_json is None:
@@ -1473,17 +1681,15 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             message="payload dayStatus differs from recomputed V2 day status",
         )
 
-    def _num_eq(wire_val: Any, svc_val: Any) -> bool:
-        if wire_val is None and svc_val is None:
-            return True
-        if not isinstance(wire_val, (int, float)) or svc_val is None:
-            return False
-        return abs(float(wire_val) - float(svc_val)) <= TOL
+    # STRICT CONTRACT COMPARES: every payload block is compared against the
+    # canonical public-model dump (by_alias=True, mode="json") with exact
+    # ordered equality. Missing keys, extra keys and null-presence are hard
+    # diagnostic failures — never conditional field checks, never tracebacks.
 
-    # -- scoreBreakdown: full public SphereScoreV2, exact order ------------
-    payload_sb = (payload_v2 or {}).get("scoreBreakdown") or (payload_v2 or {}).get("score_breakdown") or {}
+    # -- scoreBreakdown: full public SphereScoreV2 per sphere, exact order --
+    payload_sb = (payload_v2 or {}).get("scoreBreakdown") or {}
     service_spheres = list(scoring_result.sphere_scores.keys())
-    payload_spheres = list(payload_sb.keys())
+    payload_spheres = list(payload_sb.keys()) if isinstance(payload_sb, dict) else []
     if payload_spheres != service_spheres:
         state.error(
             kind="payload_score_breakdown_order_mismatch",
@@ -1491,17 +1697,9 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             actual=payload_spheres,
             message="payload scoreBreakdown sphere order mismatch",
         )
-    _numeric_fields = (
-        ("baseScore", "base_score"),
-        ("activationScore", "activation_score"),
-        ("convergenceBonus", "convergence_bonus"),
-        ("rawScore", "raw_score"),
-        ("finalScore", "final_score"),
-        ("normalizedScore", "normalized_score"),
-    )
     for skey in service_spheres:
-        ss = scoring_result.sphere_scores[skey]
-        entry = payload_sb.get(skey)
+        expected_dump = scoring_result.sphere_scores[skey].model_dump(by_alias=True, mode="json")
+        entry = payload_sb.get(skey) if isinstance(payload_sb, dict) else None
         if not isinstance(entry, dict):
             state.error(
                 kind="payload_score_breakdown_missing",
@@ -1509,208 +1707,67 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 message="scoreBreakdown sphere missing from payload",
             )
             continue
-        if entry.get("key") is not None and entry.get("key") != skey:
-            state.error(
-                kind="payload_score_field_mismatch",
-                sphere=skey,
-                expected={"field": "key", "value": skey},
-                actual={"field": "key", "value": entry.get("key")},
-                message="payload scoreBreakdown key mismatch",
-            )
-        if entry.get("title") is not None and entry.get("title") != ss.title:
-            state.error(
-                kind="payload_score_field_mismatch",
-                sphere=skey,
-                expected={"field": "title", "value": ss.title},
-                actual={"field": "title", "value": entry.get("title")},
-                message="payload scoreBreakdown title mismatch",
-            )
-        for wire_name, attr in _numeric_fields:
-            wire_val = entry.get(wire_name) if wire_name in entry else entry.get(attr)
-            svc_val = getattr(ss, attr, None)
-            if not _num_eq(wire_val, svc_val):
-                state.error(
-                    kind="payload_score_field_mismatch",
-                    sphere=skey,
-                    expected={"field": wire_name, "value": svc_val},
-                    actual={"field": wire_name, "value": wire_val},
-                    message="payload scoreBreakdown numeric field mismatch",
-                )
-        capped_val = entry.get("dominanceCapped") if "dominanceCapped" in entry else entry.get("dominance_capped")
-        if bool(ss.dominance_capped) != bool(capped_val):
-            state.error(
-                kind="payload_dominance_capped_mismatch",
-                sphere=skey,
-                expected=ss.dominance_capped,
-                actual=capped_val,
-                message="payload dominanceCapped mismatch",
-            )
-        # Full ORDERED contributions: sphere/source/sourceId/amount/before/after/evidence.
-        payload_contribs = entry.get("contributions") or []
-        if len(payload_contribs) != len(ss.contributions):
-            state.error(
-                kind="payload_contributions_mismatch",
-                sphere=skey,
-                expected=len(ss.contributions),
-                actual=len(payload_contribs),
-                message="payload contributions count mismatch",
-            )
-        for idx, svc_c in enumerate(ss.contributions):
-            if idx >= len(payload_contribs):
-                break
-            pc = payload_contribs[idx]
-            svc_dump = svc_c.model_dump(by_alias=True)
-            mismatches: dict[str, dict[str, Any]] = {}
-            for field_name in ("sphere", "source", "sourceId", "amount", "before", "after", "evidence"):
-                wire_key = field_name if field_name in pc else ("source_id" if field_name == "sourceId" else field_name)
-                wire_val = pc.get(wire_key)
-                svc_val = svc_dump[field_name]
-                if field_name in ("amount", "before", "after"):
-                    ok = _num_eq(wire_val, svc_val)
-                else:
-                    ok = wire_val == svc_val
-                if not ok:
-                    mismatches[field_name] = {"expected": svc_val, "actual": wire_val}
-            if mismatches:
-                state.error(
-                    kind="payload_contributions_mismatch",
-                    sphere=skey,
-                    expected={"index": idx, "fields": mismatches},
-                    actual="payload contribution entry mismatch",
-                    message="payload contribution entry mismatch",
-                )
-
-    # -- top-level sphereScores: exact ordered key/score/rank vs the dual
-    # runtime selection (the production selection path, computed above).
-    payload_sphere_scores = payload_json.get("sphereScores") or payload_json.get("sphere_scores") or []
-    expected_sphere_scores = TodayServiceForFlags._build_sphere_scores(dual.selected_result["sphere_scores"])
-    expected_ss_list = [{"key": s.key, "score": s.score, "rank": s.rank} for s in expected_sphere_scores]
-    actual_ss_list = [
-        {"key": s.get("key"), "score": s.get("score"), "rank": s.get("rank")}
-        for s in payload_sphere_scores
-    ]
-    if actual_ss_list != expected_ss_list:
-        state.error(
-            kind="payload_sphere_scores_mismatch",
-            expected=expected_ss_list,
-            actual=actual_ss_list,
-            message="payload top-level sphereScores mismatch (value/rank/order)",
+        expected_core = {k: v for k, v in expected_dump.items() if k != "contributions"}
+        actual_core = {k: v for k, v in entry.items() if k != "contributions"}
+        emit_contract_issues(
+            state,
+            contract_diff(expected_core, actual_core, skey),
+            block="scoreBreakdown",
+            value_kind="payload_score_field_mismatch",
+        )
+        emit_contract_issues(
+            state,
+            contract_diff(expected_dump["contributions"], entry.get("contributions"), f"{skey}.contributions"),
+            block="scoreBreakdown.contributions",
+            value_kind="payload_contributions_mismatch",
         )
 
-    # -- topFlags: full ordered objects (icon/title/summary/hint), rebuilt
-    # from the dual-selected top signals through the production builder.
-    payload_top_flags = payload_json.get("topFlags") or payload_json.get("top_flags") or []
-    from app.schemas.normalization import normalize_top_signals
+    # -- top-level sphereScores: exact ordered public SphereScore list, ----
+    # projected from the verified V2 result (final_score -> sort -> rank).
+    payload_sphere_scores = payload_json.get("sphereScores") or []
+    expected_ss_list = project_sphere_scores(v2_sphere_score_map)
+    emit_contract_issues(
+        state,
+        contract_diff(expected_ss_list, payload_sphere_scores, "sphereScores"),
+        block="sphereScores",
+        value_kind="payload_sphere_scores_mismatch",
+    )
 
-    selected_top_signals = normalize_top_signals(dual.selected_result.get("top_signals", []))
-    expected_flags = TodayServiceForFlags._build_top_flags(selected_top_signals)
-    expected_flag_objs = [f.model_dump(by_alias=True) for f in expected_flags]
-    actual_flag_objs = [
-        {
-            "iconName": f.get("iconName") or f.get("icon_name"),
-            "title": f.get("title"),
-            "summary": f.get("summary"),
-            "hint": f.get("hint"),
-        }
-        for f in payload_top_flags
-    ]
-    if actual_flag_objs != expected_flag_objs:
-        state.error(
-            kind="payload_top_flags_mismatch",
-            expected=expected_flag_objs,
-            actual=actual_flag_objs,
-            message="payload topFlags differ from recomputed selected top signals",
-        )
+    # -- topFlags: full ordered public TopFlag objects, projected from the --
+    # selected V2 top signals via the audit-local canon projection.
+    payload_top_flags = payload_json.get("topFlags") or []
+    expected_flag_objs = project_top_flags(scoring_result.top_signals)
+    emit_contract_issues(
+        state,
+        contract_diff(expected_flag_objs, payload_top_flags, "topFlags"),
+        block="topFlags",
+        value_kind="payload_top_flags_mismatch",
+    )
 
-    # -- dayChart.aspects: exact ordered projection of the day signals, ---
-    # rebuilt through the production _build_day_chart aspect rules (type
-    # "aspect" + Transit_* planet + aspect_type + target_planet, stripped
-    # prefixes, orb/strength rounded to 4). The underlying astronomy
-    # (longitudes/houses) is proven by the astronomy oracle; the signal
-    # projection is this audit's domain.
-    from app.services.astro_utils import strip_prefix as _strip_aspect_prefix
-
+    # -- dayChart.aspects: exact ordered projection of the day signals, ----
+    # validated through the public DayChartAspect model. The underlying
+    # astronomy (longitudes/houses) is proven by the astronomy oracle; the
+    # signal projection is this audit's domain.
     payload_day_chart = payload_json.get("dayChart") or payload_json.get("day_chart") or {}
     payload_aspects = payload_day_chart.get("aspects") or []
-    expected_aspect_objs = [
-        {
-            "planet": _strip_aspect_prefix(s.planet),
-            "targetPlanet": _strip_aspect_prefix(s.target_planet),
-            "aspectType": s.aspect_type or "",
-            "orb": round(float(s.orb), 4) if s.orb is not None else None,
-            "strength": round(float(s.strength), 4),
-        }
-        for s in day_signals
-        if s.type == "aspect"
-        and s.aspect_type
-        and s.target_planet
-        and (s.planet or "").startswith("Transit_")
-    ]
-    actual_aspect_objs = [
-        {
-            "planet": a.get("planet"),
-            "targetPlanet": a.get("targetPlanet") or a.get("target_planet"),
-            "aspectType": a.get("aspectType") or a.get("aspect_type"),
-            "orb": a.get("orb"),
-            "strength": a.get("strength"),
-        }
-        for a in payload_aspects
-        if isinstance(a, dict)
-    ]
-    if actual_aspect_objs != expected_aspect_objs:
-        state.error(
-            kind="payload_daychart_aspects_mismatch",
-            expected=expected_aspect_objs,
-            actual=actual_aspect_objs,
-            message="payload dayChart.aspects differ from the day-signals projection",
-        )
+    expected_aspect_objs = project_day_chart_aspects(day_signals)
+    emit_contract_issues(
+        state,
+        contract_diff(expected_aspect_objs, payload_aspects, "dayChart.aspects"),
+        block="dayChart.aspects",
+        value_kind="payload_daychart_aspects_mismatch",
+    )
 
-    # -- activationEvidence: full ordered entries vs validated layer -------
-    expected_evidence = (api_layer_json.get("activations") or [])
-    payload_evidence = (payload_v2 or {}).get("activationEvidence") or (payload_v2 or {}).get("activation_evidence") or []
-    # The validated layer dump is snake_case; the payload evidence is camel.
-    _evidence_alias = {
-        "active_from": "activeFrom",
-        "active_until": "activeUntil",
-        "exact_at": "exactAt",
-        "source_frame": "sourceFrame",
-        "source_planet": "sourcePlanet",
-        "target_frame": "targetFrame",
-        "target_key": "targetKey",
-        "target_planet": "targetPlanet",
-        "target_type": "targetType",
-        "technique_family": "techniqueFamily",
-    }
-    if len(payload_evidence) != len(expected_evidence):
-        state.error(
-            kind="payload_activation_evidence_mismatch",
-            expected=len(expected_evidence),
-            actual=len(payload_evidence),
-            message="activationEvidence count mismatch",
-        )
-    for idx, exp_entry in enumerate(expected_evidence):
-        if idx >= len(payload_evidence):
-            break
-        act_entry = payload_evidence[idx]
-        mismatches = {}
-        for field_name, exp_val in exp_entry.items():
-            if field_name == "debug":
-                continue  # diagnostic-only field, provenance noise allowed
-            wire_key = _evidence_alias.get(field_name, field_name)
-            wire_val = act_entry.get(wire_key)
-            if isinstance(exp_val, float):
-                ok = _num_eq(wire_val, exp_val)
-            else:
-                ok = wire_val == exp_val
-            if not ok:
-                mismatches[wire_key] = {"expected": exp_val, "actual": wire_val}
-        if mismatches:
-            state.error(
-                kind="payload_activation_evidence_mismatch",
-                expected={"index": idx, "id": exp_entry.get("id"), "fields": mismatches},
-                actual="activationEvidence entry mismatch",
-                message="activationEvidence entry mismatch",
-            )
+    # -- activationEvidence: full ordered public ActivationEvidence dumps --
+    # vs the validated sidecar layer, INCLUDING debug and nullable fields.
+    payload_evidence = (payload_v2 or {}).get("activationEvidence") or []
+    expected_evidence_objs = project_activation_evidence(api_layer_json.get("activations") or [])
+    emit_contract_issues(
+        state,
+        contract_diff(expected_evidence_objs, payload_evidence, "activationEvidence"),
+        block="activationEvidence",
+        value_kind="payload_activation_evidence_mismatch",
+    )
 
     # NOTE: the final dayChart transit longitudes/signs/motion and the
     # serialized house list are verified independently by the astronomy
@@ -1797,24 +1854,34 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 "payload_dominance_capped_mismatch",
                 "payload_contributions_mismatch",
             )
+            or (f.kind in ("payload_contract_missing_key", "payload_contract_extra_key") and (f.block or "").startswith("scoreBreakdown"))
             for f in state.failures
         ),
-        "payload_top_flags_match_recalc": not any(f.kind == "payload_top_flags_mismatch" for f in state.failures),
-        "payload_sphere_scores_match_recalc": not any(f.kind == "payload_sphere_scores_mismatch" for f in state.failures),
+        "payload_top_flags_match_recalc": not any(
+            f.kind == "payload_top_flags_mismatch"
+            or (f.kind in ("payload_contract_missing_key", "payload_contract_extra_key") and f.block == "topFlags")
+            for f in state.failures
+        ),
+        "payload_sphere_scores_match_recalc": not any(
+            f.kind == "payload_sphere_scores_mismatch"
+            or (f.kind in ("payload_contract_missing_key", "payload_contract_extra_key") and f.block == "sphereScores")
+            for f in state.failures
+        ),
         "payload_activation_evidence_match_recalc": not any(
-            f.kind == "payload_activation_evidence_mismatch" for f in state.failures
+            f.kind == "payload_activation_evidence_mismatch"
+            or (f.kind in ("payload_contract_missing_key", "payload_contract_extra_key") and f.block == "activationEvidence")
+            for f in state.failures
         ),
         "payload_daychart_aspects_match_projection": not any(
-            f.kind == "payload_daychart_aspects_mismatch" for f in state.failures
+            f.kind == "payload_daychart_aspects_mismatch"
+            or (f.kind in ("payload_contract_missing_key", "payload_contract_extra_key") and f.block == "dayChart.aspects")
+            for f in state.failures
         ),
         "payload_preserves_sidecar_ids": (
             not bool(missing_in_payload) and not bool(extra_payload) and payload_v2 is not None and v2_selected
         ),
         "frontend_fixture_written": True,
     }
-    # fix payload_preserves for synthetic where v2_selected true
-    if mode == "synthetic_fixture" and payload_v2 is not None and not missing_in_payload:
-        checked["payload_preserves_sidecar_ids"] = True
 
     summary = {
         "status": "failed" if state.failures else "ok",

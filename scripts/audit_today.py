@@ -41,6 +41,7 @@ import asyncio
 import csv
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import shutil
@@ -458,8 +459,35 @@ async def load_raw_natal_sidecar(db, user_id: str, profile_hash: str) -> dict[st
     return json.loads(cache.raw_chart_json)
 
 
+def resolve_astronomy_python(requested: Path) -> Path:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-TODAY.resolve_astronomy_python
+    # purpose: Resolve the interpreter for the astronomy oracle subprocess.
+    #   Local dev uses the sidecar venv (apps/solarsage/venv); in CI the
+    #   sidecar package is pip-installed into apps/api/.venv, so the current
+    #   interpreter already has swisseph and is used instead.
+    # inputs: requested — the --astronomy-python value.
+    # returns: an existing interpreter path with swisseph available.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: SystemExit when no swisseph-capable interpreter exists.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-TODAY.resolve_astronomy_python
+    if requested.exists():
+        return requested
+    try:
+        import swisseph  # noqa: F401
+
+        return Path(sys.executable)
+    except ImportError:
+        raise SystemExit(
+            f"Astronomy Python not found: {requested} and the current interpreter "
+            f"({sys.executable}) has no swisseph. In CI, pip-install apps/solarsage "
+            "into apps/api/.venv; locally, use apps/solarsage/venv."
+        )
+
+
 async def run_oracles(
-    *,
+    *
+,
     out_dir: Path,
     target_date: Date,
     target_tz: str,
@@ -488,29 +516,35 @@ async def run_oracles(
         )
 
     if not skip_astronomy_oracle:
-        if not astronomy_python.exists():
-            raise SystemExit(f"Astronomy Python not found: {astronomy_python}")
+        oracle_python = resolve_astronomy_python(astronomy_python)
+        oracle_cmd = [
+            str(oracle_python),
+            str(REPO_ROOT / "scripts" / "audit_astronomy_oracle.py"),
+            "--input-profile",
+            str(out_dir / "input_profile.json"),
+            "--raw-transits",
+            str(out_dir / "raw_transits.json"),
+            "--raw-natal-context",
+            str(out_dir / "raw_natal_context.json"),
+            "--final-payload",
+            str(out_dir / "final_today_payload.json"),
+            "--date",
+            target_date.isoformat(),
+            "--time",
+            "12:00",
+            "--tz",
+            target_tz,
+            "--out",
+            str(out_dir),
+        ]
+        # Fail-closed engine policy (default): the oracle requires the pinned
+        # Swiss artifact. The pinned bundle location is forwarded when the
+        # contour provides it (extracted from the exact sidecar image).
+        audit_ephe = os.environ.get("AUDIT_EPHEMERIS_PATH")
+        if audit_ephe:
+            oracle_cmd.extend(["--ephemeris-path", audit_ephe])
         subprocess.run(
-            [
-                str(astronomy_python),
-                str(REPO_ROOT / "scripts" / "audit_astronomy_oracle.py"),
-                "--input-profile",
-                str(out_dir / "input_profile.json"),
-                "--raw-transits",
-                str(out_dir / "raw_transits.json"),
-                "--raw-natal-context",
-                str(out_dir / "raw_natal_context.json"),
-                "--final-payload",
-                str(out_dir / "final_today_payload.json"),
-                "--date",
-                target_date.isoformat(),
-                "--time",
-                "12:00",
-                "--tz",
-                target_tz,
-                "--out",
-                str(out_dir),
-            ],
+            oracle_cmd,
             cwd=REPO_ROOT,
             check=True,
         )

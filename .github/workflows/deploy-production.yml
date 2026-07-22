@@ -316,6 +316,27 @@ jobs:
           [ -n "$ok" ] || { docker logs acceptance-sidecar | tail -30; exit 1; }
           python3 -c 'import json,sys; h=json.load(open("/tmp/sidecar-health.json")); assert h.get("engine")=="swieph", h; assert h.get("release_sha")=="'"$GITHUB_SHA"'", h; assert not h.get("fallback", True), h; print("sidecar health OK:", h["engine"], h["ephemeris_artifact_id"])'
 
+      - name: Extract the baked ephemeris bundle for the astronomy oracle
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/audit-ephe && mkdir -p /tmp/audit-ephe
+          docker cp acceptance-sidecar:/opt/solarsage-ephemeris/bundle/. /tmp/audit-ephe/
+          echo "AUDIT_EPHEMERIS_PATH=/tmp/audit-ephe" >> "$GITHUB_ENV"
+          python3 - <<'EOF'
+          import hashlib, json
+          manifest_bytes = open("/tmp/audit-ephe/manifest.json", "rb").read()
+          manifest = json.loads(manifest_bytes)
+          health = json.load(open("/tmp/sidecar-health.json"))
+          assert manifest["artifact_id"] == health["ephemeris_artifact_id"], (
+              manifest["artifact_id"], health["ephemeris_artifact_id"],
+          )
+          digest = hashlib.sha256(manifest_bytes).hexdigest()
+          assert digest == health["ephemeris_manifest_sha256"], (
+              digest, health["ephemeris_manifest_sha256"],
+          )
+          print("ephemeris bundle OK:", manifest["artifact_id"], digest[:16])
+          EOF
+
       - name: Audit day freeze — run 1 (deterministic, committed baseline)
         env:
           DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro

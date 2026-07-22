@@ -7,12 +7,18 @@
 
 # START_MODULE_CONTRACT: M-AUDIT-ASTRONOMY-ORACLE
 # purpose: Verify transit longitudes, retrograde flags, Moon phase, Moon-Pluto
-#          opposition, and transit house placement without importing sidecar code.
+#          opposition, transit house placement, and the FINAL serialized
+#          dayChart (exact structure/order/count + longitude/sign/retrograde/
+#          motion + houses) without importing sidecar code. Records the actual
+#          ephemeris engine proof (FLG_SWIEPH vs FLG_MOSEPH); the default
+#          policy is fail-closed on swieph.
 # owns:
 #   - scripts/audit_astronomy_oracle.py
 # inputs: input_profile.json, raw_transits.json, raw_natal_context.json,
-#         final_today_payload.json, date/time/timezone.
+#         final_today_payload.json, date/time/timezone, ephemeris path,
+#         engine policy.
 # outputs: astronomy_oracle.csv, house_placements_oracle.csv,
+#          final_transit_oracle.csv, final_houses_oracle.csv,
 #          astronomy_oracle_summary.json.
 # dependencies: swisseph, stdlib.
 # side_effects: writes files under --out.
@@ -20,7 +26,10 @@
 # invariants:
 #   - Does not import solarsage.* or app.* code.
 #   - Uses direct Swiss Ephemeris calls as the oracle implementation.
-# failure_policy: raises on missing required artifacts or swisseph failures.
+#   - Structural payload defects are failed rows, never tracebacks.
+#   - Default engine policy requires FLG_SWIEPH; allow-moshier is explicit
+#     test-only and never used by the audit_today contour.
+# failure_policy: writes the summary, then exits non-zero on any failed proof.
 # END_MODULE_CONTRACT: M-AUDIT-ASTRONOMY-ORACLE
 
 from __future__ import annotations
@@ -116,10 +125,23 @@ def julian_day(date_str: str, time_str: str, tz_name: str) -> float:
     )
 
 
-def planet_positions(jd: float) -> dict[str, dict[str, Any]]:
+def planet_positions(jd: float) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+    # START_FUNCTION_CONTRACT: F-M-AUDIT-ASTRONOMY-ORACLE.planet_positions
+    # purpose: Recompute day planet positions with direct pyswisseph calls
+    #   and capture the ACTUAL ephemeris engine flags returned by calc_ut.
+    # inputs: jd — Julian day (UT).
+    # returns: (positions, engine proof dict). Engine proof records the
+    #   union of calc flags, whether every planet used FLG_SWIEPH, and
+    #   whether any planet silently fell back to FLG_MOSEPH.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: swisseph errors propagate.
+    # END_FUNCTION_CONTRACT: F-M-AUDIT-ASTRONOMY-ORACLE.planet_positions
     result = {}
+    all_flags = 0
     for name, planet_id in PLANETS.items():
-        values, _flags = swe.calc_ut(jd, planet_id)
+        values, flags = swe.calc_ut(jd, planet_id)
+        all_flags |= int(flags)
         lon, lat, dist, speed_lon, speed_lat, speed_dist = values
         result[name] = {
             "name": name,
@@ -128,8 +150,14 @@ def planet_positions(jd: float) -> dict[str, dict[str, Any]]:
             "speed": float(speed_lon),
             "retrograde": bool(speed_lon < 0),
             "sign": sign_for(float(lon)),
+            "calc_flags": int(flags),
         }
-    return result
+    engine = {
+        "calc_flags": all_flags,
+        "swieph": all(r["calc_flags"] & swe.FLG_SWIEPH for r in result.values()),
+        "moseph": any(r["calc_flags"] & swe.FLG_MOSEPH for r in result.values()),
+    }
+    return result, engine
 
 
 def normalize_house_system(raw: str | None, birth_lat: float) -> bytes:
@@ -210,19 +238,23 @@ def run_astronomy_oracle(
     target_tz: str | None,
     out_dir: Path,
     ephemeris_path: str | None = None,
+    engine_policy: str = "swieph",
 ) -> dict[str, Any]:
     # START_FUNCTION_CONTRACT: F-M-AUDIT-ASTRONOMY-ORACLE.run_astronomy_oracle
     # purpose: Run direct Swiss Ephemeris verification and write audit artifacts.
-    # inputs: artifact paths, target date/time/timezone, output dir.
-    # returns: summary dict with pass/fail aggregates.
+    # inputs: artifact paths, target date/time/timezone, output dir,
+    #   engine_policy — "swieph" (default, fail-closed: the pinned Swiss
+    #   artifact is required) or "allow-moshier" (explicit test-only mode for
+    #   mutation unit tests without the pinned bundle).
+    # returns: summary dict with pass/fail aggregates + engine proof.
     # side_effects: writes CSV/JSON artifacts.
     # emitted_logs: none.
-    # error_behavior: propagates file/swisseph errors.
+    # error_behavior: propagates file/swisseph errors; structural payload
+    #   defects are recorded as failed rows, never tracebacks.
     # END_FUNCTION_CONTRACT: F-M-AUDIT-ASTRONOMY-ORACLE.run_astronomy_oracle
-    if ephemeris_path:
-        swe.set_ephe_path(ephemeris_path)
-    elif os.getenv("SWEPH_PATH"):
-        swe.set_ephe_path(os.environ["SWEPH_PATH"])
+    effective_ephe = ephemeris_path or os.getenv("SWEPH_PATH") or None
+    if effective_ephe:
+        swe.set_ephe_path(effective_ephe)
 
     profile = load_json(input_profile_path)
     raw_transits = load_json(raw_transits_path)
@@ -231,7 +263,7 @@ def run_astronomy_oracle(
     tz_name = target_tz or profile.get("current", {}).get("tz") or profile["birth"]["tz"]
 
     jd = julian_day(target_date, target_time, tz_name)
-    oracle_positions = planet_positions(jd)
+    oracle_positions, engine_proof = planet_positions(jd)
     production_planets = raw_transits.get("planets", [])
 
     rows: list[dict[str, Any]] = []
@@ -302,18 +334,24 @@ def run_astronomy_oracle(
 
     # START_BLOCK: FINAL_CHART_PROOF
     # The FINAL serialized dayChart must equal the independent Swiss result:
-    # transit longitudes/signs/retrograde+motion and the serialized house
-    # list (number/order/cusp/sign). Raw transit proof above is necessary but
-    # NOT sufficient — the payload itself is the money boundary.
+    # exact transit structure/order/count (longitude/sign/retrograde/motion)
+    # and the exact serialized house list (structure/count/order/number/cusp/
+    # sign). Raw transit proof above is necessary but NOT sufficient — the
+    # payload itself is the money boundary. Structural defects are recorded
+    # as failed rows, never tracebacks.
     final_chart = payload.get("dayChart") or payload.get("day_chart") or {}
     final_planets = final_chart.get("transitPlanets") or final_chart.get("transit_planets") or []
+    expected_planet_order = list(PLANETS.keys())
+    final_planet_order = [p.get("name") for p in final_planets if isinstance(p, dict)]
+    final_transit_structure_pass = final_planet_order == expected_planet_order
     final_rows: list[dict[str, Any]] = []
     for name in PLANETS:
         oracle = oracle_positions[name]
-        final_planet = next((p for p in final_planets if p.get("name") == name), {})
+        final_planet = next((p for p in final_planets if isinstance(p, dict) and p.get("name") == name), {})
         final_lon = final_planet.get("longitude")
         final_delta = shortest_delta(oracle["longitude"], float(final_lon)) if isinstance(final_lon, (int, float)) else None
         final_motion = final_planet.get("motion")
+        final_retrograde = final_planet.get("retrograde")
         # Mirror the payload's own motion derivation: stationary beats
         # retrograde when |speed| < 0.01, retrograde on negative speed or the
         # retrograde flag, else direct.
@@ -336,25 +374,24 @@ def run_astronomy_oracle(
                 "final_sign_pass": final_planet.get("sign") == oracle["sign"],
                 "oracle_speed": round(oracle_speed, 8),
                 "oracle_retrograde": oracle["retrograde"],
+                "final_retrograde": final_retrograde,
+                "final_retrograde_pass": final_retrograde == oracle["retrograde"],
                 "final_motion": final_motion,
                 "expected_motion": expected_motion,
                 "final_motion_pass": final_motion == expected_motion,
             }
         )
     final_houses = final_chart.get("houses") or []
+    expected_house_numbers = [h["number"] for h in oracle_houses]
+    final_house_numbers = [h.get("number") for h in final_houses if isinstance(h, dict)]
+    final_house_structure_pass = (
+        len(final_houses) == len(oracle_houses) and final_house_numbers == expected_house_numbers
+    )
     final_house_rows: list[dict[str, Any]] = []
-    if len(final_houses) != len(oracle_houses):
-        final_house_rows.append(
-            {
-                "number": None,
-                "oracle_cusp": "",
-                "final_cusp": "",
-                "final_house_pass": False,
-                "reason": f"house count mismatch: oracle {len(oracle_houses)} vs final {len(final_houses)}",
-            }
-        )
     for idx, oracle_house_row in enumerate(oracle_houses):
         final_house = final_houses[idx] if idx < len(final_houses) else {}
+        if not isinstance(final_house, dict):
+            final_house = {}
         oracle_cusp = float(oracle_house_row["longitude"])
         final_cusp = (
             final_house["cuspLongitude"]
@@ -384,11 +421,26 @@ def run_astronomy_oracle(
         "sign_pass": all(row["sign_pass"] for row in rows),
         "retrograde_flag_pass": all(row["retrograde_flag_pass"] for row in rows),
         "house_pass": all(row["house_pass"] for row in house_rows),
+        "final_transit_structure_pass": final_transit_structure_pass,
         "final_transit_longitude_pass": all(row["final_longitude_pass"] for row in final_rows),
         "final_transit_sign_pass": all(row["final_sign_pass"] for row in final_rows),
+        "final_transit_retrograde_pass": all(row["final_retrograde_pass"] for row in final_rows),
         "final_motion_pass": all(row["final_motion_pass"] for row in final_rows),
+        "final_house_structure_pass": final_house_structure_pass,
         "final_house_cusp_pass": all(row["final_cusp_pass"] for row in final_house_rows),
         "final_house_sign_pass": all(row["final_house_sign_pass"] for row in final_house_rows),
+        "engine": {
+            "calc_flags": engine_proof["calc_flags"],
+            "swieph": engine_proof["swieph"],
+            "moseph": engine_proof["moseph"],
+            "ephemeris_path": effective_ephe,
+            "policy": engine_policy,
+            "engine_pass": (
+                engine_proof["swieph"]
+                if engine_policy == "swieph"
+                else engine_proof["swieph"] or engine_proof["moseph"]
+            ),
+        },
         "moon_phase": {
             "oracle_percent": round(moon_phase, 4),
             "production_percent": prod_phase,
@@ -428,7 +480,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--date", required=True)
     parser.add_argument("--time", default="12:00")
     parser.add_argument("--tz", default=None)
-    parser.add_argument("--ephemeris-path", default="/opt/sweph/ephe")
+    parser.add_argument(
+        "--ephemeris-path",
+        default=None,
+        help="Pinned Swiss ephemeris root (default: SWEPH_PATH env or the swe default search path).",
+    )
+    parser.add_argument(
+        "--engine-policy",
+        choices=("swieph", "allow-moshier"),
+        default="swieph",
+        help=(
+            "Engine acceptance policy. 'swieph' (default, fail-closed) requires the pinned Swiss "
+            "artifact (FLG_SWIEPH on every calc); 'allow-moshier' is an explicit test-only mode "
+            "for mutation unit tests without the pinned bundle and is NEVER used by audit_today."
+        ),
+    )
     parser.add_argument("--out", type=Path, required=True)
     return parser.parse_args()
 
@@ -445,23 +511,27 @@ def main() -> None:
         target_tz=args.tz,
         out_dir=args.out,
         ephemeris_path=args.ephemeris_path,
+        engine_policy=args.engine_policy,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 
-    # Propagate failures
+    # Propagate failures — every aggregated proof must be exactly True.
     has_failed = (
         not summary["longitude_pass"]
         or not summary["sign_pass"]
         or not summary["retrograde_flag_pass"]
         or not summary["house_pass"]
+        or not summary["final_transit_structure_pass"]
         or not summary["final_transit_longitude_pass"]
         or not summary["final_transit_sign_pass"]
+        or not summary["final_transit_retrograde_pass"]
         or not summary["final_motion_pass"]
+        or not summary["final_house_structure_pass"]
         or not summary["final_house_cusp_pass"]
         or not summary["final_house_sign_pass"]
+        or not summary["engine"]["engine_pass"]
+        or summary["moon_phase"]["pass"] is not True
     )
-    if summary["moon_phase"]["pass"] is False:
-        has_failed = True
 
     if has_failed:
         import sys
