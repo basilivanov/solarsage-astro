@@ -17,7 +17,7 @@
   "moon_opposite_pluto": {
     "transit_moon_to_transit_pluto_orb": 101.3532,
     "transit_moon_to_transit_pluto_pass": false,
-    "transit_moon_to_natal_pluto_orb": 1.0454,
+    "transit_moon_to_natal_pluto_orb": 1.0455,
     "transit_moon_to_natal_pluto_pass": true
   },
   "house_system": "WHOLE_SIGN"

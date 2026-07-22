@@ -1,0 +1,11 @@
+planet,oracle_longitude,oracle_house,production_house,house_pass,final_sign,oracle_sign
+Sun,106.23364219,1,1,True,Cancer,Cancer
+Moon,23.36586471,10,10,True,Aries,Aries
+Mercury,113.61109942,1,1,True,Cancer,Cancer
+Venus,148.49533904,2,2,True,Leo,Leo
+Mars,66.77446049,12,12,True,Gemini,Gemini
+Jupiter,121.75433065,2,2,True,Leo,Leo
+Saturn,14.46058937,10,10,True,Aries,Aries
+Uranus,64.06427017,12,12,True,Gemini,Gemini
+Neptune,4.41773975,10,10,True,Aries,Aries
+Pluto,304.71905882,8,8,True,Aquarius,Aquarius

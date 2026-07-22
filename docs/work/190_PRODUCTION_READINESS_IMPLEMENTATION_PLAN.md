@@ -339,8 +339,14 @@ their text below is kept as the design for those later slices.
 - **P1-2 (redefined 2026-07-20):** independent-from-product-pipeline
   verification via the EXISTING fail-closed oracles (transit longitudes,
   retrograde flags, moon phase, houses; day_status, sphere_scores,
-  top_signals) — no external source, no owner tolerances. Mechanics exist;
-  exact-SHA proof pending with P1-1.
+  top_signals) — no external source, no owner tolerances. 2026-07-22 the
+  contour was completed with the payload-vs-recomputed-V2 check
+  (`scripts/audit_downstream_v2.py` wired into `audit_today.py`): the
+  honest artifact is green (24 intentional unmapped warnings, policy
+  pinned `warn`), and directed mutations (dayStatus, score
+  amount/contribution, sphere order, topFlags, lost/extra ids) all exit
+  non-zero. Combined audit is green on the exact same artifact LOCALLY;
+  the exact-SHA GitHub proof stays pending with P1-1.
 
 ### P1-2. Independent-from-pipeline calculation verification
 
@@ -360,19 +366,48 @@ their text below is kept as the design for those later slices.
   - `scripts/audit_scoring_oracle.py` — recomputes and compares
     `day_status`, `sphere_scores` and `top_signals` against the
     production scoring; exits non-zero on any mismatch.
+  - `scripts/audit_downstream_v2.py` (wired into `audit_today.py` after
+    the oracles, `check=True`) — fail-closed verifies the FINAL selected
+    payload against the independently recomputed V2: `dayStatus`, every
+    `scoreBreakdown` sphere (numeric fields + contributions), sphere
+    sorting, and `topFlags` in exact order; activation evidence set equals
+    the sidecar set (lost/extra ids are errors).
+- **Provenance (2026-07-22):** the baseline was rebuilt through the pinned
+  local image `solarsage-sidecar-readiness:62b756a` (OCI revision
+  `62b756a6559ba4a0f501fffe56dca51eb52872b2`), run as a temporary
+  container on 127.0.0.1:18099 with
+  `SOLARSAGE_EPHEMERIS_ROOT=/opt/solarsage-ephemeris/bundle`; health proof
+  `engine=swieph`, `fallback=false`,
+  `calculation_version=ss-calc-1.2.0`,
+  `ephemeris_artifact_id=se-stellium-1800-2399-20260721`,
+  `ephemeris_manifest_sha256=768d5fc920c762028437ad0bff43013c800ff027911a2dc02cb7d45d7ea9db59`.
+  An earlier baseline used the already-running dev sidecar (no identity) —
+  that provenance was false and was discarded. The frozen tracked
+  `artifact_source.json` is deterministic (`git_head: null`; only the live
+  run keeps the runtime SHA), so `audit-day-freeze` no longer breaks
+  `git diff --exit-code` on a new commit.
+- **Package coherence:** the committed `artifacts/audit/2026-07-08` set is
+  ONE generation (one synthetic audit user, one date) across
+  `00_input_profile`, `11_final_today_payload`, `14_claims_audit.md`,
+  `15_audit_summary.md`, `16_activation_layer.json` and `downstream/`;
+  `test_audit_artifact_coherence.py` fails on any mix.
 - **Artifacts:** `13_astronomy_oracle_summary.json`,
   `12_scoring_oracle_comparison.json` (root; debug copy
   `scoring_oracle_comparison.json`), `trace_map.json` (debug),
-  `final_today_payload.json` (debug), root `11_final_today_payload.json`.
+  `final_today_payload.json` (debug), root `11_final_today_payload.json`,
+  `downstream/12_downstream_audit_summary.json`.
 - **Truth today:** the current oracle artifacts are ALREADY fail-closed
   on mismatch — both scripts `sys.exit(1)` on any failed comparison and
   `audit_today.py` invokes them with `check=True`, so a houses / scoring /
-  top_signals mismatch returns non-zero and fails the audit gate. No new
+  top_signals mismatch returns non-zero and fails the audit gate. The
+  downstream audit exits 1 on any payload-vs-recompute mismatch. No new
   harness and no `make audit-day` rewrite.
-- **Status: PARTIAL (2026-07-20).** Verification mechanics exist and are
-  fail-closed; the exact-SHA proof via `make audit-day-freeze` in artifact
-  acceptance is pending together with P1-1.
-- **Pass/fail:** both oracle summaries green on the exact release SHA in
+- **Status: LOCALLY COMPLETE (2026-07-22).** Combined audit (astronomy +
+  scoring oracles + downstream payload check) is green on the exact same
+  artifact, byte-stable across `audit-day-freeze` ×2 on the final commit;
+  the exact-SHA proof in the GitHub acceptance job is pending with P1-1.
+- **Pass/fail:** both oracle summaries and the downstream summary green on
+  the exact release SHA in artifact acceptance; any mismatch blocks.
   artifact acceptance; any mismatch blocks.
 
 ### P1-3. Same-payload UI proof

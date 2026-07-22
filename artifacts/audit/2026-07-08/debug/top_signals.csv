@@ -1,6 +1,6 @@
 index,included_in_day_scoring,type,planet,planet_clean,target_planet,target_planet_clean,aspect_type,orb,strength,house,sign,technique,technique_family,delta_kind,phase,daily_salience
-1,,aspect,Transit_Moon,Moon,Pluto,Pluto,opposition,1.0453647052696624,0.8693294118412922,,,,,new_today,entering,1.13012823539368
-2,,aspect,Transit_Mars,Mars,Moon,Moon,sextile,0.7876395094207993,0.8687267484298667,,,,,stronger_than_yesterday,applying,0.9990357606943466
-3,,aspect,Transit_Moon,Moon,Neptune,Neptune,trine,2.5314647052696557,0.683566911841293,,,,,new_today,entering,0.888636985393681
-4,,aspect,Transit_Mars,Mars,Saturn,Saturn,trine,2.0644604905791937,0.7419424386776008,,,,,weaker_than_yesterday,separating,0.6677481948098407
+1,,aspect,Transit_Moon,Moon,Pluto,Pluto,opposition,1.0455193268160201,0.8693100841479975,,,,,new_today,entering,1.1301031093923968
+2,,aspect,Transit_Mars,Mars,Moon,Moon,sextile,0.7875468158539718,0.8687421973576713,,,,,stronger_than_yesterday,applying,0.999053526961322
+3,,aspect,Transit_Moon,Moon,Neptune,Neptune,trine,2.531619326816042,0.6835475841479948,,,,,new_today,entering,0.8886118593923932
+4,,aspect,Transit_Mars,Mars,Saturn,Saturn,trine,2.0643531841460145,0.7419558519817482,,,,,weaker_than_yesterday,separating,0.6677602667835734
 5,,planet_in_house,Transit_Sun,Sun,,,,,1.0,1,Cancer,,,background,background,0.55

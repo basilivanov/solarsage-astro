@@ -1,10 +1,10 @@
-# W0 Audit Summary: User fe2fd7de-4450-4e25-836a-571e7e555c29, 2026-07-08
+# W0 Audit Summary: User 7dd0c1ad-0294-4f0e-b6d9-67f8f53410ee, 2026-07-08
 
 ## Mode
 `frozen-baseline`
 
 ## Executive summary
-`TodayPayload` for User fe2fd7de-4450-4e25-836a-571e7e555c29 on 2026-07-08 has `day_status=supportive`.
+`TodayPayload` for User 7dd0c1ad-0294-4f0e-b6d9-67f8f53410ee on 2026-07-08 has `day_status=supportive`.
 Final payload source: `committed_baseline_fixture`.
 Activation layer source: `sidecar`.
 

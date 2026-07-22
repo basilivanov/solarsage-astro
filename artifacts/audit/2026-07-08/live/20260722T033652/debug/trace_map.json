@@ -1,0 +1,74 @@
+[
+  {
+    "step": "API route",
+    "file": "apps/api/app/api/day.py",
+    "function": "get_day",
+    "role": "Parses date/auth/access and calls TodayService.get_today_payload."
+  },
+  {
+    "step": "TodayService",
+    "file": "apps/api/app/services/today_service.py",
+    "function": "TodayService.get_today_payload",
+    "role": "Loads profile/cache, gets natal context/transits, normalizes, scores, builds semantic/LLM/UI fields."
+  },
+  {
+    "step": "Natal context",
+    "file": "apps/api/app/services/natal_context_service.py",
+    "function": "NatalContextService.get_or_build_natal_context",
+    "role": "Production natal source; calls sidecar /v1/natal only on natal cache miss."
+  },
+  {
+    "step": "SolarSage client",
+    "file": "apps/api/app/clients/solarsage_client.py",
+    "function": "SolarSageClient.get_transits",
+    "role": "Calls sidecar /v1/transits for target date at 12:00 in profile timezone."
+  },
+  {
+    "step": "Sidecar transits",
+    "file": "apps/solarsage/solarsage/api/transits.py",
+    "function": "post_transits",
+    "role": "Converts date/time/timezone to JD and returns Swiss Ephemeris planet positions."
+  },
+  {
+    "step": "Normalization",
+    "file": "apps/api/app/services/normalization_service.py",
+    "function": "NormalizationService.normalize_day",
+    "role": "Builds natal signals, transit-to-natal aspects, and transit planet-in-natal-house signals."
+  },
+  {
+    "step": "Day signal filter",
+    "file": "apps/api/app/services/day_scoring_signals.py",
+    "function": "filter_day_scored_signals",
+    "role": "Keeps Transit_* and explicit day-event signals; removes static natal signals from day scoring."
+  },
+  {
+    "step": "Scoring",
+    "file": "apps/api/app/services/scoring_service.py",
+    "function": "ScoringService.score_day",
+    "role": "Production scoring output: day_status, sphere_scores, top_signals."
+  },
+  {
+    "step": "Semantic layer",
+    "file": "apps/api/app/services/semantic_service.py",
+    "function": "SemanticService.build_semantic_layer / build_why_contexts",
+    "role": "Builds deterministic semantic layer and WhyThisHappens contexts for LLM."
+  },
+  {
+    "step": "LLM text",
+    "file": "apps/api/app/services/llm_service.py",
+    "function": "generate_headline / generate_reading / generate_notes / generate_why_sections",
+    "role": "Generates narrative text from precomputed status/signals/scores/contexts."
+  },
+  {
+    "step": "UI product fields",
+    "file": "apps/api/app/services/today_interpretation_service.py",
+    "function": "TodayInterpretationService.build",
+    "role": "Builds day_summary and concrete_advice rows/evidence consumed by frontend."
+  },
+  {
+    "step": "Frontend adapter",
+    "file": "lib/adapters/today-payload.ts",
+    "function": "adaptTodayPayload",
+    "role": "Maps API TodayPayload into UI-ready fields without recomputing astrology."
+  }
+]

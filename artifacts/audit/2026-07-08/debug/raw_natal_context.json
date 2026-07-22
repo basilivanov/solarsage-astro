@@ -28,7 +28,7 @@
       "degree": 7.56,
       "house": null,
       "retrograde": false,
-      "longitude": 127.5621
+      "longitude": 127.562
     },
     {
       "name": "Mercury",
@@ -68,7 +68,7 @@
       "degree": 4.71,
       "house": null,
       "retrograde": false,
-      "longitude": 184.71
+      "longitude": 184.7101
     },
     {
       "name": "Uranus",
@@ -84,7 +84,7 @@
       "degree": 20.83,
       "house": null,
       "retrograde": false,
-      "longitude": 260.8344
+      "longitude": 260.8343
     },
     {
       "name": "Pluto",
@@ -92,7 +92,7 @@
       "degree": 22.32,
       "house": null,
       "retrograde": false,
-      "longitude": 202.3205
+      "longitude": 202.3204
     }
   ],
   "houses": [

@@ -7,7 +7,7 @@
   "target_date": "2026-07-08",
   "target_time": "12:00",
   "target_tz": "Europe/Moscow",
-  "git_head": "11c2435",
+  "git_head": null,
   "solarsage_v2_enabled": true,
   "solarsage_v2_dual_run": true,
   "solarsage_v2_frontend_enabled": true,

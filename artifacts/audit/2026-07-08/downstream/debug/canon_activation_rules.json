@@ -1,0 +1,230 @@
+{
+  "schema_version": "activation_rules.v1",
+  "description": "Правила активации: какие техники активируют планеты, дома, лоты.",
+  "technique_families": {
+    "transit": {
+      "members": [
+        "transit_to_natal",
+        "transit_to_angle",
+        "transit_to_lot",
+        "transit_planet_in_house"
+      ],
+      "independence_weight": 1.0
+    },
+    "profection": {
+      "members": [
+        "annual_profection",
+        "monthly_profection"
+      ],
+      "independence_weight": 0.8
+    },
+    "firdar": {
+      "members": [
+        "firdar_major",
+        "firdar_minor"
+      ],
+      "independence_weight": 0.8
+    },
+    "return": {
+      "members": [
+        "solar_return",
+        "lunar_return"
+      ],
+      "independence_weight": 0.9
+    },
+    "progression": {
+      "members": [
+        "secondary_progression",
+        "solar_arc"
+      ],
+      "independence_weight": 1.0
+    },
+    "eclipse": {
+      "members": [
+        "eclipse_window"
+      ],
+      "independence_weight": 0.7
+    }
+  },
+  "activation_strength": {
+    "exact_orb_curve": {
+      "0.0": 1.0,
+      "0.5": 0.85,
+      "1.0": 0.7,
+      "2.0": 0.45
+    },
+    "period_base": {
+      "annual_profection": 0.75,
+      "monthly_profection": 0.45,
+      "firdar_major": 0.65,
+      "firdar_minor": 0.4
+    },
+    "return_base": {
+      "solar_return_angle_in_natal_house": 0.7,
+      "solar_return_chart_ruler": 0.7,
+      "solar_return_moon_house": 0.65,
+      "solar_return_angular_planet": 0.6,
+      "lunar_return_angle_in_natal_house": 0.55,
+      "lunar_return_moon_house": 0.6,
+      "lunar_return_angular_planet": 0.5
+    },
+    "progression_base": {
+      "solar_arc_aspect": 0.7,
+      "progressed_moon_aspect": 0.65,
+      "progressed_sun_sign_transition": 0.5,
+      "progressed_sun_house_transition": 0.5
+    }
+  },
+  "techniques": {
+    "annual_profection": {
+      "activates": [
+        {
+          "type": "house",
+          "description": "Дом года"
+        },
+        {
+          "type": "planet",
+          "description": "Управитель дома года"
+        }
+      ],
+      "orb": null,
+      "weight": 1.5
+    },
+    "monthly_profection": {
+      "activates": [
+        {
+          "type": "house",
+          "description": "Дом месяца"
+        },
+        {
+          "type": "planet",
+          "description": "Управитель дома месяца"
+        }
+      ],
+      "orb": null,
+      "weight": 1.2
+    },
+    "firdar_major": {
+      "activates": [
+        {
+          "type": "planet",
+          "description": "Планета мажорного периода фирдара"
+        }
+      ],
+      "orb": null,
+      "weight": 1.4
+    },
+    "firdar_minor": {
+      "activates": [
+        {
+          "type": "planet",
+          "description": "Планета минорного периода фирдара"
+        }
+      ],
+      "orb": null,
+      "weight": 1.1
+    },
+    "solar_return": {
+      "activates": [
+        {
+          "type": "house",
+          "description": "Дома, в которые попали SR-планеты"
+        },
+        {
+          "type": "planet",
+          "description": "SR-ASC ruler, SR-MC ruler"
+        }
+      ],
+      "orb": null,
+      "weight": 1.3
+    },
+    "lunar_return": {
+      "activates": [
+        {
+          "type": "house",
+          "description": "Дом, в который попала LR-Луна"
+        }
+      ],
+      "orb": null,
+      "weight": 0.9
+    },
+    "solar_arc": {
+      "activates": [
+        {
+          "type": "planet",
+          "description": "Планеты в орбе ≤ 1° к натальным точкам"
+        }
+      ],
+      "orb": 1.0,
+      "weight": 1.6
+    },
+    "secondary_progression": {
+      "activates": [
+        {
+          "type": "planet",
+          "description": "Планеты в орбе ≤ 1° к натальным точкам"
+        }
+      ],
+      "orb": 1.0,
+      "weight": 1.5
+    },
+    "primary_direction": {
+      "activates": [
+        {
+          "type": "planet",
+          "description": "Планеты в орбе ≤ 1° к натальным точкам"
+        }
+      ],
+      "orb": 1.0,
+      "weight": 1.7
+    },
+    "transit_to_natal": {
+      "activates": [
+        {
+          "type": "planet",
+          "description": "Applying аспекты в орбе из aspect_rules"
+        }
+      ],
+      "orb": "from_aspect_rules",
+      "weight": 2.0
+    },
+    "transit_to_angle": {
+      "activates": [
+        {
+          "type": "angle",
+          "description": "Applying аспекты к ASC/DSC/MC/IC"
+        }
+      ],
+      "orb": "from_aspect_rules",
+      "weight": 2.5
+    },
+    "transit_to_lot": {
+      "activates": [
+        {
+          "type": "lot",
+          "description": "Applying аспекты к главным лотам (Fortune, Spirit, Eros, Marriage)"
+        }
+      ],
+      "orb": "from_aspect_rules",
+      "weight": 1.2
+    },
+    "eclipse_window": {
+      "activates": [
+        {
+          "type": "planet",
+          "description": "Планета/угол в орбе ≤ 3° к точке затмения"
+        },
+        {
+          "type": "angle",
+          "description": "Угол в орбе ≤ 3° к точке затмения"
+        }
+      ],
+      "orb": 3.0,
+      "weight": 1.8,
+      "days_before": 14,
+      "days_after": 14,
+      "orb_to_natal": 3.0,
+      "strength": 0.55
+    }
+  }
+}

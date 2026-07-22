@@ -1,5 +1,5 @@
 {
-  "user_id": "fe2fd7de-4450-4e25-836a-571e7e555c29",
+  "user_id": "7dd0c1ad-0294-4f0e-b6d9-67f8f53410ee",
   "date": "2026-07-08",
   "mode": "frozen-baseline",
   "out_dir": "/opt/solarsage-astro/artifacts/audit/2026-07-08",
@@ -8,7 +8,7 @@
   "signal_count": 77,
   "day_scored_signal_count": 47,
   "day_status": "supportive",
-  "final_headline": "Сегодня важно балансировать эмоции и избегать конфликтов с близкими.",
+  "final_headline": "Сегодняшний день откроет тебе скрытые чувства, нужно держать баланс.",
   "final_cached": false,
   "final_payload_source": "committed_baseline_fixture",
   "activation_layer_source": "sidecar"
