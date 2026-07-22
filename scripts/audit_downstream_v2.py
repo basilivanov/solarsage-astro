@@ -1622,6 +1622,49 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             message="payload topFlags differ from recomputed selected top signals",
         )
 
+    # -- dayChart.aspects: exact ordered projection of the day signals, ---
+    # rebuilt through the production _build_day_chart aspect rules (type
+    # "aspect" + Transit_* planet + aspect_type + target_planet, stripped
+    # prefixes, orb/strength rounded to 4). The underlying astronomy
+    # (longitudes/houses) is proven by the astronomy oracle; the signal
+    # projection is this audit's domain.
+    from app.services.astro_utils import strip_prefix as _strip_aspect_prefix
+
+    payload_day_chart = payload_json.get("dayChart") or payload_json.get("day_chart") or {}
+    payload_aspects = payload_day_chart.get("aspects") or []
+    expected_aspect_objs = [
+        {
+            "planet": _strip_aspect_prefix(s.planet),
+            "targetPlanet": _strip_aspect_prefix(s.target_planet),
+            "aspectType": s.aspect_type or "",
+            "orb": round(float(s.orb), 4) if s.orb is not None else None,
+            "strength": round(float(s.strength), 4),
+        }
+        for s in day_signals
+        if s.type == "aspect"
+        and s.aspect_type
+        and s.target_planet
+        and (s.planet or "").startswith("Transit_")
+    ]
+    actual_aspect_objs = [
+        {
+            "planet": a.get("planet"),
+            "targetPlanet": a.get("targetPlanet") or a.get("target_planet"),
+            "aspectType": a.get("aspectType") or a.get("aspect_type"),
+            "orb": a.get("orb"),
+            "strength": a.get("strength"),
+        }
+        for a in payload_aspects
+        if isinstance(a, dict)
+    ]
+    if actual_aspect_objs != expected_aspect_objs:
+        state.error(
+            kind="payload_daychart_aspects_mismatch",
+            expected=expected_aspect_objs,
+            actual=actual_aspect_objs,
+            message="payload dayChart.aspects differ from the day-signals projection",
+        )
+
     # -- activationEvidence: full ordered entries vs validated layer -------
     expected_evidence = (api_layer_json.get("activations") or [])
     payload_evidence = (payload_v2 or {}).get("activationEvidence") or (payload_v2 or {}).get("activation_evidence") or []
@@ -1669,9 +1712,10 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
                 message="activationEvidence entry mismatch",
             )
 
-    # NOTE: the final dayChart (transit longitudes/signs/motion + serialized
-    # houses) is verified independently by the astronomy oracle against the
-    # Swiss Ephemeris result — that is its domain, not this audit's.
+    # NOTE: the final dayChart transit longitudes/signs/motion and the
+    # serialized house list are verified independently by the astronomy
+    # oracle against the Swiss Ephemeris result; dayChart.aspects is the
+    # day-signals projection checked above.
     # END_BLOCK: PAYLOAD_VS_RECOMPUTED_V2
 
     mapping = {
@@ -1759,6 +1803,9 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
         "payload_sphere_scores_match_recalc": not any(f.kind == "payload_sphere_scores_mismatch" for f in state.failures),
         "payload_activation_evidence_match_recalc": not any(
             f.kind == "payload_activation_evidence_mismatch" for f in state.failures
+        ),
+        "payload_daychart_aspects_match_projection": not any(
+            f.kind == "payload_daychart_aspects_mismatch" for f in state.failures
         ),
         "payload_preserves_sidecar_ids": (
             not bool(missing_in_payload) and not bool(extra_payload) and payload_v2 is not None and v2_selected

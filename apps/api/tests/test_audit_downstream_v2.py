@@ -239,3 +239,30 @@ def test_top_level_sphere_scores_value_mutation_fails(tmp_path) -> None:
     args, out = _replay(tmp_path, mutate)
     assert _run(args) != 0
     assert "payload_sphere_scores_mismatch" in _failure_kinds(out)
+
+
+def test_daychart_aspects_orb_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["dayChart"]["aspects"][0]["orb"] = 999.0
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_daychart_aspects_mismatch" in _failure_kinds(out)
+
+
+def test_daychart_aspects_order_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["dayChart"]["aspects"] = list(reversed(p["dayChart"]["aspects"]))
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_daychart_aspects_mismatch" in _failure_kinds(out)
+
+
+def test_daychart_aspects_removed_mutation_fails(tmp_path) -> None:
+    def mutate(p):
+        p["dayChart"]["aspects"] = p["dayChart"]["aspects"][1:]
+
+    args, out = _replay(tmp_path, mutate)
+    assert _run(args) != 0
+    assert "payload_daychart_aspects_mismatch" in _failure_kinds(out)
