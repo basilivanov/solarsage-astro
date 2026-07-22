@@ -201,3 +201,168 @@ async def test_two_structural_rejects_produce_failed_retryable() -> None:
     assert result.status == "FAILED_RETRYABLE"
     assert not result.sections_available
     assert mock_llm._generate_text.call_count == 2
+
+
+# -- Schema↔parser gap proofs (provider-valid but previously Pydantic-invalid) -
+
+def _block(block_type: str, **fields) -> dict:
+    block = {
+        "type": block_type,
+        "text": None,
+        "level": 2,
+        "items": [],
+        "ordered": False,
+        "title": None,
+        "tone": None,
+        "prosLabel": None,
+        "consLabel": None,
+        "pros": [],
+        "cons": [],
+        "source": None,
+    }
+    block.update(fields)
+    return block
+
+
+def test_out_of_enum_tone_normalized_to_info() -> None:
+    # tone is a presentation-only display hint. The strict provider schema
+    # now ENUMS tone, so "tip" is never provider-valid — this normalization
+    # is the parser defense for legacy/non-enforcing responses (DeepSeek
+    # fallback without a schema) and the exact pre-fix failure class.
+    from app.services.natal_report_service import NatalReportService
+
+    blocks = NatalReportService._parse_blocks([
+        _block("callout", title="Совет", text="Действуй спокойно.", tone="tip")
+    ])
+    assert len(blocks) == 1
+    assert blocks[0].tone == "info"
+
+
+def test_null_items_fail_closed() -> None:
+    # Explicit null list content is a structural rejection (bounded retry
+    # fires for the section) — never normalized into an empty block.
+    from app.services.natal_report_service import NatalReportService
+
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("list", items=None)])
+
+
+def test_empty_list_and_blank_items_fail_closed() -> None:
+    from app.services.natal_report_service import NatalReportService
+
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("list", items=[])])
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("list", items=["", "   "])])
+
+
+def test_empty_pros_cons_fail_closed_but_one_side_ok() -> None:
+    from app.services.natal_report_service import NatalReportService
+
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("pros_cons", pros=[], cons=[])])
+    blocks = NatalReportService._parse_blocks([
+        _block("pros_cons", pros=[{"title": "Сила", "text": "Опора на сильные стороны."}], cons=[])
+    ])
+    assert len(blocks) == 1
+
+
+def test_pros_cons_null_or_malformed_side_rejected() -> None:
+    from app.services.natal_report_service import NatalReportService
+
+    valid_item = {"title": "Сила", "text": "Опора на сильные стороны."}
+    # Explicit null side (even with a valid other side) -> reject.
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("pros_cons", pros=None, cons=[valid_item])])
+    # Non-list side -> reject.
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("pros_cons", pros="bad", cons=[valid_item])])
+    # Non-dict item -> reject.
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("pros_cons", pros=["bad"], cons=[valid_item])])
+
+
+def test_pros_cons_blank_item_rejected() -> None:
+    from app.services.natal_report_service import NatalReportService
+
+    valid_item = {"title": "Сила", "text": "Опора на сильные стороны."}
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("pros_cons", pros=[{"title": "", "text": "x"}], cons=[valid_item])])
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("pros_cons", pros=[{"title": "Сила", "text": "  "}], cons=[valid_item])])
+
+
+def test_null_narrative_text_stays_fail_closed() -> None:
+    # Narrative text is real content: null must never be normalized into a
+    # fake report.
+    from app.services.natal_report_service import NatalReportService
+
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("paragraph", text=None)])
+
+
+def test_unknown_block_type_still_rejected() -> None:
+    from app.services.natal_report_service import NatalReportService
+
+    with pytest.raises(ValueError):
+        NatalReportService._parse_blocks([_block("table", text="x")])
+
+
+def test_strict_schema_enums_and_non_null_arrays() -> None:
+    from app.services.natal_report_service import _NATAL_SECTION_JSON_SCHEMA
+
+    props = _NATAL_SECTION_JSON_SCHEMA["schema"]["properties"]["blocks"]["items"]["properties"]
+    assert props["tone"]["enum"] == ["info", "warning", "insight", "positive", None]
+    assert props["tone"]["type"] == ["string", "null"]
+    assert props["items"]["type"] == "array"
+    assert props["items"]["items"] == {"type": "string"}
+    assert props["ordered"]["type"] == "boolean"
+    assert props["level"]["type"] == "integer"
+    assert props["pros"]["type"] == "array"
+    assert props["cons"]["type"] == "array"
+
+
+@pytest.mark.asyncio
+async def test_provider_shaped_optional_values_parse_without_retry() -> None:
+    # The exact PRE-FIX failure class from deploy run 29939799948: a
+    # legacy-or-non-enforcing response shape (e.g. DeepSeek fallback) with a
+    # presentation-only out-of-enum tone. The strict provider schema now
+    # PREVENTS that tone at the boundary; the parser defense here proves a
+    # non-enforcing shape still succeeds on the FIRST attempt (no retry
+    # consumed) and produces a READY report.
+    creative = json.dumps(
+        {
+            "blocks": [
+                _block("lead", text="Раздел открывается сильной темой личности."),
+                _block("paragraph", text="Текст раздела о характере человека."),
+                _block("callout", title="Совет", text="Действуй спокойно и не торопи события.", tone="tip"),
+                _block("list", items=["Практичный шаг один", "Практичный шаг два"]),
+            ]
+        },
+        ensure_ascii=False,
+    )
+    result, mock_llm = await _run_generation([creative] * 8)
+
+    assert result.status == "READY", f"expected READY, got {result.status}"
+    assert mock_llm._generate_text.call_count == 8  # zero retries consumed
+
+
+@pytest.mark.asyncio
+async def test_null_list_full_generation_failed_retryable() -> None:
+    # A null list anywhere in a section is a structural rejection: the
+    # bounded retry fires exactly once per section, and two identical
+    # rejections keep the FAILED_RETRYABLE contract — never READY.
+    bad = json.dumps(
+        {
+            "blocks": [
+                _block("lead", text="Раздел открывается сильной темой личности."),
+                _block("list", items=None),
+            ]
+        },
+        ensure_ascii=False,
+    )
+    result, mock_llm = await _run_generation([bad, bad])
+
+    assert result.status == "FAILED_RETRYABLE"
+    assert not result.sections_available
+    assert mock_llm._generate_text.call_count == 2

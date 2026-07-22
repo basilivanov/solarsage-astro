@@ -110,18 +110,21 @@ _NATAL_SECTION_JSON_SCHEMA = {
                             ],
                         },
                         "text": {"type": ["string", "null"]},
-                        "level": {"type": ["integer", "null"]},
+                        "level": {"type": "integer"},
                         "items": {
-                            "type": ["array", "null"],
+                            "type": "array",
                             "items": {"type": "string"},
                         },
-                        "ordered": {"type": ["boolean", "null"]},
+                        "ordered": {"type": "boolean"},
                         "title": {"type": ["string", "null"]},
-                        "tone": {"type": ["string", "null"]},
+                        "tone": {
+                            "type": ["string", "null"],
+                            "enum": ["info", "warning", "insight", "positive", None],
+                        },
                         "prosLabel": {"type": ["string", "null"]},
                         "consLabel": {"type": ["string", "null"]},
                         "pros": {
-                            "type": ["array", "null"],
+                            "type": "array",
                             "items": {
                                 "type": "object",
                                 "properties": {
@@ -133,7 +136,7 @@ _NATAL_SECTION_JSON_SCHEMA = {
                             },
                         },
                         "cons": {
-                            "type": ["array", "null"],
+                            "type": "array",
                             "items": {
                                 "type": "object",
                                 "properties": {
@@ -607,6 +610,36 @@ class NatalReportService:
         return sections
 
     @staticmethod
+    def _block_has_content(block) -> bool:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE._block_has_content
+        # purpose: Unified content check for natal blocks (divider exempt):
+        #   text-bearing blocks need non-blank text, list needs >= 1
+        #   non-blank item, pros_cons needs at least one non-empty side.
+        # inputs: block — a parsed NatalBlock instance.
+        # returns: True when the block carries real content.
+        # side_effects: none.
+        # emitted_logs: none.
+        # error_behavior: pure predicate, never raises.
+        # END_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE._block_has_content
+        text = getattr(block, "text", None)
+        if text is not None or block.type in ("paragraph", "lead", "heading", "callout", "quote"):
+            return bool(text and str(text).strip())
+        if block.type == "list":
+            return bool(block.items) and all(
+                isinstance(item, str) and item.strip() for item in block.items
+            )
+        if block.type == "pros_cons":
+            items = [*block.pros, *block.cons]
+            return bool(items) and all(
+                isinstance(item.title, str)
+                and item.title.strip()
+                and isinstance(item.text, str)
+                and item.text.strip()
+                for item in items
+            )
+        return True  # divider carries no content by design
+
+    @staticmethod
     def _classify_section_reject(exc: ValueError) -> str:
         # START_FUNCTION_CONTRACT: F-M-NATAL-REPORT-SERVICE._classify_section_reject
         # purpose: Map a section generation rejection to a sanitized reason
@@ -727,23 +760,40 @@ JSON:"""
                 elif b_type == "heading":
                     blocks.append(HeadingBlock(type="heading", text=b.get("text", ""), level=b.get("level") or 2))
                 elif b_type == "list":
-                    blocks.append(ListBlock(type="list", items=b.get("items", []), ordered=b.get("ordered") or False))
+                    blocks.append(ListBlock(type="list", items=b.get("items"), ordered=b.get("ordered") or False))
                 elif b_type == "callout":
+                    # tone is a presentation-only display hint (never a fact):
+                    # normalize any out-of-enum value to the neutral default;
+                    # narrative text and structure stay fail-closed.
+                    tone = b.get("tone")
+                    if tone not in ("info", "warning", "insight", "positive"):
+                        tone = "info"
                     blocks.append(CalloutBlock(
                         type="callout",
                         title=b.get("title"),
                         text=b.get("text", ""),
-                        tone=b.get("tone") or "info",
+                        tone=tone,
                     ))
                 elif b_type == "pros_cons":
-                    pros = b.get("pros", [])
-                    cons = b.get("cons", [])
+                    # Fail-closed sides: an EXPLICIT null, non-list or
+                    # non-dict-item side is a structural rejection, never a
+                    # silently dropped []. One side may be an EMPTY valid
+                    # list; the unified content check below requires >= 1
+                    # item with non-blank title and text overall.
+                    for side_name in ("pros", "cons"):
+                        side = b.get(side_name)
+                        if side is None and side_name not in b:
+                            continue  # absent key (legacy shape) -> empty list
+                        if not isinstance(side, list):
+                            raise ValueError(f"pros_cons.{side_name} must be a list when present")
+                        if not all(isinstance(item, dict) for item in side):
+                            raise ValueError(f"pros_cons.{side_name} items must be objects")
                     blocks.append(ProsConsBlock(
                         type="pros_cons",
                         pros_label=b.get("prosLabel") or "Сильные стороны",
                         cons_label=b.get("consLabel") or "Зоны роста",
-                        pros=pros if isinstance(pros, list) and all(isinstance(p, dict) for p in pros) else [],
-                        cons=cons if isinstance(cons, list) and all(isinstance(c, dict) for c in cons) else [],
+                        pros=b.get("pros") or [],
+                        cons=b.get("cons") or [],
                     ))
                 elif b_type == "quote":
                     blocks.append(QuoteBlock(type="quote", text=b.get("text", ""), source=b.get("source")))
@@ -753,6 +803,12 @@ JSON:"""
                     # W-NATAL-FULL: unknown block type is a hard error.
                     # LLM must only emit the 8 valid block types.
                     raise ValueError(f"Unknown natal report block type: {b_type}")
+                # W-NATAL-FULL fail-closed content check: a content-bearing
+                # block must carry real content — null/blank text, an empty
+                # list (or blank-only items), and a fully empty pros_cons are
+                # structural rejections, never a fake READY report.
+                if not NatalReportService._block_has_content(blocks[-1]):
+                    raise ValueError(f"Empty content block: {b_type}")
             except ValueError:
                 # Re-raise validation errors (unknown types, bad data)
                 raise

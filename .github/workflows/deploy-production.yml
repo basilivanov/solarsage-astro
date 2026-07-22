@@ -283,9 +283,12 @@ jobs:
           apps/api/.venv/bin/pip install -e ./packages/py-contracts -e './apps/api[dev]' -e './apps/solarsage[dev]'
 
       - name: Run migrations on the ephemeral acceptance DB
+        working-directory: apps/api
         env:
           DATABASE_URL: postgresql+asyncpg://astro:acceptance-pw@127.0.0.1:5432/astro
-        run: apps/api/.venv/bin/alembic upgrade head
+        # alembic.ini lives in apps/api: the command MUST run from the app
+        # root (repo-root execution exits 255 with a missing script_location).
+        run: .venv/bin/alembic upgrade head
 
       - name: Seed the exact committed audit profile (ephemeral DB only)
         env:
