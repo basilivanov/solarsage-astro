@@ -30,6 +30,13 @@ function buildFixtures(): MockApiRouteFixtures {
 }
 
 test.describe("Mock Visual — /readings/horary", () => {
+  // Deterministic timezone for the quota expiry label: the fixture carries
+  // weeklyFreeExpiresAt "2026-07-09T00:00:00Z" which renders as 03:00 only
+  // in Europe/Moscow; CI runners default to UTC and shift the label by the
+  // offset. Pin the browser timezone instead of changing fixture time or
+  // masking the text.
+  test.use({ timezoneId: "Europe/Moscow" });
+
   test("horary screen renders in ready state with all sections", async ({ page }) => {
     const tracker = await installMockApiRoutes(page, buildFixtures());
 

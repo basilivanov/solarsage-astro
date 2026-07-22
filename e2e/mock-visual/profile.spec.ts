@@ -43,6 +43,45 @@ import {
 } from "./fixtures/profile";
 import { prepareForScreenshot } from "./screenshot";
 
+// Contract-valid ProductsListResponse: the billing hook must reach the
+// ready state with real catalog prices, never the unavailable fallback.
+// (Trial access: /api/payment/subscription/status is never called, so it is
+// deliberately NOT mocked.)
+const paymentProductsPayload = {
+  products: [
+    {
+      slug: "subscription_month",
+      name: "Подписка на 1 месяц",
+      description: null,
+      productType: "subscription_recurrent",
+      priceKopecks: 9900,
+      currency: "RUB",
+      periodDays: 30,
+      horaryQuota: null,
+    },
+    {
+      slug: "subscription_year",
+      name: "Подписка на 1 год",
+      description: null,
+      productType: "subscription_recurrent",
+      priceKopecks: 99900,
+      currency: "RUB",
+      periodDays: 365,
+      horaryQuota: null,
+    },
+    {
+      slug: "natal_full_report",
+      name: "Полный натальный разбор",
+      description: null,
+      productType: "one_time",
+      priceKopecks: 39900,
+      currency: "RUB",
+      periodDays: null,
+      horaryQuota: null,
+    },
+  ],
+};
+
 function buildProfileFixtures(): MockApiRouteFixtures {
   return {
     "/api/auth/dev": { status: 200, body: { status: "ok", userId: "mock-user-id" } },
@@ -51,6 +90,7 @@ function buildProfileFixtures(): MockApiRouteFixtures {
     "/api/horary/quota": { body: horaryQuotaPayload },
     "/api/referral": { body: referralPayload },
     "/api/checkin/metrics": { body: checkinMetricsPayload },
+    "/api/payment/products": { body: paymentProductsPayload },
   };
 }
 
@@ -76,6 +116,12 @@ test.describe("Mock Visual — /profile", () => {
 
     // Access card visible
     await expect(page.getByTestId("profile-access-card")).toBeVisible();
+
+    // Billing is READY with the real catalog price on the month CTA (never
+    // the unavailable fallback): strict missing-fixture tracker stays zero.
+    // data-billing lives on the AccessCard's inner root (public contract).
+    await expect(page.locator('[data-testid="profile-access-card"] [data-billing]')).toHaveAttribute("data-billing", "ready");
+    await expect(page.getByTestId("access-card-primary")).toContainText("Подписка · 99 ₽/мес");
 
     // Referral card visible with fixture-backed reward days (14)
     await expect(page.getByTestId("profile-referral-card")).toBeVisible();
