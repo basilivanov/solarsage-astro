@@ -1,0 +1,13 @@
+number,oracle_cusp,final_cusp,final_cusp_pass,oracle_sign,final_sign,final_house_sign_pass
+1,90.0,90.0,True,Cancer,Cancer,True
+2,120.0,120.0,True,Leo,Leo,True
+3,150.0,150.0,True,Virgo,Virgo,True
+4,180.0,180.0,True,Libra,Libra,True
+5,210.0,210.0,True,Scorpio,Scorpio,True
+6,240.0,240.0,True,Sagittarius,Sagittarius,True
+7,270.0,270.0,True,Capricorn,Capricorn,True
+8,300.0,300.0,True,Aquarius,Aquarius,True
+9,330.0,330.0,True,Pisces,Pisces,True
+10,0.0,0.0,True,Aries,Aries,True
+11,30.0,30.0,True,Taurus,Taurus,True
+12,60.0,60.0,True,Gemini,Gemini,True

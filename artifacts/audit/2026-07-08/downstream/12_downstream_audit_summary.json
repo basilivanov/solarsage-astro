@@ -13,6 +13,8 @@
     "payload_day_status_matches_recalc": true,
     "payload_score_breakdown_matches_recalc": true,
     "payload_top_flags_match_recalc": true,
+    "payload_sphere_scores_match_recalc": true,
+    "payload_activation_evidence_match_recalc": true,
     "payload_preserves_sidecar_ids": true,
     "frontend_fixture_written": true
   },

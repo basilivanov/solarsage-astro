@@ -5,17 +5,21 @@
     "dignities": "v1",
     "aspect_rules": "v1",
     "activation_rules": "v1",
-    "scoring_v2": "v1"
+    "scoring_v2": "v1",
+    "horizon_selection": "v1",
+    "horizon_language_ru": "v1",
+    "horizon_actions_ru": "v1",
+    "personal_patterns_ru": "v1"
   },
   "day_status": "steady",
   "status_breakdown": {
     "positive_aspect_score": 7.3468,
     "negative_aspect_score": 4.9252,
     "activation_support_score": 14.7734,
-    "activation_tension_score": 15.5746,
+    "activation_tension_score": 15.5744,
     "support_score": 22.1201,
-    "tension_score": 20.4998,
-    "ratio": 1.079,
+    "tension_score": 20.4996,
+    "ratio": 1.0791,
     "rule": "steady_otherwise"
   },
   "sphere_scores": {
@@ -23,10 +27,10 @@
       "key": "thinking_speech_learning",
       "title": "\u043c\u044b\u0441\u043b\u0438 \u00b7 \u0440\u0435\u0447\u044c \u00b7 \u0443\u0447\u0451\u0431\u0430",
       "base_score": 1.42,
-      "activation_score": 3.8877,
+      "activation_score": 3.2199,
       "convergence_bonus": 0.8,
-      "raw_score": 6.1077,
-      "final_score": 6.1077,
+      "raw_score": 5.4399,
+      "final_score": 5.4399,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -55,7 +59,7 @@
           "amount": 0.0486,
           "before": 2.1951,
           "after": 2.2437,
-          "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1432\u00b0"
+          "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1431\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
@@ -73,7 +77,7 @@
           "amount": 0.042,
           "before": 2.3925,
           "after": 2.4345,
-          "evidence": "Transit Mars trine natal Jupiter, orb 6.1359\u00b0"
+          "evidence": "Transit Mars trine natal Jupiter, orb 6.136\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
@@ -100,7 +104,7 @@
           "amount": 0.0351,
           "before": 2.6893000000000002,
           "after": 2.7244,
-          "evidence": "Transit Saturn trine natal Moon, orb 6.8985\u00b0"
+          "evidence": "Transit Saturn trine natal Moon, orb 6.8986\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
@@ -136,7 +140,7 @@
           "amount": 0.1548,
           "before": 3.2129,
           "after": 3.3677,
-          "evidence": "Transit Neptune trine natal Moon, orb 3.1443\u00b0"
+          "evidence": "Transit Neptune trine natal Moon, orb 3.1442\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
@@ -145,7 +149,7 @@
           "amount": 0.1143,
           "before": 3.3677,
           "after": 3.482,
-          "evidence": "Transit Neptune sesqui_quadrate natal Mercury, orb 3.7131\u00b0"
+          "evidence": "Transit Neptune sesqui_quadrate natal Mercury, orb 3.7132\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
@@ -154,7 +158,7 @@
           "amount": 0.1748,
           "before": 3.4819999999999998,
           "after": 3.6568,
-          "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7792\u00b0"
+          "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7794\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
@@ -163,7 +167,7 @@
           "amount": 0.1837,
           "before": 3.6568,
           "after": 3.8405,
-          "evidence": "Transit Pluto opposition natal Moon, orb 2.843\u00b0"
+          "evidence": "Transit Pluto opposition natal Moon, orb 2.8429\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
@@ -172,7 +176,7 @@
           "amount": 0.1418,
           "before": 3.8405,
           "after": 3.9823,
-          "evidence": "Transit Pluto trine natal Jupiter, orb 4.0805\u00b0"
+          "evidence": "Transit Pluto trine natal Jupiter, orb 4.0807\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
@@ -186,46 +190,19 @@
         {
           "sphere": "thinking_speech_learning",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__MERCURY__HOUSE_4",
-          "amount": 0.378,
+          "source_id": "lunar_return__MOON_HOUSE__3",
+          "amount": 0.3024,
           "before": 4.0831,
-          "after": 4.4611,
-          "evidence": "Solar Return Mercury is angular in Solar Return house 4"
-        },
-        {
-          "sphere": "thinking_speech_learning",
-          "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__JUPITER__HOUSE_1",
-          "amount": 0.1512,
-          "before": 4.4611,
-          "after": 4.6123,
-          "evidence": "Solar Return Jupiter is angular in Solar Return house 1"
-        },
-        {
-          "sphere": "thinking_speech_learning",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__MERCURY__HOUSE_1",
-          "amount": 0.315,
-          "before": 4.612299999999999,
-          "after": 4.9273,
-          "evidence": "Lunar Return Mercury is angular in Lunar Return house 1"
-        },
-        {
-          "sphere": "thinking_speech_learning",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__JUPITER__HOUSE_1",
-          "amount": 0.126,
-          "before": 4.9273,
-          "after": 5.0533,
-          "evidence": "Lunar Return Jupiter is angular in Lunar Return house 1"
+          "after": 4.3855,
+          "evidence": "Lunar Return Moon is in Lunar Return house 3"
         },
         {
           "sphere": "thinking_speech_learning",
           "source": "activation",
           "source_id": "solar_arc__NEPTUNE__OPPOSITION__NATAL_MOON",
           "amount": 0.0882,
-          "before": 5.0533,
-          "after": 5.1415,
+          "before": 4.3855,
+          "after": 4.4737,
           "evidence": "Solar Arc Neptune opposition natal Moon, orb 0.58\u00b0"
         },
         {
@@ -233,17 +210,17 @@
           "source": "activation",
           "source_id": "solar_arc__PLUTO__TRINE__NATAL_MOON",
           "amount": 0.0197,
-          "before": 5.1415,
-          "after": 5.1612,
-          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9062\u00b0"
+          "before": 4.4737,
+          "after": 4.4934,
+          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9061\u00b0"
         },
         {
           "sphere": "thinking_speech_learning",
           "source": "activation",
           "source_id": "solar_arc__VENUS__CONJUNCTION__NATAL_MERCURY",
           "amount": 0.1465,
-          "before": 5.1612,
-          "after": 5.3077,
+          "before": 4.493399999999999,
+          "after": 4.6399,
           "evidence": "Solar Arc Venus conjunction natal Mercury, orb 0.7539\u00b0"
         },
         {
@@ -251,8 +228,8 @@
           "source": "convergence",
           "source_id": "convergence:thinking_speech_learning",
           "amount": 0.8,
-          "before": 5.3077000000000005,
-          "after": 6.1077,
+          "before": 4.6399,
+          "after": 5.4399,
           "evidence": "Convergence bonus: 4 independent technique families (profection, progression, return, transit)"
         }
       ]
@@ -261,10 +238,10 @@
       "key": "work_status_achievement",
       "title": "\u0440\u0430\u0431\u043e\u0442\u0430 \u00b7 \u0441\u0442\u0430\u0442\u0443\u0441 \u00b7 \u0434\u043e\u0441\u0442\u0438\u0436\u0435\u043d\u0438\u044f",
       "base_score": 3.46,
-      "activation_score": 11.9863,
+      "activation_score": 11.3753,
       "convergence_bonus": 0.9,
-      "raw_score": 16.3463,
-      "final_score": 16.3463,
+      "raw_score": 15.7353,
+      "final_score": 15.7353,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -281,18 +258,18 @@
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__SUN__QUINCUNX__MARS",
-          "amount": 0.0864,
+          "amount": 0.0865,
           "before": 3.46,
-          "after": 3.5464,
-          "evidence": "Transit Sun quincunx natal Mars, orb 2.9123\u00b0"
+          "after": 3.5465,
+          "evidence": "Transit Sun quincunx natal Mars, orb 2.9122\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__MOON__SESQUI_QUADRATE__MARS",
           "amount": 0.0313,
-          "before": 3.5463999999999998,
-          "after": 3.5777,
+          "before": 3.5465,
+          "after": 3.5778,
           "evidence": "Transit Moon sesqui_quadrate natal Mars, orb 4.9555\u00b0"
         },
         {
@@ -300,8 +277,8 @@
           "source": "activation",
           "source_id": "t2n__MERCURY__SESQUI_QUADRATE__MARS",
           "amount": 0.0387,
-          "before": 3.5777,
-          "after": 3.6164,
+          "before": 3.5778,
+          "after": 3.6165,
           "evidence": "Transit Mercury sesqui_quadrate natal Mars, orb 4.7103\u00b0"
         },
         {
@@ -309,17 +286,17 @@
           "source": "activation",
           "source_id": "t2n__VENUS__SEMI_SEXTILE__JUPITER",
           "amount": 0.0364,
-          "before": 3.6164,
-          "after": 3.6528,
-          "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1432\u00b0"
+          "before": 3.6165,
+          "after": 3.6529,
+          "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1431\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__VENUS__SEMI_SEXTILE__SATURN",
           "amount": 0.0196,
-          "before": 3.6528,
-          "after": 3.6724,
+          "before": 3.6529,
+          "after": 3.6725,
           "evidence": "Transit Venus semi_sextile natal Saturn, orb 6.2147\u00b0"
         },
         {
@@ -327,35 +304,35 @@
           "source": "activation",
           "source_id": "t2n__MARS__QUINCUNX__SUN",
           "amount": 0.1287,
-          "before": 3.6724,
-          "after": 3.8011,
-          "evidence": "Transit Mars quincunx natal Sun, orb 0.6481\u00b0"
+          "before": 3.6725,
+          "after": 3.8012,
+          "evidence": "Transit Mars quincunx natal Sun, orb 0.648\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__MARS__TRINE__JUPITER",
           "amount": 0.0315,
-          "before": 3.8011,
-          "after": 3.8326,
-          "evidence": "Transit Mars trine natal Jupiter, orb 6.1359\u00b0"
+          "before": 3.8012,
+          "after": 3.8327,
+          "evidence": "Transit Mars trine natal Jupiter, orb 6.136\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__MARS__TRINE__SATURN",
           "amount": 0.5993,
-          "before": 3.8326,
-          "after": 4.4319,
-          "evidence": "Transit Mars trine natal Saturn, orb 2.0645\u00b0"
+          "before": 3.8327,
+          "after": 4.432,
+          "evidence": "Transit Mars trine natal Saturn, orb 2.0644\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__JUPITER__SQUARE__SUN",
           "amount": 0.1239,
-          "before": 4.4319,
-          "after": 4.5558,
+          "before": 4.432,
+          "after": 4.5559,
           "evidence": "Transit Jupiter square natal Sun, orb 5.6682\u00b0"
         },
         {
@@ -363,8 +340,8 @@
           "source": "activation",
           "source_id": "t2n__JUPITER__SESQUI_QUADRATE__MARS",
           "amount": 0.077,
-          "before": 4.5558,
-          "after": 4.6328,
+          "before": 4.5559,
+          "after": 4.6329,
           "evidence": "Transit Jupiter sesqui_quadrate natal Mars, orb 3.4329\u00b0"
         },
         {
@@ -372,8 +349,8 @@
           "source": "activation",
           "source_id": "t2n__JUPITER__SEXTILE__JUPITER",
           "amount": 0.1387,
-          "before": 4.6328,
-          "after": 4.7715,
+          "before": 4.6329,
+          "after": 4.7716,
           "evidence": "Transit Jupiter sextile natal Jupiter, orb 1.1158\u00b0"
         },
         {
@@ -381,8 +358,8 @@
           "source": "activation",
           "source_id": "t2n__JUPITER__SEXTILE__SATURN",
           "amount": 0.3178,
-          "before": 4.7715,
-          "after": 5.0893,
+          "before": 4.7716,
+          "after": 5.0894,
           "evidence": "Transit Jupiter sextile natal Saturn, orb 2.9557\u00b0"
         },
         {
@@ -390,8 +367,8 @@
           "source": "activation",
           "source_id": "t2n__SATURN__QUINCUNX__SUN",
           "amount": 0.0168,
-          "before": 5.0893,
-          "after": 5.1061,
+          "before": 5.0893999999999995,
+          "after": 5.1062,
           "evidence": "Transit Saturn quincunx natal Sun, orb 7.0381\u00b0"
         },
         {
@@ -399,8 +376,8 @@
           "source": "activation",
           "source_id": "t2n__SATURN__TRINE__MARS",
           "amount": 0.4132,
-          "before": 5.1061,
-          "after": 5.5193,
+          "before": 5.1062,
+          "after": 5.5194,
           "evidence": "Transit Saturn trine natal Mars, orb 1.1392\u00b0"
         },
         {
@@ -408,8 +385,8 @@
           "source": "activation",
           "source_id": "t2n__URANUS__QUINCUNX__SUN",
           "amount": 0.0812,
-          "before": 5.519299999999999,
-          "after": 5.6005,
+          "before": 5.5194,
+          "after": 5.6006,
           "evidence": "Transit Uranus quincunx natal Sun, orb 3.3582\u00b0"
         },
         {
@@ -417,8 +394,8 @@
           "source": "activation",
           "source_id": "t2n__URANUS__TRINE__JUPITER",
           "amount": 0.1302,
-          "before": 5.6005,
-          "after": 5.7307,
+          "before": 5.6006,
+          "after": 5.7308,
           "evidence": "Transit Uranus trine natal Jupiter, orb 3.4258\u00b0"
         },
         {
@@ -426,62 +403,62 @@
           "source": "activation",
           "source_id": "t2n__URANUS__TRINE__SATURN",
           "amount": 0.7716,
-          "before": 5.730700000000001,
-          "after": 6.5023,
-          "evidence": "Transit Uranus trine natal Saturn, orb 0.6457\u00b0"
+          "before": 5.7308,
+          "after": 6.5024,
+          "evidence": "Transit Uranus trine natal Saturn, orb 0.6458\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__NEPTUNE__QUINCUNX__SUN",
           "amount": 0.0874,
-          "before": 6.5023,
-          "after": 6.5897,
-          "evidence": "Transit Neptune quincunx natal Sun, orb 3.0048\u00b0"
+          "before": 6.5024,
+          "after": 6.5898,
+          "evidence": "Transit Neptune quincunx natal Sun, orb 3.0047\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__NEPTUNE__OPPOSITION__JUPITER",
           "amount": 0.1311,
-          "before": 6.589700000000001,
-          "after": 6.7208,
-          "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7792\u00b0"
+          "before": 6.5898,
+          "after": 6.7209,
+          "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7794\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__NEPTUNE__OPPOSITION__SATURN",
           "amount": 0.9103,
-          "before": 6.7208000000000006,
-          "after": 7.6311,
-          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2923\u00b0"
+          "before": 6.7209,
+          "after": 7.6312,
+          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2922\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__PLUTO__SQUARE__SUN",
           "amount": 0.2814,
-          "before": 7.6311,
-          "after": 7.9125,
-          "evidence": "Transit Pluto square natal Sun, orb 2.7035\u00b0"
+          "before": 7.6312,
+          "after": 7.9126,
+          "evidence": "Transit Pluto square natal Sun, orb 2.7033\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__PLUTO__TRINE__JUPITER",
           "amount": 0.1063,
-          "before": 7.9125,
-          "after": 8.0188,
-          "evidence": "Transit Pluto trine natal Jupiter, orb 4.0805\u00b0"
+          "before": 7.9126,
+          "after": 8.0189,
+          "evidence": "Transit Pluto trine natal Jupiter, orb 4.0807\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "t2n__PLUTO__TRINE__SATURN",
           "amount": 0.8489,
-          "before": 8.018799999999999,
-          "after": 8.8677,
+          "before": 8.0189,
+          "after": 8.8678,
           "evidence": "Transit Pluto trine natal Saturn, orb 0.0091\u00b0"
         },
         {
@@ -489,8 +466,8 @@
           "source": "activation",
           "source_id": "t2a__SUN__QUINCUNX__MC",
           "amount": 0.0522,
-          "before": 8.8677,
-          "after": 8.9199,
+          "before": 8.867799999999999,
+          "after": 8.92,
           "evidence": "Transit Sun quincunx natal MC, orb 5.8695\u00b0"
         },
         {
@@ -498,8 +475,8 @@
           "source": "activation",
           "source_id": "t2a__MOON__SEXTILE__MC",
           "amount": 0.3242,
-          "before": 8.9199,
-          "after": 9.2441,
+          "before": 8.92,
+          "after": 9.2442,
           "evidence": "Transit Moon sextile natal MC, orb 1.2627\u00b0"
         },
         {
@@ -507,8 +484,8 @@
           "source": "activation",
           "source_id": "t2a__MERCURY__QUINCUNX__MC",
           "amount": 0.1468,
-          "before": 9.2441,
-          "after": 9.3909,
+          "before": 9.2442,
+          "after": 9.391,
           "evidence": "Transit Mercury quincunx natal MC, orb 1.5079\u00b0"
         },
         {
@@ -516,17 +493,17 @@
           "source": "activation",
           "source_id": "t2a__NEPTUNE__SEMI_SQUARE__MC",
           "amount": 0.0972,
-          "before": 9.3909,
-          "after": 9.4881,
-          "evidence": "Transit Neptune semi_square natal MC, orb 2.6854\u00b0"
+          "before": 9.391,
+          "after": 9.4882,
+          "evidence": "Transit Neptune semi_square natal MC, orb 2.6853\u00b0"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "tih__MOON__10",
           "amount": 0.56,
-          "before": 9.4881,
-          "after": 10.0481,
+          "before": 9.488199999999999,
+          "after": 10.0482,
           "evidence": "Transit Moon in natal house 10, strength 1.00"
         },
         {
@@ -534,8 +511,8 @@
           "source": "activation",
           "source_id": "tih__SATURN__10",
           "amount": 0.56,
-          "before": 10.0481,
-          "after": 10.6081,
+          "before": 10.0482,
+          "after": 10.6082,
           "evidence": "Transit Saturn in natal house 10, strength 1.00"
         },
         {
@@ -543,8 +520,8 @@
           "source": "activation",
           "source_id": "tih__NEPTUNE__10",
           "amount": 0.56,
-          "before": 10.6081,
-          "after": 11.1681,
+          "before": 10.6082,
+          "after": 11.1682,
           "evidence": "Transit Neptune in natal house 10, strength 1.00"
         },
         {
@@ -552,8 +529,8 @@
           "source": "activation",
           "source_id": "t2l__MOON__OPPOSITION__FORTUNE",
           "amount": 0.252,
-          "before": 11.168099999999999,
-          "after": 11.4201,
+          "before": 11.168199999999999,
+          "after": 11.4202,
           "evidence": "Transit Moon opposition lot FORTUNE, orb 5.3475\u00b0"
         },
         {
@@ -561,8 +538,8 @@
           "source": "activation",
           "source_id": "t2l__MERCURY__SQUARE__FORTUNE",
           "amount": 0.1018,
-          "before": 11.4201,
-          "after": 11.5219,
+          "before": 11.420200000000001,
+          "after": 11.522,
           "evidence": "Transit Mercury square lot FORTUNE, orb 5.1023\u00b0"
         },
         {
@@ -570,8 +547,8 @@
           "source": "activation",
           "source_id": "t2l__VENUS__SEXTILE__FORTUNE",
           "amount": 0.424,
-          "before": 11.521899999999999,
-          "after": 11.9459,
+          "before": 11.521999999999998,
+          "after": 11.946,
           "evidence": "Transit Venus sextile lot FORTUNE, orb 0.2181\u00b0"
         },
         {
@@ -579,8 +556,8 @@
           "source": "activation",
           "source_id": "t2l__JUPITER__SQUARE__FORTUNE",
           "amount": 0.3846,
-          "before": 11.945900000000002,
-          "after": 12.3305,
+          "before": 11.946000000000002,
+          "after": 12.3306,
           "evidence": "Transit Jupiter square lot FORTUNE, orb 3.0409\u00b0"
         },
         {
@@ -588,8 +565,8 @@
           "source": "activation",
           "source_id": "annual_profection__HOUSE__10",
           "amount": 0.336,
-          "before": 12.3305,
-          "after": 12.6665,
+          "before": 12.3306,
+          "after": 12.6666,
           "evidence": "Annual profection activates house 10"
         },
         {
@@ -597,8 +574,8 @@
           "source": "activation",
           "source_id": "annual_profection__LORD_OF_YEAR__MARS",
           "amount": 0.252,
-          "before": 12.6665,
-          "after": 12.9185,
+          "before": 12.666599999999999,
+          "after": 12.9186,
           "evidence": "Mars is lord of year for annual profection house 10"
         },
         {
@@ -606,8 +583,8 @@
           "source": "activation",
           "source_id": "monthly_profection__HOUSE__6",
           "amount": 0.2016,
-          "before": 12.918500000000002,
-          "after": 13.1201,
+          "before": 12.918600000000001,
+          "after": 13.1202,
           "evidence": "Monthly profection activates house 6"
         },
         {
@@ -615,8 +592,8 @@
           "source": "activation",
           "source_id": "monthly_profection__LORD_OF_MONTH__JUPITER",
           "amount": 0.0756,
-          "before": 13.1201,
-          "after": 13.1957,
+          "before": 13.1202,
+          "after": 13.1958,
           "evidence": "Jupiter is lord of month for monthly profection house 6"
         },
         {
@@ -624,8 +601,8 @@
           "source": "activation",
           "source_id": "firdar_major__PERIOD_LORD__SUN",
           "amount": 0.182,
-          "before": 13.195699999999999,
-          "after": 13.3777,
+          "before": 13.195799999999998,
+          "after": 13.3778,
           "evidence": "Sun is major firdar lord on 2026-07-08"
         },
         {
@@ -633,80 +610,53 @@
           "source": "activation",
           "source_id": "firdar_minor__SUBPERIOD_LORD__SATURN",
           "amount": 0.224,
-          "before": 13.3777,
-          "after": 13.6017,
+          "before": 13.3778,
+          "after": 13.6018,
           "evidence": "Saturn is minor firdar lord on 2026-07-08 within Sun major firdar"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
-          "source_id": "solar_return__ANGLE_MC__NATAL_HOUSE_10",
-          "amount": 0.3528,
-          "before": 13.601700000000001,
-          "after": 13.9545,
-          "evidence": "Solar Return MC falls in natal house 10"
+          "source_id": "solar_return__MOON_HOUSE__10",
+          "amount": 0.3276,
+          "before": 13.6018,
+          "after": 13.9294,
+          "evidence": "Solar Return Moon is in Solar Return house 10"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
-          "source_id": "solar_return__CHART_RULER__SUN",
-          "amount": 0.2205,
-          "before": 13.9545,
-          "after": 14.175,
-          "evidence": "Sun is Solar Return chart ruler"
-        },
-        {
-          "sphere": "work_status_achievement",
-          "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__SUN__HOUSE_4",
+          "source_id": "solar_return__ANGULAR_PLANET__SUN__HOUSE_7",
           "amount": 0.189,
-          "before": 14.175,
-          "after": 14.364,
-          "evidence": "Solar Return Sun is angular in Solar Return house 4"
+          "before": 13.929400000000001,
+          "after": 14.1184,
+          "evidence": "Solar Return Sun is angular in Solar Return house 7"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__MARS__HOUSE_1",
+          "source_id": "solar_return__ANGULAR_PLANET__MARS__HOUSE_7",
           "amount": 0.2268,
-          "before": 14.364,
-          "after": 14.5908,
-          "evidence": "Solar Return Mars is angular in Solar Return house 1"
+          "before": 14.118400000000001,
+          "after": 14.3452,
+          "evidence": "Solar Return Mars is angular in Solar Return house 7"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__JUPITER__HOUSE_1",
-          "amount": 0.1134,
-          "before": 14.590800000000002,
-          "after": 14.7042,
-          "evidence": "Solar Return Jupiter is angular in Solar Return house 1"
-        },
-        {
-          "sphere": "work_status_achievement",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__JUPITER__HOUSE_1",
-          "amount": 0.0945,
-          "before": 14.7042,
-          "after": 14.7987,
-          "evidence": "Lunar Return Jupiter is angular in Lunar Return house 1"
-        },
-        {
-          "sphere": "work_status_achievement",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__SATURN__HOUSE_10",
-          "amount": 0.315,
-          "before": 14.7987,
-          "after": 15.1137,
-          "evidence": "Lunar Return Saturn is angular in Lunar Return house 10"
+          "source_id": "lunar_return__ANGULAR_PLANET__SUN__HOUSE_1",
+          "amount": 0.1575,
+          "before": 14.345199999999998,
+          "after": 14.5027,
+          "evidence": "Lunar Return Sun is angular in Lunar Return house 1"
         },
         {
           "sphere": "work_status_achievement",
           "source": "activation",
           "source_id": "solar_arc__MARS__SQUARE__NATAL_LOT_FORTUNE",
           "amount": 0.1368,
-          "before": 15.113700000000001,
-          "after": 15.2505,
+          "before": 14.5027,
+          "after": 14.6395,
           "evidence": "Solar Arc Mars square natal FORTUNE, orb 0.7557\u00b0"
         },
         {
@@ -714,8 +664,8 @@
           "source": "activation",
           "source_id": "solar_arc__NEPTUNE__SQUARE__NATAL_SUN",
           "amount": 0.1958,
-          "before": 15.250499999999999,
-          "after": 15.4463,
+          "before": 14.639500000000002,
+          "after": 14.8353,
           "evidence": "Solar Arc Neptune square natal Sun, orb 0.4404\u00b0"
         },
         {
@@ -723,8 +673,8 @@
           "source": "convergence",
           "source_id": "convergence:work_status_achievement",
           "amount": 0.9,
-          "before": 15.4463,
-          "after": 16.3463,
+          "before": 14.8353,
+          "after": 15.7353,
           "evidence": "Convergence bonus: 5 independent technique families (firdar, profection, progression, return, transit)"
         }
       ]
@@ -733,10 +683,10 @@
       "key": "relationships_partnership",
       "title": "\u043e\u0442\u043d\u043e\u0448\u0435\u043d\u0438\u044f \u00b7 \u043f\u0430\u0440\u0442\u043d\u0451\u0440\u0441\u0442\u0432\u043e",
       "base_score": 0.89,
-      "activation_score": 9.5462,
+      "activation_score": 10.2456,
       "convergence_bonus": 0.9,
-      "raw_score": 11.3362,
-      "final_score": 11.3362,
+      "raw_score": 12.0356,
+      "final_score": 12.0356,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -753,18 +703,18 @@
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__SUN__QUINCUNX__MARS",
-          "amount": 0.0576,
+          "amount": 0.0577,
           "before": 0.89,
-          "after": 0.9476,
-          "evidence": "Transit Sun quincunx natal Mars, orb 2.9123\u00b0"
+          "after": 0.9477,
+          "evidence": "Transit Sun quincunx natal Mars, orb 2.9122\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__MOON__SESQUI_QUADRATE__MARS",
           "amount": 0.0209,
-          "before": 0.9476,
-          "after": 0.9685,
+          "before": 0.9477,
+          "after": 0.9686,
           "evidence": "Transit Moon sesqui_quadrate natal Mars, orb 4.9555\u00b0"
         },
         {
@@ -772,8 +722,8 @@
           "source": "activation",
           "source_id": "t2n__MERCURY__SESQUI_QUADRATE__MARS",
           "amount": 0.0258,
-          "before": 0.9685,
-          "after": 0.9943,
+          "before": 0.9686,
+          "after": 0.9944,
           "evidence": "Transit Mercury sesqui_quadrate natal Mars, orb 4.7103\u00b0"
         },
         {
@@ -781,8 +731,8 @@
           "source": "activation",
           "source_id": "t2n__VENUS__SEMI_SEXTILE__VENUS",
           "amount": 0.1221,
-          "before": 0.9943,
-          "after": 1.1164,
+          "before": 0.9944000000000001,
+          "after": 1.1165,
           "evidence": "Transit Venus semi_sextile natal Venus, orb 1.8154\u00b0"
         },
         {
@@ -790,8 +740,8 @@
           "source": "activation",
           "source_id": "t2n__VENUS__SEMI_SEXTILE__SATURN",
           "amount": 0.0059,
-          "before": 1.1164,
-          "after": 1.1223,
+          "before": 1.1165,
+          "after": 1.1224,
           "evidence": "Transit Venus semi_sextile natal Saturn, orb 6.2147\u00b0"
         },
         {
@@ -799,8 +749,8 @@
           "source": "activation",
           "source_id": "t2n__MARS__SEXTILE__MOON",
           "amount": 0.2975,
-          "before": 1.1223,
-          "after": 1.4198,
+          "before": 1.1224,
+          "after": 1.4199,
           "evidence": "Transit Mars sextile natal Moon, orb 0.7876\u00b0"
         },
         {
@@ -808,17 +758,17 @@
           "source": "activation",
           "source_id": "t2n__MARS__TRINE__SATURN",
           "amount": 0.1798,
-          "before": 1.4198,
-          "after": 1.5996,
-          "evidence": "Transit Mars trine natal Saturn, orb 2.0645\u00b0"
+          "before": 1.4199000000000002,
+          "after": 1.5997,
+          "evidence": "Transit Mars trine natal Saturn, orb 2.0644\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__JUPITER__CONJUNCTION__MOON",
           "amount": 0.1397,
-          "before": 1.5996000000000001,
-          "after": 1.7393,
+          "before": 1.5997,
+          "after": 1.7394,
           "evidence": "Transit Jupiter conjunction natal Moon, orb 5.8077\u00b0"
         },
         {
@@ -826,8 +776,8 @@
           "source": "activation",
           "source_id": "t2n__JUPITER__SEXTILE__VENUS",
           "amount": 0.4177,
-          "before": 1.7393,
-          "after": 2.157,
+          "before": 1.7394,
+          "after": 2.1571,
           "evidence": "Transit Jupiter sextile natal Venus, orb 1.4436\u00b0"
         },
         {
@@ -835,8 +785,8 @@
           "source": "activation",
           "source_id": "t2n__JUPITER__SESQUI_QUADRATE__MARS",
           "amount": 0.0514,
-          "before": 2.157,
-          "after": 2.2084,
+          "before": 2.1571,
+          "after": 2.2085,
           "evidence": "Transit Jupiter sesqui_quadrate natal Mars, orb 3.4329\u00b0"
         },
         {
@@ -844,8 +794,8 @@
           "source": "activation",
           "source_id": "t2n__JUPITER__SEXTILE__SATURN",
           "amount": 0.0953,
-          "before": 2.2084,
-          "after": 2.3037,
+          "before": 2.2085,
+          "after": 2.3038,
           "evidence": "Transit Jupiter sextile natal Saturn, orb 2.9557\u00b0"
         },
         {
@@ -853,17 +803,17 @@
           "source": "activation",
           "source_id": "t2n__SATURN__TRINE__MOON",
           "amount": 0.0702,
-          "before": 2.3037,
-          "after": 2.3739,
-          "evidence": "Transit Saturn trine natal Moon, orb 6.8985\u00b0"
+          "before": 2.3038,
+          "after": 2.374,
+          "evidence": "Transit Saturn trine natal Moon, orb 6.8986\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__SATURN__TRINE__MARS",
           "amount": 0.2754,
-          "before": 2.3739,
-          "after": 2.6493,
+          "before": 2.374,
+          "after": 2.6494,
           "evidence": "Transit Saturn trine natal Mars, orb 1.1392\u00b0"
         },
         {
@@ -871,8 +821,8 @@
           "source": "activation",
           "source_id": "t2n__URANUS__SEXTILE__MOON",
           "amount": 0.1857,
-          "before": 2.6493,
-          "after": 2.835,
+          "before": 2.6494,
+          "after": 2.8351,
           "evidence": "Transit Uranus sextile natal Moon, orb 3.4978\u00b0"
         },
         {
@@ -880,8 +830,8 @@
           "source": "activation",
           "source_id": "t2n__URANUS__TRINE__VENUS",
           "amount": 0.3183,
-          "before": 2.835,
-          "after": 3.1533,
+          "before": 2.8351,
+          "after": 3.1534,
           "evidence": "Transit Uranus trine natal Venus, orb 3.7535\u00b0"
         },
         {
@@ -889,62 +839,62 @@
           "source": "activation",
           "source_id": "t2n__URANUS__TRINE__SATURN",
           "amount": 0.2315,
-          "before": 3.1533,
-          "after": 3.3848,
-          "evidence": "Transit Uranus trine natal Saturn, orb 0.6457\u00b0"
+          "before": 3.1534,
+          "after": 3.3849,
+          "evidence": "Transit Uranus trine natal Saturn, orb 0.6458\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__NEPTUNE__TRINE__MOON",
           "amount": 0.3095,
-          "before": 3.3848000000000003,
-          "after": 3.6943,
-          "evidence": "Transit Neptune trine natal Moon, orb 3.1443\u00b0"
+          "before": 3.3849,
+          "after": 3.6944,
+          "evidence": "Transit Neptune trine natal Moon, orb 3.1442\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__NEPTUNE__OPPOSITION__VENUS",
           "amount": 0.2997,
-          "before": 3.6943,
-          "after": 3.994,
-          "evidence": "Transit Neptune opposition natal Venus, orb 4.107\u00b0"
+          "before": 3.6944,
+          "after": 3.9941,
+          "evidence": "Transit Neptune opposition natal Venus, orb 4.1071\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__NEPTUNE__OPPOSITION__SATURN",
           "amount": 0.2731,
-          "before": 3.994,
-          "after": 4.2671,
-          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2923\u00b0"
+          "before": 3.9941,
+          "after": 4.2672,
+          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2922\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__PLUTO__OPPOSITION__MOON",
           "amount": 0.3674,
-          "before": 4.2671,
-          "after": 4.6345,
-          "evidence": "Transit Pluto opposition natal Moon, orb 2.843\u00b0"
+          "before": 4.2672,
+          "after": 4.6346,
+          "evidence": "Transit Pluto opposition natal Moon, orb 2.8429\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__PLUTO__TRINE__VENUS",
           "amount": 0.2255,
-          "before": 4.6345,
-          "after": 4.86,
-          "evidence": "Transit Pluto trine natal Venus, orb 4.4083\u00b0"
+          "before": 4.6346,
+          "after": 4.8601,
+          "evidence": "Transit Pluto trine natal Venus, orb 4.4084\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2n__PLUTO__TRINE__SATURN",
           "amount": 0.2547,
-          "before": 4.86,
-          "after": 5.1147,
+          "before": 4.8601,
+          "after": 5.1148,
           "evidence": "Transit Pluto trine natal Saturn, orb 0.0091\u00b0"
         },
         {
@@ -952,17 +902,17 @@
           "source": "activation",
           "source_id": "t2a__MOON__SQUARE__DSC",
           "amount": 0.1869,
-          "before": 5.1147,
-          "after": 5.3016,
-          "evidence": "Transit Moon square natal DSC, orb 5.4871\u00b0"
+          "before": 5.1148,
+          "after": 5.3017,
+          "evidence": "Transit Moon square natal DSC, orb 5.487\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2a__MERCURY__OPPOSITION__DSC",
           "amount": 0.084,
-          "before": 5.3016,
-          "after": 5.3856,
+          "before": 5.301699999999999,
+          "after": 5.3857,
           "evidence": "Transit Mercury opposition natal DSC, orb 5.2419\u00b0"
         },
         {
@@ -970,8 +920,8 @@
           "source": "activation",
           "source_id": "t2a__VENUS__QUINCUNX__DSC",
           "amount": 0.1843,
-          "before": 5.385599999999999,
-          "after": 5.5699,
+          "before": 5.3857,
+          "after": 5.57,
           "evidence": "Transit Venus quincunx natal DSC, orb 0.3576\u00b0"
         },
         {
@@ -979,8 +929,8 @@
           "source": "activation",
           "source_id": "t2a__JUPITER__OPPOSITION__DSC",
           "amount": 0.3893,
-          "before": 5.5699,
-          "after": 5.9592,
+          "before": 5.569999999999999,
+          "after": 5.9593,
           "evidence": "Transit Jupiter opposition natal DSC, orb 2.9014\u00b0"
         },
         {
@@ -988,8 +938,8 @@
           "source": "activation",
           "source_id": "t2l__SUN__SESQUI_QUADRATE__EROS",
           "amount": 0.129,
-          "before": 5.9592,
-          "after": 6.0882,
+          "before": 5.9593,
+          "after": 6.0883,
           "evidence": "Transit Sun sesqui_quadrate lot EROS, orb 3.6989\u00b0"
         },
         {
@@ -997,8 +947,8 @@
           "source": "activation",
           "source_id": "t2l__SUN__SESQUI_QUADRATE__MARRIAGE",
           "amount": 0.1249,
-          "before": 6.0882,
-          "after": 6.2131,
+          "before": 6.088299999999999,
+          "after": 6.2132,
           "evidence": "Transit Sun sesqui_quadrate lot MARRIAGE, orb 3.8385\u00b0"
         },
         {
@@ -1006,17 +956,17 @@
           "source": "activation",
           "source_id": "t2l__MOON__SEXTILE__EROS",
           "amount": 0.2107,
-          "before": 6.2131,
-          "after": 6.4238,
-          "evidence": "Transit Moon sextile lot EROS, orb 4.1689\u00b0"
+          "before": 6.2132,
+          "after": 6.4239,
+          "evidence": "Transit Moon sextile lot EROS, orb 4.1688\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2l__MOON__QUINCUNX__MARRIAGE",
           "amount": 0.1112,
-          "before": 6.4238,
-          "after": 6.535,
+          "before": 6.4239,
+          "after": 6.5351,
           "evidence": "Transit Moon quincunx lot MARRIAGE, orb 4.0293\u00b0"
         },
         {
@@ -1024,8 +974,8 @@
           "source": "activation",
           "source_id": "t2l__MERCURY__QUINCUNX__EROS",
           "amount": 0.0775,
-          "before": 6.534999999999999,
-          "after": 6.6125,
+          "before": 6.5351,
+          "after": 6.6126,
           "evidence": "Transit Mercury quincunx lot EROS, orb 3.9236\u00b0"
         },
         {
@@ -1033,8 +983,8 @@
           "source": "activation",
           "source_id": "t2l__MERCURY__TRINE__MARRIAGE",
           "amount": 0.2511,
-          "before": 6.6125,
-          "after": 6.8636,
+          "before": 6.6126,
+          "after": 6.8637,
           "evidence": "Transit Mercury trine lot MARRIAGE, orb 3.7841\u00b0"
         },
         {
@@ -1042,8 +992,8 @@
           "source": "activation",
           "source_id": "t2l__VENUS__OPPOSITION__EROS",
           "amount": 0.6383,
-          "before": 6.8636,
-          "after": 7.5019,
+          "before": 6.8637,
+          "after": 7.502,
           "evidence": "Transit Venus opposition lot EROS, orb 0.9606\u00b0"
         },
         {
@@ -1051,8 +1001,8 @@
           "source": "activation",
           "source_id": "t2l__VENUS__SQUARE__MARRIAGE",
           "amount": 0.5553,
-          "before": 7.5019,
-          "after": 8.0572,
+          "before": 7.502,
+          "after": 8.0573,
           "evidence": "Transit Venus square lot MARRIAGE, orb 1.1002\u00b0"
         },
         {
@@ -1060,8 +1010,8 @@
           "source": "activation",
           "source_id": "t2l__JUPITER__QUINCUNX__EROS",
           "amount": 0.089,
-          "before": 8.0572,
-          "after": 8.1462,
+          "before": 8.0573,
+          "after": 8.1463,
           "evidence": "Transit Jupiter quincunx lot EROS, orb 4.2196\u00b0"
         },
         {
@@ -1069,17 +1019,17 @@
           "source": "activation",
           "source_id": "t2l__JUPITER__TRINE__MARRIAGE",
           "amount": 0.2566,
-          "before": 8.1462,
-          "after": 8.4028,
-          "evidence": "Transit Jupiter trine lot MARRIAGE, orb 4.3592\u00b0"
+          "before": 8.1463,
+          "after": 8.4029,
+          "evidence": "Transit Jupiter trine lot MARRIAGE, orb 4.3591\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "t2l__SATURN__SEMI_SQUARE__EROS",
           "amount": 0.174,
-          "before": 8.402800000000001,
-          "after": 8.5768,
+          "before": 8.4029,
+          "after": 8.5769,
           "evidence": "Transit Saturn semi_square lot EROS, orb 1.9259\u00b0"
         },
         {
@@ -1087,8 +1037,8 @@
           "source": "activation",
           "source_id": "t2l__SATURN__SESQUI_QUADRATE__MARRIAGE",
           "amount": 0.1692,
-          "before": 8.5768,
-          "after": 8.746,
+          "before": 8.5769,
+          "after": 8.7461,
           "evidence": "Transit Saturn sesqui_quadrate lot MARRIAGE, orb 2.0654\u00b0"
         },
         {
@@ -1096,8 +1046,8 @@
           "source": "activation",
           "source_id": "annual_profection__LORD_OF_YEAR__MARS",
           "amount": 0.168,
-          "before": 8.746,
-          "after": 8.914,
+          "before": 8.7461,
+          "after": 8.9141,
           "evidence": "Mars is lord of year for annual profection house 10"
         },
         {
@@ -1105,35 +1055,44 @@
           "source": "activation",
           "source_id": "firdar_minor__SUBPERIOD_LORD__SATURN",
           "amount": 0.0672,
-          "before": 8.914,
-          "after": 8.9812,
+          "before": 8.914100000000001,
+          "after": 8.9813,
           "evidence": "Saturn is minor firdar lord on 2026-07-08 within Sun major firdar"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__MARS__HOUSE_1",
-          "amount": 0.1512,
-          "before": 8.981200000000001,
-          "after": 9.1324,
-          "evidence": "Solar Return Mars is angular in Solar Return house 1"
+          "source_id": "solar_return__ANGLE_MC__NATAL_HOUSE_7",
+          "amount": 0.3528,
+          "before": 8.981300000000001,
+          "after": 9.3341,
+          "evidence": "Solar Return MC falls in natal house 7"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__SATURN__HOUSE_10",
-          "amount": 0.0945,
-          "before": 9.1324,
-          "after": 9.2269,
-          "evidence": "Lunar Return Saturn is angular in Lunar Return house 10"
+          "source_id": "solar_return__CHART_RULER__VENUS",
+          "amount": 0.441,
+          "before": 9.334100000000001,
+          "after": 9.7751,
+          "evidence": "Venus is Solar Return chart ruler"
+        },
+        {
+          "sphere": "relationships_partnership",
+          "source": "activation",
+          "source_id": "solar_return__ANGULAR_PLANET__MARS__HOUSE_7",
+          "amount": 0.1512,
+          "before": 9.7751,
+          "after": 9.9263,
+          "evidence": "Solar Return Mars is angular in Solar Return house 7"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "solar_arc__MARS__TRINE__NATAL_VENUS",
           "amount": 0.1109,
-          "before": 9.2269,
-          "after": 9.3378,
+          "before": 9.926300000000001,
+          "after": 10.0372,
           "evidence": "Solar Arc Mars trine natal Venus, orb 0.8416\u00b0"
         },
         {
@@ -1141,8 +1100,8 @@
           "source": "activation",
           "source_id": "solar_arc__MARS__CONJUNCTION__NATAL_ANGLE_DSC",
           "amount": 0.1599,
-          "before": 9.337800000000001,
-          "after": 9.4977,
+          "before": 10.0372,
+          "after": 10.1971,
           "evidence": "Solar Arc Mars conjunction natal DSC, orb 0.6162\u00b0"
         },
         {
@@ -1150,8 +1109,8 @@
           "source": "activation",
           "source_id": "solar_arc__NEPTUNE__OPPOSITION__NATAL_MOON",
           "amount": 0.1764,
-          "before": 9.4977,
-          "after": 9.6741,
+          "before": 10.1971,
+          "after": 10.3735,
           "evidence": "Solar Arc Neptune opposition natal Moon, orb 0.58\u00b0"
         },
         {
@@ -1159,17 +1118,17 @@
           "source": "activation",
           "source_id": "solar_arc__PLUTO__TRINE__NATAL_MOON",
           "amount": 0.0394,
-          "before": 9.674100000000001,
-          "after": 9.7135,
-          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9062\u00b0"
+          "before": 10.3735,
+          "after": 10.4129,
+          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9061\u00b0"
         },
         {
           "sphere": "relationships_partnership",
           "source": "activation",
           "source_id": "secondary_progression__MOON__SEMI_SEXTILE__NATAL_LOT_EROS",
           "amount": 0.3274,
-          "before": 9.7135,
-          "after": 10.0409,
+          "before": 10.4129,
+          "after": 10.7403,
           "evidence": "Progressed Moon semi_sextile natal EROS, orb 0.1004\u00b0"
         },
         {
@@ -1177,8 +1136,8 @@
           "source": "activation",
           "source_id": "secondary_progression__MOON__TRINE__NATAL_LOT_MARRIAGE",
           "amount": 0.3953,
-          "before": 10.0409,
-          "after": 10.4362,
+          "before": 10.740300000000001,
+          "after": 11.1356,
           "evidence": "Progressed Moon trine natal MARRIAGE, orb 0.2399\u00b0"
         },
         {
@@ -1186,8 +1145,8 @@
           "source": "convergence",
           "source_id": "convergence:relationships_partnership",
           "amount": 0.9,
-          "before": 10.436200000000001,
-          "after": 11.3362,
+          "before": 11.1356,
+          "after": 12.0356,
           "evidence": "Convergence bonus: 5 independent technique families (firdar, profection, progression, return, transit)"
         }
       ]
@@ -1196,10 +1155,10 @@
       "key": "money_security_resources",
       "title": "\u0434\u0435\u043d\u044c\u0433\u0438 \u00b7 \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u044c \u00b7 \u0440\u0435\u0441\u0443\u0440\u0441\u044b",
       "base_score": 2.54,
-      "activation_score": 10.3651,
+      "activation_score": 9.3886,
       "convergence_bonus": 0.9,
-      "raw_score": 13.8051,
-      "final_score": 13.8051,
+      "raw_score": 12.8286,
+      "final_score": 12.8286,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -1219,7 +1178,7 @@
           "amount": 0.3006,
           "before": 2.54,
           "after": 2.8406,
-          "evidence": "Transit Moon opposition natal Pluto, orb 1.0454\u00b0"
+          "evidence": "Transit Moon opposition natal Pluto, orb 1.0455\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1228,7 +1187,7 @@
           "amount": 0.2522,
           "before": 2.8406000000000002,
           "after": 3.0928,
-          "evidence": "Transit Mercury square natal Pluto, orb 1.2906\u00b0"
+          "evidence": "Transit Mercury square natal Pluto, orb 1.2907\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1246,7 +1205,7 @@
           "amount": 0.085,
           "before": 3.1905,
           "after": 3.2755,
-          "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1432\u00b0"
+          "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1431\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1264,7 +1223,7 @@
           "amount": 0.0734,
           "before": 3.2873,
           "after": 3.3607,
-          "evidence": "Transit Mars trine natal Jupiter, orb 6.1359\u00b0"
+          "evidence": "Transit Mars trine natal Jupiter, orb 6.136\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1273,7 +1232,7 @@
           "amount": 0.3596,
           "before": 3.3607,
           "after": 3.7203,
-          "evidence": "Transit Mars trine natal Saturn, orb 2.0645\u00b0"
+          "evidence": "Transit Mars trine natal Saturn, orb 2.0644\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1282,7 +1241,7 @@
           "amount": 0.1069,
           "before": 3.7203,
           "after": 3.8272,
-          "evidence": "Transit Mars sesqui_quadrate natal Pluto, orb 0.5461\u00b0"
+          "evidence": "Transit Mars sesqui_quadrate natal Pluto, orb 0.546\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1336,7 +1295,7 @@
           "amount": 0.463,
           "before": 5.2341,
           "after": 5.6971,
-          "evidence": "Transit Uranus trine natal Saturn, orb 0.6457\u00b0"
+          "evidence": "Transit Uranus trine natal Saturn, orb 0.6458\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1354,7 +1313,7 @@
           "amount": 0.2398,
           "before": 5.7389,
           "after": 5.9787,
-          "evidence": "Transit Neptune opposition natal Venus, orb 4.107\u00b0"
+          "evidence": "Transit Neptune opposition natal Venus, orb 4.1071\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1363,7 +1322,7 @@
           "amount": 0.306,
           "before": 5.9787,
           "after": 6.2847,
-          "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7792\u00b0"
+          "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7794\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1372,7 +1331,7 @@
           "amount": 0.5462,
           "before": 6.2847,
           "after": 6.8309,
-          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2923\u00b0"
+          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2922\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1381,7 +1340,7 @@
           "amount": 0.1804,
           "before": 6.8309,
           "after": 7.0113,
-          "evidence": "Transit Pluto trine natal Venus, orb 4.4083\u00b0"
+          "evidence": "Transit Pluto trine natal Venus, orb 4.4084\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1390,7 +1349,7 @@
           "amount": 0.2481,
           "before": 7.0113,
           "after": 7.2594,
-          "evidence": "Transit Pluto trine natal Jupiter, orb 4.0805\u00b0"
+          "evidence": "Transit Pluto trine natal Jupiter, orb 4.0807\u00b0"
         },
         {
           "sphere": "money_security_resources",
@@ -1485,73 +1444,37 @@
         {
           "sphere": "money_security_resources",
           "source": "activation",
-          "source_id": "solar_return__ANGLE_ASC__NATAL_HOUSE_2",
+          "source_id": "solar_return__CHART_RULER__VENUS",
           "amount": 0.3528,
           "before": 10.9219,
           "after": 11.2747,
-          "evidence": "Solar Return ASC falls in natal house 2"
+          "evidence": "Venus is Solar Return chart ruler"
         },
         {
           "sphere": "money_security_resources",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__JUPITER__HOUSE_1",
-          "amount": 0.2646,
-          "before": 11.2747,
-          "after": 11.5393,
-          "evidence": "Solar Return Jupiter is angular in Solar Return house 1"
-        },
-        {
-          "sphere": "money_security_resources",
-          "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__PLUTO__HOUSE_7",
+          "source_id": "solar_return__ANGULAR_PLANET__PLUTO__HOUSE_10",
           "amount": 0.1512,
-          "before": 11.5393,
-          "after": 11.6905,
-          "evidence": "Solar Return Pluto is angular in Solar Return house 7"
-        },
-        {
-          "sphere": "money_security_resources",
-          "source": "activation",
-          "source_id": "lunar_return__MOON_HOUSE__2",
-          "amount": 0.3024,
-          "before": 11.6905,
-          "after": 11.9929,
-          "evidence": "Lunar Return Moon is in Lunar Return house 2"
+          "before": 11.2747,
+          "after": 11.4259,
+          "evidence": "Solar Return Pluto is angular in Solar Return house 10"
         },
         {
           "sphere": "money_security_resources",
           "source": "activation",
           "source_id": "lunar_return__ANGLE_MC__NATAL_HOUSE_8",
           "amount": 0.2772,
-          "before": 11.992899999999999,
-          "after": 12.2701,
+          "before": 11.425899999999999,
+          "after": 11.7031,
           "evidence": "Lunar Return MC falls in natal house 8"
-        },
-        {
-          "sphere": "money_security_resources",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__JUPITER__HOUSE_1",
-          "amount": 0.2205,
-          "before": 12.2701,
-          "after": 12.4906,
-          "evidence": "Lunar Return Jupiter is angular in Lunar Return house 1"
-        },
-        {
-          "sphere": "money_security_resources",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__SATURN__HOUSE_10",
-          "amount": 0.189,
-          "before": 12.4906,
-          "after": 12.6796,
-          "evidence": "Lunar Return Saturn is angular in Lunar Return house 10"
         },
         {
           "sphere": "money_security_resources",
           "source": "activation",
           "source_id": "solar_arc__MARS__TRINE__NATAL_VENUS",
           "amount": 0.0887,
-          "before": 12.6796,
-          "after": 12.7683,
+          "before": 11.7031,
+          "after": 11.7918,
           "evidence": "Solar Arc Mars trine natal Venus, orb 0.8416\u00b0"
         },
         {
@@ -1559,8 +1482,8 @@
           "source": "activation",
           "source_id": "solar_arc__MARS__SQUARE__NATAL_LOT_FORTUNE",
           "amount": 0.1368,
-          "before": 12.7683,
-          "after": 12.9051,
+          "before": 11.791799999999999,
+          "after": 11.9286,
           "evidence": "Solar Arc Mars square natal FORTUNE, orb 0.7557\u00b0"
         },
         {
@@ -1568,8 +1491,8 @@
           "source": "convergence",
           "source_id": "convergence:money_security_resources",
           "amount": 0.9,
-          "before": 12.905100000000001,
-          "after": 13.8051,
+          "before": 11.9286,
+          "after": 12.8286,
           "evidence": "Convergence bonus: 5 independent technique families (firdar, profection, progression, return, transit)"
         }
       ]
@@ -1578,10 +1501,10 @@
       "key": "body_energy_health",
       "title": "\u0442\u0435\u043b\u043e \u00b7 \u044d\u043d\u0435\u0440\u0433\u0438\u044f \u00b7 \u0437\u0434\u043e\u0440\u043e\u0432\u044c\u0435",
       "base_score": 3.79,
-      "activation_score": 10.3882,
+      "activation_score": 9.8527,
       "convergence_bonus": 0.9,
-      "raw_score": 15.0782,
-      "final_score": 15.0782,
+      "raw_score": 14.5427,
+      "final_score": 14.5427,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -1601,7 +1524,7 @@
           "amount": 0.1441,
           "before": 3.79,
           "after": 3.9341,
-          "evidence": "Transit Sun quincunx natal Mars, orb 2.9123\u00b0"
+          "evidence": "Transit Sun quincunx natal Mars, orb 2.9122\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1637,7 +1560,7 @@
           "amount": 0.2059,
           "before": 4.0606,
           "after": 4.2665,
-          "evidence": "Transit Mars quincunx natal Sun, orb 0.6481\u00b0"
+          "evidence": "Transit Mars quincunx natal Sun, orb 0.648\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1655,7 +1578,7 @@
           "amount": 0.2997,
           "before": 4.564,
           "after": 4.8637,
-          "evidence": "Transit Mars trine natal Saturn, orb 2.0645\u00b0"
+          "evidence": "Transit Mars trine natal Saturn, orb 2.0644\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1709,7 +1632,7 @@
           "amount": 0.0702,
           "before": 5.5158000000000005,
           "after": 5.586,
-          "evidence": "Transit Saturn trine natal Moon, orb 6.8985\u00b0"
+          "evidence": "Transit Saturn trine natal Moon, orb 6.8986\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1745,7 +1668,7 @@
           "amount": 0.3858,
           "before": 6.5903,
           "after": 6.9761,
-          "evidence": "Transit Uranus trine natal Saturn, orb 0.6457\u00b0"
+          "evidence": "Transit Uranus trine natal Saturn, orb 0.6458\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1754,7 +1677,7 @@
           "amount": 0.1399,
           "before": 6.976100000000001,
           "after": 7.116,
-          "evidence": "Transit Neptune quincunx natal Sun, orb 3.0048\u00b0"
+          "evidence": "Transit Neptune quincunx natal Sun, orb 3.0047\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1763,7 +1686,7 @@
           "amount": 0.3095,
           "before": 7.116,
           "after": 7.4255,
-          "evidence": "Transit Neptune trine natal Moon, orb 3.1443\u00b0"
+          "evidence": "Transit Neptune trine natal Moon, orb 3.1442\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1772,7 +1695,7 @@
           "amount": 0.4551,
           "before": 7.4254999999999995,
           "after": 7.8806,
-          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2923\u00b0"
+          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2922\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1781,7 +1704,7 @@
           "amount": 0.4502,
           "before": 7.8806,
           "after": 8.3308,
-          "evidence": "Transit Pluto square natal Sun, orb 2.7035\u00b0"
+          "evidence": "Transit Pluto square natal Sun, orb 2.7033\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1790,7 +1713,7 @@
           "amount": 0.3674,
           "before": 8.3308,
           "after": 8.6982,
-          "evidence": "Transit Pluto opposition natal Moon, orb 2.843\u00b0"
+          "evidence": "Transit Pluto opposition natal Moon, orb 2.8429\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1808,7 +1731,7 @@
           "amount": 0.1869,
           "before": 9.1226,
           "after": 9.3095,
-          "evidence": "Transit Moon square natal ASC, orb 5.4871\u00b0"
+          "evidence": "Transit Moon square natal ASC, orb 5.487\u00b0"
         },
         {
           "sphere": "body_energy_health",
@@ -1894,55 +1817,37 @@
         {
           "sphere": "body_energy_health",
           "source": "activation",
-          "source_id": "solar_return__CHART_RULER__SUN",
-          "amount": 0.3528,
-          "before": 11.992999999999999,
-          "after": 12.3458,
-          "evidence": "Sun is Solar Return chart ruler"
-        },
-        {
-          "sphere": "body_energy_health",
-          "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__SUN__HOUSE_4",
+          "source_id": "solar_return__ANGULAR_PLANET__SUN__HOUSE_7",
           "amount": 0.3024,
-          "before": 12.3458,
-          "after": 12.6482,
-          "evidence": "Solar Return Sun is angular in Solar Return house 4"
+          "before": 11.992999999999999,
+          "after": 12.2954,
+          "evidence": "Solar Return Sun is angular in Solar Return house 7"
         },
         {
           "sphere": "body_energy_health",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__MARS__HOUSE_1",
+          "source_id": "solar_return__ANGULAR_PLANET__MARS__HOUSE_7",
           "amount": 0.378,
-          "before": 12.6482,
-          "after": 13.0262,
-          "evidence": "Solar Return Mars is angular in Solar Return house 1"
+          "before": 12.2954,
+          "after": 12.6734,
+          "evidence": "Solar Return Mars is angular in Solar Return house 7"
         },
         {
           "sphere": "body_energy_health",
           "source": "activation",
-          "source_id": "lunar_return__ANGLE_ASC__NATAL_HOUSE_1",
-          "amount": 0.2772,
-          "before": 13.0262,
-          "after": 13.3034,
-          "evidence": "Lunar Return ASC falls in natal house 1"
-        },
-        {
-          "sphere": "body_energy_health",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__SATURN__HOUSE_10",
-          "amount": 0.1575,
-          "before": 13.3034,
-          "after": 13.4609,
-          "evidence": "Lunar Return Saturn is angular in Lunar Return house 10"
+          "source_id": "lunar_return__ANGULAR_PLANET__SUN__HOUSE_1",
+          "amount": 0.252,
+          "before": 12.6734,
+          "after": 12.9254,
+          "evidence": "Lunar Return Sun is angular in Lunar Return house 1"
         },
         {
           "sphere": "body_energy_health",
           "source": "activation",
           "source_id": "solar_arc__MARS__OPPOSITION__NATAL_ANGLE_ASC",
           "amount": 0.1881,
-          "before": 13.460899999999999,
-          "after": 13.649,
+          "before": 12.9254,
+          "after": 13.1135,
           "evidence": "Solar Arc Mars opposition natal ASC, orb 0.6162\u00b0"
         },
         {
@@ -1950,8 +1855,8 @@
           "source": "activation",
           "source_id": "solar_arc__NEPTUNE__SQUARE__NATAL_SUN",
           "amount": 0.3134,
-          "before": 13.649000000000001,
-          "after": 13.9624,
+          "before": 13.113499999999998,
+          "after": 13.4269,
           "evidence": "Solar Arc Neptune square natal Sun, orb 0.4404\u00b0"
         },
         {
@@ -1959,8 +1864,8 @@
           "source": "activation",
           "source_id": "solar_arc__NEPTUNE__OPPOSITION__NATAL_MOON",
           "amount": 0.1764,
-          "before": 13.962399999999999,
-          "after": 14.1388,
+          "before": 13.4269,
+          "after": 13.6033,
           "evidence": "Solar Arc Neptune opposition natal Moon, orb 0.58\u00b0"
         },
         {
@@ -1968,17 +1873,17 @@
           "source": "activation",
           "source_id": "solar_arc__PLUTO__TRINE__NATAL_MOON",
           "amount": 0.0394,
-          "before": 14.1388,
-          "after": 14.1782,
-          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9062\u00b0"
+          "before": 13.6033,
+          "after": 13.6427,
+          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9061\u00b0"
         },
         {
           "sphere": "body_energy_health",
           "source": "convergence",
           "source_id": "convergence:body_energy_health",
           "amount": 0.9,
-          "before": 14.1782,
-          "after": 15.0782,
+          "before": 13.642700000000001,
+          "after": 14.5427,
           "evidence": "Convergence bonus: 5 independent technique families (firdar, profection, progression, return, transit)"
         }
       ]
@@ -1987,10 +1892,10 @@
       "key": "home_family_roots",
       "title": "\u0434\u043e\u043c \u00b7 \u0441\u0435\u043c\u044c\u044f \u00b7 \u043a\u043e\u0440\u043d\u0438",
       "base_score": 1.97,
-      "activation_score": 5.9668,
+      "activation_score": 5.9857,
       "convergence_bonus": 0.8,
-      "raw_score": 8.7368,
-      "final_score": 8.7368,
+      "raw_score": 8.7557,
+      "final_score": 8.7557,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -2037,7 +1942,7 @@
           "amount": 0.2997,
           "before": 2.5244999999999997,
           "after": 2.8242,
-          "evidence": "Transit Mars trine natal Saturn, orb 2.0645\u00b0"
+          "evidence": "Transit Mars trine natal Saturn, orb 2.0644\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2073,7 +1978,7 @@
           "amount": 0.117,
           "before": 3.3830999999999998,
           "after": 3.5001,
-          "evidence": "Transit Saturn trine natal Moon, orb 6.8985\u00b0"
+          "evidence": "Transit Saturn trine natal Moon, orb 6.8986\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2100,7 +2005,7 @@
           "amount": 0.3858,
           "before": 3.9369,
           "after": 4.3227,
-          "evidence": "Transit Uranus trine natal Saturn, orb 0.6457\u00b0"
+          "evidence": "Transit Uranus trine natal Saturn, orb 0.6458\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2109,7 +2014,7 @@
           "amount": 0.5159,
           "before": 4.3227,
           "after": 4.8386,
-          "evidence": "Transit Neptune trine natal Moon, orb 3.1443\u00b0"
+          "evidence": "Transit Neptune trine natal Moon, orb 3.1442\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2118,7 +2023,7 @@
           "amount": 0.1199,
           "before": 4.8386,
           "after": 4.9585,
-          "evidence": "Transit Neptune opposition natal Venus, orb 4.107\u00b0"
+          "evidence": "Transit Neptune opposition natal Venus, orb 4.1071\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2127,7 +2032,7 @@
           "amount": 0.4551,
           "before": 4.9585,
           "after": 5.4136,
-          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2923\u00b0"
+          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2922\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2136,7 +2041,7 @@
           "amount": 0.6124,
           "before": 5.4136,
           "after": 6.026,
-          "evidence": "Transit Pluto opposition natal Moon, orb 2.843\u00b0"
+          "evidence": "Transit Pluto opposition natal Moon, orb 2.8429\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2145,7 +2050,7 @@
           "amount": 0.0902,
           "before": 6.026,
           "after": 6.1162,
-          "evidence": "Transit Pluto trine natal Venus, orb 4.4083\u00b0"
+          "evidence": "Transit Pluto trine natal Venus, orb 4.4084\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2190,7 +2095,7 @@
           "amount": 0.0972,
           "before": 7.1659999999999995,
           "after": 7.2632,
-          "evidence": "Transit Neptune sesqui_quadrate natal IC, orb 2.6854\u00b0"
+          "evidence": "Transit Neptune sesqui_quadrate natal IC, orb 2.6853\u00b0"
         },
         {
           "sphere": "home_family_roots",
@@ -2204,19 +2109,19 @@
         {
           "sphere": "home_family_roots",
           "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__SATURN__HOUSE_10",
-          "amount": 0.1575,
+          "source_id": "solar_return__CHART_RULER__VENUS",
+          "amount": 0.1764,
           "before": 7.3751999999999995,
-          "after": 7.5327,
-          "evidence": "Lunar Return Saturn is angular in Lunar Return house 10"
+          "after": 7.5516,
+          "evidence": "Venus is Solar Return chart ruler"
         },
         {
           "sphere": "home_family_roots",
           "source": "activation",
           "source_id": "solar_arc__MARS__TRINE__NATAL_VENUS",
           "amount": 0.0444,
-          "before": 7.5327,
-          "after": 7.5771,
+          "before": 7.5516,
+          "after": 7.596,
           "evidence": "Solar Arc Mars trine natal Venus, orb 0.8416\u00b0"
         },
         {
@@ -2224,8 +2129,8 @@
           "source": "activation",
           "source_id": "solar_arc__NEPTUNE__OPPOSITION__NATAL_MOON",
           "amount": 0.294,
-          "before": 7.5771,
-          "after": 7.8711,
+          "before": 7.596,
+          "after": 7.89,
           "evidence": "Solar Arc Neptune opposition natal Moon, orb 0.58\u00b0"
         },
         {
@@ -2233,17 +2138,17 @@
           "source": "activation",
           "source_id": "solar_arc__PLUTO__TRINE__NATAL_MOON",
           "amount": 0.0657,
-          "before": 7.871099999999999,
-          "after": 7.9368,
-          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9062\u00b0"
+          "before": 7.89,
+          "after": 7.9557,
+          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9061\u00b0"
         },
         {
           "sphere": "home_family_roots",
           "source": "convergence",
           "source_id": "convergence:home_family_roots",
           "amount": 0.8,
-          "before": 7.9368,
-          "after": 8.7368,
+          "before": 7.955699999999999,
+          "after": 8.7557,
           "evidence": "Convergence bonus: 4 independent technique families (firdar, progression, return, transit)"
         }
       ]
@@ -2252,10 +2157,10 @@
       "key": "inner_background_unconscious",
       "title": "\u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u0444\u043e\u043d \u00b7 \u0431\u0435\u0441\u0441\u043e\u0437\u043d\u0430\u0442\u0435\u043b\u044c\u043d\u043e\u0435",
       "base_score": 4.45,
-      "activation_score": 7.8962,
+      "activation_score": 7.3733,
       "convergence_bonus": 0.8,
-      "raw_score": 13.1462,
-      "final_score": 13.1462,
+      "raw_score": 12.6233,
+      "final_score": 12.6233,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -2284,7 +2189,7 @@
           "amount": 0.4196,
           "before": 4.472300000000001,
           "after": 4.8919,
-          "evidence": "Transit Moon trine natal Neptune, orb 2.5315\u00b0"
+          "evidence": "Transit Moon trine natal Neptune, orb 2.5316\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2293,7 +2198,7 @@
           "amount": 0.3006,
           "before": 4.891900000000001,
           "after": 5.1925,
-          "evidence": "Transit Moon opposition natal Pluto, orb 1.0454\u00b0"
+          "evidence": "Transit Moon opposition natal Pluto, orb 1.0455\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2302,7 +2207,7 @@
           "amount": 0.1245,
           "before": 5.1925,
           "after": 5.317,
-          "evidence": "Transit Mercury quincunx natal Neptune, orb 2.7767\u00b0"
+          "evidence": "Transit Mercury quincunx natal Neptune, orb 2.7768\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2311,7 +2216,7 @@
           "amount": 0.2522,
           "before": 5.317,
           "after": 5.5692,
-          "evidence": "Transit Mercury square natal Pluto, orb 1.2906\u00b0"
+          "evidence": "Transit Mercury square natal Pluto, orb 1.2907\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2338,7 +2243,7 @@
           "amount": 0.2997,
           "before": 5.8765,
           "after": 6.1762,
-          "evidence": "Transit Mars trine natal Saturn, orb 2.0645\u00b0"
+          "evidence": "Transit Mars trine natal Saturn, orb 2.0644\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2347,7 +2252,7 @@
           "amount": 0.1069,
           "before": 6.1762,
           "after": 6.2831,
-          "evidence": "Transit Mars sesqui_quadrate natal Pluto, orb 0.5461\u00b0"
+          "evidence": "Transit Mars sesqui_quadrate natal Pluto, orb 0.546\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2383,7 +2288,7 @@
           "amount": 0.0702,
           "before": 6.636900000000001,
           "after": 6.7071,
-          "evidence": "Transit Saturn trine natal Moon, orb 6.8985\u00b0"
+          "evidence": "Transit Saturn trine natal Moon, orb 6.8986\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2401,7 +2306,7 @@
           "amount": 0.3858,
           "before": 6.8928,
           "after": 7.2786,
-          "evidence": "Transit Uranus trine natal Saturn, orb 0.6457\u00b0"
+          "evidence": "Transit Uranus trine natal Saturn, orb 0.6458\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2419,7 +2324,7 @@
           "amount": 0.3095,
           "before": 7.3204,
           "after": 7.6299,
-          "evidence": "Transit Neptune trine natal Moon, orb 3.1443\u00b0"
+          "evidence": "Transit Neptune trine natal Moon, orb 3.1442\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2428,7 +2333,7 @@
           "amount": 0.4551,
           "before": 7.6299,
           "after": 8.085,
-          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2923\u00b0"
+          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2922\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2437,7 +2342,7 @@
           "amount": 0.3674,
           "before": 8.085,
           "after": 8.4524,
-          "evidence": "Transit Pluto opposition natal Moon, orb 2.843\u00b0"
+          "evidence": "Transit Pluto opposition natal Moon, orb 2.8429\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2455,7 +2360,7 @@
           "amount": 0.2331,
           "before": 8.8768,
           "after": 9.1099,
-          "evidence": "Transit Pluto semi_square natal Neptune, orb 1.1153\u00b0"
+          "evidence": "Transit Pluto semi_square natal Neptune, orb 1.1151\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
@@ -2496,55 +2401,37 @@
         {
           "sphere": "inner_background_unconscious",
           "source": "activation",
-          "source_id": "solar_return__MOON_HOUSE__12",
-          "amount": 0.3276,
+          "source_id": "solar_return__ANGULAR_PLANET__PLUTO__HOUSE_10",
+          "amount": 0.1512,
           "before": 10.901900000000001,
-          "after": 11.2295,
-          "evidence": "Solar Return Moon is in Solar Return house 12"
+          "after": 11.0531,
+          "evidence": "Solar Return Pluto is angular in Solar Return house 10"
         },
         {
           "sphere": "inner_background_unconscious",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__PLUTO__HOUSE_7",
-          "amount": 0.1512,
-          "before": 11.2295,
-          "after": 11.3807,
-          "evidence": "Solar Return Pluto is angular in Solar Return house 7"
+          "source_id": "lunar_return__ANGLE_ASC__NATAL_HOUSE_12",
+          "amount": 0.2772,
+          "before": 11.0531,
+          "after": 11.3303,
+          "evidence": "Lunar Return ASC falls in natal house 12"
         },
         {
           "sphere": "inner_background_unconscious",
           "source": "activation",
           "source_id": "lunar_return__ANGLE_MC__NATAL_HOUSE_8",
           "amount": 0.2772,
-          "before": 11.380700000000001,
-          "after": 11.6579,
+          "before": 11.330300000000001,
+          "after": 11.6075,
           "evidence": "Lunar Return MC falls in natal house 8"
-        },
-        {
-          "sphere": "inner_background_unconscious",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__SATURN__HOUSE_10",
-          "amount": 0.1575,
-          "before": 11.657900000000001,
-          "after": 11.8154,
-          "evidence": "Lunar Return Saturn is angular in Lunar Return house 10"
-        },
-        {
-          "sphere": "inner_background_unconscious",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__NEPTUNE__HOUSE_10",
-          "amount": 0.315,
-          "before": 11.8154,
-          "after": 12.1304,
-          "evidence": "Lunar Return Neptune is angular in Lunar Return house 10"
         },
         {
           "sphere": "inner_background_unconscious",
           "source": "activation",
           "source_id": "solar_arc__NEPTUNE__OPPOSITION__NATAL_MOON",
           "amount": 0.1764,
-          "before": 12.1304,
-          "after": 12.3068,
+          "before": 11.6075,
+          "after": 11.7839,
           "evidence": "Solar Arc Neptune opposition natal Moon, orb 0.58\u00b0"
         },
         {
@@ -2552,17 +2439,17 @@
           "source": "activation",
           "source_id": "solar_arc__PLUTO__TRINE__NATAL_MOON",
           "amount": 0.0394,
-          "before": 12.306799999999999,
-          "after": 12.3462,
-          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9062\u00b0"
+          "before": 11.7839,
+          "after": 11.8233,
+          "evidence": "Solar Arc Pluto trine natal Moon, orb 0.9061\u00b0"
         },
         {
           "sphere": "inner_background_unconscious",
           "source": "convergence",
           "source_id": "convergence:inner_background_unconscious",
           "amount": 0.8,
-          "before": 12.3462,
-          "after": 13.1462,
+          "before": 11.8233,
+          "after": 12.6233,
           "evidence": "Convergence bonus: 4 independent technique families (firdar, progression, return, transit)"
         }
       ]
@@ -2571,10 +2458,10 @@
       "key": "crisis_transformation_control",
       "title": "\u043a\u0440\u0438\u0437\u0438\u0441 \u00b7 \u0442\u0440\u0430\u043d\u0441\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u00b7 \u043a\u043e\u043d\u0442\u0440\u043e\u043b\u044c",
       "base_score": 5.26,
-      "activation_score": 6.6859,
+      "activation_score": 6.497,
       "convergence_bonus": 0.8,
-      "raw_score": 12.7459,
-      "final_score": 12.7459,
+      "raw_score": 12.557,
+      "final_score": 12.557,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -2591,18 +2478,18 @@
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "t2n__SUN__QUINCUNX__MARS",
-          "amount": 0.1008,
+          "amount": 0.1009,
           "before": 5.26,
-          "after": 5.3608,
-          "evidence": "Transit Sun quincunx natal Mars, orb 2.9123\u00b0"
+          "after": 5.3609,
+          "evidence": "Transit Sun quincunx natal Mars, orb 2.9122\u00b0"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "t2n__MOON__SESQUI_QUADRATE__MARS",
           "amount": 0.0365,
-          "before": 5.360799999999999,
-          "after": 5.3973,
+          "before": 5.3609,
+          "after": 5.3974,
           "evidence": "Transit Moon sesqui_quadrate natal Mars, orb 4.9555\u00b0"
         },
         {
@@ -2610,17 +2497,17 @@
           "source": "activation",
           "source_id": "t2n__MOON__OPPOSITION__PLUTO",
           "amount": 0.7514,
-          "before": 5.3972999999999995,
-          "after": 6.1487,
-          "evidence": "Transit Moon opposition natal Pluto, orb 1.0454\u00b0"
+          "before": 5.3974,
+          "after": 6.1488,
+          "evidence": "Transit Moon opposition natal Pluto, orb 1.0455\u00b0"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "t2n__MERCURY__SESQUI_QUADRATE__MARS",
           "amount": 0.0451,
-          "before": 6.1487,
-          "after": 6.1938,
+          "before": 6.1488,
+          "after": 6.1939,
           "evidence": "Transit Mercury sesqui_quadrate natal Mars, orb 4.7103\u00b0"
         },
         {
@@ -2628,17 +2515,17 @@
           "source": "activation",
           "source_id": "t2n__MERCURY__SQUARE__PLUTO",
           "amount": 0.6306,
-          "before": 6.1937999999999995,
-          "after": 6.8244,
-          "evidence": "Transit Mercury square natal Pluto, orb 1.2906\u00b0"
+          "before": 6.193899999999999,
+          "after": 6.8245,
+          "evidence": "Transit Mercury square natal Pluto, orb 1.2907\u00b0"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "t2n__VENUS__SEMI_SEXTILE__SATURN",
           "amount": 0.0118,
-          "before": 6.8244,
-          "after": 6.8362,
+          "before": 6.8245,
+          "after": 6.8363,
           "evidence": "Transit Venus semi_sextile natal Saturn, orb 6.2147\u00b0"
         },
         {
@@ -2646,26 +2533,26 @@
           "source": "activation",
           "source_id": "t2n__MARS__TRINE__SATURN",
           "amount": 0.3596,
-          "before": 6.8362,
-          "after": 7.1958,
-          "evidence": "Transit Mars trine natal Saturn, orb 2.0645\u00b0"
+          "before": 6.8363,
+          "after": 7.1959,
+          "evidence": "Transit Mars trine natal Saturn, orb 2.0644\u00b0"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "t2n__MARS__SESQUI_QUADRATE__PLUTO",
           "amount": 0.2672,
-          "before": 7.1958,
-          "after": 7.463,
-          "evidence": "Transit Mars sesqui_quadrate natal Pluto, orb 0.5461\u00b0"
+          "before": 7.1959,
+          "after": 7.4631,
+          "evidence": "Transit Mars sesqui_quadrate natal Pluto, orb 0.546\u00b0"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "t2n__JUPITER__SESQUI_QUADRATE__MARS",
           "amount": 0.0899,
-          "before": 7.462999999999999,
-          "after": 7.5529,
+          "before": 7.4631,
+          "after": 7.553,
           "evidence": "Transit Jupiter sesqui_quadrate natal Mars, orb 3.4329\u00b0"
         },
         {
@@ -2673,8 +2560,8 @@
           "source": "activation",
           "source_id": "t2n__JUPITER__SEXTILE__SATURN",
           "amount": 0.1907,
-          "before": 7.552899999999999,
-          "after": 7.7436,
+          "before": 7.553,
+          "after": 7.7437,
           "evidence": "Transit Jupiter sextile natal Saturn, orb 2.9557\u00b0"
         },
         {
@@ -2682,8 +2569,8 @@
           "source": "activation",
           "source_id": "t2n__SATURN__TRINE__MARS",
           "amount": 0.482,
-          "before": 7.7436,
-          "after": 8.2256,
+          "before": 7.7437,
+          "after": 8.2257,
           "evidence": "Transit Saturn trine natal Mars, orb 1.1392\u00b0"
         },
         {
@@ -2691,17 +2578,17 @@
           "source": "activation",
           "source_id": "t2n__URANUS__TRINE__SATURN",
           "amount": 0.463,
-          "before": 8.2256,
-          "after": 8.6886,
-          "evidence": "Transit Uranus trine natal Saturn, orb 0.6457\u00b0"
+          "before": 8.2257,
+          "after": 8.6887,
+          "evidence": "Transit Uranus trine natal Saturn, orb 0.6458\u00b0"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "t2n__URANUS__SESQUI_QUADRATE__PLUTO",
           "amount": 0.1046,
-          "before": 8.6886,
-          "after": 8.7932,
+          "before": 8.6887,
+          "after": 8.7933,
           "evidence": "Transit Uranus sesqui_quadrate natal Pluto, orb 3.2562\u00b0"
         },
         {
@@ -2709,17 +2596,17 @@
           "source": "activation",
           "source_id": "t2n__NEPTUNE__OPPOSITION__SATURN",
           "amount": 0.5462,
-          "before": 8.793199999999999,
-          "after": 9.3394,
-          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2923\u00b0"
+          "before": 8.7933,
+          "after": 9.3395,
+          "evidence": "Transit Neptune opposition natal Saturn, orb 0.2922\u00b0"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "t2n__PLUTO__TRINE__SATURN",
           "amount": 0.5093,
-          "before": 9.3394,
-          "after": 9.8487,
+          "before": 9.339500000000001,
+          "after": 9.8488,
           "evidence": "Transit Pluto trine natal Saturn, orb 0.0091\u00b0"
         },
         {
@@ -2727,8 +2614,8 @@
           "source": "activation",
           "source_id": "tih__PLUTO__8",
           "amount": 0.56,
-          "before": 9.848700000000001,
-          "after": 10.4087,
+          "before": 9.8488,
+          "after": 10.4088,
           "evidence": "Transit Pluto in natal house 8, strength 1.00"
         },
         {
@@ -2736,8 +2623,8 @@
           "source": "activation",
           "source_id": "annual_profection__LORD_OF_YEAR__MARS",
           "amount": 0.294,
-          "before": 10.4087,
-          "after": 10.7027,
+          "before": 10.4088,
+          "after": 10.7028,
           "evidence": "Mars is lord of year for annual profection house 10"
         },
         {
@@ -2745,53 +2632,44 @@
           "source": "activation",
           "source_id": "firdar_minor__SUBPERIOD_LORD__SATURN",
           "amount": 0.1344,
-          "before": 10.7027,
-          "after": 10.8371,
+          "before": 10.7028,
+          "after": 10.8372,
           "evidence": "Saturn is minor firdar lord on 2026-07-08 within Sun major firdar"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__MARS__HOUSE_1",
+          "source_id": "solar_return__ANGULAR_PLANET__MARS__HOUSE_7",
           "amount": 0.2646,
-          "before": 10.8371,
-          "after": 11.1017,
-          "evidence": "Solar Return Mars is angular in Solar Return house 1"
+          "before": 10.8372,
+          "after": 11.1018,
+          "evidence": "Solar Return Mars is angular in Solar Return house 7"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__PLUTO__HOUSE_7",
+          "source_id": "solar_return__ANGULAR_PLANET__PLUTO__HOUSE_10",
           "amount": 0.378,
-          "before": 11.101700000000001,
-          "after": 11.4797,
-          "evidence": "Solar Return Pluto is angular in Solar Return house 7"
+          "before": 11.1018,
+          "after": 11.4798,
+          "evidence": "Solar Return Pluto is angular in Solar Return house 10"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "activation",
           "source_id": "lunar_return__ANGLE_MC__NATAL_HOUSE_8",
           "amount": 0.2772,
-          "before": 11.4797,
-          "after": 11.7569,
+          "before": 11.479800000000001,
+          "after": 11.757,
           "evidence": "Lunar Return MC falls in natal house 8"
-        },
-        {
-          "sphere": "crisis_transformation_control",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__SATURN__HOUSE_10",
-          "amount": 0.189,
-          "before": 11.7569,
-          "after": 11.9459,
-          "evidence": "Lunar Return Saturn is angular in Lunar Return house 10"
         },
         {
           "sphere": "crisis_transformation_control",
           "source": "convergence",
           "source_id": "convergence:crisis_transformation_control",
           "amount": 0.8,
-          "before": 11.9459,
-          "after": 12.7459,
+          "before": 11.757,
+          "after": 12.557,
           "evidence": "Convergence bonus: 4 independent technique families (firdar, profection, return, transit)"
         }
       ]
@@ -2800,10 +2678,10 @@
       "key": "meaning_expansion_vector",
       "title": "\u0441\u043c\u044b\u0441\u043b \u00b7 \u0440\u0430\u0441\u0448\u0438\u0440\u0435\u043d\u0438\u0435 \u00b7 \u0432\u0435\u043a\u0442\u043e\u0440",
       "base_score": 0.46,
-      "activation_score": 5.8249,
-      "convergence_bonus": 0.8,
-      "raw_score": 7.0849,
-      "final_score": 7.0849,
+      "activation_score": 4.6971,
+      "convergence_bonus": 0.65,
+      "raw_score": 5.8071,
+      "final_score": 5.8071,
       "normalized_score": null,
       "dominance_capped": false,
       "contributions": [
@@ -2841,7 +2719,7 @@
           "amount": 0.2098,
           "before": 0.7812,
           "after": 0.991,
-          "evidence": "Transit Moon trine natal Neptune, orb 2.5315\u00b0"
+          "evidence": "Transit Moon trine natal Neptune, orb 2.5316\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2850,7 +2728,7 @@
           "amount": 0.0623,
           "before": 0.9910000000000001,
           "after": 1.0533,
-          "evidence": "Transit Mercury quincunx natal Neptune, orb 2.7767\u00b0"
+          "evidence": "Transit Mercury quincunx natal Neptune, orb 2.7768\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2859,7 +2737,7 @@
           "amount": 0.1214,
           "before": 1.0533000000000001,
           "after": 1.1747,
-          "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1432\u00b0"
+          "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1431\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2868,7 +2746,7 @@
           "amount": 0.1049,
           "before": 1.1747,
           "after": 1.2796,
-          "evidence": "Transit Mars trine natal Jupiter, orb 6.1359\u00b0"
+          "evidence": "Transit Mars trine natal Jupiter, orb 6.136\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2913,7 +2791,7 @@
           "amount": 0.0457,
           "before": 2.2923,
           "after": 2.338,
-          "evidence": "Transit Neptune sesqui_quadrate natal Mercury, orb 3.7131\u00b0"
+          "evidence": "Transit Neptune sesqui_quadrate natal Mercury, orb 3.7132\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2922,7 +2800,7 @@
           "amount": 0.4371,
           "before": 2.338,
           "after": 2.7751,
-          "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7792\u00b0"
+          "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7794\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2931,7 +2809,7 @@
           "amount": 0.3545,
           "before": 2.7751,
           "after": 3.1296,
-          "evidence": "Transit Pluto trine natal Jupiter, orb 4.0805\u00b0"
+          "evidence": "Transit Pluto trine natal Jupiter, orb 4.0807\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2940,7 +2818,7 @@
           "amount": 0.1166,
           "before": 3.1296,
           "after": 3.2462,
-          "evidence": "Transit Pluto semi_square natal Neptune, orb 1.1153\u00b0"
+          "evidence": "Transit Pluto semi_square natal Neptune, orb 1.1151\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2949,7 +2827,7 @@
           "amount": 0.2018,
           "before": 3.2462,
           "after": 3.448,
-          "evidence": "Transit Moon conjunction lot SPIRIT, orb 5.6267\u00b0"
+          "evidence": "Transit Moon conjunction lot SPIRIT, orb 5.6266\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
@@ -2990,74 +2868,29 @@
         {
           "sphere": "meaning_expansion_vector",
           "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__MERCURY__HOUSE_4",
-          "amount": 0.1512,
-          "before": 4.8055,
-          "after": 4.9567,
-          "evidence": "Solar Return Mercury is angular in Solar Return house 4"
-        },
-        {
-          "sphere": "meaning_expansion_vector",
-          "source": "activation",
-          "source_id": "solar_return__ANGULAR_PLANET__JUPITER__HOUSE_1",
-          "amount": 0.378,
-          "before": 4.9567,
-          "after": 5.3347,
-          "evidence": "Solar Return Jupiter is angular in Solar Return house 1"
-        },
-        {
-          "sphere": "meaning_expansion_vector",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__MERCURY__HOUSE_1",
-          "amount": 0.126,
-          "before": 5.3347,
-          "after": 5.4607,
-          "evidence": "Lunar Return Mercury is angular in Lunar Return house 1"
-        },
-        {
-          "sphere": "meaning_expansion_vector",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__JUPITER__HOUSE_1",
-          "amount": 0.315,
-          "before": 5.4607,
-          "after": 5.7757,
-          "evidence": "Lunar Return Jupiter is angular in Lunar Return house 1"
-        },
-        {
-          "sphere": "meaning_expansion_vector",
-          "source": "activation",
-          "source_id": "lunar_return__ANGULAR_PLANET__NEPTUNE__HOUSE_10",
-          "amount": 0.1575,
-          "before": 5.7757,
-          "after": 5.9332,
-          "evidence": "Lunar Return Neptune is angular in Lunar Return house 10"
-        },
-        {
-          "sphere": "meaning_expansion_vector",
-          "source": "activation",
           "source_id": "solar_arc__MARS__SQUARE__NATAL_LOT_SPIRIT",
-          "amount": 0.2931,
-          "before": 5.9332,
-          "after": 6.2263,
-          "evidence": "Solar Arc Mars square natal SPIRIT, orb 0.4766\u00b0"
+          "amount": 0.293,
+          "before": 4.8055,
+          "after": 5.0985,
+          "evidence": "Solar Arc Mars square natal SPIRIT, orb 0.4767\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
           "source": "activation",
           "source_id": "solar_arc__VENUS__CONJUNCTION__NATAL_MERCURY",
           "amount": 0.0586,
-          "before": 6.2263,
-          "after": 6.2849,
+          "before": 5.0985,
+          "after": 5.1571,
           "evidence": "Solar Arc Venus conjunction natal Mercury, orb 0.7539\u00b0"
         },
         {
           "sphere": "meaning_expansion_vector",
           "source": "convergence",
           "source_id": "convergence:meaning_expansion_vector",
-          "amount": 0.8,
-          "before": 6.2849,
-          "after": 7.0849,
-          "evidence": "Convergence bonus: 4 independent technique families (profection, progression, return, transit)"
+          "amount": 0.65,
+          "before": 5.1571,
+          "after": 5.8071,
+          "evidence": "Convergence bonus: 3 independent technique families (profection, progression, transit)"
         }
       ]
     }
@@ -3130,8 +2963,8 @@
       "sign": null,
       "aspect_type": "trine",
       "target_planet": "Mercury",
-      "orb": 0.5290421924152184,
-      "strength": 0.9338697259480977,
+      "orb": 0.5290436092750213,
+      "strength": 0.9338695488406223,
       "technique": null,
       "technique_family": null,
       "delta_kind": "background",
@@ -3155,7 +2988,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 2,
       "lot": null,
@@ -3165,7 +3000,7 @@
       "weight_hint": null,
       "evidence": "Transit Jupiter in natal house 2, strength 1.00",
       "debug": {
-        "longitude": 121.7543306474727,
+        "longitude": 121.7543090271786,
         "house": 2
       }
     },
@@ -3184,7 +3019,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 12,
       "lot": null,
@@ -3194,7 +3031,7 @@
       "weight_hint": null,
       "evidence": "Transit Mars in natal house 12, strength 1.00",
       "debug": {
-        "longitude": 66.7744604905792,
+        "longitude": 66.77445318414603,
         "house": 12
       }
     },
@@ -3213,7 +3050,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 1,
       "lot": null,
@@ -3223,7 +3062,7 @@
       "weight_hint": null,
       "evidence": "Transit Mercury in natal house 1, strength 1.00",
       "debug": {
-        "longitude": 113.61109942330512,
+        "longitude": 113.611095892617,
         "house": 1
       }
     },
@@ -3242,7 +3081,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 10,
       "lot": null,
@@ -3252,7 +3093,7 @@
       "weight_hint": null,
       "evidence": "Transit Moon in natal house 10, strength 1.00",
       "debug": {
-        "longitude": 23.36586470526968,
+        "longitude": 23.365919326816012,
         "house": 10
       }
     },
@@ -3271,7 +3112,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 10,
       "lot": null,
@@ -3281,7 +3124,7 @@
       "weight_hint": null,
       "evidence": "Transit Neptune in natal house 10, strength 1.00",
       "debug": {
-        "longitude": 4.41773974782364,
+        "longitude": 4.417842826960104,
         "house": 10
       }
     },
@@ -3300,7 +3143,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 8,
       "lot": null,
@@ -3310,7 +3155,7 @@
       "weight_hint": null,
       "evidence": "Transit Pluto in natal house 8, strength 1.00",
       "debug": {
-        "longitude": 304.71905881979234,
+        "longitude": 304.7191633162986,
         "house": 8
       }
     },
@@ -3329,7 +3174,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 10,
       "lot": null,
@@ -3339,7 +3186,7 @@
       "weight_hint": null,
       "evidence": "Transit Saturn in natal house 10, strength 1.00",
       "debug": {
-        "longitude": 14.460589369229297,
+        "longitude": 14.46059749655143,
         "house": 10
       }
     },
@@ -3358,7 +3205,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 1,
       "lot": null,
@@ -3368,7 +3217,7 @@
       "weight_hint": null,
       "evidence": "Transit Sun in natal house 1, strength 1.00",
       "debug": {
-        "longitude": 106.23364219241522,
+        "longitude": 106.23364360927502,
         "house": 1
       }
     },
@@ -3387,7 +3236,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 12,
       "lot": null,
@@ -3397,7 +3248,7 @@
       "weight_hint": null,
       "evidence": "Transit Uranus in natal house 12, strength 1.00",
       "debug": {
-        "longitude": 64.06427017287449,
+        "longitude": 64.0642531615111,
         "house": 12
       }
     },
@@ -3416,7 +3267,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 2,
       "lot": null,
@@ -3426,7 +3279,7 @@
       "weight_hint": null,
       "evidence": "Transit Venus in natal house 2, strength 1.00",
       "debug": {
-        "longitude": 148.49533903847725,
+        "longitude": 148.49533335292645,
         "house": 2
       }
     }
@@ -3452,6 +3305,8 @@
       "t2l__NEPTUNE__SESQUI_QUADRATE__NECESSITY",
       "t2l__NEPTUNE__SQUARE__NEMESIS",
       "t2l__PLUTO__QUINCUNX__NEMESIS",
+      "solar_return__ANGLE_ASC__NATAL_HOUSE_11",
+      "lunar_return__ANGULAR_PLANET__URANUS__HOUSE_1",
       "solar_arc__JUPITER__SQUARE__NATAL_LOT_NECESSITY",
       "solar_arc__VENUS__SQUARE__NATAL_LOT_NECESSITY",
       "secondary_progression__MOON__SEMI_SEXTILE__NATAL_LOT_VICTORY"
@@ -3537,16 +3392,15 @@
         "families": [
           "profection",
           "progression",
-          "return",
           "transit"
         ],
-        "family_count": 4
+        "family_count": 3
       }
     },
     "dominance_cap": {
       "enabled": true,
       "threshold": 0.65,
-      "sum_all_positive_scores": 104.3873
+      "sum_all_positive_scores": 100.3252
     }
   }
 }

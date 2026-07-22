@@ -1765,6 +1765,10 @@ def run_downstream_audit(args: argparse.Namespace) -> dict[str, Any]:
             for f in state.failures
         ),
         "payload_top_flags_match_recalc": not any(f.kind == "payload_top_flags_mismatch" for f in state.failures),
+        "payload_sphere_scores_match_recalc": not any(f.kind == "payload_sphere_scores_mismatch" for f in state.failures),
+        "payload_activation_evidence_match_recalc": not any(
+            f.kind == "payload_activation_evidence_mismatch" for f in state.failures
+        ),
         "payload_preserves_sidecar_ids": (
             not bool(missing_in_payload) and not bool(extra_payload) and payload_v2 is not None and v2_selected
         ),

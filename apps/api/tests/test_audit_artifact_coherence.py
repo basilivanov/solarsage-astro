@@ -86,14 +86,35 @@ def test_activation_layer_and_downstream_green() -> None:
     assert downstream["status"] == "ok"
     assert downstream["failure_count"] == 0
     assert downstream["unmapped_policy"] == "warn"
+    # Every declared check ran and passed — no silent unchecked surface.
+    assert all(downstream["checked"].values()), downstream["checked"]
+    # The intentional unmapped policy stays visible and pinned: exactly the
+    # current 24 known-unmapped activations, reported as warnings only.
+    assert downstream["warning_count"] == len(downstream["warnings"]) == 24
+
+
+def test_scoring_oracle_comparison_all_pass() -> None:
+    comparison = _read("12_scoring_oracle_comparison.json")["comparison"]
+    assert comparison["day_status"]["pass"] is True
+    sphere_scores = comparison["sphere_scores"]
+    assert sphere_scores and all(v["pass"] is True for v in sphere_scores.values())
+    assert comparison["top_signals"]["pass"] is True
 
 
 def test_oracle_artifacts_green() -> None:
     astronomy = _read("13_astronomy_oracle_summary.json")
     assert astronomy["longitude_pass"] is True
+    assert astronomy["sign_pass"] is True
     assert astronomy["retrograde_flag_pass"] is True
     assert astronomy["house_pass"] is True
     assert astronomy["moon_phase"]["pass"] is True
+    # FINAL dayChart proof: transit longitude/sign/motion and serialized
+    # houses (number/order/cusp/sign) against the independent Swiss result.
+    assert astronomy["final_transit_longitude_pass"] is True
+    assert astronomy["final_transit_sign_pass"] is True
+    assert astronomy["final_motion_pass"] is True
+    assert astronomy["final_house_cusp_pass"] is True
+    assert astronomy["final_house_sign_pass"] is True
 
     scoring = _read("12_scoring_oracle_comparison.json")
     assert "oracle" in scoring and "comparison" in scoring

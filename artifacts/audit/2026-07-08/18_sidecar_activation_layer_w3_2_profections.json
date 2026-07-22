@@ -1,7 +1,7 @@
 {
   "schema_version": "activation-layer.v1",
-  "activation_layer_version": "al-1.0",
-  "calculation_version": "1",
+  "activation_layer_version": "al-1.1",
+  "calculation_version": "ss-calc-1.2.0",
   "target_date": "2026-07-08",
   "target_time": "12:00",
   "target_tz": "Europe/Moscow",
@@ -22,7 +22,9 @@
       "aspect": "trine",
       "orb": 0.529,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-01T12:39:22Z",
+      "exact_at": "2026-07-07T19:41:04Z",
+      "active_until": "2026-07-14T02:37:30Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -38,7 +40,17 @@
         "max_orb": 6.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 105.704599,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-07T19:41:04Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -54,25 +66,37 @@
       "target_planet": "MARS",
       "target_frame": "natal",
       "aspect": "quincunx",
-      "orb": 2.9123,
+      "orb": 2.9122,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-29T00:39:22Z",
+      "exact_at": "2026-07-05T07:41:33Z",
+      "active_until": "2026-07-11T14:40:18Z",
       "phase": "separating",
       "house": null,
       "lot": null,
       "angle": null,
-      "strength": 0.2058,
+      "strength": 0.2059,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Sun quincunx natal Mars, orb 2.9123°",
+      "evidence": "Transit Sun quincunx natal Mars, orb 2.9122°",
       "debug": {
         "source_longitude": 106.2336,
         "target_longitude": 253.3214,
-        "angular_distance": 147.0877,
+        "angular_distance": 147.0878,
         "max_orb": 6.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 103.321395,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-05T07:41:33Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -90,7 +114,9 @@
       "aspect": "quincunx",
       "orb": 4.6007,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-07T22:58:07Z",
+      "exact_at": "2026-07-13T04:45:00Z",
+      "active_until": "2026-07-18T10:27:11Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -101,12 +127,22 @@
       "evidence": "Transit Sun quincunx natal Neptune, orb 4.6007°",
       "debug": {
         "source_longitude": 106.2336,
-        "target_longitude": 260.8344,
+        "target_longitude": 260.8343,
         "angular_distance": 154.6007,
         "max_orb": 5.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 110.834312,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-13T04:45:00Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -124,7 +160,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 4.9555,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T07:11:47Z",
+      "exact_at": "2026-07-08T17:36:53Z",
+      "active_until": "2026-07-09T03:54:10Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -140,7 +178,17 @@
         "max_orb": 6.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 28.321395,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T17:36:53Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -156,9 +204,11 @@
       "target_planet": "URANUS",
       "target_frame": "natal",
       "aspect": "quincunx",
-      "orb": 1.3673,
+      "orb": 1.3672,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T02:38:33Z",
+      "exact_at": "2026-07-08T11:23:09Z",
+      "active_until": "2026-07-08T20:01:03Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -166,15 +216,25 @@
       "strength": 0.2906,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Moon quincunx natal Uranus, orb 1.3673°",
+      "evidence": "Transit Moon quincunx natal Uranus, orb 1.3672°",
       "debug": {
         "source_longitude": 23.3659,
         "target_longitude": 234.7332,
-        "angular_distance": 148.6327,
+        "angular_distance": 148.6328,
         "max_orb": 5.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 24.733159,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T11:23:09Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -190,9 +250,11 @@
       "target_planet": "NEPTUNE",
       "target_frame": "natal",
       "aspect": "trine",
-      "orb": 2.5315,
+      "orb": 2.5316,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-07T19:44:09Z",
+      "exact_at": "2026-07-08T04:33:46Z",
+      "active_until": "2026-07-08T13:15:04Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -200,15 +262,25 @@
       "strength": 0.4196,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Moon trine natal Neptune, orb 2.5315°",
+      "evidence": "Transit Moon trine natal Neptune, orb 2.5316°",
       "debug": {
         "source_longitude": 23.3659,
-        "target_longitude": 260.8344,
-        "angular_distance": 122.5315,
+        "target_longitude": 260.8343,
+        "angular_distance": 122.5316,
         "max_orb": 5.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 20.834312,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T04:33:46Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -224,9 +296,11 @@
       "target_planet": "PLUTO",
       "target_frame": "natal",
       "aspect": "opposition",
-      "orb": 1.0454,
+      "orb": 1.0455,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-07T22:23:42Z",
+      "exact_at": "2026-07-08T07:10:13Z",
+      "active_until": "2026-07-08T15:51:22Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -234,15 +308,25 @@
       "strength": 0.7514,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Moon opposition natal Pluto, orb 1.0454°",
+      "evidence": "Transit Moon opposition natal Pluto, orb 1.0455°",
       "debug": {
         "source_longitude": 23.3659,
-        "target_longitude": 202.3205,
-        "angular_distance": 178.9546,
+        "target_longitude": 202.3204,
+        "angular_distance": 178.9545,
         "max_orb": 5.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 22.320412,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T07:10:13Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -260,7 +344,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 4.7103,
       "applying": false,
+      "active_from": "2026-06-19T10:58:07Z",
       "exact_at": null,
+      "active_until": "2026-07-10T12:47:48Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -276,7 +362,15 @@
         "max_orb": 6.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 118.321395,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -294,7 +388,9 @@
       "aspect": "trine",
       "orb": 1.1221,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-16T08:48:45Z",
+      "exact_at": "2026-07-06T04:09:24Z",
+      "active_until": "2026-07-14T14:09:22Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -310,7 +406,18 @@
         "max_orb": 5.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 114.733159,
+          "occurrence_index": 1,
+          "exact_hits_in_window": [
+            "2026-06-23T09:44:18Z",
+            "2026-07-06T04:09:24Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -326,9 +433,11 @@
       "target_planet": "NEPTUNE",
       "target_frame": "natal",
       "aspect": "quincunx",
-      "orb": 2.7767,
+      "orb": 2.7768,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-03T01:46:52Z",
+      "exact_at": "2026-07-12T20:30:34Z",
+      "active_until": "2026-08-06T20:06:33Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -336,15 +445,26 @@
       "strength": 0.1779,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Mercury quincunx natal Neptune, orb 2.7767°",
+      "evidence": "Transit Mercury quincunx natal Neptune, orb 2.7768°",
       "debug": {
         "source_longitude": 113.6111,
-        "target_longitude": 260.8344,
-        "angular_distance": 147.2233,
+        "target_longitude": 260.8343,
+        "angular_distance": 147.2232,
         "max_orb": 5.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 110.834312,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-12T20:30:34Z",
+            "2026-08-02T12:00:27Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -360,9 +480,11 @@
       "target_planet": "PLUTO",
       "target_frame": "natal",
       "aspect": "square",
-      "orb": 1.2906,
+      "orb": 1.2907,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-13T22:55:18Z",
+      "exact_at": "2026-07-10T12:50:11Z",
+      "active_until": "2026-07-19T04:10:18Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -370,15 +492,26 @@
       "strength": 0.6306,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Mercury square natal Pluto, orb 1.2906°",
+      "evidence": "Transit Mercury square natal Pluto, orb 1.2907°",
       "debug": {
         "source_longitude": 113.6111,
-        "target_longitude": 202.3205,
-        "angular_distance": 88.7094,
+        "target_longitude": 202.3204,
+        "angular_distance": 88.7093,
         "max_orb": 5.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 112.320412,
+          "occurrence_index": 1,
+          "exact_hits_in_window": [
+            "2026-06-19T10:55:26Z",
+            "2026-07-10T12:50:11Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -396,7 +529,9 @@
       "aspect": "semi_sextile",
       "orb": 1.8154,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-04T15:29:55Z",
+      "exact_at": "2026-07-10T00:03:55Z",
+      "active_until": "2026-07-15T10:09:14Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -412,7 +547,17 @@
         "max_orb": 6.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 150.31074,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-10T00:03:55Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -428,9 +573,11 @@
       "target_planet": "JUPITER",
       "target_frame": "natal",
       "aspect": "semi_sextile",
-      "orb": 2.1432,
+      "orb": 2.1431,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-04T01:10:47Z",
+      "exact_at": "2026-07-10T07:07:56Z",
+      "active_until": "2026-07-16T15:15:25Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -438,15 +585,25 @@
       "strength": 0.1735,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1432°",
+      "evidence": "Transit Venus semi_sextile natal Jupiter, orb 2.1431°",
       "debug": {
         "source_longitude": 148.4953,
         "target_longitude": 180.6385,
-        "angular_distance": 32.1432,
+        "angular_distance": 32.1431,
         "max_orb": 7.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 150.638463,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-10T07:07:56Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -464,7 +621,9 @@
       "aspect": "semi_sextile",
       "orb": 6.2147,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-07T16:09:25Z",
+      "exact_at": "2026-07-13T23:19:47Z",
+      "active_until": "2026-07-20T08:53:27Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -475,12 +634,22 @@
       "evidence": "Transit Venus semi_sextile natal Saturn, orb 6.2147°",
       "debug": {
         "source_longitude": 148.4953,
-        "target_longitude": 184.71,
+        "target_longitude": 184.7101,
         "angular_distance": 36.2147,
         "max_orb": 7.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 154.710055,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-13T23:19:47Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -496,9 +665,11 @@
       "target_planet": "URANUS",
       "target_frame": "natal",
       "aspect": "square",
-      "orb": 3.7621,
+      "orb": 3.7622,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-30T14:19:46Z",
+      "exact_at": "2026-07-05T00:28:01Z",
+      "active_until": "2026-07-09T11:36:16Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -506,15 +677,25 @@
       "strength": 0.2104,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Venus square natal Uranus, orb 3.7621°",
+      "evidence": "Transit Venus square natal Uranus, orb 3.7622°",
       "debug": {
         "source_longitude": 148.4953,
         "target_longitude": 234.7332,
-        "angular_distance": 86.2379,
+        "angular_distance": 86.2378,
         "max_orb": 5.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 144.733159,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-05T00:28:01Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -530,9 +711,11 @@
       "target_planet": "SUN",
       "target_frame": "natal",
       "aspect": "quincunx",
-      "orb": 0.6481,
+      "orb": 0.648,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-28T00:05:34Z",
+      "exact_at": "2026-07-09T07:07:44Z",
+      "active_until": "2026-07-20T19:03:53Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -540,15 +723,25 @@
       "strength": 0.3676,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Mars quincunx natal Sun, orb 0.6481°",
+      "evidence": "Transit Mars quincunx natal Sun, orb 0.648°",
       "debug": {
         "source_longitude": 66.7745,
         "target_longitude": 217.4225,
-        "angular_distance": 150.6481,
+        "angular_distance": 150.648,
         "max_orb": 8.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 67.422502,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-09T07:07:44Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -566,7 +759,9 @@
       "aspect": "sextile",
       "orb": 0.7876,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-28T04:46:54Z",
+      "exact_at": "2026-07-09T11:53:51Z",
+      "active_until": "2026-07-20T23:55:14Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -577,12 +772,22 @@
       "evidence": "Transit Mars sextile natal Moon, orb 0.7876°",
       "debug": {
         "source_longitude": 66.7745,
-        "target_longitude": 127.5621,
+        "target_longitude": 127.562,
         "angular_distance": 60.7876,
         "max_orb": 8.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 67.562037,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-09T11:53:51Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -598,9 +803,11 @@
       "target_planet": "JUPITER",
       "target_frame": "natal",
       "aspect": "trine",
-      "orb": 6.1359,
+      "orb": 6.136,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-19T22:53:53Z",
+      "exact_at": "2026-06-29T16:58:44Z",
+      "active_until": "2026-07-09T14:30:07Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -608,15 +815,25 @@
       "strength": 0.1049,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Mars trine natal Jupiter, orb 6.1359°",
+      "evidence": "Transit Mars trine natal Jupiter, orb 6.136°",
       "debug": {
         "source_longitude": 66.7745,
         "target_longitude": 180.6385,
-        "angular_distance": 113.8641,
+        "angular_distance": 113.864,
         "max_orb": 7.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 60.638463,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-29T16:58:44Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -632,9 +849,11 @@
       "target_planet": "SATURN",
       "target_frame": "natal",
       "aspect": "trine",
-      "orb": 2.0645,
+      "orb": 2.0644,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-25T14:39:36Z",
+      "exact_at": "2026-07-05T10:42:40Z",
+      "active_until": "2026-07-15T10:19:35Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -642,15 +861,25 @@
       "strength": 0.5993,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Mars trine natal Saturn, orb 2.0645°",
+      "evidence": "Transit Mars trine natal Saturn, orb 2.0644°",
       "debug": {
         "source_longitude": 66.7745,
-        "target_longitude": 184.71,
-        "angular_distance": 117.9355,
+        "target_longitude": 184.7101,
+        "angular_distance": 117.9356,
         "max_orb": 7.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 64.710055,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-05T10:42:40Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -666,9 +895,11 @@
       "target_planet": "PLUTO",
       "target_frame": "natal",
       "aspect": "sesqui_quadrate",
-      "orb": 0.5461,
+      "orb": 0.546,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-02T01:45:41Z",
+      "exact_at": "2026-07-09T03:38:26Z",
+      "active_until": "2026-07-16T07:25:27Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -676,15 +907,25 @@
       "strength": 0.2672,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Mars sesqui_quadrate natal Pluto, orb 0.5461°",
+      "evidence": "Transit Mars sesqui_quadrate natal Pluto, orb 0.546°",
       "debug": {
         "source_longitude": 66.7745,
-        "target_longitude": 202.3205,
-        "angular_distance": 135.5461,
+        "target_longitude": 202.3204,
+        "angular_distance": 135.546,
         "max_orb": 5.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 67.320412,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-09T03:38:26Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -702,7 +943,9 @@
       "aspect": "square",
       "orb": 5.6682,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-27T12:51:47Z",
+      "exact_at": "2026-08-03T01:58:47Z",
+      "active_until": "2026-09-09T07:40:24Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -718,7 +961,17 @@
         "max_orb": 8.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 127.422502,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-08-03T01:58:47Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -736,7 +989,9 @@
       "aspect": "conjunction",
       "orb": 5.8077,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-28T04:35:00Z",
+      "exact_at": "2026-08-03T17:07:16Z",
+      "active_until": "2026-09-10T00:07:31Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -747,12 +1002,22 @@
       "evidence": "Transit Jupiter conjunction natal Moon, orb 5.8077°",
       "debug": {
         "source_longitude": 121.7543,
-        "target_longitude": 127.5621,
+        "target_longitude": 127.562,
         "angular_distance": 5.8077,
         "max_orb": 8.0,
         "aspect_angle": 0.0,
         "aspect_weight": 1.0,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 127.562037,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-08-03T17:07:16Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -770,7 +1035,9 @@
       "aspect": "sextile",
       "orb": 1.4436,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-02T06:50:05Z",
+      "exact_at": "2026-07-01T16:41:37Z",
+      "active_until": "2026-07-29T01:23:30Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -786,7 +1053,17 @@
         "max_orb": 6.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 120.31074,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-01T16:41:37Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -804,7 +1081,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 3.4329,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-22T10:38:30Z",
+      "exact_at": "2026-06-22T07:19:33Z",
+      "active_until": "2026-07-20T01:39:49Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -820,7 +1099,17 @@
         "max_orb": 6.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 118.321395,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-22T07:19:33Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -838,7 +1127,9 @@
       "aspect": "sextile",
       "orb": 1.1158,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-29T17:04:18Z",
+      "exact_at": "2026-07-03T05:17:20Z",
+      "active_until": "2026-08-04T01:23:39Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -854,7 +1145,17 @@
         "max_orb": 7.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 120.638463,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-03T05:17:20Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -872,7 +1173,9 @@
       "aspect": "sextile",
       "orb": 2.9557,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-19T08:46:30Z",
+      "exact_at": "2026-07-21T19:54:08Z",
+      "active_until": "2026-08-22T15:41:20Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -883,12 +1186,22 @@
       "evidence": "Transit Jupiter sextile natal Saturn, orb 2.9557°",
       "debug": {
         "source_longitude": 121.7543,
-        "target_longitude": 184.71,
+        "target_longitude": 184.7101,
         "angular_distance": 62.9557,
         "max_orb": 7.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 124.710055,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-21T19:54:08Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -906,7 +1219,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 4.08,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-04T03:06:56Z",
+      "exact_at": "2026-07-26T21:48:43Z",
+      "active_until": "2026-08-18T14:34:41Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -917,12 +1232,22 @@
       "evidence": "Transit Jupiter sesqui_quadrate natal Neptune, orb 4.08°",
       "debug": {
         "source_longitude": 121.7543,
-        "target_longitude": 260.8344,
+        "target_longitude": 260.8343,
         "angular_distance": 139.08,
         "max_orb": 5.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 125.834312,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-26T21:48:43Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -940,7 +1265,9 @@
       "aspect": "quincunx",
       "orb": 7.0381,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-02-08T15:46:57Z",
+      "exact_at": "2026-04-16T06:17:35Z",
+      "active_until": "2027-03-20T18:55:30Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -956,7 +1283,17 @@
         "max_orb": 8.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 7.422502,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-04-16T06:17:35Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -972,9 +1309,11 @@
       "target_planet": "MOON",
       "target_frame": "natal",
       "aspect": "trine",
-      "orb": 6.8985,
+      "orb": 6.8986,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-02-09T23:18:37Z",
+      "exact_at": "2026-04-17T10:07:46Z",
+      "active_until": "2027-03-21T22:05:21Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -982,15 +1321,25 @@
       "strength": 0.117,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Saturn trine natal Moon, orb 6.8985°",
+      "evidence": "Transit Saturn trine natal Moon, orb 6.8986°",
       "debug": {
         "source_longitude": 14.4606,
-        "target_longitude": 127.5621,
-        "angular_distance": 113.1015,
+        "target_longitude": 127.562,
+        "angular_distance": 113.1014,
         "max_orb": 8.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 7.562037,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-04-17T10:07:46Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1008,7 +1357,9 @@
       "aspect": "quincunx",
       "orb": 1.244,
       "applying": true,
+      "active_from": "2026-05-06T00:39:33Z",
       "exact_at": null,
+      "active_until": "2026-10-25T16:15:04Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1024,7 +1375,15 @@
         "max_orb": 6.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 15.704599,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1042,7 +1401,9 @@
       "aspect": "trine",
       "orb": 1.1392,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-04-15T10:12:29Z",
+      "exact_at": "2026-06-15T05:37:29Z",
+      "active_until": "2027-04-20T21:02:53Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -1058,7 +1419,19 @@
         "max_orb": 6.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 13.321395,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-15T05:37:29Z",
+            "2026-09-07T00:11:29Z",
+            "2027-03-03T04:05:45Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1076,7 +1449,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 4.7274,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-03-25T11:16:14Z",
+      "exact_at": "2026-05-06T06:54:59Z",
+      "active_until": "2026-07-22T09:14:03Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -1092,7 +1467,17 @@
         "max_orb": 5.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 9.733159,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-05-06T06:54:59Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1110,7 +1495,9 @@
       "aspect": "quincunx",
       "orb": 3.3582,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-04-15T01:09:51Z",
+      "exact_at": "2027-06-25T08:45:30Z",
+      "active_until": "2029-06-23T09:15:22Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1126,7 +1513,19 @@
         "max_orb": 8.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 67.422502,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2027-06-25T08:45:30Z",
+            "2027-12-12T13:43:18Z",
+            "2028-04-13T00:48:59Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1144,7 +1543,9 @@
       "aspect": "sextile",
       "orb": 3.4978,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-04-17T18:50:28Z",
+      "exact_at": "2027-06-27T23:17:58Z",
+      "active_until": "2029-06-25T20:09:18Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1155,12 +1556,24 @@
       "evidence": "Transit Uranus sextile natal Moon, orb 3.4978°",
       "debug": {
         "source_longitude": 64.0643,
-        "target_longitude": 127.5621,
+        "target_longitude": 127.562,
         "angular_distance": 63.4978,
         "max_orb": 8.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 67.562037,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2027-06-27T23:17:58Z",
+            "2027-12-09T04:18:51Z",
+            "2028-04-16T00:33:27Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1178,7 +1591,9 @@
       "aspect": "trine",
       "orb": 3.7535,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2025-03-21T14:34:17Z",
+      "exact_at": "2026-05-01T16:03:16Z",
+      "active_until": "2027-06-05T15:41:49Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -1194,7 +1609,19 @@
         "max_orb": 6.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 60.31074,
+          "occurrence_index": 2,
+          "exact_hits_in_window": [
+            "2025-07-14T14:27:14Z",
+            "2025-10-31T03:13:06Z",
+            "2026-05-01T16:03:16Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1212,7 +1639,9 @@
       "aspect": "trine",
       "orb": 3.4258,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2025-03-01T02:18:37Z",
+      "exact_at": "2026-05-07T11:08:15Z",
+      "active_until": "2027-06-29T09:58:11Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -1228,7 +1657,19 @@
         "max_orb": 7.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 60.638463,
+          "occurrence_index": 2,
+          "exact_hits_in_window": [
+            "2025-07-23T05:24:05Z",
+            "2025-10-21T23:10:38Z",
+            "2026-05-07T11:08:15Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1244,9 +1685,11 @@
       "target_planet": "SATURN",
       "target_frame": "natal",
       "aspect": "trine",
-      "orb": 0.6457,
+      "orb": 0.6458,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-02-27T22:46:40Z",
+      "exact_at": "2026-07-23T12:56:01Z",
+      "active_until": "2028-06-29T06:11:12Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1254,15 +1697,27 @@
       "strength": 0.7716,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Uranus trine natal Saturn, orb 0.6457°",
+      "evidence": "Transit Uranus trine natal Saturn, orb 0.6458°",
       "debug": {
         "source_longitude": 64.0643,
-        "target_longitude": 184.71,
-        "angular_distance": 120.6457,
+        "target_longitude": 184.7101,
+        "angular_distance": 120.6458,
         "max_orb": 7.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 64.710055,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-23T12:56:01Z",
+            "2026-10-31T01:22:41Z",
+            "2027-05-09T02:59:56Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1280,7 +1735,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 3.2562,
       "applying": true,
+      "active_from": "2026-06-05T10:43:08Z",
       "exact_at": null,
+      "active_until": "2026-12-31T09:44:27Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1291,12 +1748,20 @@
       "evidence": "Transit Uranus sesqui_quadrate natal Pluto, orb 3.2562°",
       "debug": {
         "source_longitude": 64.0643,
-        "target_longitude": 202.3205,
+        "target_longitude": 202.3204,
         "angular_distance": 138.2562,
         "max_orb": 5.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 67.320412,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1312,25 +1777,39 @@
       "target_planet": "SUN",
       "target_frame": "natal",
       "aspect": "quincunx",
-      "orb": 3.0048,
-      "applying": false,
-      "exact_at": null,
-      "phase": "separating",
+      "orb": 3.0047,
+      "applying": true,
+      "active_from": "2025-12-23T13:57:19Z",
+      "exact_at": "2028-04-25T09:56:28Z",
+      "active_until": "2031-06-21T19:17:44Z",
+      "phase": "applying",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.2498,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Neptune quincunx natal Sun, orb 3.0048°",
+      "evidence": "Transit Neptune quincunx natal Sun, orb 3.0047°",
       "debug": {
-        "source_longitude": 4.4177,
+        "source_longitude": 4.4178,
         "target_longitude": 217.4225,
-        "angular_distance": 146.9952,
+        "angular_distance": 146.9953,
         "max_orb": 8.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 7.422502,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2028-04-25T09:56:28Z",
+            "2028-10-02T03:29:13Z",
+            "2029-02-25T16:23:38Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1346,25 +1825,39 @@
       "target_planet": "MOON",
       "target_frame": "natal",
       "aspect": "trine",
-      "orb": 3.1443,
-      "applying": false,
-      "exact_at": null,
-      "phase": "separating",
+      "orb": 3.1442,
+      "applying": true,
+      "active_from": "2026-01-05T01:37:54Z",
+      "exact_at": "2028-04-29T13:07:00Z",
+      "active_until": "2031-07-03T21:04:35Z",
+      "phase": "applying",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.5159,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Neptune trine natal Moon, orb 3.1443°",
+      "evidence": "Transit Neptune trine natal Moon, orb 3.1442°",
       "debug": {
-        "source_longitude": 4.4177,
-        "target_longitude": 127.5621,
-        "angular_distance": 123.1443,
+        "source_longitude": 4.4178,
+        "target_longitude": 127.562,
+        "angular_distance": 123.1442,
         "max_orb": 8.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 7.562037,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2028-04-29T13:07:00Z",
+            "2028-09-27T03:03:10Z",
+            "2029-03-01T18:18:05Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1380,25 +1873,39 @@
       "target_planet": "MERCURY",
       "target_frame": "natal",
       "aspect": "sesqui_quadrate",
-      "orb": 3.7131,
-      "applying": true,
-      "exact_at": null,
-      "phase": "applying",
+      "orb": 3.7132,
+      "applying": false,
+      "active_from": "2023-03-05T02:14:54Z",
+      "exact_at": "2026-02-19T06:44:36Z",
+      "active_until": "2028-04-05T12:55:04Z",
+      "phase": "separating",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.1143,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Neptune sesqui_quadrate natal Mercury, orb 3.7131°",
+      "evidence": "Transit Neptune sesqui_quadrate natal Mercury, orb 3.7132°",
       "debug": {
-        "source_longitude": 4.4177,
+        "source_longitude": 4.4178,
         "target_longitude": 225.7046,
-        "angular_distance": 138.7131,
+        "angular_distance": 138.7132,
         "max_orb": 6.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 0.704599,
+          "occurrence_index": 2,
+          "exact_hits_in_window": [
+            "2025-04-19T00:13:39Z",
+            "2025-09-25T10:41:15Z",
+            "2026-02-19T06:44:36Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1414,25 +1921,39 @@
       "target_planet": "VENUS",
       "target_frame": "natal",
       "aspect": "opposition",
-      "orb": 4.107,
-      "applying": true,
-      "exact_at": null,
-      "phase": "applying",
+      "orb": 4.1071,
+      "applying": false,
+      "active_from": "2023-02-22T09:14:36Z",
+      "exact_at": "2026-02-06T22:36:50Z",
+      "active_until": "2027-06-03T23:57:06Z",
+      "phase": "separating",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.2997,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Neptune opposition natal Venus, orb 4.107°",
+      "evidence": "Transit Neptune opposition natal Venus, orb 4.1071°",
       "debug": {
-        "source_longitude": 4.4177,
+        "source_longitude": 4.4178,
         "target_longitude": 180.3107,
-        "angular_distance": 175.893,
+        "angular_distance": 175.8929,
         "max_orb": 6.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 0.31074,
+          "occurrence_index": 2,
+          "exact_hits_in_window": [
+            "2025-04-07T21:18:22Z",
+            "2025-10-09T22:35:48Z",
+            "2026-02-06T22:36:50Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1448,25 +1969,39 @@
       "target_planet": "JUPITER",
       "target_frame": "natal",
       "aspect": "opposition",
-      "orb": 3.7792,
-      "applying": true,
-      "exact_at": null,
-      "phase": "applying",
+      "orb": 3.7794,
+      "applying": false,
+      "active_from": "2023-02-02T07:49:56Z",
+      "exact_at": "2026-02-17T07:19:21Z",
+      "active_until": "2028-05-01T20:49:43Z",
+      "phase": "separating",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.4371,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7792°",
+      "evidence": "Transit Neptune opposition natal Jupiter, orb 3.7794°",
       "debug": {
-        "source_longitude": 4.4177,
+        "source_longitude": 4.4178,
         "target_longitude": 180.6385,
-        "angular_distance": 176.2208,
+        "angular_distance": 176.2206,
         "max_orb": 7.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 0.638463,
+          "occurrence_index": 2,
+          "exact_hits_in_window": [
+            "2025-04-17T02:12:46Z",
+            "2025-09-27T20:03:48Z",
+            "2026-02-17T07:19:21Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1482,25 +2017,39 @@
       "target_planet": "SATURN",
       "target_frame": "natal",
       "aspect": "opposition",
-      "orb": 0.2923,
-      "applying": false,
-      "exact_at": null,
-      "phase": "separating",
+      "orb": 0.2922,
+      "applying": true,
+      "active_from": "2025-01-22T07:37:21Z",
+      "exact_at": "2027-04-10T15:16:04Z",
+      "active_until": "2030-04-24T21:40:05Z",
+      "phase": "applying",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.9103,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Neptune opposition natal Saturn, orb 0.2923°",
+      "evidence": "Transit Neptune opposition natal Saturn, orb 0.2922°",
       "debug": {
-        "source_longitude": 4.4177,
-        "target_longitude": 184.71,
-        "angular_distance": 179.7077,
+        "source_longitude": 4.4178,
+        "target_longitude": 184.7101,
+        "angular_distance": 179.7078,
         "max_orb": 7.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 4.710055,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2027-04-10T15:16:04Z",
+            "2027-10-18T02:38:35Z",
+            "2028-02-09T03:39:43Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1516,25 +2065,39 @@
       "target_planet": "SUN",
       "target_frame": "natal",
       "aspect": "square",
-      "orb": 2.7035,
-      "applying": false,
-      "exact_at": null,
-      "phase": "separating",
+      "orb": 2.7033,
+      "applying": true,
+      "active_from": "2024-01-03T01:56:41Z",
+      "exact_at": "2028-02-17T05:54:24Z",
+      "active_until": "2033-02-24T11:26:10Z",
+      "phase": "applying",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.5628,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Pluto square natal Sun, orb 2.7035°",
+      "evidence": "Transit Pluto square natal Sun, orb 2.7033°",
       "debug": {
-        "source_longitude": 304.7191,
+        "source_longitude": 304.7192,
         "target_longitude": 217.4225,
-        "angular_distance": 87.2965,
+        "angular_distance": 87.2967,
         "max_orb": 8.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 307.422502,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2028-02-17T05:54:24Z",
+            "2028-08-07T10:52:22Z",
+            "2028-12-26T01:29:18Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1550,25 +2113,39 @@
       "target_planet": "MOON",
       "target_frame": "natal",
       "aspect": "opposition",
-      "orb": 2.843,
-      "applying": false,
-      "exact_at": null,
-      "phase": "separating",
+      "orb": 2.8429,
+      "applying": true,
+      "active_from": "2024-01-07T11:54:34Z",
+      "exact_at": "2028-02-21T23:15:17Z",
+      "active_until": "2033-03-01T09:02:21Z",
+      "phase": "applying",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.6124,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Pluto opposition natal Moon, orb 2.843°",
+      "evidence": "Transit Pluto opposition natal Moon, orb 2.8429°",
       "debug": {
-        "source_longitude": 304.7191,
-        "target_longitude": 127.5621,
-        "angular_distance": 177.157,
+        "source_longitude": 304.7192,
+        "target_longitude": 127.562,
+        "angular_distance": 177.1571,
         "max_orb": 8.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 307.562037,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2028-02-21T23:15:17Z",
+            "2028-08-01T09:38:23Z",
+            "2028-12-31T01:42:25Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1584,25 +2161,41 @@
       "target_planet": "VENUS",
       "target_frame": "natal",
       "aspect": "trine",
-      "orb": 4.4083,
-      "applying": true,
-      "exact_at": null,
-      "phase": "applying",
+      "orb": 4.4084,
+      "applying": false,
+      "active_from": "2021-01-04T17:56:46Z",
+      "exact_at": "2024-12-04T16:21:49Z",
+      "active_until": "2027-03-06T17:55:43Z",
+      "phase": "separating",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.2255,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Pluto trine natal Venus, orb 4.4083°",
+      "evidence": "Transit Pluto trine natal Venus, orb 4.4084°",
       "debug": {
-        "source_longitude": 304.7191,
+        "source_longitude": 304.7192,
         "target_longitude": 180.3107,
-        "angular_distance": 124.4083,
+        "angular_distance": 124.4084,
         "max_orb": 6.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 300.31074,
+          "occurrence_index": 4,
+          "exact_hits_in_window": [
+            "2023-04-16T20:06:37Z",
+            "2023-05-16T22:02:15Z",
+            "2024-01-30T15:07:11Z",
+            "2024-08-16T18:01:30Z",
+            "2024-12-04T16:21:49Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1618,25 +2211,39 @@
       "target_planet": "JUPITER",
       "target_frame": "natal",
       "aspect": "trine",
-      "orb": 4.0805,
-      "applying": true,
-      "exact_at": null,
-      "phase": "applying",
+      "orb": 4.0807,
+      "applying": false,
+      "active_from": "2020-12-14T09:35:53Z",
+      "exact_at": "2024-12-17T10:04:08Z",
+      "active_until": "2028-02-24T14:48:41Z",
+      "phase": "separating",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.3545,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Pluto trine natal Jupiter, orb 4.0805°",
+      "evidence": "Transit Pluto trine natal Jupiter, orb 4.0807°",
       "debug": {
-        "source_longitude": 304.7191,
+        "source_longitude": 304.7192,
         "target_longitude": 180.6385,
-        "angular_distance": 124.0805,
+        "angular_distance": 124.0807,
         "max_orb": 7.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 300.638463,
+          "occurrence_index": 2,
+          "exact_hits_in_window": [
+            "2024-02-09T23:51:47Z",
+            "2024-08-02T02:06:19Z",
+            "2024-12-17T10:04:08Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1654,7 +2261,9 @@
       "aspect": "trine",
       "orb": 0.0091,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2023-01-02T15:35:17Z",
+      "exact_at": "2026-07-08T18:57:14Z",
+      "active_until": "2030-04-03T11:36:15Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1664,13 +2273,25 @@
       "weight_hint": null,
       "evidence": "Transit Pluto trine natal Saturn, orb 0.0091°",
       "debug": {
-        "source_longitude": 304.7191,
-        "target_longitude": 184.71,
+        "source_longitude": 304.7192,
+        "target_longitude": 184.7101,
         "angular_distance": 120.0091,
         "max_orb": 7.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 304.710055,
+          "occurrence_index": 1,
+          "exact_hits_in_window": [
+            "2026-03-07T18:32:39Z",
+            "2026-07-08T18:57:14Z",
+            "2027-01-12T18:18:53Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1686,25 +2307,39 @@
       "target_planet": "NEPTUNE",
       "target_frame": "natal",
       "aspect": "semi_square",
-      "orb": 1.1153,
-      "applying": false,
-      "exact_at": null,
-      "phase": "separating",
+      "orb": 1.1151,
+      "applying": true,
+      "active_from": "2024-12-24T07:36:23Z",
+      "exact_at": "2027-02-17T16:30:26Z",
+      "active_until": "2030-02-25T07:59:27Z",
+      "phase": "applying",
       "house": null,
       "lot": null,
       "angle": null,
       "strength": 0.2331,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Pluto semi_square natal Neptune, orb 1.1153°",
+      "evidence": "Transit Pluto semi_square natal Neptune, orb 1.1151°",
       "debug": {
-        "source_longitude": 304.7191,
-        "target_longitude": 260.8344,
-        "angular_distance": 43.8847,
+        "source_longitude": 304.7192,
+        "target_longitude": 260.8343,
+        "angular_distance": 43.8849,
         "max_orb": 5.0,
         "aspect_angle": 45.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 305.834312,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2027-02-17T16:30:26Z",
+            "2027-08-03T15:38:38Z",
+            "2027-12-27T09:52:52Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1722,7 +2357,9 @@
       "aspect": "quincunx",
       "orb": 5.8695,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-06T03:22:30Z",
+      "exact_at": "2026-07-14T12:39:43Z",
+      "active_until": "2026-07-22T21:47:48Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1738,7 +2375,17 @@
         "max_orb": 8.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 112.103173,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-14T12:39:43Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1756,7 +2403,9 @@
       "aspect": "semi_sextile",
       "orb": 5.8695,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-06T03:22:30Z",
+      "exact_at": "2026-07-14T12:39:43Z",
+      "active_until": "2026-07-22T21:47:48Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1772,7 +2421,17 @@
         "max_orb": 8.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 112.103173,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-14T12:39:43Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1788,9 +2447,11 @@
       "target_planet": null,
       "target_frame": "angle",
       "aspect": "square",
-      "orb": 5.4871,
+      "orb": 5.487,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T04:37:15Z",
+      "exact_at": "2026-07-08T18:32:00Z",
+      "active_until": "2026-07-09T08:12:55Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1798,15 +2459,25 @@
       "strength": 0.267,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Moon square natal ASC, orb 5.4871°",
+      "evidence": "Transit Moon square natal ASC, orb 5.487°",
       "debug": {
         "source_longitude": 23.3659,
         "target_longitude": 118.853,
-        "angular_distance": 95.4871,
+        "angular_distance": 95.487,
         "max_orb": 8.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 28.852958,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T18:32:00Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1824,7 +2495,9 @@
       "aspect": "sextile",
       "orb": 1.2627,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-07T16:40:41Z",
+      "exact_at": "2026-07-08T06:47:23Z",
+      "active_until": "2026-07-08T20:39:51Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -1840,7 +2513,17 @@
         "max_orb": 8.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 22.103173,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T06:47:23Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1856,9 +2539,11 @@
       "target_planet": null,
       "target_frame": "angle",
       "aspect": "square",
-      "orb": 5.4871,
+      "orb": 5.487,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T04:37:15Z",
+      "exact_at": "2026-07-08T18:32:00Z",
+      "active_until": "2026-07-09T08:12:55Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1866,15 +2551,25 @@
       "strength": 0.267,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Moon square natal DSC, orb 5.4871°",
+      "evidence": "Transit Moon square natal DSC, orb 5.487°",
       "debug": {
         "source_longitude": 23.3659,
         "target_longitude": 298.853,
-        "angular_distance": 84.5129,
+        "angular_distance": 84.513,
         "max_orb": 8.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 28.852958,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T18:32:00Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1892,7 +2587,9 @@
       "aspect": "trine",
       "orb": 1.2627,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-07T16:40:41Z",
+      "exact_at": "2026-07-08T06:47:23Z",
+      "active_until": "2026-07-08T20:39:51Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -1908,7 +2605,17 @@
         "max_orb": 8.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 22.103173,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T06:47:23Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1926,7 +2633,9 @@
       "aspect": "conjunction",
       "orb": 5.2419,
       "applying": false,
+      "active_from": "2026-06-20T04:44:03Z",
       "exact_at": null,
+      "active_until": "2026-07-09T16:04:41Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -1942,7 +2651,15 @@
         "max_orb": 6.0,
         "aspect_angle": 0.0,
         "aspect_weight": 1.0,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 118.852958,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1960,7 +2677,9 @@
       "aspect": "quincunx",
       "orb": 1.5079,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-12T20:20:37Z",
+      "exact_at": "2026-07-10T21:06:35Z",
+      "active_until": "2026-08-08T10:38:26Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -1976,7 +2695,19 @@
         "max_orb": 6.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 112.103173,
+          "occurrence_index": 1,
+          "exact_hits_in_window": [
+            "2026-06-19T03:58:50Z",
+            "2026-07-10T21:06:35Z",
+            "2026-08-03T18:10:35Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -1994,7 +2725,9 @@
       "aspect": "opposition",
       "orb": 5.2419,
       "applying": false,
+      "active_from": "2026-06-20T04:44:03Z",
       "exact_at": null,
+      "active_until": "2026-07-09T16:04:41Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -2010,7 +2743,15 @@
         "max_orb": 6.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 118.852958,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -2028,7 +2769,9 @@
       "aspect": "semi_sextile",
       "orb": 1.5079,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-12T20:20:37Z",
+      "exact_at": "2026-07-10T21:06:35Z",
+      "active_until": "2026-08-08T10:38:26Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -2044,7 +2787,19 @@
         "max_orb": 6.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 112.103173,
+          "occurrence_index": 1,
+          "exact_hits_in_window": [
+            "2026-06-19T03:58:50Z",
+            "2026-07-10T21:06:35Z",
+            "2026-08-03T18:10:35Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -2062,7 +2817,9 @@
       "aspect": "semi_sextile",
       "orb": 0.3576,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-03T08:29:07Z",
+      "exact_at": "2026-07-08T16:41:05Z",
+      "active_until": "2026-07-14T02:25:16Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -2078,7 +2835,17 @@
         "max_orb": 6.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 148.852958,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T16:41:05Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -2096,7 +2863,9 @@
       "aspect": "quincunx",
       "orb": 0.3576,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-03T08:29:07Z",
+      "exact_at": "2026-07-08T16:41:05Z",
+      "active_until": "2026-07-14T02:25:16Z",
       "phase": "applying",
       "house": null,
       "lot": null,
@@ -2112,7 +2881,17 @@
         "max_orb": 6.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 148.852958,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T16:41:05Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -2130,7 +2909,9 @@
       "aspect": "conjunction",
       "orb": 2.9014,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-19T18:13:35Z",
+      "exact_at": "2026-06-24T20:09:33Z",
+      "active_until": "2026-07-26T23:48:28Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -2146,7 +2927,17 @@
         "max_orb": 7.0,
         "aspect_angle": 0.0,
         "aspect_weight": 1.0,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 118.852958,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-24T20:09:33Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -2164,7 +2955,9 @@
       "aspect": "opposition",
       "orb": 2.9014,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-19T18:13:35Z",
+      "exact_at": "2026-06-24T20:09:33Z",
+      "active_until": "2026-07-26T23:48:28Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -2180,7 +2973,17 @@
         "max_orb": 7.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 118.852958,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-24T20:09:33Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -2196,9 +2999,11 @@
       "target_planet": null,
       "target_frame": "angle",
       "aspect": "semi_square",
-      "orb": 2.6854,
+      "orb": 2.6853,
       "applying": false,
+      "active_from": "2026-03-29T07:36:57Z",
       "exact_at": null,
+      "active_until": "2026-10-31T02:07:40Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -2206,15 +3011,23 @@
       "strength": 0.1389,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Neptune semi_square natal MC, orb 2.6854°",
+      "evidence": "Transit Neptune semi_square natal MC, orb 2.6853°",
       "debug": {
-        "source_longitude": 4.4177,
+        "source_longitude": 4.4178,
         "target_longitude": 322.1032,
-        "angular_distance": 42.3146,
+        "angular_distance": 42.3147,
         "max_orb": 5.0,
         "aspect_angle": 45.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 7.103173,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -2230,9 +3043,11 @@
       "target_planet": null,
       "target_frame": "angle",
       "aspect": "sesqui_quadrate",
-      "orb": 2.6854,
+      "orb": 2.6853,
       "applying": false,
+      "active_from": "2026-03-29T07:36:57Z",
       "exact_at": null,
+      "active_until": "2026-10-31T02:07:40Z",
       "phase": "separating",
       "house": null,
       "lot": null,
@@ -2240,15 +3055,23 @@
       "strength": 0.1389,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Neptune sesqui_quadrate natal IC, orb 2.6854°",
+      "evidence": "Transit Neptune sesqui_quadrate natal IC, orb 2.6853°",
       "debug": {
-        "source_longitude": 4.4177,
+        "source_longitude": 4.4178,
         "target_longitude": 142.1032,
-        "angular_distance": 137.6854,
+        "angular_distance": 137.6853,
         "max_orb": 5.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 7.103173,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        }
       }
     },
     {
@@ -2266,7 +3089,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 1,
       "lot": null,
@@ -2276,7 +3101,7 @@
       "weight_hint": null,
       "evidence": "Transit Sun in natal house 1, strength 1.00",
       "debug": {
-        "longitude": 106.23364219241522,
+        "longitude": 106.23364360927502,
         "house": 1
       }
     },
@@ -2295,7 +3120,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 10,
       "lot": null,
@@ -2305,7 +3132,7 @@
       "weight_hint": null,
       "evidence": "Transit Moon in natal house 10, strength 1.00",
       "debug": {
-        "longitude": 23.36586470526968,
+        "longitude": 23.365919326816012,
         "house": 10
       }
     },
@@ -2324,7 +3151,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 1,
       "lot": null,
@@ -2334,7 +3163,7 @@
       "weight_hint": null,
       "evidence": "Transit Mercury in natal house 1, strength 1.00",
       "debug": {
-        "longitude": 113.61109942330512,
+        "longitude": 113.611095892617,
         "house": 1
       }
     },
@@ -2353,7 +3182,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 2,
       "lot": null,
@@ -2363,7 +3194,7 @@
       "weight_hint": null,
       "evidence": "Transit Venus in natal house 2, strength 1.00",
       "debug": {
-        "longitude": 148.49533903847725,
+        "longitude": 148.49533335292645,
         "house": 2
       }
     },
@@ -2382,7 +3213,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 12,
       "lot": null,
@@ -2392,7 +3225,7 @@
       "weight_hint": null,
       "evidence": "Transit Mars in natal house 12, strength 1.00",
       "debug": {
-        "longitude": 66.7744604905792,
+        "longitude": 66.77445318414603,
         "house": 12
       }
     },
@@ -2411,7 +3244,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 2,
       "lot": null,
@@ -2421,7 +3256,7 @@
       "weight_hint": null,
       "evidence": "Transit Jupiter in natal house 2, strength 1.00",
       "debug": {
-        "longitude": 121.7543306474727,
+        "longitude": 121.7543090271786,
         "house": 2
       }
     },
@@ -2440,7 +3275,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 10,
       "lot": null,
@@ -2450,7 +3287,7 @@
       "weight_hint": null,
       "evidence": "Transit Saturn in natal house 10, strength 1.00",
       "debug": {
-        "longitude": 14.460589369229297,
+        "longitude": 14.46059749655143,
         "house": 10
       }
     },
@@ -2469,7 +3306,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 12,
       "lot": null,
@@ -2479,7 +3318,7 @@
       "weight_hint": null,
       "evidence": "Transit Uranus in natal house 12, strength 1.00",
       "debug": {
-        "longitude": 64.06427017287449,
+        "longitude": 64.0642531615111,
         "house": 12
       }
     },
@@ -2498,7 +3337,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 10,
       "lot": null,
@@ -2508,7 +3349,7 @@
       "weight_hint": null,
       "evidence": "Transit Neptune in natal house 10, strength 1.00",
       "debug": {
-        "longitude": 4.41773974782364,
+        "longitude": 4.417842826960104,
         "house": 10
       }
     },
@@ -2527,7 +3368,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": null,
       "exact_at": null,
+      "active_until": null,
       "phase": "background",
       "house": 8,
       "lot": null,
@@ -2537,7 +3380,7 @@
       "weight_hint": null,
       "evidence": "Transit Pluto in natal house 8, strength 1.00",
       "debug": {
-        "longitude": 304.71905881979234,
+        "longitude": 304.7191633162986,
         "house": 8
       }
     },
@@ -2556,7 +3399,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 3.6989,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-26T02:31:52Z",
+      "exact_at": "2026-07-04T11:53:12Z",
+      "active_until": "2026-07-12T21:11:15Z",
       "phase": "separating",
       "house": null,
       "lot": "EROS",
@@ -2572,7 +3417,17 @@
         "max_orb": 8.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 102.53471,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-04T11:53:12Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "EROS",
           "longitude": 327.5347,
@@ -2596,7 +3451,9 @@
       "aspect": "semi_sextile",
       "orb": 0.3895,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-29T13:49:41Z",
+      "exact_at": "2026-07-07T23:11:47Z",
+      "active_until": "2026-07-16T08:26:15Z",
       "phase": "separating",
       "house": null,
       "lot": "NECESSITY",
@@ -2607,15 +3464,25 @@
       "evidence": "Transit Sun semi_sextile lot NECESSITY, orb 0.3895°",
       "debug": {
         "source_longitude": 106.2336,
-        "target_longitude": 135.8442,
+        "target_longitude": 135.8441,
         "angular_distance": 29.6105,
         "max_orb": 8.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 105.844134,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-07T23:11:47Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NECESSITY",
-          "longitude": 135.8442,
+          "longitude": 135.8441,
           "house": 2,
           "formula": "necessity_night_asc_mercury_fortune"
         }
@@ -2636,7 +3503,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 4.0267,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-25T18:16:52Z",
+      "exact_at": "2026-07-04T03:38:09Z",
+      "active_until": "2026-07-12T12:56:15Z",
       "phase": "separating",
       "house": null,
       "lot": "VICTORY",
@@ -2652,7 +3521,17 @@
         "max_orb": 8.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 102.206987,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-04T03:38:09Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "VICTORY",
           "longitude": 327.207,
@@ -2676,7 +3555,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 3.8385,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-25T23:00:56Z",
+      "exact_at": "2026-07-04T08:22:26Z",
+      "active_until": "2026-07-12T17:40:18Z",
       "phase": "separating",
       "house": null,
       "lot": "MARRIAGE",
@@ -2692,7 +3573,17 @@
         "max_orb": 8.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 102.395176,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-04T08:22:26Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "MARRIAGE",
           "longitude": 237.3952,
@@ -2716,7 +3607,9 @@
       "aspect": "opposition",
       "orb": 5.3475,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T04:24:04Z",
+      "exact_at": "2026-07-08T18:17:32Z",
+      "active_until": "2026-07-09T07:56:59Z",
       "phase": "applying",
       "house": null,
       "lot": "FORTUNE",
@@ -2732,7 +3625,17 @@
         "max_orb": 8.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 28.713423,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T18:17:32Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "FORTUNE",
           "longitude": 208.7134,
@@ -2754,9 +3657,11 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "conjunction",
-      "orb": 5.6267,
+      "orb": 5.6266,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T04:53:43Z",
+      "exact_at": "2026-07-08T18:46:27Z",
+      "active_until": "2026-07-09T08:25:40Z",
       "phase": "applying",
       "house": null,
       "lot": "SPIRIT",
@@ -2764,15 +3669,25 @@
       "strength": 0.2967,
       "polarity": "mixed",
       "weight_hint": null,
-      "evidence": "Transit Moon conjunction lot SPIRIT, orb 5.6267°",
+      "evidence": "Transit Moon conjunction lot SPIRIT, orb 5.6266°",
       "debug": {
         "source_longitude": 23.3659,
         "target_longitude": 28.9925,
-        "angular_distance": 5.6267,
+        "angular_distance": 5.6266,
         "max_orb": 8.0,
         "aspect_angle": 0.0,
         "aspect_weight": 1.0,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 28.992493,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T18:46:27Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "SPIRIT",
           "longitude": 28.9925,
@@ -2794,9 +3709,11 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "sextile",
-      "orb": 4.1689,
+      "orb": 4.1688,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T02:18:44Z",
+      "exact_at": "2026-07-08T16:15:11Z",
+      "active_until": "2026-07-09T05:58:55Z",
       "phase": "applying",
       "house": null,
       "lot": "EROS",
@@ -2804,15 +3721,25 @@
       "strength": 0.2634,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Moon sextile lot EROS, orb 4.1689°",
+      "evidence": "Transit Moon sextile lot EROS, orb 4.1688°",
       "debug": {
         "source_longitude": 23.3659,
         "target_longitude": 327.5347,
-        "angular_distance": 55.8311,
+        "angular_distance": 55.8312,
         "max_orb": 8.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 27.53471,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T16:15:11Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "EROS",
           "longitude": 327.5347,
@@ -2834,9 +3761,11 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "trine",
-      "orb": 7.5217,
+      "orb": 7.5218,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-07T05:27:52Z",
+      "exact_at": "2026-07-07T19:44:43Z",
+      "active_until": "2026-07-08T09:49:09Z",
       "phase": "separating",
       "house": null,
       "lot": "NECESSITY",
@@ -2844,18 +3773,28 @@
       "strength": 0.0508,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Moon trine lot NECESSITY, orb 7.5217°",
+      "evidence": "Transit Moon trine lot NECESSITY, orb 7.5218°",
       "debug": {
         "source_longitude": 23.3659,
-        "target_longitude": 135.8442,
-        "angular_distance": 112.4783,
+        "target_longitude": 135.8441,
+        "angular_distance": 112.4782,
         "max_orb": 8.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 15.844134,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-07T19:44:43Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NECESSITY",
-          "longitude": 135.8442,
+          "longitude": 135.8441,
           "house": 2,
           "formula": "necessity_night_asc_mercury_fortune"
         }
@@ -2876,7 +3815,9 @@
       "aspect": "sextile",
       "orb": 3.8411,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T01:42:24Z",
+      "exact_at": "2026-07-08T15:41:07Z",
+      "active_until": "2026-07-09T05:23:46Z",
       "phase": "applying",
       "house": null,
       "lot": "VICTORY",
@@ -2892,7 +3833,17 @@
         "max_orb": 8.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 27.206987,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T15:41:07Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "VICTORY",
           "longitude": 327.207,
@@ -2916,7 +3867,9 @@
       "aspect": "quincunx",
       "orb": 4.0293,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-08T02:02:13Z",
+      "exact_at": "2026-07-08T16:00:41Z",
+      "active_until": "2026-07-09T05:42:57Z",
       "phase": "applying",
       "house": null,
       "lot": "MARRIAGE",
@@ -2932,7 +3885,17 @@
         "max_orb": 8.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 27.395176,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T16:00:41Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "MARRIAGE",
           "longitude": 237.3952,
@@ -2956,7 +3919,9 @@
       "aspect": "square",
       "orb": 5.1023,
       "applying": false,
+      "active_from": "2026-06-19T23:57:11Z",
       "exact_at": null,
+      "active_until": "2026-07-09T21:36:33Z",
       "phase": "separating",
       "house": null,
       "lot": "FORTUNE",
@@ -2972,7 +3937,15 @@
         "max_orb": 6.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 118.713423,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "FORTUNE",
           "longitude": 208.7134,
@@ -2996,7 +3969,9 @@
       "aspect": "square",
       "orb": 5.3814,
       "applying": false,
+      "active_from": "2026-06-20T09:36:33Z",
       "exact_at": null,
+      "active_until": "2026-07-09T10:32:48Z",
       "phase": "separating",
       "house": null,
       "lot": "SPIRIT",
@@ -3012,7 +3987,15 @@
         "max_orb": 6.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 118.992493,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "SPIRIT",
           "longitude": 28.9925,
@@ -3036,7 +4019,9 @@
       "aspect": "quincunx",
       "orb": 3.9236,
       "applying": false,
+      "active_from": "2026-06-18T10:35:37Z",
       "exact_at": null,
+      "active_until": "2026-07-11T18:25:18Z",
       "phase": "separating",
       "house": null,
       "lot": "EROS",
@@ -3052,7 +4037,15 @@
         "max_orb": 6.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 117.53471,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "EROS",
           "longitude": 327.5347,
@@ -3076,7 +4069,9 @@
       "aspect": "quincunx",
       "orb": 3.5959,
       "applying": false,
+      "active_from": "2026-06-18T00:59:03Z",
       "exact_at": null,
+      "active_until": "2026-07-12T06:36:33Z",
       "phase": "separating",
       "house": null,
       "lot": "VICTORY",
@@ -3092,7 +4087,15 @@
         "max_orb": 6.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 117.206987,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "VICTORY",
           "longitude": 327.207,
@@ -3116,7 +4119,9 @@
       "aspect": "trine",
       "orb": 3.7841,
       "applying": false,
+      "active_from": "2026-06-18T06:28:07Z",
       "exact_at": null,
+      "active_until": "2026-07-11T23:37:30Z",
       "phase": "separating",
       "house": null,
       "lot": "MARRIAGE",
@@ -3132,7 +4137,15 @@
         "max_orb": 6.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 117.395176,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "MARRIAGE",
           "longitude": 237.3952,
@@ -3156,7 +4169,9 @@
       "aspect": "sextile",
       "orb": 0.2181,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-03T05:29:43Z",
+      "exact_at": "2026-07-08T13:41:08Z",
+      "active_until": "2026-07-13T23:21:47Z",
       "phase": "applying",
       "house": null,
       "lot": "FORTUNE",
@@ -3172,7 +4187,17 @@
         "max_orb": 6.0,
         "aspect_angle": 60.0,
         "aspect_weight": 0.55,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 148.713423,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T13:41:08Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "FORTUNE",
           "longitude": 208.7134,
@@ -3196,7 +4221,9 @@
       "aspect": "trine",
       "orb": 0.4972,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-07-03T11:24:38Z",
+      "exact_at": "2026-07-08T19:41:04Z",
+      "active_until": "2026-07-14T05:24:47Z",
       "phase": "applying",
       "house": null,
       "lot": "SPIRIT",
@@ -3212,7 +4239,17 @@
         "max_orb": 6.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 148.992493,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-08T19:41:04Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "SPIRIT",
           "longitude": 28.9925,
@@ -3236,7 +4273,9 @@
       "aspect": "opposition",
       "orb": 0.9606,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-02T04:28:09Z",
+      "exact_at": "2026-07-07T12:23:00Z",
+      "active_until": "2026-07-12T21:46:32Z",
       "phase": "separating",
       "house": null,
       "lot": "EROS",
@@ -3252,7 +4291,17 @@
         "max_orb": 6.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 147.53471,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-07T12:23:00Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "EROS",
           "longitude": 327.5347,
@@ -3274,9 +4323,11 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "opposition",
-      "orb": 1.2884,
+      "orb": 1.2883,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-01T21:30:28Z",
+      "exact_at": "2026-07-07T05:21:30Z",
+      "active_until": "2026-07-12T14:39:37Z",
       "phase": "separating",
       "house": null,
       "lot": "VICTORY",
@@ -3284,15 +4335,25 @@
       "strength": 0.746,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Venus opposition lot VICTORY, orb 1.2884°",
+      "evidence": "Transit Venus opposition lot VICTORY, orb 1.2883°",
       "debug": {
         "source_longitude": 148.4953,
         "target_longitude": 327.207,
-        "angular_distance": 178.7116,
+        "angular_distance": 178.7117,
         "max_orb": 6.0,
         "aspect_angle": 180.0,
         "aspect_weight": 0.95,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 147.206987,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-07T05:21:30Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "VICTORY",
           "longitude": 327.207,
@@ -3316,7 +4377,9 @@
       "aspect": "square",
       "orb": 1.1002,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-07-02T01:29:07Z",
+      "exact_at": "2026-07-07T09:23:30Z",
+      "active_until": "2026-07-12T18:43:32Z",
       "phase": "separating",
       "house": null,
       "lot": "MARRIAGE",
@@ -3332,7 +4395,17 @@
         "max_orb": 6.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 147.395176,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-07T09:23:30Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "MARRIAGE",
           "longitude": 237.3952,
@@ -3356,7 +4429,9 @@
       "aspect": "semi_sextile",
       "orb": 1.9249,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-06-27T04:51:02Z",
+      "exact_at": "2026-07-05T15:27:09Z",
+      "active_until": "2026-07-14T04:38:44Z",
       "phase": "separating",
       "house": null,
       "lot": "NEMESIS",
@@ -3372,7 +4447,17 @@
         "max_orb": 6.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 64.84959,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-05T15:27:09Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NEMESIS",
           "longitude": 94.8496,
@@ -3396,7 +4481,9 @@
       "aspect": "square",
       "orb": 3.0409,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-18T22:41:28Z",
+      "exact_at": "2026-06-24T04:14:18Z",
+      "active_until": "2026-07-26T08:41:42Z",
       "phase": "separating",
       "house": null,
       "lot": "FORTUNE",
@@ -3412,7 +4499,17 @@
         "max_orb": 7.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 118.713423,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-24T04:14:18Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "FORTUNE",
           "longitude": 208.7134,
@@ -3436,7 +4533,9 @@
       "aspect": "square",
       "orb": 2.7618,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-20T13:33:14Z",
+      "exact_at": "2026-06-25T12:02:50Z",
+      "active_until": "2026-07-27T14:55:10Z",
       "phase": "separating",
       "house": null,
       "lot": "SPIRIT",
@@ -3452,7 +4551,17 @@
         "max_orb": 7.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 118.992493,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-25T12:02:50Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "SPIRIT",
           "longitude": 28.9925,
@@ -3476,7 +4585,9 @@
       "aspect": "quincunx",
       "orb": 4.2196,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-11T19:46:25Z",
+      "exact_at": "2026-06-18T12:19:36Z",
+      "active_until": "2026-07-21T00:50:51Z",
       "phase": "separating",
       "house": null,
       "lot": "EROS",
@@ -3492,7 +4603,17 @@
         "max_orb": 7.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 117.53471,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-18T12:19:36Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "EROS",
           "longitude": 327.5347,
@@ -3514,25 +4635,37 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "quincunx",
-      "orb": 4.5474,
+      "orb": 4.5473,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-09T17:52:34Z",
+      "exact_at": "2026-06-16T22:02:39Z",
+      "active_until": "2026-07-19T13:14:21Z",
       "phase": "separating",
       "house": null,
       "lot": "VICTORY",
       "angle": null,
-      "strength": 0.1401,
+      "strength": 0.1402,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Jupiter quincunx lot VICTORY, orb 4.5474°",
+      "evidence": "Transit Jupiter quincunx lot VICTORY, orb 4.5473°",
       "debug": {
         "source_longitude": 121.7543,
         "target_longitude": 327.207,
-        "angular_distance": 154.5474,
+        "angular_distance": 154.5473,
         "max_orb": 7.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 117.206987,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-16T22:02:39Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "VICTORY",
           "longitude": 327.207,
@@ -3554,9 +4687,11 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "semi_sextile",
-      "orb": 3.0952,
+      "orb": 3.0953,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-06-20T00:55:24Z",
+      "exact_at": "2026-07-22T11:02:50Z",
+      "active_until": "2026-08-23T07:12:29Z",
       "phase": "applying",
       "house": null,
       "lot": "NEMESIS",
@@ -3564,15 +4699,25 @@
       "strength": 0.1395,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Jupiter semi_sextile lot NEMESIS, orb 3.0952°",
+      "evidence": "Transit Jupiter semi_sextile lot NEMESIS, orb 3.0953°",
       "debug": {
         "source_longitude": 121.7543,
         "target_longitude": 94.8496,
-        "angular_distance": 26.9048,
+        "angular_distance": 26.9047,
         "max_orb": 7.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 124.84959,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-22T11:02:50Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NEMESIS",
           "longitude": 94.8496,
@@ -3594,9 +4739,11 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "trine",
-      "orb": 4.3592,
+      "orb": 4.3591,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-05-10T22:39:13Z",
+      "exact_at": "2026-06-17T20:03:20Z",
+      "active_until": "2026-07-20T09:41:30Z",
       "phase": "separating",
       "house": null,
       "lot": "MARRIAGE",
@@ -3604,15 +4751,25 @@
       "strength": 0.3207,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Jupiter trine lot MARRIAGE, orb 4.3592°",
+      "evidence": "Transit Jupiter trine lot MARRIAGE, orb 4.3591°",
       "debug": {
         "source_longitude": 121.7543,
         "target_longitude": 237.3952,
-        "angular_distance": 115.6408,
+        "angular_distance": 115.6409,
         "max_orb": 7.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 117.395176,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-17T20:03:20Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "MARRIAGE",
           "longitude": 237.3952,
@@ -3636,7 +4793,9 @@
       "aspect": "semi_square",
       "orb": 1.9259,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-03-31T21:31:59Z",
+      "exact_at": "2026-06-04T12:32:25Z",
+      "active_until": "2027-04-22T14:11:17Z",
       "phase": "separating",
       "house": null,
       "lot": "EROS",
@@ -3652,7 +4811,19 @@
         "max_orb": 7.0,
         "aspect_angle": 45.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 12.53471,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-04T12:32:25Z",
+            "2026-09-18T11:14:27Z",
+            "2027-02-24T03:04:11Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "EROS",
           "longitude": 327.5347,
@@ -3674,9 +4845,11 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "trine",
-      "orb": 1.3836,
+      "orb": 1.3835,
       "applying": true,
+      "active_from": "2026-04-28T08:09:56Z",
       "exact_at": null,
+      "active_until": "2026-11-08T13:23:03Z",
       "phase": "applying",
       "house": null,
       "lot": "NECESSITY",
@@ -3684,18 +4857,26 @@
       "strength": 0.682,
       "polarity": "supportive",
       "weight_hint": null,
-      "evidence": "Transit Saturn trine lot NECESSITY, orb 1.3836°",
+      "evidence": "Transit Saturn trine lot NECESSITY, orb 1.3835°",
       "debug": {
         "source_longitude": 14.4606,
-        "target_longitude": 135.8442,
-        "angular_distance": 121.3836,
+        "target_longitude": 135.8441,
+        "angular_distance": 121.3835,
         "max_orb": 7.0,
         "aspect_angle": 120.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 15.844134,
+          "occurrence_index": null,
+          "exact_hits_in_window": [],
+          "warning_code": "no_exact_hit_in_window",
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NECESSITY",
-          "longitude": 135.8442,
+          "longitude": 135.8441,
           "house": 2,
           "formula": "necessity_night_asc_mercury_fortune"
         }
@@ -3716,7 +4897,9 @@
       "aspect": "semi_square",
       "orb": 2.2536,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-03-29T06:23:05Z",
+      "exact_at": "2026-05-31T13:21:30Z",
+      "active_until": "2027-04-19T23:03:41Z",
       "phase": "separating",
       "house": null,
       "lot": "VICTORY",
@@ -3732,7 +4915,19 @@
         "max_orb": 7.0,
         "aspect_angle": 45.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 12.206987,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-05-31T13:21:30Z",
+            "2026-09-22T20:46:47Z",
+            "2027-02-21T02:00:47Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "VICTORY",
           "longitude": 327.207,
@@ -3756,7 +4951,9 @@
       "aspect": "sesqui_quadrate",
       "orb": 2.0654,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2026-03-30T18:37:21Z",
+      "exact_at": "2026-06-02T19:20:58Z",
+      "active_until": "2027-04-21T11:16:53Z",
       "phase": "separating",
       "house": null,
       "lot": "MARRIAGE",
@@ -3772,7 +4969,19 @@
         "max_orb": 7.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "plus",
+          "selected_exact_longitude": 12.395176,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-06-02T19:20:58Z",
+            "2026-09-20T08:37:04Z",
+            "2027-02-22T20:10:36Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "MARRIAGE",
           "longitude": 237.3952,
@@ -3796,7 +5005,9 @@
       "aspect": "semi_sextile",
       "orb": 0.7853,
       "applying": true,
-      "exact_at": null,
+      "active_from": "2026-04-23T06:01:06Z",
+      "exact_at": "2026-07-27T07:32:56Z",
+      "active_until": "2027-08-30T14:58:40Z",
       "phase": "applying",
       "house": null,
       "lot": "NEMESIS",
@@ -3812,7 +5023,19 @@
         "max_orb": 5.0,
         "aspect_angle": 30.0,
         "aspect_weight": 0.25,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 64.84959,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2026-07-27T07:32:56Z",
+            "2026-10-27T01:31:46Z",
+            "2027-05-11T13:43:32Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NEMESIS",
           "longitude": 94.8496,
@@ -3834,28 +5057,42 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "sesqui_quadrate",
-      "orb": 3.5736,
-      "applying": true,
-      "exact_at": null,
-      "phase": "applying",
+      "orb": 3.5737,
+      "applying": false,
+      "active_from": "2024-02-03T13:39:34Z",
+      "exact_at": "2026-02-23T08:29:12Z",
+      "active_until": "2027-05-15T02:30:53Z",
+      "phase": "separating",
       "house": null,
       "lot": "NECESSITY",
       "angle": null,
       "strength": 0.0856,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Neptune sesqui_quadrate lot NECESSITY, orb 3.5736°",
+      "evidence": "Transit Neptune sesqui_quadrate lot NECESSITY, orb 3.5737°",
       "debug": {
-        "source_longitude": 4.4177,
-        "target_longitude": 135.8442,
-        "angular_distance": 131.4264,
+        "source_longitude": 4.4178,
+        "target_longitude": 135.8441,
+        "angular_distance": 131.4263,
         "max_orb": 5.0,
         "aspect_angle": 135.0,
         "aspect_weight": 0.3,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 0.844134,
+          "occurrence_index": 2,
+          "exact_hits_in_window": [
+            "2025-04-23T03:28:17Z",
+            "2025-09-20T09:57:51Z",
+            "2026-02-23T08:29:12Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NECESSITY",
-          "longitude": 135.8442,
+          "longitude": 135.8441,
           "house": 2,
           "formula": "necessity_night_asc_mercury_fortune"
         }
@@ -3874,25 +5111,39 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "square",
-      "orb": 0.4318,
-      "applying": false,
-      "exact_at": null,
-      "phase": "separating",
+      "orb": 0.4317,
+      "applying": true,
+      "active_from": "2026-01-20T11:04:52Z",
+      "exact_at": "2027-04-14T10:57:39Z",
+      "active_until": "2029-05-03T12:11:37Z",
+      "phase": "applying",
       "house": null,
       "lot": "NEMESIS",
       "angle": null,
       "strength": 0.7766,
       "polarity": "tense",
       "weight_hint": null,
-      "evidence": "Transit Neptune square lot NEMESIS, orb 0.4318°",
+      "evidence": "Transit Neptune square lot NEMESIS, orb 0.4317°",
       "debug": {
-        "source_longitude": 4.4177,
+        "source_longitude": 4.4178,
         "target_longitude": 94.8496,
-        "angular_distance": 90.4318,
+        "angular_distance": 90.4317,
         "max_orb": 5.0,
         "aspect_angle": 90.0,
         "aspect_weight": 0.85,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 4.84959,
+          "occurrence_index": 0,
+          "exact_hits_in_window": [
+            "2027-04-14T10:57:39Z",
+            "2027-10-12T19:03:24Z",
+            "2028-02-13T20:25:38Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NEMESIS",
           "longitude": 94.8496,
@@ -3914,9 +5165,11 @@
       "target_planet": null,
       "target_frame": "lot",
       "aspect": "quincunx",
-      "orb": 0.1305,
+      "orb": 0.1304,
       "applying": false,
-      "exact_at": null,
+      "active_from": "2024-11-10T11:41:19Z",
+      "exact_at": "2026-07-02T06:40:46Z",
+      "active_until": "2029-03-20T01:10:24Z",
       "phase": "separating",
       "house": null,
       "lot": "NEMESIS",
@@ -3924,15 +5177,29 @@
       "strength": 0.3896,
       "polarity": "neutral",
       "weight_hint": null,
-      "evidence": "Transit Pluto quincunx lot NEMESIS, orb 0.1305°",
+      "evidence": "Transit Pluto quincunx lot NEMESIS, orb 0.1304°",
       "debug": {
-        "source_longitude": 304.7191,
+        "source_longitude": 304.7192,
         "target_longitude": 94.8496,
-        "angular_distance": 150.1305,
+        "angular_distance": 150.1304,
         "max_orb": 5.0,
         "aspect_angle": 150.0,
         "aspect_weight": 0.4,
-        "applying_probe_days": 0.1,
+        "timing": {
+          "selected_branch": "minus",
+          "selected_exact_longitude": 304.84959,
+          "occurrence_index": 1,
+          "exact_hits_in_window": [
+            "2026-03-13T12:48:26Z",
+            "2026-07-02T06:40:46Z",
+            "2027-01-17T05:02:17Z",
+            "2027-09-27T04:41:32Z",
+            "2027-11-07T20:08:10Z"
+          ],
+          "warning_code": null,
+          "boundary_tolerance_seconds": 300,
+          "exact_tolerance_seconds": 60
+        },
         "lot": {
           "name": "NEMESIS",
           "longitude": 94.8496,
@@ -3956,7 +5223,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": "2025-10-30",
       "exact_at": null,
+      "active_until": "2026-10-29",
       "phase": "period",
       "house": 10,
       "lot": null,
@@ -3993,7 +5262,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": "2025-10-30",
       "exact_at": null,
+      "active_until": "2026-10-29",
       "phase": "period",
       "house": null,
       "lot": null,
@@ -4029,7 +5300,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": "2026-06-30",
       "exact_at": null,
+      "active_until": "2026-07-29",
       "phase": "period",
       "house": 6,
       "lot": null,
@@ -4067,7 +5340,9 @@
       "aspect": null,
       "orb": null,
       "applying": null,
+      "active_from": "2026-06-30",
       "exact_at": null,
+      "active_until": "2026-07-29",
       "phase": "period",
       "house": null,
       "lot": null,
@@ -4270,7 +5545,7 @@
   },
   "warnings": [],
   "_audit_meta": {
-    "user_id": "eb3876be-e1b4-43d6-b887-1f8554e33150",
+    "user_id": "7dd0c1ad-0294-4f0e-b6d9-67f8f53410ee",
     "birth": {
       "date": "1980-10-30",
       "time": "19:50",

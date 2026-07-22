@@ -6,8 +6,14 @@
     "jd": 2461229.875
   },
   "longitude_pass": true,
+  "sign_pass": true,
   "retrograde_flag_pass": true,
   "house_pass": true,
+  "final_transit_longitude_pass": true,
+  "final_transit_sign_pass": true,
+  "final_motion_pass": true,
+  "final_house_cusp_pass": true,
+  "final_house_sign_pass": true,
   "moon_phase": {
     "oracle_percent": 43.792,
     "production_percent": 44,

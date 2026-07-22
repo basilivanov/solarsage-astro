@@ -1,0 +1,11 @@
+planet,oracle_longitude,final_longitude,final_longitude_delta_deg,final_longitude_pass,oracle_sign,final_sign,final_sign_pass,oracle_speed,oracle_retrograde,final_motion,expected_motion,final_motion_pass
+Sun,106.23364219,106.2336,4.219e-05,True,Cancer,Cancer,True,0.95359635,False,direct,direct,True
+Moon,23.36586471,23.3659,3.529e-05,True,Aries,Aries,True,13.73155648,False,direct,direct,True
+Mercury,113.61109942,113.6111,5.8e-07,True,Cancer,Cancer,True,-0.56080335,True,retrograde,retrograde,True
+Venus,148.49533904,148.4953,3.904e-05,True,Leo,Leo,True,1.11725717,False,direct,direct,True
+Mars,66.77446049,66.7745,3.951e-05,True,Gemini,Gemini,True,0.70333314,False,direct,direct,True
+Jupiter,121.75433065,121.7543,3.065e-05,True,Leo,Leo,True,0.21759327,False,direct,direct,True
+Saturn,14.46058937,14.4606,1.063e-05,True,Aries,Aries,True,0.03117685,False,direct,direct,True
+Uranus,64.06427017,64.0643,2.983e-05,True,Gemini,Gemini,True,0.04665653,False,direct,direct,True
+Neptune,4.41773975,4.4178,6.025e-05,True,Aries,Aries,True,-0.00049113,True,stationary,stationary,True
+Pluto,304.71905882,304.7192,0.00014118,True,Aquarius,Aquarius,True,-0.02193027,True,retrograde,retrograde,True
