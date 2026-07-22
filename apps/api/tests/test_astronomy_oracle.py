@@ -280,9 +280,19 @@ def test_audit_default_fails_fast_on_invalid_baseline(tmp_path: Path):
 @pytest.mark.integration
 def test_audit_live_isolates_output(tmp_path: Path):
     """Live mode must write only under live/<timestamp>/ and not to canonical root.
-    Must fail when subprocess fails (detects regression in live execution)."""
+    Must fail when subprocess fails (detects regression in live execution).
+
+    The real contour is fail-closed on the pinned Swiss ephemeris (engine
+    policy swieph), so this integration test requires AUDIT_EPHEMERIS_PATH
+    pointing at the pinned bundle data dir (extracted from the exact sidecar
+    image); without it the test skips explicitly, never silently.
+    """
+    import os
     import subprocess, sys
     from pathlib import Path
+    audit_ephe = os.environ.get("AUDIT_EPHEMERIS_PATH")
+    if not audit_ephe or not Path(audit_ephe).is_dir():
+        pytest.skip("AUDIT_EPHEMERIS_PATH not set to the pinned ephemeris bundle (integration env)")
     script = Path(__file__).resolve().parents[3] / "scripts" / "audit_today.py"
     real_baseline = Path(__file__).resolve().parents[3] / "artifacts" / "audit" / "2026-07-08" / "11_final_today_payload.json"
     out = tmp_path / "out"

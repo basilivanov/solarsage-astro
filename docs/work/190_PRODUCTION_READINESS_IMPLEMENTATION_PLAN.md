@@ -350,6 +350,36 @@ their text below is kept as the design for those later slices.
   amount/contribution, sphere order, topFlags, lost/extra ids) all exit
   non-zero. Combined audit is green on the exact same artifact LOCALLY;
   the exact-SHA GitHub proof stays pending with P1-1.
+- **P1-2 third-review hardening (2026-07-22, local):** a second
+  independent mutation sweep found eight more downstream fail-opens
+  (removed key/title/normalizedScore-null/dominanceCapped-false,
+  activationEvidence debug mutation, removed nullable house, extra keys
+  in topFlags/evidence) and four astronomy fail-opens (retrograde flip,
+  removed house → traceback without summary, removed lunar_phase fact,
+  extra transit planet), plus a silent moshier oracle (empty
+  /opt/sweph/ephe, calc flags=260). Fixes, all inside the existing
+  contour: payload blocks are validated through the public Pydantic
+  contracts and compared as canonical model_dump(by_alias=True,
+  mode="json") with exact ordered equality (missing/extra keys and
+  null-presence are diagnostic failures payload_contract_missing_key /
+  payload_contract_extra_key); private-helper oracles were replaced by
+  audit-local INDEPENDENT_PROJECTIONS over the actual ScoringV2Result
+  and public canon constants; the astronomy oracle now checks exact
+  final transit structure/order/count + retrograde, exact house
+  structure/count/order, moon-phase missing/non-True as failure, never
+  tracebacks, and records an engine proof (fail-closed swieph by
+  default; allow-moshier is an explicit test-only flag). audit_today
+  resolves the oracle interpreter (sidecar venv locally, the swisseph-
+  capable current interpreter in CI) and forwards AUDIT_EPHEMERIS_PATH;
+  the artifact-acceptance job extracts the baked bundle from the exact
+  sidecar container and verifies artifact_id + manifest sha256 against
+  /v1/health before the freeze runs. The standalone wave script now
+  passes the production current_location + WHOLE_SIGN house system, so
+  17 carries exactly the canonical 143 ordered ids of
+  16_activation_layer. The canonical package was regenerated with the
+  oracle on the pinned bundle (swieph=true, flags=258); provenance
+  coherence asserts the exact full SHAs; freeze ×2 stays byte-clean on
+  the final commit. GitHub exact-SHA run stays PENDING.
 - **P1-2 second-review hardening (2026-07-22, local):** an independent
   mutation sweep showed 9 further probes passing rc=0 (topFlags summary,
   normalizedScore, contribution before, activationEvidence strength,
