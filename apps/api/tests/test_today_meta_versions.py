@@ -862,6 +862,11 @@ async def test_v1_only_payload_and_cache_identity_not_polluted_by_v2_calc(db_ses
                  "health", "decisions", "travel", "creativity", "study", "shopping",
              ])
          })), \
+         patch("app.services.llm_service.LLMService.generate_headline", AsyncMock(return_value=None)), \
+         patch("app.services.llm_service.LLMService.generate_reading", AsyncMock(return_value=None)), \
+         patch("app.services.llm_service.LLMService.generate_notes", AsyncMock(return_value=None)), \
+         patch("app.services.llm_service.LLMService.generate_why_sections", AsyncMock(return_value=None)), \
+         patch("app.services.llm_service.LLMService.generate_planet_interpretations", AsyncMock(return_value=None)), \
          patch.object(settings, "openrouter_api_key", "test-meta-key"):
         service = TodayService(db_session)
         access = ContentAccessState(state="preview", reason="expired_access")
@@ -1105,6 +1110,11 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
                  "health", "decisions", "travel", "creativity", "study", "shopping",
              ])
          })), \
+         patch("app.services.llm_service.LLMService.generate_headline", AsyncMock(return_value=None)), \
+         patch("app.services.llm_service.LLMService.generate_reading", AsyncMock(return_value=None)), \
+         patch("app.services.llm_service.LLMService.generate_notes", AsyncMock(return_value=None)), \
+         patch("app.services.llm_service.LLMService.generate_why_sections", AsyncMock(return_value=None)), \
+         patch("app.services.llm_service.LLMService.generate_planet_interpretations", AsyncMock(return_value=None)), \
          patch.object(settings, "openrouter_api_key", "test-meta-key"), \
          patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual):
         service = TodayService(db_session, horizon_integration_service=integration_spy)
