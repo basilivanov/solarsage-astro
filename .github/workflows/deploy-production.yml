@@ -325,7 +325,15 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf /tmp/audit-ephe && mkdir -p /tmp/audit-ephe
-          docker cp acceptance-sidecar:/opt/solarsage-ephemeris/bundle/. /tmp/audit-ephe/
+          # The bundle is baked read-only (dirs 0555, files 0444) on purpose.
+          # `docker cp` extracts client-side as the unprivileged runner user and
+          # applies source modes eagerly, so it cannot create files inside the
+          # fresh 0555 dirs (proven: run 29943208636, "open
+          # /tmp/audit-ephe/ephe/seas_18.se1: permission denied"). Stream a tar
+          # from the container instead: GNU tar defers directory-mode
+          # application until extraction ends. Layout and identity checks below
+          # are unchanged; immutability stays enforced (extract is read-only).
+          docker exec acceptance-sidecar tar -C /opt/solarsage-ephemeris/bundle -cf - . | tar -C /tmp/audit-ephe -xf -
           echo "AUDIT_EPHEMERIS_PATH=/tmp/audit-ephe/ephe" >> "$GITHUB_ENV"
           python3 - <<'EOF'
           import hashlib, json
