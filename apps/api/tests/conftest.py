@@ -72,6 +72,18 @@ async def db_engine() -> AsyncIterator:
     await engine.dispose()
 
 
+@pytest.fixture(autouse=True)
+def _clear_geonames_search_cache():
+    """Isolated GeoNames search cache per test (private cache_clear pattern,
+    no product hooks): the bounded in-process dedup in geonames must never
+    leak results across tests within one worker process."""
+    from app.services import geonames
+
+    geonames._search_geonames_cached.cache_clear()
+    yield
+    geonames._search_geonames_cached.cache_clear()
+
+
 @pytest_asyncio.fixture()
 async def db_session(db_engine) -> AsyncIterator[AsyncSession]:
     factory = async_sessionmaker(db_engine, expire_on_commit=False)

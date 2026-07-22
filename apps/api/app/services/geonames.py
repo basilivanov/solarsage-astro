@@ -25,6 +25,10 @@
 #   - search uses style=FULL; an inline item.timezone.timeZoneId is used as
 #     timezone_id directly, otherwise _fetch_timezone (timezoneJSON) is the
 #     per-item fallback
+#   - identical (stripped query, limit, username) searches within one
+#     process share ONE upstream call via a bounded lru_cache (256); cold
+#     process and every first unique query always hit GeoNames, exceptions
+#     are never cached, callers get defensive deep copies
 # failure_policy:
 #   - GeoNamesError on API failure
 #   - returns empty list if no results
@@ -37,12 +41,17 @@
 # semantic_blocks:
 #   - GEONAMES_FETCH: HTTP requests to GeoNames
 #   - GEONAMES_PARSE: parse GeoNames response JSON
+#   - GEONAMES_CACHE: bounded in-process search dedup (lru_cache 256 keyed by
+#     stripped query + limit + username; exceptions never cached; defensive
+#     deep copies out; process restart clears)
 # END_MODULE_MAP: M-GEONAMES
 
+import copy
 import json
 import os
 import urllib.parse
 import urllib.request
+from functools import lru_cache
 from typing import List, Optional
 
 
@@ -152,8 +161,10 @@ def search_geonames(query: str, limit: int = 8) -> List[dict]:
     # START_FUNCTION_CONTRACT: F-M-GEONAMES.search_geonames
     # purpose: Fetch GeoNames autocomplete suggestions by query.
     # inputs: query (str), limit (int, default 8)
-    # returns: List of dicts with id, name, lat, lon, timezone_id, label
-    # side_effects: makes HTTP requests to GeoNames API
+    # returns: List of dicts with id, name, lat, lon, timezone_id, label —
+    #   a defensive deep copy on EVERY call (callers may mutate freely).
+    # side_effects: makes HTTP requests to GeoNames API (deduplicated: see
+    #   _search_geonames_cached)
     # emitted_logs: none
     # error_behavior: returns empty list if query too short (<2 chars); raises GeoNamesError on API failure
     # END_FUNCTION_CONTRACT: F-M-GEONAMES.search_geonames
@@ -167,8 +178,44 @@ def search_geonames(query: str, limit: int = 8) -> List[dict]:
     if not query or len(query.strip()) < 2:
         return []
 
-    query = query.strip()
+    # Bounded in-process dedup: identical autocomplete bursts (same stripped
+    # query, same limit, same username) cost ONE upstream search. Cold
+    # process and every first unique query still call GeoNames for real;
+    # exceptions are never cached (lru_cache re-raises on every miss), so a
+    # cold-miss provider failure stays fail-closed. GeoNames data is
+    # effectively static and a process restart clears the cache.
+    return copy.deepcopy(
+        _search_geonames_cached(query.strip(), limit, _get_username())
+    )
 
+
+@lru_cache(maxsize=256)
+def _search_geonames_cached(stripped_query: str, limit: int, username: str) -> List[dict]:
+    # START_FUNCTION_CONTRACT: F-M-GEONAMES._search_geonames_cached
+    # purpose: Memoized wrapper over _search_geonames_uncached keyed by
+    #   (stripped query, limit, username). username is part of the key so a
+    #   credential change never crosses cached entries.
+    # inputs: stripped_query, limit, username (key material only — the
+    #   upstream fetch reads the env username itself).
+    # returns: the cached result list (callers receive deep copies only).
+    # side_effects: at most one upstream search per key per process.
+    # emitted_logs: none.
+    # error_behavior: GeoNamesError propagates and is NEVER cached — the
+    #   next identical call retries the provider for real.
+    # END_FUNCTION_CONTRACT: F-M-GEONAMES._search_geonames_cached
+    return _search_geonames_uncached(stripped_query, limit)
+
+
+def _search_geonames_uncached(query: str, limit: int) -> List[dict]:
+    # START_FUNCTION_CONTRACT: F-M-GEONAMES._search_geonames_uncached
+    # purpose: Real GeoNames autocomplete lookup: startswith search, then
+    #   full-text, then compact (space/dash-stripped) variants.
+    # inputs: stripped query, limit.
+    # returns: suggestion dicts (may be empty).
+    # side_effects: 1-4 HTTP requests to GeoNames.
+    # emitted_logs: none.
+    # error_behavior: GeoNamesError on API failure.
+    # END_FUNCTION_CONTRACT: F-M-GEONAMES._search_geonames_uncached
     results = _fetch_geonames(query, limit, "startswith")
     if results:
         return results
