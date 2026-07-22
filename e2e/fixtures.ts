@@ -424,7 +424,9 @@ export async function shimTelegramOpenLink(page: Page) {
 //   unconditionally required). The real card form has SPLIT expiry inputs
 //   (expiry-month/expiry-year/security-code, all data-qa'd in the provider
 //   trace) — they are filled separately and every field is verified to
-//   actually hold the value (fail-closed) BEFORE the single pay click.
+//   actually hold the value (fail-closed) BEFORE the single pay click; a
+//   bounded pre-submit fill-and-verify stabilization (up to 3 short
+//   attempts) covers provider-controlled inputs dropping the first fill.
 //   A chrome-error page is reported as an EXTERNAL provider navigation
 //   failure (never masked as a missing option). Never logs URL/order/
 //   provider ids.
@@ -515,42 +517,67 @@ export async function paySandboxCheckout(popup: Page) {
   }
 
   const cardNumber = formFrame.locator(cardNumberSel).first();
-  await cardNumber.fill(SANDBOX_TEST_CARD.number);
+  const cvcField = formFrame.locator(cvcSel).first();
+  const combinedField = formFrame.locator(combinedExpirySel).first();
 
-  if (splitMode) {
-    await monthField.fill(SANDBOX_TEST_CARD.expiryMonth);
-    await yearField.fill(SANDBOX_TEST_CARD.expiryYear);
-  } else {
-    await formFrame
-      .locator(combinedExpirySel)
-      .first()
-      .fill(`${SANDBOX_TEST_CARD.expiryMonth}/${SANDBOX_TEST_CARD.expiryYear}`);
-  }
-  await formFrame.locator(cvcSel).first().fill(SANDBOX_TEST_CARD.cvc);
+  // FAIL-CLOSED verification of every expected value (masked,
+  // provider-controlled inputs may silently drop a fill — a pre-submit
+  // form race observed in CI 29912821828, never a payment failure).
+  const verifyAll = async (): Promise<string[]> => {
+    const mismatches: string[] = [];
+    if (!(await cardNumber.inputValue()).replace(/\D/g, '').endsWith('4444')) {
+      mismatches.push('cardNumber');
+    }
+    if (splitMode) {
+      if ((await monthField.inputValue()).trim() !== SANDBOX_TEST_CARD.expiryMonth) {
+        mismatches.push('expiryMonth');
+      }
+      if ((await yearField.inputValue()).trim() !== SANDBOX_TEST_CARD.expiryYear) {
+        mismatches.push('expiryYear');
+      }
+    } else if (
+      !(await combinedField.inputValue())
+        .replace(/\D/g, '')
+        .startsWith(`${SANDBOX_TEST_CARD.expiryMonth}${SANDBOX_TEST_CARD.expiryYear}`)
+    ) {
+      mismatches.push('expiry');
+    }
+    if ((await cvcField.inputValue()).replace(/\D/g, '') !== SANDBOX_TEST_CARD.cvc) {
+      mismatches.push('cvc');
+    }
+    return mismatches;
+  };
 
-  // 3) FAIL-CLOSED fill verification before the single pay click: masked
-  //    inputs can silently drop input (observed: "12/30" into the month
-  //    field left the year empty -> payment stuck pending).
-  const numberValue = (await cardNumber.inputValue()).replace(/\D/g, '');
-  if (!numberValue.endsWith('4444')) {
-    throw new Error('sandbox checkout: card number field did not hold the card');
+  // Bounded fill-and-verify stabilization (pre-submit only): refill the
+  // mismatched fields and re-read, up to 3 short attempts. Pay is clicked
+  // exactly once and ONLY after ALL fields hold simultaneously.
+  let verified = false;
+  let lastMismatches: string[] = [];
+  for (let attempt = 0; attempt < 3 && !verified; attempt += 1) {
+    lastMismatches = await verifyAll();
+    if (lastMismatches.length === 0) {
+      verified = true;
+      break;
+    }
+    for (const field of lastMismatches) {
+      if (field === 'cardNumber') {
+        await cardNumber.fill(SANDBOX_TEST_CARD.number);
+      } else if (field === 'expiryMonth') {
+        await monthField.fill(SANDBOX_TEST_CARD.expiryMonth);
+      } else if (field === 'expiryYear') {
+        await yearField.fill(SANDBOX_TEST_CARD.expiryYear);
+      } else if (field === 'expiry') {
+        await combinedField.fill(`${SANDBOX_TEST_CARD.expiryMonth}/${SANDBOX_TEST_CARD.expiryYear}`);
+      } else if (field === 'cvc') {
+        await cvcField.fill(SANDBOX_TEST_CARD.cvc);
+      }
+    }
+    await popup.waitForTimeout(400);
   }
-  if (splitMode) {
-    if ((await monthField.inputValue()).trim() !== SANDBOX_TEST_CARD.expiryMonth) {
-      throw new Error('sandbox checkout: expiry month field not filled');
-    }
-    if ((await yearField.inputValue()).trim() !== SANDBOX_TEST_CARD.expiryYear) {
-      throw new Error('sandbox checkout: expiry year field not filled');
-    }
-  } else {
-    const combined = await formFrame.locator(combinedExpirySel).first().inputValue();
-    if (!combined.replace(/\D/g, '').startsWith(`${SANDBOX_TEST_CARD.expiryMonth}${SANDBOX_TEST_CARD.expiryYear}`)) {
-      throw new Error('sandbox checkout: expiry field not filled');
-    }
-  }
-  const cvcValue = await formFrame.locator(cvcSel).first().inputValue();
-  if (cvcValue.replace(/\D/g, '') !== SANDBOX_TEST_CARD.cvc) {
-    throw new Error('sandbox checkout: security code field did not hold the CVC');
+  if (!verified) {
+    throw new Error(
+      `sandbox checkout: form fields did not stabilize before pay (${lastMismatches.join(', ')})`,
+    );
   }
 
   // 4) Single pay click (bounded search across frames).
