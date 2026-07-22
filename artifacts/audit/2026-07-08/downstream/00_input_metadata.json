@@ -2,7 +2,7 @@
   "mode": "artifact_replay",
   "user_id": "synthetic",
   "target_date": "2026-07-08",
-  "git_head": "ba8d481",
+  "git_head": null,
   "sidecar_trusted": true,
   "sidecar_source": "artifact_file",
   "today_payload_source": "artifact_file",
