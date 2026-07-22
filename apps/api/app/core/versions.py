@@ -14,7 +14,8 @@
 #          TODAY_V1_PAYLOAD_VERSION, TODAY_V2_PREVIOUS_PAYLOAD_VERSION,
 #          TODAY_V2_PAYLOAD_VERSION, TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
 #          PREVIOUS_V2_FRONTEND_PAYLOAD_VERSION, V2_FRONTEND_PAYLOAD_VERSION,
-#          V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS, TODAY_CONTENT_VERSION.
+#          V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS, TODAY_CONTENT_VERSION,
+#          TODAY_LLM_PROMPT_VERSION.
 # dependencies: solarsage_contracts.versions.
 # side_effects: none.
 # emitted_logs: none.
@@ -23,6 +24,10 @@
 #   - V2 scoring identity is explicit (ss-scoring-*).
 #   - Activation layer identity is explicit (al-*).
 #   - Fresh V2 emits today.v2.1/frontend=3/content=10.
+#   - Fresh LLM prompt identity is explicit: TODAY_LLM_PROMPT_VERSION drives
+#     the Today cache key default, TodayMeta.prompt_version and fallback cache
+#     writes; it bumps only when the prompt shape or content policy changes,
+#     so stale payloads never pass as current.
 #   - Previous today.v2/frontend=2 remains schema-compatible for cached inputs.
 # failure_policy: n/a (pure constants).
 # END_MODULE_CONTRACT: M-VERSIONS
@@ -34,6 +39,8 @@
 #   - SHARED_RUNTIME_VERSIONS: shared sidecar/API calculation and activation identities.
 #   - TODAY_WIRE_COMPATIBILITY: current/previous payload and frontend version pairs.
 #   - TODAY_CONTENT_IDENTITY: public content version used by cache and metadata.
+#   - TODAY_LLM_PROMPT_IDENTITY: TODAY_LLM_PROMPT_VERSION single source for
+#     cache key and public prompt_version metadata.
 # owned_tests:
 #   - apps/api/tests/test_today_meta_versions.py
 #   - apps/api/tests/test_today_cache_v2_key.py

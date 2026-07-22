@@ -52,7 +52,8 @@
 #     stay sequential. A request-level cancellation cancels every child task
 #     and consumes all results before re-raise; the phase emits exactly one
 #     day.llm_phase_completed event per run (completed|deadline counts).
-# emitted_logs: day.payload_built, day.llm_phase_completed.
+# emitted_logs: day.payload_built, day.llm_phase_completed,
+#   llm.response_rejected (reason=timeout when the LLM phase hits the deadline).
 # failure_policy:
 #   - Incomplete profile → 409.
 #   - Sidecar unavailable → 502/503.
@@ -197,7 +198,7 @@ class TodayService:
         #   week prefetch is disabled), and optional immutable selection_context.
         # returns: TodayPayload with day_status, headline, reading, top_flags, etc.
         # side_effects: reads/writes cache; calls sidecar for transits and LLM for text.
-        # emitted_logs: day.payload_built (TODO: W-1.6 — add day.viewed in API route)
+        # emitted_logs: day.payload_built, day.llm_phase_completed, llm.response_rejected (on LLM phase deadline)
         # error_behavior: HTTPException 409 on incomplete profile, 502 on sidecar failure;
         #   raises RuntimeError if a successfully validated natal profile lacks birth identity.
         # END_FUNCTION_CONTRACT: F-M-DAY-SERVICE.get_today_payload
