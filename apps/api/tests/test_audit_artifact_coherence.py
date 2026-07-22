@@ -97,3 +97,19 @@ def test_oracle_artifacts_green() -> None:
 
     scoring = _read("12_scoring_oracle_comparison.json")
     assert "oracle" in scoring and "comparison" in scoring
+
+
+def test_sidecar_provenance_identity_pinned() -> None:
+    provenance = _read("provenance_sidecar.json")
+    assert provenance["image"] == "solarsage-sidecar-readiness:62b756a"
+    assert provenance["image_id"] == (
+        "sha256:6d20eb612c79660cfb1068fae4bed8a31c17d8ab7f600a81975654277ee1ca7d"
+    )
+    assert provenance["revision"] == provenance["release_sha"]
+    assert provenance["engine"] == "swieph"
+    assert provenance["fallback"] is False
+    assert provenance["calculation_version"] == "ss-calc-1.2.0"
+    assert provenance["ephemeris_artifact_id"] == "se-stellium-1800-2399-20260721"
+    assert len(provenance["ephemeris_manifest_sha256"]) == 64
+    # The live run directory must not be re-committed next to this file.
+    assert not (BASE / "live").exists()

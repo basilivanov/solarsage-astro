@@ -1,0 +1,15 @@
+{
+  "purpose": "Compact machine-readable provenance for the sidecar that produced this canonical audit baseline. Replaces the accidentally committed full live/ run directory (removed in the corrective commit that introduced this file).",
+  "image": "solarsage-sidecar-readiness:62b756a",
+  "image_id": "sha256:6d20eb612c79660cfb1068fae4bed8a31c17d8ab7f600a81975654277ee1ca7d",
+  "revision": "62b756a6559ba4a0f501fffe56dca51eb52872b2",
+  "release_sha": "62b756a6559ba4a0f501fffe56dca51eb52872b2",
+  "engine": "swieph",
+  "fallback": false,
+  "calculation_version": "ss-calc-1.2.0",
+  "ephemeris_artifact_id": "se-stellium-1800-2399-20260721",
+  "ephemeris_manifest_sha256": "768d5fc920c762028437ad0bff43013c800ff027911a2dc02cb7d45d7ea9db59",
+  "swiss_data_version": "stellium-local-se1-20260721",
+  "pyswisseph_version": "20230604",
+  "github_exact_sha_status": "pending"
+}
