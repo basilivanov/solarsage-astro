@@ -672,16 +672,14 @@ async def test_cache_read_identity_matches_todayservice_write_for_v2_frontend_of
 
     integration_spy = IntegrationSpy()
 
-    # The cache identity proof needs a CACHEABLE payload: under the degraded
-    # concrete-advice contract an all-fallback advice batch is never cached,
-    # so this test pins a valid 12-key advice batch (12 non-fallback rows).
-    valid_advice = {
-        k: f"Спокойный день для дела номер {i}."
-        for i, k in enumerate([
-            "work", "money", "documents", "relationships", "sport", "communication",
-            "health", "decisions", "travel", "creativity", "study", "shopping",
-        ])
-    }
+    # The cache identity proof needs a CACHEABLE payload and must NOT depend
+    # on wall-clock: the interpretation internals are irrelevant to scoring/
+    # cache read-write identity, so the whole build is mocked with a
+    # contract-valid deterministic tuple (12 non-fallback rows). Production
+    # deadline and no-deadline-cache policy stay untouched.
+    from tests.today_test_fixtures import build_deterministic_interpretation_result
+
+    interpretation_result = build_deterministic_interpretation_result()
 
     with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
          patch("app.services.today_service.NatalContextService.get_or_build_natal_context", AsyncMock(return_value=fake_natal)), \
@@ -690,19 +688,16 @@ async def test_cache_read_identity_matches_todayservice_write_for_v2_frontend_of
          patch.object(TodayService, "_cache_payload", new=capture_write), \
          patch.object(TodayService, "_cache_semantic_layer", AsyncMock()), \
          patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual), \
-         patch("app.services.llm_service.LLMService.generate_concrete_advice", AsyncMock(return_value=valid_advice)), \
-         patch("app.services.llm_service.LLMService.generate_planet_interpretations", AsyncMock(return_value=None)), \
-         patch("app.services.llm_service.LLMService.generate_headline", AsyncMock(return_value=None)), \
-         patch("app.services.llm_service.LLMService.generate_reading", AsyncMock(return_value=None)), \
-         patch("app.services.llm_service.LLMService.generate_notes", AsyncMock(return_value=None)), \
-         patch("app.services.llm_service.LLMService.generate_why_sections", AsyncMock(return_value=None)), \
-         patch.object(settings, "openrouter_api_key", "test-cache-key"):
+         patch("app.services.today_interpretation_service.TodayInterpretationService") as MockInterpretation:
+        MockInterpretation.return_value.build = AsyncMock(return_value=interpretation_result)
         service = TodayService(db_session, horizon_integration_service=integration_spy)
         access = ContentAccessState(state="preview", reason="expired_access")
         await service.get_today_payload(
             user_id=user.id, target_date=Date(2026, 7, 8),
             access_state=access, skip_prefetch=True,
         )
+
+    MockInterpretation.return_value.build.assert_awaited_once()
 
     assert len(integration_spy.calls) == 1
     assert integration_spy.calls[0]["activation_layer"].activation_layer_version == ACTIVATION_LAYER_VERSION

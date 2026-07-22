@@ -1093,6 +1093,10 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
 
     integration_spy = IntegrationSpy()
 
+    from tests.today_test_fixtures import build_deterministic_interpretation_result
+
+    interpretation_result = build_deterministic_interpretation_result()
+
     with patch("app.services.today_service.get_solarsage_client", return_value=mock_client), \
          patch("app.services.today_service.NatalContextService.get_or_build_natal_context", AsyncMock(return_value=fake_natal)), \
          patch("app.services.today_service.NormalizationService.normalize_day", return_value=deterministic_signals), \
@@ -1103,20 +1107,9 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
              "app.services.today_service.ActivationLayerService.build",
              return_value=sentinel_activation_layer,
          ), \
-         patch("app.services.llm_service.LLMService.generate_concrete_advice", AsyncMock(return_value={
-             k: f"Спокойный день для дела номер {i}."
-             for i, k in enumerate([
-                 "work", "money", "documents", "relationships", "sport", "communication",
-                 "health", "decisions", "travel", "creativity", "study", "shopping",
-             ])
-         })), \
-         patch("app.services.llm_service.LLMService.generate_headline", AsyncMock(return_value=None)), \
-         patch("app.services.llm_service.LLMService.generate_reading", AsyncMock(return_value=None)), \
-         patch("app.services.llm_service.LLMService.generate_notes", AsyncMock(return_value=None)), \
-         patch("app.services.llm_service.LLMService.generate_why_sections", AsyncMock(return_value=None)), \
-         patch("app.services.llm_service.LLMService.generate_planet_interpretations", AsyncMock(return_value=None)), \
-         patch.object(settings, "openrouter_api_key", "test-meta-key"), \
+         patch("app.services.today_interpretation_service.TodayInterpretationService") as MockInterpretation, \
          patch("app.services.today_service.DayScoringRuntimeService.compute", return_value=dual):
+        MockInterpretation.return_value.build = AsyncMock(return_value=interpretation_result)
         service = TodayService(db_session, horizon_integration_service=integration_spy)
         access = ContentAccessState(state="preview", reason="expired_access")
         payload = await service.get_today_payload(
@@ -1126,6 +1119,7 @@ async def test_v2_selected_identity_even_if_frontend_flag_off(db_session, monkey
             skip_prefetch=True,
         )
 
+    MockInterpretation.return_value.build.assert_awaited_once()
     assert str(payload.meta.calculation_version) == CALCULATION_VERSION
     assert payload.meta.activation_layer_version == ACTIVATION_LAYER_VERSION
     assert str(payload.meta.scoring_version) == SCORING_V2_VERSION
