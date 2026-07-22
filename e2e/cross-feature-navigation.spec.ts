@@ -7,7 +7,7 @@ import { test, expect, completeOnboarding, waitForTodayState } from './fixtures'
 
 test.describe('Cross-Feature Navigation', () => {
   test('should navigate Day → Calendar → Chat → Profile → Day', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
 
     await page.goto('/');
     await page.waitForTimeout(5000);

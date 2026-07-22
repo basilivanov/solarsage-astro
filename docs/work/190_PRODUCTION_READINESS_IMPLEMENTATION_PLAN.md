@@ -629,10 +629,35 @@ their text below is kept as the design for those later slices.
   real auth flow claims; GET /api/access `referralDaysLeft >= 13`;
   `totalInvited=1`; repeated deep-link open idempotent, no manual API
   mutation). Release suite now includes all of these specs.
+  **Status note (2026-07-22, YooKassa sandbox proof implemented).** The
+  release suite is now 9 specs / 15 chromium tests (payment-sandbox added;
+  chat stays intentionally excluded). The YooKassa sandbox launch proof is
+  IMPLEMENTED: exact 99/999/399 RUB launch prices from the real catalog,
+  fail-closed `test=true` provider-mode boundary in YooKassaClient
+  (missing/non-bool/mismatched flag rejected before checkout/fulfillment),
+  initial saved-method subscription proof (save_payment_method=true,
+  renewing/cancelable contract), idempotent webhook fulfillment where the
+  endpoint itself does the authenticated provider GET, recurrent charging
+  kill-switched (`YOOKASSA_RECURRENT_ENABLED=false`), the official no-3DS
+  test card through the real provider checkout, and the natal_full_report
+  399 purchase integrated into the existing natal-report proof (exactly one
+  real LLM report). Natal generation hardening: provider Structured Outputs
+  (strict json_schema) for every section + exactly one bounded retry of
+  the CURRENT failed section (structural rejections normalized; two
+  rejects keep FAILED_RETRYABLE, never a partial/READY) and a fail-fast
+  semantic error contract on /readings/natal/generating. Candidate
+  29920999993 (SHA `9780e96`) — CLEAN 15/15 in 5.7m. Candidate
+  29921756630 — strict failure 14 passed + 1 flaky solely because a real
+  Today first pass returned HTTP 200 in 67.515s against the 60s test
+  budget (day.payload_built at request start, no 4xx/5xx/deadlock; retry
+  user 6.7s green) — a test-budget mismatch, corrected here
+  (waitForTodayState terminal budget 90s evidence-based; outer budgets of
+  the onboarding/today/calendar/cross-feature/payment-catalog specs raised
+  so they exceed the inner budget plus form work; assertions unchanged,
+  loading never passes).
   Remaining P1-6 items: chat product follow-up (intentional locked
   placeholder), the external /start Telegram-client ingress path (owner
-  ingress, P0-3), and the payment implementation + provider sandbox
-  (product work, not a test gap).
+  ingress, P0-3).
   **Stop rule (unchanged, not release-ready):** because this docs commit
   creates a new exact SHA, TWO consecutive strict candidate runs on the
   final docs SHA are still PENDING and will be recorded in the handoff —

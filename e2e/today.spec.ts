@@ -24,7 +24,7 @@ async function ensureOnboarded(page: import('@playwright/test').Page) {
 
 test.describe('Today Screen - Real Auth', () => {
   test('fresh user gets the honest locked preview (no fabricated access)', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     await ensureOnboarded(page);
 
     // A fresh user intentionally has NO access ledger: Today is locked with
@@ -47,7 +47,7 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('no placeholder when API returns real data', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     await ensureOnboarded(page);
 
     // Wait for the terminal locked preview first — otherwise the check is
@@ -61,7 +61,7 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('calendar navigation with real auth', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     await ensureOnboarded(page);
 
     await page.goto('/calendar');
@@ -82,7 +82,7 @@ test.describe('Today Screen - Real Auth', () => {
   });
 
   test('week strip navigation with real auth', async ({ page }) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     await ensureOnboarded(page);
 
     // Canonical day URL is /day/YYYY-MM-DD (the root route redirects there).

@@ -60,6 +60,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 test.describe('YooKassa sandbox release proof — real API (no mocks)', () => {
   test('catalog exposes the exact launch prices from the real API', async ({ page }) => {
+    test.setTimeout(120000);
     await page.goto('/onboarding');
     await completeOnboarding(page);
 
