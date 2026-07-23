@@ -253,6 +253,7 @@
       <payload-field name="access_state" type="string" enum="full,preview,locked" required="true" />
       <payload-field name="cached"       type="boolean" required="true" />
     </event>
+    <event name="checkin.submitted"      owner="W-FEEDBACK" desc="Evening checkin submitted." />
     <event name="day.payload_built"       owner="W-1.3" desc="Backend assembled TodayPayload.">
       <payload-field name="contract_version" type="string" required="true" />
       <payload-field name="duration_ms"      type="number" required="true" />
@@ -294,6 +295,7 @@
     <event name="billing.payment_fulfilled" owner="W-6.1" desc="Verified provider payment fulfilled (access granted / credits added) after durable commit.">
       <payload-field name="payment_id" type="string" required="true" />
     </event>
+    <event name="paywall.shown"           owner="W-MONETIZATION" desc="Paywall screen shown to user." />
     <event name="billing.payment_reconciled" owner="W-6.1" desc="Unknown provider payment self-reconciled and bound after durable commit (never on rollback).">
       <payload-field name="payment_id" type="string" required="true" />
     </event>

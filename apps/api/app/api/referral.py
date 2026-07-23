@@ -52,6 +52,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import require_session
+from app.core.logging import log_event
 from app.db.models import User, Referral
 from app.db.session import get_session
 from app.schemas.referral import ReferralClaimRequest, ReferralClaimResponse
@@ -107,7 +108,7 @@ async def claim_referral(
     # inputs: request (ReferralClaimRequest), user (User from auth), db session
     # returns: ReferralClaimResponse with success, days_granted, access_until
     # side_effects: creates Referral row, grants access bonuses to both users
-    # emitted_logs: referral.invite_created, referral.signup_credited
+    # emitted_logs: referral.signup_credited
     # error_behavior: 400 ALREADY_CLAIMED, 400 INVALID_CODE, 404 REFERRER_NOT_FOUND, 400 SELF_REFERRAL
     # END_FUNCTION_CONTRACT: F-M-API-REFERRAL.claim_referral
     """
@@ -168,6 +169,8 @@ async def claim_referral(
     await access_service.grant_referral_bonus(referrer.id, start_date)
 
     await db.commit()
+
+    log_event("referral.signup_credited", payload={"days": 14})
 
     # Calculate access_until
     access_until = (start_date + timedelta(days=13)).isoformat()

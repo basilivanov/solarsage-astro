@@ -60,7 +60,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.log_identity import hash_user_id
-from app.core.logging import bind_log_context
+from app.core.logging import bind_log_context, log_event
 from app.core.security import (
     SESSION_TTL,
     clear_session_cookie,
@@ -170,14 +170,14 @@ async def auth_telegram(
     # inputs: body (TelegramAuthRequest), request, response, db
     # returns: AuthSession with user_id, expires_at, is_new_user
     # side_effects: upserts User row, creates Session row, sets cookie
-    # emitted_logs: auth.tg_login_succeeded (TODO), auth.tg_login_failed (TODO)
+    # emitted_logs: auth.tg_login_succeeded, auth.tg_login_failed
     # error_behavior: TelegramAuthError -> 400/401 per code mapping; commit
     #   only on success (exception bubbles before flush+commit).
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_telegram
     try:
         tg = verify_init_data(body.init_data)
     except TelegramAuthError as exc:
-        # TODO(W-1.6): log.event("auth.tg_login_failed", {code: exc.code})
+        log_event("auth.tg_login_failed", payload={"reason": exc.code.lower()})
         raise _telegram_error_to_http(exc) from exc
 
     user, is_new = await get_or_create_user(db, tg)
@@ -201,7 +201,7 @@ async def auth_telegram(
     # Bind user_id_hash to context
     bind_log_context(user_id_hash=hash_user_id(user.id))
 
-    # TODO(W-1.6): log.event("auth.tg_login_succeeded", {is_new_user, ...})
+    log_event("auth.tg_login_succeeded", payload={"is_new_user": is_new})
     return AuthSession(user_id=user.id, expires_at=expires_at, is_new_user=is_new)
 # END_BLOCK: ROUTE_AUTH_TG
 
@@ -223,14 +223,14 @@ async def auth_logout(
     # inputs: request, response, db
     # returns: Response with status 204
     # side_effects: revokes session row, clears cookie
-    # emitted_logs: auth.logout (TODO)
+    # emitted_logs: auth.logout
     # error_behavior: idempotent — missing/already-revoked cookies still return 204
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_logout
     token = request.cookies.get(settings.session_cookie_name, "")
     await revoke_session(db, token)
     await db.commit()
     clear_session_cookie(response)
-    # TODO(W-1.6): log.event("auth.logout", {})
+    log_event("auth.logout")
     return Response(status_code=status.HTTP_204_NO_CONTENT, headers=dict(response.headers))
 # END_BLOCK: ROUTE_AUTH_LOGOUT
 
@@ -254,12 +254,13 @@ async def auth_dev(
     # inputs: request, response, db
     # returns: AuthSession with user_id, expires_at, is_new_user
     # side_effects: upserts test User, creates Session, sets test birth data
-    # emitted_logs: auth.dev_login (TODO)
+    # emitted_logs: auth.dev_login_succeeded, auth.dev_login_blocked
     # error_behavior: 403 outside canonical local development or when the
     #   request is not trusted-local while DEV_MODE is disabled.
     # END_FUNCTION_CONTRACT: M-AUTH-TG.api.auth_dev
 
     if not settings.dev_mode and not _is_local_dev_auth_request(request):
+        log_event("auth.dev_login_blocked")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "DEV_MODE_DISABLED", "message": "Dev mode not enabled"},
@@ -322,6 +323,6 @@ async def auth_dev(
     # Bind user_id_hash to context
     bind_log_context(user_id_hash=hash_user_id(user.id))
 
-    # TODO(W-1.6): log.event("auth.dev_login", {is_new_user, ...})
+    log_event("auth.dev_login_succeeded", payload={"is_new_user": is_new})
     return AuthSession(user_id=user.id, expires_at=expires_at, is_new_user=is_new)
 # END_BLOCK: ROUTE_AUTH_DEV

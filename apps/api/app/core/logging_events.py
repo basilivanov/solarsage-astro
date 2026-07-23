@@ -64,6 +64,7 @@ LogEventName = Literal[
     "profile.lazy_created",
     # day / calendar
     "day.viewed",
+    "checkin.submitted",
     "day.payload_built",
     "day.llm_phase_completed",
     "calendar.viewed",
@@ -80,6 +81,7 @@ LogEventName = Literal[
     "billing.subscription_started",
     "billing.purchase_started",
     "billing.payment_fulfilled",
+    "paywall.shown",
     "billing.subscription_canceled",
     "billing.rebill_skipped",
     "billing.rebill_started",

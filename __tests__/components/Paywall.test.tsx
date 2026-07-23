@@ -28,6 +28,7 @@ import React from 'react'
 
 vi.mock('@/lib/log', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  logEvent: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({

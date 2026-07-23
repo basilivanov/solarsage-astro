@@ -17,7 +17,7 @@
 // outputs: TSX render; purchase flow side effects via the shared hook.
 // dependencies: useShareInvite, useSubscriptionPurchase.
 // side_effects: credentialed billing API calls, provider checkout open.
-// emitted_logs: n/a
+// emitted_logs: paywall.shown
 // invariants:
 //   - The CTA is disabled while tariffs load or billing is unavailable —
 //     never a fake price, never "скоро появится".
@@ -28,8 +28,10 @@
 "use client"
 
 import { Lock, Crown, UserPlus } from "lucide-react"
+import { useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { useShareInvite } from "@/lib/hooks/use-share-invite"
+import { logEvent } from "@/lib/log"
 import {
   formatPriceRubles,
   useSubscriptionPurchase,
@@ -54,6 +56,10 @@ export function Paywall({
   const flow = useSubscriptionPurchase(
     onUnlocked ?? (() => window.location.reload())
   )
+
+  useEffect(() => {
+    logEvent("paywall.shown")
+  }, [])
   const busy = flow.phase === "starting" || flow.phase === "waiting"
 
   const ctaLabel = busy

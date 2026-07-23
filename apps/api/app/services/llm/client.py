@@ -18,6 +18,7 @@
 #   - anthropic, httpx
 # side_effects:
 #   - HTTP requests to OpenRouter / DeepSeek / Anthropic
+# emitted_logs: llm.response_rejected
 # invariants:
 #   - falls back through providers: OpenRouter → DeepSeek → None
 # failure_policy:
@@ -44,6 +45,14 @@ import httpx
 
 from app.core.config import settings
 from app.core.logging import log_event, log_block
+
+
+def _error_reason(exc: Exception) -> str:
+    if isinstance(exc, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"http_{exc.response.status_code}"
+    return type(exc).__name__
 
 
 class HoraryGenerationError(RuntimeError):
@@ -128,7 +137,7 @@ class LLMClient:
                     "llm.response_rejected",
                     level="warn",
                     msg=f"[LLM] OpenRouter failed: {type(e).__name__}",
-                    payload={"reason": "timeout"},
+                    payload={"reason": _error_reason(e)},
                 )
 
         try:
@@ -139,7 +148,7 @@ class LLMClient:
                     "llm.response_rejected",
                     level="warn",
                     msg=f"[LLM] DeepSeek fallback failed: {type(e).__name__}",
-                    payload={"reason": "timeout"},
+                    payload={"reason": _error_reason(e)},
                 )
 
         return None

@@ -28,7 +28,7 @@
 #   - M-AUTH-DEPENDENCIES
 # side_effects: payment/subscription/purchase creation via provider;
 #   fulfillment only after verified webhook.
-# emitted_logs: none (service owns events).
+# emitted_logs: payment.webhook_received
 # invariants:
 #   - All non-webhook endpoints require a session and return 503 when
 #     YOOKASSA_ENABLED=false.
@@ -75,6 +75,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import require_session
+from app.core.logging import log_event
 from app.db.models import User
 from app.db.session import get_session
 from app.schemas.payment import (
@@ -362,6 +363,7 @@ async def yookassa_webhook(
     #   operator can reconcile; 403 non-allowlisted source; 503 when payments
     #   are disabled.
     # side_effects: idempotent fulfillment via BillingService.
+    # emitted_logs: payment.webhook_received
     # error_behavior: 403 non-allowlisted source; 400 malformed body.
     # END_FUNCTION_CONTRACT: F-M-API-PAYMENT.yookassa_webhook
     if not settings.yookassa_enabled:
@@ -373,6 +375,8 @@ async def yookassa_webhook(
         event = YooKassaWebhookEvent.model_validate(await request.json())
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Malformed notification") from exc
+
+    log_event("payment.webhook_received", payload={"event_type": event.event})
 
     if event.event not in ("payment.succeeded", "payment.canceled"):
         return {"ok": True}

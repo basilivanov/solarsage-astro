@@ -1,3 +1,28 @@
+# ############################################################################
+# AI_HEADER: MODULE_API_CHECKIN
+# ROLE: Evening checkin endpoints
+# DEPENDENCIES: fastapi, sqlalchemy, app.services.checkin_service
+# GRACE_ANCHORS: [CHECKIN_ENDPOINTS]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-API-CHECKIN
+# purpose: Evening checkin API surface.
+# owns:
+#   - apps/api/app/api/checkin.py
+# inputs:
+#   - POST /api/checkin: CheckinCreate
+# outputs:
+#   - CheckinResponse, YesterdayCheckinResponse, CheckinMetrics
+# dependencies:
+#   - M-CHECKIN-SERVICE
+#   - M-DB-SESSION
+#   - M-AUTH-DEPENDENCIES
+# side_effects:
+#   - creates/updates EveningCheckin rows
+# emitted_logs: checkin.submitted
+# failure_policy: 400/401 standard FastAPI exceptions
+# END_MODULE_CONTRACT: M-API-CHECKIN
+
 from __future__ import annotations
 
 from datetime import date
@@ -6,6 +31,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_session
+from app.core.logging import log_event
 from app.db.models import User
 from app.db.session import get_session
 from app.schemas.checkin import (
@@ -35,6 +61,11 @@ async def create_checkin(
         tags=checkin.tags,
         note=checkin.note,
     )
+    log_event("checkin.submitted", payload={
+        "has_accuracy": checkin.accuracy is not None,
+        "has_note": bool(checkin.note and checkin.note.strip()),
+        "source": "webapp",
+    })
     return service.to_response(result)
 
 
