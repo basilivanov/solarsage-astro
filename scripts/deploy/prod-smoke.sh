@@ -404,9 +404,9 @@ check_day_v2_content() {
     fi
 
     local parse_res
-    parse_res=$(python3 -c "
+    parse_res=$(printf '%s' "$day_response" | python3 -c "
 import sys, json
-raw = sys.argv[1]
+raw = sys.stdin.read()
 if 'ss-scoring-2.0' not in raw:
     print('MISSING_MARKER:ss-scoring-2.0')
 else:
@@ -418,7 +418,7 @@ else:
             print('OK')
     except Exception as e:
         print(f'JSON_ERROR:{type(e).__name__}')
-" "$day_response" 2>/dev/null)
+" 2>/dev/null)
 
     if [ "$parse_res" = "OK" ]; then
         pass_check "$name"
