@@ -1,0 +1,21 @@
+version: election_rules.v1
+moon_signs: [aries, taurus, gemini, cancer, leo, virgo, libra, scorpio, sagittarius, capricorn, aquarius, pisces]
+moon_signs_ru: {aries: Овен, taurus: Телец, gemini: Близнецы, cancer: Рак, leo: Лев, virgo: Дева, libra: Весы, scorpio: Скорпион, sagittarius: Стрелец, capricorn: Козерог, aquarius: Водолей, pisces: Рыбы}
+scoring:
+  base: 50
+  preferred_sign: 25
+  disfavored_sign: -15
+  waxing: 10
+  voc_fraction_over: {threshold: 0.25, penalty: -40}
+  mercury_retro_penalty: -20
+  clamp: [0, 100]
+events:
+  date:      {label: "Свидание", emoji: "💕", preferred: [taurus, libra, cancer], disfavored: [scorpio, aries], mercury_sensitive: false}
+  wedding:   {label: "Свадьба/помолвка", emoji: "💍", preferred: [taurus, libra, cancer], disfavored: [scorpio, capricorn], mercury_sensitive: true}
+  job:       {label: "Собеседование/новая работа", emoji: "💼", preferred: [virgo, capricorn, taurus], disfavored: [pisces], mercury_sensitive: true}
+  contract:  {label: "Подписание документов", emoji: "✍️", preferred: [virgo, libra, capricorn], disfavored: [pisces, gemini], mercury_sensitive: true}
+  beauty:    {label: "Стрижка/салон", emoji: "💇‍♀️", preferred: [taurus, libra, virgo], disfavored: [scorpio], mercury_sensitive: false}
+  travel:    {label: "Поездка/переезд", emoji: "🛫", preferred: [sagittarius, gemini, aquarius], disfavored: [cancer], mercury_sensitive: true}
+  purchase:  {label: "Крупная покупка", emoji: "🛍", preferred: [taurus, virgo, capricorn], disfavored: [aries, scorpio], mercury_sensitive: true}
+  launch:    {label: "Запуск проекта", emoji: "🚀", preferred: [aries, leo, sagittarius, capricorn], disfavored: [cancer, pisces], mercury_sensitive: true}
+  money:     {label: "Финансовые решения", emoji: "💰", preferred: [taurus, virgo, capricorn], disfavored: [sagittarius, pisces], mercury_sensitive: true}

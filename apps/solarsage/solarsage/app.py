@@ -27,7 +27,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from .api import activation_layer, health, natal, transits
+from .api import activation_layer, health, lunar, natal, transits
 from .core.config import settings
 from .core.ephemeris_runtime import verify_and_configure
 
@@ -53,6 +53,7 @@ app.include_router(health.router)
 app.include_router(natal.router)
 app.include_router(transits.router)
 app.include_router(activation_layer.router)
+app.include_router(lunar.router)
 
 
 @app.get("/")
