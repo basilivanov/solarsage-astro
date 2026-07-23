@@ -56,7 +56,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import _log, access, auth, calendar, chat, checkin, day, geo, health, horary, natal, payment, profile, referral, telegram_webhook
+from app.api import _log, access, auth, calendar, chat, checkin, day, election, geo, health, horary, natal, payment, profile, referral, telegram_webhook
 from app.core.config import Settings, settings
 from app.core.runtime_security import build_runtime_security_policy
 from app.middleware.correlation import CorrelationMiddleware
@@ -123,6 +123,7 @@ def create_app(app_settings: Settings = settings) -> FastAPI:
     application.include_router(chat.router)  # W-CHAT-1
     application.include_router(geo.router)  # GeoNames city autocomplete
     application.include_router(horary.router)  # Horary questions (W-HORARY)
+    application.include_router(election.router)  # Election astrology searches
     # END_BLOCK: ROUTER_MOUNT
 
     return application

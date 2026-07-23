@@ -1022,4 +1022,104 @@ class NatalReport(Base):
 
     user: Mapped["User"] = relationship("User")
     natal_context: Mapped["NatalChartCache"] = relationship("NatalChartCache")
+
+
+class ElectionRequest(Base):
+    """Election astrology search request."""
+    __tablename__ = "election_requests"
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key", name="uq_election_requests_user_idempotency"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    event_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    window_from: Mapped[Date] = mapped_column(Date, nullable=False)
+    window_to: Mapped[Date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # pending|processing|done|failed|refunded
+    client_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    spent_credit_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("horary_credits.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    refund_status: Mapped[str] = mapped_column(String(20), nullable=False, default="none")  # none|refunded|not_refundable
+    failure_stage: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    public_error_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    public_error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User")
+    result: Mapped["ElectionResult | None"] = relationship("ElectionResult", uselist=False, back_populates="request")
+
+
+class ElectionResult(Base):
+    """Result of an election search."""
+    __tablename__ = "election_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    request_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("election_requests.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    request: Mapped["ElectionRequest"] = relationship("ElectionRequest", back_populates="result")
+
+
+class ElectionCreditSpend(Base):
+    """Credit spend log for election requests."""
+    __tablename__ = "election_credit_spends"
+    __table_args__ = (
+        CheckConstraint("amount = 1", name="ck_election_credit_spends_amount_one"),
+        UniqueConstraint("idempotency_key", name="uq_election_credit_spends_idempotency"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    credit_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("horary_credits.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    election_request_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("election_requests.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    amount: Mapped[int] = mapped_column(nullable=False, default=1)
+    idempotency_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    credit: Mapped["HoraryCredit"] = relationship("HoraryCredit")
+    election_request: Mapped["ElectionRequest"] = relationship("ElectionRequest")
+
 # END_BLOCK: NATAL_REPORTS_TABLE

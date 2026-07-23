@@ -134,6 +134,17 @@ CATALOG: tuple[ProductDef, ...] = (
         is_active=True,
     ),
     ProductDef(
+        slug="election_1",
+        name="Подбор даты (1 событие)",
+        description="Топ-3 лучших даты для твоего события",
+        product_type="one_time",
+        price_kopecks=5000,
+        currency="RUB",
+        period_days=None,
+        horary_quota=1,
+        is_active=True,
+    ),
+    ProductDef(
         slug="synastry",
         name="Синастрия",
         description="Полный разбор совместимости двух натальных карт (пока не продаётся)",

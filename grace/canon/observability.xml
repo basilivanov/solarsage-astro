@@ -335,6 +335,12 @@
     <event name="horary.generation_started" owner="W-HORARY" />
     <event name="horary.generation_succeeded" owner="W-HORARY" />
     <event name="horary.generation_failed" owner="W-HORARY" />
+    <event name="election.search_created"     owner="W-ELECTION" desc="Election search request created." />
+    <event name="election.search_succeeded"   owner="W-ELECTION" desc="Election search completed successfully." />
+    <event name="election.search_failed"      owner="W-ELECTION" desc="Election search failed.">
+      <payload-field name="reason" type="string" required="true" />
+    </event>
+    <event name="election.credit_refunded"    owner="W-ELECTION" desc="Credit refunded on election search failure." />
 
     <!-- ================ natal =========================================== -->
     <event name="natal.preview_requested"   owner="W-NATAL-FULL" />
