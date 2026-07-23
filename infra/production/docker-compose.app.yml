@@ -79,6 +79,9 @@ x-api-common: &api-common
     CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?cors origins required}
     GEONAMES_USERNAME: ${GEONAMES_USERNAME:?geonames username required}
     RELEASE_SHA: ${RELEASE_SHA:?release sha required}
+    # V2 scoring/frontend rollout flags (default safe-off, enabled via app.env)
+    SOLARSAGE_V2_ENABLED: ${SOLARSAGE_V2_ENABLED:-false}
+    SOLARSAGE_V2_FRONTEND_ENABLED: ${SOLARSAGE_V2_FRONTEND_ENABLED:-false}
     # Billing (YooKassa): secrets come ONLY from the root-owned host env file
     # (/etc/solarsage/app.env), never from the repository. NATAL_REPORT_ENABLED
     # stays off until the billing path is proven in sandbox.
