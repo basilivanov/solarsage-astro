@@ -330,6 +330,105 @@ check_auth_and_profile() {
     rm -f "$cookie_jar"
 }
 
+check_day_v2_content() {
+    local name="day-v2-content"
+
+    if [ "$QUICK_MODE" = true ]; then
+        skip_check "$name" "quick mode"
+        return
+    fi
+
+    if [ ! -f "$ENV_FILE" ]; then
+        fail_check "$name" "$ENV_FILE missing"
+        return
+    fi
+
+    if [ ! -f "$INITDATA_SCRIPT" ]; then
+        fail_check "$name" "$INITDATA_SCRIPT missing"
+        return
+    fi
+
+    local bot_token
+    bot_token=$(grep '^TELEGRAM_BOT_TOKEN=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true)
+    if [ -z "$bot_token" ]; then
+        fail_check "$name" "TELEGRAM_BOT_TOKEN missing in $ENV_FILE"
+        return
+    fi
+
+    local initdata
+    initdata=$(TELEGRAM_BOT_TOKEN="$bot_token" python3 "$INITDATA_SCRIPT" 2>/dev/null | grep -E '^(query_id|user)=' | head -n 1 || true)
+
+    if [ -z "$initdata" ]; then
+        fail_check "$name" "failed to generate initData"
+        return
+    fi
+
+    local cookie_jar
+    cookie_jar=$(mktemp)
+
+    local json_payload
+    json_payload=$(python3 -c "import json, sys; print(json.dumps({'initData': sys.argv[1]}))" "$initdata")
+
+    local auth_code
+    auth_code=$(curl -s -c "$cookie_jar" -o /dev/null -w "%{http_code}" -X POST "${PROD_DOMAIN}/api/auth/telegram" \
+        -H "Content-Type: application/json" \
+        -d "$json_payload" --max-time 10 2>/dev/null || echo "000")
+
+    if [ "$auth_code" != "200" ]; then
+        fail_check "$name" "auth POST failed with HTTP status $auth_code"
+        rm -f "$cookie_jar"
+        return
+    fi
+
+    local onboard_payload='{"firstName":"Smoke","gender":"female","birth":{"birthday":"1990-05-15","birthTime":"14:30","birthCity":"Москва","birthLat":55.7558,"birthLon":37.6173,"birthTz":"Europe/Moscow"}}'
+    local onboard_code
+    onboard_code=$(curl -s -b "$cookie_jar" -o /dev/null -w "%{http_code}" -X PUT "${PROD_DOMAIN}/api/profile" \
+        -H "Content-Type: application/json" \
+        -d "$onboard_payload" --max-time 10 2>/dev/null || echo "000")
+
+    if [ "$onboard_code" != "200" ]; then
+        fail_check "$name" "onboard PUT failed with HTTP status $onboard_code"
+        rm -f "$cookie_jar"
+        return
+    fi
+
+    local today_str
+    today_str=$(date -u +%F)
+    local day_response
+    day_response=$(curl -s -b "$cookie_jar" "${PROD_DOMAIN}/api/day/${today_str}" --max-time 120 2>/dev/null || true)
+
+    if [ -z "$day_response" ]; then
+        fail_check "$name" "GET /api/day/${today_str} returned empty response or timed out"
+        rm -f "$cookie_jar"
+        return
+    fi
+
+    local parse_res
+    parse_res=$(python3 -c "
+import sys, json
+raw = sys.argv[1]
+if 'ss-scoring-2.0' not in raw:
+    print('MISSING_MARKER:ss-scoring-2.0')
+else:
+    try:
+        data = json.loads(raw)
+        if 'v2' not in data:
+            print('MISSING_KEY:v2')
+        else:
+            print('OK')
+    except Exception as e:
+        print(f'JSON_ERROR:{type(e).__name__}')
+" "$day_response" 2>/dev/null)
+
+    if [ "$parse_res" = "OK" ]; then
+        pass_check "$name"
+    else
+        fail_check "$name" "$parse_res"
+    fi
+
+    rm -f "$cookie_jar"
+}
+
 # END_BLOCK: SMOKE_CHECKS
 
 # START_BLOCK: SMOKE_CLI
@@ -388,8 +487,9 @@ main() {
     check_api_health
     check_webhook_fail_closed
 
-    # 10-11 Auth & E2E checks
+    # 10-12 Auth & E2E checks
     check_auth_and_profile
+    check_day_v2_content
 
     echo "----------------------------------------"
     local failed_count=${#FAILED_CHECKS[@]}
