@@ -15,12 +15,19 @@
 import ast
 import asyncio
 import json
+import sys
 from copy import deepcopy
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import AsyncClient, MockTransport
+
+# Repo root on sys.path so `import scripts.*` works regardless of pytest cwd
+# (CI runs from repo root, local runs from apps/api per AGENTS.md).
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.prove_today_v2_real_api import (
     CANON_PROFILE,
@@ -37,7 +44,7 @@ from scripts.prove_today_v2_real_api import (
     validate_today_v2_payload,
 )
 
-FX = Path("e2e/mock-visual/fixtures/json/day-v2-2026-07-08.json")
+FX = REPO_ROOT / "e2e/mock-visual/fixtures/json/day-v2-2026-07-08.json"
 
 
 @pytest.fixture(scope="module")
@@ -293,7 +300,7 @@ def test_source_contract_cases():
     # emitted_logs: none.
     # error_behavior: none.
     # END_FUNCTION_CONTRACT: F-TEST.test_source_contract_cases
-    src=Path("scripts/prove_today_v2_real_api.py").read_text()
+    src=(REPO_ROOT / "scripts/prove_today_v2_real_api.py").read_text()
     tree=ast.parse(src)
     calls={}
     for node in ast.walk(tree):
@@ -306,7 +313,7 @@ def test_source_contract_cases():
         assert pat not in src
     for pat in ["str(exc)","repr(exc)","traceback","pipeline status","DBG:"]:
         assert pat not in src
-    mk=Path("Makefile").read_text()
+    mk=(REPO_ROOT / "Makefile").read_text()
     assert "unexport DATE" in mk and "unexport PROOF_DATE" in mk
     assert "$(value DATE)" in mk and "$(value OUT)" in mk
     assert "$(value TRANSPORT)" in mk and "$(value BASE_URL)" in mk

@@ -517,7 +517,9 @@ def test_dependency_shape_has_no_external_runtime_imports() -> None:
     # emitted_logs: none.
     # error_behavior: pytest assertion failure on forbidden dependency shape.
     # END_FUNCTION_CONTRACT: F-M-TEST-HORIZON-PIPELINE-SERVICE.test_dependency_shape_has_no_external_runtime_imports
-    source = Path("apps/api/app/services/horizon_pipeline_service.py").read_text(encoding="utf-8")
+    source = (
+        Path(__file__).resolve().parents[1] / "app/services/horizon_pipeline_service.py"
+    ).read_text(encoding="utf-8")
     tree = ast.parse(source)
     imported: set[str] = set()
     for node in ast.walk(tree):
