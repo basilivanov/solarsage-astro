@@ -81,6 +81,11 @@ export type LogEventName =
   | "horary.generation_started"
   | "horary.generation_succeeded"
   | "horary.generation_failed"
+  // election
+  | "election.search_created"
+  | "election.search_succeeded"
+  | "election.search_failed"
+  | "election.credit_refunded"
   // natal
   | "natal.preview_requested"
   | "natal.preview_succeeded"

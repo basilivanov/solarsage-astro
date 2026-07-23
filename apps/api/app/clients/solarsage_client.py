@@ -158,6 +158,28 @@ class SolarSageClient:
         validated = SolarSageTransitsResponse.model_validate(data)
         return validated.model_dump(by_alias=True)
 
+    async def get_lunar_window(
+        self,
+        from_date: str,
+        to_date: str,
+    ) -> dict:
+        # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_lunar_window
+        # purpose: Get lunar window details from SolarSage sidecar.
+        # inputs: from_date (str YYYY-MM-DD), to_date (str YYYY-MM-DD)
+        # returns: dict with days list
+        # side_effects: HTTP POST to sidecar /v1/lunar-window
+        # error_behavior: raises httpx.HTTPStatusError on non-2xx, httpx.TimeoutException on timeout
+        # END_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_lunar_window
+        response = await self.client.post(
+            "/v1/lunar-window",
+            json={
+                "from_date": from_date,
+                "to_date": to_date,
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
     async def close(self):
         # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.close
         # purpose: Close the underlying HTTP client connection.
