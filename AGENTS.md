@@ -85,6 +85,8 @@ Systemd на проде: активны `solarsage-db.service` и `solarsage-bac
 | `api.deepseek.com` | ✅ reachable (401 без ключа) | Единственный работающий LLM-путь: нужен `DEEPSEEK_API_KEY` в app.env (fallback в LLM-клиенте уже есть) |
 | `api.yookassa.ru`, `github.com` | ✅ | Биллинг и registry в порядке |
 
+На dev-хосте `45.88.172.246:8443` работает TCP egress-relay (`infra/relay/`, контейнер `egress-relay`, запуск — `infra/relay/README.md`), проксирующий сырой TCP к `openrouter.ai` и `api.telegram.org` по SNI-whitelist, с allowlist только на IP прода. На проде relay подключается прозрачно через `extra_hosts` в `docker-compose.app.yml` и `OPENROUTER_BASE_URL=https://openrouter.ai:8443/api/v1` в `/etc/solarsage/app.env`.
+
 Корневой дизайн-вывод: любой внешний сервис, от которого зависит продукт, обязан быть проверен на достижимость **с прод-хоста** (см. post-deploy smoke); «зелёные тесты в CI/dev» ничего не говорят о прод-egress.
 
 ## Аутентификация
