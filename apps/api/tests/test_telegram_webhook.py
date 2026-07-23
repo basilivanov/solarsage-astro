@@ -223,3 +223,73 @@ async def test_no_pii_or_raw_update_in_logs(async_client: AsyncClient, secret_co
     assert "987654321" not in caplog.text
     assert "pii_user" not in caplog.text
     assert SECRET not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_callback_query_malformed_guards(async_client: AsyncClient, secret_configured) -> None:
+    """Guard branches: non-str id/from/data, bad date, accuracy out of range — all ack {}."""
+    base = {"update_id": 200}
+    cases = [
+        {**base, "callback_query": {"from": {"id": 1}, "data": "fb:acc:2026-07-22:3"}},  # missing id
+        {**base, "callback_query": {"id": 1, "from": {"id": 1}, "data": "fb:acc:2026-07-22:3"}},  # id not str
+        {**base, "callback_query": {"id": "cq", "from": "notdict", "data": "fb:acc:2026-07-22:3"}},  # from not dict
+        {**base, "callback_query": {"id": "cq", "from": {"id": 1}}},  # missing data
+        {**base, "callback_query": {"id": "cq", "from": {"id": 1}, "data": 123}},  # data not str
+        {**base, "callback_query": {"id": "cq", "from": {"id": 1}, "data": "fb:acc:bad-date:3"}},  # bad date
+        {**base, "callback_query": {"id": "cq", "from": {"id": 1}, "data": "fb:acc:2026-07-22:x"}},  # bad accuracy int
+        {**base, "callback_query": {"id": "cq", "from": {"id": 1}, "data": "fb:acc:2026-07-22:9"}},  # accuracy out of range
+        {**base, "callback_query": {"id": "cq", "from": {"id": 1}, "data": "fb:wrong:2026-07-22:3"}},  # wrong prefix
+        {**base, "callback_query": "notadict"},  # callback_query not dict -> falls through to message path {}
+    ]
+    for payload in cases:
+        resp = await async_client.post(
+            WEBHOOK, json=payload,
+            headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+        )
+        assert resp.status_code == 200, payload
+        assert resp.json() == {}, payload
+
+
+@pytest.mark.asyncio
+async def test_malformed_json_body_and_edge_chats(async_client: AsyncClient, secret_configured) -> None:
+    # Non-dict JSON body -> 400
+    resp = await async_client.post(
+        WEBHOOK, json=[1, 2, 3],
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+    )
+    assert resp.status_code == 400
+    # from.id not int -> {}
+    resp = await async_client.post(
+        WEBHOOK,
+        json={"update_id": 1, "callback_query": {"id": "cq", "from": {"id": "str"}, "data": "fb:acc:2026-07-22:3"}},
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+    )
+    assert resp.status_code == 200 and resp.json() == {}
+    # /start with chat.id not int -> {}
+    resp = await async_client.post(
+        WEBHOOK,
+        json={"update_id": 2, "message": {"message_id": 1, "from": {"id": 1}, "chat": {"id": "x", "type": "private"}, "date": 1, "text": "/start"}},
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+    )
+    assert resp.status_code == 200 and resp.json() == {}
+
+
+@pytest.mark.asyncio
+async def test_callback_query_repeat_tap_updates(async_client: AsyncClient, secret_configured, make_initdata, db_session) -> None:
+    """Second tap on same date updates the existing DayFeedback (update branch)."""
+    raw_init = make_initdata(user_id=987654321, username="test_cq_user")
+    await async_client.post("/api/auth/telegram", json={"initData": raw_init})
+
+    def cq(acc: int) -> dict:
+        return {"update_id": 300 + acc, "callback_query": {"id": f"cq_{acc}", "from": {"id": 987654321}, "data": f"fb:acc:2026-07-22:{acc}"}}
+
+    r1 = await async_client.post(WEBHOOK, json=cq(1), headers={"X-Telegram-Bot-Api-Secret-Token": SECRET})
+    assert r1.status_code == 200 and r1.json()["method"] == "answerCallbackQuery"
+    r2 = await async_client.post(WEBHOOK, json=cq(3), headers={"X-Telegram-Bot-Api-Secret-Token": SECRET})
+    assert r2.status_code == 200 and r2.json()["method"] == "answerCallbackQuery"
+
+    from app.db.models import DayFeedback
+    from sqlalchemy import select
+    rows = (await db_session.execute(select(DayFeedback))).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].accuracy == 3

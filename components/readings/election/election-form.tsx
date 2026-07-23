@@ -6,7 +6,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { ELECTION_EVENTS, type ElectionEventKey } from "@/lib/contracts/election"
 
 type Props = {

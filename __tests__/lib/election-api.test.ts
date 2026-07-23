@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { ElectionSearchSchema, ElectionResultSchema } from "@/lib/contracts/election"
+import { describe, it, expect } from "vitest"
+import { ElectionSearchSchema } from "@/lib/contracts/election"
 
 describe("Election Zod Contracts", () => {
   it("parses valid top-level camelCase search payload with snake_case result payload", () => {

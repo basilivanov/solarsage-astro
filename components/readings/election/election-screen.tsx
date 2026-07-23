@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Sparkles, Calendar, AlertCircle } from "lucide-react"
+import { Calendar, AlertCircle } from "lucide-react"
 
 import type { HoraryQuotaRead } from "@/packages/contracts"
 import { type ElectionSearch, type ElectionEventKey } from "@/lib/contracts/election"
