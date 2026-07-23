@@ -201,7 +201,10 @@ async def auth_telegram(
     # Bind user_id_hash to context
     bind_log_context(user_id_hash=hash_user_id(user.id))
 
-    log_event("auth.tg_login_succeeded", payload={"is_new_user": is_new})
+    log_event(
+        "auth.tg_login_succeeded",
+        payload={"is_new_user": is_new, "has_start_param": "start_param=" in body.init_data},
+    )
     return AuthSession(user_id=user.id, expires_at=expires_at, is_new_user=is_new)
 # END_BLOCK: ROUTE_AUTH_TG
 
