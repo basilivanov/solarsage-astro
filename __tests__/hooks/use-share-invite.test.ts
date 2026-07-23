@@ -32,7 +32,8 @@ import { SHARE_TEXT, SHARE_TEXT_GENERIC, useShareInvite } from '@/lib/hooks/use-
 
 describe('share default copy', () => {
   it('is the accepted variant-1 text with the honest 14-days-both motivator', () => {
-    expect(SHARE_TEXT).toContain('Слушай, жутко точно: тут считают день по моей натальной карте — сфера за сферой всё про меня. Глянь свой, это 30 секунд:')
+    expect(SHARE_TEXT).toContain('Слушай, жутко точно: тут считают день по моей натальной карте — сфера за сферой всё про меня.')
+    expect(SHARE_TEXT).toContain('Можно задать и свой конкретный вопрос — ответит прямо, без тумана. Глянь свой день, это 30 секунд:')
     expect(SHARE_TEXT).toContain('По моей ссылке мы оба получим по 14 дней полного доступа.')
   })
 
