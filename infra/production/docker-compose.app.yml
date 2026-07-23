@@ -82,6 +82,8 @@ x-api-common: &api-common
     # V2 scoring/frontend rollout flags (default safe-off, enabled via app.env)
     SOLARSAGE_V2_ENABLED: ${SOLARSAGE_V2_ENABLED:-false}
     SOLARSAGE_V2_FRONTEND_ENABLED: ${SOLARSAGE_V2_FRONTEND_ENABLED:-false}
+    # Feedback broadcast job kill-switch (app/jobs/feedback_broadcast.py)
+    FEEDBACK_BROADCAST_ENABLED: ${FEEDBACK_BROADCAST_ENABLED:-false}
     # Billing (YooKassa): secrets come ONLY from the root-owned host env file
     # (/etc/solarsage/app.env), never from the repository. NATAL_REPORT_ENABLED
     # stays off until the billing path is proven in sandbox.
