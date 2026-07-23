@@ -299,7 +299,6 @@ check_auth_and_profile() {
 
     local cookie_jar
     cookie_jar=$(mktemp)
-    trap 'rm -f "$cookie_jar"' EXIT
 
     local json_payload
     json_payload=$(python3 -c "import json, sys; print(json.dumps({'initData': sys.argv[1]}))" "$initdata")
