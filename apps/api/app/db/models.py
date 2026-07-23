@@ -836,6 +836,36 @@ class HoraryCredit(Base):
     user: Mapped["User"] = relationship("User")
 
 
+class DayFeedback(Base):
+    """User accuracy feedback for a given date (1..3)."""
+    __tablename__ = "day_feedback"
+    __table_args__ = (
+        CheckConstraint("accuracy >= 1 AND accuracy <= 3", name="ck_day_feedback_accuracy_range"),
+        UniqueConstraint("user_id", "target_date", name="uq_day_feedback_user_date"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_date: Mapped[Date] = mapped_column(Date, nullable=False)
+    accuracy: Mapped[int] = mapped_column(nullable=False)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="tg_bot")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User")
+
+
 class HoraryCreditSpend(Base):
     __tablename__ = "horary_credit_spends"
     __table_args__ = (

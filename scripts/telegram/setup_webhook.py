@@ -110,7 +110,7 @@ def webhook_url(config: dict) -> str:
 # START_BLOCK: CHECK_MODE
 def run_check(config: dict, url: str) -> int:
     print("=== telegram webhook setup: CHECK (no HTTP performed) ===")
-    print(f"would call setWebhook: url={url} allowed_updates=[\"message\"] drop_pending_updates=true secret_token=<redacted>")
+    print(f'would call setWebhook: url={url} allowed_updates=["message", "callback_query"] drop_pending_updates=true secret_token=<redacted>')
     print(f"would call setMyCommands: [{json.dumps(START_COMMAND, ensure_ascii=False)}]")
     print("check OK")
     return 0
@@ -136,7 +136,7 @@ def run_apply(config: dict, token: str, secret: str, url: str, opener=urllib.req
     post_method(token, "setWebhook", {
         "url": url,
         "secret_token": secret,
-        "allowed_updates": ["message"],
+        "allowed_updates": ["message", "callback_query"],
         "drop_pending_updates": True,
     }, opener)
     print("setWebhook: ok (secret_token redacted)")
@@ -145,7 +145,7 @@ def run_apply(config: dict, token: str, secret: str, url: str, opener=urllib.req
     webhook = api_get(token, "getWebhookInfo", opener).get("result", {})
     if webhook.get("url") != url:
         die("read-back mismatch: webhook url")
-    if webhook.get("allowed_updates") != ["message"]:
+    if webhook.get("allowed_updates") != ["message", "callback_query"]:
         die("read-back mismatch: allowed_updates")
     print("read-back webhook: exact")
     commands = api_get(token, "getMyCommands", opener).get("result", [])

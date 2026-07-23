@@ -126,7 +126,69 @@ async def test_non_start_private_message_ack_empty(async_client: AsyncClient, se
 @pytest.mark.asyncio
 async def test_non_message_update_ack_empty(async_client: AsyncClient, secret_configured) -> None:
     resp = await async_client.post(
-        WEBHOOK, json={"update_id": 2, "callback_query": {"id": "x"}},
+        WEBHOOK, json={"update_id": 2, "poll": {"id": "x"}},
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {}
+
+
+@pytest.mark.asyncio
+async def test_callback_query_happy_path(async_client: AsyncClient, secret_configured, make_initdata, db_session) -> None:
+    # Create user with tg_user_id 987654321
+    raw_init = make_initdata(user_id=987654321, username="test_cq_user")
+    await async_client.post("/api/auth/telegram", json={"initData": raw_init})
+
+    cq_update = {
+        "update_id": 100,
+        "callback_query": {
+            "id": "cq_12345",
+            "from": {"id": 987654321, "first_name": "Test"},
+            "data": "fb:acc:2026-07-22:3",
+        },
+    }
+    resp = await async_client.post(
+        WEBHOOK, json=cq_update,
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body == {
+        "method": "answerCallbackQuery",
+        "callback_query_id": "cq_12345",
+        "text": "Записал ✨",
+    }
+
+
+@pytest.mark.asyncio
+async def test_callback_query_invalid_data_or_unknown_user(async_client: AsyncClient, secret_configured) -> None:
+    # Invalid data format
+    cq_invalid = {
+        "update_id": 101,
+        "callback_query": {
+            "id": "cq_12345",
+            "from": {"id": 999999999, "first_name": "Test"},
+            "data": "invalid_data",
+        },
+    }
+    resp = await async_client.post(
+        WEBHOOK, json=cq_invalid,
+        headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {}
+
+    # Valid data format, but user not found in DB
+    cq_unknown_user = {
+        "update_id": 102,
+        "callback_query": {
+            "id": "cq_12345",
+            "from": {"id": 888888888, "first_name": "Unknown"},
+            "data": "fb:acc:2026-07-22:2",
+        },
+    }
+    resp = await async_client.post(
+        WEBHOOK, json=cq_unknown_user,
         headers={"X-Telegram-Bot-Api-Secret-Token": SECRET},
     )
     assert resp.status_code == 200

@@ -65,6 +65,9 @@ LogEventName = Literal[
     # day / calendar
     "day.viewed",
     "checkin.submitted",
+    "feedback.reminder_sent",
+    "feedback.broadcast_skipped",
+    "feedback.received",
     "day.payload_built",
     "day.llm_phase_completed",
     "calendar.viewed",

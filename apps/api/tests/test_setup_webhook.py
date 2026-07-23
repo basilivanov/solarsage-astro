@@ -79,7 +79,7 @@ def _opener(config: dict, url: str, calls: list, bot_id=None):
             }})
         if method == "getWebhookInfo":
             return _FakeResponse({"ok": True, "result": {
-                "url": url, "allowed_updates": ["message"],
+                "url": url, "allowed_updates": ["message", "callback_query"],
                 "pending_update_count": 0, "max_connections": 40}})
         if method == "getMyCommands":
             return _FakeResponse({"ok": True, "result": [sw.START_COMMAND]})
@@ -118,7 +118,7 @@ def test_apply_exact_payload_and_readback_no_secret_leak(config: dict, url: str,
 
     wh = calls[1]["data"]
     assert wh["url"] == url
-    assert wh["allowed_updates"] == ["message"]
+    assert wh["allowed_updates"] == ["message", "callback_query"]
     assert wh["drop_pending_updates"] is True
     assert wh["secret_token"] == SECRET
 

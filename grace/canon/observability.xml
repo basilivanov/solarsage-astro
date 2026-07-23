@@ -254,6 +254,14 @@
       <payload-field name="cached"       type="boolean" required="true" />
     </event>
     <event name="checkin.submitted"      owner="W-FEEDBACK" desc="Evening checkin submitted." />
+    <event name="feedback.reminder_sent"  owner="W-FEEDBACK" desc="Feedback broadcast reminder sent.">
+      <payload-field name="count"        type="number" required="true" />
+    </event>
+    <event name="feedback.broadcast_skipped" owner="W-FEEDBACK" desc="Feedback broadcast skipped." />
+    <event name="feedback.received"       owner="W-FEEDBACK" desc="User feedback received via bot callback.">
+      <payload-field name="accuracy"     type="number" required="true" />
+      <payload-field name="source"       type="string" required="true" />
+    </event>
     <event name="day.payload_built"       owner="W-1.3" desc="Backend assembled TodayPayload.">
       <payload-field name="contract_version" type="string" required="true" />
       <payload-field name="duration_ms"      type="number" required="true" />
