@@ -68,6 +68,9 @@ x-api-common: &api-common
     LLM_PROVIDER: ${LLM_PROVIDER:-openrouter}
     LLM_MODEL: ${LLM_MODEL:-openai/gpt-4.1-nano}
     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?openrouter key required}
+    # Egress relay override (see infra/relay/): prod sets this to
+    # https://openrouter.ai:8443/api/v1 in /etc/solarsage/app.env
+    OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?telegram bot token required}
     BOT_USERNAME: ${BOT_USERNAME:?bot username required}
