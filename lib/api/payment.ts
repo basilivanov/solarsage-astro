@@ -72,6 +72,8 @@ type PaymentErrorBody = {
   } | string
 }
 
+export type Product = ProductsListResponse["products"][number]
+
 export class PaymentApiError extends Error {
   status: number
   code?: string
@@ -157,6 +159,7 @@ export type OneTimeProductSlug =
   | "horary_3"
   | "horary_5"
   | "horary_10"
+  | "election_1"
 
 const KNOWN_ERROR_MESSAGES: Record<string, string> = {
   PAYMENT_NEEDS_RECONCILIATION:

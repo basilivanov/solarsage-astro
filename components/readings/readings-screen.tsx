@@ -36,13 +36,10 @@ export function ReadingsScreen() {
   const { available, coming } = useMemo(() => listReadings(), [])
   const [devCard, setDevCard] = useState<ComingReading | null>(null)
 
-  // Натальная карта подключена как полноценный экран — уходим на TOC.
-  const openNatal = () => {
-    router.push("/readings/natal")
-  }
-
-  const openHorary = () => {
-    router.push("/readings/horary")
+  const openReading = (key: string) => {
+    if (key === "natal") router.push("/readings/natal")
+    else if (key === "election") router.push("/readings/election")
+    else router.push("/readings/horary")
   }
 
   return (
@@ -93,12 +90,13 @@ export function ReadingsScreen() {
             {available.map((r) => (
               <AvailableCard
                 key={r.key}
+                cardKey={r.key}
                 icon={r.icon}
                 title={r.title}
                 description={r.description}
                 teaser={r.teaser}
-                route={r.key === "natal" ? "/readings/natal" : "/readings/horary"}
-                onClick={r.key === "natal" ? openNatal : openHorary}
+                route={r.key === "natal" ? "/readings/natal" : r.key === "election" ? "/readings/election" : "/readings/horary"}
+                onClick={() => openReading(r.key)}
               />
             ))}
           </div>

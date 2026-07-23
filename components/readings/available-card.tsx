@@ -30,10 +30,11 @@ type Props = {
   teaser?: string
   onClick: () => void
   route?: string
+  cardKey?: string
 }
 
-export function AvailableCard({ icon: Icon, title, description, teaser, onClick, route }: Props) {
-  const key = route?.replace("/readings/", "") ?? ""
+export function AvailableCard({ icon: Icon, title, description, teaser, onClick, route, cardKey }: Props) {
+  const key = cardKey ?? route?.replace("/readings/", "") ?? ""
   return (
     <button
       type="button"

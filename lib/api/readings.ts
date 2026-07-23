@@ -109,6 +109,13 @@ export function listReadings(): ReadingsCatalog {
         teaser: "Конкретный вопрос — конкретный ответ по моменту вопроса",
       },
       {
+        key: "election",
+        title: "Подбор даты",
+        description: "Лучшие даты для важного события",
+        icon: Calendar,
+        teaser: "Найди идеальные дни по звёздам для важных событий",
+      },
+      {
         key: "natal",
         title: "Натальная карта",
         description: "Глубокий разбор карты рождения",
