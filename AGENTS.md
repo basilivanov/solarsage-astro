@@ -49,6 +49,44 @@ App-сервисы (api/sidecar/frontend) работают в контейнер
 - ❌ **USE_FIXTURES** — удалён, только реальный API через Telegram auth
 - ❌ **Prefect** — удалён, контейнеры и systemd-юниты очищены
 
+## Production host (astro.vasiliy-ivanov.ru)
+
+Прод живёт на **отдельной машине**, не на dev-хосте:
+
+```text
+domain: astro.vasiliy-ivanov.ru
+IPv4:   157.22.192.242
+OS:     Ubuntu 24.04 LTS, hostname astro-prod
+SSH:    root@157.22.192.242 -i ~/.ssh/solarsage_prod_server_ed25519
+        (ключ на dev-машине; astro@ тоже работает, но sudo требует пароль)
+```
+
+### Что где лежит на проде
+
+| Что | Где |
+|-----|-----|
+| App env (секреты) | `/etc/solarsage/app.env` (root:astro 0640) |
+| Installed app compose | `/etc/solarsage/compose/docker-compose.app.yml` |
+| Orchestrator | `/usr/local/libexec/solarsage/prod-orchestrator` |
+| Orchestrator state / release record | `/var/lib/solarsage/orchestrator/release-record` |
+| Локальные DB-дампы | `/var/backups/solarsage` |
+| Nginx vhost | `/etc/nginx/sites-enabled/astro.vasiliy-ivanov.ru.conf` |
+| Контейнеры | `solarsage-api`, `solarsage-sidecar`, `solarsage-frontend` (Compose `solarsage-app`), `solarsage-db` (Compose `solarsage-prod`) |
+
+Systemd на проде: активны `solarsage-db.service` и `solarsage-backup.timer`; старые app units (`solarsage-api/sidecar/frontend.service`) parked/inactive. Бэкап = orchestrator `backup`: локальный pg_dump + offsite restic в `sftp:restic-backup@2.26.20.80:/solarsage`.
+
+### Прод egress-матрица (проверено 2026-07-23) — критично!
+
+| Направление | Статус | Последствие |
+|-------------|--------|-------------|
+| `api.telegram.org` (outbound) | ❌ TCP timeout | Нельзя звать Bot API с прода (setWebhook, getMe и т.д.) — делать с машины с нормальным egress |
+| Telegram → webhook (inbound) | ❌ Connection timed out | Telegram не доставляет updates на `https://astro.vasiliy-ivanov.ru/api/telegram/webhook` — до nginx не доходит (0 в access.log). /start и инвайт-флоу через бота мёртвы, пока webhook не фронтуется через доступный Telegram relay/proxy |
+| `openrouter.ai` | ❌ 403 (geo-block RU) | Primary LLM недоступен с прода |
+| `api.deepseek.com` | ✅ reachable (401 без ключа) | Единственный работающий LLM-путь: нужен `DEEPSEEK_API_KEY` в app.env (fallback в LLM-клиенте уже есть) |
+| `api.yookassa.ru`, `github.com` | ✅ | Биллинг и registry в порядке |
+
+Корневой дизайн-вывод: любой внешний сервис, от которого зависит продукт, обязан быть проверен на достижимость **с прод-хоста** (см. post-deploy smoke); «зелёные тесты в CI/dev» ничего не говорят о прод-egress.
+
 ## Аутентификация
 
 Единственный канонический путь: **Telegram WebApp → HMAC → `/api/auth/telegram`**.
