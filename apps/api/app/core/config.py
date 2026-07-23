@@ -187,6 +187,9 @@ class Settings(BaseSettings):
     solarsage_v2_frontend_enabled: bool = Field(False, alias="SOLARSAGE_V2_FRONTEND_ENABLED")
     solarsage_audit_artifacts_enabled: bool = Field(False, alias="SOLARSAGE_AUDIT_ARTIFACTS_ENABLED")
 
+    # --- Feedback broadcast feature flag ---
+    feedback_broadcast_enabled: bool = Field(False, alias="FEEDBACK_BROADCAST_ENABLED")
+
     # --- YooKassa (secrets live only in env files, never in git) ---
     yookassa_enabled: bool = Field(False, alias="YOOKASSA_ENABLED")
     yookassa_mode: str = Field("test", alias="YOOKASSA_MODE")  # "test" | "live"

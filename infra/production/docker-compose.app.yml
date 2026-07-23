@@ -203,3 +203,14 @@ services:
     networks:
       - db
     command: ["python", "-m", "app.jobs.billing_rebill"]
+
+  feedback-broadcast:
+    # Canonical one-shot feedback broadcast entrypoint
+    <<: *api-common
+    container_name: solarsage-feedback-broadcast
+    profiles: ["feedback-broadcast"]
+    restart: "no"
+    networks:
+      - app
+      - db
+    command: ["python", "-m", "app.jobs.feedback_broadcast"]
