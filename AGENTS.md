@@ -51,14 +51,15 @@ App-сервисы (api/sidecar/frontend) работают в контейнер
 
 ## Production host (astro.vasiliy-ivanov.ru)
 
-Прод живёт на **отдельной машине**, не на dev-хосте:
+Прод живёт на **отдельной машине** (с 2026-07-23 — новый хост, миграция с RU-хостера):
 
 ```text
 domain: astro.vasiliy-ivanov.ru
-IPv4:   157.22.192.242
-OS:     Ubuntu 24.04 LTS, hostname astro-prod
-SSH:    root@157.22.192.242 -i ~/.ssh/solarsage_prod_server_ed25519
-        (ключ на dev-машине; astro@ тоже работает, но sudo требует пароль)
+IPv4:   2.26.20.80 (xorek.cloud, EU — прямой egress к Telegram/OpenRouter/ЮKassa)
+OS:     Ubuntu 22.04 LTS, hostname 1871962.xorek.cloud
+SSH:    root@2.26.20.80 -i ~/.ssh/solarsage_prod_server_ed25519
+Старый хост 157.22.192.242 — standby (app-контейнеры остановлены, БД запущена,
+backup.timer выключен). Не удалять до явного решения владельца.
 ```
 
 ### Что где лежит на проде
@@ -67,27 +68,24 @@ SSH:    root@157.22.192.242 -i ~/.ssh/solarsage_prod_server_ed25519
 |-----|-----|
 | App env (секреты) | `/etc/solarsage/app.env` (root:astro 0640) |
 | Installed app compose | `/etc/solarsage/compose/docker-compose.app.yml` |
+| Repo checkout (infra) | `/opt/solarsage-astro` (нужен для `solarsage-db.service` и tmpfiles.d) |
 | Orchestrator | `/usr/local/libexec/solarsage/prod-orchestrator` |
 | Orchestrator state / release record | `/var/lib/solarsage/orchestrator/release-record` |
 | Локальные DB-дампы | `/var/backups/solarsage` |
+| Restic-репозиторий (временно на этой же машине) | `/srv/restic/solarsage` |
 | Nginx vhost | `/etc/nginx/sites-enabled/astro.vasiliy-ivanov.ru.conf` |
+| TLS cert | certbot, `/etc/letsencrypt/live/astro.vasiliy-ivanov.ru/` |
 | Контейнеры | `solarsage-api`, `solarsage-sidecar`, `solarsage-frontend` (Compose `solarsage-app`), `solarsage-db` (Compose `solarsage-prod`) |
 
-Systemd на проде: активны `solarsage-db.service` и `solarsage-backup.timer`; старые app units (`solarsage-api/sidecar/frontend.service`) parked/inactive. Бэкап = orchestrator `backup`: локальный pg_dump + offsite restic в `sftp:restic-backup@2.26.20.80:/solarsage`.
+Systemd на проде: активны `solarsage-db.service`, `solarsage-backup.timer`, `fail2ban`, UFW (22/80/443). Бэкап = orchestrator `backup`: локальный pg_dump в `/var/backups/solarsage` + restic в `sftp:restic-backup@2.26.20.80:/solarsage` — **это та же машина (backup-to-self, ВРЕМЕННО)**; при появлении отдельного offsite-хоста поменять `RESTIC_REPOSITORY` в app.env и ssh-дропин.
 
-⚠️ `solarsage-backup.service` работает с `ProtectHome=true` — ssh внутри юнита **не читает** `/root/.ssh/config`. SSH-конфиг для restic-хоста обязан жить в `/etc/ssh/ssh_config.d/solarsage-restic.conf` (Host 2.26.20.80, IdentityFile `/etc/solarsage/keys/restic-sftp-ed25519`, pinned UserKnownHostsFile `/etc/solarsage/keys/restic-backup-known_hosts`). Дубликат в `/root/.ssh/config` — только для интерактивного использования.
+⚠️ `solarsage-backup.service` работает с `ProtectHome=true` — ssh внутри юнита **не читает** `/root/.ssh/config`. SSH-конфиг для restic-хоста обязан жить в `/etc/ssh/ssh_config.d/solarsage-restic.conf` (IdentityFile `/etc/solarsage/keys/restic-sftp-ed25519`, pinned UserKnownHostsFile `/etc/solarsage/keys/restic-backup-known_hosts`).
 
-### Прод egress-матрица (проверено 2026-07-23) — критично!
+### Egress и relay (состояние после миграции)
 
-| Направление | Статус | Последствие |
-|-------------|--------|-------------|
-| `api.telegram.org` (outbound) | ❌ SNI-DPI: хостер режет TLS ClientHello с SNI=api.telegram.org на ЛЮБОЙ IP (даже через relay; нейтральный SNI на тот же IP проходит) | Bot API с прода невозможен без туннеля с нейтральным SNI; setWebhook и пр. — делать с машины с нормальным egress |
-| Telegram → webhook (inbound) | ❌ Connection timed out | Telegram не доставляет updates на `https://astro.vasiliy-ivanov.ru/api/telegram/webhook` — до nginx не доходит (0 в access.log). /start и инвайт-флоу через бота мёртвы, пока webhook не фронтуется через доступный Telegram relay/proxy |
-| `openrouter.ai` | ❌ 403 (geo-block RU) | Primary LLM недоступен с прода |
-| `api.deepseek.com` | ✅ reachable (401 без ключа) | Единственный работающий LLM-путь: нужен `DEEPSEEK_API_KEY` в app.env (fallback в LLM-клиенте уже есть) |
-| `api.yookassa.ru`, `github.com` | ✅ | Биллинг и registry в порядке |
+С нового хоста всё доступно напрямую: `api.telegram.org`, `openrouter.ai`, `api.deepseek.com`, `api.yookassa.ru`, `github.com`. TCP egress-relay (`infra/relay/`, контейнер `egress-relay` на dev-хосте `45.88.172.246:8443`) продом **больше не используется** и оставлен в standby. В prod app.env НЕ должно быть `OPENROUTER_BASE_URL` (дефолт — прямой `https://openrouter.ai/api/v1`), в installed compose НЕ должно быть `extra_hosts`.
 
-На dev-хосте `45.88.172.246:8443` работает TCP egress-relay (`infra/relay/`, контейнер `egress-relay`, запуск — `infra/relay/README.md`), проксирующий сырой TCP к `openrouter.ai` и `api.telegram.org` по SNI-whitelist, с allowlist только на IP прода. На проде relay подключается прозрачно через `extra_hosts` в `docker-compose.app.yml` и `OPENROUTER_BASE_URL=https://openrouter.ai:8443/api/v1` в `/etc/solarsage/app.env`.
+Исторический контекст (RU-хостер, до 2026-07-23): OpenRouter — geo-block 403, api.telegram.org — SNI-DPI drop (проверено: режется TLS ClientHello по SNI на любой IP), Telegram webhook inbound — timeout. Если прод когда-либо переедет обратно в RU-юрисдикцию — поднимать relay и возвращать `extra_hosts` + `OPENROUTER_BASE_URL` (см. `infra/relay/README.md`).
 
 Корневой дизайн-вывод: любой внешний сервис, от которого зависит продукт, обязан быть проверен на достижимость **с прод-хоста** (см. post-deploy smoke); «зелёные тесты в CI/dev» ничего не говорят о прод-egress.
 
