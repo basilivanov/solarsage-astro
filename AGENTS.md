@@ -81,7 +81,7 @@ Systemd на проде: активны `solarsage-db.service` и `solarsage-bac
 
 | Направление | Статус | Последствие |
 |-------------|--------|-------------|
-| `api.telegram.org` (outbound) | ❌ TCP timeout | Нельзя звать Bot API с прода (setWebhook, getMe и т.д.) — делать с машины с нормальным egress |
+| `api.telegram.org` (outbound) | ❌ SNI-DPI: хостер режет TLS ClientHello с SNI=api.telegram.org на ЛЮБОЙ IP (даже через relay; нейтральный SNI на тот же IP проходит) | Bot API с прода невозможен без туннеля с нейтральным SNI; setWebhook и пр. — делать с машины с нормальным egress |
 | Telegram → webhook (inbound) | ❌ Connection timed out | Telegram не доставляет updates на `https://astro.vasiliy-ivanov.ru/api/telegram/webhook` — до nginx не доходит (0 в access.log). /start и инвайт-флоу через бота мёртвы, пока webhook не фронтуется через доступный Telegram relay/proxy |
 | `openrouter.ai` | ❌ 403 (geo-block RU) | Primary LLM недоступен с прода |
 | `api.deepseek.com` | ✅ reachable (401 без ключа) | Единственный работающий LLM-путь: нужен `DEEPSEEK_API_KEY` в app.env (fallback в LLM-клиенте уже есть) |
