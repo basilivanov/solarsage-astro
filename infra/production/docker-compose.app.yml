@@ -109,11 +109,6 @@ services:
         max-file: "3"
     security_opt:
       - no-new-privileges:true
-    extra_hosts:
-      # Egress relay on dev host (Amsterdam) — see infra/relay/README.md.
-      # openrouter.ai / api.telegram.org are unreachable from the prod hoster.
-      - "api.telegram.org:45.88.172.246"
-      - "openrouter.ai:45.88.172.246"
     networks:
       - app
       - db
