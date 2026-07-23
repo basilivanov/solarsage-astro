@@ -75,6 +75,8 @@ SSH:    root@157.22.192.242 -i ~/.ssh/solarsage_prod_server_ed25519
 
 Systemd на проде: активны `solarsage-db.service` и `solarsage-backup.timer`; старые app units (`solarsage-api/sidecar/frontend.service`) parked/inactive. Бэкап = orchestrator `backup`: локальный pg_dump + offsite restic в `sftp:restic-backup@2.26.20.80:/solarsage`.
 
+⚠️ `solarsage-backup.service` работает с `ProtectHome=true` — ssh внутри юнита **не читает** `/root/.ssh/config`. SSH-конфиг для restic-хоста обязан жить в `/etc/ssh/ssh_config.d/solarsage-restic.conf` (Host 2.26.20.80, IdentityFile `/etc/solarsage/keys/restic-sftp-ed25519`, pinned UserKnownHostsFile `/etc/solarsage/keys/restic-backup-known_hosts`). Дубликат в `/root/.ssh/config` — только для интерактивного использования.
+
 ### Прод egress-матрица (проверено 2026-07-23) — критично!
 
 | Направление | Статус | Последствие |
