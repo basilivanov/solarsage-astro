@@ -56,8 +56,8 @@ router = APIRouter(tags=["telegram"])
 # Canonical start copy — the single runtime source; the test suite proves it
 # matches scripts/telegram/bot-profile.json start_copy.text byte-exactly.
 START_TEXT = (
-    "Привет! ✨ Это твой день по натальной карте — что поддержит сегодня и где лучше не спешить. "
-    "Нажми кнопку — начнём."
+    "Привет! ✨ Я уже разложил карту на твой день — расскажу, что сегодня на твоей стороне "
+    "и где лучше не спешить. Жми «Мой день» — покажу."
 )
 START_BUTTON_TEXT = "Мой день ✨"
 # END_BLOCK: START_COPY
