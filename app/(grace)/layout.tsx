@@ -41,6 +41,7 @@ import { useTelegram } from "@/components/telegram-provider"
 import { AppShell } from "@/components/app-shell"
 import { TabBar } from "@/components/today/tab-bar"
 import { ProfileReset } from "@/components/profile-reset"
+import { PromoCampaignGate } from "@/components/promo/promo-campaign-gate"
 import { logger } from "@/lib/log"
 
 const TIMING_FIXTURE_PATH = "/day/2026-07-08"
@@ -110,7 +111,12 @@ function AuthenticatedShell({ children, pathname }: { children: React.ReactNode;
 
   logger.info("[GraceLayout] Showing content", { extra: { pathname } })
   const isOnboarding = pathname?.startsWith("/onboarding")
-  return isOnboarding ? <>{children}</> : <><AppShell>{children}</AppShell><ProfileReset /></>
+  return (
+    <>
+      {isOnboarding ? children : <><AppShell>{children}</AppShell><ProfileReset /></>}
+      {isAuthenticated ? <PromoCampaignGate /> : null}
+    </>
+  )
 }
 
 function FixtureShell({ children }: { children: React.ReactNode }) {
