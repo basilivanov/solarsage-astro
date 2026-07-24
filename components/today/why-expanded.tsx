@@ -173,7 +173,7 @@ export function WhyExpanded({ sections, keyInsight, v2, wireIdentity, whyToday, 
           <span className="min-w-0">
               <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Глубже</span>
               <span className="mt-0.5 block font-serif text-[23px] leading-tight text-foreground">
-                {mode === "legacy" ? "Почему так у меня" : "Почему именно у меня"}
+                "Почему так у меня"
               </span>
             </span>
           <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-100">

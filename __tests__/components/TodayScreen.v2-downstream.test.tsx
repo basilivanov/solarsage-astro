@@ -499,7 +499,7 @@ describe("TodayScreen V2 downstream fixture", () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Почему именно у меня" }))
+    fireEvent.click(screen.getByRole("button", { name: "Почему так у меня" }))
     const sphereButtons = screen.getAllByTestId("why-horizon-sphere")
     expect(sphereButtons.some((button) => button.textContent === "Работа")).toBe(true)
 

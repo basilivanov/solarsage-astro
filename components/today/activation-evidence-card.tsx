@@ -140,7 +140,7 @@ export function ActivationEvidenceCard({
           onClick={onWhyOpen}
           className="relative mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-200/80 bg-violet-100/55 px-4 text-[15px] font-semibold text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/30 dark:bg-violet-500/15 dark:text-violet-100"
         >
-          Почему именно у меня
+          Почему так у меня
           <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
       </div>

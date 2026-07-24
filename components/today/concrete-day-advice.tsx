@@ -262,7 +262,7 @@ function SphereDetails({
           onClick={onWhyOpen}
           className="min-h-11 rounded-xl border border-violet-300 bg-violet-50 px-3 text-[14px] font-semibold text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-100"
         >
-          Почему это именно про меня
+          Почему это про меня
         </button>
         <button
           type="button"
