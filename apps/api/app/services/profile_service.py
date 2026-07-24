@@ -10,16 +10,18 @@
 #   - get_or_create_user() upserts a User by tg_user_id (stable across logins)
 #   - read_profile() returns (and lazily creates) the user_profiles row
 #   - update_profile() applies a partial ProfileWrite + marks dirty
+#   - missing_onboarding_fields() checks base onboarding completeness
 # owns:
 #   - apps/api/app/services/profile_service.py
 # inputs:
 #   - AsyncSession, TelegramUser, ProfileWrite
 # outputs:
-#   - User, UserProfile, mark_profile_dirty(user_id)
+#   - User, UserProfile, missing_onboarding_fields, mark_profile_dirty(user_id)
 # invariants:
 #   - get_or_create_user is idempotent: same tg_user_id never produces two rows
 #   - read_profile is idempotent: ensures one row per user
 #   - update_profile applies partial semantics (model_dump(exclude_unset=True))
+#   - missing_onboarding_fields evaluates birthday, non-empty birth_city, and gender in {male, female}
 # failure_policy:
 #   - any DB error propagates; the routes do not catch them
 # non_goals:
@@ -32,14 +34,17 @@
 #   - get_or_create_user
 #   - read_profile
 #   - update_profile
+#   - missing_onboarding_fields
 #   - mark_profile_dirty
 # semantic_blocks:
 #   - USER_UPSERT: get_or_create_user by tg_user_id
 #   - PROFILE_READ: read_profile (lazy create)
 #   - PROFILE_WRITE: update_profile (partial)
+#   - BASE_ONBOARDING_CHECK: missing_onboarding_fields helper
 #   - INVALIDATION_MARKER: mark_profile_dirty stub (UC-PROFILE-EDIT)
 # owned_tests:
 #   - apps/api/tests/test_profile_endpoints.py
+#   - apps/api/tests/test_profile_readiness.py
 # END_MODULE_MAP: M-PROFILE.service
 
 from __future__ import annotations
@@ -53,6 +58,35 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User, UserProfile
 from app.schemas.profile import LocationData, ProfileWrite
 from app.services.telegram_auth import TelegramUser
+
+
+# START_BLOCK: BASE_ONBOARDING_CHECK
+def missing_onboarding_fields(profile: UserProfile | None) -> list[str]:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.service.missing_onboarding_fields
+    # purpose: Return deterministic list of missing base onboarding fields.
+    # inputs: profile (UserProfile | None)
+    # returns: list[str] containing missing fields in order ["birthday", "birth_city", "gender"]
+    # side_effects: none (pure function)
+    # emitted_logs: none
+    # error_behavior: returns full missing list if profile is None
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.service.missing_onboarding_fields
+    """Return deterministic list of missing base onboarding fields."""
+    if profile is None:
+        return ["birthday", "birth_city", "gender"]
+
+    missing: list[str] = []
+
+    if profile.birthday is None:
+        missing.append("birthday")
+
+    if not profile.birth_city:
+        missing.append("birth_city")
+
+    if profile.gender not in ("male", "female"):
+        missing.append("gender")
+
+    return missing
+# END_BLOCK: BASE_ONBOARDING_CHECK
 
 
 # START_BLOCK: LOCATION_APPLY
@@ -169,9 +203,9 @@ async def update_profile(
     _apply_location(profile, data.get("current_location"), "current")
     _apply_location(profile, data.get("birthday_location"), "birthday")
 
-    # W-2.7: Mark user as onboarded if they have birthday, birth_city, and gender
+    # W-2.7: Mark user as onboarded if base onboarding fields are complete
     # This allows completing onboarding flow
-    if profile.birthday and profile.birth_city and profile.gender and not profile.is_onboarded:
+    if not missing_onboarding_fields(profile) and not profile.is_onboarded:
         profile.is_onboarded = True
 
     await db.flush()

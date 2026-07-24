@@ -16,6 +16,7 @@
 # outputs:
 #   - NatalContextData: deterministic chart context (angles, planets, houses, aspects,
 #     scores, balances)
+#   - missing_profile_fields, is_profile_complete static helpers
 # dependencies:
 #   - M-DB-SESSION (AsyncSession)
 #   - M-SOLARSAGE-CLIENT (get_solarsage_client)
@@ -26,6 +27,7 @@
 #   - Only one active NatalChartCache per (user_id, profile_hash, engine_version,
 #     calculation_version, house_system, invalidated_at IS NULL).
 #   - profile_hash changes when any birth field changes → cache miss → rebuild.
+#   - missing_profile_fields checks strict natal fields in deterministic order.
 #   - Service never calls transits.
 #   - Service never calls LLM.
 # failure_policy:
@@ -44,9 +46,15 @@
 #   - build_natal_context
 #   - invalidate_for_user
 #   - compute_profile_hash
+#   - missing_profile_fields
+#   - is_profile_complete
 # semantic_blocks:
 #   - NATAL_CONTEXT_BUILD: build and cache natal context
 #   - NATAL_CONTEXT_INVALIDATE: invalidate on profile change
+#   - NATAL_READINESS: missing_profile_fields and is_profile_complete static helpers
+# owned_tests:
+#   - apps/api/tests/test_natal_context_service.py
+#   - apps/api/tests/test_profile_readiness.py
 # END_MODULE_MAP: M-NATAL-CONTEXT-SERVICE
 
 from __future__ import annotations
@@ -108,6 +116,47 @@ class NatalContextService:
         self.db = db
 
     # ── Public API ────────────────────────────────────────────────
+
+    # START_BLOCK: NATAL_READINESS
+    @staticmethod
+    def missing_profile_fields(profile: UserProfile | None) -> list[str]:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.missing_profile_fields
+        # purpose: Return deterministic list of missing required natal profile fields.
+        # inputs: profile (UserProfile | None)
+        # returns: list[str] containing missing fields in order ["birthday", "birth_time", "birth_lat", "birth_lon", "birth_tz", "gender"]
+        # side_effects: none (pure function)
+        # emitted_logs: none
+        # error_behavior: returns full REQUIRED_PROFILE_FIELDS list if profile is None
+        # END_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.missing_profile_fields
+        """Return deterministic list of missing required natal profile fields."""
+        if profile is None:
+            return list(REQUIRED_PROFILE_FIELDS)
+
+        missing: list[str] = []
+        for field_name in REQUIRED_PROFILE_FIELDS:
+            if field_name == "gender":
+                if profile.gender not in ("male", "female"):
+                    missing.append("gender")
+            else:
+                val = getattr(profile, field_name, None)
+                if val is None:
+                    missing.append(field_name)
+
+        return missing
+
+    @staticmethod
+    def is_profile_complete(profile: UserProfile | None) -> bool:
+        # START_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.is_profile_complete
+        # purpose: Check whether all strict natal profile fields are populated.
+        # inputs: profile (UserProfile | None)
+        # returns: bool
+        # side_effects: none (pure function)
+        # emitted_logs: none
+        # error_behavior: returns False if profile is None or incomplete
+        # END_FUNCTION_CONTRACT: F-M-NATAL-CONTEXT-SERVICE.is_profile_complete
+        """Check whether all strict natal profile fields are populated."""
+        return len(NatalContextService.missing_profile_fields(profile)) == 0
+    # END_BLOCK: NATAL_READINESS
 
     # START_BLOCK: PUBLIC_API
     async def get_or_build_natal_context(self, user_id: uuid.UUID) -> NatalContextData:
@@ -242,15 +291,11 @@ class NatalContextService:
 
     @staticmethod
     def _validate_profile_completeness(profile: UserProfile) -> None:
-        """Validate that all required birth fields are present.
+        """Validate that all required birth fields are present for natal context.
 
         Raises HTTPException 409 with missing fields list.
         """
-        missing_fields = [
-            field_name
-            for field_name in REQUIRED_PROFILE_FIELDS
-            if getattr(profile, field_name) is None
-        ]
+        missing_fields = NatalContextService.missing_profile_fields(profile)
         if missing_fields:
             raise HTTPException(
                 status_code=409,
@@ -258,11 +303,6 @@ class NatalContextService:
                     "message": "Profile is incomplete",
                     "missingFields": missing_fields,
                 },
-            )
-        if profile.gender not in {"male", "female"}:
-            raise HTTPException(
-                status_code=409,
-                detail={"message": "Profile is incomplete", "missingFields": ["gender"]},
             )
 
     # START_BLOCK: CACHE_LOOKUP
