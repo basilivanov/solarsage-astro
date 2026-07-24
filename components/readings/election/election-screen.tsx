@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation"
 import { Calendar, AlertCircle } from "lucide-react"
 
 import type { HoraryQuotaRead } from "@/packages/contracts"
-import { type ElectionSearch, type ElectionEventKey } from "@/lib/contracts/election"
+import { type ElectionSearch } from "@/lib/contracts/election"
 import { getElectionQuota, listElectionSearches, createElectionSearch } from "@/lib/api/election"
 
 import { ElectionQuotaBar } from "./election-quota-bar"
@@ -53,7 +53,7 @@ export function ElectionScreen() {
     : 0
 
   const handleFormSubmit = async (params: {
-    eventType: ElectionEventKey
+    eventType: string
     windowFrom: string
     windowTo: string
   }) => {

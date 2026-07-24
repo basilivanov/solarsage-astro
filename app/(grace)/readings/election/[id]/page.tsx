@@ -72,6 +72,7 @@ export default function ElectionDetailPage({ params }: Props) {
     }, 2000)
 
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, search?.status])
 
   const dataState = loading

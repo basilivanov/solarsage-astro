@@ -7,16 +7,26 @@
 
 import Link from "next/link"
 import { Calendar, ChevronRight } from "lucide-react"
-import { ELECTION_EVENTS, type ElectionSearch } from "@/lib/contracts/election"
+import { ELECTION_CATEGORIES, type ElectionSearch } from "@/lib/contracts/election"
 
 type Props = {
   search: ElectionSearch
 }
 
 export function ElectionSearchCard({ search }: Props) {
-  const eventInfo = ELECTION_EVENTS.find((e) => e.key === search.eventType)
-  const emoji = eventInfo?.emoji || "🗓"
-  const label = eventInfo?.label || search.eventType
+  let emoji = "🗓"
+  let label = search.eventType
+
+  for (const cat of ELECTION_CATEGORIES) {
+    if (search.eventType.startsWith(cat.key)) {
+      emoji = cat.emoji
+    }
+    for (const sub of cat.subs) {
+      if (search.eventType.endsWith(sub.key)) {
+        label = sub.label
+      }
+    }
+  }
 
   const getStatusText = () => {
     switch (search.status) {
