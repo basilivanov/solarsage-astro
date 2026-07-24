@@ -21,5 +21,6 @@
 
 from app.services.llm.service import LLMService
 from app.services.llm.client import HoraryGenerationError
+from app.services.llm.election import generate_election_narrative
 
-__all__ = ["LLMService", "HoraryGenerationError"]
+__all__ = ["LLMService", "HoraryGenerationError", "generate_election_narrative"]

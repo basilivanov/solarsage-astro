@@ -60,10 +60,22 @@ async def test_election_searches_flow(async_client: AsyncClient, make_initdata, 
         ]
     }
 
-    with patch("app.services.election_service.get_solarsage_client") as mock_get_client:
+    mock_narrative = {
+        "hero_reason": "Причина 1",
+        "hero_personal": "Персональная 1",
+        "hero_plain": "Простыми словами 1",
+        "hero_hours": "Лучшие часы 1",
+        "day_notes": [{"date": "2026-08-01", "note": "Заметка 1"}],
+        "avoid_notes": [],
+    }
+
+    with patch("app.services.election_service.get_solarsage_client") as mock_get_client, \
+         patch("app.services.llm.election.generate_election_narrative", new_callable=AsyncMock) as mock_gen_narrative:
+
         mock_client = AsyncMock()
         mock_client.get_lunar_window.return_value = mock_lunar_resp
         mock_get_client.return_value = mock_client
+        mock_gen_narrative.return_value = mock_narrative
 
         # POST /api/election/searches
         post_resp = await async_client.post(

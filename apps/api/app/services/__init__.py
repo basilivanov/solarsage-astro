@@ -26,3 +26,5 @@
 # END_MODULE_MAP: M-SERVICES
 
 """M-AUTH-TG / M-PROFILE service package marker."""
+
+from app.services import llm

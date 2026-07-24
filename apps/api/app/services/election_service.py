@@ -75,12 +75,13 @@ class ElectionService:
         # side_effects: inserts ElectionRequest, ElectionCreditSpend, updates HoraryCredit
         # error_behavior: 400 invalid date/event, 409 idempotency conflict, 402 no credits
         # END_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE.create_search
-        canon = election_engine._load_canon()
-        if event_type not in canon.get("events", {}):
+        try:
+            election_engine.resolve_event(event_type)
+        except ValueError as exc:
             raise HTTPException(
                 status_code=400,
-                detail={"code": "INVALID_EVENT_TYPE", "message": f"Unknown event type: {event_type}"},
-            )
+                detail={"code": "INVALID_EVENT_TYPE", "message": str(exc)},
+            ) from exc
         if window_to < window_from:
             raise HTTPException(status_code=400, detail="window_to must be >= window_from")
 
@@ -169,12 +170,41 @@ class ElectionService:
             )
             lunar_days = lunar_resp.get("days", [])
 
+            # Get user natal_moon_sign from profile / natal_context_service if profile exists
+            natal_moon_sign: str | None = None
+            try:
+                user_stmt = select(User).options(selectinload(User.profile)).where(User.id == request.user_id)
+                user_obj = (await self.db.execute(user_stmt)).scalar_one_or_none()
+                if user_obj and user_obj.profile and user_obj.profile.is_onboarded:
+                    from app.services.natal_context_service import get_or_build_natal_context
+                    context_data = await get_or_build_natal_context(self.db, user_obj)
+                    natal_moon_sign = (context_data.raw_chart.planets.get("MOON") or {}).get("sign", "").lower() or None
+            except Exception as exc:
+                log_event(
+                    "system.error",
+                    level="warn",
+                    msg=f"natal moon lookup failed, narrative degraded: {type(exc).__name__}",
+                )
+                natal_moon_sign = None
+
             scan_res = await election_engine.scan(
                 event_type=request.event_type,
                 from_date=request.window_from,
                 to_date=request.window_to,
                 lunar_days=lunar_days,
+                natal_moon_sign=natal_moon_sign,
             )
+
+            # Generate LLM narrative
+            from app.services.llm.election import generate_election_narrative
+            event_label = (scan_res.get("facts") or {}).get("event", {}).get("label") or request.event_type
+            narrative = await generate_election_narrative(
+                event_label=event_label,
+                best_days=scan_res.get("best_days", []),
+                avoid_days=scan_res.get("avoid_days", []),
+                personal_facts=(scan_res.get("facts") or {}).get("personal", {}),
+            )
+            scan_res["narrative"] = narrative
 
             # Check if result already exists (upsert)
             res_stmt = select(ElectionResult).where(ElectionResult.request_id == request.id)

@@ -9,13 +9,43 @@ scoring:
   voc_fraction_over: {threshold: 0.25, penalty: -40}
   mercury_retro_penalty: -20
   clamp: [0, 100]
-events:
-  date:      {label: "Свидание", emoji: "💕", preferred: [taurus, libra, cancer], disfavored: [scorpio, aries], mercury_sensitive: false}
-  wedding:   {label: "Свадьба/помолвка", emoji: "💍", preferred: [taurus, libra, cancer], disfavored: [scorpio, capricorn], mercury_sensitive: true}
-  job:       {label: "Собеседование/новая работа", emoji: "💼", preferred: [virgo, capricorn, taurus], disfavored: [pisces], mercury_sensitive: true}
-  contract:  {label: "Подписание документов", emoji: "✍️", preferred: [virgo, libra, capricorn], disfavored: [pisces, gemini], mercury_sensitive: true}
-  beauty:    {label: "Стрижка/салон", emoji: "💇‍♀️", preferred: [taurus, libra, virgo], disfavored: [scorpio], mercury_sensitive: false}
-  travel:    {label: "Поездка/переезд", emoji: "🛫", preferred: [sagittarius, gemini, aquarius], disfavored: [cancer], mercury_sensitive: true}
-  purchase:  {label: "Крупная покупка", emoji: "🛍", preferred: [taurus, virgo, capricorn], disfavored: [aries, scorpio], mercury_sensitive: true}
-  launch:    {label: "Запуск проекта", emoji: "🚀", preferred: [aries, leo, sagittarius, capricorn], disfavored: [cancer, pisces], mercury_sensitive: true}
-  money:     {label: "Финансовые решения", emoji: "💰", preferred: [taurus, virgo, capricorn], disfavored: [sagittarius, pisces], mercury_sensitive: true}
+categories:
+  relations:
+    label: "Отношения"
+    emoji: "💕"
+    subs:
+      date: { label: "Свидание", preferred: [libra, taurus, cancer], disfavored: [scorpio, aries], mercury_sensitive: false }
+      wedding: { label: "Свадьба/помолвка", preferred: [taurus, libra, cancer], disfavored: [scorpio, capricorn], mercury_sensitive: true }
+      reconcile: { label: "Примирение", preferred: [libra, cancer, pisces], disfavored: [aries, scorpio], mercury_sensitive: false }
+  work:
+    label: "Работа и дела"
+    emoji: "💼"
+    subs:
+      job: { label: "Новая работа", preferred: [virgo, capricorn, taurus], disfavored: [pisces], mercury_sensitive: true }
+      launch: { label: "Запуск проекта", preferred: [aries, leo, sagittarius, capricorn], disfavored: [cancer, pisces], mercury_sensitive: true }
+      contract: { label: "Документы и договоры", preferred: [virgo, libra, capricorn], disfavored: [pisces, gemini], mercury_sensitive: true }
+  travel:
+    label: "Поездки"
+    emoji: "🛫"
+    subs:
+      leisure: { label: "Путешествие/отдых", preferred: [sagittarius, gemini, aquarius], disfavored: [cancer], mercury_sensitive: true }
+      business: { label: "Деловая поездка", preferred: [capricorn, virgo, gemini], disfavored: [pisces], mercury_sensitive: true }
+      family: { label: "Поездка к родным", preferred: [cancer, taurus, libra], disfavored: [capricorn], mercury_sensitive: false }
+  money:
+    label: "Покупки и финансы"
+    emoji: "🛍"
+    subs:
+      purchase: { label: "Крупная покупка", preferred: [taurus, virgo, capricorn], disfavored: [aries, scorpio], mercury_sensitive: true }
+      invest: { label: "Вложения и финрешения", preferred: [capricorn, virgo, taurus], disfavored: [sagittarius, pisces], mercury_sensitive: true }
+  beauty:
+    label: "Красота и тело"
+    emoji: "💇‍♀️"
+    subs:
+      salon: { label: "Стрижка/салон", preferred: [libra, taurus, virgo], disfavored: [scorpio], mercury_sensitive: false }
+      treatment: { label: "Процедуры и лечение", preferred: [virgo, capricorn, taurus], disfavored: [pisces, aries], mercury_sensitive: false }
+  family:
+    label: "Семья и дом"
+    emoji: "👶"
+    subs:
+      conception: { label: "Зачатие ребёнка", preferred: [cancer, scorpio, pisces], disfavored: [virgo, gemini], mercury_sensitive: false }
+      moving: { label: "Переезд/новоселье", preferred: [cancer, taurus, virgo], disfavored: [capricorn], mercury_sensitive: true }

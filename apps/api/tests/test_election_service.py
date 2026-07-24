@@ -154,10 +154,22 @@ async def test_run_search_task_success_and_failure_refund(db_session: AsyncSessi
         ]
     }
 
-    with patch("app.services.election_service.get_solarsage_client") as mock_get_client:
+    mock_narrative = {
+        "hero_reason": "Причина 1",
+        "hero_personal": "Персональная 1",
+        "hero_plain": "Простыми словами 1",
+        "hero_hours": "Лучшие часы 1",
+        "day_notes": [{"date": "2026-08-01", "note": "Заметка 1"}],
+        "avoid_notes": [],
+    }
+
+    with patch("app.services.election_service.get_solarsage_client") as mock_get_client, \
+         patch("app.services.llm.election.generate_election_narrative", new_callable=AsyncMock) as mock_gen_narrative:
+
         mock_client = AsyncMock()
         mock_client.get_lunar_window.return_value = mock_lunar_resp
         mock_get_client.return_value = mock_client
+        mock_gen_narrative.return_value = mock_narrative
 
         await service.run_search_task(req.id)
 
@@ -169,6 +181,7 @@ async def test_run_search_task_success_and_failure_refund(db_session: AsyncSessi
     )).scalar_one_or_none()
     assert res is not None
     assert "best_days" in res.payload_json
+    assert "narrative" in res.payload_json
 
     # Test failure & refund
     credit_2 = HoraryCredit(user_id=user.id, source="paid", amount=1, used_amount=0)
@@ -183,10 +196,13 @@ async def test_run_search_task_success_and_failure_refund(db_session: AsyncSessi
         idempotency_key="key-run-fail",
     )
 
-    with patch("app.services.election_service.get_solarsage_client") as mock_get_client:
+    with patch("app.services.election_service.get_solarsage_client") as mock_get_client, \
+         patch("app.services.llm.election.generate_election_narrative", new_callable=AsyncMock) as mock_gen_narrative:
+
         mock_client = AsyncMock()
         mock_client.get_lunar_window.side_effect = RuntimeError("Sidecar crashed")
         mock_get_client.return_value = mock_client
+        mock_gen_narrative.side_effect = RuntimeError("LLM failed")
 
         await service.run_search_task(req_fail.id)
 

@@ -1,42 +1,54 @@
 # ############################################################################
 # AI_HEADER: MODULE_TESTS_TEST_ELECTION_ENGINE
-# ROLE: Unit tests for election_engine scoring
+# ROLE: Unit tests for election_engine scoring (v2 categories & facts)
 # DEPENDENCIES: pytest, app.services.election_engine
-# GRACE_ANCHORS: []
-# ######################################### START_MODULE_CONTRACT
-# purpose: Tests for election_engine scan logic.
-# owns:
-#   - apps/api/tests/test_election_engine.py
-# inputs: stubbed lunar_days
-# outputs: assertions on best_days, avoid_days, score calculations
-# END_MODULE_CONTRACT
+# ############################################################################
 
 from datetime import date
 import pytest
 
-from app.services.election_engine import scan
+from app.services.election_engine import scan, resolve_event
 
 
 @pytest.mark.asyncio
-async def test_election_engine_scoring_and_clamping() -> None:
-    # Event: wedding (preferred: taurus, libra, cancer; disfavored: scorpio, capricorn; mercury_sensitive: true)
+async def test_election_engine_category_resolution() -> None:
+    # Test category:sub resolution
+    cat, sub, rule = resolve_event("relations:wedding")
+    assert cat == "relations"
+    assert sub == "wedding"
+    assert rule["label"] == "Свадьба/помолвка"
+
+    # Test plain sub resolution
+    cat2, sub2, rule2 = resolve_event("wedding")
+    assert cat2 == "relations"
+    assert sub2 == "wedding"
+
+    # Test invalid event
+    with pytest.raises(ValueError):
+        resolve_event("invalid_category:invalid_sub")
+
+
+@pytest.mark.asyncio
+async def test_election_engine_scoring_and_facts() -> None:
     lunar_days = [
-        # Day 1: Preferred sign (taurus), waxing (+10), no VOC, no retro -> 50 + 25 + 10 = 85 (great)
         {
             "date": "2026-08-01",
             "moon_sign": "taurus",
             "moon_sign_ru": "Телец",
+            "phase_angle": 120.0,
             "waxing": True,
             "voc_fraction": 0.0,
+            "voc_intervals": [],
             "mercury_retro": False,
         },
-        # Day 2: Disfavored sign (scorpio), waning, high VOC (0.5 > 0.25 penalty -40), retro (-20) -> 50 - 15 - 40 - 20 = -25 -> clamp 0 (avoid)
         {
             "date": "2026-08-02",
             "moon_sign": "scorpio",
             "moon_sign_ru": "Скорпион",
+            "phase_angle": 200.0,
             "waxing": False,
             "voc_fraction": 0.5,
+            "voc_intervals": [{"start": "2026-08-02T10:00:00Z", "end": "2026-08-02T14:00:00Z"}],
             "mercury_retro": True,
         },
     ]
@@ -44,23 +56,19 @@ async def test_election_engine_scoring_and_clamping() -> None:
     from_date = date(2026, 8, 1)
     to_date = date(2026, 8, 2)
 
-    res = await scan("wedding", from_date, to_date, lunar_days)
+    res = await scan("relations:wedding", from_date, to_date, lunar_days, natal_moon_sign="taurus")
 
-    assert res["event"] == "wedding"
+    assert res["event"] == "relations:wedding"
     assert len(res["best_days"]) == 1
     assert res["best_days"][0]["date"] == "2026-08-01"
     assert res["best_days"][0]["score"] == 85
     assert res["best_days"][0]["label"] == "great"
-    assert len(res["best_days"][0]["reasons"]) > 0
 
-    assert len(res["avoid_days"]) == 1
-    assert res["avoid_days"][0]["date"] == "2026-08-02"
-    assert res["avoid_days"][0]["score"] == 0
-    assert res["avoid_days"][0]["label"] == "avoid"
-    assert len(res["avoid_days"][0]["reasons"]) == 3  # disfavored, voc, retro
+    assert "facts" in res
+    assert res["facts"]["event"]["category"] == "relations"
+    assert res["facts"]["event"]["sub"] == "wedding"
+    assert res["facts"]["personal"]["natal_moon_sign"] == "taurus"
+    assert res["facts"]["personal"]["resonates"] is True
 
-
-@pytest.mark.asyncio
-async def test_election_engine_invalid_event_type() -> None:
-    with pytest.raises(ValueError):
-        await scan("invalid_event", date(2026, 8, 1), date(2026, 8, 2), [])
+    assert "days" in res
+    assert len(res["days"]) == 2

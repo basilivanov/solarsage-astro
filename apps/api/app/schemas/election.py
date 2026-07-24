@@ -18,9 +18,54 @@ from __future__ import annotations
 from datetime import date, datetime
 import uuid
 from typing import Any, Literal
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from app.schemas._base import CamelModel
+
+
+class ElectionDayNote(BaseModel):
+    date: str
+    note: str
+
+
+class ElectionNarrative(BaseModel):
+    hero_reason: str
+    hero_personal: str
+    hero_plain: str
+    hero_hours: str
+    day_notes: list[ElectionDayNote]
+    avoid_notes: list[ElectionDayNote]
+
+
+def validate_election_narrative(
+    narrative_data: dict[str, Any],
+    expected_best_dates: list[str],
+    expected_avoid_dates: list[str],
+) -> ElectionNarrative:
+    # START_FUNCTION_CONTRACT: F-M-SCHEMAS-ELECTION.validate_election_narrative
+    # purpose: Validate LLM output against ElectionNarrative schema and dates alignment.
+    # inputs: narrative_data (dict), expected_best_dates (list[str]), expected_avoid_dates (list[str])
+    # returns: ElectionNarrative
+    # error_behavior: raises ValueError on validation error or date mismatch
+    # END_FUNCTION_CONTRACT: F-M-SCHEMAS-ELECTION.validate_election_narrative
+    try:
+        parsed = ElectionNarrative.model_validate(narrative_data)
+    except Exception as exc:
+        raise ValueError(f"Election narrative schema validation failed: {exc}") from exc
+
+    best_dates_in_narrative = [item.date for item in parsed.day_notes]
+    if best_dates_in_narrative != expected_best_dates:
+        raise ValueError(
+            f"Election day_notes dates {best_dates_in_narrative} do not match expected best_days {expected_best_dates}"
+        )
+
+    avoid_dates_in_narrative = [item.date for item in parsed.avoid_notes]
+    if avoid_dates_in_narrative != expected_avoid_dates:
+        raise ValueError(
+            f"Election avoid_notes dates {avoid_dates_in_narrative} do not match expected avoid_days {expected_avoid_dates}"
+        )
+
+    return parsed
 
 
 class ElectionSearchCreateRequest(CamelModel):
