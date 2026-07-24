@@ -1,21 +1,21 @@
 # ############################################################################
 # AI_HEADER: MODULE_TESTS_PROMO_CAMPAIGN_SERVICE
-# ROLE: Unit and domain tests for PromoCampaignService preview and token contracts (Phase 06A).
+# ROLE: Unit and domain tests for PromoCampaignService preview, redeem, and token contracts (Phase 06A & 06B).
 # DEPENDENCIES: pytest, sqlalchemy, app.db.models, app.services.promo_campaign_service
 # GRACE_ANCHORS: [PROMO_CAMPAIGN_SERVICE_TESTS]
 # WAVE: W-NAMED-PROMO-CAMPAIGN
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TESTS-PROMO-CAMPAIGN-SERVICE
-# purpose: Validate promo token format rules, hash calculation, campaign preview state validation (invalid, inactive, expired, full, already redeemed ordering), start/end boundaries, base vs strict profile completeness, and PII protection in error messages.
+# purpose: Validate promo token format rules, hash calculation, campaign preview & redeem state validation (invalid, inactive, expired, full, already redeemed ordering), start/end boundaries, base vs strict profile completeness, grant creation, credit expiry, natal reuse, and PII protection.
 # owns:
 #   - apps/api/tests/test_promo_campaign_service.py
-# inputs: AsyncSession database fixture and User/PromoCampaign DB records
+# inputs: AsyncSession database fixture and User/PromoCampaign/Product DB records
 # outputs: Pytest execution assertions
 # dependencies:
 #   - app.services.promo_campaign_service (PromoCampaignService, PromoDomainError, hash_promo_token, PROMO_TOKEN_REGEX)
-#   - app.db.models (User, UserProfile, PromoCampaign, PromoRedemption)
-# side_effects: read-only database queries in test runner
+#   - app.db.models (User, UserProfile, PromoCampaign, PromoRedemption, Product, Purchase, HoraryCredit, AccessLedger)
+# side_effects: database transactions in test runner
 # failure_policy: raise assertions
 # END_MODULE_CONTRACT: M-TESTS-PROMO-CAMPAIGN-SERVICE
 
@@ -32,10 +32,18 @@
 #   - test_preview_completeness_unlock_natal_true
 #   - test_preview_makes_zero_mutations
 #   - test_raw_token_and_hash_never_in_error_object
+#   - test_default_happy_path_redeem
+#   - test_existing_future_access_defers_promo_start
+#   - test_existing_fulfilled_natal_entitlement_reused
+#   - test_unlock_natal_false_accepts_base_complete_profile
+#   - test_natal_incomplete_raises_profile_incomplete_without_mutations
+#   - test_duplicate_sequential_redeem_raises_already_redeemed
+#   - test_redeem_validation_error_codes
 # owned_tests:
 #   - apps/api/tests/test_promo_campaign_service.py
 # END_MODULE_MAP: M-TESTS-PROMO-CAMPAIGN-SERVICE
 
+import json
 import uuid
 import unittest.mock
 import pytest
@@ -44,7 +52,19 @@ from decimal import Decimal as D
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import User, UserProfile, PromoCampaign, PromoRedemption, AccessLedger, HoraryCredit, Purchase
+from app.db.models import (
+    User,
+    UserProfile,
+    PromoCampaign,
+    PromoRedemption,
+    AccessLedger,
+    HoraryCredit,
+    Product,
+    Purchase,
+    Subscription,
+    Payment,
+)
+from app.services.natal_context_service import NatalContextService
 from app.services.promo_campaign_service import (
     PromoCampaignService,
     PromoDomainError,
@@ -96,6 +116,26 @@ def create_test_user_profile(user_id: uuid.UUID, has_time=True) -> UserProfile:
         birth_tz="Europe/Moscow",
     )
 
+
+async def seed_natal_product(db_session: AsyncSession) -> None:
+    res = await db_session.execute(select(Product).where(Product.slug == "natal_full_report"))
+    if res.scalar_one_or_none() is None:
+        p = Product(
+            slug="natal_full_report",
+            name="Полный натальный отчёт",
+            description="Натальный отчёт",
+            product_type="one_time",
+            price_kopecks=39900,
+            currency="RUB",
+            period_days=None,
+            horary_quota=None,
+            is_active=True,
+        )
+        db_session.add(p)
+        await db_session.commit()
+
+
+# ── Preview Tests ─────────────────────────────────────────────────────────────
 
 def test_promo_token_regex_and_hash_helpers():
     """Test Base58 fullmatch regex and lowercase 64-char SHA-256 hash generation."""
@@ -155,11 +195,11 @@ async def test_already_redeemed_takes_precedence_over_inactive_expired_full(db_s
     user = User(tg_user_id=1001, tg_username="redeemer")
     db_session.add(user)
     await db_session.commit()
+    user_id = user.id
 
     now = datetime.now(timezone.utc)
     token = "m7q4n9x2r5kd"
 
-    # Campaign is inactive, expired, AND full
     campaign = create_test_campaign(
         token=token,
         active=False,
@@ -172,18 +212,15 @@ async def test_already_redeemed_takes_precedence_over_inactive_expired_full(db_s
     db_session.add(campaign)
     await db_session.commit()
 
-    # Existing redemption
-    redemption = PromoRedemption(campaign_id=campaign.id, user_id=user.id)
+    redemption = PromoRedemption(campaign_id=campaign.id, user_id=user_id)
     db_session.add(redemption)
     await db_session.commit()
 
-    # User with redemption gets ALREADY_REDEEMED
     with pytest.raises(PromoDomainError) as exc:
-        await service.preview(user.id, token, now=now)
+        await service.preview(user_id, token, now=now)
     assert exc.value.code == "ALREADY_REDEEMED"
     assert exc.value.safe_message == "Промокод уже активирован"
 
-    # User WITHOUT redemption gets INVALID_CODE (since active=False)
     other_user_id = uuid.uuid4()
     with pytest.raises(PromoDomainError) as exc2:
         await service.preview(other_user_id, token, now=now)
@@ -197,12 +234,10 @@ async def test_unknown_inactive_and_not_started_campaign_raises_invalid_code(db_
     user_id = uuid.uuid4()
     now = datetime.now(timezone.utc)
 
-    # 1. Non-existent campaign
     with pytest.raises(PromoDomainError) as exc:
         await service.preview(user_id, "m7q4n9x2r5kd", now=now)
     assert exc.value.code == "INVALID_CODE"
 
-    # 3. Not-yet-started campaign
     future_token = "abc23456789a"
     c_future = create_test_campaign(
         token=future_token,
@@ -217,7 +252,6 @@ async def test_unknown_inactive_and_not_started_campaign_raises_invalid_code(db_
         await service.preview(user_id, future_token, now=now)
     assert exc.value.code == "INVALID_CODE"
 
-    # 2. Inactive campaign
     c_inactive = create_test_campaign(token="m7q4n9x2r5kd", active=False, now=now)
     db_session.add(c_inactive)
     await db_session.commit()
@@ -234,6 +268,7 @@ async def test_start_inclusive_boundary(db_session: AsyncSession):
     user = User(tg_user_id=2001, tg_username="boundary_user")
     db_session.add(user)
     await db_session.commit()
+    user_id = user.id
 
     start_time = datetime(2026, 8, 1, 12, 0, 0, tzinfo=timezone.utc)
     end_time = datetime(2026, 8, 10, 12, 0, 0, tzinfo=timezone.utc)
@@ -249,14 +284,12 @@ async def test_start_inclusive_boundary(db_session: AsyncSession):
     db_session.add(campaign)
     await db_session.commit()
 
-    # 1. Exact start_time -> valid
-    preview_data = await service.preview(user.id, "m7q4n9x2r5kd", now=start_time)
+    preview_data = await service.preview(user_id, "m7q4n9x2r5kd", now=start_time)
     assert preview_data.offer.display_name == "Boundary Promo"
 
-    # 2. 1 microsecond before start_time -> INVALID_CODE
     before_start = start_time - timedelta(microseconds=1)
     with pytest.raises(PromoDomainError) as exc:
-        await service.preview(user.id, "m7q4n9x2r5kd", now=before_start)
+        await service.preview(user_id, "m7q4n9x2r5kd", now=before_start)
     assert exc.value.code == "INVALID_CODE"
 
 
@@ -267,6 +300,7 @@ async def test_end_exclusive_boundary(db_session: AsyncSession):
     user = User(tg_user_id=2002, tg_username="boundary_user2")
     db_session.add(user)
     await db_session.commit()
+    user_id = user.id
 
     start_time = datetime(2026, 8, 1, 12, 0, 0, tzinfo=timezone.utc)
     end_time = datetime(2026, 8, 10, 12, 0, 0, tzinfo=timezone.utc)
@@ -282,14 +316,12 @@ async def test_end_exclusive_boundary(db_session: AsyncSession):
     db_session.add(campaign)
     await db_session.commit()
 
-    # 1. 1 microsecond before end_time -> valid
     before_end = end_time - timedelta(microseconds=1)
-    preview_data = await service.preview(user.id, "abc23456789a", now=before_end)
+    preview_data = await service.preview(user_id, "abc23456789a", now=before_end)
     assert preview_data.offer.display_name == "Boundary Promo 2"
 
-    # 2. Exact end_time -> CAMPAIGN_EXPIRED
     with pytest.raises(PromoDomainError) as exc:
-        await service.preview(user.id, "abc23456789a", now=end_time)
+        await service.preview(user_id, "abc23456789a", now=end_time)
     assert exc.value.code == "CAMPAIGN_EXPIRED"
 
 
@@ -328,13 +360,14 @@ async def test_preview_offer_fields_and_completeness_unlock_natal_false(db_sessi
     user = User(tg_user_id=111, tg_username="user1")
     db_session.add(user)
     await db_session.commit()
+    user_id = user.id
 
-    profile = create_test_user_profile(user.id, has_time=False)
+    profile = create_test_user_profile(user_id, has_time=False)
     db_session.add(profile)
     await db_session.commit()
 
     service = PromoCampaignService(db_session)
-    preview_data = await service.preview(user.id, "m7q4n9x2r5kd", now=now)
+    preview_data = await service.preview(user_id, "m7q4n9x2r5kd", now=now)
 
     assert preview_data.offer.display_name == "Access Only Campaign"
     assert preview_data.offer.access_days == 14
@@ -361,18 +394,20 @@ async def test_preview_completeness_unlock_natal_true(db_session: AsyncSession):
     u2 = User(tg_user_id=333, tg_username="u2")
     db_session.add_all([u1, u2])
     await db_session.commit()
+    u1_id = u1.id
+    u2_id = u2.id
 
-    p1 = create_test_user_profile(u1.id, has_time=False)
-    p2 = create_test_user_profile(u2.id, has_time=True)
+    p1 = create_test_user_profile(u1_id, has_time=False)
+    p2 = create_test_user_profile(u2_id, has_time=True)
     db_session.add_all([p1, p2])
     await db_session.commit()
 
     service = PromoCampaignService(db_session)
 
-    prev1 = await service.preview(u1.id, "m7q4n9x2r5kd", now=now)
+    prev1 = await service.preview(u1_id, "m7q4n9x2r5kd", now=now)
     assert prev1.profile_complete is False
 
-    prev2 = await service.preview(u2.id, "m7q4n9x2r5kd", now=now)
+    prev2 = await service.preview(u2_id, "m7q4n9x2r5kd", now=now)
     assert prev2.profile_complete is True
 
 
@@ -384,13 +419,15 @@ async def test_preview_makes_zero_mutations(db_session: AsyncSession):
     user = User(tg_user_id=444, tg_username="u4")
     db_session.add_all([campaign, user])
     await db_session.commit()
+    user_id = user.id
+    campaign_id = campaign.id
 
-    profile = create_test_user_profile(user.id)
+    profile = create_test_user_profile(user_id)
     db_session.add(profile)
     await db_session.commit()
 
     service = PromoCampaignService(db_session)
-    await service.preview(user.id, "m7q4n9x2r5kd", now=now)
+    await service.preview(user_id, "m7q4n9x2r5kd", now=now)
 
     res_red = await db_session.execute(select(PromoRedemption))
     assert len(res_red.scalars().all()) == 0
@@ -404,7 +441,7 @@ async def test_preview_makes_zero_mutations(db_session: AsyncSession):
     res_pur = await db_session.execute(select(Purchase))
     assert len(res_pur.scalars().all()) == 0
 
-    res_camp = await db_session.execute(select(PromoCampaign).where(PromoCampaign.id == campaign.id))
+    res_camp = await db_session.execute(select(PromoCampaign).where(PromoCampaign.id == campaign_id))
     c_updated = res_camp.scalar_one()
     assert c_updated.redemptions_used == 0
 
@@ -425,3 +462,367 @@ async def test_raw_token_and_hash_never_in_error_object(db_session: AsyncSession
     error_dump = f"{str(err)} {repr(err)} {vars(err)} {err.code} {err.safe_message}"
     assert token not in error_dump
     assert token_hash not in error_dump
+
+
+# ── Redeem Tests (Phase 06B) ──────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_default_happy_path_redeem(db_session: AsyncSession):
+    """Test default happy path creates subscription ledger, gift credit with exact expiry, delivered purchase, redemption refs all, counter=1, no Subscription/Payment."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    campaign = create_test_campaign(
+        display_name="Summer Full Pack",
+        token=token,
+        access_days=30,
+        bonus_credits=50,
+        unlock_natal=True,
+        now=now,
+    )
+    user = User(tg_user_id=7001, tg_username="happy_user")
+    db_session.add_all([campaign, user])
+    await db_session.commit()
+    user_id = user.id
+    campaign_id = campaign.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    service = PromoCampaignService(db_session)
+    redeem_data = await service.redeem(user_id, token, now=now)
+
+    # 1. Check returned PromoRedeemData
+    assert redeem_data.offer.display_name == "Summer Full Pack"
+    assert redeem_data.offer.access_days == 30
+    assert redeem_data.offer.bonus_credits == 50
+    assert redeem_data.offer.unlock_natal is True
+
+    assert redeem_data.grants.access_starts_at == date(2026, 7, 24)
+    assert redeem_data.grants.access_until == date(2026, 8, 22)  # 2026-07-24 + 29 days
+    assert redeem_data.grants.bonus_credits == 50
+    assert redeem_data.grants.bonus_credits_expires_at == datetime(
+        2026, 8, 23, 0, 0, 0, tzinfo=timezone.utc
+    )
+    assert redeem_data.grants.natal_unlocked is True
+    assert redeem_data.grants.natal_already_owned is False
+
+    # 2. Check DB rows
+    # Ledger
+    res_led = await db_session.execute(select(AccessLedger).where(AccessLedger.user_id == user_id))
+    ledgers = res_led.scalars().all()
+    assert len(ledgers) == 1
+    assert ledgers[0].entry_type == "subscription"
+    assert ledgers[0].days_granted == 30
+    assert ledgers[0].start_date == date(2026, 7, 24)
+    assert ledgers[0].end_date == date(2026, 8, 22)
+
+    # Horary Credit
+    res_cred = await db_session.execute(select(HoraryCredit).where(HoraryCredit.user_id == user_id))
+    credits = res_cred.scalars().all()
+    assert len(credits) == 1
+    assert credits[0].source == "gift"
+    assert credits[0].amount == 50
+    assert credits[0].used_amount == 0
+    assert credits[0].access_week_start is None
+    assert credits[0].access_week_end is None
+    assert credits[0].expires_at is not None
+    assert credits[0].expires_at.year == 2026
+    assert credits[0].expires_at.month == 8
+    assert credits[0].expires_at.day == 23
+    assert credits[0].expires_at.hour == 0
+    assert credits[0].expires_at.minute == 0
+    assert credits[0].expires_at.second == 0
+    meta = json.loads(credits[0].metadata_json)
+    assert meta == {"grant_type": "promo", "campaign_id": str(campaign_id)}
+
+    # Purchase
+    res_pur = await db_session.execute(select(Purchase).where(Purchase.user_id == user_id))
+    purchases = res_pur.scalars().all()
+    assert len(purchases) == 1
+    assert purchases[0].product_slug == "natal_full_report"
+    assert purchases[0].status == "delivered"
+    assert purchases[0].payment_id is None
+    assert purchases[0].horary_quota_added is None
+    context_hash = NatalContextService.compute_profile_hash(profile)
+    assert purchases[0].context_hash == context_hash
+
+    # Redemption
+    res_red = await db_session.execute(select(PromoRedemption).where(PromoRedemption.user_id == user_id))
+    redemptions = res_red.scalars().all()
+    assert len(redemptions) == 1
+    assert redemptions[0].campaign_id == campaign_id
+    assert redemptions[0].access_ledger_id == ledgers[0].id
+    assert redemptions[0].credit_id == credits[0].id
+    assert redemptions[0].natal_purchase_id == purchases[0].id
+
+    # Counter
+    res_camp = await db_session.execute(select(PromoCampaign).where(PromoCampaign.id == campaign_id))
+    assert res_camp.scalar_one().redemptions_used == 1
+
+    # No Subscription or Payment rows
+    res_sub = await db_session.execute(select(Subscription))
+    assert len(res_sub.scalars().all()) == 0
+    res_pay = await db_session.execute(select(Payment))
+    assert len(res_pay.scalars().all()) == 0
+
+
+@pytest.mark.asyncio
+async def test_existing_future_access_defers_promo_start(db_session: AsyncSession):
+    """Test existing active/future access defers promo start to day after latest end."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    user = User(tg_user_id=7002, tg_username="existing_access_user")
+    db_session.add(user)
+    await db_session.commit()
+    user_id = user.id
+
+    existing_ledger = AccessLedger(
+        user_id=user_id,
+        entry_type="subscription",
+        days_granted=30,
+        start_date=date(2026, 7, 17),
+        end_date=date(2026, 8, 15),
+    )
+    campaign = create_test_campaign(token=token, access_days=10, bonus_credits=20, unlock_natal=False, now=now)
+    db_session.add_all([existing_ledger, campaign])
+    await db_session.commit()
+
+    profile = create_test_user_profile(user_id)
+    db_session.add(profile)
+    await db_session.commit()
+
+    service = PromoCampaignService(db_session)
+    redeem_data = await service.redeem(user_id, token, now=now)
+
+    assert redeem_data.grants.access_starts_at == date(2026, 8, 16)
+    assert redeem_data.grants.access_until == date(2026, 8, 25)
+    assert redeem_data.grants.bonus_credits_expires_at == datetime(
+        2026, 8, 26, 0, 0, 0, tzinfo=timezone.utc
+    )
+
+
+@pytest.mark.asyncio
+async def test_existing_fulfilled_natal_entitlement_reused(db_session: AsyncSession):
+    """Test existing fulfilled natal purchase for same user+context is reused and does not create duplicate Purchase."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    user = User(tg_user_id=7003, tg_username="natal_owner")
+    db_session.add(user)
+    await db_session.commit()
+    user_id = user.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    context_hash = NatalContextService.compute_profile_hash(profile)
+
+    existing_purchase = Purchase(
+        user_id=user_id,
+        product_slug="natal_full_report",
+        status="delivered",
+        payment_id=None,
+        horary_quota_added=None,
+        context_hash=context_hash,
+    )
+    campaign = create_test_campaign(token=token, access_days=0, bonus_credits=0, unlock_natal=True, now=now)
+    db_session.add_all([existing_purchase, campaign])
+    await db_session.commit()
+
+    service = PromoCampaignService(db_session)
+    redeem_data = await service.redeem(user_id, token, now=now)
+
+    assert redeem_data.grants.natal_unlocked is True
+    assert redeem_data.grants.natal_already_owned is True
+
+    res_pur = await db_session.execute(select(Purchase).where(Purchase.user_id == user_id))
+    purchases = res_pur.scalars().all()
+    assert len(purchases) == 1
+    assert purchases[0].id == existing_purchase.id
+
+    res_red = await db_session.execute(select(PromoRedemption).where(PromoRedemption.user_id == user_id))
+    redemption = res_red.scalar_one()
+    assert redemption.access_ledger_id is None
+    assert redemption.credit_id is None
+    assert redemption.natal_purchase_id == existing_purchase.id
+
+
+@pytest.mark.asyncio
+async def test_unlock_natal_false_accepts_base_complete_profile(db_session: AsyncSession):
+    """Test campaign with unlock_natal=False accepts base-complete profile without birth_time and creates only enabled grants."""
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    user = User(tg_user_id=7004, tg_username="base_user")
+    campaign = create_test_campaign(
+        token=token,
+        access_days=14,
+        bonus_credits=0,
+        unlock_natal=False,
+        now=now,
+    )
+    db_session.add_all([user, campaign])
+    await db_session.commit()
+    user_id = user.id
+
+    profile = create_test_user_profile(user_id, has_time=False)
+    db_session.add(profile)
+    await db_session.commit()
+
+    service = PromoCampaignService(db_session)
+    redeem_data = await service.redeem(user_id, token, now=now)
+
+    assert redeem_data.grants.access_starts_at == date(2026, 7, 24)
+    assert redeem_data.grants.access_until == date(2026, 8, 6)
+    assert redeem_data.grants.bonus_credits == 0
+    assert redeem_data.grants.natal_unlocked is False
+    assert redeem_data.grants.bonus_credits_expires_at is None
+
+    res_red = await db_session.execute(select(PromoRedemption).where(PromoRedemption.user_id == user_id))
+    redemption = res_red.scalar_one()
+    assert redemption.access_ledger_id is not None
+    assert redemption.credit_id is None
+    assert redemption.natal_purchase_id is None
+
+
+@pytest.mark.asyncio
+async def test_natal_incomplete_raises_profile_incomplete_without_mutations(db_session: AsyncSession):
+    """Test campaign with unlock_natal=True raises PROFILE_INCOMPLETE for base-complete user lacking birth_time without mutating DB."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    user = User(tg_user_id=7005, tg_username="incomplete_natal_user")
+    campaign = create_test_campaign(token=token, unlock_natal=True, now=now)
+    db_session.add_all([user, campaign])
+    await db_session.commit()
+    user_id = user.id
+    campaign_id = campaign.id
+
+    profile = create_test_user_profile(user_id, has_time=False)
+    db_session.add(profile)
+    await db_session.commit()
+
+    service = PromoCampaignService(db_session)
+
+    with pytest.raises(PromoDomainError) as exc:
+        await service.redeem(user_id, token, now=now)
+
+    assert exc.value.code == "PROFILE_INCOMPLETE"
+    assert exc.value.safe_message == "Заполните профиль для активации промокода"
+
+    res_red = await db_session.execute(select(PromoRedemption).where(PromoRedemption.user_id == user_id))
+    assert len(res_red.scalars().all()) == 0
+
+    for model in (AccessLedger, HoraryCredit, Purchase):
+        rows = await db_session.execute(select(model).where(model.user_id == user_id))
+        assert len(rows.scalars().all()) == 0
+
+    res_camp = await db_session.execute(select(PromoCampaign).where(PromoCampaign.id == campaign_id))
+    assert res_camp.scalar_one().redemptions_used == 0
+
+
+@pytest.mark.asyncio
+async def test_duplicate_sequential_redeem_raises_already_redeemed(db_session: AsyncSession):
+    """Test duplicate sequential redeem raises ALREADY_REDEEMED and leaves counter and grant counts unchanged."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    user = User(tg_user_id=7006, tg_username="dupe_redeemer")
+    campaign = create_test_campaign(token=token, now=now)
+    db_session.add_all([user, campaign])
+    await db_session.commit()
+    user_id = user.id
+    campaign_id = campaign.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    service = PromoCampaignService(db_session)
+
+    r1 = await service.redeem(user_id, token, now=now)
+    assert r1.offer.display_name == campaign.display_name
+
+    with pytest.raises(PromoDomainError) as exc:
+        await service.redeem(user_id, token, now=now)
+
+    assert exc.value.code == "ALREADY_REDEEMED"
+
+    res_red = await db_session.execute(select(PromoRedemption).where(PromoRedemption.user_id == user_id))
+    assert len(res_red.scalars().all()) == 1
+
+    res_camp = await db_session.execute(select(PromoCampaign).where(PromoCampaign.id == campaign_id))
+    assert res_camp.scalar_one().redemptions_used == 1
+
+    expected_counts = ((AccessLedger, 1), (HoraryCredit, 1), (Purchase, 1))
+    for model, expected_count in expected_counts:
+        rows = await db_session.execute(select(model).where(model.user_id == user_id))
+        assert len(rows.scalars().all()) == expected_count
+
+
+@pytest.mark.parametrize(
+    "setup_kind, expected_code",
+    [
+        ("invalid_format", "INVALID_CODE"),
+        ("unknown_campaign", "INVALID_CODE"),
+        ("inactive", "INVALID_CODE"),
+        ("not_started", "INVALID_CODE"),
+        ("expired", "CAMPAIGN_EXPIRED"),
+        ("full", "CAMPAIGN_FULL"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_redeem_validation_error_codes(db_session: AsyncSession, setup_kind: str, expected_code: str):
+    """Test redeem validation error codes for invalid format, unknown, inactive, not-started, expired, and full campaigns."""
+    service = PromoCampaignService(db_session)
+    user = User(tg_user_id=8000 + hash(setup_kind) % 1000, tg_username=f"user_{setup_kind}")
+    db_session.add(user)
+    await db_session.commit()
+    user_id = user.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    if setup_kind == "invalid_format":
+        token = "invalid_token_format"
+    elif setup_kind == "unknown_campaign":
+        token = "abc23456789a"
+    elif setup_kind == "inactive":
+        c = create_test_campaign(token=token, active=False, now=now)
+        db_session.add(c)
+        await db_session.commit()
+    elif setup_kind == "not_started":
+        c = create_test_campaign(token=token, starts_delta_days=5, ends_delta_days=30, now=now)
+        db_session.add(c)
+        await db_session.commit()
+    elif setup_kind == "expired":
+        c = create_test_campaign(token=token, starts_delta_days=-10, ends_delta_days=-1, now=now)
+        db_session.add(c)
+        await db_session.commit()
+    elif setup_kind == "full":
+        c = create_test_campaign(token=token, max_redemptions=5, redemptions_used=5, now=now)
+        db_session.add(c)
+        await db_session.commit()
+
+    with pytest.raises(PromoDomainError) as exc:
+        await service.redeem(user_id, token, now=now)
+
+    assert exc.value.code == expected_code

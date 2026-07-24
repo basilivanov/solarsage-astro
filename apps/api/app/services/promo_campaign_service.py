@@ -1,13 +1,13 @@
 # ############################################################################
-# AI_HEADER: PROMO_CAMPAIGN_SERVICE — named promo preview and redemption domain boundary.
-# ROLE: Validate opaque promo intent and expose typed domain results without HTTP concerns.
-# DEPENDENCIES: SQLAlchemy AsyncSession, promo/profile ORM models, profile readiness helpers
-# GRACE_ANCHORS: [PROMO_DOMAIN_TYPES, PROMO_TOKEN_HELPERS, PROMO_PREVIEW]
+# AI_HEADER: PROMO_CAMPAIGN_SERVICE — named promo preview and redemption boundary.
+# ROLE: Validate opaque promo intent and atomically issue configured grants.
+# DEPENDENCIES: SQLAlchemy AsyncSession, promo/grant/profile models and services.
+# GRACE_ANCHORS: [PROMO_DOMAIN_TYPES, PROMO_TOKEN_HELPERS, PROMO_PREVIEW, PROMO_REDEEM]
 # WAVE: W-NAMED-PROMO-CAMPAIGN
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-PROMO-CAMPAIGN-SERVICE
-# purpose: Provide atomic promo preview method for validating promo tokens and checking user profile readiness.
+# purpose: Provide atomic promo preview and redeem methods for validating promo tokens, checking profile readiness, and issuing access/credit/natal grants.
 # owns:
 #   - apps/api/app/services/promo_campaign_service.py
 # inputs:
@@ -18,7 +18,8 @@
 #   - PromoOfferData, PromoPreviewData, PromoGrantData, PromoRedeemData, PromoDomainError, PromoErrorCode
 # dependencies:
 #   - M-DB-SESSION (AsyncSession)
-#   - M-DB-MODELS (PromoCampaign, PromoRedemption, UserProfile)
+#   - M-DB-MODELS (User, PromoCampaign, PromoRedemption, UserProfile, AccessLedger, HoraryCredit, Purchase)
+#   - M-ACCESS.service (AccessService)
 #   - M-PROFILE.service (missing_onboarding_fields)
 #   - M-NATAL-CONTEXT-SERVICE (NatalContextService)
 # invariants:
@@ -26,8 +27,10 @@
 #   - preview makes zero DB mutations and emits zero logs
 #   - token validation uses exact Base58 fullmatch regex
 #   - existing redemption check precedes window and capacity checks
+#   - lock order during redeem is campaign first, user second
+#   - redeem executes exactly one final commit
 # failure_policy:
-#   - raises PromoDomainError with safe code and localized message
+#   - raises PromoDomainError with safe code and localized message; rollbacks on error
 # END_MODULE_CONTRACT: M-PROMO-CAMPAIGN-SERVICE
 
 # START_MODULE_MAP: M-PROMO-CAMPAIGN-SERVICE
@@ -45,6 +48,7 @@
 #   - DATACLASSES: domain data structures and safe error class
 #   - TOKEN_HELPERS: regex and SHA-256 hash calculation
 #   - SERVICE_PREVIEW: preview implementation
+#   - SERVICE_REDEEM: atomic redeem implementation
 # owned_tests:
 #   - apps/api/tests/test_promo_campaign_service.py
 # END_MODULE_MAP: M-PROMO-CAMPAIGN-SERVICE
@@ -52,6 +56,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import uuid
 from dataclasses import dataclass
@@ -62,7 +67,15 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import PromoCampaign, PromoRedemption, UserProfile
+from app.db.models import (
+    HoraryCredit,
+    PromoCampaign,
+    PromoRedemption,
+    Purchase,
+    User,
+    UserProfile,
+)
+from app.services.access_service import AccessService
 from app.services.natal_context_service import NatalContextService
 from app.services.profile_service import missing_onboarding_fields
 
@@ -217,3 +230,215 @@ class PromoCampaignService:
             profile_complete=profile_complete,
         )
 # END_BLOCK: SERVICE_PREVIEW
+
+# START_BLOCK: SERVICE_REDEEM
+    # START_FUNCTION_CONTRACT: F-M-PROMO-CAMPAIGN-SERVICE.PromoCampaignService.redeem
+    # purpose: Atomically validate and redeem a promo token for a user, granting access, credits, and natal entitlements.
+    # inputs: user_id (UUID), token (str), now (datetime | None for testing)
+    # returns: PromoRedeemData
+    # side_effects: inserts/updates DB rows with locks, issues single commit
+    # emitted_logs: none
+    # error_behavior: rolls back transaction on any domain or system failure and re-raises
+    # END_FUNCTION_CONTRACT: F-M-PROMO-CAMPAIGN-SERVICE.PromoCampaignService.redeem
+    async def redeem(
+        self,
+        user_id: uuid.UUID,
+        token: str,
+        *,
+        now: datetime | None = None,
+    ) -> PromoRedeemData:
+        """Atomically redeem a promo token for a user."""
+        current_time = now or datetime.now(UTC)
+
+        try:
+            # 1. Format check: exact Base58 fullmatch without hash lookup
+            if not token or not isinstance(token, str) or not PROMO_TOKEN_REGEX.fullmatch(token):
+                raise PromoDomainError(code="INVALID_CODE", safe_message="Неверный промокод")
+
+            # 2. Lock campaign FOR UPDATE by code_hash (Lock 1)
+            code_hash = hash_promo_token(token)
+            campaign_res = await self.db.execute(
+                select(PromoCampaign)
+                .where(PromoCampaign.code_hash == code_hash)
+                .with_for_update()
+            )
+            campaign = campaign_res.scalar_one_or_none()
+
+            if campaign is None:
+                raise PromoDomainError(code="INVALID_CODE", safe_message="Неверный промокод")
+
+            # 3. Existing redemption check IMMEDIATELY after campaign resolution
+            redemption_res = await self.db.execute(
+                select(PromoRedemption).where(
+                    PromoRedemption.campaign_id == campaign.id,
+                    PromoRedemption.user_id == user_id,
+                )
+            )
+            if redemption_res.scalar_one_or_none() is not None:
+                raise PromoDomainError(code="ALREADY_REDEEMED", safe_message="Промокод уже активирован")
+
+            # 4. Inactive or not-yet-started -> INVALID_CODE
+            if not campaign.active or current_time < campaign.activation_starts_at:
+                raise PromoDomainError(code="INVALID_CODE", safe_message="Неверный промокод")
+
+            # 5. Campaign expired -> CAMPAIGN_EXPIRED
+            if current_time >= campaign.activation_ends_at:
+                raise PromoDomainError(code="CAMPAIGN_EXPIRED", safe_message="Срок действия промокода истёк")
+
+            # 6. Lock internal User row FOR UPDATE (Lock 2: campaign first, user second)
+            user_res = await self.db.execute(
+                select(User).where(User.id == user_id).with_for_update()
+            )
+            user = user_res.scalar_one_or_none()
+            if user is None:
+                raise PromoDomainError(code="INVALID_CODE", safe_message="Пользователь не найден")
+
+            # 7. Profile readiness check according to campaign unlock_natal
+            profile_res = await self.db.execute(
+                select(UserProfile).where(UserProfile.user_id == user_id)
+            )
+            profile = profile_res.scalar_one_or_none()
+
+            if not campaign.unlock_natal:
+                missing = missing_onboarding_fields(profile)
+            else:
+                missing = NatalContextService.missing_profile_fields(profile)
+
+            if len(missing) > 0:
+                raise PromoDomainError(
+                    code="PROFILE_INCOMPLETE",
+                    safe_message="Заполните профиль для активации промокода",
+                )
+
+            # 8. Capacity check
+            if campaign.redemptions_used >= campaign.max_redemptions:
+                raise PromoDomainError(code="CAMPAIGN_FULL", safe_message="Лимит активаций промокода исчерпан")
+
+            # 9. Issue grants
+            access_service = AccessService(self.db)
+            access_starts_at: dt.date | None = None
+            access_until: dt.date | None = None
+            access_ledger_id: uuid.UUID | None = None
+
+            if campaign.access_days > 0:
+                start_date = await access_service.next_grant_start(user_id, current_time.date())
+                ledger_entry = await access_service.grant_subscription(
+                    user_id,
+                    start_date,
+                    days=campaign.access_days,
+                    commit=False,
+                )
+                access_starts_at = ledger_entry.start_date
+                access_until = ledger_entry.end_date
+                access_ledger_id = ledger_entry.id
+
+            credit_id: uuid.UUID | None = None
+            credit_expires_at: datetime | None = None
+
+            if campaign.bonus_credits > 0:
+                if access_until is not None:
+                    expiry_date = access_until + dt.timedelta(days=1)
+                    credit_expires_at = datetime(
+                        expiry_date.year, expiry_date.month, expiry_date.day, 0, 0, 0, tzinfo=UTC
+                    )
+
+                metadata = json.dumps(
+                    {"grant_type": "promo", "campaign_id": str(campaign.id)},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+
+                credit = HoraryCredit(
+                    user_id=user_id,
+                    source="gift",
+                    amount=campaign.bonus_credits,
+                    used_amount=0,
+                    access_week_start=None,
+                    access_week_end=None,
+                    expires_at=credit_expires_at,
+                    metadata_json=metadata,
+                )
+                self.db.add(credit)
+                await self.db.flush()
+                credit_id = credit.id
+
+            natal_unlocked = False
+            natal_already_owned = False
+            natal_purchase_id: uuid.UUID | None = None
+
+            if campaign.unlock_natal:
+                natal_unlocked = True
+                assert profile is not None
+                context_hash = NatalContextService.compute_profile_hash(profile)
+
+                purch_res = await self.db.execute(
+                    select(Purchase).where(
+                        Purchase.user_id == user_id,
+                        Purchase.product_slug == "natal_full_report",
+                        Purchase.context_hash == context_hash,
+                        Purchase.status.in_(["succeeded", "delivered"]),
+                    )
+                )
+                existing_purchase = purch_res.scalars().first()
+
+                if existing_purchase is not None:
+                    natal_already_owned = True
+                    natal_purchase_id = existing_purchase.id
+                else:
+                    natal_already_owned = False
+                    new_purchase = Purchase(
+                        user_id=user_id,
+                        product_slug="natal_full_report",
+                        status="delivered",
+                        payment_id=None,
+                        horary_quota_added=None,
+                        context_hash=context_hash,
+                    )
+                    self.db.add(new_purchase)
+                    await self.db.flush()
+                    natal_purchase_id = new_purchase.id
+
+            # 10. Record redemption
+            redemption = PromoRedemption(
+                campaign_id=campaign.id,
+                user_id=user_id,
+                access_ledger_id=access_ledger_id,
+                credit_id=credit_id,
+                natal_purchase_id=natal_purchase_id,
+            )
+            self.db.add(redemption)
+
+            # 11. Increment counter once
+            campaign.redemptions_used += 1
+
+            # Snapshot response primitives before commit so the return path never
+            # lazy-loads expired ORM state after a successful transaction.
+            result = PromoRedeemData(
+                offer=PromoOfferData(
+                    display_name=campaign.display_name,
+                    access_days=campaign.access_days,
+                    bonus_credits=campaign.bonus_credits,
+                    unlock_natal=campaign.unlock_natal,
+                ),
+                grants=PromoGrantData(
+                    access_starts_at=access_starts_at,
+                    access_until=access_until,
+                    bonus_credits=campaign.bonus_credits,
+                    bonus_credits_expires_at=credit_expires_at,
+                    natal_unlocked=natal_unlocked,
+                    natal_already_owned=natal_already_owned,
+                ),
+            )
+
+            # 12. Flush and single final commit
+            await self.db.flush()
+            await self.db.commit()
+            return result
+
+        except PromoDomainError:
+            await self.db.rollback()
+            raise
+        except Exception:
+            await self.db.rollback()
+            raise
+# END_BLOCK: SERVICE_REDEEM
