@@ -10,10 +10,11 @@
 
 # START_MODULE_CONTRACT: M-AUTH-TG.models
 # purpose: Declarative ORM models for `users`, `user_profiles`, `sessions`,
-#   `access_ledger`, `referrals`, `today_payloads_cache`, and `microcopy_misses`.
+#   `access_ledger`, `referrals`, `today_payloads_cache`, `microcopy_misses`,
+#   `promo_campaigns`, and `promo_redemptions`.
 #   Owned jointly by M-AUTH-TG (users + sessions), M-PROFILE (user_profiles),
 #   M-ACCESS (access_ledger, referrals), M-DAY-SERVICE (today_payloads_cache),
-#   and M-MICROCOPY-SERVICE (microcopy_misses, W-9.2).
+#   M-MICROCOPY-SERVICE (microcopy_misses, W-9.2), and M-PROMO-SERVICE (promo_campaigns, promo_redemptions).
 # owns:
 #   - apps/api/app/db/models.py
 # inputs:
@@ -26,12 +27,15 @@
 #   - Referral: row in `referrals`, tracks referrer → invitee relationships
 #   - TodayPayloadCache: row in `today_payloads_cache`, cached TodayPayload JSON (W-5.2)
 #   - MicrocopyMiss: row in `microcopy_misses`, tracks missing microcopy keys (W-9.2)
+#   - PromoCampaign: row in `promo_campaigns`, promo benefits and redemption limits
+#   - PromoRedemption: row in `promo_redemptions`, audit log of user campaign redemptions
 # dependencies:
 #   - M-DB-SESSION (Base)
 #   - alembic 0001_users migration creates users/profiles/sessions tables
 #   - alembic W-ACCESS.1 migration creates access_ledger/referrals tables
 #   - alembic W-5.2 migration creates today_payloads_cache table
 #   - alembic W-9.2 migration creates microcopy_misses table
+#   - alembic 0024_named_promo_campaign migration creates promo_campaigns/promo_redemptions tables
 # side_effects:
 #   - importing this module registers tables on Base.metadata
 # invariants:
@@ -41,6 +45,8 @@
 #   - AccessLedger.entry_type in ("referral_bonus", "subscription")
 #   - TodayPayloadCache: unique (user_id, target_date) constraint (W-5.2)
 #   - MicrocopyMiss: key is indexed for fast lookup (W-9.2)
+#   - PromoCampaign: unique code_hash, positive max_redemptions, ends_at > starts_at constraint
+#   - PromoRedemption: unique (campaign_id, user_id) constraint
 #   - timestamps are always UTC (server_default=now()) and never null
 #   - sensitive birth data lives ONLY on UserProfile, never on User
 # failure_policy:
@@ -60,6 +66,8 @@
 #   - Referral
 #   - TodayPayloadCache
 #   - MicrocopyMiss
+#   - PromoCampaign
+#   - PromoRedemption
 # semantic_blocks:
 #   - USERS_TABLE: declarative class User -> "users"
 #   - USER_PROFILES_TABLE: declarative class UserProfile -> "user_profiles"
@@ -68,13 +76,15 @@
 #   - REFERRALS_TABLE: declarative class Referral -> "referrals"
 #   - TODAY_PAYLOADS_CACHE_TABLE: declarative class TodayPayloadCache -> "today_payloads_cache" (W-5.2)
 #   - MICROCOPY_MISSES_TABLE: declarative class MicrocopyMiss -> "microcopy_misses" (W-9.2)
+#   - PROMO_CAMPAIGN_TABLE: declarative classes PromoCampaign and PromoRedemption -> "promo_campaigns", "promo_redemptions"
 # owned_tests:
 #   - apps/api/tests/test_auth_endpoints.py
 #   - apps/api/tests/test_profile_endpoints.py
 #   - apps/api/tests/test_alembic_roundtrip.py
 #   - apps/api/tests/test_access_service.py
-#   - apps/api/tests/test_cache.py (W-5.2)
-#   - apps/api/tests/test_microcopy_misses.py (W-9.2)
+#   - apps/api/tests/test_cache.py
+#   - apps/api/tests/test_microcopy_misses.py
+#   - apps/api/tests/test_promo_models.py
 # END_MODULE_MAP: M-AUTH-TG.models
 
 from __future__ import annotations
@@ -101,6 +111,7 @@ from sqlalchemy import (
     text as sa_text,
     func,
     text,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -1123,3 +1134,130 @@ class ElectionCreditSpend(Base):
     election_request: Mapped["ElectionRequest"] = relationship("ElectionRequest")
 
 # END_BLOCK: NATAL_REPORTS_TABLE
+
+
+# START_BLOCK: PROMO_CAMPAIGN_TABLE
+class PromoCampaign(Base):
+    """Named promo campaign model defining benefits and redemption limits."""
+
+    __tablename__ = "promo_campaigns"
+    __table_args__ = (
+        UniqueConstraint("code_hash", name="uq_promo_campaigns_code_hash"),
+        CheckConstraint(
+            "activation_ends_at > activation_starts_at",
+            name="ck_promo_campaigns_window",
+        ),
+        CheckConstraint(
+            "max_redemptions > 0",
+            name="ck_promo_campaigns_max_redemptions_pos",
+        ),
+        CheckConstraint(
+            "redemptions_used >= 0 AND redemptions_used <= max_redemptions",
+            name="ck_promo_campaigns_redemptions_used_range",
+        ),
+        CheckConstraint(
+            "access_days >= 0",
+            name="ck_promo_campaigns_access_days_nonneg",
+        ),
+        CheckConstraint(
+            "bonus_credits >= 0",
+            name="ck_promo_campaigns_bonus_credits_nonneg",
+        ),
+        CheckConstraint(
+            "bonus_credits = 0 OR access_days > 0",
+            name="ck_promo_campaigns_credits_require_access",
+        ),
+        CheckConstraint(
+            "access_days > 0 OR bonus_credits > 0 OR unlock_natal = TRUE",
+            name="ck_promo_campaigns_at_least_one_benefit",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default=true())
+    activation_starts_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    activation_ends_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    max_redemptions: Mapped[int] = mapped_column(nullable=False)
+    redemptions_used: Mapped[int] = mapped_column(nullable=False, default=0, server_default="0")
+    access_days: Mapped[int] = mapped_column(nullable=False, default=30, server_default="30")
+    bonus_credits: Mapped[int] = mapped_column(nullable=False, default=50, server_default="50")
+    unlock_natal: Mapped[bool] = mapped_column(nullable=False, default=True, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    redemptions: Mapped[list[PromoRedemption]] = relationship(
+        "PromoRedemption", back_populates="campaign"
+    )
+
+
+class PromoRedemption(Base):
+    """User redemption record for a promo campaign."""
+
+    __tablename__ = "promo_redemptions"
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign_id", "user_id", name="uq_promo_redemptions_campaign_user"
+        ),
+        Index(
+            "ix_promo_redemptions_campaign_redeemed",
+            "campaign_id",
+            "redeemed_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("promo_campaigns.id"),
+        nullable=False,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+    redeemed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    access_ledger_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("access_ledger.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    credit_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("horary_credits.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    natal_purchase_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("purchases.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    campaign: Mapped[PromoCampaign] = relationship(
+        "PromoCampaign", back_populates="redemptions"
+    )
+    user: Mapped[User] = relationship("User")
+    access_ledger: Mapped[AccessLedger | None] = relationship("AccessLedger")
+    credit: Mapped[HoraryCredit | None] = relationship("HoraryCredit")
+    natal_purchase: Mapped[Purchase | None] = relationship("Purchase")
+# END_BLOCK: PROMO_CAMPAIGN_TABLE
