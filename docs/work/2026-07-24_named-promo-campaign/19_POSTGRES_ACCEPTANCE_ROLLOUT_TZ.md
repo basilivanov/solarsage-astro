@@ -41,11 +41,16 @@ unique users/campaigns и cleanup/transaction isolation.
    - no duplicate entitlement;
    - promo transaction not left aborted;
    - redemption points to fulfilled Purchase.
-4. One remaining gift credit, concurrent election+horary:
+4. Two different campaigns, same user, simultaneous redeems:
+   - both redemptions succeed exactly once;
+   - two access ledger windows are additive and non-overlapping;
+   - the second window starts the day after the first inclusive end;
+   - each campaign counter is exactly 1.
+5. One remaining gift credit, concurrent election+horary:
    - exactly one spend succeeds;
    - `used_amount <= amount`;
    - loser gets domain no-credit outcome, not DB 500.
-5. Injected final commit failure:
+6. Injected final commit failure:
    - zero partial grants/counter;
    - no success log.
 

@@ -406,17 +406,18 @@ disabled campaign. `now < starts_at` тоже `INVALID_CODE`; отдельный
 3. check existing PromoRedemption(campaign,user) -> ALREADY even if campaign
    was disabled/expired after the original successful commit
 4. validate active/window for users without redemption
-5. validate server profile completeness
-6. check redemptions_used < max_redemptions
-7. compute access start after latest AccessLedger end
-8. stage AccessLedger(entry_type=subscription), flush -> id
-9. stage HoraryCredit(source=gift, used_amount=0, expires_at=access end + 1d)
-10. resolve current natal context_hash
-11. reuse fulfilled Purchase or insert delivered Purchase(payment_id=NULL)
-12. insert PromoRedemption with grant ids
-13. redemptions_used += 1
-14. flush constraints
-15. COMMIT exactly once
+5. SELECT User WHERE id=:user_id FOR UPDATE (campaign-before-user lock order)
+6. validate server profile completeness
+7. check redemptions_used < max_redemptions
+8. compute access start after latest AccessLedger end
+9. stage AccessLedger(entry_type=subscription), flush -> id
+10. stage HoraryCredit(source=gift, used_amount=0, expires_at=access end + 1d)
+11. resolve current natal context_hash
+12. reuse fulfilled Purchase or insert delivered Purchase(payment_id=NULL)
+13. insert PromoRedemption with grant ids
+14. redemptions_used += 1
+15. flush constraints
+16. COMMIT exactly once
 ```
 
 На любой exception — full rollback. Grant helpers, natal helper и route не
@@ -429,6 +430,10 @@ unique index: natal insert выполняется в savepoint; при conflict 
 уже committed entitlement, не дублируется весь grant. Если dialect/savepoint
 реализация не позволяет безопасно продолжить, допустим полный rollback и один
 bounded service retry; частичный commit запрещён.
+
+User row lock сериализует additive access calculation между разными promo
+campaigns одного пользователя. Без него две campaign rows не конфликтуют и
+обе транзакции могут выбрать один и тот же latest AccessLedger end.
 
 `promo.redemption_succeeded` пишется только после успешного final commit.
 Unexpected exception сначала rollback-ится, затем пишет

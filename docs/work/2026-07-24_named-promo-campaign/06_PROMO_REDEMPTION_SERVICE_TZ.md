@@ -71,18 +71,22 @@ Preview creates/updates nothing and never reserves capacity.
 1. Resolve/lock campaign.
 2. Check existing redemption before availability validation.
 3. Validate active/window for a new redemption.
-4. Load profile and validate base/strict completeness according to campaign.
-5. Check capacity.
-6. If `access_days > 0`, use `AccessService.next_grant_start` and
+4. Lock the internal `User` row with `SELECT ... FOR UPDATE` for every new
+   redemption. Lock order is always campaign first, user second. This
+   serializes additive access calculation across different promo campaigns for
+   the same user.
+5. Load profile and validate base/strict completeness according to campaign.
+6. Check capacity.
+7. If `access_days > 0`, use `AccessService.next_grant_start` and
    `grant_subscription(..., commit=False)`; retain returned ID.
-7. If `bonus_credits > 0`, create one `HoraryCredit`:
+8. If `bonus_credits > 0`, create one `HoraryCredit`:
    `source=gift`, exact amount, used=0, week fields null,
    `expires_at=UTC midnight(access_end+1 day)`.
-8. If `unlock_natal`, compute current canonical profile hash, reuse existing
+9. If `unlock_natal`, compute current canonical profile hash, reuse existing
    fulfilled `natal_full_report` Purchase or insert `delivered`, payment null.
-9. Insert one PromoRedemption with IDs.
-10. Increment counter once.
-11. Flush constraints and commit once.
+10. Insert one PromoRedemption with IDs.
+11. Increment counter once.
+12. Flush constraints and commit once.
 
 Credit `metadata_json` may contain only stable `grant_type=promo` and campaign
 UUID. No display name/hash/token.
@@ -92,6 +96,8 @@ No `Subscription`, `Payment`, provider call, natal generation or credit spend.
 ## Race/error policy
 
 - Campaign row lock + UNIQUE redemption protect same-campaign concurrency.
+- User row lock protects `next_grant_start` from overlapping access grants when
+  two different promo campaigns are redeemed concurrently by the same user.
 - Existing natal entitlement statuses: `succeeded|delivered`.
 - Concurrent natal entitlement insert is handled through a savepoint or one
   full-transaction bounded retry. An IntegrityError must never leave session in
@@ -140,6 +146,8 @@ No `Subscription`, `Payment`, provider call, natal generation or credit spend.
     alone is not proof).
 11. Injected final commit failure не оставляет grants/counter и не пишет
     `promo.redemption_succeeded`; пишет ровно один safe failed event.
+12. PostgreSQL-compiled new-redemption path includes `FOR UPDATE` for both the
+    campaign and internal user row, with campaign-before-user lock order.
 
 ## Targeted verification
 
