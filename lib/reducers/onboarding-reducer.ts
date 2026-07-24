@@ -28,7 +28,7 @@
  *  - компонент тестируется только тем, что правильно прокидывает ввод в reducer.
  */
 
-import type { BirthDateParts, BirthTimeParts } from "@/lib/contracts/profile"
+import type { BirthDateParts, BirthTimeParts, Profile, ProfileLocation } from "@/lib/contracts/profile"
 import type { City } from "@/lib/contracts/city"
 
 // Алиасы для совместимости с reducer API
@@ -72,6 +72,129 @@ export const initialOnboardingState: OnboardingState = {
   birthdayCity: null,
   birthdaySameAsCurrent: true,
   gender: null,
+}
+
+// ---------------------------------------------------------------------------
+// Prefill from Profile
+// ---------------------------------------------------------------------------
+
+function locationToCity(
+  location: ProfileLocation | null | undefined,
+  cityStr: string | null | undefined
+): City | null {
+  const str = cityStr?.trim() || ""
+
+  if (location && (location.city || str)) {
+    const rawCityName = location.city || str
+    let name = rawCityName
+    let country = ""
+
+    if (rawCityName.includes(", ")) {
+      const parts = rawCityName.split(", ")
+      name = parts[0]
+      country = parts.slice(1).join(", ")
+    } else if (str.includes(", ")) {
+      const parts = str.split(", ")
+      country = parts.slice(1).join(", ")
+    }
+
+    return {
+      name,
+      country,
+      ...(location.lat != null ? { lat: location.lat } : {}),
+      ...(location.lon != null ? { lon: location.lon } : {}),
+      ...(location.timezone ? { timezone: location.timezone } : {}),
+    }
+  }
+
+  if (str) {
+    let name = str
+    let country = ""
+    if (str.includes(", ")) {
+      const parts = str.split(", ")
+      name = parts[0]
+      country = parts.slice(1).join(", ")
+    }
+    return { name, country }
+  }
+
+  return null
+}
+
+export function onboardingStateFromProfile(profile: Profile): OnboardingState {
+  // START_FUNCTION_CONTRACT: F-M-REDUCERS-ONBOARDING-REDUCER.onboardingStateFromProfile
+  // purpose: Pure function converting a canonical frontend Profile instance into initial OnboardingState.
+  // inputs: profile (Profile)
+  // returns: OnboardingState
+  // side_effects: none (pure function)
+  // emitted_logs: none
+  // error_behavior: returns safe state with step="welcome" and unknown time fallback
+  // END_FUNCTION_CONTRACT: F-M-REDUCERS-ONBOARDING-REDUCER.onboardingStateFromProfile
+
+  const birthDate: BirthDate = {
+    day: profile.birthDate?.day ?? "",
+    month: profile.birthDate?.month ?? "",
+    year: profile.birthDate?.year ?? "",
+  }
+
+  let birthTime: BirthTime
+  if (
+    !profile.birthTime ||
+    profile.birthTime.unknown ||
+    (!profile.birthTime.hours && !profile.birthTime.minutes)
+  ) {
+    birthTime = { hours: "", minutes: "", unknown: true }
+  } else {
+    birthTime = {
+      hours: profile.birthTime.hours ?? "",
+      minutes: profile.birthTime.minutes ?? "",
+      unknown: false,
+    }
+  }
+
+  const birthPlace = locationToCity(profile.birthLocation, profile.birthPlace)
+  const currentCity = locationToCity(profile.currentLocation, profile.currentCity)
+  const birthdayCity = locationToCity(profile.birthdayLocation, profile.birthdayCity)
+
+  const sameAsBirth = Boolean(
+    profile.sameAsBirth ||
+      (profile.birthPlace &&
+        profile.currentCity &&
+        profile.birthPlace.trim() === profile.currentCity.trim()) ||
+      (birthPlace &&
+        currentCity &&
+        birthPlace.name === currentCity.name &&
+        birthPlace.country === currentCity.country)
+  )
+
+  const birthdaySameAsCurrent = Boolean(
+    profile.birthdaySameAsCurrent ||
+      (profile.currentCity &&
+        profile.birthdayCity &&
+        profile.currentCity.trim() === profile.birthdayCity.trim()) ||
+      (currentCity &&
+        birthdayCity &&
+        currentCity.name === birthdayCity.name &&
+        currentCity.country === birthdayCity.country) ||
+      (!profile.birthdayCity && !profile.birthdayLocation)
+  )
+
+  const gender =
+    profile.gender === "male" || profile.gender === "female"
+      ? profile.gender
+      : null
+
+  return {
+    step: "welcome",
+    birthDate,
+    birthTime,
+    birthPlace,
+    currentCity,
+    sameAsBirth,
+    birthdayCity,
+    birthdaySameAsCurrent,
+    gender,
+  }
 }
 
 // ---------------------------------------------------------------------------

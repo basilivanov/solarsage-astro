@@ -27,6 +27,7 @@ import { describe, it, expect } from 'vitest';
 import {
   onboardingReducer,
   initialOnboardingState,
+  onboardingStateFromProfile,
   isStepValid,
   isValidBirthDate,
   isValidBirthTime,
@@ -37,6 +38,7 @@ import {
   selectIsLastStep,
   type OnboardingState,
 } from '../../lib/reducers/onboarding-reducer';
+import type { Profile } from '../../lib/contracts/profile';
 
 describe('onboardingReducer', () => {
   it('should start at welcome step', () => {
@@ -326,4 +328,120 @@ describe('selectors', () => {
     };
     expect(isStepValid(state)).toBe(false);
   });
+});
+
+describe('onboardingStateFromProfile', () => {
+  const fullProfile: Profile = {
+    firstName: "Иван",
+    birthDate: { day: "15", month: "05", year: "1990" },
+    birthTime: { hours: "14", minutes: "30", unknown: false },
+    birthPlace: "Москва, Россия",
+    currentCity: "Санкт-Петербург, Россия",
+    birthdayCity: "Сочи, Россия",
+    birthLocation: { city: "Москва, Россия", lat: 55.75, lon: 37.61, timezone: "Europe/Moscow" },
+    currentLocation: { city: "Санкт-Петербург, Россия", lat: 59.93, lon: 30.31, timezone: "Europe/Moscow" },
+    birthdayLocation: { city: "Сочи, Россия", lat: 43.60, lon: 39.73, timezone: "Europe/Moscow" },
+    gender: "male",
+    isOnboarded: true,
+    sameAsBirth: false,
+    birthdaySameAsCurrent: false,
+  }
+
+  it('converts complete profile roundtrip into reducer state starting at step=welcome', () => {
+    const state = onboardingStateFromProfile(fullProfile)
+
+    expect(state.step).toBe('welcome')
+    expect(state.birthDate).toEqual({ day: '15', month: '05', year: '1990' })
+    expect(state.birthTime).toEqual({ hours: '14', minutes: '30', unknown: false })
+    expect(state.gender).toBe('male')
+
+    expect(state.birthPlace).toEqual({
+      name: 'Москва',
+      country: 'Россия',
+      lat: 55.75,
+      lon: 37.61,
+      timezone: 'Europe/Moscow',
+    })
+    expect(state.currentCity).toEqual({
+      name: 'Санкт-Петербург',
+      country: 'Россия',
+      lat: 59.93,
+      lon: 30.31,
+      timezone: 'Europe/Moscow',
+    })
+    expect(state.birthdayCity).toEqual({
+      name: 'Сочи',
+      country: 'Россия',
+      lat: 43.60,
+      lon: 39.73,
+      timezone: 'Europe/Moscow',
+    })
+
+    expect(state.sameAsBirth).toBe(false)
+    expect(state.birthdaySameAsCurrent).toBe(false)
+  })
+
+  it('handles unknown/missing time with {hours:"", minutes:"", unknown:true}', () => {
+    const profileUnknownTime: Profile = {
+      ...fullProfile,
+      birthTime: { hours: '', minutes: '', unknown: true },
+    }
+    const state = onboardingStateFromProfile(profileUnknownTime)
+    expect(state.birthTime).toEqual({ hours: '', minutes: '', unknown: true })
+
+    const profileNullTime: Profile = {
+      ...fullProfile,
+      birthTime: { hours: '', minutes: '', unknown: true },
+    }
+    const stateNull = onboardingStateFromProfile(profileNullTime)
+    expect(stateNull.birthTime).toEqual({ hours: '', minutes: '', unknown: true })
+  })
+
+  it('handles partial profile and null locations', () => {
+    const partialProfile: Profile = {
+      firstName: '',
+      birthDate: { day: '10', month: '08', year: '1992' },
+      birthTime: { hours: '', minutes: '', unknown: true },
+      birthPlace: 'Казань',
+      currentCity: '',
+      birthdayCity: '',
+      birthLocation: null,
+      currentLocation: null,
+      birthdayLocation: null,
+      gender: null,
+      isOnboarded: false,
+      sameAsBirth: false,
+      birthdaySameAsCurrent: false,
+    }
+
+    const state = onboardingStateFromProfile(partialProfile)
+    expect(state.step).toBe('welcome')
+    expect(state.birthDate).toEqual({ day: '10', month: '08', year: '1992' })
+    expect(state.birthTime).toEqual({ hours: '', minutes: '', unknown: true })
+    expect(state.birthPlace).toEqual({ name: 'Казань', country: '' })
+    expect(state.currentCity).toBeNull()
+    expect(state.birthdayCity).toBeNull()
+    expect(state.gender).toBeNull()
+  })
+
+  it('evaluates location equality and same-as flags deterministically', () => {
+    const sameProfile: Profile = {
+      ...fullProfile,
+      birthPlace: 'Москва, Россия',
+      currentCity: 'Москва, Россия',
+      birthdayCity: 'Москва, Россия',
+      sameAsBirth: true,
+      birthdaySameAsCurrent: true,
+    }
+
+    const state = onboardingStateFromProfile(sameProfile)
+    expect(state.sameAsBirth).toBe(true)
+    expect(state.birthdaySameAsCurrent).toBe(true)
+  })
+
+  it('preserves input immutability', () => {
+    const copy = JSON.parse(JSON.stringify(fullProfile))
+    onboardingStateFromProfile(fullProfile)
+    expect(fullProfile).toEqual(copy)
+  })
 });
