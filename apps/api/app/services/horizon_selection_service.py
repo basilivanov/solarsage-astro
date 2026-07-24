@@ -266,6 +266,10 @@ class HorizonSelectionService:
                 "timing_completeness": timing.timing_completeness,
             }
             for horizon in timing.eligible_horizons:
+                if horizon in ("medium", "fast") and timing.exact_at is None:
+                    excluded["no_exact_hit_in_window"] += 1
+                    warnings_seen.append("no_exact_hit_in_window")
+                    continue
                 technique_priority = rule.priority_by_horizon[horizon]
                 feature_model = HorizonCandidateFeatureScores(
                     **features,

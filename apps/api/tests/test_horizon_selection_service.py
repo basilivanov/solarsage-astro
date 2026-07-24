@@ -475,4 +475,36 @@ def test_internal_models_fail_closed_and_hide_input() -> None:
         HorizonSelectionResult.model_validate({**result.model_dump(), "warnings": ["not_typed"]})
 
 
+def test_selection_medium_missing_exact_at_honest_fallback() -> None:
+    act_long = build_activation(
+        id="long-1", technique="annual_profection", technique_family="profection",
+        target_planet="SATURN", active_from="2026-01-01", exact_at=None, active_until="2026-12-31"
+    )
+    act_med = build_activation(
+        id="med-1", technique="transit_to_natal", technique_family="transit",
+        source_planet="JUPITER", target_planet="SATURN", strength=0.9,
+        active_from="2026-03-01T00:00:00Z", exact_at=None, active_until="2026-09-30T00:00:00Z"
+    )
+    act_fast = build_activation(
+        id="fast-1", technique="transit_to_natal", technique_family="transit",
+        source_planet="MOON", target_planet="SATURN", strength=0.9,
+        active_from="2026-07-12T00:00:00Z", exact_at="2026-07-12T12:00:00Z", active_until="2026-07-12T23:00:00Z"
+    )
+    activations = [act_long, act_med, act_fast]
+    mapping = {
+        "long-1": ("work_status_achievement", 1.0),
+        "med-1": ("work_status_achievement", 1.0),
+        "fast-1": ("work_status_achievement", 1.0),
+    }
+
+    service = HorizonSelectionService()
+    result = service.select(
+        activation_layer=build_layer(activations),
+        scoring_result=build_scoring(activations, mapping),
+    )
+    assert result.selection is None
+    assert result.reason == "missing_medium"
+    assert result.diagnostics.excluded_counts_by_reason.get("no_exact_hit_in_window", 0) > 0
+
+
 # END_BLOCK: CORE_SELECTION_SCHEMA_TESTS

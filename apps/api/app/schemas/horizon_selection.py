@@ -67,6 +67,7 @@ HorizonTimingWarningCode = Literal[
     "unknown_source_speed",
     "no_product_sphere",
     "below_impact_threshold",
+    "no_exact_hit_in_window",
 ]
 HorizonExclusionReason = HorizonTimingWarningCode
 HorizonSelectionReason = Literal[

@@ -92,22 +92,25 @@ async def test_election_searches_flow(async_client: AsyncClient, make_initdata, 
         assert search_data["eventType"] == "wedding"
         search_id = search_data["id"]
 
-    # GET /api/election/searches
-    list_resp = await async_client.get("/api/election/searches")
-    assert list_resp.status_code == 200
-    list_data = list_resp.json()
-    assert len(list_data) == 1
-    assert list_data[0]["id"] == search_id
+        import asyncio
+        await asyncio.sleep(0.1)
 
-    # GET /api/election/searches/{id}
-    get_resp = await async_client.get(f"/api/election/searches/{search_id}")
-    assert get_resp.status_code == 200
-    assert get_resp.json()["id"] == search_id
+        # GET /api/election/searches
+        list_resp = await async_client.get("/api/election/searches")
+        assert list_resp.status_code == 200
+        list_data = list_resp.json()
+        assert len(list_data) == 1
+        assert list_data[0]["id"] == search_id
 
-    # GET foreign / unknown search -> 404
-    fake_id = "00000000-0000-0000-0000-000000000000"
-    unknown_resp = await async_client.get(f"/api/election/searches/{fake_id}")
-    assert unknown_resp.status_code == 404
+        # GET /api/election/searches/{id}
+        get_resp = await async_client.get(f"/api/election/searches/{search_id}")
+        assert get_resp.status_code == 200
+        assert get_resp.json()["id"] == search_id
+
+        # GET foreign / unknown search -> 404
+        fake_id = "00000000-0000-0000-0000-000000000000"
+        unknown_resp = await async_client.get(f"/api/election/searches/{fake_id}")
+        assert unknown_resp.status_code == 404
 
 
 @pytest.mark.asyncio
