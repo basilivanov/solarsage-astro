@@ -2,7 +2,7 @@
 # AI_HEADER: PROMO_CAMPAIGN_SERVICE — named promo preview and redemption boundary.
 # ROLE: Validate opaque promo intent and atomically issue configured grants.
 # DEPENDENCIES: SQLAlchemy AsyncSession, promo/grant/profile models and services.
-# GRACE_ANCHORS: [PROMO_DOMAIN_TYPES, PROMO_TOKEN_HELPERS, PROMO_PREVIEW, PROMO_REDEEM]
+# GRACE_ANCHORS: [PROMO_DOMAIN_TYPES, PROMO_VALUE_HELPERS, PROMO_PREVIEW, PROMO_REDEEM]
 # WAVE: W-NAMED-PROMO-CAMPAIGN
 # ############################################################################
 
@@ -28,9 +28,13 @@
 #   - token validation uses exact Base58 fullmatch regex
 #   - existing redemption check precedes window and capacity checks
 #   - lock order during redeem is campaign first, user second
-#   - redeem executes exactly one final commit
+#   - redeem executes exactly one final commit and logs promo.redemption_succeeded strictly after commit
 # failure_policy:
-#   - raises PromoDomainError with safe code and localized message; rollbacks on error
+#   - raises PromoDomainError with safe code and localized message; rollbacks and emits safe structured log on error
+# emitted_logs:
+#   - promo.redemption_succeeded
+#   - promo.redemption_rejected
+#   - promo.redemption_failed
 # END_MODULE_CONTRACT: M-PROMO-CAMPAIGN-SERVICE
 
 # START_MODULE_MAP: M-PROMO-CAMPAIGN-SERVICE
@@ -46,7 +50,7 @@
 #   - hash_promo_token
 # semantic_blocks:
 #   - DATACLASSES: domain data structures and safe error class
-#   - TOKEN_HELPERS: regex and SHA-256 hash calculation
+#   - VALUE_HELPERS: token hashing and UTC normalization
 #   - SERVICE_PREVIEW: preview implementation
 #   - SERVICE_REDEEM: atomic redeem implementation
 # owned_tests:
@@ -67,6 +71,7 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import log_block, log_event
 from app.db.models import (
     HoraryCredit,
     PromoCampaign,
@@ -131,7 +136,7 @@ class PromoRedeemData:
 # END_BLOCK: DATACLASSES
 
 
-# START_BLOCK: TOKEN_HELPERS
+# START_BLOCK: VALUE_HELPERS
 # START_FUNCTION_CONTRACT: F-M-PROMO-CAMPAIGN-SERVICE.hash_promo_token
 # purpose: Return lowercase 64-character SHA-256 hex digest of the raw ASCII token.
 # inputs: token (str)
@@ -143,7 +148,14 @@ class PromoRedeemData:
 def hash_promo_token(token: str) -> str:
     """Return lowercase 64-character SHA-256 hex digest of the raw token."""
     return hashlib.sha256(token.encode("ascii")).hexdigest().lower()
-# END_BLOCK: TOKEN_HELPERS
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Normalize database timestamps; SQLite drops timezone metadata on reload."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+# END_BLOCK: VALUE_HELPERS
 
 
 # START_BLOCK: SERVICE_PREVIEW
@@ -194,11 +206,11 @@ class PromoCampaignService:
             raise PromoDomainError(code="ALREADY_REDEEMED", safe_message="Промокод уже активирован")
 
         # 4. Inactive or not-yet-started -> INVALID_CODE
-        if not campaign.active or current_time < campaign.activation_starts_at:
+        if not campaign.active or current_time < _as_utc(campaign.activation_starts_at):
             raise PromoDomainError(code="INVALID_CODE", safe_message="Неверный промокод")
 
         # 5. Campaign expired (now >= activation_ends_at) -> CAMPAIGN_EXPIRED
-        if current_time >= campaign.activation_ends_at:
+        if current_time >= _as_utc(campaign.activation_ends_at):
             raise PromoDomainError(code="CAMPAIGN_EXPIRED", safe_message="Срок действия промокода истёк")
 
         # 6. Capacity reached -> CAMPAIGN_FULL
@@ -236,9 +248,9 @@ class PromoCampaignService:
     # purpose: Atomically validate and redeem a promo token for a user, granting access, credits, and natal entitlements.
     # inputs: user_id (UUID), token (str), now (datetime | None for testing)
     # returns: PromoRedeemData
-    # side_effects: inserts/updates DB rows with locks, issues single commit
-    # emitted_logs: none
-    # error_behavior: rolls back transaction on any domain or system failure and re-raises
+    # side_effects: inserts/updates DB rows with locks, issues single commit, emits promo log events
+    # emitted_logs: promo.redemption_succeeded, promo.redemption_rejected, promo.redemption_failed
+    # error_behavior: rolls back transaction and emits safe log on any domain or system failure and re-raises
     # END_FUNCTION_CONTRACT: F-M-PROMO-CAMPAIGN-SERVICE.PromoCampaignService.redeem
     async def redeem(
         self,
@@ -249,6 +261,11 @@ class PromoCampaignService:
     ) -> PromoRedeemData:
         """Atomically redeem a promo token for a user."""
         current_time = now or datetime.now(UTC)
+        campaign_id_str: str | None = None
+        campaign_access_days = 0
+        campaign_bonus_credits = 0
+        campaign_unlock_natal = False
+        natal_already_owned = False
 
         try:
             # 1. Format check: exact Base58 fullmatch without hash lookup
@@ -267,6 +284,12 @@ class PromoCampaignService:
             if campaign is None:
                 raise PromoDomainError(code="INVALID_CODE", safe_message="Неверный промокод")
 
+            # Snapshot campaign primitive values early
+            campaign_id_str = str(campaign.id)
+            campaign_access_days = campaign.access_days
+            campaign_bonus_credits = campaign.bonus_credits
+            campaign_unlock_natal = campaign.unlock_natal
+
             # 3. Existing redemption check IMMEDIATELY after campaign resolution
             redemption_res = await self.db.execute(
                 select(PromoRedemption).where(
@@ -278,11 +301,11 @@ class PromoCampaignService:
                 raise PromoDomainError(code="ALREADY_REDEEMED", safe_message="Промокод уже активирован")
 
             # 4. Inactive or not-yet-started -> INVALID_CODE
-            if not campaign.active or current_time < campaign.activation_starts_at:
+            if not campaign.active or current_time < _as_utc(campaign.activation_starts_at):
                 raise PromoDomainError(code="INVALID_CODE", safe_message="Неверный промокод")
 
             # 5. Campaign expired -> CAMPAIGN_EXPIRED
-            if current_time >= campaign.activation_ends_at:
+            if current_time >= _as_utc(campaign.activation_ends_at):
                 raise PromoDomainError(code="CAMPAIGN_EXPIRED", safe_message="Срок действия промокода истёк")
 
             # 6. Lock internal User row FOR UPDATE (Lock 2: campaign first, user second)
@@ -343,7 +366,7 @@ class PromoCampaignService:
                     )
 
                 metadata = json.dumps(
-                    {"grant_type": "promo", "campaign_id": str(campaign.id)},
+                    {"grant_type": "promo", "campaign_id": campaign_id_str},
                     sort_keys=True,
                     separators=(",", ":"),
                 )
@@ -363,7 +386,6 @@ class PromoCampaignService:
                 credit_id = credit.id
 
             natal_unlocked = False
-            natal_already_owned = False
             natal_purchase_id: uuid.UUID | None = None
 
             if campaign.unlock_natal:
@@ -411,8 +433,7 @@ class PromoCampaignService:
             # 11. Increment counter once
             campaign.redemptions_used += 1
 
-            # Snapshot response primitives before commit so the return path never
-            # lazy-loads expired ORM state after a successful transaction.
+            # Snapshot result primitives
             result = PromoRedeemData(
                 offer=PromoOfferData(
                     display_name=campaign.display_name,
@@ -433,12 +454,60 @@ class PromoCampaignService:
             # 12. Flush and single final commit
             await self.db.flush()
             await self.db.commit()
+
+            # Emit success log event STRICTLY AFTER commit
+            try:
+                with log_block(slice="W-PROMO-CAMPAIGN", module="M-PROMO-CAMPAIGN-SERVICE", block="REDEEM"):
+                    log_event(
+                        "promo.redemption_succeeded",
+                        level="info",
+                        msg="Promo redemption succeeded",
+                        payload={
+                            "campaign_id": campaign_id_str,
+                            "access_days": campaign_access_days,
+                            "bonus_credits": campaign_bonus_credits,
+                            "unlock_natal": campaign_unlock_natal,
+                            "natal_already_owned": natal_already_owned,
+                        },
+                    )
+            except Exception:
+                pass
+
             return result
 
-        except PromoDomainError:
+        except PromoDomainError as err:
             await self.db.rollback()
+            try:
+                payload: dict[str, str] = {"error_code": err.code}
+                if campaign_id_str is not None:
+                    payload["campaign_id"] = campaign_id_str
+                with log_block(slice="W-PROMO-CAMPAIGN", module="M-PROMO-CAMPAIGN-SERVICE", block="REDEEM"):
+                    log_event(
+                        "promo.redemption_rejected",
+                        level="info",
+                        msg="Promo redemption rejected",
+                        payload=payload,
+                    )
+            except Exception:
+                pass
             raise
-        except Exception:
+
+        except Exception as exc:
+            error_kind = type(exc).__name__
             await self.db.rollback()
+            try:
+                payload: dict[str, str] = {"error_kind": error_kind}
+                if campaign_id_str is not None:
+                    payload["campaign_id"] = campaign_id_str
+                with log_block(slice="W-PROMO-CAMPAIGN", module="M-PROMO-CAMPAIGN-SERVICE", block="REDEEM"):
+                    log_event(
+                        "promo.redemption_failed",
+                        level="error",
+                        msg="Promo redemption failed",
+                        payload=payload,
+                        error={"kind": error_kind},
+                    )
+            except Exception:
+                pass
             raise
 # END_BLOCK: SERVICE_REDEEM

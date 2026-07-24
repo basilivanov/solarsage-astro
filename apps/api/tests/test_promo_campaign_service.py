@@ -1,13 +1,13 @@
 # ############################################################################
 # AI_HEADER: MODULE_TESTS_PROMO_CAMPAIGN_SERVICE
-# ROLE: Unit and domain tests for PromoCampaignService preview, redeem, and token contracts (Phase 06A & 06B).
+# ROLE: Unit and domain tests for PromoCampaignService preview, redeem, locking, and observability contracts (Phase 06A, 06B & 06C1).
 # DEPENDENCIES: pytest, sqlalchemy, app.db.models, app.services.promo_campaign_service
 # GRACE_ANCHORS: [PROMO_CAMPAIGN_SERVICE_TESTS]
 # WAVE: W-NAMED-PROMO-CAMPAIGN
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TESTS-PROMO-CAMPAIGN-SERVICE
-# purpose: Validate promo token format rules, hash calculation, campaign preview & redeem state validation (invalid, inactive, expired, full, already redeemed ordering), start/end boundaries, base vs strict profile completeness, grant creation, credit expiry, natal reuse, and PII protection.
+# purpose: Validate promo token format rules, hash calculation, campaign preview & redeem state validation (invalid, inactive, expired, full, already redeemed ordering), start/end boundaries, base vs strict profile completeness, grant creation, credit expiry, natal reuse, FOR UPDATE lock statements, and structured log events without PII.
 # owns:
 #   - apps/api/tests/test_promo_campaign_service.py
 # inputs: AsyncSession database fixture and User/PromoCampaign/Product DB records
@@ -39,6 +39,12 @@
 #   - test_natal_incomplete_raises_profile_incomplete_without_mutations
 #   - test_duplicate_sequential_redeem_raises_already_redeemed
 #   - test_redeem_validation_error_codes
+#   - test_event_order_commit_before_success_log
+#   - test_domain_rejection_logs_only_promo_redemption_rejected
+#   - test_injected_flush_failure_parameterized
+#   - test_injected_commit_failure_rolls_back_and_logs_failed
+#   - test_privacy_no_token_hash_or_name_in_logs
+#   - test_postgresql_compiled_selects_include_for_update
 # owned_tests:
 #   - apps/api/tests/test_promo_campaign_service.py
 # END_MODULE_MAP: M-TESTS-PROMO-CAMPAIGN-SERVICE
@@ -50,6 +56,7 @@ import pytest
 from datetime import date, time, datetime, timedelta, timezone
 from decimal import Decimal as D
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -464,7 +471,7 @@ async def test_raw_token_and_hash_never_in_error_object(db_session: AsyncSession
     assert token_hash not in error_dump
 
 
-# ── Redeem Tests (Phase 06B) ──────────────────────────────────────────────────
+# ── Redeem Tests (Phase 06B & 06C1) ──────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_default_happy_path_redeem(db_session: AsyncSession):
@@ -495,14 +502,13 @@ async def test_default_happy_path_redeem(db_session: AsyncSession):
     service = PromoCampaignService(db_session)
     redeem_data = await service.redeem(user_id, token, now=now)
 
-    # 1. Check returned PromoRedeemData
     assert redeem_data.offer.display_name == "Summer Full Pack"
     assert redeem_data.offer.access_days == 30
     assert redeem_data.offer.bonus_credits == 50
     assert redeem_data.offer.unlock_natal is True
 
     assert redeem_data.grants.access_starts_at == date(2026, 7, 24)
-    assert redeem_data.grants.access_until == date(2026, 8, 22)  # 2026-07-24 + 29 days
+    assert redeem_data.grants.access_until == date(2026, 8, 22)
     assert redeem_data.grants.bonus_credits == 50
     assert redeem_data.grants.bonus_credits_expires_at == datetime(
         2026, 8, 23, 0, 0, 0, tzinfo=timezone.utc
@@ -510,8 +516,6 @@ async def test_default_happy_path_redeem(db_session: AsyncSession):
     assert redeem_data.grants.natal_unlocked is True
     assert redeem_data.grants.natal_already_owned is False
 
-    # 2. Check DB rows
-    # Ledger
     res_led = await db_session.execute(select(AccessLedger).where(AccessLedger.user_id == user_id))
     ledgers = res_led.scalars().all()
     assert len(ledgers) == 1
@@ -520,7 +524,6 @@ async def test_default_happy_path_redeem(db_session: AsyncSession):
     assert ledgers[0].start_date == date(2026, 7, 24)
     assert ledgers[0].end_date == date(2026, 8, 22)
 
-    # Horary Credit
     res_cred = await db_session.execute(select(HoraryCredit).where(HoraryCredit.user_id == user_id))
     credits = res_cred.scalars().all()
     assert len(credits) == 1
@@ -539,7 +542,6 @@ async def test_default_happy_path_redeem(db_session: AsyncSession):
     meta = json.loads(credits[0].metadata_json)
     assert meta == {"grant_type": "promo", "campaign_id": str(campaign_id)}
 
-    # Purchase
     res_pur = await db_session.execute(select(Purchase).where(Purchase.user_id == user_id))
     purchases = res_pur.scalars().all()
     assert len(purchases) == 1
@@ -550,7 +552,6 @@ async def test_default_happy_path_redeem(db_session: AsyncSession):
     context_hash = NatalContextService.compute_profile_hash(profile)
     assert purchases[0].context_hash == context_hash
 
-    # Redemption
     res_red = await db_session.execute(select(PromoRedemption).where(PromoRedemption.user_id == user_id))
     redemptions = res_red.scalars().all()
     assert len(redemptions) == 1
@@ -559,11 +560,9 @@ async def test_default_happy_path_redeem(db_session: AsyncSession):
     assert redemptions[0].credit_id == credits[0].id
     assert redemptions[0].natal_purchase_id == purchases[0].id
 
-    # Counter
     res_camp = await db_session.execute(select(PromoCampaign).where(PromoCampaign.id == campaign_id))
     assert res_camp.scalar_one().redemptions_used == 1
 
-    # No Subscription or Payment rows
     res_sub = await db_session.execute(select(Subscription))
     assert len(res_sub.scalars().all()) == 0
     res_pay = await db_session.execute(select(Payment))
@@ -826,3 +825,306 @@ async def test_redeem_validation_error_codes(db_session: AsyncSession, setup_kin
         await service.redeem(user_id, token, now=now)
 
     assert exc.value.code == expected_code
+
+
+# ── Observability & Fault-Injection Tests (Phase 06C1) ─────────────────────────
+
+@pytest.mark.asyncio
+async def test_event_order_commit_before_success_log(db_session: AsyncSession):
+    """Test db.commit finishes BEFORE promo.redemption_succeeded log event is emitted."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    campaign = create_test_campaign(token=token, now=now)
+    user = User(tg_user_id=9001, tg_username="log_order_user")
+    db_session.add_all([campaign, user])
+    await db_session.commit()
+    user_id = user.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    call_order = []
+    original_commit = db_session.commit
+
+    async def mock_commit():
+        call_order.append("commit")
+        await original_commit()
+
+    db_session.commit = mock_commit  # type: ignore[assignment]
+
+    def mock_log_event(event, **kwargs):
+        call_order.append(f"log:{event}")
+
+    with unittest.mock.patch("app.services.promo_campaign_service.log_event", side_effect=mock_log_event):
+        service = PromoCampaignService(db_session)
+        await service.redeem(user_id, token, now=now)
+
+    assert call_order == ["commit", "log:promo.redemption_succeeded"]
+
+
+@pytest.mark.asyncio
+async def test_domain_rejection_logs_only_promo_redemption_rejected(db_session: AsyncSession):
+    """Test domain error during redeem logs promo.redemption_rejected with stable code and campaign_id."""
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    campaign = create_test_campaign(token=token, active=False, now=now)
+    user = User(tg_user_id=9002, tg_username="rejected_log_user")
+    db_session.add_all([campaign, user])
+    await db_session.commit()
+    user_id = user.id
+    campaign_id = campaign.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    logged_events = []
+
+    def mock_log_event(event, **kwargs):
+        logged_events.append((event, kwargs))
+
+    with unittest.mock.patch("app.services.promo_campaign_service.log_event", side_effect=mock_log_event):
+        service = PromoCampaignService(db_session)
+        with pytest.raises(PromoDomainError) as exc:
+            await service.redeem(user_id, token, now=now)
+
+        assert exc.value.code == "INVALID_CODE"
+
+    assert len(logged_events) == 1
+    event_name, kwargs = logged_events[0]
+    assert event_name == "promo.redemption_rejected"
+    assert kwargs.get("payload") == {
+        "error_code": "INVALID_CODE",
+        "campaign_id": str(campaign_id),
+    }
+
+
+@pytest.mark.parametrize("flush_fail_index", [1, 2, 3, 4])
+@pytest.mark.asyncio
+async def test_injected_flush_failure_parameterized(db_session: AsyncSession, flush_fail_index: int):
+    """Test injected db.flush error at any call stage rolls back all grants/redemption/counter and logs exactly failed event."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    campaign = create_test_campaign(token=token, now=now)
+    user = User(tg_user_id=9100 + flush_fail_index, tg_username=f"flush_user_{flush_fail_index}")
+    db_session.add_all([campaign, user])
+    await db_session.commit()
+    user_id = user.id
+    campaign_id = campaign.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    original_flush = db_session.flush
+    flush_counter = 0
+
+    async def failing_flush():
+        nonlocal flush_counter
+        flush_counter += 1
+        if flush_counter == flush_fail_index:
+            raise RuntimeError(f"Injected flush failure on call {flush_fail_index}")
+        await original_flush()
+
+    db_session.flush = failing_flush  # type: ignore[assignment]
+
+    logged_events = []
+
+    def mock_log_event(event, **kwargs):
+        logged_events.append((event, kwargs))
+
+    with unittest.mock.patch("app.services.promo_campaign_service.log_event", side_effect=mock_log_event):
+        service = PromoCampaignService(db_session)
+        with pytest.raises(RuntimeError, match=f"Injected flush failure on call {flush_fail_index}"):
+            await service.redeem(user_id, token, now=now)
+
+    # Verify exactly 1 log event emitted and it is promo.redemption_failed
+    assert len(logged_events) == 1
+    assert logged_events[0][0] == "promo.redemption_failed"
+    assert logged_events[0][1].get("payload") == {
+        "error_kind": "RuntimeError",
+        "campaign_id": str(campaign_id),
+    }
+
+    # Restore flush for DB state assertions
+    db_session.flush = original_flush
+
+    # Verify zero grants/redemption rows in DB and counter = 0
+    for model in (AccessLedger, HoraryCredit, Purchase, PromoRedemption):
+        rows = await db_session.execute(select(model).where(model.user_id == user_id))
+        assert len(rows.scalars().all()) == 0
+
+    res_camp = await db_session.execute(select(PromoCampaign).where(PromoCampaign.id == campaign_id))
+    assert res_camp.scalar_one().redemptions_used == 0
+
+
+@pytest.mark.asyncio
+async def test_injected_commit_failure_rolls_back_and_logs_failed(db_session: AsyncSession):
+    """Test injected db.commit error during redeem rolls back all rows and emits exactly promo.redemption_failed with no success event."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    campaign = create_test_campaign(token=token, now=now)
+    user = User(tg_user_id=9004, tg_username="commit_fail_user")
+    db_session.add_all([campaign, user])
+    await db_session.commit()
+    user_id = user.id
+    campaign_id = campaign.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    original_commit = db_session.commit
+
+    async def failing_commit():
+        raise RuntimeError("Injected commit DB failure")
+
+    db_session.commit = failing_commit  # type: ignore[assignment]
+
+    logged_events = []
+
+    def mock_log_event(event, **kwargs):
+        logged_events.append((event, kwargs))
+
+    with unittest.mock.patch("app.services.promo_campaign_service.log_event", side_effect=mock_log_event):
+        service = PromoCampaignService(db_session)
+        with pytest.raises(RuntimeError, match="Injected commit DB failure"):
+            await service.redeem(user_id, token, now=now)
+
+    assert len(logged_events) == 1
+    assert logged_events[0][0] == "promo.redemption_failed"
+    assert logged_events[0][1].get("payload") == {
+        "error_kind": "RuntimeError",
+        "campaign_id": str(campaign_id),
+    }
+
+    db_session.commit = original_commit
+
+    for model in (AccessLedger, HoraryCredit, Purchase, PromoRedemption):
+        rows = await db_session.execute(select(model).where(model.user_id == user_id))
+        assert len(rows.scalars().all()) == 0
+
+    res_camp = await db_session.execute(select(PromoCampaign).where(PromoCampaign.id == campaign_id))
+    assert res_camp.scalar_one().redemptions_used == 0
+
+
+@pytest.mark.asyncio
+async def test_privacy_no_token_hash_or_name_in_logs(db_session: AsyncSession):
+    """Test all emitted log event payloads for success, rejection, and failure contain zero PII (token/hash/display_name)."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+    token_hash = hash_promo_token(token)
+
+    campaign = create_test_campaign(display_name="SECRET_NAME_DONOT_LEAK", token=token, now=now)
+    user = User(tg_user_id=9005, tg_username="pii_log_user")
+    db_session.add_all([campaign, user])
+    await db_session.commit()
+    user_id = user.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    logged_calls = []
+
+    def mock_log_event(event, **kwargs):
+        logged_calls.append((event, kwargs))
+
+    # 1. Test success log privacy
+    with unittest.mock.patch("app.services.promo_campaign_service.log_event", side_effect=mock_log_event):
+        service = PromoCampaignService(db_session)
+        await service.redeem(user_id, token, now=now)
+
+    # 2. Test rejection log privacy
+    with unittest.mock.patch("app.services.promo_campaign_service.log_event", side_effect=mock_log_event):
+        with pytest.raises(PromoDomainError):
+            await service.redeem(user_id, token, now=now)
+
+    # 3. Test failure log privacy
+    original_flush = db_session.flush
+
+    async def failing_flush():
+        raise RuntimeError("Injected fail for privacy check")
+
+    db_session.flush = failing_flush  # type: ignore[assignment]
+    other_user = User(tg_user_id=9006, tg_username="pii_user2")
+    db_session.add(other_user)
+    # Use direct SQL insert or commit before flush override
+    db_session.flush = original_flush
+    await db_session.commit()
+
+    p2 = create_test_user_profile(other_user.id, has_time=True)
+    db_session.add(p2)
+    await db_session.commit()
+
+    db_session.flush = failing_flush  # type: ignore[assignment]
+
+    with unittest.mock.patch("app.services.promo_campaign_service.log_event", side_effect=mock_log_event):
+        with pytest.raises(RuntimeError):
+            await service.redeem(other_user.id, token, now=now)
+
+    db_session.flush = original_flush
+
+    all_logs_str = str(logged_calls)
+    assert token not in all_logs_str
+    assert token_hash not in all_logs_str
+    assert "SECRET_NAME_DONOT_LEAK" not in all_logs_str
+
+
+@pytest.mark.asyncio
+async def test_postgresql_compiled_selects_include_for_update(db_session: AsyncSession):
+    """Test captured SQL statements executed during redeem both compile with FOR UPDATE in PostgreSQL dialect, with campaign locked before user."""
+    await seed_natal_product(db_session)
+
+    now = datetime(2026, 7, 24, 12, 0, 0, tzinfo=timezone.utc)
+    token = "m7q4n9x2r5kd"
+
+    campaign = create_test_campaign(token=token, now=now)
+    user = User(tg_user_id=9007, tg_username="lock_capture_user")
+    db_session.add_all([campaign, user])
+    await db_session.commit()
+    user_id = user.id
+
+    profile = create_test_user_profile(user_id, has_time=True)
+    db_session.add(profile)
+    await db_session.commit()
+
+    captured_statements = []
+    original_execute = db_session.execute
+
+    async def capture_execute(statement, *args, **kwargs):
+        captured_statements.append(statement)
+        return await original_execute(statement, *args, **kwargs)
+
+    db_session.execute = capture_execute  # type: ignore[assignment]
+
+    service = PromoCampaignService(db_session)
+    await service.redeem(user_id, token, now=now)
+
+    # Filter captured Select statements that use FOR UPDATE when compiled with PostgreSQL dialect
+    pg_for_update_tables = []
+    for stmt in captured_statements:
+        try:
+            compiled = str(stmt.compile(dialect=postgresql.dialect()))
+            if "FOR UPDATE" in compiled:
+                if "promo_campaigns" in compiled:
+                    pg_for_update_tables.append("promo_campaigns")
+                elif "users" in compiled:
+                    pg_for_update_tables.append("users")
+        except Exception:
+            pass
+
+    assert pg_for_update_tables == ["promo_campaigns", "users"]
