@@ -22,3 +22,4 @@
 # END_MODULE_MAP: M-API-ROUTERS
 
 from . import access as access
+from . import promo as promo
