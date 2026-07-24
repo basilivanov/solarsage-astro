@@ -101,6 +101,13 @@ export type LogEventName =
   | "natal.report_generation_started"
   | "natal.report_generation_succeeded"
   | "natal.report_generation_failed"
+  // promo campaigns
+  | "promo.offer_viewed"
+  | "promo.redemption_succeeded"
+  | "promo.redemption_rejected"
+  | "promo.redemption_failed"
+  | "promo.campaign_created"
+  | "promo.campaign_disabled"
   // sidecar / scoring / llm
   | "sidecar.called"
   | "scoring.computed"

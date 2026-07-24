@@ -364,6 +364,25 @@
     <event name="natal.report_generation_succeeded" owner="W-NATAL-FULL" />
     <event name="natal.report_generation_failed"    owner="W-NATAL-FULL" />
 
+    <!-- ================ promo campaigns ================================= -->
+    <!-- W-PROMO-CAMPAIGN payload contract:
+         Safe vocabulary only: campaign_id, error_code, access_days,
+         bonus_credits, unlock_natal, natal_already_owned, redemptions_used,
+         max_redemptions, error_kind.
+         Forbidden: token, start_param, code_hash, display_name, initData,
+         request/response body, Telegram ID, and any birth/profile data.
+         offer_viewed means the frontend sheet was actually shown, never a
+         backend preview request. redemption_rejected uses a stable error_code
+         only. redemption_failed is emitted after rollback with safe exception
+         type only. redemption_succeeded is emitted only after commit. Admin
+         events never include campaign name, hash, or token. -->
+    <event name="promo.offer_viewed"          owner="W-PROMO-CAMPAIGN" desc="Frontend sheet actually shown, not backend preview request." />
+    <event name="promo.redemption_succeeded"  owner="W-PROMO-CAMPAIGN" desc="Promo redemption succeeded and access/credits/natal granted." />
+    <event name="promo.redemption_rejected"   owner="W-PROMO-CAMPAIGN" desc="Promo redemption rejected with stable error code." />
+    <event name="promo.redemption_failed"     owner="W-PROMO-CAMPAIGN" desc="Promo redemption unexpected rollback or 500 error." />
+    <event name="promo.campaign_created"      owner="W-PROMO-CAMPAIGN" desc="Admin created new promo campaign." />
+    <event name="promo.campaign_disabled"     owner="W-PROMO-CAMPAIGN" desc="Admin disabled promo campaign." />
+
     <!-- ================ sidecar / scoring / llm ======================== -->
     <event name="sidecar.called"          owner="W-3.4">
       <payload-field name="endpoint"     type="string" required="true" />
