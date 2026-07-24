@@ -78,7 +78,12 @@ async def get_election_quota(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> HoraryQuotaRead:
     service = ElectionService(db)
-    return await service.get_quota(user.id)
+    quota = await service.get_quota(user.id)
+    # get_balance lazily creates the weekly-free credit row (flush only) —
+    # commit it like the horary quota endpoint does, or the row rolls back
+    # and the next search 402s for fresh users.
+    await db.commit()
+    return quota
 
 
 @router.post("/searches", response_model=ElectionSearchRead, status_code=status.HTTP_201_CREATED)

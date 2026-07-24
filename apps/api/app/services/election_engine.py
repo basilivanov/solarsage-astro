@@ -173,8 +173,12 @@ async def scan(
                 if st_time and en_time:
                     formatted_voc.append(f"{st_time}-{en_time}")
 
-        phase_angle = day.get("phase_angle", 0.0)
-        phase_pct = int(round((phase_angle / 360.0) * 100))
+        illumination = day.get("illumination")
+        if illumination is not None:
+            phase_pct = int(round(float(illumination) * 100))
+        else:
+            phase_angle = day.get("phase_angle", 0.0)
+            phase_pct = int(round((phase_angle / 360.0) * 100))
 
         evaluated_days.append({
             "date": day_date_str,

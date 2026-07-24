@@ -34,7 +34,7 @@ from typing import Any
 from app.core.config import settings
 from app.core.logging import log_event, log_block
 from app.schemas.election import validate_election_narrative
-from app.services.llm.service import LLMService
+from app.services.llm_service import LLMService
 
 ELECTION_NARRATIVE_JSON_SCHEMA: dict[str, Any] = {
     "name": "election_narrative",
@@ -98,6 +98,14 @@ ELECTION_NARRATIVE_JSON_SCHEMA: dict[str, Any] = {
 }
 
 
+_SIGN_PREPOSITIONAL = {
+    "aries": "в Овне", "taurus": "в Тельце", "gemini": "в Близнецах",
+    "cancer": "в Раке", "leo": "во Льве", "virgo": "в Деве",
+    "libra": "в Весах", "scorpio": "в Скорпионе", "sagittarius": "в Стрельце",
+    "capricorn": "в Козероге", "aquarius": "в Водолее", "pisces": "в Рыбах",
+}
+
+
 def _build_prompt(
     event_label: str,
     best_days: list[dict[str, Any]],
@@ -112,6 +120,11 @@ def _build_prompt(
         "2. Запрещено выдумывать любые астрологические факты (знаки, фазы, аспекты). Используй ТОЛЬКО переданные факты.",
         "3. В day_notes должны быть записи строго для дат из списков best_days в том же порядке.",
         "4. В avoid_notes должны быть записи строго для дат из списков avoid_days в том же порядке.",
+        "5. VOC интервалы — это периоды ХОЛОСТОГО КУРСА Луны: в это время начинать дела НЕ стоит. "
+        "hero_hours называет удачное время ВНЕ этих интервалов (или что весь день чист, если интервалов нет). "
+        "НИКОГДА не называй VOC-часы удачными.",
+        "6. hero_reason обязан называть знак Луны и фазу лучшего дня (из фактов), без общих фраз «астрологические принципы».",
+        "7. Знаки зодиака в текстах — в предложном падеже («в Раке», «в Тельце», «в Весах»...), формы даны в фактах.",
         "",
         f"СОБЫТИЕ: {event_label}",
         f"НАТАЛЬНАЯ ЛУНА ПОЛЬЗОВАТЕЛЯ: {personal_facts.get('natal_moon_sign_ru') or 'Не указана'} (Резонанс с лучшим днём: {personal_facts.get('resonates', False)})",
@@ -119,19 +132,24 @@ def _build_prompt(
         "ЛУЧШИЕ ДНИ (best_days):",
     ]
 
-    for d in best_days:
-        lines.append(
-            f"- Дата: {d['date']}, Знак Луны: {d.get('moon_sign_ru')}, Растущая: {d.get('waxing')}, "
-            f"VOC интервалы UTC: {d.get('voc_intervals')}, Причины: {'; '.join(d.get('reasons', []))}"
+    def _day_line(d: dict[str, Any]) -> str:
+        sign = (d.get("moon_sign") or "").lower()
+        sign_prep = _SIGN_PREPOSITIONAL.get(sign, sign)
+        phase = d.get("phase_pct")
+        phase_txt = f"{phase}%" if phase is not None else ("растущая" if d.get("waxing") else "убывающая")
+        return (
+            f"- Дата: {d['date']}, Луна {sign_prep} ({d.get('moon_sign_ru')}), фаза: {phase_txt}, "
+            f"VOC интервалы (холостой курс, плохое время) UTC: {d.get('voc_intervals')}, "
+            f"Причины: {'; '.join(d.get('reasons', []))}"
         )
+
+    for d in best_days:
+        lines.append(_day_line(d))
 
     lines.append("")
     lines.append("НЕ РЕКОМЕНДУЕМЫЕ ДНИ (avoid_days):")
     for d in avoid_days:
-        lines.append(
-            f"- Дата: {d['date']}, Знак Луны: {d.get('moon_sign_ru')}, Растущая: {d.get('waxing')}, "
-            f"VOC интервалы UTC: {d.get('voc_intervals')}, Причины: {'; '.join(d.get('reasons', []))}"
-        )
+        lines.append(_day_line(d))
 
     return "\n".join(lines)
 
@@ -159,10 +177,8 @@ async def generate_election_narrative(
         with log_block(slice="W-ELECTION", module="M-SERVICES-LLM-ELECTION", block="LLM_ELECTION"):
             log_event("llm.requested", payload={"attempt": attempt, "service": "election"})
             try:
-                raw_json = await llm_service.client._post_openrouter_structured(
-                    prompt=prompt,
-                    response_format={"type": "json_schema", "json_schema": ELECTION_NARRATIVE_JSON_SCHEMA},
-                    max_tokens=1000,
+                raw_json = await llm_service._generate_text(
+                    prompt, 1000, json_schema=ELECTION_NARRATIVE_JSON_SCHEMA
                 )
                 if not raw_json:
                     raise RuntimeError("Empty response from LLM")

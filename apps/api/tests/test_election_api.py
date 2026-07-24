@@ -108,3 +108,36 @@ async def test_election_searches_flow(async_client: AsyncClient, make_initdata, 
     fake_id = "00000000-0000-0000-0000-000000000000"
     unknown_resp = await async_client.get(f"/api/election/searches/{fake_id}")
     assert unknown_resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_election_quota_persists_weekly_credit_for_fresh_user(
+    async_client: AsyncClient, make_initdata, db_session
+) -> None:
+    """Regression (2026-07-24): quota GET must COMMIT the lazily-created weekly
+    credit — without the commit the row rolled back and the following search
+    402'd for fresh users even though quota showed weeklyFreeAvailable=true."""
+    from datetime import date as Date, timedelta
+    from app.db.models import AccessLedger, HoraryCredit
+    from sqlalchemy import select
+
+    raw_init = make_initdata(user_id=880003, username="el_api_3")
+    await async_client.post("/api/auth/telegram", json={"initData": raw_init})
+
+    tg_user = TelegramUser(id=880003, username="el_api_3", first_name="ElApi3")
+    user, _ = await get_or_create_user(db_session, tg_user)
+    db_session.add(AccessLedger(
+        user_id=user.id, entry_type="subscription", days_granted=30,
+        start_date=Date.today(), end_date=Date.today() + timedelta(days=29),
+    ))
+    await db_session.commit()
+
+    resp = await async_client.get("/api/election/quota")
+    assert resp.status_code == 200
+    assert resp.json()["weeklyFreeAvailable"] is True
+
+    row = (await db_session.execute(
+        select(HoraryCredit).where(HoraryCredit.user_id == user.id)
+    )).scalar_one_or_none()
+    assert row is not None, "weekly credit must be persisted by the quota GET"
+    assert row.source == "subscription_weekly_free"
