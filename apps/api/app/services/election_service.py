@@ -50,6 +50,7 @@ from sqlalchemy.orm import selectinload
 from app.clients.solarsage_client import get_solarsage_client
 from app.core.logging import log_event
 from app.db.models import ElectionCreditSpend, ElectionRequest, ElectionResult, HoraryCredit
+from app.db.session import SessionLocal
 from app.schemas.horary import HoraryQuotaRead
 from app.services import election_engine
 from app.services.horary_credit_service import HoraryCreditService
@@ -149,11 +150,24 @@ class ElectionService:
 
     async def run_search_task(self, request_id: uuid.UUID) -> None:
         # START_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE.run_search_task
-        # purpose: Background execution: fetch sidecar lunar-window, run election_engine, save result.
+        # purpose: Background execution wrapper: opens a FRESH session for the
+        #   task (the request-scoped session is closed when POST returns —
+        #   horary pattern: background tasks must own their session).
         # inputs: request_id (UUID)
         # returns: None
         # side_effects: updates ElectionRequest status, inserts ElectionResult, handles refunds on failure
         # END_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE.run_search_task
+        async with SessionLocal() as session:
+            self.db = session
+            await self._run_search_task(request_id)
+
+    async def _run_search_task(self, request_id: uuid.UUID) -> None:
+        # START_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE._run_search_task
+        # purpose: Fetch sidecar lunar-window, run election_engine, save result.
+        # inputs: request_id (UUID)
+        # returns: None
+        # side_effects: updates ElectionRequest status, inserts ElectionResult, handles refunds on failure
+        # END_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE._run_search_task
         stmt = select(ElectionRequest).where(ElectionRequest.id == request_id)
         request = (await self.db.execute(stmt)).scalar_one_or_none()
         if request is None or request.status in ("done", "failed", "refunded"):
@@ -282,6 +296,7 @@ class ElectionService:
     async def get_search(
         self, user_id: uuid.UUID, request_id: uuid.UUID
     ) -> ElectionRequest | None:
+        await self._check_lazy_ttl(request_id)
         stmt = (
             select(ElectionRequest)
             .options(selectinload(ElectionRequest.result))
@@ -291,3 +306,65 @@ class ElectionService:
             )
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def _check_lazy_ttl(self, request_id: uuid.UUID) -> None:
+        # START_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE._check_lazy_ttl
+        # purpose: Mark requests stuck in processing > 5 min as failed and
+        #   refund their credit (mirrors horary lazy TTL).
+        # inputs: request_id (UUID).
+        # returns: none.
+        # side_effects: may update request status/refund fields, delete spend
+        #   row, decrement credit used_amount; commits.
+        # error_behavior: no-ops for missing request or non-processing status.
+        # END_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE._check_lazy_ttl
+        from datetime import timedelta
+        request = (
+            await self.db.execute(
+                select(ElectionRequest).where(ElectionRequest.id == request_id)
+            )
+        ).scalar_one_or_none()
+        if not request or request.status != "processing":
+            return
+        now = datetime.now(UTC)
+        created_at = request.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=UTC)
+        if now - created_at <= timedelta(minutes=5):
+            return
+        request.status = "failed"
+        request.failure_stage = "lazy_ttl"
+        request.failure_code = "PROCESSING_TIMEOUT"
+        request.failure_message = "Search stuck in processing over 5 minutes"
+        request.public_error_code = "SEARCH_FAILED"
+        request.public_error_message = "Failed to calculate election dates. Credit refunded."
+        await self._refund_spend(request, now)
+        await self.db.commit()
+
+    async def _refund_spend(self, request: ElectionRequest, now: datetime) -> None:
+        # START_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE._refund_spend
+        # purpose: Refund the credit spent by a failed/expired request
+        #   (weekly_free expired is not refundable — same rule as run_search_task).
+        # inputs: request (ElectionRequest), now (datetime UTC).
+        # returns: none.
+        # side_effects: deletes spend row, decrements credit used_amount,
+        #   sets request.refund_status/status; emits election.credit_refunded.
+        # END_FUNCTION_CONTRACT: F-M-ELECTION-SERVICE._refund_spend
+        if not request.spent_credit_id:
+            return
+        spend_stmt = select(ElectionCreditSpend).where(
+            ElectionCreditSpend.election_request_id == request.id
+        )
+        spend = (await self.db.execute(spend_stmt)).scalar_one_or_none()
+        if not spend:
+            return
+        credit_stmt = select(HoraryCredit).where(HoraryCredit.id == request.spent_credit_id)
+        credit = (await self.db.execute(credit_stmt)).scalar_one_or_none()
+        if credit and credit.source == "subscription_weekly_free" and credit.expires_at and credit.expires_at < now:
+            request.refund_status = "not_refundable"
+            return
+        if credit and credit.used_amount > 0:
+            credit.used_amount -= 1
+        await self.db.delete(spend)
+        request.refund_status = "refunded"
+        request.status = "refunded"
+        log_event("election.credit_refunded")

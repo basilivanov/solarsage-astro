@@ -184,10 +184,15 @@ async def generate_election_narrative(
                     raise RuntimeError("Empty response from LLM")
 
                 narrative_dict = json.loads(raw_json)
+                fallback_notes = {
+                    d["date"]: "; ".join(d.get("reasons", []))
+                    for d in [*best_days, *avoid_days]
+                }
                 validated = validate_election_narrative(
                     narrative_dict,
                     expected_best_dates=expected_best_dates,
                     expected_avoid_dates=expected_avoid_dates,
+                    fallback_notes=fallback_notes,
                 )
                 log_event("llm.response_validated", payload={"service": "election"})
                 return validated.model_dump()

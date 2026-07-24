@@ -52,9 +52,37 @@ def test_validate_election_narrative_mismatched_dates() -> None:
         "avoid_notes": [],
     }
 
-    with pytest.raises(ValueError, match="day_notes dates"):
+    with pytest.raises(ValueError, match="missing required date"):
         validate_election_narrative(
             data,
             expected_best_dates=["2026-08-01", "2026-08-02"],
             expected_avoid_dates=[],
         )
+
+
+def test_validate_election_narrative_unknown_date_rejected() -> None:
+    data = {
+        "hero_reason": "r", "hero_personal": "p", "hero_plain": "pl", "hero_hours": "h",
+        "day_notes": [{"date": "2026-08-09", "note": "x"}],
+        "avoid_notes": [],
+    }
+    with pytest.raises(ValueError, match="unknown dates"):
+        validate_election_narrative(data, ["2026-08-01"], [])
+
+
+def test_validate_election_narrative_fallback_fills_and_reorders() -> None:
+    data = {
+        "hero_reason": "r", "hero_personal": "p", "hero_plain": "pl", "hero_hours": "h",
+        "day_notes": [{"date": "2026-08-05", "note": "llm note 05"}],
+        "avoid_notes": [],
+    }
+    out = validate_election_narrative(
+        data,
+        expected_best_dates=["2026-08-05", "2026-08-06", "2026-07-24"],
+        expected_avoid_dates=[],
+        fallback_notes={"2026-08-06": "engine fact 06", "2026-07-24": "engine fact 24"},
+    )
+    assert [n.date for n in out.day_notes] == ["2026-08-05", "2026-08-06", "2026-07-24"]
+    assert out.day_notes[0].note == "llm note 05"
+    assert out.day_notes[1].note == "engine fact 06"
+    assert out.day_notes[2].note == "engine fact 24"

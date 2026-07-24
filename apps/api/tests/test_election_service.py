@@ -123,6 +123,9 @@ async def test_create_search_idempotency(db_session: AsyncSession) -> None:
     assert exc.value.status_code == 409
 
 
+from contextlib import asynccontextmanager
+
+
 @pytest.mark.asyncio
 async def test_run_search_task_success_and_failure_refund(db_session: AsyncSession) -> None:
     tg_user = TelegramUser(id=990004, username="el_user4", first_name="El4")
@@ -163,8 +166,13 @@ async def test_run_search_task_success_and_failure_refund(db_session: AsyncSessi
         "avoid_notes": [],
     }
 
+    @asynccontextmanager
+    async def _test_session_local():
+        yield db_session
+
     with patch("app.services.election_service.get_solarsage_client") as mock_get_client, \
-         patch("app.services.llm.election.generate_election_narrative", new_callable=AsyncMock) as mock_gen_narrative:
+         patch("app.services.llm.election.generate_election_narrative", new_callable=AsyncMock) as mock_gen_narrative, \
+         patch("app.services.election_service.SessionLocal", _test_session_local):
 
         mock_client = AsyncMock()
         mock_client.get_lunar_window.return_value = mock_lunar_resp
@@ -197,7 +205,8 @@ async def test_run_search_task_success_and_failure_refund(db_session: AsyncSessi
     )
 
     with patch("app.services.election_service.get_solarsage_client") as mock_get_client, \
-         patch("app.services.llm.election.generate_election_narrative", new_callable=AsyncMock) as mock_gen_narrative:
+         patch("app.services.llm.election.generate_election_narrative", new_callable=AsyncMock) as mock_gen_narrative, \
+         patch("app.services.election_service.SessionLocal", _test_session_local):
 
         mock_client = AsyncMock()
         mock_client.get_lunar_window.side_effect = RuntimeError("Sidecar crashed")
@@ -212,3 +221,42 @@ async def test_run_search_task_success_and_failure_refund(db_session: AsyncSessi
 
     await db_session.refresh(credit)
     assert credit.used_amount == 1  # 2 searches total, 1 succeeded (used 1), 1 refunded (used 0)
+
+
+@pytest.mark.asyncio
+async def test_election_lazy_ttl_refunds_stuck_processing(db_session: AsyncSession) -> None:
+    """Regression (2026-07-24): request stuck in processing > 5 min must be
+    failed+refunded on read (horary lazy-TTL parity)."""
+    from datetime import datetime, timedelta, UTC
+    from app.db.models import ElectionCreditSpend, ElectionRequest, HoraryCredit
+    from app.services.election_service import ElectionService
+    from app.services.profile_service import get_or_create_user
+    from app.services.telegram_auth import TelegramUser
+    from sqlalchemy import select
+    import uuid
+
+    tg_user = TelegramUser(id=880010, username="el_ttl", first_name="ElTtl")
+    user, _ = await get_or_create_user(db_session, tg_user)
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=1, used_amount=1)
+    db_session.add(credit)
+    await db_session.flush()
+    req = ElectionRequest(
+        user_id=user.id, event_type="relations:date",
+        window_from=datetime.now(UTC).date(), window_to=datetime.now(UTC).date(),
+        status="processing", spent_credit_id=credit.id,
+        idempotency_key="ttl-1", request_hash="h1",
+        created_at=datetime.now(UTC) - timedelta(minutes=6),
+    )
+    db_session.add(req)
+    await db_session.flush()
+    db_session.add(ElectionCreditSpend(
+        credit_id=credit.id, election_request_id=req.id, amount=1, idempotency_key="ttl-1"
+    ))
+    await db_session.commit()
+
+    service = ElectionService(db_session)
+    result = await service.get_search(user.id, req.id)
+    assert result is not None
+    assert result.status == "refunded"
+    refreshed = (await db_session.execute(select(HoraryCredit).where(HoraryCredit.id == credit.id))).scalar_one()
+    assert refreshed.used_amount == 0

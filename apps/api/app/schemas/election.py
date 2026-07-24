@@ -41,31 +41,44 @@ def validate_election_narrative(
     narrative_data: dict[str, Any],
     expected_best_dates: list[str],
     expected_avoid_dates: list[str],
+    fallback_notes: dict[str, str] | None = None,
 ) -> ElectionNarrative:
     # START_FUNCTION_CONTRACT: F-M-SCHEMAS-ELECTION.validate_election_narrative
     # purpose: Validate LLM output against ElectionNarrative schema and dates alignment.
-    # inputs: narrative_data (dict), expected_best_dates (list[str]), expected_avoid_dates (list[str])
-    # returns: ElectionNarrative
-    # error_behavior: raises ValueError on validation error or date mismatch
+    # inputs: narrative_data (dict), expected_best_dates (list[str]),
+    #   expected_avoid_dates (list[str]), fallback_notes (dict date->note from
+    #   engine facts, used to fill dates a weak model omitted — never fabricated).
+    # returns: ElectionNarrative with notes aligned to expected dates in expected order.
+    # error_behavior: raises ValueError on schema error or unknown dates in notes.
     # END_FUNCTION_CONTRACT: F-M-SCHEMAS-ELECTION.validate_election_narrative
     try:
         parsed = ElectionNarrative.model_validate(narrative_data)
     except Exception as exc:
         raise ValueError(f"Election narrative schema validation failed: {exc}") from exc
 
-    best_dates_in_narrative = [item.date for item in parsed.day_notes]
-    if best_dates_in_narrative != expected_best_dates:
-        raise ValueError(
-            f"Election day_notes dates {best_dates_in_narrative} do not match expected best_days {expected_best_dates}"
-        )
+    def _align(notes: list[ElectionDayNote], expected: list[str], kind: str) -> list[ElectionDayNote]:
+        unknown = [n.date for n in notes if n.date not in expected]
+        if unknown:
+            raise ValueError(f"Election {kind} contain unknown dates {unknown}, expected {expected}")
+        by_date = {n.date: n for n in notes}
+        aligned: list[ElectionDayNote] = []
+        for d in expected:
+            if d in by_date:
+                aligned.append(by_date[d])
+            elif fallback_notes and d in fallback_notes:
+                aligned.append(ElectionDayNote(date=d, note=fallback_notes[d]))
+            else:
+                raise ValueError(f"Election {kind} missing required date {d}")
+        return aligned
 
-    avoid_dates_in_narrative = [item.date for item in parsed.avoid_notes]
-    if avoid_dates_in_narrative != expected_avoid_dates:
-        raise ValueError(
-            f"Election avoid_notes dates {avoid_dates_in_narrative} do not match expected avoid_days {expected_avoid_dates}"
-        )
-
-    return parsed
+    return ElectionNarrative(
+        hero_reason=parsed.hero_reason,
+        hero_personal=parsed.hero_personal,
+        hero_plain=parsed.hero_plain,
+        hero_hours=parsed.hero_hours,
+        day_notes=_align(parsed.day_notes, expected_best_dates, "day_notes"),
+        avoid_notes=_align(parsed.avoid_notes, expected_avoid_dates, "avoid_notes"),
+    )
 
 
 class ElectionSearchCreateRequest(CamelModel):

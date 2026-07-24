@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState, use } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ChevronLeft, AlertOctagon, RotateCcw } from "lucide-react"
 
 import type { ElectionSearch } from "@/lib/contracts/election"
@@ -19,6 +20,7 @@ type Props = {
 }
 
 export default function ElectionDetailPage({ params }: Props) {
+  const router = useRouter()
   const { id } = use(params)
   const [search, setSearch] = useState<ElectionSearch | null>(null)
   const [loading, setLoading] = useState(true)
@@ -140,7 +142,10 @@ export default function ElectionDetailPage({ params }: Props) {
           )}
 
           {search.status === "done" && search.result && (
-            <ElectionResultView result={search.result} />
+            <ElectionResultView
+              result={search.result}
+              onReset={() => router.push("/readings/election")}
+            />
           )}
 
           {(search.status === "failed" || search.status === "refunded") && (
