@@ -1,21 +1,20 @@
 // ############################################################################
 // AI_HEADER: MODULE_ELECTION_PROCESSING_CARD
-// ROLE: Processing card for election search
+// ROLE: Processing card for election search with animated Moon SVG & 3 steps
 // ############################################################################
 
 "use client"
 
 import { useEffect, useState } from "react"
-import { Sparkles } from "lucide-react"
 
 export function ElectionProcessingCard() {
   const [stepIndex, setStepIndex] = useState(0)
   const [isDelayed, setIsDelayed] = useState(false)
 
   const steps = [
-    "Смотрим Луну и планеты...",
-    "Считаем фазы и период без курса...",
-    "Выбираем лучшие даты для твоего события...",
+    "Смотрим Луну на твоё окно…",
+    "Считаем фазы, знаки и холостой курс…",
+    "Выбираем лучшие дни лично для тебя…",
   ]
 
   useEffect(() => {
@@ -31,22 +30,38 @@ export function ElectionProcessingCard() {
       clearInterval(stepTimer)
       clearTimeout(delayTimer)
     }
-  }, [])
+  }, [steps.length])
 
   return (
     <div
-      className="rounded-2xl border border-border/70 bg-card p-6 flex flex-col items-center text-center gap-4 animate-pulse"
+      className="rounded-2xl border border-border/70 bg-card p-8 flex flex-col items-center text-center gap-5 shadow-sm"
       data-testid="election-processing-card"
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <Sparkles className="h-6 w-6 animate-spin" />
+      {/* Animated Moon SVG */}
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary animate-pulse">
+        <svg
+          className="h-10 w-10 text-primary animate-spin"
+          style={{ animationDuration: "12s" }}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+        </svg>
       </div>
-      <div>
-        <h3 className="font-serif text-[18px] font-semibold text-foreground">
+
+      <div className="flex flex-col gap-2">
+        <h3 className="font-serif text-[20px] font-semibold text-foreground">
           {steps[stepIndex]}
         </h3>
+        <p className="text-[13px] text-muted-foreground">
+          Расчёт точного астрологического окна
+        </p>
         {isDelayed && (
-          <p className="text-[13px] text-muted-foreground mt-2">
+          <p className="text-[13px] text-amber-500 font-medium mt-2" role="status">
             Готовится дольше обычного, пожалуйста подождите...
           </p>
         )}

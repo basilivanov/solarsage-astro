@@ -1,17 +1,17 @@
 // ############################################################################
 // AI_HEADER: MODULE_ELECTION_FORM
-// ROLE: Form component for creating an election date search
+// ROLE: Form component for selecting elective categories, subcategories, and date windows
 // ############################################################################
 
 "use client"
 
 import { useState } from "react"
 import { Sparkles } from "lucide-react"
-import { ELECTION_EVENTS, type ElectionEventKey } from "@/lib/contracts/election"
+import { ELECTION_CATEGORIES } from "@/lib/contracts/election"
 
 type Props = {
   onSubmit: (params: {
-    eventType: ElectionEventKey
+    eventType: string
     windowFrom: string
     windowTo: string
   }) => void
@@ -24,7 +24,10 @@ function formatDateISO(d: Date): string {
 }
 
 export function ElectionForm({ onSubmit, disabled = false, disabledReason }: Props) {
-  const [selectedEvent, setSelectedEvent] = useState<ElectionEventKey | null>(null)
+  const [selectedCatKey, setSelectedCatKey] = useState<string | null>(null)
+  const [selectedSubKey, setSelectedSubKey] = useState<string | null>(null)
+  const [customText, setCustomText] = useState("")
+
   const [preset, setPreset] = useState<"7d" | "14d" | "30d" | "custom">("14d")
 
   const today = new Date()
@@ -34,6 +37,19 @@ export function ElectionForm({ onSubmit, disabled = false, disabledReason }: Pro
   const [windowFrom, setWindowFrom] = useState(todayStr)
   const [windowTo, setWindowTo] = useState(defaultTo14)
   const [dateError, setDateError] = useState<string | null>(null)
+
+  const activeCategory = ELECTION_CATEGORIES.find((c) => c.key === selectedCatKey)
+
+  const handleCategorySelect = (catKey: string) => {
+    setSelectedCatKey(catKey)
+    setSelectedSubKey(null)
+    setCustomText("")
+  }
+
+  const handleSubSelect = (subKey: string, subLabel: string) => {
+    setSelectedSubKey(subKey)
+    setCustomText(subLabel)
+  }
 
   const handlePresetChange = (p: "7d" | "14d" | "30d" | "custom") => {
     setPreset(p)
@@ -73,16 +89,22 @@ export function ElectionForm({ onSubmit, disabled = false, disabledReason }: Pro
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedEvent) return
+    if (!selectedSubKey && !customText.trim()) return
     if (!validateDates(windowFrom, windowTo)) return
+
+    const eventType = selectedCatKey && selectedSubKey
+      ? `${selectedCatKey}:${selectedSubKey}`
+      : selectedSubKey || "relations:date"
+
     onSubmit({
-      eventType: selectedEvent,
+      eventType,
       windowFrom,
       windowTo,
     })
   }
 
-  const canSubmit = selectedEvent && !disabled && !dateError
+  const hasSelection = Boolean(selectedSubKey || customText.trim())
+  const canSubmit = hasSelection && !disabled && !dateError
 
   return (
     <form
@@ -90,38 +112,95 @@ export function ElectionForm({ onSubmit, disabled = false, disabledReason }: Pro
       className="flex flex-col gap-6 rounded-2xl border border-border/70 bg-card p-6 shadow-sm"
       data-testid="election-form"
     >
-      {/* Event type selection chips */}
+      <div>
+        <h2 className="font-serif text-[22px] font-bold text-foreground">
+          Лучшие дни по звёздам
+        </h2>
+        <p className="text-[13px] text-muted-foreground mt-1">
+          Выбери событие и интервал — рассчитем подлинное астрологическое окно
+        </p>
+      </div>
+
+      {/* 6 Base Categories 2x3 grid */}
       <div className="flex flex-col gap-3">
-        <label className="text-[13px] font-medium uppercase tracking-wider text-muted-foreground">
-          1. Выбери событие
+        <label className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+          1. Категория события
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" data-testid="election-events-grid">
-          {ELECTION_EVENTS.map((event) => {
-            const isSelected = selectedEvent === event.key
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" data-testid="election-categories-grid">
+          {ELECTION_CATEGORIES.map((cat) => {
+            const isSelected = selectedCatKey === cat.key
             return (
               <button
-                key={event.key}
+                key={cat.key}
                 type="button"
-                onClick={() => setSelectedEvent(event.key)}
-                data-testid={`election-event-chip-${event.key}`}
+                onClick={() => handleCategorySelect(cat.key)}
+                data-testid={`election-category-card-${cat.key}`}
                 data-state={isSelected ? "selected" : "unselected"}
-                className={`flex items-center gap-2 rounded-xl border p-3 text-left transition text-[13px] font-medium active:scale-[0.98] ${
+                className={`flex flex-col items-start gap-1 rounded-2xl border p-4 text-left transition active:scale-[0.98] ${
                   isSelected
-                    ? "border-primary bg-primary/10 text-primary shadow-sm"
+                    ? "border-primary bg-primary/10 text-foreground shadow-sm"
                     : "border-border/70 bg-card text-foreground hover:border-border"
                 }`}
               >
-                <span className="text-[16px]">{event.emoji}</span>
-                <span className="truncate">{event.label}</span>
+                <span className="text-[22px]">{cat.emoji}</span>
+                <span className="text-[14px] font-medium mt-1">{cat.label}</span>
               </button>
             )
           })}
         </div>
       </div>
 
-      {/* Date window presets & custom inputs */}
+      {/* Subcategories Chips (if category selected) */}
+      {activeCategory && (
+        <div className="flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-2" data-testid="election-subcategories">
+          <label className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+            Уточните цель
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {activeCategory.subs.map((sub) => {
+              const isSubSelected = selectedSubKey === sub.key
+              return (
+                <button
+                  key={sub.key}
+                  type="button"
+                  onClick={() => handleSubSelect(sub.key, sub.label)}
+                  data-testid={`election-sub-chip-${sub.key}`}
+                  data-state={isSubSelected ? "selected" : "unselected"}
+                  className={`rounded-full border px-4 py-2 text-[13px] font-medium transition active:scale-[0.98] ${
+                    isSubSelected
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border/70 bg-card text-foreground hover:border-border"
+                  }`}
+                >
+                  {sub.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Editable Request Field */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[12px] font-medium text-muted-foreground">
+          Свой запрос (можно править)
+        </label>
+        <input
+          type="text"
+          value={customText}
+          onChange={(e) => {
+            setCustomText(e.target.value)
+            if (selectedSubKey) setSelectedSubKey(null)
+          }}
+          placeholder="Например, Свидание или Свадьба"
+          data-testid="election-custom-input"
+          className="w-full rounded-xl border border-border/70 bg-background px-4 py-2.5 text-[14px] text-foreground focus:border-primary focus:outline-none"
+        />
+      </div>
+
+      {/* Date Window Segmented Control */}
       <div className="flex flex-col gap-3">
-        <label className="text-[13px] font-medium uppercase tracking-wider text-muted-foreground">
+        <label className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
           2. Интервал подбора
         </label>
 
@@ -130,14 +209,14 @@ export function ElectionForm({ onSubmit, disabled = false, disabledReason }: Pro
             { id: "7d", label: "Неделя" },
             { id: "14d", label: "2 недели" },
             { id: "30d", label: "Месяц" },
-            { id: "custom", label: "Свои даты" },
+            { id: "custom", label: "Свои" },
           ].map((p) => (
             <button
               key={p.id}
               type="button"
               onClick={() => handlePresetChange(p.id as any)}
               data-testid={`election-preset-${p.id}`}
-              className={`flex-1 rounded-lg border py-2 text-[12.5px] font-medium transition active:scale-[0.98] ${
+              className={`flex-1 rounded-xl border py-2.5 text-[13px] font-medium transition active:scale-[0.98] ${
                 preset === p.id
                   ? "border-primary bg-primary/10 text-primary font-semibold"
                   : "border-border/70 bg-card text-muted-foreground hover:text-foreground"
@@ -201,7 +280,7 @@ export function ElectionForm({ onSubmit, disabled = false, disabledReason }: Pro
         className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-[14px] font-semibold text-primary-foreground transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Sparkles className="h-4 w-4" />
-         Подобрать лучшие даты
+        Подобрать даты ✨
       </button>
     </form>
   )
