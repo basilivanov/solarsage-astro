@@ -44,6 +44,7 @@ type Props = {
   onChangeTime: (_v: BirthTime) => void
   onBack: () => void
   onNext: () => void
+  requireExactBirthTime?: boolean
 }
 
 export function StepBirth({
@@ -53,13 +54,22 @@ export function StepBirth({
   onChangeTime,
   onBack,
   onNext,
+  requireExactBirthTime = false,
 }: Props) {
   const monthRef = useRef<HTMLInputElement>(null)
   const yearRef = useRef<HTMLInputElement>(null)
   const hoursRef = useRef<HTMLInputElement>(null)
   const minutesRef = useRef<HTMLInputElement>(null)
 
-  const isValid = isValidBirthDate(date) && isValidBirthTime(time)
+  const isTimeValid = requireExactBirthTime
+    ? !time.unknown && Boolean(time.hours) && Boolean(time.minutes) && isValidBirthTime(time)
+    : isValidBirthTime(time)
+
+  const isValid = isValidBirthDate(date) && isTimeValid
+
+  const subtitle = requireExactBirthTime
+    ? "Для полного натального разбора по промокоду необходимо указать точное время рождения."
+    : "Основа персонального расчёта. Время можно пропустить — часть разборов всё равно останется точной."
 
   return (
     <OnboardingShell
@@ -68,7 +78,7 @@ export function StepBirth({
       onBack={onBack}
       eyebrow="Когда ты родился"
       title="Дата и время рождения"
-      subtitle="Основа персонального расчёта. Время можно пропустить — часть разборов всё равно останется точной."
+      subtitle={subtitle}
       footer={<PrimaryCta label="Далее" onClick={onNext} disabled={!isValid} />}
     >
       <div className="space-y-8">
@@ -120,7 +130,7 @@ export function StepBirth({
             Время
           </p>
           <div
-            className={`flex items-end gap-4 transition ${time.unknown ? "opacity-35" : ""}`}
+            className={`flex items-end gap-4 transition ${time.unknown && !requireExactBirthTime ? "opacity-35" : ""}`}
           >
             <NumField
               inputRef={hoursRef}
@@ -128,9 +138,9 @@ export function StepBirth({
               placeholder="ЧЧ"
               maxLength={2}
               value={time.hours}
-              disabled={time.unknown}
+              disabled={time.unknown && !requireExactBirthTime}
               onChange={(hours) => {
-                onChangeTime({ ...time, hours })
+                onChangeTime({ ...time, hours, unknown: false })
                 if (hours.length === 2) minutesRef.current?.focus()
               }}
             />
@@ -143,53 +153,56 @@ export function StepBirth({
               placeholder="ММ"
               maxLength={2}
               value={time.minutes}
-              disabled={time.unknown}
-              onChange={(minutes) => onChangeTime({ ...time, minutes })}
+              disabled={time.unknown && !requireExactBirthTime}
+              onChange={(minutes) => onChangeTime({ ...time, minutes, unknown: false })}
             />
           </div>
 
-          <label className="mt-4 flex cursor-pointer items-center gap-3">
-            <span
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
-                time.unknown
-                  ? "border-accent bg-accent"
-                  : "border-border bg-background"
-              }`}
-              aria-hidden="true"
-            >
-              {time.unknown ? (
-                <svg
-                  className="h-3 w-3 text-accent-foreground"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                >
-                  <path
-                    d="M2.5 6.5L5 9L10 3.5"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              ) : null}
-            </span>
-            <span className="font-sans text-[14px] text-foreground/75">
-              Не знаю точное время
-            </span>
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={time.unknown}
-              onChange={(e) =>
-                onChangeTime({
-                  ...time,
-                  unknown: e.target.checked,
-                  hours: e.target.checked ? "" : time.hours,
-                  minutes: e.target.checked ? "" : time.minutes,
-                })
-              }
-            />
-          </label>
+          {!requireExactBirthTime && (
+            <label className="mt-4 flex cursor-pointer items-center gap-3">
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+                  time.unknown
+                    ? "border-accent bg-accent"
+                    : "border-border bg-background"
+                }`}
+                aria-hidden="true"
+              >
+                {time.unknown ? (
+                  <svg
+                    className="h-3 w-3 text-accent-foreground"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                  >
+                    <path
+                      d="M2.5 6.5L5 9L10 3.5"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : null}
+              </span>
+              <span className="font-sans text-[14px] text-foreground/75">
+                Не знаю точное время
+              </span>
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={time.unknown}
+                disabled={requireExactBirthTime}
+                onChange={(e) =>
+                  onChangeTime({
+                    ...time,
+                    unknown: e.target.checked,
+                    hours: e.target.checked ? "" : time.hours,
+                    minutes: e.target.checked ? "" : time.minutes,
+                  })
+                }
+              />
+            </label>
+          )}
         </div>
       </div>
     </OnboardingShell>

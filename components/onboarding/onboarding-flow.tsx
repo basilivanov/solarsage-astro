@@ -39,8 +39,12 @@ import {
 } from "@/lib/reducers/onboarding-reducer"
 import { logEvent } from "@/lib/log"
 
+import type { OnboardingState } from "@/lib/reducers/onboarding-reducer"
+
 type Props = {
   onComplete: () => void
+  initialState?: OnboardingState
+  requireExactBirthTime?: boolean
 }
 
 /**
@@ -50,8 +54,15 @@ type Props = {
  *  - reducer содержит всю бизнес-логику шагов (тестируется без jsdom);
  *  - компонент отвечает только за рендер и прокидывание событий.
  */
-export function OnboardingFlow({ onComplete }: Props) {
-  const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState)
+export function OnboardingFlow({
+  onComplete,
+  initialState,
+  requireExactBirthTime = false,
+}: Props) {
+  const [state, dispatch] = useReducer(
+    onboardingReducer,
+    initialState || initialOnboardingState
+  )
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -68,6 +79,17 @@ export function OnboardingFlow({ onComplete }: Props) {
    */
   const finish = async () => {
     if (isSaving) return
+
+    if (requireExactBirthTime) {
+      if (
+        state.birthTime.unknown ||
+        !state.birthTime.hours ||
+        !state.birthTime.minutes
+      ) {
+        dispatch({ type: "go_to_step", value: "birth" })
+        return
+      }
+    }
 
     if (!state.gender) {
       dispatch({ type: "go_to_step", value: "gender" })
@@ -151,6 +173,7 @@ export function OnboardingFlow({ onComplete }: Props) {
             onChangeTime={(value) => dispatch({ type: "set_birth_time", value })}
             onBack={back}
             onNext={next}
+            requireExactBirthTime={requireExactBirthTime}
           />
         ) : state.step === "place" ? (
           <StepPlace
