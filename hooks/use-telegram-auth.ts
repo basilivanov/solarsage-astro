@@ -1,34 +1,53 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_HOOKS_USE_TELEGRAM_AUTH
-// ROLE: React hook
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-UNMAPPED
+// ROLE: React hook for Telegram WebApp authentication and intent-based start_param routing.
+// DEPENDENCIES: lib/log, components/telegram-provider, lib/telegram/start-param
+// GRACE_ANCHORS: [HOOK_TELEGRAM_AUTH]
+// WAVE: W-NAMED-PROMO-CAMPAIGN
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: API client for use-telegram-auth
+
+// START_MODULE_CONTRACT: M-HOOK-TELEGRAM-AUTH
+// purpose: Authenticate Telegram WebApp session via /api/auth/telegram, route start_param into referral vs promo intents safely, and manage pending promo token in sessionStorage.
 // owns:
 //   - hooks/use-telegram-auth.ts
 // inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Network calls to API; Logging via v2 logging spine; React state management
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
+// outputs: TelegramAuthState ({ isLoading, isAuthenticated, error })
+// dependencies: lib/log, components/telegram-provider, lib/telegram/start-param
+// side_effects:
+//   - POST /api/auth/telegram or /api/auth/dev
+//   - POST /api/referral/claim (only for numeric referral codes)
+//   - writes promo intent to sessionStorage
+//   - cleans tgWebAppStartParam from browser location URL
+// emitted_logs: frontend.flow_failed
 // invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
-// AI_HEADER
-// module: M-HOOK-TELEGRAM-AUTH
-// wave: W-2.2
-// purpose: Telegram Web App authentication hook
+//   - promo tokens never hit referral claim endpoint or localStorage
+//   - only numeric referral codes are persisted to localStorage or claimed
+//   - no raw initData, start_param, promo tokens or referral codes in log events
+//   - promo intent stored before setting isAuthenticated=true
+// failure_policy: Storage or referral errors fail closed without breaking authentication
+// END_MODULE_CONTRACT: M-HOOK-TELEGRAM-AUTH
+
+// START_MODULE_MAP: M-HOOK-TELEGRAM-AUTH
+// public_entrypoints:
+//   - useTelegramAuth
+// semantic_blocks:
+//   - AUTH_STATE: state and refs management
+//   - START_PARAM_ROUTING: classify start_param and route to promo vs referral
+//   - AUTHENTICATE_FLOW: backend auth fetch and state updates
+// owned_tests:
+//   - __tests__/hooks/useTelegramAuth.test.ts
+// END_MODULE_MAP: M-HOOK-TELEGRAM-AUTH
 
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { logger } from '@/lib/log';
+import { logger, logEvent } from '@/lib/log';
 import { useTelegram } from '@/components/telegram-provider';
+import {
+  classifyStartParam,
+  savePendingPromoToken,
+  cleanStartParamFromUrl,
+} from '@/lib/telegram/start-param';
 
 interface TelegramAuthState {
   isLoading: boolean;
@@ -36,18 +55,11 @@ interface TelegramAuthState {
   error: string | null;
 }
 
+// START_BLOCK: AUTH_STATE
 export function useTelegramAuth() {
   const { webApp, loaded } = useTelegram();
   logger.debug('[TGAuth] Hook called');
 
-  // Auth-key guard: prevents duplicate auth runs while still allowing a
-  // legitimate transition (e.g. timeout decides "no Telegram", then the
-  // SDK loads with real initData later).
-  //
-  // The key is the initData string itself:
-  //   - E2E injection + provider catch-up with the same initData → skip
-  //   - Non-Telegram path uses sentinel 'none' → stays 'none'
-  //   - Late SDK load with real initData → key changes → allowed
   const authKeyRef = useRef<string | null>(null);
 
   const [state, setState] = useState<TelegramAuthState>({
@@ -59,12 +71,6 @@ export function useTelegramAuth() {
   logger.debug('[TGAuth] Initial state', { extra: state });
 
   useEffect(() => {
-    // Wait for Telegram SDK to load (or fail) before making auth decisions.
-    // Without this guard the hook would decide "not in Telegram" before the
-    // SDK has a chance to load, breaking the real auth flow.
-    //
-    // Fallback: when no <TelegramProvider> wraps the tree (unit tests, E2E
-    // fixtures with addInitScript), we accept window.Telegram directly.
     const fallbackTg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
 
     if (!loaded && !fallbackTg) {
@@ -72,19 +78,11 @@ export function useTelegramAuth() {
       return;
     }
 
-    // Compute the effective Telegram source and derive the auth key.
     const tg = webApp ?? fallbackTg;
     const authKey = tg?.initData || 'none';
 
-    // Skip if we already attempted auth for exactly this initData key.
-    // This prevents a duplicate /api/auth/telegram POST when both the
-    // fallback path and the immediate context-update path fire the effect
-    // (E2E fixtures), while still allowing a late transition from
-    // no-Telegram to real-Telegram (the key changes).
     if (authKeyRef.current === authKey) {
-      logger.debug('[TGAuth] Auth already attempted for this key — skipping duplicate', {
-        extra: { key: authKey.slice(0, 24) },
-      });
+      logger.debug('[TGAuth] Auth already attempted for this key — skipping duplicate');
       return;
     }
     authKeyRef.current = authKey;
@@ -111,11 +109,23 @@ export function useTelegramAuth() {
           return;
         }
 
-        // Use context webApp, falling back to window.Telegram for tests/E2E
-        const tg = webApp ?? fallbackTg;
-        logger.debug('[TGAuth] WebApp', { extra: { exists: !!tg, hasInitData: !!tg?.initData } });
+        // Read raw start_param BEFORE cleaning the URL
+        const rawStartParam = (tg?.initDataUnsafe as any)?.start_param || (() => {
+          if (typeof window !== 'undefined' && window.location) {
+            return new URLSearchParams(window.location.search).get('tgWebAppStartParam') || undefined;
+          }
+        })();
 
-        if (!tg || !tg.initData) {
+        // Clean query parameter from location bar immediately
+        cleanStartParamFromUrl();
+
+        const intent = classifyStartParam(rawStartParam);
+        logger.debug('[TGAuth] Classified start_param intent', { extra: { intentKind: intent.kind } });
+
+        const tgSource = webApp ?? fallbackTg;
+        logger.debug('[TGAuth] WebApp', { extra: { exists: !!tgSource, hasInitData: !!tgSource?.initData } });
+
+        if (!tgSource || !tgSource.initData) {
           logger.info('[TGAuth] Not in Telegram WebApp');
 
           const isDevMode = process.env.NODE_ENV === 'development';
@@ -144,7 +154,7 @@ export function useTelegramAuth() {
               logger.warn('[TGAuth] Dev auth failed', { extra: { status: devResponse.status } });
               throw new Error('Dev auth failed');
             } catch (error) {
-              logger.error('[TGAuth] Dev auth exception', { extra: { error: String(error) } });
+              logger.error('[TGAuth] Dev auth exception');
               clearTimeout(timeoutId);
               setState({
                 isLoading: false,
@@ -161,8 +171,8 @@ export function useTelegramAuth() {
           return;
         }
 
-        const initData = tg.initData;
-        logger.info('[TGAuth] Sending to /api/auth/telegram', { extra: { len: initData.length } });
+        const initData = tgSource.initData;
+        logger.info('[TGAuth] Sending to /api/auth/telegram');
 
         const response = await fetch('/api/auth/telegram', {
           method: 'POST',
@@ -174,89 +184,114 @@ export function useTelegramAuth() {
         logger.debug('[TGAuth] Auth response', { extra: { status: response.status } });
 
         if (!response.ok) {
-          const errBody = await response.json();
-          logger.error('[TGAuth] Auth failed', { extra: { status: response.status, body: errBody } });
+          const errBody = await response.json().catch(() => ({}));
+          logger.error('[TGAuth] Auth failed');
           throw new Error(errBody.detail || 'Authentication failed');
         }
 
         logger.info('[TGAuth] Auth SUCCESS');
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Auto-claim referral if opened via startapp link (once per session)
-        const claimKey = '__astro_referral_claimed';
+        // Promo/referral storage and routing executed ONLY AFTER successful Telegram auth
         const persistKey = '__astro_referral_code';
-        try {
-          const startParam = (tg.initDataUnsafe as any)?.start_param
-            || (() => {
-              const sp = new URLSearchParams(window.location.search);
-              return sp.get('tgWebAppStartParam') || undefined;
-            })()
-          const ownId = tg.initDataUnsafe?.user?.id
-          const alreadyClaimed = (window as any)[claimKey]
 
-          // Persist referral code to localStorage so it survives
-          // the user closing and reopening the Mini App without the deep link.
-          if (startParam) {
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            const storedCode = localStorage.getItem(persistKey);
+            if (storedCode && !/^\d+$/.test(storedCode)) {
+              localStorage.removeItem(persistKey);
+            }
+          }
+        } catch {
+          // best-effort
+        }
+
+        if (intent.kind === 'promo') {
+          const saved = savePendingPromoToken(intent.token);
+          if (!saved) {
+            logEvent('frontend.flow_failed', { operation: 'promo.intent_store', reason_code: 'session_storage_failed' }, {
+              level: 'error',
+              slice: 'W-FRONTEND',
+              module: 'M-HOOK-TELEGRAM-AUTH',
+              block: 'START_PARAM_ROUTING',
+            });
+          }
+        } else if (intent.kind === 'referral') {
+          try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              localStorage.setItem(persistKey, intent.code);
+            }
+          } catch {
+            // best-effort
+          }
+        }
+
+        // Auto-claim referral (only numeric referral code, and NEVER if promo or invalid raw start_param present)
+        const claimKey = '__astro_referral_claimed';
+        try {
+          const ownId = tgSource.initDataUnsafe?.user?.id;
+          const alreadyClaimed = (window as any)[claimKey];
+
+          let effectiveCode: string | null = null;
+          if (intent.kind === 'referral') {
+            effectiveCode = intent.code;
+          } else if (!rawStartParam && !alreadyClaimed) {
+            // Persisted fallback is ONLY allowed when raw start_param is absent
             try {
-              localStorage.setItem(persistKey, startParam)
+              const storedCode = localStorage.getItem(persistKey);
+              if (storedCode && /^\d+$/.test(storedCode)) {
+                effectiveCode = storedCode;
+              }
             } catch {
-              // Referral persistence is best-effort; authentication must continue.
+              // ignore
             }
           }
 
-          // Fallback: use persisted code from a previous visit
-          const effectiveCode = startParam || (
-            !alreadyClaimed ? (() => { try { return localStorage.getItem(persistKey); } catch (_) { return null; } })() : null
-          )
-
           if (effectiveCode && String(effectiveCode) !== String(ownId) && !alreadyClaimed) {
-            logger.info('[TGAuth] Auto-claiming referral', { extra: { code: effectiveCode } })
+            logger.info('[TGAuth] Auto-claiming referral');
             const claimRes = await fetch('/api/referral/claim', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
               body: JSON.stringify({ referrer_code: effectiveCode }),
-            })
-            ;(window as any)[claimKey] = true
+            });
+            ;(window as any)[claimKey] = true;
             try {
-              localStorage.removeItem(persistKey)
+              localStorage.removeItem(persistKey);
             } catch {
-              // Referral cleanup is best-effort after a completed claim attempt.
+              // best-effort
             }
             if (!claimRes.ok) {
-              const err = await claimRes.json().catch(() => ({}))
-              logger.warn(`[TGAuth] Referral claim failed: HTTP ${claimRes.status} code=${err.detail?.code || '?'}`)
+              logger.warn('[TGAuth] Referral claim failed');
             } else {
-              logger.info('[TGAuth] Referral claimed! +14 days')
+              logger.info('[TGAuth] Referral claimed successfully');
             }
           } else if (effectiveCode && String(effectiveCode) === String(ownId)) {
-            logger.info('[TGAuth] Skipping self-referral')
-          } else if (!startParam) {
-            logger.info('[TGAuth] No start_param — not a referral link')
+            logger.info('[TGAuth] Skipping self-referral');
           }
-        } catch (e) {
-          logger.error('[TGAuth] Referral claim error', { extra: { error: String(e) } })
+        } catch {
+          logger.error('[TGAuth] Referral claim error');
         }
 
         clearTimeout(timeoutId);
         setState({ isLoading: false, isAuthenticated: true, error: null });
       } catch (error) {
-        logger.error('[TGAuth] Exception', { extra: { error: String(error) } });
+        logger.error('[TGAuth] Exception');
         clearTimeout(timeoutId);
         setState({
           isLoading: false,
           isAuthenticated: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     };
 
     authenticate().catch(err => {
-      logger.error('[TGAuth] authenticate() threw', { extra: { error: String(err) } });
+      logger.error('[TGAuth] authenticate() threw');
       setState({
         isLoading: false,
         isAuthenticated: false,
-        error: err.message || 'Authentication failed'
+        error: err.message || 'Authentication failed',
       });
     });
   }, [loaded, webApp]);
@@ -264,3 +299,4 @@ export function useTelegramAuth() {
   logger.debug('[TGAuth] Returning state', { extra: state });
   return state;
 }
+// END_BLOCK: AUTH_STATE
