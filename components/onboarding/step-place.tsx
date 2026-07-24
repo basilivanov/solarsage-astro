@@ -80,6 +80,7 @@ export function StepPlace({
               if (sameAsBirth) onChangeCurrentCity(city)
             }}
             placeholder="Например, Санкт-Петербург"
+            autoFocus
           />
         </div>
 
@@ -137,7 +138,6 @@ export function StepPlace({
                 value={currentCity}
                 onChange={onChangeCurrentCity}
                 placeholder="Например, Лиссабон"
-                autoFocus
               />
             </div>
           ) : null}
