@@ -3147,6 +3147,190 @@
         "title": "ProfileWrite",
         "type": "object"
       },
+      "PromoCodeRequest": {
+        "additionalProperties": false,
+        "description": "Request payload containing opaque promo code token.",
+        "properties": {
+          "token": {
+            "description": "Opaque promo token",
+            "format": "password",
+            "title": "Token",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "PromoCodeRequest",
+        "type": "object"
+      },
+      "PromoErrorDetail": {
+        "additionalProperties": false,
+        "description": "Structured promo error detail with safe error code.",
+        "properties": {
+          "code": {
+            "enum": [
+              "INVALID_CODE",
+              "CAMPAIGN_EXPIRED",
+              "CAMPAIGN_FULL",
+              "ALREADY_REDEEMED",
+              "PROFILE_INCOMPLETE",
+              "RATE_LIMITED"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "PromoErrorDetail",
+        "type": "object"
+      },
+      "PromoGrantSummary": {
+        "additionalProperties": false,
+        "description": "Summary of access, credit and natal grants issued by redemption.",
+        "properties": {
+          "accessStartsAt": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessstartsat"
+          },
+          "accessUntil": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessuntil"
+          },
+          "bonusCredits": {
+            "minimum": 0.0,
+            "title": "Bonuscredits",
+            "type": "integer"
+          },
+          "bonusCreditsExpiresAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bonuscreditsexpiresat"
+          },
+          "natalAlreadyOwned": {
+            "title": "Natalalreadyowned",
+            "type": "boolean"
+          },
+          "natalUnlocked": {
+            "title": "Natalunlocked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "bonusCredits",
+          "natalUnlocked",
+          "natalAlreadyOwned"
+        ],
+        "title": "PromoGrantSummary",
+        "type": "object"
+      },
+      "PromoOffer": {
+        "additionalProperties": false,
+        "description": "Promo offer details and benefit configuration.",
+        "properties": {
+          "accessDays": {
+            "minimum": 0.0,
+            "title": "Accessdays",
+            "type": "integer"
+          },
+          "bonusCredits": {
+            "minimum": 0.0,
+            "title": "Bonuscredits",
+            "type": "integer"
+          },
+          "displayName": {
+            "maxLength": 120,
+            "title": "Displayname",
+            "type": "string"
+          },
+          "unlockNatal": {
+            "title": "Unlocknatal",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "displayName",
+          "accessDays",
+          "bonusCredits",
+          "unlockNatal"
+        ],
+        "title": "PromoOffer",
+        "type": "object"
+      },
+      "PromoPreviewResponse": {
+        "additionalProperties": false,
+        "description": "Promo offer preview response with profile completeness status.",
+        "properties": {
+          "offer": {
+            "$ref": "#/components/schemas/PromoOffer"
+          },
+          "profileComplete": {
+            "title": "Profilecomplete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "offer",
+          "profileComplete"
+        ],
+        "title": "PromoPreviewResponse",
+        "type": "object"
+      },
+      "PromoRedeemResponse": {
+        "additionalProperties": false,
+        "description": "Promo redemption response containing offer and grant summary.",
+        "properties": {
+          "grants": {
+            "$ref": "#/components/schemas/PromoGrantSummary"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/PromoOffer"
+          },
+          "status": {
+            "const": "redeemed",
+            "default": "redeemed",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "offer",
+          "grants"
+        ],
+        "title": "PromoRedeemResponse",
+        "type": "object"
+      },
       "ProsConsItem": {
         "additionalProperties": false,
         "properties": {
@@ -6585,6 +6769,132 @@
           }
         },
         "summary": "Contracts  Profilewrite",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/promocoderequest": {
+      "get": {
+        "operationId": "contracts__promocoderequest___contracts___promocoderequest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoCodeRequest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Promocoderequest",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/promoerrordetail": {
+      "get": {
+        "operationId": "contracts__promoerrordetail___contracts___promoerrordetail_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoErrorDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Promoerrordetail",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/promograntsummary": {
+      "get": {
+        "operationId": "contracts__promograntsummary___contracts___promograntsummary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoGrantSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Promograntsummary",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/promooffer": {
+      "get": {
+        "operationId": "contracts__promooffer___contracts___promooffer_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoOffer"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Promooffer",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/promopreviewresponse": {
+      "get": {
+        "operationId": "contracts__promopreviewresponse___contracts___promopreviewresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Promopreviewresponse",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/promoredeemresponse": {
+      "get": {
+        "operationId": "contracts__promoredeemresponse___contracts___promoredeemresponse_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoRedeemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Promoredeemresponse",
         "tags": [
           "__contracts__"
         ]

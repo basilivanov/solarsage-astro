@@ -566,6 +566,41 @@ export const ProfileWrite = z
     gender: z.union([z.enum(["male", "female"]), z.null()]),
   })
   .partial();
+export const PromoCodeRequest = z.object({ token: z.string() });
+export const PromoErrorDetail = z.object({
+  code: z.enum([
+    "INVALID_CODE",
+    "CAMPAIGN_EXPIRED",
+    "CAMPAIGN_FULL",
+    "ALREADY_REDEEMED",
+    "PROFILE_INCOMPLETE",
+    "RATE_LIMITED",
+  ]),
+  message: z.string(),
+});
+export const PromoGrantSummary = z.object({
+  accessStartsAt: z.union([z.string(), z.null()]).optional(),
+  accessUntil: z.union([z.string(), z.null()]).optional(),
+  bonusCredits: z.number().int().gte(0),
+  bonusCreditsExpiresAt: z.union([z.string(), z.null()]).optional(),
+  natalAlreadyOwned: z.boolean(),
+  natalUnlocked: z.boolean(),
+});
+export const PromoOffer = z.object({
+  accessDays: z.number().int().gte(0),
+  bonusCredits: z.number().int().gte(0),
+  displayName: z.string().max(120),
+  unlockNatal: z.boolean(),
+});
+export const PromoPreviewResponse = z.object({
+  offer: PromoOffer,
+  profileComplete: z.boolean(),
+});
+export const PromoRedeemResponse = z.object({
+  grants: PromoGrantSummary,
+  offer: PromoOffer,
+  status: z.literal("redeemed").optional().default("redeemed"),
+});
 export const PurchaseStartResponse = z.object({
   confirmationUrl: z.union([z.string(), z.null()]).optional(),
   productSlug: z.string(),
@@ -1245,6 +1280,12 @@ export const schemas = {
   ProductsListResponse,
   ProfileRead,
   ProfileWrite,
+  PromoCodeRequest,
+  PromoErrorDetail,
+  PromoGrantSummary,
+  PromoOffer,
+  PromoPreviewResponse,
+  PromoRedeemResponse,
   PurchaseStartResponse,
   PurchaseStatusResponse,
   SphereContribution,

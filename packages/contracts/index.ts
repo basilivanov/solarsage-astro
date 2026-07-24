@@ -17,7 +17,8 @@
 //   - named type aliases: TodayPayload, NatalPayload, CalendarPayload,
 //     ReadingBody, AccessSummary, TodayV2Block, TodayV2ActivatedTarget,
 //     TodayV2ActivationSummary, TodayV2WhyTodayItem, TodayV2Audit,
-//     ActivationEvidence, SphereScoreV2
+//     ActivationEvidence, SphereScoreV2, PromoCodeRequest, PromoOffer,
+//     PromoPreviewResponse, PromoGrantSummary, PromoRedeemResponse, PromoErrorDetail
 // dependencies:
 //   - openapi-typescript output
 // side_effects:
@@ -36,7 +37,9 @@
 // public_entrypoints:
 //   - TodayPayload, NatalPayload, CalendarPayload, ReadingBody, AccessSummary,
 //     TodayV2Block, TodayV2ActivatedTarget, TodayV2ActivationSummary,
-//     TodayV2WhyTodayItem, TodayV2Audit, ActivationEvidence, SphereScoreV2
+//     TodayV2WhyTodayItem, TodayV2Audit, ActivationEvidence, SphereScoreV2,
+//     PromoCodeRequest, PromoOffer, PromoPreviewResponse, PromoGrantSummary,
+//     PromoRedeemResponse, PromoErrorDetail
 // semantic_blocks:
 //   - BARREL_REEXPORT
 // owned_tests:
@@ -90,6 +93,14 @@ export type SubscriptionStatusResponse = components["schemas"]["SubscriptionStat
 export type PurchaseStartResponse = components["schemas"]["PurchaseStartResponse"];
 export type PurchaseStatusResponse = components["schemas"]["PurchaseStatusResponse"];
 
+// W-NAMED-PROMO-CAMPAIGN: Promo wire contracts
+export type PromoCodeRequest = components["schemas"]["PromoCodeRequest"];
+export type PromoOffer = components["schemas"]["PromoOffer"];
+export type PromoPreviewResponse = components["schemas"]["PromoPreviewResponse"];
+export type PromoGrantSummary = components["schemas"]["PromoGrantSummary"];
+export type PromoRedeemResponse = components["schemas"]["PromoRedeemResponse"];
+export type PromoErrorDetail = components["schemas"]["PromoErrorDetail"];
+
 // Today V2 Horizon aliases
 export type TodayV2Block = components["schemas"]["TodayV2Block"];
 export type TodayV2ActivatedTarget = components["schemas"]["TodayV2ActivatedTarget"];
@@ -109,9 +120,6 @@ export type ActivationEvidence = components["schemas"]["ActivationEvidence"];
 export type SphereScoreV2 = components["schemas"]["SphereScoreV2"];
 
 // W-NATAL-FULL (Wave 5): Full report schemas from lib/contracts/natal.ts
-// These types are maintained manually until contracts:generate is updated
-// to include the new natal report endpoints.
-// Source of truth: apps/api/app/schemas/natal.py (Pydantic)
 export type {
   NatalReportRead,
   NatalReportMeta,

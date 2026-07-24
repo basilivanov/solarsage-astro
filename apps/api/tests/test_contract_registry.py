@@ -13,7 +13,7 @@
 # side_effects: none.
 # emitted_logs: none.
 # invariants:
-#   - Public roots are exactly the 22 accepted class objects in stable order.
+#   - Public roots are exactly the accepted class objects in stable order.
 #   - Exporter does not use string-name getattr registry lookup.
 #   - Generated OpenAPI root dummy paths and component names stay unchanged.
 # failure_policy: pytest failure.
@@ -41,6 +41,7 @@ from pydantic import ConfigDict
 from app.schemas._base import CamelModel
 from app.schemas.access import AccessSummary
 from app.schemas.contract_registry import PUBLIC_CONTRACT_ROOTS, validate_public_contract_roots
+from app.schemas.promo import PromoCodeRequest
 
 
 # START_BLOCK: REGISTRY_ASSERTIONS
@@ -68,6 +69,12 @@ EXPECTED_ROOT_NAMES = [
     "ProductsListResponse",
     "ProfileRead",
     "ProfileWrite",
+    "PromoCodeRequest",
+    "PromoErrorDetail",
+    "PromoGrantSummary",
+    "PromoOffer",
+    "PromoPreviewResponse",
+    "PromoRedeemResponse",
     "PurchaseStartResponse",
     "PurchaseStatusResponse",
     "ScoringV2Result",
@@ -84,9 +91,10 @@ def test_public_contract_roots_have_exact_names_and_order() -> None:
 
 
 def test_public_contract_roots_are_unique_camelmodel_subclasses() -> None:
-    assert len(PUBLIC_CONTRACT_ROOTS) == 27
-    assert len({id(root) for root in PUBLIC_CONTRACT_ROOTS}) == 27
-    assert len({root.__name__ for root in PUBLIC_CONTRACT_ROOTS}) == 27
+    expected_len = len(EXPECTED_ROOT_NAMES)
+    assert len(PUBLIC_CONTRACT_ROOTS) == expected_len
+    assert len({id(root) for root in PUBLIC_CONTRACT_ROOTS}) == expected_len
+    assert len({root.__name__ for root in PUBLIC_CONTRACT_ROOTS}) == expected_len
     assert all(issubclass(root, CamelModel) for root in PUBLIC_CONTRACT_ROOTS)
 
 
@@ -139,6 +147,19 @@ def test_duplicate_schema_title_is_rejected() -> None:
 
     with pytest.raises(ValueError, match="duplicate-schema-title"):
         validate_public_contract_roots((Alpha, Beta))
+
+
+def test_promo_code_request_json_schema_has_no_raw_token_or_validators() -> None:
+    schema = PromoCodeRequest.model_json_schema()
+    token_prop = schema["properties"]["token"]
+
+    assert token_prop.get("writeOnly") is True
+    assert token_prop.get("format") == "password"
+    assert "default" not in token_prop
+    assert "example" not in token_prop
+    assert "minLength" not in token_prop
+    assert "maxLength" not in token_prop
+    assert "pattern" not in token_prop
 # END_BLOCK: REGISTRY_ASSERTIONS
 
 
@@ -174,6 +195,12 @@ def test_generated_openapi_keeps_public_activation_names_without_shared_contract
     assert "TodayV2HorizonTiming" in schema_names
     assert "TodayV2Horizon" in schema_names
     assert "TodayV2HorizonsBlock" in schema_names
+    assert "PromoCodeRequest" in schema_names
+    assert "PromoOffer" in schema_names
+    assert "PromoPreviewResponse" in schema_names
+    assert "PromoGrantSummary" in schema_names
+    assert "PromoRedeemResponse" in schema_names
+    assert "PromoErrorDetail" in schema_names
     assert "/__contracts__/todayv2horizonsblock" not in data["paths"]
     assert not any("Contract" in name for name in schema_names)
 # END_BLOCK: EXPORTER_ASSERTIONS

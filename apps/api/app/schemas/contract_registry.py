@@ -58,6 +58,14 @@ from .payment import (
     SubscriptionStartResponse,
     SubscriptionStatusResponse,
 )
+from .promo import (
+    PromoCodeRequest,
+    PromoErrorDetail,
+    PromoGrantSummary,
+    PromoOffer,
+    PromoPreviewResponse,
+    PromoRedeemResponse,
+)
 from .scoring_v2 import ScoringV2Result
 from .today import ConvergenceEvidence, TodayPayload
 
@@ -83,6 +91,12 @@ PUBLIC_CONTRACT_ROOTS: tuple[type[CamelModel], ...] = (
     ProductsListResponse,
     ProfileRead,
     ProfileWrite,
+    PromoCodeRequest,
+    PromoErrorDetail,
+    PromoGrantSummary,
+    PromoOffer,
+    PromoPreviewResponse,
+    PromoRedeemResponse,
     PurchaseStartResponse,
     PurchaseStatusResponse,
     ScoringV2Result,

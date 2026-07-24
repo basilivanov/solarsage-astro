@@ -37,6 +37,9 @@ import {
   AccessSummaryWireSchema,
   CalendarPayloadWireSchema,
   ProfileReadWireSchema,
+  PromoPreviewResponseWireSchema,
+  PromoRedeemResponseWireSchema,
+  PromoErrorDetailWireSchema,
 } from "@/packages/contracts/runtime"
 import {
   HoraryAnswerRead,
@@ -493,6 +496,43 @@ describe("generated runtime zod schemas", () => {
     }
     expect(ProfileReadWireSchema.safeParse(validProfileRead).success).toBe(true)
     expect(ProfileReadWireSchema.safeParse({}).success).toBe(false)
+
+    // Promo wire schemas assertions
+    const validPromoOffer = {
+      displayName: "Летняя промокампания",
+      accessDays: 30,
+      bonusCredits: 50,
+      unlockNatal: true,
+    }
+
+    const validPreview = {
+      offer: validPromoOffer,
+      profileComplete: true,
+    }
+    expect(PromoPreviewResponseWireSchema.safeParse(validPreview).success).toBe(true)
+    expect(PromoPreviewResponseWireSchema.safeParse({}).success).toBe(false)
+
+    const validRedeem = {
+      status: "redeemed",
+      offer: validPromoOffer,
+      grants: {
+        accessStartsAt: "2026-07-24",
+        accessUntil: "2026-08-22",
+        bonusCredits: 50,
+        bonusCreditsExpiresAt: "2026-08-23T00:00:00Z",
+        natalUnlocked: true,
+        natalAlreadyOwned: false,
+      },
+    }
+    expect(PromoRedeemResponseWireSchema.safeParse(validRedeem).success).toBe(true)
+    expect(PromoRedeemResponseWireSchema.safeParse({}).success).toBe(false)
+
+    const validErrorDetail = {
+      code: "INVALID_CODE",
+      message: "Неверный промокод",
+    }
+    expect(PromoErrorDetailWireSchema.safeParse(validErrorDetail).success).toBe(true)
+    expect(PromoErrorDetailWireSchema.safeParse({}).success).toBe(false)
   })
 })
 // END_BLOCK: SCHEMA_TESTS

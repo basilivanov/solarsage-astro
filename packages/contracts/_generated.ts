@@ -331,6 +331,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/promocoderequest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Promocoderequest */
+        get: operations["contracts__promocoderequest___contracts___promocoderequest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/promoerrordetail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Promoerrordetail */
+        get: operations["contracts__promoerrordetail___contracts___promoerrordetail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/promograntsummary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Promograntsummary */
+        get: operations["contracts__promograntsummary___contracts___promograntsummary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/promooffer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Promooffer */
+        get: operations["contracts__promooffer___contracts___promooffer_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/promopreviewresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Promopreviewresponse */
+        get: operations["contracts__promopreviewresponse___contracts___promopreviewresponse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/__contracts__/promoredeemresponse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Promoredeemresponse */
+        get: operations["contracts__promoredeemresponse___contracts___promoredeemresponse_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/purchasestartresponse": {
         parameters: {
             query?: never;
@@ -1603,6 +1705,86 @@ export interface components {
             /** Gender */
             gender?: ("male" | "female") | null;
         };
+        /**
+         * PromoCodeRequest
+         * @description Request payload containing opaque promo code token.
+         */
+        PromoCodeRequest: {
+            /**
+             * Token
+             * Format: password
+             * @description Opaque promo token
+             */
+            token: string;
+        };
+        /**
+         * PromoErrorDetail
+         * @description Structured promo error detail with safe error code.
+         */
+        PromoErrorDetail: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "INVALID_CODE" | "CAMPAIGN_EXPIRED" | "CAMPAIGN_FULL" | "ALREADY_REDEEMED" | "PROFILE_INCOMPLETE" | "RATE_LIMITED";
+            /** Message */
+            message: string;
+        };
+        /**
+         * PromoGrantSummary
+         * @description Summary of access, credit and natal grants issued by redemption.
+         */
+        PromoGrantSummary: {
+            /** Accessstartsat */
+            accessStartsAt?: string | null;
+            /** Accessuntil */
+            accessUntil?: string | null;
+            /** Bonuscredits */
+            bonusCredits: number;
+            /** Bonuscreditsexpiresat */
+            bonusCreditsExpiresAt?: string | null;
+            /** Natalalreadyowned */
+            natalAlreadyOwned: boolean;
+            /** Natalunlocked */
+            natalUnlocked: boolean;
+        };
+        /**
+         * PromoOffer
+         * @description Promo offer details and benefit configuration.
+         */
+        PromoOffer: {
+            /** Accessdays */
+            accessDays: number;
+            /** Bonuscredits */
+            bonusCredits: number;
+            /** Displayname */
+            displayName: string;
+            /** Unlocknatal */
+            unlockNatal: boolean;
+        };
+        /**
+         * PromoPreviewResponse
+         * @description Promo offer preview response with profile completeness status.
+         */
+        PromoPreviewResponse: {
+            offer: components["schemas"]["PromoOffer"];
+            /** Profilecomplete */
+            profileComplete: boolean;
+        };
+        /**
+         * PromoRedeemResponse
+         * @description Promo redemption response containing offer and grant summary.
+         */
+        PromoRedeemResponse: {
+            grants: components["schemas"]["PromoGrantSummary"];
+            offer: components["schemas"]["PromoOffer"];
+            /**
+             * Status
+             * @default redeemed
+             * @constant
+             */
+            status: "redeemed";
+        };
         /** ProsConsItem */
         ProsConsItem: {
             /** Text */
@@ -2808,6 +2990,126 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileWrite"];
+                };
+            };
+        };
+    };
+    contracts__promocoderequest___contracts___promocoderequest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoCodeRequest"];
+                };
+            };
+        };
+    };
+    contracts__promoerrordetail___contracts___promoerrordetail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoErrorDetail"];
+                };
+            };
+        };
+    };
+    contracts__promograntsummary___contracts___promograntsummary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoGrantSummary"];
+                };
+            };
+        };
+    };
+    contracts__promooffer___contracts___promooffer_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoOffer"];
+                };
+            };
+        };
+    };
+    contracts__promopreviewresponse___contracts___promopreviewresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoPreviewResponse"];
+                };
+            };
+        };
+    };
+    contracts__promoredeemresponse___contracts___promoredeemresponse_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoRedeemResponse"];
                 };
             };
         };
