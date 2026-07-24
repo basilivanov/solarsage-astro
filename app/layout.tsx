@@ -9,7 +9,7 @@
 // ############################################################################
 // START_MODULE_CONTRACT: M-APP-LAYOUT
 // purpose: Root document shell. Bootstraps Telegram WebApp, correlation init,
-//   client crash capture, Vercel-only analytics, and mounts children.
+//   frontend error capture, Vercel-only analytics, and mounts children.
 // owns:
 //   - app/layout.tsx
 // inputs: children — React node tree for the matched route.
@@ -20,14 +20,14 @@
 //   - @/components/telegram-provider
 //   - @/components/telegram-init
 //   - @/components/correlation-init
+//   - @/components/telemetry/frontend-error-capture (FrontendErrorCapture)
 //   - @/lib/analytics/vercel (shouldRenderVercelAnalyticsFromEnv)
 // side_effects: Injects Telegram global, correlation tracking, error listeners,
 //   and Vercel Analytics <script> tag exclusively in Vercel deployments.
-// emitted_logs: none.
+// emitted_logs: frontend.runtime_failed, frontend.promise_rejected
 // invariants:
 //   - Analytics renders only when shouldRenderVercelAnalyticsFromEnv() returns true.
 //   - No direct business API fetch owned by RootLayout.
-//   - Crash capture via window.__astroErrors and /api/_log POST.
 // failure_policy: fail closed — analytics never renders outside actual Vercel.
 // END_MODULE_CONTRACT: M-APP-LAYOUT
 import type { Metadata, Viewport } from "next"
@@ -36,6 +36,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { TelegramProvider } from "@/components/telegram-provider"
 import { TelegramInit } from "@/components/telegram-init"
 import { CorrelationInit } from "@/components/correlation-init"
+import { FrontendErrorCapture } from "@/components/telemetry/frontend-error-capture"
 import { shouldRenderVercelAnalyticsFromEnv } from "@/lib/analytics/vercel"
 import "./globals.css"
 
@@ -87,23 +88,6 @@ export default function RootLayout({
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-window.__astroErrors = [];
-window.addEventListener('error', function(e) {
-  var err = { msg: e.message, src: e.filename, line: e.lineno, col: e.colno, time: Date.now() };
-  window.__astroErrors.push(err);
-  try { fetch('/api/_log', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({envelopes:[{timestamp:new Date().toISOString(),level:'error',message:'CLIENT_CRASH: '+e.message+' at '+e.filename+':'+e.lineno,correlation_id:null,extra:{stack:e.error?.stack}}]}) }); } catch(_) {}
-});
-window.addEventListener('unhandledrejection', function(e) {
-  var err = { msg: String(e.reason), time: Date.now() };
-  window.__astroErrors.push(err);
-  try { fetch('/api/_log', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({envelopes:[{timestamp:new Date().toISOString(),level:'error',message:'UNHANDLED_REJECTION: '+String(e.reason),correlation_id:null}]}) }); } catch(_) {}
-});
-`,
-          }}
-        />
       </head>
       <body
         className={`${inter.variable} ${instrumentSerif.variable} ${loraSerif.variable} font-sans antialiased`}
@@ -111,6 +95,7 @@ window.addEventListener('unhandledrejection', function(e) {
         <TelegramProvider>
           <TelegramInit />
           <CorrelationInit />
+          <FrontendErrorCapture />
           {children}
         </TelegramProvider>
         {shouldRenderVercelAnalyticsFromEnv() && <Analytics />}

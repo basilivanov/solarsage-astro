@@ -414,6 +414,13 @@
       <payload-field name="method" type="string" required="true" />
       <payload-field name="status" type="number" required="false" />
     </event>
+    <event name="frontend.runtime_failed"       owner="W-FRONTEND-OBSERVABILITY" desc="Global unhandled browser error captured via window.error" />
+    <event name="frontend.render_failed"        owner="W-FRONTEND-OBSERVABILITY" desc="React/Next render boundary caught an error" />
+    <event name="frontend.promise_rejected"     owner="W-FRONTEND-OBSERVABILITY" desc="Unhandled promise rejection captured via window.unhandledrejection" />
+    <event name="frontend.api_request_failed"   owner="W-FRONTEND-OBSERVABILITY" desc="Network, HTTP, timeout, or abort failure in instrumented fetch" />
+    <event name="frontend.api_response_invalid" owner="W-FRONTEND-OBSERVABILITY" desc="API response schema or contract validation failure" />
+    <event name="frontend.flow_failed"          owner="W-FRONTEND-OBSERVABILITY" desc="User flow failed" />
+    <event name="frontend.flow_abandoned"       owner="W-FRONTEND-OBSERVABILITY" desc="User flow abandoned" />
   </events>
 
   <!-- =================================================================== -->

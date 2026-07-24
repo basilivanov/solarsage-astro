@@ -45,8 +45,14 @@ export interface GeoTimezone {
   raw_offset: number | null
 }
 
+import { instrumentedFetch } from "@/lib/log/instrumented-fetch"
+
 export async function searchCities(query: string, limit: number = 8): Promise<GeoSuggestion[]> {
-  const response = await fetch(`/api/geo/autocomplete?q=${encodeURIComponent(query)}&limit=${limit}`)
+  const response = await instrumentedFetch({
+    operation: "geo.autocomplete",
+    routeTemplate: "GET /api/geo/autocomplete",
+    url: `/api/geo/autocomplete?q=${encodeURIComponent(query)}&limit=${limit}`,
+  })
 
   if (!response.ok) {
     throw new Error('Failed to search cities')
@@ -56,7 +62,11 @@ export async function searchCities(query: string, limit: number = 8): Promise<Ge
 }
 
 export async function getTimezone(lat: number, lon: number): Promise<GeoTimezone> {
-  const response = await fetch(`/api/geo/timezone?lat=${lat}&lon=${lon}`)
+  const response = await instrumentedFetch({
+    operation: "geo.timezone",
+    routeTemplate: "GET /api/geo/timezone",
+    url: `/api/geo/timezone?lat=${lat}&lon=${lon}`,
+  })
 
   if (!response.ok) {
     throw new Error('Failed to get timezone')

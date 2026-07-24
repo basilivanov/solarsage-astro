@@ -117,4 +117,12 @@ export type LogEventName =
   | "ui.fixtures_mode_toggled"
   | "ui.fetch_started"
   | "ui.fetch_succeeded"
-  | "ui.fetch_failed";
+  | "ui.fetch_failed"
+  // frontend observability
+  | "frontend.runtime_failed"
+  | "frontend.render_failed"
+  | "frontend.promise_rejected"
+  | "frontend.api_request_failed"
+  | "frontend.api_response_invalid"
+  | "frontend.flow_failed"
+  | "frontend.flow_abandoned";

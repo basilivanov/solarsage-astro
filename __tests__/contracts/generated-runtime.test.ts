@@ -34,6 +34,9 @@ import {
   TodayV2BlockWireSchema,
   TodayV2HorizonsBlockWireSchema,
   ActivationEvidenceWireSchema,
+  AccessSummaryWireSchema,
+  CalendarPayloadWireSchema,
+  ProfileReadWireSchema,
 } from "@/packages/contracts/runtime"
 import {
   HoraryAnswerRead,
@@ -437,6 +440,59 @@ describe("generated runtime zod schemas", () => {
     const generatedSchemaNames = Object.keys(schemas).sort()
 
     expect(generatedSchemaNames).toEqual(openapiSchemaNames)
+  })
+
+  it("validates stable runtime barrel exports for AccessSummaryWireSchema, CalendarPayloadWireSchema, and ProfileReadWireSchema", () => {
+    const validAccessSummary = {
+      user: "trial",
+      referralDaysLeft: 14,
+      subscriptionActive: false,
+      accessStart: "2026-07-01T00:00:00Z",
+      accessUntil: "2026-08-01T00:00:00Z",
+    }
+    expect(AccessSummaryWireSchema.safeParse(validAccessSummary).success).toBe(true)
+    expect(AccessSummaryWireSchema.safeParse({}).success).toBe(false)
+
+    const validCalendarPayload = {
+      meta: {
+        schemaVersion: "calendar/v1",
+        contractVersion: 1,
+        generatedAt: "2026-07-24T00:00:00Z",
+      },
+      month: "2026-07",
+      title: "Июль 2026",
+      allowedRange: {
+        from: "2025-07-01",
+        to: "2027-07-01",
+      },
+      days: [
+        {
+          date: "2026-07-24",
+          dayNumber: 24,
+          disabled: false,
+          isCurrentMonth: true,
+          isToday: true,
+          dayStatus: "supportive",
+          access: { state: "full" },
+        },
+      ],
+    }
+    expect(CalendarPayloadWireSchema.safeParse(validCalendarPayload).success).toBe(true)
+    expect(CalendarPayloadWireSchema.safeParse({}).success).toBe(false)
+
+    const validProfileRead = {
+      userId: "11111111-1111-1111-1111-111111111111",
+      birth: {
+        birthDate: "2000-01-01",
+        birthTime: "12:00",
+        birthCity: "Moscow",
+        birthLat: 55.75,
+        birthLon: 37.62,
+        timezone: "Europe/Moscow",
+      },
+    }
+    expect(ProfileReadWireSchema.safeParse(validProfileRead).success).toBe(true)
+    expect(ProfileReadWireSchema.safeParse({}).success).toBe(false)
   })
 })
 // END_BLOCK: SCHEMA_TESTS

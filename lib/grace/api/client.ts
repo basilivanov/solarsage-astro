@@ -1,22 +1,23 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_API_CLIENT — API client with runtime contract schema validation.
-// ROLE: API client for backend endpoints. Handles day/calendar HTTP requests.
-// DEPENDENCIES: local modules, packages/contracts
+// ROLE: API client for backend endpoints. Handles day/calendar HTTP requests via instrumentedFetch.
+// DEPENDENCIES: packages/contracts, packages/contracts/runtime, lib/log/instrumented-fetch
+// GRACE_ANCHORS: [FRONTEND_API_CLIENT]
+// WAVE: W-FRONTEND-OBSERVABILITY
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-WEB-API-CLIENT
-// purpose: API client for backend endpoints with type-safe contracts.
+// purpose: API client for backend endpoints with type-safe contracts and diagnostic logging via instrumentedFetch.
 // owns:
 //   - lib/grace/api/client.ts
 // inputs: Endpoint params plus explicit browser runtime facts for Today preview marking.
 // outputs: Parsed response / typed data.
-// dependencies: packages/contracts, packages/contracts/runtime.
-// side_effects: Network calls to API.
-// emitted_logs: none.
+// dependencies: packages/contracts, packages/contracts/runtime, lib/log/instrumented-fetch.
+// side_effects: Network calls to API via instrumentedFetch.
+// emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_request_failed, frontend.api_response_invalid
 // invariants:
-//   - All day payloads are validated at the fetch boundary.
-//   - Invalid day payloads throw ApiContractError.
+//   - All day and calendar payloads are validated at the fetch boundary.
+//   - Invalid day or calendar payloads throw ApiContractError.
 //   - Only fetchDay may emit the exact Today preview marker.
 //   - Marker emission requires a development browser on localhost/loopback port 3003.
 //   - Production, SSR, public hosts, other ports, calendar, and other clients fail closed.
@@ -33,12 +34,15 @@
 //   - ApiContractError
 // semantic_blocks:
 //   - TODAY_PREVIEW_MARKER: pure closed browser runtime decision.
-//   - API_CLIENT_LOGIC: handles day and calendar network calls.
+//   - API_CLIENT_LOGIC: handles day and calendar network calls via instrumentedFetch.
 //   - ERROR_TYPES: custom API and contract error classes.
+// owned_tests:
+//   - __tests__/api/grace-client.test.ts
 // END_MODULE_MAP: M-WEB-API-CLIENT
 
 import type { TodayPayload, CalendarPayload } from '@/packages/contracts';
-import { TodayPayloadWireSchema } from '@/packages/contracts/runtime';
+import { TodayPayloadWireSchema, CalendarPayloadWireSchema } from '@/packages/contracts/runtime';
+import { instrumentedFetch } from '@/lib/log/instrumented-fetch';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -106,15 +110,15 @@ export class ApiError extends Error {
  */
 export class ApiContractError extends ApiError {
   // START_FUNCTION_CONTRACT: F-M-WEB-API-CLIENT.ApiContractError.constructor
-  // purpose: Construct a safe public error for an invalid Today API payload.
-  // inputs: none.
-  // returns: ApiContractError with fixed name/status/code/message.
+  // purpose: Construct a safe public error for an invalid Today or Calendar API payload.
+  // inputs: contractName — "Today" | "Calendar" (default "Today").
+  // returns: ApiContractError with status 502 and code SCHEMA_VALIDATION_ERROR.
   // side_effects: none.
   // emitted_logs: none.
   // error_behavior: none.
   // END_FUNCTION_CONTRACT: F-M-WEB-API-CLIENT.ApiContractError.constructor
-  constructor() {
-    super('Invalid Today payload format from backend', 502, 'SCHEMA_VALIDATION_ERROR');
+  constructor(contractName: 'Today' | 'Calendar' = 'Today') {
+    super(`Invalid ${contractName} payload format from backend`, 502, 'SCHEMA_VALIDATION_ERROR');
     this.name = 'ApiContractError';
   }
 }
@@ -122,11 +126,11 @@ export class ApiContractError extends ApiError {
 
 // START_BLOCK: API_CLIENT_LOGIC
 // START_FUNCTION_CONTRACT: F-M-WEB-API-CLIENT.fetchDay
-// purpose: Fetch day data for a specific date and validate it against TodayPayloadWireSchema.
+// purpose: Fetch day data for a specific date via instrumentedFetch and validate it against TodayPayloadWireSchema.
 // inputs: date - ISO date string (YYYY-MM-DD)
 // returns: Promise<TodayPayload>
-// side_effects: Network call to /api/day/${date}
-// emitted_logs: none.
+// side_effects: Network call to /api/day/${date} via instrumentedFetch
+// emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed
 // error_behavior: throws ApiError on HTTP failures; throws ApiContractError on schema mismatches.
 // END_FUNCTION_CONTRACT: F-M-WEB-API-CLIENT.fetchDay
 export async function fetchDay(date: string): Promise<TodayPayload> {
@@ -141,9 +145,24 @@ export async function fetchDay(date: string): Promise<TodayPayload> {
     headers[TODAY_PREVIEW_HEADER_NAME] = TODAY_PREVIEW_HEADER_VALUE;
   }
 
-  const res = await fetch(`${API_BASE}/api/day/${date}`, {
-    credentials: 'include', // Send session cookie for auth
-    headers,
+  const res = await instrumentedFetch({
+    operation: 'day.fetch',
+    routeTemplate: 'GET /api/day/{date}',
+    url: `${API_BASE}/api/day/${date}`,
+    init: {
+      credentials: 'include',
+      headers,
+    },
+    responseContract: {
+      contractName: 'TodayPayload',
+      contractVersion: 'v1',
+      validate: (json) => {
+        const parsed = TodayPayloadWireSchema.safeParse(json);
+        if (parsed.success) return { valid: true };
+        const fields = parsed.error.issues.map((i) => String(i.path[0] || 'unknown'));
+        return { valid: false, missingFields: fields, invalidFieldTypes: fields };
+      },
+    },
   });
 
   if (!res.ok) {
@@ -155,7 +174,6 @@ export async function fetchDay(date: string): Promise<TodayPayload> {
       errorMessage = error.detail?.message || error.detail || errorMessage;
       errorCode = error.detail?.code;
     } catch {
-      // If response is not JSON, use status text
       errorMessage = res.statusText || errorMessage;
     }
 
@@ -172,18 +190,33 @@ export async function fetchDay(date: string): Promise<TodayPayload> {
 }
 
 // START_FUNCTION_CONTRACT: F-M-WEB-API-CLIENT.fetchCalendar
-// purpose: Fetch calendar data for a specific month.
+// purpose: Fetch calendar data for a specific month via instrumentedFetch and validate it against CalendarPayloadWireSchema.
 // inputs: month - Month string (YYYY-MM)
 // returns: Promise<CalendarPayload>
-// side_effects: Network call to /api/calendar?month=${month}
-// emitted_logs: none.
-// error_behavior: throws ApiError on HTTP failures.
+// side_effects: Network call to /api/calendar?month=${month} via instrumentedFetch
+// emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed
+// error_behavior: throws ApiError on HTTP failures; throws ApiContractError on schema mismatches.
 // END_FUNCTION_CONTRACT: F-M-WEB-API-CLIENT.fetchCalendar
 export async function fetchCalendar(month: string): Promise<CalendarPayload> {
-  const res = await fetch(`${API_BASE}/api/calendar?month=${month}`, {
-    credentials: 'include',
-    headers: {
-      'Accept': 'application/json',
+  const res = await instrumentedFetch({
+    operation: 'calendar.fetch',
+    routeTemplate: 'GET /api/calendar',
+    url: `${API_BASE}/api/calendar?month=${month}`,
+    init: {
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+      },
+    },
+    responseContract: {
+      contractName: 'CalendarPayload',
+      contractVersion: 'v1',
+      validate: (json) => {
+        const parsed = CalendarPayloadWireSchema.safeParse(json);
+        if (parsed.success) return { valid: true };
+        const fields = parsed.error.issues.map((i) => String(i.path[0] || 'unknown'));
+        return { valid: false, missingFields: fields, invalidFieldTypes: fields };
+      },
     },
   });
 
@@ -202,6 +235,12 @@ export async function fetchCalendar(month: string): Promise<CalendarPayload> {
     throw new ApiError(errorMessage, res.status, errorCode);
   }
 
-  return res.json();
+  const rawJson: unknown = await res.json();
+  const parsed = CalendarPayloadWireSchema.safeParse(rawJson);
+  if (!parsed.success) {
+    throw new ApiContractError('Calendar');
+  }
+
+  return parsed.data;
 }
 // END_BLOCK: API_CLIENT_LOGIC

@@ -1,7 +1,9 @@
-
 // ############################################################################
 // AI_HEADER: FRONTEND_API_READINGS — past-day reading aggregation and static product catalog.
 // ROLE: Past-day reading aggregator and static readings catalog provider.
+// DEPENDENCIES: readings contracts and catalog types; TodayPayload; TodayPayloadWireSchema; lib/log/instrumented-fetch; lucide icons; Date; Promise.all
+// GRACE_ANCHORS: [FRONTEND_API_READINGS]
+// WAVE: W-FRONTEND-OBSERVABILITY
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-FRONTEND-API-READINGS
@@ -10,9 +12,9 @@
 //   - lib/api/readings.ts
 // inputs: limit and offset for history; authenticated session.
 // outputs: ReadingsList, ReadingsCatalog and async catalog alias.
-// dependencies: readings contracts and catalog types; TodayPayload; lucide icons; Date; Promise.all; fetch.
-// side_effects: parallel credentialed GET /api/day/:date calls for history.
-// emitted_logs: none.
+// dependencies: readings contracts and catalog types; TodayPayload; TodayPayloadWireSchema; lib/log/instrumented-fetch; lucide icons; Date; Promise.all.
+// side_effects: parallel credentialed GET /api/day/{date} calls for history via instrumentedFetch.
+// emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_request_failed, frontend.api_response_invalid.
 // invariants:
 //   - Requested dates remain prior days derived from offset and limit.
 //   - Failed or non-ok day fetches and locked payloads are omitted.
@@ -29,7 +31,7 @@
 //   - listReadingsAsync
 // semantic_blocks:
 //   - HISTORY_DATE_PLAN: derive prior dates from offset and limit.
-//   - DAY_FETCH_FAIL_SOFT: fetch a day and map request failures to null.
+//   - DAY_FETCH_FAIL_SOFT: fetch a day via instrumentedFetch and map request failures to null.
 //   - HISTORY_ASSEMBLY: omit locked or missing days and build previews.
 //   - PRODUCT_CATALOG: expose the stable available and coming products.
 //   - ASYNC_CATALOG_ALIAS: resolve the synchronous catalog asynchronously.
@@ -38,66 +40,96 @@
 //   - __tests__/components/ReadingsScreen.test.tsx
 // END_MODULE_MAP: M-FRONTEND-API-READINGS
 
-import type { ReadingsList, ReadingEntry } from '@/lib/contracts/readings';
-import type { ReadingsCatalog } from '@/lib/readings';
-import type { TodayPayload } from '@/packages/contracts';
+import type { ReadingsList, ReadingEntry } from "@/lib/contracts/readings"
+import type { ReadingsCatalog } from "@/lib/readings"
+import type { TodayPayload } from "@/packages/contracts"
+import { TodayPayloadWireSchema } from "@/packages/contracts/runtime"
+import { instrumentedFetch } from "@/lib/log/instrumented-fetch"
 
-import { Sparkles, Star, CalendarDays, Calendar, Users } from 'lucide-react';
+import { Sparkles, Star, CalendarDays, Calendar, Users } from "lucide-react"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
-/**
- * Get list of past readings by fetching recent days
- */
+// START_BLOCK: HISTORY_ASSEMBLY
 export async function getReadingsList(limit: number = 10, offset: number = 0): Promise<ReadingsList> {
-  const entries: ReadingEntry[] = [];
+  // START_FUNCTION_CONTRACT: F-M-FRONTEND-API-READINGS.getReadingsList
+  // purpose: Fetch history of past days concurrently, filtering unlocked readings and forming previews.
+  // inputs: limit — max days to fetch, offset — day offset
+  // returns: Promise<ReadingsList>
+  // side_effects: parallel GET /api/day/{date} requests via fetchDayForReadings
+  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed
+  // END_FUNCTION_CONTRACT: F-M-FRONTEND-API-READINGS.getReadingsList
+  const entries: ReadingEntry[] = []
 
-  const today = new Date();
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() - offset - limit);
-
-  const promises: Promise<TodayPayload | null>[] = [];
+  const today = new Date()
+  const promises: Promise<TodayPayload | null>[] = []
   for (let i = 0; i < limit; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - offset - i - 1);
-    const dateStr = date.toISOString().split('T')[0];
-    promises.push(fetchDayForReadings(dateStr));
+    const date = new Date(today)
+    date.setDate(today.getDate() - offset - i - 1)
+    const dateStr = date.toISOString().split("T")[0]
+    promises.push(fetchDayForReadings(dateStr))
   }
 
-  const results = await Promise.all(promises);
+  const results = await Promise.all(promises)
 
   for (const payload of results) {
-    if (payload && payload.access.state !== 'locked') {
+    if (payload && payload.access.state !== "locked") {
       entries.push({
         date: payload.date,
         headline: payload.headline,
         dayStatus: payload.dayStatus,
-        preview: payload.reading.paragraphs[0] || '',
-      });
+        preview: payload.reading.paragraphs[0] || "",
+      })
     }
   }
 
-  const hasMore = entries.length === limit;
-  return { entries, hasMore };
+  const hasMore = entries.length === limit
+  return { entries, hasMore }
 }
+// END_BLOCK: HISTORY_ASSEMBLY
 
+// START_BLOCK: DAY_FETCH_FAIL_SOFT
 async function fetchDayForReadings(date: string): Promise<TodayPayload | null> {
+  // START_FUNCTION_CONTRACT: F-M-FRONTEND-API-READINGS.fetchDayForReadings
+  // purpose: Fetch single past day payload via instrumentedFetch with TodayPayload responseContract, returning null on transport or HTTP failure.
+  // inputs: date — YYYY-MM-DD string
+  // returns: Promise<TodayPayload | null>
+  // side_effects: GET /api/day/{date} via instrumentedFetch
+  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_request_failed, frontend.api_response_invalid
+  // END_FUNCTION_CONTRACT: F-M-FRONTEND-API-READINGS.fetchDayForReadings
   try {
-    const res = await fetch(`${API_BASE}/api/day/${date}`, {
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json',
+    const res = await instrumentedFetch({
+      operation: "readings.day_history",
+      routeTemplate: "GET /api/day/{date}",
+      url: `${API_BASE}/api/day/${date}`,
+      init: {
+        credentials: "include",
+        headers: {
+          "Accept": "application/json",
+        },
       },
-    });
+      responseContract: {
+        contractName: "TodayPayload",
+        contractVersion: "v1",
+        validate: (json) => {
+          const parsed = TodayPayloadWireSchema.safeParse(json)
+          if (parsed.success) return { valid: true }
+          const fields = parsed.error.issues.map((i) => String(i.path[0] || "unknown"))
+          return { valid: false, missingFields: fields, invalidFieldTypes: fields }
+        },
+      },
+    })
 
-    if (!res.ok) return null;
+    if (!res.ok) return null
 
-    return res.json();
+    return res.json()
   } catch {
-    return null;
+    return null
   }
 }
+// END_BLOCK: DAY_FETCH_FAIL_SOFT
 
+// START_BLOCK: PRODUCT_CATALOG
 export function listReadings(): ReadingsCatalog {
   return {
     available: [
@@ -145,7 +177,10 @@ export function listReadings(): ReadingsCatalog {
     ],
   }
 }
+// END_BLOCK: PRODUCT_CATALOG
 
+// START_BLOCK: ASYNC_CATALOG_ALIAS
 export async function listReadingsAsync(): Promise<ReadingsCatalog> {
   return listReadings()
 }
+// END_BLOCK: ASYNC_CATALOG_ALIAS

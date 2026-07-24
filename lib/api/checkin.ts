@@ -115,17 +115,24 @@ export function resolveCheckinTargetDate(
   return localToday
 }
 
+import { instrumentedFetch } from "@/lib/log/instrumented-fetch"
+
 export async function createCheckin(
   payload: CheckinCreate,
 ): Promise<CheckinResponse> {
-  const response = await fetch("/api/checkin", {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      ...JSON_HEADERS,
-      "Content-Type": "application/json",
+  const response = await instrumentedFetch({
+    operation: "checkin.create",
+    routeTemplate: "POST /api/checkin",
+    url: "/api/checkin",
+    init: {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        ...JSON_HEADERS,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
   })
   return readJson<CheckinResponse>(response, "Failed to save check-in")
 }
@@ -133,9 +140,14 @@ export async function createCheckin(
 export async function getCheckin(
   targetDate: string,
 ): Promise<CheckinResponse | null> {
-  const response = await fetch(`/api/checkin/${targetDate}`, {
-    credentials: "include",
-    headers: JSON_HEADERS,
+  const response = await instrumentedFetch({
+    operation: "checkin.get",
+    routeTemplate: "GET /api/checkin/{date}",
+    url: `/api/checkin/${targetDate}`,
+    init: {
+      credentials: "include",
+      headers: JSON_HEADERS,
+    },
   })
   const body = await readJson<CheckinResponse | { checkin: null }>(
     response,
@@ -145,9 +157,14 @@ export async function getCheckin(
 }
 
 export async function getYesterdayCheckin(): Promise<YesterdayCheckinResponse> {
-  const response = await fetch("/api/checkin/yesterday", {
-    credentials: "include",
-    headers: JSON_HEADERS,
+  const response = await instrumentedFetch({
+    operation: "checkin.get_yesterday",
+    routeTemplate: "GET /api/checkin/yesterday",
+    url: "/api/checkin/yesterday",
+    init: {
+      credentials: "include",
+      headers: JSON_HEADERS,
+    },
   })
   return readJson<YesterdayCheckinResponse>(
     response,
@@ -166,9 +183,14 @@ export async function getCheckinMetrics({
   if (from) params.set("from", from)
   if (to) params.set("to", to)
   const suffix = params.size ? `?${params.toString()}` : ""
-  const response = await fetch(`/api/checkin/metrics${suffix}`, {
-    credentials: "include",
-    headers: JSON_HEADERS,
+  const response = await instrumentedFetch({
+    operation: "checkin.get_metrics",
+    routeTemplate: "GET /api/checkin/metrics",
+    url: `/api/checkin/metrics${suffix}`,
+    init: {
+      credentials: "include",
+      headers: JSON_HEADERS,
+    },
   })
   return readJson<CheckinMetrics>(response, "Failed to load check-in metrics")
 }

@@ -41,6 +41,7 @@
  */
 
 import type { ChatContext, ChatMessage } from "@/lib/contracts/chat"
+import { instrumentedFetch } from "@/lib/log/instrumented-fetch"
 
 export type { ChatContext, ChatMessage }
 
@@ -50,26 +51,36 @@ export async function* sendMessage(args: {
   context: ChatContext
   signal?: AbortSignal
 }): AsyncGenerator<string, void, unknown> {
-  const createRes = await fetch("/api/chat/threads", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Accept": "application/json" },
-    signal: args.signal,
+  const createRes = await instrumentedFetch({
+    operation: "chat.create_thread",
+    routeTemplate: "POST /api/chat/threads",
+    url: "/api/chat/threads",
+    init: {
+      method: "POST",
+      credentials: "include",
+      headers: { "Accept": "application/json" },
+      signal: args.signal,
+    },
   })
   if (!createRes.ok) {
     throw new Error(`Failed to create chat thread: ${createRes.status}`)
   }
   const { id: threadId } = await createRes.json()
 
-  const msgRes = await fetch(`/api/chat/threads/${threadId}/messages`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
+  const msgRes = await instrumentedFetch({
+    operation: "chat.send_message",
+    routeTemplate: "POST /api/chat/threads/{id}/messages",
+    url: `/api/chat/threads/${threadId}/messages`,
+    init: {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({ content: args.message }),
+      signal: args.signal,
     },
-    body: JSON.stringify({ content: args.message }),
-    signal: args.signal,
   })
   if (!msgRes.ok) {
     throw new Error(`Failed to send message: ${msgRes.status}`)

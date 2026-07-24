@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   createCheckin,
@@ -14,8 +14,13 @@ describe("check-in API client", () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
   it("posts the real numeric check-in payload with credentials", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         id: 7,
@@ -29,7 +34,7 @@ describe("check-in API client", () => {
         filledAt: "2026-07-06T20:00:00Z",
         createdAt: "2026-07-06T20:00:00Z",
       }),
-    })
+    }))
 
     await createCheckin({
       targetDate: "2026-07-06",
@@ -40,13 +45,13 @@ describe("check-in API client", () => {
       note: "Real note",
     })
 
-    expect(global.fetch).toHaveBeenCalledWith("/api/checkin", {
+    expect(global.fetch).toHaveBeenCalledWith("/api/checkin", expect.objectContaining({
       method: "POST",
       credentials: "include",
-      headers: {
+      headers: expect.objectContaining({
         Accept: "application/json",
         "Content-Type": "application/json",
-      },
+      }),
       body: JSON.stringify({
         targetDate: "2026-07-06",
         mood: 5,
@@ -55,7 +60,7 @@ describe("check-in API client", () => {
         tags: ["calm"],
         note: "Real note",
       }),
-    })
+    }))
   })
 
   it("formats a date in the supplied profile timezone instead of UTC ISO date", () => {
@@ -78,24 +83,24 @@ describe("check-in API client", () => {
   })
 
   it("returns null from GET when backend sends the null wrapper", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ checkin: null }),
-    })
+    }))
 
     await expect(getCheckin("2026-07-06")).resolves.toBeNull()
-    expect(global.fetch).toHaveBeenCalledWith("/api/checkin/2026-07-06", {
+    expect(global.fetch).toHaveBeenCalledWith("/api/checkin/2026-07-06", expect.objectContaining({
       credentials: "include",
-      headers: { Accept: "application/json" },
-    })
+      headers: expect.objectContaining({ Accept: "application/json" }),
+    }))
   })
 
   it("throws backend detail messages without falling back to demo data", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: false,
       status: 422,
       json: async () => ({ detail: "invalid check-in" }),
-    })
+    }))
 
     await expect(
       createCheckin({
@@ -110,7 +115,7 @@ describe("check-in API client", () => {
   })
 
   it("calls yesterday and metrics real endpoints", async () => {
-    global.fetch = vi
+    vi.stubGlobal("fetch", vi
       .fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -129,22 +134,22 @@ describe("check-in API client", () => {
           accuracyDistribution: {},
           tagFrequency: {},
         }),
-      })
+      }))
 
     await getYesterdayCheckin()
     await getCheckinMetrics({ from: "2026-07-01", to: "2026-07-31" })
 
-    expect(global.fetch).toHaveBeenNthCalledWith(1, "/api/checkin/yesterday", {
+    expect(global.fetch).toHaveBeenNthCalledWith(1, "/api/checkin/yesterday", expect.objectContaining({
       credentials: "include",
-      headers: { Accept: "application/json" },
-    })
+      headers: expect.objectContaining({ Accept: "application/json" }),
+    }))
     expect(global.fetch).toHaveBeenNthCalledWith(
       2,
       "/api/checkin/metrics?from=2026-07-01&to=2026-07-31",
-      {
+      expect.objectContaining({
         credentials: "include",
-        headers: { Accept: "application/json" },
-      },
+        headers: expect.objectContaining({ Accept: "application/json" }),
+      }),
     )
   })
 })

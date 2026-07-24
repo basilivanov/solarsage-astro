@@ -1,13 +1,13 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_API_GRACE_CLIENT_TEST
-// ROLE: Unit tests for grace-client.test.ts
-// DEPENDENCIES: local modules
-// GRACE_ANCHORS: []
-// SLICE: SLICE-TESTS
+// ROLE: Unit tests for grace-client.ts (Slice 15)
+// DEPENDENCIES: vitest, lib/grace/api/client, e2e/mock-visual/fixtures/day-v2-2026-07-08
+// GRACE_ANCHORS: [GRACE_CLIENT_TESTS]
+// WAVE: W-FRONTEND-OBSERVABILITY
 // ############################################################################
+
 // START_MODULE_CONTRACT: M-TEST-API-GRACE-CLIENT
-// purpose: Tests for grace-client.ts behavior.
+// purpose: Tests for grace-client.ts behavior including preview marker, fetchDay, fetchCalendar, and contract validation errors.
 // owns:
 //   - __tests__/api/grace-client.test.ts
 // inputs: Mocks, fixtures.
@@ -16,8 +16,9 @@
 // side_effects: none.
 // emitted_logs: none.
 // invariants:
-//   - Success uses contract-valid canonical Today payload.
-//   - Malformed nested V2 response throws ApiContractError.
+//   - Success uses contract-valid canonical Today and Calendar payloads.
+//   - Malformed Today response throws ApiContractError with Today message.
+//   - Malformed Calendar response throws ApiContractError with Calendar message.
 //   - ApiContractError has status 502 and code SCHEMA_VALIDATION_ERROR.
 //   - Error messages do not leak raw payload data or Zod issue details.
 //   - Today marker emission is closed to development loopback port 3003.
@@ -45,9 +46,34 @@ import {
   TODAY_PREVIEW_HEADER_VALUE,
 } from '../../lib/grace/api/client'
 import { dayPayloadV2 } from '../../e2e/mock-visual/fixtures/day-v2-2026-07-08'
-import { TodayPayloadWireSchema } from '@/packages/contracts/runtime'
+import { TodayPayloadWireSchema, CalendarPayloadWireSchema } from '@/packages/contracts/runtime'
 
 const originalFetch = globalThis.fetch
+
+const validCalendarPayload = {
+  meta: {
+    schemaVersion: 'calendar/v1',
+    contractVersion: 1,
+    generatedAt: '2026-07-24T00:00:00Z',
+  },
+  month: '2026-07',
+  title: 'July 2026',
+  allowedRange: {
+    from: '2025-07-01',
+    to: '2027-07-01',
+  },
+  days: [
+    {
+      date: '2026-07-24',
+      dayNumber: 24,
+      disabled: false,
+      isCurrentMonth: true,
+      isToday: true,
+      dayStatus: 'supportive',
+      access: { state: 'full' },
+    },
+  ],
+}
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -126,7 +152,9 @@ describe('Today preview marker', () => {
       expect.stringContaining('/api/day/2026-07-08'),
       expect.objectContaining({
         credentials: 'include',
-        headers: { Accept: 'application/json' },
+        headers: expect.objectContaining({
+          Accept: 'application/json',
+        }),
       }),
     )
   })
@@ -148,23 +176,23 @@ describe('Today preview marker', () => {
       expect.stringContaining('/api/day/2026-07-08'),
       expect.objectContaining({
         credentials: 'include',
-        headers: {
+        headers: expect.objectContaining({
           Accept: 'application/json',
           [TODAY_PREVIEW_HEADER_NAME]: TODAY_PREVIEW_HEADER_VALUE,
-        },
+        }),
       }),
     )
   })
 
   it('keeps fetchCalendar marker-free in the same local development runtime', async () => {
-    const payload = { days: [] }
+    const contractPayload = CalendarPayloadWireSchema.parse(validCalendarPayload)
     vi.stubEnv('NODE_ENV', 'development')
     vi.stubGlobal('window', {
       location: { hostname: 'localhost', port: '3003' },
     })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => payload,
+      json: async () => contractPayload,
     }))
 
     await fetchCalendar('2026-07')
@@ -173,7 +201,9 @@ describe('Today preview marker', () => {
       expect.stringContaining('/api/calendar?month=2026-07'),
       expect.objectContaining({
         credentials: 'include',
-        headers: { Accept: 'application/json' },
+        headers: expect.objectContaining({
+          Accept: 'application/json',
+        }),
       }),
     )
   })
@@ -196,6 +226,24 @@ describe('ApiError', () => {
   })
 })
 
+describe('ApiContractError', () => {
+  it('defaults to Today message when instantiated with no args', () => {
+    const err = new ApiContractError()
+    expect(err.name).toBe('ApiContractError')
+    expect(err.status).toBe(502)
+    expect(err.code).toBe('SCHEMA_VALIDATION_ERROR')
+    expect(err.message).toBe('Invalid Today payload format from backend')
+  })
+
+  it('builds exact Calendar message when instantiated with Calendar', () => {
+    const err = new ApiContractError('Calendar')
+    expect(err.name).toBe('ApiContractError')
+    expect(err.status).toBe(502)
+    expect(err.code).toBe('SCHEMA_VALIDATION_ERROR')
+    expect(err.message).toBe('Invalid Calendar payload format from backend')
+  })
+})
+
 describe('fetchDay', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -211,7 +259,6 @@ describe('fetchDay', () => {
 
     const result = await fetchDay('2026-07-08')
     expect(result).toEqual(contractPayload)
-    // Verify it calls the real /api/day endpoint, not returning demo data
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/day/2026-07-08'),
       expect.objectContaining({ credentials: 'include' }),
@@ -219,16 +266,15 @@ describe('fetchDay', () => {
   })
 
   it('throws ApiContractError on malformed nested V2 response', async () => {
-    const sentinel = "RAW_PAYLOAD_SENTINEL_DO_NOT_LEAK"
+    const sentinel = 'RAW_PAYLOAD_SENTINEL_DO_NOT_LEAK'
     const malformedPayload = {
       ...dayPayloadV2,
       v2: {
         ...dayPayloadV2.v2,
         activationEvidence: [
           {
-            // Missing required id field to trigger validation error
-            technique: "transit_to_natal",
-            techniqueFamily: "transit",
+            technique: 'transit_to_natal',
+            techniqueFamily: 'transit',
             evidence: sentinel,
           },
         ],
@@ -244,16 +290,16 @@ describe('fetchDay', () => {
 
     await expect(request).rejects.toBeInstanceOf(ApiContractError)
     await expect(request).rejects.toMatchObject({
-      name: "ApiContractError",
+      name: 'ApiContractError',
       status: 502,
-      code: "SCHEMA_VALIDATION_ERROR",
-      message: "Invalid Today payload format from backend",
+      code: 'SCHEMA_VALIDATION_ERROR',
+      message: 'Invalid Today payload format from backend',
     })
     await expect(request).rejects.toMatchObject({
       message: expect.not.stringContaining(sentinel),
     })
     await expect(request).rejects.toMatchObject({
-      message: expect.not.stringContaining("activationEvidence"),
+      message: expect.not.stringContaining('activationEvidence'),
     })
   })
 
@@ -345,20 +391,44 @@ describe('fetchCalendar', () => {
     vi.clearAllMocks()
   })
 
-  it('returns payload on success and calls real API endpoint (not demo data)', async () => {
-    const payload = { days: [{ date: '2025-06-01', dayStatus: 'supportive' }] }
+  it('returns contract-valid payload on success and calls real API endpoint', async () => {
+    const contractPayload = CalendarPayloadWireSchema.parse(validCalendarPayload)
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => payload,
+      json: async () => contractPayload,
     })
 
-    const result = await fetchCalendar('2025-06')
-    expect(result).toEqual(payload)
-    // Verify it calls the real /api/calendar endpoint, not returning demo data
+    const result = await fetchCalendar('2026-07')
+    expect(result).toEqual(contractPayload)
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/calendar?month=2025-06'),
+      expect.stringContaining('/api/calendar?month=2026-07'),
       expect.objectContaining({ credentials: 'include' }),
     )
+  })
+
+  it('throws ApiContractError with Calendar message on malformed 200 response without leaking raw sentinel', async () => {
+    const sentinel = 'RAW_CALENDAR_SENTINEL_DO_NOT_LEAK'
+    const malformedCalendar = {
+      bogusField: sentinel,
+    }
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => malformedCalendar,
+    })
+
+    const request = fetchCalendar('2026-07')
+
+    await expect(request).rejects.toBeInstanceOf(ApiContractError)
+    await expect(request).rejects.toMatchObject({
+      name: 'ApiContractError',
+      status: 502,
+      code: 'SCHEMA_VALIDATION_ERROR',
+      message: 'Invalid Calendar payload format from backend',
+    })
+    await expect(request).rejects.toMatchObject({
+      message: expect.not.stringContaining(sentinel),
+    })
   })
 
   it('throws ApiError on error response', async () => {

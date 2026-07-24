@@ -1,18 +1,20 @@
-
 // ############################################################################
 // AI_HEADER: FRONTEND_API_NATAL — typed-result natal report lifecycle client.
 // ROLE: Typed-result natal preview, generation, report and section client.
+// DEPENDENCIES: lib/contracts/natal types and Zod schemas; lib/log/instrumented-fetch
+// GRACE_ANCHORS: [FRONTEND_API_NATAL]
+// WAVE: W-FRONTEND-OBSERVABILITY
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-FRONTEND-API-NATAL
-// purpose: Call natal endpoints, validate success payloads and normalize HTTP, contract and network failures into results.
+// purpose: Call natal endpoints via instrumentedFetch with diagnostic contracts, validate success payloads and normalize HTTP, contract and network failures into results.
 // owns:
 //   - lib/api/natal.ts
 // inputs: optional forceRegenerate, reportId and sectionId.
 // outputs: exported error interfaces and discriminated success or error result objects.
-// dependencies: lib/contracts/natal types and Zod schemas; fetch.
-// side_effects: credentialed natal GET and POST requests.
-// emitted_logs: none.
+// dependencies: lib/contracts/natal types and Zod schemas; lib/log/instrumented-fetch.
+// side_effects: credentialed natal GET and POST requests via instrumentedFetch.
+// emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed, frontend.api_request_failed, frontend.api_response_invalid
 // invariants:
 //   - Public functions resolve typed results instead of throwing expected failures.
 //   - 409, 501, 502, 401 and 404 status-to-error mappings remain unchanged.
@@ -41,10 +43,12 @@
 //   - REPORT: fetch and validate the current or identified report.
 //   - SECTION: fetch and validate one report section.
 // owned_tests:
+//   - __tests__/api/natal-instrumentation.test.ts
 //   - __tests__/api/natal-report.test.ts
 //   - __tests__/natal/natal-component-states.test.tsx
 //   - __tests__/natal/natal-no-english.test.tsx
 // END_MODULE_MAP: M-FRONTEND-API-NATAL
+
 /**
  * API client for natal endpoints.
  *
@@ -67,11 +71,11 @@ import {
   NatalGenerateResponseSchema,
   NatalReportSectionReadSchema,
 } from "@/lib/contracts/natal"
+import { instrumentedFetch } from "@/lib/log/instrumented-fetch"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ""
 
-// ---- Error types ----
-
+// START_BLOCK: ERROR_MODELS
 export interface NatalPreviewError {
   type: "profile_incomplete" | "error"
   message: string
@@ -96,22 +100,44 @@ type ErrorBody = {
   missingFields?: string[]
   detail?: { message?: string; missingFields?: string[]; code?: string }
 }
+// END_BLOCK: ERROR_MODELS
 
-// ---- Helpers ----
-
+// START_BLOCK: ERROR_BODY_PARSE
 function parseErrorBody(res: Response): Promise<ErrorBody> {
   return res.json().catch(() => ({ message: "Request failed" }))
 }
+// END_BLOCK: ERROR_BODY_PARSE
 
-// ---- Preview ----
-
+// START_BLOCK: PREVIEW
 export async function fetchNatalPreview(): Promise<
   { ok: true; data: NatalPreviewRead } | { ok: false; error: NatalPreviewError }
 > {
+  // START_FUNCTION_CONTRACT: F-M-FRONTEND-API-NATAL.fetchNatalPreview
+  // purpose: Fetch natal preview payload via instrumentedFetch with NatalPreview responseContract.
+  // inputs: none
+  // returns: Promise<{ ok: true; data: NatalPreviewRead } | { ok: false; error: NatalPreviewError }>
+  // side_effects: GET /api/natal/preview via instrumentedFetch
+  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed
+  // END_FUNCTION_CONTRACT: F-M-FRONTEND-API-NATAL.fetchNatalPreview
   try {
-    const res = await fetch(`${API_BASE}/api/natal/preview`, {
-      credentials: "include",
-      headers: { Accept: "application/json" },
+    const res = await instrumentedFetch({
+      operation: "natal.preview",
+      routeTemplate: "GET /api/natal/preview",
+      url: `${API_BASE}/api/natal/preview`,
+      init: {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      },
+      responseContract: {
+        contractName: "NatalPreview",
+        contractVersion: "v1",
+        validate: (json) => {
+          const parsed = NatalPreviewReadSchema.safeParse(json)
+          if (parsed.success) return { valid: true }
+          const fields = parsed.error.issues.map((i) => String(i.path[0] || "unknown"))
+          return { valid: false, missingFields: fields, invalidFieldTypes: fields }
+        },
+      },
     })
     if (res.status === 409) {
       const body = await parseErrorBody(res)
@@ -141,18 +167,40 @@ export async function fetchNatalPreview(): Promise<
     return { ok: false, error: { type: "error", message: "Network error" } }
   }
 }
+// END_BLOCK: PREVIEW
 
-// ---- Generate ----
-
+// START_BLOCK: GENERATE
 export async function fetchNatalGenerate(forceRegenerate = false): Promise<
   { ok: true; data: NatalGenerateResponse } | { ok: false; error: NatalGenerateError }
 > {
+  // START_FUNCTION_CONTRACT: F-M-FRONTEND-API-NATAL.fetchNatalGenerate
+  // purpose: Request natal report generation via instrumentedFetch with NatalGenerate responseContract.
+  // inputs: forceRegenerate — boolean flag
+  // returns: Promise<{ ok: true; data: NatalGenerateResponse } | { ok: false; error: NatalGenerateError }>
+  // side_effects: POST /api/natal/generate via instrumentedFetch
+  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed
+  // END_FUNCTION_CONTRACT: F-M-FRONTEND-API-NATAL.fetchNatalGenerate
   try {
-    const res = await fetch(`${API_BASE}/api/natal/generate`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ forceRegenerate }),
+    const res = await instrumentedFetch({
+      operation: "natal.generate",
+      routeTemplate: "POST /api/natal/generate",
+      url: `${API_BASE}/api/natal/generate`,
+      init: {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ forceRegenerate }),
+      },
+      responseContract: {
+        contractName: "NatalGenerate",
+        contractVersion: "v1",
+        validate: (json) => {
+          const parsed = NatalGenerateResponseSchema.safeParse(json)
+          if (parsed.success) return { valid: true }
+          const fields = parsed.error.issues.map((i) => String(i.path[0] || "unknown"))
+          return { valid: false, missingFields: fields, invalidFieldTypes: fields }
+        },
+      },
     })
 
     if (res.status === 409) {
@@ -208,20 +256,42 @@ export async function fetchNatalGenerate(forceRegenerate = false): Promise<
     return { ok: false, error: { type: "error", message: "Network error" } }
   }
 }
+// END_BLOCK: GENERATE
 
-// ---- Report ----
-
+// START_BLOCK: REPORT
 export async function fetchNatalReport(reportId?: string): Promise<
   { ok: true; data: NatalReportRead } | { ok: false; error: NatalReportError }
 > {
+  // START_FUNCTION_CONTRACT: F-M-FRONTEND-API-NATAL.fetchNatalReport
+  // purpose: Fetch current or identified natal report via instrumentedFetch with NatalReport responseContract.
+  // inputs: reportId — optional string ID
+  // returns: Promise<{ ok: true; data: NatalReportRead } | { ok: false; error: NatalReportError }>
+  // side_effects: GET /api/natal/report or /api/natal/report/{id} via instrumentedFetch
+  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed
+  // END_FUNCTION_CONTRACT: F-M-FRONTEND-API-NATAL.fetchNatalReport
   try {
     const url = reportId
       ? `${API_BASE}/api/natal/report/${reportId}`
       : `${API_BASE}/api/natal/report`
 
-    const res = await fetch(url, {
-      credentials: "include",
-      headers: { Accept: "application/json" },
+    const res = await instrumentedFetch({
+      operation: "natal.report",
+      routeTemplate: reportId ? "GET /api/natal/report/{id}" : "GET /api/natal/report",
+      url,
+      init: {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      },
+      responseContract: {
+        contractName: "NatalReport",
+        contractVersion: "v1",
+        validate: (json) => {
+          const parsed = NatalReportReadSchema.safeParse(json)
+          if (parsed.success) return { valid: true }
+          const fields = parsed.error.issues.map((i) => String(i.path[0] || "unknown"))
+          return { valid: false, missingFields: fields, invalidFieldTypes: fields }
+        },
+      },
     })
 
     if (res.status === 401) {
@@ -262,23 +332,42 @@ export async function fetchNatalReport(reportId?: string): Promise<
     return { ok: false, error: { type: "error", message: "Network error" } }
   }
 }
+// END_BLOCK: REPORT
 
-// ---- Section ----
-
+// START_BLOCK: SECTION
 export async function fetchNatalReportSection(
   reportId: string,
   sectionId: string
 ): Promise<
   { ok: true; data: NatalReportRead["sections"][number] } | { ok: false; error: NatalReportError }
 > {
+  // START_FUNCTION_CONTRACT: F-M-FRONTEND-API-NATAL.fetchNatalReportSection
+  // purpose: Fetch single natal report section via instrumentedFetch with NatalReportSection responseContract.
+  // inputs: reportId — report string ID, sectionId — section string ID
+  // returns: Promise<{ ok: true; data: NatalReportRead["sections"][number] } | { ok: false; error: NatalReportError }>
+  // side_effects: GET /api/natal/report/{id}/section/{sectionId} via instrumentedFetch
+  // emitted_logs: ui.fetch_started, ui.fetch_succeeded, ui.fetch_failed
+  // END_FUNCTION_CONTRACT: F-M-FRONTEND-API-NATAL.fetchNatalReportSection
   try {
-    const res = await fetch(
-      `${API_BASE}/api/natal/report/${reportId}/section/${sectionId}`,
-      {
+    const res = await instrumentedFetch({
+      operation: "natal.section",
+      routeTemplate: "GET /api/natal/report/{id}/section/{sectionId}",
+      url: `${API_BASE}/api/natal/report/${reportId}/section/${sectionId}`,
+      init: {
         credentials: "include",
         headers: { Accept: "application/json" },
-      }
-    )
+      },
+      responseContract: {
+        contractName: "NatalReportSection",
+        contractVersion: "v1",
+        validate: (json) => {
+          const parsed = NatalReportSectionReadSchema.safeParse(json)
+          if (parsed.success) return { valid: true }
+          const fields = parsed.error.issues.map((i) => String(i.path[0] || "unknown"))
+          return { valid: false, missingFields: fields, invalidFieldTypes: fields }
+        },
+      },
+    })
 
     if (res.status === 404) {
       return { ok: false, error: { type: "not_found", message: "Section not found" } }
@@ -296,10 +385,10 @@ export async function fetchNatalReportSection(
     const data = NatalReportSectionReadSchema.parse(raw)
     return { ok: true, data }
   } catch (err) {
-    // Zod validation error — surface as contract mismatch, not generic network error
     if (err instanceof Error && err.name === "ZodError") {
       return { ok: false, error: { type: "error", message: "Invalid response format from server" } }
     }
     return { ok: false, error: { type: "error", message: "Network error" } }
   }
 }
+// END_BLOCK: SECTION
