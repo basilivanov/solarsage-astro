@@ -1,11 +1,11 @@
 # AI_HEADER: MODULE_API_PROMO
 # ROLE: Session-authenticated HTTP surface for /api/promo/preview and /api/promo/redeem.
-# DEPENDENCIES: fastapi, sqlalchemy, app.services.promo_campaign_service
+# DEPENDENCIES: fastapi, sqlalchemy, app.services.promo_campaign_service, app.services.promo_rate_limiter
 # GRACE_ANCHORS: [ROUTE_PROMO_PREVIEW, ROUTE_PROMO_REDEEM]
 # WAVE: W-NAMED-PROMO-CAMPAIGN
 
 # START_MODULE_CONTRACT: M-API-PROMO
-# purpose: Expose POST /api/promo/preview and POST /api/promo/redeem endpoints with session auth, safe 400 validation boundary, Cache-Control: no-store headers, and domain error mapping.
+# purpose: Expose POST /api/promo/preview and POST /api/promo/redeem endpoints with session auth, per-user rate limiting, safe 400 validation boundary, Cache-Control: no-store headers, and domain error mapping.
 # owns:
 #   - apps/api/app/api/promo.py
 # inputs:
@@ -16,11 +16,12 @@
 #   - APIRouter with promo endpoints
 # dependencies:
 #   - M-PROMO-CAMPAIGN-SERVICE
+#   - M-PROMO-RATE-LIMITER
 #   - M-DB-SESSION
 #   - M-AUTH-DEPENDENCIES
-# side_effects: calls PromoCampaignService preview and redeem
-# emitted_logs: none (handled by domain service)
-# failure_policy: maps domain errors to 400/409/410 HTTP status codes with safe error codes; malformed requests map to safe 400 INVALID_CODE
+# side_effects: calls promo_rate_limiter, PromoCampaignService preview and redeem
+# emitted_logs: promo.redemption_rejected (for rate-limited redeem)
+# failure_policy: maps domain errors to 400/409/410/429 HTTP status codes with safe error codes; malformed requests map to safe 400 INVALID_CODE
 # END_MODULE_CONTRACT: M-API-PROMO
 
 # START_MODULE_MAP: M-API-PROMO
@@ -32,6 +33,7 @@
 #   - ROUTE_PROMO_REDEEM: POST /api/promo/redeem route
 # owned_tests:
 #   - apps/api/tests/test_promo_api.py
+#   - apps/api/tests/test_promo_rate_limiter.py
 #   - apps/api/tests/test_public_surface_security.py
 # END_MODULE_MAP: M-API-PROMO
 
@@ -46,6 +48,7 @@ from fastapi.routing import APIRoute
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_session
+from app.core.logging import log_block, log_event
 from app.db.models import User
 from app.db.session import get_session
 from app.schemas.promo import (
@@ -60,6 +63,7 @@ from app.services.promo_campaign_service import (
     PromoDomainError,
     PromoErrorCode,
 )
+from app.services.promo_rate_limiter import promo_rate_limiter
 
 DOMAIN_ERROR_STATUS: dict[PromoErrorCode, int] = {
     "INVALID_CODE": status.HTTP_400_BAD_REQUEST,
@@ -67,12 +71,13 @@ DOMAIN_ERROR_STATUS: dict[PromoErrorCode, int] = {
     "CAMPAIGN_FULL": status.HTTP_409_CONFLICT,
     "ALREADY_REDEEMED": status.HTTP_409_CONFLICT,
     "PROFILE_INCOMPLETE": status.HTTP_409_CONFLICT,
+    "RATE_LIMITED": status.HTTP_429_TOO_MANY_REQUESTS,
 }
 
 
 # START_BLOCK: ROUTE_WRAPPER
 class SafePromoRoute(APIRoute):
-    """Custom APIRoute to enforce safe validation error boundary and Cache-Control: no-store headers."""
+    """Custom APIRoute to enforce safe validation error boundary, Retry-After headers, and Cache-Control: no-store headers."""
 
     def get_route_handler(self) -> Callable:
         original_route_handler = super().get_route_handler()
@@ -103,10 +108,13 @@ class SafePromoRoute(APIRoute):
                             "message": str(exc.detail),
                         }
                     }
+                headers = {"Cache-Control": "no-store"}
+                if exc.headers:
+                    headers.update(exc.headers)
                 return JSONResponse(
                     status_code=exc.status_code,
                     content=content,
-                    headers={"Cache-Control": "no-store"},
+                    headers=headers,
                 )
 
         return custom_route_handler
@@ -127,10 +135,23 @@ async def preview_promo(
     # purpose: Authenticated endpoint to preview a promo campaign offer and check profile readiness.
     # inputs: body (PromoCodeRequest), user (User from require_session), db (AsyncSession)
     # returns: PromoPreviewResponse
-    # side_effects: calls PromoCampaignService.preview
+    # side_effects: calls promo_rate_limiter, PromoCampaignService.preview
     # emitted_logs: none
-    # error_behavior: maps domain errors to 400/409/410 status codes
+    # error_behavior: maps domain/rate limit errors to 400/409/410/429 status codes
     # END_FUNCTION_CONTRACT: F-M-API-PROMO.preview_promo
+
+    # Check per-user rate limit after session auth, before DB/hash lookup
+    rate_res = promo_rate_limiter.check_and_record(user.id)
+    if not rate_res.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(rate_res.retry_after_seconds)},
+            detail={
+                "code": "RATE_LIMITED",
+                "message": "Слишком много попыток ввода промокода. Попробуйте позже.",
+            },
+        )
+
     service = PromoCampaignService(db)
     try:
         preview_data = await service.preview(
@@ -170,10 +191,34 @@ async def redeem_promo(
     # purpose: Authenticated endpoint to redeem a promo campaign and issue access/credit/natal grants.
     # inputs: body (PromoCodeRequest), user (User from require_session), db (AsyncSession)
     # returns: PromoRedeemResponse
-    # side_effects: calls PromoCampaignService.redeem
-    # emitted_logs: none
-    # error_behavior: maps domain errors to 400/409/410 status codes
+    # side_effects: calls promo_rate_limiter, PromoCampaignService.redeem
+    # emitted_logs: promo.redemption_rejected when rate limited
+    # error_behavior: maps domain/rate limit errors to 400/409/410/429 status codes
     # END_FUNCTION_CONTRACT: F-M-API-PROMO.redeem_promo
+
+    # Check per-user rate limit after session auth, before DB/hash lookup
+    rate_res = promo_rate_limiter.check_and_record(user.id)
+    if not rate_res.allowed:
+        try:
+            with log_block(slice="W-PROMO-CAMPAIGN", module="M-API-PROMO", block="REDEEM"):
+                log_event(
+                    "promo.redemption_rejected",
+                    level="info",
+                    msg="Promo redemption rejected due to rate limiting",
+                    payload={"error_code": "RATE_LIMITED"},
+                )
+        except Exception:
+            pass
+
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(rate_res.retry_after_seconds)},
+            detail={
+                "code": "RATE_LIMITED",
+                "message": "Слишком много попыток ввода промокода. Попробуйте позже.",
+            },
+        )
+
     service = PromoCampaignService(db)
     try:
         redeem_data = await service.redeem(
