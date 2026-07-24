@@ -4,7 +4,7 @@
 # purpose: Access control service for content gating.
 
 # START_MODULE_CONTRACT: M-ACCESS.service
-# purpose: Check if user can access a specific day.
+# purpose: Check if user can access a specific day, calculate additive grant windows, and grant access entries.
 #          W-1.3: stub always returns state=full.
 #          W-ACCESS.1: real logic with access_ledger, referral_days, subscriptions.
 # owns:
@@ -14,7 +14,7 @@
 #   - target_date: date
 #   - db: AsyncSession
 # outputs:
-#   - ContentAccessState
+#   - ContentAccessState, AccessSummary, AccessLedger, next_grant_start date
 # dependencies:
 #   - M-DB-SESSION (AsyncSession)
 #   - M-CONTRACTS.access (ContentAccessState)
@@ -23,8 +23,11 @@
 #   - W-1.3: always returns state=full (stub).
 #   - W-ACCESS.1: checks access_ledger, referral_days, subscriptions.
 #   - Consumption order: referral_bonus first, then subscription.
+#   - next_grant_start returns requested_start if no active/future access, or day after max end_date.
+#   - grant_subscription validates days > 0 and returns created AccessLedger row with assigned ID.
 # failure_policy:
-#   - never raises; returns preview state if access denied.
+#   - can_access_day never raises; returns preview state if access denied.
+#   - grant_subscription raises ValueError for days <= 0.
 # non_goals:
 #   - no payment processing (lives in M-PAYMENT)
 # END_MODULE_CONTRACT: M-ACCESS.service
@@ -32,10 +35,12 @@
 # START_MODULE_MAP: M-ACCESS.service
 # public_entrypoints:
 #   - AccessService.can_access_day
+#   - AccessService.get_summary
+#   - AccessService.next_grant_start
 #   - AccessService.grant_referral_bonus
 #   - AccessService.grant_subscription
 # semantic_blocks:
-#   - ACCESS_CHECK: real logic with access_ledger
+#   - ACCESS_CHECK: real logic with access_ledger, get_summary, next_grant_start
 #   - ACCESS_GRANT: grant_referral_bonus, grant_subscription
 # owned_tests:
 #   - apps/api/tests/test_access_service.py (W-ACCESS.1)
@@ -173,6 +178,14 @@ class AccessService:
     async def get_summary(
         self, user_id: UUID, target_date: Date | None = None
     ) -> AccessSummary:
+        # START_FUNCTION_CONTRACT: F-M-ACCESS.service.get_summary
+        # purpose: Build AccessSummary for a user on a given date.
+        # inputs: user_id (UUID), target_date (Date | None)
+        # returns: AccessSummary
+        # side_effects: reads from AccessLedger table
+        # emitted_logs: none
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-ACCESS.service.get_summary
         today = target_date or datetime.now(UTC).date()
         result = await self.db.execute(
             select(AccessLedger)
@@ -220,6 +233,31 @@ class AccessService:
             access_start=last_entry.start_date.isoformat(),
             access_until=last_entry.end_date.isoformat(),
         )
+
+    async def next_grant_start(
+        self,
+        user_id: UUID,
+        requested_start: Date,
+    ) -> Date:
+        # START_FUNCTION_CONTRACT: F-M-ACCESS.service.next_grant_start
+        # purpose: Calculate starting date for a new access grant after any existing access window.
+        # inputs: user_id (UUID), requested_start (Date)
+        # returns: Date (requested_start if no overlapping access, or day after max end_date)
+        # side_effects: reads from AccessLedger table
+        # emitted_logs: none
+        # error_behavior: DB errors propagate
+        # END_FUNCTION_CONTRACT: F-M-ACCESS.service.next_grant_start
+        result = await self.db.execute(
+            select(AccessLedger.end_date)
+            .where(AccessLedger.user_id == user_id)
+            .order_by(AccessLedger.end_date.desc())
+            .limit(1)
+        )
+        latest_end = result.scalar_one_or_none()
+
+        if latest_end is None or latest_end < requested_start:
+            return requested_start
+        return latest_end + timedelta(days=1)
 # END_BLOCK: ACCESS_CHECK
 
 
@@ -251,24 +289,27 @@ class AccessService:
         self.db.add(entry)
         await self.db.commit()
 
-    async def grant_subscription(self, user_id: UUID, start_date: Date, days: int = 30, *, commit: bool = True) -> None:
+    async def grant_subscription(
+        self, user_id: UUID, start_date: Date, days: int = 30, *, commit: bool = True
+    ) -> AccessLedger:
         # START_FUNCTION_CONTRACT: F-M-ACCESS.service.grant_subscription
-        # purpose: Grant subscription access for specified days.
+        # purpose: Grant subscription access for specified days and return created AccessLedger row.
         # inputs: user_id (UUID), start_date (Date), days (int, default 30),
         #   commit (bool, default True for legacy callers).
-        # returns: None
+        # returns: AccessLedger
         # side_effects: creates AccessLedger row of type subscription; with
-        #   commit=False only STAGES it — the caller owns the single atomic
-        #   commit (BillingService webhook fulfillment: binding+succeeded+
-        #   subscription+ledger in one transaction).
+        #   commit=False only STAGES it — the caller owns the single atomic commit.
         # emitted_logs: none (TODO: W-1.6 — add access.subscription_granted event)
-        # error_behavior: DB errors propagate
+        # error_behavior: raises ValueError if days <= 0; DB errors propagate
         # END_FUNCTION_CONTRACT: F-M-ACCESS.service.grant_subscription
         """
         Grant subscription access.
 
         Called when user pays for subscription.
         """
+        if days <= 0:
+            raise ValueError("Subscription days must be positive")
+
         end_date = start_date + timedelta(days=days - 1)
 
         entry = AccessLedger(
@@ -284,4 +325,6 @@ class AccessService:
             await self.db.commit()
         else:
             await self.db.flush()
+
+        return entry
 # END_BLOCK: ACCESS_GRANT
