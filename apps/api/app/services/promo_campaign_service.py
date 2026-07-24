@@ -29,6 +29,7 @@
 #   - existing redemption check precedes window and capacity checks
 #   - lock order during redeem is campaign first, user second
 #   - redeem executes exactly one final commit and logs promo.redemption_succeeded strictly after commit
+#   - concurrent natal entitlement creation recovers via SAVEPOINT and re-queries fulfilled Purchase
 # failure_policy:
 #   - raises PromoDomainError with safe code and localized message; rollbacks and emits safe structured log on error
 # emitted_logs:
@@ -69,6 +70,7 @@ import datetime as dt
 from typing import Literal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import log_block, log_event
@@ -150,11 +152,11 @@ def hash_promo_token(token: str) -> str:
     return hashlib.sha256(token.encode("ascii")).hexdigest().lower()
 
 
-def _as_utc(value: datetime) -> datetime:
-    """Normalize database timestamps; SQLite drops timezone metadata on reload."""
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value.astimezone(UTC)
+def _ensure_utc(dt_val: datetime) -> datetime:
+    """Normalize database timestamps to UTC, including SQLite-naive values."""
+    if dt_val.tzinfo is None:
+        return dt_val.replace(tzinfo=UTC)
+    return dt_val.astimezone(UTC)
 # END_BLOCK: VALUE_HELPERS
 
 
@@ -162,6 +164,27 @@ def _as_utc(value: datetime) -> datetime:
 class PromoCampaignService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def _find_fulfilled_natal_purchase(
+        self, user_id: uuid.UUID, context_hash: str
+    ) -> Purchase | None:
+        # START_FUNCTION_CONTRACT: F-M-PROMO-CAMPAIGN-SERVICE.PromoCampaignService._find_fulfilled_natal_purchase
+        # purpose: Find an existing fulfilled natal entitlement for the exact user context.
+        # inputs: user_id (UUID), context_hash (str)
+        # returns: fulfilled Purchase or None
+        # side_effects: one read-only database query
+        # emitted_logs: none
+        # error_behavior: database errors propagate
+        # END_FUNCTION_CONTRACT: F-M-PROMO-CAMPAIGN-SERVICE.PromoCampaignService._find_fulfilled_natal_purchase
+        purch_res = await self.db.execute(
+            select(Purchase).where(
+                Purchase.user_id == user_id,
+                Purchase.product_slug == "natal_full_report",
+                Purchase.context_hash == context_hash,
+                Purchase.status.in_(["succeeded", "delivered"]),
+            )
+        )
+        return purch_res.scalars().first()
 
     # START_FUNCTION_CONTRACT: F-M-PROMO-CAMPAIGN-SERVICE.PromoCampaignService.preview
     # purpose: Preview a promo offer for a user and evaluate profile completeness without DB mutations or logs.
@@ -206,11 +229,13 @@ class PromoCampaignService:
             raise PromoDomainError(code="ALREADY_REDEEMED", safe_message="Промокод уже активирован")
 
         # 4. Inactive or not-yet-started -> INVALID_CODE
-        if not campaign.active or current_time < _as_utc(campaign.activation_starts_at):
+        starts_at = _ensure_utc(campaign.activation_starts_at)
+        if not campaign.active or current_time < starts_at:
             raise PromoDomainError(code="INVALID_CODE", safe_message="Неверный промокод")
 
         # 5. Campaign expired (now >= activation_ends_at) -> CAMPAIGN_EXPIRED
-        if current_time >= _as_utc(campaign.activation_ends_at):
+        ends_at = _ensure_utc(campaign.activation_ends_at)
+        if current_time >= ends_at:
             raise PromoDomainError(code="CAMPAIGN_EXPIRED", safe_message="Срок действия промокода истёк")
 
         # 6. Capacity reached -> CAMPAIGN_FULL
@@ -301,11 +326,13 @@ class PromoCampaignService:
                 raise PromoDomainError(code="ALREADY_REDEEMED", safe_message="Промокод уже активирован")
 
             # 4. Inactive or not-yet-started -> INVALID_CODE
-            if not campaign.active or current_time < _as_utc(campaign.activation_starts_at):
+            starts_at = _ensure_utc(campaign.activation_starts_at)
+            if not campaign.active or current_time < starts_at:
                 raise PromoDomainError(code="INVALID_CODE", safe_message="Неверный промокод")
 
             # 5. Campaign expired -> CAMPAIGN_EXPIRED
-            if current_time >= _as_utc(campaign.activation_ends_at):
+            ends_at = _ensure_utc(campaign.activation_ends_at)
+            if current_time >= ends_at:
                 raise PromoDomainError(code="CAMPAIGN_EXPIRED", safe_message="Срок действия промокода истёк")
 
             # 6. Lock internal User row FOR UPDATE (Lock 2: campaign first, user second)
@@ -393,32 +420,33 @@ class PromoCampaignService:
                 assert profile is not None
                 context_hash = NatalContextService.compute_profile_hash(profile)
 
-                purch_res = await self.db.execute(
-                    select(Purchase).where(
-                        Purchase.user_id == user_id,
-                        Purchase.product_slug == "natal_full_report",
-                        Purchase.context_hash == context_hash,
-                        Purchase.status.in_(["succeeded", "delivered"]),
-                    )
-                )
-                existing_purchase = purch_res.scalars().first()
+                existing_purchase = await self._find_fulfilled_natal_purchase(user_id, context_hash)
 
                 if existing_purchase is not None:
                     natal_already_owned = True
                     natal_purchase_id = existing_purchase.id
                 else:
                     natal_already_owned = False
-                    new_purchase = Purchase(
-                        user_id=user_id,
-                        product_slug="natal_full_report",
-                        status="delivered",
-                        payment_id=None,
-                        horary_quota_added=None,
-                        context_hash=context_hash,
-                    )
-                    self.db.add(new_purchase)
-                    await self.db.flush()
-                    natal_purchase_id = new_purchase.id
+                    try:
+                        async with self.db.begin_nested():
+                            new_purchase = Purchase(
+                                user_id=user_id,
+                                product_slug="natal_full_report",
+                                status="delivered",
+                                payment_id=None,
+                                horary_quota_added=None,
+                                context_hash=context_hash,
+                            )
+                            self.db.add(new_purchase)
+                            await self.db.flush()
+                            natal_purchase_id = new_purchase.id
+                    except IntegrityError:
+                        rechecked_purchase = await self._find_fulfilled_natal_purchase(user_id, context_hash)
+                        if rechecked_purchase is not None:
+                            natal_already_owned = True
+                            natal_purchase_id = rechecked_purchase.id
+                        else:
+                            raise
 
             # 10. Record redemption
             redemption = PromoRedemption(
