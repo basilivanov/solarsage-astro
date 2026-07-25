@@ -19,15 +19,6 @@
 #   - import-time only
 # END_MODULE_CONTRACT: M-LLM-PACKAGE
 
-# START_MODULE_MAP: M-LLM-PACKAGE
-# public_entrypoints:
-#   - LLMService
-#   - HoraryGenerationError
-#   - generate_election_narrative
-# semantic_blocks: none
-# owned_tests: none
-# END_MODULE_MAP: M-LLM-PACKAGE
-
 from app.services.llm.service import LLMService
 from app.services.llm.client import HoraryGenerationError
 from app.services.llm.election import generate_election_narrative

@@ -9,7 +9,7 @@
 
 # START_MODULE_CONTRACT: M-DEPLOY-PRODUCTION-WORKFLOW
 # purpose: Manually build, publish, accept and deploy immutable per-SHA OCI
-#   images with a blocking CI-status quality gate, artifact acceptance, and an
+#   images with a blocking reusable quality gate, artifact acceptance, and an
 #   immutable annotated release tag after a proven deploy.
 # owns:
 #   - .github/workflows/deploy-production.yml
@@ -25,15 +25,15 @@
 #     environment secrets
 # outputs: immutable per-SHA images in GHCR, acceptance evidence bundle,
 #   deployed exact SHA on the production host, annotated immutable prod tag.
-# dependencies: GitHub API CI status check (source-quality),
+# dependencies: local reusable ./.github/workflows/ci.yml (source-quality),
 #   ./.github/workflows/visual-regression.yml (visual-baselines),
 #   ./.github/workflows/e2e.yml (real-e2e release gate), docker/buildx
 #   (build/push), ssh + forced-command orchestrator (deploy),
 #   git + GITHUB_TOKEN (tag push)
 # invariants:
 #   - Manual trigger only; no push to main deploys by itself.
-#   - source-quality gates build by verifying the existing CI run for the
-#     exact SHA finished successfully (no duplicate CI run).
+#   - source-quality (reusable ./.github/workflows/ci.yml) gates build:
+#     nothing starts before full green CI on the exact SHA.
 #   - real-e2e (reusable ./.github/workflows/e2e.yml, release suite of
 #     existing real-HMAC no-interception specs) gates deploy: a failing real
 #     flow blocks migrate/deploy/tag; missing E2E secrets fail closed.
@@ -58,7 +58,7 @@
 # public_entrypoints:
 #   - GitHub Actions trigger
 # semantic_blocks:
-#   - SOURCE_QUALITY_JOB: CI status gate for the exact SHA
+#   - SOURCE_QUALITY_JOB: reusable CI gate for the exact SHA
 #   - VISUAL_BASELINES_JOB: reusable visual baseline gate
 #   - REAL_E2E_JOB: reusable real-HMAC release gate (e2e.yml release suite)
 #   - BUILD_JOB: immutable image build and push
@@ -78,59 +78,11 @@ concurrency:
 
 jobs:
   # START_BLOCK: SOURCE_QUALITY_JOB
-  # Blocking release-quality gate: instead of re-running the full CI suite,
-  # verify that the existing CI run for the exact SHA finished successfully.
-  # This removes ~20 minutes of duplicate work on every deploy while keeping
-  # the fail-closed behavior (no green CI -> no build, no deploy).
+  # Blocking release-quality gate: the whole existing CI runs for the exact
+  # SHA via the reusable workflow — nothing (login, bundle fetch, image
+  # build) starts before full green CI. No commands are duplicated here.
   source-quality:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    permissions:
-      actions: read
-      contents: read
-    steps:
-      - name: Wait for CI success on exact SHA
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          WORKFLOW="ci.yml"
-          MAX_ATTEMPTS=50
-          SLEEP_SECONDS=30
-
-          for i in $(seq 1 "$MAX_ATTEMPTS"); do
-            response=$(curl -fsSL \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/workflows/$WORKFLOW/runs?head_sha=$GITHUB_SHA&per_page=1")
-
-            count=$(echo "$response" | jq '.total_count')
-            if [ "$count" -eq 0 ]; then
-              echo "Error: no CI runs found for SHA $GITHUB_SHA" >&2
-              exit 1
-            fi
-
-            status=$(echo "$response" | jq -r '.workflow_runs[0].status')
-            conclusion=$(echo "$response" | jq -r '.workflow_runs[0].conclusion')
-
-            if [ "$status" = "completed" ]; then
-              if [ "$conclusion" = "success" ]; then
-                echo "CI run for $GITHUB_SHA succeeded"
-                exit 0
-              else
-                echo "Error: CI run for $GITHUB_SHA finished with conclusion: $conclusion" >&2
-                exit 1
-              fi
-            fi
-
-            echo "CI run status: $status (attempt $i/$MAX_ATTEMPTS), waiting..."
-            sleep "$SLEEP_SECONDS"
-          done
-
-          echo "Error: timed out waiting for CI run for $GITHUB_SHA" >&2
-          exit 1
+    uses: ./.github/workflows/ci.yml
   # END_BLOCK: SOURCE_QUALITY_JOB
 
   # START_BLOCK: VISUAL_BASELINES_JOB

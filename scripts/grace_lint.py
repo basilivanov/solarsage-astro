@@ -33,12 +33,14 @@ Per file in the active slice (default: apps/api/app), enforces:
   1. AI_HEADER banner present in the first 30 lines.
   2. Paired START_MODULE_CONTRACT / END_MODULE_CONTRACT (same id).
   3. Paired START_MODULE_MAP / END_MODULE_MAP (same id).
-  4. All START_BLOCK / END_BLOCK markers are paired and their ids match.
-  5. Function too large (GRC031): max 4000 lexical tokens.
-
-Note: GRC010/GRC011 (FUNCTION_CONTRACT) and GRC030 (file too long) are
-intentionally disabled per AGENTS.md — FUNCTION_CONTRACT is required only for
-non-trivial functions, and file-length limits are deferred until refactor.
+  4. Every public `def` / `async def` (name not starting with `_`) carries a
+     START_FUNCTION_CONTRACT block immediately inside the body, declaring the
+     6 mandatory fields:
+         purpose, inputs, returns, side_effects, emitted_logs, error_behavior
+     and closed by END_FUNCTION_CONTRACT with a matching id.
+  5. All START_BLOCK / END_BLOCK markers are paired and their ids match.
+  6. File too long (GRC030): max 1000 physical lines.
+  7. Function too large (GRC031): max 4000 lexical tokens.
 
 Exit code 0 on success, 1 on any violation. Writes a machine-readable report
 to stdout (one violation per line) and a human summary to stderr.
@@ -461,16 +463,16 @@ def lint_file(path: Path) -> FileReport:
 
     check_banner(path, lines, report)
 
-    # GRC030 (file too long) intentionally disabled — deferred until refactor.
-    # if len(lines) > 1000:
-    #     report.violations.append(
-    #         Violation(
-    #             file=path,
-    #             line=1001,
-    #             code="GRC030",
-    #             message=f"file too long: {len(lines)} lines (max limit: 1000)",
-    #         )
-    #     )
+    # GRC030: file too long
+    if len(lines) > 1000:
+        report.violations.append(
+            Violation(
+                file=path,
+                line=1001,
+                code="GRC030",
+                message=f"file too long: {len(lines)} lines (max limit: 1000)",
+            )
+        )
 
     markers = parse_markers([ln.rstrip("\n") for ln in lines])
     check_pairing(path, markers, "MODULE_CONTRACT", "GRC002", report)
@@ -499,9 +501,7 @@ def lint_file(path: Path) -> FileReport:
             )
         )
 
-    # GRC010/GRC011 (FUNCTION_CONTRACT) intentionally disabled — required only
-    # for non-trivial functions per AGENTS.md, not every public function.
-    # check_function_contracts(path, source, [ln.rstrip("\n") for ln in lines], report)
+    check_function_contracts(path, source, [ln.rstrip("\n") for ln in lines], report)
     check_function_sizes(path, source, [ln.rstrip("\n") for ln in lines], report)
     return report
 
