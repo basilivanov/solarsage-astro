@@ -173,7 +173,6 @@ jobs:
         env:
           GITHUB_REF: ${{ github.ref }}
           GITHUB_SHA: ${{ github.sha }}
-          IS_PRIVATE: ${{ github.event.repository.private }}
         run: |
           if [ "$GITHUB_REF" != "refs/heads/main" ]; then
             echo "Error: Deployment is only allowed from refs/heads/main. Current ref is $GITHUB_REF." >&2
@@ -181,10 +180,6 @@ jobs:
           fi
           if [[ ! "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "Error: GITHUB_SHA must be a 40-character lowercase hexadecimal string." >&2
-            exit 1
-          fi
-          if [ "$IS_PRIVATE" != "true" ]; then
-            echo "Error: Repository visibility must be private before verification can proceed." >&2
             exit 1
           fi
 
@@ -482,7 +477,6 @@ jobs:
         env:
           GITHUB_REF: ${{ github.ref }}
           GITHUB_SHA: ${{ github.sha }}
-          IS_PRIVATE: ${{ github.event.repository.private }}
         run: |
           if [ "$GITHUB_REF" != "refs/heads/main" ]; then
             echo "Error: Deployment is only allowed from refs/heads/main. Current ref is $GITHUB_REF." >&2
@@ -490,10 +484,6 @@ jobs:
           fi
           if [[ ! "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "Error: GITHUB_SHA must be a 40-character lowercase hexadecimal string." >&2
-            exit 1
-          fi
-          if [ "$IS_PRIVATE" != "true" ]; then
-            echo "Error: Repository visibility must be private before verification can proceed." >&2
             exit 1
           fi
 
