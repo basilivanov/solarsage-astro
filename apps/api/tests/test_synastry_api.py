@@ -6,7 +6,16 @@ import pytest
 
 from fastapi import HTTPException, status
 from app.api.synastry import router
-from app.schemas.synastry import PartnerCreate
+from app.schemas.synastry import AspectDrilldown, PartnerCreate, SynastryAspect
+
+
+def test_synastry_aspect_schemas_accept_engine_tones():
+    """Scoring engine tone vocabulary (03_SCORING_AND_TONE_CONTRACT) must pass response validation."""
+    for tone in ("supportive", "mixed", "tense", "good", "mid", "bad"):
+        aspect = SynastryAspect(id="sun_trine_moon", title="Солнце трин Луна", tone=tone)
+        assert aspect.tone == tone
+        drilldown = AspectDrilldown(aspectId="sun_trine_moon", title="t", tone=tone, explanation="e")
+        assert drilldown.tone == tone
 
 
 def test_synastry_router_import():

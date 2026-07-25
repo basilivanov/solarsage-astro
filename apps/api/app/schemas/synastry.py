@@ -114,7 +114,7 @@ class SynastryAspect(CamelModel):
 
     id: str = Field(..., description="Aspect ID e.g. sun_trine_moon")
     title: str = Field(..., description="Human aspect title e.g. Солнце трин Луна")
-    tone: Literal["good", "mid", "bad", "harmony", "tension", "neutral"] = Field(..., description="Aspect tone/valence")
+    tone: Literal["good", "mid", "bad", "harmony", "tension", "neutral", "supportive", "mixed", "tense"] = Field(..., description="Aspect tone/valence")
     score: int | None = Field(default=None, description="Aspect impact score")
     description: str | None = Field(default=None, description="Short interpretation snippet")
     tech_signature: str | None = Field(default=None, description="Technical aspect signature")
@@ -125,7 +125,7 @@ class AspectDrilldown(CamelModel):
 
     aspect_id: str = Field(..., description="Aspect ID")
     title: str = Field(..., description="Aspect title")
-    tone: Literal["good", "mid", "bad", "harmony", "tension", "neutral"] = Field(..., description="Aspect tone")
+    tone: Literal["good", "mid", "bad", "harmony", "tension", "neutral", "supportive", "mixed", "tense"] = Field(..., description="Aspect tone")
     tech_signature: str | None = Field(default=None, description="Technical astrological signature")
     explanation: str = Field(..., description="Deep psychological and dynamic explanation")
     scenario: str | None = Field(default=None, description="Real-life interaction scenario")
