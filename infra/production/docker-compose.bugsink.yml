@@ -11,7 +11,7 @@
 #   - infra/production/docker-compose.bugsink.yml
 # inputs:
 #   - BUGSINK_SECRET_KEY: secret key for django session signing
-#   - BUGSINK_SUPERUSER: optional initial superuser creation string (username:email:password)
+#   - BUGSINK_SUPERUSER: optional initial superuser creation string (email:password)
 # outputs:
 #   - Bugsink service running on loopback 127.0.0.1:18095 and app network alias "bugsink"
 # dependencies:
