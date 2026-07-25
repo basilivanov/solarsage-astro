@@ -26,6 +26,7 @@
 | Порт | Сервис | Где запущен | Комментарий |
 |------|--------|-------------|-------------|
 | **18091** | SolarSage sidecar | контейнер `solarsage-sidecar` (Compose `solarsage-app`) | Расчётный движок, внутренний (API → sidecar по compose-сети) |
+| **18095** | Bugsink | контейнер `solarsage-bugsink` (Compose `solarsage-bugsink`) | Error tracking UI, внутренний (`127.0.0.1:18095`, доступен по SSH-туннелю) |
 
 ### Docker
 
@@ -75,7 +76,8 @@ backup.timer выключен). Не удалять до явного решен
 | Restic-репозиторий (временно на этой же машине) | `/srv/restic/solarsage` |
 | Nginx vhost | `/etc/nginx/sites-enabled/astro.vasiliy-ivanov.ru.conf` |
 | TLS cert | certbot, `/etc/letsencrypt/live/astro.vasiliy-ivanov.ru/` |
-| Контейнеры | `solarsage-api`, `solarsage-sidecar`, `solarsage-frontend` (Compose `solarsage-app`), `solarsage-db` (Compose `solarsage-prod`) |
+| Error tracking (Bugsink) | `infra/production/docker-compose.bugsink.yml`, `solarsage-bugsink.service` |
+| Контейнеры | `solarsage-api`, `solarsage-sidecar`, `solarsage-frontend` (Compose `solarsage-app`), `solarsage-db` (Compose `solarsage-prod`), `solarsage-bugsink` (Compose `solarsage-bugsink`) |
 
 Systemd на проде: активны `solarsage-db.service`, `solarsage-backup.timer`, `fail2ban`, UFW (22/80/443). Бэкап = orchestrator `backup`: локальный pg_dump в `/var/backups/solarsage` + restic в `sftp:restic-backup@2.26.20.80:/solarsage` — **это та же машина (backup-to-self, ВРЕМЕННО)**; при появлении отдельного offsite-хоста поменять `RESTIC_REPOSITORY` в app.env и ssh-дропин.
 

@@ -116,6 +116,38 @@ Optional keys: `APP_VERSION`, `LLM_MODEL`.
 
 The env file must **not** contain `RELEASE_SHA`: the target release identity is supplied per invocation; a conflicting `RELEASE_SHA` in the env file fails closed.
 
+### 2.3 Error tracking (Bugsink)
+
+Self-hosted Bugsink container (`solarsage-bugsink`) manages frontend and backend error aggregation.
+
+- **Compose file:** `infra/production/docker-compose.bugsink.yml`
+- **Systemd unit:** `infra/systemd/solarsage-bugsink.service`
+
+#### Installation & Launch (Host Action):
+
+```bash
+sudo cp /opt/solarsage-astro/infra/systemd/solarsage-bugsink.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now solarsage-bugsink.service
+```
+
+#### Accessing Bugsink UI:
+
+The UI binds strictly to loopback (`127.0.0.1:18095`). Connect via SSH tunnel:
+
+```bash
+ssh -L 18095:127.0.0.1:18095 root@2.26.20.80 -i ~/.ssh/solarsage_prod_server_ed25519
+```
+
+Open `http://127.0.0.1:18095` in local browser.
+
+#### Initial Project & DSN Setup:
+
+1. Log in to Bugsink UI (superuser created via `CREATE_SUPERUSER` or initial login).
+2. Create project `solarsage` -> copy DSN: `http://<key>@bugsink:8000/<project_id>` (internal Compose network address).
+3. Create API Token for triage automation under Settings -> API tokens.
+4. Add `ERROR_TRACKING_DSN=http://<key>@bugsink:8000/<project_id>` to `/etc/solarsage/app.env`.
+
 ---
 
 ## 3. Deployments & Server Provisioning

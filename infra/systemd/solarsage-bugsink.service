@@ -1,0 +1,47 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_SYSTEMD_BUGSINK
+# ROLE: Systemd service for launching Bugsink error tracking container.
+# DEPENDENCIES: systemd, docker, /etc/solarsage/app.env
+# GRACE_ANCHORS: [SYSTEMD_BUGSINK_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-SYSTEMD-BUGSINK
+# purpose: Manage the lifecycle of the Bugsink error tracking container.
+# owns:
+#   - infra/systemd/solarsage-bugsink.service
+# inputs:
+#   - /etc/solarsage/app.env (real non-symlink root:astro 0640, operator-created)
+# outputs:
+#   - Bugsink container running on port 18095
+# dependencies: docker.service
+# invariants:
+#   - Self-contained: invokes /usr/bin/docker compose directly with canonical env file.
+#   - Remain after exit.
+# failure_policy: fails if container fails to start.
+# END_MODULE_CONTRACT: M-INFRA-SYSTEMD-BUGSINK
+
+# START_MODULE_MAP: M-INFRA-SYSTEMD-BUGSINK
+# public_entrypoints:
+#   - solarsage-bugsink.service
+# semantic_blocks:
+#   - SYSTEMD_BUGSINK_SERVICE: systemd configuration
+# END_MODULE_MAP: M-INFRA-SYSTEMD-BUGSINK
+
+[Unit]
+Description=SolarSage Error Tracking (Bugsink) Container
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/solarsage-astro
+ExecStart=/usr/bin/docker compose --env-file /etc/solarsage/app.env -f /opt/solarsage-astro/infra/production/docker-compose.bugsink.yml up -d --wait bugsink
+ExecReload=/usr/bin/docker compose --env-file /etc/solarsage/app.env -f /opt/solarsage-astro/infra/production/docker-compose.bugsink.yml up -d --wait bugsink
+ExecStop=/usr/bin/docker compose --env-file /etc/solarsage/app.env -f /opt/solarsage-astro/infra/production/docker-compose.bugsink.yml stop -t 30 bugsink
+TimeoutStartSec=180
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

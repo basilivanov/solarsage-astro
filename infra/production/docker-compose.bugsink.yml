@@ -1,0 +1,67 @@
+# ############################################################################
+# AI_HEADER: MODULE_INFRA_PRODUCTION_BUGSINK
+# ROLE: Production Bugsink self-hosted error tracking container setup.
+# DEPENDENCIES: docker, bugsink/bugsink:2.5.0 (pinned digest)
+# GRACE_ANCHORS: [PRODUCTION_BUGSINK_SERVICE]
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-INFRA-PRODUCTION-BUGSINK
+# purpose: Provide production Bugsink error tracking container bound to loopback and joined to app Compose network.
+# owns:
+#   - infra/production/docker-compose.bugsink.yml
+# inputs:
+#   - BUGSINK_SECRET_KEY: secret key for django session signing
+#   - BUGSINK_SUPERUSER: optional initial superuser creation string (username:email:password)
+# outputs:
+#   - Bugsink service running on loopback 127.0.0.1:18095 and app network alias "bugsink"
+# dependencies:
+#   - external network solarsage-app_app
+# invariants:
+#   - Bound strictly to 127.0.0.1:18095 (never 0.0.0.0).
+#   - Image is digest-pinned by exact sha256.
+#   - Network alias is "bugsink" on solarsage-app_app.
+# failure_policy: fails on missing BUGSINK_SECRET_KEY.
+# END_MODULE_CONTRACT: M-INFRA-PRODUCTION-BUGSINK
+
+# START_MODULE_MAP: M-INFRA-PRODUCTION-BUGSINK
+# public_entrypoints:
+#   - bugsink
+# semantic_blocks:
+#   - PRODUCTION_BUGSINK_SERVICE: bugsink container configuration
+# END_MODULE_MAP: M-INFRA-PRODUCTION-BUGSINK
+
+name: solarsage-bugsink
+
+services:
+  bugsink:
+    image: bugsink/bugsink:2.5.0@sha256:b697016950d8aa7d94020def15bc2727e8fc40148f079884ae4cdacf7ea1e9a3
+    container_name: solarsage-bugsink
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:18095:8000"
+    environment:
+      SECRET_KEY: ${BUGSINK_SECRET_KEY:?bugsink secret key required}
+      CREATE_SUPERUSER: ${BUGSINK_SUPERUSER:-}
+      PORT: "8000"
+      ALLOWED_HOSTS: "127.0.0.1,localhost,bugsink"
+    volumes:
+      - bugsink-data:/data
+    networks:
+      solarsage-app_app:
+        aliases:
+          - bugsink
+
+networks:
+  solarsage-app_app:
+    external: true
+
+volumes:
+  bugsink-data:
+    driver: local
