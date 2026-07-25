@@ -25,6 +25,16 @@
 //   - onPurchased fires only after a confirmed succeeded/consumed status.
 // failure_policy: inline error with role=alert; sheet stays open.
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HoraryPurchaseSheet
+// semantic_blocks:
+//   - HORARY_PURCHASE_SHEET: Horary purchase bottom sheet modal component
+// owned_tests:
+//   - __tests__/horary/horary-purchase-sheet.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
@@ -51,6 +61,7 @@ type Props = {
 
 type Phase = "loading" | "ready" | "error" | "waiting"
 
+// START_BLOCK: HORARY_PURCHASE_SHEET
 export function HoraryPurchaseSheet({ onClose, onPurchased }: Props) {
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<Phase>("loading")
@@ -247,3 +258,4 @@ export function HoraryPurchaseSheet({ onClose, onPurchased }: Props) {
     </div>
   )
 }
+// END_BLOCK: HORARY_PURCHASE_SHEET

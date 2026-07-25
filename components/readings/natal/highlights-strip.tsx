@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HighlightsStrip
+// semantic_blocks:
+//   - NATAL_HIGHLIGHTS_STRIP: Natal highlights strip component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
 import type { Highlight } from "@/lib/contracts/natal"
 
 type Props = {
@@ -29,6 +38,7 @@ type Props = {
  * Горизонтальная "лента" ярлыков карты — ASC, управитель, доминанта и т.п.
  * Скроллится горизонтально на узких экранах. Каждая капсула — самодостаточна.
  */
+// START_BLOCK: NATAL_HIGHLIGHTS_STRIP
 export function HighlightsStrip({ items }: Props) {
   if (!items || items.length === 0) return null
 
@@ -59,3 +69,4 @@ export function HighlightsStrip({ items }: Props) {
     </div>
   )
 }
+// END_BLOCK: NATAL_HIGHLIGHTS_STRIP

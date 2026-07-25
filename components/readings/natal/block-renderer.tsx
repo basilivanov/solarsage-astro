@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - BlockRenderer
+// semantic_blocks:
+//   - NATAL_BLOCK_RENDERER: Natal report block renderer component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
 import { Check, Sparkles, AlertTriangle, Info, Quote } from "lucide-react"
 
 import type { Block, CalloutTone, NatalReport } from "@/lib/contracts/natal"
@@ -43,6 +52,7 @@ type Props = {
  * блок молча пропускается — это страховка обратной совместимости,
  * прописанная в `natal-schema`.
  */
+// START_BLOCK: NATAL_BLOCK_RENDERER
 export function BlockRenderer({ block, report }: Props) {
   switch (block.type) {
     case "paragraph":
@@ -234,6 +244,7 @@ export function BlockRenderer({ block, report }: Props) {
       return null
   }
 }
+// END_BLOCK: NATAL_BLOCK_RENDERER
 
 function calloutStyles(tone: CalloutTone) {
   switch (tone) {

@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - SpheresWidget
+// semantic_blocks:
+//   - SPHERES_WIDGET: Natal report spheres score widget component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
 import type { SphereScore } from "@/lib/contracts/natal"
 
 type Props = {
@@ -39,6 +48,7 @@ const MAX_DOMINANCE = 5
  * Структурирован отдельно от нарратива — если контракт сфер
  * поменяется, рендерер глав не сломается.
  */
+// START_BLOCK: SPHERES_WIDGET
 export function SpheresWidget({
   spheres,
   limit,
@@ -109,3 +119,4 @@ export function SpheresWidget({
     </section>
   )
 }
+// END_BLOCK: SPHERES_WIDGET

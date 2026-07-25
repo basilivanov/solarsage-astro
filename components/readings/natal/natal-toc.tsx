@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - NatalTocView
+// semantic_blocks:
+//   - NATAL_TOC_VIEW: Natal report table of contents view component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
 import Link from "next/link"
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, MapPin } from "lucide-react"
 
@@ -42,6 +51,7 @@ type Props = {
  * Не один длинный скролл — каждая глава открывается отдельной страницей,
  * это даёт нативный back и нормальное scroll-restoration в Telegram.
  */
+// START_BLOCK: NATAL_TOC_VIEW
 export function NatalToc({ report }: Props) {
   const { meta, highlights = [], spheres = [], sections } = report
 
@@ -213,6 +223,7 @@ export function NatalToc({ report }: Props) {
     </div>
   )
 }
+// END_BLOCK: NATAL_TOC_VIEW
 
 function formatBirth(date: string, time?: string) {
   // Ожидаем YYYY-MM-DD; парсим вручную, чтобы не зависеть от локали браузера

@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HoraryQuotaBar
+// semantic_blocks:
+//   - HORARY_QUOTA_BAR: Horary quota status bar component
+// owned_tests:
+//   - __tests__/horary/horary-quota-bar.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { Coins } from "lucide-react"
@@ -29,6 +39,7 @@ type Props = {
   onBuy: () => void
 }
 
+// START_BLOCK: HORARY_QUOTA_BAR
 export function HoraryQuotaBar({ quota, onBuy }: Props) {
   const {
     weeklyFreeAvailable,
@@ -134,3 +145,4 @@ export function HoraryQuotaBar({ quota, onBuy }: Props) {
     </div>
   )
 }
+// END_BLOCK: HORARY_QUOTA_BAR

@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - PlanetsWidget
+// semantic_blocks:
+//   - PLANETS_WIDGET: Natal report planets score widget component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
 import type { PlanetScore } from "@/lib/contracts/natal"
 
 type Props = {
@@ -33,6 +42,7 @@ type Props = {
  *
  * Отделён от нарратива: смена структуры PlanetScore трогает только этот файл.
  */
+// START_BLOCK: PLANETS_WIDGET
 export function PlanetsWidget({ planets, title = "Планеты" }: Props) {
   if (!planets || planets.length === 0) return null
 
@@ -91,3 +101,4 @@ export function PlanetsWidget({ planets, title = "Планеты" }: Props) {
     </section>
   )
 }
+// END_BLOCK: PLANETS_WIDGET

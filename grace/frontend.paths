@@ -26,6 +26,10 @@ components/readings/*.tsx
 components/readings/*.ts
 components/readings/election/**/*.tsx
 components/readings/election/**/*.ts
+components/readings/horary/**/*.tsx
+components/readings/horary/**/*.ts
+components/readings/natal/**/*.tsx
+components/readings/natal/**/*.ts
 lib/grace/**/*.ts
 lib/api/**/*.ts
 lib/api/promo.ts

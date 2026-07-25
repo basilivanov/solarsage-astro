@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - NatalSectionView
+// semantic_blocks:
+//   - NATAL_SECTION_VIEW: Natal report single section view component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
 import Link from "next/link"
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
 
@@ -47,6 +56,7 @@ type Props = {
  * работал предсказуемо и scroll-restoration возвращал на ту же позицию
  * в TOC, с которой открыли главу.
  */
+// START_BLOCK: NATAL_SECTION_VIEW
 export function NatalSectionView({
   report,
   section,
@@ -158,3 +168,4 @@ export function NatalSectionView({
     </div>
   )
 }
+// END_BLOCK: NATAL_SECTION_VIEW

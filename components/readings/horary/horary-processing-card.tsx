@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HoraryProcessingCard
+// semantic_blocks:
+//   - HORARY_PROCESSING_CARD: Horary question processing card component
+// owned_tests:
+//   - __tests__/horary/horary-processing-card.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
@@ -39,6 +49,7 @@ const STEPS = [
   "Собираем ответ",
 ]
 
+// START_BLOCK: HORARY_PROCESSING_CARD
 export function HoraryProcessingCard({
   questionText,
   createdAt,
@@ -184,3 +195,4 @@ export function HoraryProcessingCard({
     </div>
   )
 }
+// END_BLOCK: HORARY_PROCESSING_CARD

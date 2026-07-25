@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HoraryTimeConfirm
+// semantic_blocks:
+//   - HORARY_TIME_CONFIRM: Horary time and location confirmation component
+// owned_tests:
+//   - __tests__/horary/horary-time-confirm.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -38,6 +48,7 @@ type Props = {
   onChange: (_localTime: string, _timezone: string, _lat?: number, _lon?: number, _locationName?: string) => void
 }
 
+// START_BLOCK: HORARY_TIME_CONFIRM
 export function HoraryTimeConfirm({
   profileCurrentCity,
   profileCurrentLat,
@@ -214,4 +225,5 @@ export function HoraryTimeConfirm({
     </div>
   )
 }
+// END_BLOCK: HORARY_TIME_CONFIRM
 

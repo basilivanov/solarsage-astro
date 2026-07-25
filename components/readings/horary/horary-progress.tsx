@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HoraryProgress
+// semantic_blocks:
+//   - HORARY_PROGRESS: Horary progress bar component
+// owned_tests:
+//   - __tests__/horary/horary-processing-card.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -30,6 +40,7 @@ const STEPS = [
   "Формулируем ответ",
 ]
 
+// START_BLOCK: HORARY_PROGRESS
 export function HoraryProgress() {
   const [progress, setProgress] = useState(0)
   const [stepIndex, setStepIndex] = useState(0)
@@ -162,3 +173,4 @@ export function HoraryProgress() {
     </div>
   )
 }
+// END_BLOCK: HORARY_PROGRESS

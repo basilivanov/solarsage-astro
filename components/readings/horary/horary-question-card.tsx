@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HoraryQuestionCard
+// semantic_blocks:
+//   - HORARY_QUESTION_CARD: Horary question card item component
+// owned_tests:
+//   - __tests__/horary/horary-question-card.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import Link from "next/link"
@@ -30,6 +40,7 @@ type Props = {
   question: HoraryQuestionRead
 }
 
+// START_BLOCK: HORARY_QUESTION_CARD
 export function HoraryQuestionCard({ question }: Props) {
   const { id, text, category, status, createdAt, answer, creditRefunded } = question
 
@@ -149,3 +160,4 @@ export function HoraryQuestionCard({ question }: Props) {
     </Link>
   )
 }
+// END_BLOCK: HORARY_QUESTION_CARD

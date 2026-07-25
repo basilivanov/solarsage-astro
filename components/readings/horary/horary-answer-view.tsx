@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HoraryAnswerView
+// semantic_blocks:
+//   - HORARY_ANSWER_VIEW: Horary question detailed answer view component
+// owned_tests:
+//   - __tests__/horary/horary-answer-view.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import Link from "next/link"
@@ -46,6 +56,7 @@ const PLANET_RU: Record<string, string> = {
   Pluto: "Плутон",
 }
 
+// START_BLOCK: HORARY_ANSWER_VIEW
 export function HoraryAnswerView({ question }: Props) {
   const { text, category, createdAt, answer, questionLocationName, chart } = question
 
@@ -155,3 +166,4 @@ export function HoraryAnswerView({ question }: Props) {
     </div>
   )
 }
+// END_BLOCK: HORARY_ANSWER_VIEW
