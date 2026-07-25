@@ -26,7 +26,9 @@
 // invariants:
 //   - raw token is never stored in React state, props, DOM attributes, or error objects
 //   - preview and sheet are suppressed while pathname starts with /onboarding
-//   - completed refresh executes exactly once without reload loops
+//   - completed refresh marks the token consumed (localStorage) before clearing,
+//     executes exactly one reload, and never loops across app restarts
+//   - consumed tokens left in sessionStorage are cleared without a preview call
 //   - storage failures fail closed without crashing app shell
 // failure_policy: fail closed on storage or unexpected exceptions, log safe error, and suppress sheet
 // END_MODULE_CONTRACT: M-PROMO-CAMPAIGN-GATE
@@ -45,7 +47,7 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import type { PromoOffer } from "@/packages/contracts"
-import { getPendingPromoToken, clearPendingPromoToken } from "@/lib/telegram/start-param"
+import { getPendingPromoToken, clearPendingPromoToken, isPromoTokenConsumed, markPromoTokenConsumed } from "@/lib/telegram/start-param"
 import { previewPromo, redeemPromo, PromoApiError } from "@/lib/api/promo"
 import { PromoConfirmationSheet } from "@/components/promo/promo-confirmation-sheet"
 import { logEvent } from "@/lib/log"
@@ -73,6 +75,19 @@ export function PromoCampaignGate() {
   const hasLoggedViewRef = React.useRef<string | null>(null)
 
   const triggerCompletedRefresh = React.useCallback(() => {
+    // Mark the token consumed BEFORE clearing/reloading: the Telegram webview
+    // re-delivers the same start_param on every fresh load, and without the
+    // persistent marker the auth hook would re-store it, causing an infinite
+    // preview -> ALREADY_REDEEMED -> reload loop.
+    let consumedToken: string | null = null
+    try {
+      consumedToken = getPendingPromoToken()
+    } catch {
+      consumedToken = null
+    }
+    if (consumedToken) {
+      markPromoTokenConsumed(consumedToken)
+    }
     clearPendingPromoToken()
     setOffer(null)
     setPhase("idle")
@@ -97,6 +112,15 @@ export function PromoCampaignGate() {
     }
 
     if (!token) {
+      setPhase("idle")
+      setOffer(null)
+      return
+    }
+
+    // Defense in depth: a consumed token left in sessionStorage (stored before
+    // the consumed marker existed) is cleared without a preview call.
+    if (isPromoTokenConsumed(token)) {
+      clearPendingPromoToken()
       setPhase("idle")
       setOffer(null)
       return

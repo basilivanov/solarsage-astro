@@ -303,6 +303,25 @@ describe("useTelegramAuth", () => {
     expect(window.localStorage.getItem("__astro_referral_code")).toBeNull()
   })
 
+  it("does not re-store a consumed promo token delivered again via start_param", async () => {
+    ;(process.env as any).NODE_ENV = "production"
+    const { markPromoTokenConsumed } = await import("@/lib/telegram/start-param")
+    markPromoTokenConsumed("m7q4n9x2r5kd")
+    setupTelegram({
+      initDataUnsafe: { start_param: "m7q4n9x2r5kd", user: { id: 1 } },
+    })
+    mockTelegramAuthResponse(true)
+
+    const { result } = renderHook(() => useTelegramAuth())
+
+    await waitFor(
+      () => expect(result.current.isAuthenticated).toBe(true),
+      { timeout: LONG_TIMEOUT }
+    )
+
+    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBeNull()
+  })
+
   it("falls back to parsing start_param from the raw initData string when initDataUnsafe misses it", async () => {
     ;(process.env as any).NODE_ENV = "production"
     setupTelegram({

@@ -47,6 +47,7 @@ import {
   classifyStartParam,
   savePendingPromoToken,
   cleanStartParamFromUrl,
+  isPromoTokenConsumed,
 } from '@/lib/telegram/start-param';
 
 interface TelegramAuthState {
@@ -157,7 +158,10 @@ export function useTelegramAuth() {
                 await new Promise(resolve => setTimeout(resolve, 500));
                 // Promo intent must also be stored on the dev-auth path —
                 // otherwise the gate never sees the pending token outside Telegram.
-                if (intent.kind === 'promo') {
+                // Consumed tokens (terminal completed state) are not re-stored:
+                // the webview re-delivers start_param on every load and a re-store
+                // would loop preview -> ALREADY_REDEEMED -> reload forever.
+                if (intent.kind === 'promo' && !isPromoTokenConsumed(intent.token)) {
                   const saved = savePendingPromoToken(intent.token);
                   if (!saved) {
                     logEvent('frontend.flow_failed', { operation: 'promo.intent_store', reason_code: 'session_storage_failed' }, {
@@ -228,7 +232,7 @@ export function useTelegramAuth() {
           // best-effort
         }
 
-        if (intent.kind === 'promo') {
+        if (intent.kind === 'promo' && !isPromoTokenConsumed(intent.token)) {
           const saved = savePendingPromoToken(intent.token);
           if (!saved) {
             logEvent('frontend.flow_failed', { operation: 'promo.intent_store', reason_code: 'session_storage_failed' }, {

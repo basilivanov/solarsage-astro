@@ -97,6 +97,7 @@ describe("PromoCampaignGate", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.sessionStorage.clear()
+    window.localStorage.clear()
     mockUsePathname.mockReturnValue("/day")
 
     // Mock window.location.reload
@@ -282,6 +283,26 @@ describe("PromoCampaignGate", () => {
     })
 
     expect(screen.queryByTestId("promo-confirmation-sheet")).toBeNull()
+    // The consumed marker is what prevents the reload loop on the next app load
+    // (the webview re-delivers the same start_param every time).
+    const { isPromoTokenConsumed } = await import("@/lib/telegram/start-param")
+    expect(isPromoTokenConsumed(VALID_TOKEN)).toBe(true)
+  })
+
+  it("clears a consumed token left in sessionStorage without calling preview", async () => {
+    const { markPromoTokenConsumed } = await import("@/lib/telegram/start-param")
+    markPromoTokenConsumed(VALID_TOKEN)
+    savePendingPromoToken(VALID_TOKEN)
+
+    render(<PromoCampaignGate />)
+
+    await waitFor(() => {
+      expect(getPendingPromoToken()).toBeNull()
+    })
+
+    expect(mockPreviewPromo).not.toHaveBeenCalled()
+    expect(screen.queryByTestId("promo-confirmation-sheet")).toBeNull()
+    expect(window.location.reload).not.toHaveBeenCalled()
   })
 
   it("clears token on INVALID_CODE / EXPIRED / FULL preview error", async () => {

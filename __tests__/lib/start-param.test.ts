@@ -126,6 +126,38 @@ describe("Telegram start_param Classifier & Storage — Slice 01", () => {
     })
   })
 
+  describe("Consumed Promo Token Marker (localStorage)", () => {
+    beforeEach(() => {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.clear()
+      }
+    })
+
+    it("roundtrips the consumed marker for the same token only", async () => {
+      const { markPromoTokenConsumed, isPromoTokenConsumed } = await import("@/lib/telegram/start-param")
+      expect(isPromoTokenConsumed("m7q4n9x2r5kd")).toBe(false)
+      markPromoTokenConsumed("m7q4n9x2r5kd")
+      expect(isPromoTokenConsumed("m7q4n9x2r5kd")).toBe(true)
+      expect(isPromoTokenConsumed("zcvsg8zjzmqb")).toBe(false)
+    })
+
+    it("uses localStorage ONLY for the consumed marker and never sessionStorage", async () => {
+      const { markPromoTokenConsumed } = await import("@/lib/telegram/start-param")
+      const sessionSetSpy = vi.spyOn(window.sessionStorage, "setItem")
+      markPromoTokenConsumed("m7q4n9x2r5kd")
+      expect(sessionSetSpy).not.toHaveBeenCalled()
+      expect(window.localStorage.getItem("__astro_consumed_promo_token")).toBe("m7q4n9x2r5kd")
+    })
+
+    it("ignores empty and non-string tokens without throwing", async () => {
+      const { markPromoTokenConsumed, isPromoTokenConsumed } = await import("@/lib/telegram/start-param")
+      markPromoTokenConsumed("")
+      markPromoTokenConsumed(undefined as unknown as string)
+      expect(isPromoTokenConsumed("")).toBe(false)
+      expect(window.localStorage.getItem("__astro_consumed_promo_token")).toBeNull()
+    })
+  })
+
   describe("cleanStartParamFromUrl", () => {
     it("removes tgWebAppStartParam query parameter from visible location while preserving path, hash, and other params", () => {
       const replaceStateSpy = vi.spyOn(window.history, "replaceState")
