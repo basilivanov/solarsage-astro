@@ -15,8 +15,8 @@
 # dependencies:
 #   - scripts/prod-errors/bugsink_client.py (BugsinkClient)
 #   - gh CLI via subprocess
-# side_effects: creates GitHub issues, invokes fix_runner.py
-# failure_policy: logs error and continues or exits with non-zero code on unhandled failure
+# side_effects: creates GitHub issues, invokes fix_runner.py, optional Telegram digest
+# failure_policy: logs error and continues or exits with non-zero code on unhandled failure; Telegram delivery failures never break the run
 # END_MODULE_CONTRACT: M-SCRIPTS-TRIAGE
 
 # START_MODULE_MAP: M-SCRIPTS-TRIAGE
@@ -142,6 +142,40 @@ Automated production error report captured from Bugsink self-hosted error tracke
         return None
 
 
+def send_telegram_digest(lines: list[str]) -> None:
+    """Send a short triage digest to the owner's Telegram via the bot.
+
+    Active only when both TELEGRAM_BOT_TOKEN and TELEGRAM_DIGEST_CHAT_ID are
+    set. Delivery failures never break the runner.
+    """
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_DIGEST_CHAT_ID", "")
+    if not token or not chat_id:
+        return
+
+    import urllib.request
+
+    text = "\n".join(lines)
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    body = json.dumps({
+        "chat_id": chat_id,
+        "text": text,
+        "disable_web_page_preview": True,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            if resp.status != 200:
+                sys.stderr.write(f"Warning: Telegram digest returned HTTP {resp.status}\n")
+    except Exception as err:
+        sys.stderr.write(f"Warning: failed to send Telegram digest: {err}\n")
+
+
 def run_triage(dry_run: bool = False) -> None:
     repo = os.environ.get("GH_REPO", "basilivanov/solarsage-astro")
     max_fixes = int(os.environ.get("MAX_FIXES_PER_RUN", "3"))
@@ -181,6 +215,15 @@ def run_triage(dry_run: bool = False) -> None:
         for num in created_issues[:max_fixes]:
             print(f"\nInvoking fix_runner.py for Issue #{num}...")
             subprocess.run([sys.executable, str(fix_runner), num])
+
+        send_telegram_digest([
+            f"prod-errors: новых issue — {len(created_issues)}",
+            *[
+                f"#{num} https://github.com/{repo}/issues/{num}"
+                for num in created_issues
+            ],
+            f"авто-фикс запущен для первых {min(len(created_issues), max_fixes)}",
+        ])
 
 
 def main() -> None:
