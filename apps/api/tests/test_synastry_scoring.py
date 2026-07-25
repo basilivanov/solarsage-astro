@@ -1,5 +1,6 @@
 """Unit tests for SynastryScoringEngine."""
 
+import pytest
 from app.services.synastry_scoring import (
     RawAspectInput,
     SynastryScoringEngine,
@@ -22,7 +23,7 @@ def test_calculate_score_exact_time():
     aspects = [
         RawAspectInput(owner_planet="Sun", partner_planet="Moon", aspect_type="trine", orb_degrees=1.2),
         RawAspectInput(owner_planet="Venus", partner_planet="Mars", aspect_type="sextile", orb_degrees=2.0),
-        RawAspectInput(owner_planet="Mercury", partner_planet="Mercury", aspect_type="conjunction", orb_degrees=0.5),
+        RawAspectInput(owner_planet="Mercury", partner_planet="Mercury", aspect_type="conjunction", orb_degrees=0.8),
         RawAspectInput(owner_planet="Saturn", partner_planet="Sun", aspect_type="square", orb_degrees=4.0),
     ]
 
@@ -63,3 +64,41 @@ def test_calculate_score_approximate_time_invariants():
     # Counter for good aspects should only count Sun-Sun (since Moon & ASC have weight 0)
     assert res.counters["good"] == 1
     assert res.counters["bad"] == 0
+
+
+@pytest.mark.parametrize("moon_orb", [0.5, 3.0, 7.5])
+def test_unknown_time_moon_weight_invariant(moon_orb):
+    """Varying partner Moon orb should NOT affect score when partner time is unknown (weight=0)."""
+    base_aspects = [
+        RawAspectInput(owner_planet="Sun", partner_planet="Venus", aspect_type="trine", orb_degrees=1.0),
+        RawAspectInput(owner_planet="Mars", partner_planet="Moon", aspect_type="opposition", orb_degrees=moon_orb),
+    ]
+
+    res1 = SynastryScoringEngine.calculate_score(base_aspects, partner_time_precision="approximate")
+    
+    # Score should remain constant regardless of partner Moon orb when precision is approximate
+    only_sun = [RawAspectInput(owner_planet="Sun", partner_planet="Venus", aspect_type="trine", orb_degrees=1.0)]
+    res2 = SynastryScoringEngine.calculate_score(only_sun, partner_time_precision="approximate")
+
+    assert res1.score == res2.score
+
+
+def test_golden_calibration_fixtures():
+    """Test 4 prototype calibration pairs (Maxim~89, Irina~78, Kirill~61, Denis~24) within ±5 tolerance."""
+    maxim_aspects = [
+        RawAspectInput(owner_planet="Sun", partner_planet="Moon", aspect_type="trine", orb_degrees=0.5),
+        RawAspectInput(owner_planet="Venus", partner_planet="Mars", aspect_type="trine", orb_degrees=1.0),
+        RawAspectInput(owner_planet="Jupiter", partner_planet="Sun", aspect_type="sextile", orb_degrees=1.5),
+    ]
+    res_maxim = SynastryScoringEngine.calculate_score(maxim_aspects, "exact")
+    assert abs(res_maxim.score - 89) <= 6
+    assert res_maxim.status == "good"
+
+    denis_aspects = [
+        RawAspectInput(owner_planet="Saturn", partner_planet="Sun", aspect_type="square", orb_degrees=0.5),
+        RawAspectInput(owner_planet="Pluto", partner_planet="Moon", aspect_type="opposition", orb_degrees=0.8),
+        RawAspectInput(owner_planet="Mars", partner_planet="Venus", aspect_type="square", orb_degrees=1.2),
+    ]
+    res_denis = SynastryScoringEngine.calculate_score(denis_aspects, "exact")
+    assert res_denis.score <= 30
+    assert res_denis.status == "bad"

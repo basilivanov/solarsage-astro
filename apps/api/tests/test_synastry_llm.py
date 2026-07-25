@@ -2,6 +2,7 @@
 
 from app.services.synastry_llm import (
     ASPECT_MEANINGS,
+    BANNED_PHRASES,
     PLANET_MEANINGS,
     build_drilldown_prompt,
     build_report_prompt,
@@ -13,6 +14,7 @@ from app.services.synastry_llm import (
 def test_synastry_llm_imports():
     assert "Sun" in PLANET_MEANINGS
     assert "conjunction" in ASPECT_MEANINGS
+    assert "обречены" in BANNED_PHRASES
 
 
 def test_build_report_prompt_no_pii():
@@ -29,6 +31,14 @@ def test_build_report_prompt_no_pii():
     assert "Максим" not in prompt["user"]
 
 
+def test_build_drilldown_prompt():
+    prompt = build_drilldown_prompt(
+        {"owner_planet": "Mercury", "partner_planet": "Mercury", "aspect": "square", "tone": "tense"}
+    )
+    assert "system" in prompt
+    assert "Mercury square Mercury" in prompt["user"]
+
+
 def test_validate_llm_output_valid():
     sample = {
         "summary": "Гармоничное взаимодействие с глубоким пониманием.",
@@ -40,21 +50,26 @@ def test_validate_llm_output_valid():
 
 
 def test_validate_llm_output_banned_phrase():
-    sample = {
-        "summary": "Эта пара идеально подходит, они всегда будут вместе и никогда не расстанутся.",
-    }
-    ok, err = validate_llm_output(sample, report_precision="exact")
-    assert ok is False
-    assert "всегда" in err or "никогда" in err or "Banned" in err
+    for phrase in ["обречены", "всегда", "никогда", "идеальная пара", "развод неминуем"]:
+        sample = {"summary": f"Эта пара {phrase}."}
+        ok, err = validate_llm_output(sample, report_precision="exact")
+        assert ok is False
+        assert "Banned phrase" in err
 
 
 def test_validate_llm_output_approximate_forbidden_terms():
-    sample = {
-        "summary": "Планета находится в 5-м доме партнера.",
-    }
-    ok, err = validate_llm_output(sample, report_precision="approximate")
+    for term in ["5-м доме", "в доме партнера", "асцендент партнера"]:
+        sample = {"summary": f"Планета находится в {term}."}
+        ok, err = validate_llm_output(sample, report_precision="approximate")
+        assert ok is False
+        assert "Forbidden" in err
+
+
+def test_validate_llm_output_length_limits():
+    long_summary = {"summary": "A" * 400}
+    ok, err = validate_llm_output(long_summary, report_precision="exact")
     assert ok is False
-    assert "Forbidden" in err or "доме" in err
+    assert "Summary exceeds" in err
 
 
 def test_validate_drilldown_output():

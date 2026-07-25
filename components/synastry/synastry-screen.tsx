@@ -217,14 +217,21 @@ export function SynastryScreen({ onSelectPartner }: Props) {
                   <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground">Считаем…</span>
                 )}
 
-                <button
-                  type="button"
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => handleDeletePartner(e, partner.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      handleDeletePartner(e as any, partner.id)
+                    }
+                  }}
                   aria-label="Удалить партнёра"
-                  className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1"
+                  className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1 cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </span>
               </div>
             </button>
           ))}
