@@ -226,12 +226,72 @@ def run_triage(dry_run: bool = False) -> None:
         ])
 
 
+ALERT_STATE_PATH = Path(__file__).resolve().parent / ".alert-state.json"
+ALERT_SPIKE_DELTA = 5
+
+
+def run_alert() -> None:
+    """Fast alert-only pass: brand-new issue types and event spikes to Telegram.
+
+    No GitHub issues, no fix runner. State (.alert-state.json) holds last seen
+    digested_event_count per issue; first run initializes silently to avoid a
+    one-time alert flood.
+    """
+    client = BugsinkClient()
+    try:
+        issues = client.list_unresolved(min_events=1, limit=50)
+    except Exception as err:
+        sys.stderr.write(f"Failed to fetch Bugsink issues: {err}\n")
+        sys.exit(1)
+
+    state: dict[str, int] = {}
+    first_run = not ALERT_STATE_PATH.is_file()
+    if not first_run:
+        try:
+            state = json.loads(ALERT_STATE_PATH.read_text())
+        except Exception:
+            state = {}
+
+    new_state: dict[str, int] = {}
+    alert_lines: list[str] = []
+    for item in issues:
+        issue_id = str(item.get("id") or "")
+        if not issue_id:
+            continue
+        count = int(item.get("digested_event_count") or 0)
+        new_state[issue_id] = count
+        kind = str(item.get("calculated_type") or "Error")
+        route = str(item.get("transaction") or "unknown")
+        prev = state.get(issue_id)
+        if prev is None:
+            alert_lines.append(f"NEW {kind} ({route}) — {count} ev")
+        elif count - int(prev) >= ALERT_SPIKE_DELTA:
+            alert_lines.append(f"SPIKE {kind} ({route}) — +{count - int(prev)} ev (total {count})")
+
+    ALERT_STATE_PATH.write_text(json.dumps(new_state))
+
+    if first_run:
+        print(f"alert: state initialized with {len(new_state)} issues, no alerts sent")
+        return
+
+    if alert_lines:
+        send_telegram_digest(["prod-errors ALERT:"] + alert_lines[:10])
+        for line in alert_lines:
+            print(line)
+    else:
+        print("alert: no new or spiking issues")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Production Error Triage")
     parser.add_argument("--dry-run", action="store_true", help="Print plan without side effects")
+    parser.add_argument("--alert", action="store_true", help="Fast alert-only pass (no issues/fixes)")
     args = parser.parse_args()
 
-    run_triage(dry_run=args.dry_run)
+    if args.alert:
+        run_alert()
+    else:
+        run_triage(dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

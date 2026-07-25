@@ -61,3 +61,4 @@ agents/
 
 # prod-errors fix runner worktrees
 .worktrees/
+/scripts/prod-errors/.alert-state.json
