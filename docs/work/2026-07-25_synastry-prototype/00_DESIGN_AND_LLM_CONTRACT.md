@@ -1,5 +1,12 @@
 # Синастрия / совместимость — HTML prototype & LLM content contract
 
+Implementation/risks/scoring:
+[`01_TZ_REACT_ADAPTATION.md`](./01_TZ_REACT_ADAPTATION.md),
+[`02_TECHNICAL_PREMORTEM.md`](./02_TECHNICAL_PREMORTEM.md),
+[`03_SCORING_AND_TONE_CONTRACT.md`](./03_SCORING_AND_TONE_CONTRACT.md).
+Запускаемый reference:
+[`public/prototypes/synastry/index.html`](../../../public/prototypes/synastry/index.html).
+
 ## Цель
 
 Показать совместимость двух натальных карт на двух уровнях одновременно:
@@ -19,7 +26,9 @@
 
 ## Добавление партнёра
 
-Форма принимает имя, дату, время и место рождения.
+Форма принимает имя, тип связи, дату, время и выбранное место рождения.
+Место обязано разрешиться в координаты и IANA timezone; свободный текст без
+выбранной подсказки нельзя отправить в расчёт.
 
 Рядом с полем времени есть переключатель **«Точное время неизвестно»**:
 
@@ -29,6 +38,10 @@
 - ASC и дома партнёра не рассчитываются;
 - положение Луны и итоговый балл помечаются как менее точные;
 - результат получает состояние `approximate`, а не маскируется под точный.
+
+При этом направления различаются: планеты партнёра всё ещё можно наложить на
+дома пользователя, потому что owner houses известны; планеты пользователя на
+дома партнёра при unknown time недоступны.
 
 При повторном отключении переключателя ранее введённое время восстанавливается.
 
@@ -67,16 +80,14 @@ Sheet обязан содержать:
 
 ```json
 {
-  "owner_planet": "Mercury",
-  "partner_planet": "Mercury",
+  "ownerPlanet": "Mercury",
+  "partnerPlanet": "Mercury",
   "aspect": "square",
-  "orb_degrees": 1.05,
+  "orbDegrees": 1.05,
   "tone": "supportive | mixed | tense",
   "short": "Смысл теряется в форме",
-  "human_effect": "Наблюдаемая динамика пары",
-  "life_scene": "Конкретный пример",
-  "repairs": ["Конкретное действие"],
-  "confidence": "high | medium | low"
+  "confidence": "high | medium | low",
+  "excludedFromScore": false
 }
 ```
 
@@ -84,15 +95,18 @@ Sheet обязан содержать:
 
 ```json
 {
-  "birth_time_precision": "exact | unknown",
-  "houses_available": true,
-  "asc_available": true,
-  "moon_precision": "exact | approximate",
-  "report_precision": "exact | approximate"
+  "birthTimePrecision": "exact | unknown",
+  "ownerHousesAvailable": true,
+  "partnerHousesAvailable": true,
+  "ownerAscAvailable": true,
+  "partnerAscAvailable": true,
+  "partnerMoonPrecision": "exact | approximate",
+  "reportPrecision": "exact | approximate"
 }
 ```
 
-При `birth_time_precision = unknown` значения `houses_available` и `asc_available` обязаны быть `false`.
+При `birthTimePrecision = unknown` значения `partnerHousesAvailable` и
+`partnerAscAvailable` обязаны быть `false`; owner flags остаются true.
 
 ## Правила LLM
 
@@ -108,3 +122,9 @@ Sheet обязан содержать:
 ## Будущее расшаривание
 
 Точка интеграции расшаривания сохранена, но сейчас выключена. Публичный snapshot должен уметь включать или исключать технический астрологический слой по выбору пользователя.
+
+## Удаление данных
+
+Владелец может удалить партнёра. Удаляются birth PII, report narrative,
+aspect details и feedback; обезличенная запись расхода/возврата кредита остаётся
+для финансового audit и не содержит имени, даты, места или LLM-текста.

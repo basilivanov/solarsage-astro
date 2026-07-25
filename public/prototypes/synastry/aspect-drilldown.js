@@ -33,6 +33,11 @@
     ASC: 'первое впечатление, телесная подача и способ входить в контакт'
   };
 
+  const planetGlyph = {
+    Солнце: '☉', Луна: '☽', Меркурий: '☿', Венера: '♀', Марс: '♂',
+    Юпитер: '♃', Сатурн: '♄', Уран: '♅', Нептун: '♆', Плутон: '♇', ASC: 'AC'
+  };
+
   const aspectMeaning = {
     '☌': { name: 'Соединение', text: 'Две функции сливаются и усиливают друг друга. Контакт ощущается ярко и непосредственно: легко влиять друг на друга, но труднее отделить своё от партнёрского.' },
     '△': { name: 'Тригон', text: 'Энергии поддерживают друг друга естественно. Многое получается без долгой настройки; слабое место — считать эту лёгкость гарантированной.' },
@@ -67,6 +72,12 @@
       <div class="translation-top"><i class="tone-dot ${item.tone}"></i><h3>${item.title}</h3><button class="techline" type="button" data-tech="${escapeAttr(item.tech)}" onclick="openAspectFromTech(this.dataset.tech)" title="Открыть подробное значение">${item.tech} · что значит?</button></div>
       <p>${item.text}</p><div class="scene">${item.scene}</div>
     </div>`).join('');
+  };
+
+  const baseOpenPerson = openPerson;
+  openPerson = function openPersonWithTranslationDrilldown(id) {
+    baseOpenPerson(id);
+    renderTranslations();
   };
 
   function mercurySquareDetail() {

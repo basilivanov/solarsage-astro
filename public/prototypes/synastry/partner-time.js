@@ -3,6 +3,20 @@
   if (!modal) return;
 
   const fields = [...modal.querySelectorAll('.field')];
+  const nameField = fields.find(field => field.querySelector('label')?.textContent.trim() === 'Имя');
+  if (nameField && !document.getElementById('partnerRelation')) {
+    const relationField = document.createElement('div');
+    relationField.className = 'field';
+    relationField.innerHTML = `<label for="partnerRelation">Тип связи</label>
+      <select class="input" id="partnerRelation" style="font:inherit">
+        <option value="romantic">Романтические отношения</option>
+        <option value="friendship">Дружба</option>
+        <option value="family">Семья</option>
+        <option value="work">Работа</option>
+        <option value="other">Другое</option>
+      </select>`;
+    nameField.insertAdjacentElement('afterend', relationField);
+  }
   const birthField = fields.find(field => field.querySelector('label')?.textContent.includes('Дата и время рождения'));
   if (!birthField) return;
 
