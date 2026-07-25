@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - useTelegramUser
+// semantic_blocks:
+//   - USE_TELEGRAM_USER_HOOK: Telegram WebApp user subscriber hook
+// owned_tests:
+//   - __tests__/hooks/useTelegramAuth.test.ts
+// END_MODULE_MAP
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -40,6 +50,7 @@ export type TelegramUser = {
   photoUrl?: string
 }
 
+// START_BLOCK: USE_TELEGRAM_USER_HOOK
 export function useTelegramUser(): TelegramUser | null {
   const { webApp, loaded } = useTelegram()
   const [user, setUser] = useState<TelegramUser | null>(null)
@@ -65,3 +76,4 @@ export function useTelegramUser(): TelegramUser | null {
 
   return user
 }
+// END_BLOCK: USE_TELEGRAM_USER_HOOK

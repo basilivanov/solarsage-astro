@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - useOnboarded
+// semantic_blocks:
+//   - USE_ONBOARDED_HOOK: User onboarding completion state hook
+// owned_tests:
+//   - __tests__/hooks/useOnboarded.test.ts
+// END_MODULE_MAP
+
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
@@ -26,6 +36,7 @@ import { useCallback, useEffect, useState } from "react"
 import { STORAGE_KEYS } from "@/lib/storage-keys"
 import { logger } from "@/lib/log"
 
+// START_BLOCK: USE_ONBOARDED_HOOK
 export function useOnboarded() {
   const [onboarded, setOnboardedState] = useState<boolean | null>(null)
 
@@ -88,3 +99,4 @@ export function useOnboarded() {
   logger.debug('[Onboarded] Returning', { extra: { onboarded } })
   return { onboarded, setOnboarded, resetOnboarded }
 }
+// END_BLOCK: USE_ONBOARDED_HOOK

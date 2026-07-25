@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - NumField
+// semantic_blocks:
+//   - NUM_FIELD: Numeric input field component
+// owned_tests:
+//   - __tests__/components/NumField.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import type { RefObject } from "react"
@@ -39,6 +49,7 @@ type NumFieldProps = {
  * Числовое поле с верхним лейблом — используется в онбординге и в редакторах
  * профиля. Стрипает все нецифры, чтобы поле всегда оставалось валидным.
  */
+// START_BLOCK: NUM_FIELD
 export function NumField({
   label,
   placeholder,
@@ -68,6 +79,7 @@ export function NumField({
     </label>
   )
 }
+// END_BLOCK: NUM_FIELD
 
 /** Разделитель между числовыми полями (день·месяц·год). */
 export function NumFieldDot() {

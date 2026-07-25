@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - useChat
+// semantic_blocks:
+//   - USE_CHAT_HOOK: Chat messages state and send message hook
+// owned_tests:
+//   - __tests__/hooks/useChat.test.ts
+// END_MODULE_MAP
+
 "use client"
 
 import { useCallback, useEffect, useReducer, useRef } from "react"
@@ -38,6 +48,7 @@ import {
  *  - reducer содержит всю бизнес-логику (тестируется без jsdom);
  *  - хук отвечает только за side-effects: persistence, stream, abort.
  */
+// START_BLOCK: USE_CHAT_HOOK
 export function useChat(context: ChatContext) {
   const [state, dispatch] = useReducer(chatReducer, initialChatState)
   const abortRef = useRef<AbortController | null>(null)
@@ -156,6 +167,7 @@ export function useChat(context: ChatContext) {
     reset,
   }
 }
+// END_BLOCK: USE_CHAT_HOOK
 
 // --- helpers ---------------------------------------------------------------
 

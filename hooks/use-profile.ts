@@ -5,6 +5,28 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
+
+// START_MODULE_CONTRACT: M-HOOKS-USE-PROFILE
+// purpose: React hook for loading and updating user birth profile data.
+// owns:
+//   - hooks/use-profile.ts
+// inputs: none
+// outputs: profile state, loaded boolean, saving boolean, error, updateProfile callback
+// dependencies: lib/api/profile, lib/profile
+// side_effects: credentialed profile API fetch and update
+// emitted_logs: none
+// failure_policy: sets error state
+// END_MODULE_CONTRACT: M-HOOKS-USE-PROFILE
+
+// START_MODULE_MAP: M-HOOKS-USE-PROFILE
+// public_entrypoints:
+//   - useProfile
+// semantic_blocks:
+//   - USE_PROFILE_HOOK: Birth profile management hook
+// owned_tests:
+//   - __tests__/hooks/useProfile.test.ts
+// END_MODULE_MAP: M-HOOKS-USE-PROFILE
+
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -17,6 +39,7 @@ import {
   type Profile,
 } from "@/lib/profile"
 
+// START_BLOCK: USE_PROFILE_HOOK
 export function useProfile() {
   const [profile, setProfile] = useState<Profile>(() => loadProfile())
   const [loaded, setLoaded] = useState(false)
@@ -79,3 +102,4 @@ export function useProfile() {
 
   return { profile, update, loaded, saving, error }
 }
+// END_BLOCK: USE_PROFILE_HOOK

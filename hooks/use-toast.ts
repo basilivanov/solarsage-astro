@@ -19,6 +19,17 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - useToast
+//   - toast
+// semantic_blocks:
+//   - USE_TOAST_HOOK: UI toast notification hook
+// owned_tests:
+//   - __tests__/hooks/useToast.test.ts
+// END_MODULE_MAP
+
 'use client'
 
 // Inspired by react-hot-toast library
@@ -187,6 +198,7 @@ function toast({ ...props }: Toast) {
   }
 }
 
+// START_BLOCK: USE_TOAST_HOOK
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
@@ -206,5 +218,6 @@ function useToast() {
     dismiss: (toastId?: string) => dispatch({ type: 'DISMISS_TOAST', toastId }),
   }
 }
+// END_BLOCK: USE_TOAST_HOOK
 
 export { useToast, toast }

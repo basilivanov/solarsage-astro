@@ -46,6 +46,11 @@ components/theme-provider.tsx
 components/today-important-accordion.tsx
 components/today-important-block.tsx
 components/trial-banner.tsx
+hooks/**/*.ts
+components/shared/**/*.tsx
+components/shared/**/*.ts
+components/monetization/**/*.tsx
+components/monetization/**/*.ts
 lib/grace/**/*.ts
 lib/api/**/*.ts
 lib/api/promo.ts

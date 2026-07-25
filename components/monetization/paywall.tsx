@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - Paywall
+// semantic_blocks:
+//   - PAYWALL: Monetization subscription paywall component
+// owned_tests:
+//   - __tests__/components/Paywall.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { Lock, Crown, UserPlus } from "lucide-react"
@@ -35,6 +45,7 @@ type Props = {
   className?: string
 }
 
+// START_BLOCK: PAYWALL
 export function Paywall({
   title = "Твой персональный разбор уже готов",
   description = "Полный текст и блок «Почему так у меня» доступны по подписке — или пригласи друга, и вы оба получите 14 дней.",
@@ -88,3 +99,4 @@ export function Paywall({
     </section>
   )
 }
+// END_BLOCK: PAYWALL

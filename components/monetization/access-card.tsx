@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - AccessCard
+// semantic_blocks:
+//   - ACCESS_CARD: Monetization access card component
+// owned_tests:
+//   - __tests__/components/AccessCard.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import type { LucideIcon } from "lucide-react"
@@ -120,6 +130,7 @@ function pluralDays(n: number) {
   return "дней"
 }
 
+// START_BLOCK: ACCESS_CARD
 export function AccessCard({ access, currentState, onSubscribe, onInvite }: Props) {
   const v = buildVariant(access, currentState, onSubscribe, onInvite)
   const Icon = v.icon
@@ -190,3 +201,4 @@ export function AccessCard({ access, currentState, onSubscribe, onInvite }: Prop
     </div>
   )
 }
+// END_BLOCK: ACCESS_CARD

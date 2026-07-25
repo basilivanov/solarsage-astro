@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - CosmicLoader
+// semantic_blocks:
+//   - COSMIC_LOADER: Animated cosmic loading indicator component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useEffect, useRef, useState } from "react"
@@ -45,6 +55,7 @@ type Props = {
   messages?: string[]
 }
 
+// START_BLOCK: COSMIC_LOADER
 export function CosmicLoader({
   done = false,
   durationHint = 12000,
@@ -153,6 +164,7 @@ export function CosmicLoader({
     </div>
   )
 }
+// END_BLOCK: COSMIC_LOADER
 
 /** Кольцо-орбита: вращающаяся обёртка, ребёнок «приклеен» к верхней точке. */
 function Ring({

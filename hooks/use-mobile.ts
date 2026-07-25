@@ -19,10 +19,20 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - useIsMobile
+// semantic_blocks:
+//   - USE_IS_MOBILE_HOOK: Mobile viewport match media hook
+// owned_tests:
+//   - __tests__/hooks/useToast.test.ts
+// END_MODULE_MAP
 import * as React from 'react'
 
 const MOBILE_BREAKPOINT = 768
 
+// START_BLOCK: USE_IS_MOBILE_HOOK
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
 
@@ -38,3 +48,4 @@ export function useIsMobile() {
 
   return !!isMobile
 }
+// END_BLOCK: USE_IS_MOBILE_HOOK

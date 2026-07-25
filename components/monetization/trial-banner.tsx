@@ -19,11 +19,22 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - TrialBanner
+// semantic_blocks:
+//   - TRIAL_BANNER: Monetization trial banner component
+// owned_tests:
+//   - __tests__/components/TrialBanner.test.tsx
+// END_MODULE_MAP
+
 'use client'
 
 import { Sparkles } from "lucide-react"
 import { useRouter } from 'next/navigation'
 
+// START_BLOCK: TRIAL_BANNER
 export function TrialBanner({ daysLeft }: { daysLeft: number }) {
   const router = useRouter()
   const isDev = process.env.NEXT_PUBLIC_DEV_MODE === 'true'
@@ -59,3 +70,4 @@ export function TrialBanner({ daysLeft }: { daysLeft: number }) {
     </div>
   )
 }
+// END_BLOCK: TRIAL_BANNER
