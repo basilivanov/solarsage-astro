@@ -76,6 +76,14 @@ def create_app(app_settings: Settings = settings) -> FastAPI:
     from app.services.canon_service import validate_canon_bundle
     validate_canon_bundle()
 
+    # W-PROD-ERROR-LOOP: Initialize Bugsink error tracking (no-op when ERROR_TRACKING_DSN is empty)
+    import os
+    from app.services.error_tracking import init_error_tracking
+    init_error_tracking(
+        os.environ.get("ERROR_TRACKING_DSN", ""),
+        os.environ.get("RELEASE_SHA", ""),
+    )
+
     policy = build_runtime_security_policy(app_settings)
 
     # START_BLOCK: APP_CONSTRUCTION

@@ -101,6 +101,8 @@ x-api-common: &api-common
     # container). Empty fails closed (all forwarded headers rejected). Never
     # a broad private range — see runbook §2.1.
     YOOKASSA_TRUSTED_PROXY_CIDRS: ${YOOKASSA_TRUSTED_PROXY_CIDRS:-}
+    # Bugsink error tracking DSN (optional, fail-open when empty)
+    ERROR_TRACKING_DSN: ${ERROR_TRACKING_DSN:-}
 
 services:
   api:

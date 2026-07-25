@@ -6,8 +6,9 @@
 
 # START_MODULE_CONTRACT: M-LOG-INTAKE-SERVICE
 # purpose: Service layer for processing frontend log envelopes. Validates
-#   structure per §8.2, redacts PII, and forwards the SAME envelope to stdout
-#   (preserving all original fields) without rebuilding.
+#   structure per §8.2, redacts PII, forwards the SAME envelope to stdout
+#   (preserving all original fields) without rebuilding, and forwards error/fatal
+#   frontend errors to Bugsink error tracking.
 # owns:
 #   - apps/api/app/services/log_intake.py
 # inputs:
@@ -17,8 +18,10 @@
 #   - {"accepted": int, "rejected": int}
 # dependencies:
 #   - M-OBSERVABILITY-REDACTOR (redact_dict)
+#   - M-ERROR-TRACKING (capture_frontend_envelope, should_forward_envelope)
 # side_effects:
 #   - writes to stdout via direct JSON emit
+#   - forwards error/fatal frontend envelopes to Bugsink
 # invariants:
 #   - validates required fields: ts, level, event, service
 #   - redacts PII before forwarding
@@ -112,6 +115,11 @@ class LogIntakeService:
                 # Emit the SAME redacted envelope directly to stdout
                 # Do NOT rebuild via log_event() — preserve original fields
                 self._emit_line(redacted)
+
+                # Forward error/fatal frontend envelopes to Bugsink error tracking
+                from app.services.error_tracking import capture_frontend_envelope, should_forward_envelope
+                if should_forward_envelope(redacted):
+                    capture_frontend_envelope(redacted)
 
                 accepted += 1
 
