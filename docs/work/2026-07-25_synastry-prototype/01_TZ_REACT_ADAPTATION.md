@@ -196,7 +196,7 @@ Mobile sheet (`role="dialog" aria-modal`, закрытие по Escape, backdrop
 
 ## 5. Тестирование
 
-- **Unit (pytest)**: tone-mapping движка и формула балла на golden-фикстурах 4 пар прототипа (±5); правило Луны при unknown (параметризованный тест: 00:00 vs 23:59 → одинаковый балл); инвариант precision (`unknown` → no houses/ASC); валидатор LLM-блоков (лимиты, блоклист, approximate-ограничение, DeepSeek без schema); идемпотентность генерации; **IDOR**: чужой `partner_id` → 404 на всех эндпоинтах; дедуп партнёров (повторный POST → 409).
+- **Unit (pytest)**: tone-mapping движка и формула балла на golden-фикстурах 4 пар прототипа (±5); правило Луны при unknown (параметризованный тест: 00:00 vs 23:59 → одинаковый балл); инвариант precision (`unknown` → no houses/ASC); валидатор LLM-блоков (лимиты, блоклист, approximate-ограничение, DeepSeek без schema); идемпотентность генерации; **IDOR**: чужой `partner_id` → 404 на всех эндпоинтах; дедуп партнёров (повторный POST → 409); **биллинг**: buy-flow POST purchase/start на каждый активный slug → 200; refund при падении генерации (кредит вернулся, повторный refund — no-op); конкурентное создание weekly-free (нет 500); регресс порядка списания из общего пула (п. 8.2).
 - **Unit (vitest)**: рендер списка/отчёта по fixture, переключатель «время неизвестно» (блокировка поля, восстановление значения), открытие drill-down из строки аспекта и из tech-подписи, paywall-sheet при 402.
 - **Mock e2e (Playwright, route interception)**: структурный контракт экранов на стабильных payload — testid'ы п. 2, `data-state`, `data-status`, `aria-expanded` у «Показать все аспекты», `role="dialog"` у sheet'ов.
 - **Real e2e**: Telegram HMAC → реальный API: добавление партнёра (exact и unknown), отчёт, drill-down, покупка кредита в тестовом режиме ЮKassa.
@@ -284,10 +284,15 @@ Frontend-события (`logEvent` из `lib/log/index.ts`):
 - `PurchaseStartRequest.product_slug` (`schemas/payment.py:110-114`) — `Literal`, в который **уже сейчас не входит `election_1`** (покупка элективки 422-ит на валидации — живой баг). Добавить `election_1` + `synastry_1`, синхронизировать union в `lib/api/payment.ts`, тест buy-flow на каждый slug.
 - Атрибуция: при гранте писать `HoraryCredit.metadata_json = {product_slug, purchase_id}` (поле существует, сейчас не используется) — иначе per-product выручка и «куплено для X, потрачено на Y» не считаются в принципе.
 - События: `synastry.credit_spent`, `synastry.credit_refunded` в реестр (п. 6.2); `horary.credit_spent` зарегистрирован, но нигде не эмитится — не использовать как образец.
+- **Гонка weekly-free** (существующий латентный баг, принято закрыть в этом релизе): `get_or_create_current_weekly_free` (`horary_credit_service.py:102-145`) вставляет строку без catch IntegrityError — два одновременных первых касания пула → 500. Добавить catch + повторное чтение; тест на конкурентное создание.
+- **Stalled purchases**: cron-свип (или алерт) на `payments/purchases` в `pending` старше 24ч — paid-but-unfulfilled сейчас восстанавливается только вручную по логам (`billing_service.py:1397-1403`). Минимум: алерт на `billing.fulfillment_blocked` + метрика stalled; идеал: sweep-джоба по образцу `jobs/billing_rebill.py`.
+- **Каталог меняется только миграцией**: `seed_products` insert-only (`product_catalog.py:173-207`) — любое изменение цены/квоты без миграции молча не применится. Правило в runbook; post-deploy сверка таблицы `products` с `product_catalog.py`.
+- **Денежный refund — только ручной процесс**: API возврата средств в ЮKassa в коде нет. Зафиксировать операторский runbook: по жалобе → проверка `payments`/`purchases` → ручной refund в кабинете ЮKassa → запись в лог.
+- **Регресс порядка списания**: общий для трёх фич тест-набор «weekly-free → bonus по ближайшему expires_at → paid по created_at» (`horary_credit_service.py:273-285`) — пул общий, изменение порядка бьёт по хорару, элективке и синастрии одновременно.
 
-### 8.3. Открытое продуктовое решение (зафиксировать до реализации)
+### 8.3. Решение по weekly-free (принято владельцем 2026-07-25)
 
-- Тратит ли синастрия **weekly-free** кредит? Сегодня `select_spendable_credit` берёт его первым для любого вызывающего (элективка уже сжигает «бесплатный вопрос недели»). Варианты: (а) как у элективки — тратит, решение по умолчанию; (б) не тратит — требует source/feature-фильтра, которого в пуле нет. Пометить выбор здесь перед стартом.
+Синастрия тратит кредиты из общего пула **включая weekly-free** — поведение как у элективки, source/feature-фильтр не вводим. `select_spendable_credit` берёт weekly-free первым (`horary_credit_service.py:273-285`) — это осознанное поведение для всех трёх фич. UX-последствие (расчёт синастрии может израсходовать «бесплатный вопрос недели») принимается; подписи в UI не должны обещать, что weekly-free — «именно хорарный вопрос».
 
 ## 9. Merge-blocking гейты из pre-mortem
 
@@ -301,4 +306,5 @@ Frontend-события (`logEvent` из `lib/log/index.ts`):
 6. Дедуп партнёров: unique-индекс / 409 (п. 3.2).
 7. Runbook миграции `migrate → deploy → smoke` + прогон на копии прод-дампа (п. 3.2).
 8. `PurchaseStartRequest` Literal + `metadata_json`-атрибуция + refund-тест (п. 8.2).
-9. Решение по weekly-free (п. 8.3) и по ПДн третьих лиц (п. 4, 6.3) — зафиксированы письменно.
+9. ~~Решение по weekly-free~~ — принято: тратит, как элективка (п. 8.3). Позиция по ПДн третьих лиц зафиксирована в п. 4 (промпт без имени партнёра) и п. 6.3 (логи только по `partner_id`).
+10. Гонка weekly-free, stalled-purchases алерт/свип, каталог-только-миграцией, ручной refund-runbook, регресс порядка списания (п. 8.2) — приняты в релиз.
