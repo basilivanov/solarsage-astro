@@ -10,6 +10,9 @@ app/(grace)/**/*.tsx
 app/(grace)/**/*.ts
 components/grace/**/*.tsx
 components/grace/**/*.ts
+components/promo/**/*.tsx
+components/promo/**/*.ts
 lib/grace/**/*.ts
 lib/api/**/*.ts
+lib/api/promo.ts
 packages/contracts/index.ts

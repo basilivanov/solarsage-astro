@@ -53,7 +53,7 @@
       Scoring knowledge is canon data, not hidden code: spheres, dignity modifiers, aspect rules, activation rules, thresholds, and convergence bonuses must be versioned under grace/canon/*.yml before product scoring consumes them.
     </invariant>
     <invariant id="INV-ORCHESTRATOR-ADAPTER">
-      Agent orchestration is configured through grace/orchestrator/*, not hidden in Prefect flows or product backend code. Prefect is runtime only; GRACE semantics live in the project adapter, packet schema, role contracts, and verification profiles.
+      Agent orchestration is configured through grace/orchestrator/*; GRACE semantics live in the project adapter, packet schema, role contracts, and verification profiles.
     </invariant>
     <invariant id="INV-ORCHESTRATOR-SCOPE-GUARD">
       A coder agent must not start from a packet unless the packet has allowed write scope, frozen scope, verification requirements, expected evidence, and escalation triggers. Legacy packets may be warning-only until migrated, but new packets must follow packet.schema.json.

@@ -82,6 +82,14 @@
     <module id="M-TESTS" slice="SLICE-TESTS" layer="tests" path="__tests__/, apps/api/tests/, apps/solarsage/tests/" />
     <module id="M-GUARDRAILS" slice="SLICE-GUARDRAILS-TOOLING" layer="tooling" path="scripts/" />
     <module id="M-GRACE-PROJECT-ADAPTER" slice="SLICE-ORCHESTRATOR-ADAPTER" layer="canon" path="grace/orchestrator/, grace/*.xml, grace/*.md, grace/canon.yaml" />
+    <module id="M-API-PROMO" slice="SLICE-BACKEND-API-ROUTERS" layer="backend" path="apps/api/app/api/promo.py" />
+    <module id="M-PROMO-CAMPAIGN-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/promo_campaign_service.py" />
+    <module id="M-PROMO-ADMIN-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/promo_admin_service.py" />
+    <module id="M-PROMO-RATE-LIMITER" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/promo_rate_limiter.py" />
+    <module id="M-FRONTEND-API-PROMO" slice="SLICE-FRONTEND-API-FACADES" layer="frontend" path="lib/api/promo.ts" />
+    <module id="M-PROMO-CAMPAIGN-GATE" slice="SLICE-SHELL-NAVIGATION" layer="frontend" path="components/promo/promo-campaign-gate.tsx" />
+    <module id="M-PROMO-CONFIRMATION-SHEET" slice="SLICE-SHELL-NAVIGATION" layer="frontend" path="components/promo/promo-confirmation-sheet.tsx" />
+    <module id="M-ERROR-TRACKING" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/error_tracking.py" />
   </modules>
 
   <dependency-graph>
@@ -96,6 +104,11 @@
     <edge from="M-BACKEND-SERVICES" to="M-SCORING-SEMANTIC-LLM" via="semantic-context" />
     <edge from="M-GUARDRAILS" to="M-GRACE-PROJECT-ADAPTER" via="docs-orchestrator-checks" />
     <edge from="M-GUARDRAILS" to="M-CONTRACTS" via="contract-generation-check" />
+    <edge from="M-API-PROMO" to="M-PROMO-CAMPAIGN-SERVICE" via="service-call" />
+    <edge from="M-API-PROMO" to="M-PROMO-RATE-LIMITER" via="rate-limit-check" />
+    <edge from="M-FRONTEND-API-PROMO" to="M-API-PROMO" via="http-fetch" />
+    <edge from="M-PROMO-CAMPAIGN-GATE" to="M-FRONTEND-API-PROMO" via="api-call" />
+    <edge from="M-ERROR-TRACKING" to="M-BACKEND-SERVICES" via="event-forwarding" />
   </dependency-graph>
 
   <adoption-policy>

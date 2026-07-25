@@ -78,6 +78,17 @@
 - ✅ W-CHAT-4 — Quotas / billing for chat
 - ✅ W-CHAT-INTAKE — Chat intake spec (spec-only)
 
+### PHASE-NAMED-PROMO: Named Promo Campaign (Slices 01–20) ✅
+- ✅ W-NAMED-PROMO-CAMPAIGN — Named promo campaigns (Base58 tokens, campaign service, OpenAPI contracts, HTTP API, frontend sheet/gate, prefill, admin CLI, per-user rate limiter, Nginx privacy, shared credit lock, PostgreSQL concurrency proof, operations runbook)
+
+### PHASE-PROD-ERROR-LOOP: Prod Error Loop (Slices 01–04) ✅
+- ✅ W-PROD-ERROR-LOOP — Production error loop (self-hosted Bugsink container port 18095, sentry-sdk backend forwarder, automated triage & fix runner, resolve after deploy)
+
+### PHASE-OBSERVABILITY & FEATURES ✅
+- ✅ W-FRONTEND-OBSERVABILITY — Frontend telemetry, instrumented fetch, logger sampling, error boundaries
+- ✅ W-HORARY — Horary questions and credit ledger
+- ✅ W-ELECTION — Election astrology search engine and shared credit lock
+
 ### Infrastructure (4 waves) ✅
 - ✅ W-DEPLOY — Deployment surface (Docker Compose)
 - ✅ W-ORCH-1 — Orchestrator runtime adapter
