@@ -1,6 +1,12 @@
 """Unit tests for synastry API routes and security."""
 
+from unittest.mock import AsyncMock, patch
+import uuid
+import pytest
+
+from fastapi import HTTPException, status
 from app.api.synastry import router
+from app.schemas.synastry import PartnerCreate
 
 
 def test_synastry_router_import():
@@ -32,3 +38,45 @@ def test_synastry_route_definitions():
     assert ("/api/synastry/{partner_id}/aspect/{aspect_id}", ("GET",)) in route_map
     assert ("/api/synastry/{partner_id}/feedback", ("POST",)) in route_map
     assert ("/api/synastry/{partner_id}", ("DELETE",)) in route_map
+
+
+@pytest.mark.asyncio
+async def test_create_partner_endpoint_202_and_task_trigger():
+    """POST /api/synastry/partners returns 202 Accepted and triggers background calculation task."""
+    from app.api.synastry import create_synastry_partner
+    from app.db.models import SynastryPartner, SynastryReport
+
+    user_id = uuid.uuid4()
+    partner_id = uuid.uuid4()
+    report_id = uuid.uuid4()
+
+    dummy_user = AsyncMock()
+    dummy_user.id = user_id
+    dummy_db = AsyncMock()
+
+    dummy_partner = SynastryPartner(id=partner_id, owner_id=user_id, name="Максим")
+    dummy_report = SynastryReport(id=report_id, owner_id=user_id, partner_id=partner_id, state="pending", stage="init", attempt_count=0)
+
+    body = PartnerCreate(
+        name="Максим",
+        relation="romantic",
+        birth_date="1987-09-09", # type: ignore[arg-type]
+    )
+
+    with patch("app.api.synastry.SynastryService") as mock_service_cls, \
+         patch("app.api.synastry.asyncio.create_task") as mock_create_task:
+
+        mock_instance = AsyncMock()
+        mock_instance.create_partner_and_report.return_value = (dummy_partner, dummy_report)
+        mock_service_cls.return_value = mock_instance
+
+        res = await create_synastry_partner(body, dummy_user, dummy_db)
+
+        assert res.report_id == report_id
+        assert res.partner_id == partner_id
+        assert res.state == "pending"
+        mock_create_task.assert_called_once()
+
+        # Clean up unawaited mocked coroutine
+        coro = mock_create_task.call_args[0][0]
+        coro.close()

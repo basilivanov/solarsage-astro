@@ -33,7 +33,7 @@
 
 from __future__ import annotations
 
-import hashlib
+import asyncio
 import json
 
 from datetime import datetime, timezone
@@ -45,6 +45,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_session
+from app.core.logging import log_event
 from app.db.models import (
     HoraryCredit,
     SynastryAspectDetail,
@@ -53,7 +54,7 @@ from app.db.models import (
     SynastryReport,
     User,
 )
-from app.db.session import get_session
+from app.db.session import SessionLocal, get_session
 from app.schemas.horary import HoraryQuotaRead
 from app.schemas.synastry import (
     AspectDrilldown,
@@ -68,19 +69,9 @@ from app.schemas.synastry import (
     SynastryReport as SynastryReportSchema,
     SynastrySphere,
 )
+from app.services.synastry_service import SynastryService
 
 router = APIRouter(prefix="/api/synastry", tags=["synastry"])
-
-
-def _compute_partner_hash(
-    owner_id: uuid.UUID,
-    name: str,
-    birth_date_str: str,
-    birth_time_str: str | None,
-    city: str | None,
-) -> str:
-    raw = f"{owner_id}:{name.strip().lower()}:{birth_date_str}:{birth_time_str or ''}:{city or ''}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 # STATIC ROUTES FIRST!
@@ -198,82 +189,37 @@ async def list_synastry_partners(
     return SynastryListRead(partners=items)
 
 
-@router.post("/partners", response_model=SynastryGenerationRead, status_code=status.HTTP_201_CREATED)
+async def _run_synastry_pipeline_task(report_id: uuid.UUID) -> None:
+    try:
+        async with SessionLocal() as db:
+            service = SynastryService(db)
+            await service.run_report_pipeline(report_id)
+    except Exception as exc:
+        log_event(
+            "system.error",
+            level="error",
+            msg=f"[Synastry] Background calculation failed for report {report_id}: {type(exc).__name__}",
+            payload={"report_id": str(report_id), "error_type": type(exc).__name__},
+        )
+
+
+@router.post("/partners", response_model=SynastryGenerationRead, status_code=status.HTTP_202_ACCEPTED)
 async def create_synastry_partner(
     body: PartnerCreate,
     user: Annotated[User, Depends(require_session)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> SynastryGenerationRead:
-    """Add a new synastry partner and initiate report generation."""
-    b_time_str = body.birth_time.isoformat() if body.birth_time else None
-    partner_hash = _compute_partner_hash(
-        owner_id=user.id,
-        name=body.name,
-        birth_date_str=body.birth_date.isoformat(),
-        birth_time_str=b_time_str,
-        city=body.birth_city,
-    )
+    """Add a new synastry partner, spend credit, and initiate background report calculation."""
+    service = SynastryService(db)
+    partner, report = await service.create_partner_and_report(user.id, body)
 
-    # Deduplication check: duplicate partner -> 409
-    dup_stmt = select(SynastryPartner).where(
-        SynastryPartner.owner_id == user.id,
-        SynastryPartner.partner_input_hash == partner_hash,
-        SynastryPartner.invalidated_at.is_(None),
-    )
-    dup_res = await db.execute(dup_stmt)
-    existing_partner = dup_res.scalar_one_or_none()
-
-    if existing_partner:
-        # Fetch existing report
-        rep_stmt = select(SynastryReport).where(
-            SynastryReport.owner_id == user.id,
-            SynastryReport.partner_id == existing_partner.id,
-            SynastryReport.invalidated_at.is_(None),
-        ).order_by(SynastryReport.created_at.desc()).limit(1)
-        rep_res = await db.execute(rep_stmt)
-        existing_rep = rep_res.scalar_one_or_none()
-
-        if existing_rep:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Partner '{body.name}' already exists for this user.",
-            )
-
-    # Create partner
-    partner = SynastryPartner(
-        id=uuid.uuid4(),
-        owner_id=user.id,
-        name=body.name.strip(),
-        relation_type=body.relation,
-        birth_date=body.birth_date,
-        birth_time=body.birth_time,
-        birth_city=body.birth_city,
-        birth_lat=body.birth_lat,
-        birth_lon=body.birth_lon,
-        birth_tz=body.birth_tz,
-        precision=body.birth_time_precision,
-        partner_input_hash=partner_hash,
-    )
-    db.add(partner)
-
-    # Create initial report
-    report = SynastryReport(
-        id=uuid.uuid4(),
-        owner_id=user.id,
-        partner_id=partner.id,
-        owner_profile_hash="default_hash",
-        state="pending",
-        stage="init",
-    )
-    db.add(report)
-
-    await db.commit()
-    await db.refresh(report)
+    # Launch background task ONLY after successful commit
+    asyncio.create_task(_run_synastry_pipeline_task(report.id))
 
     return SynastryGenerationRead(
         report_id=report.id,
         partner_id=partner.id,
-        state=report.state, # type: ignore[arg-type]
+        state=report.state,  # type: ignore[arg-type]
         stage=report.stage,
         attempt_count=report.attempt_count,
     )
