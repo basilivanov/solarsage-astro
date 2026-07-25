@@ -70,6 +70,11 @@ from sqlalchemy.pool import NullPool
 
 POSTGRES_URL = os.getenv("PROMO_TEST_POSTGRES_URL")
 
+# CI wiring (architect-approved, Slice 19): excluded from the ordinary CI
+# backend run via `-m "not integration"`; targeted acceptance runs select this
+# file explicitly and remain fail-closed without a PostgreSQL URL.
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture(scope="module")
 async def pg_engine():
