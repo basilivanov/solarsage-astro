@@ -93,6 +93,7 @@ jobs:
             e2e/mock-visual/horary.spec.ts \
             e2e/mock-visual/natal.spec.ts \
             e2e/mock-visual/day-v2.spec.ts \
+            e2e/mock-visual/synastry.spec.ts \
             --project=chromium --project=mobile
 
           # Explicit normal cleanup

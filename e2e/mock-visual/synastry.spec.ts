@@ -33,5 +33,9 @@ test.describe("Synastry mock visual contract", () => {
     const partnerCard = page.getByTestId("synastry-card")
     await expect(partnerCard).toBeVisible()
     await expect(partnerCard).toHaveAttribute("data-status", "good")
+
+    await expect(page).toHaveScreenshot("synastry-list.png", {
+      mask: [page.getByTestId("synastry-card")],
+    })
   })
 })
