@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - ProfileReset
+// semantic_blocks:
+//   - PROFILE_RESET: Debug profile reset modal component
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useState } from "react"
@@ -36,6 +46,7 @@ function isAdmin(): boolean {
   }
 }
 
+// START_BLOCK: PROFILE_RESET
 export function ProfileReset() {
   const router = useRouter()
   const [resetting, setResetting] = useState(false)
@@ -80,3 +91,4 @@ export function ProfileReset() {
     </button>
   )
 }
+// END_BLOCK: PROFILE_RESET

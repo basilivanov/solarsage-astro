@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - TelegramInit
+// semantic_blocks:
+//   - TELEGRAM_INIT: Telegram WebApp viewport & theme initialization component
+// owned_tests:
+//   - __tests__/hooks/useTelegramAuth.test.ts
+// END_MODULE_MAP
+
 "use client"
 
 import { useEffect } from "react"
@@ -55,6 +65,7 @@ function isMethodSupported(tg: TelegramWebAppType, method: string): boolean {
   }
 }
 
+// START_BLOCK: TELEGRAM_INIT
 export function TelegramInit() {
   const { webApp } = useTelegram()
 
@@ -120,4 +131,5 @@ export function TelegramInit() {
 
   return null
 }
+// END_BLOCK: TELEGRAM_INIT
 

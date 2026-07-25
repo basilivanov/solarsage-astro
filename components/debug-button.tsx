@@ -19,11 +19,22 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - DebugButton
+// semantic_blocks:
+//   - DEBUG_BUTTON: Debug navigation floating button component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
+
 'use client'
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+// START_BLOCK: DEBUG_BUTTON
 export function DebugButton() {
   const router = useRouter()
   const [isVisible, setIsVisible] = useState(true)
@@ -55,3 +66,4 @@ export function DebugButton() {
     </div>
   )
 }
+// END_BLOCK: DEBUG_BUTTON

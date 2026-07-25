@@ -1,5 +1,30 @@
-// Astro history widget — curated educational astronomy/space-history events.
-// Matches 3001 oracle: "Ближайшие дни" header with side lines, large year, single card layout.
+// ############################################################################
+// AI_HEADER: MODULE_TODAY_ASTRO_HISTORY_WIDGET
+// ROLE: Astro history widget — curated educational astronomy/space-history events.
+// DEPENDENCIES: lucide-react
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-ASTRO-HISTORY-WIDGET
+// purpose: Render curated space history event for the current day.
+// owns:
+//   - components/today/astro-history-widget.tsx
+// inputs: date (Date | string)
+// outputs: AstroHistoryWidget React component
+// dependencies: lucide-react
+// side_effects: none (pure rendering)
+// emitted_logs: none
+// failure_policy: fallback event
+// END_MODULE_CONTRACT: M-ASTRO-HISTORY-WIDGET
+
+// START_MODULE_MAP: M-ASTRO-HISTORY-WIDGET
+// public_entrypoints:
+//   - AstroHistoryWidget
+// semantic_blocks:
+//   - ASTRO_HISTORY_WIDGET: Astronomy history event widget component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP: M-ASTRO-HISTORY-WIDGET
+
 "use client"
 
 import { CalendarDays } from "lucide-react"
@@ -33,6 +58,7 @@ const DEFAULT_EVENT: HistoryEvent = {
   description: "Космический корабль «Аполлон-11» стартовал с мыса Канаверал для первой высадки человека на Луну.",
 }
 
+// START_BLOCK: ASTRO_HISTORY_WIDGET
 export function AstroHistoryWidget({ date }: { date: Date }) {
   const dateStr = date.toISOString().split("T")[0]
   const event = EVENTS[dateStr] || DEFAULT_EVENT
@@ -73,3 +99,4 @@ export function AstroHistoryWidget({ date }: { date: Date }) {
     </section>
   )
 }
+// END_BLOCK: ASTRO_HISTORY_WIDGET

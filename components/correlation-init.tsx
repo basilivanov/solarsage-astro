@@ -1,5 +1,5 @@
 
-// ############################################################################
+// #################################################################===========
 // AI_HEADER: MODULE_COMPONENTS_CORRELATION_INIT
 // ROLE: UI component
 // DEPENDENCIES: local modules
@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - CorrelationInit
+// semantic_blocks:
+//   - CORRELATION_INIT: Correlation ID initializer component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useEffect, useRef } from "react"
@@ -29,6 +39,7 @@ import { setCorrelationId, logEvent } from "@/lib/log"
  * Генерирует UUIDv4 и устанавливает его глобально для логгера.
  * ID живёт в рамках одной загрузки страницы.
  */
+// START_BLOCK: CORRELATION_INIT
 export function CorrelationInit() {
   const done = useRef(false)
 
@@ -47,3 +58,4 @@ export function CorrelationInit() {
 
   return null
 }
+// END_BLOCK: CORRELATION_INIT

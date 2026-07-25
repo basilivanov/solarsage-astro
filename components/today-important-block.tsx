@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - TodayImportantBlock
+// semantic_blocks:
+//   - TODAY_IMPORTANT_BLOCK: Today important event card block component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { AlertTriangle, Moon, Star, RotateCcw, Home, Zap, ArrowRight } from "lucide-react"
@@ -62,6 +72,7 @@ function severityIconClass(severity: string): string {
   return "bg-secondary/60 text-muted-foreground"
 }
 
+// START_BLOCK: TODAY_IMPORTANT_BLOCK
 export function TodayImportantBlock({ items }: Props) {
   if (!items || items.length === 0) return null
 
@@ -107,3 +118,4 @@ export function TodayImportantBlock({ items }: Props) {
     </section>
   )
 }
+// END_BLOCK: TODAY_IMPORTANT_BLOCK

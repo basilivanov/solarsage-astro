@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - ThemeProvider
+// semantic_blocks:
+//   - THEME_PROVIDER: Next-themes theme provider component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
+
 'use client'
 
 import * as React from 'react'
@@ -27,6 +37,8 @@ import {
   type ThemeProviderProps,
 } from 'next-themes'
 
+// START_BLOCK: THEME_PROVIDER
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>
 }
+// END_BLOCK: THEME_PROVIDER

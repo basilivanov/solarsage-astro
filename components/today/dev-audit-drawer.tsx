@@ -1,3 +1,33 @@
+// ############################################################################
+// AI_HEADER: MODULE_TODAY_DEV_AUDIT_DRAWER
+// ROLE: UI component
+// DEPENDENCIES: local modules
+// GRACE_ANCHORS: []
+// SLICE: SLICE-TODAY-CALENDAR
+// ############################################################################
+// START_MODULE_CONTRACT
+// purpose: Module: dev-audit-drawer.tsx
+// owns:
+//   - components/today/dev-audit-drawer.tsx
+// inputs: Function args
+// outputs: Return values
+// dependencies: local modules
+// side_effects: n/a (pure)
+// emitted_logs: n/a (pure)
+// invariants:
+//   - n/a
+// failure_policy: log and raise
+// END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - DevAuditDrawer
+// semantic_blocks:
+//   - DEV_AUDIT_DRAWER: Dev audit drawer debug component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
+
 import React, { useState, useEffect } from "react"
 import { TodayV2Audit } from "@/lib/contracts/today"
 
@@ -6,6 +36,7 @@ interface DevAuditDrawerProps {
   forceShow?: boolean
 }
 
+// START_BLOCK: DEV_AUDIT_DRAWER
 export function DevAuditDrawer({ audit, forceShow = false }: DevAuditDrawerProps) {
   const [show, setShow] = useState(forceShow)
 
@@ -86,3 +117,4 @@ export function DevAuditDrawer({ audit, forceShow = false }: DevAuditDrawerProps
     </div>
   )
 }
+// END_BLOCK: DEV_AUDIT_DRAWER

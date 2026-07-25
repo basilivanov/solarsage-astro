@@ -33,7 +33,7 @@ import { TODAY } from "@/lib/today"
 import { toDateParam } from "@/lib/date"
 import { logger } from "@/lib/log"
 
-// START_BLOCK_TYPES
+// START_BLOCK: TYPES
 // START_FUNCTION_CONTRACT
 // name: TabKey
 // purpose: Union of valid tab identifiers matching route segments.
@@ -51,9 +51,9 @@ type Tab = {
   href: string
   match: (_pathname: string) => boolean
 }
-// END_BLOCK_TYPES
+// END_BLOCK: TYPES
 
-// START_BLOCK_TAB_DATA
+// START_BLOCK: TAB_DATA
 const tabs: Tab[] = [
   {
     key: "today",
@@ -91,9 +91,9 @@ const tabs: Tab[] = [
     match: (p) => p.startsWith("/profile"),
   },
 ]
-// END_BLOCK_TAB_DATA
+// END_BLOCK: TAB_DATA
 
-// START_BLOCK_COMPONENT
+// START_BLOCK: COMPONENT
 // START_FUNCTION_CONTRACT
 // name: TabBar
 // purpose: Renders the bottom navigation bar. Reads the current pathname and
@@ -145,4 +145,4 @@ export function TabBar() {
     </nav>
   )
 }
-// END_BLOCK_COMPONENT
+// END_BLOCK: COMPONENT

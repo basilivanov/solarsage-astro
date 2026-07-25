@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - TrialBanner
+// semantic_blocks:
+//   - TRIAL_BANNER: Free trial promo banner component
+// owned_tests:
+//   - __tests__/components/TrialBanner.test.tsx
+// END_MODULE_MAP
 // AI_HEADER
 // module: M-COMPONENTS-TRIAL-BANNER
 // wave: W-2.7
@@ -35,6 +44,7 @@ function pluralizeDays(n: number): string {
   return "дней"
 }
 
+// START_BLOCK: TRIAL_BANNER
 export function TrialBanner({ daysLeft }: { daysLeft: number }) {
   return (
     <div className="mx-5 flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/40 px-4 py-3">
@@ -58,3 +68,4 @@ export function TrialBanner({ daysLeft }: { daysLeft: number }) {
     </div>
   )
 }
+// END_BLOCK: TRIAL_BANNER

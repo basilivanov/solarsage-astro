@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - TodayNotes
+// semantic_blocks:
+//   - TODAY_NOTES: Today astrological notes accordion component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useState } from "react"
@@ -34,6 +44,7 @@ type Props = {
   heading?: string
 }
 
+// START_BLOCK: TODAY_NOTES
 export function TodayNotes({
   notes,
   limit,
@@ -118,6 +129,7 @@ export function TodayNotes({
     </section>
   )
 }
+// END_BLOCK: TODAY_NOTES
 
 function HintRow({
   label,

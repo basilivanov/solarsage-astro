@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - LockedFeatureCard
+// semantic_blocks:
+//   - LOCKED_FEATURE_CARD: Locked feature placeholder card component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
 // AI_HEADER
 // module: M-COMPONENTS-LOCKED-FEATURE
 // purpose: Unified locked/coming-soon placeholder for closed features
@@ -29,6 +38,7 @@ type Props = {
   badge?: "Скоро" | "Закрыто"
 }
 
+// START_BLOCK: LOCKED_FEATURE_CARD
 export function LockedFeatureCard({ title, description, badge = "Скоро" }: Props) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-5">
@@ -55,3 +65,4 @@ export function LockedFeatureCard({ title, description, badge = "Скоро" }: 
     </div>
   )
 }
+// END_BLOCK: LOCKED_FEATURE_CARD

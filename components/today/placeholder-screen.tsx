@@ -19,8 +19,18 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - PlaceholderScreen
+// semantic_blocks:
+//   - PLACEHOLDER_SCREEN: Today screen placeholder empty state component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
 import type { LucideIcon } from "lucide-react"
 
+// START_BLOCK: PLACEHOLDER_SCREEN
 export function PlaceholderScreen({
   icon: Icon,
   title,
@@ -47,3 +57,4 @@ export function PlaceholderScreen({
     </div>
   )
 }
+// END_BLOCK: PLACEHOLDER_SCREEN

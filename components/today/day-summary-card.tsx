@@ -17,6 +17,16 @@
 //   - legacy mode keeps backend facts visible.
 // failure_policy: use existing safe status fallbacks for missing summary fields.
 // END_MODULE_CONTRACT: M-DAY-SUMMARY-CARD
+
+// START_MODULE_MAP: M-DAY-SUMMARY-CARD
+// public_entrypoints:
+//   - DaySummaryCard
+// semantic_blocks:
+//   - DAY_SUMMARY_CARD: Day summary status card component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP: M-DAY-SUMMARY-CARD
+
 "use client"
 
 import type { DayStatus, DaySummaryBlock } from "@/lib/contracts/today"
@@ -44,7 +54,7 @@ const STATUS_EMOJI: Record<DayStatus, string> = {
 const MONTHS = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"]
 const WEEKDAYS = ["ВОСКРЕСЕНЬЕ", "ПОНЕДЕЛЬНИК", "ВТОРНИК", "СРЕДА", "ЧЕТВЕРГ", "ПЯТНИЦА", "СУББОТА"]
 
-// START_BLOCK: DAY_SUMMARY_CARD_RENDER
+// START_BLOCK: DAY_SUMMARY_CARD
 export function DaySummaryCard({ date, dayStatus, daySummary, humanFirst = false }: Props) {
   // START_FUNCTION_CONTRACT: F-M-DAY-SUMMARY-CARD.DaySummaryCard
   // purpose: Render the compact human-first or legacy summary presentation.
@@ -138,4 +148,4 @@ export function DaySummaryCard({ date, dayStatus, daySummary, humanFirst = false
     </section>
   )
 }
-// END_BLOCK: DAY_SUMMARY_CARD_RENDER
+// END_BLOCK: DAY_SUMMARY_CARD

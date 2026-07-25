@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - TodayImportantAccordion
+// semantic_blocks:
+//   - TODAY_IMPORTANT_ACCORDION: Today important events accordion component
+// owned_tests:
+//   - __tests__/components/TodayImportantAccordion.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useState } from "react"
@@ -60,6 +70,7 @@ function toneColors(tone: string) {
   }
 }
 
+// START_BLOCK: TODAY_IMPORTANT_ACCORDION
 export function TodayImportantAccordion({ items }: Props) {
   const [openIds, setOpenIds] = useState<Set<string>>(new Set())
 
@@ -148,3 +159,4 @@ export function TodayImportantAccordion({ items }: Props) {
     </section>
   )
 }
+// END_BLOCK: TODAY_IMPORTANT_ACCORDION

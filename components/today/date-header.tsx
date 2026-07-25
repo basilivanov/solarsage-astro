@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - DateHeader
+// semantic_blocks:
+//   - DATE_HEADER: Date header with navigation arrows component
+// owned_tests:
+//   - __tests__/components/DateHeader.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react"
@@ -35,6 +45,7 @@ type Props = {
   locked?: boolean
 }
 
+// START_BLOCK: DATE_HEADER
 export function DateHeader({
   date,
   onPrev,
@@ -80,3 +91,4 @@ export function DateHeader({
     </header>
   )
 }
+// END_BLOCK: DATE_HEADER

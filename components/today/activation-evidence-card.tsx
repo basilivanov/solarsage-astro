@@ -20,6 +20,15 @@
 // failure_policy: return null when V2 or a safe headline is unavailable.
 // END_MODULE_CONTRACT: M-ACTIVATION-EVIDENCE-CARD
 
+// START_MODULE_MAP: M-ACTIVATION-EVIDENCE-CARD
+// public_entrypoints:
+//   - ActivationEvidenceCard
+// semantic_blocks:
+//   - ACTIVATION_EVIDENCE_CARD: Human-first personal day story component
+// owned_tests:
+//   - __tests__/components/ActivationEvidenceCard.personal.test.tsx
+// END_MODULE_MAP: M-ACTIVATION-EVIDENCE-CARD
+
 "use client"
 
 import { ChevronRight } from "lucide-react"
@@ -47,7 +56,7 @@ function getTopAffectedRows(rows: ConcreteAdviceRow[]): ConcreteAdviceRow[] {
     .slice(0, 3)
 }
 
-// START_BLOCK: PERSONAL_STORY_CARD
+// START_BLOCK: ACTIVATION_EVIDENCE_CARD
 export function ActivationEvidenceCard({
   v2,
   concreteAdvice = { rows: [], counts: { good: 0, caution: 0, avoid: 0, neutral: 0 } },
@@ -147,4 +156,4 @@ export function ActivationEvidenceCard({
     </section>
   )
 }
-// END_BLOCK: PERSONAL_STORY_CARD
+// END_BLOCK: ACTIVATION_EVIDENCE_CARD

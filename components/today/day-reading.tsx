@@ -19,6 +19,15 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - DayReading
+// semantic_blocks:
+//   - DAY_READING: Day reading paragraphs text display component
+// owned_tests:
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP
 type Props = {
   /**
    * Абзацы разбора дня в порядке вывода.
@@ -31,6 +40,7 @@ type Props = {
 
 const PREVIEW_COUNT = 2
 
+// START_BLOCK: DAY_READING
 export function DayReading({ paragraphs, preview = false }: Props) {
   if (!paragraphs || paragraphs.length === 0) return null
 
@@ -80,3 +90,4 @@ export function DayReading({ paragraphs, preview = false }: Props) {
     </section>
   )
 }
+// END_BLOCK: DAY_READING

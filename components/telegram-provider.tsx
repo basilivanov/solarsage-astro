@@ -6,6 +6,28 @@
 // GRACE_ANCHORS: []
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-TELEGRAM-PROVIDER
+// purpose: Provide Telegram WebApp context to client components.
+// owns:
+//   - components/telegram-provider.tsx
+// inputs: children (ReactNode)
+// outputs: TelegramProvider React context provider
+// dependencies: react
+// side_effects: window.Telegram access
+// emitted_logs: none
+// failure_policy: fallback context value
+// END_MODULE_CONTRACT: M-TELEGRAM-PROVIDER
+
+// START_MODULE_MAP: M-TELEGRAM-PROVIDER
+// public_entrypoints:
+//   - TelegramProvider
+//   - useTelegram
+// semantic_blocks:
+//   - TELEGRAM_PROVIDER: Telegram SDK context provider
+// owned_tests:
+//   - __tests__/hooks/useTelegramAuth.test.ts
+// END_MODULE_MAP: M-TELEGRAM-PROVIDER
+
 'use client';
 
 import {
@@ -90,6 +112,7 @@ function hasTelegramContext(webApp: TelegramWebAppType | null): boolean {
  * mark as `loaded` anyway so consumers don't stay in a perpetual loading
  * state outside Telegram.
  */
+// START_BLOCK: TELEGRAM_PROVIDER
 export function TelegramProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<TelegramContextValue>({
     webApp: null,
@@ -156,3 +179,4 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     </TelegramContext.Provider>
   );
 }
+// END_BLOCK: TELEGRAM_PROVIDER
