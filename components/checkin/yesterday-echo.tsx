@@ -1,3 +1,33 @@
+// ############################################################################
+// AI_HEADER: MODULE_COMPONENTS_YESTERDAY_ECHO
+// ROLE: Yesterday checkin summary and prompt block for Today screen
+// DEPENDENCIES: react, next/navigation, lib/api/checkin, packages/contracts
+// GRACE_ANCHORS: [YESTERDAY_ECHO_COMPONENT]
+// SLICE: SLICE-PROFILE-ONBOARDING
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-YESTERDAY-ECHO
+// purpose: Render yesterday checkin summary or invitation prompt card on Today screen.
+// owns:
+//   - components/checkin/yesterday-echo.tsx
+// inputs: echo (YesterdayCheckinResponse | null)
+// outputs: YesterdayEchoBlock and YesterdayEchoLoader React components
+// dependencies: getYesterdayCheckin, packages/contracts
+// side_effects: fetches yesterday checkin data
+// emitted_logs: none
+// failure_policy: fails open (renders null on fetch failure)
+// END_MODULE_CONTRACT: M-COMPONENTS-YESTERDAY-ECHO
+
+// START_MODULE_MAP: M-COMPONENTS-YESTERDAY-ECHO
+// public_entrypoints:
+//   - YesterdayEchoBlock
+//   - YesterdayEchoLoader
+// semantic_blocks:
+//   - YESTERDAY_ECHO_COMPONENT: yesterday checkin echo card and fetcher
+// owned_tests:
+//   - __tests__/components/CheckinScreen.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-YESTERDAY-ECHO
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -24,6 +54,7 @@ type Props = {
   echo: YesterdayCheckinResponse | null
 }
 
+// START_BLOCK: YESTERDAY_ECHO_COMPONENT
 export function YesterdayEchoBlock({ echo }: Props) {
   const router = useRouter()
 
@@ -135,3 +166,4 @@ export function YesterdayEchoLoader() {
 
   return <YesterdayEchoBlock echo={echo} />
 }
+// END_BLOCK: YESTERDAY_ECHO_COMPONENT

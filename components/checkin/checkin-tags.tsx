@@ -1,3 +1,32 @@
+// ############################################################################
+// AI_HEADER: MODULE_COMPONENTS_CHECKIN_TAGS
+// ROLE: Checkin tags selector component
+// DEPENDENCIES: lib/contracts/checkin, lib/utils
+// GRACE_ANCHORS: [CHECKIN_TAGS_COMPONENT]
+// SLICE: SLICE-PROFILE-ONBOARDING
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-TAGS
+// purpose: Render multi-select tag buttons for checkin entry.
+// owns:
+//   - components/checkin/checkin-tags.tsx
+// inputs: selected (string[]), onChange
+// outputs: CheckinTags React component
+// dependencies: lib/contracts/checkin, lib/utils
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-TAGS
+
+// START_MODULE_MAP: M-COMPONENTS-CHECKIN-TAGS
+// public_entrypoints:
+//   - CheckinTags
+// semantic_blocks:
+//   - CHECKIN_TAGS_COMPONENT: checkin tags component
+// owned_tests:
+//   - __tests__/components/CheckinScreen.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-CHECKIN-TAGS
+
 "use client"
 
 import { TAG_OPTIONS } from "@/lib/contracts/checkin"
@@ -8,6 +37,7 @@ type Props = {
   onChange: (tags: string[]) => void
 }
 
+// START_BLOCK: CHECKIN_TAGS_COMPONENT
 export function CheckinTags({ selected, onChange }: Props) {
   const toggle = (tag: string) => {
     onChange(
@@ -39,3 +69,4 @@ export function CheckinTags({ selected, onChange }: Props) {
     </div>
   )
 }
+// END_BLOCK: CHECKIN_TAGS_COMPONENT

@@ -12,6 +12,12 @@ components/grace/**/*.tsx
 components/grace/**/*.ts
 components/promo/**/*.tsx
 components/promo/**/*.ts
+components/checkin/**/*.tsx
+components/checkin/**/*.ts
+components/chat/**/*.tsx
+components/chat/**/*.ts
+components/calendar/**/*.tsx
+components/calendar/**/*.ts
 lib/grace/**/*.ts
 lib/api/**/*.ts
 lib/api/promo.ts

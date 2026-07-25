@@ -6,21 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI chat-screen — component
+// START_MODULE_CONTRACT: M-CHAT-CHAT-SCREEN
+// purpose: Main chat screen component rendering messages list, context pill, empty state, and composer input.
 // owns:
 //   - components/chat/chat-screen.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
-// invariants:
-//   - Public test contract: root exposes data-testid="chat-screen" with
-//     data-state (empty|ready); the message list exposes
-//     data-testid="chat-messages".
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: profile
+// outputs: ChatScreen React component
+// dependencies: ChatEmpty, Composer, ContextPill, MessageBubble, SuggestedPrompts, useChat
+// side_effects: scrolls message list to bottom on new messages
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-CHAT-CHAT-SCREEN
+
+// START_MODULE_MAP: M-CHAT-CHAT-SCREEN
+// public_entrypoints:
+//   - ChatScreen
+// semantic_blocks:
+//   - CHAT_SCREEN_COMPONENT: main chat screen component
+// owned_tests:
+//   - __tests__/components/ChatScreen.test.tsx
+// END_MODULE_MAP: M-CHAT-CHAT-SCREEN
 "use client"
 
 import { useEffect, useMemo, useRef } from "react"
@@ -52,6 +57,7 @@ type Props = {
  *   - при новых сообщениях/печатающем индикаторе/новых токенах стрима
  *     скроллим к низу именно ближайшего скролл-предка, а не window.
  */
+// START_BLOCK: CHAT_SCREEN_COMPONENT
 export function ChatScreen({ profile }: Props) {
   // context мемоизируем, иначе useChat будет ловить новый объект на
   // каждом рендере и `send` будет пересоздаваться
@@ -162,6 +168,7 @@ export function ChatScreen({ profile }: Props) {
     </div>
   )
 }
+// END_BLOCK: CHAT_SCREEN_COMPONENT
 
 function TypingBubble() {
   return (

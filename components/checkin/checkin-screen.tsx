@@ -1,3 +1,32 @@
+// ############################################################################
+// AI_HEADER: MODULE_COMPONENTS_CHECKIN_SCREEN
+// ROLE: Main evening checkin screen component
+// DEPENDENCIES: react, lib/api/checkin, lib/contracts/checkin
+// GRACE_ANCHORS: [CHECKIN_SCREEN_COMPONENT]
+// SLICE: SLICE-PROFILE-ONBOARDING
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-SCREEN
+// purpose: Render multi-step evening checkin form (mood, energy, accuracy, tags, notes) and submit results to backend API.
+// owns:
+//   - components/checkin/checkin-screen.tsx
+// inputs: targetDate, dayStatusHint, onComplete
+// outputs: CheckinScreen React component
+// dependencies: createCheckin, getCheckin, lib/contracts/checkin
+// side_effects: calls checkin API, emits toast notifications
+// emitted_logs: none
+// failure_policy: displays error alert and allows retry
+// END_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-SCREEN
+
+// START_MODULE_MAP: M-COMPONENTS-CHECKIN-SCREEN
+// public_entrypoints:
+//   - CheckinScreen
+// semantic_blocks:
+//   - CHECKIN_SCREEN_COMPONENT: main checkin screen component
+// owned_tests:
+//   - __tests__/components/CheckinScreen.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-CHECKIN-SCREEN
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -24,6 +53,7 @@ type Props = {
   onComplete?: (result: CheckinResponse) => void
 }
 
+// START_BLOCK: CHECKIN_SCREEN_COMPONENT
 export function CheckinScreen({
   targetDate,
   dayStatusHint,
@@ -279,3 +309,4 @@ export function CheckinScreen({
     </div>
   )
 }
+// END_BLOCK: CHECKIN_SCREEN_COMPONENT

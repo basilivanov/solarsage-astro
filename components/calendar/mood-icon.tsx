@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TODAY-CALENDAR
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: mood-icon.tsx
+// START_MODULE_CONTRACT: M-COMPONENTS-CALENDAR-MOOD-ICON
+// purpose: Render day status icon for calendar day cells (supportive, even, tense).
 // owns:
 //   - components/calendar/mood-icon.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: status (DayStatus), className
+// outputs: MoodIcon React component
+// dependencies: lib/utils, lib/calendar
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-COMPONENTS-CALENDAR-MOOD-ICON
+
+// START_MODULE_MAP: M-COMPONENTS-CALENDAR-MOOD-ICON
+// public_entrypoints:
+//   - MoodIcon
+// semantic_blocks:
+//   - MOOD_ICON_COMPONENT: calendar day mood icon component
+// owned_tests:
+//   - __tests__/components/CalendarScreen.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-CALENDAR-MOOD-ICON
 // AI_HEADER
 // module: M-COMPONENTS-CALENDAR-MOOD-ICON
 // wave: W-2.7
@@ -49,6 +56,7 @@ const STATUS_VISUAL: Record<DayStatus, { emoji: string; color: string; bg: strin
   tense: { emoji: "⚠️", color: "oklch(0.62 0.12 27)", bg: "oklch(0.62 0.12 27 / 0.12)" },
 }
 
+// START_BLOCK: MOOD_ICON_COMPONENT
 export function MoodIcon({ status, className }: Props) {
   const visual = STATUS_VISUAL[status] ?? STATUS_VISUAL.even
   return (
@@ -69,3 +77,4 @@ export function MoodIcon({ status, className }: Props) {
     </span>
   )
 }
+// END_BLOCK: MOOD_ICON_COMPONENT

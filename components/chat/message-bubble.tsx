@@ -6,20 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: message-bubble.tsx
+// START_MODULE_CONTRACT: M-CHAT-MESSAGE-BUBBLE
+// purpose: Render chat message bubble for user and assistant roles with streaming cursor indicator.
 // owns:
 //   - components/chat/message-bubble.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - Public test contract: each message item exposes data-testid="chat-message"
-//     and data-role={user|assistant}; tests scope locators to the chat screen.
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: message (ChatMessage), streaming (boolean)
+// outputs: MessageBubble React component
+// dependencies: lib/contracts/chat
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-CHAT-MESSAGE-BUBBLE
+
+// START_MODULE_MAP: M-CHAT-MESSAGE-BUBBLE
+// public_entrypoints:
+//   - MessageBubble
+// semantic_blocks:
+//   - MESSAGE_BUBBLE_COMPONENT: chat message bubble component
+// owned_tests:
+//   - __tests__/components/MessageBubble.test.tsx
+// END_MODULE_MAP: M-CHAT-MESSAGE-BUBBLE
 import type { ChatMessage } from "@/lib/chat"
 
 /**
@@ -31,6 +37,7 @@ import type { ChatMessage } from "@/lib/chat"
  * чтобы было видно, что ответ ещё печатается.
  * Намеренно без аватарок: в Telegram MA меньше места и чище без них.
  */
+// START_BLOCK: MESSAGE_BUBBLE_COMPONENT
 export function MessageBubble({
   message,
   streaming = false,
@@ -66,3 +73,4 @@ export function MessageBubble({
     </li>
   )
 }
+// END_BLOCK: MESSAGE_BUBBLE_COMPONENT

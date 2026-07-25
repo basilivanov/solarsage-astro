@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: chat-empty.tsx
+// START_MODULE_CONTRACT: M-CHAT-CHAT-EMPTY
+// purpose: Render empty chat state with welcome banner and suggested prompts slot.
 // owns:
 //   - components/chat/chat-empty.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: children (ReactNode)
+// outputs: ChatEmpty React component
+// dependencies: lucide-react
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-CHAT-CHAT-EMPTY
+
+// START_MODULE_MAP: M-CHAT-CHAT-EMPTY
+// public_entrypoints:
+//   - ChatEmpty
+// semantic_blocks:
+//   - CHAT_EMPTY_COMPONENT: chat empty state component
+// owned_tests:
+//   - __tests__/components/ChatScreen.test.tsx
+// END_MODULE_MAP: M-CHAT-CHAT-EMPTY
 import { Sparkles } from "lucide-react"
 import type { ReactNode } from "react"
 
@@ -28,6 +35,7 @@ import type { ReactNode } from "react"
  * Здесь короткое объяснение, чем ассистент отличается от обычного ИИ
  * (он знает натальную карту), и слот под список стартовых подсказок.
  */
+// START_BLOCK: CHAT_EMPTY_COMPONENT
 export function ChatEmpty({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col gap-5 pb-3 pt-1">
@@ -56,3 +64,4 @@ export function ChatEmpty({ children }: { children: ReactNode }) {
     </div>
   )
 }
+// END_BLOCK: CHAT_EMPTY_COMPONENT

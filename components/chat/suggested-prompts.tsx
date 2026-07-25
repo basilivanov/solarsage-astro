@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: suggested-prompts.tsx
+// START_MODULE_CONTRACT: M-CHAT-SUGGESTED-PROMPTS
+// purpose: Render quick-start suggested prompt question buttons for empty chat state.
 // owns:
 //   - components/chat/suggested-prompts.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: prompts (string[]), onPick
+// outputs: SuggestedPrompts React component
+// dependencies: lucide-react
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-CHAT-SUGGESTED-PROMPTS
+
+// START_MODULE_MAP: M-CHAT-SUGGESTED-PROMPTS
+// public_entrypoints:
+//   - SuggestedPrompts
+// semantic_blocks:
+//   - SUGGESTED_PROMPTS_COMPONENT: suggested prompts list component
+// owned_tests:
+//   - __tests__/components/SuggestedPrompts.test.tsx
+// END_MODULE_MAP: M-CHAT-SUGGESTED-PROMPTS
 "use client"
 
 import { ArrowUpRight } from "lucide-react"
@@ -33,6 +40,7 @@ type Props = {
  * Клик мгновенно отправляет вопрос — это короткая дорожка к первому
  * ответу, такая же как в большинстве consumer ИИ-приложений.
  */
+// START_BLOCK: SUGGESTED_PROMPTS_COMPONENT
 export function SuggestedPrompts({ prompts, onPick }: Props) {
   return (
     <ul className="flex flex-col gap-2">
@@ -54,4 +62,5 @@ export function SuggestedPrompts({ prompts, onPick }: Props) {
     </ul>
   )
 }
+// END_BLOCK: SUGGESTED_PROMPTS_COMPONENT
 

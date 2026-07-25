@@ -6,20 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for composer.tsx behavior
+// START_MODULE_CONTRACT: M-CHAT-COMPOSER
+// purpose: Chat message composer input component with auto-resizing textarea and submit/stop buttons.
 // owns:
 //   - components/chat/composer.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (tests)
-// invariants:
-//   - Public test contract: data-testid="chat-input" on the composer textarea
-//     and data-testid="chat-send" on the submit button.
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: onSend, onStop, disabled, streaming, initialText
+// outputs: Composer React component
+// dependencies: lucide-react
+// side_effects: none (local state management)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-CHAT-COMPOSER
+
+// START_MODULE_MAP: M-CHAT-COMPOSER
+// public_entrypoints:
+//   - Composer
+// semantic_blocks:
+//   - COMPOSER_COMPONENT: chat message input composer component
+// owned_tests:
+//   - __tests__/components/Composer.test.tsx
+// END_MODULE_MAP: M-CHAT-COMPOSER
 "use client"
 
 import { useEffect, useRef, useState } from "react"
@@ -44,6 +50,7 @@ const MAX_HEIGHT = 144 // px — ~5-6 строк, дальше внутренн�
  * - после отправки фокус остаётся в поле, чтобы можно было сразу
  *   задать следующий вопрос.
  */
+// START_BLOCK: COMPOSER_COMPONENT
 export function Composer({ onSend, onStop, disabled, streaming }: Props) {
   const [value, setValue] = useState("")
   const ref = useRef<HTMLTextAreaElement | null>(null)
@@ -113,4 +120,5 @@ export function Composer({ onSend, onStop, disabled, streaming }: Props) {
     </form>
   )
 }
+// END_BLOCK: COMPOSER_COMPONENT
 
