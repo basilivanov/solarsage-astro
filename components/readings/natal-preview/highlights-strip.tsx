@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HighlightsStrip
+// semantic_blocks:
+//   - HIGHLIGHTS_STRIP: Natal preview highlights strip component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import type { NatalPreviewHighlight } from "@/lib/contracts/natal"
@@ -27,6 +37,7 @@ type Props = {
   highlights: NatalPreviewHighlight[]
 }
 
+// START_BLOCK: HIGHLIGHTS_STRIP
 export function HighlightsStrip({ highlights }: Props) {
   if (!highlights.length) return null
 
@@ -46,3 +57,4 @@ export function HighlightsStrip({ highlights }: Props) {
     </section>
   )
 }
+// END_BLOCK: HIGHLIGHTS_STRIP

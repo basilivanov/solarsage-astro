@@ -19,12 +19,23 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - PersonalHook
+// semantic_blocks:
+//   - PERSONAL_HOOK: Natal preview personal hook callout component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 type Props = {
   text: string
 }
 
+// START_BLOCK: PERSONAL_HOOK
 export function PersonalHook({ text }: Props) {
   if (!text) return null
 
@@ -36,3 +47,4 @@ export function PersonalHook({ text }: Props) {
     </blockquote>
   )
 }
+// END_BLOCK: PERSONAL_HOOK

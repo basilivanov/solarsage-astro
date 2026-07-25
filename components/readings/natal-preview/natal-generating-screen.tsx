@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - NatalGeneratingScreen
+// semantic_blocks:
+//   - NATAL_GENERATING_SCREEN: Natal report generation loading screen component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -69,6 +79,7 @@ type Props = {
   isLive?: boolean
 }
 
+// START_BLOCK: NATAL_GENERATING_SCREEN
 export function NatalGeneratingScreen({
   name,
   priceKopecks,
@@ -293,3 +304,4 @@ export function NatalGeneratingScreen({
     </div>
   )
 }
+// END_BLOCK: NATAL_GENERATING_SCREEN

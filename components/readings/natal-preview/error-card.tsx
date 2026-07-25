@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - ErrorCard
+// semantic_blocks:
+//   - ERROR_CARD: Natal preview error card component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 type Props = {
@@ -26,6 +36,7 @@ type Props = {
   onRetry?: () => void
 }
 
+// START_BLOCK: ERROR_CARD
 export function ErrorCard({ message, onRetry }: Props) {
   return (
     <div className="rounded-2xl border border-destructive/20 bg-card p-5">
@@ -41,3 +52,4 @@ export function ErrorCard({ message, onRetry }: Props) {
     </div>
   )
 }
+// END_BLOCK: ERROR_CARD

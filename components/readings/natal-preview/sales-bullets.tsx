@@ -19,12 +19,23 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - SalesBullets
+// semantic_blocks:
+//   - SALES_BULLETS: Natal preview sales bullets component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 type Props = {
   bullets: string[]
 }
 
+// START_BLOCK: SALES_BULLETS
 export function SalesBullets({ bullets }: Props) {
   if (!bullets.length) return null
 
@@ -45,3 +56,4 @@ export function SalesBullets({ bullets }: Props) {
     </section>
   )
 }
+// END_BLOCK: SALES_BULLETS

@@ -23,6 +23,15 @@
 //   - disabled means "feature off / not purchasable": honest stub, no CTA.
 // failure_policy: errorMessage rendered with role=alert.
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - CtaButton
+// semantic_blocks:
+//   - CTA_BUTTON: Full natal report purchase CTA button component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
 "use client"
 
 import { Sparkles } from "lucide-react"
@@ -36,6 +45,7 @@ type Props = {
   disabled?: boolean
 }
 
+// START_BLOCK: CTA_BUTTON
 export function CtaButton({
   priceKopecks,
   hasReport = false,
@@ -87,3 +97,4 @@ export function CtaButton({
     </div>
   )
 }
+// END_BLOCK: CTA_BUTTON

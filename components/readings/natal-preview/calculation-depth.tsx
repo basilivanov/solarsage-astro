@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - CalculationDepth
+// semantic_blocks:
+//   - CALCULATION_DEPTH: Natal preview calculation stats depth component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import type { NatalCalculationStats } from "@/lib/contracts/natal"
@@ -27,6 +37,7 @@ type Props = {
   stats: NatalCalculationStats
 }
 
+// START_BLOCK: CALCULATION_DEPTH
 export function CalculationDepth({ stats }: Props) {
   return (
     <section className="rounded-2xl border border-border/50 bg-card px-4 py-3.5">
@@ -59,3 +70,4 @@ export function CalculationDepth({ stats }: Props) {
     </section>
   )
 }
+// END_BLOCK: CALCULATION_DEPTH

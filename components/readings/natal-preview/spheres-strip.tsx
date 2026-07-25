@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - SpheresStrip
+// semantic_blocks:
+//   - SPHERES_STRIP: Natal preview spheres strip component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useState } from "react"
@@ -29,6 +39,7 @@ type Props = {
   spheres: NatalPreviewSphere[]
 }
 
+// START_BLOCK: SPHERES_STRIP
 export function SpheresStrip({ spheres }: Props) {
   const [expanded, setExpanded] = useState(false)
   if (!spheres.length) return null
@@ -79,3 +90,4 @@ export function SpheresStrip({ spheres }: Props) {
     </section>
   )
 }
+// END_BLOCK: SPHERES_STRIP

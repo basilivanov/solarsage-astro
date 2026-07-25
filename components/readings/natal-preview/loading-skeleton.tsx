@@ -19,8 +19,19 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - LoadingSkeleton
+// semantic_blocks:
+//   - LOADING_SKELETON: Natal preview loading skeleton component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
+// START_BLOCK: LOADING_SKELETON
 export function LoadingSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
@@ -49,3 +60,4 @@ export function LoadingSkeleton() {
     </div>
   )
 }
+// END_BLOCK: LOADING_SKELETON

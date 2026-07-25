@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - HeroSection
+// semantic_blocks:
+//   - HERO_SECTION: Natal preview hero header component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { Sparkles } from "lucide-react"
@@ -38,6 +48,7 @@ const SIGN_RU: Record<string, string> = {
   Capricorn: "Козероге", Aquarius: "Водолее", Pisces: "Рыбах",
 }
 
+// START_BLOCK: HERO_SECTION
 export function HeroSection({ ascSign, sunSign, moonSign, birthCity }: Props) {
   const ascLabel = ascSign ? SIGN_RU[ascSign] ?? ascSign : null
   const sunLabel = sunSign ? SIGN_RU[sunSign] ?? sunSign : null
@@ -85,3 +96,4 @@ export function HeroSection({ ascSign, sunSign, moonSign, birthCity }: Props) {
     </section>
   )
 }
+// END_BLOCK: HERO_SECTION

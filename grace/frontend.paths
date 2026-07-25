@@ -30,6 +30,8 @@ components/readings/horary/**/*.tsx
 components/readings/horary/**/*.ts
 components/readings/natal/**/*.tsx
 components/readings/natal/**/*.ts
+components/readings/natal-preview/**/*.tsx
+components/readings/natal-preview/**/*.ts
 lib/grace/**/*.ts
 lib/api/**/*.ts
 lib/api/promo.ts

@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - LockedChapters
+// semantic_blocks:
+//   - LOCKED_CHAPTERS: Natal preview locked chapters teaser list component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { Lock } from "lucide-react"
@@ -28,6 +38,7 @@ type Props = {
   chapters: NatalPreviewChapter[]
 }
 
+// START_BLOCK: LOCKED_CHAPTERS
 export function LockedChapters({ chapters }: Props) {
   if (!chapters.length) return null
 
@@ -62,3 +73,4 @@ export function LockedChapters({ chapters }: Props) {
     </section>
   )
 }
+// END_BLOCK: LOCKED_CHAPTERS

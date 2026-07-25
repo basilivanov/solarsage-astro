@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - PlanetsRow
+// semantic_blocks:
+//   - PLANETS_ROW: Natal preview planets row component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useState } from "react"
@@ -29,6 +39,7 @@ type Props = {
   planets: NatalPreviewPlanet[]
 }
 
+// START_BLOCK: PLANETS_ROW
 export function PlanetsRow({ planets }: Props) {
   const [expanded, setExpanded] = useState(false)
   if (!planets.length) return null
@@ -81,3 +92,4 @@ export function PlanetsRow({ planets }: Props) {
     </section>
   )
 }
+// END_BLOCK: PLANETS_ROW

@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - ProfileIncompleteCard
+// semantic_blocks:
+//   - PROFILE_INCOMPLETE_CARD: Natal preview incomplete profile prompt card component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import Link from "next/link"
@@ -27,6 +37,7 @@ type Props = {
   missingFields: string[]
 }
 
+// START_BLOCK: PROFILE_INCOMPLETE_CARD
 export function ProfileIncompleteCard({ missingFields }: Props) {
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-5">
@@ -47,3 +58,4 @@ export function ProfileIncompleteCard({ missingFields }: Props) {
     </div>
   )
 }
+// END_BLOCK: PROFILE_INCOMPLETE_CARD
