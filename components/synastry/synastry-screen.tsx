@@ -27,7 +27,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Plus, Search, Sparkles, AlertCircle, Heart, Users, Trash2 } from "lucide-react"
+import { Plus, Search, Sparkles, AlertCircle, Users, Trash2 } from "lucide-react"
 import {
   deleteSynastryPartner,
   getSynastryPartners,
@@ -73,7 +73,7 @@ export function SynastryScreen({ onSelectPartner }: Props) {
     try {
       await deleteSynastryPartner(partnerId)
       setPartners((prev) => prev.filter((p) => p.id !== partnerId))
-    } catch (err) {
+    } catch {
       alert("Не удалось удалить партнёра.")
     }
   }
