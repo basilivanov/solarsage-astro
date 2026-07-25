@@ -21,6 +21,17 @@
 #   - _planet() returns the original string if not found
 # END_MODULE_CONTRACT: M-LLM-RUSSIAN
 
+# START_MODULE_MAP: M-LLM-RUSSIAN
+# public_entrypoints:
+#   - _PLANET_RU
+#   - _ASPECT_RU
+#   - _HOUSE_RU
+#   - _SPHERE_RU
+#   - _planet
+# semantic_blocks: none
+# owned_tests: none
+# END_MODULE_MAP: M-LLM-RUSSIAN
+
 _PLANET_RU: dict[str, str] = {
     "Sun": "Солнце", "Moon": "Луна",
     "Mercury": "Меркурий", "Venus": "Венера", "Mars": "Марс",

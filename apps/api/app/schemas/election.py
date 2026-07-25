@@ -11,7 +11,21 @@
 #   - apps/api/app/schemas/election.py
 # inputs: request dicts
 # outputs: validated models
+# dependencies: none
+# side_effects: none
+# emitted_logs: none
+# invariants: none
+# failure_policy: none
 # END_MODULE_CONTRACT: M-SCHEMAS-ELECTION
+
+# START_MODULE_MAP: M-SCHEMAS-ELECTION
+# public_entrypoints:
+#   - ElectionDayNote
+#   - ElectionSearchCreateRequest
+#   - ElectionSearchRead
+# semantic_blocks: none
+# owned_tests: none
+# END_MODULE_MAP: M-SCHEMAS-ELECTION
 
 from __future__ import annotations
 
