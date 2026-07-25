@@ -1,30 +1,3 @@
-# ############################################################################
-# AI_HEADER: MODULE_SCHEMAS_CHECKIN
-# ROLE: Pydantic schemas for checkin endpoints.
-# DEPENDENCIES: pydantic, app.schemas._base
-# ############################################################################
-
-# START_MODULE_CONTRACT: M-SCHEMAS-CHECKIN
-# purpose: Request and response models for /api/checkin routes.
-# owns:
-#   - apps/api/app/schemas/checkin.py
-# inputs: request dicts
-# outputs: validated models
-# dependencies: none
-# side_effects: none
-# emitted_logs: none
-# invariants: none
-# failure_policy: none
-# END_MODULE_CONTRACT: M-SCHEMAS-CHECKIN
-
-# START_MODULE_MAP: M-SCHEMAS-CHECKIN
-# public_entrypoints:
-#   - CheckinCreate
-#   - CheckinResponse
-# semantic_blocks: none
-# owned_tests: none
-# END_MODULE_MAP: M-SCHEMAS-CHECKIN
-
 from __future__ import annotations
 
 from datetime import date, datetime

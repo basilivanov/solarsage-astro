@@ -4,27 +4,6 @@
 #       W1: contract-only. Not populated by ScoringService until W4+.
 # ############################################################################
 
-# START_MODULE_CONTRACT: M-SCHEMAS-SCORING-V2
-# purpose: Typed contracts for SolarSage V2 scoring.
-# owns:
-#   - apps/api/app/schemas/scoring_v2.py
-# inputs: none (schema-only)
-# outputs: validated models
-# dependencies: none
-# side_effects: none
-# emitted_logs: none
-# invariants: none
-# failure_policy: none
-# END_MODULE_CONTRACT: M-SCHEMAS-SCORING-V2
-
-# START_MODULE_MAP: M-SCHEMAS-SCORING-V2
-# public_entrypoints:
-#   - SphereContribution
-#   - SphereScoreV2
-# semantic_blocks: none
-# owned_tests: none
-# END_MODULE_MAP: M-SCHEMAS-SCORING-V2
-
 from __future__ import annotations
 
 from typing import Any, Literal

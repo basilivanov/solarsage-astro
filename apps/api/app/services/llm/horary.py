@@ -23,15 +23,6 @@
 #   - raises HoraryGenerationError on invalid blocks
 # END_MODULE_CONTRACT: M-LLM-HORARY
 
-# START_MODULE_MAP: M-LLM-HORARY
-# public_entrypoints:
-#   - validate_horary_llm_blocks
-#   - format_evidence
-#   - format_timing
-# semantic_blocks: none
-# owned_tests: none
-# END_MODULE_MAP: M-LLM-HORARY
-
 from __future__ import annotations
 
 from app.services.llm.client import HoraryGenerationError
