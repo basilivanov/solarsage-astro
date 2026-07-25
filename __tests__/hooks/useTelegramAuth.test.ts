@@ -303,6 +303,44 @@ describe("useTelegramAuth", () => {
     expect(window.localStorage.getItem("__astro_referral_code")).toBeNull()
   })
 
+  it("falls back to parsing start_param from the raw initData string when initDataUnsafe misses it", async () => {
+    ;(process.env as any).NODE_ENV = "production"
+    setupTelegram({
+      initData: "auth_date=123&start_param=m7q4n9x2r5kd&hash=abc123",
+      initDataUnsafe: { user: { id: 1 } },
+    })
+    mockTelegramAuthResponse(true)
+
+    const { result } = renderHook(() => useTelegramAuth())
+
+    await waitFor(
+      () => expect(result.current.isAuthenticated).toBe(true),
+      { timeout: LONG_TIMEOUT }
+    )
+
+    expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
+  })
+
+  it("stores promo intent on the dev-auth path before returning", async () => {
+    ;(process.env as any).NODE_ENV = "development"
+    const originalLocation = (window as any).location
+    ;(window as any).location = new URL("https://example.com/?tgWebAppStartParam=m7q4n9x2r5kd")
+    mockDevAuthResponse(true, { userId: 1 })
+
+    try {
+      const { result } = renderHook(() => useTelegramAuth())
+
+      await waitFor(
+        () => expect(result.current.isAuthenticated).toBe(true),
+        { timeout: LONG_TIMEOUT }
+      )
+
+      expect(window.sessionStorage.getItem(PROMO_PENDING_SESSION_KEY)).toBe("m7q4n9x2r5kd")
+    } finally {
+      ;(window as any).location = originalLocation
+    }
+  })
+
   it("keeps the existing persisted numeric referral fallback when no new start_param is present", async () => {
     ;(process.env as any).NODE_ENV = "production"
     window.localStorage.setItem("__astro_referral_code", "246810")

@@ -109,12 +109,21 @@ export function useTelegramAuth() {
           return;
         }
 
-        // Read raw start_param BEFORE cleaning the URL
-        const rawStartParam = (tg?.initDataUnsafe as any)?.start_param || (() => {
-          if (typeof window !== 'undefined' && window.location) {
-            return new URLSearchParams(window.location.search).get('tgWebAppStartParam') || undefined;
-          }
-        })();
+        // Read raw start_param BEFORE cleaning the URL.
+        // Sources in priority order: initDataUnsafe, raw initData string
+        // (parsed the same way the backend does — initDataUnsafe may miss
+        // start_param in some webviews), then the URL query param.
+        const initDataString = tg?.initData || ''
+        const rawStartParam =
+          (tg?.initDataUnsafe as any)?.start_param
+          || (initDataString
+            ? new URLSearchParams(initDataString).get('start_param') || undefined
+            : undefined)
+          || (() => {
+            if (typeof window !== 'undefined' && window.location) {
+              return new URLSearchParams(window.location.search).get('tgWebAppStartParam') || undefined;
+            }
+          })();
 
         // Clean query parameter from location bar immediately
         cleanStartParamFromUrl();
@@ -146,6 +155,19 @@ export function useTelegramAuth() {
                 const devData = await devResponse.json();
                 logger.info('[TGAuth] Dev auth OK', { extra: { userId: devData.userId } });
                 await new Promise(resolve => setTimeout(resolve, 500));
+                // Promo intent must also be stored on the dev-auth path —
+                // otherwise the gate never sees the pending token outside Telegram.
+                if (intent.kind === 'promo') {
+                  const saved = savePendingPromoToken(intent.token);
+                  if (!saved) {
+                    logEvent('frontend.flow_failed', { operation: 'promo.intent_store', reason_code: 'session_storage_failed' }, {
+                      level: 'error',
+                      slice: 'W-FRONTEND',
+                      module: 'M-HOOK-TELEGRAM-AUTH',
+                      block: 'START_PARAM_ROUTING',
+                    });
+                  }
+                }
                 clearTimeout(timeoutId);
                 setState({ isLoading: false, isAuthenticated: true, error: null });
                 return;
