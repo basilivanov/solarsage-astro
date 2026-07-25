@@ -109,10 +109,10 @@ class ElectionService:
                 detail={"code": "IDEMPOTENCY_CONFLICT", "message": "Idempotency key reused with different params"},
             )
 
-        # Select spendable credit
+        # Select spendable credit with FOR UPDATE row lock
         credit_service = HoraryCreditService(self.db)
         now_dt = datetime.now(UTC)
-        credit = await credit_service.select_spendable_credit(user_id, now_dt)
+        credit = await credit_service.select_spendable_credit(user_id, now_dt, lock=True)
         if credit is None:
             raise HTTPException(
                 status_code=402,

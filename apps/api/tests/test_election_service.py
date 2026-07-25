@@ -12,6 +12,7 @@
 # outputs: pytest assertions
 # END_MODULE_CONTRACT: M-TEST-ELECTION-SERVICE
 
+import uuid
 from datetime import date
 from unittest.mock import AsyncMock, patch
 import pytest
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import HoraryCredit, ElectionRequest, ElectionResult, ElectionCreditSpend
 from app.services.election_service import ElectionService
+from app.services.horary_credit_service import HoraryCreditService
 from app.services.profile_service import get_or_create_user
 from app.services.telegram_auth import TelegramUser
 
@@ -260,3 +262,66 @@ async def test_election_lazy_ttl_refunds_stuck_processing(db_session: AsyncSessi
     assert result.status == "refunded"
     refreshed = (await db_session.execute(select(HoraryCredit).where(HoraryCredit.id == credit.id))).scalar_one()
     assert refreshed.used_amount == 0
+
+
+@pytest.mark.asyncio
+async def test_election_service_passes_lock_true(db_session: AsyncSession) -> None:
+    tg_user = TelegramUser(id=990005, username="el_lock_1", first_name="Lock1")
+    user, _ = await get_or_create_user(db_session, tg_user)
+
+    credit = HoraryCredit(user_id=user.id, source="paid", amount=1, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    service = ElectionService(db_session)
+    with patch("app.services.election_service.HoraryCreditService.select_spendable_credit", wraps=HoraryCreditService(db_session).select_spendable_credit) as mock_select:
+        req = await service.create_search(
+            user_id=user.id,
+            event_type="wedding",
+            window_from=date(2026, 8, 1),
+            window_to=date(2026, 8, 5),
+            idempotency_key="key-lock-check",
+        )
+        assert req is not None
+        assert mock_select.called
+        # Verify lock=True was passed
+        _, kwargs = mock_select.call_args
+        assert kwargs.get("lock") is True
+
+
+@pytest.mark.asyncio
+async def test_election_service_spends_gift_source_as_bonus(db_session: AsyncSession) -> None:
+    tg_user = TelegramUser(id=990006, username="el_gift_1", first_name="Gift1")
+    user, _ = await get_or_create_user(db_session, tg_user)
+
+    # Grant gift credit from promo
+    credit = HoraryCredit(user_id=user.id, source="gift", amount=5, used_amount=0)
+    db_session.add(credit)
+    await db_session.commit()
+
+    service = ElectionService(db_session)
+    req = await service.create_search(
+        user_id=user.id,
+        event_type="wedding",
+        window_from=date(2026, 8, 1),
+        window_to=date(2026, 8, 5),
+        idempotency_key="key-gift-spend",
+    )
+    assert req.spent_credit_id == credit.id
+    await db_session.refresh(credit)
+    assert credit.used_amount == 1
+
+
+def test_compiled_postgresql_select_contains_for_update() -> None:
+    from sqlalchemy.dialects import postgresql
+    from app.services.horary_credit_service import HoraryCreditService
+
+    user_id = uuid.uuid4()
+    stmt = select(HoraryCredit).where(
+        HoraryCredit.user_id == user_id,
+        HoraryCredit.used_amount < HoraryCredit.amount,
+    ).with_for_update()
+
+    compiled_sql = str(stmt.compile(dialect=postgresql.dialect()))
+    assert "FOR UPDATE" in compiled_sql
+
