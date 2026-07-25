@@ -135,6 +135,14 @@ These gates apply before broad autonomous business-feature work.
 
 ---
 
+## UC-PROMO-REDEEM · Named promo campaign preview and redemption
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-WEB-SHELL (promo gate) → M-WEB-API (promo client) → M-BACKEND-API (promo router) → M-BACKEND-SERVICES (promo campaign) → M-DB | Raw token exists only at request/CLI boundary (DB stores SHA-256 hash); redemption is atomic (one commit; domain/unexpected failure rolls back grants, counter and redemption); duplicate redeem is 409 ALREADY_REDEEMED without second grants; PROFILE_INCOMPLETE spends nothing; privacy: no token/display_name in logs. | S1: `apps/api/tests/test_promo_campaign_service.py` (domain incl. failure invariants). S2: `apps/api/tests/test_promo_api.py` (status/code matrix, safe 400, no-store, sentinel privacy). S3: `PROMO_TEST_POSTGRES_URL=... python -m pytest apps/api/tests/test_promo_postgres_acceptance.py` (concurrency proofs on real PostgreSQL). S4: gate/sheet vitest (`PromoCampaignGate`, `PromoConfirmationSheet`, `promo-client`). S5: operator CLI contract (`test_promo_admin_cli.py`). |
+
+---
+
 # Cross-cutting gates
 
 ## Contract drift

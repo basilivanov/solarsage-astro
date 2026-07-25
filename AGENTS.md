@@ -221,9 +221,10 @@ export async function runThing(input: string): Promise<Result> {
 1. Найти модуль по ответственности: `rg -n "purpose:" <dir>` или по имени `rg -n "M-API-PROMO"`.
 2. Сначала читать только `MODULE_CONTRACT` (purpose/owns/inputs/outputs/side_effects/invariants) и `MODULE_MAP` (public_entrypoints, semantic_blocks, owned_tests) — интерфейс и покрытие видны без реализации.
 3. Реализацию читать по блокам: `rg -n "START_BLOCK: REDEEM"` → читать до соответствующего `END_BLOCK`, а не весь файл.
-4. Поведение функции — через `START_FUNCTION_CONTRACT` прямо над ней; покрытие — через `owned_tests` в MODULE_MAP.
+4. Поведение функции — через `START_FUNCTION_CONTRACT` прямо над ней; какой тест гонять для файла — через `owned_tests` в MODULE_MAP.
 5. Трассировка событий — по точным именам из `emitted_logs` (`rg -n "promo.redemption_succeeded"`), не по свободному тексту.
 6. Рабочие слайсы — `docs/work/YYYY-MM-DD_<slug>/`: сначала master/00_TZ, затем только нужный `NN_..._TZ.md`, не весь каталог.
+7. Чем доказывать корректность — `grace/verification-matrix.md`: фича маппится на slice gates и UC-строку (модули на happy path → gates → scenarios S1..Sn); матрица индексируется по срезам/UC с зонтичными module-ID, per-file тесты — через `owned_tests`.
 
 Ограничение: маркеры — комментарии; `scripts/grace/check-markers.sh` проверяет их наличие и парность, но не истинность. Для навигации им доверять можно; перед правкой читать сам код блока и его callers.
 
