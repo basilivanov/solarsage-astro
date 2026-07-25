@@ -80,11 +80,11 @@ export function ProfileScreen({
   const { profile, update, loaded, saving, error } = useProfile()
   const [editField, setEditField] = useState<EditField | null>(null)
   const billingFlow = useSubscriptionPurchase(onAccessChanged)
-  const [subFlags, setSubFlags] = useState<{ renewing: boolean; cancelable: boolean } | null>(null)
+  const [subFlags, setSubFlags] = useState<{ renewing: boolean; cancelable: boolean; status: string } | null>(null)
 
   useEffect(() => {
-    // Renewal/cancel semantics come from the BACKEND state machine
-    // (SubscriptionStatusResponse.renewing/cancelable), never UI-derived.
+    // Renewal/cancel/enrollment semantics come from the BACKEND state machine
+    // (SubscriptionStatusResponse.renewing/cancelable/status), never UI-derived.
     // billingFlow.statusRevision re-triggers this read after every
     // successful buy/cancel — flags never stay stale behind the ledger.
     if (currentState !== "subscription" || !billingFlow.ready || billingFlow.unavailable) {
@@ -95,7 +95,7 @@ export function ProfileScreen({
     getSubscriptionStatus()
       .then((status) => {
         if (!cancelled) {
-          setSubFlags({ renewing: status.renewing, cancelable: status.cancelable })
+          setSubFlags({ renewing: status.renewing, cancelable: status.cancelable, status: status.status })
         }
       })
       .catch(() => {})

@@ -201,6 +201,84 @@ describe("AccessCard billing contract", () => {
     expect((secondary as HTMLButtonElement).disabled).toBe(true)
   })
 
+  it("subscription state with status=none shows honest promo/non-enrollment copy without paid claims", () => {
+    const b = billing()
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true, accessEnd: new Date("2026-08-24T00:00:00Z") }}
+        currentState="subscription"
+        billing={b}
+        renewal={{ renewing: false, cancelable: false, status: "none" }}
+      />,
+    )
+    expect(screen.getByText("Полный доступ активен")).toBeTruthy()
+    expect(screen.getByText("Доступ предоставлен без автопродления.")).toBeTruthy()
+    expect(screen.queryByText("Подписка активна")).toBeNull()
+    expect(screen.queryByText(/оплаченный период/i)).toBeNull()
+
+    const secondary = screen.getByTestId("access-card-secondary")
+    expect(secondary.textContent).toContain("Автопродление не подключено")
+    expect((secondary as HTMLButtonElement).disabled).toBe(true)
+
+    const root = secondary.closest("[data-enrollment]") as HTMLElement
+    expect(root.getAttribute("data-enrollment")).toBe("none")
+    expect(root.getAttribute("data-renewal")).toBe("none")
+    expect(root.getAttribute("data-cancelable")).toBe("false")
+  })
+
+  it("subscription state with loading status shows generic 'Доступ активен' without false paid claim", () => {
+    const b = billing()
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+      />,
+    )
+    expect(screen.getByText("Доступ активен")).toBeTruthy()
+    expect(screen.queryByText("Подписка активна")).toBeNull()
+
+    const secondary = screen.getByTestId("access-card-secondary")
+    expect(secondary.textContent).toContain("Проверяем автопродление")
+    const root = secondary.closest("[data-enrollment]") as HTMLElement
+    expect(root.getAttribute("data-enrollment")).toBe("loading")
+  })
+
+  it("subscription state with real active subscription sets data-enrollment='present'", () => {
+    const b = billing()
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+        renewal={{ renewing: true, cancelable: true, status: "active" }}
+      />,
+    )
+    expect(screen.getByText("Подписка активна")).toBeTruthy()
+    const secondary = screen.getByTestId("access-card-secondary")
+    const root = secondary.closest("[data-enrollment]") as HTMLElement
+    expect(root.getAttribute("data-enrollment")).toBe("present")
+    expect(root.getAttribute("data-renewal")).toBe("renewing")
+  })
+
+  it("subscription state with real canceled subscription sets data-enrollment='present'", () => {
+    const b = billing()
+    render(
+      <ProfileAccessCard
+        access={{ ...access, state: "subscription", hasAccess: true }}
+        currentState="subscription"
+        billing={b}
+        renewal={{ renewing: false, cancelable: false, status: "canceled" }}
+      />,
+    )
+    expect(screen.getByText("Подписка активна")).toBeTruthy()
+    expect(screen.getByText(/Без автопродления — доступ до конца оплаченного периода/)).toBeTruthy()
+    const secondary = screen.getByTestId("access-card-secondary")
+    const root = secondary.closest("[data-enrollment]") as HTMLElement
+    expect(root.getAttribute("data-enrollment")).toBe("present")
+    expect(root.getAttribute("data-renewal")).toBe("non-renewing")
+  })
+
   it("keeps the test-only monetization stub copy unchanged", () => {
     const onSubscribe = vi.fn()
     render(

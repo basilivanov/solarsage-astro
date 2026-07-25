@@ -32,7 +32,7 @@ type Props = {
   access: AccessInfo
   currentState: AccessState
   billing?: AccessCardBilling
-  renewal?: { renewing: boolean; cancelable: boolean }
+  renewal?: { renewing: boolean; cancelable: boolean; status?: string }
 }
 
 export type AccessCardBilling = {
@@ -77,7 +77,7 @@ function buildVariant(
   state: AccessState,
   billing: AccessCardBilling | undefined,
   onInvite?: () => void,
-  renewal?: { renewing: boolean; cancelable: boolean },
+  renewal?: { renewing: boolean; cancelable: boolean; status?: string },
 ): Variant {
   const unavailableButtons: Pick<Variant, "primary" | "secondary"> = {
     primary: { label: billing?.ready === false && !billing.unavailable ? "Загружаем тарифы…" : "Оплата временно недоступна", disabled: true },
@@ -101,21 +101,48 @@ function buildVariant(
 
   if (state === "subscription") {
     const ending = access.accessEnd ? `до ${formatLong(access.accessEnd)}` : ""
-    const footnote = renewal
-      ? renewal.renewing
-        ? "Автопродление активно. Отмена подписки не отзывает уже оплаченный период."
-        : "Без автопродления — доступ до конца оплаченного периода. Новую подписку можно оформить после его завершения."
-      : "Доступ активен. Отмена подписки не отзывает уже оплаченный период."
-    // Secondary is an HONEST state, never a duplicated invite CTA:
-    // cancel exists only for a real recurring enrollment (backend
-    // cancelable); everything else is a disabled truthful label.
+
+    // Status 'none' -> Promo or granted access without a recurring subscription
+    if (renewal && renewal.status === "none") {
+      return {
+        icon: Crown,
+        tone: "active",
+        label: "Доступ",
+        title: "Полный доступ активен",
+        subtitle: ending || "Доступ к прошлому и будущему",
+        footnote: "Доступ предоставлен без автопродления.",
+        primary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
+        secondary: { label: "Автопродление не подключено", disabled: true },
+      }
+    }
+
+    // Status loading
+    if (!renewal) {
+      return {
+        icon: Crown,
+        tone: "active",
+        label: "Доступ",
+        title: "Доступ активен",
+        subtitle: ending || "Доступ к прошлому и будущему",
+        footnote: "Доступ активен.",
+        primary: { label: "Пригласить друга", onClick: onInvite, icon: Gift },
+        secondary: {
+          label: !billing || billing.unavailable
+            ? "Управление подпиской недоступно"
+            : "Проверяем автопродление…",
+          disabled: true,
+        },
+      }
+    }
+
+    // Real subscription (renewing or non-renewing/canceled)
+    const footnote = renewal.renewing
+      ? "Автопродление активно. Отмена подписки не отзывает уже оплаченный период."
+      : "Без автопродления — доступ до конца оплаченного периода. Новую подписку можно оформить после его завершения."
+
     let secondary: Variant["secondary"]
     if (!billing || billing.unavailable) {
       secondary = { label: "Управление подпиской недоступно", disabled: true }
-    } else if (!renewal) {
-      // Flags are not known yet (also while tariffs still load): the honest
-      // state is "checking", never a fake action.
-      secondary = { label: "Проверяем автопродление…", disabled: true }
     } else if (renewal.cancelable) {
       secondary = {
         label: billing.busy ? "Ждём подтверждение…" : "Отменить подписку",
@@ -125,6 +152,7 @@ function buildVariant(
     } else {
       secondary = { label: "Автопродление отключено", disabled: true }
     }
+
     return {
       icon: Crown,
       tone: "active",
@@ -189,7 +217,9 @@ export function AccessCard({ access, currentState, billing, renewal }: Props) {
       data-renewal={
         currentState === "subscription"
           ? renewal
-            ? renewal.renewing
+            ? renewal.status === "none"
+              ? "none"
+              : renewal.renewing
               ? "renewing"
               : "non-renewing"
             : "loading"
@@ -197,6 +227,15 @@ export function AccessCard({ access, currentState, billing, renewal }: Props) {
       }
       data-cancelable={
         currentState === "subscription" ? (renewal?.cancelable === true ? "true" : "false") : undefined
+      }
+      data-enrollment={
+        currentState === "subscription"
+          ? renewal
+            ? renewal.status === "none"
+              ? "none"
+              : "present"
+            : "loading"
+          : "none"
       }
     >
       <div className="flex items-start gap-3">
