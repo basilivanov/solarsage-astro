@@ -241,7 +241,7 @@ function isSafeSegment(seg: string): boolean {
 function cleanFilePath(rawPath: string): string {
   if (!rawPath || typeof rawPath !== "string") return "unknown"
   let cleaned = rawPath.split("?")[0].split("#")[0]
-  cleaned = cleaned.replace(/^https?:\/\/[^\/]+/, "")
+  cleaned = cleaned.replace(/^https?:\/\/[^/]+/, "")
 
   let relPath = ""
   for (const root of KNOWN_ROOTS) {
