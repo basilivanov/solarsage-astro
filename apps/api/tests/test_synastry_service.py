@@ -241,3 +241,124 @@ async def test_run_report_pipeline_llm_failure_refunds_credit():
         assert res.attempt_count == 2
         assert spend.refunded_at is not None
         assert credit.used_amount == 0
+
+
+@pytest.mark.asyncio
+async def test_get_aspect_drilldown_not_found_in_report():
+    """Aspect ID not found in report's deterministic payload -> raises 404."""
+    from fastapi import HTTPException
+
+    db = AsyncMock()
+    user_id = uuid.uuid4()
+    partner_id = uuid.uuid4()
+    report_id = uuid.uuid4()
+
+    partner = SynastryPartner(id=partner_id, owner_id=user_id, name="Максим")
+    report = SynastryReport(
+        id=report_id,
+        owner_id=user_id,
+        partner_id=partner_id,
+        deterministic_payload_json='{"aspects": [{"id": "sun_trine_moon"}]}',
+    )
+
+    db.execute.side_effect = [
+        AsyncMock(scalar_one_or_none=lambda: partner),
+        AsyncMock(scalar_one_or_none=lambda: report),
+    ]
+
+    service = SynastryService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await service.get_aspect_drilldown(user_id, partner_id, "unknown_aspect_id")
+
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_aspect_drilldown_happy_path():
+    """Generating aspect drilldown via LLM -> persists ready detail and returns AspectDrilldown."""
+    import json
+    db = AsyncMock()
+    user_id = uuid.uuid4()
+    partner_id = uuid.uuid4()
+    report_id = uuid.uuid4()
+
+    partner = SynastryPartner(id=partner_id, owner_id=user_id, name="Максим")
+    report = SynastryReport(
+        id=report_id,
+        owner_id=user_id,
+        partner_id=partner_id,
+        deterministic_payload_json='{"aspects": [{"id": "sun_trine_moon", "owner_planet": "Sun", "partner_planet": "Moon", "aspect": "trine", "tone": "good", "tech_signature": "Sun trine Moon"}]}',
+    )
+
+    db.execute.side_effect = [
+        AsyncMock(scalar_one_or_none=lambda: partner),
+        AsyncMock(scalar_one_or_none=lambda: report),
+        AsyncMock(scalar_one_or_none=lambda: None), # no existing detail
+    ]
+
+    service = SynastryService(db)
+
+    llm_payload = {
+        "intro": "Взаимодействие сознания и подсознания.",
+        "scenes": [
+            {"title": "Внимание", "text": "Быстрое понимание друг друга."},
+            {"title": "Разговор", "text": "Темы находятся сами."},
+            {"title": "Дела", "text": "Планирование без конфликтов."},
+        ],
+        "repairs": ["1. Поддерживать прямой диалог."],
+        "not_means": ["Не означает 1", "Не означает 2", "Не означает 3"],
+    }
+
+    with patch("app.services.synastry_service.LLMClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client._generate_text = AsyncMock(return_value=json.dumps(llm_payload, ensure_ascii=False))
+        mock_client_cls.return_value = mock_client
+
+        res = await service.get_aspect_drilldown(user_id, partner_id, "sun_trine_moon")
+
+        assert res.aspect_id == "sun_trine_moon"
+        assert res.tone == "good"
+        assert "Взаимодействие" in res.explanation
+        assert "Быстрое понимание" in (res.scenario or "")
+        assert "Поддерживать" in (res.advice or "")
+
+
+@pytest.mark.asyncio
+async def test_get_aspect_drilldown_failure_does_not_affect_report_or_credit():
+    """Drilldown LLM failure sets detail state=failed, leaves report ready, does NOT refund credit."""
+    from fastapi import HTTPException
+    from app.db.models import SynastryAspectDetail
+
+    db = AsyncMock()
+    user_id = uuid.uuid4()
+    partner_id = uuid.uuid4()
+    report_id = uuid.uuid4()
+
+    partner = SynastryPartner(id=partner_id, owner_id=user_id, name="Максим")
+    report = SynastryReport(
+        id=report_id,
+        owner_id=user_id,
+        partner_id=partner_id,
+        state="ready",
+        deterministic_payload_json='{"aspects": [{"id": "sun_trine_moon", "owner_planet": "Sun", "partner_planet": "Moon", "aspect": "trine", "tone": "good"}]}',
+    )
+
+    db.execute.side_effect = [
+        AsyncMock(scalar_one_or_none=lambda: partner),
+        AsyncMock(scalar_one_or_none=lambda: report),
+        AsyncMock(scalar_one_or_none=lambda: None), # no existing detail
+    ]
+
+    service = SynastryService(db)
+
+    with patch("app.services.synastry_service.LLMClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client._generate_text = AsyncMock(return_value=None)  # LLM fails
+        mock_client_cls.return_value = mock_client
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.get_aspect_drilldown(user_id, partner_id, "sun_trine_moon")
+
+        assert exc_info.value.status_code == 500
+        assert report.state == "ready"  # Base report state unchanged!
+

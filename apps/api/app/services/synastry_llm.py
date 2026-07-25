@@ -153,6 +153,9 @@ def build_report_prompt(
 {approx_note}
 
 Сформируй JSON-ответ со следующими полями:
+- verdict: краткая фраза-вердикт (до 120 символов)
+- hero_title: заголовок героя (до 60 символов)
+- hero_description: подзаголовок героя (до 220 символов)
 - summary: краткий общий вердикт (2-3 предложения, до 300 символов)
 - aspect_shorts: список кратких заголовков (до 7 слов) для каждого аспектов в том же порядке
 - translations: 3-5 карточек перевода ("заголовок", "текст до 220 символов", "жизненная сцена")
@@ -205,7 +208,19 @@ def validate_llm_output(
             if term in text_content:
                 return False, f"Forbidden house/ASC term in approximate mode: '{term}'"
 
-    # 3. Check summary length if present
+    # 3. Check summary & verdict length limits if present
+    verdict = data.get("verdict")
+    if isinstance(verdict, str) and len(verdict) > 150:
+        return False, f"Verdict exceeds length limit ({len(verdict)} > 150)"
+
+    hero_title = data.get("hero_title")
+    if isinstance(hero_title, str) and len(hero_title) > 80:
+        return False, f"Hero title exceeds length limit ({len(hero_title)} > 80)"
+
+    hero_desc = data.get("hero_description")
+    if isinstance(hero_desc, str) and len(hero_desc) > 250:
+        return False, f"Hero description exceeds length limit ({len(hero_desc)} > 250)"
+
     summary = data.get("summary")
     if isinstance(summary, str) and len(summary) > 350:
         return False, f"Summary exceeds length limit ({len(summary)} > 350)"

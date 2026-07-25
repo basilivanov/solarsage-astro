@@ -69,8 +69,6 @@ from app.schemas.synastry import (
 )
 from app.services.llm.client import LLMClient
 from app.services.synastry_llm import (
-    ASPECT_MEANINGS,
-    PLANET_MEANINGS,
     build_drilldown_prompt,
     build_report_prompt,
     validate_drilldown_output,
@@ -478,7 +476,22 @@ class SynastryService:
         if not report:
             raise HTTPException(status_code=404, detail="Report not found")
 
-        # Check existing detail
+        # 1. Locate aspect in report's deterministic_payload_json
+        target_aspect = None
+        if report.deterministic_payload_json:
+            try:
+                det = json.loads(report.deterministic_payload_json)
+                for a in det.get("aspects", []):
+                    if a.get("id") == aspect_id:
+                        target_aspect = a
+                        break
+            except Exception:
+                pass
+
+        if not target_aspect:
+            raise HTTPException(status_code=404, detail="Aspect not found in report")
+
+        # 2. Check existing SynastryAspectDetail
         ad_stmt = select(SynastryAspectDetail).where(
             SynastryAspectDetail.report_id == report.id,
             SynastryAspectDetail.aspect_id == aspect_id,
@@ -486,52 +499,127 @@ class SynastryService:
         ad_res = await self.db.execute(ad_stmt)
         detail = ad_res.scalar_one_or_none()
 
-        if detail and detail.payload_json:
+        if detail and detail.state == "ready" and detail.payload_json:
             data = json.loads(detail.payload_json)
             return AspectDrilldown(
                 aspect_id=aspect_id,
                 title=data.get("title", aspect_id),
-                tone=data.get("tone", "good"),
-                tech_signature=data.get("tech_signature"),
+                tone=data.get("tone", target_aspect.get("tone", "good")),
+                tech_signature=data.get("tech_signature", target_aspect.get("tech_signature")),
                 explanation=data.get("explanation", ""),
                 scenario=data.get("scenario"),
                 advice=data.get("advice"),
             )
 
-        # Generate drilldown payload
-        op_meaning = PLANET_MEANINGS.get("Sun", "")
-        pp_meaning = PLANET_MEANINGS.get("Moon", "")
-        asp_meaning = ASPECT_MEANINGS.get("trine", {}).get("explanation", "")
+        # 3. Generate aspect drilldown via LLM
+        prompt_dict = build_drilldown_prompt(target_aspect)
+        attempt_count = (detail.attempt_count if detail else 0) + 1
 
-        drilldown_data = {
-            "title": f"Детали аспекта {aspect_id}",
-            "tone": "good",
-            "tech_signature": f"{aspect_id} ({op_meaning[:20]})",
-            "explanation": f"Аспект взаимодействия: {asp_meaning}",
-            "scenario": "Повседневный контакт и общее понимание задач.",
-            "advice": "Развивайте сильные стороны и открытый диалог.",
+        llm_data = None
+        err_msg = None
+
+        try:
+            llm_client = LLMClient()
+            log_event("llm.requested", msg="synastry drilldown requested", payload={"aspect_id": aspect_id})
+            raw_text = await llm_client._generate_text(
+                prompt=f"{prompt_dict['system']}\n\n{prompt_dict['user']}",
+                max_tokens=1000,
+            )
+            if raw_text:
+                parsed = json.loads(raw_text)
+                if isinstance(parsed, dict):
+                    valid, err_reason = validate_drilldown_output(parsed)
+                    if valid:
+                        llm_data = parsed
+                        log_event("llm.response_validated", msg="synastry drilldown validated", payload={"aspect_id": aspect_id})
+                    else:
+                        err_msg = err_reason
+                        log_event("llm.response_rejected", level="warning", msg="synastry drilldown: validation failed", payload={"aspect_id": aspect_id})
+            else:
+                log_event("llm.response_rejected", level="warning", msg="synastry drilldown: empty response", payload={"aspect_id": aspect_id})
+        except Exception as exc:
+            err_msg = str(exc)
+            log_event("llm.response_rejected", level="warning", msg="synastry drilldown: generation error", payload={"aspect_id": aspect_id})
+
+        if not llm_data:
+            # LLM failure: record failed detail, keep base report READY, no refund
+            if not detail:
+                detail = SynastryAspectDetail(
+                    id=uuid.uuid4(),
+                    report_id=report.id,
+                    aspect_id=aspect_id,
+                    prompt_version="1",
+                    state="failed",
+                    attempt_count=attempt_count,
+                    error_code="LLM_VALIDATION_FAILED",
+                    error_message=err_msg or "Aspect drilldown LLM generation failed",
+                )
+                self.db.add(detail)
+            else:
+                detail.state = "failed"
+                detail.attempt_count = attempt_count
+                detail.error_code = "LLM_VALIDATION_FAILED"
+                detail.error_message = err_msg or "Aspect drilldown LLM generation failed"
+
+            await self.db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate aspect drilldown",
+            )
+
+        # Map LLM JSON output to AspectDrilldown format
+        scenes_list = llm_data.get("scenes", [])
+        if isinstance(scenes_list, list):
+            scenario_text = "\n".join(
+                f"• {s.get('title', '')}: {s.get('text', '')}" if isinstance(s, dict) else str(s)
+                for s in scenes_list
+            )
+        else:
+            scenario_text = str(scenes_list)
+
+        repairs_list = llm_data.get("repairs", [])
+        if isinstance(repairs_list, list):
+            advice_text = "\n".join(str(r) for r in repairs_list)
+        else:
+            advice_text = str(repairs_list)
+
+        drilldown_payload = {
+            "title": target_aspect.get("tech_signature") or f"Детали аспекта {aspect_id}",
+            "tone": target_aspect.get("tone", "good"),
+            "tech_signature": target_aspect.get("tech_signature") or aspect_id,
+            "explanation": llm_data.get("intro") or llm_data.get("explanation", ""),
+            "scenario": scenario_text,
+            "advice": advice_text,
         }
 
-        # Store in DB
-        new_detail = SynastryAspectDetail(
-            id=uuid.uuid4(),
-            report_id=report.id,
-            aspect_id=aspect_id,
-            prompt_version="1",
-            state="ready",
-            payload_json=json.dumps(drilldown_data, ensure_ascii=False),
-        )
-        self.db.add(new_detail)
+        if not detail:
+            detail = SynastryAspectDetail(
+                id=uuid.uuid4(),
+                report_id=report.id,
+                aspect_id=aspect_id,
+                prompt_version="1",
+                state="ready",
+                attempt_count=attempt_count,
+                payload_json=json.dumps(drilldown_payload, ensure_ascii=False),
+            )
+            self.db.add(detail)
+        else:
+            detail.state = "ready"
+            detail.attempt_count = attempt_count
+            detail.payload_json = json.dumps(drilldown_payload, ensure_ascii=False)
+            detail.error_code = None
+            detail.error_message = None
+
         await self.db.commit()
 
         return AspectDrilldown(
             aspect_id=aspect_id,
-            title=drilldown_data["title"],
-            tone="good",
-            tech_signature=drilldown_data["tech_signature"],
-            explanation=drilldown_data["explanation"],
-            scenario=drilldown_data["scenario"],
-            advice=drilldown_data["advice"],
+            title=drilldown_payload["title"],
+            tone=drilldown_payload["tone"],
+            tech_signature=drilldown_payload["tech_signature"],
+            explanation=drilldown_payload["explanation"],
+            scenario=drilldown_payload["scenario"],
+            advice=drilldown_payload["advice"],
         )
 
     async def submit_feedback(
