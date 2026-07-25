@@ -3,10 +3,32 @@
 // ROLE: Processing card for election search with animated Moon SVG & 3 steps
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-ELECTION-PROCESSING-CARD
+// purpose: Render loading/processing animation and step progress while calculating election dates.
+// owns:
+//   - components/readings/election/election-processing-card.tsx
+// inputs: none
+// outputs: ElectionProcessingCard React component
+// dependencies: none
+// side_effects: none (pure timers)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ELECTION-PROCESSING-CARD
+
+// START_MODULE_MAP: M-ELECTION-PROCESSING-CARD
+// public_entrypoints:
+//   - ElectionProcessingCard
+// semantic_blocks:
+//   - ELECTION_PROCESSING_CARD_COMPONENT: Election calculation loading screen component
+// owned_tests:
+//   - __tests__/readings/election-form.test.tsx
+// END_MODULE_MAP: M-ELECTION-PROCESSING-CARD
+
 "use client"
 
 import { useEffect, useState } from "react"
 
+// START_BLOCK: ELECTION_PROCESSING_CARD_COMPONENT
 export function ElectionProcessingCard() {
   const [stepIndex, setStepIndex] = useState(0)
   const [isDelayed, setIsDelayed] = useState(false)
@@ -69,3 +91,4 @@ export function ElectionProcessingCard() {
     </div>
   )
 }
+// END_BLOCK: ELECTION_PROCESSING_CARD_COMPONENT

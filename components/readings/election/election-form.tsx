@@ -3,6 +3,27 @@
 // ROLE: Form component for selecting elective categories, subcategories, and date windows
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-ELECTION-FORM
+// purpose: Render form for configuring election search criteria and dates.
+// owns:
+//   - components/readings/election/election-form.tsx
+// inputs: onSubmit, disabled, disabledReason
+// outputs: ElectionForm React component
+// dependencies: lib/contracts/election
+// side_effects: none (pure rendering / state)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ELECTION-FORM
+
+// START_MODULE_MAP: M-ELECTION-FORM
+// public_entrypoints:
+//   - ElectionForm
+// semantic_blocks:
+//   - ELECTION_FORM_COMPONENT: Election search configuration form component
+// owned_tests:
+//   - __tests__/readings/election-form.test.tsx
+// END_MODULE_MAP: M-ELECTION-FORM
+
 "use client"
 
 import { useState } from "react"
@@ -23,6 +44,7 @@ function formatDateISO(d: Date): string {
   return d.toISOString().split("T")[0]
 }
 
+// START_BLOCK: ELECTION_FORM_COMPONENT
 export function ElectionForm({ onSubmit, disabled = false, disabledReason }: Props) {
   const [selectedCatKey, setSelectedCatKey] = useState<string | null>(null)
   const [selectedSubKey, setSelectedSubKey] = useState<string | null>(null)
@@ -285,3 +307,4 @@ export function ElectionForm({ onSubmit, disabled = false, disabledReason }: Pro
     </form>
   )
 }
+// END_BLOCK: ELECTION_FORM_COMPONENT

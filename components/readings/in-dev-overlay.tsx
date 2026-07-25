@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - InDevOverlay
+// semantic_blocks:
+//   - READINGS_IN_DEV_OVERLAY: In development overlay modal component
+// owned_tests:
+//   - __tests__/components/ReadingsScreen.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -31,6 +41,7 @@ type Props = {
   onClose: () => void
 }
 
+// START_BLOCK: READINGS_IN_DEV_OVERLAY
 export function InDevOverlay({ icon: Icon, title, description, onClose }: Props) {
   const [mounted, setMounted] = useState(false)
 
@@ -107,3 +118,4 @@ export function InDevOverlay({ icon: Icon, title, description, onClose }: Props)
     </div>
   )
 }
+// END_BLOCK: READINGS_IN_DEV_OVERLAY

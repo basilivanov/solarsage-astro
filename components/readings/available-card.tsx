@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - AvailableCard
+// semantic_blocks:
+//   - READINGS_AVAILABLE_CARD: Available card UI component
+// owned_tests:
+//   - __tests__/components/ReadingsScreen.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import { ArrowRight, type LucideIcon } from "lucide-react"
@@ -33,6 +43,7 @@ type Props = {
   cardKey?: string
 }
 
+// START_BLOCK: READINGS_AVAILABLE_CARD
 export function AvailableCard({ icon: Icon, title, description, teaser, onClick, route, cardKey }: Props) {
   const key = cardKey ?? route?.replace("/readings/", "") ?? ""
   return (
@@ -70,3 +81,4 @@ export function AvailableCard({ icon: Icon, title, description, teaser, onClick,
     </button>
   )
 }
+// END_BLOCK: READINGS_AVAILABLE_CARD

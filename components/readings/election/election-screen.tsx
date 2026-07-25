@@ -3,6 +3,27 @@
 // ROLE: Root screen component for election searches and history
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-ELECTION-SCREEN
+// purpose: Main screen component for election searches management and request creation.
+// owns:
+//   - components/readings/election/election-screen.tsx
+// inputs: none
+// outputs: ElectionScreen React component
+// dependencies: lib/api/election
+// side_effects: Data fetching, routing
+// emitted_logs: none
+// failure_policy: inline error card
+// END_MODULE_CONTRACT: M-ELECTION-SCREEN
+
+// START_MODULE_MAP: M-ELECTION-SCREEN
+// public_entrypoints:
+//   - ElectionScreen
+// semantic_blocks:
+//   - ELECTION_SCREEN_COMPONENT: Root election screen component
+// owned_tests:
+//   - __tests__/readings/election-form.test.tsx
+// END_MODULE_MAP: M-ELECTION-SCREEN
+
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
@@ -18,6 +39,7 @@ import { ElectionForm } from "./election-form"
 import { ElectionSearchCard } from "./election-search-card"
 import { ElectionPurchaseSheet } from "./election-purchase-sheet"
 
+// START_BLOCK: ELECTION_SCREEN_COMPONENT
 export function ElectionScreen() {
   const router = useRouter()
   const [quota, setQuota] = useState<HoraryQuotaRead | null>(null)
@@ -141,3 +163,4 @@ export function ElectionScreen() {
     </div>
   )
 }
+// END_BLOCK: ELECTION_SCREEN_COMPONENT

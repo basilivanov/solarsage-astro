@@ -22,6 +22,10 @@ components/onboarding/**/*.tsx
 components/onboarding/**/*.ts
 components/profile/**/*.tsx
 components/profile/**/*.ts
+components/readings/*.tsx
+components/readings/*.ts
+components/readings/election/**/*.tsx
+components/readings/election/**/*.ts
 lib/grace/**/*.ts
 lib/api/**/*.ts
 lib/api/promo.ts

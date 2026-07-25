@@ -3,6 +3,27 @@
 // ROLE: UI component displaying election search credits quota
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-ELECTION-QUOTA-BAR
+// purpose: Render election search credits quota status bar with buy trigger.
+// owns:
+//   - components/readings/election/election-quota-bar.tsx
+// inputs: quota, onBuy
+// outputs: ElectionQuotaBar React component
+// dependencies: packages/contracts
+// side_effects: none (pure rendering)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ELECTION-QUOTA-BAR
+
+// START_MODULE_MAP: M-ELECTION-QUOTA-BAR
+// public_entrypoints:
+//   - ElectionQuotaBar
+// semantic_blocks:
+//   - ELECTION_QUOTA_BAR_COMPONENT: Quota status indicator component
+// owned_tests:
+//   - __tests__/readings/election-form.test.tsx
+// END_MODULE_MAP: M-ELECTION-QUOTA-BAR
+
 "use client"
 
 import { Coins } from "lucide-react"
@@ -13,6 +34,7 @@ type Props = {
   onBuy: () => void
 }
 
+// START_BLOCK: ELECTION_QUOTA_BAR_COMPONENT
 export function ElectionQuotaBar({ quota, onBuy }: Props) {
   const {
     weeklyFreeAvailable,
@@ -124,3 +146,4 @@ export function ElectionQuotaBar({ quota, onBuy }: Props) {
     </div>
   )
 }
+// END_BLOCK: ELECTION_QUOTA_BAR_COMPONENT

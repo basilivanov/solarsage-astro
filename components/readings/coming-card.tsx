@@ -19,6 +19,16 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
+
+// START_MODULE_MAP
+// public_entrypoints:
+//   - ComingCard
+// semantic_blocks:
+//   - READINGS_COMING_CARD: Coming card UI component
+// owned_tests:
+//   - __tests__/components/ReadingsScreen.test.tsx
+// END_MODULE_MAP
+
 "use client"
 
 import type { LucideIcon } from "lucide-react"
@@ -32,6 +42,7 @@ type Props = {
   cardKey: string
 }
 
+// START_BLOCK: READINGS_COMING_CARD
 export function ComingCard({ icon: Icon, title, description, onClick, isLast, cardKey }: Props) {
   return (
     <button
@@ -63,3 +74,4 @@ export function ComingCard({ icon: Icon, title, description, onClick, isLast, ca
     </button>
   )
 }
+// END_BLOCK: READINGS_COMING_CARD

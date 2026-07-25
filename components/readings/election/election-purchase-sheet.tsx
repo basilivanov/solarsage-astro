@@ -3,6 +3,27 @@
 // ROLE: Purchase sheet for election search credit
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-ELECTION-PURCHASE-SHEET
+// purpose: Render election credit purchase options and process payments.
+// owns:
+//   - components/readings/election/election-purchase-sheet.tsx
+// inputs: open, onClose, onUnlocked
+// outputs: ElectionPurchaseSheet React component
+// dependencies: lib/api/payment, lib/billing/purchase-flow
+// side_effects: Payment checkout flow trigger
+// emitted_logs: none
+// failure_policy: error alert
+// END_MODULE_CONTRACT: M-ELECTION-PURCHASE-SHEET
+
+// START_MODULE_MAP: M-ELECTION-PURCHASE-SHEET
+// public_entrypoints:
+//   - ElectionPurchaseSheet
+// semantic_blocks:
+//   - ELECTION_PURCHASE_SHEET_COMPONENT: Purchase modal sheet for election credits
+// owned_tests:
+//   - __tests__/readings/election-form.test.tsx
+// END_MODULE_MAP: M-ELECTION-PURCHASE-SHEET
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -20,6 +41,7 @@ type Props = {
   onUnlocked: () => void
 }
 
+// START_BLOCK: ELECTION_PURCHASE_SHEET_COMPONENT
 export function ElectionPurchaseSheet({ open, onClose, onUnlocked }: Props) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -147,3 +169,4 @@ export function ElectionPurchaseSheet({ open, onClose, onUnlocked }: Props) {
     </div>
   )
 }
+// END_BLOCK: ELECTION_PURCHASE_SHEET_COMPONENT

@@ -3,6 +3,27 @@
 // ROLE: Search history item card
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-ELECTION-SEARCH-CARD
+// purpose: Render election search history card component.
+// owns:
+//   - components/readings/election/election-search-card.tsx
+// inputs: search (ElectionSearch)
+// outputs: ElectionSearchCard React component
+// dependencies: lib/contracts/election
+// side_effects: none (pure rendering / Link)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ELECTION-SEARCH-CARD
+
+// START_MODULE_MAP: M-ELECTION-SEARCH-CARD
+// public_entrypoints:
+//   - ElectionSearchCard
+// semantic_blocks:
+//   - ELECTION_SEARCH_CARD_COMPONENT: Search history list item card component
+// owned_tests:
+//   - __tests__/readings/election-form.test.tsx
+// END_MODULE_MAP: M-ELECTION-SEARCH-CARD
+
 "use client"
 
 import Link from "next/link"
@@ -13,6 +34,7 @@ type Props = {
   search: ElectionSearch
 }
 
+// START_BLOCK: ELECTION_SEARCH_CARD_COMPONENT
 export function ElectionSearchCard({ search }: Props) {
   let emoji = "🗓"
   let label = search.eventType
@@ -66,3 +88,4 @@ export function ElectionSearchCard({ search }: Props) {
     </Link>
   )
 }
+// END_BLOCK: ELECTION_SEARCH_CARD_COMPONENT
