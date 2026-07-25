@@ -28,6 +28,13 @@
 #     rows before writing the payload cache).
 # END_MODULE_CONTRACT: M-TODAY-INTERPRETATION-SERVICE
 
+# START_MODULE_MAP: M-TODAY-INTERPRETATION-SERVICE
+# public_entrypoints:
+#   - TodayInterpretationService
+# semantic_blocks: none
+# owned_tests: none
+# END_MODULE_MAP: M-TODAY-INTERPRETATION-SERVICE
+
 from __future__ import annotations
 import asyncio
 import re
