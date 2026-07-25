@@ -58,3 +58,6 @@ agents/
 /grace.db
 /skills/
 /.profile.lock
+
+# prod-errors fix runner worktrees
+.worktrees/
