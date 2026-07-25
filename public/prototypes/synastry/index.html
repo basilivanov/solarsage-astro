@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fbf8f2" />
+  <title>Solar Sage — Синастрия</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app" aria-label="Интерактивный прототип синастрии">
+    <div class="hero-glow"></div>
+
+    <section class="screen active" id="listScreen" aria-label="Список сравнений">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">✦</span>
+          Solar Sage
+        </div>
+        <button class="icon-btn" type="button" aria-label="О разделе" onclick="showToast('Синастрия переводит карту пары в понятные жизненные сценарии')">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        </button>
+      </header>
+
+      <div class="page-pad">
+        <p class="eyebrow">Синастрия</p>
+        <h1>С кем тебе<br>правда легко?</h1>
+        <p class="lead">Сравнивай людей не по загадочным терминам, а по тому, как вы общаетесь, живёте, спорите, путешествуете и делаете дела вместе.</p>
+
+        <button class="primary-btn full" type="button" onclick="openAddPerson()">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Добавить человека
+        </button>
+
+        <div class="section-head">
+          <div>
+            <p class="eyebrow" style="margin-bottom:5px">Лучшее совпадение</p>
+            <h2>Сейчас — Максим</h2>
+          </div>
+          <span>из 4 сравнений</span>
+        </div>
+
+        <button class="overview-card full" type="button" onclick="openCandidate('maxim')" aria-label="Открыть совместимость с Максимом">
+          <div class="overview-grid">
+            <div>
+              <div class="overview-kicker">Самый лёгкий мэтч</div>
+              <div class="overview-name serif">Максим</div>
+              <p class="overview-copy">Вы быстро ловите ритм друг друга и не тратите силы на постоянные объяснения.</p>
+            </div>
+            <div class="score-orbit" style="--score:89">
+              <div class="score-value">89<small>из 100</small></div>
+            </div>
+          </div>
+        </button>
+
+        <div class="section-head">
+          <h2>Все сравнения</h2>
+          <span id="sortLabel">по общему баллу</span>
+        </div>
+
+        <div class="chips" role="tablist" aria-label="Сфера сравнения">
+          <button class="chip active" data-context="overall" type="button">В целом</button>
+          <button class="chip" data-context="love" type="button">Близость</button>
+          <button class="chip" data-context="home" type="button">Быт</button>
+          <button class="chip" data-context="work" type="button">Дела</button>
+          <button class="chip" data-context="travel" type="button">Поездки</button>
+        </div>
+
+        <div class="candidate-list" id="candidateList"></div>
+      </div>
+    </section>
+
+    <section class="screen" id="detailScreen" aria-label="Подробный отчёт совместимости">
+      <header class="topbar detail-topbar">
+        <button class="icon-btn" type="button" aria-label="Назад к списку" onclick="showList()">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div class="brand" style="font-size:12px">Совместимость</div>
+        <div class="detail-actions">
+          <!-- data-future keeps a stable integration point for future sharing -->
+          <button class="icon-btn" data-future="share" type="button" aria-label="Поделиться — скоро" disabled title="Расшаривание появится позже">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.5-4.4M8.2 13.2l7.5 4.4"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="pair-hero">
+        <div class="pair-avatars" aria-hidden="true">
+          <div class="avatar" style="--avatar-bg:#e8deec;--avatar-ink:#765582">В</div>
+          <div class="avatar" id="detailAvatar" style="--avatar-bg:#f0dfd8;--avatar-ink:#8c5147">М</div>
+        </div>
+        <p class="eyebrow" id="detailRelation">Романтические отношения</p>
+        <h1 class="pair-title" id="pairTitle">Ты + Максим</h1>
+        <div class="pair-sub" id="pairDates">14 мая 1981 · 9 сентября 1987</div>
+        <div class="big-score">
+          <strong id="detailScore">89</strong>
+          <span id="detailStatus">Очень легко<small>быть собой рядом</small></span>
+        </div>
+      </div>
+
+      <article class="summary-card">
+        <p class="eyebrow">В двух словах</p>
+        <h2 id="summaryTitle">Вы быстро становитесь командой</h2>
+        <p id="summaryText">Ты задаёшь направление, Максим подхватывает и добавляет энергии. Вместе проще начинать новое, чем долго раскачиваться и сомневаться.</p>
+        <div class="tag-row" id="summaryTags"></div>
+      </article>
+
+      <nav class="tabbar" id="detailTabs" aria-label="Разделы отчёта">
+        <button class="tab active" data-tab="overall" type="button">Обзор</button>
+        <button class="tab" data-tab="love" type="button">Близость</button>
+        <button class="tab" data-tab="home" type="button">Быт</button>
+        <button class="tab" data-tab="work" type="button">Дела</button>
+        <button class="tab" data-tab="travel" type="button">Поездки</button>
+      </nav>
+
+      <div class="detail-content" id="detailContent"></div>
+    </section>
+
+    <nav class="bottom-nav" aria-label="Главная навигация">
+      <button class="nav-item" type="button" onclick="showToast('Это прототип раздела совместимости')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        Сегодня
+      </button>
+      <button class="nav-item" type="button" onclick="showToast('Календарь не включён в этот прототип')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+        Календарь
+      </button>
+      <button class="nav-item active" type="button" onclick="showList()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8.5 4.5A4.5 4.5 0 0 0 4 9c0 5 8 10 8 10s8-5 8-10a4.5 4.5 0 0 0-8-2.8A4.5 4.5 0 0 0 8.5 4.5Z"/><path d="M9 12h6"/></svg>
+        Вместе
+      </button>
+      <button class="nav-item" type="button" onclick="showToast('Разборы не включены в этот прототип')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 3h11a3 3 0 0 1 3 3v15l-7-4-7 4V3Z"/></svg>
+        Разборы
+      </button>
+      <button class="nav-item" type="button" onclick="showToast('Профиль не включён в этот прототип')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        Профиль
+      </button>
+    </nav>
+  </main>
+
+  <div class="modal-backdrop" id="addModal" role="dialog" aria-modal="true" aria-labelledby="addTitle" onclick="backdropClose(event)">
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="form-state" id="personForm">
+        <div class="sheet-head">
+          <div>
+            <p class="eyebrow">Новое сравнение</p>
+            <h2 id="addTitle">Добавить человека</h2>
+          </div>
+          <button class="icon-btn" type="button" aria-label="Закрыть" onclick="closeAddPerson()">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <p class="sheet-sub">Нужны только данные рождения. Человек не получит уведомление, а его карта останется приватной.</p>
+
+        <div class="field">
+          <label for="personName">Как его зовут</label>
+          <input class="input" id="personName" value="Алексей" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label>Кем он тебе приходится</label>
+          <div class="relation-grid" id="relationGrid">
+            <button class="relation active" type="button">Отношения</button>
+            <button class="relation" type="button">Друг</button>
+            <button class="relation" type="button">Работа</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Дата и время рождения</label>
+          <div class="input-row">
+            <input class="input" type="date" value="1989-02-17" aria-label="Дата рождения" />
+            <input class="input" id="birthTime" type="time" value="18:40" aria-label="Время рождения" />
+          </div>
+          <div class="time-unknown">
+            <span>Точное время неизвестно</span>
+            <button class="switch" id="unknownTime" type="button" role="switch" aria-checked="false" onclick="toggleUnknownTime()"></button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="birthCity">Место рождения</label>
+          <input class="input" id="birthCity" value="Санкт-Петербург" autocomplete="off" />
+        </div>
+
+        <div class="sheet-footer">
+          <button class="primary-btn full" type="button" onclick="generateComparison()">Построить совместимость</button>
+        </div>
+      </div>
+
+      <div class="loader-state" id="loaderState" aria-live="polite">
+        <div class="cosmic-loader"><i></i></div>
+        <h3>Собираем картину пары</h3>
+        <p id="loaderCopy">Смотрим, где вы усиливаете друг друга</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
