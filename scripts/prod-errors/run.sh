@@ -20,6 +20,10 @@
 
 set -euo pipefail
 
+# Cron runs with a bare PATH (/usr/bin:/bin); opencode and user-local tools
+# live under $HOME — prepend before anything else runs.
+export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$PATH"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCK_FILE="/tmp/solarsage_prod_errors_triage.lock"
 PROD_HOST="${PROD_ERRORS_SSH_HOST:-root@2.26.20.80}"
