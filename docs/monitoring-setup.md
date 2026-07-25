@@ -23,6 +23,8 @@ Returns basic API status and version information.
 #### `/api/health/extended` - Extended Health Check
 Checks all critical dependencies and services.
 
+> **Note:** In production, `policy.internal_routes_enabled = False` hides internal routes `/api/health/extended`, `/api/metrics`, `/api/debug` from public exposure (returns 404). These routes are mounted only in local development / internal policy mode.
+
 **Response:**
 ```json
 {

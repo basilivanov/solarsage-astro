@@ -47,6 +47,8 @@ last_review: 2026-05-25
 - **09 Project transfer context** — общий контекст для переноса проекта
   в другой чат / нового агента.
 - **10 GRACE Project Agent Guide** — onboarding для агента в новом чате.
+- **PRODUCTION_RUNBOOK** — канонический регламент эксплуатации продакшена, деплоя, бэкапов и Bugsink (§2.3-2.4).
+- **PROMO_CAMPAIGN_RUNBOOK** — канонический регламент операционной работы, CLI, алертов и инцидентов с промокампаниями.
 - **ADR-001 Headless Testing** — актуальная стратегия тестов:
   unit/component, contract, mock visual e2e через Playwright `page.route`,
   real Telegram e2e и no-runtime-mocks guardrail.

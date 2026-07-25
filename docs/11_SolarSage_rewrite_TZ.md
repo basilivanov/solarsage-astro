@@ -4,6 +4,8 @@ status: planned
 wave: W-SOLARSAGE-SVC
 last_review: 2026-05-25
 ---
+
+> SUPERSEDED: историческое ТЗ, может не отражать текущее поведение кода. Актуальное поведение — код + grace/verification-matrix.md.
 # ТЗ: переделка SolarSage CLI-скрипта в HTTP-сервис (sidecar)
 
 Версия: 0.1

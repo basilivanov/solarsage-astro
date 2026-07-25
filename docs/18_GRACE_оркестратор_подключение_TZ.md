@@ -1,3 +1,5 @@
+> SUPERSEDED: историческое ТЗ, может не отражать текущее поведение кода. Актуальное поведение — код + grace/verification-matrix.md.
+
 # ТЗ: Подключение GRACE Orchestrator к solarsage-astro
 
 **Версия:** 1.0  

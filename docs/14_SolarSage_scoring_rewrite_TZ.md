@@ -4,6 +4,8 @@ status: planned
 wave: W-SOLARSAGE-ALGO
 last_review: 2026-05-25
 ---
+
+> SUPERSEDED: историческое ТЗ, может не отражать текущее поведение кода. Актуальное поведение — код + grace/verification-matrix.md.
 # ТЗ: алгоритмический рерайт скоринга SolarSage (sphere_scores v2)
 
 Версия: 0.1

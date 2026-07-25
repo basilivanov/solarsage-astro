@@ -4,6 +4,9 @@ status: active
 wave: W-1.1
 last_review: 2026-06-08
 ---
+
+> SUPERSEDED: историческое ТЗ, может не отражать текущее поведение кода. Актуальное поведение — код + grace/verification-matrix.md.
+> Очереди Celery/Redis заменены на asyncio background tasks в API-процессе.
 # 07. Backend architecture draft
 
 ## Роль документа

@@ -8,8 +8,9 @@ source_docs:
   - docs/11_SolarSage_rewrite_TZ.md
 source_audit:
   - artifacts/audit/2026-07-08/
-owner: SolarSage
 ---
+
+> SUPERSEDED: историческое ТЗ, может не отражать текущее поведение кода. Актуальное поведение — код + grace/verification-matrix.md.
 
 # ТЗ: SolarSage V2 — независимый аудит, activation layer, scoring v2 и explainable frontend
 

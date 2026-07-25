@@ -4,6 +4,9 @@ status: active
 wave: none
 last_review: 2026-05-25
 ---
+
+> SUPERSEDED: историческое ТЗ, может не отражать текущее поведение кода. Актуальное поведение — код + grace/verification-matrix.md.
+> GitHub Actions workflows активны (.github/workflows/: ci.yml, deploy-production.yml, e2e.yml, visual-regression.yml).
 # Guardrails и CI при синхронизации через v0
 
 ## Решение

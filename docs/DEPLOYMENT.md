@@ -25,6 +25,7 @@ Nginx 80/443 -> 127.0.0.1:3002 frontend
              -> 127.0.0.1:8000 API
 API -> sidecar 127.0.0.1:18091
 DB  -> 127.0.0.1:5433 (separate solarsage-prod compose project)
+Bugsink -> 127.0.0.1:18095 (separate solarsage-bugsink compose project)
 ```
 
 Canonical files:

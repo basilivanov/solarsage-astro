@@ -17,6 +17,8 @@
 - `08_Frontend_current_state_and_alignment.md`
 - `09_Project_transfer_context.md`
 - `10_GRACE_Project_Agent_Guide.md`
+- `PRODUCTION_RUNBOOK.md`
+- `PROMO_CAMPAIGN_RUNBOOK.md`
 - `ADR-001_Headless_Testing.md`
 - `visual-regression-testing.md`
 - `GRACE_CANON.md`

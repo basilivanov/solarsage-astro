@@ -4,6 +4,8 @@ status: active
 wave: W-EVENING
 last_review: 2026-06-06
 ---
+
+> SUPERSEDED: историческое ТЗ, может не отражать текущее поведение кода. Актуальное поведение — код + grace/verification-matrix.md.
 # 13. Evening CheckIn — оценка дня и точность прогноза
 
 ## Суть
