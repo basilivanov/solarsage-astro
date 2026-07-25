@@ -238,6 +238,12 @@ For preparing a completely new Ubuntu 24.04 amd64 production host:
 
 ---
 
+### 3.5 Named Promo Campaign Operations
+
+For creating, status monitoring, listing redemptions, disabling, and handling incidents with named promo campaigns, refer to the dedicated [Named Promo Campaign Operations & Incident Runbook](PROMO_CAMPAIGN_RUNBOOK.md).
+
+---
+
 ### 3.3 Testing and Workflows Specifications
 
 - **Manual-only Execution:** Both visual regression tests (`visual-regression.yml`) and real E2E tests (`e2e.yml`) are strictly manual-only (`workflow_dispatch`).
