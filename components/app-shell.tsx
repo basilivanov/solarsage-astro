@@ -1,9 +1,8 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_COMPONENTS_APP_SHELL
 // ROLE: App shell layout — tab bar, auth guard, navigation shell.
 // DEPENDENCIES: react, @/components/today/tab-bar, @/hooks/use-onboarded, @/lib/log
-// GRACE_ANCHORS: [APP_SHELL]
+// GRACE_ANCHORS: [APP_SHELL_COMPONENT]
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-COMPONENTS-APP-SHELL
@@ -25,13 +24,31 @@
 // failure_policy:
 //   - logger.debug wraps render; no crash on log failure
 // END_MODULE_CONTRACT: M-COMPONENTS-APP-SHELL
+
+// START_MODULE_MAP: M-COMPONENTS-APP-SHELL
+// public_entrypoints:
+//   - AppShell
+// semantic_blocks:
+//   - APP_SHELL_COMPONENT: root application layout shell
+// owned_tests:
+//   - __tests__/components/TabBar.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-APP-SHELL
+
 "use client"
 
 import { TabBar } from "@/components/today/tab-bar"
 import { useOnboarded } from "@/hooks/use-onboarded"
 import { logger } from "@/lib/log"
 
+// START_BLOCK: APP_SHELL_COMPONENT
 export function AppShell({ children }: { children: React.ReactNode }) {
+  // START_FUNCTION_CONTRACT: F-M-COMPONENTS-APP-SHELL.AppShell
+  // purpose: Render application root layout shell with TabBar navigation.
+  // inputs: children (React.ReactNode)
+  // returns: JSX.Element
+  // side_effects: logs render event via logger.debug
+  // error_behavior: none
+  // END_FUNCTION_CONTRACT: F-M-COMPONENTS-APP-SHELL.AppShell
   const { onboarded } = useOnboarded()
 
   logger.debug('[AppShell] Render', { extra: { onboarded } })
@@ -47,3 +64,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </main>
   )
 }
+// END_BLOCK: APP_SHELL_COMPONENT

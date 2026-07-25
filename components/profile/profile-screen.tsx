@@ -6,19 +6,27 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for profile-screen.tsx behavior
+// START_MODULE_CONTRACT: M-PROFILE-PROFILE-SCREEN
+// purpose: Profile screen composition hosting avatar, access card, referral, horary, and profile rows.
 // owns:
 //   - components/profile/profile-screen.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (tests)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: access, currentState, profileMeta, onAccessChanged
+// outputs: ProfileScreen React component
+// dependencies: useProfile, useTelegramUser, useSubscriptionPurchase, getSubscriptionStatus
+// side_effects: fetches subscription status, updates profile fields via sheets
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-PROFILE-PROFILE-SCREEN
+
+// START_MODULE_MAP: M-PROFILE-PROFILE-SCREEN
+// public_entrypoints:
+//   - ProfileScreen
+// semantic_blocks:
+//   - PROFILE_SCREEN_COMPONENT: main profile screen composition
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx
+//   - __tests__/components/ProfileScreen.cancel-refresh.test.tsx
+// END_MODULE_MAP: M-PROFILE-PROFILE-SCREEN
 "use client"
 
 import { useEffect, useState } from "react"
@@ -70,6 +78,7 @@ const noop = () => {
  * `dev-mode-switcher`). Локальное состояние держит только то, что
  * относится именно к этому экрану: какое поле сейчас редактируется.
  */
+// START_BLOCK: PROFILE_SCREEN_COMPONENT
 export function ProfileScreen({
   access,
   currentState,
@@ -292,6 +301,8 @@ export function ProfileScreen({
     </div>
   )
 }
+
+// END_BLOCK: PROFILE_SCREEN_COMPONENT
 
 /**
  * Тонкая обёртка над `EditSheet`, которая по `field` подставляет нужный

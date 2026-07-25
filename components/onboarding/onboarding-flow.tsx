@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI onboarding-flow — component
+// START_MODULE_CONTRACT: M-ONBOARDING-ONBOARDING-FLOW
+// purpose: Onboarding flow component managing step transitions, profile prefill, exact-time validation, and profile save.
 // owns:
 //   - components/onboarding/onboarding-flow.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Logging via v2 logging spine; React state management
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: onComplete, initialState, requireExactBirthTime
+// outputs: OnboardingFlow React component
+// dependencies: onboardingReducer, updateProfile, saveProfile, logEvent
+// side_effects: calls updateProfile API, saves profile cache to localStorage, emits log events
+// emitted_logs: profile.updated, profile.update_failed
+// failure_policy: displays error message on save failure and enables retry
+// END_MODULE_CONTRACT: M-ONBOARDING-ONBOARDING-FLOW
+
+// START_MODULE_MAP: M-ONBOARDING-ONBOARDING-FLOW
+// public_entrypoints:
+//   - OnboardingFlow
+// semantic_blocks:
+//   - ONBOARDING_FLOW_COMPONENT: main onboarding step flow component
+// owned_tests:
+//   - __tests__/components/OnboardingFlow.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-ONBOARDING-FLOW
 "use client"
 
 import { useReducer, useState } from "react"
@@ -54,6 +61,7 @@ type Props = {
  *  - reducer содержит всю бизнес-логику шагов (тестируется без jsdom);
  *  - компонент отвечает только за рендер и прокидывание событий.
  */
+// START_BLOCK: ONBOARDING_FLOW_COMPONENT
 export function OnboardingFlow({
   onComplete,
   initialState,
@@ -226,3 +234,4 @@ export function OnboardingFlow({
     </main>
   )
 }
+// END_BLOCK: ONBOARDING_FLOW_COMPONENT

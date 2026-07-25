@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI readings-screen — component
+// START_MODULE_CONTRACT: M-READINGS-READINGS-SCREEN
+// purpose: Readings hub screen rendering available reading cards (Natal, Horary, Election) and coming-soon reading cards.
 // owns:
 //   - components/readings/readings-screen.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: onOpenReading
+// outputs: ReadingsScreen React component
+// dependencies: listReadings, useRouter, AvailableCard, ComingCard
+// side_effects: navigates to reading routes via useRouter
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-READINGS-READINGS-SCREEN
+
+// START_MODULE_MAP: M-READINGS-READINGS-SCREEN
+// public_entrypoints:
+//   - ReadingsScreen
+// semantic_blocks:
+//   - READINGS_SCREEN_COMPONENT: main readings hub screen component
+// owned_tests:
+//   - __tests__/components/ReadingsScreen.test.tsx
+// END_MODULE_MAP: M-READINGS-READINGS-SCREEN
 "use client"
 
 import { useMemo, useState } from "react"
@@ -31,6 +38,7 @@ import { AvailableCard } from "./available-card"
 import { ComingCard } from "./coming-card"
 import { InDevOverlay } from "./in-dev-overlay"
 
+// START_BLOCK: READINGS_SCREEN_COMPONENT
 export function ReadingsScreen() {
   const router = useRouter()
   const { available, coming } = useMemo(() => listReadings(), [])
@@ -147,3 +155,4 @@ export function ReadingsScreen() {
     </div>
   )
 }
+// END_BLOCK: READINGS_SCREEN_COMPONENT

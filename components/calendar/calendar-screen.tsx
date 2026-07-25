@@ -5,19 +5,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-TODAY-CALENDAR
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI calendar-screen — component
+// START_MODULE_CONTRACT: M-CALENDAR-CALENDAR-SCREEN
+// purpose: Calendar screen component rendering month grid, date selection, mood icons, and day navigation.
 // owns:
 //   - components/calendar/calendar-screen.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: initialDate, accessInfo, onSelectDate
+// outputs: CalendarScreen React component
+// dependencies: useCalendar, useDay, lib/calendar, lib/access
+// side_effects: fetches calendar payload and day data
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-CALENDAR-CALENDAR-SCREEN
+
+// START_MODULE_MAP: M-CALENDAR-CALENDAR-SCREEN
+// public_entrypoints:
+//   - CalendarScreen
+// semantic_blocks:
+//   - CALENDAR_SCREEN_COMPONENT: main calendar screen component
+// owned_tests:
+//   - __tests__/components/CalendarScreen.test.tsx
+// END_MODULE_MAP: M-CALENDAR-CALENDAR-SCREEN
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
@@ -123,6 +130,7 @@ function monthTitle(month: string | null | undefined, fallback: Date): string {
   return `${MONTHS_RU_NOM[fallback.getMonth()]} ${fallback.getFullYear()}`
 }
 
+// START_BLOCK: CALENDAR_SCREEN_COMPONENT
 export function CalendarScreen({ onOpenDay }: Props) {
   const [cursor, setCursor] = useState(
     () => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
@@ -582,3 +590,4 @@ export function CalendarScreen({ onOpenDay }: Props) {
     </div>
   )
 }
+// END_BLOCK: CALENDAR_SCREEN_COMPONENT
