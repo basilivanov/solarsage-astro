@@ -9,18 +9,11 @@
 repos:
   - repo: local
     hooks:
-      - id: docs-frontmatter
-        name: docs/grace front-matter
-        entry: python scripts/check_frontmatter.py
+      - id: grace-front-lint
+        name: grace_front_lint (frontend contract markers)
+        entry: bash scripts/grace/check-markers.sh
         language: system
-        files: ^(docs|grace/packets)/.*\.md$
-        pass_filenames: false
-
-      - id: docs-manifest
-        name: docs/MANIFEST.md sync
-        entry: python scripts/check_docs_manifest.py
-        language: system
-        files: ^(docs/.*\.md|grace/packets/.*\.md|grace/README.md|MANIFEST.md)$
+        types: [ts, tsx]
         pass_filenames: false
 
       - id: grace-lint

@@ -12,7 +12,7 @@
 #   - push to main branch
 #   - pull request to main branch
 #   - workflow_dispatch
-#   - workflow_call (reusable by deploy-production source-quality gate)
+#   - workflow_call (reusable, kept for potential future callers)
 # outputs:
 #   - test results (pass/fail)
 #   - build artifacts
