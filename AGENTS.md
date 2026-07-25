@@ -184,6 +184,8 @@ await expect(page.getByRole("button", { name: "Подробнее" })).toHaveAtt
 // END_MODULE_MAP: M-MODULE-NAME
 ```
 
+`owned_tests` в MODULE_MAP обязателен (кроме тривиальных файлов без тестов — тогда писать `owned_tests: none`): это быстрый указатель «какой тест гонять для этого файла». Срезовая/UC-приёмка описывается отдельно в `grace/verification-matrix.md`. `docs/GRACE_CANON.md` — policy baseline канона, AGENTS.md — operative canon этого репозитория; при расхождении действует AGENTS.md.
+
 Для функций:
 
 ```ts
