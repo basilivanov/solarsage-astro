@@ -2,8 +2,14 @@
   const response = await fetch('./base.html', { cache: 'no-store' });
   if (!response.ok) throw new Error(`Не удалось загрузить базовый прототип: ${response.status}`);
   let html = await response.text();
-  html = html.replace('</head>', '<link rel="stylesheet" href="./aspect-drilldown.css"></head>');
-  html = html.replace('</body>', '<script src="./aspect-drilldown.js"></' + 'script></body>');
+  html = html.replace(
+    '</head>',
+    '<link rel="stylesheet" href="./aspect-drilldown.css"><link rel="stylesheet" href="./partner-time.css"></head>',
+  );
+  html = html.replace(
+    '</body>',
+    '<script src="./aspect-drilldown.js"></' + 'script><script src="./partner-time.js"></' + 'script></body>',
+  );
   document.open();
   document.write(html);
   document.close();
