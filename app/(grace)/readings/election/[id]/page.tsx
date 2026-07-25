@@ -3,6 +3,30 @@
 // ROLE: Election search detail & polling page
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-APP-ELECTION-SEARCH-ID-PAGE
+// purpose: Load a single election search by id, poll while processing, and render result or retry/timeout states.
+// owns:
+//   - app/(grace)/readings/election/[id]/page.tsx
+// inputs: route params Promise<{ id: string }>.
+// outputs: ElectionDetailPage React component tree.
+// dependencies:
+//   - lib/api/election (getElectionSearch)
+//   - components/readings/election (ElectionProcessingCard, ElectionResultView)
+// side_effects: fetches election search, polling timers, router navigation.
+// emitted_logs: none.
+// invariants: polling stops on terminal state or timeout; raw errors never render without safe copy.
+// failure_policy: load failure shows safe error state with retry/back navigation.
+// END_MODULE_CONTRACT: M-APP-ELECTION-SEARCH-ID-PAGE
+
+// START_MODULE_MAP: M-APP-ELECTION-SEARCH-ID-PAGE
+// public_entrypoints:
+//   - ElectionDetailPage (default)
+// semantic_blocks:
+//   - PAGE_COMPOSITION: load/poll election search and render state views.
+// owned_tests:
+//   - e2e/readings-election.spec.ts
+// END_MODULE_MAP: M-APP-ELECTION-SEARCH-ID-PAGE
+
 "use client"
 
 import { useCallback, useEffect, useState, use } from "react"
