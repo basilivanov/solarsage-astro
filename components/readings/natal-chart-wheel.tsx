@@ -1,3 +1,32 @@
+// ############################################################################
+// AI_HEADER: MODULE_COMPONENTS_NATAL_CHART_WHEEL
+// ROLE: Interactive astronomical natal chart wheel component displaying planets, houses, and aspects.
+// DEPENDENCIES: react, lib/contracts/natal
+// GRACE_ANCHORS: [NATAL_CHART_WHEEL_COMPONENT]
+// SLICE: SLICE-HORARY-READINGS
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-NATAL-CHART-WHEEL
+// purpose: Render interactive natal chart wheel SVG visualization with planetary positions and aspect lines.
+// owns:
+//   - components/readings/natal-chart-wheel.tsx
+// inputs: chart (NatalPreviewChart | null), birthLabel
+// outputs: NatalChartWheel React component
+// dependencies: lib/contracts/natal
+// side_effects: none (pure SVG rendering)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-COMPONENTS-NATAL-CHART-WHEEL
+
+// START_MODULE_MAP: M-COMPONENTS-NATAL-CHART-WHEEL
+// public_entrypoints:
+//   - NatalChartWheel
+// semantic_blocks:
+//   - NATAL_CHART_WHEEL_COMPONENT: main natal chart wheel SVG component
+// owned_tests:
+//   - __tests__/natal/natal-component-states.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-NATAL-CHART-WHEEL
+
 "use client"
 
 import { useMemo, useState } from "react"
@@ -99,6 +128,7 @@ function planetLabel(planet: NatalPreviewChartPlanet) {
   return `${symbol} ${planet.name} ${Math.round(planet.longitude * 10) / 10}°${house}${retrograde}`
 }
 
+// START_BLOCK: NATAL_CHART_WHEEL_COMPONENT
 export function NatalChartWheel({ chart, birthLabel }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
 
@@ -347,3 +377,4 @@ export function NatalChartWheel({ chart, birthLabel }: Props) {
     </section>
   )
 }
+// END_BLOCK: NATAL_CHART_WHEEL_COMPONENT

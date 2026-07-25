@@ -3,6 +3,27 @@
 // ROLE: Display election search results (Hero, Best days, Avoid days, Window Calendar)
 // ############################################################################
 
+// START_MODULE_CONTRACT: M-ELECTION-RESULT-VIEW
+// purpose: Render election search results including hero recommendation, best days, days to avoid, and window calendar.
+// owns:
+//   - components/readings/election/election-result-view.tsx
+// inputs: result (ElectionResult), onReset
+// outputs: ElectionResultView React component
+// dependencies: lib/contracts/election
+// side_effects: none (pure rendering)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ELECTION-RESULT-VIEW
+
+// START_MODULE_MAP: M-ELECTION-RESULT-VIEW
+// public_entrypoints:
+//   - ElectionResultView
+// semantic_blocks:
+//   - ELECTION_RESULT_VIEW_COMPONENT: main election search result view component
+// owned_tests:
+//   - __tests__/readings/election-result-view.test.tsx
+// END_MODULE_MAP: M-ELECTION-RESULT-VIEW
+
 "use client"
 
 import { useState } from "react"
@@ -32,6 +53,7 @@ function formatDateFullRu(dateStr: string): string {
   }
 }
 
+// START_BLOCK: ELECTION_RESULT_VIEW_COMPONENT
 export function ElectionResultView({ result, onReset }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null)
@@ -338,3 +360,4 @@ export function ElectionResultView({ result, onReset }: Props) {
     </div>
   )
 }
+// END_BLOCK: ELECTION_RESULT_VIEW_COMPONENT

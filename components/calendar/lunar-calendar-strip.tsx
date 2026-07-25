@@ -1,3 +1,32 @@
+// ############################################################################
+// AI_HEADER: MODULE_COMPONENTS_LUNAR_CALENDAR_STRIP
+// ROLE: Horizontal lunar calendar strip displaying lunar phases, days, and void-of-course indicators.
+// DEPENDENCIES: react, framer-motion, lucide-react, lib/contracts/calendar, lib/lunar-presentation
+// GRACE_ANCHORS: [LUNAR_CALENDAR_STRIP_COMPONENT]
+// SLICE: SLICE-TODAY-CALENDAR
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-LUNAR-CALENDAR-STRIP
+// purpose: Render horizontal interactive lunar calendar strip with phase glyphs and lunar day details.
+// owns:
+//   - components/calendar/lunar-calendar-strip.tsx
+// inputs: days (CalendarDayReadModel[])
+// outputs: LunarCalendarStrip React component
+// dependencies: lib/contracts/calendar, lib/lunar-presentation
+// side_effects: none (pure UI rendering)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-COMPONENTS-LUNAR-CALENDAR-STRIP
+
+// START_MODULE_MAP: M-COMPONENTS-LUNAR-CALENDAR-STRIP
+// public_entrypoints:
+//   - LunarCalendarStrip
+// semantic_blocks:
+//   - LUNAR_CALENDAR_STRIP_COMPONENT: main lunar calendar strip component
+// owned_tests:
+//   - __tests__/components/CalendarScreen.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-LUNAR-CALENDAR-STRIP
+
 "use client"
 
 import { useState } from "react"
@@ -99,6 +128,7 @@ function hasLunarFacts(day: CalendarDayReadModel): boolean {
     || lunar.voidOfCourse != null
 }
 
+// START_BLOCK: LUNAR_CALENDAR_STRIP_COMPONENT
 export function LunarCalendarStrip({ days }: Props) {
   const lunarDays = days.filter((day) => day.isCurrentMonth && hasLunarFacts(day))
   const currentMonthDays = days.filter((day) => day.isCurrentMonth)
@@ -308,3 +338,4 @@ export function LunarCalendarStrip({ days }: Props) {
     </section>
   )
 }
+// END_BLOCK: LUNAR_CALENDAR_STRIP_COMPONENT

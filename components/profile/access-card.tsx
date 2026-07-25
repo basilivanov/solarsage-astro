@@ -6,19 +6,27 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: access-card.tsx
+// START_MODULE_CONTRACT: M-PROFILE-ACCESS-CARD
+// purpose: Access card component displaying subscription, trial, promo access, and renewal control states.
 // owns:
 //   - components/profile/access-card.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: access (AccessInfo), currentState (AccessState), billing (AccessCardBilling), renewal
+// outputs: AccessCard React component
+// dependencies: lib/access, lib/date, lib/hooks/use-share-invite
+// side_effects: calls share invite hook, triggers buy/cancel callbacks
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-PROFILE-ACCESS-CARD
+
+// START_MODULE_MAP: M-PROFILE-ACCESS-CARD
+// public_entrypoints:
+//   - AccessCard
+//   - AccessCardBilling
+// semantic_blocks:
+//   - ACCESS_CARD_COMPONENT: main access card UI component
+// owned_tests:
+//   - __tests__/components/AccessCard.test.tsx
+// END_MODULE_MAP: M-PROFILE-ACCESS-CARD
 "use client"
 
 import type { LucideIcon } from "lucide-react"
@@ -200,6 +208,7 @@ function pluralDays(n: number) {
   return "дней"
 }
 
+// START_BLOCK: ACCESS_CARD_COMPONENT
 export function AccessCard({ access, currentState, billing, renewal }: Props) {
   const share = useShareInvite()
   const v = buildVariant(access, currentState, billing, share, renewal)
@@ -306,3 +315,4 @@ export function AccessCard({ access, currentState, billing, renewal }: Props) {
     </div>
   )
 }
+// END_BLOCK: ACCESS_CARD_COMPONENT

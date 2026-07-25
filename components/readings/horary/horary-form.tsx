@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for horary-form.tsx behavior
+// START_MODULE_CONTRACT: M-HORARY-HORARY-FORM
+// purpose: Horary question submission form component with category selection, question input, and time/location confirmation.
 // owns:
 //   - components/readings/horary/horary-form.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (tests)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: onSubmit, loading, error, availableCredits
+// outputs: HoraryForm React component
+// dependencies: HoraryTimeConfirm, lib/contracts/horary
+// side_effects: calls onSubmit handler with question text, category, and confirmation data
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-HORARY-HORARY-FORM
+
+// START_MODULE_MAP: M-HORARY-HORARY-FORM
+// public_entrypoints:
+//   - HoraryForm
+// semantic_blocks:
+//   - HORARY_FORM_COMPONENT: horary question submission form component
+// owned_tests:
+//   - __tests__/horary/horary-form-submit.test.tsx
+// END_MODULE_MAP: M-HORARY-HORARY-FORM
 "use client"
 
 import { useState } from "react"
@@ -52,6 +59,7 @@ type Props = {
 }
 
 
+// START_BLOCK: HORARY_FORM_COMPONENT
 export function HoraryForm({
   hasSpendableCredit,
   submitting = false,
@@ -298,4 +306,5 @@ export function HoraryForm({
     </motion.form>
   )
 }
+// END_BLOCK: HORARY_FORM_COMPONENT
 
