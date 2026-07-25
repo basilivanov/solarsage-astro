@@ -47,6 +47,7 @@ export function ReadingsScreen() {
   const openReading = (key: string) => {
     if (key === "natal") router.push("/readings/natal")
     else if (key === "election") router.push("/readings/election")
+    else if (key === "synastry") router.push("/synastry")
     else router.push("/readings/horary")
   }
 

@@ -134,6 +134,13 @@ export function listReadings(): ReadingsCatalog {
   return {
     available: [
       {
+        key: "synastry",
+        title: "Совместимость",
+        description: "Совместимость с партнёром",
+        icon: Users,
+        teaser: "Синастрия — анализ совместимости двух натальных карт",
+      },
+      {
         key: "horary",
         title: "Хорар",
         description: "Задай точный вопрос и получи ответ карты",
@@ -153,13 +160,6 @@ export function listReadings(): ReadingsCatalog {
         description: "Глубокий разбор карты рождения",
         icon: Star,
         teaser: "Планеты, дома, аспекты — всё о тебе по данным рождения",
-      },
-      {
-        key: "synastry",
-        title: "Совместимость",
-        description: "Совместимость с партнёром",
-        icon: Users,
-        teaser: "Синастрия — анализ совместимости двух натальных карт",
       },
     ],
     coming: [
