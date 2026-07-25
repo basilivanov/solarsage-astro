@@ -1,7 +1,7 @@
 # ############################################################################
 # AI_HEADER: MODULE_SERVICES_SYNASTRY_SERVICE
 # ROLE: Orchestration service for synastry calculations, state machine, LLM pipeline, credit spending, and persistence.
-# DEPENDENCIES: sqlalchemy, app.db.models, app.services.synastry_scoring, app.services.synastry_llm
+# DEPENDENCIES: sqlalchemy, httpx, app.db.models, app.services.synastry_scoring, app.services.synastry_llm, app.services.llm.client
 # GRACE_ANCHORS: [SYNASTRY_SERVICE]
 # ############################################################################
 
@@ -15,20 +15,20 @@
 #   - M-DB-MODELS
 #   - M-SYNASTRY-SCORING
 #   - M-LLM-SYNASTRY
+#   - M-LLM-CLIENT
 # side_effects:
-#   - creates DB records, spends credits, executes state machine
-# emitted_logs: synastry.partner_created, synastry.calculation_started, synastry.calculation_succeeded, synastry.calculation_failed, synastry.report_viewed
+#   - creates DB records, spends/refunds credits, executes state machine, calls sidecar & LLM
+# emitted_logs: sidecar.called, scoring.computed, llm.requested, llm.response_validated, llm.response_rejected, system.error
 # failure_policy:
 #   - raises HTTPException(404) for unowned partner/report
 #   - raises HTTPException(409) for duplicate partner or incomplete profile
-#   - sets state=FAILED on repeated LLM failure
+#   - sets state=FAILED on sidecar failure or repeated LLM validation failure, and refunds credit
 # END_MODULE_CONTRACT: M-SYNASTRY-SERVICE
 
 # START_MODULE_MAP: M-SYNASTRY-SERVICE
 # public_entrypoints:
 #   - SynastryService.create_partner_and_report
 #   - SynastryService.run_report_pipeline
-#   - SynastryService.get_report
 #   - SynastryService.get_aspect_drilldown
 #   - SynastryService.submit_feedback
 #   - SynastryService.delete_partner
@@ -47,9 +47,12 @@ from typing import Any
 import uuid
 
 from fastapi import HTTPException, status
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.logging import bind_log_context, log_event
 from app.db.models import (
     HoraryCredit,
     SynastryAspectDetail,
@@ -64,6 +67,7 @@ from app.schemas.synastry import (
     PartnerCreate,
     SynastryFeedbackRead,
 )
+from app.services.llm.client import LLMClient
 from app.services.synastry_llm import (
     ASPECT_MEANINGS,
     PLANET_MEANINGS,
@@ -200,6 +204,110 @@ class SynastryService:
 
         return partner, report
 
+    async def _fail_and_refund(
+        self,
+        report: SynastryReport,
+        error_code: str,
+        error_message: str,
+    ) -> SynastryReport:
+        report.state = "failed"
+        report.error_code = error_code
+        report.error_message = error_message
+        log_event(
+            "system.error",
+            level="error",
+            msg=f"synastry report failed: {error_code}",
+            payload={"report_id": str(report.id), "error_code": error_code},
+        )
+
+        # Refund credit spend if not already refunded
+        spend_stmt = select(SynastryCreditSpend).where(
+            SynastryCreditSpend.report_id == report.id,
+            SynastryCreditSpend.refunded_at.is_(None),
+        )
+        spend_res = await self.db.execute(spend_stmt)
+        spend = spend_res.scalar_one_or_none()
+
+        if spend:
+            now = datetime.now(timezone.utc)
+            spend.refunded_at = now
+            credit_stmt = select(HoraryCredit).where(HoraryCredit.id == spend.credit_id)
+            credit_res = await self.db.execute(credit_stmt)
+            credit = credit_res.scalar_one_or_none()
+            if credit and credit.used_amount > 0:
+                credit.used_amount -= 1
+
+        await self.db.commit()
+        await self.db.refresh(report)
+        return report
+
+    async def _fetch_sidecar_synastry(
+        self,
+        user_profile: UserProfile,
+        partner: SynastryPartner,
+    ) -> dict[str, Any]:
+        owner_time = user_profile.birth_time.isoformat()[:5] if user_profile.birth_time else "12:00"
+        partner_time = partner.birth_time.isoformat()[:5] if partner.birth_time else None
+
+        req_payload = {
+            "owner_birth_date": user_profile.birthday.isoformat() if user_profile.birthday else "1990-01-01",
+            "owner_birth_time": owner_time,
+            "owner_birth_lat": float(user_profile.birth_lat) if user_profile.birth_lat is not None else 0.0,
+            "owner_birth_lon": float(user_profile.birth_lon) if user_profile.birth_lon is not None else 0.0,
+            "owner_birth_tz": user_profile.birth_tz or "UTC",
+            "partner_birth_date": partner.birth_date.isoformat(),
+            "partner_birth_time": partner_time,
+            "partner_birth_lat": float(partner.birth_lat) if partner.birth_lat is not None else None,
+            "partner_birth_lon": float(partner.birth_lon) if partner.birth_lon is not None else None,
+            "partner_birth_tz": partner.birth_tz,
+            "partner_birth_time_precision": partner.precision,
+        }
+
+        url = f"{settings.solarsage_url}/v1/synastry"
+        log_event("sidecar.called", msg="POST /v1/synastry")
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            resp = await client.post(url, json=req_payload)
+            resp.raise_for_status()
+            return resp.json()
+
+    async def _generate_llm_narrative(
+        self,
+        scoring_res: Any,
+        det_payload: dict[str, Any],
+        precision_mode: str,
+    ) -> dict[str, Any] | None:
+        prompt_dict = build_report_prompt(
+            score=scoring_res.score,
+            status=scoring_res.status,
+            counters=scoring_res.counters,
+            aspects=det_payload["aspects"],
+            partner_precision=precision_mode,
+        )
+
+        try:
+            llm_client = LLMClient()
+            log_event("llm.requested", msg="synastry narrative requested")
+            raw_text = await llm_client._generate_text(
+                prompt=f"{prompt_dict['system']}\n\n{prompt_dict['user']}",
+                max_tokens=1000,
+            )
+
+            if not raw_text:
+                log_event("llm.response_rejected", level="warning", msg="synastry narrative: empty response")
+                return None
+
+            parsed = json.loads(raw_text)
+            if isinstance(parsed, dict):
+                valid, _ = validate_llm_output(parsed, report_precision=precision_mode)
+                if valid:
+                    log_event("llm.response_validated", msg="synastry narrative validated")
+                    return parsed
+            log_event("llm.response_rejected", level="warning", msg="synastry narrative: validation failed")
+        except Exception:
+            log_event("llm.response_rejected", level="warning", msg="synastry narrative: generation error")
+
+        return None
+
     async def run_report_pipeline(self, report_id: uuid.UUID) -> SynastryReport:
         """State machine pipeline: PENDING -> CALCULATING -> NARRATIVE_GENERATING -> READY."""
         stmt = select(SynastryReport).where(
@@ -212,29 +320,57 @@ class SynastryService:
         if not report:
             raise HTTPException(status_code=404, detail="Report not found")
 
-        # Step 1: CALCULATING (Scoring engine)
-        report.state = "calculating"
-        report.stage = "scoring"
-        await self.db.commit()
+        bind_log_context(slice="W-SYNASTRY-MVP", module="M-SYNASTRY-SERVICE", block="SYNASTRY_SERVICE")
 
-        # Fetch partner
+        # Read partner & owner profile
         p_stmt = select(SynastryPartner).where(SynastryPartner.id == report.partner_id)
         p_res = await self.db.execute(p_stmt)
         partner = p_res.scalar_one_or_none()
 
-        precision_mode = partner.precision if partner else "exact"
+        profile_stmt = select(UserProfile).where(UserProfile.user_id == report.owner_id)
+        profile_res = await self.db.execute(profile_stmt)
+        user_profile = profile_res.scalar_one_or_none()
 
-        # Representative synastry raw aspect inputs
-        sample_aspects = [
-            RawAspectInput(owner_planet="Sun", partner_planet="Moon", aspect_type="trine", orb_degrees=1.2),
-            RawAspectInput(owner_planet="Venus", partner_planet="Mars", aspect_type="sextile", orb_degrees=2.1),
-            RawAspectInput(owner_planet="Mercury", partner_planet="Mercury", aspect_type="conjunction", orb_degrees=0.8),
-            RawAspectInput(owner_planet="Saturn", partner_planet="Sun", aspect_type="square", orb_degrees=3.5),
+        if not partner or not user_profile or not user_profile.birthday:
+            return await self._fail_and_refund(
+                report, "PROFILE_OR_PARTNER_MISSING", "User profile or partner birth data is missing"
+            )
+
+        precision_mode = partner.precision or "exact"
+
+        # Step 1: CALCULATING (Sidecar + Scoring engine)
+        report.state = "calculating"
+        report.stage = "scoring"
+        await self.db.commit()
+
+        # Call sidecar
+        try:
+            sidecar_data = await self._fetch_sidecar_synastry(user_profile, partner)
+        except Exception as exc:
+            return await self._fail_and_refund(
+                report, "SIDECAR_FAILED", f"Sidecar calculation failed: {exc}"
+            )
+
+        # Map sidecar cross_aspects to RawAspectInput
+        raw_aspects = [
+            RawAspectInput(
+                owner_planet=ca.get("owner_planet", ""),
+                partner_planet=ca.get("partner_planet", ""),
+                aspect_type=ca.get("aspect_type", ""),
+                orb_degrees=float(ca.get("orb_degrees", 0.0)),
+                applying=ca.get("applying"),
+            )
+            for ca in sidecar_data.get("cross_aspects", [])
         ]
 
         scoring_res = SynastryScoringEngine.calculate_score(
-            aspects=sample_aspects,
+            aspects=raw_aspects,
             partner_time_precision=precision_mode,
+        )
+        log_event(
+            "scoring.computed",
+            msg="synastry scoring computed",
+            payload={"score": scoring_res.score, "status": scoring_res.status, "aspects_count": len(raw_aspects)},
         )
 
         det_payload = {
@@ -274,43 +410,34 @@ class SynastryService:
         report.stage = "llm_narrative"
 
         if report.attempt_count >= 2:
-            report.state = "failed"
-            report.error_code = "MAX_ATTEMPTS_EXCEEDED"
-            report.error_message = "LLM generation reached max attempts limit"
-            await self.db.commit()
-            return report
+            return await self._fail_and_refund(
+                report, "MAX_ATTEMPTS_EXCEEDED", "LLM generation reached max attempts limit"
+            )
 
         report.attempt_count += 1
         await self.db.commit()
 
-        # Build & validate LLM narrative
-        aspect_dicts = det_payload["aspects"]
-        narrative_payload = {
-            "verdict": f"Совместимость пары ({scoring_res.score}/100)",
-            "summary": "Гармоничное взаимодействие с хорошим балансом эмоциональных и практических факторов.",
-            "hero_title": "Гармоничный союз",
-            "hero_description": f"Пара обладает высоким потенциалом взаимодействия ({scoring_res.score}/100).",
-            "translations": [
-                {
-                    "tone": "supportive",
-                    "title": "Взаимная поддержка",
-                    "tech": "Солнце трин Луна",
-                    "text": "Естественное понимание потребностей друг друга.",
-                    "scene": "Совместное принятие решений проходит легко.",
-                }
-            ],
-            "house_overlays": [] if precision_mode in ("approximate", "unknown") else [
-                {"tech": "Солнце в 7-м доме", "text": "Партнёр воспринимается как ключевая фигура."}
-            ],
-        }
+        # LLM Generation loop (max 2 attempts across pipeline runs)
+        narrative_data = await self._generate_llm_narrative(scoring_res, det_payload, precision_mode)
 
-        valid, err_msg = validate_llm_output(narrative_payload, report_precision=precision_mode)
-        if not valid:
-            report.state = "failed"
-            report.error_code = "LLM_VALIDATION_FAILED"
-            report.error_message = err_msg
+        if not narrative_data and report.attempt_count < 2:
+            report.attempt_count += 1
             await self.db.commit()
-            return report
+            narrative_data = await self._generate_llm_narrative(scoring_res, det_payload, precision_mode)
+
+        if not narrative_data:
+            return await self._fail_and_refund(
+                report, "LLM_VALIDATION_FAILED", "LLM narrative generation or validation failed"
+            )
+
+        narrative_payload = {
+            "verdict": narrative_data.get("verdict") or f"Совместимость пары ({scoring_res.score}/100)",
+            "summary": narrative_data.get("summary", "Анализ взаимодействия завершён."),
+            "hero_title": narrative_data.get("hero_title"),
+            "hero_description": narrative_data.get("hero_description"),
+            "translations": narrative_data.get("translations", []),
+            "house_overlays": narrative_data.get("house_overlays", []),
+        }
 
         report.narrative_payload_json = json.dumps(narrative_payload, ensure_ascii=False)
         report.state = "ready"
