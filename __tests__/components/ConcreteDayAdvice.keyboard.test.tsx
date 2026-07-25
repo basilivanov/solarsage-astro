@@ -122,7 +122,7 @@ describe("ConcreteDayAdvice human-first navigator", () => {
     const verdicts = ["good", "caution", "avoid", "neutral"] as const
     const keyByVerdict = { good: "work" as const, caution: "money" as const, avoid: "health" as const, neutral: "relationships" as const }
     const labelByVerdict: Record<string, string> = { good: "Работа", caution: "Деньги", avoid: "Здоровье", neutral: "Отношения" }
-    const expectedCompact: Record<string, string> = { good: "Поддерживает", caution: "Требует внимания", avoid: "Лучше отложить", neutral: "Ровный фон" }
+    const expectedCompact: Record<string, string> = { good: "Поддержка", caution: "Требует внимания", avoid: "Лучше отложить", neutral: "Ровный фон" }
     const expectedDetails: Record<string, string> = { good: "Поддерживающий сигнал", caution: "Напряжённый сигнал · требует внимания", avoid: "Сильное напряжение · лучше отложить", neutral: "Нейтральный сигнал" }
 
     const testBlock: ConcreteAdviceBlock = {

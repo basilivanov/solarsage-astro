@@ -63,7 +63,7 @@ const CONCRETE_ADVICE_VERDICT_PRESENTATION: Record<Verdict, {
   good: {
     dotClass: "bg-emerald-500",
     iconShellClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200",
-    compactCopy: "Поддерживает",
+    compactCopy: "Поддержка",
     detailsCopy: "Поддерживающий сигнал",
     statusTextClass: "text-emerald-700 dark:text-emerald-200",
     badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-100",
@@ -178,14 +178,14 @@ export function ConcreteDayAdvice({
                         : "border-border/70 hover:border-violet-300 hover:bg-violet-50/30 dark:hover:bg-violet-500/10"
                     }`}
                   >
-                    <span className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${meta.iconShellClass}`}>
-                      <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
+                    <span className={`flex h-8 w-8 flex-none items-center justify-center rounded-xl ${meta.iconShellClass}`}>
+                      <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[14px] font-semibold leading-snug text-foreground">{row.label}</span>
                       <span data-testid="concrete-day-advice-row-status" data-status={verdict} className={`mt-0.5 block text-[12px] font-semibold leading-snug ${meta.statusTextClass}`}>{meta.compactCopy}</span>
                     </span>
-                    <span className="flex flex-col items-center gap-1.5">
+                    <span className="flex flex-none flex-col items-center gap-1.5">
                       <span className={`h-2 w-2 rounded-full ${meta.dotClass}`} aria-hidden />
                       {selected ? (
                         <ChevronUp className="h-4 w-4 text-violet-700 dark:text-violet-200" aria-hidden />

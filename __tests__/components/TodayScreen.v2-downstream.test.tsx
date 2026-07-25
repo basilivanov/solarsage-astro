@@ -355,7 +355,7 @@ describe("TodayScreen V2 downstream fixture", () => {
   it("renders normalized visible verdict statuses on compact rows and expanded details", () => {
     const { payload } = buildCanonicalPayload()
     const expected = {
-      good: { compact: "Поддерживает", details: "Поддерживающий сигнал" },
+      good: { compact: "Поддержка", details: "Поддерживающий сигнал" },
       neutral: { compact: "Ровный фон", details: "Нейтральный сигнал" },
       caution: { compact: "Требует внимания", details: "Напряжённый сигнал · требует внимания" },
       avoid: { compact: "Лучше отложить", details: "Сильное напряжение · лучше отложить" },
