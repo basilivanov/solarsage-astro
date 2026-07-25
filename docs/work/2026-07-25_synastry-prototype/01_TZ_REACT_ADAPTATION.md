@@ -187,7 +187,62 @@ Mobile sheet (`role="dialog" aria-modal`, закрытие по Escape, backdrop
 - **Real e2e**: Telegram HMAC → реальный API: добавление партнёра (exact и unknown), отчёт, drill-down.
 - Visual baseline: список, отчёт (good/mid/bad), drill-down sheet, approximate-состояние. Динамические текстовые зоны — маскировать.
 
-## 6. Замечания к прототипу (не блокеры ТЗ)
+## 6. GRACE-канон, структурные логи и обсервабилити
+
+### 6.1. GRACE-разметка
+
+Все новые файлы (backend и frontend) — по канону AGENTS.md: `AI_HEADER`, `START_MODULE_CONTRACT`, `START_MODULE_MAP` (с обязательным `owned_tests`), для нетривиальных публичных функций — `START_FUNCTION_CONTRACT`, для смысловых блоков — `START_BLOCK`/`END_BLOCK`. Гейт `scripts/grace/check-markers.sh` должен проходить.
+
+Предлагаемые module-ID:
+
+- `M-API-SYNASTRY` — `apps/api/app/api/synastry.py`;
+- `M-SYNASTRY-SERVICE` — `apps/api/app/services/synastry_service.py` (оркестрация: sidecar → scoring → LLM → персист);
+- `M-SYNASTRY-SCORING` — tone-mapping, балл 0–100, счётчики, precision-инварианты (engine);
+- `M-LLM-SYNASTRY` — промпты и валидатор в `apps/api/app/services/llm/` (по образцу horary);
+- frontend: `components/synastry/*` — по одному контракту на файл, как в соседних фичах.
+
+Sidecar-расчёт размечается по правилам sidecar-репозитория; со стороны API он остаётся за фасадом сервиса (как `NatalContextService` — прямых вызовов sidecar из роутов нет).
+
+### 6.2. Реестр событий (canon-first)
+
+Имена событий — `domain.verb` в стиле существующего реестра (`day.viewed`, `election.search_created`). **Сначала** добавить в `grace/canon/observability.xml` §8.5, затем перегенерировать `apps/api/app/core/logging_events.py` и `lib/log/events.gen.ts` (файлы сгенерированы — руками не править, см. WARNING в шапке `logging_events.py`).
+
+Backend-события (`log_event` + `bind_log_context` из `apps/api/app/core/logging.py`):
+
+| Событие | Когда |
+|---|---|
+| `synastry.partner_created` | партнёр сохранён (exact или unknown) |
+| `synastry.calculation_started` | старт расчёта sidecar |
+| `synastry.calculation_succeeded` | расчёт завершён, payload: число аспектов, precision |
+| `synastry.calculation_failed` | sidecar недоступен / ошибка расчёта (→ 502) |
+| `synastry.llm_phase_completed` | LLM-генерация блока завершена (по образцу `day.llm_phase_completed`) |
+| `synastry.llm_validation_failed` | валидатор отклонил LLM-вывод (блоклист/лимиты/approximate) |
+| `synastry.report_viewed` | отчёт отдан клиенту |
+| `synastry.feedback_submitted` | проверка реальностью сохранена |
+
+Frontend-события (`logEvent` из `lib/log/index.ts`):
+
+| Событие | Когда |
+|---|---|
+| `synastry.list_viewed` | экран списка открыт |
+| `synastry.partner_add_started` | sheet добавления открыт |
+| `synastry.unknown_time_toggled` | переключатель «время неизвестно» (payload: `enabled`) |
+| `synastry.aspect_drilldown_opened` | drill-down открыт (из строки аспекта или tech-подписи, payload: `source`) |
+| `synastry.all_aspects_toggled` | раскрытие полного списка аспектов |
+
+### 6.3. Требования к payload и приватность
+
+- Каждый лог: `slice`, `module`, `block`, `event`, `correlation_id` (frontend-логгер заполняет defaults, но feature-код передаёт точные `slice/module/block` в `meta`).
+- **PII третьих лиц**: имя партнёра, его дата/время/место рождения и LLM-тексты про него в логах запрещены — логировать `partner_id` (UUID), precision-флаги, счётчики. Это жёстче обычного правила redaction, т.к. данные принадлежат не пользователю, а третьему лицу.
+- Ошибки логирования не ломают пользовательский flow (swallow + handled), бизнес-ошибки логируются и возвращаются по контракту эндпоинта.
+
+### 6.4. Синхронизация GRACE-доков
+
+- `grace/verification-matrix.md`: новый срез синастрии — маппинг модулей (`M-API-SYNASTRY`, `M-SYNASTRY-SERVICE`, `M-SYNASTRY-SCORING`, `M-LLM-SYNASTRY`, `components/synastry/*`) на slice gates и UC-сценарии (happy path: список → добавление exact/unknown → отчёт → drill-down → feedback).
+- `emitted_logs` в MODULE_CONTRACT каждого нового модуля — только имена из реестра п. 6.2.
+- AGENTS.md: при появлении раздела «Вместе» в нижней навигации — обновить описание навигации/экранов в каноне (root testid `synastry-screen` уже заложен в п. 2.1).
+
+## 7. Замечания к прототипу (не блокеры ТЗ)
 
 При ревью PR #11 обнаружено (чинить в рамках прототипа не требуется, учесть при реализации):
 
