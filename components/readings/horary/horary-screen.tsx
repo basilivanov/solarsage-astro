@@ -6,26 +6,27 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI horary-screen — component
+// START_MODULE_CONTRACT: M-HORARY-HORARY-SCREEN
+// purpose: Main horary screen orchestrating question submission, quota bar, purchase sheet, and polling execution.
 // owns:
 //   - components/readings/horary/horary-screen.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Logging via v2 logging spine; React state management
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
-// invariants:
-//   - Root exposes the public state contract: data-state (loading|error|ready),
-//     data-has-credit (true|false, undefined while loading/error), and
-//     data-access-state (unlocked|locked, undefined while loading/error).
-//   - Polling is exactly one chain: one immediate read after create/start,
-//     then at most one getHoraryQuestion round per 2000ms, 60s cap; state
-//     updates never restart or overlap chains; scheduling is unified —
-//     a new schedule cancels the pending timeout and the callback nulls the
-//     ref, so no orphan timer can ever start a second chain.
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: none (reads quota, profile, and questions via API)
+// outputs: HoraryScreen React component
+// dependencies: HoraryForm, HoraryAnswerView, HoraryQuotaBar, HoraryPurchaseSheet
+// side_effects: fetches horary quota, question status, and handles polling
+// emitted_logs: system.error
+// failure_policy: displays error state with role="alert" and retry button
+// END_MODULE_CONTRACT: M-HORARY-HORARY-SCREEN
+
+// START_MODULE_MAP: M-HORARY-HORARY-SCREEN
+// public_entrypoints:
+//   - HoraryScreen
+// semantic_blocks:
+//   - HORARY_SCREEN_COMPONENT: main horary screen component
+// owned_tests:
+//   - __tests__/horary/horary-screen-flow.test.tsx
+//   - __tests__/horary/horary-error-state.test.tsx
+// END_MODULE_MAP: M-HORARY-HORARY-SCREEN
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -48,6 +49,7 @@ import { HoraryProcessingCard } from "./horary-processing-card"
 import { Spinner } from "@/components/ui/spinner"
 import { logEvent } from "@/lib/log"
 
+// START_BLOCK: HORARY_SCREEN_COMPONENT
 export function HoraryScreen() {
   const { toast } = useToast()
   const router = useRouter()
@@ -498,3 +500,4 @@ export function HoraryScreen() {
     </div>
   )
 }
+// END_BLOCK: HORARY_SCREEN_COMPONENT

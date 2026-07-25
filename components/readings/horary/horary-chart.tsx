@@ -1,3 +1,32 @@
+// ############################################################################
+// AI_HEADER: MODULE_COMPONENTS_HORARY_CHART
+// ROLE: Horary chart wheel component displaying planetary positions and house cusps for horary questions.
+// DEPENDENCIES: react, lucide-react, lib/contracts/horary
+// GRACE_ANCHORS: [HORARY_CHART_COMPONENT]
+// SLICE: SLICE-HORARY-READINGS
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-HORARY-CHART
+// purpose: Render astrological horary chart wheel with planetary symbols and house positions.
+// owns:
+//   - components/readings/horary/horary-chart.tsx
+// inputs: chart (HoraryChartSnapshot), involvedPlanets
+// outputs: HoraryChart React component
+// dependencies: lib/contracts/horary
+// side_effects: none (pure SVG rendering)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-COMPONENTS-HORARY-CHART
+
+// START_MODULE_MAP: M-COMPONENTS-HORARY-CHART
+// public_entrypoints:
+//   - HoraryChart
+// semantic_blocks:
+//   - HORARY_CHART_COMPONENT: horary chart wheel component
+// owned_tests:
+//   - __tests__/horary/horary-answer-view.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-HORARY-CHART
+
 "use client"
 
 import { useMemo, useState } from "react"
@@ -117,6 +146,7 @@ function aspectLabel(type: string) {
   return ASPECT_RU[type] ?? type
 }
 
+// START_BLOCK: HORARY_CHART_COMPONENT
 export function HoraryChart({ chart, involvedPlanets = [] }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
   const involved = useMemo(() => new Set(involvedPlanets), [involvedPlanets])
@@ -362,3 +392,4 @@ export function HoraryChart({ chart, involvedPlanets = [] }: Props) {
     </section>
   )
 }
+// END_BLOCK: HORARY_CHART_COMPONENT

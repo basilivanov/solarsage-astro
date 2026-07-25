@@ -6,19 +6,27 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for edit-sheet.tsx behavior
+// START_MODULE_CONTRACT: M-PROFILE-EDIT-SHEET
+// purpose: Profile editing sheet for updating birth date, birth time, birth place, current city, birthday city, and gender.
 // owns:
 //   - components/profile/edit-sheet.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (tests)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: field, initial, onClose, onSave, saving, error
+// outputs: EditSheet React component
+// dependencies: CityPicker, NumField, lib/profile, lib/contracts/city
+// side_effects: calls onSave callback with updated profile patch
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-PROFILE-EDIT-SHEET
+
+// START_MODULE_MAP: M-PROFILE-EDIT-SHEET
+// public_entrypoints:
+//   - EditSheet
+//   - EditField
+// semantic_blocks:
+//   - EDIT_SHEET_COMPONENT: main profile field editing sheet component
+// owned_tests:
+//   - __tests__/components/EditSheet.test.tsx
+// END_MODULE_MAP: M-PROFILE-EDIT-SHEET
 "use client"
 
 import { useEffect, useRef, useState } from "react"
@@ -95,6 +103,7 @@ const TITLES: Record<EditField, { eyebrow: string; title: string; subtitle: stri
   },
 }
 
+// START_BLOCK: EDIT_SHEET_COMPONENT
 export function EditSheet(props: Props) {
   const { field, onClose } = props
   const meta = TITLES[field]
@@ -198,6 +207,7 @@ export function EditSheet(props: Props) {
     </div>
   )
 }
+// END_BLOCK: EDIT_SHEET_COMPONENT
 
 // ---------- Date ----------
 

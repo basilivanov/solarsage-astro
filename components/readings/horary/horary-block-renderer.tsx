@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-HORARY-READINGS
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: horary-block-renderer.tsx
+// START_MODULE_CONTRACT: M-HORARY-HORARY-BLOCK-RENDERER
+// purpose: Render structured horary answer blocks (paragraph, bullets, callout, verdict, timing, advice).
 // owns:
 //   - components/readings/horary/horary-block-renderer.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: block (HoraryBlock)
+// outputs: HoraryBlockRenderer React component
+// dependencies: lib/contracts/horary, lib/contracts/natal
+// side_effects: none (pure rendering)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-HORARY-HORARY-BLOCK-RENDERER
+
+// START_MODULE_MAP: M-HORARY-HORARY-BLOCK-RENDERER
+// public_entrypoints:
+//   - HoraryBlockRenderer
+// semantic_blocks:
+//   - HORARY_BLOCK_RENDERER_COMPONENT: horary block renderer component
+// owned_tests:
+//   - __tests__/horary/horary-block-renderer.test.tsx
+// END_MODULE_MAP: M-HORARY-HORARY-BLOCK-RENDERER
 "use client"
 
 import { Check, Sparkles, AlertTriangle, Info, Quote, CheckCircle2, XCircle, HelpCircle, Timer, AlertOctagon } from "lucide-react"
@@ -41,6 +48,7 @@ const CONFIDENCE_INTRO: Record<"low" | "medium" | "high", string> = {
   high: "Уверенность разбора:",
 }
 
+// START_BLOCK: HORARY_BLOCK_RENDERER_COMPONENT
 export function HoraryBlockRenderer({ block }: Props) {
   switch (block.type) {
     case "paragraph":
@@ -352,6 +360,7 @@ export function HoraryBlockRenderer({ block }: Props) {
       return null
   }
 }
+// END_BLOCK: HORARY_BLOCK_RENDERER_COMPONENT
 
 function TestimonyRow({
   item,

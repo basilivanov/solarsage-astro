@@ -1,3 +1,33 @@
+// ############################################################################
+// AI_HEADER: MODULE_COMPONENTS_DAY_CHART
+// ROLE: Interactive astronomical day chart wheel component for Today screen.
+// DEPENDENCIES: react, framer-motion, lib/contracts/today
+// GRACE_ANCHORS: [DAY_CHART_COMPONENT]
+// SLICE: SLICE-TODAY-CALENDAR
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-DAY-CHART
+// purpose: Render interactive day astrological chart wheel with planetary positions and house cusps.
+// owns:
+//   - components/today/day-chart.tsx
+// inputs: chart (DayChartData | null), dateLabel, dayStatus
+// outputs: DayChart React component
+// dependencies: lib/contracts/today
+// side_effects: none (pure SVG/canvas calculation and rendering)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-COMPONENTS-DAY-CHART
+
+// START_MODULE_MAP: M-COMPONENTS-DAY-CHART
+// public_entrypoints:
+//   - DayChart
+// semantic_blocks:
+//   - DAY_CHART_COMPONENT: main day chart wheel SVG component
+// owned_tests:
+//   - __tests__/components/TodayScreen.test.tsx
+//   - __tests__/components/TodayScreen.v2-downstream.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-DAY-CHART
+
 "use client"
 
 import { useMemo, useState } from "react"
@@ -119,6 +149,7 @@ function describeArc(
   ].join(" ")
 }
 
+// START_BLOCK: DAY_CHART_COMPONENT
 export function DayChart({ chart, dateLabel, dayStatus = "steady" }: Props) {
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
 
@@ -467,3 +498,4 @@ export function DayChart({ chart, dateLabel, dayStatus = "steady" }: Props) {
     </div>
   )
 }
+// END_BLOCK: DAY_CHART_COMPONENT
