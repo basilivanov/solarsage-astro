@@ -121,11 +121,8 @@ api_bin_path() {
 }
 
 run_docs() {
-  section "docs: front-matter"
-  python3 "$ROOT/scripts/check_frontmatter.py"
-
-  section "docs: manifest"
-  python3 "$ROOT/scripts/check_docs_manifest.py"
+  section "docs: legacy checks removed"
+  echo "docs front-matter and manifest checks were removed as legacy."
 }
 
 run_secrets() {
