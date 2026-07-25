@@ -29,6 +29,9 @@
 import { useState } from "react"
 import { X, Sparkles, AlertCircle, Info } from "lucide-react"
 import { createSynastryPartner, type PartnerCreatePayload } from "@/lib/api/synastry"
+import { CityPicker } from "@/components/onboarding/city-picker"
+import type { City } from "@/lib/contracts/city"
+import { formatCity } from "@/lib/contracts/city"
 
 type Props = {
   open: boolean
@@ -42,7 +45,7 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
   const [relation, setRelation] = useState("romantic")
   const [birthDate, setBirthDate] = useState("")
   const [birthTime, setBirthTime] = useState("")
-  const [birthCity, setBirthCity] = useState("")
+  const [city, setCity] = useState<City | null>(null)
   const [unknownTime, setUnknownTime] = useState(false)
   const [savedTime, setSavedTime] = useState("")
 
@@ -83,7 +86,10 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
         relation,
         birthDate,
         birthTime: unknownTime ? null : (birthTime || null),
-        birthCity: birthCity.trim() || null,
+        birthCity: city ? formatCity(city) : null,
+        birthLat: city ? (city.lat ?? null) : null,
+        birthLon: city ? (city.lon ?? null) : null,
+        birthTz: city ? (city.timezone ?? null) : null,
         birthTimePrecision: unknownTime ? "approximate" : "exact",
       }
 
@@ -231,16 +237,13 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
 
           {/* Birth city */}
           <div className="space-y-1">
-            <label htmlFor="partner-birth-city" className="block text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="block text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
               Город рождения
-            </label>
-            <input
-              id="partner-birth-city"
-              type="text"
-              value={birthCity}
-              onChange={(e) => setBirthCity(e.target.value)}
+            </p>
+            <CityPicker
+              value={city}
+              onChange={setCity}
               placeholder="Например: Москва"
-              className="w-full rounded-xl border border-border/70 bg-background px-3.5 py-2.5 text-[14px] text-foreground focus:border-primary focus:outline-none"
             />
           </div>
 
