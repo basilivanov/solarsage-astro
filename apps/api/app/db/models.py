@@ -68,6 +68,11 @@
 #   - MicrocopyMiss
 #   - PromoCampaign
 #   - PromoRedemption
+#   - SynastryPartner
+#   - SynastryReport
+#   - SynastryAspectDetail
+#   - SynastryFeedback
+#   - SynastryCreditSpend
 # semantic_blocks:
 #   - USERS_TABLE: declarative class User -> "users"
 #   - USER_PROFILES_TABLE: declarative class UserProfile -> "user_profiles"
@@ -77,6 +82,7 @@
 #   - TODAY_PAYLOADS_CACHE_TABLE: declarative class TodayPayloadCache -> "today_payloads_cache" (W-5.2)
 #   - MICROCOPY_MISSES_TABLE: declarative class MicrocopyMiss -> "microcopy_misses" (W-9.2)
 #   - PROMO_CAMPAIGN_TABLE: declarative classes PromoCampaign and PromoRedemption -> "promo_campaigns", "promo_redemptions"
+#   - SYNASTRY_TABLES: declarative classes SynastryPartner, SynastryReport, SynastryAspectDetail, SynastryFeedback, SynastryCreditSpend -> "synastry_partners", "synastry_reports", "synastry_aspect_details", "synastry_feedback", "synastry_credit_spends"
 # owned_tests:
 #   - apps/api/tests/test_auth_endpoints.py
 #   - apps/api/tests/test_profile_endpoints.py
@@ -1261,3 +1267,278 @@ class PromoRedemption(Base):
     credit: Mapped[HoraryCredit | None] = relationship("HoraryCredit")
     natal_purchase: Mapped[Purchase | None] = relationship("Purchase")
 # END_BLOCK: PROMO_CAMPAIGN_TABLE
+
+
+# START_BLOCK: SYNASTRY_TABLES
+class SynastryPartner(Base):
+    """Owner-scoped partner birth data and relation metadata."""
+
+    __tablename__ = "synastry_partners"
+    __table_args__ = (
+        CheckConstraint(
+            "birth_lat IS NULL OR (birth_lat >= -90 AND birth_lat <= 90)",
+            name="ck_synastry_partners_birth_lat_range",
+        ),
+        CheckConstraint(
+            "birth_lon IS NULL OR (birth_lon >= -180 AND birth_lon <= 180)",
+            name="ck_synastry_partners_birth_lon_range",
+        ),
+        Index(
+            "ix_synastry_partners_owner_hash_active",
+            "owner_id",
+            "partner_input_hash",
+            unique=True,
+            postgresql_where=text("invalidated_at IS NULL"),
+            sqlite_where=text("invalidated_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    relation_type: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="romantic", server_default="romantic"
+    )
+    birth_date: Mapped[date] = mapped_column(Date, nullable=False)
+    birth_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    birth_city: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    birth_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5), nullable=True)
+    birth_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
+    birth_tz: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    precision: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="exact", server_default="exact"
+    )
+    partner_input_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    invalidated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    owner: Mapped[User] = relationship("User")
+
+
+class SynastryReport(Base):
+    """Pair synastry calculation and narrative report record."""
+
+    __tablename__ = "synastry_reports"
+    __table_args__ = (
+        Index(
+            "ix_synastry_reports_owner_partner_active",
+            "owner_id",
+            "partner_id",
+            "owner_profile_hash",
+            "engine_version",
+            "calculation_version",
+            "prompt_version",
+            unique=True,
+            postgresql_where=text("invalidated_at IS NULL"),
+            sqlite_where=text("invalidated_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    partner_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("synastry_partners.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    owner_profile_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    engine_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="1", server_default="1"
+    )
+    calculation_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="1", server_default="1"
+    )
+    prompt_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="1", server_default="1"
+    )
+    report_schema_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="synastry/v1", server_default="synastry/v1"
+    )
+    state: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="pending", server_default="pending"
+    )
+    stage: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(
+        nullable=False, default=0, server_default="0"
+    )
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deterministic_payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    narrative_payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    invalidated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    owner: Mapped[User] = relationship("User")
+    partner: Mapped[SynastryPartner] = relationship("SynastryPartner")
+
+
+class SynastryAspectDetail(Base):
+    """Detailed LLM interpretation payload per synastry aspect."""
+
+    __tablename__ = "synastry_aspect_details"
+    __table_args__ = (
+        UniqueConstraint(
+            "report_id",
+            "aspect_id",
+            "prompt_version",
+            name="uq_synastry_aspect_details_report_aspect_prompt",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    report_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("synastry_reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    aspect_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="1", server_default="1"
+    )
+    state: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="pending", server_default="pending"
+    )
+    attempt_count: Mapped[int] = mapped_column(
+        nullable=False, default=0, server_default="0"
+    )
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    report: Mapped[SynastryReport] = relationship("SynastryReport")
+
+
+class SynastryFeedback(Base):
+    """User feedback for a synastry report."""
+
+    __tablename__ = "synastry_feedback"
+    __table_args__ = (
+        UniqueConstraint("user_id", "report_id", name="uq_synastry_feedback_user_report"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    report_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("synastry_reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    value: Mapped[str] = mapped_column(String(30), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship("User")
+    report: Mapped[SynastryReport] = relationship("SynastryReport")
+
+
+class SynastryCreditSpend(Base):
+    """Credit spend log for synastry report calculations."""
+
+    __tablename__ = "synastry_credit_spends"
+    __table_args__ = (
+        CheckConstraint("amount = 1", name="ck_synastry_credit_spends_amount_one"),
+        UniqueConstraint("idempotency_key", name="uq_synastry_credit_spends_idempotency"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    credit_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("horary_credits.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    report_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("synastry_reports.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+    )
+    amount: Mapped[int] = mapped_column(nullable=False, default=1, server_default="1")
+    idempotency_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    refunded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped[User] = relationship("User")
+    credit: Mapped[HoraryCredit] = relationship("HoraryCredit")
+    report: Mapped[SynastryReport | None] = relationship("SynastryReport")
+# END_BLOCK: SYNASTRY_TABLES
