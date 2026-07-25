@@ -4,6 +4,37 @@
 #       Does not enable V2 scoring. Provides structured evidence for future waves.
 # ############################################################################
 
+# START_MODULE_CONTRACT: M-ACTIVATION-LAYER-SERVICE
+# purpose: Build deterministic ActivationLayer from day signals and optional sidecar layer.
+# owns:
+#   - apps/api/app/services/activation_layer_service.py
+# inputs: day_signals (list[AstroSignal]), target_date, target_time, target_tz, house_system
+# outputs: ActivationLayer
+# dependencies:
+#   - M-CORE-VERSIONS (ACTIVATION_LAYER_VERSION, CALCULATION_VERSION)
+#   - M-SCHEMAS-ACTIVATION (ActivationEvidence, ActivationLayer, ActivationPhase, ActivationPolarity)
+#   - M-SCHEMAS-NORMALIZATION (AstroSignal)
+# side_effects: none (pure calculations)
+# emitted_logs: none
+# failure_policy: none
+# END_MODULE_CONTRACT: M-ACTIVATION-LAYER-SERVICE
+
+# START_MODULE_MAP: M-ACTIVATION-LAYER-SERVICE
+# public_entrypoints:
+#   - ActivationLayerService
+#   - ActivationLayerService.build
+# semantic_blocks:
+#   - ACTIVATION_HELPERS: pure polarity and phase helper functions
+#   - ACTIVATION_SERVICE_CLASS: ActivationLayerService class and signal builder methods
+# owned_tests:
+#   - apps/api/tests/test_activation_layer_profections.py
+#   - apps/api/tests/test_activation_layer_firdar.py
+#   - apps/api/tests/test_activation_layer_transits.py
+#   - apps/api/tests/test_activation_layer_progressions.py
+#   - apps/api/tests/test_activation_layer_returns.py
+#   - apps/api/tests/test_activation_layer_eclipse.py
+# END_MODULE_MAP: M-ACTIVATION-LAYER-SERVICE
+
 from __future__ import annotations
 
 from datetime import date as Date
@@ -29,6 +60,7 @@ POLARITY_MAP: dict[str, ActivationPolarity] = {
 }
 
 
+# START_BLOCK: ACTIVATION_HELPERS
 def _build_id(prefix: str, signal: AstroSignal) -> str:
     """Deterministic stable id for a signal-based activation."""
     source = strip_prefix(signal.planet)
@@ -46,8 +78,10 @@ def _phase(signal: AstroSignal) -> ActivationPhase:
     if signal.phase and signal.phase in ("applying", "exact", "separating", "background", "period"):
         return signal.phase  # type: ignore
     return "background"
+# END_BLOCK: ACTIVATION_HELPERS
 
 
+# START_BLOCK: ACTIVATION_SERVICE_CLASS
 class ActivationLayerService:
     """Build a deterministic ActivationLayer from day signals and optional sidecar layer.
 
@@ -67,6 +101,13 @@ class ActivationLayerService:
         house_system: str,
         sidecar_activation_layer: ActivationLayer | dict | None = None,
     ) -> ActivationLayer:
+        # START_FUNCTION_CONTRACT: F-M-ACTIVATION-LAYER-SERVICE.build
+        # purpose: Build an ActivationLayer from day signals or validate provided sidecar activation layer.
+        # inputs: natal_context, transits, day_signals, target_date, target_time, target_tz, house_system, sidecar_activation_layer
+        # returns: ActivationLayer
+        # side_effects: none
+        # error_behavior: none
+        # END_FUNCTION_CONTRACT: F-M-ACTIVATION-LAYER-SERVICE.build
         # If a sidecar layer is provided, validate and return it
         if sidecar_activation_layer is not None:
             if isinstance(sidecar_activation_layer, dict):
@@ -189,3 +230,4 @@ class ActivationLayerService:
             polarity="neutral",
             evidence=evidence,
         )
+# END_BLOCK: ACTIVATION_SERVICE_CLASS

@@ -4,6 +4,32 @@
 #       Provides typed canon data and version strings.
 # ############################################################################
 
+# START_MODULE_CONTRACT: M-CANON-SERVICE
+# purpose: Load, validate, and version all grace/canon/*.yml files at production startup.
+# owns:
+#   - apps/api/app/services/canon_service.py
+# inputs: canon_dir (Path | None)
+# outputs: dict mapping canon filenames to loaded dictionaries and version map
+# dependencies: yaml, app.services.horizon_canon_service, app.services.horizon_content_canon_service
+# side_effects: loads YAML files from disk
+# emitted_logs: none
+# failure_policy: raises CanonValidationError on invalid schema/missing required canon files
+# END_MODULE_CONTRACT: M-CANON-SERVICE
+
+# START_MODULE_MAP: M-CANON-SERVICE
+# public_entrypoints:
+#   - validate_canon_bundle
+#   - load_canon_bundle
+#   - get_canon_versions
+#   - CanonValidationError
+# semantic_blocks:
+#   - CANON_VALIDATION: validate_canon_bundle and load_canon_bundle functions
+#   - CANON_VERSIONS_MAP: get_canon_versions function
+# owned_tests:
+#   - apps/api/tests/test_canon_service.py
+#   - apps/api/tests/test_horizon_canon_service.py
+# END_MODULE_MAP: M-CANON-SERVICE
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -66,7 +92,15 @@ def _load_yaml(path: Path) -> dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
+# START_BLOCK: CANON_VALIDATION
 def validate_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, Any]]:
+    # START_FUNCTION_CONTRACT: F-M-CANON-SERVICE.validate_canon_bundle
+    # purpose: Load and validate all required canon files, raising CanonValidationError on failure.
+    # inputs: canon_dir (Path | None)
+    # returns: dict mapping filename to loaded data
+    # side_effects: loads YAML files from disk
+    # error_behavior: raises CanonValidationError if missing file or invalid schema
+    # END_FUNCTION_CONTRACT: F-M-CANON-SERVICE.validate_canon_bundle
     """Load and validate all canon files. Raise CanonValidationError on failure.
 
     Returns dict mapping filename stem to loaded data, e.g. {"spheres": {...}}.
@@ -118,6 +152,13 @@ def validate_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, 
 
 
 def load_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, Any]]:
+    # START_FUNCTION_CONTRACT: F-M-CANON-SERVICE.load_canon_bundle
+    # purpose: Load canon bundle for production startup without raising on missing optional files.
+    # inputs: canon_dir (Path | None)
+    # returns: dict mapping filename to loaded data
+    # side_effects: loads YAML files from disk, prints warnings to stderr on errors
+    # error_behavior: swallows missing optional files
+    # END_FUNCTION_CONTRACT: F-M-CANON-SERVICE.load_canon_bundle
     """Load canon bundle without raising on missing files.
     Returns empty dict for missing files but logs warnings.
     Used by production startup path.
@@ -147,8 +188,10 @@ def load_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, Any]
             print(f"ERROR: Failed to load canon file {filename}: {exc}", file=sys.stderr)
 
     return bundle
+# END_BLOCK: CANON_VALIDATION
 
 
+# START_BLOCK: CANON_VERSIONS_MAP
 def get_canon_versions() -> dict[str, str]:
     # START_FUNCTION_CONTRACT: F-M-CANON-SERVICE.get_canon_versions
     # purpose: Return the single public Today/cache/audit canon map with exactly five core and four horizon keys.
@@ -167,3 +210,4 @@ def get_canon_versions() -> dict[str, str]:
         **get_horizon_canon_versions(),
         **get_horizon_content_canon_versions(),
     }
+# END_BLOCK: CANON_VERSIONS_MAP

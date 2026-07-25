@@ -1,3 +1,46 @@
+# ############################################################################
+# AI_HEADER: MODULE_CHECKIN_SERVICE
+# ROLE: Core service layer for evening checkin records and streak metrics calculation.
+# DEPENDENCIES: sqlalchemy, app.db.models, app.schemas.checkin
+# GRACE_ANCHORS: [CHECKIN_MUTATIONS, CHECKIN_METRICS, CHECKIN_HELPERS]
+# WAVE: W-8.1
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-CHECKIN-SERVICE
+# purpose: Manage evening checkins, calculate user streak metrics, and format responses.
+# owns:
+#   - apps/api/app/services/checkin_service.py
+# inputs:
+#   - AsyncSession DB session, user_id, target_date, mood, accuracy, energy, tags, note
+# outputs:
+#   - EveningCheckin, CheckinMetrics, CheckinResponse
+# dependencies:
+#   - M-DB-SESSION (AsyncSession)
+#   - M-DB-MODELS (EveningCheckin, User, UserProfile)
+#   - M-SCHEMAS-CHECKIN (CheckinMetrics, CheckinResponse)
+# side_effects:
+#   - inserts/updates EveningCheckin rows
+# emitted_logs: none
+# failure_policy: propagates DB errors
+# END_MODULE_CONTRACT: M-CHECKIN-SERVICE
+
+# START_MODULE_MAP: M-CHECKIN-SERVICE
+# public_entrypoints:
+#   - CheckinService
+#   - CheckinService.create_checkin
+#   - CheckinService.get_checkin
+#   - CheckinService.local_today
+#   - CheckinService.local_yesterday
+#   - CheckinService.calculate_streak
+#   - CheckinService.metrics
+#   - CheckinService.to_response
+# semantic_blocks:
+#   - CHECKIN_HELPERS: pure conversion and date utility functions
+#   - CHECKIN_SERVICE_CLASS: CheckinService business logic class
+# owned_tests:
+#   - apps/api/tests/test_checkin.py
+# END_MODULE_MAP: M-CHECKIN-SERVICE
+
 from __future__ import annotations
 
 import json
@@ -28,6 +71,7 @@ SCORE_TO_LEGACY_MOOD = {
 }
 
 
+# START_BLOCK: CHECKIN_HELPERS
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -65,8 +109,10 @@ def _as_utc(value: datetime | None) -> datetime | None:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+# END_BLOCK: CHECKIN_HELPERS
 
 
+# START_BLOCK: CHECKIN_SERVICE_CLASS
 class CheckinService:
     """Evening check-in service."""
 
@@ -83,6 +129,14 @@ class CheckinService:
         tags: list[str] | None,
         note: str | None,
     ) -> EveningCheckin:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.create_checkin
+        # purpose: Create or update evening checkin for target date.
+        # inputs: user_id, target_date, mood, accuracy, energy, tags, note
+        # returns: EveningCheckin
+        # side_effects: inserts/updates EveningCheckin row
+        # emitted_logs: none
+        # error_behavior: propagates DB exceptions
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.create_checkin
         result = await self.db.execute(
             select(EveningCheckin).where(
                 EveningCheckin.user_id == user_id,
@@ -124,6 +178,13 @@ class CheckinService:
         user_id: uuid.UUID,
         target_date: date,
     ) -> EveningCheckin | None:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.get_checkin
+        # purpose: Retrieve checkin row for target_date.
+        # inputs: user_id (UUID), target_date (date)
+        # returns: EveningCheckin or None
+        # side_effects: none
+        # error_behavior: propagates DB exceptions
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.get_checkin
         result = await self.db.execute(
             select(EveningCheckin).where(
                 EveningCheckin.user_id == user_id,
@@ -133,13 +194,34 @@ class CheckinService:
         return result.scalar_one_or_none()
 
     async def local_today(self, user: User) -> date:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.local_today
+        # purpose: Calculate current local date for user timezone.
+        # inputs: user (User)
+        # returns: date
+        # side_effects: none
+        # error_behavior: none
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.local_today
         tz = _safe_zoneinfo(self._profile_timezone(user.profile))
         return utc_now().astimezone(tz).date()
 
     async def local_yesterday(self, user: User) -> date:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.local_yesterday
+        # purpose: Calculate yesterday's local date for user timezone.
+        # inputs: user (User)
+        # returns: date
+        # side_effects: none
+        # error_behavior: none
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.local_yesterday
         return await self.local_today(user) - timedelta(days=1)
 
     async def calculate_streak(self, user_id: uuid.UUID, target_date: date) -> int:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.calculate_streak
+        # purpose: Calculate consecutive checkin streak up to target_date.
+        # inputs: user_id (UUID), target_date (date)
+        # returns: int streak count
+        # side_effects: none
+        # error_behavior: propagates DB exceptions
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.calculate_streak
         dates = await self._checkin_dates_through(user_id, target_date)
         streak = 1
         cursor = target_date - timedelta(days=1)
@@ -162,6 +244,13 @@ class CheckinService:
         *,
         fallback_to_date: date,
     ) -> CheckinMetrics:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.metrics
+        # purpose: Calculate aggregated checkin metrics for date range.
+        # inputs: user_id, from_date, to_date, fallback_to_date
+        # returns: CheckinMetrics
+        # side_effects: none
+        # error_behavior: propagates DB exceptions
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.metrics
         lower = from_date or date.min
         upper = to_date or fallback_to_date
         rows = (
@@ -201,6 +290,13 @@ class CheckinService:
         )
 
     def to_response(self, row: EveningCheckin) -> CheckinResponse:
+        # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.to_response
+        # purpose: Convert EveningCheckin ORM model to CheckinResponse schema.
+        # inputs: row (EveningCheckin)
+        # returns: CheckinResponse
+        # side_effects: none
+        # error_behavior: none
+        # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.to_response
         return CheckinResponse(
             id=row.id,
             target_date=row.target_date,
@@ -270,3 +366,4 @@ class CheckinService:
                 longest = max(longest, current)
                 current = 1
         return max(longest, current)
+# END_BLOCK: CHECKIN_SERVICE_CLASS
