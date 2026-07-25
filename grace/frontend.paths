@@ -51,6 +51,8 @@ components/shared/**/*.tsx
 components/shared/**/*.ts
 components/monetization/**/*.tsx
 components/monetization/**/*.ts
+components/synastry/**/*.tsx
+components/synastry/**/*.ts
 lib/grace/**/*.ts
 lib/api/**/*.ts
 lib/api/promo.ts
