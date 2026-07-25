@@ -92,3 +92,7 @@ sudo tmux send-keys -t astro2 Enter
 ## Отчёт пользователю
 
 Коротко: что сделал кодер, что поправил сам на ревью, результат проверок, SHA коммита, статус пуша.
+
+## Prod-error фиксы от авто-runner'а
+
+PR'ы с label `prod-fix` приходят от авто-runner'а (`scripts/prod-errors/fix_runner.py`, headless opencode в git worktree), а не от tmux-кодера. К ним применимы те же правила срезов: ревью полного diff, проверка, что затронуты только разрешённые файлы и нет ослабления тестов, прогон релевантных проверок перед мержем. Мерж и деплой — ручной батч владельца; после деплоя `python3 scripts/prod-errors/resolve_after_deploy.py <sha>`.

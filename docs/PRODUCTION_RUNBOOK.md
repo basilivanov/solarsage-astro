@@ -148,6 +148,20 @@ Open `http://127.0.0.1:18095` in local browser.
 3. Create API Token for triage automation under Settings -> API tokens.
 4. Add `ERROR_TRACKING_DSN=http://<key>@bugsink:8000/<project_id>` to `/etc/solarsage/app.env`.
 
+### 2.4 Prod Error Loop
+
+Closed-loop production error handling: frontend/backend errors are forwarded to Bugsink (see §2.3), triaged into GitHub issues, auto-fixed via headless opencode with PRs, and resolved after manual batch deploy.
+
+- **Backend forwarding:** `apps/api/app/services/error_tracking.py` forwards `level ∈ {error, fatal}` envelopes with `event ^ "frontend."` from `log_intake.py` to Bugsink; FastAPI 5xx go via `FastApiIntegration`. Active only when `ERROR_TRACKING_DSN` is non-empty (fail-open otherwise).
+- **Triage + fix runner (dev host):** `scripts/prod-errors/` — `triage.py` (Bugsink unresolved ≥3 events → dedup by `bugsink-issue:<id>` marker → GitHub issue with label `prod-error` → top `MAX_FIXES_PER_RUN` to `fix_runner.py`), `fix_runner.py` (git worktree + ТЗ + headless `opencode run` + targeted checks → PR with label `prod-fix`, or honest issue comment on failure), `resolve_after_deploy.py <sha>`, `run.sh` (flock + ephemeral SSH tunnel to prod Bugsink).
+- **Local config:** `scripts/prod-errors/.env` (gitignored, see `.env.example`) holds `BUGSINK_TOKEN`; the cron line (owner-installed):
+  ```cron
+  17 */4 * * * /opt/solarsage-astro/scripts/prod-errors/run.sh >> /var/log/prod-errors.log 2>&1
+  ```
+- **Labels:** `prod-error` (triaged issues), `prod-fix` (auto-fix PRs). Billing/auth paths are protected: such issues are triaged but never auto-fixed.
+- **Human gate (unchanged):** review and batch-merge `prod-fix` PRs, then deploy via the GitHub Deploy Production workflow; afterwards run `python3 scripts/prod-errors/resolve_after_deploy.py <sha>` to mark fixed Bugsink issues resolved (GitHub issues close themselves via `Fixes #N`).
+- **Never automated:** PR merge and production deploy remain manual owner actions.
+
 ---
 
 ## 3. Deployments & Server Provisioning

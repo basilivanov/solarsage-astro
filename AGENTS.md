@@ -249,6 +249,7 @@ python3 scripts/generate-telegram-test-initdata.py
 | App compose (source) | `infra/production/docker-compose.app.yml` |
 | DB compose (source) | `infra/production/docker-compose.yml` |
 | InitData генератор | `scripts/generate-telegram-test-initdata.py` |
+| Prod error loop (triage/fix runner) | `scripts/prod-errors/` (`.env` gitignored, см. `.env.example`) |
 
 ## Известные баги / технический долг
 
