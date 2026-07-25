@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: onboarding-shell.tsx
+// START_MODULE_CONTRACT: M-ONBOARDING-ONBOARDING-SHELL
+// purpose: Onboarding step layout shell with top navigation bar, step progress indicators, title/subtitle header, and sticky footer.
 // owns:
 //   - components/onboarding/onboarding-shell.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: step, total, onBack, title, subtitle, eyebrow, children, footer, showProgress
+// outputs: OnboardingShell React component
+// dependencies: lucide-react
+// side_effects: none (pure UI shell)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ONBOARDING-ONBOARDING-SHELL
+
+// START_MODULE_MAP: M-ONBOARDING-ONBOARDING-SHELL
+// public_entrypoints:
+//   - OnboardingShell
+// semantic_blocks:
+//   - ONBOARDING_SHELL_COMPONENT: onboarding step layout shell component
+// owned_tests:
+//   - __tests__/components/OnboardingFlow.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-ONBOARDING-SHELL
 "use client"
 
 import type { ReactNode } from "react"
@@ -36,6 +43,7 @@ type Props = {
   showProgress?: boolean
 }
 
+// START_BLOCK: ONBOARDING_SHELL_COMPONENT
 export function OnboardingShell({
   step,
   total,
@@ -127,3 +135,4 @@ export function OnboardingShell({
     </div>
   )
 }
+// END_BLOCK: ONBOARDING_SHELL_COMPONENT

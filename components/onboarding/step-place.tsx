@@ -6,23 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: step-place.tsx
+// START_MODULE_CONTRACT: M-ONBOARDING-STEP-PLACE
+// purpose: Onboarding step component for capturing birth location and current city.
 // owns:
 //   - components/onboarding/step-place.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - Public test contract: the birth-city picker is wrapped in
-//     data-testid="onboarding-birth-city-field" and the current-city picker
-//     (rendered when "same as birth" is unchecked) in
-//     data-testid="onboarding-current-city-field"; tests scope CityPicker
-//     selectors to the relevant wrapper because two pickers can coexist.
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: birthPlace, currentCity, sameAsBirth, onChangeBirthPlace, onChangeCurrentCity, onChangeSameAsBirth, onBack, onNext
+// outputs: StepPlace React component
+// dependencies: OnboardingShell, PrimaryCta, CityPicker, lib/contracts/city
+// side_effects: none (pure UI step)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ONBOARDING-STEP-PLACE
+
+// START_MODULE_MAP: M-ONBOARDING-STEP-PLACE
+// public_entrypoints:
+//   - StepPlace
+// semantic_blocks:
+//   - STEP_PLACE_COMPONENT: step place location component
+// owned_tests:
+//   - __tests__/components/StepPlace.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-STEP-PLACE
 "use client"
 
 import { OnboardingShell } from "./onboarding-shell"
@@ -41,6 +44,7 @@ type Props = {
   onNext: () => void
 }
 
+// START_BLOCK: STEP_PLACE_COMPONENT
 export function StepPlace({
   birthPlace,
   currentCity,
@@ -146,4 +150,5 @@ export function StepPlace({
     </OnboardingShell>
   )
 }
+// END_BLOCK: STEP_PLACE_COMPONENT
 

@@ -18,6 +18,10 @@ components/chat/**/*.tsx
 components/chat/**/*.ts
 components/calendar/**/*.tsx
 components/calendar/**/*.ts
+components/onboarding/**/*.tsx
+components/onboarding/**/*.ts
+components/profile/**/*.tsx
+components/profile/**/*.ts
 lib/grace/**/*.ts
 lib/api/**/*.ts
 lib/api/promo.ts

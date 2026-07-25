@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: step-welcome.tsx
+// START_MODULE_CONTRACT: M-ONBOARDING-STEP-WELCOME
+// purpose: Onboarding welcome step component introducing product value proposition.
 // owns:
 //   - components/onboarding/step-welcome.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: onNext, onSkip
+// outputs: StepWelcome React component
+// dependencies: PrimaryCta
+// side_effects: none (pure UI step)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ONBOARDING-STEP-WELCOME
+
+// START_MODULE_MAP: M-ONBOARDING-STEP-WELCOME
+// public_entrypoints:
+//   - StepWelcome
+// semantic_blocks:
+//   - STEP_WELCOME_COMPONENT: step welcome component
+// owned_tests:
+//   - __tests__/components/OnboardingWelcome.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-STEP-WELCOME
 "use client"
 
 import { PrimaryCta } from "./primary-cta"
@@ -28,6 +35,7 @@ type Props = {
   onSkip?: () => void
 }
 
+// START_BLOCK: STEP_WELCOME_COMPONENT
 export function StepWelcome({ onNext, onSkip }: Props) {
   return (
     <div
@@ -104,3 +112,4 @@ export function StepWelcome({ onNext, onSkip }: Props) {
     </div>
   )
 }
+// END_BLOCK: STEP_WELCOME_COMPONENT

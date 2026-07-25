@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: step-birth.tsx
+// START_MODULE_CONTRACT: M-ONBOARDING-STEP-BIRTH
+// purpose: Onboarding step component for date and birth time input with promo exact time validation.
 // owns:
 //   - components/onboarding/step-birth.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: date, time, onChangeDate, onChangeTime, onBack, onNext, requireExactBirthTime
+// outputs: StepBirth React component
+// dependencies: OnboardingShell, PrimaryCta, NumField
+// side_effects: none (pure UI step)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ONBOARDING-STEP-BIRTH
+
+// START_MODULE_MAP: M-ONBOARDING-STEP-BIRTH
+// public_entrypoints:
+//   - StepBirth
+// semantic_blocks:
+//   - STEP_BIRTH_COMPONENT: step birth component
+// owned_tests:
+//   - __tests__/components/OnboardingFlow.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-STEP-BIRTH
 "use client"
 
 import { useRef } from "react"
@@ -47,6 +54,7 @@ type Props = {
   requireExactBirthTime?: boolean
 }
 
+// START_BLOCK: STEP_BIRTH_COMPONENT
 export function StepBirth({
   date,
   time,
@@ -208,4 +216,5 @@ export function StepBirth({
     </OnboardingShell>
   )
 }
+// END_BLOCK: STEP_BIRTH_COMPONENT
 

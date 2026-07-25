@@ -6,24 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI city-picker — component
+// START_MODULE_CONTRACT: M-ONBOARDING-CITY-PICKER
+// purpose: City search and selection input component with autocomplete suggestions.
 // owns:
 //   - components/onboarding/city-picker.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: Logging via v2 logging spine; React state management
-// emitted_logs: v2 logging: logEvent/logStart/logSuccess/logFailure (frontend) or logger.* (backend)
-// invariants:
-//   - Public test contract: data-testid="city-picker-input" on the text input,
-//     data-testid="city-picker-suggestions" on the dropdown list and
-//     data-testid="city-picker-suggestion" on each suggestion button. The
-//     contract is NOT globally unique: onboarding can render two pickers at
-//     once (birth city + current city when "same as birth" is unchecked), so
-//     tests must scope the locator to the active screen/sheet.
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: value (City | ProfileLocation | null), onChange, placeholder
+// outputs: CityPicker React component
+// dependencies: lib/api/cities, lib/contracts/city
+// side_effects: fetches city autocomplete suggestions from geo API
+// emitted_logs: none
+// failure_policy: displays error alert and allows retry
+// END_MODULE_CONTRACT: M-ONBOARDING-CITY-PICKER
+
+// START_MODULE_MAP: M-ONBOARDING-CITY-PICKER
+// public_entrypoints:
+//   - CityPicker
+// semantic_blocks:
+//   - CITY_PICKER_COMPONENT: city picker autocomplete component
+// owned_tests:
+//   - __tests__/components/CityPicker.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-CITY-PICKER
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -42,6 +44,7 @@ type Props = {
   autoFocus?: boolean
 }
 
+// START_BLOCK: CITY_PICKER_COMPONENT
 export function CityPicker({
   value,
   onChange,
@@ -221,4 +224,5 @@ export function CityPicker({
     </div>
   )
 }
+// END_BLOCK: CITY_PICKER_COMPONENT
 

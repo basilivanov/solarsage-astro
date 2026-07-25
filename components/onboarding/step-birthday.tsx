@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: step-birthday.tsx
+// START_MODULE_CONTRACT: M-ONBOARDING-STEP-BIRTHDAY
+// purpose: Onboarding step component for capturing birthday location for solar return calculation.
 // owns:
 //   - components/onboarding/step-birthday.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: currentCity, birthdayCity, sameAsCurrent, onChangeBirthdayCity, onChangeSameAsCurrent, onBack, onNext
+// outputs: StepBirthday React component
+// dependencies: OnboardingShell, PrimaryCta, CityPicker, lib/contracts/city
+// side_effects: none (pure UI step)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ONBOARDING-STEP-BIRTHDAY
+
+// START_MODULE_MAP: M-ONBOARDING-STEP-BIRTHDAY
+// public_entrypoints:
+//   - StepBirthday
+// semantic_blocks:
+//   - STEP_BIRTHDAY_COMPONENT: step birthday location component
+// owned_tests:
+//   - __tests__/components/OnboardingFlow.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-STEP-BIRTHDAY
 "use client"
 
 import { OnboardingShell } from "./onboarding-shell"
@@ -40,6 +47,7 @@ type Props = {
  * Где пользователь встретит ближайший день рождения.
  * Если не совпадает с текущим городом — считаем соляр по другой локации.
  */
+// START_BLOCK: STEP_BIRTHDAY_COMPONENT
 export function StepBirthday({
   currentCity,
   birthdayCity,
@@ -137,4 +145,5 @@ export function StepBirthday({
     </OnboardingShell>
   )
 }
+// END_BLOCK: STEP_BIRTHDAY_COMPONENT
 

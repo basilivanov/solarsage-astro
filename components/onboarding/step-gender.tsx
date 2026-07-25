@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: step-gender.tsx
+// START_MODULE_CONTRACT: M-ONBOARDING-STEP-GENDER
+// purpose: Onboarding step component for gender selection ("male" | "female").
 // owns:
 //   - components/onboarding/step-gender.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: gender ("male" | "female" | null), onSelect, onBack
+// outputs: StepGender React component
+// dependencies: OnboardingShell
+// side_effects: none (pure UI step)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ONBOARDING-STEP-GENDER
+
+// START_MODULE_MAP: M-ONBOARDING-STEP-GENDER
+// public_entrypoints:
+//   - StepGender
+// semantic_blocks:
+//   - STEP_GENDER_COMPONENT: step gender selection component
+// owned_tests:
+//   - __tests__/components/OnboardingFlow.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-STEP-GENDER
 "use client"
 
 import { OnboardingShell } from "./onboarding-shell"
@@ -29,6 +36,7 @@ type Props = {
   onBack: () => void
 }
 
+// START_BLOCK: STEP_GENDER_COMPONENT
 export function StepGender({ gender, onSelect, onBack }: Props) {
   return (
     <OnboardingShell
@@ -72,4 +80,5 @@ export function StepGender({ gender, onSelect, onBack }: Props) {
     </OnboardingShell>
   )
 }
+// END_BLOCK: STEP_GENDER_COMPONENT
 

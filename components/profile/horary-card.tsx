@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: horary-card.tsx
+// START_MODULE_CONTRACT: M-PROFILE-HORARY-CARD
+// purpose: Render horary credits status card on Profile screen.
 // owns:
 //   - components/profile/horary-card.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: horary (HoraryMeta)
+// outputs: HoraryCard React component
+// dependencies: lib/profile-meta
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-PROFILE-HORARY-CARD
+
+// START_MODULE_MAP: M-PROFILE-HORARY-CARD
+// public_entrypoints:
+//   - HoraryCard
+// semantic_blocks:
+//   - HORARY_CARD_COMPONENT: horary credits card component
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx
+// END_MODULE_MAP: M-PROFILE-HORARY-CARD
 import { HelpCircle } from "lucide-react"
 import type { HoraryMeta } from "@/lib/profile-meta"
 
@@ -26,6 +33,7 @@ type Props = {
   horary: HoraryMeta
 }
 
+// START_BLOCK: HORARY_CARD_COMPONENT
 export function HoraryCard({ horary }: Props) {
   const {
     weeklyFreeAvailable,
@@ -85,6 +93,7 @@ export function HoraryCard({ horary }: Props) {
     </div>
   )
 }
+// END_BLOCK: HORARY_CARD_COMPONENT
 
 function pluralQuestions(n: number) {
   const mod10 = n % 10

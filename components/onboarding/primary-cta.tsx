@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: primary-cta.tsx
+// START_MODULE_CONTRACT: M-ONBOARDING-PRIMARY-CTA
+// purpose: Render primary CTA button for onboarding step navigation and submission.
 // owns:
 //   - components/onboarding/primary-cta.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: label (string), disabled, className, ButtonHTMLAttributes
+// outputs: PrimaryCta React component
+// dependencies: none
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-ONBOARDING-PRIMARY-CTA
+
+// START_MODULE_MAP: M-ONBOARDING-PRIMARY-CTA
+// public_entrypoints:
+//   - PrimaryCta
+// semantic_blocks:
+//   - PRIMARY_CTA_COMPONENT: primary CTA button component
+// owned_tests:
+//   - __tests__/components/OnboardingFlow.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-PRIMARY-CTA
 "use client"
 
 import type { ButtonHTMLAttributes } from "react"
@@ -27,6 +34,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string
 }
 
+// START_BLOCK: PRIMARY_CTA_COMPONENT
 export function PrimaryCta({ label, disabled, className, ...rest }: Props) {
   return (
     <button
@@ -39,3 +47,4 @@ export function PrimaryCta({ label, disabled, className, ...rest }: Props) {
     </button>
   )
 }
+// END_BLOCK: PRIMARY_CTA_COMPONENT

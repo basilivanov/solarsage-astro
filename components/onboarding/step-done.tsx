@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: UI step-done — component
+// START_MODULE_CONTRACT: M-ONBOARDING-STEP-DONE
+// purpose: Onboarding final step component presenting calculation animation and initial profile save trigger.
 // owns:
 //   - components/onboarding/step-done.tsx
-// inputs: Component props / hook params
-// outputs: TSX render / values
-// dependencies: local modules
-// side_effects: React state management
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: onFinish, saving, error
+// outputs: StepDone React component
+// dependencies: PrimaryCta
+// side_effects: triggers onFinish profile submission callback
+// emitted_logs: none
+// failure_policy: displays error alert on save failure and enables retry
+// END_MODULE_CONTRACT: M-ONBOARDING-STEP-DONE
+
+// START_MODULE_MAP: M-ONBOARDING-STEP-DONE
+// public_entrypoints:
+//   - StepDone
+// semantic_blocks:
+//   - STEP_DONE_COMPONENT: step done final component
+// owned_tests:
+//   - __tests__/components/OnboardingFlow.test.tsx
+// END_MODULE_MAP: M-ONBOARDING-STEP-DONE
 "use client"
 
 import { useEffect, useState } from "react"
@@ -36,6 +43,7 @@ const PREPARE_STAGES = [
   "Собираем первый разбор дня",
 ]
 
+// START_BLOCK: STEP_DONE_COMPONENT
 export function StepDone({ onFinish, saving = false, error = null }: Props) {
   const [stage, setStage] = useState(0)
   const [ready, setReady] = useState(false)
@@ -143,3 +151,4 @@ export function StepDone({ onFinish, saving = false, error = null }: Props) {
     </div>
   )
 }
+// END_BLOCK: STEP_DONE_COMPONENT

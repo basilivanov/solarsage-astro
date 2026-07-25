@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Tests for avatar.tsx behavior
+// START_MODULE_CONTRACT: M-PROFILE-AVATAR
+// purpose: Render profile avatar image or user name initials circle.
 // owns:
 //   - components/profile/avatar.tsx
-// inputs: Mocks, fixtures
-// outputs: Assertion results
-// dependencies: local modules
-// side_effects: n/a (tests)
-// emitted_logs: n/a (tests)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: user (TelegramUser | null)
+// outputs: Avatar React component
+// dependencies: hooks/use-telegram-user
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-PROFILE-AVATAR
+
+// START_MODULE_MAP: M-PROFILE-AVATAR
+// public_entrypoints:
+//   - Avatar
+// semantic_blocks:
+//   - AVATAR_COMPONENT: profile avatar component
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx
+// END_MODULE_MAP: M-PROFILE-AVATAR
 import type { TelegramUser } from "@/hooks/use-telegram-user"
 
 function initials(name: string) {
@@ -35,6 +42,7 @@ function initials(name: string) {
  * показываем его, иначе — инициалы по first/last name. Без аватарки и
  * без имени показываем "??", чтобы не было пустого круга.
  */
+// START_BLOCK: AVATAR_COMPONENT
 export function Avatar({ user }: { user: TelegramUser | null }) {
   const name = user
     ? [user.firstName, user.lastName].filter(Boolean).join(" ") || "Гость"
@@ -56,3 +64,4 @@ export function Avatar({ user }: { user: TelegramUser | null }) {
     </div>
   )
 }
+// END_BLOCK: AVATAR_COMPONENT

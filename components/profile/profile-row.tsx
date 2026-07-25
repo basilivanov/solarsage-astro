@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: profile-row.tsx
+// START_MODULE_CONTRACT: M-PROFILE-PROFILE-ROW
+// purpose: Render interactive profile data row button for opening field editing sheet.
 // owns:
 //   - components/profile/profile-row.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: icon, label, value, placeholder, onClick, className, isLast, disabled, testId
+// outputs: ProfileRow React component
+// dependencies: lucide-react, lib/utils
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-PROFILE-PROFILE-ROW
+
+// START_MODULE_MAP: M-PROFILE-PROFILE-ROW
+// public_entrypoints:
+//   - ProfileRow
+// semantic_blocks:
+//   - PROFILE_ROW_COMPONENT: profile row component
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx
+// END_MODULE_MAP: M-PROFILE-PROFILE-ROW
 "use client"
 
 import type { LucideIcon } from "lucide-react"
@@ -37,6 +44,7 @@ type Props = {
   testId?: string
 }
 
+// START_BLOCK: PROFILE_ROW_COMPONENT
 export function ProfileRow({
   icon: Icon,
   label,
@@ -88,3 +96,4 @@ export function ProfileRow({
     </button>
   )
 }
+// END_BLOCK: PROFILE_ROW_COMPONENT

@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: service-row.tsx
+// START_MODULE_CONTRACT: M-PROFILE-SERVICE-ROW
+// purpose: Render external link or action row button on Profile screen.
 // owns:
 //   - components/profile/service-row.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: icon, label, hint, onClick, disabled, isLast
+// outputs: ServiceRow React component
+// dependencies: lucide-react, lib/utils
+// side_effects: none (pure UI)
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-PROFILE-SERVICE-ROW
+
+// START_MODULE_MAP: M-PROFILE-SERVICE-ROW
+// public_entrypoints:
+//   - ServiceRow
+// semantic_blocks:
+//   - SERVICE_ROW_COMPONENT: service action row component
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx
+// END_MODULE_MAP: M-PROFILE-SERVICE-ROW
 "use client"
 
 import type { LucideIcon } from "lucide-react"
@@ -34,6 +41,7 @@ type Props = {
   isLast?: boolean
 }
 
+// START_BLOCK: SERVICE_ROW_COMPONENT
 export function ServiceRow({
   icon: Icon,
   label,
@@ -74,3 +82,4 @@ export function ServiceRow({
     </button>
   )
 }
+// END_BLOCK: SERVICE_ROW_COMPONENT

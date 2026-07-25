@@ -1,3 +1,32 @@
+// ############################################################################
+// AI_HEADER: MODULE_COMPONENTS_CHECKIN_STATISTICS
+// ROLE: Checkin statistics and mood analytics section on Profile screen
+// DEPENDENCIES: react, lucide-react, lib/api/checkin, packages/contracts
+// GRACE_ANCHORS: [CHECKIN_STATISTICS_COMPONENT]
+// SLICE: SLICE-PROFILE-ONBOARDING
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-STATISTICS
+// purpose: Render checkin statistics section with streak count, mood distribution, and tag analytics.
+// owns:
+//   - components/profile/checkin-statistics.tsx
+// inputs: timeZone (string | null)
+// outputs: CheckinStatistics React component
+// dependencies: getCheckinMetrics, packages/contracts
+// side_effects: fetches checkin metrics from API
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-STATISTICS
+
+// START_MODULE_MAP: M-COMPONENTS-CHECKIN-STATISTICS
+// public_entrypoints:
+//   - CheckinStatistics
+// semantic_blocks:
+//   - CHECKIN_STATISTICS_COMPONENT: checkin statistics component
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx
+// END_MODULE_MAP: M-COMPONENTS-CHECKIN-STATISTICS
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -35,6 +64,7 @@ function shiftDateKey(dateKey: string, days: number): string {
   return `${shiftedYear}-${shiftedMonth}-${shiftedDay}`
 }
 
+// START_BLOCK: CHECKIN_STATISTICS_COMPONENT
 export function CheckinStatistics({ timeZone }: Props) {
   const [metrics, setMetrics] = useState<CheckinMetrics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -255,3 +285,4 @@ export function CheckinStatistics({ timeZone }: Props) {
     </section>
   )
 }
+// END_BLOCK: CHECKIN_STATISTICS_COMPONENT

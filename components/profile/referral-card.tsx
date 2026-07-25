@@ -6,19 +6,26 @@
 // GRACE_ANCHORS: []
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
-// START_MODULE_CONTRACT
-// purpose: Module: referral-card.tsx
+// START_MODULE_CONTRACT: M-PROFILE-REFERRAL-CARD
+// purpose: Render referral card on Profile screen with invite button and referral statistics.
 // owns:
 //   - components/profile/referral-card.tsx
-// inputs: Function args
-// outputs: Return values
-// dependencies: local modules
-// side_effects: n/a (pure)
-// emitted_logs: n/a (pure)
-// invariants:
-//   - n/a
-// failure_policy: log and raise
-// END_MODULE_CONTRACT
+// inputs: referral (ReferralMeta)
+// outputs: ReferralCard React component
+// dependencies: lib/profile-meta, lib/hooks/use-share-invite
+// side_effects: triggers share invite hook on click
+// emitted_logs: none
+// failure_policy: none
+// END_MODULE_CONTRACT: M-PROFILE-REFERRAL-CARD
+
+// START_MODULE_MAP: M-PROFILE-REFERRAL-CARD
+// public_entrypoints:
+//   - ReferralCard
+// semantic_blocks:
+//   - REFERRAL_CARD_COMPONENT: referral card component
+// owned_tests:
+//   - __tests__/components/ProfileScreen.test.tsx
+// END_MODULE_MAP: M-PROFILE-REFERRAL-CARD
 "use client"
 
 import { Gift, Users } from "lucide-react"
@@ -29,6 +36,7 @@ type Props = {
   referral: ReferralMeta
 }
 
+// START_BLOCK: REFERRAL_CARD_COMPONENT
 export function ReferralCard({ referral }: Props) {
   const share = useShareInvite()
 
@@ -71,3 +79,4 @@ export function ReferralCard({ referral }: Props) {
     </div>
   )
 }
+// END_BLOCK: REFERRAL_CARD_COMPONENT
