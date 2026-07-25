@@ -22,7 +22,7 @@
 import type { LucideIcon } from "lucide-react"
 
 export type AvailableReading = {
-  key: "natal" | "horary" | "election"
+  key: "natal" | "horary" | "election" | "synastry"
   title: string
   description: string
   icon: LucideIcon

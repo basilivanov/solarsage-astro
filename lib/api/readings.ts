@@ -154,6 +154,13 @@ export function listReadings(): ReadingsCatalog {
         icon: Star,
         teaser: "Планеты, дома, аспекты — всё о тебе по данным рождения",
       },
+      {
+        key: "synastry",
+        title: "Совместимость",
+        description: "Совместимость с партнёром",
+        icon: Users,
+        teaser: "Синастрия — анализ совместимости двух натальных карт",
+      },
     ],
     coming: [
       {
@@ -167,12 +174,6 @@ export function listReadings(): ReadingsCatalog {
         title: "Прогноз на год",
         description: "Главные темы года",
         icon: Calendar,
-      },
-      {
-        key: "synastry",
-        title: "Синастрия",
-        description: "Совместимость с партнёром",
-        icon: Users,
       },
     ],
   }

@@ -103,7 +103,7 @@ export function ReadingsScreen() {
                 title={r.title}
                 description={r.description}
                 teaser={r.teaser}
-                route={r.key === "natal" ? "/readings/natal" : r.key === "election" ? "/readings/election" : "/readings/horary"}
+                route={r.key === "natal" ? "/readings/natal" : r.key === "election" ? "/readings/election" : r.key === "synastry" ? "/synastry" : "/readings/horary"}
                 onClick={() => openReading(r.key)}
               />
             ))}
