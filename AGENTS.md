@@ -91,6 +91,36 @@ Systemd на проде: активны `solarsage-db.service`, `solarsage-backu
 
 Корневой дизайн-вывод: любой внешний сервис, от которого зависит продукт, обязан быть проверен на достижимость **с прод-хоста** (см. post-deploy smoke); «зелёные тесты в CI/dev» ничего не говорят о прод-egress.
 
+## Dev host (dev.astro.vasiliy-ivanov.ru)
+
+Дев живёт на отдельной машине (`bivanov.fvds.ru`, 45.88.172.246 — та же, где egress-relay в standby). В отличие от прода, рантайм здесь — **systemd units + локальный checkout** `/opt/solarsage-astro`, а не Compose-контейнеры.
+
+Nginx (`/etc/nginx/sites-enabled/astro.conf`): `dev.astro.vasiliy-ivanov.ru` и `test.astro.vasiliy-ivanov.ru` → `/api/*` на `127.0.0.1:8000`, всё остальное на `127.0.0.1:3002`.
+
+| Unit | Что запускает | Порт |
+|------|---------------|------|
+| `solarsage-api.service` | uvicorn `app.main:app` из `apps/api/.venv`, env из `/opt/solarsage-astro/.env` | 8000 |
+| `solarsage-frontend.service` | `npm run start` (`next start`), `NODE_ENV=production`, `PORT=3002` — отдаёт prod build из `.next-prod` | 3002 |
+| `solarsage-sidecar.service` | uvicorn `solarsage.app:app` из `apps/solarsage/venv`, `PYTHONPATH=apps/solarsage` | 18091 |
+| `solarsage-frontend-dev-3000.service` | `pnpm next dev` (обычно inactive; 3000 поднимают вручную, nginx его не обслуживает) | 3000 |
+| `solarsage-frontend-mock-dev-3001.service` | mock preview из worktree `/opt/solarsage-astro-mock-preview` (`archive/demo-origin-main`) | 3001 |
+
+Девовский `.env`: `APP_ENV=staging`, `DEV_MODE=false`, `APP_DOMAIN=dev.astro.vasiliy-ivanov.ru` → auth только через Telegram HMAC, `/api/auth/dev` на деве недоступен.
+
+### Деплой на дев
+
+```bash
+cd /opt/solarsage-astro && git pull   # рабочее дерево = то, что крутится
+NODE_ENV=production npm run build     # собирает в .next-prod (см. lib/env/next-dist-dir.mjs)
+systemctl restart solarsage-api solarsage-frontend solarsage-sidecar
+```
+
+Проверка: `curl https://dev.astro.vasiliy-ivanov.ru/api/health` — `git_sha` должен совпасть с HEAD.
+
+⚠️ Не поднимать API/фронт вручную через `nohup uvicorn` / `nohup npm run start` на тех же портах: ручной процесс занимает порт, а systemd unit уходит в crash-loop (`activating (auto-restart)`). Если unit crash-loop'ится — сначала искать чужой процесс на порту (`ss -tlnp | grep :8000`).
+
+Примечание: `next-env.d.ts` переписывается под последний использованный distDir (`.next` ↔ `.next-prod`) при каждой сборке — этот diff в коммиты не включать.
+
 ## Аутентификация
 
 Единственный канонический путь: **Telegram WebApp → HMAC → `/api/auth/telegram`**.
