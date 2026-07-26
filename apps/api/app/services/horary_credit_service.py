@@ -130,17 +130,33 @@ class HoraryCreditService:
         credit = result.scalar_one_or_none()
 
         if not credit:
-            credit = HoraryCredit(
-                user_id=user_id,
-                source="subscription_weekly_free",
-                amount=1,
-                used_amount=0,
-                access_week_start=week_start,
-                access_week_end=week_end,
-                expires_at=week_end,
-            )
-            self.db.add(credit)
-            await self.db.flush()
+            from sqlalchemy.exc import IntegrityError
+            try:
+                async with self.db.begin_nested():
+                    credit = HoraryCredit(
+                        user_id=user_id,
+                        source="subscription_weekly_free",
+                        amount=1,
+                        used_amount=0,
+                        access_week_start=week_start,
+                        access_week_end=week_end,
+                        expires_at=week_end,
+                    )
+                    self.db.add(credit)
+                    await self.db.flush()
+            except IntegrityError:
+                result = await self.db.execute(
+                    select(HoraryCredit)
+                    .where(
+                        and_(
+                            HoraryCredit.user_id == user_id,
+                            HoraryCredit.source == "subscription_weekly_free",
+                            HoraryCredit.access_week_start == week_start,
+                            HoraryCredit.access_week_end == week_end,
+                        )
+                    )
+                )
+                credit = result.scalar_one_or_none()
 
         return credit
 

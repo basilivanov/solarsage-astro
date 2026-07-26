@@ -432,3 +432,46 @@ async def test_pipeline_persists_planet_points_and_houses():
         assert det["partner_planets"][0]["house"] == 2
         assert det["partner_planets"][0]["house_reliable"] is True
 
+
+@pytest.mark.asyncio
+async def test_fail_and_refund_idempotent():
+    """_fail_and_refund is idempotent: second call does not double refund or emit duplicate event."""
+    from datetime import datetime, timezone
+    from app.services.synastry_service import SynastryService
+    from app.db.models import SynastryReport, SynastryCreditSpend, HoraryCredit
+
+    report_id = uuid.uuid4()
+    credit_id = uuid.uuid4()
+    report = SynastryReport(id=report_id, owner_id=uuid.uuid4(), partner_id=uuid.uuid4(), state="pending")
+    spend = SynastryCreditSpend(id=uuid.uuid4(), user_id=report.owner_id, credit_id=credit_id, report_id=report_id, amount=1, refunded_at=None)
+    credit = HoraryCredit(id=credit_id, user_id=report.owner_id, source="subscription_weekly_free", amount=1, used_amount=1)
+
+    db = AsyncMock()
+    # First call find spend & credit; second call spend has refunded_at set
+    db.execute.side_effect = [
+        AsyncMock(scalar_one_or_none=lambda: spend),
+        AsyncMock(scalar_one_or_none=lambda: credit),
+        AsyncMock(scalar_one_or_none=lambda: spend),
+    ]
+
+    service = SynastryService(db)
+
+    with patch("app.services.synastry_service.log_event") as mock_log:
+        # First fail and refund call
+        res1 = await service._fail_and_refund(report, "TEST_ERR", "Failed first time")
+        assert res1.state == "failed"
+        assert spend.refunded_at is not None
+        assert credit.used_amount == 0
+
+        # Check credit_refunded event emitted once
+        refund_events = [call for call in mock_log.call_args_list if call.args[0] == "synastry.credit_refunded"]
+        assert len(refund_events) == 1
+
+        # Second call on already refunded spend
+        res2 = await service._fail_and_refund(report, "TEST_ERR", "Failed second time")
+        assert res2.state == "failed"
+        assert credit.used_amount == 0  # Not decremented below 0!
+
+        refund_events_2 = [call for call in mock_log.call_args_list if call.args[0] == "synastry.credit_refunded"]
+        assert len(refund_events_2) == 1  # Still 1 event total!
+
