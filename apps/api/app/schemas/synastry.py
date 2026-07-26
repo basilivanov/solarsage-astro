@@ -140,6 +140,22 @@ class SynastryAspect(CamelModel):
     orb_label: str | None = Field(default=None, description="Formatted orb string e.g. 1°12′")
 
 
+class PlanetInfo(CamelModel):
+    """Planet metadata for drill-down cards."""
+
+    key: str = Field(..., description="Planet key e.g. Sun, Moon, Venus")
+    label: str = Field(..., description="Localized planet name e.g. Меркурий")
+    glyph: str = Field(..., description="Planet symbol glyph e.g. ☿")
+    meaning: str = Field(..., description="Planet function in relationships")
+
+
+class AspectDrilldownScene(CamelModel):
+    """Life scene card for aspect drill-down."""
+
+    title: str = Field(..., description="Scene title e.g. В споре")
+    text: str = Field(..., description="Scene description")
+
+
 class AspectDrilldown(CamelModel):
     """Detailed drill-down interpretation for a single synastry aspect."""
 
@@ -147,9 +163,19 @@ class AspectDrilldown(CamelModel):
     title: str = Field(..., description="Aspect title")
     tone: Literal["good", "mid", "bad", "harmony", "tension", "neutral", "supportive", "mixed", "tense"] = Field(..., description="Aspect tone")
     tech_signature: str | None = Field(default=None, description="Technical astrological signature")
+    aspect_symbol: str | None = Field(default=None, description="Aspect symbol e.g. □, △, ☌, ☍, ⚹")
+    aspect_kind_label: str | None = Field(default=None, description="Localized aspect kind name e.g. Квадрат, Тригон")
+    orb_text: str | None = Field(default=None, description="Formatted orb string e.g. орб 1°05′")
+    headline: str | None = Field(default=None, description="Human headline for aspect interaction")
+    owner_planet: PlanetInfo | None = Field(default=None, description="Owner planet information")
+    partner_planet: PlanetInfo | None = Field(default=None, description="Partner planet information")
+    aspect_mechanics: str | None = Field(default=None, description="Aspect type astrological mechanics explanation")
     explanation: str = Field(..., description="Deep psychological and dynamic explanation")
-    scenario: str | None = Field(default=None, description="Real-life interaction scenario")
-    advice: str | None = Field(default=None, description="Constructive relationship advice")
+    scenes: list[AspectDrilldownScene] = Field(default_factory=list, description="Life interaction scenes (3-5 items)")
+    repairs: list[str] = Field(default_factory=list, description="Numbered repair actions (3-5 items)")
+    not_means: list[str] = Field(default_factory=list, description="Protection from fatalism ('This does NOT mean...') (3 items)")
+    scenario: str | None = Field(default=None, description="Legacy flat scenario fallback")
+    advice: str | None = Field(default=None, description="Legacy flat advice fallback")
 
 
 class SynastrySphere(CamelModel):

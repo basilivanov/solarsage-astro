@@ -104,14 +104,36 @@ export type SynastryAspectItem = {
   orbLabel?: string | null
 }
 
+export type PlanetInfo = {
+  key: string
+  label: string
+  glyph: string
+  meaning: string
+}
+
+export type AspectDrilldownScene = {
+  title: string
+  text: string
+}
+
 export type AspectDrilldownData = {
   aspectId: string
   title: string
   tone: "good" | "mid" | "bad" | "supportive" | "mixed" | "tense"
   techSignature: string | null
+  aspectSymbol?: string | null
+  aspectKindLabel?: string | null
+  orbText?: string | null
+  headline?: string | null
+  ownerPlanet?: PlanetInfo | null
+  partnerPlanet?: PlanetInfo | null
+  aspectMechanics?: string | null
   explanation: string
-  scenario: string | null
-  advice: string | null
+  scenes?: AspectDrilldownScene[]
+  repairs?: string[]
+  notMeans?: string[]
+  scenario?: string | null
+  advice?: string | null
 }
 
 export type SynastrySphereItem = {

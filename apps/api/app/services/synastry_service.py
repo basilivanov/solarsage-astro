@@ -64,11 +64,15 @@ from app.db.models import (
 )
 from app.schemas.synastry import (
     AspectDrilldown,
+    AspectDrilldownScene,
     PartnerCreate,
+    PlanetInfo,
     SynastryFeedbackRead,
 )
 from app.services.llm.client import LLMClient
 from app.services.synastry_llm import (
+    ASPECT_MEANINGS,
+    PLANET_MEANINGS,
     build_drilldown_prompt,
     build_report_prompt,
     validate_drilldown_output,
@@ -606,6 +610,35 @@ class SynastryService:
         if not target_aspect:
             raise HTTPException(status_code=404, detail="Aspect not found in report")
 
+        # Map planet metadata & aspect fields
+        op_key = target_aspect.get("owner_planet", "Sun")
+        pp_key = target_aspect.get("partner_planet", "Moon")
+        asp_type = target_aspect.get("aspect", "").lower()
+        orb_val = target_aspect.get("orb_degrees")
+
+        ASPECT_SYMBOLS = {"conjunction": "☌", "conjunct": "☌", "trine": "△", "sextile": "⚹", "square": "□", "opposition": "☍", "quincunx": "⚹"}
+        ASPECT_KIND_LABELS = {"conjunction": "Соединение", "conjunct": "Соединение", "trine": "Тригон", "sextile": "Секстиль", "square": "Квадрат", "opposition": "Оппозиция", "quincunx": "Квиконс"}
+        PLANET_SYMBOLS = {"Sun": "☉", "Moon": "☽", "Mercury": "☿", "Venus": "♀", "Mars": "♂", "Jupiter": "♃", "Saturn": "♄", "Uranus": "♅", "Neptune": "♆", "Pluto": "♇", "Ascendant": "ASC", "ASC": "ASC", "Midheaven": "MC", "MC": "MC"}
+        PLANET_RU_NAMES = {"Sun": "Солнце", "Moon": "Луна", "Mercury": "Меркурий", "Venus": "Венера", "Mars": "Марс", "Jupiter": "Юпитер", "Saturn": "Сатурн", "Uranus": "Уран", "Neptune": "Нептун", "Pluto": "Плутон", "Ascendant": "Асцендент", "ASC": "Асцендент", "Midheaven": "MC", "MC": "MC"}
+
+        asp_symbol = ASPECT_SYMBOLS.get(asp_type, "△")
+        asp_kind_label = ASPECT_KIND_LABELS.get(asp_type, asp_type.capitalize())
+        orb_txt = f"орб {_format_orb_label(orb_val)}" if orb_val is not None else None
+
+        op_info = {
+            "key": op_key,
+            "label": PLANET_RU_NAMES.get(op_key, op_key),
+            "glyph": PLANET_SYMBOLS.get(op_key, op_key[:2]),
+            "meaning": PLANET_MEANINGS.get(op_key, "Функция планеты в натальной карте."),
+        }
+        pp_info = {
+            "key": pp_key,
+            "label": PLANET_RU_NAMES.get(pp_key, pp_key),
+            "glyph": PLANET_SYMBOLS.get(pp_key, pp_key[:2]),
+            "meaning": PLANET_MEANINGS.get(pp_key, "Функция планеты в натальной карте."),
+        }
+        asp_mechanics = ASPECT_MEANINGS.get(asp_type, {}).get("explanation", "")
+
         # 2. Check existing SynastryAspectDetail
         ad_stmt = select(SynastryAspectDetail).where(
             SynastryAspectDetail.report_id == report.id,
@@ -616,12 +649,30 @@ class SynastryService:
 
         if detail and detail.state == "ready" and detail.payload_json:
             data = json.loads(detail.payload_json)
+            scenes_data = data.get("scenes", [])
+            parsed_scenes = [
+                AspectDrilldownScene(title=s.get("title", ""), text=s.get("text", ""))
+                for s in scenes_data if isinstance(s, dict)
+            ]
+            owner_p = PlanetInfo(**data["owner_planet"]) if isinstance(data.get("owner_planet"), dict) else PlanetInfo(**op_info)
+            partner_p = PlanetInfo(**data["partner_planet"]) if isinstance(data.get("partner_planet"), dict) else PlanetInfo(**pp_info)
+
             return AspectDrilldown(
                 aspect_id=aspect_id,
-                title=data.get("title", aspect_id),
+                title=data.get("title", target_aspect.get("tech_signature") or aspect_id),
                 tone=data.get("tone", target_aspect.get("tone", "good")),
                 tech_signature=data.get("tech_signature", target_aspect.get("tech_signature")),
-                explanation=data.get("explanation", ""),
+                aspect_symbol=data.get("aspect_symbol", asp_symbol),
+                aspect_kind_label=data.get("aspect_kind_label", asp_kind_label),
+                orb_text=data.get("orb_text", orb_txt),
+                headline=data.get("headline") or data.get("title"),
+                owner_planet=owner_p,
+                partner_planet=partner_p,
+                aspect_mechanics=data.get("aspect_mechanics", asp_mechanics),
+                explanation=data.get("explanation") or data.get("intro") or "",
+                scenes=parsed_scenes,
+                repairs=data.get("repairs", []),
+                not_means=data.get("not_means", []),
                 scenario=data.get("scenario"),
                 advice=data.get("advice"),
             )
@@ -684,25 +735,32 @@ class SynastryService:
 
         # Map LLM JSON output to AspectDrilldown format
         scenes_list = llm_data.get("scenes", [])
-        if isinstance(scenes_list, list):
-            scenario_text = "\n".join(
-                f"• {s.get('title', '')}: {s.get('text', '')}" if isinstance(s, dict) else str(s)
-                for s in scenes_list
-            )
-        else:
-            scenario_text = str(scenes_list)
-
         repairs_list = llm_data.get("repairs", [])
-        if isinstance(repairs_list, list):
-            advice_text = "\n".join(str(r) for r in repairs_list)
-        else:
-            advice_text = str(repairs_list)
+        not_means_list = llm_data.get("not_means", [])
+
+        scenario_text = "\n".join(
+            f"• {s.get('title', '')}: {s.get('text', '')}" if isinstance(s, dict) else str(s)
+            for s in scenes_list
+        ) if isinstance(scenes_list, list) else str(scenes_list)
+
+        advice_text = "\n".join(str(r) for r in repairs_list) if isinstance(repairs_list, list) else str(repairs_list)
 
         drilldown_payload = {
-            "title": target_aspect.get("tech_signature") or f"Детали аспекта {aspect_id}",
+            "aspect_id": aspect_id,
+            "title": target_aspect.get("tech_signature") or f"{op_info['label']} {asp_kind_label.lower()} {pp_info['label']}",
             "tone": target_aspect.get("tone", "good"),
             "tech_signature": target_aspect.get("tech_signature") or aspect_id,
+            "aspect_symbol": asp_symbol,
+            "aspect_kind_label": asp_kind_label,
+            "orb_text": orb_txt,
+            "headline": llm_data.get("headline") or llm_data.get("title") or f"{op_info['label']} {asp_kind_label.lower()} {pp_info['label']}",
+            "owner_planet": op_info,
+            "partner_planet": pp_info,
+            "aspect_mechanics": asp_mechanics,
             "explanation": llm_data.get("intro") or llm_data.get("explanation", ""),
+            "scenes": scenes_list if isinstance(scenes_list, list) else [],
+            "repairs": repairs_list if isinstance(repairs_list, list) else [],
+            "not_means": not_means_list if isinstance(not_means_list, list) else [],
             "scenario": scenario_text,
             "advice": advice_text,
         }
@@ -727,12 +785,27 @@ class SynastryService:
 
         await self.db.commit()
 
+        parsed_scenes_obj = [
+            AspectDrilldownScene(title=s.get("title", ""), text=s.get("text", ""))
+            for s in drilldown_payload["scenes"] if isinstance(s, dict)
+        ]
+
         return AspectDrilldown(
             aspect_id=aspect_id,
             title=drilldown_payload["title"],
             tone=drilldown_payload["tone"],
             tech_signature=drilldown_payload["tech_signature"],
+            aspect_symbol=drilldown_payload["aspect_symbol"],
+            aspect_kind_label=drilldown_payload["aspect_kind_label"],
+            orb_text=drilldown_payload["orb_text"],
+            headline=drilldown_payload["headline"],
+            owner_planet=PlanetInfo(**drilldown_payload["owner_planet"]),
+            partner_planet=PlanetInfo(**drilldown_payload["partner_planet"]),
+            aspect_mechanics=drilldown_payload["aspect_mechanics"],
             explanation=drilldown_payload["explanation"],
+            scenes=parsed_scenes_obj,
+            repairs=drilldown_payload["repairs"],
+            not_means=drilldown_payload["not_means"],
             scenario=drilldown_payload["scenario"],
             advice=drilldown_payload["advice"],
         )
