@@ -8,7 +8,7 @@
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-SCRIPTS-PROD-ERRORS-RUN-SH
-# purpose: Acquire flock lock to ensure single-instance execution of triage.py.
+# purpose: Acquire a per-mode flock lock (separate locks for --alert and triage/fix) to ensure single-instance execution per mode of triage.py.
 # owns:
 #   - scripts/prod-errors/run.sh
 # inputs: optional script flags (--dry-run)
@@ -36,7 +36,13 @@ rm -f "$PROD_ERRORS_STABLE_COPY" 2>/dev/null || true
 export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$PATH"
 
 SCRIPT_DIR="$PROD_ERRORS_RUN_DIR"
+# Separate locks per mode: a long fix run must not silence the fast alert pass.
 LOCK_FILE="/tmp/solarsage_prod_errors_triage.lock"
+for arg in "$@"; do
+  if [ "$arg" = "--alert" ]; then
+    LOCK_FILE="/tmp/solarsage_prod_errors_alert.lock"
+  fi
+done
 PROD_HOST="${PROD_ERRORS_SSH_HOST:-root@2.26.20.80}"
 PROD_SSH_KEY="${PROD_ERRORS_SSH_KEY:-$HOME/.ssh/solarsage_prod_server_ed25519}"
 BUGSINK_LOCAL_PORT="${BUGSINK_LOCAL_PORT:-18095}"

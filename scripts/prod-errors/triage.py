@@ -7,10 +7,10 @@
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-SCRIPTS-TRIAGE
-# purpose: Fetch unresolved Bugsink issues, deduplicate against GitHub issues using bugsink-issue:<id> marker, create GitHub issues, invoke fix_runner.py, and output digest.
+# purpose: Fetch unresolved Bugsink issues, deduplicate against GitHub issues using bugsink-issue:<id> marker, create GitHub issues, invoke fix_runner.py for new and still-unfixed pending issues, and output digest.
 # owns:
 #   - scripts/prod-errors/triage.py
-# inputs: CLI flags (--dry-run), environment variables (BUGSINK_URL, BUGSINK_TOKEN, GH_REPO, MAX_FIXES_PER_RUN)
+# inputs: CLI flags (--dry-run), environment variables (BUGSINK_URL, BUGSINK_TOKEN, GH_REPO, MAX_FIXES_PER_RUN, MAX_FIX_ATTEMPTS)
 # outputs: stdout summary digest
 # dependencies:
 #   - scripts/prod-errors/bugsink_client.py (BugsinkClient)
@@ -159,6 +159,81 @@ Automated production error report captured from Bugsink self-hosted error tracke
         return None
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MAX_FIX_ATTEMPTS = int(os.environ.get("MAX_FIX_ATTEMPTS", "3"))
+
+
+def gh_issue_fix_state(repo: str, issue_number: str) -> str:
+    """Classify an open prod-error issue for the fix loop.
+
+    Returns:
+    - "pending": no automation outcome yet -> needs a fix_runner run
+    - "retry":   previous attempts failed, attempts still left -> needs a rerun
+    - "done":    fix branch/PR exists, permanently skipped, or attempts exhausted
+    """
+    try:
+        res = subprocess.run(
+            ["git", "ls-remote", "--heads", "origin", f"fix/prod-error-{issue_number}"],
+            capture_output=True, text=True, check=True, cwd=REPO_ROOT,
+        )
+        if res.stdout.strip():
+            return "done"
+    except Exception as err:
+        sys.stderr.write(f"Warning: branch check failed for issue #{issue_number}: {err}\n")
+        return "done"
+
+    try:
+        res = subprocess.run(
+            ["gh", "issue", "view", issue_number, "--repo", repo, "--json", "comments"],
+            capture_output=True, text=True, check=True,
+        )
+        comments = json.loads(res.stdout).get("comments", [])
+    except Exception as err:
+        sys.stderr.write(f"Warning: comment check failed for issue #{issue_number}: {err}\n")
+        return "done"
+
+    failed_attempts = 0
+    for comment in comments:
+        body = str(comment.get("body") or "").lower()
+        if "auto-fix skipped" in body:
+            return "done"
+        if "auto-fix attempt failed" in body:
+            failed_attempts += 1
+    if failed_attempts == 0:
+        return "pending"
+    if failed_attempts < MAX_FIX_ATTEMPTS:
+        return "retry"
+    return "done"
+
+
+def find_pending_fix_issues(repo: str, limit: int = 10) -> list[str]:
+    """Open prod-error issues that still need a fix attempt (never tried or retryable)."""
+    cmd = [
+        "gh", "issue", "list",
+        "--repo", repo,
+        "--label", "prod-error",
+        "--state", "open",
+        "--json", "number",
+        "--limit", "50",
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        numbers = [str(item["number"]) for item in json.loads(res.stdout)]
+    except Exception as err:
+        sys.stderr.write(f"Warning: failed to list open prod-error issues: {err}\n")
+        return []
+
+    pending: list[str] = []
+    for num in numbers:
+        state = gh_issue_fix_state(repo, num)
+        if state in ("pending", "retry"):
+            pending.append(num)
+            print(f"Issue #{num} queued for fix ({state}).")
+        if len(pending) >= limit:
+            break
+    return pending
+
+
 def send_telegram_digest(lines: list[str]) -> None:
     """Send a short triage digest to the owner's Telegram via the bot.
 
@@ -201,12 +276,12 @@ def run_triage(dry_run: bool = False) -> None:
 
     client = BugsinkClient()
     try:
-        unresolved = client.list_unresolved(min_events=3, limit=10)
+        unresolved = client.list_unresolved(min_events=1, limit=10)
     except Exception as err:
         sys.stderr.write(f"Failed to fetch Bugsink issues: {err}\n")
         sys.exit(1)
 
-    print(f"Found {len(unresolved)} unresolved Bugsink issues with >= 3 events.")
+    print(f"Found {len(unresolved)} unresolved Bugsink issues with >= 1 events.")
 
     created_issues: list[str] = []
 
@@ -225,22 +300,32 @@ def run_triage(dry_run: bool = False) -> None:
 
     print(f"\nTriage complete. Created {len(created_issues)} new GitHub issues.")
 
-    if not dry_run and created_issues:
+    # Issues created earlier (manually or by previous runs) that never got a
+    # successful fix are picked up here, with bounded retries on failure.
+    pending_issues = [n for n in find_pending_fix_issues(repo) if n not in created_issues]
+    if pending_issues:
+        print(f"Pending unfixed prod-error issues: {', '.join('#' + n for n in pending_issues)}")
+
+    fix_queue = (created_issues + pending_issues)[:max_fixes]
+
+    if not dry_run and fix_queue:
         script_dir = Path(__file__).resolve().parent
         fix_runner = script_dir / "fix_runner.py"
 
-        for num in created_issues[:max_fixes]:
+        for num in fix_queue:
             print(f"\nInvoking fix_runner.py for Issue #{num}...")
             subprocess.run([sys.executable, str(fix_runner), num])
 
-        send_telegram_digest([
-            f"prod-errors: новых issue — {len(created_issues)}",
-            *[
-                f"#{num} https://github.com/{repo}/issues/{num}"
-                for num in created_issues
-            ],
-            f"авто-фикс запущен для первых {min(len(created_issues), max_fixes)}",
-        ])
+        digest_lines: list[str] = []
+        if created_issues:
+            digest_lines.append(f"prod-errors: новых issue — {len(created_issues)}")
+            digest_lines.extend(
+                f"#{num} https://github.com/{repo}/issues/{num}" for num in created_issues
+            )
+        if pending_issues:
+            digest_lines.append(f"повторные/зависшие: {', '.join('#' + n for n in pending_issues)}")
+        digest_lines.append(f"авто-фикс запущен для {len(fix_queue)}: {', '.join('#' + n for n in fix_queue)}")
+        send_telegram_digest(digest_lines)
 
 
 ALERT_STATE_PATH = Path(__file__).resolve().parent / ".alert-state.json"
