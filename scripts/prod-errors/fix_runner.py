@@ -211,7 +211,11 @@ Title: {title}
             modified_lines.append(line)
 
         if not modified_lines:
-            raise RuntimeError("OpenCode executed but left zero modified files.")
+            opencode_tail = (opencode_res.stdout or "")[-1500:]
+            raise RuntimeError(
+                "OpenCode executed but left zero modified files. "
+                f"opencode stdout tail:\n{opencode_tail}"
+            )
 
         print(f"Modified files ({len(modified_lines)}):")
         for m in modified_lines:
