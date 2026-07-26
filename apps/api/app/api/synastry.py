@@ -157,11 +157,15 @@ async def list_synastry_partners(
         status_val = None
         summary_val = None
 
+        counters_val = None
+        report_state_val = report.state if report else None
+
         if report and report.deterministic_payload_json:
             try:
                 det = json.loads(report.deterministic_payload_json)
                 score = det.get("score")
                 status_val = det.get("status")
+                counters_val = det.get("counters")
             except Exception:
                 pass
 
@@ -182,6 +186,8 @@ async def list_synastry_partners(
                 score=score,
                 status=status_val, # type: ignore[arg-type]
                 summary=summary_val,
+                counters=counters_val,
+                report_state=report_state_val,
                 created_at=p.created_at,
             )
         )

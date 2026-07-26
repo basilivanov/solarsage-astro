@@ -42,6 +42,16 @@
   --ring: oklch(0.48 0.06 305);
 
   --radius: 0.5rem;
+
+  /* Synastry tone palette (additive) */
+  --syn-good: #43806d;
+  --syn-good-bg: #eaf5f0;
+  --syn-mid: #b07b36;
+  --syn-mid-bg: #fbf1de;
+  --syn-bad: #a64d59;
+  --syn-bad-bg: #fae9ec;
+  --syn-ink: #3e3347;
+  --syn-lavender: #f1e9f4;
 }
 
 /* Fallback for Samsung/old Android WebView — oklch() not supported before Chrome 111 */
@@ -97,6 +107,15 @@
   --sidebar: oklch(0.22 0.015 295);
   --sidebar-foreground: oklch(0.96 0.005 85);
   --sidebar-primary: oklch(0.75 0.06 305);
+
+  --syn-good: #63a893;
+  --syn-good-bg: #1c2b25;
+  --syn-mid: #d49a4f;
+  --syn-mid-bg: #2d261a;
+  --syn-bad: #c96b77;
+  --syn-bad-bg: #2d1c20;
+  --syn-ink: #f1e9f4;
+  --syn-lavender: #2d2233;
   --sidebar-primary-foreground: oklch(0.18 0.015 295);
   --sidebar-accent: oklch(0.32 0.03 305);
   --sidebar-accent-foreground: oklch(0.96 0.005 85);

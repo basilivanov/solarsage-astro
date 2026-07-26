@@ -64,6 +64,8 @@ export type SynastryPartnerListItem = {
   score: number | null
   status: "good" | "mid" | "bad" | null
   summary: string | null
+  counters?: { good: number; mid: number; bad: number } | null
+  reportState?: string | null
   createdAt: string
 }
 

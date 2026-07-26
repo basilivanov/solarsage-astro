@@ -89,3 +89,27 @@ async def test_create_partner_endpoint_202_and_task_trigger():
         # Clean up unawaited mocked coroutine
         coro = mock_create_task.call_args[0][0]
         coro.close()
+
+
+def test_synastry_partner_item_schema_counters_and_report_state():
+    """SynastryPartnerItem schema includes optional counters and report_state fields."""
+    from datetime import date, datetime, timezone
+    from app.schemas.synastry import SynastryPartnerItem
+
+    item = SynastryPartnerItem(
+        id=uuid.uuid4(),
+        name="Максим",
+        relation_type="romantic",
+        birth_date=date(1987, 9, 9),
+        precision="exact",
+        score=89,
+        status="good",
+        summary="Отличная совместимость",
+        counters={"good": 8, "mid": 2, "bad": 2},
+        report_state="ready",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    dumped = item.model_dump(by_alias=True)
+    assert dumped["counters"] == {"good": 8, "mid": 2, "bad": 2}
+    assert dumped["reportState"] == "ready"

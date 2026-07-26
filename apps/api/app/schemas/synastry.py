@@ -86,6 +86,8 @@ class SynastryPartnerItem(CamelModel):
     score: int | None = Field(default=None, description="Overall compatibility score (0..100)")
     status: Literal["good", "mid", "bad"] | None = Field(default=None, description="Valence status")
     summary: str | None = Field(default=None, description="Short summary verdict")
+    counters: dict[str, int] | None = Field(default=None, description="Counts of good, mid, bad aspects")
+    report_state: str | None = Field(default=None, description="Report calculation state (pending, calculating, ready, failed)")
     created_at: datetime = Field(..., description="Partner creation timestamp")
 
 

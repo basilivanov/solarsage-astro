@@ -10,7 +10,7 @@
 //   - components/synastry/synastry-screen.tsx
 // inputs: onSelectPartner
 // outputs: SynastryScreen TSX render
-// dependencies: lib/api/synastry, components/synastry/synastry-add-sheet
+// dependencies: lib/api/synastry, components/synastry/synastry-list-hero, components/synastry/synastry-search-filters, components/synastry/synastry-partner-card, components/synastry/synastry-add-sheet
 // side_effects: fetches partners list on mount
 // emitted_logs: none
 // failure_policy: inline error state
@@ -21,19 +21,24 @@
 //   - SynastryScreen
 // semantic_blocks:
 //   - SYNASTRY_SCREEN: Main synastry list screen component
-// owned_tests: none
+// owned_tests:
+//   - __tests__/synastry/synastry-screen.test.tsx
 // END_MODULE_MAP: M-SYNASTRY-SCREEN
 
 "use client"
 
 import { useEffect, useState } from "react"
-import { Plus, Search, Sparkles, AlertCircle, Users, Trash2 } from "lucide-react"
+import { AlertCircle, Users, Sparkles, RefreshCw } from "lucide-react"
 import {
   deleteSynastryPartner,
   getSynastryPartners,
   type SynastryPartnerListItem,
 } from "@/lib/api/synastry"
+import { SynastryListHero } from "./synastry-list-hero"
+import { SynastrySearchFilters } from "./synastry-search-filters"
+import { SynastryPartnerCard } from "./synastry-partner-card"
 import { SynastryAddSheet } from "./synastry-add-sheet"
+import { normalizeSynastryTone } from "./synastry-tone"
 
 type Props = {
   onSelectPartner: (partnerId: string) => void
@@ -66,8 +71,7 @@ export function SynastryScreen({ onSelectPartner }: Props) {
     void loadPartners()
   }, [])
 
-  async function handleDeletePartner(e: React.MouseEvent, partnerId: string) {
-    e.stopPropagation()
+  async function handleDeletePartner(partnerId: string) {
     if (!confirm("Удалить совпадение для этого партнёра?")) return
 
     try {
@@ -84,157 +88,112 @@ export function SynastryScreen({ onSelectPartner }: Props) {
       if (!p.name.toLowerCase().includes(q)) return false
     }
     if (activeFilter !== "all") {
-      if (p.status !== activeFilter) return false
+      const normTone = normalizeSynastryTone(p.status)
+      if (normTone !== activeFilter) return false
     }
     return true
   })
 
+  // Find max score among ready reports to show "best match" ribbon
+  const readyPartners = partners.filter((p) => p.score !== null && p.reportState === "ready")
+  const maxScore = readyPartners.length > 1 ? Math.max(...readyPartners.map((p) => p.score || 0)) : -1
+
   const stateStr = loading ? "loading" : error ? "error" : filteredPartners.length === 0 ? "empty" : "ready"
 
   return (
-    <div className="space-y-6 pb-12" data-testid="synastry-screen" data-state={stateStr}>
-      {/* Header & Add CTA */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-[26px] font-bold text-foreground leading-tight">Вместе</h1>
-          <p className="text-[13.5px] text-muted-foreground">Совместимость и гармония натальных карт</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setAddSheetOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-[13.5px] font-semibold text-primary-foreground transition active:scale-[0.98] shadow-sm"
-        >
-          <Plus className="h-4 w-4" /> Добавить
-        </button>
-      </div>
+    <div className="space-y-6 pb-16" data-testid="synastry-screen" data-state={stateStr}>
+      {/* Product Hero */}
+      <SynastryListHero onAddClick={() => setAddSheetOpen(true)} />
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Поиск по имени…"
-          className="w-full rounded-2xl border border-border/70 bg-card pl-10 pr-4 py-2.5 text-[14px] text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-        />
-      </div>
+      {/* Search & Filters */}
+      <SynastrySearchFilters
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+      />
 
-      {/* Status Filter Buttons */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {[
-          { id: "all", label: "Все" },
-          { id: "good", label: "Хорошо подходит" },
-          { id: "mid", label: "Нормально" },
-          { id: "bad", label: "Сложно" },
-        ].map((btn) => (
-          <button
-            key={btn.id}
-            type="button"
-            aria-pressed={activeFilter === btn.id}
-            onClick={() => setActiveFilter(btn.id as any)}
-            className={`flex-none rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition active:scale-95 ${
-              activeFilter === btn.id
-                ? "border-primary bg-primary text-primary-foreground font-semibold"
-                : "border-border/70 bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
-            }`}
-          >
-            {btn.label}
-          </button>
-        ))}
+      {/* List Section Header */}
+      <div className="flex items-baseline justify-between pt-2">
+        <h2 className="font-serif text-[20px] font-semibold text-foreground">
+          Твои сравнения
+        </h2>
+        <span className="text-[12px] text-muted-foreground">
+          {partners.length} {partners.length === 1 ? "человек" : "человека"}
+        </span>
       </div>
 
       {/* Content States */}
       {loading ? (
-        <div className="flex h-48 flex-col items-center justify-center gap-3">
+        <div className="flex h-48 flex-col items-center justify-center gap-3" role="status">
           <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <span className="text-[13px] text-muted-foreground">Загружаем список сравнений…</span>
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-5 text-center space-y-2">
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-5 text-center space-y-3" role="alert">
           <AlertCircle className="mx-auto h-6 w-6 text-destructive" />
           <p className="text-[13.5px] text-destructive">{error}</p>
+          <button
+            type="button"
+            onClick={loadPartners}
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-[12.5px] font-medium text-primary"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Повторить
+          </button>
         </div>
       ) : filteredPartners.length === 0 ? (
         <div className="rounded-3xl border border-border/70 bg-card p-8 text-center space-y-4">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Users className="h-7 w-7" />
           </div>
-          <div className="space-y-1">
-            <h3 className="font-serif text-[18px] font-semibold text-foreground">Никого не нашли…</h3>
-            <p className="text-[13px] text-muted-foreground max-w-[30ch] mx-auto">
-              Добавьте близкого человека, чтобы рассчитать совместимость ваших натальных карт.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setAddSheetOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-primary-foreground transition active:scale-95"
-          >
-            <Sparkles className="h-4 w-4" /> Добавить первого человека
-          </button>
+          {searchQuery.trim() ? (
+            <div className="space-y-2">
+              <h3 className="font-serif text-[18px] font-semibold text-foreground">По этому имени никого нет</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("")
+                  setActiveFilter("all")
+                }}
+                className="text-[13px] font-medium text-primary underline"
+              >
+                Сбросить поиск
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <h3 className="font-serif text-[18px] font-semibold text-foreground">Добавь первого человека</h3>
+              <p className="text-[13px] text-muted-foreground max-w-[32ch] mx-auto leading-relaxed">
+                Сравним ваши карты и покажем не только общий балл, но и конкретные точки притяжения и трения.
+              </p>
+              <button
+                type="button"
+                onClick={() => setAddSheetOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-primary-foreground transition active:scale-95 shadow-sm"
+              >
+                <Sparkles className="h-4 w-4" /> Добавить первого человека
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredPartners.map((partner) => (
-            <button
-              key={partner.id}
-              type="button"
-              data-testid="synastry-card"
-              data-status={partner.status || "mid"}
-              onClick={() => onSelectPartner(partner.id)}
-              className="flex w-full items-start justify-between rounded-3xl border border-border/70 bg-card p-5 text-left transition hover:border-primary/50 active:scale-[0.99] shadow-sm relative group"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20 text-accent-foreground font-serif font-bold text-[16px]">
-                    {partner.name.slice(0, 1)}
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-[18px] font-semibold text-foreground leading-snug">
-                      {partner.name}
-                    </h3>
-                    <span className="text-[11.5px] text-muted-foreground capitalize">
-                      {partner.relationType === "romantic" ? "Романтическая пара" : partner.relationType}
-                    </span>
-                  </div>
-                </div>
+          {filteredPartners.map((partner) => {
+            const isBest =
+              maxScore > 0 &&
+              partner.score === maxScore &&
+              partner.reportState === "ready"
 
-                {partner.summary && (
-                  <p className="text-[13px] text-muted-foreground line-clamp-2 leading-relaxed">
-                    {partner.summary}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-col items-end gap-2 flex-none pl-3">
-                {partner.score !== null ? (
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-serif text-[24px] font-bold text-primary">{partner.score}</span>
-                    <span className="text-[11px] text-muted-foreground">/100</span>
-                  </div>
-                ) : (
-                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] text-muted-foreground">Считаем…</span>
-                )}
-
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => handleDeletePartner(e, partner.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      handleDeletePartner(e as any, partner.id)
-                    }
-                  }}
-                  aria-label="Удалить партнёра"
-                  className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive p-1 cursor-pointer"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </span>
-              </div>
-            </button>
-          ))}
+            return (
+              <SynastryPartnerCard
+                key={partner.id}
+                partner={partner}
+                isBestMatch={isBest}
+                onSelect={onSelectPartner}
+                onDelete={handleDeletePartner}
+              />
+            )
+          })}
         </div>
       )}
 

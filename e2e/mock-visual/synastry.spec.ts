@@ -18,6 +18,8 @@ test.describe("Synastry mock visual contract", () => {
               score: 89,
               status: "good",
               summary: "Отличная совместимость натальных карт.",
+              counters: { good: 8, mid: 2, bad: 2 },
+              reportState: "ready",
               createdAt: "2026-07-25T12:00:00Z",
             },
           ],
