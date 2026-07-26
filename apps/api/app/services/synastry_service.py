@@ -52,6 +52,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.log_identity import hash_log_identifier
 from app.core.logging import bind_log_context, log_event
 from app.db.models import (
     HoraryCredit,
@@ -321,7 +322,7 @@ class SynastryService:
             "system.error",
             level="error",
             msg=f"synastry report failed: {error_code}",
-            payload={"report_id": str(report.id), "error_code": error_code},
+            payload={"report_id_hash": hash_log_identifier("report", report.id), "error_code": error_code},
         )
 
         # Refund credit spend if not already refunded

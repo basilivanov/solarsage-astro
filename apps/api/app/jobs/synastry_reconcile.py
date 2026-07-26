@@ -43,6 +43,7 @@ from uuid import uuid4
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.log_identity import hash_log_identifier
 from app.core.logging import bind_log_context, log_event
 from app.db.models import SynastryReport
 from app.db.session import SessionLocal
@@ -89,6 +90,7 @@ async def reconcile_stale_reports(
     processed_count = 0
 
     for report_id in stale_report_ids:
+        report_id_hash = hash_log_identifier("report", report_id)
         try:
             service = SynastryService(db)
             report = await service.run_report_pipeline(report_id)
@@ -98,22 +100,22 @@ async def reconcile_stale_reports(
                 log_event(
                     "llm.response_validated",
                     msg="Synastry reconcile report completed successfully",
-                    payload={"report_id": str(report_id)},
+                    payload={"report_id_hash": report_id_hash},
                 )
             else:
                 log_event(
                     "system.error",
                     level="warning",
                     msg=f"Synastry reconcile report failed: {report.error_code}",
-                    payload={"report_id": str(report_id), "error_code": report.error_code},
+                    payload={"report_id_hash": report_id_hash, "error_code": report.error_code},
                 )
         except Exception as exc:  # noqa: BLE001
             await db.rollback()
             log_event(
                 "system.error",
                 level="error",
-                msg=f"Synastry reconcile task error for report {report_id}: {type(exc).__name__}",
-                payload={"report_id": str(report_id), "error_type": type(exc).__name__},
+                msg=f"Synastry reconcile task error: {type(exc).__name__}",
+                payload={"report_id_hash": report_id_hash, "error_type": type(exc).__name__},
             )
 
     return processed_count

@@ -45,6 +45,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_session
+from app.core.log_identity import hash_log_identifier
 from app.core.logging import log_event
 from app.db.models import (
     HoraryCredit,
@@ -228,8 +229,8 @@ async def _run_synastry_pipeline_task(report_id: uuid.UUID) -> None:
         log_event(
             "system.error",
             level="error",
-            msg=f"[Synastry] Background calculation failed for report {report_id}: {type(exc).__name__}",
-            payload={"report_id": str(report_id), "error_type": type(exc).__name__},
+            msg=f"[Synastry] Background calculation failed: {type(exc).__name__}",
+            payload={"report_id_hash": hash_log_identifier("report", report_id), "error_type": type(exc).__name__},
         )
 
 
