@@ -111,6 +111,43 @@ APPROXIMATE_FORBIDDEN_TERMS: list[str] = [
 ]
 
 
+PLANET_RU: dict[str, str] = {
+    "sun": "Солнце",
+    "moon": "Луна",
+    "mercury": "Меркурий",
+    "venus": "Венера",
+    "mars": "Марс",
+    "jupiter": "Юпитер",
+    "saturn": "Сатурн",
+    "uranus": "Уран",
+    "neptune": "Нептун",
+    "pluto": "Плутон",
+    "ascendant": "Асцендент",
+    "asc": "Асцендент",
+    "midheaven": "MC",
+    "mc": "MC",
+}
+
+ASPECT_RU: dict[str, str] = {
+    "conjunction": "соединение",
+    "conjunct": "соединение",
+    "conj": "соединение",
+    "trine": "тригон",
+    "sextile": "секстиль",
+    "square": "квадрат",
+    "opposition": "оппозиция",
+    "quincunx": "квиконс",
+}
+
+
+def _ru_planet(name: str) -> str:
+    return PLANET_RU.get(name.strip().lower(), name)
+
+
+def _ru_aspect(name: str) -> str:
+    return ASPECT_RU.get(name.strip().lower(), name)
+
+
 SYNASTRY_SYSTEM_PROMPT = """Ты — опытный психологический астролог-консультант. Твоя задача — дать глубокий, уважительный и конструктивный разбор взаимодействия двух людей на основе астрологических факторов.
 
 ПРАВИЛА И ОГРАНИЧЕНИЯ:
@@ -120,6 +157,7 @@ SYNASTRY_SYSTEM_PROMPT = """Ты — опытный психологически
 4. Описывай наблюдаемое поведение пары, а не личность. У каждого напряжения показывай конкретный конструктивный путь (repair).
 5. Не приписывай измену, ложь или манипуляцию на основе астрологических аспектов.
 6. Выдавай строго валидный JSON в соответствии со структурой.
+7. Все тексты — только на русском. ЗАПРЕЩЕНО использовать английские названия планет и аспектов (Sun, Moon, square, trine и т.п.) в связном тексте: пиши «Солнце», «Луна», «квадрат», «тригон».
 """
 
 
@@ -133,9 +171,9 @@ def build_report_prompt(
     """Build system and user prompts for full synastry report generation without PII."""
     aspect_lines = []
     for a in aspects[:8]:
-        op = a.get("owner_planet", "")
-        pp = a.get("partner_planet", "")
-        asp = a.get("aspect", "")
+        op = _ru_planet(a.get("owner_planet", ""))
+        pp = _ru_planet(a.get("partner_planet", ""))
+        asp = _ru_aspect(a.get("aspect", ""))
         tone = a.get("tone", "")
         orb = a.get("orb_degrees", 0.0)
         aspect_lines.append(f"- {op} {asp} {pp} (орбис {orb:.1f}°, тон: {tone})")
@@ -183,7 +221,7 @@ def build_drilldown_prompt(aspect: dict[str, Any]) -> dict[str, str]:
 Сформируй JSON со следующими полями:
 - intro: вводное объяснение взаимодействия (до 250 символов)
 - scenes: список из 3-4 жизненных сцен ("title", "text")
-- repairs: список из 3-5 конкретных действий для гармонизации (нумерованные рекомендации)
+- repairs: список из 3-5 конкретных действий для гармонизации (обычные строки БЕЗ нумерации — номера проставляет интерфейс)
 - not_means: ровно 3 пункта защиты от фатализма ("Не означает, что...")
 """
     return {

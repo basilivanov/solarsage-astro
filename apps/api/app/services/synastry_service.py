@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 import uuid
@@ -129,7 +130,6 @@ _RU_TO_EN_ASTRO = {
 
 
 def _normalize_tech_str(s: str) -> str:
-    import re
     low = s.lower()
     for ru, en in _RU_TO_EN_ASTRO.items():
         low = low.replace(ru, en)
@@ -141,7 +141,6 @@ def _match_translation_aspect_id(tech: str | None, aspects: list[dict[str, Any]]
         return None
 
     # Handle combined tech e.g. "Марс ☍ Марс + Меркурий □ Меркурий" by checking each part
-    import re
     parts = [p.strip() for p in re.split(r"[+\/,]", tech) if p.strip()]
     if not parts:
         parts = [tech]
@@ -803,6 +802,13 @@ class SynastryService:
 
         advice_text = "\n".join(str(r) for r in repairs_list) if isinstance(repairs_list, list) else str(repairs_list)
 
+        # Strip leading enumeration the LLM may add ("1. ", "2) ") — the UI renders its own numbered badges
+        repairs_clean = (
+            [re.sub(r"^\s*\d+[\.\)]\s*", "", str(r)) for r in repairs_list]
+            if isinstance(repairs_list, list)
+            else repairs_list
+        )
+
         drilldown_payload = {
             "aspect_id": aspect_id,
             "title": target_aspect.get("tech_signature") or f"{op_info['label']} {asp_kind_label.lower()} {pp_info['label']}",
@@ -817,7 +823,7 @@ class SynastryService:
             "aspect_mechanics": asp_mechanics,
             "explanation": llm_data.get("intro") or llm_data.get("explanation", ""),
             "scenes": scenes_list if isinstance(scenes_list, list) else [],
-            "repairs": repairs_list if isinstance(repairs_list, list) else [],
+            "repairs": repairs_clean,
             "not_means": not_means_list if isinstance(not_means_list, list) else [],
             "scenario": scenario_text,
             "advice": advice_text,
