@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test"
 
 test.describe("Synastry detail mock visual contract", () => {
-  test("maintains structural testid and state contract for synastry detail screen and wheel", async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     // Intercept GET /api/synastry list route
     await page.route("/api/synastry", async (route) => {
       await route.fulfill({
@@ -64,6 +64,19 @@ test.describe("Synastry detail mock visual contract", () => {
               orbDegrees: 1.0,
               orbLabel: "1°00′",
             },
+            {
+              id: "error_aspect",
+              title: "Ошибка аспекта",
+              tone: "bad",
+              score: 30,
+              description: "Тестовый аспект для ошибки",
+              techSignature: "Error aspect",
+              ownerPlanetKey: "owner_sun",
+              partnerPlanetKey: "partner_moon",
+              aspectSymbol: "□",
+              orbDegrees: 2.0,
+              orbLabel: "2°00′",
+            },
           ],
           houseOverlays: [
             { tech: "Её Венера → твой 7 дом", text: "Партнёр быстро воспринимается как подходящий спутник." },
@@ -87,7 +100,7 @@ test.describe("Synastry detail mock visual contract", () => {
       })
     })
 
-    // Intercept GET aspect drilldown route
+    // Intercept GET aspect drilldown route for sun_trine_moon
     await page.route("/api/synastry/partner-test-1/aspect/sun_trine_moon", async (route) => {
       await route.fulfill({
         status: 200,
@@ -105,13 +118,38 @@ test.describe("Synastry detail mock visual contract", () => {
           partnerPlanet: { key: "Moon", label: "Луна", glyph: "☽", meaning: "Эмоциональные реакции." },
           aspectMechanics: "Гармоничный поток энергии.",
           explanation: "Естественное взаимопонимание.",
-          scenes: [{ title: "В общении", text: "Легко договариваетесь." }],
-          repairs: ["Наслаждаться лёгкостью"],
-          notMeans: ["не гарантирует отсутствие мелких споров"],
+          scenes: [
+            { title: "В общении", text: "Легко договариваетесь." },
+            { title: "В быту", text: "Совместный уклад настраивается быстро." },
+            { title: "В споре", text: "Быстро находите компромисс." },
+          ],
+          repairs: [
+            "1. Замечать и называть сильные стороны",
+            "2. Поддерживать совместные ритуалы",
+            "3. Не считать лёгкость гарантированной",
+          ],
+          notMeans: [
+            "не значит отсутствие работы над собой",
+            "не доказывает абсолютное совпадение",
+            "не заменяет взаимное уважение",
+          ],
         }),
       })
     })
 
+    // Intercept GET aspect drilldown route for error_aspect (500)
+    await page.route("/api/synastry/partner-test-1/aspect/error_aspect", async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          detail: "Не удалось загрузить подробный разбор аспекта.",
+        }),
+      })
+    })
+  })
+
+  test("maintains structural testid and state contract for synastry detail screen and wheel", async ({ page }) => {
     await page.goto("/synastry")
     await page.getByTestId("synastry-card").click()
 
@@ -130,13 +168,87 @@ test.describe("Synastry detail mock visual contract", () => {
     await expect(page).toHaveScreenshot("synastry-detail.png", {
       mask: [page.getByTestId("synastry-hero")],
     })
+  })
 
-    // Test wheel line click opens aspect drilldown sheet modal
-    const lineButton = page.locator('[data-testid="synastry-wheel"] g[role="button"]:has(line)')
+  test("opens drilldown sheet with structural content contract and matches screenshot baseline", async ({ page }) => {
+    await page.goto("/synastry")
+    await page.getByTestId("synastry-card").click()
+
+    // 1. Open drilldown by clicking aspect row
+    const aspectRow = page.getByTestId("synastry-aspect").first()
+    await aspectRow.click()
+
+    const sheet = page.getByTestId("aspect-drilldown-sheet")
+    await expect(sheet).toBeVisible()
+    await expect(sheet).toHaveAttribute("role", "dialog")
+    await expect(sheet).toHaveAttribute("data-tone", "good")
+
+    // Structural assertions:
+    await expect(sheet.getByText("АСТРОЛОГИЧЕСКИЙ КОНТАКТ")).toBeVisible()
+    await expect(sheet.getByText("Солнце △ Луна")).toBeVisible() // Localized tech signature in header
+    await expect(sheet.getByRole("heading", { name: "Естественная гармония эмоционального и сознательного" })).toBeVisible() // Headline
+    await expect(sheet.getByText(/Тригон · орб 1°00′ · поддерживающий контакт/i)).toBeVisible() // Meta line
+
+    // Section headings & cards:
+    await expect(page.getByText("ЧТО ИМЕННО СОЕДИНЯЕТСЯ")).toBeVisible()
+    await expect(page.getByText("ТВОЯ КАРТА")).toBeVisible()
+    await expect(page.getByText("КАРТА ПАРТНЁРА")).toBeVisible()
+
+    await expect(page.getByText("КАК РАБОТАЕТ ТРИГОН")).toBeVisible()
+    await expect(page.getByText("Гармоничный поток энергии.")).toBeVisible()
+
+    await expect(page.getByText("КАК ЭТО ПРОЯВЛЯЕТСЯ В ЖИЗНИ")).toBeVisible()
+    await expect(page.getByText("В общении")).toBeVisible()
+    await expect(page.getByText("В быту")).toBeVisible()
+    await expect(page.getByText("В споре")).toBeVisible()
+
+    await expect(page.getByText("ЧТО ПОМОГАЕТ")).toBeVisible()
+    await expect(page.getByText("1. Замечать и называть сильные стороны")).toBeVisible()
+
+    await expect(page.getByText("ВАЖНО: ЭТО НЕ ОЗНАЧАЕТ")).toBeVisible()
+    await expect(page.getByText("не значит отсутствие работы над собой")).toBeVisible()
+
+    // Take drilldown modal snapshot
+    await expect(page).toHaveScreenshot("synastry-drilldown.png", {
+      mask: [sheet.locator(".syn-serif")],
+    })
+  })
+
+  test("opens drilldown sheet via wheel line click and preserves wheel selection after close", async ({ page }) => {
+    await page.goto("/synastry")
+    await page.getByTestId("synastry-card").click()
+
+    // Click aspect line on SVG wheel
+    const lineButton = page.locator('[data-testid="synastry-wheel"] g[role="button"]:has(line)').first()
     await lineButton.dispatchEvent("click")
 
-    const drilldownSheet = page.getByTestId("aspect-drilldown-sheet")
-    await expect(drilldownSheet).toBeVisible()
+    const sheet = page.getByTestId("aspect-drilldown-sheet")
+    await expect(sheet).toBeVisible()
     await expect(page.getByText("Солнце △ Луна")).toBeVisible()
+
+    // Close via Escape key
+    await page.keyboard.press("Escape")
+    await expect(sheet).not.toBeVisible()
+  })
+
+  test("handles drilldown error state gracefully with Russian message and Escape close", async ({ page }) => {
+    await page.goto("/synastry")
+    await page.getByTestId("synastry-card").click()
+
+    // Click error aspect row directly
+    const errorAspectRow = page.getByTestId("synastry-aspect").filter({ hasText: "Ошибка аспекта" })
+    await errorAspectRow.click()
+
+    const sheet = page.getByTestId("aspect-drilldown-sheet")
+    await expect(sheet).toBeVisible()
+
+    // Error alert visible
+    const alert = sheet.locator('[role="alert"]')
+    await expect(alert).toBeVisible()
+    await expect(alert).toContainText("Не удалось загрузить подробный разбор аспекта.")
+
+    // Close via Escape key
+    await page.keyboard.press("Escape")
+    await expect(sheet).not.toBeVisible()
   })
 })

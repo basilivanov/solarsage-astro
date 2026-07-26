@@ -13,13 +13,12 @@
 // dependencies: lib/log/instrumented-fetch.
 // side_effects: credentialed synastry API HTTP requests.
 // emitted_logs: none
-// invariants:
-//   - All API endpoints send credentialed cookies and preserve error messages.
-// failure_policy: Throws Error on non-2xx responses.
+// failure_policy: Throws SynastryApiError on non-2xx responses.
 // END_MODULE_CONTRACT: M-FRONTEND-API-SYNASTRY
 
 // START_MODULE_MAP: M-FRONTEND-API-SYNASTRY
 // public_entrypoints:
+//   - SynastryApiError
 //   - getSynastryCapabilities
 //   - getSynastryPartners
 //   - createSynastryPartner
@@ -34,12 +33,53 @@
 
 import { instrumentedFetch } from "@/lib/log/instrumented-fetch"
 
+export class SynastryApiError extends Error {
+  status: number
+  code: string | null
+
+  constructor({ status, code, message }: { status: number; code?: string | null; message: string }) {
+    super(message)
+    this.name = "SynastryApiError"
+    this.status = status
+    this.code = code ?? null
+  }
+}
+
+async function buildSynastryApiError(res: Response): Promise<SynastryApiError> {
+  const status = res.status
+  let code: string | null = null
+  let message = `Request failed with status ${status}`
+
+  try {
+    const data = await res.clone().json()
+    const detail = data?.detail
+    if (detail) {
+      if (typeof detail === "string") {
+        message = detail
+        code = detail
+      } else if (typeof detail === "object" && detail !== null) {
+        if (typeof detail.message === "string") message = detail.message
+        if (typeof detail.code === "string") code = detail.code
+      }
+    } else if (data?.message && typeof data.message === "string") {
+      message = data.message
+      if (typeof data.code === "string") code = data.code
+    }
+  } catch {
+    // Ignore JSON parse errors
+  }
+
+  return new SynastryApiError({ status, code, message })
+}
+
 export type SynastryCapabilities = {
   canCalculate: boolean
+  canPurchase?: boolean
   activePartnerCount: number
   maxPartners: number
   hasUnlockedAccess: boolean
   creditBalance: number
+  blockedReason?: "no_credits" | "partner_limit" | null
 }
 
 export type PartnerCreatePayload = {
@@ -104,63 +144,29 @@ export type SynastryAspectItem = {
   orbLabel?: string | null
 }
 
-export type PlanetInfo = {
-  key: string
-  label: string
-  glyph: string
-  meaning: string
-}
-
-export type AspectDrilldownScene = {
-  title: string
-  text: string
-}
-
-export type AspectDrilldownData = {
-  aspectId: string
-  title: string
-  tone: "good" | "mid" | "bad" | "supportive" | "mixed" | "tense"
-  techSignature: string | null
-  aspectSymbol?: string | null
-  aspectKindLabel?: string | null
-  orbText?: string | null
-  headline?: string | null
-  ownerPlanet?: PlanetInfo | null
-  partnerPlanet?: PlanetInfo | null
-  aspectMechanics?: string | null
-  explanation: string
-  scenes?: AspectDrilldownScene[]
-  repairs?: string[]
-  notMeans?: string[]
-  scenario?: string | null
-  advice?: string | null
-}
-
 export type SynastrySphereItem = {
   id: string
   title: string
   score: number
-  description: string | null
+  description: string
 }
 
 export type SynastryTranslation = {
-  tone?: "good" | "mid" | "bad" | "supportive" | "mixed" | "tense" | null
+  aspectId?: string
   title: string
-  aspectId?: string | null
-  tech?: string | null
-  text?: string | null
-  scene?: string | null
+  tone: string
+  tech?: string
+  text?: string
+  scene?: string
 }
 
 export type SynastryReportData = {
-  id: string
-  ownerId: string
   partnerId: string
   partnerName: string
-  partnerBirthDate: string | null
+  relationType: string
+  partnerBirthDate: string
   partnerBirthTime: string | null
   partnerBirthCity: string | null
-  relationType: string
   precision: "exact" | "approximate"
   score: number
   status: "good" | "mid" | "bad"
@@ -169,14 +175,34 @@ export type SynastryReportData = {
   heroTitle: string | null
   heroDescription: string | null
   counters: { good: number; mid: number; bad: number }
-  ownerPlanets?: SynastryPlanetPoint[]
-  partnerPlanets?: SynastryPlanetPoint[]
+  ownerPlanets: SynastryPlanetPoint[]
+  partnerPlanets: SynastryPlanetPoint[]
   aspects: SynastryAspectItem[]
   houseOverlays: Array<{ tech?: string; text?: string }>
-  spheres: SynastrySphereItem[]
   translations: SynastryTranslation[]
+  spheres: SynastrySphereItem[]
   userFeedback: string | null
   createdAt: string
+}
+
+export type AspectDrilldownData = {
+  aspectId: string
+  title: string
+  tone: "good" | "mid" | "bad" | "supportive" | "mixed" | "tense"
+  techSignature?: string
+  aspectSymbol?: string
+  aspectKindLabel?: string
+  orbText?: string
+  headline?: string
+  ownerPlanet?: { key: string; label: string; glyph: string; meaning: string }
+  partnerPlanet?: { key: string; label: string; glyph: string; meaning: string }
+  aspectMechanics?: string
+  explanation?: string
+  scenes?: Array<{ title: string; text: string }>
+  repairs?: string[]
+  notMeans?: string[]
+  scenario?: string
+  advice?: string
 }
 
 export async function getSynastryCapabilities(): Promise<SynastryCapabilities> {
@@ -187,7 +213,7 @@ export async function getSynastryCapabilities(): Promise<SynastryCapabilities> {
     init: { credentials: "include" },
   })
   if (!res.ok) {
-    throw new Error(`Failed to fetch synastry capabilities: ${res.status}`)
+    throw await buildSynastryApiError(res)
   }
   return res.json()
 }
@@ -200,7 +226,7 @@ export async function getSynastryPartners(): Promise<SynastryPartnerListItem[]> 
     init: { credentials: "include" },
   })
   if (!res.ok) {
-    throw new Error(`Failed to fetch synastry partners: ${res.status}`)
+    throw await buildSynastryApiError(res)
   }
   const data = await res.json()
   return data.partners || []
@@ -221,8 +247,7 @@ export async function createSynastryPartner(
     },
   })
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}))
-    throw new Error(errorData.detail || errorData.message || `Failed to add partner: ${res.status}`)
+    throw await buildSynastryApiError(res)
   }
   return res.json()
 }
@@ -235,7 +260,7 @@ export async function getSynastryReport(partnerId: string): Promise<SynastryRepo
     init: { credentials: "include" },
   })
   if (!res.ok) {
-    throw new Error(`Failed to fetch synastry report: ${res.status}`)
+    throw await buildSynastryApiError(res)
   }
   return res.json()
 }
@@ -248,7 +273,7 @@ export async function getSynastryStatus(partnerId: string): Promise<SynastryGene
     init: { credentials: "include" },
   })
   if (!res.ok) {
-    throw new Error(`Failed to fetch synastry status: ${res.status}`)
+    throw await buildSynastryApiError(res)
   }
   return res.json()
 }
@@ -264,7 +289,7 @@ export async function getAspectDrilldown(
     init: { credentials: "include" },
   })
   if (!res.ok) {
-    throw new Error(`Failed to fetch aspect drilldown: ${res.status}`)
+    throw await buildSynastryApiError(res)
   }
   return res.json()
 }
@@ -285,7 +310,7 @@ export async function submitSynastryFeedback(
     },
   })
   if (!res.ok) {
-    throw new Error(`Failed to submit feedback: ${res.status}`)
+    throw await buildSynastryApiError(res)
   }
   return res.json()
 }
@@ -301,6 +326,6 @@ export async function deleteSynastryPartner(partnerId: string): Promise<void> {
     },
   })
   if (!res.ok) {
-    throw new Error(`Failed to delete partner: ${res.status}`)
+    throw await buildSynastryApiError(res)
   }
 }

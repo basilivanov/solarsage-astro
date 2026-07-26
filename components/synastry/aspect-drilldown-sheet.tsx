@@ -29,7 +29,7 @@
 
 import { useEffect, useState } from "react"
 import { X, AlertCircle } from "lucide-react"
-import { getAspectDrilldown, type AspectDrilldownData } from "@/lib/api/synastry"
+import { getAspectDrilldown, SynastryApiError, type AspectDrilldownData } from "@/lib/api/synastry"
 import { getToneContactLabel, normalizeSynastryTone } from "./synastry-tone"
 
 type Props = {
@@ -73,7 +73,12 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
       })
       .catch((err) => {
         if (!active) return
-        setError(err instanceof Error ? err.message : "Failed to load aspect drilldown")
+        // User-facing copy is always Russian; technical details stay in logs.
+        if (err instanceof SynastryApiError && err.code && err.code !== err.message) {
+          setError(err.message)
+        } else {
+          setError("Не удалось загрузить разбор аспекта. Попробуйте ещё раз.")
+        }
       })
       .finally(() => {
         if (active) setLoading(false)
