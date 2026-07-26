@@ -1,4 +1,3 @@
-
 # ############################################################################
 # AI_HEADER: MODULE_SERVICES_NATAL
 # ROLE: Sidecar calculation
@@ -28,6 +27,7 @@ from typing import List, Dict, Any
 
 from ..models.chart import NatalChart
 from ..utils.ephemeris import calculate_julian_day, calculate_positions, calculate_houses_cusps
+from ..utils.houses import find_house
 
 
 class NatalService:
@@ -67,6 +67,14 @@ class NatalService:
             jd, latitude, longitude
         )
 
+        # Calculate house for each planet without mutating original ephemeris dicts
+        cusp_longitudes = [h["cusp"] for h in houses] if len(houses) == 12 else []
+        enriched_positions = []
+        for pos in positions:
+            p_copy = dict(pos)
+            p_copy["house"] = find_house(p_copy["longitude"], cusp_longitudes)
+            enriched_positions.append(p_copy)
+
         # Parse birth datetime for model
         birth_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
 
@@ -74,7 +82,7 @@ class NatalService:
             birth_datetime=birth_datetime,
             latitude=latitude,
             longitude=longitude,
-            positions=positions,
+            positions=enriched_positions,
             houses=houses,
             special_points=special_points,
             house_system=house_system,

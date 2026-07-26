@@ -88,7 +88,7 @@ from app.core.logging import log_event, log_block
 
 # ── Versioning constants ──────────────────────────────────────────
 ENGINE_VERSION = "1"
-CALCULATION_VERSION = "1"
+CALCULATION_VERSION = "2"
 HOUSE_SYSTEM_DEFAULT = "placidus"
 
 # ── Required profile fields for natal context ────────────────────
@@ -450,26 +450,30 @@ class NatalContextService:
                     longitude=round(sp.longitude, 4),
                 ))
 
-        # Planets
-        planets = []
-        for p in validated.planets:
-            planets.append(NatalChartPlanet(
-                name=p.name,
-                sign=p.sign,
-                degree=round(p.longitude % 30, 2),
-                house=p.house,
-                retrograde=p.retrograde,
-                longitude=round(p.longitude, 4),
-            ))
-
         # Houses
         houses = []
+        house_cusps_dicts = []
         for h in validated.houses:
             houses.append(NatalChartHouse(
                 number=h.number,
                 sign=h.sign,
                 degree=round(h.longitude % 30, 2),
                 longitude=round(h.longitude, 4),
+            ))
+            house_cusps_dicts.append({"number": h.number, "cusp": h.longitude})
+
+        # Planets
+        from app.services.astro_utils import find_house
+        planets = []
+        for p in validated.planets:
+            planet_house = p.house if p.house is not None else find_house(p.longitude, house_cusps_dicts)
+            planets.append(NatalChartPlanet(
+                name=p.name,
+                sign=p.sign,
+                degree=round(p.longitude % 30, 2),
+                house=planet_house,
+                retrograde=p.retrograde,
+                longitude=round(p.longitude, 4),
             ))
 
         # Aspects (from natal signals)
