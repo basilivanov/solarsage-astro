@@ -1,4 +1,3 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_MONETIZATION_TRIAL_BANNER
 // ROLE: UI component
@@ -34,6 +33,15 @@
 import { Sparkles } from "lucide-react"
 import { useRouter } from 'next/navigation'
 
+function pluralizeDays(n: number): string {
+  const abs = Math.abs(n) % 100
+  const lastDigit = abs % 10
+  if (abs >= 11 && abs <= 19) return "дней"
+  if (lastDigit === 1) return "день"
+  if (lastDigit >= 2 && lastDigit <= 4) return "дня"
+  return "дней"
+}
+
 // START_BLOCK: TRIAL_BANNER
 export function TrialBanner({ daysLeft }: { daysLeft: number }) {
   const router = useRouter()
@@ -49,8 +57,7 @@ export function TrialBanner({ daysLeft }: { daysLeft: number }) {
           14 дней бесплатного доступа
         </div>
         <div className="text-[11.5px] text-muted-foreground">
-          Осталось {daysLeft}{" "}
-          {daysLeft === 1 ? "день" : daysLeft < 5 ? "дня" : "дней"}
+          Осталось {daysLeft} {pluralizeDays(daysLeft)}
         </div>
         {isDev && (
           <button
@@ -63,6 +70,8 @@ export function TrialBanner({ daysLeft }: { daysLeft: number }) {
       </div>
       <button
         type="button"
+        aria-label="Перейти к подписке и кредитам"
+        onClick={() => router.push('/profile#credits')}
         className="rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-medium text-foreground transition active:scale-[0.97]"
       >
         Подписка

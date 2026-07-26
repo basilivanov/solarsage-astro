@@ -1,8 +1,7 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_COMPONENTS_TRIAL_BANNER
 // ROLE: UI component
-// DEPENDENCIES: local modules
+// DEPENDENCIES: local modules, next/navigation
 // GRACE_ANCHORS: []
 // SLICE: SLICE-UNMAPPED
 // ############################################################################
@@ -19,7 +18,6 @@
 //   - n/a
 // failure_policy: log and raise
 // END_MODULE_CONTRACT
-
 // START_MODULE_MAP
 // public_entrypoints:
 //   - TrialBanner
@@ -33,7 +31,10 @@
 // wave: W-2.7
 // purpose: TrialBanner component (migrated from legacy)
 
+'use client'
+
 import { Sparkles } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 function pluralizeDays(n: number): string {
   const abs = Math.abs(n) % 100
@@ -46,6 +47,8 @@ function pluralizeDays(n: number): string {
 
 // START_BLOCK: TRIAL_BANNER
 export function TrialBanner({ daysLeft }: { daysLeft: number }) {
+  const router = useRouter()
+
   return (
     <div className="mx-5 flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/40 px-4 py-3">
       <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-accent text-accent-foreground">
@@ -61,6 +64,8 @@ export function TrialBanner({ daysLeft }: { daysLeft: number }) {
       </div>
       <button
         type="button"
+        aria-label="Перейти к подписке и кредитам"
+        onClick={() => router.push('/profile#credits')}
         className="rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-medium text-foreground transition active:scale-[0.97]"
       >
         Подписка

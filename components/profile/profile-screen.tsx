@@ -173,7 +173,7 @@ export function ProfileScreen({
         </div>
       </header>
 
-      <section className="px-5" data-testid="profile-access-card">
+      <section className="scroll-mt-6 px-5" id="credits" data-testid="profile-access-card">
         <AccessCard
           access={access}
           currentState={currentState}

@@ -1,4 +1,3 @@
-
 // ############################################################################
 // AI_HEADER: MODULE_COMPONENTS_TRIALBANNER_TEST
 // ROLE: Unit tests for TrialBanner.test.tsx
@@ -23,12 +22,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 
+const mockPush = vi.fn()
+
 vi.mock('@/lib/log', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: mockPush, back: vi.fn() }),
   usePathname: () => '/',
   useParams: () => ({}),
   useSearchParams: () => new URLSearchParams(),
@@ -38,7 +39,7 @@ vi.mock('lucide-react', () => ({
   Sparkles: () => <span data-testid="icon-sparkles" />,
 }))
 
-import { TrialBanner } from '@/components/trial-banner'
+import { TrialBanner } from '@/components/monetization/trial-banner'
 
 /** Helper: the component splits text across multiple React text nodes,
  *  so getByText('Осталось N …') fails.  We match on the sub-container's
@@ -107,5 +108,13 @@ describe('TrialBanner', () => {
   it('renders "101 день" for daysLeft=101', () => {
     const text = getDaysLeftText(101)
     expect(text).toBe('Осталось 101 день')
+  })
+
+  it('navigates to /profile#credits when clicking Subscription button', () => {
+    render(<TrialBanner daysLeft={5} />)
+    const btn = screen.getByRole('button', { name: /Перейти к подписке и кредитам/i })
+    btn.click()
+
+    expect(mockPush).toHaveBeenCalledWith('/profile#credits')
   })
 })
