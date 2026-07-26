@@ -52,45 +52,43 @@ export function SynastryScorePanel({
 }: Props) {
   const tone = normalizeSynastryTone(status)
 
-  // Deduplication & fallback chain for text fields
   const statusLabel = getToneStatusLabel(tone)
   const displayHeadline = verdict || heroTitle || statusLabel
   const displaySummary = summary || heroDescription || "Анализ взаимодействия завершён."
-  // The pill is redundant when the headline already IS the status label (макет §6.3/§6.4).
   const showStatusPill = displayHeadline.trim() !== statusLabel
 
   return (
     <section
       data-testid="synastry-score"
       data-status={status}
-      className="rounded-[24px] border border-border/70 bg-card p-6 shadow-sm space-y-5"
+      className="mx-4 rounded-[26px] border border-[#e8e0e8] bg-[#fffdf9]/94 dark:bg-[#2d2233]/94 p-[18px] shadow-[0_8px_26px_rgba(73,51,82,0.055)] space-y-4"
     >
       {/* Top Section: Score box + Verdict & Summary */}
-      <div className="flex flex-col sm:flex-row items-start gap-4">
+      <div className="flex flex-row items-start gap-4">
         {/* Score Box (78x78 lavender square) */}
-        <div className="flex h-[78px] w-[78px] flex-none flex-col items-center justify-center rounded-[20px] bg-[var(--syn-lavender)] border border-primary/10">
-          <span className="font-serif text-[36px] font-normal leading-none text-foreground">
+        <div className="flex h-[78px] w-[78px] flex-none flex-col items-center justify-center rounded-[20px] bg-[#f1e9f4] dark:bg-[#3e3347] border border-[#795a86]/10">
+          <span className="syn-serif text-[36px] font-normal leading-none text-[#3e3347] dark:text-[#f1e9f4]">
             {score}
           </span>
-          <span className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider mt-0.5">
+          <span className="font-sans text-[10px] font-bold text-[#7d7284] uppercase tracking-wider mt-0.5">
             из 100
           </span>
         </div>
 
         {/* Headline & Summary */}
-        <div className="space-y-1.5 min-w-0 flex-1">
+        <div className="space-y-1 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="font-serif text-[20px] font-semibold text-foreground leading-snug">
+            <h2 className="font-sans text-[21px] font-bold leading-snug text-[#3e3347] dark:text-[#f1e9f4]">
               {displayHeadline}
             </h2>
             {showStatusPill && (
               <span
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                   tone === "good"
-                    ? "bg-[var(--syn-good-bg)] text-[var(--syn-good)]"
+                    ? "bg-[#eaf5f0] text-[#43806d] dark:bg-[#1c2b25] dark:text-[#63a893]"
                     : tone === "bad"
-                    ? "bg-[var(--syn-bad-bg)] text-[var(--syn-bad)]"
-                    : "bg-[var(--syn-mid-bg)] text-[var(--syn-mid)]"
+                    ? "bg-[#fae9ec] text-[#a64d59] dark:bg-[#2d1c20] dark:text-[#c96b77]"
+                    : "bg-[#fbf1de] text-[#b07b36] dark:bg-[#2d261a] dark:text-[#d49a4f]"
                 }`}
               >
                 {statusLabel}
@@ -98,27 +96,36 @@ export function SynastryScorePanel({
             )}
           </div>
 
-          <p className="text-[14px] leading-relaxed text-muted-foreground">
+          <p className="text-[13px] leading-[1.45] text-[#7d7284] dark:text-muted-foreground">
             {displaySummary}
           </p>
         </div>
       </div>
 
-      {/* Bottom: 3 Tone Counter Blocks */}
-      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/40" data-testid="synastry-score-counters">
-        <div className="rounded-[14px] bg-[var(--syn-good-bg)] px-3 py-2 text-center">
-          <span className="text-[12px] font-semibold text-[var(--syn-good)]">
-            {counters.good || 0} поддерживают
+      {/* Bottom: 3 Tone Counter Blocks (Number + Label stacked) */}
+      <div className="grid grid-cols-3 gap-[7px] pt-1" data-testid="synastry-score-counters">
+        <div className="rounded-[14px] bg-[#eaf5f0] dark:bg-[#1c2b25] px-[7px] py-[10px] text-center">
+          <strong className="block font-sans text-[18px] font-[760] text-[#43806d] dark:text-[#63a893] leading-none mb-0.5">
+            {counters.good || 0}
+          </strong>
+          <span className="block text-[10px] font-[760] text-[#43806d] dark:text-[#63a893]">
+            поддерживают
           </span>
         </div>
-        <div className="rounded-[14px] bg-[var(--syn-mid-bg)] px-3 py-2 text-center">
-          <span className="text-[12px] font-semibold text-[var(--syn-mid)]">
-            {counters.mid || 0} неоднозначны
+        <div className="rounded-[14px] bg-[#fbf1de] dark:bg-[#2d261a] px-[7px] py-[10px] text-center">
+          <strong className="block font-sans text-[18px] font-[760] text-[#b07b36] dark:text-[#d49a4f] leading-none mb-0.5">
+            {counters.mid || 0}
+          </strong>
+          <span className="block text-[10px] font-[760] text-[#b07b36] dark:text-[#d49a4f]">
+            неоднозначны
           </span>
         </div>
-        <div className="rounded-[14px] bg-[var(--syn-bad-bg)] px-3 py-2 text-center">
-          <span className="text-[12px] font-semibold text-[var(--syn-bad)]">
-            {counters.bad || 0} напрягают
+        <div className="rounded-[14px] bg-[#fae9ec] dark:bg-[#2d1c20] px-[7px] py-[10px] text-center">
+          <strong className="block font-sans text-[18px] font-[760] text-[#a64d59] dark:text-[#c96b77] leading-none mb-0.5">
+            {counters.bad || 0}
+          </strong>
+          <span className="block text-[10px] font-[760] text-[#a64d59] dark:text-[#c96b77]">
+            напрягают
           </span>
         </div>
       </div>

@@ -38,15 +38,15 @@ export function SynastryTranslations({ translations, onOpenAspect }: Props) {
   if (!translations || translations.length === 0) return null
 
   return (
-    <section className="space-y-4" data-testid="synastry-translations">
-      <div className="space-y-1">
-        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+    <section className="space-y-3 mx-4" data-testid="synastry-translations">
+      <div className="space-y-0.5">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#795a86]">
           ЧЕЛОВЕЧЕСКИЙ ПЕРЕВОД
         </span>
-        <h2 className="font-serif text-[22px] font-semibold text-foreground">
+        <h2 className="syn-serif text-[22px] font-semibold text-[#3e3347] dark:text-[#f1e9f4]">
           Что это делает с вами
         </h2>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className="text-[13px] text-[#7d7284] dark:text-muted-foreground leading-relaxed">
           Астрологическая причина → узнаваемое поведение → конкретная сцена. Никакой простыни.
         </p>
       </div>
@@ -59,52 +59,51 @@ export function SynastryTranslations({ translations, onOpenAspect }: Props) {
           return (
             <div
               key={idx}
-              className="rounded-[22px] border border-border/70 bg-card p-5 space-y-3 shadow-sm"
+              className="rounded-[18px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] p-[14px] space-y-2.5 shadow-sm"
             >
-              {/* Header row: tone dot + H3 + tech signature drilldown */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
+              {/* Header row: tone dot + H3 + tech signature drilldown link */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span
                     className={`h-2.5 w-2.5 rounded-full flex-none ${
                       tone === "good"
-                        ? "bg-[var(--syn-good)]"
+                        ? "bg-[#43806d]"
                         : tone === "bad"
-                        ? "bg-[var(--syn-bad)]"
-                        : "bg-[var(--syn-mid)]"
+                        ? "bg-[#a64d59]"
+                        : "bg-[#b07b36]"
                     }`}
                   />
-                  <h3 className="font-sans text-[15px] font-bold text-foreground leading-snug">
+                  <h3 className="font-sans text-[15px] font-bold text-[#3e3347] dark:text-[#f1e9f4] leading-snug">
                     {item.title}
                   </h3>
                 </div>
 
-                {item.tech && (
-                  <div className="flex items-center gap-1.5 flex-none text-[11.5px] text-muted-foreground">
-                    <span className="border-b border-dotted border-muted-foreground/50">{item.tech}</span>
-                    {aspectId && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenAspect(aspectId)}
-                        className="text-primary font-medium hover:underline focus:outline-none"
-                      >
-                        · что значит?
-                      </button>
-                    )}
-                  </div>
-                )}
+                {item.tech && aspectId ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenAspect(aspectId)}
+                    className="text-[10px] font-bold text-[#7d7284] underline decoration-dotted hover:text-[#795a86] transition flex-none"
+                  >
+                    {item.tech} · что значит?
+                  </button>
+                ) : item.tech ? (
+                  <span className="text-[10px] font-bold text-[#7d7284] flex-none">
+                    {item.tech}
+                  </span>
+                ) : null}
               </div>
 
-              {/* Main text */}
+              {/* Main translation text */}
               {item.text && (
-                <p className="text-[14px] leading-relaxed text-foreground/85">
+                <p className="text-[13px] leading-[1.46] text-[#3e3347] dark:text-foreground/90 m-0">
                   {item.text}
                 </p>
               )}
 
-              {/* Scene in soft separate box */}
+              {/* Life Scene box */}
               {item.scene && (
-                <div className="rounded-[14px] bg-[#f1e9f4]/60 dark:bg-[#2d2233]/60 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                  «{item.scene}»
+                <div className="rounded-[12px] bg-[#f8f5f8] dark:bg-[#251b2b] px-[10px] py-[9px] text-[12px] leading-[1.42] text-[#65596a] dark:text-[#d4c8db] font-sans">
+                  <strong>Сцена:</strong> {item.scene}
                 </div>
               )}
             </div>

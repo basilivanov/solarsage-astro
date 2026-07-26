@@ -127,16 +127,35 @@ def _normalize_tech_str(s: str) -> str:
 def _match_translation_aspect_id(tech: str | None, aspects: list[dict[str, Any]]) -> str | None:
     if not tech:
         return None
-    norm_tech = _normalize_tech_str(tech)
-    if not norm_tech:
-        return None
-    for a in aspects:
-        aid = a.get("id", "")
-        tsig = a.get("tech_signature", "")
-        if aid and (_normalize_tech_str(aid) in norm_tech or norm_tech in _normalize_tech_str(aid)):
-            return aid
-        if tsig and (_normalize_tech_str(tsig) in norm_tech or norm_tech in _normalize_tech_str(tsig)):
-            return aid
+
+    # Handle combined tech e.g. "Марс ☍ Марс + Меркурий □ Меркурий" by checking each part
+    import re
+    parts = [p.strip() for p in re.split(r"[+\/,]", tech) if p.strip()]
+    if not parts:
+        parts = [tech]
+
+    for part in parts:
+        norm_part = _normalize_tech_str(part)
+        if not norm_part:
+            continue
+        for a in aspects:
+            aid = a.get("id", "")
+            base_aid = re.sub(r"_\d+$", "", aid)
+            norm_aid = _normalize_tech_str(base_aid)
+            tsig = a.get("tech_signature", "")
+            norm_tsig = _normalize_tech_str(tsig)
+
+            if norm_aid and (norm_aid in norm_part or norm_part in norm_aid):
+                return aid
+            if norm_tsig and (norm_tsig in norm_part or norm_part in norm_tsig):
+                return aid
+
+            # Match planet names and aspect type
+            op = a.get("owner_planet", "").lower()
+            pp = a.get("partner_planet", "").lower()
+            if op and pp and _normalize_tech_str(op) in norm_part and _normalize_tech_str(pp) in norm_part:
+                return aid
+
     return None
 
 

@@ -75,8 +75,6 @@ const ASPECT_TYPE_RU: Record<string, string> = {
 }
 
 function formatLocalizedTitle(aspect: SynastryAspectItem): string {
-  // Engine ids look like "sun_trine_moon_0" — always prefer the localized form
-  // over the raw technical title (which may be an English tech signature).
   const parts = aspect.id.split("_")
   if (parts.length >= 3) {
     const op = PLANET_RU[parts[0].toLowerCase()] || parts[0]
@@ -91,7 +89,6 @@ function formatLocalizedTitle(aspect: SynastryAspectItem): string {
 }
 
 function extractAspectSymbol(aspect: SynastryAspectItem): string {
-  // Engine tech signature e.g. "Sun trine Moon (1.0°)" or "Луна △ Венера · орб 1°12′".
   const sig = aspect.techSignature || ""
   const glyph = GLYPHS.find((g) => sig.includes(g))
   if (glyph) return glyph
@@ -99,10 +96,8 @@ function extractAspectSymbol(aspect: SynastryAspectItem): string {
 }
 
 function extractOrbText(aspect: SynastryAspectItem): string {
-  // API provides ready orbLabel ("1°12′") since P3a — prefer it.
   if (aspect.orbLabel) return `орб ${aspect.orbLabel}`
   const sig = aspect.techSignature || ""
-  // Engine format: "Sun trine Moon (1.0°)"; макет format: "Луна △ Венера · орб 1°12′".
   const paren = sig.match(/\(([^)]*°[^)]*)\)/)
   if (paren) return `орб ${paren[1]}`
   if (sig.includes("·")) {
@@ -125,44 +120,47 @@ export function SynastryAspectRow({ aspect, onClick }: Props) {
       data-testid="synastry-aspect"
       data-tone={aspect.tone}
       onClick={() => onClick(aspect.id)}
-      className="flex w-full items-start justify-between rounded-[18px] border border-border/60 bg-card p-4 text-left transition hover:border-primary/50 active:scale-[0.99] shadow-sm space-x-3 group"
+      className="flex w-full flex-col rounded-[16px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] p-[11px] text-left transition hover:border-[#795a86]/45 active:scale-[0.99] active:shadow-[0_0_0_3px_rgba(121,90,134,0.07)] space-y-1.5 group"
     >
-      <div className="flex items-start gap-3 min-w-0 flex-1">
-        {/* Aspect Symbol Square */}
-        <div
-          className={`flex h-9 w-9 flex-none items-center justify-center rounded-[12px] text-[18px] font-bold ${
-            tone === "good"
-              ? "bg-[var(--syn-good-bg)] text-[var(--syn-good)]"
-              : tone === "bad"
-              ? "bg-[var(--syn-bad-bg)] text-[var(--syn-bad)]"
-              : "bg-[var(--syn-mid-bg)] text-[var(--syn-mid)]"
-          }`}
-        >
-          {symbol}
-        </div>
-
-        <div className="space-y-1 min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="font-serif text-[15.5px] font-semibold text-foreground truncate">
-              {localizedTitle}
-            </h4>
-            {orbText && (
-              <span className="text-[11px] font-medium text-muted-foreground/70 flex-none">
-                {orbText}
-              </span>
-            )}
+      <div className="flex items-center justify-between gap-2 w-full">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Symbol Square 27x27 r10 font 15px/850 */}
+          <div
+            className={`flex h-[27px] w-[27px] flex-none items-center justify-center rounded-[10px] text-[15px] font-[850] ${
+              tone === "good"
+                ? "bg-[#eaf5f0] text-[#43806d] dark:bg-[#1c2b25] dark:text-[#63a893]"
+                : tone === "bad"
+                ? "bg-[#fae9ec] text-[#a64d59] dark:bg-[#2d1c20] dark:text-[#c96b77]"
+                : "bg-[#fbf1de] text-[#b07b36] dark:bg-[#2d261a] dark:text-[#d49a4f]"
+            }`}
+          >
+            {symbol}
           </div>
 
-          {aspect.description && (
-            <p className="text-[13px] text-foreground/80 leading-relaxed line-clamp-1">
-              {aspect.description}
-            </p>
-          )}
-
-          <span className="block text-[11px] text-primary/80 font-medium pt-0.5 group-hover:underline">
-            Нажми — подробное значение и примеры →
-          </span>
+          {/* Title Inter 13px/830 (NOT serif) */}
+          <h4 className="font-sans text-[13px] font-[830] text-[#3e3347] dark:text-[#f1e9f4]">
+            {localizedTitle}
+          </h4>
         </div>
+
+        {orbText && (
+          <span className="text-[10px] font-bold text-[#7d7284] flex-none">
+            {orbText}
+          </span>
+        )}
+      </div>
+
+      {/* Human Description & Hint */}
+      <div className="pl-[35px] space-y-1">
+        {aspect.description && (
+          <p className="text-[12px] leading-[1.4] text-[#7d7284] dark:text-muted-foreground line-clamp-2">
+            {aspect.description}
+          </p>
+        )}
+
+        <span className="block text-[11px] font-semibold text-[#795a86] dark:text-[#c8a9d6] group-hover:underline">
+          Нажми — подробное значение и примеры
+        </span>
       </div>
     </button>
   )

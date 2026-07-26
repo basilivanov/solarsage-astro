@@ -35,15 +35,15 @@ type Props = {
 // START_BLOCK: SYNASTRY_HOUSE_OVERLAYS
 export function SynastryHouseOverlays({ houseOverlays, isApproximate = false }: Props) {
   return (
-    <section className="space-y-4" data-testid="synastry-overlays">
-      <div className="space-y-1">
-        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+    <section className="space-y-3 mx-4" data-testid="synastry-overlays">
+      <div className="space-y-0.5">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#795a86]">
           НАЛОЖЕНИЕ ДОМОВ
         </span>
-        <h2 className="font-serif text-[22px] font-semibold text-foreground">
+        <h2 className="syn-serif text-[22px] font-semibold text-[#3e3347] dark:text-[#f1e9f4]">
           Что у кого включается
         </h2>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
+        <p className="text-[13px] text-[#7d7284] dark:text-muted-foreground leading-relaxed">
           Не просто «планета в доме», а какую часть жизни партнёр реально задевает.
         </p>
       </div>
@@ -51,39 +51,37 @@ export function SynastryHouseOverlays({ houseOverlays, isApproximate = false }: 
       {isApproximate ? (
         <div
           data-testid="synastry-overlays-approx-notice"
-          className="rounded-[17px] bg-[#f1e9f4] dark:bg-[#2d2233] p-4 text-[13px] leading-relaxed text-[#3e3347] dark:text-[#f1e9f4] space-y-1"
+          className="rounded-[17px] bg-[#f7f2f7] dark:bg-[#2d2233] p-[12px] text-[12px] leading-[1.42] text-[#3e3347] dark:text-[#f1e9f4] space-y-1"
         >
-          <div className="font-semibold flex items-center gap-1.5 text-primary">
+          <div className="font-bold flex items-center gap-1.5 text-[#795a86]">
             <Info className="h-4 w-4 flex-none" />
             Дома партнёра не рассчитаны
           </div>
-          <p className="opacity-90">
+          <p className="m-0">
             Без точного времени рождения нельзя честно определить ASC и домовые наложения. Планетарные аспекты в отчёте сохранены.
           </p>
         </div>
       ) : houseOverlays.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-2.5">
           {houseOverlays.map((item, idx) => (
             <div
               key={idx}
-              className="rounded-[17px] bg-[#f1e9f4]/70 dark:bg-[#2d2233]/70 p-4 space-y-1"
+              className="rounded-[17px] bg-[#f7f2f7] dark:bg-[#2d2233] p-[12px] space-y-1 border-0"
             >
               {item.tech && (
-                <div className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                <div className="font-sans text-[11px] font-[850] text-[#795a86] dark:text-[#c8a9d6] uppercase tracking-wide">
                   {item.tech}
                 </div>
               )}
-              <div className="text-[13px] text-foreground leading-relaxed">
-                {item.text}
-              </div>
+              {item.text && (
+                <p className="font-sans text-[12px] leading-[1.42] text-[#3e3347] dark:text-[#f1e9f4] m-0">
+                  {item.text}
+                </p>
+              )}
             </div>
           ))}
         </div>
-      ) : (
-        <div className="rounded-[17px] bg-card p-4 text-[13px] text-muted-foreground border border-border/60">
-          Наложения домов рассчитываются.
-        </div>
-      )}
+      ) : null}
     </section>
   )
 }

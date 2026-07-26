@@ -28,7 +28,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowLeft, ChevronDown, ChevronUp, AlertCircle, Sparkles, RefreshCw } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, AlertCircle, Sparkles } from "lucide-react"
 import {
   getSynastryReport,
   getSynastryStatus,
@@ -72,7 +72,6 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
 
   useEffect(() => {
     let active = true
-    // Terminal flag — the interval closure must not depend on captured state.
     let done = false
     let timer: ReturnType<typeof setInterval> | null = null
 
@@ -202,30 +201,30 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
         role="status"
         aria-live="polite"
       >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary animate-pulse">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#795a86]/10 text-[#795a86] animate-pulse">
           <Sparkles className="h-8 w-8" />
         </div>
 
         <div className="space-y-1">
-          <h2 className="font-serif text-[22px] font-semibold text-foreground">
+          <h2 className="syn-serif text-[22px] font-semibold text-[#3e3347] dark:text-[#f1e9f4]">
             Строим карту взаимодействия
           </h2>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-[13px] text-[#7d7284]">
             Рассчитываем планеты, аспекты и уникальную динамику пары
           </p>
         </div>
 
         {/* Staged progress items */}
-        <div className="w-full max-w-xs space-y-2.5 text-left text-[13.5px] rounded-[20px] border border-border/70 bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-2.5 text-[#43806d] dark:text-[#63a893] font-medium">
+        <div className="w-full max-w-xs space-y-2.5 text-left text-[13.5px] rounded-[20px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] p-4 shadow-sm">
+          <div className="flex items-center gap-2.5 text-[#43806d] font-medium">
             <span>✓</span>
             <span>Сопоставили планеты</span>
           </div>
-          <div className={`flex items-center gap-2.5 ${isCalculating ? "text-primary font-medium" : "text-[#43806d] dark:text-[#63a893] font-medium"}`}>
+          <div className={`flex items-center gap-2.5 ${isCalculating ? "text-[#795a86] font-medium" : "text-[#43806d] font-medium"}`}>
             <span>{isNarrating ? "✓" : "•"}</span>
             <span>Рассчитываем аспекты</span>
           </div>
-          <div className={`flex items-center gap-2.5 ${isNarrating ? "text-primary font-medium" : "text-muted-foreground"}`}>
+          <div className={`flex items-center gap-2.5 ${isNarrating ? "text-[#795a86] font-medium" : "text-[#7d7284]"}`}>
             <span>•</span>
             <span>Готовим человеческий перевод</span>
           </div>
@@ -240,13 +239,13 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1.5 text-[13px] text-[#7d7284] hover:text-[#3e3347]"
         >
           <ArrowLeft className="h-4 w-4" /> Назад к списку
         </button>
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-5 text-center space-y-3" role="alert">
+        <div className="rounded-[18px] border border-destructive/20 bg-destructive/10 p-5 text-center space-y-3" role="alert">
           <AlertCircle className="mx-auto h-7 w-7 text-destructive" />
-          <h2 className="font-serif text-[18px] font-semibold text-foreground">Не удалось загрузить отчёт</h2>
+          <h2 className="syn-serif text-[18px] font-semibold text-foreground">Не удалось загрузить отчёт</h2>
           <p className="text-[13px] text-destructive">{error || "Не удалось загрузить отчёт."}</p>
         </div>
       </div>
@@ -257,7 +256,7 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
   const visibleAspects = showAllAspects ? report.aspects : report.aspects.slice(0, 3)
 
   return (
-    <div className="space-y-6 pb-16" data-testid="synastry-detail-screen" data-state="ready">
+    <div className="space-y-5 pb-16" data-testid="synastry-detail-screen" data-state="ready">
       {/* 1. PAIR HERO */}
       <SynastryPairHero
         partnerName={report.partnerName}
@@ -281,16 +280,19 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
       />
 
       {/* 3. INTERACTION MAP (WHEEL & ASPECT LIST) */}
-      <section className="rounded-[24px] border border-border/70 bg-card p-6 shadow-sm space-y-4" data-testid="synastry-wheel">
-        <div className="space-y-1">
-          <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+      <section
+        className="mx-4 rounded-[26px] border border-[#e8e0e8] bg-[#fffdf9]/94 dark:bg-[#2d2233]/94 p-[18px] shadow-[0_8px_26px_rgba(73,51,82,0.055)] space-y-4"
+        data-testid="synastry-wheel"
+      >
+        <div className="space-y-0.5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#795a86]">
             КАРТА ВЗАИМОДЕЙСТВИЯ
           </span>
-          <h2 className="font-serif text-[22px] font-semibold text-foreground">
+          <h2 className="syn-serif text-[22px] font-semibold text-[#3e3347] dark:text-[#f1e9f4]">
             Где между вами ток
           </h2>
-          <p className="text-[13px] text-muted-foreground leading-relaxed">
-            Взаимное расположение планет в двух натальных картах и линии связей.
+          <p className="text-[13px] text-[#7d7284] dark:text-muted-foreground leading-relaxed">
+            Два кольца — ваши планеты. Зелёные линии поддерживают, жёлтые раскачивают, красные дают трение. Нажми на линию или контакт ниже.
           </p>
         </div>
 
@@ -308,7 +310,7 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
         />
 
         {/* Key Aspects List */}
-        <div className="space-y-2.5 pt-2" id="synastry-aspects-list">
+        <div className="space-y-2.5 pt-1" id="synastry-aspects-list">
           {visibleAspects.map((aspect) => (
             <SynastryAspectRow
               key={aspect.id}
@@ -324,12 +326,12 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
             aria-expanded={showAllAspects}
             aria-controls="synastry-aspects-list"
             onClick={() => setShowAllAspects(!showAllAspects)}
-            className="w-full flex items-center justify-center gap-1.5 rounded-[16px] border border-border/70 bg-muted/40 py-3 text-[13px] font-medium text-foreground transition active:scale-[0.99]"
+            className="flex items-center justify-center gap-1 text-[13px] font-[830] text-[#795a86] hover:underline bg-transparent py-2 w-auto mx-auto border-0 cursor-pointer"
           >
             {showAllAspects ? (
-              <>Скрыть второстепенные аспекты <ChevronUp className="h-4 w-4" /></>
+              <>Скрыть второстепенные аспекты ↑</>
             ) : (
-              <>Показать все аспекты ({report.aspects.length}) <ChevronDown className="h-4 w-4" /></>
+              <>Показать все аспекты ({report.aspects.length}) ↓</>
             )}
           </button>
         )}

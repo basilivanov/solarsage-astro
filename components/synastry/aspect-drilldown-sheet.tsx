@@ -28,9 +28,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { X, Sparkles, AlertCircle, CheckCircle2, ShieldAlert, BookOpen } from "lucide-react"
+import { X, AlertCircle } from "lucide-react"
 import { getAspectDrilldown, type AspectDrilldownData } from "@/lib/api/synastry"
-import { getToneStatusLabel, normalizeSynastryTone } from "./synastry-tone"
+import { getToneContactLabel, normalizeSynastryTone } from "./synastry-tone"
 
 type Props = {
   open: boolean
@@ -44,6 +44,16 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
   const [data, setData] = useState<AspectDrilldownData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Escape closes the sheet (accessibility contract)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [open, onClose])
 
   useEffect(() => {
     if (!open || !partnerId || !aspectId) {
@@ -80,7 +90,6 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
   const symbol = data?.aspectSymbol || "△"
   const kindLabel = data?.aspectKindLabel || "Аспект"
   const orbStr = data?.orbText || ""
-  // Localized tech signature ("Меркурий □ Меркурий") — never show the raw English engine signature.
   const techLine =
     data?.ownerPlanet && data?.partnerPlanet
       ? `${data.ownerPlanet.label} ${symbol} ${data.partnerPlanet.label}`
@@ -88,24 +97,24 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[rgba(44,35,48,0.35)] p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="aspect-drilldown-title"
       data-testid="aspect-drilldown-sheet"
       data-tone={tone}
     >
-      <div className="relative w-full max-w-lg max-h-[90dvh] flex flex-col rounded-t-[28px] sm:rounded-[28px] border border-border/70 bg-background p-6 shadow-2xl space-y-5 overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[90dvh] flex flex-col rounded-t-[28px] sm:rounded-[28px] bg-[#fbf8f2] dark:bg-[#201826] p-6 shadow-2xl space-y-4 overflow-hidden">
         {/* Grabber bar */}
-        <div className="mx-auto h-1.5 w-12 rounded-full bg-muted-foreground/30 flex-none" />
+        <div className="mx-auto h-1.5 w-12 rounded-full bg-[#7d7284]/30 flex-none sm:hidden" />
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-border/40 pb-3 flex-none">
+        <div className="flex items-start justify-between gap-4 border-b border-[#e8e0e8] pb-3 flex-none">
           <div>
-            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#795a86]">
               АСТРОЛОГИЧЕСКИЙ КОНТАКТ
             </span>
-            <h2 id="aspect-drilldown-title" className="font-serif text-[22px] font-semibold text-foreground leading-tight">
+            <h2 id="aspect-drilldown-title" className="syn-serif text-[22px] font-medium text-[#3e3347] dark:text-[#f1e9f4] leading-tight">
               {data?.headline || data?.title || aspectId}
             </h2>
           </div>
@@ -113,30 +122,30 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
             type="button"
             onClick={onClose}
             aria-label="Закрыть"
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-card border border-border/70 text-muted-foreground transition hover:text-foreground active:scale-95"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#f1e9f4] text-[#3e3347] hover:bg-[#e8e0e8] transition active:scale-95"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-5 pr-1">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3" role="status" aria-busy="true">
-              <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <span className="text-[13px] text-muted-foreground">Готовим подробный разбор…</span>
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#795a86] border-t-transparent" />
+              <span className="text-[13px] text-[#7d7284]">Готовим подробный разбор…</span>
             </div>
           ) : error ? (
-            <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-center space-y-2" role="alert">
+            <div className="rounded-[14px] border border-destructive/20 bg-destructive/10 p-4 text-center space-y-2" role="alert">
               <AlertCircle className="mx-auto h-6 w-6 text-destructive" />
               <p className="text-[13px] text-destructive">{error}</p>
             </div>
           ) : data ? (
-            <div className="space-y-6 text-[14px] leading-relaxed text-foreground/85">
-              {/* 1. Hero Summary Card */}
-              <div className="flex items-center gap-4 rounded-[20px] border border-border/70 bg-card p-4 shadow-sm">
+            <div className="space-y-5 text-[14px] leading-relaxed">
+              {/* 1. Hero Summary Card (gradient 135deg, #f6eef8, #fff8f1, r20, p14) */}
+              <div className="flex items-center gap-[13px] rounded-[20px] bg-gradient-to-br from-[#f6eef8] to-[#fff8f1] dark:from-[#2a1d2e] dark:to-[#2e241e] p-[14px]">
                 <div
-                  className={`flex h-[50px] w-[50px] flex-none items-center justify-center rounded-[16px] text-[22px] font-bold ${
+                  className={`flex h-[50px] w-[50px] flex-none items-center justify-center rounded-[17px] text-[27px] font-[850] ${
                     tone === "good"
                       ? "bg-[#eaf5f0] text-[#43806d] dark:bg-[#1c2b25] dark:text-[#63a893]"
                       : tone === "bad"
@@ -147,55 +156,55 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
                   {symbol}
                 </div>
                 <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="text-[14.5px] font-bold text-foreground truncate">
+                  <div className="font-sans text-[15px] font-[830] text-[#3e3347] dark:text-[#f1e9f4] truncate m-0 leading-tight">
                     {techLine}
                   </div>
-                  <div className="text-[12px] text-muted-foreground">
-                    {kindLabel} {orbStr ? `· ${orbStr}` : ""} · {getToneStatusLabel(tone).toLowerCase()}
+                  <div className="text-[11px] text-[#7d7284] dark:text-muted-foreground">
+                    {kindLabel} {orbStr ? `· ${orbStr}` : ""} · {getToneContactLabel(tone)}
                   </div>
                 </div>
               </div>
 
-              {/* 2. What connects (Two Planet Cards) */}
+              {/* 2. What connects (Two Planet Cards .planet-meaning) */}
               {(data.ownerPlanet || data.partnerPlanet) && (
                 <div className="space-y-2">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
                     Что именно соединяется
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {data.ownerPlanet && (
-                      <div className="rounded-[18px] bg-[#f1e9f4]/70 dark:bg-[#2d2233]/70 p-4 space-y-2">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+                      <div className="rounded-[17px] bg-[#f7f2f7] dark:bg-[#2d2233] p-[13px] space-y-1">
+                        <span className="block font-sans text-[9px] font-[850] uppercase tracking-wider text-[#795a86]">
                           ТВОЯ КАРТА
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="font-serif font-bold text-[18px] text-primary">
+                          <span className="syn-serif text-[16px] text-[#3e3347] dark:text-[#f1e9f4]">
                             {data.ownerPlanet.glyph}
                           </span>
-                          <span className="font-serif font-semibold text-[16px] text-foreground">
+                          <strong className="text-[14px] font-bold text-[#3e3347] dark:text-[#f1e9f4]">
                             {data.ownerPlanet.label}
-                          </span>
+                          </strong>
                         </div>
-                        <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+                        <p className="text-[11.5px] leading-[1.42] text-[#65596a] dark:text-muted-foreground m-0">
                           {data.ownerPlanet.meaning}
                         </p>
                       </div>
                     )}
 
                     {data.partnerPlanet && (
-                      <div className="rounded-[18px] bg-[#fbf1de]/70 dark:bg-[#2d261a]/70 p-4 space-y-2">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#b07b36] dark:text-[#d49a4f]">
+                      <div className="rounded-[17px] bg-[#fbf3ed] dark:bg-[#2d261a] p-[13px] space-y-1">
+                        <span className="block font-sans text-[9px] font-[850] uppercase tracking-wider text-[#b07b36]">
                           КАРТА ПАРТНЁРА
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="font-serif font-bold text-[18px] text-[#b07b36] dark:text-[#d49a4f]">
+                          <span className="syn-serif text-[16px] text-[#3e3347] dark:text-[#f1e9f4]">
                             {data.partnerPlanet.glyph}
                           </span>
-                          <span className="font-serif font-semibold text-[16px] text-foreground">
+                          <strong className="text-[14px] font-bold text-[#3e3347] dark:text-[#f1e9f4]">
                             {data.partnerPlanet.label}
-                          </span>
+                          </strong>
                         </div>
-                        <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+                        <p className="text-[11.5px] leading-[1.42] text-[#65596a] dark:text-muted-foreground m-0">
                           {data.partnerPlanet.meaning}
                         </p>
                       </div>
@@ -204,102 +213,104 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
                 </div>
               )}
 
-              {/* 3. Aspect Mechanics */}
+              {/* 3. Aspect Mechanics (.meaning-card) */}
               {data.aspectMechanics && (
                 <div className="space-y-1.5">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1.5">
-                    <BookOpen className="h-3.5 w-3.5 text-primary" />
+                  <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
                     Как работает {kindLabel.toLowerCase()}
                   </h3>
-                  <div className="rounded-[18px] border border-border/70 bg-card p-4 text-[13.5px] leading-relaxed text-foreground/85">
-                    {data.aspectMechanics}
+                  <div className="rounded-[17px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] p-[13px] space-y-1">
+                    <p className="text-[12.5px] leading-[1.5] text-[#5e5262] dark:text-[#d4c8db] m-0">
+                      {data.aspectMechanics}
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* Explanation / Deep psychological dynamic */}
               {data.explanation && (
-                <div className="rounded-[18px] border border-primary/15 bg-primary/[0.03] p-4 text-[14px] leading-relaxed font-serif">
+                <div className="rounded-[17px] border border-[#795a86]/20 bg-[#f7f2f7]/50 dark:bg-[#2a1d2e]/50 p-[13px] text-[13px] leading-relaxed syn-serif text-[#3e3347] dark:text-[#f1e9f4]">
                   {data.explanation}
                 </div>
               )}
 
-              {/* 4. Life Scenes */}
+              {/* 4. Life Scenes (.life-scene) */}
               {data.scenes && data.scenes.length > 0 ? (
-                <div className="space-y-2.5">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <div className="space-y-2">
+                  <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
                     Как это проявляется в жизни
                   </h3>
                   <div className="space-y-2">
                     {data.scenes.map((scene, idx) => (
-                      <div key={idx} className="rounded-[16px] border border-border/60 bg-card p-3.5 space-y-1">
-                        <div className="text-[13px] font-semibold text-foreground">{scene.title}</div>
-                        <div className="text-[12.5px] text-muted-foreground leading-relaxed">{scene.text}</div>
+                      <div key={idx} className="rounded-[16px] bg-[#f8f5f8] dark:bg-[#251b2b] p-[12px] space-y-1">
+                        <strong className="block text-[12px] font-bold text-[#3e3347] dark:text-[#f1e9f4]">
+                          {scene.title}
+                        </strong>
+                        <span className="block text-[12px] leading-[1.45] text-[#65596a] dark:text-[#d4c8db]">
+                          {scene.text}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : data.scenario ? (
                 <div className="space-y-2">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
                     Как это проявляется в жизни
                   </h3>
-                  <div className="rounded-[18px] border border-border/70 bg-card p-4 text-[13.5px] leading-relaxed text-muted-foreground">
+                  <div className="rounded-[16px] bg-[#f8f5f8] dark:bg-[#251b2b] p-[12px] text-[12px] leading-[1.45] text-[#65596a] dark:text-[#d4c8db]">
                     {data.scenario}
                   </div>
                 </div>
               ) : null}
 
-              {/* 5. Repairs / What helps */}
+              {/* 5. Repairs / What helps (.repair-item) */}
               {data.repairs && data.repairs.length > 0 ? (
-                <div className="space-y-2.5">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-[#43806d]" />
+                <div className="space-y-2">
+                  <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
                     Что помогает и гармонизирует
                   </h3>
                   <div className="space-y-2">
                     {data.repairs.map((repair, idx) => (
                       <div
                         key={idx}
-                        className="flex items-start gap-3 rounded-[16px] bg-[#eaf5f0] dark:bg-[#1c2b25] p-3.5 text-[13px] leading-relaxed text-[#43806d] dark:text-[#63a893]"
+                        className="grid grid-cols-[25px_1fr] items-start gap-2.5 rounded-[15px] border border-[#dce9e3] bg-[#f4faf7] dark:bg-[#1a2822] p-[10px]"
                       >
-                        <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[#43806d] text-white text-[11px] font-bold">
+                        <span className="flex h-[25px] w-[25px] items-center justify-center rounded-[9px] bg-[#eaf5f0] text-[#43806d] text-[11px] font-[850]">
                           {idx + 1}
                         </span>
-                        <div className="flex-1">{repair}</div>
+                        <p className="text-[12px] leading-relaxed text-[#52645d] dark:text-[#9bc9b8] m-0">
+                          {repair}
+                        </p>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : data.advice ? (
                 <div className="space-y-2">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-[#43806d]" />
+                  <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
                     Что помогает
                   </h3>
-                  <div className="rounded-[18px] bg-[#eaf5f0] dark:bg-[#1c2b25] p-4 text-[13.5px] leading-relaxed text-[#43806d] dark:text-[#63a893]">
+                  <div className="rounded-[15px] border border-[#dce9e3] bg-[#f4faf7] dark:bg-[#1a2822] p-[10px] text-[12px] leading-relaxed text-[#52645d] dark:text-[#9bc9b8]">
                     {data.advice}
                   </div>
                 </div>
               ) : null}
 
-              {/* 6. Not means / Protection from fatalism */}
+              {/* 6. Not means / Protection from fatalism (.not-means) */}
               {data.notMeans && data.notMeans.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-border/40">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1.5">
-                    <ShieldAlert className="h-3.5 w-3.5 text-[#b07b36]" />
+                <div className="space-y-2 pt-2 border-t border-[#e8e0e8]">
+                  <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
                     Важно: это НЕ означает
                   </h3>
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {data.notMeans.map((item, idx) => (
-                      <div
+                      <span
                         key={idx}
-                        className="rounded-[14px] bg-[#fbf1de]/60 dark:bg-[#2d261a]/60 px-3.5 py-2.5 text-[12.5px] text-[#b07b36] dark:text-[#d49a4f] leading-relaxed"
+                        className="rounded-full bg-[#f3eff4] dark:bg-[#2d2233] text-[#695d6d] dark:text-[#d4c8db] text-[10px] font-[760] px-[9px] py-[7px]"
                       >
-                        • {item}
-                      </div>
+                        {item}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -312,7 +323,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
         <button
           type="button"
           onClick={onClose}
-          className="w-full h-12 rounded-[18px] bg-[#3e3347] dark:bg-[#f1e9f4] text-[#fffdf9] dark:text-[#3e3347] text-[14.5px] font-semibold transition active:scale-[0.99] flex-none"
+          className="w-full h-12 rounded-[17px] bg-[#3e3347] text-white text-[15px] font-[760] transition active:scale-[0.99] flex-none"
         >
           Понятно
         </button>

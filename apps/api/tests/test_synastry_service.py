@@ -367,12 +367,14 @@ def test_match_translation_aspect_id_helper():
     from app.services.synastry_service import _match_translation_aspect_id
 
     aspects = [
+        {"id": "mars_opposition_mars_2", "owner_planet": "Mars", "partner_planet": "Mars", "aspect": "opposition", "tech_signature": "Mars opposition Mars (0.8°)"},
         {"id": "sun_trine_moon", "owner_planet": "Sun", "partner_planet": "Moon", "aspect": "trine", "tech_signature": "Sun trine Moon (1.0°)"},
         {"id": "mercury_square_mercury", "owner_planet": "Mercury", "partner_planet": "Mercury", "aspect": "square", "tech_signature": "Mercury square Mercury (0.8°)"},
     ]
 
     assert _match_translation_aspect_id("Sun trine Moon", aspects) == "sun_trine_moon"
     assert _match_translation_aspect_id("Меркурий квадрат Меркурий", aspects) == "mercury_square_mercury"
+    assert _match_translation_aspect_id("Марс ☍ Марс + Меркурий □ Меркурий", aspects) == "mars_opposition_mars_2"
     assert _match_translation_aspect_id("Unknown Aspect", aspects) is None
 
 

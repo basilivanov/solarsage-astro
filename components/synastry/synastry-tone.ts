@@ -34,6 +34,18 @@ export function normalizeSynastryTone(value: string | null | undefined): Normali
   return "mid"
 }
 
+export function getToneContactLabel(tone: NormalizedSynastryTone): string {
+  switch (tone) {
+    case "good":
+      return "поддерживающий контакт"
+    case "bad":
+      return "напряжённый контакт"
+    case "mid":
+    default:
+      return "неоднозначный контакт"
+  }
+}
+
 export function getToneStatusLabel(tone: NormalizedSynastryTone): string {
   switch (tone) {
     case "good":

@@ -64,7 +64,7 @@ describe("SynastryAddSheet", () => {
     render(<SynastryAddSheet open={true} onClose={onClose} onSuccess={onSuccess} />)
 
     fireEvent.change(screen.getByLabelText(/Имя/i), { target: { value: "Ирина" } })
-    fireEvent.change(screen.getByLabelText(/Дата рождения/i), { target: { value: "1992-05-20" } })
+    fireEvent.change(screen.getByLabelText(/Дата.*рождения/i), { target: { value: "1992-05-20" } })
 
     // Open CityPicker suggestions and select Moscow from popular list
     const cityInput = screen.getByPlaceholderText(/Москва/i)
