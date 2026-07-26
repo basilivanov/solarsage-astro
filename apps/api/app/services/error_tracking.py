@@ -97,20 +97,22 @@ def capture_frontend_envelope(envelope: dict[str, Any]) -> None:
     # error_behavior: catches all exceptions silently; never raises
     # END_FUNCTION_CONTRACT: F-M-ERROR-TRACKING.capture_frontend_envelope
     try:
-        if not should_forward_envelope(envelope):
+        if not isinstance(envelope, dict) or not should_forward_envelope(envelope):
             return
 
         event = str(envelope.get("event", "frontend.error"))
-        payload = envelope.get("payload") if isinstance(envelope.get("payload"), dict) else {}
-        error_data = envelope.get("error") if isinstance(envelope.get("error"), dict) else {}
+        payload_dict = envelope.get("payload") if isinstance(envelope.get("payload"), dict) else {}
+        error_raw = envelope.get("error")
+        error_data = error_raw if isinstance(error_raw, dict) else {}
 
         kind = str(error_data.get("kind") or "Error")
         code = error_data.get("code")
         source = str(error_data.get("source") or "unknown")
         fingerprint_val = error_data.get("fingerprint")
-        stack_frames = error_data.get("stack_frames") if isinstance(error_data.get("stack_frames"), list) else []
+        raw_frames = error_data.get("stack_frames")
+        stack_frames = raw_frames if isinstance(raw_frames, list) else []
 
-        route = payload.get("route")
+        route = payload_dict.get("route") if isinstance(payload_dict, dict) else None
         slice_val = envelope.get("slice")
         module_val = envelope.get("module")
         correlation_id = envelope.get("correlation_id")
@@ -159,8 +161,8 @@ def capture_frontend_envelope(envelope: dict[str, Any]) -> None:
             extra["duration_ms"] = duration_ms
         if correlation_id:
             extra["correlation_id"] = correlation_id
-        if payload:
-            extra["payload"] = payload
+        if payload_dict:
+            extra["payload"] = payload_dict
 
         sentry_event: dict[str, Any] = {
             "message": f"{event}: {kind}",
@@ -175,7 +177,7 @@ def capture_frontend_envelope(envelope: dict[str, Any]) -> None:
         else:
             sentry_event["fingerprint"] = [f"{event}:{kind}"]
 
-        sentry_sdk.capture_event(sentry_event)
+        sentry_sdk.capture_event(sentry_event)  # type: ignore[arg-type]
     except Exception:
         # Fire-and-forget: failure to forward to Bugsink must never affect log intake
         pass

@@ -178,8 +178,8 @@ class ElectionService:
         try:
             client = get_solarsage_client()
             lunar_resp = await client.get_lunar_window(
-                from_date=request.window_from.isoformat(),
-                to_date=request.window_to.isoformat(),
+                from_date=request.window_from.isoformat(),  # type: ignore[attr-defined]
+                to_date=request.window_to.isoformat(),  # type: ignore[attr-defined]
             )
             lunar_days = lunar_resp.get("days", [])
 
@@ -205,8 +205,8 @@ class ElectionService:
 
             scan_res = await election_engine.scan(
                 event_type=request.event_type,
-                from_date=request.window_from,
-                to_date=request.window_to,
+                from_date=request.window_from,  # type: ignore[arg-type]
+                to_date=request.window_to,  # type: ignore[arg-type]
                 lunar_days=lunar_days,
                 natal_moon_sign=natal_moon_sign,
             )

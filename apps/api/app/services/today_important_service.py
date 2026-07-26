@@ -60,7 +60,7 @@ class TodayImportantService:
         natal: dict,
         transits: dict,
         signals: list[AstroSignal],
-        scoring_result: dict = None,
+        scoring_result: dict | None = None,
         semantic_layer=None,
     ) -> list[TodayImportantEvent]:
         # START_FUNCTION_CONTRACT: M-DAY-SERVICE.important_service.build_items

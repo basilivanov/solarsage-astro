@@ -524,16 +524,15 @@ class PromoCampaignService:
             error_kind = type(exc).__name__
             await self.db.rollback()
             try:
-                payload: dict[str, str] = {"error_kind": error_kind}
+                err_payload: dict[str, str] = {"error_kind": error_kind}
                 if campaign_id_str is not None:
-                    payload["campaign_id"] = campaign_id_str
+                    err_payload["campaign_id"] = campaign_id_str
                 with log_block(slice="W-PROMO-CAMPAIGN", module="M-PROMO-CAMPAIGN-SERVICE", block="REDEEM"):
                     log_event(
                         "promo.redemption_failed",
                         level="error",
                         msg="Promo redemption failed",
-                        payload=payload,
-                        error={"kind": error_kind},
+                        payload=err_payload,
                     )
             except Exception:
                 pass

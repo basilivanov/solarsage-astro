@@ -349,7 +349,7 @@ class NatalContextService:
                 birth_time=birth_time,
                 birth_lat=birth_lat,
                 birth_lon=birth_lon,
-                birth_tz=birth_tz,
+                birth_tz=birth_tz or "UTC",
             )
         except httpx.HTTPError as exc:
             with log_block(slice="W-NATAL-FULL", module="M-NATAL-CONTEXT-SERVICE", block="BUILD_CONTEXT"):
@@ -458,7 +458,7 @@ class NatalContextService:
                 sign=p.sign,
                 degree=round(p.longitude % 30, 2),
                 house=p.house,
-                retrograde=p.retrograde,
+                retrograde=bool(p.retrograde),
                 longitude=round(p.longitude, 4),
             ))
 

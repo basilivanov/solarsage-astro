@@ -522,7 +522,7 @@ class TodayInterpretationService:
         # concurrent LLM calls; application of results stays below unchanged).
         planets_context: list[dict] = []
         has_planet_context = bool(day_chart and day_chart.transit_planets)
-        if has_planet_context:
+        if day_chart and day_chart.transit_planets:
             for p in day_chart.transit_planets:
                 p_aspects = []
                 for a in day_chart.aspects:
@@ -736,7 +736,7 @@ class TodayInterpretationService:
 
         # 3. Planet Interpretations (apply the concurrently gathered result;
         # context was built above before the batch call)
-        if has_planet_context:
+        if day_chart and day_chart.transit_planets:
             if llm_interpretations and isinstance(llm_interpretations, dict):
                 for p in day_chart.transit_planets:
                     text = llm_interpretations.get(p.name)

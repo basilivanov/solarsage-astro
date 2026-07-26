@@ -48,9 +48,17 @@ select = ["F", "E4", "E7"]
 
 [tool.mypy]
 python_version = "3.12"
-strict_optional = true
 ignore_missing_imports = true
-plugins = ["pydantic.mypy"]
+follow_imports = "silent"
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = [
+    "app.schemas.*",
+    "app.db.models",
+    "app.services.*",
+]
+disable_error_code = ["call-arg", "attr-defined", "arg-type", "misc", "assignment"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

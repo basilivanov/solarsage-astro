@@ -307,7 +307,7 @@ class CheckinService:
             note=row.note if row.note is not None else row.notes,
             streak=row.streak or 1,
             filled_at=_as_utc(row.filled_at or row.created_at),
-            created_at=_as_utc(row.created_at),
+            created_at=_as_utc(row.created_at) or utc_now(),
         )
 
     async def _checkin_dates_through(

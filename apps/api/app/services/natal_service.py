@@ -501,10 +501,11 @@ class NatalService:
                 select(Product).where(Product.slug == "natal_full_report")
             )
         ).scalar_one_or_none()
+        catalog = catalog_by_slug("natal_full_report")
         full_report_price = (
             price_row.price_kopecks
             if price_row is not None
-            else catalog_by_slug("natal_full_report").price_kopecks
+            else (catalog.price_kopecks if catalog else 39900)
         )
         # Purchasable ONLY when billing is live, the feature flag is on, an
         # ACTIVE catalog product row exists and no ready report is available

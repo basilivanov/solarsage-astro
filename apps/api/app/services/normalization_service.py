@@ -327,7 +327,7 @@ class NormalizationService:
             max_orb = ASPECT_ORBS[aspect_name]
 
             if orb <= max_orb:
-                return (aspect_name, orb)
+                return (aspect_name, orb)  # type: ignore[return-value] # aspect_name is key in ASPECT_ANGLES dict which matches AspectType union
 
         return None
 

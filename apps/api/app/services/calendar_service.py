@@ -309,7 +309,7 @@ class CalendarService:
 
             # Fetch sidecar activation-layer
             sidecar_layer = None
-            if should_compute_v2():
+            if should_compute_v2() and p.birthday and p.birth_lat is not None and p.birth_lon is not None and p.birth_tz:
                 try:
                     sidecar_layer = await get_solarsage_client().get_activation_layer(
                         birth_date=p.birthday.isoformat(),

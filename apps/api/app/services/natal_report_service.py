@@ -293,11 +293,11 @@ def _iter_block_texts(block: NatalBlock):
             if item.text:
                 yield item.text
     elif isinstance(block, HighlightsBlock):
-        for item in block.items:
-            if item.title:
-                yield item.title
-            if item.text:
-                yield item.text
+        for h_item in block.items:
+            if h_item.title:
+                yield h_item.title
+            if h_item.text:
+                yield h_item.text
     elif isinstance(block, BulletsBlock):
         yield from (item for item in block.items if item)
     # DividerBlock has no text fields

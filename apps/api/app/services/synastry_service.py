@@ -521,7 +521,7 @@ class SynastryService:
         formatted_partner_planets = []
         for p in sidecar_data.get("partner_planets", []):
             p_lon = float(p.get("longitude", 0.0))
-            h_num = _find_house(p_lon, partner_houses) if houses_avail else None
+            h_num = _find_house(p_lon, partner_houses or []) if houses_avail else None
             formatted_partner_planets.append({
                 "id": f"partner_{p.get('name', '').lower()}",
                 "owner": "partner",
@@ -563,7 +563,7 @@ class SynastryService:
                     })
 
         # 2. Owner planets into Partner's houses (if partner houses available and exact)
-        if houses_avail:
+        if houses_avail and partner_houses:
             for op in sidecar_data.get("owner_planets", []):
                 p_lon = float(op.get("longitude", 0.0))
                 p_name = op.get("name", "")
@@ -642,10 +642,12 @@ class SynastryService:
             )
 
         raw_translations = narrative_data.get("translations", [])
+        det_aspects = det_payload.get("aspects", [])
         matched_translations = []
         for t in raw_translations:
             if isinstance(t, dict):
-                t_aspect_id = t.get("aspect_id") or t.get("aspectId") or _match_translation_aspect_id(t.get("tech"), det_payload["aspects"])
+                aspects_list = det_aspects if isinstance(det_aspects, list) else []
+                t_aspect_id = t.get("aspect_id") or t.get("aspectId") or _match_translation_aspect_id(t.get("tech"), aspects_list)
                 matched_translations.append({
                     "tone": t.get("tone"),
                     "title": t.get("title", ""),
