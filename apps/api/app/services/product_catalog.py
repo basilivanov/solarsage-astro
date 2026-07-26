@@ -147,13 +147,13 @@ CATALOG: tuple[ProductDef, ...] = (
     ProductDef(
         slug="synastry",
         name="Синастрия",
-        description="Полный разбор совместимости двух натальных карт (пока не продаётся)",
+        description="Разбор совместимости двух карт",
         product_type="one_time",
         price_kopecks=39900,
         currency="RUB",
         period_days=None,
-        horary_quota=None,
-        is_active=False,  # fail-closed until real synastry fulfillment exists
+        horary_quota=1,
+        is_active=True,
     ),
 )
 # END_BLOCK: CATALOG_DEF

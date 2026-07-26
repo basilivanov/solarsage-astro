@@ -111,6 +111,7 @@ class PurchaseStartRequest(CamelModel):
     product_slug: Literal[
         "natal_full_report",
         "horary_1", "horary_3", "horary_5", "horary_10",
+        "election_1", "synastry",
     ]
 
 

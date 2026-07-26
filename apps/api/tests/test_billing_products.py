@@ -56,7 +56,8 @@ async def test_seeded_catalog_matches_canonical_prices(db_session) -> None:
     assert rows["horary_5"].price_kopecks == 18000
     assert rows["horary_10"].price_kopecks == 30000
     assert rows["synastry"].price_kopecks == 39900
-    assert rows["synastry"].is_active is False
+    assert rows["synastry"].is_active is True
+    assert rows["synastry"].horary_quota == 1
 
 
 @pytest.mark.asyncio
@@ -76,7 +77,9 @@ async def test_products_endpoint_lists_only_active_with_exact_prices(
     r = await async_client.get("/api/payment/products")
     assert r.status_code == 200
     products = {p["slug"]: p for p in r.json()["products"]}
-    assert "synastry" not in products  # fail-closed, not for sale
+    assert "synastry" in products
+    assert products["synastry"]["priceKopecks"] == 39900
+    assert products["synastry"]["horaryQuota"] == 1
     assert products["subscription_month"]["priceKopecks"] == 9900
     assert products["subscription_year"]["priceKopecks"] == 99900
     assert products["natal_full_report"]["priceKopecks"] == 39900

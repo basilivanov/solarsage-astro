@@ -110,6 +110,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
@@ -979,12 +980,20 @@ class BillingService:
         if purchase is None:
             return
 
+        if purchase.status in ("consumed", "succeeded", "delivered"):
+            return
+
         if product.horary_quota:
+            metadata_dict = {
+                "product_slug": product.slug,
+                "purchase_id": str(purchase.id),
+            }
             credit = HoraryCredit(
                 user_id=payment.user_id,
                 source="paid",
                 amount=product.horary_quota,
                 used_amount=0,
+                metadata_json=json.dumps(metadata_dict, ensure_ascii=False),
             )
             self.db.add(credit)
             purchase.horary_quota_added = product.horary_quota

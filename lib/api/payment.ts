@@ -243,6 +243,7 @@ export type OneTimeProductSlug =
   | "horary_5"
   | "horary_10"
   | "election_1"
+  | "synastry"
 
 const KNOWN_ERROR_MESSAGES: Record<string, string> = {
   PAYMENT_NEEDS_RECONCILIATION:
