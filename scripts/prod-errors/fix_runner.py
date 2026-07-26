@@ -43,6 +43,38 @@ PROTECTED_PATTERNS = [
     "apps/api/app/api/auth",
 ]
 
+PYTEST_CMD = "cd apps/api && .venv/bin/python -m pytest tests/ -q --tb=no"
+
+
+def run_backend_pytest(worktree_path: Path) -> set[str]:
+    """Run the backend suite; return the set of failing test ids (FAILED/ERROR summary lines)."""
+    res = subprocess.run(["bash", "-c", PYTEST_CMD], cwd=worktree_path, capture_output=True, text=True)
+    failed: set[str] = set()
+    for line in (res.stdout + "\n" + res.stderr).splitlines():
+        stripped = line.strip()
+        if stripped.startswith(("FAILED ", "ERROR ")):
+            parts = stripped.split()
+            if len(parts) >= 2:
+                failed.add(parts[1])
+    return failed
+
+
+def run_pytest_baseline(worktree_path: Path) -> set[str]:
+    """Re-run the backend suite with the fix stashed — failures there pre-date the fix."""
+    push = subprocess.run(
+        ["git", "stash", "push", "-m", "prod-error-baseline"],
+        cwd=worktree_path, capture_output=True, text=True,
+    )
+    stashed = push.returncode == 0 and "No local changes" not in push.stdout
+    try:
+        return run_backend_pytest(worktree_path)
+    finally:
+        if stashed:
+            subprocess.run(
+                ["git", "stash", "pop"],
+                cwd=worktree_path, check=True, capture_output=True, text=True,
+            )
+
 
 def fetch_github_issue(repo: str, issue_number: str) -> dict:
     """Fetch GitHub issue details via gh CLI."""
@@ -159,9 +191,24 @@ Title: {title}
         if opencode_res.returncode != 0:
             raise RuntimeError(f"OpenCode run failed: {opencode_res.stderr or opencode_res.stdout}")
 
-        # Check git status for modified files
+        # Check git status for modified files, excluding artifacts staged by
+        # this runner itself (dependency symlinks, opencode config, ТЗ doc).
         status_res = subprocess.run(["git", "status", "--porcelain"], cwd=worktree_path, capture_output=True, text=True, check=True)
-        modified_lines = [line.strip() for line in status_res.stdout.splitlines() if line.strip()]
+        self_artifacts = {
+            "opencode.json",
+            "node_modules",
+            "apps/api/.venv",
+            str(tz_doc_path.relative_to(worktree_path)),
+        }
+        modified_lines = []
+        for line in status_res.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(maxsplit=1)
+            if len(parts) > 1 and parts[1] in self_artifacts:
+                continue
+            modified_lines.append(line)
 
         if not modified_lines:
             raise RuntimeError("OpenCode executed but left zero modified files.")
@@ -183,14 +230,17 @@ Title: {title}
 
         if has_backend:
             print("Running Python backend tests...")
-            py_res = subprocess.run(
-                ["bash", "-c", "cd apps/api && .venv/bin/python -m pytest tests/ -q"],
-                cwd=worktree_path,
-                capture_output=True,
-                text=True,
-            )
-            if py_res.returncode != 0:
-                raise RuntimeError(f"Pytest verification failed:\n{py_res.stdout}\n{py_res.stderr}")
+            failed_tests = run_backend_pytest(worktree_path)
+            if failed_tests:
+                print(f"{len(failed_tests)} failing tests; comparing against pre-fix baseline...")
+                baseline_failed = run_pytest_baseline(worktree_path)
+                new_failures = sorted(failed_tests - baseline_failed)
+                if new_failures:
+                    raise RuntimeError(
+                        "Pytest verification failed, new failures vs pre-fix baseline:\n"
+                        + "\n".join(new_failures)
+                    )
+                print(f"All {len(failed_tests)} failures pre-exist on the base tree; continuing.")
 
         # Remove check-only symlinks and the staged opencode config so they
         # never land in the commit.

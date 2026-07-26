@@ -75,10 +75,11 @@ def create_github_issue(repo: str, issue_data: dict, dry_run: bool) -> str | Non
     route = str(issue_data.get("transaction") or "unknown")
     bugsink_url = os.environ.get("BUGSINK_URL", "http://127.0.0.1:18095").rstrip("/")
 
-    # Enrich from the latest event: release and top stack frame.
+    # Enrich from the latest event: release, top stack frame, diagnostic payload.
     release = "unknown"
     top_frame = "unknown"
     frames_preview = ""
+    diag_lines: list[str] = []
     try:
         client = BugsinkClient()
         event = client.get_latest_event(issue_id)
@@ -95,8 +96,21 @@ def create_github_issue(repo: str, issue_data: dict, dry_run: bool) -> str | Non
                 f"- `{f.get('filename', '?')}` in `{f.get('function', '?')}` line {f.get('lineno', '?')}"
                 for f in shown
             )
+        # Structured diagnostics (contract name, reason_code, route) — for
+        # frontend contract errors these matter more than minified frames.
+        extra = data.get("extra") if isinstance(data.get("extra"), dict) else {}
+        http_info = extra.get("http") if isinstance(extra.get("http"), dict) else {}
+        if http_info:
+            diag_lines.append(
+                f"- **http:** `{http_info.get('method', '?')} {http_info.get('route_template', '?')}` -> `{http_info.get('status', '?')}`"
+            )
+        payload = extra.get("payload") if isinstance(extra.get("payload"), dict) else {}
+        for key in sorted(payload):
+            diag_lines.append(f"- **payload.{key}:** `{str(payload[key])[:200]}`")
     except Exception as err:
         sys.stderr.write(f"Warning: failed to enrich issue {issue_id} from latest event: {err}\n")
+
+    diag_preview = "\n".join(diag_lines) if diag_lines else "No diagnostic payload."
 
     title = f"{kind} at {top_frame} ({route})"
     body = f"""## Production Error Report
@@ -114,6 +128,9 @@ def create_github_issue(repo: str, issue_data: dict, dry_run: bool) -> str | Non
 
 ### Stack frames (latest event, innermost last)
 {frames_preview or "No stack frames available."}
+
+### Diagnostic context (latest event)
+{diag_preview}
 
 ### Description
 Automated production error report captured from Bugsink self-hosted error tracker.

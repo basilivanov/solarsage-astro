@@ -20,11 +20,22 @@
 
 set -euo pipefail
 
+# Re-exec from a private copy: the runner wrapper may ff-update this checkout
+# between ticks, and bash reads scripts incrementally — a torn read would
+# corrupt the running instance. PROD_ERRORS_RUN_DIR preserves the real dir.
+if [ -z "${PROD_ERRORS_RUN_DIR:-}" ]; then
+  export PROD_ERRORS_RUN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  STABLE_COPY="$(mktemp /tmp/prod-errors-run.XXXXXX.sh)"
+  cp "${BASH_SOURCE[0]}" "$STABLE_COPY"
+  exec env PROD_ERRORS_STABLE_COPY="$STABLE_COPY" bash "$STABLE_COPY" "$@"
+fi
+rm -f "$PROD_ERRORS_STABLE_COPY" 2>/dev/null || true
+
 # Cron runs with a bare PATH (/usr/bin:/bin); opencode and user-local tools
 # live under $HOME — prepend before anything else runs.
 export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$PATH"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$PROD_ERRORS_RUN_DIR"
 LOCK_FILE="/tmp/solarsage_prod_errors_triage.lock"
 PROD_HOST="${PROD_ERRORS_SSH_HOST:-root@2.26.20.80}"
 PROD_SSH_KEY="${PROD_ERRORS_SSH_KEY:-$HOME/.ssh/solarsage_prod_server_ed25519}"
