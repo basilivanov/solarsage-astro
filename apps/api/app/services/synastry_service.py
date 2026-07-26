@@ -354,7 +354,7 @@ class SynastryService:
             log_event("llm.requested", msg="synastry narrative requested")
             raw_text = await llm_client._generate_text(
                 prompt=f"{prompt_dict['system']}\n\n{prompt_dict['user']}",
-                max_tokens=1000,
+                max_tokens=2000,
             )
 
             if not raw_text:
@@ -368,8 +368,12 @@ class SynastryService:
                     log_event("llm.response_validated", msg="synastry narrative validated")
                     return parsed
             log_event("llm.response_rejected", level="warning", msg="synastry narrative: validation failed")
-        except Exception:
-            log_event("llm.response_rejected", level="warning", msg="synastry narrative: generation error")
+        except Exception as exc:
+            log_event(
+                "llm.response_rejected",
+                level="warning",
+                msg=f"synastry narrative: generation error: {type(exc).__name__}",
+            )
 
         return None
 
