@@ -51,17 +51,17 @@ export function SynastrySearchFilters({
   onFilterChange,
 }: Props) {
   return (
-    <div className="space-y-3" data-testid="synastry-search-filters">
+    <div className="space-y-3 px-4" data-testid="synastry-search-filters">
       {/* Search Input */}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/70" />
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7d7284]" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Найти по имени"
           data-testid="synastry-search-input"
-          className="w-full h-12 rounded-[17px] border border-border/70 bg-card/80 pl-11 pr-4 py-2.5 text-[14px] text-foreground placeholder:text-muted-foreground/60 focus:border-primary/60 focus:ring-2 focus:ring-primary/20 focus:outline-none transition"
+          className="w-full h-[48px] rounded-[17px] border border-[#e8e0e8] bg-white/82 dark:bg-[#2d2233]/82 px-[44px] text-[16px] text-black dark:text-[#f1e9f4] placeholder:text-[#7d7284]/70 focus:border-[#795a86]/50 focus:ring-4 focus:ring-[#795a86]/08 focus:outline-none transition"
         />
       </div>
 
@@ -76,10 +76,10 @@ export function SynastrySearchFilters({
               aria-pressed={isActive}
               data-testid={`synastry-filter-${item.id}`}
               onClick={() => onFilterChange(item.id)}
-              className={`flex-none h-8 px-3.5 rounded-full text-[12px] font-medium transition active:scale-95 ${
+              className={`flex-none rounded-full px-3 py-[9px] text-[12px] font-[730] transition active:scale-95 ${
                 isActive
-                  ? "bg-[#3e3347] dark:bg-[#f1e9f4] text-[#fffdf9] dark:text-[#3e3347] font-semibold"
-                  : "bg-card border border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  ? "bg-[#3e3347] dark:bg-[#f1e9f4] text-white dark:text-[#3e3347]"
+                  : "bg-white/72 dark:bg-[#2d2233]/72 border border-[#e8e0e8] text-[#7d7284] hover:border-[#795a86]/40 hover:text-[#3e3347]"
               }`}
             >
               {item.label}

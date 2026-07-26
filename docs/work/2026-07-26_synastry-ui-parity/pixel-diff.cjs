@@ -8,17 +8,17 @@ const PROPS = ['font-family','font-size','font-weight','line-height','letter-spa
 // selector map: [name, protoSel, implSel]
 const LIST_POINTS = [
   ['h1', 'h1', '[data-testid="synastry-list-hero"] h1'],
-  ['lead', '.lead', '[data-testid="synastry-list-hero"] p'],
+  ['lead', '.lead', '[data-testid="synastry-list-hero"] p:not(.mb-2)'],
   ['cta', '.primary.full', '[data-testid="synastry-add-btn"]'],
   ['search', '.search', '[data-testid="synastry-search-filters"] input'],
   ['filter-active', '.filter.active', '[data-testid="synastry-filter-all"]'],
   ['section-h2', '.section-head h2', '[data-testid="synastry-list"] h2, [data-testid="synastry-screen"] h2'],
   ['card', '.candidate', '[data-testid="synastry-card"]'],
-  ['card-name', '.candidate .cand-name, .candidate h3', '[data-testid="synastry-card"] h3'],
-  ['card-avatar', '.candidate .cand-ava, .candidate .ava', '[data-testid="synastry-card"] h3 + div, [data-testid="synastry-card"] [class*="rounded-[17px]"]'],
-  ['card-score', '.candidate .score, .cand-score', '[data-testid="synastry-card"] .font-serif'],
+  ['card-name', '.candidate-name', '[data-testid="synastry-card"] h3'],
+  ['card-avatar', '.candidate .avatar', '[data-testid="synastry-card"] [class*="h-[46px]"]'],
+  ['card-score', '.candidate .score', '[data-testid="synastry-card"] .text-right .syn-serif'],
   ['status-pill', '.candidate .cand-status, .status', '[data-testid="synastry-card"] [class*="rounded-full"]'],
-  ['counter-tile', '.candidate .bal > *, .cand-bal > *', '[data-testid="synastry-card-counters"] > div'],
+  ['counter-tile', '.astro-mini span', '[data-testid="synastry-card-counters"] > div'],
 ]
 
 async function grab(page, sel) {

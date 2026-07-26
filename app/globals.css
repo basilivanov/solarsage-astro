@@ -368,3 +368,7 @@
     animation: none !important;
   }
 }
+
+.syn-serif {
+  font-family: Georgia, "Times New Roman", serif;
+}

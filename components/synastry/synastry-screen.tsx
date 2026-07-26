@@ -101,7 +101,15 @@ export function SynastryScreen({ onSelectPartner }: Props) {
   const stateStr = loading ? "loading" : error ? "error" : filteredPartners.length === 0 ? "empty" : "ready"
 
   return (
-    <div className="space-y-6 pb-16" data-testid="synastry-screen" data-state={stateStr}>
+    <div
+      className="space-y-6 pb-20 min-h-screen relative"
+      style={{
+        background:
+          "radial-gradient(circle at 82% -4%, rgba(188, 155, 198, 0.28), transparent 28%), radial-gradient(circle at -10% 16%, rgba(245, 217, 208, 0.38), transparent 24%), #fbf8f2",
+      }}
+      data-testid="synastry-screen"
+      data-state={stateStr}
+    >
       {/* Product Hero */}
       <SynastryListHero onAddClick={() => setAddSheetOpen(true)} />
 
@@ -114,12 +122,12 @@ export function SynastryScreen({ onSelectPartner }: Props) {
       />
 
       {/* List Section Header */}
-      <div className="flex items-baseline justify-between pt-2">
-        <h2 className="font-serif text-[20px] font-semibold text-foreground">
+      <div className="flex items-baseline justify-between pt-2 px-4">
+        <h2 className="font-sans text-[20px] font-bold text-[#3e3347] dark:text-[#f1e9f4]">
           Твои сравнения
         </h2>
-        <span className="text-[12px] text-muted-foreground">
-          {partners.length} {partners.length === 1 ? "человек" : "человека"}
+        <span className="text-[12px] text-[#7d7284]">
+          {filteredPartners.length} из {partners.length}
         </span>
       </div>
 
@@ -161,7 +169,7 @@ export function SynastryScreen({ onSelectPartner }: Props) {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
+        <div className="space-y-3 px-4">
               <h3 className="font-serif text-[18px] font-semibold text-foreground">Добавь первого человека</h3>
               <p className="text-[13px] text-muted-foreground max-w-[32ch] mx-auto leading-relaxed">
                 Сравним ваши карты и покажем не только общий балл, но и конкретные точки притяжения и трения.

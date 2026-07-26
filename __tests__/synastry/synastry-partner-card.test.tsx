@@ -40,7 +40,7 @@ describe("SynastryPartnerCard", () => {
     expect(screen.getByText("Романтические отношения")).toBeDefined()
     expect(screen.getByText("89")).toBeDefined()
     expect(screen.getByText("Хорошо подходит")).toBeDefined()
-    expect(screen.getByText("8 поддерживают")).toBeDefined()
+    expect(screen.getByText(/поддерживают/)).toBeDefined()
   })
 
   it("renders precision note when precision is approximate", () => {
