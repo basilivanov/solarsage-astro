@@ -52,10 +52,14 @@ class SynastryCapabilitiesRead(CamelModel):
     """Capabilities status for synastry feature."""
 
     can_calculate: bool = Field(..., description="Whether user can calculate new synastry report")
+    can_purchase: bool = Field(default=True, description="Whether one-time credit purchase is available")
     active_partner_count: int = Field(..., description="Current count of active partners")
     max_partners: int = Field(default=20, description="Maximum allowed active partners per user")
     has_unlocked_access: bool = Field(..., description="Whether user has unlocked synastry access")
     credit_balance: int = Field(default=0, description="Available credit balance")
+    blocked_reason: Literal["no_credits", "partner_limit"] | None = Field(
+        default=None, description="Reason why calculation is blocked if can_calculate is false"
+    )
 
 
 class PartnerCreate(CamelModel):

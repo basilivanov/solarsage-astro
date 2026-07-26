@@ -76,7 +76,7 @@ async def test_create_partner_endpoint_202_and_task_trigger():
          patch("app.api.synastry.asyncio.create_task") as mock_create_task:
 
         mock_instance = AsyncMock()
-        mock_instance.create_partner_and_report.return_value = (dummy_partner, dummy_report)
+        mock_instance.create_partner_and_report.return_value = (dummy_partner, dummy_report, True)
         mock_service_cls.return_value = mock_instance
 
         res = await create_synastry_partner(body, dummy_user, dummy_db)
@@ -113,3 +113,44 @@ def test_synastry_partner_item_schema_counters_and_report_state():
     dumped = item.model_dump(by_alias=True)
     assert dumped["counters"] == {"good": 8, "mid": 2, "bad": 2}
     assert dumped["reportState"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_synastry_capabilities_and_quota_shared_balance():
+    """Capabilities and quota routes use HoraryCreditService.get_balance and return consistent fields."""
+    from app.api.synastry import get_synastry_capabilities, get_synastry_quota
+    from app.schemas.horary import HoraryQuotaRead
+
+    user_id = uuid.uuid4()
+    dummy_user = AsyncMock()
+    dummy_user.id = user_id
+    dummy_db = AsyncMock()
+
+    mock_quota = HoraryQuotaRead(
+        weeklyFreeAvailable=True,
+        weeklyFreeExpiresAt="2026-08-01T00:00:00Z",
+        nextWeeklyFreeAt=None,
+        bonusCredits=2,
+        paidCredits=1,
+        canPurchase=True,
+    )
+
+    dummy_db.execute.return_value = AsyncMock(scalars=lambda: AsyncMock(all=lambda: []))
+
+    with patch("app.api.synastry.HoraryCreditService") as mock_svc_cls:
+        mock_svc = AsyncMock()
+        mock_svc.get_balance.return_value = mock_quota
+        mock_svc_cls.return_value = mock_svc
+
+        caps = await get_synastry_capabilities(dummy_user, dummy_db)
+        quota = await get_synastry_quota(dummy_user, dummy_db)
+
+        # 1 + 2 + 1 = 4
+        assert caps.credit_balance == 4
+        assert caps.can_calculate is True
+        assert caps.can_purchase is True
+        assert caps.blocked_reason is None
+
+        assert quota.weekly_free_available is True
+        assert quota.bonus_credits == 2
+        assert quota.paid_credits == 1

@@ -36,10 +36,12 @@ import { instrumentedFetch } from "@/lib/log/instrumented-fetch"
 
 export type SynastryCapabilities = {
   canCalculate: boolean
+  canPurchase?: boolean
   activePartnerCount: number
   maxPartners: number
   hasUnlockedAccess: boolean
   creditBalance: number
+  blockedReason?: "no_credits" | "partner_limit" | null
 }
 
 export type PartnerCreatePayload = {

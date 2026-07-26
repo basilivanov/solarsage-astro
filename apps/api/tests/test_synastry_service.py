@@ -475,3 +475,108 @@ async def test_fail_and_refund_idempotent():
         refund_events_2 = [call for call in mock_log.call_args_list if call.args[0] == "synastry.credit_refunded"]
         assert len(refund_events_2) == 1  # Still 1 event total!
 
+
+@pytest.mark.asyncio
+async def test_create_partner_and_report_idempotency_replay():
+    """Replaying partner creation with same idempotency key and same payload returns existing records."""
+    from datetime import date
+    from app.services.synastry_service import SynastryService, _compute_request_hash
+    from app.schemas.synastry import PartnerCreate
+    from app.db.models import UserProfile, SynastryCreditSpend, SynastryReport, SynastryPartner
+
+    user_id = uuid.uuid4()
+    report_id = uuid.uuid4()
+    partner_id = uuid.uuid4()
+    ikey = "key-12345"
+
+    body = PartnerCreate(name="Елена", birth_date=date(1990, 5, 15), idempotency_key=ikey)
+    req_hash = _compute_request_hash(body)
+
+    user_profile = UserProfile(user_id=user_id, birthday=date(1985, 1, 1), birth_lat=55.75)
+    spend = SynastryCreditSpend(id=uuid.uuid4(), user_id=user_id, credit_id=uuid.uuid4(), report_id=report_id, idempotency_key=ikey, request_hash=req_hash)
+    report = SynastryReport(id=report_id, owner_id=user_id, partner_id=partner_id, state="pending")
+    partner = SynastryPartner(id=partner_id, owner_id=user_id, name="Елена")
+
+    db = AsyncMock()
+    db.execute.side_effect = [
+        AsyncMock(scalar_one_or_none=lambda: user_profile),
+        AsyncMock(scalar_one_or_none=lambda: spend),
+        AsyncMock(scalar_one_or_none=lambda: report),
+        AsyncMock(scalar_one_or_none=lambda: partner),
+    ]
+
+    service = SynastryService(db)
+    p_res, r_res, is_new = await service.create_partner_and_report(user_id, body)
+
+    assert p_res.id == partner_id
+    assert r_res.id == report_id
+    assert is_new is False
+
+
+@pytest.mark.asyncio
+async def test_create_partner_and_report_idempotency_conflict():
+    """Reusing idempotency key with a different payload raises 409 IDEMPOTENCY_CONFLICT."""
+    from datetime import date
+    from fastapi import HTTPException
+    from app.services.synastry_service import SynastryService
+    from app.schemas.synastry import PartnerCreate
+    from app.db.models import UserProfile, SynastryCreditSpend
+
+    user_id = uuid.uuid4()
+    ikey = "key-12345"
+
+    body = PartnerCreate(name="Елена", birth_date=date(1990, 5, 15), idempotency_key=ikey)
+
+    user_profile = UserProfile(user_id=user_id, birthday=date(1985, 1, 1), birth_lat=55.75)
+    spend = SynastryCreditSpend(id=uuid.uuid4(), user_id=user_id, credit_id=uuid.uuid4(), report_id=uuid.uuid4(), idempotency_key=ikey, request_hash="different_hash")
+
+    db = AsyncMock()
+    db.execute.side_effect = [
+        AsyncMock(scalar_one_or_none=lambda: user_profile),
+        AsyncMock(scalar_one_or_none=lambda: spend),
+    ]
+
+    service = SynastryService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await service.create_partner_and_report(user_id, body)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail == {"code": "IDEMPOTENCY_CONFLICT", "message": "Idempotency key reused with a different payload."}
+
+
+@pytest.mark.asyncio
+async def test_create_partner_and_report_no_credits_402():
+    """When user has 0 credits, create_partner_and_report raises 402 NO_CREDITS without creating rows."""
+    from datetime import date
+    from fastapi import HTTPException
+    from app.services.synastry_service import SynastryService
+    from app.schemas.synastry import PartnerCreate
+    from app.db.models import UserProfile
+
+    user_id = uuid.uuid4()
+    body = PartnerCreate(name="Анна", birth_date=date(1992, 8, 10))
+
+    user_profile = UserProfile(user_id=user_id, birthday=date(1985, 1, 1), birth_lat=55.75)
+
+    db = AsyncMock()
+    db.execute.side_effect = [
+        AsyncMock(scalar_one_or_none=lambda: user_profile),
+        AsyncMock(scalar_one_or_none=lambda: None), # no existing spend
+        AsyncMock(scalar_one_or_none=lambda: None), # no partner dup
+    ]
+
+    service = SynastryService(db)
+    with patch("app.services.synastry_service.HoraryCreditService") as mock_cred_cls:
+        mock_cred_svc = AsyncMock()
+        mock_cred_svc.get_or_create_current_weekly_free.return_value = None
+        mock_cred_svc.select_spendable_credit.return_value = None
+        mock_cred_cls.return_value = mock_cred_svc
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.create_partner_and_report(user_id, body)
+
+        assert exc_info.value.status_code == 402
+        assert exc_info.value.detail == {"code": "NO_CREDITS", "message": "Insufficient credits for synastry report."}
+        # Verify db.add was NOT called (no rows created!)
+        db.add.assert_not_called()
+
