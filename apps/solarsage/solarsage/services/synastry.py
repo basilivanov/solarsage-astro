@@ -28,7 +28,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 from ..schemas.synastry import CrossAspect, SynastryRequest, SynastryResponse
 from ..services.natal import NatalService
 

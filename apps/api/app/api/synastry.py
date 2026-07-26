@@ -49,7 +49,6 @@ from app.core.log_identity import hash_log_identifier
 from app.core.logging import log_event
 from app.db.models import (
     HoraryCredit,
-    SynastryAspectDetail,
     SynastryFeedback,
     SynastryPartner,
     SynastryReport,

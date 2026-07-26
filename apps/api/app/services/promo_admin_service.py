@@ -54,7 +54,6 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.logging import log_event
 from app.db.models import AccessLedger, HoraryCredit, PromoCampaign, PromoRedemption
 from app.services.promo_campaign_service import hash_promo_token

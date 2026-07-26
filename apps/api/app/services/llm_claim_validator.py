@@ -24,7 +24,6 @@
 # END_MODULE_MAP: M-LLM-CLAIM-VALIDATOR
 
 from __future__ import annotations
-import re
 from app.schemas.today import ConcreteAdviceEvidence
 
 class LLMClaimValidator:

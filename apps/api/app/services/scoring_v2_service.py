@@ -526,7 +526,7 @@ class ScoringV2Service:
 
         # ── 6. Day status (only active activations) ─────────────────────
         active_acts = [a for a in activation_layer.activations
-                       if a.active is not None and not a.active is False]
+                       if a.active is not None and a.active is not False]
         status, status_breakdown = _compute_day_status_v2(
             day_signals, active_acts, scoring_v2,
         )

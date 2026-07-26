@@ -50,7 +50,6 @@ from solarsage.utils.ephemeris import (
     calculate_julian_day,
     calculate_positions,
     calculate_houses_cusps,
-    get_sign,
 )
 
 # ── Canonical aspect map (reused from activation_builder) ────────────────────
@@ -220,8 +219,6 @@ def calculate_solar_arc_context(
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-PROGRESSIONS.calculate_solar_arc_context
     """Calculate solar arc context: progressed Sun, delta, and solar arc positions."""
     # Engine path is configured by core/ephemeris_runtime (single owner).
-    flags = swe.FLG_SWIEPH
-
     birth_jd, target_jd, age_years, progressed_jd = _compute_progressed_jd(
         birth_date, birth_time, birth_tz, target_date, target_time, target_tz,
     )
@@ -259,12 +256,10 @@ def calculate_solar_arc_context(
         natal_angles["IC"] = _normalize(natal_angles["MC"] + 180.0)
 
     # Natal lots
-    from solarsage.services.activation_builder import _local_date, _is_day_chart
+    from solarsage.services.activation_builder import _is_day_chart
     from solarsage.services.activation_builder import _compute_lots
-    birth_local = _local_date(birth_date, birth_tz)
     natal_sun_house = _find_house(natal_sun_lon, natal_houses_raw) if natal_sun else None
     is_day = _is_day_chart(natal_sun_house)
-    natal_by_name_upper = {k.upper(): v for k, v in natal_by_name.items()}
     asc_lon = natal_angles.get("ASC", 0.0)
     dsc_lon = natal_angles.get("DSC", (asc_lon + 180.0) % 360.0)
 
@@ -376,8 +371,6 @@ def calculate_secondary_progression_context(
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-PROGRESSIONS.calculate_secondary_progression_context
     """Calculate secondary progression context."""
     # Engine path is configured by core/ephemeris_runtime (single owner).
-    flags = swe.FLG_SWIEPH
-
     birth_jd, target_jd, age_years, progressed_jd = _compute_progressed_jd(
         birth_date, birth_time, birth_tz, target_date, target_time, target_tz,
     )
@@ -414,9 +407,8 @@ def calculate_secondary_progression_context(
         natal_angles["IC"] = _normalize(natal_angles["MC"] + 180.0)
 
     # Natal lots
-    from solarsage.services.activation_builder import _local_date, _is_day_chart
+    from solarsage.services.activation_builder import _is_day_chart
     from solarsage.services.activation_builder import _compute_lots
-    birth_local = _local_date(birth_date, birth_tz)
     natal_sun_house = _find_house(natal_sun_lon, natal_houses_raw) if natal_sun else None
     is_day = _is_day_chart(natal_sun_house)
     asc_lon = natal_angles.get("ASC", 0.0)

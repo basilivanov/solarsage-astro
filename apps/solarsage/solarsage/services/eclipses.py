@@ -44,7 +44,6 @@ import yaml
 from solarsage.utils.ephemeris import (
     calculate_julian_day,
     calculate_houses_cusps,
-    get_sign,
 )
 
 # ── Eclipse type mapping ─────────────────────────────────────────────────────
@@ -100,9 +99,9 @@ def _load_canon_config() -> dict[str, Any]:
         except (ValueError, TypeError):
             raise KeyError(f"eclipse_window.{key} is non-numeric: {val}")
     if config["days_before"] <= 0 or config["days_after"] <= 0:
-        raise ValueError(f"eclipse_window days_before/days_after must be > 0")
+        raise ValueError("eclipse_window days_before/days_after must be > 0")
     if config["orb_to_natal"] <= 0:
-        raise ValueError(f"eclipse_window orb_to_natal must be > 0")
+        raise ValueError("eclipse_window orb_to_natal must be > 0")
     return config
 
 
@@ -253,8 +252,7 @@ def find_eclipses(
         natal_angles["IC"] = (natal_angles["MC"] + 180.0) % 360.0
 
     # Natal lots
-    from solarsage.services.activation_builder import _local_date, _is_day_chart, _compute_lots
-    birth_local = _local_date(birth_date, birth_tz)
+    from solarsage.services.activation_builder import _is_day_chart, _compute_lots
     natal_sun = natal_by_name.get("Sun", {})
     natal_sun_lon = natal_sun.get("longitude", 0.0)
     natal_sun_house = _find_house(natal_sun_lon, natal_houses_raw) if natal_sun else None

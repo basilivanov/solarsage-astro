@@ -24,7 +24,6 @@
 # purpose: Natal chart service
 
 from datetime import datetime
-from typing import List, Dict, Any
 
 from ..models.chart import NatalChart
 from ..utils.ephemeris import calculate_julian_day, calculate_positions, calculate_houses_cusps

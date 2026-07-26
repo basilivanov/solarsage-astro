@@ -29,17 +29,14 @@
 
 from __future__ import annotations
 
-import json
-import logging
 import uuid
 from datetime import date as Date, datetime, timedelta, timezone
-from typing import Any
 
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.models import AccessLedger, HoraryCredit, HoraryCreditSpend, HoraryQuestion
+from app.db.models import AccessLedger, HoraryCredit, HoraryCreditSpend
 from app.schemas.horary import HoraryQuotaRead
 
 

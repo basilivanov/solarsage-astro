@@ -606,8 +606,6 @@ def build_activation_layer(
     by_lot: dict[str, list[str]] = {}
     by_angle: dict[str, list[str]] = {}
 
-    planet_names = list(transit_by_name.keys())
-
     # Cache for firdar context (computed once when both techniques are active)
     firdar_ctx: tuple | None = None
 
@@ -637,19 +635,16 @@ def build_activation_layer(
                 for nname, npos in natal_by_name.items():
                     targets[nname.upper()] = ("planet", npos["longitude"])
                 target_frame = "natal"
-                target_type_prefix = "planet"
             elif tech == "transit_to_angle":
                 targets = {}
                 for aname, alon in angles.items():
                     targets[aname] = ("angle", alon)
                 target_frame = "angle"
-                target_type_prefix = "angle"
             else:  # transit_to_lot
                 targets = {}
                 for lot in lots:
                     targets[lot["name"]] = ("lot", lot["longitude"])
                 target_frame = "lot"
-                target_type_prefix = "lot"
 
             for tname, tpos in transit_by_name.items():
                 tlon = tpos["longitude"]
@@ -787,7 +782,7 @@ def build_activation_layer(
                     if ttype == "lot":
                         extra_kw["lot"] = tkey
                         # Include lot debug info
-                        matching_lots = [l for l in lots if l["name"] == tkey]
+                        matching_lots = [lot_item for lot_item in lots if lot_item["name"] == tkey]
                         if matching_lots:
                             debug_info["lot"] = {
                                 "name": matching_lots[0]["name"],
@@ -1584,7 +1579,6 @@ def build_activation_layer(
 
             for asp in aspects:
                 source_key = asp["source_key"]
-                source_display = _display_name(source_key)
                 target_key = asp["target_key"]
                 target_type = asp["target_type"]
                 aspect_name = asp["aspect"]
@@ -1654,8 +1648,7 @@ def build_activation_layer(
         elif tech == "secondary_progression":
             from solarsage.services.progressions import (
                 calculate_secondary_progression_context,
-                progressed_moon_aspects, progressed_sun_transitions,
-                _get_progression_strength,
+                progressed_moon_aspects, _get_progression_strength,
             )
             sp_ctx = calculate_secondary_progression_context(
                 birth_date=birth_date, birth_time=birth_time, birth_tz=birth_tz,

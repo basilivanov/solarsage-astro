@@ -47,7 +47,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from ._base import CamelModel
 
@@ -410,7 +410,6 @@ class NatalContextData(CamelModel):
 # END_BLOCK: NATAL_CONTEXT_SCHEMAS
 
 # START_BLOCK: SIDECAR_VALIDATION_SCHEMAS
-from pydantic import model_validator
 
 
 class SolarSagePlanetPosition(CamelModel):

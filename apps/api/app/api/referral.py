@@ -43,7 +43,7 @@
 #   - REFERRAL_CLAIM_ENDPOINT: POST /api/referral/claim
 # END_MODULE_MAP: M-API-REFERRAL
 
-from datetime import UTC, date as Date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException

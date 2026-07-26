@@ -39,6 +39,7 @@ from __future__ import annotations
 import asyncio
 import re
 from datetime import date as Date
+from typing import Any
 
 from app.schemas.normalization import AstroSignal
 from app.schemas.semantic import SemanticLayer
@@ -49,12 +50,9 @@ from app.schemas.today import (
     ConcreteAdviceEvidence,
     ConcreteAdviceVerdict,
     ConcreteAdviceConfidence,
-    ConcreteAdviceEvidenceKind,
     DaySummaryBlock,
     DaySummaryFact,
-    DaySummaryFactKind,
     DayChart,
-    DayChartTransitPlanet,
     PlanetInfluence,
     SphereScore,
     TodayImportantEvent,

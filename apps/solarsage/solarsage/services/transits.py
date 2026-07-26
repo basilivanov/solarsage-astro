@@ -23,7 +23,7 @@
 # wave: W-SOLARSAGE-SVC
 # purpose: Transits calculation service
 
-from datetime import datetime, date
+from datetime import datetime
 from typing import List, Dict, Any
 
 from ..models.chart import Transit

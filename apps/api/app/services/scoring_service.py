@@ -39,7 +39,6 @@
 #   - SCORE_LEGACY: backward-compat scoring
 # END_MODULE_MAP: M-SCORING-SERVICE
 
-import os
 from pathlib import Path
 
 import yaml
@@ -350,10 +349,14 @@ class ScoringService:
                 return s.daily_salience
             # Fallback: velocity-weighted strength
             name = _base_planet_name(s.planet)
-            if name in fast_set: vf = float(vel_factor.get("fast", 1.0))
-            elif name in medium_set: vf = float(vel_factor.get("medium", 0.7))
-            elif name in slow_set: vf = float(vel_factor.get("slow", 0.45))
-            else: vf = 0.5
+            if name in fast_set:
+                vf = float(vel_factor.get("fast", 1.0))
+            elif name in medium_set:
+                vf = float(vel_factor.get("medium", 0.7))
+            elif name in slow_set:
+                vf = float(vel_factor.get("slow", 0.45))
+            else:
+                vf = 0.5
             return s.strength * vf
 
         ranked = sorted(signals, key=_daily_salience, reverse=True)[:limit]

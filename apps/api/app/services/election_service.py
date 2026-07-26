@@ -40,7 +40,6 @@ import hashlib
 import json
 import uuid
 from datetime import UTC, date, datetime
-from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import select, and_, desc
@@ -49,7 +48,7 @@ from sqlalchemy.orm import selectinload
 
 from app.clients.solarsage_client import get_solarsage_client
 from app.core.logging import log_event
-from app.db.models import ElectionCreditSpend, ElectionRequest, ElectionResult, HoraryCredit
+from app.db.models import ElectionCreditSpend, ElectionRequest, ElectionResult, HoraryCredit, User
 from app.db.session import SessionLocal
 from app.schemas.horary import HoraryQuotaRead
 from app.services import election_engine
@@ -190,9 +189,12 @@ class ElectionService:
                 user_stmt = select(User).options(selectinload(User.profile)).where(User.id == request.user_id)
                 user_obj = (await self.db.execute(user_stmt)).scalar_one_or_none()
                 if user_obj and user_obj.profile and user_obj.profile.is_onboarded:
-                    from app.services.natal_context_service import get_or_build_natal_context
-                    context_data = await get_or_build_natal_context(self.db, user_obj)
-                    natal_moon_sign = (context_data.raw_chart.planets.get("MOON") or {}).get("sign", "").lower() or None
+                    from app.services.natal_context_service import NatalContextService
+                    natal_service = NatalContextService(self.db)
+                    context_data = await natal_service.get_or_build_natal_context(request.user_id)
+                    moon = next((p for p in context_data.planets if p.name.upper() == "MOON"), None)
+                    if moon and moon.sign:
+                        natal_moon_sign = moon.sign.lower()
             except Exception as exc:
                 log_event(
                     "system.error",

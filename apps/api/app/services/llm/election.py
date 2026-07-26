@@ -31,7 +31,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.core.config import settings
 from app.core.logging import log_event, log_block
 from app.schemas.election import validate_election_narrative
 from app.services.llm_service import LLMService

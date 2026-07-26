@@ -27,4 +27,4 @@
 
 """M-AUTH-TG / M-PROFILE service package marker."""
 
-from app.services import llm
+from app.services import llm as llm

@@ -118,7 +118,7 @@ async def health_check_extended(db: AsyncSession = Depends(get_session)) -> dict
                     if "geonames" in data:
                         checks["geonames"] = "ok"
                     else:
-                        checks["geonames"] = f"error: unexpected response"
+                        checks["geonames"] = "error: unexpected response"
                 else:
                     checks["geonames"] = f"error: status {response.status_code}"
     except httpx.TimeoutException:

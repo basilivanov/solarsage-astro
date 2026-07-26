@@ -30,7 +30,12 @@ from __future__ import annotations
 
 from .access import AccessSummary, UserAccessState
 from .auth import AuthError, AuthSession, TelegramAuthRequest
-from .calendar import AllowedRange, CalendarDay, CalendarMeta, CalendarPayload
+from .calendar import (
+    AllowedRange as AllowedRange,
+    CalendarDay as CalendarDay,
+    CalendarMeta as CalendarMeta,
+    CalendarPayload as CalendarPayload,
+)
 from .checkin import (
     CheckinCreate,
     CheckinMetrics,
@@ -45,17 +50,17 @@ from .horary import (
     HoraryQuotaRead,
 )
 from .natal import (
-    BulletsBlock,
-    HighlightItem,
-    HighlightsBlock,
-    NatalBlock,
-    NatalMeta,
-    NatalPayload,
-    NatalSection,
-    ParagraphBlock,
-    Person,
-    PersonBirth,
-    QuoteBlock,
+    BulletsBlock as BulletsBlock,
+    HighlightItem as HighlightItem,
+    HighlightsBlock as HighlightsBlock,
+    NatalBlock as NatalBlock,
+    NatalMeta as NatalMeta,
+    NatalPayload as NatalPayload,
+    NatalSection as NatalSection,
+    ParagraphBlock as ParagraphBlock,
+    Person as Person,
+    PersonBirth as PersonBirth,
+    QuoteBlock as QuoteBlock,
 )
 from .today import (
     ContentAccessReason,

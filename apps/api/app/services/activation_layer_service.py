@@ -38,7 +38,6 @@
 from __future__ import annotations
 
 from datetime import date as Date
-from typing import Any
 
 from app.core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
 from app.schemas.activation import (

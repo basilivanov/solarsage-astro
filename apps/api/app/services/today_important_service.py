@@ -25,8 +25,7 @@
 
 from __future__ import annotations
 
-from datetime import date as Date, datetime, timedelta, timezone
-from typing import Any
+from datetime import date as Date, datetime, timedelta
 
 from app.schemas.normalization import AstroSignal
 from app.schemas.today import TodayImportantEvent
@@ -72,7 +71,7 @@ class TodayImportantService:
         # emitted_logs: none
         # error_behavior: propagates database/key errors
         # END_FUNCTION_CONTRACT: M-DAY-SERVICE.important_service.build_items
-        
+
         items: list[TodayImportantEvent] = []
 
         # 1. Eclipse and lunation checks

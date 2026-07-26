@@ -40,7 +40,7 @@ from datetime import UTC, date, datetime, timedelta
 import zoneinfo
 import uuid
 
-from sqlalchemy import select, and_, exists
+from sqlalchemy import select, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DayFeedback, EveningCheckin, User, UserProfile

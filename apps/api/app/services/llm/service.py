@@ -487,9 +487,7 @@ JSON:"""
         #   - raises HoraryGenerationError on 2 failed attempts (no fallback)
         # END_FUNCTION_CONTRACT: LLMService.generate_horary_answer
         from app.schemas.horary_analysis import (
-            EvidenceItem,
             HoraryAnalysis,
-            TimingInfo,
         )
 
         if not isinstance(analysis, HoraryAnalysis):
