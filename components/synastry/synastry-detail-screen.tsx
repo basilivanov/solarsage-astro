@@ -28,10 +28,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowLeft, ChevronDown, ChevronUp, AlertCircle } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, AlertCircle, Sparkles, RefreshCw } from "lucide-react"
 import {
   getSynastryReport,
+  getSynastryStatus,
   submitSynastryFeedback,
+  type SynastryGenerationStatus,
   type SynastryReportData,
 } from "@/lib/api/synastry"
 import { SynastryPairHero } from "./synastry-pair-hero"
@@ -52,6 +54,7 @@ type Props = {
 // START_BLOCK: SYNASTRY_DETAIL_SCREEN
 export function SynastryDetailScreen({ partnerId, onBack }: Props) {
   const [report, setReport] = useState<SynastryReportData | null>(null)
+  const [genStatus, setGenStatus] = useState<SynastryGenerationStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -69,25 +72,83 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
 
   useEffect(() => {
     let active = true
-    setLoading(true)
-    setError(null)
+    // Terminal flag — the interval closure must not depend on captured state.
+    let done = false
+    let timer: ReturnType<typeof setInterval> | null = null
 
-    getSynastryReport(partnerId)
-      .then((res) => {
+    const finish = () => {
+      done = true
+      if (timer) clearInterval(timer)
+    }
+
+    async function fetchReportOrStatus() {
+      setError(null)
+      try {
+        const res = await getSynastryReport(partnerId)
         if (!active) return
         setReport(res)
         setFeedbackValue(res.userFeedback)
-      })
-      .catch((err) => {
+        setGenStatus(null)
+        setLoading(false)
+        finish()
+      } catch {
         if (!active) return
-        setError(err instanceof Error ? err.message : "Не удалось загрузить отчёт.")
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+        try {
+          const st = await getSynastryStatus(partnerId)
+          if (!active) return
+          setGenStatus(st)
+
+          if (st.state === "ready") {
+            const res = await getSynastryReport(partnerId)
+            if (!active) return
+            setReport(res)
+            setFeedbackValue(res.userFeedback)
+            setLoading(false)
+            finish()
+          } else if (st.state === "failed") {
+            setError("Не удалось выполнить расчёт. Попробуйте ещё раз.")
+            setLoading(false)
+            finish()
+          } else {
+            setLoading(true)
+          }
+        } catch {
+          if (!active) return
+          setError("Не удалось загрузить отчёт. Попробуйте ещё раз.")
+          setLoading(false)
+          finish()
+        }
+      }
+    }
+
+    void fetchReportOrStatus()
+
+    timer = setInterval(async () => {
+      if (!active || done) return
+      try {
+        const st = await getSynastryStatus(partnerId)
+        if (!active) return
+        setGenStatus(st)
+        if (st.state === "ready") {
+          const res = await getSynastryReport(partnerId)
+          if (!active) return
+          setReport(res)
+          setFeedbackValue(res.userFeedback)
+          setLoading(false)
+          if (timer) clearInterval(timer)
+        } else if (st.state === "failed") {
+          setError("Не удалось выполнить расчёт. Попробуйте ещё раз.")
+          setLoading(false)
+          if (timer) clearInterval(timer)
+        }
+      } catch {
+        /* ignore polling errors */
+      }
+    }, 2500)
 
     return () => {
       active = false
+      if (timer) clearInterval(timer)
     }
   }, [partnerId])
 
@@ -130,10 +191,45 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
   }
 
   if (loading) {
+    const isCalculating = genStatus?.state === "calculating" || genStatus?.state === "pending" || !genStatus
+    const isNarrating = genStatus?.state === "narrative_generating"
+
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3" data-testid="synastry-detail-screen" data-state="loading">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <span className="text-[13.5px] text-muted-foreground">Загружаем разбор совместимости…</span>
+      <div
+        className="flex min-h-[320px] flex-col items-center justify-center p-6 text-center space-y-6"
+        data-testid="synastry-detail-screen"
+        data-state="loading"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary animate-pulse">
+          <Sparkles className="h-8 w-8" />
+        </div>
+
+        <div className="space-y-1">
+          <h2 className="font-serif text-[22px] font-semibold text-foreground">
+            Строим карту взаимодействия
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            Рассчитываем планеты, аспекты и уникальную динамику пары
+          </p>
+        </div>
+
+        {/* Staged progress items */}
+        <div className="w-full max-w-xs space-y-2.5 text-left text-[13.5px] rounded-[20px] border border-border/70 bg-card p-4 shadow-sm">
+          <div className="flex items-center gap-2.5 text-[#43806d] dark:text-[#63a893] font-medium">
+            <span>✓</span>
+            <span>Сопоставили планеты</span>
+          </div>
+          <div className={`flex items-center gap-2.5 ${isCalculating ? "text-primary font-medium" : "text-[#43806d] dark:text-[#63a893] font-medium"}`}>
+            <span>{isNarrating ? "✓" : "•"}</span>
+            <span>Рассчитываем аспекты</span>
+          </div>
+          <div className={`flex items-center gap-2.5 ${isNarrating ? "text-primary font-medium" : "text-muted-foreground"}`}>
+            <span>•</span>
+            <span>Готовим человеческий перевод</span>
+          </div>
+        </div>
       </div>
     )
   }
@@ -148,10 +244,10 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
         >
           <ArrowLeft className="h-4 w-4" /> Назад к списку
         </button>
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-5 text-center space-y-2" role="alert">
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-5 text-center space-y-3" role="alert">
           <AlertCircle className="mx-auto h-7 w-7 text-destructive" />
           <h2 className="font-serif text-[18px] font-semibold text-foreground">Не удалось загрузить отчёт</h2>
-          <p className="text-[13px] text-muted-foreground">{error || "Ошибка загрузки данных"}</p>
+          <p className="text-[13px] text-destructive">{error || "Не удалось загрузить отчёт."}</p>
         </div>
       </div>
     )

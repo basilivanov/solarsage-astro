@@ -27,7 +27,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Sparkles, AlertCircle, Info } from "lucide-react"
+import { X, AlertCircle, Info } from "lucide-react"
 import { createSynastryPartner, type PartnerCreatePayload } from "@/lib/api/synastry"
 import { CityPicker } from "@/components/onboarding/city-picker"
 import type { City } from "@/lib/contracts/city"
@@ -111,13 +111,20 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
       aria-labelledby="synastry-add-title"
       data-testid="synastry-add-sheet"
     >
-      <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl border border-border/70 bg-card p-6 shadow-2xl space-y-5">
+      <div className="relative w-full max-w-md max-h-[92dvh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] border border-border/70 bg-card p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl space-y-5">
+        {/* Grabber bar */}
+        <div className="mx-auto h-1.5 w-12 rounded-full bg-muted-foreground/30 flex-none sm:hidden" />
+
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/50 pb-3">
-          <h2 id="synastry-add-title" className="font-serif text-[20px] font-semibold text-foreground flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Добавить человека
-          </h2>
+          <div>
+            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              НОВОЕ СРАВНЕНИЕ
+            </span>
+            <h2 id="synastry-add-title" className="font-serif text-[22px] font-semibold text-foreground">
+              Добавить человека
+            </h2>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -230,7 +237,7 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
                 Примерный расчёт: без ASC и домов партнёра
               </div>
               <p className="leading-relaxed opacity-90">
-                Планеты и основные аспекты останутся, но дома и Асцендент партнёра не рассчитываются. Позиция Луны будет получена с меньшей точностью.
+                Планеты и основные аспекты останутся. Дома и Асцендент партнёра не рассчитываются, а положение Луны и общий балл будут менее точными.
               </p>
             </div>
           )}
@@ -253,9 +260,9 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
               type="submit"
               disabled={loading}
               aria-busy={loading}
-              className="w-full rounded-full bg-primary py-3 text-[14.5px] font-semibold text-primary-foreground transition active:scale-[0.99] disabled:opacity-50"
+              className="w-full h-[50px] rounded-[17px] bg-primary text-primary-foreground font-semibold text-[15px] flex items-center justify-center transition active:scale-[0.99] disabled:opacity-50"
             >
-              {loading ? "Сохраняем и считаем…" : "Добавить и рассчитать ✨"}
+              {loading ? "Сохраняем данные…" : "Построить синастрию"}
             </button>
           </div>
         </form>

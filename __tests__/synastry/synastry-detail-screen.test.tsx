@@ -43,6 +43,15 @@ vi.mock("@/lib/api/synastry", () => ({
     createdAt: "2026-07-25T12:00:00Z",
   }),
   submitSynastryFeedback: vi.fn().mockResolvedValue({ reportId: "rep-123", value: "accurate", updatedAt: "2026-07-25T12:05:00Z" }),
+  getSynastryStatus: vi.fn().mockResolvedValue({
+    reportId: "rep-123",
+    partnerId: "partner-123",
+    state: "ready",
+    stage: "done",
+    attemptCount: 1,
+    errorCode: null,
+    errorMessage: null,
+  }),
   getAspectDrilldown: vi.fn().mockResolvedValue({
     aspectId: "sun_trine_moon",
     title: "Солнце трин Луна",
@@ -72,5 +81,26 @@ describe("SynastryDetailScreen", () => {
     expect(screen.getByText("Ты + Ирина")).toBeDefined()
     expect(screen.getByText("78")).toBeDefined()
     expect(screen.getByText("Взаимная поддержка")).toBeDefined()
+  })
+
+  it("renders staged loader when generation status is in progress", async () => {
+    const { getSynastryReport, getSynastryStatus } = await import("@/lib/api/synastry")
+    vi.mocked(getSynastryReport).mockRejectedValueOnce(new Error("Not ready"))
+    vi.mocked(getSynastryStatus).mockResolvedValueOnce({
+      reportId: "rep-123",
+      partnerId: "partner-123",
+      state: "calculating",
+      stage: "scoring",
+      attemptCount: 1,
+      errorCode: null,
+      errorMessage: null,
+    })
+
+    render(<SynastryDetailScreen partnerId="partner-123" onBack={vi.fn()} />)
+
+    const loadingRoot = screen.getByTestId("synastry-detail-screen")
+    expect(loadingRoot.getAttribute("data-state")).toBe("loading")
+    expect(screen.getByText("Строим карту взаимодействия")).toBeDefined()
+    expect(screen.getByText("Сопоставили планеты")).toBeDefined()
   })
 })

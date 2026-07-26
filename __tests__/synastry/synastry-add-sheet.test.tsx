@@ -72,7 +72,7 @@ describe("SynastryAddSheet", () => {
     const popularCityBtn = await screen.findByRole("button", { name: "Москва" })
     fireEvent.click(popularCityBtn)
 
-    const submitBtn = screen.getByRole("button", { name: /Добавить и рассчитать/i })
+    const submitBtn = screen.getByRole("button", { name: /Построить синастрию/i })
     fireEvent.click(submitBtn)
 
     await waitFor(() => {
