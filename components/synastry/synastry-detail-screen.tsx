@@ -28,7 +28,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowLeft, ChevronDown, ChevronUp, AlertCircle, Sparkles } from "lucide-react"
+import { ArrowLeft, AlertCircle, Sparkles } from "lucide-react"
 import {
   getSynastryReport,
   getSynastryStatus,
