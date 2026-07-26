@@ -96,6 +96,17 @@ def _compute_partner_hash(
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _format_orb_label(orb: float | None) -> str | None:
+    if orb is None:
+        return None
+    deg = int(orb)
+    mins = int(round((orb - deg) * 60))
+    if mins == 60:
+        deg += 1
+        mins = 0
+    return f"{deg}°{mins:02d}′"
+
+
 _RU_TO_EN_ASTRO = {
     "солнце": "sun",
     "луна": "moon",
@@ -721,35 +732,37 @@ class SynastryService:
                 advice=data.get("advice"),
             )
 
-        # 3. Generate aspect drilldown via LLM
+        # 3. Generate aspect drilldown via LLM (one retry on invalid output)
         prompt_dict = build_drilldown_prompt(target_aspect)
         attempt_count = (detail.attempt_count if detail else 0) + 1
 
         llm_data = None
         err_msg = None
 
-        try:
-            llm_client = LLMClient()
-            log_event("llm.requested", msg="synastry drilldown requested", payload={"aspect_id": aspect_id})
-            raw_text = await llm_client._generate_text(
-                prompt=f"{prompt_dict['system']}\n\n{prompt_dict['user']}",
-                max_tokens=1000,
-            )
-            if raw_text:
-                parsed = _parse_llm_json(raw_text)
-                if isinstance(parsed, dict):
-                    valid, err_reason = validate_drilldown_output(parsed)
-                    if valid:
-                        llm_data = parsed
-                        log_event("llm.response_validated", msg="synastry drilldown validated", payload={"aspect_id": aspect_id})
-                    else:
-                        err_msg = err_reason
-                        log_event("llm.response_rejected", level="warning", msg="synastry drilldown: validation failed", payload={"aspect_id": aspect_id})
-            else:
-                log_event("llm.response_rejected", level="warning", msg="synastry drilldown: empty response", payload={"aspect_id": aspect_id})
-        except Exception as exc:
-            err_msg = str(exc)
-            log_event("llm.response_rejected", level="warning", msg="synastry drilldown: generation error", payload={"aspect_id": aspect_id})
+        for attempt in range(2):
+            try:
+                llm_client = LLMClient()
+                log_event("llm.requested", msg="synastry drilldown requested", payload={"aspect_id": aspect_id, "attempt": attempt + 1})
+                raw_text = await llm_client._generate_text(
+                    prompt=f"{prompt_dict['system']}\n\n{prompt_dict['user']}",
+                    max_tokens=2000,
+                )
+                if raw_text:
+                    parsed = _parse_llm_json(raw_text)
+                    if isinstance(parsed, dict):
+                        valid, err_reason = validate_drilldown_output(parsed)
+                        if valid:
+                            llm_data = parsed
+                            log_event("llm.response_validated", msg="synastry drilldown validated", payload={"aspect_id": aspect_id})
+                            break
+                        else:
+                            err_msg = err_reason
+                            log_event("llm.response_rejected", level="warning", msg="synastry drilldown: validation failed", payload={"aspect_id": aspect_id})
+                else:
+                    log_event("llm.response_rejected", level="warning", msg="synastry drilldown: empty response", payload={"aspect_id": aspect_id})
+            except Exception as exc:
+                err_msg = str(exc)
+                log_event("llm.response_rejected", level="warning", msg="synastry drilldown: generation error", payload={"aspect_id": aspect_id})
 
         if not llm_data:
             # LLM failure: record failed detail, keep base report READY, no refund

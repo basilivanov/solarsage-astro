@@ -72,7 +72,7 @@ from app.schemas.synastry import (
     SynastrySphere,
     SynastryTranslation,
 )
-from app.services.synastry_service import SynastryService
+from app.services.synastry_service import SynastryService, _format_orb_label
 
 ASPECT_SYMBOLS: dict[str, str] = {
     "conjunction": "☌",
@@ -83,17 +83,6 @@ ASPECT_SYMBOLS: dict[str, str] = {
     "opposition": "☍",
     "quincunx": "⚹",
 }
-
-
-def _format_orb_label(orb: float | None) -> str | None:
-    if orb is None:
-        return None
-    deg = int(orb)
-    mins = int(round((orb - deg) * 60))
-    if mins == 60:
-        deg += 1
-        mins = 0
-    return f"{deg}°{mins:02d}′"
 
 
 router = APIRouter(prefix="/api/synastry", tags=["synastry"])
