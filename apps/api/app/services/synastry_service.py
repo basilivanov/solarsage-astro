@@ -136,6 +136,24 @@ def _match_translation_aspect_id(tech: str | None, aspects: list[dict[str, Any]]
     return None
 
 
+def _find_house(planet_lon: float, houses: list[dict[str, Any]]) -> int:
+    if not houses:
+        return 1
+    sorted_houses = sorted(houses, key=lambda h: int(h.get("number", 0)))
+    for i in range(len(sorted_houses)):
+        curr_h = sorted_houses[i]
+        next_h = sorted_houses[(i + 1) % len(sorted_houses)]
+        c_cusp = float(curr_h["cusp"])
+        n_cusp = float(next_h["cusp"])
+        if c_cusp <= n_cusp:
+            if c_cusp <= planet_lon < n_cusp:
+                return int(curr_h["number"])
+        else:
+            if planet_lon >= c_cusp or planet_lon < n_cusp:
+                return int(curr_h["number"])
+    return 1
+
+
 # START_BLOCK: SYNASTRY_SERVICE
 class SynastryService:
     """High-level orchestration service for synastry features."""
@@ -416,11 +434,49 @@ class SynastryService:
             payload={"score": scoring_res.score, "status": scoring_res.status, "aspects_count": len(raw_aspects)},
         )
 
+        # Format owner and partner planet points for wheel geometry
+        formatted_owner_planets = [
+            {
+                "id": f"owner_{p.get('name', '').lower()}",
+                "owner": "user",
+                "planet": p.get("name", ""),
+                "longitude": float(p.get("longitude", 0.0)),
+                "sign": p.get("sign"),
+                "retrograde": bool(p.get("retrograde", False)),
+                "house": None,
+                "house_reliable": False,
+            }
+            for p in sidecar_data.get("owner_planets", [])
+        ]
+
+        partner_houses = sidecar_data.get("partner_houses")
+        houses_avail = (
+            bool(sidecar_data.get("precision_flags", {}).get("houses_available", False))
+            and bool(partner_houses)
+        )
+
+        formatted_partner_planets = []
+        for p in sidecar_data.get("partner_planets", []):
+            p_lon = float(p.get("longitude", 0.0))
+            h_num = _find_house(p_lon, partner_houses) if houses_avail else None
+            formatted_partner_planets.append({
+                "id": f"partner_{p.get('name', '').lower()}",
+                "owner": "partner",
+                "planet": p.get("name", ""),
+                "longitude": p_lon,
+                "sign": p.get("sign"),
+                "retrograde": bool(p.get("retrograde", False)),
+                "house": h_num,
+                "house_reliable": houses_avail,
+            })
+
         det_payload = {
             "score": scoring_res.score,
             "status": scoring_res.status,
             "counters": scoring_res.counters,
             "precision_flags": scoring_res.precision_flags,
+            "owner_planets": formatted_owner_planets,
+            "partner_planets": formatted_partner_planets,
             "aspects": [
                 {
                     "id": a.id,

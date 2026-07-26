@@ -66,11 +66,34 @@ from app.schemas.synastry import (
     SynastryGenerationRead,
     SynastryPartnerItem,
     SynastryListRead,
+    SynastryPlanetPoint,
     SynastryReport as SynastryReportSchema,
     SynastrySphere,
     SynastryTranslation,
 )
 from app.services.synastry_service import SynastryService
+
+ASPECT_SYMBOLS: dict[str, str] = {
+    "conjunction": "☌",
+    "conjunct": "☌",
+    "trine": "△",
+    "sextile": "⚹",
+    "square": "□",
+    "opposition": "☍",
+    "quincunx": "⚹",
+}
+
+
+def _format_orb_label(orb: float | None) -> str | None:
+    if orb is None:
+        return None
+    deg = int(orb)
+    mins = int(round((orb - deg) * 60))
+    if mins == 60:
+        deg += 1
+        mins = 0
+    return f"{deg}°{mins:02d}′"
+
 
 router = APIRouter(prefix="/api/synastry", tags=["synastry"])
 
@@ -284,8 +307,48 @@ async def get_synastry_report(
         except Exception:
             nar = {}
 
+    owner_points = [
+        SynastryPlanetPoint(
+            id=p.get("id", ""),
+            owner="user",
+            planet=p.get("planet", ""),
+            longitude=float(p.get("longitude", 0.0)),
+            sign=p.get("sign"),
+            retrograde=bool(p.get("retrograde", False)),
+            house=p.get("house"),
+            house_reliable=bool(p.get("house_reliable", False)),
+        )
+        for p in det.get("owner_planets", [])
+        if isinstance(p, dict)
+    ]
+
+    partner_points = [
+        SynastryPlanetPoint(
+            id=p.get("id", ""),
+            owner="partner",
+            planet=p.get("planet", ""),
+            longitude=float(p.get("longitude", 0.0)),
+            sign=p.get("sign"),
+            retrograde=bool(p.get("retrograde", False)),
+            house=p.get("house"),
+            house_reliable=bool(p.get("house_reliable", False)),
+        )
+        for p in det.get("partner_planets", [])
+        if isinstance(p, dict)
+    ]
+
     aspects_list = []
     for a in det.get("aspects", []):
+        op_name = a.get("owner_planet", "")
+        pp_name = a.get("partner_planet", "")
+        asp_type = a.get("aspect", "").lower()
+        orb_val = a.get("orb_degrees")
+
+        op_key = f"owner_{op_name.lower()}" if op_name else None
+        pp_key = f"partner_{pp_name.lower()}" if pp_name else None
+        asp_sym = ASPECT_SYMBOLS.get(asp_type, "△")
+        orb_lbl = _format_orb_label(orb_val)
+
         aspects_list.append(
             SynastryAspect(
                 id=a.get("id", "asp"),
@@ -294,6 +357,11 @@ async def get_synastry_report(
                 score=a.get("score"),
                 description=a.get("description"),
                 tech_signature=a.get("tech_signature"),
+                owner_planet_key=op_key,
+                partner_planet_key=pp_key,
+                aspect_symbol=asp_sym,
+                orb_degrees=orb_val,
+                orb_label=orb_lbl,
             )
         )
 
@@ -347,6 +415,8 @@ async def get_synastry_report(
         hero_title=nar.get("hero_title"),
         hero_description=nar.get("hero_description"),
         counters=det.get("counters", {"good": 0, "mid": 0, "bad": 0}),
+        owner_planets=owner_points,
+        partner_planets=partner_points,
         aspects=aspects_list,
         house_overlays=nar.get("house_overlays", []),
         spheres=spheres_list,

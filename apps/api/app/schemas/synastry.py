@@ -111,6 +111,19 @@ class SynastryGenerationRead(CamelModel):
     error_message: str | None = Field(default=None, description="Public error message if failed")
 
 
+class SynastryPlanetPoint(CamelModel):
+    """Planet point for synastry interaction wheel geometry."""
+
+    id: str = Field(..., description="Unique point ID e.g. owner_sun, partner_moon")
+    owner: Literal["user", "partner"] = Field(..., description="Point owner: user or partner")
+    planet: str = Field(..., description="Planet name e.g. Sun, Moon, Venus")
+    longitude: float = Field(..., description="Ecliptic longitude in degrees (0..360)")
+    sign: str | None = Field(default=None, description="Zodiac sign name")
+    retrograde: bool = Field(default=False, description="Whether planet is in retrograde motion")
+    house: int | None = Field(default=None, description="House number (1..12) if calculated and reliable")
+    house_reliable: bool = Field(default=False, description="Whether house calculation is reliable")
+
+
 class SynastryAspect(CamelModel):
     """Synastry aspect entry for interactive wheel and list."""
 
@@ -120,6 +133,11 @@ class SynastryAspect(CamelModel):
     score: int | None = Field(default=None, description="Aspect impact score")
     description: str | None = Field(default=None, description="Short interpretation snippet")
     tech_signature: str | None = Field(default=None, description="Technical aspect signature")
+    owner_planet_key: str | None = Field(default=None, description="Point ID for owner planet e.g. owner_sun")
+    partner_planet_key: str | None = Field(default=None, description="Point ID for partner planet e.g. partner_moon")
+    aspect_symbol: str | None = Field(default=None, description="Aspect symbol e.g. △, □, ☌, ☍, ⚹")
+    orb_degrees: float | None = Field(default=None, description="Orb value in degrees")
+    orb_label: str | None = Field(default=None, description="Formatted orb string e.g. 1°12′")
 
 
 class AspectDrilldown(CamelModel):
@@ -175,6 +193,8 @@ class SynastryReport(CamelModel):
     hero_title: str | None = Field(default=None, description="Hero section headline")
     hero_description: str | None = Field(default=None, description="Hero section subtitle")
     counters: dict[str, int] = Field(default_factory=dict, description="Counts of good, mid, bad aspects")
+    owner_planets: list[SynastryPlanetPoint] = Field(default_factory=list, description="Owner chart planet points for SVG wheel")
+    partner_planets: list[SynastryPlanetPoint] = Field(default_factory=list, description="Partner chart planet points for SVG wheel")
     aspects: list[SynastryAspect] = Field(default_factory=list, description="Key synastry aspects list")
     house_overlays: list[dict[str, Any]] = Field(default_factory=list, description="House overlay interpretations")
     spheres: list[SynastrySphere] = Field(default_factory=list, description="Spheres breakdown")

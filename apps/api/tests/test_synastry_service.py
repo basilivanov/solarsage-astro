@@ -375,3 +375,58 @@ def test_match_translation_aspect_id_helper():
     assert _match_translation_aspect_id("Меркурий квадрат Меркурий", aspects) == "mercury_square_mercury"
     assert _match_translation_aspect_id("Unknown Aspect", aspects) is None
 
+
+@pytest.mark.asyncio
+async def test_pipeline_persists_planet_points_and_houses():
+    """Pipeline stores owner/partner planet points and calculates house when exact."""
+    import json
+    db = AsyncMock()
+
+    user_id = uuid.uuid4()
+    partner_id = uuid.uuid4()
+    report_id = uuid.uuid4()
+
+    report = SynastryReport(
+        id=report_id, owner_id=user_id, partner_id=partner_id, state="pending", stage="init", attempt_count=0
+    )
+    partner = SynastryPartner(
+        id=partner_id, owner_id=user_id, name="Максим", relation_type="romantic", birth_date=date(1987, 9, 9), precision="exact"
+    )
+    user_profile = UserProfile(
+        user_id=user_id, birthday=date(1990, 1, 15), birth_lat=55.7558, birth_lon=37.6173
+    )
+
+    db.execute.side_effect = [
+        AsyncMock(scalar_one_or_none=lambda: report),
+        AsyncMock(scalar_one_or_none=lambda: partner),
+        AsyncMock(scalar_one_or_none=lambda: user_profile),
+    ]
+
+    service = SynastryService(db)
+
+    sidecar_response = {
+        "owner_planets": [{"name": "Sun", "longitude": 120.0, "sign": "Leo"}],
+        "partner_planets": [{"name": "Moon", "longitude": 45.0, "sign": "Taurus"}],
+        "partner_houses": [{"number": 1, "cusp": 0.0}, {"number": 2, "cusp": 30.0}, {"number": 3, "cusp": 60.0}],
+        "cross_aspects": [{"owner_planet": "Sun", "partner_planet": "Moon", "aspect_type": "trine", "orb_degrees": 1.0}],
+        "precision_flags": {"houses_available": True},
+    }
+
+    with patch.object(service, "_fetch_sidecar_synastry", new_callable=AsyncMock) as mock_sidecar, \
+         patch.object(service, "_generate_llm_narrative", new_callable=AsyncMock) as mock_llm:
+        mock_sidecar.return_value = sidecar_response
+        mock_llm.return_value = {"summary": "Отличный союз"}
+
+        res = await service.run_report_pipeline(report_id)
+
+        assert res.deterministic_payload_json is not None
+        det = json.loads(res.deterministic_payload_json)
+
+        assert len(det["owner_planets"]) == 1
+        assert det["owner_planets"][0]["id"] == "owner_sun"
+
+        assert len(det["partner_planets"]) == 1
+        assert det["partner_planets"][0]["id"] == "partner_moon"
+        assert det["partner_planets"][0]["house"] == 2
+        assert det["partner_planets"][0]["house_reliable"] is True
+

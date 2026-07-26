@@ -79,6 +79,17 @@ export type SynastryGenerationStatus = {
   errorMessage: string | null
 }
 
+export type SynastryPlanetPoint = {
+  id: string
+  owner: "user" | "partner"
+  planet: string
+  longitude: number
+  sign?: string | null
+  retrograde?: boolean
+  house?: number | null
+  houseReliable?: boolean
+}
+
 export type SynastryAspectItem = {
   id: string
   title: string
@@ -86,6 +97,11 @@ export type SynastryAspectItem = {
   score: number | null
   description: string | null
   techSignature: string | null
+  ownerPlanetKey?: string | null
+  partnerPlanetKey?: string | null
+  aspectSymbol?: string | null
+  orbDegrees?: number | null
+  orbLabel?: string | null
 }
 
 export type AspectDrilldownData = {
@@ -122,6 +138,8 @@ export type SynastryReportData = {
   heroTitle: string | null
   heroDescription: string | null
   counters: { good: number; mid: number; bad: number }
+  ownerPlanets?: SynastryPlanetPoint[]
+  partnerPlanets?: SynastryPlanetPoint[]
   aspects: SynastryAspectItem[]
   houseOverlays: Array<{ tech?: string; text?: string }>
   spheres: SynastrySphereItem[]
