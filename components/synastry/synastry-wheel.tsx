@@ -262,17 +262,22 @@ export function SynastryWheel({
             const ppNameRu = PLANET_RU_NAMES[partnerPlanetName] || partnerPlanetName
             const aspectAriaLabel = `Твой ${opNameRu} — ${asp.title} — ${ppNameRu} партнёра`
 
+            const handleLineClick = () => {
+              onAspectSelect(asp.id)
+              onAspectOpen(asp.id)
+            }
+
             return (
               <g
                 key={asp.id}
                 role="button"
                 tabIndex={0}
                 aria-label={aspectAriaLabel}
-                onClick={() => onAspectSelect(isSelected ? null : asp.id)}
+                onClick={handleLineClick}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault()
-                    onAspectSelect(isSelected ? null : asp.id)
+                    handleLineClick()
                   }
                 }}
                 className="cursor-pointer focus:outline-none"

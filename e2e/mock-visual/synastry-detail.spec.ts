@@ -87,6 +87,31 @@ test.describe("Synastry detail mock visual contract", () => {
       })
     })
 
+    // Intercept GET aspect drilldown route
+    await page.route("/api/synastry/partner-test-1/aspect/sun_trine_moon", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          aspectId: "sun_trine_moon",
+          title: "Солнце трин Луна",
+          tone: "good",
+          techSignature: "Sun trine Moon (1.0°)",
+          aspectSymbol: "△",
+          aspectKindLabel: "Тригон",
+          orbText: "орб 1°00′",
+          headline: "Естественная гармония эмоционального и сознательного",
+          ownerPlanet: { key: "Sun", label: "Солнце", glyph: "☉", meaning: "Ядро личности." },
+          partnerPlanet: { key: "Moon", label: "Луна", glyph: "☽", meaning: "Эмоциональные реакции." },
+          aspectMechanics: "Гармоничный поток энергии.",
+          explanation: "Естественное взаимопонимание.",
+          scenes: [{ title: "В общении", text: "Легко договариваетесь." }],
+          repairs: ["Наслаждаться лёгкостью"],
+          notMeans: ["не гарантирует отсутствие мелких споров"],
+        }),
+      })
+    })
+
     await page.goto("/synastry")
     await page.getByTestId("synastry-card").click()
 
@@ -105,5 +130,13 @@ test.describe("Synastry detail mock visual contract", () => {
     await expect(page).toHaveScreenshot("synastry-detail.png", {
       mask: [page.getByTestId("synastry-hero")],
     })
+
+    // Test wheel line click opens aspect drilldown sheet modal
+    const lineButton = page.locator('[data-testid="synastry-wheel"] g[role="button"]:has(line)')
+    await lineButton.dispatchEvent("click")
+
+    const drilldownSheet = page.getByTestId("aspect-drilldown-sheet")
+    await expect(drilldownSheet).toBeVisible()
+    await expect(page.getByText("Солнце △ Луна")).toBeVisible()
   })
 })

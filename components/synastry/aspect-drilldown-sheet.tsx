@@ -93,7 +93,8 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
   const techLine =
     data?.ownerPlanet && data?.partnerPlanet
       ? `${data.ownerPlanet.label} ${symbol} ${data.partnerPlanet.label}`
-      : data?.techSignature || data?.title || ""
+      : data?.techSignature || data?.title || aspectId || ""
+  const headline = data?.headline || data?.title || aspectId || ""
 
   return (
     <div
@@ -108,14 +109,14 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
         {/* Grabber bar */}
         <div className="mx-auto h-1.5 w-12 rounded-full bg-[#7d7284]/30 flex-none sm:hidden" />
 
-        {/* Header */}
+        {/* Header: Eyebrow + H2 Tech Signature (exact macro layout) */}
         <div className="flex items-start justify-between gap-4 border-b border-[#e8e0e8] pb-3 flex-none">
           <div>
             <span className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#795a86]">
               АСТРОЛОГИЧЕСКИЙ КОНТАКТ
             </span>
             <h2 id="aspect-drilldown-title" className="syn-serif text-[22px] font-medium text-[#3e3347] dark:text-[#f1e9f4] leading-tight">
-              {data?.headline || data?.title || aspectId}
+              {techLine}
             </h2>
           </div>
           <button
@@ -142,7 +143,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
             </div>
           ) : data ? (
             <div className="space-y-5 text-[14px] leading-relaxed">
-              {/* 1. Hero Summary Card (gradient 135deg, #f6eef8, #fff8f1, r20, p14) */}
+              {/* 1. Hero Summary Card: Tone square + Headline + Meta line (exact macro layout) */}
               <div className="flex items-center gap-[13px] rounded-[20px] bg-gradient-to-br from-[#f6eef8] to-[#fff8f1] dark:from-[#2a1d2e] dark:to-[#2e241e] p-[14px]">
                 <div
                   className={`flex h-[50px] w-[50px] flex-none items-center justify-center rounded-[17px] text-[27px] font-[850] ${
@@ -156,9 +157,9 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
                   {symbol}
                 </div>
                 <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="font-sans text-[15px] font-[830] text-[#3e3347] dark:text-[#f1e9f4] truncate m-0 leading-tight">
-                    {techLine}
-                  </div>
+                  <h3 className="font-sans text-[18px] font-bold text-[#3e3347] dark:text-[#f1e9f4] m-0 leading-tight">
+                    {headline}
+                  </h3>
                   <div className="text-[11px] text-[#7d7284] dark:text-muted-foreground">
                     {kindLabel} {orbStr ? `· ${orbStr}` : ""} · {getToneContactLabel(tone)}
                   </div>
@@ -169,7 +170,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
               {(data.ownerPlanet || data.partnerPlanet) && (
                 <div className="space-y-2">
                   <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
-                    Что именно соединяется
+                    ЧТО ИМЕННО СОЕДИНЯЕТСЯ
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {data.ownerPlanet && (
@@ -217,7 +218,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
               {data.aspectMechanics && (
                 <div className="space-y-1.5">
                   <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
-                    Как работает {kindLabel.toLowerCase()}
+                    КАК РАБОТАЕТ {kindLabel.toUpperCase()}
                   </h3>
                   <div className="rounded-[17px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] p-[13px] space-y-1">
                     <p className="text-[12.5px] leading-[1.5] text-[#5e5262] dark:text-[#d4c8db] m-0">
@@ -238,7 +239,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
               {data.scenes && data.scenes.length > 0 ? (
                 <div className="space-y-2">
                   <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
-                    Как это проявляется в жизни
+                    КАК ЭТО ПРОЯВЛЯЕТСЯ В ЖИЗНИ
                   </h3>
                   <div className="space-y-2">
                     {data.scenes.map((scene, idx) => (
@@ -256,7 +257,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
               ) : data.scenario ? (
                 <div className="space-y-2">
                   <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
-                    Как это проявляется в жизни
+                    КАК ЭТО ПРОЯВЛЯЕТСЯ В ЖИЗНИ
                   </h3>
                   <div className="rounded-[16px] bg-[#f8f5f8] dark:bg-[#251b2b] p-[12px] text-[12px] leading-[1.45] text-[#65596a] dark:text-[#d4c8db]">
                     {data.scenario}
@@ -268,7 +269,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
               {data.repairs && data.repairs.length > 0 ? (
                 <div className="space-y-2">
                   <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
-                    Что помогает и гармонизирует
+                    ЧТО ПОМОГАЕТ
                   </h3>
                   <div className="space-y-2">
                     {data.repairs.map((repair, idx) => (
@@ -289,7 +290,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
               ) : data.advice ? (
                 <div className="space-y-2">
                   <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
-                    Что помогает
+                    ЧТО ПОМОГАЕТ
                   </h3>
                   <div className="rounded-[15px] border border-[#dce9e3] bg-[#f4faf7] dark:bg-[#1a2822] p-[10px] text-[12px] leading-relaxed text-[#52645d] dark:text-[#9bc9b8]">
                     {data.advice}
@@ -301,7 +302,7 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
               {data.notMeans && data.notMeans.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-[#e8e0e8]">
                   <h3 className="font-sans text-[11px] font-[850] uppercase tracking-[0.09em] text-[#795a86]">
-                    Важно: это НЕ означает
+                    ВАЖНО: ЭТО НЕ ОЗНАЧАЕТ
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {data.notMeans.map((item, idx) => (
@@ -319,11 +320,11 @@ export function AspectDrilldownSheet({ open, partnerId, aspectId, onClose }: Pro
           ) : null}
         </div>
 
-        {/* Footer CTA */}
+        {/* Footer CTA: .primary.full plum button */}
         <button
           type="button"
           onClick={onClose}
-          className="w-full h-12 rounded-[17px] bg-[#3e3347] text-white text-[15px] font-[760] transition active:scale-[0.99] flex-none"
+          className="w-full h-[50px] rounded-[17px] bg-[#795a86] text-white text-[16px] font-[760] transition active:scale-[0.99] flex-none"
         >
           Понятно
         </button>

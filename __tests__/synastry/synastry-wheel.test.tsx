@@ -118,4 +118,29 @@ describe("SynastryWheel", () => {
     expect(screen.getByText(/Твоё Солнце/i)).toBeDefined()
     expect(screen.getByText(/Ядро личности/i)).toBeDefined()
   })
+
+  it("selecting an aspect line calls onAspectSelect and onAspectOpen to trigger drilldown modal", () => {
+    const onAspectSelect = vi.fn()
+    const onAspectOpen = vi.fn()
+
+    render(
+      <SynastryWheel
+        ownerPlanets={sampleOwnerPlanets}
+        partnerPlanets={samplePartnerPlanets}
+        aspects={sampleAspects}
+        precision="exact"
+        partnerName="Максим"
+        selection={{ selectedPlanetId: null, selectedAspectId: null }}
+        onPlanetSelect={vi.fn()}
+        onAspectSelect={onAspectSelect}
+        onAspectOpen={onAspectOpen}
+      />
+    )
+
+    const aspectBtn = screen.getByRole("button", { name: /Солнце.*Луна/i })
+    fireEvent.click(aspectBtn)
+
+    expect(onAspectSelect).toHaveBeenCalledWith("sun_trine_moon")
+    expect(onAspectOpen).toHaveBeenCalledWith("sun_trine_moon")
+  })
 })
