@@ -24,7 +24,6 @@
 from __future__ import annotations
 
 import inspect
-import json
 import re
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -2393,43 +2392,3 @@ async def test_subscription_status_renewing_cancelable_matrix(db_session, fake_c
     await db_session.commit()
     status = await service.get_subscription_status(user.id)
     assert (status["renewing"], status["cancelable"]) == (False, False)
-
-
-@pytest.mark.asyncio
-async def test_synastry_one_time_purchase_buy_flow_and_webhook_idempotency(db_session, fake_client) -> None:
-    """Buy flow for synastry slug: start_purchase -> verified webhook grants 1 HoraryCredit with metadata -> redelivered webhook is idempotent."""
-    await seed_products(db_session)
-    user = await _user(db_session, 900088)
-    service = BillingService(db_session)
-
-    # 1. Start purchase
-    started = await service.start_purchase(user.id, "synastry")
-    assert started["product_slug"] == "synastry"
-    assert started["status"] == "pending"
-
-    payment = (await db_session.execute(select(Payment).where(Payment.id == (await db_session.execute(select(Purchase.payment_id))).scalar_one()))).scalar_one()
-    assert payment.product_slug == "synastry"
-    assert payment.amount == 39900
-
-    # 2. First verified webhook processing
-    fake_client.remote[payment.provider_payment_id] = _remote_for(payment, str(started["purchase_id"]))
-    res1 = await service.verify_and_process_webhook(payment.provider_payment_id)
-    assert res1 == {"processed": True, "reason": "fulfilled"}
-
-    # Verify HoraryCredit created with metadata
-    credits = (await db_session.execute(select(HoraryCredit).where(HoraryCredit.user_id == user.id))).scalars().all()
-    assert len(credits) == 1
-    c = credits[0]
-    assert c.amount == 1
-    assert c.source == "paid"
-    assert c.metadata_json is not None
-    meta = json.loads(c.metadata_json)
-    assert meta["product_slug"] == "synastry"
-    assert meta["purchase_id"] == str(started["purchase_id"])
-
-    # 3. Duplicate webhook processing: idempotent, no second credit
-    res2 = await service.verify_and_process_webhook(payment.provider_payment_id)
-    assert res2 == {"processed": False, "reason": "already_fulfilled"}
-
-    credits_after = (await db_session.execute(select(HoraryCredit).where(HoraryCredit.user_id == user.id))).scalars().all()
-    assert len(credits_after) == 1
