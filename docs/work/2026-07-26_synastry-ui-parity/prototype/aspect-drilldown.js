@@ -19,6 +19,8 @@
   });
   document.body.appendChild(modal);
 
+  const planetGlyph = typeof glyph !== 'undefined' ? glyph : {Солнце:'☉',Луна:'☽',Меркурий:'☿',Венера:'♀',Марс:'♂',Юпитер:'♃',Сатурн:'♄',Уран:'♅',Нептун:'♆',Плутон:'♇',ASC:'AC'};
+
   const planetMeaning = {
     Солнце: 'ядро личности, воля, чувство «я» и способ проявляться',
     Луна: 'эмоциональные реакции, безопасность, привычки и потребность в заботе',
@@ -31,11 +33,6 @@
     Нептун: 'идеализация, эмпатия, фантазия, растворение границ и тонкое восприятие',
     Плутон: 'власть, глубина, контроль, ревность, кризис и сильная трансформация',
     ASC: 'первое впечатление, телесная подача и способ входить в контакт'
-  };
-
-  const planetGlyph = {
-    Солнце: '☉', Луна: '☽', Меркурий: '☿', Венера: '♀', Марс: '♂',
-    Юпитер: '♃', Сатурн: '♄', Уран: '♅', Нептун: '♆', Плутон: '♇', ASC: 'AC'
   };
 
   const aspectMeaning = {
@@ -74,11 +71,13 @@
     </div>`).join('');
   };
 
-  const baseOpenPerson = openPerson;
-  openPerson = function openPersonWithTranslationDrilldown(id) {
-    baseOpenPerson(id);
-    renderTranslations();
-  };
+  const baseOpenPerson = typeof openPerson !== 'undefined' ? openPerson : null;
+  if (baseOpenPerson) {
+    window.openPerson = function openPersonWithTranslations(id) {
+      baseOpenPerson(id);
+      renderTranslations();
+    };
+  }
 
   function mercurySquareDetail() {
     return {
