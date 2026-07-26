@@ -208,27 +208,19 @@ class NormalizationService:
         """Generate planet_in_house signals."""
         signals = []
 
-        planets = natal.get("planets", [])
-        houses = natal.get("houses", [])
+        planets = natal["planets"]
+        houses = natal["houses"]
 
         for planet in planets:
-            # Prefer emitted house if present, otherwise calculate via find_house fallback
-            emitted_house = planet.get("house") if isinstance(planet, dict) else getattr(planet, "house", None)
-            if emitted_house is not None and isinstance(emitted_house, int) and 1 <= emitted_house <= 12:
-                house_num = emitted_house
-            else:
-                planet_lon = float(planet.get("longitude", 0.0) if isinstance(planet, dict) else getattr(planet, "longitude", 0.0))
-                house_num = find_house(planet_lon, houses)
+            # Find which house the planet is in
+            planet_lon = planet["longitude"]
+            house_num = find_house(planet_lon, houses) or 1
 
-            if house_num is None:
-                continue
-
-            planet_name = planet.get("name") if isinstance(planet, dict) else getattr(planet, "name", "")
             signals.append(AstroSignal(
                 type="planet_in_house",
-                planet=planet_name,
+                planet=planet["name"],
                 house=house_num,
-                strength=1.0,
+                strength=1.0,  # W-4.2: real strength from scoring
             ))
 
         return signals

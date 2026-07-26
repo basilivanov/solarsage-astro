@@ -60,12 +60,6 @@ async def test_natal_endpoint():
         assert sun["sign"] in ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
                                 "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 
-        # Verify EVERY planet has house integer in 1..12
-        for planet in data["planets"]:
-            assert "house" in planet, f"Planet {planet['name']} must have house field"
-            assert isinstance(planet["house"], int), f"Planet {planet['name']} house must be int, got {planet['house']}"
-            assert 1 <= planet["house"] <= 12, f"Planet {planet['name']} house must be 1..12, got {planet['house']}"
-
         # Check houses (12 houses)
         assert len(data["houses"]) == 12
 
@@ -93,8 +87,3 @@ async def test_natal_high_latitude():
 
         # High latitude should use WHOLE_SIGN
         assert data["house_system"] == "WHOLE_SIGN"
-
-        # Verify EVERY planet in WHOLE_SIGN high latitude has house integer 1..12
-        for planet in data["planets"]:
-            assert isinstance(planet["house"], int)
-            assert 1 <= planet["house"] <= 12

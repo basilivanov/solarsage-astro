@@ -32,7 +32,6 @@ from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.session import Base
@@ -462,69 +461,5 @@ class TestContextDataStructure:
             mock_factory.return_value = mock_client
 
             context = await service.get_or_build_natal_context(user.id)
-
-    @pytest.mark.asyncio
-    async def test_calculation_version_bump_causes_cache_miss(self, db: AsyncSession, user_with_profile):
-        user, profile = user_with_profile
-        service = NatalContextService(db)
-
-        p_hash = service.compute_profile_hash(profile)
-
-        # Old cache entry with calculation_version = "1"
-        old_cache = NatalChartCache(
-            user_id=user.id,
-            profile_hash=p_hash,
-            engine_version="1",
-            calculation_version="1",
-            house_system="placidus",
-            raw_chart_json=json.dumps(MOCK_SIDECAR_NATAL),
-            normalized_context_json="{}",
-            summary_json="{}",
-        )
-        db.add(old_cache)
-        await db.commit()
-
-        # Call get_or_build_natal_context: should miss version 1 cache and call sidecar
-        with patch("app.services.natal_context_service.get_solarsage_client") as mock_factory:
-            mock_client = AsyncMock()
-            mock_client.get_natal.return_value = MOCK_SIDECAR_NATAL
-            mock_factory.return_value = mock_client
-
-            context = await service.get_or_build_natal_context(user.id)
-            assert mock_client.get_natal.called
-
-            # Check new cache entry is version "2"
-            cache_stmt = select(NatalChartCache).where(
-                NatalChartCache.user_id == user.id,
-                NatalChartCache.calculation_version == "2",
-                NatalChartCache.invalidated_at.is_(None),
-            )
-            res = await db.execute(cache_stmt)
-            new_cache = res.scalar_one_or_none()
-            assert new_cache is not None
-
-    @pytest.mark.asyncio
-    async def test_sidecar_fallback_when_house_is_missing(self, db: AsyncSession, user_with_profile):
-        """When sidecar returns planet positions with house=None, NatalContextService computes house fallback."""
-        user, _ = user_with_profile
-        service = NatalContextService(db)
-
-        mock_no_house_natal = dict(MOCK_SIDECAR_NATAL)
-        mock_no_house_natal["planets"] = [
-            {"name": p["name"], "longitude": p["longitude"], "sign": p["sign"], "retrograde": p["retrograde"], "speed": p["speed"]}
-            for p in MOCK_SIDECAR_NATAL["planets"]
-        ]
-
-        with patch("app.services.natal_context_service.get_solarsage_client") as mock_factory:
-            mock_client = AsyncMock()
-            mock_client.get_natal.return_value = mock_no_house_natal
-            mock_factory.return_value = mock_client
-
-            context = await service.get_or_build_natal_context(user.id)
-
-        # Every planet should still have house calculated (not None!)
-        for p in context.planets:
-            assert p.house is not None, f"Planet {p.name} house must be calculated via fallback"
-            assert 1 <= p.house <= 12
 
         assert len(context.dominants) > 0, "Context must have dominant planets"

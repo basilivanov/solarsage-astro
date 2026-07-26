@@ -43,7 +43,6 @@ class Planet(BaseModel):
     speed: float      # degrees per day
     sign: str         # zodiac sign
     retrograde: bool
-    house: int | None = Field(default=None, ge=1, le=12, description="House number 1..12")
 
 
 class House(BaseModel):
