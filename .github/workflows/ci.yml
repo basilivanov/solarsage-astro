@@ -66,6 +66,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  backend-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ruff
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff==0.15.14
+
+      - name: Run Ruff check on API
+        run: ruff check apps/api/app
+
+      - name: Run Ruff check on Sidecar
+        run: ruff check apps/solarsage/solarsage
+
+  backend-mypy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: |
+            apps/api/pyproject.toml
+            packages/py-contracts/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./packages/py-contracts
+          python -m pip install -e './apps/api[dev]'
+
+      - name: Run mypy on API services
+        run: |
+          cd apps/api
+          mypy app/services/
+
   # START_BLOCK: BACKEND_PIPELINE
   backend-tests:
     runs-on: ubuntu-latest
