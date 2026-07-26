@@ -307,15 +307,6 @@ class SynastryService:
         await self.db.refresh(partner)
         await self.db.refresh(report)
 
-        log_event(
-            "synastry.credit_spent",
-            msg="credit spent for synastry report",
-            payload={
-                "report_id_hash": hash_log_identifier("report", report.id),
-                "credit_source": credit.source,
-            },
-        )
-
         return partner, report
 
     async def _fail_and_refund(
@@ -334,43 +325,25 @@ class SynastryService:
             payload={"report_id_hash": hash_log_identifier("report", report.id), "error_code": error_code},
         )
 
-        # Refund credit spend under lock if not already refunded
-        spend_stmt = (
-            select(SynastryCreditSpend)
-            .where(SynastryCreditSpend.report_id == report.id)
-            .with_for_update()
+        # Refund credit spend if not already refunded
+        spend_stmt = select(SynastryCreditSpend).where(
+            SynastryCreditSpend.report_id == report.id,
+            SynastryCreditSpend.refunded_at.is_(None),
         )
         spend_res = await self.db.execute(spend_stmt)
         spend = spend_res.scalar_one_or_none()
 
-        did_refund = False
-        if spend and spend.refunded_at is None:
+        if spend:
             now = datetime.now(timezone.utc)
             spend.refunded_at = now
-            credit_stmt = (
-                select(HoraryCredit)
-                .where(HoraryCredit.id == spend.credit_id)
-                .with_for_update()
-            )
+            credit_stmt = select(HoraryCredit).where(HoraryCredit.id == spend.credit_id)
             credit_res = await self.db.execute(credit_stmt)
             credit = credit_res.scalar_one_or_none()
             if credit and credit.used_amount > 0:
-                credit.used_amount = max(0, credit.used_amount - 1)
-            did_refund = True
+                credit.used_amount -= 1
 
         await self.db.commit()
         await self.db.refresh(report)
-
-        if did_refund:
-            log_event(
-                "synastry.credit_refunded",
-                msg="synastry credit refunded",
-                payload={
-                    "report_id_hash": hash_log_identifier("report", report.id),
-                    "error_code": error_code,
-                },
-            )
-
         return report
 
     async def _fetch_sidecar_synastry(

@@ -86,9 +86,6 @@ export type LogEventName =
   | "election.search_succeeded"
   | "election.search_failed"
   | "election.credit_refunded"
-  // synastry
-  | "synastry.credit_spent"
-  | "synastry.credit_refunded"
   // natal
   | "natal.preview_requested"
   | "natal.preview_succeeded"

@@ -342,16 +342,6 @@
     </event>
     <event name="election.credit_refunded"    owner="W-ELECTION" desc="Credit refunded on election search failure." />
 
-    <!-- ================ synastry ========================================== -->
-    <event name="synastry.credit_spent" owner="W-SYNASTRY-MVP" desc="Credit spent for synastry report.">
-      <payload-field name="report_id_hash" type="string" required="true" />
-      <payload-field name="credit_source" type="string" required="false" />
-    </event>
-    <event name="synastry.credit_refunded" owner="W-SYNASTRY-MVP" desc="Credit returned on synastry generation failure.">
-      <payload-field name="report_id_hash" type="string" required="true" />
-      <payload-field name="error_code" type="string" required="false" />
-    </event>
-
     <!-- ================ natal =========================================== -->
     <event name="natal.preview_requested"   owner="W-NATAL-FULL" />
     <event name="natal.preview_succeeded"   owner="W-NATAL-FULL" />
