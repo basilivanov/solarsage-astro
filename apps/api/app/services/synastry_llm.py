@@ -247,12 +247,15 @@ def validate_drilldown_output(data: dict[str, Any]) -> tuple[bool, str | None]:
     if not isinstance(data, dict):
         return False, "Output is not a dict"
 
-    text_content = _extract_all_text(data).lower()
+    # Banned phrases are checked WITHOUT not_means: that block denies fatalism by
+    # construction, so it legitimately contains phrases like "не значит, что ... всегда ...".
+    not_means = data.get("not_means")
+    content_for_ban = {k: v for k, v in data.items() if k != "not_means"}
+    text_content = _extract_all_text(content_for_ban).lower()
     for phrase in BANNED_PHRASES:
         if phrase in text_content:
             return False, f"Banned phrase detected: '{phrase}'"
 
-    not_means = data.get("not_means")
     if isinstance(not_means, list) and len(not_means) != 3:
         return False, f"not_means must contain exactly 3 items, got {len(not_means)}"
 
