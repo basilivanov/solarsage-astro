@@ -419,6 +419,8 @@ describe("instrumentedFetch — Slice 02 & Slice 20 Safety & Correlation", () =>
       expect.objectContaining({
         event: "frontend.api_response_invalid",
         reasonCode: "invalid_json",
+        retryable: true,
+        payloadShapeHash: expect.stringMatching(/^str:/),
       })
     )
   })

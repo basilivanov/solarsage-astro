@@ -145,48 +145,62 @@ export async function fetchDay(date: string): Promise<TodayPayload> {
     headers[TODAY_PREVIEW_HEADER_NAME] = TODAY_PREVIEW_HEADER_VALUE;
   }
 
-  const res = await instrumentedFetch({
-    operation: 'day.fetch',
-    routeTemplate: 'GET /api/day/{date}',
-    url: `${API_BASE}/api/day/${date}`,
-    init: {
-      credentials: 'include',
-      headers,
-    },
-    responseContract: {
-      contractName: 'TodayPayload',
-      contractVersion: 'v1',
-      validate: (json) => {
-        const parsed = TodayPayloadWireSchema.safeParse(json);
-        if (parsed.success) return { valid: true };
-        const fields = parsed.error.issues.map((i) => String(i.path[0] || 'unknown'));
-        return { valid: false, missingFields: fields, invalidFieldTypes: fields };
+  const doFetch = async (attemptNumber: number): Promise<TodayPayload> => {
+    const res = await instrumentedFetch({
+      operation: 'day.fetch',
+      routeTemplate: 'GET /api/day/{date}',
+      url: `${API_BASE}/api/day/${date}`,
+      attempt: attemptNumber,
+      init: {
+        credentials: 'include',
+        headers,
       },
-    },
-  });
+      responseContract: {
+        contractName: 'TodayPayload',
+        contractVersion: 'v1',
+        validate: (json) => {
+          const parsed = TodayPayloadWireSchema.safeParse(json);
+          if (parsed.success) return { valid: true };
+          const fields = parsed.error.issues.map((i) => String(i.path[0] || 'unknown'));
+          return { valid: false, missingFields: fields, invalidFieldTypes: fields };
+        },
+      },
+    });
 
-  if (!res.ok) {
-    let errorMessage = 'Failed to fetch day';
-    let errorCode: string | undefined;
+    if (!res.ok) {
+      let errorMessage = 'Failed to fetch day';
+      let errorCode: string | undefined;
 
-    try {
-      const error = await res.json();
-      errorMessage = error.detail?.message || error.detail || errorMessage;
-      errorCode = error.detail?.code;
-    } catch {
-      errorMessage = res.statusText || errorMessage;
+      try {
+        const error = await res.json();
+        errorMessage = error.detail?.message || error.detail || errorMessage;
+        errorCode = error.detail?.code;
+      } catch {
+        errorMessage = res.statusText || errorMessage;
+      }
+
+      throw new ApiError(errorMessage, res.status, errorCode);
     }
 
-    throw new ApiError(errorMessage, res.status, errorCode);
-  }
+    let rawJson: unknown;
+    try {
+      rawJson = await res.json();
+    } catch (parseErr) {
+      if (attemptNumber === 1) {
+        return doFetch(2);
+      }
+      throw parseErr;
+    }
 
-  const rawJson: unknown = await res.json();
-  const parsed = TodayPayloadWireSchema.safeParse(rawJson);
-  if (!parsed.success) {
-    throw new ApiContractError();
-  }
+    const parsed = TodayPayloadWireSchema.safeParse(rawJson);
+    if (!parsed.success) {
+      throw new ApiContractError();
+    }
 
-  return parsed.data;
+    return parsed.data;
+  };
+
+  return doFetch(1);
 }
 
 // START_FUNCTION_CONTRACT: F-M-WEB-API-CLIENT.fetchCalendar
@@ -198,49 +212,63 @@ export async function fetchDay(date: string): Promise<TodayPayload> {
 // error_behavior: throws ApiError on HTTP failures; throws ApiContractError on schema mismatches.
 // END_FUNCTION_CONTRACT: F-M-WEB-API-CLIENT.fetchCalendar
 export async function fetchCalendar(month: string): Promise<CalendarPayload> {
-  const res = await instrumentedFetch({
-    operation: 'calendar.fetch',
-    routeTemplate: 'GET /api/calendar',
-    url: `${API_BASE}/api/calendar?month=${month}`,
-    init: {
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json',
+  const doFetch = async (attemptNumber: number): Promise<CalendarPayload> => {
+    const res = await instrumentedFetch({
+      operation: 'calendar.fetch',
+      routeTemplate: 'GET /api/calendar',
+      url: `${API_BASE}/api/calendar?month=${month}`,
+      attempt: attemptNumber,
+      init: {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+        },
       },
-    },
-    responseContract: {
-      contractName: 'CalendarPayload',
-      contractVersion: 'v1',
-      validate: (json) => {
-        const parsed = CalendarPayloadWireSchema.safeParse(json);
-        if (parsed.success) return { valid: true };
-        const fields = parsed.error.issues.map((i) => String(i.path[0] || 'unknown'));
-        return { valid: false, missingFields: fields, invalidFieldTypes: fields };
+      responseContract: {
+        contractName: 'CalendarPayload',
+        contractVersion: 'v1',
+        validate: (json) => {
+          const parsed = CalendarPayloadWireSchema.safeParse(json);
+          if (parsed.success) return { valid: true };
+          const fields = parsed.error.issues.map((i) => String(i.path[0] || 'unknown'));
+          return { valid: false, missingFields: fields, invalidFieldTypes: fields };
+        },
       },
-    },
-  });
+    });
 
-  if (!res.ok) {
-    let errorMessage = 'Failed to fetch calendar';
-    let errorCode: string | undefined;
+    if (!res.ok) {
+      let errorMessage = 'Failed to fetch calendar';
+      let errorCode: string | undefined;
 
-    try {
-      const error = await res.json();
-      errorMessage = error.detail?.message || error.detail || errorMessage;
-      errorCode = error.detail?.code;
-    } catch {
-      errorMessage = res.statusText || errorMessage;
+      try {
+        const error = await res.json();
+        errorMessage = error.detail?.message || error.detail || errorMessage;
+        errorCode = error.detail?.code;
+      } catch {
+        errorMessage = res.statusText || errorMessage;
+      }
+
+      throw new ApiError(errorMessage, res.status, errorCode);
     }
 
-    throw new ApiError(errorMessage, res.status, errorCode);
-  }
+    let rawJson: unknown;
+    try {
+      rawJson = await res.json();
+    } catch (parseErr) {
+      if (attemptNumber === 1) {
+        return doFetch(2);
+      }
+      throw parseErr;
+    }
 
-  const rawJson: unknown = await res.json();
-  const parsed = CalendarPayloadWireSchema.safeParse(rawJson);
-  if (!parsed.success) {
-    throw new ApiContractError('Calendar');
-  }
+    const parsed = CalendarPayloadWireSchema.safeParse(rawJson);
+    if (!parsed.success) {
+      throw new ApiContractError('Calendar');
+    }
 
-  return parsed.data;
+    return parsed.data;
+  };
+
+  return doFetch(1);
 }
 // END_BLOCK: API_CLIENT_LOGIC
