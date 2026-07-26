@@ -27,6 +27,7 @@
 
 import { ChevronLeft, Share2, Info } from "lucide-react"
 import { useProfile } from "@/hooks/use-profile"
+import { formatBirthDate } from "@/lib/profile"
 import { getRelationLabel } from "./synastry-tone"
 
 type Props = {
@@ -62,7 +63,7 @@ export function SynastryPairHero({
 
   const isApproximate = precision === "approximate"
 
-  const ownerDateStr = profile.birthday ? formatDateRu(profile.birthday) : ""
+  const ownerDateStr = profile.birthDate ? formatBirthDate(profile.birthDate) : ""
   const partnerDateStr = partnerBirthDate ? formatDateRu(partnerBirthDate) : ""
 
   const metaParts = [ownerDateStr, partnerDateStr]
@@ -108,7 +109,7 @@ export function SynastryPairHero({
         {/* Overlapping Avatars */}
         <div className="flex items-center justify-center -space-x-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-primary text-primary-foreground font-serif font-bold text-[20px] shadow-md border-2 border-background z-10">
-            {profile.name ? profile.name.slice(0, 1).toUpperCase() : "Ты"}
+            {profile.firstName ? profile.firstName.slice(0, 1).toUpperCase() : "Ты"}
           </div>
           <div className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-[var(--syn-ink)] text-[var(--syn-lavender)] font-serif font-bold text-[20px] shadow-md border-2 border-background z-0">
             {partnerName.slice(0, 1).toUpperCase()}

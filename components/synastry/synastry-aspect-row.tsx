@@ -99,6 +99,8 @@ function extractAspectSymbol(aspect: SynastryAspectItem): string {
 }
 
 function extractOrbText(aspect: SynastryAspectItem): string {
+  // API provides ready orbLabel ("1°12′") since P3a — prefer it.
+  if (aspect.orbLabel) return `орб ${aspect.orbLabel}`
   const sig = aspect.techSignature || ""
   // Engine format: "Sun trine Moon (1.0°)"; макет format: "Луна △ Венера · орб 1°12′".
   const paren = sig.match(/\(([^)]*°[^)]*)\)/)

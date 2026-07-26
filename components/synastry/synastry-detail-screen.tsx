@@ -42,6 +42,7 @@ import { SynastryTranslations } from "./synastry-translations"
 import { SynastrySpheres } from "./synastry-spheres"
 import { SynastryFeedbackBlock } from "./synastry-feedback"
 import { AspectDrilldownSheet } from "./aspect-drilldown-sheet"
+import { SynastryWheel, type SynastryWheelSelection } from "./synastry-wheel"
 
 type Props = {
   partnerId: string
@@ -57,6 +58,11 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
   const [showAllAspects, setShowAllAspects] = useState(false)
   const [activeDrilldownAspect, setActiveDrilldownAspect] = useState<string | null>(null)
   const [drilldownOpen, setDrilldownOpen] = useState(false)
+
+  const [selection, setSelection] = useState<SynastryWheelSelection>({
+    selectedPlanetId: null,
+    selectedAspectId: null,
+  })
 
   const [feedbackValue, setFeedbackValue] = useState<string | null>(null)
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
@@ -85,8 +91,26 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
     }
   }, [partnerId])
 
+  function handlePlanetSelect(planetId: string | null) {
+    setSelection({
+      selectedPlanetId: planetId,
+      selectedAspectId: null,
+    })
+  }
+
+  function handleAspectSelect(aspectId: string | null) {
+    setSelection({
+      selectedPlanetId: null,
+      selectedAspectId: aspectId,
+    })
+  }
+
   function handleOpenAspectDrilldown(aspectId: string) {
     if (!aspectId) return
+    setSelection({
+      selectedPlanetId: null,
+      selectedAspectId: aspectId,
+    })
     setActiveDrilldownAspect(aspectId)
     setDrilldownOpen(true)
   }
@@ -142,7 +166,7 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
       <SynastryPairHero
         partnerName={report.partnerName}
         relationType={report.relationType}
-        partnerBirthDate={report.partnerBirthDate}
+        partnerBirthDate={report.partnerBirthDate || report.createdAt}
         partnerBirthTime={report.partnerBirthTime}
         partnerBirthCity={report.partnerBirthCity}
         precision={report.precision}
@@ -160,7 +184,7 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
         counters={report.counters}
       />
 
-      {/* 3. INTERACTION MAP (WHEEL PLACEHOLDER & ASPECT LIST) */}
+      {/* 3. INTERACTION MAP (WHEEL & ASPECT LIST) */}
       <section className="rounded-[24px] border border-border/70 bg-card p-6 shadow-sm space-y-4" data-testid="synastry-wheel">
         <div className="space-y-1">
           <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -174,22 +198,18 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
           </p>
         </div>
 
-        {/* WHEEL: P3 Placeholder Zone */}
-        <div className="rounded-[20px] border border-border/50 bg-gradient-to-b from-[#f1e9f4]/40 to-transparent dark:from-[#2d2233]/40 p-6 text-center space-y-2">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-serif font-bold text-[18px]">
-            ✨
-          </div>
-          <p className="text-[12.5px] text-muted-foreground">
-            Интерактивная карта связей планет пары
-          </p>
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground pt-1">
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--syn-good)]" /> поддержка</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--syn-mid)]" /> неоднозначно</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[var(--syn-bad)]" /> напряжение</span>
-        </div>
+        {/* SVG Synastry Wheel */}
+        <SynastryWheel
+          ownerPlanets={report.ownerPlanets}
+          partnerPlanets={report.partnerPlanets}
+          aspects={report.aspects}
+          precision={report.precision}
+          partnerName={report.partnerName}
+          selection={selection}
+          onPlanetSelect={handlePlanetSelect}
+          onAspectSelect={handleAspectSelect}
+          onAspectOpen={handleOpenAspectDrilldown}
+        />
 
         {/* Key Aspects List */}
         <div className="space-y-2.5 pt-2" id="synastry-aspects-list">

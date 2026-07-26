@@ -121,6 +121,15 @@ export type SynastrySphereItem = {
   description: string | null
 }
 
+export type SynastryTranslation = {
+  tone?: "good" | "mid" | "bad" | "supportive" | "mixed" | "tense" | null
+  title: string
+  aspectId?: string | null
+  tech?: string | null
+  text?: string | null
+  scene?: string | null
+}
+
 export type SynastryReportData = {
   id: string
   ownerId: string
@@ -143,7 +152,7 @@ export type SynastryReportData = {
   aspects: SynastryAspectItem[]
   houseOverlays: Array<{ tech?: string; text?: string }>
   spheres: SynastrySphereItem[]
-  translations: Array<{ tone?: string; title?: string; aspectId?: string | null; tech?: string; text?: string; scene?: string }>
+  translations: SynastryTranslation[]
   userFeedback: string | null
   createdAt: string
 }
