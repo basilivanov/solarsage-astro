@@ -129,6 +129,17 @@ systemctl restart solarsage-api solarsage-frontend solarsage-sidecar
 - Dev-режим (`NODE_ENV=development`): `/api/auth/dev` для локальной разработки
 - Production: только через Telegram HMAC-верификацию с реальным `TELEGRAM_BOT_TOKEN`
 
+## Параллельная работа агентов (обязательно)
+
+В репозитории одновременно работают несколько агентов и автоматик (coder-loop в tmux, prod-errors петля, Kimi Code). Чтобы никто никому не мешал:
+
+1. **Общий checkout `/opt/solarsage-astro` — чистое зеркало main.** В нём не работают: ни фич-агенты, ни автоматика, ни ручные правки. Только `git pull --ff-only`. Никаких коммитов из этого дерева.
+2. **Uncommitted-but-live — антипаттерн.** Всё, что работает (cron, systemd, агенты), обязано происходить из закоммиченного состояния. Незакоммиченные правки в общем дереве считаются мусором: любой агент вправе снести их через `git restore .` / `git checkout .` перед своей задачей — это легитимная чистка, а не чья-то ошибка.
+3. **Каждой задаче — свой worktree + своя ветка.** На каждое ТЗ: `git worktree add .worktrees/<slug> -b <branch> origin/main`, вся работа и коммиты — внутри worktree. Так уже работает prod-errors `fix_runner` (`.worktrees/prod-error-N`).
+4. **В main — только через PR с зелёным CI.** Прямые коммиты и пуши в main запрещены для всех агентов, включая «мелкие» чистки (ruff/lint/форматирование — тоже через PR). Branch protection (PR-only + required checks) настраивается на стороне GitHub владельцем.
+5. **prod-errors петля** живёт в изолированном ff-only checkout `~/solarsage-prod-errors` (cron → `runner.sh`, self-update из `origin` при каждом запуске). Её код (`scripts/prod-errors/`) меняется только через PR; live-код петли всегда из коммита.
+6. **Границы владения.** `scripts/prod-errors/` — зона prod-errors автоматики; фич-агенты туда не ходят. Автоматика не трогает ничего вне своих worktree.
+
 ## UI Semantic/Test Contract
 
 Фронтенд должен быть написан так, чтобы пользователь, accessibility tree и headless-тест видели один и тот же публичный UI-контракт. Тесты не должны зависеть от CSS-классов, React internals или случайного текста LLM.
