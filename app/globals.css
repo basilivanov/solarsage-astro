@@ -372,3 +372,11 @@
 .syn-serif {
   font-family: Georgia, "Times New Roman", serif;
 }
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
