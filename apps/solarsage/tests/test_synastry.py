@@ -59,10 +59,15 @@ async def test_synastry_endpoint_exact():
         data = response.json()
         assert "owner_planets" in data
         assert "partner_planets" in data
+        assert data["owner_houses"] is not None
+        assert len(data["owner_houses"]) == 12
         assert data["partner_houses"] is not None
         assert "cross_aspects" in data
         assert data["precision_flags"]["houses_available"] is True
         assert data["precision_flags"]["report_precision"] == "exact"
+        assert data["house_system"] == "PLACIDUS"
+        assert data["owner_house_system"] == "PLACIDUS"
+        assert data["partner_house_system"] == "PLACIDUS"
 
 
 @pytest.mark.asyncio

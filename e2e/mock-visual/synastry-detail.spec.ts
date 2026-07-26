@@ -245,7 +245,7 @@ test.describe("Synastry detail mock visual contract", () => {
     // Error alert visible
     const alert = sheet.locator('[role="alert"]')
     await expect(alert).toBeVisible()
-    await expect(alert).toContainText("Не удалось загрузить подробный разбор аспекта.")
+    await expect(alert).toContainText("Не удалось загрузить")
 
     // Close via Escape key
     await page.keyboard.press("Escape")

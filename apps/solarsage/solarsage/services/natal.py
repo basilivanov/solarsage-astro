@@ -40,6 +40,7 @@ class NatalService:
         tz_str: str,
         latitude: float,
         longitude: float,
+        house_system: str = "PLACIDUS",
     ) -> NatalChart:
         """
         Calculate natal chart.
@@ -52,6 +53,7 @@ class NatalService:
             tz_str: Timezone (e.g., "America/New_York")
             latitude: Birth latitude
             longitude: Birth longitude
+            house_system: Requested house system ("PLACIDUS" or "WHOLE_SIGN")
 
         Returns:
             NatalChart with positions, houses, and special points
@@ -63,8 +65,8 @@ class NatalService:
         positions = calculate_positions(jd)
 
         # Calculate houses and special points
-        houses, special_points, house_system = calculate_houses_cusps(
-            jd, latitude, longitude
+        houses, special_points, resolved_house_system = calculate_houses_cusps(
+            jd, latitude, longitude, house_system=house_system
         )
 
         # Parse birth datetime for model
@@ -77,5 +79,5 @@ class NatalService:
             positions=positions,
             houses=houses,
             special_points=special_points,
-            house_system=house_system,
+            house_system=resolved_house_system,
         )

@@ -51,6 +51,7 @@ class SynastryRequest(BaseModel):
     partner_birth_time_precision: str = Field(
         default="exact", description="Partner birth time precision (exact, approximate, unknown)"
     )
+    house_system: str | None = Field(default=None, description="Requested house system (PLACIDUS, WHOLE_SIGN)")
 
 
 class CrossAspect(BaseModel):
@@ -68,7 +69,11 @@ class SynastryResponse(BaseModel):
 
     owner_planets: list[dict[str, Any]]
     partner_planets: list[dict[str, Any]]
+    owner_houses: list[dict[str, Any]] | None = None
     partner_houses: list[dict[str, Any]] | None = None
     partner_special_points: list[dict[str, Any]] | None = None
     cross_aspects: list[CrossAspect]
     precision_flags: dict[str, Any]
+    owner_house_system: str = "PLACIDUS"
+    partner_house_system: str = "PLACIDUS"
+    house_system: str = "PLACIDUS"

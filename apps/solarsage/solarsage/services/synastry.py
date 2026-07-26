@@ -50,6 +50,7 @@ class SynastryService:
 
     def calculate_synastry(self, req: SynastryRequest) -> SynastryResponse:
         is_approximate = req.partner_birth_time_precision in ("approximate", "unknown")
+        req_hs = (req.house_system or "PLACIDUS").upper()
 
         # 1. Owner chart
         owner_chart = self.natal_service.calculate_natal_chart(
@@ -58,6 +59,7 @@ class SynastryService:
             tz_str=req.owner_birth_tz,
             latitude=req.owner_birth_lat,
             longitude=req.owner_birth_lon,
+            house_system=req_hs,
         )
 
         owner_planets = [
@@ -69,6 +71,11 @@ class SynastryService:
                 "retrograde": p.get("retrograde", False),
             }
             for p in owner_chart.positions
+        ]
+
+        owner_houses = [
+            {"number": h["number"], "cusp": h["cusp"], "sign": h["sign"]}
+            for h in owner_chart.houses
         ]
 
         # 2. Partner chart
@@ -83,6 +90,7 @@ class SynastryService:
             tz_str=partner_tz,
             latitude=partner_lat,
             longitude=partner_lon,
+            house_system=req_hs,
         )
 
         partner_planets = [
@@ -140,8 +148,12 @@ class SynastryService:
         return SynastryResponse(
             owner_planets=owner_planets,
             partner_planets=partner_planets,
+            owner_houses=owner_houses,
             partner_houses=partner_houses,
             partner_special_points=partner_special_points,
             cross_aspects=cross_aspects,
             precision_flags=precision_flags,
+            owner_house_system=owner_chart.house_system,
+            partner_house_system=partner_chart.house_system,
+            house_system=owner_chart.house_system,
         )

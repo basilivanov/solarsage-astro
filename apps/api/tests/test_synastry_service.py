@@ -1,7 +1,7 @@
 """Unit tests for SynastryService orchestration."""
 
 from datetime import date, datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 import pytest
 
@@ -431,4 +431,41 @@ async def test_pipeline_persists_planet_points_and_houses():
         assert det["partner_planets"][0]["id"] == "partner_moon"
         assert det["partner_planets"][0]["house"] == 2
         assert det["partner_planets"][0]["house_reliable"] is True
+        assert "house_overlays" in det
+        assert "house_system" in det
+
+
+@pytest.mark.asyncio
+async def test_pipeline_owner_house_system_and_deterministic_overlays():
+    """Pipeline passes owner house system based on latitude (>=60 Whole Sign, else Placidus) and computes house overlays."""
+    from app.services.synastry_service import SynastryService
+    from app.db.models import UserProfile, SynastryPartner, SynastryReport
+
+    user_id = uuid.uuid4()
+    partner_id = uuid.uuid4()
+
+    user_profile_polar = UserProfile(user_id=user_id, birthday=date(1990, 1, 15), birth_lat=67.9387, birth_lon=32.9241) # Murmansk lat >= 60
+    partner = SynastryPartner(id=partner_id, owner_id=user_id, name="Мария", relation_type="romantic", birth_date=date(1992, 5, 20), precision="exact")
+
+    service = SynastryService(AsyncMock())
+
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {
+                "owner_planets": [{"name": "Sun", "longitude": 120.0, "sign": "Leo"}],
+                "partner_planets": [{"name": "Moon", "longitude": 45.0, "sign": "Taurus"}],
+                "owner_houses": [{"number": i, "cusp": float((i-1)*30), "sign": "Aries"} for i in range(1, 13)],
+                "partner_houses": [{"number": i, "cusp": float((i-1)*30), "sign": "Aries"} for i in range(1, 13)],
+                "cross_aspects": [],
+                "precision_flags": {"houses_available": True},
+                "house_system": "WHOLE_SIGN",
+            },
+            raise_for_status=lambda: None,
+        )
+
+        res = await service._fetch_sidecar_synastry(user_profile_polar, partner)
+        assert mock_post.called
+        req_json = mock_post.call_args[1]["json"]
+        assert req_json["house_system"] == "WHOLE_SIGN"
 

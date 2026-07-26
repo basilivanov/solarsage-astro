@@ -223,6 +223,7 @@ class SynastryReport(CamelModel):
     partner_planets: list[SynastryPlanetPoint] = Field(default_factory=list, description="Partner chart planet points for SVG wheel")
     aspects: list[SynastryAspect] = Field(default_factory=list, description="Key synastry aspects list")
     house_overlays: list[dict[str, Any]] = Field(default_factory=list, description="House overlay interpretations")
+    house_system: str = Field(default="placidus", description="Resolved house system (placidus or whole_sign)")
     spheres: list[SynastrySphere] = Field(default_factory=list, description="Spheres breakdown")
     translations: list[SynastryTranslation] = Field(default_factory=list, description="Human translation cards")
     user_feedback: str | None = Field(default=None, description="Current user reality feedback value")

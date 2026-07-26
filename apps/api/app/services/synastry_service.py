@@ -364,10 +364,13 @@ class SynastryService:
         owner_time = user_profile.birth_time.isoformat()[:5] if user_profile.birth_time else "12:00"
         partner_time = partner.birth_time.isoformat()[:5] if partner.birth_time else None
 
+        owner_lat = float(user_profile.birth_lat) if user_profile.birth_lat is not None else 0.0
+        owner_hs = "WHOLE_SIGN" if abs(owner_lat) >= 60 else "PLACIDUS"
+
         req_payload = {
             "owner_birth_date": user_profile.birthday.isoformat() if user_profile.birthday else "1990-01-01",
             "owner_birth_time": owner_time,
-            "owner_birth_lat": float(user_profile.birth_lat) if user_profile.birth_lat is not None else 0.0,
+            "owner_birth_lat": owner_lat,
             "owner_birth_lon": float(user_profile.birth_lon) if user_profile.birth_lon is not None else 0.0,
             "owner_birth_tz": user_profile.birth_tz or "UTC",
             "partner_birth_date": partner.birth_date.isoformat(),
@@ -376,6 +379,7 @@ class SynastryService:
             "partner_birth_lon": float(partner.birth_lon) if partner.birth_lon is not None else None,
             "partner_birth_tz": partner.birth_tz,
             "partner_birth_time_precision": partner.precision,
+            "house_system": owner_hs,
         }
 
         url = f"{settings.solarsage_url}/v1/synastry"
@@ -397,6 +401,7 @@ class SynastryService:
             counters=scoring_res.counters,
             aspects=det_payload["aspects"],
             partner_precision=precision_mode,
+            house_overlays=det_payload.get("house_overlays", []),
         )
 
         try:
@@ -528,6 +533,53 @@ class SynastryService:
                 "house_reliable": houses_avail,
             })
 
+        owner_houses = sidecar_data.get("owner_houses") or []
+        owner_hs = sidecar_data.get("house_system") or sidecar_data.get("owner_house_system") or "PLACIDUS"
+        partner_hs = sidecar_data.get("partner_house_system") or owner_hs
+
+        from app.services.astro_utils import find_house
+        PLANET_RU_NAME = {
+            "Sun": "Солнце", "Moon": "Луна", "Mercury": "Меркурий", "Venus": "Венера",
+            "Mars": "Марс", "Jupiter": "Юпитер", "Saturn": "Сатурн", "Uranus": "Уран",
+            "Neptune": "Нептун", "Pluto": "Плутон", "Ascendant": "ASC", "ASC": "ASC",
+        }
+
+        house_overlays = []
+        # 1. Partner planets into Owner's houses
+        for pp in sidecar_data.get("partner_planets", []):
+            p_lon = float(pp.get("longitude", 0.0))
+            p_name = pp.get("name", "")
+            if p_name in ("Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"):
+                h_num = find_house(p_lon, owner_houses)
+                if h_num:
+                    p_ru = PLANET_RU_NAME.get(p_name, p_name)
+                    tech = f"Его {p_ru} → твой {h_num} дом"
+                    house_overlays.append({
+                        "tech": tech,
+                        "planet": p_name,
+                        "planet_owner": "partner",
+                        "house": h_num,
+                        "house_system": owner_hs,
+                    })
+
+        # 2. Owner planets into Partner's houses (if partner houses available and exact)
+        if houses_avail:
+            for op in sidecar_data.get("owner_planets", []):
+                p_lon = float(op.get("longitude", 0.0))
+                p_name = op.get("name", "")
+                if p_name in ("Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"):
+                    h_num = find_house(p_lon, partner_houses)
+                    if h_num:
+                        p_ru = PLANET_RU_NAME.get(p_name, p_name)
+                        tech = f"Твоя {p_ru} → его {h_num} дом"
+                        house_overlays.append({
+                            "tech": tech,
+                            "planet": p_name,
+                            "planet_owner": "owner",
+                            "house": h_num,
+                            "house_system": partner_hs,
+                        })
+
         det_payload = {
             "score": scoring_res.score,
             "status": scoring_res.status,
@@ -535,6 +587,8 @@ class SynastryService:
             "precision_flags": scoring_res.precision_flags,
             "owner_planets": formatted_owner_planets,
             "partner_planets": formatted_partner_planets,
+            "house_overlays": house_overlays,
+            "house_system": owner_hs,
             "aspects": [
                 {
                     "id": a.id,

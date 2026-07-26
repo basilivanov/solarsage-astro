@@ -167,6 +167,7 @@ def build_report_prompt(
     counters: dict[str, int],
     aspects: list[dict[str, Any]],
     partner_precision: str = "exact",
+    house_overlays: list[dict[str, Any]] | None = None,
 ) -> dict[str, str]:
     """Build system and user prompts for full synastry report generation without PII."""
     aspect_lines = []
@@ -183,12 +184,22 @@ def build_report_prompt(
     if partner_precision in ("approximate", "unknown"):
         approx_note = "\nВНИМАНИЕ: Время рождения партнёра НЕИЗВЕСТНО. НЕ используй дома партнёра и его Асцендент в текстах."
 
+    overlay_lines = []
+    if house_overlays and partner_precision not in ("approximate", "unknown"):
+        for ho in house_overlays:
+            if ho.get("tech"):
+                overlay_lines.append(f"- {ho['tech']}")
+    overlays_str = "\n".join(overlay_lines)
+    overlay_prompt_part = ""
+    if overlays_str:
+        overlay_prompt_part = f"\n- Вычисленные домовые наложения:\n{overlays_str}\nСформируй поле house_overlays: список объектов с matching 'tech' и разъясняющим 'text' (до 150 символов).\n"
+
     user_prompt = f"""Сформируй нарратив синастрии для пары:
 - Общий балл совместимости: {score}/100 (статус: {status})
 - Счётчики контактов: {counters.get('good', 0)} поддерживающих, {counters.get('mid', 0)} неоднозначных, {counters.get('bad', 0)} напряжённых
 - Ключевые аспекты:
 {aspects_str}
-{approx_note}
+{overlay_prompt_part}{approx_note}
 
 Сформируй JSON-ответ со следующими полями:
 - verdict: краткая фраза-вердикт (до 120 символов)

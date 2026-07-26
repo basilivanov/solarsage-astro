@@ -381,6 +381,34 @@ async def get_synastry_report(
                 )
             )
 
+    det_overlays = det.get("house_overlays", [])
+    nar_overlays = nar.get("house_overlays", [])
+    formatted_overlays = []
+    if isinstance(det_overlays, list) and det_overlays:
+        for ho in det_overlays:
+            if not isinstance(ho, dict):
+                continue
+            tech = ho.get("tech", "")
+            matched_text = None
+            if isinstance(nar_overlays, list):
+                for n_ho in nar_overlays:
+                    if isinstance(n_ho, dict) and n_ho.get("tech") == tech:
+                        matched_text = n_ho.get("text")
+                        break
+            if not matched_text:
+                house_num = ho.get("house", 1)
+                matched_text = f"Активирует тему {house_num}-го дома."
+            formatted_overlays.append({
+                "tech": tech,
+                "text": matched_text,
+                "planet": ho.get("planet"),
+                "planet_owner": ho.get("planet_owner"),
+                "house": ho.get("house"),
+                "house_system": ho.get("house_system"),
+            })
+    elif isinstance(nar_overlays, list):
+        formatted_overlays = nar_overlays
+
     # Get feedback if exists
     fb_stmt = select(SynastryFeedback).where(
         SynastryFeedback.user_id == user.id,
@@ -409,7 +437,8 @@ async def get_synastry_report(
         owner_planets=owner_points,
         partner_planets=partner_points,
         aspects=aspects_list,
-        house_overlays=nar.get("house_overlays", []),
+        house_overlays=formatted_overlays,
+        house_system=det.get("house_system", "PLACIDUS").lower(),
         spheres=spheres_list,
         translations=translations_list,
         user_feedback=fb.value if fb else None,

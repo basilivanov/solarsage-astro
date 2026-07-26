@@ -179,6 +179,7 @@ export type SynastryReportData = {
   partnerPlanets: SynastryPlanetPoint[]
   aspects: SynastryAspectItem[]
   houseOverlays: Array<{ tech?: string; text?: string }>
+  houseSystem?: string
   translations: SynastryTranslation[]
   spheres: SynastrySphereItem[]
   userFeedback: string | null

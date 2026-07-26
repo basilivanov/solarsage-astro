@@ -340,6 +340,7 @@ export function SynastryDetailScreen({ partnerId, onBack }: Props) {
       {/* 4. HOUSE OVERLAYS */}
       <SynastryHouseOverlays
         houseOverlays={report.houseOverlays}
+        houseSystem={report.houseSystem}
         isApproximate={isApproximate}
       />
 

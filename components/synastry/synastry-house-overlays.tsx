@@ -5,10 +5,10 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-SYNASTRY-HOUSE-OVERLAYS
-// purpose: Render house overlays section with lavender mini-cards or approximate precision notice card.
+// purpose: Render house overlays section with lavender mini-cards, house system badge, or approximate precision notice card.
 // owns:
 //   - components/synastry/synastry-house-overlays.tsx
-// inputs: houseOverlays, isApproximate
+// inputs: houseOverlays, houseSystem, isApproximate
 // outputs: SynastryHouseOverlays TSX render
 // dependencies: none
 // side_effects: none
@@ -29,17 +29,30 @@ import { Info } from "lucide-react"
 
 type Props = {
   houseOverlays: Array<{ tech?: string; text?: string }>
+  houseSystem?: string
   isApproximate?: boolean
 }
 
 // START_BLOCK: SYNASTRY_HOUSE_OVERLAYS
-export function SynastryHouseOverlays({ houseOverlays, isApproximate = false }: Props) {
+export function SynastryHouseOverlays({ houseOverlays, houseSystem, isApproximate = false }: Props) {
+  const systemLabel =
+    houseSystem?.toLowerCase() === "whole_sign"
+      ? "Дома: равнодомная система"
+      : "Дома: Placidus"
+
   return (
     <section className="space-y-3 mx-4" data-testid="synastry-overlays">
       <div className="space-y-0.5">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#795a86]">
-          НАЛОЖЕНИЕ ДОМОВ
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#795a86]">
+            НАЛОЖЕНИЕ ДОМОВ
+          </span>
+          {!isApproximate && (
+            <span className="text-[10px] font-bold text-[#7d7284] uppercase tracking-wider">
+              {systemLabel}
+            </span>
+          )}
+        </div>
         <h2 className="syn-serif text-[22px] font-semibold text-[#3e3347] dark:text-[#f1e9f4]">
           Что у кого включается
         </h2>
