@@ -140,6 +140,26 @@ def _match_translation_aspect_id(tech: str | None, aspects: list[dict[str, Any]]
     return None
 
 
+def _parse_llm_json(raw_text: str) -> Any:
+    """Parse LLM JSON output, tolerating markdown fences and surrounding prose."""
+    text = raw_text.strip()
+    if text.startswith("```"):
+        # Strip ```json ... ``` fences
+        text = text.split("```", 2)[1] if text.count("```") >= 2 else text
+        if text.lower().startswith("json"):
+            text = text[4:]
+        text = text.strip().rstrip("`").strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Last resort: extract the outermost {...} block (prose around JSON)
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end > start:
+            return json.loads(text[start : end + 1])
+        raise
+
+
 def _find_house(planet_lon: float, houses: list[dict[str, Any]]) -> int:
     if not houses:
         return 1
@@ -361,7 +381,7 @@ class SynastryService:
                 log_event("llm.response_rejected", level="warning", msg="synastry narrative: empty response")
                 return None
 
-            parsed = json.loads(raw_text)
+            parsed = _parse_llm_json(raw_text)
             if isinstance(parsed, dict):
                 valid, _ = validate_llm_output(parsed, report_precision=precision_mode)
                 if valid:
@@ -696,7 +716,7 @@ class SynastryService:
                 max_tokens=1000,
             )
             if raw_text:
-                parsed = json.loads(raw_text)
+                parsed = _parse_llm_json(raw_text)
                 if isinstance(parsed, dict):
                     valid, err_reason = validate_drilldown_output(parsed)
                     if valid:
