@@ -19,6 +19,8 @@
   });
   document.body.appendChild(modal);
 
+  const planetGlyph = typeof glyph !== 'undefined' ? glyph : {Солнце:'☉',Луна:'☽',Меркурий:'☿',Венера:'♀',Марс:'♂',Юпитер:'♃',Сатурн:'♄',Уран:'♅',Нептун:'♆',Плутон:'♇',ASC:'AC'};
+
   const planetMeaning = {
     Солнце: 'ядро личности, воля, чувство «я» и способ проявляться',
     Луна: 'эмоциональные реакции, безопасность, привычки и потребность в заботе',
@@ -68,6 +70,14 @@
       <p>${item.text}</p><div class="scene">${item.scene}</div>
     </div>`).join('');
   };
+
+  const baseOpenPerson = typeof openPerson !== 'undefined' ? openPerson : null;
+  if (baseOpenPerson) {
+    window.openPerson = function openPersonWithTranslations(id) {
+      baseOpenPerson(id);
+      renderTranslations();
+    };
+  }
 
   function mercurySquareDetail() {
     return {
