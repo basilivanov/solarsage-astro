@@ -48,16 +48,9 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
   const [city, setCity] = useState<City | null>(null)
   const [unknownTime, setUnknownTime] = useState(false)
   const [savedTime, setSavedTime] = useState("")
-  const [idempotencyKey, setIdempotencyKey] = useState<string>(() =>
-    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `ikey-${Date.now()}`
-  )
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  function renewKey() {
-    setIdempotencyKey(typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `ikey-${Date.now()}`)
-  }
 
   // Escape closes the sheet (accessibility contract)
   useEffect(() => {
@@ -72,7 +65,6 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
   if (!open) return null
 
   function handleToggleUnknownTime() {
-    renewKey()
     if (!unknownTime) {
       setSavedTime(birthTime)
       setBirthTime("")
@@ -109,7 +101,6 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
         birthLon: city ? (city.lon ?? null) : null,
         birthTz: city ? (city.timezone ?? null) : null,
         birthTimePrecision: unknownTime ? "approximate" : "exact",
-        idempotencyKey,
       }
 
       const res = await createSynastryPartner(payload)
@@ -174,7 +165,7 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
               type="text"
               required
               value={name}
-              onChange={(e) => { renewKey(); setName(e.target.value) }}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Например: Максим"
               className="w-full h-[46px] rounded-[14px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] px-[13px] text-[14px] text-[#3e3347] dark:text-[#f1e9f4] focus:border-[#795a86] focus:outline-none"
             />
@@ -188,7 +179,7 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
             <select
               id="partner-relation"
               value={relation}
-              onChange={(e) => { renewKey(); setRelation(e.target.value) }}
+              onChange={(e) => setRelation(e.target.value)}
               className="w-full h-[46px] rounded-[14px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] px-[13px] text-[14px] text-[#3e3347] dark:text-[#f1e9f4] focus:border-[#795a86] focus:outline-none"
             >
               <option value="romantic">Романтическая (пара)</option>
@@ -209,7 +200,7 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
                 type="date"
                 required
                 value={birthDate}
-                onChange={(e) => { renewKey(); setBirthDate(e.target.value) }}
+                onChange={(e) => setBirthDate(e.target.value)}
                 className="w-full h-[46px] rounded-[14px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] px-[13px] text-[14px] text-[#3e3347] dark:text-[#f1e9f4] focus:border-[#795a86] focus:outline-none"
               />
               <input
@@ -218,7 +209,7 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
                 type="time"
                 disabled={unknownTime}
                 value={birthTime}
-                onChange={(e) => { renewKey(); setBirthTime(e.target.value) }}
+                onChange={(e) => setBirthTime(e.target.value)}
                 className="w-full h-[46px] rounded-[14px] border border-[#e8e0e8] bg-white dark:bg-[#2d2233] px-[13px] text-[14px] text-[#3e3347] dark:text-[#f1e9f4] focus:border-[#795a86] focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
               />
             </div>
@@ -278,7 +269,7 @@ export function SynastryAddSheet({ open, onClose, onSuccess }: Props) {
             </label>
             <CityPicker
               value={city}
-              onChange={(c) => { renewKey(); setCity(c) }}
+              onChange={setCity}
               placeholder="Например: Москва"
             />
           </div>

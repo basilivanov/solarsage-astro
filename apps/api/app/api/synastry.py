@@ -72,7 +72,6 @@ from app.schemas.synastry import (
     SynastrySphere,
     SynastryTranslation,
 )
-from app.services.horary_credit_service import HoraryCreditService
 from app.services.synastry_service import SynastryService
 
 ASPECT_SYMBOLS: dict[str, str] = {
@@ -102,20 +101,12 @@ router = APIRouter(prefix="/api/synastry", tags=["synastry"])
 
 # STATIC ROUTES FIRST!
 
-def compute_credit_balance(quota: HoraryQuotaRead) -> int:
-    return (1 if quota.weekly_free_available else 0) + quota.bonus_credits + quota.paid_credits
-
-
 @router.get("/capabilities", response_model=SynastryCapabilitiesRead)
 async def get_synastry_capabilities(
     user: Annotated[User, Depends(require_session)],
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> SynastryCapabilitiesRead:
     """Return user capabilities and partner counts for synastry."""
-    now = datetime.now(timezone.utc)
-    credit_service = HoraryCreditService(db)
-    quota = await credit_service.get_balance(user.id, now)
-
     stmt = select(SynastryPartner).where(
         SynastryPartner.owner_id == user.id,
         SynastryPartner.invalidated_at.is_(None),
@@ -123,26 +114,18 @@ async def get_synastry_capabilities(
     result = await db.execute(stmt)
     partners = list(result.scalars().all())
 
-    balance = compute_credit_balance(quota)
-    max_partners = 20
-    active_count = len(partners)
-
-    can_calc = balance > 0 and active_count < max_partners
-    blocked_reason = None
-    if not can_calc:
-        if active_count >= max_partners:
-            blocked_reason = "partner_limit"
-        elif balance <= 0:
-            blocked_reason = "no_credits"
+    # Get credit balance
+    c_stmt = select(HoraryCredit).where(HoraryCredit.user_id == user.id)
+    c_result = await db.execute(c_stmt)
+    credits_list = list(c_result.scalars().all())
+    balance = sum(c.amount - c.used_amount for c in credits_list if c.amount > c.used_amount)
 
     return SynastryCapabilitiesRead(
-        can_calculate=can_calc,
-        can_purchase=quota.can_purchase,
-        active_partner_count=active_count,
-        max_partners=max_partners,
+        can_calculate=True,
+        active_partner_count=len(partners),
+        max_partners=20,
         has_unlocked_access=True,
         credit_balance=balance,
-        blocked_reason=blocked_reason,
     )
 
 
@@ -152,9 +135,23 @@ async def get_synastry_quota(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> HoraryQuotaRead:
     """Return shared credit balance / quota for synastry."""
-    now = datetime.now(timezone.utc)
-    credit_service = HoraryCreditService(db)
-    return await credit_service.get_balance(user.id, now)
+    c_stmt = select(HoraryCredit).where(HoraryCredit.user_id == user.id)
+    c_result = await db.execute(c_stmt)
+    credits_list = list(c_result.scalars().all())
+
+    weekly = [c for c in credits_list if c.source == "subscription_weekly_free"]
+    weekly_avail = any(c.amount > c.used_amount for c in weekly)
+    bonus = sum(c.amount - c.used_amount for c in credits_list if c.source in ("referral_bonus", "gift"))
+    paid = sum(c.amount - c.used_amount for c in credits_list if c.source in ("paid", "adjustment"))
+
+    return HoraryQuotaRead(
+        weeklyFreeAvailable=weekly_avail,
+        weeklyFreeExpiresAt=weekly[0].expires_at.isoformat() if weekly and weekly[0].expires_at else None,
+        nextWeeklyFreeAt=None,
+        bonusCredits=max(0, bonus),
+        paidCredits=max(0, paid),
+        canPurchase=True,
+    )
 
 
 @router.get("", response_model=SynastryListRead)
@@ -245,11 +242,10 @@ async def create_synastry_partner(
 ) -> SynastryGenerationRead:
     """Add a new synastry partner, spend credit, and initiate background report calculation."""
     service = SynastryService(db)
-    partner, report, is_new = await service.create_partner_and_report(user.id, body)
+    partner, report = await service.create_partner_and_report(user.id, body)
 
-    # Launch background task ONLY for a newly created report — never on idempotent replay
-    if is_new:
-        asyncio.create_task(_run_synastry_pipeline_task(report.id))
+    # Launch background task ONLY after successful commit
+    asyncio.create_task(_run_synastry_pipeline_task(report.id))
 
     return SynastryGenerationRead(
         report_id=report.id,

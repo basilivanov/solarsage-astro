@@ -70,7 +70,6 @@ from app.schemas.synastry import (
     PlanetInfo,
     SynastryFeedbackRead,
 )
-from app.services.horary_credit_service import HoraryCreditService
 from app.services.llm.client import LLMClient
 from app.services.synastry_llm import (
     ASPECT_MEANINGS,
@@ -94,20 +93,6 @@ def _compute_partner_hash(
     city: str | None,
 ) -> str:
     raw = f"{owner_id}:{name.strip().lower()}:{birth_date_str}:{birth_time_str or ''}:{city or ''}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-def _compute_request_hash(body: PartnerCreate) -> str:
-    name_norm = body.name.strip().lower()
-    date_str = body.birth_date.isoformat()
-    time_str = body.birth_time.isoformat() if body.birth_time else ""
-    city_str = body.birth_city or ""
-    lat_str = str(body.birth_lat) if body.birth_lat is not None else ""
-    lon_str = str(body.birth_lon) if body.birth_lon is not None else ""
-    tz_str = body.birth_tz or ""
-    rel_str = body.relation
-    prec_str = body.birth_time_precision
-    raw = f"{name_norm}:{date_str}:{time_str}:{city_str}:{lat_str}:{lon_str}:{tz_str}:{rel_str}:{prec_str}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -224,8 +209,8 @@ class SynastryService:
         self,
         user_id: uuid.UUID,
         body: PartnerCreate,
-    ) -> tuple[SynastryPartner, SynastryReport, bool]:
-        """Validate profile, check idempotency, deduplicate, consume 1 credit in priority order, and create records."""
+    ) -> tuple[SynastryPartner, SynastryReport]:
+        """Validate profile, deduplicate, consume 1 credit in one DB transaction, and create records."""
         # 1. Profile completeness check
         p_stmt = select(UserProfile).where(UserProfile.user_id == user_id)
         p_res = await self.db.execute(p_stmt)
@@ -237,37 +222,6 @@ class SynastryService:
                 detail="User birth profile must be complete to calculate synastry.",
             )
 
-        req_hash = _compute_request_hash(body)
-        idempotency_key = body.idempotency_key or str(uuid.uuid4())
-
-        # 2. Idempotency check: replay or conflict
-        if body.idempotency_key:
-            spend_stmt = select(SynastryCreditSpend).where(
-                SynastryCreditSpend.user_id == user_id,
-                SynastryCreditSpend.idempotency_key == body.idempotency_key,
-            )
-            spend_res = await self.db.execute(spend_stmt)
-            existing_spend = spend_res.scalar_one_or_none()
-            if existing_spend:
-                # Compare request hash
-                if existing_spend.request_hash and existing_spend.request_hash != req_hash:
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail={"code": "IDEMPOTENCY_CONFLICT", "message": "Idempotency key reused with a different payload."},
-                    )
-                # Replay: fetch existing partner & report
-                if existing_spend.report_id:
-                    rep_stmt = select(SynastryReport).where(SynastryReport.id == existing_spend.report_id)
-                    rep_res = await self.db.execute(rep_stmt)
-                    existing_report = rep_res.scalar_one_or_none()
-                    if existing_report:
-                        part_stmt = select(SynastryPartner).where(SynastryPartner.id == existing_report.partner_id)
-                        part_res = await self.db.execute(part_stmt)
-                        existing_partner = part_res.scalar_one_or_none()
-                        if existing_partner:
-                            return existing_partner, existing_report, False
-
-        # 3. Deduplication check by partner_input_hash
         b_time_str = body.birth_time.isoformat() if body.birth_time else None
         partner_hash = _compute_partner_hash(
             owner_id=user_id,
@@ -277,6 +231,7 @@ class SynastryService:
             city=body.birth_city,
         )
 
+        # 2. Deduplication check
         dup_stmt = select(SynastryPartner).where(
             SynastryPartner.owner_id == user_id,
             SynastryPartner.partner_input_hash == partner_hash,
@@ -289,16 +244,23 @@ class SynastryService:
                 detail=f"Partner '{body.name}' already exists.",
             )
 
-        # 4. Resolve weekly-free & select spendable credit with FOR UPDATE lock
-        now = datetime.now(timezone.utc)
-        credit_service = HoraryCreditService(self.db)
-        await credit_service.get_or_create_current_weekly_free(user_id, now)
+        # 3. Credit spend in ONE DB transaction
+        credit_stmt = (
+            select(HoraryCredit)
+            .where(
+                HoraryCredit.user_id == user_id,
+                HoraryCredit.amount > HoraryCredit.used_amount,
+            )
+            .order_by(HoraryCredit.created_at.asc())
+            .limit(1)
+        )
+        credit_res = await self.db.execute(credit_stmt)
+        credit = credit_res.scalar_one_or_none()
 
-        credit = await credit_service.select_spendable_credit(user_id, now, lock=True)
         if not credit:
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail={"code": "NO_CREDITS", "message": "Insufficient credits for synastry report."},
+                detail="Insufficient credits for synastry report.",
             )
 
         credit.used_amount += 1
@@ -336,22 +298,12 @@ class SynastryService:
             credit_id=credit.id,
             report_id=report.id,
             amount=1,
-            idempotency_key=idempotency_key,
-            request_hash=req_hash,
+            idempotency_key=body.idempotency_key or str(uuid.uuid4()),
         )
         self.db.add(spend)
 
         # Commit DB transaction BEFORE external calls
-        from sqlalchemy.exc import IntegrityError
-        try:
-            await self.db.commit()
-        except IntegrityError:
-            await self.db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Conflict creating partner or report.",
-            )
-
+        await self.db.commit()
         await self.db.refresh(partner)
         await self.db.refresh(report)
 
@@ -364,7 +316,7 @@ class SynastryService:
             },
         )
 
-        return partner, report, True
+        return partner, report
 
     async def _fail_and_refund(
         self,

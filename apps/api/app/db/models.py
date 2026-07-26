@@ -1531,7 +1531,6 @@ class SynastryCreditSpend(Base):
     )
     amount: Mapped[int] = mapped_column(nullable=False, default=1, server_default="1")
     idempotency_key: Mapped[str] = mapped_column(String(80), nullable=False)
-    request_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     refunded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
