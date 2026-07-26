@@ -481,63 +481,8 @@ async def get_aspect_drilldown(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> AspectDrilldown:
     """Get aspect drilldown interpretation. Owner-scoped (404 if not found/unauthorized)."""
-    p_stmt = select(SynastryPartner).where(
-        SynastryPartner.id == partner_id,
-        SynastryPartner.owner_id == user.id,
-        SynastryPartner.invalidated_at.is_(None),
-    )
-    p_res = await db.execute(p_stmt)
-    partner = p_res.scalar_one_or_none()
-
-    if not partner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Partner not found",
-        )
-
-    r_stmt = select(SynastryReport).where(
-        SynastryReport.owner_id == user.id,
-        SynastryReport.partner_id == partner.id,
-        SynastryReport.invalidated_at.is_(None),
-    ).order_by(SynastryReport.created_at.desc()).limit(1)
-    r_res = await db.execute(r_stmt)
-    report = r_res.scalar_one_or_none()
-
-    if not report:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Report not found",
-        )
-
-    a_stmt = select(SynastryAspectDetail).where(
-        SynastryAspectDetail.report_id == report.id,
-        SynastryAspectDetail.aspect_id == aspect_id,
-    )
-    a_res = await db.execute(a_stmt)
-    detail = a_res.scalar_one_or_none()
-
-    if not detail or not detail.payload_json:
-        # Provide fallback drilldown
-        return AspectDrilldown(
-            aspect_id=aspect_id,
-            title=aspect_id.replace("_", " ").title(),
-            tone="good",
-            tech_signature=aspect_id,
-            explanation="Взаимодействие двух энергий в натальных картах.",
-            scenario="Повседневный контакт двух личностей.",
-            advice="Сохраняйте взаимное уважение и диалог.",
-        )
-
-    data = json.loads(detail.payload_json)
-    return AspectDrilldown(
-        aspect_id=aspect_id,
-        title=data.get("title", aspect_id),
-        tone=data.get("tone", "good"),
-        tech_signature=data.get("tech_signature"),
-        explanation=data.get("explanation", ""),
-        scenario=data.get("scenario"),
-        advice=data.get("advice"),
-    )
+    service = SynastryService(db)
+    return await service.get_aspect_drilldown(user.id, partner_id, aspect_id)
 
 
 @router.post("/{partner_id}/feedback", response_model=SynastryFeedbackRead)
