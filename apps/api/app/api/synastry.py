@@ -355,6 +355,7 @@ async def get_synastry_report(
             )
         )
 
+    sphere_texts = nar.get("sphere_texts", {}) if isinstance(nar.get("sphere_texts"), dict) else {}
     spheres_list = []
     for s in det.get("spheres", []):
         spheres_list.append(
@@ -362,7 +363,7 @@ async def get_synastry_report(
                 id=s.get("id", "sphere"),
                 title=s.get("title", "Сфера"),
                 score=s.get("score", 50),
-                description=s.get("description"),
+                description=s.get("description") or sphere_texts.get(s.get("id")),
             )
         )
 

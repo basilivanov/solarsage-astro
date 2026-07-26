@@ -26,7 +26,7 @@
 "use client"
 
 import type { SynastryTranslation } from "@/lib/api/synastry"
-import { normalizeSynastryTone } from "./synastry-tone"
+import { localizeTechSignature, normalizeSynastryTone } from "./synastry-tone"
 
 type Props = {
   translations: SynastryTranslation[]
@@ -84,11 +84,11 @@ export function SynastryTranslations({ translations, onOpenAspect }: Props) {
                     onClick={() => onOpenAspect(aspectId)}
                     className="text-[10px] font-bold text-[#7d7284] underline decoration-dotted hover:text-[#795a86] transition flex-none"
                   >
-                    {item.tech} · что значит?
+                    {localizeTechSignature(item.tech)} · что значит?
                   </button>
                 ) : item.tech ? (
                   <span className="text-[10px] font-bold text-[#7d7284] flex-none">
-                    {item.tech}
+                    {localizeTechSignature(item.tech)}
                   </span>
                 ) : null}
               </div>

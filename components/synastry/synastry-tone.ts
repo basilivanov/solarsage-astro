@@ -46,6 +46,40 @@ export function getToneContactLabel(tone: NormalizedSynastryTone): string {
   }
 }
 
+const TECH_WORD_RU: Record<string, string> = {
+  sun: "Солнце",
+  moon: "Луна",
+  mercury: "Меркурий",
+  venus: "Венера",
+  mars: "Марс",
+  jupiter: "Юпитер",
+  saturn: "Сатурн",
+  uranus: "Уран",
+  neptune: "Нептун",
+  pluto: "Плутон",
+  ascendant: "Асцендент",
+  asc: "Асцендент",
+  mc: "MC",
+  conjunction: "соединение",
+  conjunct: "соединение",
+  conj: "соединение",
+  trine: "тригон",
+  sextile: "секстиль",
+  square: "квадрат",
+  opposition: "оппозиция",
+  quincunx: "квиконс",
+}
+
+// Localize an English tech signature word-by-word, e.g.
+// "Moon conjunction Moon" -> "Луна соединение Луна". Glyphs/орбы pass through.
+export function localizeTechSignature(tech: string | null | undefined): string {
+  if (!tech) return ""
+  return tech
+    .split(/(\s+)/)
+    .map((part) => TECH_WORD_RU[part.toLowerCase()] ?? part)
+    .join("")
+}
+
 export function getToneStatusLabel(tone: NormalizedSynastryTone): string {
   switch (tone) {
     case "good":

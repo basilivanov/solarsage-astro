@@ -609,6 +609,7 @@ class SynastryService:
             "hero_description": narrative_data.get("hero_description"),
             "translations": matched_translations,
             "house_overlays": narrative_data.get("house_overlays", []),
+            "sphere_texts": narrative_data.get("spheres") if isinstance(narrative_data.get("spheres"), dict) else {},
         }
 
         report.narrative_payload_json = json.dumps(narrative_payload, ensure_ascii=False)
