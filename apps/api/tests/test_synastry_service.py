@@ -362,3 +362,16 @@ async def test_get_aspect_drilldown_failure_does_not_affect_report_or_credit():
         assert exc_info.value.status_code == 500
         assert report.state == "ready"  # Base report state unchanged!
 
+
+def test_match_translation_aspect_id_helper():
+    from app.services.synastry_service import _match_translation_aspect_id
+
+    aspects = [
+        {"id": "sun_trine_moon", "owner_planet": "Sun", "partner_planet": "Moon", "aspect": "trine", "tech_signature": "Sun trine Moon (1.0°)"},
+        {"id": "mercury_square_mercury", "owner_planet": "Mercury", "partner_planet": "Mercury", "aspect": "square", "tech_signature": "Mercury square Mercury (0.8°)"},
+    ]
+
+    assert _match_translation_aspect_id("Sun trine Moon", aspects) == "sun_trine_moon"
+    assert _match_translation_aspect_id("Меркурий квадрат Меркурий", aspects) == "mercury_square_mercury"
+    assert _match_translation_aspect_id("Unknown Aspect", aspects) is None
+

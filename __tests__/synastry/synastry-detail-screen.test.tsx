@@ -29,7 +29,16 @@ vi.mock("@/lib/api/synastry", () => ({
     spheres: [
       { id: "intimacy", title: "Близость", score: 85, description: "Высокая эмоциональная близость." },
     ],
-    translations: [],
+    translations: [
+      {
+        tone: "good",
+        title: "Взаимная поддержка",
+        aspectId: "sun_trine_moon",
+        tech: "Солнце трин Луна",
+        text: "Естественное понимание потребностей друг друга.",
+        scene: "Совместное принятие решений проходит легко.",
+      },
+    ],
     userFeedback: null,
     createdAt: "2026-07-25T12:00:00Z",
   }),
@@ -46,7 +55,7 @@ vi.mock("@/lib/api/synastry", () => ({
 }))
 
 describe("SynastryDetailScreen", () => {
-  it("renders detail screen with hero, score, and aspect list", async () => {
+  it("renders detail screen with hero, score panel, aspect list, translations, spheres, and feedback", async () => {
     const onBack = vi.fn()
     render(<SynastryDetailScreen partnerId="partner-123" onBack={onBack} />)
 
@@ -56,10 +65,12 @@ describe("SynastryDetailScreen", () => {
     expect(screen.getByTestId("synastry-hero")).toBeDefined()
     expect(screen.getByTestId("synastry-score")).toBeDefined()
     expect(screen.getByTestId("synastry-wheel")).toBeDefined()
+    expect(screen.getByTestId("synastry-translations")).toBeDefined()
     expect(screen.getByTestId("synastry-spheres")).toBeDefined()
     expect(screen.getByTestId("synastry-feedback")).toBeDefined()
 
-    expect(screen.getByText("Ты и Ирина")).toBeDefined()
+    expect(screen.getByText("Ты + Ирина")).toBeDefined()
     expect(screen.getByText("78")).toBeDefined()
+    expect(screen.getByText("Взаимная поддержка")).toBeDefined()
   })
 })

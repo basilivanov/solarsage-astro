@@ -110,6 +110,9 @@ export type SynastryReportData = {
   ownerId: string
   partnerId: string
   partnerName: string
+  partnerBirthDate: string | null
+  partnerBirthTime: string | null
+  partnerBirthCity: string | null
   relationType: string
   precision: "exact" | "approximate"
   score: number
@@ -122,7 +125,7 @@ export type SynastryReportData = {
   aspects: SynastryAspectItem[]
   houseOverlays: Array<{ tech?: string; text?: string }>
   spheres: SynastrySphereItem[]
-  translations: Array<{ tone?: string; title?: string; tech?: string; text?: string; scene?: string }>
+  translations: Array<{ tone?: string; title?: string; aspectId?: string | null; tech?: string; text?: string; scene?: string }>
   userFeedback: string | null
   createdAt: string
 }

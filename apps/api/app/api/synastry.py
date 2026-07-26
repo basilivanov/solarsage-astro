@@ -68,6 +68,7 @@ from app.schemas.synastry import (
     SynastryListRead,
     SynastryReport as SynastryReportSchema,
     SynastrySphere,
+    SynastryTranslation,
 )
 from app.services.synastry_service import SynastryService
 
@@ -307,6 +308,20 @@ async def get_synastry_report(
             )
         )
 
+    translations_list = []
+    for t in nar.get("translations", []):
+        if isinstance(t, dict):
+            translations_list.append(
+                SynastryTranslation(
+                    tone=t.get("tone"),
+                    title=t.get("title", ""),
+                    aspect_id=t.get("aspect_id") or t.get("aspectId"),
+                    tech=t.get("tech"),
+                    text=t.get("text"),
+                    scene=t.get("scene"),
+                )
+            )
+
     # Get feedback if exists
     fb_stmt = select(SynastryFeedback).where(
         SynastryFeedback.user_id == user.id,
@@ -320,6 +335,9 @@ async def get_synastry_report(
         owner_id=user.id,
         partner_id=partner.id,
         partner_name=partner.name,
+        partner_birth_date=partner.birth_date,
+        partner_birth_time=partner.birth_time.isoformat()[:5] if partner.birth_time else None,
+        partner_birth_city=partner.birth_city,
         relation_type=partner.relation_type,
         precision=partner.precision,
         score=det.get("score", 50),
@@ -332,7 +350,7 @@ async def get_synastry_report(
         aspects=aspects_list,
         house_overlays=nar.get("house_overlays", []),
         spheres=spheres_list,
-        translations=nar.get("translations", []),
+        translations=translations_list,
         user_feedback=fb.value if fb else None,
         created_at=report.created_at,
     )

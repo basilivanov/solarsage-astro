@@ -143,6 +143,19 @@ class SynastrySphere(CamelModel):
     description: str | None = Field(default=None, description="Detailed sphere explanation")
 
 
+class SynastryTranslation(CamelModel):
+    """Human translation item connecting astrological factors to real-life dynamics."""
+
+    tone: Literal["good", "mid", "bad", "supportive", "mixed", "tense"] | None = Field(
+        default=None, description="Tone/valence of translation"
+    )
+    title: str = Field(..., description="Card title (up to 42 chars)")
+    aspect_id: str | None = Field(default=None, description="Matched aspect ID for drill-down link")
+    tech: str | None = Field(default=None, description="Technical aspect signature text")
+    text: str | None = Field(default=None, description="Main translation text")
+    scene: str | None = Field(default=None, description="Real life scene description")
+
+
 class SynastryReport(CamelModel):
     """Full synastry report data model."""
 
@@ -150,6 +163,9 @@ class SynastryReport(CamelModel):
     owner_id: uuid.UUID = Field(..., description="Owner user UUID")
     partner_id: uuid.UUID = Field(..., description="Partner UUID")
     partner_name: str = Field(..., description="Partner name")
+    partner_birth_date: date | None = Field(default=None, description="Partner birth date")
+    partner_birth_time: str | None = Field(default=None, description="Partner birth time HH:MM if known")
+    partner_birth_city: str | None = Field(default=None, description="Partner birth city")
     relation_type: str = Field(..., description="Relation type")
     precision: str = Field(..., description="Birth time precision (exact/approximate)")
     score: int = Field(..., ge=0, le=100, description="Overall compatibility score (0..100)")
@@ -162,7 +178,7 @@ class SynastryReport(CamelModel):
     aspects: list[SynastryAspect] = Field(default_factory=list, description="Key synastry aspects list")
     house_overlays: list[dict[str, Any]] = Field(default_factory=list, description="House overlay interpretations")
     spheres: list[SynastrySphere] = Field(default_factory=list, description="Spheres breakdown")
-    translations: list[dict[str, Any]] = Field(default_factory=list, description="Human translation cards")
+    translations: list[SynastryTranslation] = Field(default_factory=list, description="Human translation cards")
     user_feedback: str | None = Field(default=None, description="Current user reality feedback value")
     created_at: datetime = Field(..., description="Report creation timestamp")
 

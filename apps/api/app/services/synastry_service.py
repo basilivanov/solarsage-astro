@@ -91,6 +91,51 @@ def _compute_partner_hash(
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+_RU_TO_EN_ASTRO = {
+    "солнце": "sun",
+    "луна": "moon",
+    "меркурий": "mercury",
+    "венера": "venus",
+    "марс": "mars",
+    "юпитер": "jupiter",
+    "сатурн": "saturn",
+    "уран": "uranus",
+    "нептун": "neptune",
+    "плутон": "pluto",
+    "асцендент": "ascendant",
+    "соединение": "conjunction",
+    "трин": "trine",
+    "секстиль": "sextile",
+    "квадрат": "square",
+    "оппозиция": "opposition",
+    "квиконс": "quincunx",
+}
+
+
+def _normalize_tech_str(s: str) -> str:
+    import re
+    low = s.lower()
+    for ru, en in _RU_TO_EN_ASTRO.items():
+        low = low.replace(ru, en)
+    return re.sub(r"[^\w]", "", low)
+
+
+def _match_translation_aspect_id(tech: str | None, aspects: list[dict[str, Any]]) -> str | None:
+    if not tech:
+        return None
+    norm_tech = _normalize_tech_str(tech)
+    if not norm_tech:
+        return None
+    for a in aspects:
+        aid = a.get("id", "")
+        tsig = a.get("tech_signature", "")
+        if aid and (_normalize_tech_str(aid) in norm_tech or norm_tech in _normalize_tech_str(aid)):
+            return aid
+        if tsig and (_normalize_tech_str(tsig) in norm_tech or norm_tech in _normalize_tech_str(tsig)):
+            return aid
+    return None
+
+
 # START_BLOCK: SYNASTRY_SERVICE
 class SynastryService:
     """High-level orchestration service for synastry features."""
@@ -428,12 +473,26 @@ class SynastryService:
                 report, "LLM_VALIDATION_FAILED", "LLM narrative generation or validation failed"
             )
 
+        raw_translations = narrative_data.get("translations", [])
+        matched_translations = []
+        for t in raw_translations:
+            if isinstance(t, dict):
+                t_aspect_id = t.get("aspect_id") or t.get("aspectId") or _match_translation_aspect_id(t.get("tech"), det_payload["aspects"])
+                matched_translations.append({
+                    "tone": t.get("tone"),
+                    "title": t.get("title", ""),
+                    "aspect_id": t_aspect_id,
+                    "tech": t.get("tech"),
+                    "text": t.get("text"),
+                    "scene": t.get("scene"),
+                })
+
         narrative_payload = {
             "verdict": narrative_data.get("verdict") or f"Совместимость пары ({scoring_res.score}/100)",
             "summary": narrative_data.get("summary", "Анализ взаимодействия завершён."),
             "hero_title": narrative_data.get("hero_title"),
             "hero_description": narrative_data.get("hero_description"),
-            "translations": narrative_data.get("translations", []),
+            "translations": matched_translations,
             "house_overlays": narrative_data.get("house_overlays", []),
         }
 
