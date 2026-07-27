@@ -140,12 +140,21 @@ export function HorizonSheet({
             <p className="text-[15px] leading-relaxed text-muted-foreground">{horizon.plainExplanation}</p>
           </div>
 
-          {/* 3. Timing */}
-          <div data-testid="why-horizon-timing" className={`rounded-2xl border px-3 py-2.5 text-[13px] leading-relaxed text-foreground/85 ${toneStyle.timing}`}>
-            {horizon.timing.rangeLabel ? <p data-testid="why-horizon-timing-range"><span className="font-semibold text-foreground">Период:</span> {horizon.timing.rangeLabel}</p> : null}
-            {horizon.timing.peakLabel ? <p data-testid="why-horizon-timing-peak"><span className="font-semibold text-foreground">Пик:</span> {horizon.timing.peakLabel}</p> : null}
-            <p data-testid="why-horizon-timing-state"><span className="font-semibold text-foreground">Сейчас:</span> {horizon.timing.stateLabel}</p>
-          </div>
+          {/* 3. Timing — skip labels already stated verbatim in the meaning text (dedupe) */}
+          {(() => {
+            const meaningText = `${horizon.summary} ${horizon.plainExplanation}`
+            const showRange = Boolean(horizon.timing.rangeLabel) && !meaningText.includes(horizon.timing.rangeLabel)
+            const showPeak = Boolean(horizon.timing.peakLabel) && !meaningText.includes(horizon.timing.peakLabel)
+            const showState = Boolean(horizon.timing.stateLabel) && !meaningText.includes(horizon.timing.stateLabel)
+            if (!showRange && !showPeak && !showState) return null
+            return (
+              <div data-testid="why-horizon-timing" className={`rounded-2xl border px-3 py-2.5 text-[13px] leading-relaxed text-foreground/85 ${toneStyle.timing}`}>
+                {showRange ? <p data-testid="why-horizon-timing-range"><span className="font-semibold text-foreground">Период:</span> {horizon.timing.rangeLabel}</p> : null}
+                {showPeak ? <p data-testid="why-horizon-timing-peak"><span className="font-semibold text-foreground">Пик:</span> {horizon.timing.peakLabel}</p> : null}
+                {showState ? <p data-testid="why-horizon-timing-state"><span className="font-semibold text-foreground">Сейчас:</span> {horizon.timing.stateLabel}</p> : null}
+              </div>
+            )
+          })()}
 
           {/* 4. Manifestations */}
           <div data-testid="why-horizon-manifestations" className="space-y-2">
