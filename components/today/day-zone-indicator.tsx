@@ -54,18 +54,15 @@ export function DayZoneIndicator({ relativeStatus }: DayZoneIndicatorProps) {
   const bandLow = band && band.length >= 2 ? Math.max(0, Math.min(100, band[0])) : 25
   const bandHigh = band && band.length >= 2 ? Math.max(0, Math.min(100, band[1])) : 75
   const bandWidth = Math.max(10, bandHigh - bandLow)
+  // "Обычно" anchor sits over the band center, clamped away from the edges
+  const bandCenter = Math.min(88, Math.max(12, bandLow + bandWidth / 2))
 
   return (
     <div
       data-testid="day-zone-indicator"
       className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800/60"
     >
-      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
-        <span data-testid="day-zone-label">Ваша обычная зона</span>
-        <span className="text-slate-700 dark:text-slate-200 font-semibold">{relativeStatus.label}</span>
-      </div>
-
-      {/* Track bar */}
+      {/* Track bar: green band = your usual range, dot = today */}
       <div className="relative h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
         {/* Normal zone band */}
         <div
@@ -85,6 +82,19 @@ export function DayZoneIndicator({ relativeStatus }: DayZoneIndicatorProps) {
             left: `calc(${markerPercent}% - 7px)`,
           }}
         />
+      </div>
+
+      {/* Axis anchors: left = harder than usual, right = easier */}
+      <div className="relative mt-1.5 h-4 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+        <span className="absolute left-0">Тяжелее</span>
+        <span
+          data-testid="day-zone-label"
+          className="absolute -translate-x-1/2"
+          style={{ left: `${bandCenter}%` }}
+        >
+          Обычно
+        </span>
+        <span className="absolute right-0">Легче</span>
       </div>
     </div>
   )

@@ -84,7 +84,9 @@ describe("DaySummaryCard & Relative Day Status UI", () => {
     const labels = screen.getAllByText("Легче, чем обычно")
     expect(labels.length).toBeGreaterThan(0)
     expect(screen.getByTestId("day-zone-indicator")).toBeDefined()
-    expect(screen.getByTestId("day-zone-label").textContent).toContain("Ваша обычная зона")
+    expect(screen.getByTestId("day-zone-label").textContent).toContain("Обычно")
+    expect(screen.getByTestId("day-zone-indicator").textContent).toContain("Тяжелее")
+    expect(screen.getByTestId("day-zone-indicator").textContent).toContain("Легче")
   })
 
   it("hides zone indicator when baseline days < 5 (cold start)", () => {
