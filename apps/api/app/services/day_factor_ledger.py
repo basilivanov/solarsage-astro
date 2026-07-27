@@ -169,6 +169,15 @@ def build_factor_ledger(
         tech_spheres = _get_field(act, "technical_spheres") or []
         if not isinstance(tech_spheres, list):
             tech_spheres = []
+        if not tech_spheres:
+            # Local activation objects carry no sphere mapping: derive it the
+            # same way as for day signals — natal target planet or house number
+            # via spheres.v1.yml, otherwise the strongest factors would count
+            # only globally and never project into product spheres.
+            if target_type == "house":
+                tech_spheres = _technical_spheres_for_house(target_key_raw)
+            else:
+                tech_spheres = _technical_spheres_for_planet(target_key_raw) or _technical_spheres_for_planet(src_planet)
 
         target_key_final = target_key_raw or "UNKNOWN"
 
