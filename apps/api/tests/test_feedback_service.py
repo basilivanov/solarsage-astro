@@ -83,3 +83,33 @@ async def test_list_users_for_reminder(db_session: AsyncSession) -> None:
     await service.upsert(user.id, date(2026, 7, 22), accuracy=2)
     users_after_fb = await service.list_users_for_reminder(target_hour_local=20, now_utc=now_utc)
     assert not any(u.id == user.id for u in users_after_fb)
+
+
+@pytest.mark.asyncio
+async def test_list_users_for_reminder_multiple_hours(db_session: AsyncSession) -> None:
+    """target_hour_local accepts a set of hours: user is selected at 11 and 20, not at 12."""
+    tg_user = TelegramUser(id=7770004, username="fb_user_4", first_name="Fb4")
+    user, _ = await get_or_create_user(db_session, tg_user)
+    profile = await read_profile(db_session, user.id)
+
+    profile.current_tz = "UTC"
+    profile.is_onboarded = True
+    await db_session.flush()
+
+    service = FeedbackService(db_session)
+    hours = {11, 20}
+
+    at_11 = await service.list_users_for_reminder(
+        target_hour_local=hours, now_utc=datetime(2026, 7, 23, 11, 15, 0, tzinfo=UTC)
+    )
+    assert any(u.id == user.id for u in at_11)
+
+    at_20 = await service.list_users_for_reminder(
+        target_hour_local=hours, now_utc=datetime(2026, 7, 23, 20, 15, 0, tzinfo=UTC)
+    )
+    assert any(u.id == user.id for u in at_20)
+
+    at_12 = await service.list_users_for_reminder(
+        target_hour_local=hours, now_utc=datetime(2026, 7, 23, 12, 15, 0, tzinfo=UTC)
+    )
+    assert not any(u.id == user.id for u in at_12)

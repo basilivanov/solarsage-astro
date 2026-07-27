@@ -57,9 +57,14 @@ async def _run() -> int:
         return 0
 
     sent_count = 0
+    target_hours = {
+        int(h.strip())
+        for h in settings.feedback_broadcast_hours.split(",")
+        if h.strip().isdigit()
+    } or {20}
     async with SessionLocal() as session:
         service = FeedbackService(session)
-        users = await service.list_users_for_reminder(target_hour_local=20)
+        users = await service.list_users_for_reminder(target_hour_local=target_hours)
         # Cap at 500 users
         users = users[:500]
 

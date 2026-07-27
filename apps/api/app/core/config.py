@@ -189,6 +189,7 @@ class Settings(BaseSettings):
 
     # --- Feedback broadcast feature flag ---
     feedback_broadcast_enabled: bool = Field(False, alias="FEEDBACK_BROADCAST_ENABLED")
+    feedback_broadcast_hours: str = Field("20", alias="FEEDBACK_BROADCAST_HOURS")
 
     # --- YooKassa (secrets live only in env files, never in git) ---
     yookassa_enabled: bool = Field(False, alias="YOOKASSA_ENABLED")

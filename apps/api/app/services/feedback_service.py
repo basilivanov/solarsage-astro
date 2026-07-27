@@ -133,14 +133,15 @@ class FeedbackService:
 
     async def list_users_for_reminder(
         self,
-        target_hour_local: int = 20,
+        target_hour_local: int | set[int] = 20,
         now_utc: datetime | None = None,
     ) -> list[User]:
         # START_FUNCTION_CONTRACT: F-M-FEEDBACK-SERVICE.list_users_for_reminder
         # purpose: Select users who should receive feedback broadcast reminder.
-        # inputs: target_hour_local (int, default 20), now_utc (datetime, default now)
+        # inputs: target_hour_local (int or set of int local hours, default 20), now_utc (datetime, default now)
         # returns: list[User]
         # END_FUNCTION_CONTRACT: F-M-FEEDBACK-SERVICE.list_users_for_reminder
+        target_hours = {target_hour_local} if isinstance(target_hour_local, int) else set(target_hour_local)
         if now_utc is None:
             now_utc = datetime.now(UTC)
 
@@ -167,7 +168,7 @@ class FeedbackService:
                 continue
 
             local_now = now_utc.astimezone(tz)
-            if local_now.hour != target_hour_local:
+            if local_now.hour not in target_hours:
                 continue
 
             local_yesterday = (local_now - timedelta(days=1)).date()
