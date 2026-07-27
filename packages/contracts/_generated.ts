@@ -1208,6 +1208,7 @@ export interface components {
         };
         /** ConcreteAdviceRow */
         ConcreteAdviceRow: {
+            assessment?: components["schemas"]["SphereValenceRead"] | null;
             /**
              * Confidence
              * @enum {string}
@@ -1332,6 +1333,55 @@ export interface components {
             /** Supportscore */
             supportScore: number;
         };
+        /**
+         * DayStatusBreakdown
+         * @description Global day status calculation breakdown (§6.7).
+         */
+        DayStatusBreakdown: {
+            /**
+             * Duplicatefactorcount
+             * @description Number of deduplicated/merged factors
+             * @default 0
+             */
+            duplicateFactorCount: number;
+            /**
+             * Effectivefactorcount
+             * @description Factors contributing after global family decay
+             */
+            effectiveFactorCount: number;
+            /**
+             * Factorcount
+             * @description Total canonical factors in day ledger
+             */
+            factorCount: number;
+            /**
+             * Familycounts
+             * @description Factor count per technique family
+             */
+            familyCounts?: {
+                [key: string]: number;
+            };
+            /**
+             * Ratio
+             * @description Support/tension or tension/support ratio
+             */
+            ratio?: number | null;
+            /**
+             * Rule
+             * @description Day status decision rule name
+             */
+            rule: string;
+            /**
+             * Supportscore
+             * @description Global support valence score
+             */
+            supportScore: number;
+            /**
+             * Tensionscore
+             * @description Global tension valence score
+             */
+            tensionScore: number;
+        };
         /** DaySummaryBlock */
         DaySummaryBlock: {
             /** Facts */
@@ -1354,6 +1404,74 @@ export interface components {
             summary?: string | null;
             /** Title */
             title: string;
+        };
+        /**
+         * DayValenceFactor
+         * @description Canonical factor entry in the day factor ledger (§5.1).
+         */
+        DayValenceFactor: {
+            /**
+             * Aspecttype
+             * @description Aspect type if aspect factor
+             */
+            aspectType?: string | null;
+            /**
+             * Factorid
+             * @description Unique deterministic factor identity
+             */
+            factorId: string;
+            /**
+             * Polarity
+             * @description Valence polarity
+             * @enum {string}
+             */
+            polarity: "supportive" | "tense" | "mixed" | "neutral";
+            /**
+             * Semantickey
+             * @description Normalized factor key for cross-source deduplication
+             */
+            semanticKey: string;
+            /**
+             * Source
+             * @description Origin layer: activation or day_signal
+             * @enum {string}
+             */
+            source: "activation" | "day_signal";
+            /**
+             * Sourceplanet
+             * @description Normalized source planet name
+             */
+            sourcePlanet?: string | null;
+            /**
+             * Strength
+             * @description Raw factor strength (0..1)
+             */
+            strength: number;
+            /**
+             * Targetkey
+             * @description Normalized target entity key
+             */
+            targetKey: string;
+            /**
+             * Targettype
+             * @description Target entity type (e.g. natal_planet, house, lot, angle)
+             */
+            targetType: string;
+            /**
+             * Technicalspheres
+             * @description Mapped technical sphere keys
+             */
+            technicalSpheres?: string[];
+            /**
+             * Technique
+             * @description Astrological technique key
+             */
+            technique: string;
+            /**
+             * Techniquefamily
+             * @description Astrological technique family
+             */
+            techniqueFamily: string;
         };
         /** HighlightItem */
         HighlightItem: {
@@ -1686,6 +1804,75 @@ export interface components {
         ProductsListResponse: {
             /** Products */
             products: components["schemas"]["ProductRead"][];
+        };
+        /**
+         * ProductSphereAssessment
+         * @description Assessment summary for one product sphere (§6.6).
+         */
+        ProductSphereAssessment: {
+            /**
+             * Balance
+             * @description Normalized balance (-1..1)
+             */
+            balance: number;
+            /**
+             * Confidence
+             * @description Assessment confidence level
+             * @enum {string}
+             */
+            confidence: "low" | "medium" | "high";
+            /**
+             * Effectivefactorcount
+             * @description Effective factors contributing after family decay
+             */
+            effectiveFactorCount: number;
+            /**
+             * Factorcount
+             * @description Total factors touching this sphere
+             */
+            factorCount: number;
+            /**
+             * Independentfamilycount
+             * @description Number of distinct technique families
+             */
+            independentFamilyCount: number;
+            /**
+             * Key
+             * @description Product sphere key e.g. work, money
+             */
+            key: string;
+            /**
+             * Primaryfactorid
+             * @description ID of primary driving factor
+             */
+            primaryFactorId?: string | null;
+            /**
+             * Saliencescore
+             * @description Max final_score across mapped technical spheres
+             */
+            salienceScore: number;
+            /**
+             * Supportscore
+             * @description Effective support valence score
+             */
+            supportScore: number;
+            /**
+             * Tensionscore
+             * @description Effective tension valence score
+             */
+            tensionScore: number;
+            /**
+             * Verdict
+             * @description Product sphere verdict
+             * @enum {string}
+             */
+            verdict: "good" | "neutral" | "caution" | "avoid";
+            /**
+             * Verdictrule
+             * @description Rule code that determined the verdict
+             * @enum {string}
+             */
+            verdictRule: "avoid_tension_2x" | "caution_tension_1_3x" | "good_support_1_3x" | "neutral_low_evidence" | "neutral_balanced";
         };
         /**
          * ProfileRead
@@ -2029,6 +2216,16 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * SphereValenceRead
+         * @description Public/read representation for one product sphere's valence.
+         */
+        SphereValenceRead: {
+            assessment: components["schemas"]["ProductSphereAssessment"];
+            primaryFactor?: components["schemas"]["DayValenceFactor"] | null;
+            /** Sphere */
+            sphere: string;
+        };
         /** SubscriptionStartResponse */
         SubscriptionStartResponse: {
             /** Confirmationurl */
@@ -2338,6 +2535,7 @@ export interface components {
             canonVersions?: {
                 [key: string]: string;
             };
+            dayStatusBreakdown?: components["schemas"]["DayStatusBreakdown"] | null;
             /** Horizonpipeline */
             horizonPipeline?: (components["schemas"]["TodayV2HorizonPipelineAuditBuilt"] | components["schemas"]["TodayV2HorizonPipelineAuditUnavailable"]) | null;
             /** Payloadversion */
@@ -2350,6 +2548,8 @@ export interface components {
             v1V2Diff?: {
                 [key: string]: unknown;
             } | null;
+            /** Valenceversion */
+            valenceVersion?: string | null;
         };
         /** TodayV2Block */
         TodayV2Block: {

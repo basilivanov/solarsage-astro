@@ -89,6 +89,9 @@ def selected_scoring_version_for_flags(*, force_v2: bool = False) -> int | str:
     # error_behavior: none.
     # END_FUNCTION_CONTRACT: F-M-DAY-SCORING-RUNTIME-SERVICE.selected_scoring_version_for_flags
     """Return the selected version without treating dual-run as selection."""
+    from app.core.versions import SCORING_V2_1_VERSION
+    if getattr(settings, "today_valence_v1_enabled", False):
+        return SCORING_V2_1_VERSION
     v2_selected = bool(force_v2 or settings.solarsage_v2_enabled)
     return SCORING_V2_VERSION if v2_selected else LEGACY_SCORING_VERSION
 # END_BLOCK: FLAG_SELECTION
@@ -105,6 +108,8 @@ class DualRunResult:
     v2_result: Any | None = None
     diff: dict[str, Any] | None = None
     v2_error: str | None = None
+    valence_assessments: dict[str, Any] | None = None
+    valence_breakdown: Any | None = None
 # END_BLOCK: RESULT_CONTRACT
 
 
@@ -229,7 +234,15 @@ class DayScoringRuntimeService:
 
         # Select result
         selected_scoring_version: int | str
-        if v2_selected and v2_result is not None:
+        if valence_enabled and valence_status is not None:
+            selected_result = {
+                "day_status": valence_status,
+                "sphere_scores": {k: round(v.final_score, 4) for k, v in v2_result.sphere_scores.items()} if v2_result else v1_result.get("sphere_scores", {}),
+                "top_signals": v2_result.top_signals if v2_result else v1_result.get("top_signals", []),
+            }
+            from app.core.versions import SCORING_V2_1_VERSION
+            selected_scoring_version = SCORING_V2_1_VERSION
+        elif v2_selected and v2_result is not None:
             selected_result = {
                 "day_status": v2_result.day_status,
                 "sphere_scores": {k: round(v.final_score, 4) for k, v in v2_result.sphere_scores.items()},
@@ -247,6 +260,7 @@ class DayScoringRuntimeService:
             v2_result=v2_result,
             diff=diff,
             v2_error=v2_error,
+            valence_assessments=valence_assessments,
         )
 
     def _compute_valence_shadow(

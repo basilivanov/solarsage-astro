@@ -687,6 +687,45 @@ export const ConcreteAdviceCounts = z.object({
   good: z.number().int(),
   neutral: z.number().int(),
 });
+export const ProductSphereAssessment = z.object({
+  balance: z.number(),
+  confidence: z.enum(["low", "medium", "high"]),
+  effectiveFactorCount: z.number().int(),
+  factorCount: z.number().int(),
+  independentFamilyCount: z.number().int(),
+  key: z.string(),
+  primaryFactorId: z.union([z.string(), z.null()]).optional(),
+  salienceScore: z.number(),
+  supportScore: z.number(),
+  tensionScore: z.number(),
+  verdict: z.enum(["good", "neutral", "caution", "avoid"]),
+  verdictRule: z.enum([
+    "avoid_tension_2x",
+    "caution_tension_1_3x",
+    "good_support_1_3x",
+    "neutral_low_evidence",
+    "neutral_balanced",
+  ]),
+});
+export const DayValenceFactor = z.object({
+  aspectType: z.union([z.string(), z.null()]).optional(),
+  factorId: z.string(),
+  polarity: z.enum(["supportive", "tense", "mixed", "neutral"]),
+  semanticKey: z.string(),
+  source: z.enum(["activation", "day_signal"]),
+  sourcePlanet: z.union([z.string(), z.null()]).optional(),
+  strength: z.number(),
+  targetKey: z.string(),
+  targetType: z.string(),
+  technicalSpheres: z.array(z.string()).optional(),
+  technique: z.string(),
+  techniqueFamily: z.string(),
+});
+export const SphereValenceRead = z.object({
+  assessment: ProductSphereAssessment,
+  primaryFactor: z.union([DayValenceFactor, z.null()]).optional(),
+  sphere: z.string(),
+});
 export const ConcreteAdviceDetails = z.object({
   advice: z.string(),
   story: z.string(),
@@ -721,6 +760,7 @@ export const ConcreteAdviceEvidence = z.object({
   weight: z.union([z.number(), z.null()]).optional(),
 });
 export const ConcreteAdviceRow = z.object({
+  assessment: z.union([SphereValenceRead, z.null()]).optional(),
   confidence: z.enum(["high", "medium", "low"]),
   details: z.union([ConcreteAdviceDetails, z.null()]).optional(),
   evidence: z.array(ConcreteAdviceEvidence),
@@ -917,6 +957,16 @@ export const TodayV2ActivationSummary = z.object({
   headline: z.string(),
   topActivatedTargets: z.array(TodayV2ActivatedTarget),
 });
+export const DayStatusBreakdown = z.object({
+  duplicateFactorCount: z.number().int().optional().default(0),
+  effectiveFactorCount: z.number().int(),
+  factorCount: z.number().int(),
+  familyCounts: z.record(z.number().int()).optional(),
+  ratio: z.union([z.number(), z.null()]).optional(),
+  rule: z.string(),
+  supportScore: z.number(),
+  tensionScore: z.number(),
+});
 export const TodayV2HorizonPipelineAuditBuilt = z.object({
   reason: z.literal("selected"),
   schemaVersion: z
@@ -948,6 +998,7 @@ export const TodayV2Audit = z.object({
   available: z.boolean().optional().default(false),
   calculationVersion: z.union([z.string(), z.number()]),
   canonVersions: z.record(z.string()).optional(),
+  dayStatusBreakdown: z.union([DayStatusBreakdown, z.null()]).optional(),
   horizonPipeline: z
     .union([
       z.discriminatedUnion("status", [
@@ -963,6 +1014,7 @@ export const TodayV2Audit = z.object({
   v1V2Diff: z
     .union([z.object({}).partial().passthrough(), z.null()])
     .optional(),
+  valenceVersion: z.union([z.string(), z.null()]).optional(),
 });
 export const TodayV2HorizonIntro = z.object({
   activationIds: z.array(z.string().min(1).max(160)).min(1),
@@ -1322,6 +1374,9 @@ export const schemas = {
   TelegramAuthRequest,
   TodayAction,
   ConcreteAdviceCounts,
+  ProductSphereAssessment,
+  DayValenceFactor,
+  SphereValenceRead,
   ConcreteAdviceDetails,
   ConcreteAdviceEvidence,
   ConcreteAdviceRow,
@@ -1347,6 +1402,7 @@ export const schemas = {
   TopFlag,
   TodayV2ActivatedTarget,
   TodayV2ActivationSummary,
+  DayStatusBreakdown,
   TodayV2HorizonPipelineAuditBuilt,
   TodayV2HorizonPipelineAuditUnavailable,
   TodayV2Audit,

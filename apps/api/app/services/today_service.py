@@ -503,6 +503,7 @@ class TodayService:
                 lunar=None,
                 activation_layer=activation_layer if v2_selected else None,
                 scoring_v2_result=dual.v2_result if v2_selected else None,
+                valence_assessments=getattr(dual, "valence_assessments", None),
             )),
         }
         try:
@@ -554,6 +555,7 @@ class TodayService:
                 lunar=None,
                 activation_layer=activation_layer if v2_selected else None,
                 scoring_v2_result=dual.v2_result if v2_selected else None,
+                valence_assessments=getattr(dual, "valence_assessments", None),
                 force_no_llm=True,
             )
 

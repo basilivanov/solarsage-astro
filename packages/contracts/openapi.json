@@ -1345,6 +1345,16 @@
       "ConcreteAdviceRow": {
         "additionalProperties": false,
         "properties": {
+          "assessment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SphereValenceRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "confidence": {
             "enum": [
               "high",
@@ -1766,6 +1776,72 @@
         "title": "DayQuality",
         "type": "object"
       },
+      "DayStatusBreakdown": {
+        "additionalProperties": false,
+        "description": "Global day status calculation breakdown (§6.7).",
+        "properties": {
+          "duplicateFactorCount": {
+            "default": 0,
+            "description": "Number of deduplicated/merged factors",
+            "title": "Duplicatefactorcount",
+            "type": "integer"
+          },
+          "effectiveFactorCount": {
+            "description": "Factors contributing after global family decay",
+            "title": "Effectivefactorcount",
+            "type": "integer"
+          },
+          "factorCount": {
+            "description": "Total canonical factors in day ledger",
+            "title": "Factorcount",
+            "type": "integer"
+          },
+          "familyCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Factor count per technique family",
+            "title": "Familycounts",
+            "type": "object"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Support/tension or tension/support ratio",
+            "title": "Ratio"
+          },
+          "rule": {
+            "description": "Day status decision rule name",
+            "title": "Rule",
+            "type": "string"
+          },
+          "supportScore": {
+            "description": "Global support valence score",
+            "title": "Supportscore",
+            "type": "number"
+          },
+          "tensionScore": {
+            "description": "Global tension valence score",
+            "title": "Tensionscore",
+            "type": "number"
+          }
+        },
+        "required": [
+          "supportScore",
+          "tensionScore",
+          "rule",
+          "factorCount",
+          "effectiveFactorCount"
+        ],
+        "title": "DayStatusBreakdown",
+        "type": "object"
+      },
       "DaySummaryBlock": {
         "additionalProperties": false,
         "properties": {
@@ -1832,6 +1908,112 @@
           "title"
         ],
         "title": "DaySummaryFact",
+        "type": "object"
+      },
+      "DayValenceFactor": {
+        "additionalProperties": false,
+        "description": "Canonical factor entry in the day factor ledger (§5.1).",
+        "properties": {
+          "aspectType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aspect type if aspect factor",
+            "title": "Aspecttype"
+          },
+          "factorId": {
+            "description": "Unique deterministic factor identity",
+            "title": "Factorid",
+            "type": "string"
+          },
+          "polarity": {
+            "description": "Valence polarity",
+            "enum": [
+              "supportive",
+              "tense",
+              "mixed",
+              "neutral"
+            ],
+            "title": "Polarity",
+            "type": "string"
+          },
+          "semanticKey": {
+            "description": "Normalized factor key for cross-source deduplication",
+            "title": "Semantickey",
+            "type": "string"
+          },
+          "source": {
+            "description": "Origin layer: activation or day_signal",
+            "enum": [
+              "activation",
+              "day_signal"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "sourcePlanet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Normalized source planet name",
+            "title": "Sourceplanet"
+          },
+          "strength": {
+            "description": "Raw factor strength (0..1)",
+            "title": "Strength",
+            "type": "number"
+          },
+          "targetKey": {
+            "description": "Normalized target entity key",
+            "title": "Targetkey",
+            "type": "string"
+          },
+          "targetType": {
+            "description": "Target entity type (e.g. natal_planet, house, lot, angle)",
+            "title": "Targettype",
+            "type": "string"
+          },
+          "technicalSpheres": {
+            "description": "Mapped technical sphere keys",
+            "items": {
+              "type": "string"
+            },
+            "title": "Technicalspheres",
+            "type": "array"
+          },
+          "technique": {
+            "description": "Astrological technique key",
+            "title": "Technique",
+            "type": "string"
+          },
+          "techniqueFamily": {
+            "description": "Astrological technique family",
+            "title": "Techniquefamily",
+            "type": "string"
+          }
+        },
+        "required": [
+          "factorId",
+          "semanticKey",
+          "source",
+          "technique",
+          "techniqueFamily",
+          "polarity",
+          "strength",
+          "targetType",
+          "targetKey"
+        ],
+        "title": "DayValenceFactor",
         "type": "object"
       },
       "HighlightItem": {
@@ -3041,6 +3223,112 @@
         "title": "ProductRead",
         "type": "object"
       },
+      "ProductSphereAssessment": {
+        "additionalProperties": false,
+        "description": "Assessment summary for one product sphere (§6.6).",
+        "properties": {
+          "balance": {
+            "description": "Normalized balance (-1..1)",
+            "title": "Balance",
+            "type": "number"
+          },
+          "confidence": {
+            "description": "Assessment confidence level",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "effectiveFactorCount": {
+            "description": "Effective factors contributing after family decay",
+            "title": "Effectivefactorcount",
+            "type": "integer"
+          },
+          "factorCount": {
+            "description": "Total factors touching this sphere",
+            "title": "Factorcount",
+            "type": "integer"
+          },
+          "independentFamilyCount": {
+            "description": "Number of distinct technique families",
+            "title": "Independentfamilycount",
+            "type": "integer"
+          },
+          "key": {
+            "description": "Product sphere key e.g. work, money",
+            "title": "Key",
+            "type": "string"
+          },
+          "primaryFactorId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ID of primary driving factor",
+            "title": "Primaryfactorid"
+          },
+          "salienceScore": {
+            "description": "Max final_score across mapped technical spheres",
+            "title": "Saliencescore",
+            "type": "number"
+          },
+          "supportScore": {
+            "description": "Effective support valence score",
+            "title": "Supportscore",
+            "type": "number"
+          },
+          "tensionScore": {
+            "description": "Effective tension valence score",
+            "title": "Tensionscore",
+            "type": "number"
+          },
+          "verdict": {
+            "description": "Product sphere verdict",
+            "enum": [
+              "good",
+              "neutral",
+              "caution",
+              "avoid"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          },
+          "verdictRule": {
+            "description": "Rule code that determined the verdict",
+            "enum": [
+              "avoid_tension_2x",
+              "caution_tension_1_3x",
+              "good_support_1_3x",
+              "neutral_low_evidence",
+              "neutral_balanced"
+            ],
+            "title": "Verdictrule",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "salienceScore",
+          "supportScore",
+          "tensionScore",
+          "balance",
+          "verdict",
+          "confidence",
+          "verdictRule",
+          "factorCount",
+          "effectiveFactorCount",
+          "independentFamilyCount"
+        ],
+        "title": "ProductSphereAssessment",
+        "type": "object"
+      },
       "ProductsListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3835,6 +4123,35 @@
           "contributions"
         ],
         "title": "SphereScoreV2",
+        "type": "object"
+      },
+      "SphereValenceRead": {
+        "additionalProperties": false,
+        "description": "Public/read representation for one product sphere's valence.",
+        "properties": {
+          "assessment": {
+            "$ref": "#/components/schemas/ProductSphereAssessment"
+          },
+          "primaryFactor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayValenceFactor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sphere": {
+            "title": "Sphere",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sphere",
+          "assessment"
+        ],
+        "title": "SphereValenceRead",
         "type": "object"
       },
       "SubscriptionStartResponse": {
@@ -4788,6 +5105,16 @@
             "title": "Canonversions",
             "type": "object"
           },
+          "dayStatusBreakdown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayStatusBreakdown"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "horizonPipeline": {
             "anyOf": [
               {
@@ -4850,6 +5177,17 @@
               }
             ],
             "title": "V1V2Diff"
+          },
+          "valenceVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valenceversion"
           }
         },
         "required": [

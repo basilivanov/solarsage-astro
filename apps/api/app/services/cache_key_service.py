@@ -62,10 +62,13 @@ from app.core.versions import (
     LEGACY_FRONTEND_PAYLOAD_VERSION,
     LEGACY_SCORING_VERSION,
     SCORING_V2_VERSION,
+    SCORING_V2_1_VERSION,
     TODAY_CONTENT_VERSION,
     TODAY_V1_PAYLOAD_VERSION,
     TODAY_V2_PAYLOAD_VERSION,
+    TODAY_V2_2_PAYLOAD_VERSION,
     V2_FRONTEND_PAYLOAD_VERSION,
+    V2_4_FRONTEND_PAYLOAD_VERSION,
     TODAY_LLM_PROMPT_VERSION,
 )
 from app.services.canon_service import get_canon_versions
@@ -190,7 +193,17 @@ def resolve_today_runtime_identity(
     # error_behavior: none.
     # END_FUNCTION_CONTRACT: F-M-CACHE-KEY-SERVICE.resolve_today_runtime_identity
     """Resolve canonical V1/V2 runtime identity from selected scoring version only."""
-    if str(selected_scoring_version) == str(SCORING_V2_VERSION):
+    str_selected = str(selected_scoring_version)
+    if str_selected == str(SCORING_V2_1_VERSION):
+        return TodayRuntimeIdentity(
+            calculation_version=CALCULATION_VERSION,
+            activation_layer_version=activation_layer_version or ACTIVATION_LAYER_VERSION,
+            scoring_version=SCORING_V2_1_VERSION,
+            payload_version=TODAY_V2_2_PAYLOAD_VERSION,
+            frontend_payload_version=V2_4_FRONTEND_PAYLOAD_VERSION,
+            content_version=11,
+        )
+    if str_selected == str(SCORING_V2_VERSION):
         return TodayRuntimeIdentity(
             calculation_version=CALCULATION_VERSION,
             activation_layer_version=activation_layer_version or ACTIVATION_LAYER_VERSION,

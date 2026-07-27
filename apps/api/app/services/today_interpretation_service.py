@@ -50,6 +50,7 @@ from app.schemas.today import (
     ConcreteAdviceEvidence,
     ConcreteAdviceVerdict,
     ConcreteAdviceConfidence,
+    SphereValenceRead,
     DaySummaryBlock,
     DaySummaryFact,
     DayChart,
@@ -357,6 +358,7 @@ class TodayInterpretationService:
         lunar: dict | None = None,
         activation_layer: Any | None = None,
         scoring_v2_result: Any | None = None,
+        valence_assessments: dict[str, Any] | None = None,
         force_no_llm: bool = False,
     ) -> tuple[ConcreteAdviceBlock, DaySummaryBlock, DayChart | None]:
         # force_no_llm: the deadline fallback path — the same deterministic
@@ -485,6 +487,13 @@ class TodayInterpretationService:
                 if len(projected_evidence) >= 3:
                     break
 
+            assessment_read: SphereValenceRead | None = None
+            if valence_assessments and key in valence_assessments:
+                ass = valence_assessments[key]
+                verdict = ass.verdict
+                confidence = ass.confidence
+                assessment_read = SphereValenceRead(sphere=key, assessment=ass)
+
             # Context for LLM wording
             advice_contexts.append({
                 "key": key,
@@ -503,6 +512,7 @@ class TodayInterpretationService:
                     confidence=confidence,
                     text=CONCRETE_ADVICE_FALLBACK_TEXT,
                     evidence=evidence_list,
+                    assessment=assessment_read,
                 )
             )
 

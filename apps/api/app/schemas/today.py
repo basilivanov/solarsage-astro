@@ -52,6 +52,7 @@ from .access import ContentAccessReason as ContentAccessReason
 from .access import ContentAccessState as ContentAccessState
 from .activation import ActivationEvidence
 from .day import RelativeDayStatusRead
+from .day_valence import DayStatusBreakdown, SphereValenceRead
 from .scoring_v2 import SphereScoreV2
 from .today_horizons import TodayV2HorizonsBlock, validate_horizons_against_evidence
 
@@ -370,6 +371,7 @@ class ConcreteAdviceRow(CamelModel):
     text: str
     evidence: list[ConcreteAdviceEvidence]
     details: ConcreteAdviceDetails | None = None
+    assessment: SphereValenceRead | None = None
 
 class ConcreteAdviceCounts(CamelModel):
     good: int
@@ -467,8 +469,10 @@ class TodayV2Audit(CamelModel):
     calculation_version: str | int
     scoring_version: str | int
     activation_layer_version: str | int | None = None
+    valence_version: str | None = None
     canon_versions: dict[str, str] = Field(default_factory=dict)
     v1_v2_diff: dict[str, Any] | None = None
+    day_status_breakdown: DayStatusBreakdown | None = None
     horizon_pipeline: TodayV2HorizonPipelineAudit | None = None
 
 
