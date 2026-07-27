@@ -75,13 +75,37 @@ export function DayZoneIndicator({ relativeStatus }: DayZoneIndicatorProps) {
   const bandWidthPct = Math.max(10, Math.round((bandHigh - bandLow) * 100))
   // "Обычно" anchor sits over the band center, clamped away from the edges
   const bandCenter = Math.min(88, Math.max(12, bandLowPct + bandWidthPct / 2))
+  // "Сегодня" label position — clamped so the caption never clips at the edges
+  const markerLabelLeft = Math.min(90, Math.max(10, markerPercent))
 
   return (
     <div
       data-testid="day-zone-indicator"
       className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800/60"
     >
-      {/* Track bar: green band = your usual range, dot = today */}
+      {/* "Сегодня" marker: label + downward caret pointing at the bar position */}
+      <div className="relative h-7">
+        <div
+          aria-hidden="true"
+          className="absolute bottom-0 flex flex-col items-center transition-all duration-300"
+          style={{ left: `${markerLabelLeft}%`, transform: "translateX(-50%)" }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-indigo-700 dark:text-indigo-300">
+            Сегодня
+          </span>
+          <svg
+            width="9"
+            height="5"
+            viewBox="0 0 9 5"
+            className="text-indigo-600 dark:text-indigo-400 fill-current"
+            aria-hidden="true"
+          >
+            <path d="M4.5 5L0 0h9z" />
+          </svg>
+        </div>
+      </div>
+
+      {/* Track bar: green band = your usual range */}
       <div className="relative h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
         {/* Normal zone band */}
         <div
@@ -90,15 +114,6 @@ export function DayZoneIndicator({ relativeStatus }: DayZoneIndicatorProps) {
           style={{
             left: `${bandLowPct}%`,
             width: `${bandWidthPct}%`,
-          }}
-        />
-
-        {/* Marker dot */}
-        <div
-          aria-hidden="true"
-          className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-indigo-600 dark:bg-indigo-400 ring-2 ring-white dark:ring-slate-900 rounded-full shadow-sm transition-all duration-300"
-          style={{
-            left: `calc(${markerPercent}% - 7px)`,
           }}
         />
       </div>
