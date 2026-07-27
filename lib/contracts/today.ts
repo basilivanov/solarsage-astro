@@ -254,6 +254,27 @@ export const TodayV2HorizonTimingSchema = TodayV2HorizonTimingWireSchema
 export const TodayV2ProvenanceSchema = TodayV2ProvenanceWireSchema
 // END_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS
 
+export const RelativeStatusBaselineSchema = z.object({
+  days: z.number().int(),
+  supportMean: z.number(),
+  supportStd: z.number(),
+  tensionMean: z.number(),
+  tensionStd: z.number(),
+})
+
+export const RelativeDayStatusSchema = z.object({
+  baseline: RelativeStatusBaselineSchema,
+  label: z.string(),
+  mode: z.enum(["absolute", "relative"]),
+  status: z.enum(["usual", "softer", "tenser", "hard", "strong"]),
+  supportBand: z.array(z.number()).optional(),
+  supportMarker: z.number().optional().default(0.5),
+  tensionBand: z.array(z.number()).optional(),
+  tensionMarker: z.number().optional().default(0.5),
+  zSupport: z.number(),
+  zTension: z.number(),
+})
+
 export const TodayPayloadSchema = z.object({
   /** Wire identity for consumer routing. Real adapter always sets it. */
   wireIdentity: TodayWireIdentitySchema.optional(),
@@ -275,6 +296,8 @@ export const TodayPayloadSchema = z.object({
   dayChart: DayChartSchema.nullable().default(null),
   planetInfluences: z.array(PlanetInfluenceSchema).default([]),
   sphereScores: z.array(SphereScoreSchema).default([]),
+  /** W-DAY: relative day status vs personal baseline (optional; absent on old payloads). */
+  relativeStatus: RelativeDayStatusSchema.nullable().optional(),
   /** W6: optional V2 block */
   v2: TodayV2BlockSchema.nullable().optional(),
 })
