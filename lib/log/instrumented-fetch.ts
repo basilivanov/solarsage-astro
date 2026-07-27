@@ -103,6 +103,14 @@ export function isApiLogPath(url: string): boolean {
 
 function simpleShapeHash(obj: unknown): string {
   if (obj === null || obj === undefined) return "null"
+  if (typeof obj === "string") {
+    let hash = 5381
+    const snippet = obj.slice(0, 200)
+    for (let i = 0; i < snippet.length; i++) {
+      hash = (hash * 33) ^ snippet.charCodeAt(i)
+    }
+    return `str:${obj.length}:${(hash >>> 0).toString(16).padStart(8, "0")}`
+  }
   if (Array.isArray(obj)) {
     return `array[${obj.length > 0 ? simpleShapeHash(obj[0]) : ""}]`
   }
@@ -295,10 +303,16 @@ export async function instrumentedFetch(options: InstrumentedFetchOptions): Prom
         const clone = res.clone()
         let json: unknown = null
         let parseFailed = false
+        let rawText: string | undefined = undefined
         try {
           json = await clone.json()
         } catch {
           parseFailed = true
+          try {
+            rawText = await res.clone().text()
+          } catch {
+            // ignore
+          }
         }
 
         if (parseFailed) {
@@ -311,6 +325,9 @@ export async function instrumentedFetch(options: InstrumentedFetchOptions): Prom
             contractName: responseContract.contractName,
             contractVersion: responseContract.contractVersion,
             reasonCode: "invalid_json",
+            attempt,
+            retryable: true,
+            payloadShapeHash: rawText !== undefined ? simpleShapeHash(rawText) : undefined,
             slice: "W-FRONTEND",
             module: "M-LOG-INSTRUMENTED-FETCH",
             block: "RESPONSE_CONTRACT_VALIDATOR",

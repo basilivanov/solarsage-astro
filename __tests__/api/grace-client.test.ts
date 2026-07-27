@@ -384,6 +384,52 @@ describe('fetchDay', () => {
       expect((err as ApiError).status).toBe(500)
     }
   })
+
+  it('retries once on HTTP 200 with invalid JSON body and returns payload if second attempt succeeds', async () => {
+    const contractPayload = TodayPayloadWireSchema.parse(dayPayloadV2)
+    const badResponse = {
+      ok: true,
+      status: 200,
+      clone: () => ({
+        json: async () => { throw new SyntaxError('Unexpected token < in JSON') },
+        text: async () => '<html>502 Bad Gateway</html>',
+      }),
+      json: async () => { throw new SyntaxError('Unexpected token < in JSON') },
+    }
+    const goodResponse = {
+      ok: true,
+      status: 200,
+      clone: () => ({
+        json: async () => contractPayload,
+      }),
+      json: async () => contractPayload,
+    }
+
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce(badResponse)
+      .mockResolvedValueOnce(goodResponse)
+
+    const result = await fetchDay('2026-07-08')
+    expect(result).toEqual(contractPayload)
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('throws syntax error after attempt 2 when HTTP 200 with invalid JSON persists', async () => {
+    const badResponse = {
+      ok: true,
+      status: 200,
+      clone: () => ({
+        json: async () => { throw new SyntaxError('Unexpected end of JSON input') },
+        text: async () => 'truncated json',
+      }),
+      json: async () => { throw new SyntaxError('Unexpected end of JSON input') },
+    }
+
+    global.fetch = vi.fn().mockResolvedValue(badResponse)
+
+    await expect(fetchDay('2026-07-08')).rejects.toThrow(SyntaxError)
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('fetchCalendar', () => {
