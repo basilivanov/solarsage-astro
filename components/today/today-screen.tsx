@@ -268,6 +268,8 @@ export function TodayScreen({
             dayStatus={payload.dayStatus}
             daySummary={payload.daySummary}
             humanFirst={Boolean(payload.v2)}
+            relativeStatus={(payload as any).relativeStatus}
+            sphereScores={payload.sphereScores || (payload.v2 ? payload.v2.scoreBreakdown : null)}
           />
 
           {/* Personal V2 story immediately below summary; null when V2 is absent. */}

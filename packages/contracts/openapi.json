@@ -3455,6 +3455,128 @@
         "title": "ReadingBody",
         "type": "object"
       },
+      "RelativeDayStatusRead": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline": {
+            "$ref": "#/components/schemas/RelativeStatusBaseline",
+            "description": "Historical baseline statistics"
+          },
+          "label": {
+            "description": "Localized human label e.g. Обычный день, Легче, чем обычно, Напряжённее обычного, Тяжёлый день, Сильный день",
+            "title": "Label",
+            "type": "string"
+          },
+          "mode": {
+            "description": "Calculation mode: fallback absolute or z-score relative",
+            "enum": [
+              "absolute",
+              "relative"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "status": {
+            "description": "Relative day status code",
+            "enum": [
+              "usual",
+              "softer",
+              "tenser",
+              "hard",
+              "strong"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supportBand": {
+            "description": "Support normal range [mean-std, mean+std]",
+            "items": {
+              "type": "number"
+            },
+            "title": "Supportband",
+            "type": "array"
+          },
+          "supportMarker": {
+            "default": 0.5,
+            "description": "Normalized support position 0..1 for UI zone indicator",
+            "title": "Supportmarker",
+            "type": "number"
+          },
+          "tensionBand": {
+            "description": "Tension normal range [mean-std, mean+std]",
+            "items": {
+              "type": "number"
+            },
+            "title": "Tensionband",
+            "type": "array"
+          },
+          "tensionMarker": {
+            "default": 0.5,
+            "description": "Normalized tension position 0..1 for UI zone indicator",
+            "title": "Tensionmarker",
+            "type": "number"
+          },
+          "zSupport": {
+            "description": "Z-score for today's support score",
+            "title": "Zsupport",
+            "type": "number"
+          },
+          "zTension": {
+            "description": "Z-score for today's tension score",
+            "title": "Ztension",
+            "type": "number"
+          }
+        },
+        "required": [
+          "mode",
+          "status",
+          "label",
+          "zSupport",
+          "zTension",
+          "baseline"
+        ],
+        "title": "RelativeDayStatusRead",
+        "type": "object"
+      },
+      "RelativeStatusBaseline": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "description": "Number of historical days in baseline (0..14)",
+            "title": "Days",
+            "type": "integer"
+          },
+          "supportMean": {
+            "description": "14-day mean support score",
+            "title": "Supportmean",
+            "type": "number"
+          },
+          "supportStd": {
+            "description": "14-day std support score",
+            "title": "Supportstd",
+            "type": "number"
+          },
+          "tensionMean": {
+            "description": "14-day mean tension score",
+            "title": "Tensionmean",
+            "type": "number"
+          },
+          "tensionStd": {
+            "description": "14-day std tension score",
+            "title": "Tensionstd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "supportMean",
+          "supportStd",
+          "tensionMean",
+          "tensionStd",
+          "days"
+        ],
+        "title": "RelativeStatusBaseline",
+        "type": "object"
+      },
       "ScoringV2Result": {
         "additionalProperties": false,
         "description": "Full V2 scoring result. Contract-only until W4.",
@@ -4408,6 +4530,16 @@
           },
           "reading": {
             "$ref": "#/components/schemas/ReadingBody"
+          },
+          "relativeStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RelativeDayStatusRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sphereScores": {
             "anyOf": [

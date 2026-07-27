@@ -862,6 +862,25 @@ export const PlanetInfluence = z.object({
   score: z.number(),
 });
 export const ReadingBody = z.object({ paragraphs: z.array(z.string()) });
+export const RelativeStatusBaseline = z.object({
+  days: z.number().int(),
+  supportMean: z.number(),
+  supportStd: z.number(),
+  tensionMean: z.number(),
+  tensionStd: z.number(),
+});
+export const RelativeDayStatusRead = z.object({
+  baseline: RelativeStatusBaseline,
+  label: z.string(),
+  mode: z.enum(["absolute", "relative"]),
+  status: z.enum(["usual", "softer", "tenser", "hard", "strong"]),
+  supportBand: z.array(z.number()).optional(),
+  supportMarker: z.number().optional().default(0.5),
+  tensionBand: z.array(z.number()).optional(),
+  tensionMarker: z.number().optional().default(0.5),
+  zSupport: z.number(),
+  zTension: z.number(),
+});
 export const SphereScore = z.object({
   key: z.string(),
   rank: z.number().int(),
@@ -1205,6 +1224,7 @@ export const TodayPayload = z.object({
   periodContext: z.union([PeriodContext, z.null()]).optional(),
   planetInfluences: z.union([z.array(PlanetInfluence), z.null()]).optional(),
   reading: ReadingBody,
+  relativeStatus: z.union([RelativeDayStatusRead, z.null()]).optional(),
   sphereScores: z.union([z.array(SphereScore), z.null()]).optional(),
   subtitle: z.union([z.string(), z.null()]).optional(),
   title: z.string(),
@@ -1313,6 +1333,8 @@ export const schemas = {
   PeriodContext,
   PlanetInfluence,
   ReadingBody,
+  RelativeStatusBaseline,
+  RelativeDayStatusRead,
   SphereScore,
   TopFlagHint,
   TopFlag,

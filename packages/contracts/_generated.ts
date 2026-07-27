@@ -1829,6 +1829,88 @@ export interface components {
             /** Paragraphs */
             paragraphs: string[];
         };
+        /** RelativeDayStatusRead */
+        RelativeDayStatusRead: {
+            /** @description Historical baseline statistics */
+            baseline: components["schemas"]["RelativeStatusBaseline"];
+            /**
+             * Label
+             * @description Localized human label e.g. Обычный день, Легче, чем обычно, Напряжённее обычного, Тяжёлый день, Сильный день
+             */
+            label: string;
+            /**
+             * Mode
+             * @description Calculation mode: fallback absolute or z-score relative
+             * @enum {string}
+             */
+            mode: "absolute" | "relative";
+            /**
+             * Status
+             * @description Relative day status code
+             * @enum {string}
+             */
+            status: "usual" | "softer" | "tenser" | "hard" | "strong";
+            /**
+             * Supportband
+             * @description Support normal range [mean-std, mean+std]
+             */
+            supportBand?: number[];
+            /**
+             * Supportmarker
+             * @description Normalized support position 0..1 for UI zone indicator
+             * @default 0.5
+             */
+            supportMarker: number;
+            /**
+             * Tensionband
+             * @description Tension normal range [mean-std, mean+std]
+             */
+            tensionBand?: number[];
+            /**
+             * Tensionmarker
+             * @description Normalized tension position 0..1 for UI zone indicator
+             * @default 0.5
+             */
+            tensionMarker: number;
+            /**
+             * Zsupport
+             * @description Z-score for today's support score
+             */
+            zSupport: number;
+            /**
+             * Ztension
+             * @description Z-score for today's tension score
+             */
+            zTension: number;
+        };
+        /** RelativeStatusBaseline */
+        RelativeStatusBaseline: {
+            /**
+             * Days
+             * @description Number of historical days in baseline (0..14)
+             */
+            days: number;
+            /**
+             * Supportmean
+             * @description 14-day mean support score
+             */
+            supportMean: number;
+            /**
+             * Supportstd
+             * @description 14-day std support score
+             */
+            supportStd: number;
+            /**
+             * Tensionmean
+             * @description 14-day mean tension score
+             */
+            tensionMean: number;
+            /**
+             * Tensionstd
+             * @description 14-day std tension score
+             */
+            tensionStd: number;
+        };
         /**
          * ScoringV2Result
          * @description Full V2 scoring result. Contract-only until W4.
@@ -2177,6 +2259,7 @@ export interface components {
             /** Planetinfluences */
             planetInfluences?: components["schemas"]["PlanetInfluence"][] | null;
             reading: components["schemas"]["ReadingBody"];
+            relativeStatus?: components["schemas"]["RelativeDayStatusRead"] | null;
             /** Spherescores */
             sphereScores?: components["schemas"]["SphereScore"][] | null;
             /** Subtitle */

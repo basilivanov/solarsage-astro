@@ -30,13 +30,17 @@
 "use client"
 
 import type { DayStatus, DaySummaryBlock } from "@/lib/contracts/today"
+import type { RelativeDayStatus } from "@/lib/api/day"
 import { getIcon } from "@/lib/icons"
+import { DayZoneIndicator } from "./day-zone-indicator"
 
 type Props = {
   date: Date
   dayStatus: DayStatus
   daySummary: DaySummaryBlock
   humanFirst?: boolean
+  relativeStatus?: RelativeDayStatus | null
+  sphereScores?: Record<string, any> | Array<any> | null
 }
 
 const STATUS_COLOR: Record<DayStatus, string> = {
@@ -54,11 +58,36 @@ const STATUS_EMOJI: Record<DayStatus, string> = {
 const MONTHS = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"]
 const WEEKDAYS = ["ВОСКРЕСЕНЬЕ", "ПОНЕДЕЛЬНИК", "ВТОРНИК", "СРЕДА", "ЧЕТВЕРГ", "ПЯТНИЦА", "СУББОТА"]
 
+function getTop2SphereTitles(sphereScores?: any): string[] {
+  if (!sphereScores) return []
+  if (Array.isArray(sphereScores)) {
+    const sorted = [...sphereScores].sort((a, b) => ((b.score ?? b.finalScore) ?? 0) - ((a.score ?? a.finalScore) ?? 0))
+    return sorted.slice(0, 2).map((s) => s.title || s.key || s.name).filter(Boolean)
+  }
+  if (typeof sphereScores === "object") {
+    const entries = Object.entries(sphereScores).map(([key, val]) => {
+      const score = typeof val === "number" ? val : (val as any)?.finalScore ?? (val as any)?.score ?? 0
+      const title = typeof val === "object" ? (val as any)?.title || key : key
+      return { key, title, score }
+    })
+    const sorted = entries.sort((a, b) => b.score - a.score)
+    return sorted.slice(0, 2).map((e) => e.title).filter(Boolean)
+  }
+  return []
+}
+
 // START_BLOCK: DAY_SUMMARY_CARD
-export function DaySummaryCard({ date, dayStatus, daySummary, humanFirst = false }: Props) {
+export function DaySummaryCard({
+  date,
+  dayStatus,
+  daySummary,
+  humanFirst = false,
+  relativeStatus,
+  sphereScores,
+}: Props) {
   // START_FUNCTION_CONTRACT: F-M-DAY-SUMMARY-CARD.DaySummaryCard
   // purpose: Render the compact human-first or legacy summary presentation.
-  // inputs: Props — backend-owned day summary plus optional V2 display mode.
+  // inputs: Props — backend-owned day summary plus optional V2 display mode and relative day status.
   // returns: Summary card JSX.
   // side_effects: none.
   // emitted_logs: none.
@@ -71,10 +100,17 @@ export function DaySummaryCard({ date, dayStatus, daySummary, humanFirst = false
   const weekdayStr = WEEKDAYS[date.getDay()]
   const dateStr = `${date.getDate()} ${monthStr} · ${weekdayStr}`
 
-  const statusLabel = daySummary?.statusLabel || "Ровный день"
+  // If relative status mode is relative, override statusLabel with human relative label
+  const statusLabel =
+    relativeStatus && relativeStatus.mode === "relative"
+      ? relativeStatus.label
+      : daySummary?.statusLabel || "Ровный день"
+
   const statusLine = daySummary?.statusLine || "Сводка временно недоступна."
   const facts = daySummary?.facts || []
   const SummaryIcon = getIcon("orbit")
+
+  const topSpheres = getTop2SphereTitles(sphereScores)
 
   // Helper to map backend icons/planet names to symbols
   const FACT_ICONS: Record<string, string> = {
@@ -86,17 +122,27 @@ export function DaySummaryCard({ date, dayStatus, daySummary, humanFirst = false
   if (humanFirst) {
     return (
       <section className="px-5" aria-label="Сводка дня" data-testid="day-summary-card">
-        <div className="flex min-h-24 items-center gap-3.5 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_32px_-26px_rgba(76,29,149,0.35)]">
-          <span
-            className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-violet-100/70 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200"
-            aria-hidden
-          >
-            <SummaryIcon className="h-5 w-5" strokeWidth={1.7} />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[16px] font-semibold leading-snug text-foreground">{statusLabel}</p>
-            <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{statusLine}</p>
+        <div className="rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_32px_-26px_rgba(76,29,149,0.35)]">
+          <div className="flex min-h-20 items-center gap-3.5">
+            <span
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-violet-100/70 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200"
+              aria-hidden
+            >
+              <SummaryIcon className="h-5 w-5" strokeWidth={1.7} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[16px] font-semibold leading-snug text-foreground">{statusLabel}</p>
+              <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{statusLine}</p>
+            </div>
           </div>
+
+          {topSpheres.length > 0 && (
+            <p data-testid="day-top-spheres" className="mt-2 text-xs text-muted-foreground font-medium border-t border-border/30 pt-2">
+              Тянет сегодня: <span className="text-foreground font-semibold">{topSpheres.join(", ")}</span>
+            </p>
+          )}
+
+          <DayZoneIndicator relativeStatus={relativeStatus} />
         </div>
       </section>
     )
@@ -122,6 +168,14 @@ export function DaySummaryCard({ date, dayStatus, daySummary, humanFirst = false
         <p className="relative mt-2.5 text-[13px] leading-snug text-foreground/85">
           {statusLine}
         </p>
+
+        {topSpheres.length > 0 && (
+          <p data-testid="day-top-spheres" className="mt-2.5 text-xs text-muted-foreground font-medium border-t border-border/30 pt-2">
+            Тянет сегодня: <span className="text-foreground font-semibold">{topSpheres.join(", ")}</span>
+          </p>
+        )}
+
+        <DayZoneIndicator relativeStatus={relativeStatus} />
 
         {/* Fact Rows (only if there is real data) */}
         {facts.length > 0 && (
