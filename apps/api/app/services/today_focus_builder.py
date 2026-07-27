@@ -665,9 +665,17 @@ def build_today_focus(
             source_activation_ids=all_act_ids,
         )
 
-        # Build events from winning group factors (0..3)
-        event_factors = [f for f in winning_factors if f.exact_at or f.active_from or f.temporal_role == "anchor_today"]
-        event_factors.sort(key=lambda f: (f.exact_at or f.active_from or local_start_utc, f.factor_id))
+        # Build events (0..3): public events are today's anchors across ALL
+        # groups, ranked by the group's rank position — the winning group's
+        # anchors first, then anchors of other groups. Supporting/background
+        # factors never become events.
+        anchor_pool: list[tuple[int, TodayFactor]] = []
+        for g_rank, g in enumerate(candidate_groups):
+            for f in g["factors"]:
+                if f.temporal_role == "anchor_today":
+                    anchor_pool.append((g_rank, f))
+        anchor_pool.sort(key=lambda gf: (gf[0], gf[1].exact_at or gf[1].active_from or local_start_utc, gf[1].factor_id))
+        event_factors = [f for _, f in anchor_pool[:3]]
 
         events_list: list[TodayFocusEventResult] = []
         for f in event_factors[:3]:

@@ -697,7 +697,7 @@ class TodayService:
         ledger_for_focus = getattr(dual, "factor_ledger", None)
         if ledger_for_focus is None:
             from app.services.day_factor_ledger import build_factor_ledger
-            ledger_for_focus = build_factor_ledger(day_signals, activation_layer)
+            ledger_for_focus = build_factor_ledger(day_signals, activation_layer.activations)
 
         user_tz = profile.current_tz or profile.birth_tz or "Europe/Moscow"
 
