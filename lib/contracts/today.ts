@@ -253,6 +253,7 @@ export const DaySummaryBlockSchema = z.object({
   statusLabel: z.string().min(1),
   statusLine: z.string().min(1),
   facts: z.array(DaySummaryFactSchema),
+  mainAdvice: z.string().nullable().optional(),
 })
 
 // START_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS

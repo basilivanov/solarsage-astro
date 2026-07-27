@@ -248,6 +248,49 @@ def planet_in_house_evidence(signal: AstroSignal) -> ConcreteAdviceEvidence:
     )
 
 
+def select_top_sphere_for_day_synthesis(
+    rows: list[ConcreteAdviceRow],
+    day_status: str,
+    valence_assessments: dict[str, Any] | None,
+) -> tuple[ConcreteAdviceRow, str]:
+    """Select top sphere for day mainAdvice synthesis according to S2 rules:
+    - tense-day -> max tension_score (negative_volume);
+    - supportive-day -> max support_score (positive_volume);
+    - steady-day -> max total score / raw_score;
+    - tie -> canonical key ascending order.
+    Returns (top_row, top_why_str).
+    """
+    from app.services.sphere_why_builder import build_sphere_why
+
+    if not rows:
+        raise ValueError("rows list cannot be empty")
+
+    canonical_order = {
+        "work": 1, "money": 2, "documents": 3, "relationships": 4,
+        "sport": 5, "communication": 6, "health": 7, "decisions": 8,
+        "travel": 9, "creativity": 10, "study": 11, "shopping": 12,
+    }
+
+    def sort_key(row: ConcreteAdviceRow) -> tuple[float, int]:
+        ass = valence_assessments.get(row.key) if valence_assessments else None
+        if ass:
+            if day_status == "tense":
+                val = float(getattr(ass, "tension_score", 0.0))
+            elif day_status == "supportive":
+                val = float(getattr(ass, "support_score", 0.0))
+            else:
+                val = float(getattr(ass, "support_score", 0.0)) + float(getattr(ass, "tension_score", 0.0))
+        else:
+            val = float(-row.rank)
+        return (-val, canonical_order.get(row.key, 99))
+
+    sorted_rows = sorted(rows, key=sort_key)
+    top_row = sorted_rows[0]
+    why_facts = build_sphere_why(top_row.evidence)
+    why_str = "; ".join(why_facts) if why_facts else ""
+    return top_row, why_str
+
+
 def sphere_score_evidence(score: SphereScore) -> ConcreteAdviceEvidence:
     return ConcreteAdviceEvidence(
         kind="sphere_score",
@@ -365,6 +408,7 @@ class TodayInterpretationService:
         activation_layer: Any | None = None,
         scoring_v2_result: Any | None = None,
         valence_assessments: dict[str, Any] | None = None,
+        selected_horizons: dict | None = None,
         force_no_llm: bool = False,
     ) -> tuple[ConcreteAdviceBlock, DaySummaryBlock, DayChart | None]:
         # force_no_llm: the deadline fallback path — the same deterministic
@@ -554,6 +598,8 @@ class TodayInterpretationService:
                     "aspects": p_aspects,
                 })
 
+        applied_main_advice: str | None = None
+
         # Concurrent independent batch calls: one 12-sphere concrete advice
         # batch and one planet interpretations batch (never split per-row).
         llm_texts = None
@@ -567,36 +613,61 @@ class TodayInterpretationService:
                     scoring_result=scoring_v2_result,
                     contexts=advice_contexts,
                 )
+
+            top_row, top_why = select_top_sphere_for_day_synthesis(rows, day_status, valence_assessments)
+            fast_horizon_title = ""
+            if selected_horizons and "fast" in selected_horizons:
+                fast_h = selected_horizons["fast"]
+                fast_horizon_title = getattr(fast_h, "title", "") or (fast_h.get("title") if isinstance(fast_h, dict) else "")
+
+            day_facts = {
+                "status": day_status,
+                "top_sphere_key": top_row.key,
+                "top_sphere_label": top_row.label,
+                "top_sphere_why": top_why,
+                "fast_horizon_title": fast_horizon_title,
+            }
+
             llm_texts, llm_interpretations = await asyncio.gather(
-                llm_service.generate_concrete_advice(advice_contexts, evidence_packet=evidence_packet),
+                llm_service.generate_concrete_advice(advice_contexts, evidence_packet=evidence_packet, day_facts=day_facts),
                 llm_service.generate_planet_interpretations(planets_context) if has_planet_context else asyncio.sleep(0, result=None),
             )
         else:
             llm_interpretations = None
 
-        expected_keys = {c["key"] for c in CANONICAL_PRODUCT_SPHERES}
+        expected_sphere_keys = {c["key"] for c in CANONICAL_PRODUCT_SPHERES}
+        allowed_candidate_keys = expected_sphere_keys | {"day_main"}
 
         def _apply_advice_attempt(candidate: dict | None) -> int:
-            # START_FUNCTION_CONTRACT: F-M-TODAY-INTERPRETATION-SERVICE._apply_advice_attempt
-            # purpose: Atomically validate ONE concrete-advice attempt: candidate is applied to rows
-            #   ONLY when it carries exact 12 canonical keys AND yields >= 9 valid rows.
-            #   Populates row.text and additive row.details (ConcreteAdviceDetails).
-            # inputs: candidate — raw dict from generate_concrete_advice.
-            # returns: number of applied rows (0 = attempt rejected).
-            # side_effects: mutates row.text and row.details only for accepted attempts.
-            # emitted_logs: none.
-            # error_behavior: never raises; malformed candidates are rejected.
-            # END_FUNCTION_CONTRACT: F-M-TODAY-INTERPRETATION-SERVICE._apply_advice_attempt
+            nonlocal applied_main_advice
             from app.core.logging import log_event
             if not candidate or not isinstance(candidate, dict):
                 log_event("llm.response_rejected", level="warning", payload={"reason": "attempt_rejected"})
                 return 0
-            if set(candidate.keys()) != expected_keys:
+            candidate_keys = set(candidate.keys())
+            if not (expected_sphere_keys <= candidate_keys <= allowed_candidate_keys):
                 log_event("llm.response_rejected", level="warning", payload={"reason": "attempt_rejected"})
                 return 0
+
             from app.schemas.today import ConcreteAdviceDetails
             from app.services.llm_claim_validator import LLMClaimValidator
             validator = LLMClaimValidator()
+
+            # Parse and validate day_main synthesis
+            day_main_raw = candidate.get("day_main")
+            sanitized_main, main_reason = validator.check_day_main_safety(
+                day_main_raw if isinstance(day_main_raw, str) else None
+            )
+            if sanitized_main:
+                applied_main_advice = sanitized_main
+            else:
+                log_event(
+                    "llm.response_rejected",
+                    level="warning",
+                    payload={"row_key": "day_main", "reason": main_reason or "validation_failed"},
+                )
+                applied_main_advice = None
+
             staged: list[tuple[ConcreteAdviceRow, str, ConcreteAdviceDetails | None]] = []
 
             for row in rows:
@@ -841,6 +912,7 @@ class TodayInterpretationService:
             status_label=status_label,
             status_line=status_line,
             facts=summary_facts,
+            main_advice=applied_main_advice,
         )
 
         # 3. Planet Interpretations (apply the concurrently gathered result;

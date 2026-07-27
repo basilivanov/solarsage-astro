@@ -229,6 +229,7 @@ _CONCRETE_ADVICE_JSON_SCHEMA = {
     "schema": {
         "type": "object",
         "properties": {
+            "day_main": {"type": "string"},
             "work": _SPHERE_DETAILS_SCHEMA,
             "money": _SPHERE_DETAILS_SCHEMA,
             "documents": _SPHERE_DETAILS_SCHEMA,
@@ -243,6 +244,7 @@ _CONCRETE_ADVICE_JSON_SCHEMA = {
             "shopping": _SPHERE_DETAILS_SCHEMA,
         },
         "required": [
+            "day_main",
             "work",
             "money",
             "documents",
@@ -1235,11 +1237,12 @@ JSON:"""
         self,
         contexts: list[dict],
         evidence_packet: dict | None = None,
+        day_facts: dict | None = None,
     ) -> dict[str, dict[str, Any] | str] | None:
         # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_concrete_advice
-        # purpose: Generate structured Russian drilldown recommendations (story, why, advice) for 12 canonical spheres.
-        # inputs: contexts (list[dict]), evidence_packet (dict | None)
-        # returns: dict[str, dict] | None — map of product key -> {story, why, advice} object or legacy string
+        # purpose: Generate structured Russian drilldown recommendations and day synthesis (day_main) for 12 canonical spheres.
+        # inputs: contexts (list[dict]), evidence_packet (dict | None), day_facts (dict | None)
+        # returns: dict[str, dict | str] | None — map of product key / day_main -> string or {story, why, advice} object
         # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_concrete_advice
         from app.services.sphere_why_builder import build_sphere_why
 
@@ -1258,14 +1261,28 @@ JSON:"""
         if evidence_packet:
             evidence_packet_str = f"\nEVIDENCE PACKET:\n{json_lib.dumps(evidence_packet, ensure_ascii=False, indent=2)}\n"
 
+        day_facts_str = ""
+        if day_facts:
+            day_facts_str = (
+                f"\nФакты дня:\n"
+                f"- Общий статус: {day_facts.get('status', 'нейтральный')}\n"
+                f"- Главная сфера дня: {day_facts.get('top_sphere_label', '')} ({day_facts.get('top_sphere_why', 'нет явного триггера')})\n"
+                f"- Оперативный фон: {day_facts.get('fast_horizon_title', 'отсутствует')}\n"
+            )
+
         prompt = f"""{_ASTRO_BOUNDARY_RULES}
 
 Ты — профессиональный астрологический копирайтер. Напиши структурированный персональный разбор на русском языке на «ты» для пользователя по 12 сферам на основе переданных фактов.
-{evidence_packet_str}
+{evidence_packet_str}{day_facts_str}
 Данные по 12 сферам жизни:
 {"\n".join(context_lines)}
 
-Для каждой сферы заполни объект с тремя полями:
+Для ключа "day_main":
+- Напиши ровно одну синтезирующую фразу дня на «ты» (до 120 символов): суть дня + одно главное действие.
+- НЕ копируй почему-строку главной сферы дословно.
+- Без астротерминов, без фатализма.
+
+Для каждой из 12 сфер заполни объект с тремя полями:
 - story: 1–2 предложения о ЧЕЛОВЕКЕ и его дне в этой сфере (узнаваемая жизненная сцена, основанная на фактах выше).
 - why: пустой массив [] (причины рассчитываются серверным кодом).
 - advice: один короткий конкретный практический совет на «ты» (до 120 символов).
@@ -1276,11 +1293,12 @@ JSON:"""
 3. Запрещён шаблонный зачин «День складывается...».
 4. Не копируй формулировки блока Факты дословно. Перескажи их смысл через конкретную жизненную сцену с маркером времени или места (например: «утром на встрече...», «в рабочей переписке...», «дома вечером...»).
 5. Если вердикт равен "avoid", advice обязан советовать отложить дела или соблюдать осторожность.
-6. Твой ответ должен быть строго валидным JSON-объектом, содержащим ровно 12 ключей сфер.
+6. Твой ответ должен быть строго валидным JSON-объектом, содержащим ключ "day_main" и 12 ключей сфер.
 7. Не добавляй никаких других символов или текста вокруг JSON.
 
 Верни JSON-объект ровно такого вида:
 {{
+  "day_main": "<одна емкая синтетическая фраза дня до 120 символов>",
   "work": {{ "story": "<текст>", "why": [], "advice": "<совет>" }},
   "money": {{ "story": "<текст>", "why": [], "advice": "<совет>" }},
   "documents": {{ "story": "<текст>", "why": [], "advice": "<совет>" }},

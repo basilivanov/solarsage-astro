@@ -1852,6 +1852,17 @@
             "title": "Facts",
             "type": "array"
           },
+          "mainAdvice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mainadvice"
+          },
           "statusLabel": {
             "title": "Statuslabel",
             "type": "string"

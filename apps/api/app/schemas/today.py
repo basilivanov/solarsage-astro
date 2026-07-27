@@ -402,6 +402,7 @@ class DaySummaryBlock(CamelModel):
     status_label: str
     status_line: str
     facts: list[DaySummaryFact]
+    main_advice: str | None = None
 # END_BLOCK: DAY_SUMMARY_SCHEMAS
 
 

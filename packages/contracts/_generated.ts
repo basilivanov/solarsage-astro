@@ -1386,6 +1386,8 @@ export interface components {
         DaySummaryBlock: {
             /** Facts */
             facts: components["schemas"]["DaySummaryFact"][];
+            /** Mainadvice */
+            mainAdvice?: string | null;
             /** Statuslabel */
             statusLabel: string;
             /** Statusline */

@@ -256,6 +256,7 @@ export function TodayScreen({
           <ActivationEvidenceCard
             v2={payload.v2}
             concreteAdvice={payload.concreteAdvice}
+            daySummary={payload.daySummary}
             onSphereSelect={selectPersonalStorySphere}
             onWhyOpen={openWhy}
             headlineFallback={payload.headline}

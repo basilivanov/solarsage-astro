@@ -79,6 +79,7 @@ async def test_llm_concrete_advice_validation_and_fallback():
 
     # Case 1: LLM returns valid Russian texts for all 12 keys
     valid_mock_texts = {
+        "day_main": "СЕНТИНЕЛ ГЛАВНОЕ",
         "work": "СЕНТИНЕЛ РАБОТА",
         "money": "СЕНТИНЕЛ ДЕНЬГИ",
         "documents": "СЕНТИНЕЛ ДОКУМЕНТЫ",
@@ -173,6 +174,7 @@ async def test_today_interpretation_service_allowed_evidence_planets():
     service = TodayInterpretationService()
 
     mock_output = {
+        "day_main": "Главная задача дня.",
         "work": "Марс помогает сосредоточиться на проекте.",
         "money": "СЕНТИНЕЛ",
         "documents": "СЕНТИНЕЛ",
@@ -238,7 +240,10 @@ async def test_no_fallback_policy_single_row_rejection_logs_and_sets_unavailable
     service = TodayInterpretationService()
 
     keys = ["work", "money", "documents", "relationships", "sport", "communication", "health", "decisions", "travel", "creativity", "study", "shopping"]
-    mock_output = {k: f"Безопасный совет для сферы номер {i}." for i, k in enumerate(keys)}
+    mock_output = {
+        "day_main": "Синтез дня по главной сфере.",
+        **{k: f"Безопасный совет для сферы номер {i}." for i, k in enumerate(keys)}
+    }
     # Unsafe text for relationships (banned jargon)
     mock_output["relationships"] = "Сегодня транзит для отношений."
 
@@ -283,7 +288,10 @@ async def test_today_interpretation_service_test_key_enables_llm():
     """A key containing 'test' (e.g. 'test-key') still enables the LLM path."""
     service = TodayInterpretationService()
 
-    mock_output = {k: "СЕНТИНЕЛ" for k in ["work", "money", "documents", "relationships", "sport", "communication", "health", "decisions", "travel", "creativity", "study", "shopping"]}
+    mock_output = {
+        "day_main": "СЕНТИНЕЛ ГЛАВНОЕ",
+        **{k: "СЕНТИНЕЛ" for k in ["work", "money", "documents", "relationships", "sport", "communication", "health", "decisions", "travel", "creativity", "study", "shopping"]}
+    }
 
     with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
          patch("app.core.config.settings.openrouter_api_key", "test-key"):
@@ -413,3 +421,60 @@ async def test_concrete_advice_contradiction_prevention():
     assert len(shopping_row.evidence) == 1
     assert shopping_row.evidence[0].kind == "aspect"
     assert shopping_row.evidence[0].aspect_type == "square"
+
+
+@pytest.mark.asyncio
+async def test_day_synthesis_main_advice_validation_and_logging():
+    """S2: Test mainAdvice synthesis validation and rejection logging."""
+    from app.services.today_interpretation_service import select_top_sphere_for_day_synthesis
+    from app.schemas.day_valence import ProductSphereAssessment
+
+    service = TodayInterpretationService()
+    keys = ["work", "money", "documents", "relationships", "sport", "communication", "health", "decisions", "travel", "creativity", "study", "shopping"]
+
+    # 1. Valid mainAdvice
+    mock_output_valid = {
+        "day_main": "Фокусируйся на работе и сделках, избегай споров с близкими.",
+        **{k: f"Безопасный совет для сферы {i}." for i, k in enumerate(keys)}
+    }
+    with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
+         patch("app.core.config.settings.openrouter_api_key", "test-key"):
+        mock_llm.return_value = mock_output_valid
+        _, summary, _ = await service.build(
+            target_date=date(2026, 7, 5),
+            day_status="supportive",
+            scoring_result={"day_status": "supportive", "sphere_scores": {}},
+            signals=[],
+            semantic_layer=None,
+            day_chart=None,
+            planet_influences=[],
+            sphere_scores=[],
+            important_items=[],
+        )
+        assert summary.main_advice == "Фокусируйся на работе и сделках, избегай споров с близкими."
+
+    # 2. Invalid mainAdvice (banned jargon) -> rejected to None, logs llm.response_rejected
+    mock_output_jargon = mock_output_valid.copy()
+    mock_output_jargon["day_main"] = "Важный транзит Марса поможет тебе выиграть спор."
+    with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
+         patch("app.core.config.settings.openrouter_api_key", "test-key"), \
+         patch("app.core.logging.log_event") as mock_log:
+        mock_llm.return_value = mock_output_jargon
+        _, summary, _ = await service.build(
+            target_date=date(2026, 7, 5),
+            day_status="supportive",
+            scoring_result={"day_status": "supportive", "sphere_scores": {}},
+            signals=[],
+            semantic_layer=None,
+            day_chart=None,
+            planet_influences=[],
+            sphere_scores=[],
+            important_items=[],
+        )
+        assert summary.main_advice is None
+        rejected_calls = [
+            c for c in mock_log.call_args_list
+            if c.args and c.args[0] == "llm.response_rejected" and c.kwargs.get("payload", {}).get("row_key") == "day_main"
+        ]
+        assert len(rejected_calls) == 1
+        assert rejected_calls[0].kwargs["payload"]["reason"] == "banned_jargon"

@@ -52,6 +52,33 @@ def has_banned_jargon(text: str, row_key: str = "") -> bool:
 
 
 class LLMClaimValidator:
+    def check_day_main_safety(self, text: str | None) -> tuple[str | None, str | None]:
+        """Validate day_main synthesis string (S2).
+
+        Returns:
+            (sanitized_text, None) if valid.
+            (None, reason_code) if rejected.
+        """
+        if not text or not isinstance(text, str) or not text.strip():
+            return None, "empty"
+
+        t = text.strip()
+        if len(t) > 120:
+            return None, "length"
+
+        import re
+        if re.search(r"[A-Za-z]", t):
+            return None, "parse"
+
+        if has_banned_jargon(t, "day_main"):
+            return None, "banned_jargon"
+
+        return t, None
+
+    def validate_day_main(self, text: str | None) -> str | None:
+        sanitized, _ = self.check_day_main_safety(text)
+        return sanitized
+
     def check_concrete_advice_text_safety(
         self,
         *,

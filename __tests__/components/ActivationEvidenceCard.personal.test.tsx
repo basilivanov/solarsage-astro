@@ -40,16 +40,37 @@ describe("ActivationEvidenceCard human-first", () => {
     expect(container.querySelector('[data-testid="activation-evidence-card"]')).toBeNull()
   })
 
-  it("uses V2 headline, the lowest backend rank, and no more than three affected spheres", () => {
-    render(<ActivationEvidenceCard v2={makeV2()} concreteAdvice={concreteAdvice} onSphereSelect={() => {}} onWhyOpen={() => {}} />)
+  it("uses V2 headline, renders mainAdvice from daySummary, and no more than three affected spheres", () => {
+    render(
+      <ActivationEvidenceCard
+        v2={makeV2()}
+        concreteAdvice={concreteAdvice}
+        daySummary={{ mainAdvice: "СЕНТИНЕЛ главное дня" }}
+        onSphereSelect={() => {}}
+        onWhyOpen={() => {}}
+      />,
+    )
     const card = screen.getByTestId("activation-evidence-card")
     expect(card.getAttribute("data-state")).toBe("ready")
     expect(card.textContent).toContain(makeV2().activationSummary.headline)
-    expect(card.textContent).toContain("Главное: СЕНТИНЕЛ главное из работы")
-    expect(card.textContent).not.toContain("СЕНТИНЕЛ главное из денег")
+    expect(card.textContent).toContain("Главное: СЕНТИНЕЛ главное дня")
     expect(screen.getAllByTestId("personal-story-sphere-link")).toHaveLength(3)
     expect(card.querySelector('[data-testid="technique-chip"]')).toBeNull()
     expect(card.textContent).not.toMatch(/Профекция|Фирдар|Транзит|орб/i)
+  })
+
+  it("completely hides the 'Главное' block when mainAdvice is null or missing", () => {
+    render(
+      <ActivationEvidenceCard
+        v2={makeV2()}
+        concreteAdvice={concreteAdvice}
+        daySummary={null}
+        onSphereSelect={() => {}}
+        onWhyOpen={() => {}}
+      />,
+    )
+    const card = screen.getByTestId("activation-evidence-card")
+    expect(card.textContent).not.toContain("Главное:")
   })
 
   it("delegates exact sphere and Why callbacks through real buttons", () => {

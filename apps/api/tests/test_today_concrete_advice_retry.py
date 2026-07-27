@@ -41,7 +41,10 @@ CANONICAL_12_KEYS = [
     "health", "decisions", "travel", "creativity", "study", "shopping",
 ]
 
-VALID_TEXTS = {k: f"Спокойный день для дела номер {i}." for i, k in enumerate(CANONICAL_12_KEYS)}
+VALID_TEXTS = {
+    "day_main": "Синтез дня по главной сфере.",
+    **{k: f"Спокойный день для дела номер {i}." for i, k in enumerate(CANONICAL_12_KEYS)}
+}
 
 BUILD_KWARGS = dict(
     target_date=date(2026, 7, 5),
@@ -279,7 +282,7 @@ async def test_advice_contexts_capped_three_unique_but_wire_evidence_full():
         mock_advice.return_value = VALID_TEXTS
         mock_planets.return_value = None
 
-        async def capture(contexts, evidence_packet=None):
+        async def capture(contexts, evidence_packet=None, day_facts=None):
             captured["contexts"] = contexts
             return VALID_TEXTS
         mock_advice.side_effect = capture
@@ -323,9 +326,12 @@ async def test_generate_concrete_advice_sends_strict_schema():
         assert schema is _CONCRETE_ADVICE_JSON_SCHEMA
         assert schema["strict"] is True
         assert schema["schema"]["additionalProperties"] is False
-        assert len(schema["schema"]["required"]) == 12
+        assert len(schema["schema"]["required"]) == 13
         assert set(schema["schema"]["properties"].keys()) == set(schema["schema"]["required"])
-        for field_schema in schema["schema"]["properties"].values():
+        assert schema["schema"]["properties"]["day_main"]["type"] == "string"
+        for key, field_schema in schema["schema"]["properties"].items():
+            if key == "day_main":
+                continue
             assert field_schema["type"] == "object"
             assert set(field_schema["properties"].keys()) == {"story", "why", "advice"}
 
@@ -367,7 +373,7 @@ async def test_concrete_advice_request_body_has_strict_json_schema():
     schema = body["response_format"]["json_schema"]
     assert schema["strict"] is True
     assert schema["schema"]["additionalProperties"] is False
-    assert len(schema["schema"]["required"]) == 12
+    assert len(schema["schema"]["required"]) == 13
     assert set(schema["schema"]["properties"].keys()) == set(schema["schema"]["required"])
 
 
@@ -384,12 +390,15 @@ async def test_concrete_advice_details_structuring_and_fallback():
     ]
 
     structured_candidate = {
-        key: {
-            "story": "Персональная история дня для этой сферы. Это важный момент для внимания.",
-            "why": ["Фоновый фактор сферы деятельности"],
-            "advice": "Действуй взвешенно и спокойно.",
-        }
-        for key in keys
+        "day_main": "Синтетический вывод дня для главной сферы.",
+        **{
+            key: {
+                "story": "Персональная история дня для этой сферы. Это важный момент для внимания.",
+                "why": ["Фоновый фактор сферы деятельности"],
+                "advice": "Действуй взвешенно и спокойно.",
+            }
+            for key in keys
+        },
     }
 
     service = TodayInterpretationService()
@@ -439,12 +448,15 @@ async def test_cross_sphere_why_deduplication():
     ]
 
     structured_candidate = {
-        key: {
-            "story": "Персональная история дня для этой сферы. Это важный момент для внимания.",
-            "why": [],
-            "advice": "Действуй взвешенно и спокойно.",
-        }
-        for key in keys
+        "day_main": "Синтетический вывод дня для главной сферы.",
+        **{
+            key: {
+                "story": "Персональная история дня для этой сферы. Это важный момент для внимания.",
+                "why": [],
+                "advice": "Действуй взвешенно и спокойно.",
+            }
+            for key in keys
+        },
     }
 
     ev_work_strong = ConcreteAdviceEvidence(

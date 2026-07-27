@@ -39,6 +39,7 @@ import { containsBannedAstrologyVocabulary, getHumanSphereLabel } from "@/lib/pr
 type ActivationEvidenceCardProps = {
   v2: TodayV2Block | null | undefined
   concreteAdvice?: ConcreteAdviceBlock
+  daySummary?: { mainAdvice?: string | null } | null
   onSphereSelect: (key: string) => void
   onWhyOpen: () => void
   headlineFallback?: string | null
@@ -60,6 +61,7 @@ function getTopAffectedRows(rows: ConcreteAdviceRow[]): ConcreteAdviceRow[] {
 export function ActivationEvidenceCard({
   v2,
   concreteAdvice = { rows: [], counts: { good: 0, caution: 0, avoid: 0, neutral: 0 } },
+  daySummary,
   onSphereSelect,
   onWhyOpen,
   headlineFallback,
@@ -84,7 +86,7 @@ export function ActivationEvidenceCard({
   if (!headline) return null
 
   const rankedRows = getTopAffectedRows(concreteAdvice?.rows || [])
-  const mainRow = rankedRows[0]
+  const mainAdvice = daySummary?.mainAdvice?.trim() || null
   const Sparkles = getIcon("sparkle")
 
   return (
@@ -103,13 +105,13 @@ export function ActivationEvidenceCard({
           {headline}
         </h2>
 
-        {mainRow?.text ? (
+        {mainAdvice && !containsBannedAstrologyVocabulary(mainAdvice) ? (
           <div className="relative mt-4 flex items-start gap-3 rounded-2xl border border-violet-200/70 bg-violet-50/55 px-3.5 py-3.5 dark:border-violet-400/20 dark:bg-violet-500/10">
             <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-100">
               <Sparkles className="h-4 w-4" strokeWidth={1.9} aria-hidden />
             </span>
             <p className="min-w-0 text-[15px] font-medium leading-snug text-foreground">
-              Главное: {mainRow.text}
+              Главное: {mainAdvice}
             </p>
           </div>
         ) : null}

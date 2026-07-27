@@ -831,6 +831,7 @@ export const DaySummaryFact = z.object({
 });
 export const DaySummaryBlock = z.object({
   facts: z.array(DaySummaryFact),
+  mainAdvice: z.union([z.string(), z.null()]).optional(),
   statusLabel: z.string(),
   statusLine: z.string(),
 });
