@@ -48,9 +48,17 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.core.logging import log_block, log_event
+from app.core.metrics import (
+    inc_day_status_total,
+    inc_duplicate_factors,
+    inc_effective_factors,
+    inc_sphere_verdict_total,
+)
 from app.core.versions import LEGACY_SCORING_VERSION, SCORING_V2_VERSION
 from app.schemas.activation import ActivationLayer
 from app.schemas.normalization import AstroSignal
+from app.services.day_factor_ledger import build_factor_ledger
+from app.services.day_valence_service import DayValenceService
 from app.services.scoring_service import ScoringService
 from app.services.scoring_v2_service import ScoringV2Service
 
@@ -205,6 +213,20 @@ class DayScoringRuntimeService:
                         },
                     )
 
+        # W2-VALENCE: Snapshot flags once per request call (§10)
+        valence_enabled = bool(getattr(settings, "today_valence_v1_enabled", False))
+        valence_dual_run = bool(getattr(settings, "today_valence_v1_dual_run", False))
+        legacy_status = v2_result.day_status if v2_result is not None else v1_day_status
+
+        valence_assessments, valence_status = self._compute_valence_shadow(
+            day_signals=day_signals,
+            activation_layer=activation_layer,
+            legacy_day_status=legacy_status,
+            target_date=target_date,
+            valence_enabled=valence_enabled,
+            valence_dual_run=valence_dual_run,
+        )
+
         # Select result
         selected_scoring_version: int | str
         if v2_selected and v2_result is not None:
@@ -226,4 +248,86 @@ class DayScoringRuntimeService:
             diff=diff,
             v2_error=v2_error,
         )
+
+    def _compute_valence_shadow(
+        self,
+        day_signals: list[AstroSignal],
+        activation_layer: ActivationLayer | None,
+        legacy_day_status: str,
+        target_date: str | None,
+        *,
+        valence_enabled: bool,
+        valence_dual_run: bool,
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """Compute W2-VALENCE shadow dual-run engine, emit events and metrics fail-closed."""
+        if not (valence_enabled or valence_dual_run):
+            return None, None
+
+        try:
+            activations = activation_layer.activations if activation_layer else []
+            ledger = build_factor_ledger(day_signals=day_signals, activations=activations)
+
+            valence_service = DayValenceService()
+            assessments, breakdown, valence_day_status = valence_service.compute(
+                ledger,
+                sphere_scores_v2=None,
+            )
+
+            # Record metrics §13
+            inc_day_status_total("valence_v1", valence_day_status)
+            inc_day_status_total("legacy", legacy_day_status)
+            for pkey, ass in assessments.items():
+                inc_sphere_verdict_total("valence_v1", ass.verdict)
+
+            inc_duplicate_factors("signal_activation", ledger.duplicate_count)
+            for factor in ledger.factors:
+                inc_effective_factors(factor.technique_family, 1)
+
+            verdicts_summary = {k: v.verdict for k, v in assessments.items()}
+
+            with log_block(slice="W2-VALENCE", module="M-DAY-SCORING-RUNTIME", block="VALENCE_SHADOW"):
+                log_event(
+                    "scoring.factor_deduplicated",
+                    level="info",
+                    msg="Valence factor ledger built and deduplicated",
+                    payload={
+                        "date": target_date,
+                        "factor_count": len(ledger.factors),
+                        "duplicate_count": ledger.duplicate_count,
+                        "invalid_count": ledger.invalid_count,
+                    },
+                )
+                log_event(
+                    "scoring.valence_diff",
+                    level="info",
+                    msg="Valence engine shadow dual-run diff",
+                    payload={
+                        "date": target_date,
+                        "legacy_day_status": legacy_day_status,
+                        "valence_day_status": valence_day_status,
+                        "duplicate_count": ledger.duplicate_count,
+                        "verdicts_summary": verdicts_summary,
+                    },
+                )
+                if valence_enabled:
+                    log_event(
+                        "scoring.valence_selected",
+                        level="info",
+                        msg="Valence engine result selected for authoritative payload",
+                        payload={"date": target_date, "valence_day_status": valence_day_status},
+                    )
+
+            return assessments, valence_day_status
+
+        except Exception as e:
+            with log_block(slice="W2-VALENCE", module="M-DAY-SCORING-RUNTIME", block="VALENCE_SHADOW"):
+                log_event(
+                    "scoring.valence_failed",
+                    level="warn",
+                    msg="Valence shadow computation failed fail-closed",
+                    payload={"date": target_date, "error_kind": type(e).__name__},
+                )
+            if valence_enabled:
+                raise  # Fail-closed loudly when explicitly enabled as primary authority
+            return None, None
 # END_BLOCK: RUNTIME_COMPUTE

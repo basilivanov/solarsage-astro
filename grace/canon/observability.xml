@@ -397,6 +397,10 @@
       <payload-field name="v2_day_status" type="string" required="true" />
       <payload-field name="sphere_diffs"  type="object" required="false" />
     </event>
+    <event name="scoring.valence_diff"    owner="W2-VALENCE" desc="Shadow diff between legacy day status/verdicts and new valence engine." />
+    <event name="scoring.factor_deduplicated" owner="W2-VALENCE" desc="Aggregated count of deduplicated/merged factors in ledger." />
+    <event name="scoring.valence_selected" owner="W2-VALENCE" desc="New valence engine result selected as authoritative." />
+    <event name="scoring.valence_failed"  owner="W2-VALENCE" desc="Shadow/selected valence engine computation failed fail-closed." />
     <event name="llm.requested"           owner="W-5.1">
       <payload-field name="prompt_version" type="string" required="true" />
     </event>

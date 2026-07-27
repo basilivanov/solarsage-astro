@@ -94,3 +94,11 @@ class DayStatusBreakdown(CamelModel):
     effective_factor_count: int = Field(..., description="Factors contributing after global family decay")
     family_counts: dict[str, int] = Field(default_factory=dict, description="Factor count per technique family")
     duplicate_factor_count: int = Field(default=0, description="Number of deduplicated/merged factors")
+
+
+class FactorLedger(CamelModel):
+    """Container for built factor ledger and deduplication counters."""
+
+    factors: list[DayValenceFactor] = Field(default_factory=list)
+    duplicate_count: int = Field(default=0, description="Count of duplicate factors excluded during ledger build")
+    invalid_count: int = Field(default=0, description="Count of invalid factors excluded due to missing required fields")

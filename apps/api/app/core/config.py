@@ -200,6 +200,10 @@ class Settings(BaseSettings):
     yookassa_live_secret_key: str = Field("", alias="YOOKASSA_LIVE_SECRET_KEY")
     yookassa_return_url: str = Field("", alias="YOOKASSA_RETURN_URL")
     yookassa_recurrent_enabled: bool = Field(False, alias="YOOKASSA_RECURRENT_ENABLED")
+    # W2-VALENCE: server-only flags (shadow first; selection via Release B)
+    today_valence_v1_enabled: bool = Field(False, alias="TODAY_VALENCE_V1_ENABLED")
+    today_valence_v1_dual_run: bool = Field(False, alias="TODAY_VALENCE_V1_DUAL_RUN")
+
     # Comma-separated CIDR allowlist override for the webhook source check
     # (tests/dev only; production default = official YooKassa ranges).
     yookassa_webhook_ip_allowlist: str = Field("", alias="YOOKASSA_WEBHOOK_IP_ALLOWLIST")

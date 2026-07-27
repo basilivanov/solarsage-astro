@@ -994,5 +994,11 @@ def test_runtime_keeps_only_existing_structured_event_name() -> None:
         and isinstance(node.args[0], ast.Constant)
         and isinstance(node.args[0].value, str)
     }
-    assert event_names == {"scoring.v2_diff"}
+    assert event_names == {
+        "scoring.v2_diff",
+        "scoring.valence_diff",
+        "scoring.factor_deduplicated",
+        "scoring.valence_selected",
+        "scoring.valence_failed",
+    }
 # END_BLOCK: STATIC_GUARDS
