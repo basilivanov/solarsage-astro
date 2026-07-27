@@ -660,8 +660,14 @@ class TodayService:
                 valence_breakdown=dual.valence_breakdown,
             )
 
-        # W-DAY: relative status calculation and history persistence
-        if dual.v2_result is not None:
+        # W-DAY: relative status calculation and history persistence.
+        # W2-VALENCE: when the valence engine ran, its signed breakdown is the
+        # canonical scale for the personal baseline; legacy v2 breakdown (raw
+        # volume-biased units) must not mix into the same z-score series.
+        if getattr(dual, "valence_breakdown", None) is not None:
+            today_support = float(dual.valence_breakdown.support_score)
+            today_tension = float(dual.valence_breakdown.tension_score)
+        elif dual.v2_result is not None:
             today_support = float(dual.v2_result.status_breakdown.get("support_score", 0.0))
             today_tension = float(dual.v2_result.status_breakdown.get("tension_score", 0.0))
         else:
