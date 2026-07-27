@@ -52,7 +52,7 @@ export function DayCollapsible({
 
   return (
     <section className="px-5" data-testid={dataTestId}>
-      <div className="rounded-2xl border border-border/60 bg-card overflow-hidden transition-all duration-200">
+      <div className="rounded-[20px] border border-border/60 bg-card overflow-hidden transition-all duration-200">
         <button
           type="button"
           id={toggleId}
@@ -60,7 +60,7 @@ export function DayCollapsible({
           aria-expanded={open}
           aria-controls={regionId}
           onClick={() => setOpen((prev) => !prev)}
-          className="w-full flex items-center justify-between p-4 text-left font-medium text-[15px] text-foreground hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between px-5 py-4 text-left font-medium text-[15px] text-foreground hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors cursor-pointer"
         >
           <span className="font-semibold">{title}</span>
           <ChevronDown

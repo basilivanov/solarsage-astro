@@ -92,19 +92,19 @@ export function ActivationEvidenceCard({
       <div
         data-testid="activation-evidence-card"
         data-state="ready"
-        className="relative overflow-hidden rounded-[24px] border border-violet-200/70 bg-gradient-to-br from-card via-card to-violet-50/70 p-5 shadow-[0_18px_48px_-28px_rgba(109,40,217,0.5)] dark:border-violet-400/25 dark:to-violet-950/20"
+        className="relative overflow-hidden rounded-[24px] border border-violet-200/70 bg-gradient-to-br from-card via-card to-violet-50/70 p-6 shadow-[0_18px_48px_-28px_rgba(109,40,217,0.5)] dark:border-violet-400/25 dark:to-violet-950/20"
       >
         <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-violet-300/20 blur-3xl" />
         <p className="relative inline-flex rounded-full bg-violet-100/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
           ИМЕННО ДЛЯ ТЕБЯ
         </p>
 
-        <h2 className="relative mt-4 font-serif text-[25px] leading-[1.13] text-foreground sm:text-[28px]">
+        <h2 className="relative mt-4 font-serif text-[28px] leading-[1.12] text-foreground">
           {headline}
         </h2>
 
         {mainRow?.text ? (
-          <div className="relative mt-4 flex items-start gap-3 rounded-2xl border border-violet-200/70 bg-violet-50/55 px-3.5 py-3 dark:border-violet-400/20 dark:bg-violet-500/10">
+          <div className="relative mt-4 flex items-start gap-3 rounded-2xl border border-violet-200/70 bg-violet-50/55 px-3.5 py-3.5 dark:border-violet-400/20 dark:bg-violet-500/10">
             <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-100">
               <Sparkles className="h-4 w-4" strokeWidth={1.9} aria-hidden />
             </span>
@@ -129,9 +129,9 @@ export function ActivationEvidenceCard({
                     data-sphere-key={row.key}
                     aria-label={`Открыть сферу ${label}`}
                     onClick={() => onSphereSelect(row.key)}
-                    className="flex min-h-11 w-full items-center gap-3 rounded-xl border border-violet-200/70 bg-card/70 px-3 text-left text-foreground transition hover:border-violet-400 hover:bg-violet-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/25 dark:hover:bg-violet-500/10"
+                    className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-violet-200/70 bg-card/70 px-3.5 text-left text-foreground transition hover:border-violet-400 hover:bg-violet-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/25 dark:hover:bg-violet-500/10 cursor-pointer"
                   >
-                    <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-violet-100/80 text-violet-700 dark:bg-violet-500/20 dark:text-violet-100">
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-violet-100/80 text-violet-700 dark:bg-violet-500/20 dark:text-violet-100">
                       <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug">{label}</span>
@@ -147,7 +147,7 @@ export function ActivationEvidenceCard({
           type="button"
           data-testid="personal-story-why-cta"
           onClick={onWhyOpen}
-          className="relative mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-200/80 bg-violet-100/55 px-4 text-[15px] font-semibold text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/30 dark:bg-violet-500/15 dark:text-violet-100"
+          className="relative mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-violet-200/80 bg-violet-100/55 px-4 text-[15px] font-semibold text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/30 dark:bg-violet-500/15 dark:text-violet-100 cursor-pointer"
         >
           Почему так у меня
           <ChevronRight className="h-4 w-4" aria-hidden />

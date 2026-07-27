@@ -100,17 +100,17 @@ export function DaySummaryCard({
   if (humanFirst) {
     return (
       <section className="px-5" aria-label="Сводка дня" data-testid="day-summary-card">
-        <div className="rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_12px_32px_-26px_rgba(76,29,149,0.35)]">
+        <div className="rounded-[24px] border border-border/60 bg-card p-5 shadow-[0_12px_32px_-26px_rgba(76,29,149,0.35)]">
           <div className="flex min-h-20 items-center gap-3.5">
             <span
-              className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-violet-100/70 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200"
+              className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-violet-100/70 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200"
               aria-hidden
             >
               <SummaryIcon className="h-5 w-5" strokeWidth={1.7} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[16px] font-semibold leading-snug text-foreground">{statusLabel}</p>
-              <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{statusLine}</p>
+              <p className="font-serif text-[26px] leading-tight text-foreground">{statusLabel}</p>
+              <p className="mt-1 text-[15px] leading-relaxed text-muted-foreground">{statusLine}</p>
             </div>
           </div>
 
