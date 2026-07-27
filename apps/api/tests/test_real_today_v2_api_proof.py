@@ -69,6 +69,9 @@ def v(fx):
     if "v2" in d and d["v2"] and "audit" in d["v2"] and "canonVersions" in d["v2"]["audit"]:
         from app.services.canon_service import get_canon_versions
         d["v2"]["audit"]["canonVersions"] = get_canon_versions()
+    # W2-VALENCE: content identity bumped 10 -> 11; keep fixture meta current
+    from app.core.versions import TODAY_CONTENT_VERSION
+    d["meta"]["contentVersion"] = TODAY_CONTENT_VERSION
     return d
 
 

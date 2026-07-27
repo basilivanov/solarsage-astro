@@ -83,7 +83,11 @@ V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS = frozenset({
 })
 
 # Today public content identity
-TODAY_CONTENT_VERSION = 10
+# W2-VALENCE: bumped 10 -> 11 together with ss-scoring-2.1 / today.v2.2 /
+# frontend 4 (normative §9.3). The cache read path rejects payloads whose
+# meta.contentVersion differs from this constant, so it MUST track the
+# selected identity or every valence-era payload is a permanent cache miss.
+TODAY_CONTENT_VERSION = 11
 
 # LLM prompt/content identity for Today: bumped when the prompt shape or
 # content policy changes so stale cached payloads never pass as current.

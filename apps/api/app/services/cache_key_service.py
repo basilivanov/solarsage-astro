@@ -201,7 +201,7 @@ def resolve_today_runtime_identity(
             scoring_version=SCORING_V2_1_VERSION,
             payload_version=TODAY_V2_2_PAYLOAD_VERSION,
             frontend_payload_version=V2_4_FRONTEND_PAYLOAD_VERSION,
-            content_version=11,
+            content_version=TODAY_CONTENT_VERSION,
         )
     if str_selected == str(SCORING_V2_VERSION):
         return TodayRuntimeIdentity(
