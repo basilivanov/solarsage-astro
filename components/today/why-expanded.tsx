@@ -74,10 +74,11 @@ type Props = {
 }
 
 // Consumer routing constants — current and previous accepted wire pairs.
-const CURRENT_PAYLOAD_VERSION = "today.v2.1" as const
-const CURRENT_FRONTEND_VERSION = 3 as const
-const PREVIOUS_PAYLOAD_VERSION = "today.v2" as const
-const PREVIOUS_FRONTEND_VERSION = 2 as const
+// W2-VALENCE: current = today.v2.2/frontend 4 (ss-scoring-2.1), previous = today.v2.1/frontend 3.
+const CURRENT_PAYLOAD_VERSION = "today.v2.2" as const
+const CURRENT_FRONTEND_VERSION = 4 as const
+const PREVIOUS_PAYLOAD_VERSION = "today.v2.1" as const
+const PREVIOUS_FRONTEND_VERSION = 3 as const
 
 export function resolveWhyExpandedMode({
   v2,
