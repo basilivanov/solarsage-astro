@@ -47,7 +47,7 @@ import path from "node:path"
 import type { AccessInfo } from "@/lib/contracts/access"
 import { validateAdaptedTodayPayload, type TodayWireIdentity } from "@/lib/contracts/today"
 import { TodayScreen } from "@/components/today/today-screen"
-import { ConcreteDayAdvice, normalizeConcreteAdviceVerdict } from "@/components/today/concrete-day-advice"
+import { ConcreteDayAdvice } from "@/components/today/concrete-day-advice"
 import { WhyExpanded } from "@/components/today/why-expanded"
 import { DevAuditDrawer } from "@/components/today/dev-audit-drawer"
 import { dayPayloadV2 } from "@/e2e/mock-visual/fixtures/day-v2-2026-07-08"
@@ -352,14 +352,8 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.queryByTestId("why-time-horizon-timing")).toBeNull()
   })
 
-  it("renders normalized visible verdict statuses on compact rows and expanded details", () => {
+  it("renders top-3 single-column rows and expands to show all spheres", () => {
     const { payload } = buildCanonicalPayload()
-    const expected = {
-      good: { compact: "Поддержка", details: "Поддерживающий сигнал" },
-      neutral: { compact: "Ровный фон", details: "Нейтральный сигнал" },
-      caution: { compact: "Требует внимания", details: "Напряжённый сигнал · требует внимания" },
-      avoid: { compact: "Лучше отложить", details: "Сильное напряжение · лучше отложить" },
-    } as const
     const onSelectedKeyChange = vi.fn()
     const renderNavigator = (selectedKey: string | null) => (
       <ConcreteDayAdvice
@@ -371,27 +365,27 @@ describe("TodayScreen V2 downstream fixture", () => {
     )
     const { rerender } = render(renderNavigator(null))
 
-    for (const [verdict, copy] of Object.entries(expected)) {
-      const row = screen.getAllByTestId("concrete-day-advice-row").find((element) => element.getAttribute("data-status") === verdict)!
-      const status = row.querySelector('[data-testid="concrete-day-advice-row-status"]')
-      expect(status?.getAttribute("data-status")).toBe(verdict)
-      expect(status?.textContent).toBe(copy.compact)
-    }
-    expect(normalizeConcreteAdviceVerdict("unknown_backend_value")).toBe("neutral")
+    // Initial view shows top 3 rows
+    const rows = screen.getAllByTestId("concrete-day-advice-row")
+    expect(rows).toHaveLength(3)
 
-    for (const [verdict, copy] of Object.entries(expected)) {
-      const selectedRow = screen.getAllByTestId("concrete-day-advice-row").find((element) => element.getAttribute("data-status") === verdict)!
-      const selectedKey = selectedRow.getAttribute("data-sphere-key")!
-      rerender(renderNavigator(selectedKey))
-      const details = screen.getByTestId("concrete-day-advice-details")
-      const badge = screen.getByTestId("concrete-day-advice-details-status")
-      const currentRow = screen.getAllByTestId("concrete-day-advice-row").find((element) => element.getAttribute("data-sphere-key") === selectedKey)!
-      expect(details.getAttribute("data-status")).toBe(verdict)
-      expect(badge.getAttribute("data-status")).toBe(verdict)
-      expect(badge.textContent).toBe(copy.details)
-      expect(currentRow.getAttribute("aria-expanded")).toBe("true")
-      expect(currentRow.getAttribute("aria-controls")).toBe(details.getAttribute("id"))
-    }
+    // Show-all button is present
+    const showAllBtn = screen.getByTestId("concrete-day-advice-show-all")
+    expect(showAllBtn).toBeDefined()
+    expect(showAllBtn.textContent).toContain("Все")
+
+    // Clicking show-all expands to all rows
+    fireEvent.click(showAllBtn)
+    expect(screen.getAllByTestId("concrete-day-advice-row")).toHaveLength(payload.concreteAdvice.rows.length)
+
+    // Selecting a sphere renders details panel without verdict badge
+    const firstRow = screen.getAllByTestId("concrete-day-advice-row")[0]
+    const firstKey = firstRow.getAttribute("data-sphere-key")!
+    rerender(renderNavigator(firstKey))
+
+    const details = screen.getByTestId("concrete-day-advice-details")
+    expect(details).toBeDefined()
+    expect(screen.queryByTestId("concrete-day-advice-details-status")).toBeNull()
   })
 
   it("renders TodayScreen with backend horizons and stable screen contract", () => {

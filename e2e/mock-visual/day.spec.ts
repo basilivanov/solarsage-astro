@@ -217,22 +217,22 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(concreteAdvice).toContainText("Спорт");
     await expect(concreteAdvice).toContainText("Общение");
 
-    const expandBtn = concreteAdvice.locator('button[aria-controls="concrete-day-advice-rows"]');
+    const expandBtn = page.getByTestId("concrete-day-advice-show-all");
     await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
 
-    // Collapsed state shows exactly 6 rows
-    const rows = concreteAdvice.locator("[data-testid=\"concrete-day-advice-row\"]");
-    await expect(rows).toHaveCount(6);
+    // Collapsed state shows top 3 rows
+    const rows = concreteAdvice.locator('[data-testid="concrete-day-advice-row"]');
+    await expect(rows).toHaveCount(3);
 
     // Expand advice and assert 12 rows
     await expandBtn.click();
     await expect(expandBtn).toHaveAttribute("aria-expanded", "true");
     await expect(rows).toHaveCount(12);
 
-    // Collapse advice back to 6 rows
+    // Collapse advice back to 3 rows
     await expandBtn.click();
     await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
-    await expect(rows).toHaveCount(6);
+    await expect(rows).toHaveCount(3);
 
     // Expand again for detail checks
     await expandBtn.click();
@@ -246,9 +246,6 @@ test.describe("Mock Visual — /day/[date]", () => {
       const row = rows.nth(i);
       await expect(row).toContainText(expectedEmojis[i]);
       await expect(row).toContainText(expectedLabels[i]);
-
-      // Assert no row has data-status="unavailable"
-      await expect(row).not.toHaveAttribute("data-status", "unavailable");
     }
 
     // Assert that backend-provided text is rendered verbatim
@@ -259,9 +256,6 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(concreteAdvice).not.toContainText("Данные появятся");
     await expect(concreteAdvice).not.toContainText("briefcase");
     await expect(concreteAdvice).not.toContainText("building");
-
-    // Assert that good count is greater than zero
-    await expect(concreteAdvice).toContainText("8 благоприятно");
 
     // Assert page does not contain raw/debug leaks
     const bodyText = await page.innerText("body");

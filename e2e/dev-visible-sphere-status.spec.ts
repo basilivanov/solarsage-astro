@@ -1,10 +1,11 @@
 // ############################################################################
-// AI_HEADER: E2E_DEV_VISIBLE_SPHERE_STATUS — E2E test verifying semantic sphere status labels
-// ROLE: Verifies that semantic status badge and expanded sphere details render correctly.
+// AI_HEADER: E2E_DEV_VISIBLE_SPHERE_STATUS — E2E guard: sphere navigator renders without verdict chips (D2)
+// ROLE: Verifies the premium sphere navigator renders rows/details with no verdict status UI until W3.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-E2E-DEV-VISIBLE-SPHERE-STATUS
-// purpose: Verify verdict label values (Поддержка/Ровно/Внимание/Отложить) and Work badge expansion.
+// purpose: Verify that concrete advice rows and details render WITHOUT verdict labels/badges
+//          (wave W1 decision D2; honest verdict chips return in W3 after the valence backend).
 // owns:
 //   - e2e/dev-visible-sphere-status.spec.ts
 // inputs: browser navigation to local dev URL
@@ -12,7 +13,8 @@
 // dependencies: Playwright test, local server
 // side_effects: writes browser screenshots to docs/work/2026-07-11_preview-visible-sphere-status-labels/assets/01-work-status-expanded-mobile.png
 // emitted_logs: none
-// invariants: четыре verdict enum имеют стабильные visible labels/data-status, раскрытый Work сохраняет aria/data-status contract
+// invariants: no concrete-day-advice-row-status / concrete-day-advice-details-status elements exist;
+//             details panel keeps aria contract and human guidance text
 // failure_policy: fail E2E test
 // END_MODULE_CONTRACT: M-E2E-DEV-VISIBLE-SPHERE-STATUS
 
@@ -20,8 +22,8 @@
 // public_entrypoints:
 //   - test
 // semantic_blocks:
-//   - VERDICT_LABELS_VERIFICATION: verifies all 4 status label representations
-//   - EXPANSION_VERIFICATION: checks Work sphere expand click, badge states, and details panel visibility
+//   - NO_VERDICT_GUARD: proves verdict chips/badges are absent from rows and details
+//   - EXPANSION_VERIFICATION: checks Work sphere expand click and details panel guidance
 //   - SCREENSHOT_CAPTURE: writes mobile layout reference to docs/work/2026-07-11_preview-visible-sphere-status-labels/assets/01-work-status-expanded-mobile.png
 // owned_tests:
 //   - e2e/dev-visible-sphere-status.spec.ts
@@ -36,31 +38,28 @@ const ASSET_PATH = path.join(
   "docs/work/2026-07-11_preview-visible-sphere-status-labels/assets/01-work-status-expanded-mobile.png",
 )
 
-test("shows visible semantic statuses and expanded Work badge in the local fixture", async ({ page }) => {
+test("shows sphere rows without verdict chips and expanded Work details in the local fixture", async ({ page }) => {
   await page.goto("/day/2026-07-08?fixture=three-horizon-timing&why=1")
 
   const fixture = page.getByTestId("dev-timing-fixture")
   await expect(fixture).toBeVisible()
   const navigator = fixture.getByTestId("concrete-day-advice")
-  const statusByVerdict = {
-    good: "Поддержка",
-    neutral: "Ровно",
-    caution: "Внимание",
-    avoid: "Отложить",
-  }
-  for (const [verdict, copy] of Object.entries(statusByVerdict)) {
-    const status = navigator.getByTestId("concrete-day-advice-row-status").filter({ hasText: copy }).first()
-    await expect(status).toHaveAttribute("data-status", verdict)
+
+  // D2: no verdict chips/badges anywhere in the navigator
+  await expect(navigator.getByTestId("concrete-day-advice-row-status")).toHaveCount(0)
+
+  // Expand all rows so every sphere row is reachable
+  const showAll = navigator.getByTestId("concrete-day-advice-show-all")
+  if (await showAll.isVisible().catch(() => false)) {
+    await showAll.click()
   }
 
   const work = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Работа", { exact: true }) })
   await work.click()
-  await expect(work).toHaveAttribute("data-status", "caution")
   await expect(work).toHaveAttribute("aria-expanded", "true")
   const details = navigator.getByTestId("concrete-day-advice-details")
-  await expect(details).toHaveAttribute("data-status", "caution")
-  await expect(details.getByTestId("concrete-day-advice-details-status")).toHaveText("Требует внимания")
-  await expect(details).toContainText("Что может проявиться")
+  await expect(details).toBeVisible()
+  await expect(details.getByTestId("concrete-day-advice-details-status")).toHaveCount(0)
   await expect(details).toContainText("Что поможет")
 
   fs.mkdirSync(path.dirname(ASSET_PATH), { recursive: true })

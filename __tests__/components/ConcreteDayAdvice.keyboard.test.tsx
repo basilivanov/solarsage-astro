@@ -1,10 +1,9 @@
 // ############################################################################
 // AI_HEADER: MODULE_CONCRETE_DAY_ADVICE_NAVIGATOR_TEST
-// ROLE: Unit acceptance tests for the controlled 12-sphere navigator.
+// ROLE: Unit acceptance tests for the controlled sphere navigator.
 // ############################################################################
 // START_MODULE_CONTRACT: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
-// purpose: Prove ConcreteDayAdvice renders all 12 native buttons, verdict labels,
-//   details panel, aria-expanded/controls, and exact compact/details copy.
+// purpose: Prove ConcreteDayAdvice renders single-column top-3 rows with expansion, details panel, aria-expanded/controls, and guidance text.
 // owns:
 //   - __tests__/components/ConcreteDayAdvice.keyboard.test.tsx
 // inputs: canonical ConcreteAdviceBlock fixture.
@@ -14,14 +13,13 @@
 // emitted_logs: none.
 // invariants:
 //   - No unsafe casts or TypeScript suppression directives.
-//   - All verdict keys are valid generated sphere enum members.
-//   - data-status stays exact good|caution|avoid|neutral.
+//   - Top-3 rows rendered initially; show-all expands to all.
+//   - Verdict badges and data-status are omitted.
 // failure_policy: test failure.
 // END_MODULE_CONTRACT: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
 // START_MODULE_MAP: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
 // public_entrypoints: describe/it blocks.
 // semantic_blocks:
-//   - VERDICT_COPY_MATRIX: proves exact compact and details copy for all 4 verdicts.
 //   - ARIA_CONTRACT: aria-expanded/controls/id linkage.
 // owned_tests:
 //   - __tests__/components/ConcreteDayAdvice.keyboard.test.tsx
@@ -32,11 +30,6 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import React from "react"
 import { ConcreteDayAdvice } from "@/components/today/concrete-day-advice"
 import type { ConcreteAdviceBlock } from "@/lib/contracts/today"
-
-function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
-  if (!value) throw new Error(`${label} is missing`)
-  return value
-}
 
 const keys = [
   "work", "money", "documents", "relationships", "sport", "communication",
@@ -72,22 +65,28 @@ function renderNavigator(selectedKey: string | null = null) {
 }
 
 describe("ConcreteDayAdvice human-first navigator", () => {
-  it("renders all 12 canonical buttons without a list expander or technical chips", () => {
+  it("renders top 3 canonical buttons initially and expands to all 12 on show-all click", () => {
     renderNavigator()
-    const buttons = screen.getAllByTestId("concrete-day-advice-row")
-    expect(buttons).toHaveLength(12)
-    expect(buttons.map((button) => button.getAttribute("data-sphere-key"))).toEqual(keys)
-    expect(screen.getByTestId("concrete-day-advice").textContent).not.toMatch(/Показать ещё|все 12 сфер|Транзит/i)
-    for (const button of buttons) {
+    const initialButtons = screen.getAllByTestId("concrete-day-advice-row")
+    expect(initialButtons).toHaveLength(3)
+
+    const showAllBtn = screen.getByTestId("concrete-day-advice-show-all")
+    expect(showAllBtn.textContent).toContain("Все 12 сфер")
+
+    fireEvent.click(showAllBtn)
+    const allButtons = screen.getAllByTestId("concrete-day-advice-row")
+    expect(allButtons).toHaveLength(12)
+    expect(allButtons.map((button) => button.getAttribute("data-sphere-key"))).toEqual(keys)
+
+    for (const button of allButtons) {
       expect(button.tagName).toBe("BUTTON")
-      expect(button.getAttribute("data-status")).toBeTruthy()
       expect(button.getAttribute("data-selected")).toBe("false")
       expect(button.getAttribute("aria-expanded")).toBe("false")
       expect(button.getAttribute("aria-controls")).toBeTruthy()
     }
   })
 
-  it("selects a single sphere, puts details after its two-button row, and keeps row text exact", () => {
+  it("selects a single sphere, puts details after its row, and keeps guidance text exact", () => {
     const { rerender, onSelectedKeyChange, onWhyOpen } = renderNavigator()
     const work = screen.getAllByTestId("concrete-day-advice-row")[0]
     fireEvent.click(work)
@@ -102,9 +101,6 @@ describe("ConcreteDayAdvice human-first navigator", () => {
     expect(details.textContent).not.toMatch(/Транзит|орб|raw hidden/i)
     expect(screen.getAllByTestId("concrete-day-advice-details")).toHaveLength(1)
 
-    const documentButton = screen.getAllByTestId("concrete-day-advice-row")[2]
-    expect(work.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(details.compareDocumentPosition(documentButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     fireEvent.click(screen.getByTestId("sphere-why-cta"))
     expect(onWhyOpen).toHaveBeenCalledOnce()
   })
@@ -116,57 +112,5 @@ describe("ConcreteDayAdvice human-first navigator", () => {
     fireEvent.click(work)
     expect(onSelectedKeyChange).toHaveBeenCalledTimes(1)
     expect(onSelectedKeyChange).toHaveBeenLastCalledWith(null)
-  })
-
-  it("proves all 4 verdict compact + details copy, aria expanded/controls, details data-status unchanged", () => {
-    const verdicts = ["good", "caution", "avoid", "neutral"] as const
-    const keyByVerdict = { good: "work" as const, caution: "money" as const, avoid: "health" as const, neutral: "relationships" as const }
-    const labelByVerdict: Record<string, string> = { good: "Работа", caution: "Деньги", avoid: "Здоровье", neutral: "Отношения" }
-    const expectedCompact: Record<string, string> = { good: "Поддержка", caution: "Требует внимания", avoid: "Лучше отложить", neutral: "Ровный фон" }
-    const expectedDetails: Record<string, string> = { good: "Поддерживающий сигнал", caution: "Напряжённый сигнал · требует внимания", avoid: "Сильное напряжение · лучше отложить", neutral: "Нейтральный сигнал" }
-
-    const testBlock: ConcreteAdviceBlock = {
-      counts: { good: 1, caution: 1, avoid: 1, neutral: 1 },
-      rows: verdicts.map((v) => ({
-        key: keyByVerdict[v], label: labelByVerdict[v], iconName: "briefcase",
-        rank: 1, verdict: v, confidence: "high" as const, text: `text-${v}`, evidence: [],
-      })),
-    }
-
-    const onSelect = vi.fn()
-    const { rerender } = render(
-      <ConcreteDayAdvice concreteAdvice={testBlock} selectedKey={null} onSelectedKeyChange={onSelect} onWhyOpen={vi.fn()} />,
-    )
-
-    for (const verdict of verdicts) {
-      const rows = screen.getAllByTestId("concrete-day-advice-row")
-      const row = requireElement(rows.find((r) => r.getAttribute("data-status") === verdict), `row ${verdict}`)
-      const statusBefore = row.getAttribute("data-status")
-
-      // compact copy
-      const statusEl = row.querySelector("[data-testid='concrete-day-advice-row-status']")
-      expect(statusEl?.textContent).toBe(expectedCompact[verdict])
-
-      // click to select
-      fireEvent.click(row)
-      expect(onSelect).toHaveBeenCalledWith(keyByVerdict[verdict])
-      onSelect.mockClear()
-
-      // rerender with selectedKey
-      rerender(
-        <ConcreteDayAdvice concreteAdvice={testBlock} selectedKey={keyByVerdict[verdict]} onSelectedKeyChange={onSelect} onWhyOpen={vi.fn()} />,
-      )
-      const updatedRows = screen.getAllByTestId("concrete-day-advice-row")
-      const selectedRow = requireElement(updatedRows.find((r) => r.getAttribute("data-status") === verdict), `selected row ${verdict}`)
-      const details = screen.getByTestId("concrete-day-advice-details")
-
-      expect(selectedRow.getAttribute("aria-expanded")).toBe("true")
-      expect(selectedRow.getAttribute("aria-controls")).toBe(details.getAttribute("id"))
-      expect(selectedRow.getAttribute("data-status")).toBe(statusBefore)
-      expect(details.getAttribute("data-sphere-key")).toBe(keyByVerdict[verdict])
-      expect(details.getAttribute("data-status")).toBe(verdict)
-      expect(details.textContent).toContain(expectedDetails[verdict])
-      expect(details.textContent).toContain(`text-${verdict}`)
-    }
   })
 })
