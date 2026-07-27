@@ -24,7 +24,7 @@
 #   - Already-cached user/date pairs are cheap no-ops.
 #   - Per-user failure never aborts the batch.
 # failure_policy: per-user exception is printed and swallowed; batch completes.
-# END_MODULE_CONTRACT
+# END_MODULE_CONTRACT: M-JOBS-DAY-PREGEN
 
 # START_MODULE_MAP: M-JOBS-DAY-PREGEN
 # public_entrypoints:
