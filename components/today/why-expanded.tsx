@@ -44,9 +44,9 @@
 "use client"
 
 import { useEffect, useId, useRef, useState } from "react"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-import type { ConcreteAdviceBlock, TodayV2Block, TodayV2WhyTodayItem, TodayWhySection, TodayWireIdentity } from "@/lib/contracts/today"
+import type { ConcreteAdviceBlock, TodayV2Block, TodayV2Horizon, TodayV2WhyTodayItem, TodayWhySection, TodayWireIdentity } from "@/lib/contracts/today"
 import { getIcon } from "@/lib/icons"
 import {
   formatActivationEvidenceTitle,
@@ -58,7 +58,8 @@ import {
   getTechniqueLabel,
   selectWhyTimeHorizons,
 } from "@/lib/presentation/today-v2"
-import { LegacyWhyTimeHorizonCard, WhyTimeHorizonCard } from "./why-time-horizon-card"
+import { HorizonSheet } from "./horizon-sheet"
+import { LegacyWhyTimeHorizonCard } from "./why-time-horizon-card"
 
 type Props = {
   sections: TodayWhySection[]
@@ -219,6 +220,30 @@ function HorizonsUnavailableContent() {
   )
 }
 
+const HORIZON_INDEX = { long: "01", medium: "02", fast: "03" } as const
+
+const BACKEND_TONE_LABELS = {
+  supportive: "Поддерживает",
+  neutral: "Ровный фон",
+  tense: "Требует внимания",
+  mixed: "Смешанный сигнал",
+} as const
+
+const BACKEND_TONE_STYLES = {
+  supportive: {
+    badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-100",
+  },
+  neutral: {
+    badge: "bg-slate-200/80 text-slate-800 dark:bg-zinc-500/20 dark:text-zinc-100",
+  },
+  tense: {
+    badge: "bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-100",
+  },
+  mixed: {
+    badge: "bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-100",
+  },
+} as const
+
 function BackendHorizonsContent({
   v2,
   concreteAdvice,
@@ -228,6 +253,8 @@ function BackendHorizonsContent({
   concreteAdvice?: ConcreteAdviceBlock | null
   onSphereSelect?: (key: string) => void
 }) {
+  const [selectedHorizon, setSelectedHorizon] = useState<TodayV2Horizon | null>(null)
+
   if (!v2?.horizons) return null
   return (
     <section data-testid="why-horizons" data-state="ready" data-source="backend-horizons" className="space-y-4">
@@ -238,14 +265,54 @@ function BackendHorizonsContent({
       </header>
       <div className="space-y-3">
         {v2.horizons.items.map((horizon) => (
-          <WhyTimeHorizonCard
+          <button
             key={horizon.id}
-            horizon={horizon}
-            concreteAdvice={concreteAdvice}
-            onSphereSelect={onSphereSelect}
-          />
+            type="button"
+            data-testid="why-horizon-teaser"
+            data-horizon={horizon.horizon}
+            data-status={horizon.tone}
+            aria-haspopup="dialog"
+            onClick={() => setSelectedHorizon(horizon)}
+            className="w-full flex flex-col gap-2 rounded-2xl border border-violet-200/70 bg-card p-4 text-left shadow-sm transition hover:border-violet-300 hover:bg-violet-50/30 dark:border-violet-400/25 dark:hover:bg-violet-500/10 active:scale-[0.985] cursor-pointer"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-[11px] font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-100">
+                  {HORIZON_INDEX[horizon.horizon]}
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-200">
+                  {horizon.eyebrow}
+                </span>
+              </div>
+              <span
+                data-status={horizon.tone}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${BACKEND_TONE_STYLES[horizon.tone].badge}`}
+              >
+                {BACKEND_TONE_LABELS[horizon.tone]}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1 min-w-0 flex-1">
+                <h3 className="font-serif text-[18px] font-semibold leading-tight text-foreground">
+                  {horizon.title}
+                </h3>
+                <p className="text-[13.5px] leading-relaxed text-muted-foreground line-clamp-2">
+                  {horizon.summary}
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground flex-none" aria-hidden="true" />
+            </div>
+          </button>
         ))}
       </div>
+
+      <HorizonSheet
+        horizon={selectedHorizon}
+        concreteAdvice={concreteAdvice}
+        onSphereSelect={onSphereSelect}
+        onClose={() => setSelectedHorizon(null)}
+      />
     </section>
   )
 }

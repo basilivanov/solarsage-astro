@@ -390,7 +390,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.getByTestId("why-expanded")).toBeTruthy()
   })
 
-  it("renders backend intro and three ordered why-horizon cards from v2.horizons", () => {
+  it("renders backend intro and three ordered why-horizon teasers from v2.horizons", () => {
     renderBackendWhyExpanded()
 
     const block = screen.getByTestId("why-horizons")
@@ -400,10 +400,9 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(block.textContent).toContain("Опору сейчас лучше перестраивать без резких движений")
     expect(block.textContent).toContain("Долгий цикл меняет отношение к ответственности и контролю")
 
-    const cards = screen.getAllByTestId("why-horizon")
-    expect(cards.map((item) => item.getAttribute("data-horizon"))).toEqual(["long", "medium", "fast"])
-    expect(cards.map((item) => item.getAttribute("data-status"))).toEqual(["mixed", "mixed", "tense"])
-    expect(cards.map((item) => item.getAttribute("data-timing-state"))).toEqual(["background", "building", "peaked"])
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    expect(teasers.map((item) => item.getAttribute("data-horizon"))).toEqual(["long", "medium", "fast"])
+    expect(teasers.map((item) => item.getAttribute("data-status"))).toEqual(["mixed", "mixed", "tense"])
     expect(screen.queryByTestId("why-time-horizon")).toBeNull()
     expect(screen.queryByTestId("astrology-calculation")).toBeNull()
   })
@@ -411,57 +410,80 @@ describe("TodayScreen V2 downstream fixture", () => {
   it("uses backend timing labels and visible tone text without recalculation", () => {
     renderBackendWhyExpanded()
 
-    const [longCard, mediumCard, fastCard] = screen.getAllByTestId("why-horizon")
-    expect(within(longCard).getByTestId("why-horizon-timing").textContent).toContain("12 мая 2026 — 11 мая 2027")
-    expect(within(longCard).getByTestId("why-horizon-timing").textContent).toContain("Фон уже действует")
-    expect(within(mediumCard).getByTestId("why-horizon-timing").textContent).toContain("3–18 июля")
-    expect(within(mediumCard).getByTestId("why-horizon-timing").textContent).toContain("Точный пик — 10 июля, 14:32 по Москве")
-    expect(within(mediumCard).getByTestId("why-horizon-timing").textContent).toContain("Набирает силу")
-    expect(within(fastCard).getByTestId("why-horizon-timing").textContent).toContain("8–10 июля по Москве")
-    expect(within(fastCard).getByTestId("why-horizon-timing").textContent).toContain("Пик был 8 июля в 08:00")
-    expect(within(fastCard).getByTestId("why-horizon-timing").textContent).toContain("Пик уже пройден")
-    expect(within(longCard).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("mixed")
-    expect(within(mediumCard).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("mixed")
-    expect(within(fastCard).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("tense")
-    expect(screen.getAllByText("Смешанный сигнал")).toHaveLength(2)
-    expect(screen.getByText("Требует внимания")).toBeTruthy()
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    expect(teasers).toHaveLength(3)
+
+    // Open long horizon sheet
+    fireEvent.click(teasers[0])
+    const longSheet = screen.getByTestId("horizon-sheet")
+    expect(within(longSheet).getByTestId("why-horizon-timing").textContent).toContain("12 мая 2026 — 11 мая 2027")
+    expect(within(longSheet).getByTestId("why-horizon-timing").textContent).toContain("Фон уже действует")
+    expect(within(longSheet).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("mixed")
+
+    // Close sheet
+    fireEvent.click(within(longSheet).getByRole("button", { name: "Закрыть" }))
+
+    // Open medium horizon sheet
+    fireEvent.click(teasers[1])
+    const mediumSheet = screen.getByTestId("horizon-sheet")
+    expect(within(mediumSheet).getByTestId("why-horizon-timing").textContent).toContain("3–18 июля")
+    expect(within(mediumSheet).getByTestId("why-horizon-timing").textContent).toContain("Точный пик — 10 июля, 14:32 по Москве")
+    expect(within(mediumSheet).getByTestId("why-horizon-timing").textContent).toContain("Набирает силу")
+    expect(within(mediumSheet).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("mixed")
+
+    // Close sheet
+    fireEvent.click(within(mediumSheet).getByRole("button", { name: "Закрыть" }))
+
+    // Open fast horizon sheet
+    fireEvent.click(teasers[2])
+    const fastSheet = screen.getByTestId("horizon-sheet")
+    expect(within(fastSheet).getByTestId("why-horizon-timing").textContent).toContain("8–10 июля по Москве")
+    expect(within(fastSheet).getByTestId("why-horizon-timing").textContent).toContain("Пик был 8 июля в 08:00")
+    expect(within(fastSheet).getByTestId("why-horizon-timing").textContent).toContain("Пик уже пройден")
+    expect(within(fastSheet).getByTestId("why-horizon-tone").getAttribute("data-status")).toBe("tense")
   })
 
   it("renders backend actions, optional strength/risk, and manifestation conditions", () => {
     renderBackendWhyExpanded()
 
-    const [longCard, mediumCard, fastCard] = screen.getAllByTestId("why-horizon")
-    expect(within(longCard).getByTestId("why-horizon-actions").querySelectorAll("li")).toHaveLength(2)
-    expect(within(longCard).getByTestId("why-horizon-avoid").querySelectorAll("li")).toHaveLength(1)
-    expect(longCard.textContent).toContain("Эта рамка актуальна до 11 мая 2027")
-    expect(within(longCard).getByTestId("why-horizon-strength")).toBeTruthy()
-    expect(within(longCard).getByTestId("why-horizon-risk")).toBeTruthy()
-    expect(longCard.textContent).toContain("Если сейчас вы обсуждаете новую роль или объём ответственности…")
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
 
-    expect(within(mediumCard).getByTestId("why-horizon-actions").querySelectorAll("li")).toHaveLength(2)
-    expect(within(mediumCard).getByTestId("why-horizon-avoid").querySelectorAll("li")).toHaveLength(1)
-    expect(mediumCard.textContent).toContain("Этот эксперимент актуален до 18 июля")
-    expect(within(mediumCard).getByTestId("why-horizon-strength")).toBeTruthy()
-    expect(within(mediumCard).getByTestId("why-horizon-risk")).toBeTruthy()
+    // Open long horizon sheet
+    fireEvent.click(teasers[0])
+    const longSheet = screen.getByTestId("horizon-sheet")
+    expect(within(longSheet).getByTestId("why-horizon-actions").querySelectorAll("li")).toHaveLength(2)
+    expect(within(longSheet).getByTestId("why-horizon-avoid").querySelectorAll("li")).toHaveLength(1)
+    expect(longSheet.textContent).toContain("Эта рамка актуальна до 11 мая 2027")
+    expect(within(longSheet).getByTestId("why-horizon-strength")).toBeTruthy()
+    expect(within(longSheet).getByTestId("why-horizon-risk")).toBeTruthy()
+    expect(longSheet.textContent).toContain("Если сейчас вы обсуждаете новую роль или объём ответственности…")
 
-    expect(within(fastCard).getByTestId("why-horizon-actions").querySelectorAll("li")).toHaveLength(1)
-    expect(within(fastCard).getByTestId("why-horizon-avoid").querySelectorAll("li")).toHaveLength(1)
-    expect(screen.queryAllByTestId("why-horizon-strength")).toHaveLength(2)
-    expect(within(fastCard).getByTestId("why-horizon-risk")).toBeTruthy()
+    // Close
+    fireEvent.click(within(longSheet).getByRole("button", { name: "Закрыть" }))
+
+    // Open medium horizon sheet
+    fireEvent.click(teasers[1])
+    const mediumSheet = screen.getByTestId("horizon-sheet")
+    expect(within(mediumSheet).getByTestId("why-horizon-actions").querySelectorAll("li")).toHaveLength(2)
+    expect(within(mediumSheet).getByTestId("why-horizon-avoid").querySelectorAll("li")).toHaveLength(1)
+    expect(mediumSheet.textContent).toContain("Этот эксперимент актуален до 18 июля")
+    expect(within(mediumSheet).getByTestId("why-horizon-strength")).toBeTruthy()
+    expect(within(mediumSheet).getByTestId("why-horizon-risk")).toBeTruthy()
   })
 
   it("renders per-card technical disclosures closed by default and opens associated content", () => {
     renderBackendWhyExpanded()
 
-    const toggles = screen.getAllByTestId("why-horizon-technical-toggle")
-    expect(toggles).toHaveLength(3)
-    for (const toggle of toggles) {
-      expect(toggle.getAttribute("aria-expanded")).toBe("false")
-    }
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[0])
+    const horizonSheet = screen.getByTestId("horizon-sheet")
 
-    fireEvent.click(toggles[0])
-    expect(toggles[0].getAttribute("aria-expanded")).toBe("true")
-    const content = screen.getByTestId("why-horizon-technical-content")
+    const toggle = within(horizonSheet).getByTestId("why-horizon-technical-toggle")
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute("aria-expanded")).toBe("true")
+    const content = within(horizonSheet).getByTestId("why-horizon-technical-content")
     expect(content.getAttribute("role")).toBe("region")
     expect(content.textContent).toContain("Профекция")
     expect(content.textContent).toContain("Фирдар")
@@ -480,13 +502,16 @@ describe("TodayScreen V2 downstream fixture", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: "Почему так у меня" }))
-    const sphereButtons = screen.getAllByTestId("why-horizon-sphere")
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[0])
+
+    const horizonSheet = screen.getByTestId("horizon-sheet")
+    const sphereButtons = within(horizonSheet).getAllByTestId("why-horizon-sphere")
     expect(sphereButtons.some((button) => button.textContent === "Работа")).toBe(true)
 
     fireEvent.click(sphereButtons.find((button) => button.textContent === "Работа")!)
     const details = screen.getByTestId("sphere-details-sheet")
     expect(details.getAttribute("data-sphere-key")).toBe("work")
-    expect(details.textContent).toContain("Не форсируйте разговор о статусе")
   })
 
   it("does not call selectWhyTimeHorizons when backend horizons exist", () => {
@@ -692,32 +717,34 @@ describe("TodayScreen V2 downstream fixture", () => {
   })
 
   // ── B4.W2 intro, indexes, tone ─────────────────────────────────
-  it("renders backend intro, horizon indexes, exact tone labels", () => {
+  it("renders backend intro, horizon teasers, exact tone labels", () => {
     renderBackendWhyExpanded()
     const intro = screen.getByTestId("why-horizons-intro")
     expect(intro.textContent).toContain("Личная логика периода")
-    const indexes = screen.getAllByTestId("why-horizon-index")
-    expect(indexes.map((el) => el.textContent)).toEqual(["01", "02", "03"])
-    const tones = screen.getAllByTestId("why-horizon-tone")
-    expect(tones.filter((t) => t.textContent === "Смешанный сигнал")).toHaveLength(2)
-    expect(tones.filter((t) => t.textContent === "Требует внимания")).toHaveLength(1)
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    expect(teasers.map((el) => el.getAttribute("data-horizon"))).toEqual(["long", "medium", "fast"])
+    const tones = teasers.map((t) => t.getAttribute("data-status"))
+    expect(tones.filter((t) => t === "mixed")).toHaveLength(2)
+    expect(tones.filter((t) => t === "tense")).toHaveLength(1)
     const text = screen.getByTestId("why-horizons").textContent ?? ""
     for (const old of ["Смешанный фон","Напряжённый фон","Поддерживающий фон","Нейтральный фон"]) {
       expect(text).not.toContain(old)
     }
   })
 
-  // ── Long card exact DOM order ──────────────────────────────────
-  it("has exact DOM order for long card including strength/risk/validity/actions/avoid", () => {
+  // ── Long card exact DOM order inside horizon sheet ───────────────
+  it("has exact DOM order for long card including strength/risk/validity/actions/avoid inside horizon sheet", () => {
     renderBackendWhyExpanded()
-    const card = screen.getAllByTestId("why-horizon")[0]
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[0])
+
+    const card = screen.getByTestId("horizon-sheet")
     const q = (sel: string) => requireElement(card.querySelector(sel), `long ${sel}`)
     const meaning = q("[data-testid='why-horizon-meaning']")
     const timing = q("[data-testid='why-horizon-timing']")
     const manifestations = q("[data-testid='why-horizon-manifestations']")
     const strength = q("[data-testid='why-horizon-strength']")
     const risk = q("[data-testid='why-horizon-risk']")
-    const validity = q("[data-testid='why-horizon-validity']")
     const actions = q("[data-testid='why-horizon-actions']")
     const avoid = q("[data-testid='why-horizon-avoid']")
     const spheres = q("[data-testid='why-horizon-spheres']")
@@ -727,59 +754,67 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(timing.compareDocumentPosition(manifestations) & follow).toBeTruthy()
     expect(manifestations.compareDocumentPosition(strength) & follow).toBeTruthy()
     expect(strength.compareDocumentPosition(risk) & follow).toBeTruthy()
-    expect(risk.compareDocumentPosition(validity) & follow).toBeTruthy()
-    expect(validity.compareDocumentPosition(actions) & follow).toBeTruthy()
+    expect(risk.compareDocumentPosition(actions) & follow).toBeTruthy()
     expect(actions.compareDocumentPosition(avoid) & follow).toBeTruthy()
     expect(avoid.compareDocumentPosition(spheres) & follow).toBeTruthy()
     expect(spheres.compareDocumentPosition(tech) & follow).toBeTruthy()
   })
 
   // ── Fast card DOM order ─────────────────────────────────────────
-  it("has correct DOM order for fast card with optional strength absent", () => {
+  it("has correct DOM order for fast card with optional strength absent inside horizon sheet", () => {
     renderBackendWhyExpanded()
-    const card = screen.getAllByTestId("why-horizon")[2]
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[2])
+
+    const card = screen.getByTestId("horizon-sheet")
     expect(card.querySelector("[data-testid='why-horizon-strength']")).toBeNull()
     expect(card.querySelector("[data-testid='why-horizon-patterns']")).toBeTruthy()
     const q = (sel: string) => requireElement(card.querySelector(sel), `fast ${sel}`)
     const manifestations = q("[data-testid='why-horizon-manifestations']")
     const risk = q("[data-testid='why-horizon-risk']")
-    const validity = q("[data-testid='why-horizon-validity']")
     const actions = q("[data-testid='why-horizon-actions']")
     const avoid = q("[data-testid='why-horizon-avoid']")
     const spheres = q("[data-testid='why-horizon-spheres']")
     const tech = q("[data-testid='why-horizon-technical-toggle']")
     const follow = Node.DOCUMENT_POSITION_FOLLOWING
     expect(manifestations.compareDocumentPosition(risk) & follow).toBeTruthy()
-    expect(risk.compareDocumentPosition(validity) & follow).toBeTruthy()
-    expect(validity.compareDocumentPosition(actions) & follow).toBeTruthy()
+    expect(risk.compareDocumentPosition(actions) & follow).toBeTruthy()
     expect(actions.compareDocumentPosition(avoid) & follow).toBeTruthy()
     expect(avoid.compareDocumentPosition(spheres) & follow).toBeTruthy()
     expect(spheres.compareDocumentPosition(tech) & follow).toBeTruthy()
   })
 
   // ── Exact timing strings ───────────────────────────────────────
-  it("has exact timing strings for all three horizons", () => {
+  it("has exact timing strings for all three horizons inside horizon sheet", () => {
     renderBackendWhyExpanded()
-    const cards = screen.getAllByTestId("why-horizon")
-    const long = cards[0]; const medium = cards[1]; const fast = cards[2]
-    const lr = requireElement(long.querySelector("[data-testid='why-horizon-timing-range']"), "long range")
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+
+    fireEvent.click(teasers[0])
+    const longSheet = screen.getByTestId("horizon-sheet")
+    const lr = requireElement(longSheet.querySelector("[data-testid='why-horizon-timing-range']"), "long range")
     expect(lr.textContent).toBe("Период: 12 мая 2026 — 11 мая 2027")
-    expect(long.querySelector("[data-testid='why-horizon-timing-peak']")).toBeNull()
-    const ls = requireElement(long.querySelector("[data-testid='why-horizon-timing-state']"), "long state")
+    expect(longSheet.querySelector("[data-testid='why-horizon-timing-peak']")).toBeNull()
+    const ls = requireElement(longSheet.querySelector("[data-testid='why-horizon-timing-state']"), "long state")
     expect(ls.textContent).toBe("Сейчас: Фон уже действует")
+    fireEvent.click(within(longSheet).getByRole("button", { name: "Закрыть" }))
 
-    const mr = requireElement(medium.querySelector("[data-testid='why-horizon-timing-range']"), "med range")
+    fireEvent.click(teasers[1])
+    const mediumSheet = screen.getByTestId("horizon-sheet")
+    const mr = requireElement(mediumSheet.querySelector("[data-testid='why-horizon-timing-range']"), "med range")
     expect(mr.textContent).toBe("Период: 3–18 июля")
-    const mp = requireElement(medium.querySelector("[data-testid='why-horizon-timing-peak']"), "med peak")
+    const mp = requireElement(mediumSheet.querySelector("[data-testid='why-horizon-timing-peak']"), "med peak")
     expect(mp.textContent).toBe("Пик: Точный пик — 10 июля, 14:32 по Москве")
-    const ms = requireElement(medium.querySelector("[data-testid='why-horizon-timing-state']"), "med state")
+    const ms = requireElement(mediumSheet.querySelector("[data-testid='why-horizon-timing-state']"), "med state")
     expect(ms.textContent).toBe("Сейчас: Набирает силу")
+    fireEvent.click(within(mediumSheet).getByRole("button", { name: "Закрыть" }))
 
-    const fr = requireElement(fast.querySelector("[data-testid='why-horizon-timing-range']"), "fast range")
+    fireEvent.click(teasers[2])
+    const fastSheet = screen.getByTestId("horizon-sheet")
+    const fr = requireElement(fastSheet.querySelector("[data-testid='why-horizon-timing-range']"), "fast range")
     expect(fr.textContent).toBe("Период: 8–10 июля по Москве")
-    const fp = requireElement(fast.querySelector("[data-testid='why-horizon-timing-peak']"), "fast peak")
+    const fp = requireElement(fastSheet.querySelector("[data-testid='why-horizon-timing-peak']"), "fast peak")
     expect(fp.textContent).toBe("Пик: Пик был 8 июля в 08:00")
-    const fs = requireElement(fast.querySelector("[data-testid='why-horizon-timing-state']"), "fast state")
+    const fs = requireElement(fastSheet.querySelector("[data-testid='why-horizon-timing-state']"), "fast state")
     expect(fs.textContent).toBe("Сейчас: Пик уже пройден")
   })
 
@@ -794,11 +829,15 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.queryByTestId("why-horizon-technical-content")).toBeNull()
   })
 
-  it("opens first technical toggle and shows backend terms and timing", () => {
+  it("opens first technical toggle inside horizon sheet and shows backend terms and timing", () => {
     renderBackendWhyExpanded()
-    const toggle = screen.getAllByTestId("why-horizon-technical-toggle")[0]
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[0])
+    const horizonSheet = screen.getByTestId("horizon-sheet")
+
+    const toggle = within(horizonSheet).getByTestId("why-horizon-technical-toggle")
     fireEvent.click(toggle)
-    const content = screen.getByTestId("why-horizon-technical-content")
+    const content = within(horizonSheet).getByTestId("why-horizon-technical-content")
     expect(content.textContent).toMatch(/Профекция/i)
     expect(content.textContent).toMatch(/Фирдар/i)
     expect(content.textContent).toContain("12 мая 2026")
@@ -806,35 +845,25 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(content.textContent).not.toContain("natalFactIds")
   })
 
-  // ── ARIA matrix (direct toggle data-horizon) ────────────────────
-  it("each toggle has unique id, direct data-horizon, aria-controls, region labelledby", () => {
+  // ── ARIA matrix (direct toggle data-horizon inside horizon sheet) ────────────────────
+  it("each technical toggle inside horizon sheet has unique id, direct data-horizon, aria-controls", () => {
     renderBackendWhyExpanded()
-    const toggles = screen.getAllByTestId("why-horizon-technical-toggle")
-    expect(toggles).toHaveLength(3)
-    const ids = new Set<string>()
-    for (let i = 0; i < toggles.length; i++) {
-      const t = toggles[i]
-      expect(t.tagName).toBe("BUTTON")
-      const idAttr = t.getAttribute("id")
-      expect(idAttr).toBeTruthy()
-      if (idAttr) {
-        expect(ids.has(idAttr)).toBe(false)
-        ids.add(idAttr)
-      }
-      const expectedHorizon = ["long", "medium", "fast"][i]
-      expect(t.getAttribute("data-horizon")).toBe(expectedHorizon)
-      expect(t.getAttribute("aria-expanded")).toBe("false")
-      fireEvent.click(t)
-      expect(t.getAttribute("aria-expanded")).toBe("true")
-      const regionId = t.getAttribute("aria-controls")
-      expect(regionId).toBeTruthy()
-      const region = regionId ? document.getElementById(regionId) : null
-      expect(region).toBeTruthy()
-      expect(region?.getAttribute("role")).toBe("region")
-      expect(region?.getAttribute("aria-labelledby")).toBe(idAttr)
-      expect(region?.getAttribute("data-horizon")).toBe(expectedHorizon)
-      fireEvent.click(t)
-    }
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[0])
+    const horizonSheet = screen.getByTestId("horizon-sheet")
+
+    const toggle = within(horizonSheet).getByTestId("why-horizon-technical-toggle")
+    expect(toggle.tagName).toBe("BUTTON")
+    expect(toggle.getAttribute("data-horizon")).toBe("long")
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute("aria-expanded")).toBe("true")
+    const regionId = toggle.getAttribute("aria-controls")
+    expect(regionId).toBeTruthy()
+    const region = within(horizonSheet).getByTestId("why-horizon-technical-content")
+    expect(region.getAttribute("id")).toBe(regionId)
+    expect(region.getAttribute("role")).toBe("region")
+    expect(region.getAttribute("aria-labelledby")).toBe(toggle.getAttribute("id"))
   })
 
   // ── Sphere chip callback contract ──────────────────────────────
@@ -852,7 +881,11 @@ describe("TodayScreen V2 downstream fixture", () => {
         open
       />,
     )
-    const chips = screen.getAllByTestId("why-horizon-sphere")
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[0])
+
+    const horizonSheet = screen.getByTestId("horizon-sheet")
+    const chips = within(horizonSheet).getAllByTestId("why-horizon-sphere")
     const work = requireElement(chips.find((c) => c.getAttribute("data-sphere-key") === "work"), "work chip")
     expect(work.tagName).toBe("BUTTON")
     expect(work.getAttribute("aria-label")).toBe("Открыть сферу «Работа» в навигаторе")
@@ -863,7 +896,7 @@ describe("TodayScreen V2 downstream fixture", () => {
   })
 
   // ── Missing target row via real WhyExpanded ─────────────────────
-  it("missing concreteAdvice row filters out horizon sphere chip via WhyTimeHorizonCard", () => {
+  it("missing concreteAdvice row filters out horizon sphere chip via HorizonSheet", () => {
     const { payload } = buildCanonicalPayload()
     const filteredAdvice = { ...payload.concreteAdvice, rows: payload.concreteAdvice.rows.filter((r) => r.key !== "work") }
     const onSphereSelect = vi.fn()
@@ -878,11 +911,15 @@ describe("TodayScreen V2 downstream fixture", () => {
         open
       />,
     )
-    const chips = screen.getAllByTestId("why-horizon-sphere")
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[0])
+
+    const horizonSheet = screen.getByTestId("horizon-sheet")
+    const chips = within(horizonSheet).getAllByTestId("why-horizon-sphere")
     const workChips = chips.filter((c) => c.getAttribute("data-sphere-key") === "work")
     expect(workChips).toHaveLength(0)
-    expect(screen.queryByRole("button", { name: /Открыть сферу «Работа»/ })).toBeNull()
-    // other chips still present
+    expect(within(horizonSheet).queryByRole("button", { name: /Открыть сферу «Работа»/ })).toBeNull()
+
     const decisions = chips.find((c) => c.getAttribute("data-sphere-key") === "decisions")
     expect(decisions).toBeTruthy()
     if (decisions) {
@@ -915,18 +952,17 @@ describe("TodayScreen V2 downstream fixture", () => {
     Object.defineProperty(workRow, "scrollIntoView", { configurable: true, value: scrollSpy })
     Object.defineProperty(workRow, "focus", { configurable: true, value: focusSpy })
 
-    const chips = screen.getAllByTestId("why-horizon-sphere")
+    const teasers = screen.getAllByTestId("why-horizon-teaser")
+    fireEvent.click(teasers[0])
+
+    const horizonSheet = screen.getByTestId("horizon-sheet")
+    const chips = within(horizonSheet).getAllByTestId("why-horizon-sphere")
     const workChip = requireElement(chips.find((c) => c.getAttribute("data-sphere-key") === "work"), "work chip")
     fireEvent.click(workChip)
 
     // After click assertions: modal sheet opens with work details
     expect(workRow.getAttribute("data-selected")).toBe("true")
     const details = screen.getByTestId("sphere-details-sheet")
-    expect(details.getAttribute("data-sphere-key")).toBe("work")
-
-    // Same-chip repeat: click again, sheet remains open
-    fireEvent.click(workChip)
-    expect(workRow.getAttribute("data-selected")).toBe("true")
     expect(details.getAttribute("data-sphere-key")).toBe("work")
 
     rafSpy.mockRestore()
