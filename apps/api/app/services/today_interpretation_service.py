@@ -606,9 +606,11 @@ class TodayInterpretationService:
                     if sanitized:
                         advice_text = sanitized["advice"]
                         if validate_row_text(row, advice_text):
+                            from app.services.sphere_why_builder import build_sphere_why
+                            deterministic_why = build_sphere_why(row.evidence)
                             details_obj = ConcreteAdviceDetails(
                                 story=sanitized["story"],
-                                why=sanitized["why"],
+                                why=deterministic_why,
                                 advice=advice_text,
                             )
                             staged.append((row, advice_text, details_obj))

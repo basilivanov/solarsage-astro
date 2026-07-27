@@ -26,7 +26,10 @@
 from __future__ import annotations
 from app.schemas.today import ConcreteAdviceEvidence
 
-BANNED_ASTRO_STEMS: list[str] = ["транзит", "аспект", "орб", "натал", "планет"]
+BANNED_ASTRO_STEMS: list[str] = [
+    "транзит", "аспект", "орб", "натал", "планет",
+    "поддержк", "влияни", "гармони",
+]
 
 
 def has_banned_jargon(text: str, row_key: str = "") -> bool:

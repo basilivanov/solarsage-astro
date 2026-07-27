@@ -420,7 +420,7 @@ async def test_concrete_advice_details_structuring_and_fallback():
         for r in rows:
             assert r.details is not None
             assert r.details.story.startswith("Персональная история")
-            assert len(r.details.why) == 1
+            assert isinstance(r.details.why, list)
             assert r.details.advice.startswith("Действуй взвешенно")
             assert r.text == r.details.advice
 
