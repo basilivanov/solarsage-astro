@@ -105,6 +105,9 @@ Nginx (`/etc/nginx/sites-enabled/astro.conf`): `dev.astro.vasiliy-ivanov.ru` и 
 | `solarsage-frontend-dev-3000.service` | `pnpm next dev` (обычно inactive; 3000 поднимают вручную, nginx его не обслуживает) | 3000 |
 | `solarsage-frontend-mock-dev-3001.service` | mock preview из worktree `/opt/solarsage-astro-mock-preview` (`archive/demo-origin-main`) | 3001 |
 | `solarsage-synastry-reconcile.timer` (+ `.service`) | oneshot `python -m app.jobs.synastry_reconcile` каждые 5 мин — доводит зависшие synastry-репорты до ready/failed+refund | — |
+| `solarsage-day-pregen.timer` (+ `.service`) | oneshot `python -m app.jobs.day_pregen` ежедневно в 04:07 — предгенерация завтрашнего дня активным пользователям (cache hit вместо ~75 сек LLM). Юнит несёт `TODAY_VALENCE_V1_ENABLED=true` inline; источники в `infra/systemd/` | — |
+
+Девовский API-юнит имеет drop-in `/etc/systemd/system/solarsage-api.service.d/valence.conf` с `TODAY_VALENCE_V1_ENABLED=true` (флаг НЕ в `.env`, чтобы тесты не подхватывали). `TODAY_VALENCE_V1_DUAL_RUN=true` стоит в `.env` (теневые логи valence безопасны для тестов).
 
 Девовский `.env`: `APP_ENV=staging`, `DEV_MODE=false`, `APP_DOMAIN=dev.astro.vasiliy-ivanov.ru` → auth только через Telegram HMAC, `/api/auth/dev` на деве недоступен.
 
