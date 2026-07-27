@@ -70,9 +70,9 @@ export function CheckinStatsCard() {
     )
   }
 
-  const streak = metrics?.currentStreak ?? metrics?.current_streak ?? 0
-  const longest = metrics?.longestStreak ?? metrics?.longest_streak ?? 0
-  const total = metrics?.totalCheckins ?? metrics?.total_checkins ?? 0
+  const streak = metrics?.currentStreak ?? 0
+  const longest = metrics?.longestStreak ?? 0
+  const total = metrics?.totalCheckins ?? 0
 
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-5 space-y-4" data-testid="checkin-stats-card">
