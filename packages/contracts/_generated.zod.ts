@@ -687,6 +687,11 @@ export const ConcreteAdviceCounts = z.object({
   good: z.number().int(),
   neutral: z.number().int(),
 });
+export const ConcreteAdviceDetails = z.object({
+  advice: z.string(),
+  story: z.string(),
+  why: z.array(z.string()).optional(),
+});
 export const ConcreteAdviceEvidence = z.object({
   activationId: z.union([z.string(), z.null()]).optional(),
   aspectType: z.union([z.string(), z.null()]).optional(),
@@ -717,6 +722,7 @@ export const ConcreteAdviceEvidence = z.object({
 });
 export const ConcreteAdviceRow = z.object({
   confidence: z.enum(["high", "medium", "low"]),
+  details: z.union([ConcreteAdviceDetails, z.null()]).optional(),
   evidence: z.array(ConcreteAdviceEvidence),
   iconName: z.string(),
   key: z.enum([
@@ -1316,6 +1322,7 @@ export const schemas = {
   TelegramAuthRequest,
   TodayAction,
   ConcreteAdviceCounts,
+  ConcreteAdviceDetails,
   ConcreteAdviceEvidence,
   ConcreteAdviceRow,
   ConcreteAdviceBlock,

@@ -1145,6 +1145,27 @@ export interface components {
             /** Neutral */
             neutral: number;
         };
+        /**
+         * ConcreteAdviceDetails
+         * @description Structured personal drilldown breakdown for a single product sphere.
+         */
+        ConcreteAdviceDetails: {
+            /**
+             * Advice
+             * @description Short concrete advice string
+             */
+            advice: string;
+            /**
+             * Story
+             * @description 2-3 sentences about the person and their day in this sphere
+             */
+            story: string;
+            /**
+             * Why
+             * @description 1-2 human background lines grounded in evidence
+             */
+            why?: string[];
+        };
         /** ConcreteAdviceEvidence */
         ConcreteAdviceEvidence: {
             /** Activationid */
@@ -1192,6 +1213,7 @@ export interface components {
              * @enum {string}
              */
             confidence: "high" | "medium" | "low";
+            details?: components["schemas"]["ConcreteAdviceDetails"] | null;
             /** Evidence */
             evidence: components["schemas"]["ConcreteAdviceEvidence"][];
             /** Iconname */

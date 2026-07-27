@@ -1118,6 +1118,36 @@
         "title": "ConcreteAdviceCounts",
         "type": "object"
       },
+      "ConcreteAdviceDetails": {
+        "additionalProperties": false,
+        "description": "Structured personal drilldown breakdown for a single product sphere.",
+        "properties": {
+          "advice": {
+            "description": "Short concrete advice string",
+            "title": "Advice",
+            "type": "string"
+          },
+          "story": {
+            "description": "2-3 sentences about the person and their day in this sphere",
+            "title": "Story",
+            "type": "string"
+          },
+          "why": {
+            "description": "1-2 human background lines grounded in evidence",
+            "items": {
+              "type": "string"
+            },
+            "title": "Why",
+            "type": "array"
+          }
+        },
+        "required": [
+          "story",
+          "advice"
+        ],
+        "title": "ConcreteAdviceDetails",
+        "type": "object"
+      },
       "ConcreteAdviceEvidence": {
         "additionalProperties": false,
         "properties": {
@@ -1323,6 +1353,16 @@
             ],
             "title": "Confidence",
             "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcreteAdviceDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "evidence": {
             "items": {
