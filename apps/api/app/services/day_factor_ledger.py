@@ -32,26 +32,34 @@ from typing import Any
 from app.schemas.day_valence import DayValenceFactor, FactorLedger
 from app.services.astro_utils import strip_prefix
 from app.services.canon_service import load_day_valence_canon
+from app.services.scoring_v2_service import _get_spheres
 
-# Load aspect polarities from canon
-try:
-    _VALENCE_CANON = load_day_valence_canon()
-    _ASPECT_POLARITIES = _VALENCE_CANON.get("aspect_polarities", {})
-except Exception:
-    _ASPECT_POLARITIES = {
-        "trine": "supportive",
-        "sextile": "supportive",
-        "square": "tense",
-        "opposition": "tense",
-        "conjunction": "mixed",
-        "quincunx": "mixed",
-        "semi_square": "tense",
-        "sesquisquare": "tense",
-    }
+# Canon-only aspect polarities (hidden fallback is forbidden — fail-closed at import)
+_VALENCE_CANON = load_day_valence_canon()
+_ASPECT_POLARITIES = _VALENCE_CANON.get("aspect_polarities", {})
 
 
 ANGLES: set[str] = {"ASC", "MC", "IC", "DESC", "DSC"}
 LOTS: set[str] = {"FORTUNE", "SPIRIT", "EROS", "SCIENCE", "MARRIAGE"}
+
+
+def _technical_spheres_for_planet(planet_key: str | None) -> list[str]:
+    """Technical spheres where this planet carries a canon weight (spheres.v1.yml)."""
+    if not planet_key:
+        return []
+    key = planet_key.strip().upper()
+    spheres = (_get_spheres() or {}).get("spheres") or {}
+    return [tech for tech, info in spheres.items() if key in (info.get("planets") or {})]
+
+
+def _technical_spheres_for_house(house: Any) -> list[str]:
+    """Technical spheres whose canon house list contains this house number."""
+    try:
+        house_int = int(house)
+    except (TypeError, ValueError):
+        return []
+    spheres = (_get_spheres() or {}).get("spheres") or {}
+    return [tech for tech, info in spheres.items() if house_int in (info.get("houses") or [])]
 
 
 def _normalize_target_type(target_type: str | None, target_key: str | None) -> str:
@@ -211,6 +219,10 @@ def build_factor_ledger(
 
             polarity = _ASPECT_POLARITIES.get(aspect_type, "neutral")
 
+            # Technical spheres derive from the natal target planet (spheres.v1.yml),
+            # falling back to the transit source planet (normative §6.1 target rule).
+            tech_spheres = _technical_spheres_for_planet(target_planet) or _technical_spheres_for_planet(planet)
+
             factor = DayValenceFactor(
                 factor_id=f"sig:aspect:{planet}:{aspect_type}:{target_planet}",
                 semantic_key=sem_key,
@@ -219,7 +231,7 @@ def build_factor_ledger(
                 technique_family="transit",
                 polarity=polarity,  # type: ignore[arg-type]
                 strength=strength,
-                technical_spheres=[],
+                technical_spheres=tech_spheres,
                 source_planet=planet,
                 target_type=target_type,
                 target_key=target_planet,
@@ -240,6 +252,9 @@ def build_factor_ledger(
                 duplicate_count += 1
                 continue
 
+            # Technical spheres derive from the house number (spheres.v1.yml house lists).
+            tech_spheres = _technical_spheres_for_house(house)
+
             factor = DayValenceFactor(
                 factor_id=f"sig:house:{planet}:{house_str}",
                 semantic_key=sem_key,
@@ -248,7 +263,7 @@ def build_factor_ledger(
                 technique_family="transit",
                 polarity="neutral",
                 strength=strength,
-                technical_spheres=[],
+                technical_spheres=tech_spheres,
                 source_planet=planet,
                 target_type="house",
                 target_key=house_str,

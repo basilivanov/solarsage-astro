@@ -282,16 +282,12 @@ class DayValenceService:
         for factor in ledger.factors:
             raw_mag = self._calculate_factor_raw_magnitude(factor)
 
-            # Find mapped product spheres
+            # Find mapped product spheres (factors without technical sphere mapping
+            # contribute only to the global day status, never to every sphere)
             mapped_product_spheres: set[str] = set()
             for tech_sphere in factor.technical_spheres:
                 ps_list = self.tech_to_product.get(tech_sphere, [])
                 mapped_product_spheres.update(ps_list)
-
-            # If factor has no technical_spheres (e.g. AstroSignal aspect), deduce from technique / target
-            if not mapped_product_spheres and factor.source == "day_signal":
-                # AstroSignal aspect: map to product spheres via default fallback mapping or all
-                mapped_product_spheres.update(CANONICAL_PRODUCT_SPHERES)
 
             # Deduplicate per product sphere if factor hits multiple technical spheres (§6.5)
             for pkey in mapped_product_spheres:
