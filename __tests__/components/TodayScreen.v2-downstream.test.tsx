@@ -63,10 +63,11 @@ function requireElement<T extends Element>(value: T | null | undefined, label: s
 const navigationState = vi.hoisted(() => ({ search: "why=1" }))
 
 // Consumer routing constants matching the WhyExpanded consumer boundary.
-const CURRENT_WIRE_IDENTITY = { payloadVersion: "today.v2.1", frontendPayloadVersion: 3, contentVersion: 10 } satisfies TodayWireIdentity
-const PREVIOUS_WIRE_IDENTITY = { payloadVersion: "today.v2", frontendPayloadVersion: 2, contentVersion: 10 } satisfies TodayWireIdentity
-const MISMATCH_WIRE_IDENTITY = { payloadVersion: "today.v2.1", frontendPayloadVersion: 2, contentVersion: 10 } satisfies TodayWireIdentity
-const HIGH_CONTENT_IDENTITY = { payloadVersion: "today.v2.1", frontendPayloadVersion: 3, contentVersion: 999 } satisfies TodayWireIdentity
+// W2-VALENCE: current = today.v2.2/frontend 4, previous = today.v2.1/frontend 3.
+const CURRENT_WIRE_IDENTITY = { payloadVersion: "today.v2.2", frontendPayloadVersion: 4, contentVersion: 11 } satisfies TodayWireIdentity
+const PREVIOUS_WIRE_IDENTITY = { payloadVersion: "today.v2.1", frontendPayloadVersion: 3, contentVersion: 10 } satisfies TodayWireIdentity
+const MISMATCH_WIRE_IDENTITY = { payloadVersion: "today.v2.2", frontendPayloadVersion: 3, contentVersion: 11 } satisfies TodayWireIdentity
+const HIGH_CONTENT_IDENTITY = { payloadVersion: "today.v2.2", frontendPayloadVersion: 4, contentVersion: 999 } satisfies TodayWireIdentity
 
 vi.mock("@/lib/log", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
