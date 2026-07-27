@@ -1,0 +1,16 @@
+[Unit]
+Description=SolarSage Day Pre-Generation (nightly tomorrow payload precompute)
+After=network.target solarsage-api.service
+
+[Service]
+Type=oneshot
+User=astro
+Group=astro
+WorkingDirectory=/opt/solarsage-astro/apps/api
+EnvironmentFile=/opt/solarsage-astro/.env
+Environment=PATH=/opt/solarsage-astro/apps/api/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=TODAY_VALENCE_V1_ENABLED=true
+ExecStart=/opt/solarsage-astro/apps/api/.venv/bin/python -m app.jobs.day_pregen
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=3600
