@@ -51,6 +51,7 @@ from ._base import CamelModel
 from .access import ContentAccessReason as ContentAccessReason
 from .access import ContentAccessState as ContentAccessState
 from .activation import ActivationEvidence
+from .day import RelativeDayStatusRead
 from .scoring_v2 import SphereScoreV2
 from .today_horizons import TodayV2HorizonsBlock, validate_horizons_against_evidence
 
@@ -530,6 +531,9 @@ class TodayPayload(CamelModel):
 
     # W-PHASE-2: today important items
     important_today: list[TodayImportantEvent] = []
+
+    # W-DAY: relative status (z-score against 14-day personal baseline)
+    relative_status: RelativeDayStatusRead | None = None
 
     # W-6: optional V2 block
     v2: TodayV2Block | None = None

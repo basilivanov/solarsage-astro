@@ -85,12 +85,15 @@ import asyncio
 import time
 import json
 from datetime import UTC, date as Date, datetime, timedelta
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import select, delete
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.access import ContentAccessState
+from app.schemas.day import RelativeDayStatusRead
 from app.schemas.today import (
     DayChart,
     DayChartAspect,
@@ -106,8 +109,9 @@ from app.schemas.today import (
     TopFlag,
 )
 from app.clients.solarsage_client import get_solarsage_client
-from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile
+from app.db.models import TodayPayloadCache, SemanticLayerCache, UserProfile, DayScoreHistory
 from app.services.astro_utils import find_house, strip_prefix
+from app.services.day_relative_status import compute_relative_status
 from app.services.day_scoring_signals import filter_day_scored_signals
 from app.services.normalization_service import NormalizationService
 from app.services.scoring_service import ScoringService  # noqa: F401 -- legacy test patch point
@@ -640,6 +644,24 @@ class TodayService:
                 horizon_pipeline_audit=horizon_pipeline_audit,
             )
 
+        # W-DAY: relative status calculation and history persistence
+        if dual.v2_result is not None:
+            today_support = float(dual.v2_result.status_breakdown.get("support_score", 0.0))
+            today_tension = float(dual.v2_result.status_breakdown.get("tension_score", 0.0))
+        else:
+            from app.services.scoring_v2_service import ScoringV2Service
+            v2_fb = ScoringV2Service().score_day(day_signals, activation_layer)
+            today_support = float(v2_fb.status_breakdown.get("support_score", 0.0))
+            today_tension = float(v2_fb.status_breakdown.get("tension_score", 0.0))
+
+        relative_status = await self._record_and_compute_relative_status(
+            user_id=user_id,
+            target_date=target_date,
+            support_score=today_support,
+            tension_score=today_tension,
+            absolute_v2_status=scoring_result["day_status"],
+        )
+
         payload = TodayPayload(
             meta=TodayMeta(
                 schema_version="today/v1",
@@ -680,6 +702,7 @@ class TodayService:
             microcopy=[],
             yesterday_echo=None,
             important_today=important_items,
+            relative_status=relative_status,
             actions=None,
             day_chart=updated_day_chart,
             planet_influences=planet_influences,
@@ -1079,3 +1102,50 @@ class TodayService:
                     msg=f"[DayDelta] Could not get yesterday signals: {type(e).__name__}",
                 )
             return None
+
+    async def _record_and_compute_relative_status(
+        self,
+        user_id: UUID,
+        target_date: Date,
+        support_score: float,
+        tension_score: float,
+        absolute_v2_status: str,
+    ) -> RelativeDayStatusRead:
+        """Upsert today's scores into day_score_history and compute 14-day relative status."""
+        stmt_upsert = pg_insert(DayScoreHistory).values(
+            user_id=user_id,
+            target_date=target_date,
+            support_score=support_score,
+            tension_score=tension_score,
+        ).on_conflict_do_update(
+            index_elements=["user_id", "target_date"],
+            set_={
+                "support_score": support_score,
+                "tension_score": tension_score,
+            },
+        )
+        await self.db.execute(stmt_upsert)
+        await self.db.commit()
+
+        stmt_history = (
+            select(DayScoreHistory.support_score, DayScoreHistory.tension_score)
+            .where(
+                DayScoreHistory.user_id == user_id,
+                DayScoreHistory.target_date < target_date,
+                DayScoreHistory.target_date >= target_date - timedelta(days=14),
+            )
+            .order_by(DayScoreHistory.target_date.desc())
+            .limit(14)
+        )
+        res = await self.db.execute(stmt_history)
+        history_rows = [
+            {"support": float(row.support_score), "tension": float(row.tension_score)}
+            for row in res.all()
+        ]
+
+        return compute_relative_status(
+            today_support=support_score,
+            today_tension=tension_score,
+            absolute_v2_status=absolute_v2_status,
+            history=history_rows,
+        )

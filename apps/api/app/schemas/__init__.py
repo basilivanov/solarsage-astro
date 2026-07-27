@@ -42,6 +42,7 @@ from .checkin import (
     CheckinResponse,
     YesterdayCheckinResponse,
 )
+from .day import RelativeDayStatusRead, RelativeStatusBaseline
 from .profile import BirthData, LocationData, ProfileRead, ProfileWrite
 from .horary import (
     HoraryQuestionCreate,
@@ -131,6 +132,9 @@ __all__ = [
     "CheckinMetrics",
     "CheckinResponse",
     "YesterdayCheckinResponse",
+    # relative day status
+    "RelativeDayStatusRead",
+    "RelativeStatusBaseline",
     # profile (W-1.2)
     "BirthData",
     "LocationData",

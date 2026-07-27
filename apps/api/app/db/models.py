@@ -1542,3 +1542,25 @@ class SynastryCreditSpend(Base):
     credit: Mapped[HoraryCredit] = relationship("HoraryCredit")
     report: Mapped[SynastryReport | None] = relationship("SynastryReport")
 # END_BLOCK: SYNASTRY_TABLES
+
+
+# START_BLOCK: DAY_SCORE_HISTORY_TABLE
+class DayScoreHistory(Base):
+    """Daily support and tension score history for user-relative day status calculation."""
+    __tablename__ = "day_score_history"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    target_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    support_score: Mapped[float] = mapped_column(nullable=False)
+    tension_score: Mapped[float] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped[User] = relationship("User")
+# END_BLOCK: DAY_SCORE_HISTORY_TABLE
