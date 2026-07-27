@@ -207,6 +207,7 @@ export function adaptTodayPayload(
       dayChart: api.dayChart ?? null,
       planetInfluences: api.planetInfluences ?? [],
       sphereScores: api.sphereScores ?? [],
+      relativeStatus: api.relativeStatus ?? null,
       concreteAdvice: api.concreteAdvice,
       daySummary: api.daySummary,
       v2: buildV2Block(api.v2),
