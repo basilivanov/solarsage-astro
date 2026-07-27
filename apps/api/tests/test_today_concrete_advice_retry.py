@@ -423,3 +423,59 @@ async def test_concrete_advice_details_structuring_and_fallback():
             assert len(r.details.why) == 1
             assert r.details.advice.startswith("Действуй взвешенно")
             assert r.text == r.details.advice
+
+
+def test_banned_jargon_validator_rejects_astrology_terms_and_abstractions():
+    """Verify LLMClaimValidator rejects details with astrology jargon in story/why/advice."""
+    from app.services.llm_claim_validator import LLMClaimValidator, has_banned_jargon
+
+    validator = LLMClaimValidator()
+
+    # Banned jargon check
+    assert has_banned_jargon("Транзитный аспект создает суету") is True
+    assert has_banned_jargon("Активированы важные аспекты") is True
+    assert has_banned_jargon("Влияние планеты удваивается") is True
+    assert has_banned_jargon("День складывается активно") is True
+    assert has_banned_jargon("Много внутренней энергии", row_key="work") is True
+    assert has_banned_jargon("Много физической энергии", row_key="sport") is False
+
+    # Story with jargon -> details rejected (returns None)
+    res_jargon_story = validator.validate_concrete_advice_details(
+        row_key="work",
+        verdict="good",
+        details={
+            "story": "Транзитный аспект подталкивает к переговорам.",
+            "why": ["Долгий цикл развития"],
+            "advice": "Действуй спокойно.",
+        },
+        evidence=[],
+    )
+    assert res_jargon_story is None
+
+    # Why with jargon -> details rejected (returns None)
+    res_jargon_why = validator.validate_concrete_advice_details(
+        row_key="work",
+        verdict="good",
+        details={
+            "story": "Встречи проходят результативно и приносят плоды.",
+            "why": ["У тебя есть поддержка в финансах и активные аспекты"],
+            "advice": "Действуй спокойно.",
+        },
+        evidence=[],
+    )
+    assert res_jargon_why is None
+
+    # Valid human details -> accepted
+    res_valid = validator.validate_concrete_advice_details(
+        row_key="work",
+        verdict="good",
+        details={
+            "story": "Сегодня подходящий момент завершить давно откладываемый проект.",
+            "why": ["Долгий цикл про рабочий статус задевает текущие задачи"],
+            "advice": "Сосредоточься на главном приоритете.",
+        },
+        evidence=[],
+    )
+    assert res_valid is not None
+    assert res_valid["story"].startswith("Сегодня подходящий момент")
+    assert res_valid["advice"] == "Сосредоточься на главном приоритете."

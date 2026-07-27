@@ -26,6 +26,24 @@
 from __future__ import annotations
 from app.schemas.today import ConcreteAdviceEvidence
 
+BANNED_ASTRO_STEMS: list[str] = ["транзит", "аспект", "орб", "натал", "планет"]
+
+
+def has_banned_jargon(text: str, row_key: str = "") -> bool:
+    """Check text for banned astrology terms or abstract filler phrases."""
+    t = text.lower()
+    for stem in BANNED_ASTRO_STEMS:
+        if stem in t:
+            return True
+    if "день складывается" in t:
+        return True
+    if "энерги" in t and row_key not in ("sport", "health"):
+        return True
+    if "важные аспекты" in t or "активные аспекты" in t:
+        return True
+    return False
+
+
 class LLMClaimValidator:
     def validate_concrete_advice_text(
         self,
@@ -102,19 +120,28 @@ class LLMClaimValidator:
             return None
         if not isinstance(why, list):
             why = []
+
+        story_str = story.strip()
+        advice_str = advice.strip()
         why_clean = [w.strip() for w in why if isinstance(w, str) and w.strip()]
+
+        # Hard guard against astrology terms and abstractions in any part of details
+        if has_banned_jargon(story_str, row_key) or has_banned_jargon(advice_str, row_key):
+            return None
+        if any(has_banned_jargon(item, row_key) for item in why_clean):
+            return None
 
         sanitized_advice = self.validate_concrete_advice_text(
             row_key=row_key,
             verdict=verdict,
-            text=advice.strip(),
+            text=advice_str,
             evidence=evidence,
         )
         if not sanitized_advice:
             return None
 
         return {
-            "story": story.strip(),
+            "story": story_str,
             "why": why_clean,
             "advice": sanitized_advice,
         }
