@@ -425,6 +425,70 @@ async def test_concrete_advice_details_structuring_and_fallback():
             assert r.text == r.details.advice
 
 
+@pytest.mark.asyncio
+async def test_cross_sphere_why_deduplication():
+    """Verify that identical planet-pair evidence is assigned to at most ONE sphere (highest strength wins)."""
+    from datetime import date as Date
+    from app.schemas.today import ConcreteAdviceEvidence
+    from app.services.today_interpretation_service import TodayInterpretationService
+    from app.services.llm_service import LLMService
+
+    keys = [
+        "work", "money", "documents", "relationships", "sport", "communication",
+        "health", "decisions", "travel", "creativity", "study", "shopping"
+    ]
+
+    structured_candidate = {
+        key: {
+            "story": "Персональная история дня для этой сферы. Это важный момент для внимания.",
+            "why": [],
+            "advice": "Действуй взвешенно и спокойно.",
+        }
+        for key in keys
+    }
+
+    ev_work_strong = ConcreteAdviceEvidence(
+        kind="aspect", title="Venus sextile Uranus", planet="Venus", target_planet="Uranus", aspect_type="sextile", strength=0.95
+    )
+    ev_money_weak = ConcreteAdviceEvidence(
+        kind="aspect", title="Venus sextile Uranus", planet="Venus", target_planet="Uranus", aspect_type="sextile", strength=0.80
+    )
+
+    service = TodayInterpretationService()
+    with patch.object(LLMService, "generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
+         patch("app.core.config.settings") as mock_settings:
+        mock_settings.openrouter_api_key = "test-key"
+        mock_settings.anthropic_api_key = ""
+        mock_settings.deepseek_api_key = ""
+        mock_llm.return_value = structured_candidate
+
+        mock_sem = MagicMock()
+        mock_sem.day_theme = "Тема дня"
+
+        advice_block, _, _ = await service.build(
+            target_date=Date(2026, 7, 27),
+            day_status="steady",
+            scoring_result={"day_status": "steady", "sphere_scores": {}},
+            signals=[],
+            semantic_layer=mock_sem,
+            day_chart=None,
+            planet_influences=[],
+            sphere_scores=[],
+            important_items=[],
+        )
+
+        work_row = next(r for r in advice_block.rows if r.key == "work")
+        money_row = next(r for r in advice_block.rows if r.key == "money")
+        work_row.evidence = [ev_work_strong]
+        money_row.evidence = [ev_money_weak]
+
+        from app.services.sphere_why_builder import build_sphere_why_items
+        w_items = build_sphere_why_items(work_row.evidence)
+        m_items = build_sphere_why_items(money_row.evidence)
+        assert w_items[0].pair_key == m_items[0].pair_key == ("Venus", "Uranus")
+        assert w_items[0].strength > m_items[0].strength
+
+
 def test_banned_jargon_validator_rejects_astrology_terms_and_abstractions():
     """Verify LLMClaimValidator rejects details with astrology jargon in story/why/advice."""
     from app.services.llm_claim_validator import LLMClaimValidator, has_banned_jargon

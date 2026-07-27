@@ -618,9 +618,36 @@ class TodayInterpretationService:
             if len(staged) < 9:
                 return 0
 
+            from app.services.sphere_why_builder import build_sphere_why_items
+
             for row, text, details_obj in staged:
                 row.text = text
                 row.details = details_obj
+
+            # Global cross-sphere deduplication of why lines (highest strength wins)
+            candidates_by_sphere = {
+                row.key: build_sphere_why_items(row.evidence)
+                for row, _, d in staged if d is not None
+            }
+            max_strength_by_pair: dict[tuple[str, str], tuple[str, float]] = {}
+            for sphere_key, items in candidates_by_sphere.items():
+                for item in items:
+                    pair = item.pair_key
+                    if pair not in max_strength_by_pair or item.strength > max_strength_by_pair[pair][1]:
+                        max_strength_by_pair[pair] = (sphere_key, item.strength)
+
+            for row, _, d in staged:
+                if d is None:
+                    continue
+                sphere_items = candidates_by_sphere.get(row.key, [])
+                assigned_lines: list[str] = []
+                for item in sphere_items:
+                    if len(assigned_lines) >= 2:
+                        break
+                    winning_sphere, _ = max_strength_by_pair.get(item.pair_key, (row.key, 0.0))
+                    if winning_sphere == row.key:
+                        assigned_lines.append(item.line)
+                d.why = assigned_lines
 
             return len(staged)
 

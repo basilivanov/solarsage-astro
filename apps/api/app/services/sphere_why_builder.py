@@ -28,8 +28,17 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 from app.services.astro_utils import strip_prefix
+
+
+@dataclass(frozen=True)
+class WhyItem:
+    """Calculated why line candidate with metadata for cross-sphere deduplication."""
+    line: str
+    pair_key: tuple[str, str]
+    strength: float
 
 PLANET_FUNCTIONS: dict[str, dict[str, str]] = {
     # nom — именительный, acc — винительный (для «поддерживают»),
@@ -76,22 +85,14 @@ def _get_scale(ev_kind: str | None, technique_family: str | None, technique: str
 
 
 # START_BLOCK: WHY_BUILDER
-def build_sphere_why(evidence_list: list[Any]) -> list[str]:
-    # START_FUNCTION_CONTRACT: F-M-API-SPHERE-WHY-BUILDER.build_sphere_why
-    # purpose: Convert top sphere evidence items into 1-2 deterministic human why strings.
-    # inputs: evidence_list (list of ConcreteAdviceEvidence objects or dicts)
-    # returns: list[str] — 0 to 2 human-readable why lines
-    # side_effects: none (pure calculation)
-    # emitted_logs: none
-    # error_behavior: skips invalid/unsupported evidence items gracefully
-    # END_FUNCTION_CONTRACT: F-M-API-SPHERE-WHY-BUILDER.build_sphere_why
+def build_sphere_why_items(evidence_list: list[Any]) -> list[WhyItem]:
+    """Build all valid WhyItem candidates from evidence list sorted by strength descending."""
     if not evidence_list:
         return []
 
-    lines: list[str] = []
+    items: list[WhyItem] = []
     seen_pairs: set[tuple[str, str]] = set()
 
-    # Sort evidence by strength/weight descending
     def get_strength(ev: Any) -> float:
         if isinstance(ev, dict):
             return float(ev.get("strength") or ev.get("weight") or 0.0)
@@ -100,10 +101,6 @@ def build_sphere_why(evidence_list: list[Any]) -> list[str]:
     sorted_evidence = sorted(evidence_list, key=get_strength, reverse=True)
 
     for ev in sorted_evidence:
-        if len(lines) >= 2:
-            break
-
-        # Extract fields whether dict or Pydantic model
         if isinstance(ev, dict):
             planet = ev.get("planet")
             target_planet = ev.get("target_planet")
@@ -139,7 +136,6 @@ def build_sphere_why(evidence_list: list[Any]) -> list[str]:
         direction, target_case = _get_direction(aspect_type)
         scale = _get_scale(kind, technique_family, technique)
 
-        # Capitalize first letter of source function (nominative)
         source_cap = source_fn["nom"][0].upper() + source_fn["nom"][1:]
         target_form = target_fn[target_case]
 
@@ -148,7 +144,20 @@ def build_sphere_why(evidence_list: list[Any]) -> list[str]:
         else:
             line = f"{source_cap} {direction} {target_form}"
 
-        lines.append(line)
+        strength = get_strength(ev)
+        items.append(WhyItem(line=line, pair_key=pair_key, strength=strength))
 
-    return lines
+    return items
+
+
+def build_sphere_why(evidence_list: list[Any]) -> list[str]:
+    # START_FUNCTION_CONTRACT: F-M-API-SPHERE-WHY-BUILDER.build_sphere_why
+    # purpose: Convert top sphere evidence items into 1-2 deterministic human why strings.
+    # inputs: evidence_list (list of ConcreteAdviceEvidence objects or dicts)
+    # returns: list[str] — 0 to 2 human-readable why lines
+    # side_effects: none (pure calculation)
+    # emitted_logs: none
+    # error_behavior: skips invalid/unsupported evidence items gracefully
+    # END_FUNCTION_CONTRACT: F-M-API-SPHERE-WHY-BUILDER.build_sphere_why
+    return [item.line for item in build_sphere_why_items(evidence_list)[:2]]
 # END_BLOCK: WHY_BUILDER

@@ -107,3 +107,21 @@ def test_build_sphere_why_empty_fallback():
     )
     why = build_sphere_why([ev])
     assert why == []
+
+
+def test_build_sphere_why_items():
+    """Verify build_sphere_why_items exposes metadata for global deduplication."""
+    from app.services.sphere_why_builder import build_sphere_why_items
+    ev = ConcreteAdviceEvidence(
+        kind="aspect",
+        title="Venus sextile Uranus",
+        planet="Venus",
+        target_planet="Uranus",
+        aspect_type="sextile",
+        strength=0.95,
+    )
+    items = build_sphere_why_items([ev])
+    assert len(items) == 1
+    assert items[0].pair_key == ("Venus", "Uranus")
+    assert items[0].strength == 0.95
+    assert "Чувства и симпатии" in items[0].line
