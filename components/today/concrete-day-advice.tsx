@@ -98,7 +98,7 @@ export function ConcreteDayAdvice({
                 aria-expanded={selected}
                 aria-controls={detailsId(row.key)}
                 onClick={() => onSelectedKeyChange(selected ? null : row.key)}
-                className={`w-full flex min-h-[64px] items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 ${
+                className={`w-full flex min-h-[64px] items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 text-left transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 ${
                   selected
                     ? "border-violet-500 bg-violet-50/60 shadow-[0_0_0_1px_rgba(139,92,246,0.25),0_14px_30px_-24px_rgba(109,40,217,0.75)] dark:border-violet-300 dark:bg-violet-500/15"
                     : "border-border/70 hover:border-violet-300 hover:bg-violet-50/30 dark:hover:bg-violet-500/10"
@@ -154,7 +154,7 @@ function SphereDetails({
       data-sphere-key={row.key}
       role="region"
       aria-labelledby={sphereButtonId(row.key)}
-      className="rounded-2xl border border-violet-200/80 bg-card px-4 py-4 shadow-[0_18px_36px_-30px_rgba(109,40,217,0.65)] dark:border-violet-400/30 space-y-3"
+      className="disclosure-in rounded-2xl border border-violet-200/80 bg-card px-4 py-4 shadow-[0_18px_36px_-30px_rgba(109,40,217,0.65)] dark:border-violet-400/30 space-y-3"
     >
       <h3 className="font-serif text-[22px] font-semibold leading-tight text-foreground">{label}</h3>
 
@@ -176,14 +176,14 @@ function SphereDetails({
           type="button"
           data-testid="sphere-why-cta"
           onClick={onWhyOpen}
-          className="min-h-10 rounded-xl border border-violet-300 bg-violet-50 px-3.5 text-[14px] font-semibold text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-100 cursor-pointer"
+          className="min-h-10 rounded-xl border border-violet-300 bg-violet-50 px-3.5 text-[14px] font-semibold text-violet-800 transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-100 cursor-pointer"
         >
           Почему это про меня
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="min-h-10 rounded-xl px-3.5 text-[14px] font-medium text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 cursor-pointer"
+          className="min-h-10 rounded-xl px-3.5 text-[14px] font-medium text-muted-foreground transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 cursor-pointer"
         >
           Свернуть
         </button>

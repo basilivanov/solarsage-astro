@@ -60,27 +60,30 @@ export function DayCollapsible({
           aria-expanded={open}
           aria-controls={regionId}
           onClick={() => setOpen((prev) => !prev)}
-          className="w-full flex items-center justify-between px-5 py-4 text-left font-medium text-[15px] text-foreground hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between px-5 py-4 text-left font-medium text-[15px] text-foreground hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none cursor-pointer"
         >
           <span className="font-semibold">{title}</span>
           <ChevronDown
-            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
               open ? "rotate-180 text-foreground" : ""
             }`}
             aria-hidden="true"
           />
         </button>
 
-        {open && (
-          <div
-            id={regionId}
-            role="region"
-            aria-labelledby={toggleId}
-            className="p-4 pt-0 border-t border-border/30"
-          >
+        {/* Region stays mounted so the 0fr→1fr height transition runs on open/close;
+            closed state is zero-height + visibility:hidden (e2e toBeHidden-safe). */}
+        <div
+          id={regionId}
+          role="region"
+          aria-labelledby={toggleId}
+          data-open={open ? "true" : "false"}
+          className={`disclosure-grid ${open ? "border-t border-border/30" : ""}`}
+        >
+          <div className="disclosure-grid-inner p-4 pt-3">
             {children}
           </div>
-        )}
+        </div>
       </div>
     </section>
   )
