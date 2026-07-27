@@ -46,16 +46,35 @@ export function DayZoneIndicator({ relativeStatus }: DayZoneIndicatorProps) {
 
   // Use support_marker or tension_marker (whichever is more expressive based on z-score)
   const isTenseDominant = Math.abs(relativeStatus.zTension) > Math.abs(relativeStatus.zSupport)
-  const marker = isTenseDominant ? relativeStatus.tensionMarker : relativeStatus.supportMarker
-  const markerPercent = Math.min(100, Math.max(0, Math.round(marker * 100)))
 
-  // Band calculations for zone highlight
-  const band = isTenseDominant ? relativeStatus.tensionBand : relativeStatus.supportBand
-  const bandLow = band && band.length >= 2 ? Math.max(0, Math.min(100, band[0])) : 25
-  const bandHigh = band && band.length >= 2 ? Math.max(0, Math.min(100, band[1])) : 75
-  const bandWidth = Math.max(10, bandHigh - bandLow)
+  // Axis normalization: markers are already 0..1 fractions of the backend's
+  // (mean+std)*1.5 scale; bands arrive in RAW score units and must be divided
+  // by the same axis max. The bar's axis is EASINESS (left = тяжелее,
+  // right = легче), so tension-dominant days are mirrored: more tension = left.
+  const baselineMean = isTenseDominant
+    ? relativeStatus.baseline.tensionMean
+    : relativeStatus.baseline.supportMean
+  const baselineStd = isTenseDominant
+    ? relativeStatus.baseline.tensionStd
+    : relativeStatus.baseline.supportStd
+  const axisMax = Math.max(1.0, (baselineMean + baselineStd) * 1.5)
+
+  const rawBand = isTenseDominant ? relativeStatus.tensionBand : relativeStatus.supportBand
+  const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+  let bandLow = rawBand && rawBand.length >= 2 ? clamp01(rawBand[0] / axisMax) : 0.25
+  let bandHigh = rawBand && rawBand.length >= 2 ? clamp01(rawBand[1] / axisMax) : 0.75
+  let marker01 = clamp01(isTenseDominant ? relativeStatus.tensionMarker : relativeStatus.supportMarker)
+
+  if (isTenseDominant) {
+    marker01 = 1 - marker01
+    ;[bandLow, bandHigh] = [1 - bandHigh, 1 - bandLow]
+  }
+
+  const markerPercent = Math.round(marker01 * 100)
+  const bandLowPct = Math.round(bandLow * 100)
+  const bandWidthPct = Math.max(10, Math.round((bandHigh - bandLow) * 100))
   // "Обычно" anchor sits over the band center, clamped away from the edges
-  const bandCenter = Math.min(88, Math.max(12, bandLow + bandWidth / 2))
+  const bandCenter = Math.min(88, Math.max(12, bandLowPct + bandWidthPct / 2))
 
   return (
     <div
@@ -69,8 +88,8 @@ export function DayZoneIndicator({ relativeStatus }: DayZoneIndicatorProps) {
           aria-hidden="true"
           className="absolute top-0 bottom-0 bg-emerald-500/20 dark:bg-emerald-400/25 rounded-sm"
           style={{
-            left: `${bandLow}%`,
-            width: `${bandWidth}%`,
+            left: `${bandLowPct}%`,
+            width: `${bandWidthPct}%`,
           }}
         />
 
