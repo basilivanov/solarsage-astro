@@ -246,12 +246,15 @@ test.describe("Mock Visual — /day/[date]", () => {
       await expect(row).toContainText(expectedLabels[i]);
     }
 
-    // Assert that backend-provided text is rendered verbatim in the opened details panel
+    // Assert that backend-provided text is rendered verbatim in the opened sphere sheet modal
     const moneyRow = concreteAdvice.getByTestId("concrete-day-advice-row").filter({ hasText: "Деньги" });
     await moneyRow.click();
-    const moneyDetails = concreteAdvice.getByTestId("concrete-day-advice-details");
+    const moneyDetails = page.getByTestId("sphere-details-sheet");
     await expect(moneyDetails).toBeVisible();
     await expect(moneyDetails).toContainText("СЕНТИНЕЛ ДЕНЬГИ");
+    // Close the modal so the rest of the page flow is reachable
+    await page.keyboard.press("Escape");
+    await expect(moneyDetails).toBeHidden();
 
     // Assert that placeholder texts and raw semantic icon names are absent
     await expect(concreteAdvice).not.toContainText("Нет отдельного сигнала");

@@ -243,22 +243,21 @@ test.describe("V2 human-first navigator mock visual", () => {
 
     const heroWork = story.getByTestId("personal-story-sphere-link").filter({ hasText: "Работа и статус" })
     await heroWork.click()
-    await expect(work).toHaveAttribute("data-selected", "true")
+    const heroSheet = page.getByTestId("sphere-details-sheet")
+    await expect(heroSheet).toHaveAttribute("data-sphere-key", "work")
+    await heroSheet.getByTestId("sphere-why-cta").click()
+    await expect(page.getByTestId("sphere-details-sheet")).toHaveCount(0)
 
-    const whyToggle = story.getByTestId("personal-story-why-cta")
-    await whyToggle.click()
     const whyMainToggle = page.locator("#why-expanded-toggle")
     await expect(whyMainToggle).toHaveAttribute("aria-expanded", "true")
     const humanWhy = why.getByTestId("why-horizons")
     await expect(humanWhy).toHaveAttribute("data-source", "backend-horizons")
-    await expect(humanWhy.getByTestId("why-horizon")).toHaveCount(3)
-    const horizonOrder = await humanWhy.getByTestId("why-horizon").evaluateAll((items) => items.map((item) => item.getAttribute("data-horizon")))
+    const teasers = humanWhy.getByTestId("why-horizon-teaser")
+    await expect(teasers).toHaveCount(3)
+    const horizonOrder = await teasers.evaluateAll((items) => items.map((item) => item.getAttribute("data-horizon")))
     expect(horizonOrder).toEqual(["long", "medium", "fast"])
-    const toneOrder = await humanWhy.getByTestId("why-horizon-tone").evaluateAll((items) => items.map((item) => item.getAttribute("data-status")))
+    const toneOrder = await teasers.evaluateAll((items) => items.map((item) => item.getAttribute("data-status")))
     expect(toneOrder).toEqual(["mixed", "mixed", "tense"])
-    await expect(humanWhy).toContainText("Фон уже действует")
-    await expect(humanWhy).toContainText("Набирает силу")
-    await expect(humanWhy).toContainText("Пик уже пройден")
     await expect(humanWhy).not.toContainText(BANNED_HUMAN_COPY)
 
     const [humanWhyHeight, humanScreenHeight] = await Promise.all([
@@ -271,28 +270,41 @@ test.describe("V2 human-first navigator mock visual", () => {
     await page.waitForTimeout(150)
     await captureLocator(why, "01-why-three-horizons-mobile.png")
 
-    const astroToggle = why.getByTestId("why-horizon-technical-toggle").first()
+    // Back to phone-sized viewport for sheet captures
+    await page.setViewportSize({ width: 390, height: 844 })
+
+    // Open the long horizon sheet: full content + technique disclosure
+    await teasers.first().click()
+    const horizonSheet = page.getByTestId("horizon-sheet")
+    await expect(horizonSheet).toBeVisible()
+    await expect(horizonSheet).toHaveAttribute("data-horizon", "long")
+    await expect(horizonSheet).toContainText("Фон уже действует")
+    await expect(horizonSheet).not.toContainText(BANNED_HUMAN_COPY)
+
+    const astroToggle = horizonSheet.getByTestId("why-horizon-technical-toggle")
     await expect(astroToggle).toHaveAttribute("aria-expanded", "false")
     await astroToggle.click()
     await expect(astroToggle).toHaveAttribute("aria-expanded", "true")
-    const technical = why.getByTestId("why-horizon-technical-content")
+    const technical = horizonSheet.getByTestId("why-horizon-technical-content")
     await expect(technical).toContainText("Профекция")
     await expect(technical).toContainText("Фирдар")
     await expect(technical).toContainText("12 мая 2026 — 11 мая 2027")
     await expect(technical).not.toContainText(/act-|source_frame|target_frame|strength|debug/i)
-    const fastTechnicalToggle = why.getByTestId("why-horizon-technical-toggle").nth(2)
-    await fastTechnicalToggle.click()
-    await expect(why.locator('[data-testid="why-horizon"][data-horizon="fast"] [data-testid="why-horizon-technical-content"]')).toContainText("С 8 по 10 июля по Москве")
 
-    const [whyHeight, whyScreenHeight] = await Promise.all([
-      why.evaluate((element) => Math.ceil(element.scrollHeight)),
-      screen.evaluate((element) => Math.ceil(element.scrollHeight)),
-    ])
-    await page.setViewportSize({ width: 390, height: Math.max(whyHeight, whyScreenHeight) + 96 })
-    await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
-    await why.scrollIntoViewIfNeeded()
     await page.waitForTimeout(150)
-    await captureLocator(why, "02-why-three-horizons-calculation-mobile.png")
+    await captureLocator(horizonSheet, "02-why-three-horizons-calculation-mobile.png")
+
+    // Fast horizon sheet: fast timing + technique
+    await page.keyboard.press("Escape")
+    await expect(horizonSheet).toHaveCount(0)
+    await teasers.nth(2).click()
+    const fastSheet = page.getByTestId("horizon-sheet")
+    await expect(fastSheet).toHaveAttribute("data-horizon", "fast")
+    await expect(fastSheet).toContainText("Пик уже пройден")
+    await fastSheet.getByTestId("why-horizon-technical-toggle").click()
+    await expect(fastSheet.getByTestId("why-horizon-technical-content")).toContainText("С 8 по 10 июля по Москве")
+    await page.keyboard.press("Escape")
+    await expect(fastSheet).toHaveCount(0)
 
     const fullScreenHeight = await screen.evaluate((element) => Math.ceil(element.scrollHeight))
     await page.setViewportSize({ width: 390, height: fullScreenHeight + 96 })
