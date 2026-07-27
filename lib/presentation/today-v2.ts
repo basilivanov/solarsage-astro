@@ -126,7 +126,7 @@ const PHASE_LABELS: Record<string, string> = {
 }
 
 /** Concise product sphere labels for the personal card (≤3 shown). */
-const SPHERE_CONCISE: Record<string, string> = {
+export const SPHERE_CONCISE: Record<string, string> = {
   thinking_speech_learning: "Мысли и речь",
   work_status_achievement: "Работа и статус",
   relationships_partnership: "Отношения",

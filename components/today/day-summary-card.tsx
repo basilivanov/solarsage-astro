@@ -31,6 +31,7 @@
 
 import type { DayStatus, DaySummaryBlock } from "@/lib/contracts/today"
 import type { RelativeDayStatus } from "@/lib/api/day"
+import { SPHERE_CONCISE } from "@/lib/presentation/today-v2"
 import { getIcon } from "@/lib/icons"
 import { DayZoneIndicator } from "./day-zone-indicator"
 
@@ -60,14 +61,16 @@ const WEEKDAYS = ["ВОСКРЕСЕНЬЕ", "ПОНЕДЕЛЬНИК", "ВТОР�
 
 function getTop2SphereTitles(sphereScores?: any): string[] {
   if (!sphereScores) return []
+  const titleFor = (key: string | undefined, title?: string): string =>
+    (key && SPHERE_CONCISE[key]) || title || key || ""
   if (Array.isArray(sphereScores)) {
     const sorted = [...sphereScores].sort((a, b) => ((b.score ?? b.finalScore) ?? 0) - ((a.score ?? a.finalScore) ?? 0))
-    return sorted.slice(0, 2).map((s) => s.title || s.key || s.name).filter(Boolean)
+    return sorted.slice(0, 2).map((s) => titleFor(s.key ?? s.name, s.title)).filter(Boolean)
   }
   if (typeof sphereScores === "object") {
     const entries = Object.entries(sphereScores).map(([key, val]) => {
       const score = typeof val === "number" ? val : (val as any)?.finalScore ?? (val as any)?.score ?? 0
-      const title = typeof val === "object" ? (val as any)?.title || key : key
+      const title = titleFor(key, typeof val === "object" ? (val as any)?.title : undefined)
       return { key, title, score }
     })
     const sorted = entries.sort((a, b) => b.score - a.score)
