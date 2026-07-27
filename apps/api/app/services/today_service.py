@@ -685,6 +685,93 @@ class TodayService:
             absolute_v2_status=scoring_result["day_status"],
         )
 
+        # W4-C1: build TodayFocus deterministically
+        from app.services.today_focus_builder import build_today_focus, normalize_factors
+        from app.schemas.today_focus import (
+            TodayFocus,
+            TodayFocusEvent,
+            TodayFeaturedSphere,
+            TodayConvergence,
+        )
+
+        ledger_for_focus = getattr(dual, "factor_ledger", None)
+        if ledger_for_focus is None:
+            from app.services.day_factor_ledger import build_factor_ledger
+            ledger_for_focus = build_factor_ledger(day_signals, activation_layer)
+
+        user_tz = profile.current_tz or profile.birth_tz or "Europe/Moscow"
+
+        day_delta_dict = {
+            "new_today": [strip_prefix(getattr(s, "planet", "")) for s in signals if getattr(s, "delta_kind", None) == "new_today"],
+            "peak": [strip_prefix(getattr(s, "planet", "")) for s in signals if getattr(s, "delta_kind", None) == "peak_today"],
+        }
+
+        today_factors = normalize_factors(
+            ledger=ledger_for_focus,
+            activation_layer=activation_layer,
+            day_delta=day_delta_dict,
+            target_date=target_date,
+            tz_info=user_tz,
+        )
+
+        focus_res = build_today_focus(
+            factors=today_factors,
+            valence_assessments=getattr(dual, "valence_assessments", None),
+            tz_name=user_tz,
+            target_date=target_date,
+        )
+
+        mapped_convergence = None
+        if focus_res.convergence is not None:
+            c = focus_res.convergence
+            mapped_convergence = TodayConvergence(
+                id=c.id,
+                theme_key=c.theme_key,
+                title=c.title,
+                summary=c.summary,
+                independent_factor_count=c.independent_factor_count,
+                technique_families=list(c.technique_families),
+                source_activation_ids=list(c.source_activation_ids),
+            )
+
+        mapped_events = [
+            TodayFocusEvent(
+                id=e.id,
+                kind=e.kind,
+                occurs_at=e.occurs_at,
+                local_date=e.local_date,
+                timezone=e.timezone,
+                precision=e.precision,
+                human_title=e.human_title,
+                technical_title=e.technical_title,
+                meaning=e.meaning,
+                source_activation_ids=list(e.source_activation_ids),
+            )
+            for e in focus_res.events
+        ]
+
+        mapped_featured = [
+            TodayFeaturedSphere(
+                key=s.key,
+                relevance_rank=s.relevance_rank,
+                state=s.state,
+                summary=s.summary,
+                action=s.action,
+                convergence_id=s.convergence_id,
+                source_event_ids=list(s.source_event_ids),
+                source_activation_ids=list(s.source_activation_ids),
+            )
+            for s in focus_res.featured_spheres
+        ]
+
+        today_focus_block = TodayFocus(
+            state=focus_res.state,
+            convergence=mapped_convergence,
+            events=mapped_events,
+            featured_spheres=mapped_featured,
+            content_state="not_needed",
+        )
+
         payload = TodayPayload(
             meta=TodayMeta(
                 schema_version="today/v1",
@@ -731,6 +818,7 @@ class TodayService:
             planet_influences=planet_influences,
             sphere_scores=sphere_scores,
             v2=v2_block,
+            focus=today_focus_block,
         )
 
         # Defensive contract invariants: V2 identity requires a non-null V2 body.
@@ -934,12 +1022,17 @@ class TodayService:
 
         payload_dict = json.loads(cache_entry.payload_json)
         meta = payload_dict.get("meta") or {}
+        payload_version = meta.get("payload_version", meta.get("payloadVersion"))
         content_version = meta.get("contentVersion", meta.get("content_version"))
-        if content_version != TODAY_CONTENT_VERSION:
+        # Content-version gate applies to the V2 family only: V1 payloads have
+        # no content-version concept and must stay readable by V1 identity.
+        if (
+            payload_version in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS
+            and content_version != TODAY_CONTENT_VERSION
+        ):
             return None
 
         # Treat legacy bad V2 cache rows as miss: V2 identity without v2 body.
-        payload_version = meta.get("payload_version", meta.get("payloadVersion"))
         frontend_version = meta.get("frontend_payload_version", meta.get("frontendPayloadVersion"))
         v2_block = payload_dict.get("v2", payload_dict.get("V2"))
         if payload_version in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS and v2_block is None:

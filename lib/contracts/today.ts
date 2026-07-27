@@ -58,6 +58,7 @@ import type {
   ActivationEvidence as ActivationEvidenceWire,
   SphereScoreV2 as SphereScoreV2Wire,
   SphereValenceRead,
+  TodayFocus as TodayFocusWire,
 } from "@/packages/contracts"
 import {
   TodayPayloadWireSchema,
@@ -66,6 +67,7 @@ import {
   TodayV2HorizonWireSchema,
   TodayV2HorizonTimingWireSchema,
   TodayV2ProvenanceWireSchema,
+  TodayFocusWireSchema,
 } from "@/packages/contracts/runtime"
 
 // START_BLOCK: WIRE_IDENTITY
@@ -264,6 +266,7 @@ export const TodayV2HorizonsBlockSchema = TodayV2HorizonsBlockWireSchema
 export const TodayV2HorizonSchema = TodayV2HorizonWireSchema
 export const TodayV2HorizonTimingSchema = TodayV2HorizonTimingWireSchema
 export const TodayV2ProvenanceSchema = TodayV2ProvenanceWireSchema
+export const TodayFocusSchema = TodayFocusWireSchema
 // END_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS
 
 export const RelativeStatusBaselineSchema = z.object({

@@ -4512,6 +4512,309 @@
         "title": "TodayAction",
         "type": "object"
       },
+      "TodayConvergence": {
+        "additionalProperties": false,
+        "description": "Calculated theme convergence summary (§5).",
+        "properties": {
+          "id": {
+            "description": "Convergence cluster identity",
+            "title": "Id",
+            "type": "string"
+          },
+          "independentFactorCount": {
+            "description": "Count of distinct physical factors",
+            "title": "Independentfactorcount",
+            "type": "integer"
+          },
+          "sourceActivationIds": {
+            "description": "IDs of all contributing activations",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sourceactivationids",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "LLM-generated convergence summary",
+            "title": "Summary"
+          },
+          "techniqueFamilies": {
+            "description": "List of technique family names",
+            "items": {
+              "type": "string"
+            },
+            "title": "Techniquefamilies",
+            "type": "array"
+          },
+          "themeKey": {
+            "description": "Primary theme or target key",
+            "title": "Themekey",
+            "type": "string"
+          },
+          "title": {
+            "description": "Convergence section title",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "themeKey",
+          "title",
+          "independentFactorCount"
+        ],
+        "title": "TodayConvergence",
+        "type": "object"
+      },
+      "TodayFeaturedSphere": {
+        "additionalProperties": false,
+        "description": "Featured sphere recommendation card for convergence (§5).",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "LLM-generated imperative action phrase",
+            "title": "Action"
+          },
+          "convergenceId": {
+            "description": "Associated convergence ID",
+            "title": "Convergenceid",
+            "type": "string"
+          },
+          "key": {
+            "description": "Product sphere key e.g. work, money",
+            "title": "Key",
+            "type": "string"
+          },
+          "relevanceRank": {
+            "description": "Relevance rank 1..3",
+            "title": "Relevancerank",
+            "type": "integer"
+          },
+          "sourceActivationIds": {
+            "description": "IDs of supporting activations",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sourceactivationids",
+            "type": "array"
+          },
+          "sourceEventIds": {
+            "description": "IDs of supporting events",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sourceeventids",
+            "type": "array"
+          },
+          "state": {
+            "const": "convergence_today",
+            "default": "convergence_today",
+            "description": "Featured sphere state",
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "LLM-generated featured summary",
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "key",
+          "relevanceRank",
+          "convergenceId"
+        ],
+        "title": "TodayFeaturedSphere",
+        "type": "object"
+      },
+      "TodayFocus": {
+        "additionalProperties": false,
+        "description": "Root focus block for 'What converged today' (§5).",
+        "properties": {
+          "contentState": {
+            "default": "not_needed",
+            "description": "LLM content generation status",
+            "enum": [
+              "ready",
+              "pending",
+              "unavailable",
+              "not_needed"
+            ],
+            "title": "Contentstate",
+            "type": "string"
+          },
+          "convergence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergence"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Convergence detail if state is convergence_today"
+          },
+          "events": {
+            "description": "0..3 public calculated events",
+            "items": {
+              "$ref": "#/components/schemas/TodayFocusEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "featuredSpheres": {
+            "description": "0..3 featured sphere cards",
+            "items": {
+              "$ref": "#/components/schemas/TodayFeaturedSphere"
+            },
+            "title": "Featuredspheres",
+            "type": "array"
+          },
+          "state": {
+            "description": "Product focus state",
+            "enum": [
+              "convergence_today",
+              "single_impulses",
+              "background_only",
+              "no_accent",
+              "unavailable"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "TodayFocus",
+        "type": "object"
+      },
+      "TodayFocusEvent": {
+        "additionalProperties": false,
+        "description": "Public event calculated for a user's date (§5).",
+        "properties": {
+          "humanTitle": {
+            "description": "Human-first event title without jargon",
+            "title": "Humantitle",
+            "type": "string"
+          },
+          "id": {
+            "description": "Deterministic event identity",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Event timing kind",
+            "enum": [
+              "exact",
+              "starts",
+              "peak",
+              "building",
+              "separating"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "localDate": {
+            "description": "User local date",
+            "format": "date",
+            "title": "Localdate",
+            "type": "string"
+          },
+          "meaning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Validated narrative meaning (LLM-owned)",
+            "title": "Meaning"
+          },
+          "occursAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC ISO instant timestamp",
+            "title": "Occursat"
+          },
+          "precision": {
+            "description": "Time precision level",
+            "enum": [
+              "minute",
+              "date",
+              "window"
+            ],
+            "title": "Precision",
+            "type": "string"
+          },
+          "sourceActivationIds": {
+            "description": "IDs of underlying activations",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sourceactivationids",
+            "type": "array"
+          },
+          "technicalTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional technical disclosure title",
+            "title": "Technicaltitle"
+          },
+          "timezone": {
+            "description": "IANA timezone name used for classification",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "localDate",
+          "timezone",
+          "precision",
+          "humanTitle"
+        ],
+        "title": "TodayFocusEvent",
+        "type": "object"
+      },
       "TodayImportantEvent": {
         "additionalProperties": false,
         "description": "Today Important block event.",
@@ -4825,6 +5128,16 @@
           },
           "daySummary": {
             "$ref": "#/components/schemas/DaySummaryBlock"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayFocus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "headline": {
             "title": "Headline",

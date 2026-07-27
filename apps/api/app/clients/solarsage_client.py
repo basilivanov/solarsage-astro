@@ -248,7 +248,18 @@ def get_solarsage_client() -> SolarSageClient:
     # END_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_solarsage_client
     """Get singleton SolarSage client."""
     global _client
-    if _client is None:
-        _client = SolarSageClient()
+    # The underlying httpx.AsyncClient is bound to the event loop of its
+    # creator. In test suites each test may run its own loop; reusing a
+    # client across loops fails with "Event loop is closed", so the
+    # singleton is per-loop (one client in production, fresh per test loop).
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if _client is None or getattr(_client, "_bound_loop", None) is not loop:
+        client = SolarSageClient()
+        client._bound_loop = loop  # type: ignore[attr-defined]
+        _client = client
     return _client
 # END_BLOCK: SINGLETON

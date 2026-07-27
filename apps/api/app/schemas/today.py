@@ -39,6 +39,8 @@ from typing import Annotated, Literal, Any
 
 from pydantic import Field, model_validator
 
+from app.schemas.today_focus import TodayFocus
+
 from app.core.versions import (
     PREVIOUS_V2_FRONTEND_PAYLOAD_VERSION,
     TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
@@ -549,6 +551,9 @@ class TodayPayload(CamelModel):
 
     # W-6: optional V2 block
     v2: TodayV2Block | None = None
+
+    # W4-C1: optional TodayFocus block
+    focus: TodayFocus | None = None
 
     @model_validator(mode="after")
     def validate_v2_identity_requires_body(self) -> "TodayPayload":

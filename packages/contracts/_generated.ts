@@ -2360,6 +2360,185 @@ export interface components {
             label: string;
         };
         /**
+         * TodayConvergence
+         * @description Calculated theme convergence summary (§5).
+         */
+        TodayConvergence: {
+            /**
+             * Id
+             * @description Convergence cluster identity
+             */
+            id: string;
+            /**
+             * Independentfactorcount
+             * @description Count of distinct physical factors
+             */
+            independentFactorCount: number;
+            /**
+             * Sourceactivationids
+             * @description IDs of all contributing activations
+             */
+            sourceActivationIds?: string[];
+            /**
+             * Summary
+             * @description LLM-generated convergence summary
+             */
+            summary?: string | null;
+            /**
+             * Techniquefamilies
+             * @description List of technique family names
+             */
+            techniqueFamilies?: string[];
+            /**
+             * Themekey
+             * @description Primary theme or target key
+             */
+            themeKey: string;
+            /**
+             * Title
+             * @description Convergence section title
+             */
+            title: string;
+        };
+        /**
+         * TodayFeaturedSphere
+         * @description Featured sphere recommendation card for convergence (§5).
+         */
+        TodayFeaturedSphere: {
+            /**
+             * Action
+             * @description LLM-generated imperative action phrase
+             */
+            action?: string | null;
+            /**
+             * Convergenceid
+             * @description Associated convergence ID
+             */
+            convergenceId: string;
+            /**
+             * Key
+             * @description Product sphere key e.g. work, money
+             */
+            key: string;
+            /**
+             * Relevancerank
+             * @description Relevance rank 1..3
+             */
+            relevanceRank: number;
+            /**
+             * Sourceactivationids
+             * @description IDs of supporting activations
+             */
+            sourceActivationIds?: string[];
+            /**
+             * Sourceeventids
+             * @description IDs of supporting events
+             */
+            sourceEventIds?: string[];
+            /**
+             * State
+             * @description Featured sphere state
+             * @default convergence_today
+             * @constant
+             */
+            state: "convergence_today";
+            /**
+             * Summary
+             * @description LLM-generated featured summary
+             */
+            summary?: string | null;
+        };
+        /**
+         * TodayFocus
+         * @description Root focus block for 'What converged today' (§5).
+         */
+        TodayFocus: {
+            /**
+             * Contentstate
+             * @description LLM content generation status
+             * @default not_needed
+             * @enum {string}
+             */
+            contentState: "ready" | "pending" | "unavailable" | "not_needed";
+            /** @description Convergence detail if state is convergence_today */
+            convergence?: components["schemas"]["TodayConvergence"] | null;
+            /**
+             * Events
+             * @description 0..3 public calculated events
+             */
+            events?: components["schemas"]["TodayFocusEvent"][];
+            /**
+             * Featuredspheres
+             * @description 0..3 featured sphere cards
+             */
+            featuredSpheres?: components["schemas"]["TodayFeaturedSphere"][];
+            /**
+             * State
+             * @description Product focus state
+             * @enum {string}
+             */
+            state: "convergence_today" | "single_impulses" | "background_only" | "no_accent" | "unavailable";
+        };
+        /**
+         * TodayFocusEvent
+         * @description Public event calculated for a user's date (§5).
+         */
+        TodayFocusEvent: {
+            /**
+             * Humantitle
+             * @description Human-first event title without jargon
+             */
+            humanTitle: string;
+            /**
+             * Id
+             * @description Deterministic event identity
+             */
+            id: string;
+            /**
+             * Kind
+             * @description Event timing kind
+             * @enum {string}
+             */
+            kind: "exact" | "starts" | "peak" | "building" | "separating";
+            /**
+             * Localdate
+             * Format: date
+             * @description User local date
+             */
+            localDate: string;
+            /**
+             * Meaning
+             * @description Validated narrative meaning (LLM-owned)
+             */
+            meaning?: string | null;
+            /**
+             * Occursat
+             * @description UTC ISO instant timestamp
+             */
+            occursAt?: string | null;
+            /**
+             * Precision
+             * @description Time precision level
+             * @enum {string}
+             */
+            precision: "minute" | "date" | "window";
+            /**
+             * Sourceactivationids
+             * @description IDs of underlying activations
+             */
+            sourceActivationIds?: string[];
+            /**
+             * Technicaltitle
+             * @description Optional technical disclosure title
+             */
+            technicalTitle?: string | null;
+            /**
+             * Timezone
+             * @description IANA timezone name used for classification
+             */
+            timezone: string;
+        };
+        /**
          * TodayImportantEvent
          * @description Today Important block event.
          */
@@ -2462,6 +2641,7 @@ export interface components {
              */
             dayStatus: "supportive" | "steady" | "tense";
             daySummary: components["schemas"]["DaySummaryBlock"];
+            focus?: components["schemas"]["TodayFocus"] | null;
             /** Headline */
             headline: string;
             /**

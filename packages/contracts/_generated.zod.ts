@@ -835,6 +835,53 @@ export const DaySummaryBlock = z.object({
   statusLabel: z.string(),
   statusLine: z.string(),
 });
+export const TodayConvergence = z.object({
+  id: z.string(),
+  independentFactorCount: z.number().int(),
+  sourceActivationIds: z.array(z.string()).optional(),
+  summary: z.union([z.string(), z.null()]).optional(),
+  techniqueFamilies: z.array(z.string()).optional(),
+  themeKey: z.string(),
+  title: z.string(),
+});
+export const TodayFocusEvent = z.object({
+  humanTitle: z.string(),
+  id: z.string(),
+  kind: z.enum(["exact", "starts", "peak", "building", "separating"]),
+  localDate: z.string(),
+  meaning: z.union([z.string(), z.null()]).optional(),
+  occursAt: z.union([z.string(), z.null()]).optional(),
+  precision: z.enum(["minute", "date", "window"]),
+  sourceActivationIds: z.array(z.string()).optional(),
+  technicalTitle: z.union([z.string(), z.null()]).optional(),
+  timezone: z.string(),
+});
+export const TodayFeaturedSphere = z.object({
+  action: z.union([z.string(), z.null()]).optional(),
+  convergenceId: z.string(),
+  key: z.string(),
+  relevanceRank: z.number().int(),
+  sourceActivationIds: z.array(z.string()).optional(),
+  sourceEventIds: z.array(z.string()).optional(),
+  state: z.literal("convergence_today").optional().default("convergence_today"),
+  summary: z.union([z.string(), z.null()]).optional(),
+});
+export const TodayFocus = z.object({
+  contentState: z
+    .enum(["ready", "pending", "unavailable", "not_needed"])
+    .optional()
+    .default("not_needed"),
+  convergence: z.union([TodayConvergence, z.null()]).optional(),
+  events: z.array(TodayFocusEvent).optional(),
+  featuredSpheres: z.array(TodayFeaturedSphere).optional(),
+  state: z.enum([
+    "convergence_today",
+    "single_impulses",
+    "background_only",
+    "no_accent",
+    "unavailable",
+  ]),
+});
 export const TodayImportantEvent = z.object({
   endsAt: z.union([z.string(), z.null()]).optional(),
   exactAt: z.union([z.string(), z.null()]).optional(),
@@ -1272,6 +1319,7 @@ export const TodayPayload = z.object({
   dayQuality: z.union([DayQuality, z.null()]).optional(),
   dayStatus: z.enum(["supportive", "steady", "tense"]),
   daySummary: DaySummaryBlock,
+  focus: z.union([TodayFocus, z.null()]).optional(),
   headline: z.string(),
   importantToday: z.array(TodayImportantEvent).optional().default([]),
   manifestationZones: z
@@ -1389,6 +1437,10 @@ export const schemas = {
   DayQuality,
   DaySummaryFact,
   DaySummaryBlock,
+  TodayConvergence,
+  TodayFocusEvent,
+  TodayFeaturedSphere,
+  TodayFocus,
   TodayImportantEvent,
   ManifestationZone,
   TodayMeta,
