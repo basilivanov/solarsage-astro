@@ -84,6 +84,7 @@ x-api-common: &api-common
     SOLARSAGE_V2_FRONTEND_ENABLED: ${SOLARSAGE_V2_FRONTEND_ENABLED:-false}
     # Feedback broadcast job kill-switch (app/jobs/feedback_broadcast.py)
     FEEDBACK_BROADCAST_ENABLED: ${FEEDBACK_BROADCAST_ENABLED:-false}
+    FEEDBACK_BROADCAST_HOURS: ${FEEDBACK_BROADCAST_HOURS:-20}
     # Billing (YooKassa): secrets come ONLY from the root-owned host env file
     # (/etc/solarsage/app.env), never from the repository. NATAL_REPORT_ENABLED
     # stays off until the billing path is proven in sandbox.
