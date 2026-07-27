@@ -80,3 +80,41 @@ class LLMClaimValidator:
                 return "Отложи важные переговоры и споры, перенеси обсуждение на более благоприятный период."
 
         return text
+
+    def validate_concrete_advice_details(
+        self,
+        *,
+        row_key: str,
+        verdict: str,
+        details: dict,
+        evidence: list[ConcreteAdviceEvidence],
+    ) -> dict | None:
+        """Validate and sanitize story, why, and advice fields in details object."""
+        if not isinstance(details, dict):
+            return None
+        story = details.get("story")
+        why = details.get("why")
+        advice = details.get("advice")
+
+        if not isinstance(story, str) or not story.strip():
+            return None
+        if not isinstance(advice, str) or not advice.strip():
+            return None
+        if not isinstance(why, list):
+            why = []
+        why_clean = [w.strip() for w in why if isinstance(w, str) and w.strip()]
+
+        sanitized_advice = self.validate_concrete_advice_text(
+            row_key=row_key,
+            verdict=verdict,
+            text=advice.strip(),
+            evidence=evidence,
+        )
+        if not sanitized_advice:
+            return None
+
+        return {
+            "story": story.strip(),
+            "why": why_clean,
+            "advice": sanitized_advice,
+        }

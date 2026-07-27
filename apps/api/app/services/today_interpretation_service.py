@@ -562,15 +562,12 @@ class TodayInterpretationService:
 
         def _apply_advice_attempt(candidate: dict | None) -> int:
             # START_FUNCTION_CONTRACT: F-M-TODAY-INTERPRETATION-SERVICE._apply_advice_attempt
-            # purpose: Atomically validate ONE concrete-advice attempt: the
-            #   candidate is applied to rows ONLY when it carries the exact 12
-            #   canonical keys AND yields >= 9 valid rows after the existing
-            #   claim/row validators. Accepted attempts apply their valid rows
-            #   (the rest keep the honest fallback); a rejected attempt leaves
-            #   every row untouched.
+            # purpose: Atomically validate ONE concrete-advice attempt: candidate is applied to rows
+            #   ONLY when it carries exact 12 canonical keys AND yields >= 9 valid rows.
+            #   Populates row.text and additive row.details (ConcreteAdviceDetails).
             # inputs: candidate — raw dict from generate_concrete_advice.
             # returns: number of applied rows (0 = attempt rejected).
-            # side_effects: mutates row.text only for accepted attempts.
+            # side_effects: mutates row.text and row.details only for accepted attempts.
             # emitted_logs: none.
             # error_behavior: never raises; malformed candidates are rejected.
             # END_FUNCTION_CONTRACT: F-M-TODAY-INTERPRETATION-SERVICE._apply_advice_attempt
@@ -578,26 +575,51 @@ class TodayInterpretationService:
                 return 0
             if set(candidate.keys()) != expected_keys:
                 return 0
+            from app.schemas.today import ConcreteAdviceDetails
             from app.services.llm_claim_validator import LLMClaimValidator
-            staged: list[tuple[ConcreteAdviceRow, str]] = []
+            staged: list[tuple[ConcreteAdviceRow, str, ConcreteAdviceDetails | None]] = []
+
             for row in rows:
-                text = candidate.get(row.key)
-                if not text or not isinstance(text, str) or not text.strip():
+                entry = candidate.get(row.key)
+                if not entry:
                     continue
-                sanitized_text = LLMClaimValidator().validate_concrete_advice_text(
-                    row_key=row.key,
-                    verdict=row.verdict,
-                    text=text,
-                    evidence=row.evidence,
-                )
-                if sanitized_text:
-                    text = sanitized_text
-                if validate_row_text(row, text):
-                    staged.append((row, text.strip()))
+
+                if isinstance(entry, str) and entry.strip():
+                    text = entry.strip()
+                    sanitized_text = LLMClaimValidator().validate_concrete_advice_text(
+                        row_key=row.key,
+                        verdict=row.verdict,
+                        text=text,
+                        evidence=row.evidence,
+                    )
+                    if sanitized_text:
+                        text = sanitized_text
+                    if validate_row_text(row, text):
+                        staged.append((row, text.strip(), None))
+                elif isinstance(entry, dict):
+                    sanitized = LLMClaimValidator().validate_concrete_advice_details(
+                        row_key=row.key,
+                        verdict=row.verdict,
+                        details=entry,
+                        evidence=row.evidence,
+                    )
+                    if sanitized:
+                        advice_text = sanitized["advice"]
+                        if validate_row_text(row, advice_text):
+                            details_obj = ConcreteAdviceDetails(
+                                story=sanitized["story"],
+                                why=sanitized["why"],
+                                advice=advice_text,
+                            )
+                            staged.append((row, advice_text, details_obj))
+
             if len(staged) < 9:
                 return 0
-            for row, text in staged:
+
+            for row, text, details_obj in staged:
                 row.text = text
+                row.details = details_obj
+
             return len(staged)
 
         if has_llm_keys:

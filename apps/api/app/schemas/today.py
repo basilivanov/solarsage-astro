@@ -341,6 +341,12 @@ class ConcreteAdviceEvidence(CamelModel):
     target_frame: str | None = None
     contribution_source_id: str | None = None
 
+class ConcreteAdviceDetails(CamelModel):
+    """Structured personal drilldown breakdown for a single product sphere."""
+    story: str = Field(..., description="2-3 sentences about the person and their day in this sphere")
+    why: list[str] = Field(default_factory=list, description="1-2 human background lines grounded in evidence")
+    advice: str = Field(..., description="Short concrete advice string")
+
 class ConcreteAdviceRow(CamelModel):
     key: Literal[
         "work",
@@ -363,6 +369,7 @@ class ConcreteAdviceRow(CamelModel):
     confidence: ConcreteAdviceConfidence
     text: str
     evidence: list[ConcreteAdviceEvidence]
+    details: ConcreteAdviceDetails | None = None
 
 class ConcreteAdviceCounts(CamelModel):
     good: int

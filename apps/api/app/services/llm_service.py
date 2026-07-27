@@ -61,6 +61,7 @@
 from __future__ import annotations
 
 import json as json_lib
+from typing import Any
 
 import anthropic
 import httpx
@@ -208,24 +209,38 @@ def _horary_narrative_requirements_prompt() -> str:
 # batch: exactly the 12 canonical string keys, all required, no extras.
 # The DeepSeek fallback stays plain; local parse/type/key/claim/row
 # validation remains the fail-closed boundary regardless of provider.
+_SPHERE_DETAILS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "story": {"type": "string"},
+        "why": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "advice": {"type": "string"},
+    },
+    "required": ["story", "why", "advice"],
+    "additionalProperties": False,
+}
+
 _CONCRETE_ADVICE_JSON_SCHEMA = {
     "name": "today_concrete_advice",
     "strict": True,
     "schema": {
         "type": "object",
         "properties": {
-            "work": {"type": "string"},
-            "money": {"type": "string"},
-            "documents": {"type": "string"},
-            "relationships": {"type": "string"},
-            "sport": {"type": "string"},
-            "communication": {"type": "string"},
-            "health": {"type": "string"},
-            "decisions": {"type": "string"},
-            "travel": {"type": "string"},
-            "creativity": {"type": "string"},
-            "study": {"type": "string"},
-            "shopping": {"type": "string"},
+            "work": _SPHERE_DETAILS_SCHEMA,
+            "money": _SPHERE_DETAILS_SCHEMA,
+            "documents": _SPHERE_DETAILS_SCHEMA,
+            "relationships": _SPHERE_DETAILS_SCHEMA,
+            "sport": _SPHERE_DETAILS_SCHEMA,
+            "communication": _SPHERE_DETAILS_SCHEMA,
+            "health": _SPHERE_DETAILS_SCHEMA,
+            "decisions": _SPHERE_DETAILS_SCHEMA,
+            "travel": _SPHERE_DETAILS_SCHEMA,
+            "creativity": _SPHERE_DETAILS_SCHEMA,
+            "study": _SPHERE_DETAILS_SCHEMA,
+            "shopping": _SPHERE_DETAILS_SCHEMA,
         },
         "required": [
             "work",
@@ -1220,11 +1235,11 @@ JSON:"""
         self,
         contexts: list[dict],
         evidence_packet: dict | None = None,
-    ) -> dict[str, str] | None:
+    ) -> dict[str, dict[str, Any] | str] | None:
         # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_concrete_advice
-        # purpose: Generate Russian text recommendations for 12 canonical spheres.
+        # purpose: Generate structured Russian drilldown recommendations (story, why, advice) for 12 canonical spheres.
         # inputs: contexts (list[dict]), evidence_packet (dict | None)
-        # returns: dict[str, str] | None — map of product key -> recommendation text
+        # returns: dict[str, dict] | None — map of product key -> {story, why, advice} object or legacy string
         # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_concrete_advice
         context_lines = []
         for ctx in contexts:
@@ -1245,35 +1260,38 @@ JSON:"""
 
         prompt = f"""{_ASTRO_BOUNDARY_RULES}
 
-Ты — профессиональный астрологический копирайтер. Напиши краткие практичные рекомендации на русском языке на «ты» для пользователя на основе переданных астрологических данных.
+Ты — профессиональный астрологический копирайтер. Напиши структурированный персональный разбор на русском языке на «ты» для пользователя по 12 сферам на основе переданных данных.
 {evidence_packet_str}
 Данные по 12 сферам жизни:
 {"\n".join(context_lines)}
 
+Для каждой сферы заполни объект с тремя полями:
+- story: 2–3 предложения о ЧЕЛОВЕКЕ и его дне в этой сфере (узнаваемая жизненная сцена, не инструкция, без астротерминов, без фатализма, без канцелярита).
+- why: массив из 1–2 строк «что за этим стоит» (причина из доказательств человеческим языком, grounded в фактах).
+- advice: один короткий конкретный совет на «ты» (до 120 символов).
+
 Правила:
-1. Твой ответ должен быть строго валидным JSON-объектом, содержащим ровно те же 12 ключей сфер, которые переданы во входных данных.
-2. Значение для каждого ключа должно быть одной емкой строкой-рекомендацией на русском языке.
-3. Каждое предложение должно содержать от 7 до 18 слов.
-4. Используй обращение на «ты» (например, «действуй», «сократи», «перепроверь»).
-5. Не используй латиницу (английские слова) в рекомендациях.
-6. Не выдумывай планеты, аспекты или дома, которых нет в доказательствах для конкретной сферы.
-7. Если вердикт для сферы равен "avoid", рекомендация должна советовать отложить дела, ограничить активность или соблюдать осторожность. Избегай призывов к активным действиям или инициативам (например, не пиши "активно общайся" или "начинай"). Разрешены смягчающие формулировки вроде "если нужно..., то только в коротком/спокойном формате".
-8. Не добавляй никаких других символов или текста вокруг JSON.
+1. Твой ответ должен быть строго валидным JSON-объектом, содержащим ровно 12 ключей сфер.
+2. Каждая сфера содержит объект {{ "story": "...", "why": ["..."], "advice": "..." }}.
+3. Обращение на «ты» (например, «действуй», «сократи», «перепроверь»).
+4. Не используй латиницу (английские слова) и названия планет/транзитов/аспектов/орбов/домов в тексте story.
+5. Если вердикт равен "avoid", advice должен советовать отложить дела или соблюдать осторожность.
+6. Не добавляй никаких других символов или текста вокруг JSON.
 
 Верни JSON-объект ровно такого вида:
 {{
-  "work": "<русский текст>",
-  "money": "<русский текст>",
-  "documents": "<русский текст>",
-  "relationships": "<русский текст>",
-  "sport": "<русский текст>",
-  "communication": "<русский текст>",
-  "health": "<русский текст>",
-  "decisions": "<русский текст>",
-  "travel": "<русский текст>",
-  "creativity": "<русский текст>",
-  "study": "<русский текст>",
-  "shopping": "<русский текст>"
+  "work": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "money": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "documents": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "relationships": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "sport": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "communication": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "health": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "decisions": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "travel": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "creativity": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "study": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }},
+  "shopping": {{ "story": "<текст>", "why": ["<причина>"], "advice": "<совет>" }}
 }}
 
 Твой JSON-ответ:"""

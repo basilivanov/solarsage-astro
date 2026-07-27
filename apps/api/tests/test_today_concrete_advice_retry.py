@@ -326,7 +326,8 @@ async def test_generate_concrete_advice_sends_strict_schema():
         assert len(schema["schema"]["required"]) == 12
         assert set(schema["schema"]["properties"].keys()) == set(schema["schema"]["required"])
         for field_schema in schema["schema"]["properties"].values():
-            assert field_schema == {"type": "string"}
+            assert field_schema["type"] == "object"
+            assert set(field_schema["properties"].keys()) == {"story", "why", "advice"}
 
 
 @pytest.mark.asyncio
@@ -368,3 +369,57 @@ async def test_concrete_advice_request_body_has_strict_json_schema():
     assert schema["schema"]["additionalProperties"] is False
     assert len(schema["schema"]["required"]) == 12
     assert set(schema["schema"]["properties"].keys()) == set(schema["schema"]["required"])
+
+
+@pytest.mark.asyncio
+async def test_concrete_advice_details_structuring_and_fallback():
+    """Verify structured drilldown details populate row.details and fallback cleanly to None."""
+    from datetime import date as Date
+    from app.services.today_interpretation_service import TodayInterpretationService
+    from app.services.llm_service import LLMService
+
+    keys = [
+        "work", "money", "documents", "relationships", "sport", "communication",
+        "health", "decisions", "travel", "creativity", "study", "shopping"
+    ]
+
+    structured_candidate = {
+        key: {
+            "story": "Персональная история дня для этой сферы. Это важный момент для внимания.",
+            "why": ["Фоновый фактор сферы деятельности"],
+            "advice": "Действуй взвешенно и спокойно.",
+        }
+        for key in keys
+    }
+
+    service = TodayInterpretationService()
+    with patch.object(LLMService, "generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
+         patch("app.core.config.settings") as mock_settings:
+        mock_settings.openrouter_api_key = "test-key"
+        mock_settings.anthropic_api_key = ""
+        mock_settings.deepseek_api_key = ""
+        mock_llm.return_value = structured_candidate
+
+        mock_sem = MagicMock()
+        mock_sem.day_theme = "Тема дня"
+
+        advice_block, summary, chart = await service.build(
+            target_date=Date(2026, 7, 27),
+            day_status="steady",
+            scoring_result={"day_status": "steady", "sphere_scores": {}},
+            signals=[],
+            semantic_layer=mock_sem,
+            day_chart=None,
+            planet_influences=[],
+            sphere_scores=[],
+            important_items=[],
+        )
+
+        rows = advice_block.rows
+        assert len(rows) == 12
+        for r in rows:
+            assert r.details is not None
+            assert r.details.story.startswith("Персональная история")
+            assert len(r.details.why) == 1
+            assert r.details.advice.startswith("Действуй взвешенно")
+            assert r.text == r.details.advice

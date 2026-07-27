@@ -64,6 +64,7 @@ from .natal import (
     QuoteBlock as QuoteBlock,
 )
 from .today import (
+    ConcreteAdviceDetails,
     ContentAccessReason,
     ContentAccessState,
     ConvergenceEvidence,
@@ -146,6 +147,7 @@ __all__ = [
     "HoraryAnswerRead",
     "HoraryQuotaRead",
     # today
+    "ConcreteAdviceDetails",
     "ContentAccessReason",
     "ContentAccessState",
     "ConvergenceEvidence",
