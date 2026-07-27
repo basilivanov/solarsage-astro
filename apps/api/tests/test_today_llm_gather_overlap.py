@@ -553,7 +553,7 @@ async def test_llm_phase_completed_event_success_and_deadline(
     assert kwargs["payload"]["timed_out_branches"] == 0
     assert kwargs["payload"]["total_branches"] == 5
     assert kwargs["payload"]["completed_branches"] == 5
-    assert kwargs["payload"]["deadline_ms"] == 10000
+    assert kwargs["payload"]["deadline_ms"] == int(ts_module.LLM_PHASE_DEADLINE_SECONDS * 1000)
 
     monkeypatch.setattr(ts_module, "LLM_PHASE_DEADLINE_SECONDS", 0.5)
     events.clear()

@@ -82,6 +82,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 import json
 from datetime import UTC, date as Date, datetime, timedelta
@@ -143,7 +144,9 @@ from app.core.logging import log_event, log_block
 
 # Request-local hard deadline for the Today foreground LLM phase (seconds).
 # Ceiling for the LLM work only; sidecar/DB are outside it.
-LLM_PHASE_DEADLINE_SECONDS = 10.0
+# The structured 12-sphere drilldown output does not fit into the old 10s
+# budget on cache miss; configurable via TODAY_LLM_PHASE_DEADLINE_SECONDS.
+LLM_PHASE_DEADLINE_SECONDS = float(os.getenv("TODAY_LLM_PHASE_DEADLINE_SECONDS", "25"))
 
 
 PLANET_LABELS_RU = {
