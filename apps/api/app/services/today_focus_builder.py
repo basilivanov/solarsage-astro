@@ -292,6 +292,27 @@ def normalize_factors(
         activations_list = activation_layer
     elif isinstance(activation_layer, dict):
         activations_list = activation_layer.get("activations") or activation_layer.get("items") or []
+    elif activation_layer is not None and hasattr(activation_layer, "activations"):
+        activations_list = list(getattr(activation_layer, "activations") or [])
+
+    # Semantic keys must match the ledger's 4-part format
+    # aspect:<source>:<aspect_type>:<target_type>:<target_key>
+    def _act_sem_key(act: Any) -> str | None:
+        planet = strip_prefix(str(_get_field(act, "planet") or "")).upper()
+        target = strip_prefix(str(_get_field(act, "target_planet") or "")).upper()
+        aspect = str(_get_field(act, "aspect_type") or "").lower()
+        if not (planet and target and aspect):
+            return None
+        target_type_raw = str(_get_field(act, "target_type") or "").lower()
+        if target_type_raw in ("angle", "lot", "house"):
+            target_type = target_type_raw
+        elif target.upper() in {"ASC", "MC", "IC", "DESC", "DSC"}:
+            target_type = "angle"
+        elif target.upper() in {"FORTUNE", "SPIRIT", "EROS", "SCIENCE", "MARRIAGE"}:
+            target_type = "lot"
+        else:
+            target_type = "natal_planet"
+        return f"aspect:{planet}:{aspect}:{target_type}:{target}"
 
     activations_by_id: dict[str, Any] = {}
     activations_by_sem_key: dict[str, list[Any]] = {}
@@ -301,12 +322,9 @@ def normalize_factors(
         if act_id:
             activations_by_id[str(act_id)] = act
 
-        # Extract semantic matching info (aspect/planets)
-        planet = strip_prefix(str(_get_field(act, "planet") or "")).upper()
-        target = strip_prefix(str(_get_field(act, "target_planet") or "")).upper()
-        aspect = str(_get_field(act, "aspect_type") or "").lower()
-        if planet and target and aspect:
-            sem = f"aspect:{planet}:{aspect}:{target}"
+        # Extract semantic matching info in the ledger's exact key format
+        sem = _act_sem_key(act)
+        if sem:
             activations_by_sem_key.setdefault(sem, []).append(act)
 
     # Factors from ledger
@@ -323,14 +341,14 @@ def normalize_factors(
         sem_key = f.semantic_key
 
         matched_acts = []
-        # Find matching activation by semantic_key or factor_id
-        for act_id, act in activations_by_id.items():
-            act_sem = f"aspect:{strip_prefix(str(_get_field(act, 'planet') or '')).upper()}:{str(_get_field(act, 'aspect_type') or '').lower()}:{strip_prefix(str(_get_field(act, 'target_planet') or '')).upper()}"
-            if act_sem == sem_key or str(act_id) in fid:
-                matched_acts.append(act)
-
-        if not matched_acts and sem_key in activations_by_sem_key:
+        # Find matching activation by exact ledger semantic key
+        if sem_key in activations_by_sem_key:
             matched_acts.extend(activations_by_sem_key[sem_key])
+        # Fallback: activation id mentioned inside the factor id
+        if not matched_acts:
+            for act_id, act in activations_by_id.items():
+                if act_id and act_id in fid:
+                    matched_acts.append(act)
 
         act_ids = tuple(sorted({str(_get_field(a, "id") or _get_field(a, "activation_id")) for a in matched_acts if _get_field(a, "id") or _get_field(a, "activation_id")}))
 

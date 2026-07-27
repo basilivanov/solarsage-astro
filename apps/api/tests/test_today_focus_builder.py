@@ -63,7 +63,7 @@ def test_signal_plus_activation_merge_one_today_factor():
     """Signal + activation of the same physical aspect merges into one TodayFactor with activation_ids."""
     factor_sig = DayValenceFactor(
         factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
-        semantic_key="aspect:MARS:opposition:NEPTUNE",
+        semantic_key="aspect:MARS:opposition:natal_planet:NEPTUNE",
         source="day_signal",
         technique="transit_to_natal",
         technique_family="transit",
