@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 from app.schemas.normalization import AstroSignal
 from app.schemas.today import PlanetInfluence, SphereScore, ConcreteAdviceEvidence
-from app.services.today_interpretation_service import TodayInterpretationService
+from app.services.today_interpretation_service import TodayInterpretationService, CONCRETE_ADVICE_FALLBACK_TEXT
 from app.services.llm_service import LLMService
 
 @pytest.mark.asyncio
@@ -173,7 +173,7 @@ async def test_today_interpretation_service_allowed_evidence_planets():
     service = TodayInterpretationService()
 
     mock_output = {
-        "work": "Марс дает энергию.",
+        "work": "Марс помогает сосредоточиться на проекте.",
         "money": "СЕНТИНЕЛ",
         "documents": "СЕНТИНЕЛ",
         "relationships": "СЕНТИНЕЛ",
@@ -204,7 +204,7 @@ async def test_today_interpretation_service_allowed_evidence_planets():
             important_items=[],
         )
 
-        assert concrete_advice.rows[0].text == "Марс дает энергию."
+        assert concrete_advice.rows[0].text == "Марс помогает сосредоточиться на проекте."
 
     # Test that mentioning Venus (not in evidence) is rejected — under the
     # degraded contract both attempts reject => all rows keep the fallback.
@@ -230,6 +230,52 @@ async def test_today_interpretation_service_allowed_evidence_planets():
         for row in concrete_advice.rows:
             assert row.text == "Рекомендация временно недоступна."
             assert "Венера" not in row.text
+
+
+@pytest.mark.asyncio
+async def test_no_fallback_policy_single_row_rejection_logs_and_sets_unavailable_text():
+    """S1 No-fallback policy: single rejected row logs llm.response_rejected and gets CONCRETE_ADVICE_FALLBACK_TEXT."""
+    service = TodayInterpretationService()
+
+    keys = ["work", "money", "documents", "relationships", "sport", "communication", "health", "decisions", "travel", "creativity", "study", "shopping"]
+    mock_output = {k: f"Безопасный совет для сферы номер {i}." for i, k in enumerate(keys)}
+    # Unsafe text for relationships (banned jargon)
+    mock_output["relationships"] = "Сегодня транзит для отношений."
+
+    with patch("app.services.llm_service.LLMService.generate_concrete_advice", new_callable=AsyncMock) as mock_llm, \
+         patch("app.core.config.settings.openrouter_api_key", "test-key"), \
+         patch("app.core.logging.log_event") as mock_log:
+        mock_llm.return_value = mock_output
+
+        concrete_advice, _, _ = await service.build(
+            target_date=date(2026, 7, 5),
+            day_status="supportive",
+            scoring_result={"day_status": "supportive", "sphere_scores": {}},
+            signals=[],
+            semantic_layer=None,
+            day_chart=None,
+            planet_influences=[],
+            sphere_scores=[],
+            important_items=[],
+        )
+
+        # 11 valid rows, 1 rejected row -> attempt accepted
+        rel_row = next(r for r in concrete_advice.rows if r.key == "relationships")
+        assert rel_row.text == CONCRETE_ADVICE_FALLBACK_TEXT
+        assert rel_row.details is None
+
+        work_row = next(r for r in concrete_advice.rows if r.key == "work")
+        assert work_row.text == "Безопасный совет для сферы номер 0."
+
+        # Verify llm.response_rejected event logged with row_key and machine reason
+        rejected_calls = [
+            call for call in mock_log.call_args_list
+            if call.args and call.args[0] == "llm.response_rejected"
+        ]
+        assert len(rejected_calls) >= 1
+        payload = rejected_calls[0].kwargs.get("payload", {})
+        assert payload.get("row_key") == "relationships"
+        assert payload.get("reason") == "banned_jargon"
 
 
 @pytest.mark.asyncio

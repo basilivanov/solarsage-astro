@@ -33,7 +33,7 @@
 # semantic_blocks:
 #   - PREGEN_JOB: select active users and pre-generate their next day payloads
 # owned_tests: none (smoke-verified via audit-day-live on pregenerated dates)
-# END_MODULE_MAP
+# END_MODULE_MAP: M-JOBS-DAY-PREGEN
 
 from __future__ import annotations
 

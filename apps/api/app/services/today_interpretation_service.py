@@ -587,33 +587,47 @@ class TodayInterpretationService:
             # emitted_logs: none.
             # error_behavior: never raises; malformed candidates are rejected.
             # END_FUNCTION_CONTRACT: F-M-TODAY-INTERPRETATION-SERVICE._apply_advice_attempt
+            from app.core.logging import log_event
             if not candidate or not isinstance(candidate, dict):
+                log_event("llm.response_rejected", level="warning", payload={"reason": "attempt_rejected"})
                 return 0
             if set(candidate.keys()) != expected_keys:
+                log_event("llm.response_rejected", level="warning", payload={"reason": "attempt_rejected"})
                 return 0
             from app.schemas.today import ConcreteAdviceDetails
             from app.services.llm_claim_validator import LLMClaimValidator
+            validator = LLMClaimValidator()
             staged: list[tuple[ConcreteAdviceRow, str, ConcreteAdviceDetails | None]] = []
 
             for row in rows:
                 entry = candidate.get(row.key)
                 if not entry:
+                    log_event(
+                        "llm.response_rejected",
+                        level="warning",
+                        payload={"row_key": row.key, "reason": "empty"},
+                    )
                     continue
 
                 if isinstance(entry, str) and entry.strip():
                     text = entry.strip()
-                    sanitized_text = LLMClaimValidator().validate_concrete_advice_text(
+                    sanitized_text, reason = validator.check_concrete_advice_text_safety(
                         row_key=row.key,
                         verdict=row.verdict,
                         text=text,
                         evidence=row.evidence,
                     )
-                    if sanitized_text:
-                        text = sanitized_text
-                    if validate_row_text(row, text):
-                        staged.append((row, text.strip(), None))
+                    if sanitized_text and validate_row_text(row, sanitized_text):
+                        staged.append((row, sanitized_text.strip(), None))
+                    else:
+                        reject_reason = reason or "validation_failed"
+                        log_event(
+                            "llm.response_rejected",
+                            level="warning",
+                            payload={"row_key": row.key, "reason": reject_reason},
+                        )
                 elif isinstance(entry, dict):
-                    sanitized = LLMClaimValidator().validate_concrete_advice_details(
+                    sanitized, reason = validator.check_concrete_advice_details_safety(
                         row_key=row.key,
                         verdict=row.verdict,
                         details=entry,
@@ -630,11 +644,37 @@ class TodayInterpretationService:
                                 advice=advice_text,
                             )
                             staged.append((row, advice_text, details_obj))
+                        else:
+                            log_event(
+                                "llm.response_rejected",
+                                level="warning",
+                                payload={"row_key": row.key, "reason": "validation_failed"},
+                            )
+                    else:
+                        reject_reason = reason or "validation_failed"
+                        log_event(
+                            "llm.response_rejected",
+                            level="warning",
+                            payload={"row_key": row.key, "reason": reject_reason},
+                        )
+                else:
+                    log_event(
+                        "llm.response_rejected",
+                        level="warning",
+                        payload={"row_key": row.key, "reason": "parse"},
+                    )
 
             if len(staged) < 9:
+                log_event("llm.response_rejected", level="warning", payload={"reason": "attempt_rejected"})
                 return 0
 
             from app.services.sphere_why_builder import build_sphere_why_items
+
+            staged_keys = {row.key for row, _, _ in staged}
+            for row in rows:
+                if row.key not in staged_keys:
+                    row.text = CONCRETE_ADVICE_FALLBACK_TEXT
+                    row.details = None
 
             for row, text, details_obj in staged:
                 row.text = text
