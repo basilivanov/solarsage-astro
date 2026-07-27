@@ -1,10 +1,11 @@
 // ############################################################################
 // AI_HEADER: MODULE_TODAY_CONCRETE_DAY_ADVICE — human-first 12-sphere navigator.
-// ROLE: Renders backend-owned advice rows as a single-column top-3 navigator with expansion.
+// ROLE: Renders every backend-owned advice row as a single-column premium list
+//       and shows one non-technical details panel at a time.
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-CONCRETE-DAY-ADVICE
-// purpose: Present concrete advice rows in single-column layout (top-3 + show-all) without verdict badges.
+// purpose: Present all concrete advice rows in single-column layout without verdict badges (D2).
 // owns:
 //   - components/today/concrete-day-advice.tsx
 // inputs: concreteAdvice, selectedKey, onSelectedKeyChange, onWhyOpen.
@@ -13,9 +14,8 @@
 // side_effects: delegates selection and Why disclosure to TodayScreen.
 // emitted_logs: none.
 // invariants:
-//   - every received row is visible when expanded; initial view shows top 3.
+//   - every received row is visible in canonical adapter order.
 //   - verdict badges, verdict dots, and data-status attributes are omitted (D2).
-//   - canonical adapter order is preserved.
 //   - only one details panel can exist.
 // failure_policy: render available rows gracefully when payload is incomplete.
 // END_MODULE_CONTRACT: M-TODAY-CONCRETE-DAY-ADVICE
@@ -24,7 +24,7 @@
 // public_entrypoints:
 //   - ConcreteDayAdvice
 // semantic_blocks:
-//   - SPHERE_NAVIGATOR: single-column top-3 selection and show-all button.
+//   - SPHERE_NAVIGATOR: single-column sphere selection list.
 //   - SPHERE_DETAILS: selected sphere human guidance.
 // owned_tests:
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
@@ -33,7 +33,6 @@
 
 "use client"
 
-import { useState } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import type { ConcreteAdviceBlock, ConcreteAdviceRow } from "@/lib/contracts/today"
 import { getIcon } from "@/lib/icons"
@@ -62,36 +61,30 @@ export function ConcreteDayAdvice({
   onWhyOpen,
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.ConcreteDayAdvice
-  // purpose: Render single-column sphere navigator with top-3 + show-all expansion and selected details.
+  // purpose: Render the full single-column sphere list and one selected details panel.
   // inputs: Props — backend rows, selectedKey, callbacks.
   // returns: Navigator JSX.
   // side_effects: invokes parent callbacks on row clicks.
   // emitted_logs: none.
   // error_behavior: renders available rows without fabricated entries.
   // END_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.ConcreteDayAdvice
-  const [showAll, setShowAll] = useState(false)
   const rows = concreteAdvice?.rows || []
-
-  // Ensure selected row is visible if selectedKey is set and index >= 3
-  const selectedIndex = selectedKey ? rows.findIndex((r) => r.key === selectedKey) : -1
-  const isSelectedRowHidden = selectedIndex >= 3 && !showAll
-  const visibleRows = showAll || isSelectedRowHidden ? rows : rows.slice(0, 3)
 
   return (
     <section
       className="px-5"
-      aria-label="Где проявится сегодня"
+      aria-label="Все сферы дня"
       data-testid="concrete-day-advice"
     >
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         Конкретно сегодня
       </p>
       <h2 className="mt-1 font-serif text-[24px] leading-tight text-foreground">
-        Где проявится сегодня
+        Все сферы дня
       </h2>
 
       <div className="mt-4 space-y-2.5">
-        {visibleRows.map((row) => {
+        {rows.map((row) => {
           const Icon = getIcon(row.iconName)
           const selected = row.key === selectedKey
           return (
@@ -136,18 +129,6 @@ export function ConcreteDayAdvice({
             </div>
           )
         })}
-
-        {rows.length > 3 && (
-          <button
-            type="button"
-            data-testid="concrete-day-advice-show-all"
-            aria-expanded={showAll || isSelectedRowHidden}
-            onClick={() => setShowAll((prev) => !prev)}
-            className="w-full mt-2 py-3 px-4 rounded-xl border border-border/60 bg-card/60 text-[14px] font-semibold text-violet-700 dark:text-violet-300 hover:bg-violet-50/40 dark:hover:bg-violet-500/10 transition-colors text-center cursor-pointer"
-          >
-            {showAll || isSelectedRowHidden ? "Свернуть" : `Все ${rows.length} сфер`}
-          </button>
-        )}
       </div>
     </section>
   )

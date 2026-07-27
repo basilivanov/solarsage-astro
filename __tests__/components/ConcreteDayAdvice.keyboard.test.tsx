@@ -3,7 +3,7 @@
 // ROLE: Unit acceptance tests for the controlled sphere navigator.
 // ############################################################################
 // START_MODULE_CONTRACT: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
-// purpose: Prove ConcreteDayAdvice renders single-column top-3 rows with expansion, details panel, aria-expanded/controls, and guidance text.
+// purpose: Prove ConcreteDayAdvice renders all single-column rows, details panel, aria-expanded/controls, and guidance text.
 // owns:
 //   - __tests__/components/ConcreteDayAdvice.keyboard.test.tsx
 // inputs: canonical ConcreteAdviceBlock fixture.
@@ -65,18 +65,12 @@ function renderNavigator(selectedKey: string | null = null) {
 }
 
 describe("ConcreteDayAdvice human-first navigator", () => {
-  it("renders top 3 canonical buttons initially and expands to all 12 on show-all click", () => {
+  it("renders all 12 canonical buttons in adapter order without an expander", () => {
     renderNavigator()
-    const initialButtons = screen.getAllByTestId("concrete-day-advice-row")
-    expect(initialButtons).toHaveLength(3)
-
-    const showAllBtn = screen.getByTestId("concrete-day-advice-show-all")
-    expect(showAllBtn.textContent).toContain("Все 12 сфер")
-
-    fireEvent.click(showAllBtn)
     const allButtons = screen.getAllByTestId("concrete-day-advice-row")
     expect(allButtons).toHaveLength(12)
     expect(allButtons.map((button) => button.getAttribute("data-sphere-key"))).toEqual(keys)
+    expect(screen.queryByTestId("concrete-day-advice-show-all")).toBeNull()
 
     for (const button of allButtons) {
       expect(button.tagName).toBe("BUTTON")

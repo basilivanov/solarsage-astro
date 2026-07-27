@@ -217,27 +217,10 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(concreteAdvice).toContainText("Спорт");
     await expect(concreteAdvice).toContainText("Общение");
 
-    const expandBtn = page.getByTestId("concrete-day-advice-show-all");
-    await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
-
-    // Collapsed state shows top 3 rows
+    // All sphere rows render in canonical order without an expander
     const rows = concreteAdvice.locator('[data-testid="concrete-day-advice-row"]');
-    await expect(rows).toHaveCount(3);
-
-    // Expand advice and assert 12 rows
-    await expandBtn.click();
-    await expect(expandBtn).toHaveAttribute("aria-expanded", "true");
     await expect(rows).toHaveCount(12);
-
-    // Collapse advice back to 3 rows
-    await expandBtn.click();
-    await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
-    await expect(rows).toHaveCount(3);
-
-    // Expand again for detail checks
-    await expandBtn.click();
-    await expect(expandBtn).toHaveAttribute("aria-expanded", "true");
-    await expect(rows).toHaveCount(12);
+    await expect(page.getByTestId("concrete-day-advice-show-all")).toHaveCount(0);
 
     // Verify 12 emojis and labels in canonical order
     const expectedEmojis = ["💼", "💰", "📝", "💖", "🏃", "💬", "🌿", "🎯", "✈️", "🎨", "📚", "🛍️"];

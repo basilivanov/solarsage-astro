@@ -352,7 +352,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.queryByTestId("why-time-horizon-timing")).toBeNull()
   })
 
-  it("renders top-3 single-column rows and expands to show all spheres", () => {
+  it("renders all sphere rows in single column without an expander", () => {
     const { payload } = buildCanonicalPayload()
     const onSelectedKeyChange = vi.fn()
     const renderNavigator = (selectedKey: string | null) => (
@@ -365,18 +365,9 @@ describe("TodayScreen V2 downstream fixture", () => {
     )
     const { rerender } = render(renderNavigator(null))
 
-    // Initial view shows top 3 rows
-    const rows = screen.getAllByTestId("concrete-day-advice-row")
-    expect(rows).toHaveLength(3)
-
-    // Show-all button is present
-    const showAllBtn = screen.getByTestId("concrete-day-advice-show-all")
-    expect(showAllBtn).toBeDefined()
-    expect(showAllBtn.textContent).toContain("Все")
-
-    // Clicking show-all expands to all rows
-    fireEvent.click(showAllBtn)
+    // All rows are visible in canonical order, no show-all expander
     expect(screen.getAllByTestId("concrete-day-advice-row")).toHaveLength(payload.concreteAdvice.rows.length)
+    expect(screen.queryByTestId("concrete-day-advice-show-all")).toBeNull()
 
     // Selecting a sphere renders details panel without verdict badge
     const firstRow = screen.getAllByTestId("concrete-day-advice-row")[0]

@@ -216,11 +216,8 @@ test.describe("V2 human-first navigator mock visual", () => {
     await expect(story).toContainText("Главное:")
     await expect(story.getByTestId("personal-story-sphere-link")).toHaveCount(3)
     await expect(story).not.toContainText(BANNED_HUMAN_COPY)
-    await expect(navigator.getByTestId("concrete-day-advice-row")).toHaveCount(3)
-    const showAllBtn = navigator.getByTestId("concrete-day-advice-show-all")
-    await expect(showAllBtn).toBeVisible()
-    await showAllBtn.click()
     await expect(navigator.getByTestId("concrete-day-advice-row")).toHaveCount(12)
+    await expect(navigator.getByTestId("concrete-day-advice-show-all")).toHaveCount(0)
 
     const work = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Работа", { exact: true }) })
     await work.click()

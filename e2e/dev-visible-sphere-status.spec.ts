@@ -48,12 +48,6 @@ test("shows sphere rows without verdict chips and expanded Work details in the l
   // D2: no verdict chips/badges anywhere in the navigator
   await expect(navigator.getByTestId("concrete-day-advice-row-status")).toHaveCount(0)
 
-  // Expand all rows so every sphere row is reachable
-  const showAll = navigator.getByTestId("concrete-day-advice-show-all")
-  if (await showAll.isVisible().catch(() => false)) {
-    await showAll.click()
-  }
-
   const work = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Работа", { exact: true }) })
   await work.click()
   await expect(work).toHaveAttribute("aria-expanded", "true")
