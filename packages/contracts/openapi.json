@@ -4691,7 +4691,8 @@
             "enum": [
               "today.v1",
               "today.v2",
-              "today.v2.1"
+              "today.v2.1",
+              "today.v2.2"
             ],
             "title": "Payloadversion",
             "type": "string"

@@ -2429,7 +2429,7 @@ export interface components {
              * @default today.v1
              * @enum {string}
              */
-            payloadVersion: "today.v1" | "today.v2" | "today.v2.1";
+            payloadVersion: "today.v1" | "today.v2" | "today.v2.1" | "today.v2.2";
             /** Promptversion */
             promptVersion: number;
             /**

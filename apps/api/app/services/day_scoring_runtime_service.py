@@ -223,7 +223,7 @@ class DayScoringRuntimeService:
         valence_dual_run = bool(getattr(settings, "today_valence_v1_dual_run", False))
         legacy_status = v2_result.day_status if v2_result is not None else v1_day_status
 
-        valence_assessments, valence_status = self._compute_valence_shadow(
+        valence_assessments, valence_breakdown, valence_status = self._compute_valence_shadow(
             day_signals=day_signals,
             activation_layer=activation_layer,
             legacy_day_status=legacy_status,
@@ -261,6 +261,7 @@ class DayScoringRuntimeService:
             diff=diff,
             v2_error=v2_error,
             valence_assessments=valence_assessments,
+            valence_breakdown=valence_breakdown,
         )
 
     def _compute_valence_shadow(
@@ -272,10 +273,10 @@ class DayScoringRuntimeService:
         *,
         valence_enabled: bool,
         valence_dual_run: bool,
-    ) -> tuple[dict[str, Any] | None, str | None]:
+    ) -> tuple[dict[str, Any] | None, Any | None, str | None]:
         """Compute W2-VALENCE shadow dual-run engine, emit events and metrics fail-closed."""
         if not (valence_enabled or valence_dual_run):
-            return None, None
+            return None, None, None
 
         try:
             activations = activation_layer.activations if activation_layer else []
@@ -331,7 +332,7 @@ class DayScoringRuntimeService:
                         payload={"date": target_date, "valence_day_status": valence_day_status},
                     )
 
-            return assessments, valence_day_status
+            return assessments, breakdown, valence_day_status
 
         except Exception as e:
             with log_block(slice="W2-VALENCE", module="M-DAY-SCORING-RUNTIME", block="VALENCE_SHADOW"):
@@ -343,5 +344,5 @@ class DayScoringRuntimeService:
                 )
             if valence_enabled:
                 raise  # Fail-closed loudly when explicitly enabled as primary authority
-            return None, None
+            return None, None, None
 # END_BLOCK: RUNTIME_COMPUTE

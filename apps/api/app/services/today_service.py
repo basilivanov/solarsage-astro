@@ -128,11 +128,14 @@ from app.services.day_delta_service import DayDeltaService
 from app.services.today_important_service import TodayImportantService
 from app.core.versions import (
     SCORING_V2_VERSION,
+    SCORING_V2_1_VERSION,
     TODAY_CONTENT_VERSION,
     TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS,
     TODAY_V2_PAYLOAD_VERSION,
+    TODAY_V2_2_PAYLOAD_VERSION,
     V2_COMPATIBLE_FRONTEND_PAYLOAD_VERSIONS,
     V2_FRONTEND_PAYLOAD_VERSION,
+    V2_4_FRONTEND_PAYLOAD_VERSION,
     TODAY_LLM_PROMPT_VERSION,
 )
 from app.services.natal_context_service import NatalContextService
@@ -248,7 +251,10 @@ class TodayService:
         # W2: Snapshot one request-local selection family before cache read.
         force_v2 = selection_context.force_v2 if selection_context is not None else False
         selected_scoring_version = selected_scoring_version_for_flags(force_v2=force_v2)
-        selected_v2 = str(selected_scoring_version) == str(SCORING_V2_VERSION)
+        selected_v2 = str(selected_scoring_version) in (
+            str(SCORING_V2_VERSION),
+            str(SCORING_V2_1_VERSION),
+        )
         compute_v2 = should_compute_v2(force_v2=force_v2)
 
         # W5: Build versioned cache key for read with expected identity
@@ -387,7 +393,10 @@ class TodayService:
             selected_scoring_version=dual.selected_scoring_version,
             activation_layer_version=activation_layer.activation_layer_version,
         )
-        v2_selected = identity.payload_version == TODAY_V2_PAYLOAD_VERSION
+        v2_selected = identity.payload_version in (
+            TODAY_V2_PAYLOAD_VERSION,
+            TODAY_V2_2_PAYLOAD_VERSION,
+        )
 
         cache_key = build_today_cache_key(
             user_id=user_id,
@@ -647,6 +656,8 @@ class TodayService:
                 trace_id=getattr(dual, "trace_id", None),
                 horizons=horizon_result.horizons,
                 horizon_pipeline_audit=horizon_pipeline_audit,
+                selected_identity=identity,
+                valence_breakdown=dual.valence_breakdown,
             )
 
         # W-DAY: relative status calculation and history persistence
@@ -716,9 +727,15 @@ class TodayService:
         )
 
         # Defensive contract invariants: V2 identity requires a non-null V2 body.
-        if payload.meta.payload_version == TODAY_V2_PAYLOAD_VERSION and payload.v2 is None:
+        if payload.meta.payload_version in (
+            TODAY_V2_PAYLOAD_VERSION,
+            TODAY_V2_2_PAYLOAD_VERSION,
+        ) and payload.v2 is None:
             raise RuntimeError("current V2 payload identity requires v2 block")
-        if payload.meta.frontend_payload_version == V2_FRONTEND_PAYLOAD_VERSION and payload.v2 is None:
+        if payload.meta.frontend_payload_version in (
+            V2_FRONTEND_PAYLOAD_VERSION,
+            V2_4_FRONTEND_PAYLOAD_VERSION,
+        ) and payload.v2 is None:
             raise RuntimeError("current frontend V2 identity requires v2 block")
 
         # W-5.2: Cache payload (with profile_hash in key) — but NEVER cache a

@@ -878,7 +878,7 @@ export const TodayMeta = z.object({
   generatedAt: z.string(),
   normalizationVersion: z.number().int(),
   payloadVersion: z
-    .enum(["today.v1", "today.v2", "today.v2.1"])
+    .enum(["today.v1", "today.v2", "today.v2.1", "today.v2.2"])
     .optional()
     .default("today.v1"),
   promptVersion: z.number().int(),

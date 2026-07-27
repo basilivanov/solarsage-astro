@@ -271,7 +271,7 @@ class TodayMeta(CamelModel):
     # W1+: V2 string version fields
     canon_versions: dict[str, str] | None = None
     audit_trace_id: str | None = None
-    payload_version: Literal["today.v1", "today.v2", "today.v2.1"] = "today.v1"
+    payload_version: Literal["today.v1", "today.v2", "today.v2.1", "today.v2.2"] = "today.v1"
     frontend_payload_version: int = 1
 
 

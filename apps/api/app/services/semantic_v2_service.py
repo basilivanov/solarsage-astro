@@ -162,10 +162,13 @@ class SemanticV2Service:
         trace_id: str | None = None,
         horizons: TodayV2HorizonsBlock | None = None,
         horizon_pipeline_audit: TodayV2HorizonPipelineAudit | None = None,
+        selected_identity: Any | None = None,
+        valence_breakdown: Any | None = None,
     ) -> TodayV2Block:
         # START_FUNCTION_CONTRACT: F-M-SEMANTIC-V2-SERVICE.SemanticV2Service.build_v2_block
         # purpose: Build TodayV2Block from existing activation/scoring objects and optional prebuilt horizons/audit.
-        # inputs: activation_layer, required scoring_result, optional diff/trace, horizons, and horizon_pipeline_audit.
+        # inputs: activation_layer, required scoring_result, optional diff/trace, horizons, horizon_pipeline_audit,
+        #   optional selected_identity (runtime identity for audit version fields) and valence_breakdown (W2-VALENCE).
         # returns: TodayV2Block with direct horizons/audit pass-through and exact-nine canon audit map.
         # side_effects: reads canon bundle data and current canon version services; does not mutate inputs.
         # emitted_logs: none.
@@ -300,15 +303,30 @@ class SemanticV2Service:
                 canon_versions[canon_key] = str(canon_value)
             # Horizon keys and unknown keys are silently ignored
 
+        # Audit versions follow the selected runtime identity when provided
+        # (W2-VALENCE: ss-scoring-2.1 / today.v2.2), otherwise legacy defaults.
+        from app.core.versions import VALENCE_V1_VERSION
+        audit_payload_version = TODAY_V2_PAYLOAD_VERSION
+        audit_scoring_version = scoring_result.scoring_version
+        audit_valence_version = None
+        if selected_identity is not None:
+            audit_payload_version = getattr(selected_identity, "payload_version", audit_payload_version)
+            audit_scoring_version = getattr(selected_identity, "scoring_version", audit_scoring_version)
+            from app.core.versions import SCORING_V2_1_VERSION
+            if str(audit_scoring_version) == str(SCORING_V2_1_VERSION):
+                audit_valence_version = VALENCE_V1_VERSION
+
         audit = TodayV2Audit(
             trace_id=trace_id,
             available=True,
-            payload_version=TODAY_V2_PAYLOAD_VERSION,
+            payload_version=audit_payload_version,
             calculation_version=activation_layer.calculation_version,
-            scoring_version=scoring_result.scoring_version,
+            scoring_version=audit_scoring_version,
             activation_layer_version=activation_layer.activation_layer_version,
+            valence_version=audit_valence_version,
             canon_versions={str(k): str(v) for k, v in canon_versions.items()},
             v1_v2_diff=v1_v2_diff,
+            day_status_breakdown=valence_breakdown,
             horizon_pipeline=horizon_pipeline_audit,
         )
 
