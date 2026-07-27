@@ -5,12 +5,10 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
-// purpose: Renders the full /day/[date] screen with oracle-matched layout.
-//          Composes DateHeader, trial-only access card, today-only check-in reminder,
-//          DaySummaryCard, ConcreteDayAdvice, DayChart, reading, why-expanded,
-//          week strip, AstroHistoryWidget, and bottom disclaimer. All data
-//          flows through adaptTodayPayload — no fabricated astrology. V2 order is
-//          summary → story → navigator → Why → chart → reading.
+// purpose: Renders the minimal premium /day/[date] screen.
+//          Accessible composition order: DateHeader → [TrialBanner/checkin] → DaySummaryCard →
+//          ActivationEvidenceCard → ConcreteDayAdvice → WhyExpanded →
+//          DayCollapsible (DayReading) → DayCollapsible (DayChart + DevAuditDrawer) → footer.
 // owns:
 //   - components/today/today-screen.tsx
 // inputs:
@@ -24,8 +22,7 @@
 //   - @/components/paywall, @/components/trial-banner
 //   - @/lib/today, @/lib/access
 // side_effects: Pointer/touch swipe handlers; controlled V2 selection/Why state;
-//               post-commit smooth scroll and focus for hero navigation; optional
-//               suppression of WeekStrip remote status fetches for local fixtures.
+//               post-commit smooth scroll and focus for hero navigation.
 // invariants:
 //   - data-state reflects the real access state (ready=accessible, locked=inaccessible)
 //   - TrialBanner renders only for real trial access, never subscription/unmetered full access.
@@ -36,6 +33,8 @@
 //   - selectPersonalStorySphere guards against non-existent row keys.
 //   - scrollAndFocusSphere targets exact matching row (not container) with smooth/center + preventScroll.
 //   - Same-key click repeats scroll/focus without deselection; missing target is no-op.
+//   - DayReading and DayChart live inside collapsed DayCollapsible disclosures in accessible view
+//   - WeekStrip and AstroHistoryWidget omitted from accessible stream (locked branch unchanged)
 // failure_policy: renders gracefully; missing data hides sections silently
 // END_MODULE_CONTRACT: M-TODAY-TODAY-SCREEN
 
@@ -45,7 +44,7 @@
 // semantic_blocks:
 //   - V2_NAVIGATION: useSearchParams deeplink defaults, controlled sphere/Why state, and post-commit scroll/focus.
 //   - DAY_SWIPE: bounded pointer/touch date navigation.
-//   - SCREEN_COMPOSITION: accessible and locked Today layouts with optional local fixture status suppression.
+//   - SCREEN_COMPOSITION: accessible and locked Today layouts with disclosure wrappers.
 // owned_tests:
 //   - __tests__/components/TodayScreen.test.tsx
 //   - __tests__/components/TodayScreen.v2-downstream.test.tsx
@@ -67,6 +66,7 @@ import { ConcreteDayAdvice } from "./concrete-day-advice"
 import { ActivationEvidenceCard } from "./activation-evidence-card"
 import { DevAuditDrawer } from "./dev-audit-drawer"
 import { AstroHistoryWidget } from "./astro-history-widget"
+import { DayCollapsible } from "./day-collapsible"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { YesterdayEchoLoader } from "@/components/checkin/yesterday-echo"
@@ -269,7 +269,6 @@ export function TodayScreen({
             daySummary={payload.daySummary}
             humanFirst={Boolean(payload.v2)}
             relativeStatus={(payload as any).relativeStatus}
-            sphereScores={payload.sphereScores || (payload.v2 ? payload.v2.scoreBreakdown : null)}
           />
 
           {/* Personal V2 story immediately below summary; null when V2 is absent. */}
@@ -288,7 +287,7 @@ export function TodayScreen({
             onWhyOpen={openWhy}
           />
 
-          {/* Why comes before technical visualization and reading in human-first V2. */}
+          {/* Why comes before disclosures in human-first V2. */}
           <WhyExpanded
             sections={payload.why}
             keyInsight={payload.keyInsight}
@@ -300,27 +299,20 @@ export function TodayScreen({
             onOpenChange={payload.v2 ? setWhyOpen : undefined}
           />
 
-          <DayChart
-            chart={payload.dayChart}
-            dateLabel={formatDateLabel(selectedDate)}
-            dayStatus={payload.dayStatus}
-          />
+          {/* Day reading disclosure */}
+          <DayCollapsible title="Полный разбор дня" dataTestId="day-reading-disclosure">
+            <DayReading paragraphs={payload.reading.paragraphs} />
+          </DayCollapsible>
 
-          {/* Сегодня важно — hidden on /day in Wave 11 (intentional) */}
-
-          {/* Day reading */}
-          <DayReading paragraphs={payload.reading.paragraphs} />
-
-          <DevAuditDrawer audit={payload.v2?.audit} />
-
-          {/* Week strip navigation */}
-          <WeekStrip
-            selectedDate={selectedDate}
-            access={access}
-            onSelect={onDateChange}
-          />
-
-          <AstroHistoryWidget date={selectedDate} />
+          {/* Technical calculation disclosure */}
+          <DayCollapsible title="Как это рассчитано" dataTestId="day-tech-disclosure">
+            <DayChart
+              chart={payload.dayChart}
+              dateLabel={formatDateLabel(selectedDate)}
+              dayStatus={payload.dayStatus}
+            />
+            <DevAuditDrawer audit={payload.v2?.audit} />
+          </DayCollapsible>
         </div>
       ) : (
         <div className="space-y-6 pb-8">

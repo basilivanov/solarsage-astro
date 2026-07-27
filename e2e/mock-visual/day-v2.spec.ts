@@ -199,8 +199,8 @@ test.describe("V2 human-first navigator mock visual", () => {
         document.querySelector('[data-testid="activation-evidence-card"]'),
         document.querySelector('[data-testid="concrete-day-advice"]'),
         document.querySelector('[data-testid="why-expanded"]'),
-        document.querySelector('[data-testid="day-chart"], [data-testid="day-chart-unavailable"]'),
-        document.querySelector('[data-testid="day-reading"]'),
+        document.querySelector('[data-testid="day-reading-disclosure"]'),
+        document.querySelector('[data-testid="day-tech-disclosure"]'),
       ]
       for (let index = 1; index < nodes.length; index += 1) {
         const previous = nodes[index - 1]

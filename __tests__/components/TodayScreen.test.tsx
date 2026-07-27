@@ -213,11 +213,9 @@ describe('TodayScreen', () => {
           'day-summary-card',
           'activation-evidence-card',
           'concrete-day-advice',
-          'day-chart-unavailable',
-          'day-reading',
           'why-expanded',
-          'week-strip',
-          'astro-history-widget',
+          'day-reading-disclosure',
+          'day-tech-disclosure',
           'today-bottom-disclaimer',
         ].includes(id ?? ''),
       )
@@ -229,19 +227,16 @@ describe('TodayScreen', () => {
       'day-summary-card',
       'concrete-day-advice',
       'why-expanded',
-      'day-chart-unavailable',
-      'day-reading',
-      'week-strip',
-      'astro-history-widget',
+      'day-reading-disclosure',
+      'day-tech-disclosure',
       'today-bottom-disclaimer',
     ])
     expect(screen.queryByTestId('activation-evidence-card')).toBeNull()
     expect(screen.queryByText('Standalone headline should not be in the top flow')).toBeNull()
     expect(screen.queryByTestId('today-notes')).toBeNull()
-    expect(screen.getByTestId('day-reading')).toBeTruthy()
+    expect(screen.getByTestId('day-reading-disclosure')).toBeTruthy()
+    expect(screen.getByTestId('day-tech-disclosure')).toBeTruthy()
     expect(screen.getByTestId('why-expanded')).toBeTruthy()
-    expect(screen.getByTestId('week-strip')).toBeTruthy()
-    expect(screen.getByTestId('astro-history-widget')).toBeTruthy()
     expect(screen.queryByTestId('paywall')).toBeNull()
   })
 
@@ -393,11 +388,9 @@ describe('TodayScreen', () => {
           'evening-checkin-reminder',
           'day-summary-card',
           'concrete-day-advice',
-          'day-chart-unavailable',
-          'day-reading',
           'why-expanded',
-          'week-strip',
-          'astro-history-widget',
+          'day-reading-disclosure',
+          'day-tech-disclosure',
           'today-bottom-disclaimer',
         ].includes(id ?? ''),
       )
@@ -409,10 +402,8 @@ describe('TodayScreen', () => {
       'day-summary-card',
       'concrete-day-advice',
       'why-expanded',
-      'day-chart-unavailable',
-      'day-reading',
-      'week-strip',
-      'astro-history-widget',
+      'day-reading-disclosure',
+      'day-tech-disclosure',
       'today-bottom-disclaimer',
     ])
   })
@@ -503,6 +494,7 @@ describe('TodayScreen', () => {
     fireEvent.click(screen.getByTestId('concrete-day-advice-row'))
     expect(screen.getByTestId('concrete-day-advice-details').textContent).toContain('СЕНТИНЕЛ ОТНОШЕНИЯ')
     expect(adviceSection.textContent).not.toContain('sparkle')
+    fireEvent.click(screen.getByTestId('day-reading-disclosure-toggle'))
     expect(screen.getByTestId('day-reading')).toBeTruthy()
   })
 

@@ -118,25 +118,4 @@ describe("DaySummaryCard & Relative Day Status UI", () => {
 
     expect(screen.queryByTestId("day-zone-indicator")).toBeNull()
   })
-
-  it("renders top 2 accent spheres (day-top-spheres)", () => {
-    const sphereScores = [
-      { key: "work", title: "Работа и карьеры", score: 85 },
-      { key: "money", title: "Финансы", score: 92 },
-      { key: "health", title: "Здоровье", score: 45 },
-    ]
-
-    render(
-      <DaySummaryCard
-        date={dummyDate}
-        dayStatus="steady"
-        daySummary={defaultSummary}
-        sphereScores={sphereScores}
-      />
-    )
-
-    const topSpheresEl = screen.getByTestId("day-top-spheres")
-    expect(topSpheresEl).toBeDefined()
-    expect(topSpheresEl.textContent).toContain("Тянет сегодня: Финансы, Работа и карьеры")
-  })
 })

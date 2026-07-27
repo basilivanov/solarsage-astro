@@ -129,12 +129,9 @@ async function sectionOrder(page: import("@playwright/test").Page): Promise<stri
       "evening-checkin-reminder",
       "day-summary-card",
       "concrete-day-advice",
-      "day-chart",
-      "day-chart-unavailable",
-      "day-reading",
       "why-expanded",
-      "week-strip",
-      "astro-history-widget",
+      "day-reading-disclosure",
+      "day-tech-disclosure",
     ]);
     return Array.from(screen.querySelectorAll("[data-testid]"))
       .map((node) => node.getAttribute("data-testid"))
@@ -188,24 +185,22 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(page.getByTestId("evening-checkin-reminder")).toHaveCount(0);
     await expect(page.getByTestId("day-summary-card")).toBeVisible();
     await expect(page.getByTestId("concrete-day-advice")).toBeVisible();
-    await expect(page.getByTestId("day-chart")).toBeVisible();
-    await expect(page.getByTestId("day-reading")).toBeVisible();
     await expect(page.getByTestId("why-expanded")).toBeVisible();
+    await expect(page.getByTestId("day-reading-disclosure")).toBeVisible();
+    await expect(page.getByTestId("day-tech-disclosure")).toBeVisible();
 
-    // Week strip is visible
-    await expect(page.getByTestId("week-strip")).toBeVisible();
-    // astro-history-widget checked via sectionOrder below
+    // Collapsed disclosures are not initially visible
+    await expect(page.getByTestId("day-chart")).toBeHidden();
+    await expect(page.getByTestId("day-reading")).toBeHidden();
 
     expect(await sectionOrder(page)).toEqual([
       "day-header",
       "access-card",
       "day-summary-card",
       "concrete-day-advice",
-      "day-chart",
-      "day-reading",
       "why-expanded",
-      "week-strip",
-      "astro-history-widget",
+      "day-reading-disclosure",
+      "day-tech-disclosure",
     ]);
 
     // Day summary card renders real lunar data and sentinel status line
@@ -280,6 +275,10 @@ test.describe("Mock Visual — /day/[date]", () => {
     expect(firstRowText).not.toMatch(/\d\.\d/);
     expect(firstRowText).not.toMatch(/[A-Za-z]/);
 
+    // Open technical calculation disclosure to assert chart and legend
+    await page.getByTestId("day-tech-disclosure-toggle").click();
+    await expect(page.getByTestId("day-chart")).toBeVisible();
+
     // Assert chart legend contains Russian aspect labels
     const chart = page.getByTestId("day-chart");
     await expect(chart).toContainText("соединение");
@@ -303,18 +302,16 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(popover).toBeVisible();
     await expect(popover).toContainText("Овен · 10 дом");
 
-    // Assert history widget shows БЛИЖАЙШИЕ ДНИ
-    const historyWidget = page.getByTestId("astro-history-widget");
-    await expect(historyWidget).toBeVisible();
-    await expect(historyWidget).toContainText("БЛИЖАЙШИЕ ДНИ");
-    await expect(historyWidget).not.toContainText("В этот день");
-
     // Tab bar navigation is present
     const tabBar = page.locator('nav[aria-label="Основная навигация"]');
     await expect(tabBar).toBeVisible();
 
     // Assert no missing API fixtures — after a quiet wait for late effects
     await expectNoMissingApiFixtures(page, tracker);
+
+    // Open the reading disclosure so both disclosures participate in the scroll flow
+    await page.getByTestId("day-reading-disclosure-toggle").click();
+    await expect(page.getByTestId("day-reading")).toBeVisible();
 
     // Reset scroll to 0 to ensure metrics are measured from a clean scroll state
     await scrollInternalTo(page, 0);
@@ -333,8 +330,6 @@ test.describe("Mock Visual — /day/[date]", () => {
     await scrollInternalTo(page, metrics.maxScroll);
     await expect(page.getByTestId("day-reading")).toBeVisible();
     await expect(page.getByTestId("why-expanded")).toBeVisible();
-    await expect(page.getByTestId("week-strip")).toBeVisible();
-    // astro-history-widget checked via sectionOrder below
     await expect(page.getByTestId("today-bottom-disclaimer")).toBeVisible();
   });
 
@@ -409,17 +404,19 @@ test.describe("Mock Visual — /day/[date]", () => {
 
     await page.goto("/day/2026-07-05");
     await page.waitForLoadState("networkidle");
-    // Wait for late effects (week strip, referral, etc.)
-    await page.waitForTimeout(1500);
+
+    // Navigate to a day whose payload is deliberately NOT mocked.
+    // The accessible screen has no week strip, so the deterministic unmocked
+    // request is the next day's payload fetch.
+    await page.goto("/day/2026-07-06");
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(500);
 
-    // This test deliberately has NO week-strip fixtures.
-    // The tracker should have recorded missing paths.
+    // The tracker should have recorded the unmocked request.
     expect(tracker.count).toBeGreaterThan(0);
 
-    // Verify at least one expected path is in the missing list
+    // Verify the expected path is in the missing list
     const missingPaths = tracker.all;
-    expect(missingPaths.some((p) => p.startsWith("/api/day/2026-06-"))).toBe(true);
+    expect(missingPaths.some((p) => p.startsWith("/api/day/2026-07-06"))).toBe(true);
   });
 });

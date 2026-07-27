@@ -31,7 +31,6 @@
 
 import type { DayStatus, DaySummaryBlock } from "@/lib/contracts/today"
 import type { RelativeDayStatus } from "@/lib/api/day"
-import { SPHERE_CONCISE } from "@/lib/presentation/today-v2"
 import { getIcon } from "@/lib/icons"
 import { DayZoneIndicator } from "./day-zone-indicator"
 
@@ -41,7 +40,6 @@ type Props = {
   daySummary: DaySummaryBlock
   humanFirst?: boolean
   relativeStatus?: RelativeDayStatus | null
-  sphereScores?: Record<string, any> | Array<any> | null
 }
 
 const STATUS_COLOR: Record<DayStatus, string> = {
@@ -59,26 +57,6 @@ const STATUS_EMOJI: Record<DayStatus, string> = {
 const MONTHS = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"]
 const WEEKDAYS = ["ВОСКРЕСЕНЬЕ", "ПОНЕДЕЛЬНИК", "ВТОРНИК", "СРЕДА", "ЧЕТВЕРГ", "ПЯТНИЦА", "СУББОТА"]
 
-function getTop2SphereTitles(sphereScores?: any): string[] {
-  if (!sphereScores) return []
-  const titleFor = (key: string | undefined, title?: string): string =>
-    (key && SPHERE_CONCISE[key]) || title || key || ""
-  if (Array.isArray(sphereScores)) {
-    const sorted = [...sphereScores].sort((a, b) => ((b.score ?? b.finalScore) ?? 0) - ((a.score ?? a.finalScore) ?? 0))
-    return sorted.slice(0, 2).map((s) => titleFor(s.key ?? s.name, s.title)).filter(Boolean)
-  }
-  if (typeof sphereScores === "object") {
-    const entries = Object.entries(sphereScores).map(([key, val]) => {
-      const score = typeof val === "number" ? val : (val as any)?.finalScore ?? (val as any)?.score ?? 0
-      const title = titleFor(key, typeof val === "object" ? (val as any)?.title : undefined)
-      return { key, title, score }
-    })
-    const sorted = entries.sort((a, b) => b.score - a.score)
-    return sorted.slice(0, 2).map((e) => e.title).filter(Boolean)
-  }
-  return []
-}
-
 // START_BLOCK: DAY_SUMMARY_CARD
 export function DaySummaryCard({
   date,
@@ -86,7 +64,6 @@ export function DaySummaryCard({
   daySummary,
   humanFirst = false,
   relativeStatus,
-  sphereScores,
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-DAY-SUMMARY-CARD.DaySummaryCard
   // purpose: Render the compact human-first or legacy summary presentation.
@@ -113,8 +90,6 @@ export function DaySummaryCard({
   const facts = daySummary?.facts || []
   const SummaryIcon = getIcon("orbit")
 
-  const topSpheres = getTop2SphereTitles(sphereScores)
-
   // Helper to map backend icons/planet names to symbols
   const FACT_ICONS: Record<string, string> = {
     Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
@@ -138,12 +113,6 @@ export function DaySummaryCard({
               <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{statusLine}</p>
             </div>
           </div>
-
-          {topSpheres.length > 0 && (
-            <p data-testid="day-top-spheres" className="mt-2 text-xs text-muted-foreground font-medium border-t border-border/30 pt-2">
-              Тянет сегодня: <span className="text-foreground font-semibold">{topSpheres.join(", ")}</span>
-            </p>
-          )}
 
           <DayZoneIndicator relativeStatus={relativeStatus} />
         </div>
@@ -171,12 +140,6 @@ export function DaySummaryCard({
         <p className="relative mt-2.5 text-[13px] leading-snug text-foreground/85">
           {statusLine}
         </p>
-
-        {topSpheres.length > 0 && (
-          <p data-testid="day-top-spheres" className="mt-2.5 text-xs text-muted-foreground font-medium border-t border-border/30 pt-2">
-            Тянет сегодня: <span className="text-foreground font-semibold">{topSpheres.join(", ")}</span>
-          </p>
-        )}
 
         <DayZoneIndicator relativeStatus={relativeStatus} />
 
