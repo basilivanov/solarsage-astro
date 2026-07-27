@@ -1,0 +1,71 @@
+{
+  "date": "2026-07-25",
+  "day_signals": [
+    {
+      "type": "aspect",
+      "planet": "Transit_Sun",
+      "target_planet": "Saturn",
+      "aspect_type": "square",
+      "strength": 0.85
+    },
+    {
+      "type": "aspect",
+      "planet": "Transit_Moon",
+      "target_planet": "Venus",
+      "aspect_type": "trine",
+      "strength": 0.70
+    },
+    {
+      "type": "planet_in_house",
+      "planet": "Transit_Mars",
+      "house": 6,
+      "strength": 0.60
+    }
+  ],
+  "activations": [
+    {
+      "id": "act_sun_saturn",
+      "kind": "aspect",
+      "evidence": "Transit Sun square natal Saturn",
+      "active": true,
+      "technique": "transit_to_natal",
+      "technique_family": "transit",
+      "polarity": "tense",
+      "strength": 0.90,
+      "planet": "Sun",
+      "target_type": "planet",
+      "target_key": "SATURN",
+      "aspect_type": "square",
+      "technical_spheres": ["work_status_achievement", "crisis_transformation_control"]
+    },
+    {
+      "id": "act_moon_venus",
+      "kind": "aspect",
+      "evidence": "Transit Moon trine natal Venus",
+      "active": true,
+      "technique": "transit_to_natal",
+      "technique_family": "transit",
+      "polarity": "supportive",
+      "strength": 0.75,
+      "planet": "Moon",
+      "target_type": "planet",
+      "target_key": "VENUS",
+      "aspect_type": "trine",
+      "technical_spheres": ["relationships_partnership", "inner_background_unconscious"]
+    },
+    {
+      "id": "firdar_jupiter",
+      "kind": "activation",
+      "evidence": "Firdar Major Period Jupiter",
+      "active": true,
+      "technique": "firdar_major",
+      "technique_family": "firdar",
+      "polarity": "supportive",
+      "strength": 0.80,
+      "planet": "Jupiter",
+      "target_type": "planet",
+      "target_key": "JUPITER",
+      "technical_spheres": ["meaning_expansion_vector", "money_security_resources"]
+    }
+  ]
+}

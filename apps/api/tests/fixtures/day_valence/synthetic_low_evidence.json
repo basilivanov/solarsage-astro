@@ -1,0 +1,12 @@
+{
+  "date": "2026-07-27",
+  "day_signals": [
+    {
+      "type": "planet_in_house",
+      "planet": "Transit_Moon",
+      "house": 3,
+      "strength": 0.30
+    }
+  ],
+  "activations": []
+}

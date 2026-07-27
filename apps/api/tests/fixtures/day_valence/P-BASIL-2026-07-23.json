@@ -1,0 +1,72 @@
+{
+  "date": "2026-07-23",
+  "day_signals": [
+    {
+      "type": "aspect",
+      "planet": "Transit_Mars",
+      "target_planet": "Saturn",
+      "aspect_type": "square",
+      "strength": 0.95
+    },
+    {
+      "type": "aspect",
+      "planet": "Transit_Sun",
+      "target_planet": "Pluto",
+      "aspect_type": "opposition",
+      "strength": 0.90
+    },
+    {
+      "type": "aspect",
+      "planet": "Transit_Venus",
+      "target_planet": "Jupiter",
+      "aspect_type": "sextile",
+      "strength": 0.70
+    }
+  ],
+  "activations": [
+    {
+      "id": "act_mars_saturn",
+      "kind": "aspect",
+      "evidence": "Transit Mars square natal Saturn",
+      "active": true,
+      "technique": "transit_to_natal",
+      "technique_family": "transit",
+      "polarity": "tense",
+      "strength": 0.95,
+      "planet": "Mars",
+      "target_type": "planet",
+      "target_key": "SATURN",
+      "aspect_type": "square",
+      "technical_spheres": ["work_status_achievement", "crisis_transformation_control", "body_energy_health"]
+    },
+    {
+      "id": "act_sun_pluto",
+      "kind": "aspect",
+      "evidence": "Transit Sun opposition natal Pluto",
+      "active": true,
+      "technique": "transit_to_natal",
+      "technique_family": "transit",
+      "polarity": "tense",
+      "strength": 0.92,
+      "planet": "Sun",
+      "target_type": "planet",
+      "target_key": "PLUTO",
+      "aspect_type": "opposition",
+      "technical_spheres": ["crisis_transformation_control", "money_security_resources"]
+    },
+    {
+      "id": "profection_saturn",
+      "kind": "activation",
+      "evidence": "Annual Profection Lord of Year Saturn",
+      "active": true,
+      "technique": "annual_profection",
+      "technique_family": "profection",
+      "polarity": "tense",
+      "strength": 0.85,
+      "planet": "Saturn",
+      "target_type": "planet",
+      "target_key": "SATURN",
+      "technical_spheres": ["work_status_achievement", "thinking_speech_learning"]
+    }
+  ]
+}
