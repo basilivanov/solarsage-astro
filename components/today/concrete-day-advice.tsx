@@ -33,10 +33,9 @@
 
 "use client"
 
-import { ChevronDown, ChevronRight } from "lucide-react"
-import type { ConcreteAdviceBlock, ConcreteAdviceRow } from "@/lib/contracts/today"
+import { ChevronRight } from "lucide-react"
+import type { ConcreteAdviceBlock } from "@/lib/contracts/today"
 import { getIcon } from "@/lib/icons"
-import { getHumanSphereLabel } from "@/lib/presentation/today-v2"
 
 type Props = {
   concreteAdvice: ConcreteAdviceBlock
@@ -47,10 +46,6 @@ type Props = {
 
 function sphereButtonId(key: string): string {
   return `concrete-sphere-${key}`
-}
-
-function detailsId(key: string): string {
-  return `concrete-advice-details-${key}`
 }
 
 // START_BLOCK: SPHERE_NAVIGATOR
@@ -95,9 +90,8 @@ export function ConcreteDayAdvice({
                 data-testid="concrete-day-advice-row"
                 data-sphere-key={row.key}
                 data-selected={selected ? "true" : "false"}
-                aria-expanded={selected}
-                aria-controls={detailsId(row.key)}
-                onClick={() => onSelectedKeyChange(selected ? null : row.key)}
+                aria-haspopup="dialog"
+                onClick={() => onSelectedKeyChange(row.key)}
                 className={`w-full flex min-h-[64px] items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 text-left transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 ${
                   selected
                     ? "border-violet-500 bg-violet-50/60 shadow-[0_0_0_1px_rgba(139,92,246,0.25),0_14px_30px_-24px_rgba(109,40,217,0.75)] dark:border-violet-300 dark:bg-violet-500/15"
@@ -112,20 +106,8 @@ export function ConcreteDayAdvice({
                     {row.label}
                   </span>
                 </div>
-                {selected ? (
-                  <ChevronDown className="h-5 w-5 text-violet-700 dark:text-violet-200 flex-none" aria-hidden />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-muted-foreground flex-none" aria-hidden />
-                )}
+                <ChevronRight className="h-5 w-5 text-muted-foreground flex-none" aria-hidden />
               </button>
-
-              {selected ? (
-                <SphereDetails
-                  row={row}
-                  onWhyOpen={onWhyOpen}
-                  onClose={() => onSelectedKeyChange(null)}
-                />
-              ) : null}
             </div>
           )
         })}
@@ -134,61 +116,3 @@ export function ConcreteDayAdvice({
   )
 }
 // END_BLOCK: SPHERE_NAVIGATOR
-
-// START_BLOCK: SPHERE_DETAILS
-function SphereDetails({
-  row,
-  onWhyOpen,
-  onClose,
-}: {
-  row: ConcreteAdviceRow
-  onWhyOpen: () => void
-  onClose: () => void
-}) {
-  const label = getHumanSphereLabel(row)
-  const hasEvidence = (row.evidence || []).length > 0
-  return (
-    <section
-      id={detailsId(row.key)}
-      data-testid="concrete-day-advice-details"
-      data-sphere-key={row.key}
-      role="region"
-      aria-labelledby={sphereButtonId(row.key)}
-      className="disclosure-in rounded-2xl border border-violet-200/80 bg-card px-4 py-4 shadow-[0_18px_36px_-30px_rgba(109,40,217,0.65)] dark:border-violet-400/30 space-y-3"
-    >
-      <h3 className="font-serif text-[22px] font-semibold leading-tight text-foreground">{label}</h3>
-
-      {row.text ? (
-        <div>
-          <h4 className="text-[14px] font-semibold text-violet-700 dark:text-violet-200">Что поможет</h4>
-          <p className="mt-1 text-[14.5px] leading-relaxed text-foreground/85">{row.text}</p>
-        </div>
-      ) : null}
-
-      {hasEvidence ? (
-        <p className="rounded-xl bg-violet-50/70 px-3 py-2 text-[13px] leading-relaxed text-violet-900 dark:bg-violet-500/10 dark:text-violet-100">
-          Объяснение основано на вашей личной карте
-        </p>
-      ) : null}
-
-      <div className="pt-1 flex flex-wrap gap-2">
-        <button
-          type="button"
-          data-testid="sphere-why-cta"
-          onClick={onWhyOpen}
-          className="min-h-10 rounded-xl border border-violet-300 bg-violet-50 px-3.5 text-[14px] font-semibold text-violet-800 transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-100 cursor-pointer"
-        >
-          Почему это про меня
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="min-h-10 rounded-xl px-3.5 text-[14px] font-medium text-muted-foreground transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 cursor-pointer"
-        >
-          Свернуть
-        </button>
-      </div>
-    </section>
-  )
-}
-// END_BLOCK: SPHERE_DETAILS

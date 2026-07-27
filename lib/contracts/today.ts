@@ -205,6 +205,14 @@ export const ConcreteAdviceEvidenceSchema = z.object({
   contributionSourceId: z.string().nullable().optional(),
 })
 
+export const ConcreteAdviceDetailsSchema = z.object({
+  story: z.string().min(1),
+  why: z.array(z.string()),
+  advice: z.string().min(1),
+})
+
+export type ConcreteAdviceDetails = z.infer<typeof ConcreteAdviceDetailsSchema>
+
 export const ConcreteAdviceRowSchema = z.object({
   key: z.enum([
     "work", "money", "documents", "relationships", "sport", "communication",
@@ -217,6 +225,7 @@ export const ConcreteAdviceRowSchema = z.object({
   confidence: z.enum(["high", "medium", "low"]),
   text: z.string().min(1),
   evidence: z.array(ConcreteAdviceEvidenceSchema),
+  details: ConcreteAdviceDetailsSchema.nullable().optional(),
 })
 
 export const ConcreteAdviceCountsSchema = z.object({

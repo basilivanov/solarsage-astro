@@ -67,6 +67,7 @@ import { ActivationEvidenceCard } from "./activation-evidence-card"
 import { DevAuditDrawer } from "./dev-audit-drawer"
 import { AstroHistoryWidget } from "./astro-history-widget"
 import { DayCollapsible } from "./day-collapsible"
+import { SphereDetailsSheet } from "./sphere-details-sheet"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { YesterdayEchoLoader } from "@/components/checkin/yesterday-echo"
@@ -128,29 +129,9 @@ export function TodayScreen({
     setWhyOpen(whyDeeplinkDefault)
   }, [selectedDate, whyDeeplinkDefault])
 
-  useEffect(() => {
-    if (!selectedSphereKey) return
-    scrollAndFocusSphere(selectedSphereKey)
-  }, [selectedSphereKey])
-
-  function scrollAndFocusSphere(key: string) {
-    const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
-    schedule(() => {
-      const row = document.querySelector<HTMLElement>(
-        `[data-testid="concrete-day-advice-row"][data-sphere-key="${key}"]`,
-      )
-      row?.scrollIntoView({ behavior: "smooth", block: "center" })
-      row?.focus({ preventScroll: true })
-    })
-  }
-
   function selectPersonalStorySphere(key: string) {
-    // Guard: only navigate to existing rows
+    // Guard: only open modal for existing rows
     if (!payload.concreteAdvice.rows.some((row) => row.key === key)) return
-    if (key === selectedSphereKey) {
-      scrollAndFocusSphere(key)
-      return
-    }
     setSelectedSphereKey(key)
   }
 
@@ -354,6 +335,17 @@ export function TodayScreen({
           Данные показаны для ознакомления. Перед принятием важных решений проверяйте информацию.
         </p>
       </footer>
+
+      {/* Sphere Details BottomSheet modal */}
+      <SphereDetailsSheet
+        row={
+          selectedSphereKey
+            ? payload.concreteAdvice.rows.find((r) => r.key === selectedSphereKey) || null
+            : null
+        }
+        onClose={() => setSelectedSphereKey(null)}
+        onWhyOpen={openWhy}
+      />
     </div>
   )
 }

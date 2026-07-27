@@ -369,14 +369,9 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(screen.getAllByTestId("concrete-day-advice-row")).toHaveLength(payload.concreteAdvice.rows.length)
     expect(screen.queryByTestId("concrete-day-advice-show-all")).toBeNull()
 
-    // Selecting a sphere renders details panel without verdict badge
+    // Rows have aria-haspopup="dialog" for triggering modal sheet
     const firstRow = screen.getAllByTestId("concrete-day-advice-row")[0]
-    const firstKey = firstRow.getAttribute("data-sphere-key")!
-    rerender(renderNavigator(firstKey))
-
-    const details = screen.getByTestId("concrete-day-advice-details")
-    expect(details).toBeDefined()
-    expect(screen.queryByTestId("concrete-day-advice-details-status")).toBeNull()
+    expect(firstRow.getAttribute("aria-haspopup")).toBe("dialog")
   })
 
   it("renders TodayScreen with backend horizons and stable screen contract", () => {
@@ -489,7 +484,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(sphereButtons.some((button) => button.textContent === "Работа")).toBe(true)
 
     fireEvent.click(sphereButtons.find((button) => button.textContent === "Работа")!)
-    const details = screen.getByTestId("concrete-day-advice-details")
+    const details = screen.getByTestId("sphere-details-sheet")
     expect(details.getAttribute("data-sphere-key")).toBe("work")
     expect(details.textContent).toContain("Не форсируйте разговор о статусе")
   })
@@ -924,25 +919,15 @@ describe("TodayScreen V2 downstream fixture", () => {
     const workChip = requireElement(chips.find((c) => c.getAttribute("data-sphere-key") === "work"), "work chip")
     fireEvent.click(workChip)
 
-    // After click assertions
+    // After click assertions: modal sheet opens with work details
     expect(workRow.getAttribute("data-selected")).toBe("true")
-    expect(workRow.getAttribute("aria-expanded")).toBe("true")
-    const details = screen.getByTestId("concrete-day-advice-details")
+    const details = screen.getByTestId("sphere-details-sheet")
     expect(details.getAttribute("data-sphere-key")).toBe("work")
-    expect(workRow.getAttribute("data-status")).toBe(statusBefore)
-    expect(scrollSpy).toHaveBeenCalledWith({ behavior: "smooth", block: "center" })
-    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true })
 
-    // Same-chip repeat: clear spies, click again
-    scrollSpy.mockClear()
-    focusSpy.mockClear()
+    // Same-chip repeat: click again, sheet remains open
     fireEvent.click(workChip)
     expect(workRow.getAttribute("data-selected")).toBe("true")
-    expect(workRow.getAttribute("aria-expanded")).toBe("true")
     expect(details.getAttribute("data-sphere-key")).toBe("work")
-    expect(workRow.getAttribute("data-status")).toBe(statusBefore)
-    expect(scrollSpy).toHaveBeenCalledWith({ behavior: "smooth", block: "center" })
-    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true })
 
     rafSpy.mockRestore()
   })

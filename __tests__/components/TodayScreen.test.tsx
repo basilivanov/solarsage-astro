@@ -492,7 +492,7 @@ describe('TodayScreen', () => {
     expect(adviceSection).toBeTruthy()
     expect(adviceSection.textContent).toContain('Отношения')
     fireEvent.click(screen.getByTestId('concrete-day-advice-row'))
-    expect(screen.getByTestId('concrete-day-advice-details').textContent).toContain('СЕНТИНЕЛ ОТНОШЕНИЯ')
+    expect(screen.getByTestId('sphere-details-sheet').textContent).toContain('СЕНТИНЕЛ ОТНОШЕНИЯ')
     expect(adviceSection.textContent).not.toContain('sparkle')
     fireEvent.click(screen.getByTestId('day-reading-disclosure-toggle'))
     expect(screen.getByTestId('day-reading')).toBeTruthy()

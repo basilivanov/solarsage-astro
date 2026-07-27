@@ -3,7 +3,7 @@
 // ROLE: Unit acceptance tests for the controlled sphere navigator.
 // ############################################################################
 // START_MODULE_CONTRACT: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
-// purpose: Prove ConcreteDayAdvice renders all single-column rows, details panel, aria-expanded/controls, and guidance text.
+// purpose: Prove ConcreteDayAdvice renders single-column rows with aria-haspopup="dialog" and calls onSelectedKeyChange.
 // owns:
 //   - __tests__/components/ConcreteDayAdvice.keyboard.test.tsx
 // inputs: canonical ConcreteAdviceBlock fixture.
@@ -13,14 +13,14 @@
 // emitted_logs: none.
 // invariants:
 //   - No unsafe casts or TypeScript suppression directives.
-//   - Top-3 rows rendered initially; show-all expands to all.
+//   - Rows have aria-haspopup="dialog" to trigger modal sheet.
 //   - Verdict badges and data-status are omitted.
 // failure_policy: test failure.
 // END_MODULE_CONTRACT: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
 // START_MODULE_MAP: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
 // public_entrypoints: describe/it blocks.
 // semantic_blocks:
-//   - ARIA_CONTRACT: aria-expanded/controls/id linkage.
+//   - ARIA_CONTRACT: aria-haspopup="dialog" linkage.
 // owned_tests:
 //   - __tests__/components/ConcreteDayAdvice.keyboard.test.tsx
 // END_MODULE_MAP: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
@@ -65,46 +65,23 @@ function renderNavigator(selectedKey: string | null = null) {
 }
 
 describe("ConcreteDayAdvice human-first navigator", () => {
-  it("renders all 12 canonical buttons in adapter order without an expander", () => {
+  it("renders all 12 canonical buttons in adapter order with aria-haspopup='dialog'", () => {
     renderNavigator()
     const allButtons = screen.getAllByTestId("concrete-day-advice-row")
     expect(allButtons).toHaveLength(12)
     expect(allButtons.map((button) => button.getAttribute("data-sphere-key"))).toEqual(keys)
-    expect(screen.queryByTestId("concrete-day-advice-show-all")).toBeNull()
 
     for (const button of allButtons) {
       expect(button.tagName).toBe("BUTTON")
       expect(button.getAttribute("data-selected")).toBe("false")
-      expect(button.getAttribute("aria-expanded")).toBe("false")
-      expect(button.getAttribute("aria-controls")).toBeTruthy()
+      expect(button.getAttribute("aria-haspopup")).toBe("dialog")
     }
   })
 
-  it("selects a single sphere, puts details after its row, and keeps guidance text exact", () => {
-    const { rerender, onSelectedKeyChange, onWhyOpen } = renderNavigator()
+  it("invokes onSelectedKeyChange when a sphere row is clicked", () => {
+    const { onSelectedKeyChange } = renderNavigator()
     const work = screen.getAllByTestId("concrete-day-advice-row")[0]
     fireEvent.click(work)
     expect(onSelectedKeyChange).toHaveBeenCalledWith("work")
-
-    rerender(
-      <ConcreteDayAdvice concreteAdvice={block} selectedKey="work" onSelectedKeyChange={onSelectedKeyChange} onWhyOpen={onWhyOpen} />,
-    )
-    const details = screen.getByTestId("concrete-day-advice-details")
-    expect(details.getAttribute("data-sphere-key")).toBe("work")
-    expect(details.textContent).toContain("СЕНТИНЕЛ совет 1")
-    expect(details.textContent).not.toMatch(/Транзит|орб|raw hidden/i)
-    expect(screen.getAllByTestId("concrete-day-advice-details")).toHaveLength(1)
-
-    fireEvent.click(screen.getByTestId("sphere-why-cta"))
-    expect(onWhyOpen).toHaveBeenCalledOnce()
-  })
-
-  it("uses native button activation without a double-toggle path", () => {
-    const { onSelectedKeyChange } = renderNavigator("work")
-    const work = screen.getAllByTestId("concrete-day-advice-row")[0]
-    expect(work.getAttribute("aria-expanded")).toBe("true")
-    fireEvent.click(work)
-    expect(onSelectedKeyChange).toHaveBeenCalledTimes(1)
-    expect(onSelectedKeyChange).toHaveBeenLastCalledWith(null)
   })
 })
