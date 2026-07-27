@@ -14,6 +14,7 @@ from app.services.today_focus_builder import (
     classify_temporal_role,
     local_day_bounds,
     normalize_factors,
+    build_today_focus,
 )
 
 
@@ -202,3 +203,409 @@ def test_permutation_invariance():
     res2 = normalize_factors(ledger2, target_date=date(2026, 7, 28), tz_info="Europe/Moscow")
 
     assert [f.factor_id for f in res1] == [f.factor_id for f in res2]
+
+
+# ── B2 Focus Assembly Tests (§12.1 cases 1–9, 13) ─────────────────────────────
+
+def test_b2_single_firdar_yields_background_only_not_convergence():
+    """1. Single annual firdar factor -> background_only state, NOT convergence_today."""
+    target_date = date(2026, 7, 28)
+    tf_firdar = TodayFactor(
+        factor_id="act:firdar:sun",
+        activation_ids=("act-firdar-sun",),
+        technique="firdar",
+        technique_family="firdar",
+        source_key="SUN",
+        target_key="SUN",
+        theme_keys=("identity",),
+        product_spheres=("work", "decisions"),
+        polarity="supportive",
+        strength=0.8,
+        salience=0.8,
+        active_from=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        exact_at=None,
+        active_until=datetime(2027, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        phase=None,
+        temporal_role="background",
+    )
+
+    focus = build_today_focus([tf_firdar], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus.state == "background_only"
+    assert focus.convergence is None
+    assert focus.events == ()
+    assert focus.featured_spheres == ()
+
+
+def test_b2_single_exact_factor_yields_single_impulses():
+    """2. Single exact factor today -> single_impulses state, convergence is None, featured_spheres empty."""
+    target_date = date(2026, 7, 28)
+    exact_dt = datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc)
+    tf_exact = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "decisions"),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=exact_dt - timedelta(hours=6),
+        exact_at=exact_dt,
+        active_until=exact_dt + timedelta(hours=6),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    focus = build_today_focus([tf_exact], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus.state == "single_impulses"
+    assert focus.convergence is None
+    assert len(focus.events) == 1
+    assert focus.events[0].id == "ev:sig:aspect:MARS:OPPOSITION:NEPTUNE"
+    assert focus.featured_spheres == ()
+
+
+def test_b2_two_related_factors_plus_exact_yields_convergence_today():
+    """3. Two related factors + exact today -> convergence_today state."""
+    target_date = date(2026, 7, 28)
+    exact_dt = datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc)
+    
+    tf1 = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "decisions"),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=exact_dt - timedelta(hours=6),
+        exact_at=exact_dt,
+        active_until=exact_dt + timedelta(hours=6),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+    
+    # Related by same target_key "NEPTUNE"
+    tf2 = TodayFactor(
+        factor_id="sig:aspect:MOON:OPPOSITION:NEPTUNE",
+        activation_ids=("act-2",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MOON",
+        target_key="NEPTUNE",
+        theme_keys=("emotion",),
+        product_spheres=("relationships", "health"),
+        polarity="tense",
+        strength=0.75,
+        salience=0.75,
+        active_from=exact_dt - timedelta(hours=2),
+        exact_at=exact_dt + timedelta(hours=1),
+        active_until=exact_dt + timedelta(hours=4),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    focus = build_today_focus([tf1, tf2], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus.state == "convergence_today"
+    assert focus.convergence is not None
+    assert focus.convergence.independent_factor_count == 2
+    assert len(focus.events) == 2
+    assert len(focus.featured_spheres) >= 1
+
+
+def test_b2_two_unrelated_exact_factors_yields_two_events_single_impulses():
+    """4. Two simultaneous but unrelated exact factors -> 2 events, state is single_impulses (no convergence)."""
+    target_date = date(2026, 7, 28)
+    exact_dt = datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc)
+    
+    tf1 = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work",),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=exact_dt - timedelta(hours=6),
+        exact_at=exact_dt,
+        active_until=exact_dt + timedelta(hours=6),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+    
+    # Unrelated: different target_key "JUPITER", no common theme or sphere
+    tf2 = TodayFactor(
+        factor_id="sig:aspect:VENUS:TRINE:JUPITER",
+        activation_ids=("act-2",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="VENUS",
+        target_key="JUPITER",
+        theme_keys=("finance",),
+        product_spheres=("money", "shopping"),
+        polarity="supportive",
+        strength=0.80,
+        salience=0.80,
+        active_from=exact_dt - timedelta(hours=2),
+        exact_at=exact_dt + timedelta(hours=2),
+        active_until=exact_dt + timedelta(hours=4),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    focus = build_today_focus([tf1, tf2], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus.state == "single_impulses"
+    assert focus.convergence is None
+    assert len(focus.events) == 2
+    assert focus.featured_spheres == ()
+
+
+def test_b2_signal_plus_activation_counts_as_one_independent_factor():
+    """5. Signal + activation of same aspect merges into 1 TodayFactor -> count is 1."""
+    target_date = date(2026, 7, 28)
+    tf1 = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1", "act-2"),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work",),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc),
+        exact_at=datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc),
+        active_until=datetime(2026, 7, 28, 16, 0, 0, tzinfo=timezone.utc),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    focus = build_today_focus([tf1], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus.state == "single_impulses"
+    assert len(focus.events) == 1
+
+
+def test_b2_single_factor_in_three_spheres_count_remains_one():
+    """6. Single factor mapped to 3 product spheres maintains independent_factor_count == 1."""
+    target_date = date(2026, 7, 28)
+    tf1 = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "decisions", "health"),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc),
+        exact_at=datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc),
+        active_until=datetime(2026, 7, 28, 16, 0, 0, tzinfo=timezone.utc),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    focus = build_today_focus([tf1], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus.state == "single_impulses"
+    assert focus.convergence is None
+
+
+def test_b2_background_joins_existing_convergence_does_not_create_one():
+    """7. Background factor joins an existing convergence group, but cannot create one alone."""
+    target_date = date(2026, 7, 28)
+    exact_dt = datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc)
+    
+    tf_anchor = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "decisions"),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=exact_dt - timedelta(hours=6),
+        exact_at=exact_dt,
+        active_until=exact_dt + timedelta(hours=6),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    tf_bg = TodayFactor(
+        factor_id="act:firdar:neptune",
+        activation_ids=("act-firdar-neptune",),
+        technique="firdar",
+        technique_family="firdar",
+        source_key="NEPTUNE",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "decisions"),
+        polarity="tense",
+        strength=0.70,
+        salience=0.70,
+        active_from=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        exact_at=None,
+        active_until=datetime(2027, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        phase=None,
+        temporal_role="background",
+    )
+
+    # Solo background + solo anchor -> cannot form convergence (background cannot create convergence alone)
+    focus_solo = build_today_focus([tf_anchor, tf_bg], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus_solo.state == "single_impulses"
+    assert focus_solo.convergence is None
+
+    # 2 related anchors + 1 background -> convergence formed, background joins technique_families
+    tf_anchor2 = TodayFactor(
+        factor_id="sig:aspect:MOON:OPPOSITION:NEPTUNE",
+        activation_ids=("act-2",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MOON",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("relationships", "health"),
+        polarity="tense",
+        strength=0.75,
+        salience=0.75,
+        active_from=exact_dt - timedelta(hours=2),
+        exact_at=exact_dt + timedelta(hours=1),
+        active_until=exact_dt + timedelta(hours=4),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    focus_conv = build_today_focus([tf_anchor, tf_anchor2, tf_bg], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus_conv.state == "convergence_today"
+    assert focus_conv.convergence is not None
+    assert focus_conv.convergence.independent_factor_count == 2
+    assert "firdar" in focus_conv.convergence.technique_families
+
+
+def test_b2_permutation_of_factors_preserves_focus_state_and_ids():
+    """8. Permutation of input factors list preserves state, ranking, and output IDs."""
+    target_date = date(2026, 7, 28)
+    exact_dt = datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc)
+    
+    tf1 = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "decisions"),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=exact_dt - timedelta(hours=6),
+        exact_at=exact_dt,
+        active_until=exact_dt + timedelta(hours=6),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+    
+    tf2 = TodayFactor(
+        factor_id="sig:aspect:MOON:OPPOSITION:NEPTUNE",
+        activation_ids=("act-2",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MOON",
+        target_key="NEPTUNE",
+        theme_keys=("emotion",),
+        product_spheres=("relationships", "health"),
+        polarity="tense",
+        strength=0.75,
+        salience=0.75,
+        active_from=exact_dt - timedelta(hours=2),
+        exact_at=exact_dt + timedelta(hours=1),
+        active_until=exact_dt + timedelta(hours=4),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    focus1 = build_today_focus([tf1, tf2], tz_name="Europe/Moscow", target_date=target_date)
+    focus2 = build_today_focus([tf2, tf1], tz_name="Europe/Moscow", target_date=target_date)
+
+    assert focus1.state == focus2.state
+    assert focus1.convergence.id == focus2.convergence.id
+    assert [e.id for e in focus1.events] == [e.id for e in focus2.events]
+    assert [s.key for s in focus1.featured_spheres] == [s.key for s in focus2.featured_spheres]
+
+
+def test_b2_featured_spheres_capped_at_three():
+    """9. Featured spheres are capped at 3 (0..3). 4th sphere does not pass cap."""
+    target_date = date(2026, 7, 28)
+    exact_dt = datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc)
+    
+    tf1 = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "money", "documents", "relationships", "sport"),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=exact_dt - timedelta(hours=6),
+        exact_at=exact_dt,
+        active_until=exact_dt + timedelta(hours=6),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+    
+    tf2 = TodayFactor(
+        factor_id="sig:aspect:MOON:OPPOSITION:NEPTUNE",
+        activation_ids=("act-2",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MOON",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "money", "documents", "relationships"),
+        polarity="tense",
+        strength=0.75,
+        salience=0.75,
+        active_from=exact_dt - timedelta(hours=2),
+        exact_at=exact_dt + timedelta(hours=1),
+        active_until=exact_dt + timedelta(hours=4),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+
+    focus = build_today_focus([tf1, tf2], tz_name="Europe/Moscow", target_date=target_date)
+    assert focus.state == "convergence_today"
+    assert len(focus.featured_spheres) <= 3
+    assert len(focus.featured_spheres) == 3
+
+
+def test_b2_malformed_or_none_input_returns_unavailable():
+    """13. None or malformed input returns state='unavailable'."""
+    focus = build_today_focus(None)
+    assert focus.state == "unavailable"
+    assert focus.content_state == "unavailable"
+    assert focus.convergence is None
+    assert focus.events == ()
+    assert focus.featured_spheres == ()
+

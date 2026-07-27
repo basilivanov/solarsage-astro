@@ -19,13 +19,19 @@
 # START_MODULE_MAP: M-TODAY-FOCUS-BUILDER
 # public_entrypoints:
 #   - TodayFactor
+#   - TodayFocusEventResult
+#   - TodayFeaturedSphereResult
+#   - TodayConvergenceResult
+#   - TodayFocusResult
 #   - local_day_bounds
 #   - classify_temporal_role
 #   - normalize_factors
+#   - build_today_focus
 # semantic_blocks:
 #   - TIME_BOUNDS: DST-safe UTC boundary calculation
 #   - ROLE_CLASSIFICATION: temporal role classifier (anchor_today, supporting, background, unrelated)
 #   - FACTOR_NORMALIZER: factor ledger + activation layer normalization and merging
+#   - FOCUS_ASSEMBLY: deterministic grouping, ranking, state determination, events (0..3), and featured spheres (0..3)
 # owned_tests:
 #   - tests/test_today_focus_builder.py
 # END_MODULE_MAP: M-TODAY-FOCUS-BUILDER
@@ -395,3 +401,387 @@ def normalize_factors(
     result.sort(key=lambda x: (-x.strength, x.factor_id))
     return result
 # END_BLOCK: FACTOR_NORMALIZER
+
+
+PLANET_LABELS_RU: dict[str, str] = {
+    "SUN": "Солнце", "MOON": "Луна", "MERCURY": "Меркурий",
+    "VENUS": "Венера", "MARS": "Марс", "JUPITER": "Юпитер",
+    "SATURN": "Сатурн", "URANUS": "Уран", "NEPTUNE": "Нептун", "PLUTO": "Плутон"
+}
+
+ASPECT_LABELS_RU: dict[str, str] = {
+    "conjunction": "соединение", "opposition": "оппозиция",
+    "trine": "тригон", "square": "квадратура", "sextile": "секстиль"
+}
+
+
+# START_BLOCK: FOCUS_ASSEMBLY
+@dataclass(frozen=True)
+class TodayFocusEventResult:
+    id: str
+    kind: Literal["exact", "starts", "peak", "building", "separating"]
+    occurs_at: datetime | None
+    local_date: date
+    timezone: str
+    precision: Literal["minute", "date", "window"]
+    human_title: str
+    technical_title: str | None
+    meaning: str | None
+    source_activation_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TodayFeaturedSphereResult:
+    key: str
+    relevance_rank: int
+    state: Literal["convergence_today"]
+    summary: str | None
+    action: str | None
+    convergence_id: str
+    source_event_ids: tuple[str, ...]
+    source_activation_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TodayConvergenceResult:
+    id: str
+    theme_key: str
+    title: str
+    summary: str | None
+    independent_factor_count: int
+    technique_families: tuple[str, ...]
+    source_activation_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TodayFocusResult:
+    state: Literal["convergence_today", "single_impulses", "background_only", "no_accent", "unavailable"]
+    convergence: TodayConvergenceResult | None
+    events: tuple[TodayFocusEventResult, ...]
+    featured_spheres: tuple[TodayFeaturedSphereResult, ...]
+    content_state: Literal["ready", "pending", "unavailable", "not_needed"]
+
+
+def _format_event_titles(factor: TodayFactor) -> tuple[str, str | None]:
+    src = PLANET_LABELS_RU.get((factor.source_key or "").upper(), factor.source_key or "")
+    tgt = PLANET_LABELS_RU.get((factor.target_key or "").upper(), factor.target_key or "")
+
+    # Try aspect parsing from factor_id or technique
+    parts = factor.factor_id.split(":")
+    if len(parts) >= 5 and parts[1] == "aspect":
+        asp_raw = parts[3].lower()
+        asp_ru = ASPECT_LABELS_RU.get(asp_raw, asp_raw)
+
+        # Human title
+        if asp_raw == "opposition":
+            human = f"{src} напротив твоего {tgt}"
+        elif asp_raw == "conjunction":
+            human = f"{src} в соединении с твоим {tgt}"
+        elif asp_raw == "square":
+            human = f"{src} в напряжении с твоим {tgt}"
+        elif asp_raw == "trine":
+            human = f"{src} в тригоне к твоему {tgt}"
+        elif asp_raw == "sextile":
+            human = f"{src} в секстиле к твоему {tgt}"
+        else:
+            human = f"{src} {asp_ru} {tgt}"
+
+        tech = f"{src} {asp_ru} {tgt}"
+        return human, tech
+
+    if len(parts) >= 4 and parts[1] == "house":
+        house_num = parts[3]
+        human = f"{src} в {house_num} доме"
+        return human, human
+
+    human = f"{src} {tgt}".strip() or factor.factor_id
+    return human, human
+
+
+def build_today_focus(
+    factors: list[TodayFactor] | None,
+    *,
+    valence_assessments: dict[str, Any] | None = None,
+    tz_name: str = "UTC",
+    target_date: date | None = None,
+) -> TodayFocusResult:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-FOCUS-BUILDER.build_today_focus
+    # purpose: Assemble deterministic TodayFocusResult (grouping, ranking, product state, events 0..3, featured spheres 0..3) from factors (§2.5–2.6, §3, §4.3–4.5).
+    # inputs: factors (list[TodayFactor]), valence_assessments (dict | None), tz_name (str), target_date (date)
+    # returns: TodayFocusResult
+    # side_effects: none
+    # emitted_logs: none
+    # error_behavior: returns unavailable on malformed or None inputs
+    # END_FUNCTION_CONTRACT: F-M-TODAY-FOCUS-BUILDER.build_today_focus
+    if factors is None or not isinstance(factors, list):
+        return TodayFocusResult(
+            state="unavailable",
+            convergence=None,
+            events=(),
+            featured_spheres=(),
+            content_state="unavailable",
+        )
+
+    if target_date is None:
+        target_date = date.today()
+
+    local_start_utc, local_end_utc = local_day_bounds(target_date, tz_name)
+
+    # Filter factors by temporal_role
+    anchors = [f for f in factors if f.temporal_role == "anchor_today"]
+    supporting = [f for f in factors if f.temporal_role == "supporting"]
+    backgrounds = [f for f in factors if f.temporal_role == "background"]
+
+    # 1. Grouping (§4.3)
+    # Seed group for each anchor_today
+    candidate_groups: list[dict[str, Any]] = []
+
+    for anchor in anchors:
+        group_factors = [anchor]
+        other_candidates = anchors + supporting
+        for other in other_candidates:
+            if other.factor_id == anchor.factor_id:
+                continue
+            # Related check: same target_key OR (common theme_key AND common product_sphere)
+            same_target = (anchor.target_key is not None and anchor.target_key == other.target_key)
+            common_theme = bool(set(anchor.theme_keys) & set(other.theme_keys))
+            common_sphere = bool(set(anchor.product_spheres) & set(other.product_spheres))
+
+            if same_target or (common_theme and common_sphere):
+                if other not in group_factors:
+                    group_factors.append(other)
+
+        # Count independent physical factors (distinct factor_ids)
+        distinct_ids = {f.factor_id for f in group_factors}
+        if len(distinct_ids) >= 2:
+            # Valid convergence candidate group!
+            # Attach related background factors (background factors cannot form a group alone, but can join)
+            for bg in backgrounds:
+                same_tgt = (anchor.target_key is not None and anchor.target_key == bg.target_key)
+                com_theme = bool(set(anchor.theme_keys) & set(bg.theme_keys))
+                com_sph = bool(set(anchor.product_spheres) & set(bg.product_spheres))
+                if (same_tgt or (com_theme and com_sph)) and bg not in group_factors:
+                    group_factors.append(bg)
+
+            candidate_groups.append({
+                "anchor": anchor,
+                "factors": group_factors,
+                "distinct_ids": distinct_ids,
+            })
+
+    # Deduplicate candidate clusters by frozen set of factor_ids
+    clusters_map: dict[frozenset[str], dict[str, Any]] = {}
+    for g in candidate_groups:
+        cluster_key = frozenset(g["distinct_ids"])
+        if cluster_key not in clusters_map:
+            cluster_anchors = [f for f in g["factors"] if f.temporal_role == "anchor_today"]
+            cluster_anchors.sort(key=lambda f: (-f.strength, f.factor_id))
+            primary_anchor = cluster_anchors[0] if cluster_anchors else g["anchor"]
+
+            g["anchor"] = primary_anchor
+            clusters_map[cluster_key] = g
+
+    candidate_groups = list(clusters_map.values())
+
+    # 2. Ranking Candidate Groups (§4.4)
+    def rank_group(g: dict[str, Any]) -> tuple[int, int, int, int, float, str]:
+        g_factors: list[TodayFactor] = g["factors"]
+        anchor: TodayFactor = g["anchor"]
+
+        # 1. Date precision: exact_today (3) -> starts_today (2) -> delta_peak (1) -> 0
+        precision_rank = 0
+        if any(f.exact_at and (local_start_utc <= f.exact_at < local_end_utc) for f in g_factors):
+            precision_rank = 3
+        elif any(f.active_from and (local_start_utc <= f.active_from < local_end_utc) for f in g_factors):
+            precision_rank = 2
+        elif anchor.temporal_role == "anchor_today":
+            precision_rank = 1
+
+        # 2. Independent physical factor count (capped at 3)
+        vol_rank = min(len(g["distinct_ids"]), 3)
+
+        # 3. Number of distinct technique families
+        fam_rank = len({f.technique_family for f in g_factors})
+
+        # 4. Strict connection rank: target_key (2) > theme-only (1)
+        conn_rank = 2 if any(f.target_key is not None and f.target_key == anchor.target_key for f in g_factors if f.factor_id != anchor.factor_id) else 1
+
+        # 5. Magnitude: sum of effective strengths with family decay
+        family_groups: dict[str, list[float]] = {}
+        for f in g_factors:
+            family_groups.setdefault(f.technique_family, []).append(f.strength)
+
+        magnitude = 0.0
+        family_decay = [1.0, 0.5, 0.25]
+        for fam, strengths in family_groups.items():
+            strengths.sort(reverse=True)
+            for idx, s in enumerate(strengths):
+                w = family_decay[idx] if idx < len(family_decay) else 0.25
+                magnitude += s * w
+
+        # 6. Tie-breaker: min factor_id
+        min_fid = min(g["distinct_ids"])
+
+        return (precision_rank, vol_rank, fam_rank, conn_rank, magnitude, min_fid)
+
+    candidate_groups.sort(key=rank_group, reverse=True)
+
+    # 3. State & Assembly Determination (§3)
+    if candidate_groups:
+        winning_group = candidate_groups[0]
+        winning_factors: list[TodayFactor] = winning_group["factors"]
+        winning_anchor: TodayFactor = winning_group["anchor"]
+
+        conv_id = f"conv:{winning_anchor.factor_id}"
+        theme_key = winning_anchor.target_key or (winning_anchor.theme_keys[0] if winning_anchor.theme_keys else "general")
+        all_act_ids = tuple(sorted({act_id for f in winning_factors for act_id in f.activation_ids}))
+        all_families = tuple(sorted({f.technique_family for f in winning_factors}))
+
+        convergence = TodayConvergenceResult(
+            id=conv_id,
+            theme_key=theme_key,
+            title="Что сошлось именно сегодня",
+            summary=None,  # LLM-owned in W4-C
+            independent_factor_count=len(winning_group["distinct_ids"]),
+            technique_families=all_families,
+            source_activation_ids=all_act_ids,
+        )
+
+        # Build events from winning group factors (0..3)
+        event_factors = [f for f in winning_factors if f.exact_at or f.active_from or f.temporal_role == "anchor_today"]
+        event_factors.sort(key=lambda f: (f.exact_at or f.active_from or local_start_utc, f.factor_id))
+
+        events_list: list[TodayFocusEventResult] = []
+        for f in event_factors[:3]:
+            human_t, tech_t = _format_event_titles(f)
+
+            kind: Literal["exact", "starts", "peak", "building", "separating"] = "exact"
+            if f.exact_at and (local_start_utc <= f.exact_at < local_end_utc):
+                kind = "exact"
+            elif f.active_from and (local_start_utc <= f.active_from < local_end_utc):
+                kind = "starts"
+            elif f.phase == "building":
+                kind = "building"
+            elif f.phase == "separating":
+                kind = "separating"
+            elif f.temporal_role == "anchor_today":
+                kind = "peak"
+
+            occurs_at = f.exact_at or f.active_from
+            precision: Literal["minute", "date", "window"] = "minute" if f.exact_at else "date"
+
+            ev_res = TodayFocusEventResult(
+                id=f"ev:{f.factor_id}",
+                kind=kind,
+                occurs_at=occurs_at,
+                local_date=target_date,
+                timezone=tz_name,
+                precision=precision,
+                human_title=human_t,
+                technical_title=tech_t,
+                meaning=None,  # LLM-owned in W4-C
+                source_activation_ids=f.activation_ids,
+            )
+            events_list.append(ev_res)
+
+        events = tuple(events_list)
+
+        # Build featured spheres (0..3) from winning group factors (§4.5)
+        spheres_in_group = set()
+        for f in winning_factors:
+            for s in f.product_spheres:
+                spheres_in_group.add(s)
+
+        canonical_order_map = {k: i for i, k in enumerate(CANONICAL_PRODUCT_KEYS)}
+        confidence_rank_map = {"high": 3, "medium": 2, "low": 1}
+
+        sphere_scores: list[tuple[int, int, float, int, int, str]] = []
+        for sphere_key in spheres_in_group:
+            matching_factors = [f for f in winning_factors if sphere_key in f.product_spheres]
+            factor_coverage = len(matching_factors)
+            anchor_coverage = sum(1 for f in matching_factors if f.temporal_role == "anchor_today")
+            salience = max(f.strength for f in matching_factors)
+
+            val_ass = valence_assessments.get(sphere_key) if valence_assessments else None
+            conf_val = confidence_rank_map.get(getattr(val_ass, "confidence", "low"), 1) if val_ass else 1
+            canon_idx = canonical_order_map.get(sphere_key, 99)
+
+            sphere_scores.append((factor_coverage, anchor_coverage, salience, conf_val, -canon_idx, sphere_key))
+
+        sphere_scores.sort(key=lambda item: (item[0], item[1], item[2], item[3], item[4]), reverse=True)
+
+        featured_spheres_list: list[TodayFeaturedSphereResult] = []
+        for rank_idx, item in enumerate(sphere_scores[:3], 1):
+            s_key = item[5]
+            matching_f = [f for f in winning_factors if s_key in f.product_spheres]
+            s_act_ids = tuple(sorted({act_id for f in matching_f for act_id in f.activation_ids}))
+            s_ev_ids = tuple(sorted({e.id for e in events if any(act in s_act_ids for act in e.source_activation_ids)}))
+
+            fs_res = TodayFeaturedSphereResult(
+                key=s_key,
+                relevance_rank=rank_idx,
+                state="convergence_today",
+                summary=None,  # LLM-owned in W4-C
+                action=None,   # LLM-owned in W4-C
+                convergence_id=conv_id,
+                source_event_ids=s_ev_ids,
+                source_activation_ids=s_act_ids,
+            )
+            featured_spheres_list.append(fs_res)
+
+        featured_spheres = tuple(featured_spheres_list)
+
+        return TodayFocusResult(
+            state="convergence_today",
+            convergence=convergence,
+            events=events,
+            featured_spheres=featured_spheres,
+            content_state="not_needed",
+        )
+
+    elif anchors:
+        events_list = []
+        for f in anchors[:3]:
+            human_t, tech_t = _format_event_titles(f)
+            occurs_at = f.exact_at or f.active_from
+            precision = "minute" if f.exact_at else "date"
+            events_list.append(
+                TodayFocusEventResult(
+                    id=f"ev:{f.factor_id}",
+                    kind="exact" if f.exact_at else "peak",
+                    occurs_at=occurs_at,
+                    local_date=target_date,
+                    timezone=tz_name,
+                    precision=precision,
+                    human_title=human_t,
+                    technical_title=tech_t,
+                    meaning=None,
+                    source_activation_ids=f.activation_ids,
+                )
+            )
+        return TodayFocusResult(
+            state="single_impulses",
+            convergence=None,
+            events=tuple(events_list),
+            featured_spheres=(),
+            content_state="not_needed",
+        )
+
+    elif backgrounds:
+        return TodayFocusResult(
+            state="background_only",
+            convergence=None,
+            events=(),
+            featured_spheres=(),
+            content_state="not_needed",
+        )
+
+    else:
+        return TodayFocusResult(
+            state="no_accent",
+            convergence=None,
+            events=(),
+            featured_spheres=(),
+            content_state="not_needed",
+        )
+# END_BLOCK: FOCUS_ASSEMBLY
