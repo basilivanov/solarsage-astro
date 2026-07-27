@@ -1,0 +1,666 @@
+{
+  "structure_boundaries_control": {
+    "selection": {
+      "items": [
+        {
+          "horizon": "long",
+          "activation_id": "long-structure",
+          "technique": "annual_profection",
+          "technique_family": "profection",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "SATURN",
+          "source_planet_normalized": null,
+          "target_planet_normalized": "SATURN",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "long-structure",
+            "precision": "date",
+            "active_from": "2026-01-01",
+            "exact_at": null,
+            "active_until": "2026-12-31",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 31536000.0,
+            "duration_days": 365.0,
+            "relative_position": "inside",
+            "timing_state": "background",
+            "timing_completeness": 0.8,
+            "eligible_horizons": [
+              "long"
+            ],
+            "preferred_horizons": [
+              "long"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "work_status_achievement"
+          ],
+          "product_spheres": [
+            "work",
+            "decisions"
+          ],
+          "theme_keys": [
+            "structure_boundaries_control"
+          ],
+          "target_family_convergence_count": 2,
+          "feature_scores": {
+            "strength": 0.72,
+            "sphere_rank": 0.0,
+            "contribution": 0.5714285714285714,
+            "convergence": 0.5,
+            "timing_relevance": 0.75,
+            "timing_completeness": 0.8,
+            "technique_priority": 1.0
+          },
+          "impact_score": 0.5756
+        },
+        {
+          "horizon": "medium",
+          "activation_id": "medium-structure",
+          "technique": "transit_to_natal",
+          "technique_family": "transit",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "SATURN",
+          "source_planet_normalized": "PLUTO",
+          "target_planet_normalized": "SATURN",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "medium-structure",
+            "precision": "instant",
+            "active_from": "2026-03-01T00:00:00Z",
+            "exact_at": "2026-07-12T12:00:00Z",
+            "active_until": "2026-09-30T00:00:00Z",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 18403200.0,
+            "duration_days": 213.0,
+            "relative_position": "inside",
+            "timing_state": "exact",
+            "timing_completeness": 1.0,
+            "eligible_horizons": [
+              "long",
+              "medium"
+            ],
+            "preferred_horizons": [
+              "medium"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "crisis_transformation_control"
+          ],
+          "product_spheres": [
+            "decisions",
+            "money"
+          ],
+          "theme_keys": [
+            "structure_boundaries_control"
+          ],
+          "target_family_convergence_count": 2,
+          "feature_scores": {
+            "strength": 0.63,
+            "sphere_rank": 1.0,
+            "contribution": 0.5142857142857143,
+            "convergence": 0.5,
+            "timing_relevance": 1.0,
+            "timing_completeness": 1.0,
+            "technique_priority": 0.95
+          },
+          "impact_score": 0.7644
+        },
+        {
+          "horizon": "fast",
+          "activation_id": "fast-structure",
+          "technique": "transit_to_natal",
+          "technique_family": "transit",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "PLUTO",
+          "source_planet_normalized": "MOON",
+          "target_planet_normalized": "PLUTO",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "fast-structure",
+            "precision": "instant",
+            "active_from": "2026-07-12T00:00:00Z",
+            "exact_at": "2026-07-12T12:00:00Z",
+            "active_until": "2026-07-12T23:00:00Z",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 82800.0,
+            "duration_days": 0.9583333333333334,
+            "relative_position": "inside",
+            "timing_state": "exact",
+            "timing_completeness": 1.0,
+            "eligible_horizons": [
+              "fast"
+            ],
+            "preferred_horizons": [
+              "fast"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "crisis_transformation_control"
+          ],
+          "product_spheres": [
+            "decisions",
+            "money"
+          ],
+          "theme_keys": [
+            "structure_boundaries_control",
+            "relationships_values_closeness",
+            "energy_body_pacing"
+          ],
+          "target_family_convergence_count": 1,
+          "feature_scores": {
+            "strength": 0.66,
+            "sphere_rank": 1.0,
+            "contribution": 0.4857142857142857,
+            "convergence": 0.0,
+            "timing_relevance": 1.0,
+            "timing_completeness": 1.0,
+            "technique_priority": 0.9
+          },
+          "impact_score": 0.7048
+        }
+      ],
+      "pair_overlap_scores": {
+        "long_medium": 0.9,
+        "medium_fast": 0.65,
+        "long_fast": 0.45
+      },
+      "mean_overlap": 0.666667,
+      "mean_impact": 0.6816,
+      "family_diversity_score": 0.5,
+      "unique_family_count": 2,
+      "total_score": 0.66804,
+      "shared_theme_keys": [
+        "structure_boundaries_control"
+      ],
+      "shared_product_spheres": [
+        "decisions"
+      ],
+      "unique_anchor_activation_ids": [
+        "long-structure",
+        "medium-structure",
+        "fast-structure"
+      ]
+    },
+    "reason": "selected",
+    "diagnostics": {
+      "input_count": 4,
+      "active_count": 4,
+      "classified_count": 4,
+      "candidate_count": 5,
+      "per_horizon_pre_bound_counts": {
+        "long": 2,
+        "medium": 1,
+        "fast": 2
+      },
+      "per_horizon_post_bound_counts": {
+        "long": 2,
+        "medium": 1,
+        "fast": 2
+      },
+      "excluded_counts_by_reason": {},
+      "combinations_evaluated": 4,
+      "input_truncated": false
+    },
+    "warnings": []
+  },
+  "communication_learning_documents": {
+    "selection": {
+      "items": [
+        {
+          "horizon": "long",
+          "activation_id": "long-comm",
+          "technique": "annual_profection",
+          "technique_family": "profection",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "MERCURY",
+          "source_planet_normalized": null,
+          "target_planet_normalized": "MERCURY",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "long-comm",
+            "precision": "date",
+            "active_from": "2026-01-01",
+            "exact_at": null,
+            "active_until": "2026-12-31",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 31536000.0,
+            "duration_days": 365.0,
+            "relative_position": "inside",
+            "timing_state": "background",
+            "timing_completeness": 0.8,
+            "eligible_horizons": [
+              "long"
+            ],
+            "preferred_horizons": [
+              "long"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "thinking_speech_learning"
+          ],
+          "product_spheres": [
+            "communication",
+            "study",
+            "documents"
+          ],
+          "theme_keys": [
+            "communication_learning_documents"
+          ],
+          "target_family_convergence_count": 2,
+          "feature_scores": {
+            "strength": 0.75,
+            "sphere_rank": 1.0,
+            "contribution": 0.5526315789473685,
+            "convergence": 0.5,
+            "timing_relevance": 0.75,
+            "timing_completeness": 0.8,
+            "technique_priority": 1.0
+          },
+          "impact_score": 0.761368
+        },
+        {
+          "horizon": "medium",
+          "activation_id": "medium-comm",
+          "technique": "transit_to_natal",
+          "technique_family": "transit",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "MERCURY",
+          "source_planet_normalized": "PLUTO",
+          "target_planet_normalized": "MERCURY",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "medium-comm",
+            "precision": "instant",
+            "active_from": "2026-03-01T00:00:00Z",
+            "exact_at": "2026-07-12T12:00:00Z",
+            "active_until": "2026-09-30T00:00:00Z",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 18403200.0,
+            "duration_days": 213.0,
+            "relative_position": "inside",
+            "timing_state": "exact",
+            "timing_completeness": 1.0,
+            "eligible_horizons": [
+              "long",
+              "medium"
+            ],
+            "preferred_horizons": [
+              "medium"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "thinking_speech_learning"
+          ],
+          "product_spheres": [
+            "communication",
+            "study",
+            "documents"
+          ],
+          "theme_keys": [
+            "communication_learning_documents",
+            "structure_boundaries_control"
+          ],
+          "target_family_convergence_count": 2,
+          "feature_scores": {
+            "strength": 0.64,
+            "sphere_rank": 1.0,
+            "contribution": 0.5,
+            "convergence": 0.5,
+            "timing_relevance": 1.0,
+            "timing_completeness": 1.0,
+            "technique_priority": 0.95
+          },
+          "impact_score": 0.7652
+        },
+        {
+          "horizon": "fast",
+          "activation_id": "fast-comm",
+          "technique": "transit_to_natal",
+          "technique_family": "transit",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "MERCURY",
+          "source_planet_normalized": "MOON",
+          "target_planet_normalized": "MERCURY",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "fast-comm",
+            "precision": "instant",
+            "active_from": "2026-07-12T00:00:00Z",
+            "exact_at": "2026-07-12T12:00:00Z",
+            "active_until": "2026-07-12T23:00:00Z",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 82800.0,
+            "duration_days": 0.9583333333333334,
+            "relative_position": "inside",
+            "timing_state": "exact",
+            "timing_completeness": 1.0,
+            "eligible_horizons": [
+              "fast"
+            ],
+            "preferred_horizons": [
+              "fast"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "thinking_speech_learning"
+          ],
+          "product_spheres": [
+            "communication",
+            "study",
+            "documents"
+          ],
+          "theme_keys": [
+            "communication_learning_documents",
+            "relationships_values_closeness",
+            "energy_body_pacing"
+          ],
+          "target_family_convergence_count": 2,
+          "feature_scores": {
+            "strength": 0.69,
+            "sphere_rank": 1.0,
+            "contribution": 0.4736842105263158,
+            "convergence": 0.5,
+            "timing_relevance": 1.0,
+            "timing_completeness": 1.0,
+            "technique_priority": 0.9
+          },
+          "impact_score": 0.771516
+        }
+      ],
+      "pair_overlap_scores": {
+        "long_medium": 1.0,
+        "medium_fast": 1.0,
+        "long_fast": 1.0
+      },
+      "mean_overlap": 1.0,
+      "mean_impact": 0.766028,
+      "family_diversity_score": 0.5,
+      "unique_family_count": 2,
+      "total_score": 0.822918,
+      "shared_theme_keys": [
+        "communication_learning_documents"
+      ],
+      "shared_product_spheres": [
+        "communication",
+        "study",
+        "documents"
+      ],
+      "unique_anchor_activation_ids": [
+        "long-comm",
+        "medium-comm",
+        "fast-comm"
+      ]
+    },
+    "reason": "selected",
+    "diagnostics": {
+      "input_count": 4,
+      "active_count": 4,
+      "classified_count": 4,
+      "candidate_count": 4,
+      "per_horizon_pre_bound_counts": {
+        "long": 2,
+        "medium": 1,
+        "fast": 1
+      },
+      "per_horizon_post_bound_counts": {
+        "long": 2,
+        "medium": 1,
+        "fast": 1
+      },
+      "excluded_counts_by_reason": {},
+      "combinations_evaluated": 2,
+      "input_truncated": false
+    },
+    "warnings": []
+  },
+  "relationships_values_closeness": {
+    "selection": {
+      "items": [
+        {
+          "horizon": "long",
+          "activation_id": "long-rel",
+          "technique": "annual_profection",
+          "technique_family": "profection",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "VENUS",
+          "source_planet_normalized": null,
+          "target_planet_normalized": "VENUS",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "long-rel",
+            "precision": "date",
+            "active_from": "2026-01-01",
+            "exact_at": null,
+            "active_until": "2026-12-31",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 31536000.0,
+            "duration_days": 365.0,
+            "relative_position": "inside",
+            "timing_state": "background",
+            "timing_completeness": 0.8,
+            "eligible_horizons": [
+              "long"
+            ],
+            "preferred_horizons": [
+              "long"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "relationships_partnership"
+          ],
+          "product_spheres": [
+            "relationships"
+          ],
+          "theme_keys": [
+            "relationships_values_closeness",
+            "resources_security"
+          ],
+          "target_family_convergence_count": 2,
+          "feature_scores": {
+            "strength": 0.78,
+            "sphere_rank": 1.0,
+            "contribution": 0.5384615384615385,
+            "convergence": 0.5,
+            "timing_relevance": 0.75,
+            "timing_completeness": 0.8,
+            "technique_priority": 1.0
+          },
+          "impact_score": 0.767785
+        },
+        {
+          "horizon": "medium",
+          "activation_id": "medium-rel",
+          "technique": "transit_to_natal",
+          "technique_family": "transit",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "VENUS",
+          "source_planet_normalized": "PLUTO",
+          "target_planet_normalized": "VENUS",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "medium-rel",
+            "precision": "instant",
+            "active_from": "2026-03-01T00:00:00Z",
+            "exact_at": "2026-07-12T12:00:00Z",
+            "active_until": "2026-09-30T00:00:00Z",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 18403200.0,
+            "duration_days": 213.0,
+            "relative_position": "inside",
+            "timing_state": "exact",
+            "timing_completeness": 1.0,
+            "eligible_horizons": [
+              "long",
+              "medium"
+            ],
+            "preferred_horizons": [
+              "medium"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "relationships_partnership"
+          ],
+          "product_spheres": [
+            "relationships"
+          ],
+          "theme_keys": [
+            "relationships_values_closeness",
+            "resources_security",
+            "structure_boundaries_control"
+          ],
+          "target_family_convergence_count": 2,
+          "feature_scores": {
+            "strength": 0.65,
+            "sphere_rank": 1.0,
+            "contribution": 0.48717948717948717,
+            "convergence": 0.5,
+            "timing_relevance": 1.0,
+            "timing_completeness": 1.0,
+            "technique_priority": 0.95
+          },
+          "impact_score": 0.766205
+        },
+        {
+          "horizon": "fast",
+          "activation_id": "fast-rel",
+          "technique": "transit_to_natal",
+          "technique_family": "transit",
+          "polarity": "neutral",
+          "target_type": "planet",
+          "target_key_normalized": "VENUS",
+          "source_planet_normalized": "MOON",
+          "target_planet_normalized": "VENUS",
+          "house_target_key": null,
+          "timing": {
+            "activation_id": "fast-rel",
+            "precision": "instant",
+            "active_from": "2026-07-12T00:00:00Z",
+            "exact_at": "2026-07-12T12:00:00Z",
+            "active_until": "2026-07-12T23:00:00Z",
+            "timezone": "UTC",
+            "target_local": "2026-07-12T12:00:00+00:00",
+            "target_utc": "2026-07-12T12:00:00+00:00",
+            "duration_seconds": 82800.0,
+            "duration_days": 0.9583333333333334,
+            "relative_position": "inside",
+            "timing_state": "exact",
+            "timing_completeness": 1.0,
+            "eligible_horizons": [
+              "fast"
+            ],
+            "preferred_horizons": [
+              "fast"
+            ],
+            "warning_codes": [],
+            "is_anchor_eligible": true
+          },
+          "technical_spheres": [
+            "relationships_partnership"
+          ],
+          "product_spheres": [
+            "relationships"
+          ],
+          "theme_keys": [
+            "relationships_values_closeness",
+            "resources_security",
+            "energy_body_pacing"
+          ],
+          "target_family_convergence_count": 2,
+          "feature_scores": {
+            "strength": 0.68,
+            "sphere_rank": 1.0,
+            "contribution": 0.46153846153846156,
+            "convergence": 0.5,
+            "timing_relevance": 1.0,
+            "timing_completeness": 1.0,
+            "technique_priority": 0.9
+          },
+          "impact_score": 0.767015
+        }
+      ],
+      "pair_overlap_scores": {
+        "long_medium": 1.0,
+        "medium_fast": 1.0,
+        "long_fast": 1.0
+      },
+      "mean_overlap": 1.0,
+      "mean_impact": 0.767002,
+      "family_diversity_score": 0.5,
+      "unique_family_count": 2,
+      "total_score": 0.823551,
+      "shared_theme_keys": [
+        "relationships_values_closeness",
+        "resources_security"
+      ],
+      "shared_product_spheres": [
+        "relationships"
+      ],
+      "unique_anchor_activation_ids": [
+        "long-rel",
+        "medium-rel",
+        "fast-rel"
+      ]
+    },
+    "reason": "selected",
+    "diagnostics": {
+      "input_count": 4,
+      "active_count": 4,
+      "classified_count": 4,
+      "candidate_count": 5,
+      "per_horizon_pre_bound_counts": {
+        "long": 2,
+        "medium": 1,
+        "fast": 2
+      },
+      "per_horizon_post_bound_counts": {
+        "long": 2,
+        "medium": 1,
+        "fast": 2
+      },
+      "excluded_counts_by_reason": {},
+      "combinations_evaluated": 4,
+      "input_truncated": false
+    },
+    "warnings": []
+  }
+}

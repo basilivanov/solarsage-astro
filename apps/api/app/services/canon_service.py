@@ -47,6 +47,7 @@ CANON_FILES = [
     "aspect_rules.v1.yml",
     "activation_rules.v1.yml",
     "scoring_v2.v1.yml",
+    "day_valence.v1.yml",
 ]
 
 OPTIONAL_INTERNAL_CANON_FILES = [
@@ -62,6 +63,7 @@ CANON_VERSIONS: dict[str, str] = {
     "aspect_rules": "v1",
     "activation_rules": "v1",
     "scoring_v2": "v1",
+    "day_valence": "v1",
 }
 
 
@@ -71,6 +73,7 @@ REQUIRED_TOP_KEYS: dict[str, list[str]] = {
     "aspect_rules.v1.yml": ["schema_version", "aspect_weights", "aspect_threshold"],
     "activation_rules.v1.yml": ["schema_version", "technique_families"],
     "scoring_v2.v1.yml": ["schema_version"],
+    "day_valence.v1.yml": ["schema_version", "aspect_weights", "planet_weights", "family_independence_weights", "technical_to_product_spheres", "verdict_thresholds"],
 }
 
 FAMILY_TECHNIQUE_KEYS = [
@@ -189,6 +192,21 @@ def load_canon_bundle(canon_dir: Path | None = None) -> dict[str, dict[str, Any]
 
     return bundle
 # END_BLOCK: CANON_VALIDATION
+
+
+def load_day_valence_canon(canon_dir: Path | None = None) -> dict[str, Any]:
+    """Load and return day_valence.v1.yml canon dictionary. Fail-closed if missing or invalid."""
+    cd = canon_dir or CANON_DIR
+    path = cd / "day_valence.v1.yml"
+    if not path.exists():
+        raise CanonValidationError(f"Missing day_valence canon file: {path}")
+    data = _load_yaml(path)
+    if "schema_version" not in data or data.get("schema_version") != "day_valence.v1":
+        raise CanonValidationError(f"Invalid schema_version in {path}")
+    for req in REQUIRED_TOP_KEYS["day_valence.v1.yml"]:
+        if req not in data:
+            raise CanonValidationError(f"day_valence.v1.yml: missing required key '{req}'")
+    return data
 
 
 # START_BLOCK: CANON_VERSIONS_MAP

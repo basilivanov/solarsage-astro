@@ -324,6 +324,7 @@ def test_error_privacy_and_separate_versions() -> None:
         "aspect_rules": "v1",
         "activation_rules": "v1",
         "scoring_v2": "v1",
+        "day_valence": "v1",
         "horizon_selection": "v1",
         "horizon_language_ru": "v1",
         "horizon_actions_ru": "v1",

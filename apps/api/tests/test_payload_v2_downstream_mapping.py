@@ -118,9 +118,9 @@ def test_canon_map_boundary_exact_nine_keys_from_scoring():
     expected_nine = set(get_canon_versions().keys())
     actual_keys = set(block.audit.canon_versions.keys())
 
-    # Prove exact nine-key set
+    # Prove exact canon versions key count
     assert actual_keys == expected_nine, f"Expected {expected_nine}, got {actual_keys}"
-    assert len(block.audit.canon_versions) == 9
+    assert len(block.audit.canon_versions) == len(get_canon_versions())
 
     # Prove known core keys preserved by merge semantics
     assert block.audit.canon_versions["spheres"] == "runtime-core-v9"
@@ -172,7 +172,7 @@ def test_canon_map_boundary_incomplete_scoring_map():
 
     # Prove exact nine-key set preserved
     assert actual_keys == expected_nine
-    assert len(block.audit.canon_versions) == 9
+    assert len(block.audit.canon_versions) == len(get_canon_versions())
 
     # Prove the one provided core key was merged
     assert block.audit.canon_versions["spheres"] == "v2-from-scoring"

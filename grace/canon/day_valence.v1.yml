@@ -1,0 +1,115 @@
+schema_version: day_valence.v1
+description: "Canonical constants for day and sphere valence v1 calculations (W2-VALENCE)."
+
+# Source: spheres.v1.yml / scoring_service.py aspect weights
+aspect_weights:
+  conjunction: 1.0
+  opposition: 1.0
+  trine: 0.8
+  square: 0.8
+  sextile: 0.6
+  quincunx: 0.4
+  semi_square: 0.4
+  sesquisquare: 0.4
+
+# Source: spheres.v1.yml planet weights (uppercase keys)
+planet_weights:
+  Sun: 1.2
+  Moon: 1.0
+  Mercury: 1.0
+  Venus: 1.0
+  Mars: 1.0
+  Jupiter: 1.2
+  Saturn: 1.2
+  Uranus: 1.0
+  Neptune: 1.0
+  Pluto: 1.0
+
+# Source: activation_rules.v1.yml technique_families independence_weights
+family_independence_weights:
+  transit: 1.0
+  progression: 1.0
+  return: 1.0
+  profection: 1.0
+  firdar: 1.0
+  primary_direction: 1.0
+  solar_return: 1.0
+
+# Polarity mapping for aspects (§6.1 нормативного ТЗ:
+# trine/sextile -> supportive, square/opposition -> tense,
+# conjunction/quincunx/other known -> mixed, unknown -> neutral)
+aspect_polarities:
+  trine: supportive
+  sextile: supportive
+  square: tense
+  opposition: tense
+  conjunction: mixed
+  quincunx: mixed
+  semi_square: mixed
+  sesquisquare: mixed
+
+# Family volume reducer decay multipliers (§6.4)
+family_decay_multipliers:
+  - 1.00
+  - 0.50
+  - 0.25
+
+# Product sphere projection mapping (§6.5)
+technical_to_product_spheres:
+  thinking_speech_learning:
+    - communication
+    - study
+    - documents
+  work_status_achievement:
+    - work
+    - decisions
+  relationships_partnership:
+    - relationships
+  money_security_resources:
+    - money
+    - shopping
+    - documents
+  body_energy_health:
+    - health
+    - sport
+  home_family_roots:
+    - relationships
+  inner_background_unconscious:
+    - health
+    - creativity
+  crisis_transformation_control:
+    - decisions
+    - money
+  meaning_expansion_vector:
+    - travel
+    - study
+    - decisions
+
+# Product sphere verdict thresholds (§6.6)
+verdict_thresholds:
+  avoid:
+    min_tension: 1.50
+    tension_support_ratio: 2.00
+  caution:
+    min_tension: 0.75
+    tension_support_ratio: 1.30
+  good:
+    min_support: 0.75
+    support_tension_ratio: 1.30
+
+# Product sphere confidence thresholds (§6.6)
+confidence_thresholds:
+  high:
+    min_total: 2.00
+    min_families: 2
+  medium:
+    min_total: 0.75
+
+# Global day status thresholds (§6.7)
+day_status_thresholds:
+  supportive:
+    min_support: 1.00
+    support_tension_ratio: 1.30
+  tense:
+    min_tension: 1.00
+    tension_support_ratio: 1.30

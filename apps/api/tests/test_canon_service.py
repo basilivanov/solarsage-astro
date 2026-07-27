@@ -63,6 +63,7 @@ def test_invalid_canon_data_raises(tmp_path: Path):
         "schema_version: activation_rules.v1\ntechnique_families: {}\n", encoding="utf-8"
     )
     (d / "scoring_v2.v1.yml").write_text("schema_version: scoring_v2.v1\n", encoding="utf-8")
+    (d / "day_valence.v1.yml").write_text("schema_version: day_valence.v1\naspect_weights: {}\nplanet_weights: {}\nfamily_independence_weights: {}\ntechnical_to_product_spheres: {}\nverdict_thresholds: {}\n", encoding="utf-8")
     (d / "horizon_selection.v1.yml").write_text(VALID_HORIZON_CANON, encoding="utf-8")
     with pytest.raises(CanonValidationError, match="is empty"):
         validate_canon_bundle(d)
@@ -81,6 +82,7 @@ def test_missing_required_key_raises(tmp_path: Path):
         encoding="utf-8",
     )
     (d / "scoring_v2.v1.yml").write_text("schema_version: scoring_v2.v1\n", encoding="utf-8")
+    (d / "day_valence.v1.yml").write_text("schema_version: day_valence.v1\naspect_weights: {}\nplanet_weights: {}\nfamily_independence_weights: {}\ntechnical_to_product_spheres: {}\nverdict_thresholds: {}\n", encoding="utf-8")
     (d / "horizon_selection.v1.yml").write_text(VALID_HORIZON_CANON, encoding="utf-8")
     with pytest.raises(CanonValidationError, match="missing required key"):
         validate_canon_bundle(d)
