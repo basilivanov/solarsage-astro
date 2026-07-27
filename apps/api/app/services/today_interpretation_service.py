@@ -61,6 +61,12 @@ from app.schemas.today import (
 from app.services.llm_service import LLMService
 from app.services.astro_utils import strip_prefix
 
+
+def _get_field(obj: Any, key: str, default: Any = None) -> Any:
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
 BACKEND_TO_PRODUCT_KEY_MAP = {
     "work_status_achievement": "work",
     "career": "work",
@@ -766,13 +772,15 @@ class TodayInterpretationService:
             )
 
         # Add Top Flag fact (Top daily aspect)
-        top_aspect = next((s for s in scoring_result.get("top_signals", []) if s.type == "aspect"), None)
+        top_aspect = next((s for s in scoring_result.get("top_signals", []) if _get_field(s, "type") == "aspect"), None)
         if top_aspect:
-            p_clean = strip_prefix(top_aspect.planet)
-            tp_clean = strip_prefix(top_aspect.target_planet) if top_aspect.target_planet else ""
-            summary_fact_title = f"{PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(top_aspect.aspect_type, top_aspect.aspect_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}"
+            p_clean = strip_prefix(_get_field(top_aspect, "planet") or "")
+            tp_raw = _get_field(top_aspect, "target_planet") or ""
+            tp_clean = strip_prefix(tp_raw) if tp_raw else ""
+            asp_type = _get_field(top_aspect, "aspect_type") or ""
+            summary_fact_title = f"{PLANET_LABELS_RU.get(p_clean, p_clean)} {ASPECT_LABELS_RU.get(asp_type, asp_type)} {PLANET_LABELS_RU.get(tp_clean, tp_clean)}"
 
-            aspect_type_lower = top_aspect.aspect_type.lower() if top_aspect.aspect_type else ""
+            aspect_type_lower = asp_type.lower()
             if aspect_type_lower in TENSE_ASPECTS:
                 summary_fact_desc = "напряжённый аспект"
             elif aspect_type_lower in SOFT_ASPECTS:

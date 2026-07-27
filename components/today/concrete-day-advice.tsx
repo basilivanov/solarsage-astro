@@ -44,6 +44,33 @@ type Props = {
   onWhyOpen: () => void
 }
 
+const VERDICT_PRESENTATION: Record<"good" | "neutral" | "caution" | "avoid", {
+  dotClass: string
+  compactCopy: string
+  statusTextClass: string
+}> = {
+  good: {
+    dotClass: "bg-emerald-500",
+    compactCopy: "Поддержка",
+    statusTextClass: "text-emerald-700 dark:text-emerald-200",
+  },
+  neutral: {
+    dotClass: "bg-slate-400 dark:bg-slate-500",
+    compactCopy: "Ровный фон",
+    statusTextClass: "text-slate-600 dark:text-slate-400",
+  },
+  caution: {
+    dotClass: "bg-amber-500",
+    compactCopy: "Требует внимания",
+    statusTextClass: "text-amber-700 dark:text-amber-200",
+  },
+  avoid: {
+    dotClass: "bg-rose-500",
+    compactCopy: "Лучше отложить",
+    statusTextClass: "text-rose-700 dark:text-rose-200",
+  },
+}
+
 function sphereButtonId(key: string): string {
   return `concrete-sphere-${key}`
 }
@@ -82,6 +109,9 @@ export function ConcreteDayAdvice({
         {rows.map((row) => {
           const Icon = getIcon(row.iconName)
           const selected = row.key === selectedKey
+          const verdict = row.assessment?.assessment?.verdict
+          const meta = verdict ? VERDICT_PRESENTATION[verdict] : null
+
           return (
             <div key={row.key} className="space-y-2.5">
               <button
@@ -90,6 +120,7 @@ export function ConcreteDayAdvice({
                 data-testid="concrete-day-advice-row"
                 data-sphere-key={row.key}
                 data-selected={selected ? "true" : "false"}
+                data-status={verdict || undefined}
                 aria-haspopup="dialog"
                 onClick={() => onSelectedKeyChange(row.key)}
                 className={`w-full flex min-h-[64px] items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 text-left transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 ${
@@ -106,6 +137,18 @@ export function ConcreteDayAdvice({
                     {row.label}
                   </span>
                 </div>
+                {meta && (
+                  <div className="flex items-center gap-1.5 flex-none">
+                    <span className={`h-2 w-2 rounded-full ${meta.dotClass}`} aria-hidden="true" />
+                    <span
+                      data-testid="concrete-day-advice-row-status"
+                      data-status={verdict}
+                      className={`text-[12.5px] font-semibold ${meta.statusTextClass}`}
+                    >
+                      {meta.compactCopy}
+                    </span>
+                  </div>
+                )}
                 <ChevronRight className="h-5 w-5 text-muted-foreground flex-none" aria-hidden />
               </button>
             </div>

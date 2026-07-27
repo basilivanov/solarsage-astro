@@ -14,7 +14,7 @@
 // invariants:
 //   - No unsafe casts or TypeScript suppression directives.
 //   - Rows have aria-haspopup="dialog" to trigger modal sheet.
-//   - Verdict badges and data-status are omitted.
+//   - Honest verdict status indicator rendered only when assessment is present.
 // failure_policy: test failure.
 // END_MODULE_CONTRACT: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
 // START_MODULE_MAP: M-TEST-CONCRETE-DAY-ADVICE-NAVIGATOR
@@ -83,5 +83,62 @@ describe("ConcreteDayAdvice human-first navigator", () => {
     const work = screen.getAllByTestId("concrete-day-advice-row")[0]
     fireEvent.click(work)
     expect(onSelectedKeyChange).toHaveBeenCalledWith("work")
+  })
+
+  it("renders honest verdict indicator and data-status ONLY when row.assessment is present", () => {
+    const blockWithAssessment: ConcreteAdviceBlock = {
+      counts: { good: 1, caution: 0, avoid: 0, neutral: 0 },
+      rows: [
+        {
+          key: "work",
+          label: "Работа",
+          iconName: "briefcase",
+          rank: 1,
+          verdict: "good",
+          confidence: "high",
+          text: "Совет",
+          evidence: [],
+          assessment: {
+            sphere: "work",
+            assessment: {
+              verdict: "good",
+              confidence: "high",
+              score: 5,
+              raw_score: 5,
+              positive_volume: 5,
+              negative_volume: 0,
+              top_factors: [],
+            },
+          },
+        },
+        {
+          key: "money",
+          label: "Деньги",
+          iconName: "wallet",
+          rank: 2,
+          verdict: "caution",
+          confidence: "high",
+          text: "Совет 2",
+          evidence: [],
+          // no assessment
+        },
+      ],
+    }
+
+    render(
+      <ConcreteDayAdvice
+        concreteAdvice={blockWithAssessment}
+        selectedKey={null}
+        onSelectedKeyChange={vi.fn()}
+        onWhyOpen={vi.fn()}
+      />,
+    )
+
+    const rows = screen.getAllByTestId("concrete-day-advice-row")
+    expect(rows[0].getAttribute("data-status")).toBe("good")
+    expect(screen.getByTestId("concrete-day-advice-row-status").textContent).toBe("Поддержка")
+
+    expect(rows[1].getAttribute("data-status")).toBeNull()
+    expect(screen.queryAllByTestId("concrete-day-advice-row-status")).toHaveLength(1)
   })
 })

@@ -57,6 +57,7 @@ import type {
   TodayV2HorizonsBlock as TodayV2HorizonsBlockWire,
   ActivationEvidence as ActivationEvidenceWire,
   SphereScoreV2 as SphereScoreV2Wire,
+  SphereValenceRead,
 } from "@/packages/contracts"
 import {
   TodayPayloadWireSchema,
@@ -226,6 +227,7 @@ export const ConcreteAdviceRowSchema = z.object({
   text: z.string().min(1),
   evidence: z.array(ConcreteAdviceEvidenceSchema),
   details: ConcreteAdviceDetailsSchema.nullable().optional(),
+  assessment: z.custom<SphereValenceRead>().nullable().optional(),
 })
 
 export const ConcreteAdviceCountsSchema = z.object({

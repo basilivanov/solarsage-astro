@@ -48,6 +48,7 @@ import type { AccessInfo } from "@/lib/contracts/access"
 import { validateAdaptedTodayPayload, type TodayWireIdentity } from "@/lib/contracts/today"
 import { TodayScreen } from "@/components/today/today-screen"
 import { ConcreteDayAdvice } from "@/components/today/concrete-day-advice"
+import { SphereDetailsSheet } from "@/components/today/sphere-details-sheet"
 import { WhyExpanded } from "@/components/today/why-expanded"
 import { DevAuditDrawer } from "@/components/today/dev-audit-drawer"
 import { dayPayloadV2 } from "@/e2e/mock-visual/fixtures/day-v2-2026-07-08"
@@ -966,5 +967,51 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(details.getAttribute("data-sphere-key")).toBe("work")
 
     rafSpy.mockRestore()
+  })
+
+  it("renders honest verdict badge in SphereDetailsSheet when assessment is present, muted when low confidence", () => {
+    const rowWithAssessment = {
+      key: "work" as const,
+      label: "Работа",
+      iconName: "briefcase",
+      rank: 1,
+      verdict: "good" as const,
+      confidence: "low" as const,
+      text: "Основной совет",
+      evidence: [],
+      details: {
+        story: "История сферы",
+        why: ["Фактор 1"],
+        advice: "Совет помощи",
+      },
+      assessment: {
+        sphere: "work",
+        assessment: {
+          verdict: "good" as const,
+          confidence: "low" as const,
+          score: 3,
+          raw_score: 3,
+          positive_volume: 3,
+          negative_volume: 0,
+          top_factors: [],
+        },
+      },
+    }
+
+    render(
+      <SphereDetailsSheet
+        row={rowWithAssessment}
+        onClose={vi.fn()}
+        onWhyOpen={vi.fn()}
+      />,
+    )
+
+    const sheet = screen.getByTestId("sphere-details-sheet")
+    expect(sheet.getAttribute("data-status")).toBe("good")
+
+    const badge = screen.getByTestId("concrete-day-advice-details-status")
+    expect(badge.getAttribute("data-status")).toBe("good")
+    expect(badge.textContent).toBe("Поддержка")
+    expect(badge.className).toContain("opacity-60")
   })
 })

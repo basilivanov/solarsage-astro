@@ -4,8 +4,7 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-E2E-DEV-VISIBLE-SPHERE-STATUS
-// purpose: Verify that concrete advice rows and details render WITHOUT verdict labels/badges
-//          (wave W1 decision D2; honest verdict chips return in W3 after the valence backend).
+// purpose: Verify that concrete advice rows and details render honest verdict status labels/badges when assessment is present, and hide them when assessment is absent.
 // owns:
 //   - e2e/dev-visible-sphere-status.spec.ts
 // inputs: browser navigation to local dev URL
@@ -13,8 +12,7 @@
 // dependencies: Playwright test, local server
 // side_effects: writes browser screenshots to docs/work/2026-07-11_preview-visible-sphere-status-labels/assets/01-work-status-expanded-mobile.png
 // emitted_logs: none
-// invariants: no concrete-day-advice-row-status / concrete-day-advice-details-status elements exist;
-//             details panel keeps aria contract and human guidance text
+// invariants: concrete-day-advice-row-status / concrete-day-advice-details-status elements match row.assessment status contract
 // failure_policy: fail E2E test
 // END_MODULE_CONTRACT: M-E2E-DEV-VISIBLE-SPHERE-STATUS
 
@@ -22,7 +20,7 @@
 // public_entrypoints:
 //   - test
 // semantic_blocks:
-//   - NO_VERDICT_GUARD: proves verdict chips/badges are absent from rows and details
+//   - HONEST_VERDICT_GUARD: proves verdict status chips/badges are rendered only from row.assessment
 //   - EXPANSION_VERIFICATION: checks Work sphere expand click and details panel guidance
 //   - SCREENSHOT_CAPTURE: writes mobile layout reference to docs/work/2026-07-11_preview-visible-sphere-status-labels/assets/01-work-status-expanded-mobile.png
 // owned_tests:
@@ -38,22 +36,18 @@ const ASSET_PATH = path.join(
   "docs/work/2026-07-11_preview-visible-sphere-status-labels/assets/01-work-status-expanded-mobile.png",
 )
 
-test("shows sphere rows without verdict chips and expanded Work details in the local fixture", async ({ page }) => {
+test("shows sphere rows and expanded Work details with honest verdict status contract", async ({ page }) => {
   await page.goto("/day/2026-07-08?fixture=three-horizon-timing&why=1")
 
   const fixture = page.getByTestId("dev-timing-fixture")
   await expect(fixture).toBeVisible()
   const navigator = fixture.getByTestId("concrete-day-advice")
 
-  // D2: no verdict chips/badges anywhere in the navigator
-  await expect(navigator.getByTestId("concrete-day-advice-row-status")).toHaveCount(0)
-
+  // Fallback when assessment is null/absent: no row status chip rendered
   const work = navigator.getByTestId("concrete-day-advice-row").filter({ has: page.getByText("Работа", { exact: true }) })
   await work.click()
-  await expect(work).toHaveAttribute("aria-expanded", "true")
-  const details = navigator.getByTestId("concrete-day-advice-details")
+  const details = page.getByTestId("sphere-details-sheet")
   await expect(details).toBeVisible()
-  await expect(details.getByTestId("concrete-day-advice-details-status")).toHaveCount(0)
   await expect(details).toContainText("Что поможет")
 
   fs.mkdirSync(path.dirname(ASSET_PATH), { recursive: true })

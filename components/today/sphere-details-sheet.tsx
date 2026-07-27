@@ -41,6 +41,28 @@ interface SphereDetailsSheetProps {
   onWhyOpen: () => void
 }
 
+const VERDICT_BADGE_PRESENTATION: Record<"good" | "neutral" | "caution" | "avoid", {
+  badgeClass: string
+  label: string
+}> = {
+  good: {
+    badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30",
+    label: "Поддержка",
+  },
+  neutral: {
+    badgeClass: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-500/30",
+    label: "Ровный фон",
+  },
+  caution: {
+    badgeClass: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-500/30",
+    label: "Требует внимания",
+  },
+  avoid: {
+    badgeClass: "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:border-rose-500/30",
+    label: "Лучше отложить",
+  },
+}
+
 // START_BLOCK: SPHERE_SHEET_RENDER
 export function SphereDetailsSheet({ row, onClose, onWhyOpen }: SphereDetailsSheetProps) {
   const isOpen = Boolean(row)
@@ -55,12 +77,18 @@ export function SphereDetailsSheet({ row, onClose, onWhyOpen }: SphereDetailsShe
   const whyItems = (details?.why || []).filter((w) => Boolean(w && w.trim()))
   const adviceText = details?.advice?.trim() || row.text
 
+  const assessment = row.assessment?.assessment
+  const verdict = assessment?.verdict
+  const confidence = assessment?.confidence
+  const badgeMeta = verdict ? VERDICT_BADGE_PRESENTATION[verdict] : null
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
       <SheetContent
         side="bottom"
         data-testid="sphere-details-sheet"
         data-sphere-key={row.key}
+        data-status={verdict || undefined}
         className="rounded-t-[24px] border-t border-border/60 bg-card max-h-[85dvh] flex flex-col p-0 outline-none"
       >
         {/* Grabber bar */}
@@ -68,13 +96,26 @@ export function SphereDetailsSheet({ row, onClose, onWhyOpen }: SphereDetailsShe
 
         <div className="overflow-y-auto px-6 py-4 space-y-5 flex-1">
           <SheetHeader className="p-0 space-y-0">
-            <div className="flex items-center gap-3.5">
-              <span className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-violet-100/70 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
-                <Icon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
-              </span>
-              <SheetTitle className="font-serif text-[24px] font-semibold leading-tight text-foreground m-0">
-                {label}
-              </SheetTitle>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3.5">
+                <span className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-violet-100/70 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
+                  <Icon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+                </span>
+                <SheetTitle className="font-serif text-[24px] font-semibold leading-tight text-foreground m-0">
+                  {label}
+                </SheetTitle>
+              </div>
+              {badgeMeta && (
+                <span
+                  data-testid="concrete-day-advice-details-status"
+                  data-status={verdict}
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12px] font-semibold flex-none ${badgeMeta.badgeClass} ${
+                    confidence === "low" ? "opacity-60" : ""
+                  }`}
+                >
+                  {badgeMeta.label}
+                </span>
+              )}
             </div>
             <SheetDescription className="sr-only">
               Персональный разбор сферы {label}
