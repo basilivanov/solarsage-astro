@@ -128,10 +128,11 @@ audit-day:
 	@exit 1
 
 audit-day-live:
-	apps/api/.venv/bin/python scripts/audit_today.py --mode live-production --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)
+	python3 scripts/audit_day_contract.py --tg-id $(or $(TG_ID),833478509) --date $(DATE) --api $(or $(API),http://127.0.0.1:8000)
 
 audit-day-freeze:
-	apps/api/.venv/bin/python scripts/audit_today.py --mode frozen-baseline --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)
+	python3 scripts/audit_day_contract.py --tg-id $(or $(TG_ID),833478509) --date $(DATE) --api $(or $(API),http://127.0.0.1:8000) --freeze apps/api/tests/fixtures/day_valence/frozen-$(DATE).json
+	apps/api/.venv/bin/python -m pytest apps/api/tests/test_frozen_day_contract.py -q
 
 audit-downstream-v2:
 	apps/api/.venv/bin/python scripts/audit_downstream_v2.py --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)/downstream
