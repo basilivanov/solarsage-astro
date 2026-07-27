@@ -116,6 +116,23 @@ function buildLockedFixtures(): MockApiRouteFixtures {
     "/api/referral": {
       body: referralPayload,
     },
+    // Paywall in the locked branch fetches prices — always from the API.
+    "/api/payment/products": {
+      body: {
+        products: [
+          {
+            slug: "subscription_month",
+            name: "Подписка на 1 месяц",
+            description: null,
+            productType: "subscription_recurrent",
+            priceKopecks: 9900,
+            currency: "RUB",
+            periodDays: 30,
+            horaryQuota: null,
+          },
+        ],
+      },
+    },
   };
   addWeekStripFixtures(fixtures);
   return fixtures;
@@ -222,17 +239,19 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(rows).toHaveCount(12);
     await expect(page.getByTestId("concrete-day-advice-show-all")).toHaveCount(0);
 
-    // Verify 12 emojis and labels in canonical order
-    const expectedEmojis = ["💼", "💰", "📝", "💖", "🏃", "💬", "🌿", "🎯", "✈️", "🎨", "📚", "🛍️"];
+    // Verify 12 labels in canonical order (icons are lucide SVG, asserted via aria/structure)
     const expectedLabels = ["Работа", "Деньги", "Документы", "Отношения", "Спорт", "Общение", "Здоровье", "Решения", "Поездки", "Творчество", "Учёба", "Покупки"];
     for (let i = 0; i < 12; i++) {
       const row = rows.nth(i);
-      await expect(row).toContainText(expectedEmojis[i]);
       await expect(row).toContainText(expectedLabels[i]);
     }
 
-    // Assert that backend-provided text is rendered verbatim
-    await expect(concreteAdvice).toContainText("СЕНТИНЕЛ ДЕНЬГИ");
+    // Assert that backend-provided text is rendered verbatim in the opened details panel
+    const moneyRow = concreteAdvice.getByTestId("concrete-day-advice-row").filter({ hasText: "Деньги" });
+    await moneyRow.click();
+    const moneyDetails = concreteAdvice.getByTestId("concrete-day-advice-details");
+    await expect(moneyDetails).toBeVisible();
+    await expect(moneyDetails).toContainText("СЕНТИНЕЛ ДЕНЬГИ");
 
     // Assert that placeholder texts and raw semantic icon names are absent
     await expect(concreteAdvice).not.toContainText("Нет отдельного сигнала");
