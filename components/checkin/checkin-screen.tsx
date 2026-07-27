@@ -1,19 +1,19 @@
 // ############################################################################
 // AI_HEADER: MODULE_COMPONENTS_CHECKIN_SCREEN
 // ROLE: Main evening checkin screen component
-// DEPENDENCIES: react, lib/api/checkin, lib/contracts/checkin
+// DEPENDENCIES: react, lucide-react, lib/api/checkin, lib/contracts/checkin
 // GRACE_ANCHORS: [CHECKIN_SCREEN_COMPONENT]
 // SLICE: SLICE-PROFILE-ONBOARDING
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-SCREEN
-// purpose: Render multi-step evening checkin form (mood, energy, accuracy, tags, notes) and submit results to backend API.
+// purpose: Render multi-step evening checkin form (mood, energy, accuracy, tags, notes) and post-submit streak confirmation.
 // owns:
 //   - components/checkin/checkin-screen.tsx
 // inputs: targetDate, dayStatusHint, onComplete
 // outputs: CheckinScreen React component
 // dependencies: createCheckin, getCheckin, lib/contracts/checkin
-// side_effects: calls checkin API, emits toast notifications
+// side_effects: calls checkin API
 // emitted_logs: none
 // failure_policy: displays error alert and allows retry
 // END_MODULE_CONTRACT: M-COMPONENTS-CHECKIN-SCREEN
@@ -30,6 +30,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Check } from "lucide-react"
 
 import { useToast } from "@/hooks/use-toast"
 import { createCheckin, getCheckin } from "@/lib/api/checkin"
@@ -53,6 +54,17 @@ type Props = {
   onComplete?: (result: CheckinResponse) => void
 }
 
+const MILESTONES = [3, 7, 14, 30]
+
+function pluralDays(n: number): string {
+  const abs = Math.abs(n) % 100
+  const last = abs % 10
+  if (abs >= 11 && abs <= 19) return "дней"
+  if (last === 1) return "день"
+  if (last >= 2 && last <= 4) return "дня"
+  return "дней"
+}
+
 // START_BLOCK: CHECKIN_SCREEN_COMPONENT
 export function CheckinScreen({
   targetDate,
@@ -67,6 +79,7 @@ export function CheckinScreen({
   const [note, setNote] = useState("")
   const [showDetails, setShowDetails] = useState(false)
   const [existing, setExisting] = useState<CheckinResponse | null>(null)
+  const [submittedResult, setSubmittedResult] = useState<CheckinResponse | null>(null)
   const [loadingExisting, setLoadingExisting] = useState(true)
   const [readError, setReadError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -78,6 +91,7 @@ export function CheckinScreen({
     setLoadingExisting(true)
     setReadError(null)
     setExisting(null)
+    setSubmittedResult(null)
     setEditing(false)
 
     getCheckin(targetDate)
@@ -125,12 +139,9 @@ export function CheckinScreen({
         tags,
         note: note.trim() || null,
       })
-      toast({
-        description: `Сохранено. Серия: ${result.streak}`,
-      })
       setExisting(result)
+      setSubmittedResult(result)
       setEditing(false)
-      onComplete?.(result)
     } catch (reason) {
       toast({
         description:
@@ -148,6 +159,10 @@ export function CheckinScreen({
       void submit(value)
     }
   }
+
+  const streak = submittedResult?.streak || 1
+  const hitMilestone = MILESTONES.includes(streak)
+  const nextMilestone = MILESTONES.find((m) => m > streak)
 
   return (
     <div
@@ -169,7 +184,50 @@ export function CheckinScreen({
         </section>
       ) : null}
 
-      {!loadingExisting && !readError && existing && !editing ? (
+      {/* Post-submit confirmation screen */}
+      {!loadingExisting && !readError && submittedResult ? (
+        <section className="space-y-6 text-center py-4" data-testid="checkin-post-submit" data-state="submitted">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#eaf5f0] text-[#43806d] dark:bg-[#1c2b25] dark:text-[#63a893]">
+            <Check className="h-8 w-8" />
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#795a86]">
+              ОТВЕТ ЗАСЧИТАН
+            </span>
+            <h2 className="syn-serif text-[26px] font-medium text-[#3e3347] dark:text-[#f1e9f4]">
+              Спасибо за отклик!
+            </h2>
+          </div>
+
+          <div className="rounded-[22px] border border-[#e8e0e8] bg-card p-5 space-y-2 shadow-sm">
+            <div className="text-[32px] font-bold text-[#3e3347] dark:text-[#f1e9f4] flex items-center justify-center gap-2">
+              <span>🔥</span>
+              <span>{streak} {pluralDays(streak)} подряд</span>
+            </div>
+            <p className="text-[13px] text-[#7d7284] dark:text-muted-foreground m-0">
+              {hitMilestone
+                ? `Рубеж в ${streak} ${pluralDays(streak)} достигнут! 🎉`
+                : nextMilestone
+                ? `До рубежа в ${nextMilestone} ${pluralDays(nextMilestone)} — ещё ${nextMilestone - streak} ${pluralDays(nextMilestone - streak)}`
+                : "Отличная регулярность!"}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            data-testid="checkin-done-btn"
+            onClick={() => {
+              onComplete?.(submittedResult)
+            }}
+            className="w-full h-[50px] rounded-[17px] bg-[#3e3347] text-white font-[760] text-[16px] flex items-center justify-center transition active:scale-[0.99]"
+          >
+            Понятно
+          </button>
+        </section>
+      ) : null}
+
+      {!loadingExisting && !readError && !submittedResult && existing && !editing ? (
         <section className="rounded-2xl border border-border/70 bg-card p-4">
           <h2 className="font-serif text-[22px] leading-tight text-foreground">
             Оценка уже сохранена
@@ -193,117 +251,117 @@ export function CheckinScreen({
         </section>
       ) : null}
 
-      {!loadingExisting && !readError && (!existing || editing) ? (
+      {!loadingExisting && !readError && !submittedResult && (!existing || editing) ? (
         <>
-      {step === "mood" ? (
-        <section>
-          <h2 className="font-serif text-[24px] leading-tight text-foreground">
-            Как прошёл день?
-          </h2>
-          {dayStatusHint ? (
-            <p className="mt-2 text-[13px] text-muted-foreground">
-              Прогноз: {dayStatusHint}
-            </p>
-          ) : null}
-          <div className="mt-6">
-            <MoodSelector
-              value={mood}
-              onChange={(value) => {
-                setMood(value)
-                setStep("energy")
-              }}
-            />
-          </div>
-        </section>
-      ) : null}
-
-      {step === "energy" ? (
-        <section>
-          <h2 className="font-serif text-[24px] leading-tight text-foreground">
-            Сколько энергии осталось?
-          </h2>
-          <p className="mt-2 text-[13px] text-muted-foreground">
-            Оцени ресурс к концу дня
-          </p>
-          <div className="mt-6">
-            <EnergySelector
-              value={energy}
-              onChange={(value) => {
-                setEnergy(value)
-                setStep("accuracy")
-              }}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => setStep("accuracy")}
-            className="mt-5 text-[13px] text-muted-foreground underline underline-offset-4"
-          >
-            Пропустить
-          </button>
-        </section>
-      ) : null}
-
-      {step === "accuracy" ? (
-        <section>
-          <h2 className="font-serif text-[24px] leading-tight text-foreground">
-            Прогноз совпал?
-          </h2>
-          <div className="mt-6">
-            <AccuracySelector value={accuracy} onChange={selectAccuracy} />
-          </div>
-          {!showDetails ? (
-            <button
-              type="button"
-              onClick={() => setShowDetails(true)}
-              className="mt-5 text-[13px] text-muted-foreground underline underline-offset-4"
-            >
-              Добавить детали
-            </button>
-          ) : (
-            <div className="mt-7 space-y-5">
-              <div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                  Что особенно запомнилось
-                </div>
-                <div className="mt-3">
-                  <CheckinTags selected={tags} onChange={setTags} />
-                </div>
+          {step === "mood" ? (
+            <section>
+              <h2 className="font-serif text-[24px] leading-tight text-foreground">
+                Как прошёл день?
+              </h2>
+              {dayStatusHint ? (
+                <p className="mt-2 text-[13px] text-muted-foreground">
+                  Прогноз: {dayStatusHint}
+                </p>
+              ) : null}
+              <div className="mt-6">
+                <MoodSelector
+                  value={mood}
+                  onChange={(value) => {
+                    setMood(value)
+                    setStep("energy")
+                  }}
+                />
               </div>
-              <div>
-                <label
-                  htmlFor="checkin-note"
-                  className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
-                >
-                  Заметка
-                </label>
-                <textarea
-                  id="checkin-note"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  maxLength={500}
-                  rows={3}
-                  placeholder="Что было важным?"
-                  className="mt-3 w-full resize-none rounded-xl border border-border/70 bg-card p-3 text-[14px] text-foreground outline-none focus:border-foreground"
+            </section>
+          ) : null}
+
+          {step === "energy" ? (
+            <section>
+              <h2 className="font-serif text-[24px] leading-tight text-foreground">
+                Сколько энергии осталось?
+              </h2>
+              <p className="mt-2 text-[13px] text-muted-foreground">
+                Оцени ресурс к концу дня
+              </p>
+              <div className="mt-6">
+                <EnergySelector
+                  value={energy}
+                  onChange={(value) => {
+                    setEnergy(value)
+                    setStep("accuracy")
+                  }}
                 />
               </div>
               <button
                 type="button"
-                onClick={() => void submit(accuracy)}
-                disabled={loading || accuracy === null}
-                className="flex h-11 w-full items-center justify-center rounded-full bg-foreground px-5 text-[14px] font-medium text-background disabled:opacity-50"
+                onClick={() => setStep("accuracy")}
+                className="mt-5 text-[13px] text-muted-foreground underline underline-offset-4"
               >
-                {loading ? "Сохраняем..." : "Сохранить"}
+                Пропустить
               </button>
-            </div>
-          )}
-          {loading && !showDetails ? (
-            <p className="mt-5 text-center text-[13px] text-muted-foreground">
-              Сохраняем...
-            </p>
+            </section>
           ) : null}
-        </section>
-      ) : null}
+
+          {step === "accuracy" ? (
+            <section>
+              <h2 className="font-serif text-[24px] leading-tight text-foreground">
+                Прогноз совпал?
+              </h2>
+              <div className="mt-6">
+                <AccuracySelector value={accuracy} onChange={selectAccuracy} />
+              </div>
+              {!showDetails ? (
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(true)}
+                  className="mt-5 text-[13px] text-muted-foreground underline underline-offset-4"
+                >
+                  Добавить детали
+                </button>
+              ) : (
+                <div className="mt-7 space-y-5">
+                  <div>
+                    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      Что особенно запомнилось
+                    </div>
+                    <div className="mt-3">
+                      <CheckinTags selected={tags} onChange={setTags} />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="checkin-note"
+                      className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
+                    >
+                      Заметка
+                    </label>
+                    <textarea
+                      id="checkin-note"
+                      value={note}
+                      onChange={(event) => setNote(event.target.value)}
+                      maxLength={500}
+                      rows={3}
+                      placeholder="Что было важным?"
+                      className="mt-3 w-full resize-none rounded-xl border border-border/70 bg-card p-3 text-[14px] text-foreground outline-none focus:border-foreground"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void submit(accuracy)}
+                    disabled={loading || accuracy === null}
+                    className="flex h-11 w-full items-center justify-center rounded-full bg-foreground px-5 text-[14px] font-medium text-background disabled:opacity-50"
+                  >
+                    {loading ? "Сохраняем..." : "Сохранить"}
+                  </button>
+                </div>
+              )}
+              {loading && !showDetails ? (
+                <p className="mt-5 text-center text-[13px] text-muted-foreground">
+                  Сохраняем...
+                </p>
+              ) : null}
+            </section>
+          ) : null}
         </>
       ) : null}
     </div>

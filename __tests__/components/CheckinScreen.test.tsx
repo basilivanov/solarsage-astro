@@ -72,6 +72,16 @@ describe("CheckinScreen", () => {
         note: null,
       })
     })
+
+    // Post-submit confirmation screen displayed
+    const postSubmit = await screen.findByTestId("checkin-post-submit")
+    expect(postSubmit).toBeDefined()
+    expect(screen.getByText("Спасибо за отклик!")).toBeDefined()
+    expect(screen.getByText(/3 дня подряд/i)).toBeDefined()
+
+    const doneBtn = screen.getByTestId("checkin-done-btn")
+    fireEvent.click(doneBtn)
+
     expect(onComplete).toHaveBeenCalledWith(
       expect.objectContaining({ streak: 3 }),
     )

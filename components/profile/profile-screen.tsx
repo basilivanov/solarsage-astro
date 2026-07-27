@@ -57,6 +57,7 @@ import { Avatar } from "./avatar"
 import { CheckinStatistics } from "./checkin-statistics"
 import { EditSheet, type EditField } from "./edit-sheet"
 import { HoraryCard } from "./horary-card"
+import { CheckinStatsCard } from "./checkin-stats-card"
 import { ProfileRow } from "./profile-row"
 import { ReferralCard } from "./referral-card"
 import { ServiceRow } from "./service-row"
@@ -193,6 +194,10 @@ export function ProfileScreen({
 
       <section className="px-5 pt-5" data-testid="profile-horary-card">
         <HoraryCard horary={profileMeta.horary} />
+      </section>
+
+      <section className="px-5 pt-5">
+        <CheckinStatsCard />
       </section>
 
       <CheckinStatistics
