@@ -567,10 +567,10 @@ async def test_llm_phase_completed_event_success_and_deadline(
 
 
 @pytest.mark.asyncio
-async def test_fresh_payload_meta_and_cache_key_share_prompt_version_3(
+async def test_fresh_payload_meta_and_cache_key_share_prompt_version_4(
     async_client: AsyncClient, make_initdata, db_session
 ):
-    # Public fresh meta.promptVersion == the cache key llm_prompt_version == 3:
+    # Public fresh meta.promptVersion == the cache key llm_prompt_version == 4 (W4-C2):
     # a prompt/content change never lets a stale payload pass as current.
     raw = make_initdata(user_id=8011, username="pv3")
     await async_client.post("/api/auth/telegram", json={"initData": raw})
@@ -621,6 +621,6 @@ async def test_fresh_payload_meta_and_cache_key_share_prompt_version_3(
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["meta"]["promptVersion"] == 3
+    assert body["meta"]["promptVersion"] == 4
     assert captured, "expected the cache key capture on the cacheable payload"
-    assert captured[0].llm_prompt_version == 3
+    assert captured[0].llm_prompt_version == 4
