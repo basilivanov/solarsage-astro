@@ -186,19 +186,22 @@ test.describe("V2 human-first navigator mock visual", () => {
     const summary = page.getByTestId("day-summary-card")
     const story = page.getByTestId("activation-evidence-card")
     const navigator = page.getByTestId("concrete-day-advice")
-    const why = page.getByTestId("why-expanded")
+    const focus = page.getByTestId("today-focus")
+    const contextDisclosure = page.getByTestId("day-context-disclosure")
     await expect(screen).toHaveAttribute("data-state", "ready", { timeout: 30_000 })
     await expect(summary).toBeVisible()
     await expect(story).toBeVisible()
     await expect(navigator).toBeVisible()
-    await expect(why).toBeVisible()
+    await expect(focus).toBeVisible()
+    await expect(contextDisclosure).toBeVisible()
 
     const order = await page.evaluate(() => {
       const nodes = [
         document.querySelector('[data-testid="day-summary-card"]'),
+        document.querySelector('[data-testid="today-focus"]'),
         document.querySelector('[data-testid="activation-evidence-card"]'),
         document.querySelector('[data-testid="concrete-day-advice"]'),
-        document.querySelector('[data-testid="why-expanded"]'),
+        document.querySelector('[data-testid="day-context-disclosure"]'),
         document.querySelector('[data-testid="day-reading-disclosure"]'),
         document.querySelector('[data-testid="day-tech-disclosure"]'),
       ]
@@ -245,66 +248,40 @@ test.describe("V2 human-first navigator mock visual", () => {
     await heroWork.click()
     const heroSheet = page.getByTestId("sphere-details-sheet")
     await expect(heroSheet).toHaveAttribute("data-sphere-key", "work")
-    await heroSheet.getByTestId("sphere-why-cta").click()
+    await heroSheet.getByRole("button", { name: "Закрыть" }).click()
     await expect(page.getByTestId("sphere-details-sheet")).toHaveCount(0)
 
-    const whyMainToggle = page.locator("#why-expanded-toggle")
-    await expect(whyMainToggle).toHaveAttribute("aria-expanded", "true")
-    const humanWhy = why.getByTestId("why-horizons")
-    await expect(humanWhy).toHaveAttribute("data-source", "backend-horizons")
-    const teasers = humanWhy.getByTestId("why-horizon-teaser")
-    await expect(teasers).toHaveCount(3)
-    const horizonOrder = await teasers.evaluateAll((items) => items.map((item) => item.getAttribute("data-horizon")))
-    expect(horizonOrder).toEqual(["long", "medium", "fast"])
-    const toneOrder = await teasers.evaluateAll((items) => items.map((item) => item.getAttribute("data-status")))
-    expect(toneOrder).toEqual(["mixed", "mixed", "tense"])
-    await expect(humanWhy).not.toContainText(BANNED_HUMAN_COPY)
+    // TodayFocus block: enriched fixture has single_impulses with one timed event
+    await expect(focus).toHaveAttribute("data-state", "single_impulses")
+    await expect(focus).toContainText("СОБЫТИЯ ДНЯ")
+    await expect(focus.getByTestId("today-focus-event")).toHaveCount(1)
+    await expect(focus).toContainText("Луна в напряжении с твоим Плутоном")
+    await expect(focus).toContainText("точный пик")
 
-    const [humanWhyHeight, humanScreenHeight] = await Promise.all([
-      why.evaluate((element) => Math.ceil(element.scrollHeight)),
+    // Period context disclosure: open and verify the long horizon content
+    await contextDisclosure.getByTestId("day-context-disclosure-toggle").click()
+    await expect(contextDisclosure.getByTestId("day-context-disclosure-toggle")).toHaveAttribute("aria-expanded", "true")
+    await expect(contextDisclosure).toContainText("Долгий цикл")
+    await expect(contextDisclosure).toContainText("Фон уже действует")
+    await expect(contextDisclosure).toContainText("Как проявляется")
+    await expect(contextDisclosure).not.toContainText(BANNED_HUMAN_COPY)
+
+    const [contextHeight, screenHeight] = await Promise.all([
+      contextDisclosure.evaluate((element) => Math.ceil(element.scrollHeight)),
       screen.evaluate((element) => Math.ceil(element.scrollHeight)),
     ])
-    await page.setViewportSize({ width: 390, height: Math.max(humanWhyHeight, humanScreenHeight) + 96 })
+    await page.setViewportSize({ width: 390, height: Math.max(contextHeight, screenHeight) + 96 })
     await screen.evaluate((element) => element.parentElement?.scrollTo({ top: 0 }))
-    await why.scrollIntoViewIfNeeded()
+    await contextDisclosure.scrollIntoViewIfNeeded()
     await page.waitForTimeout(150)
-    await captureLocator(why, "01-why-three-horizons-mobile.png")
+    await captureLocator(contextDisclosure, "01-why-three-horizons-mobile.png")
 
-    // Back to phone-sized viewport for sheet captures
+    // Back to phone-sized viewport for the technical disclosure of the focus block
     await page.setViewportSize({ width: 390, height: 844 })
-
-    // Open the long horizon sheet: full content + technique disclosure
-    await teasers.first().click()
-    const horizonSheet = page.getByTestId("horizon-sheet")
-    await expect(horizonSheet).toBeVisible()
-    await expect(horizonSheet).toHaveAttribute("data-horizon", "long")
-    await expect(horizonSheet).toContainText("Фон уже действует")
-    await expect(horizonSheet).not.toContainText(BANNED_HUMAN_COPY)
-
-    const astroToggle = horizonSheet.getByTestId("why-horizon-technical-toggle")
-    await expect(astroToggle).toHaveAttribute("aria-expanded", "false")
-    await astroToggle.click()
-    await expect(astroToggle).toHaveAttribute("aria-expanded", "true")
-    const technical = horizonSheet.getByTestId("why-horizon-technical-content")
-    await expect(technical).toContainText("Профекция")
-    await expect(technical).toContainText("Фирдар")
-    await expect(technical).toContainText("12 мая 2026 — 11 мая 2027")
-    await expect(technical).not.toContainText(/act-|source_frame|target_frame|strength|debug/i)
-
+    await page.getByTestId("today-focus-technical-toggle").click()
+    await expect(page.getByTestId("today-focus-technical-content")).toBeVisible()
     await page.waitForTimeout(150)
-    await captureLocator(horizonSheet, "02-why-three-horizons-calculation-mobile.png")
-
-    // Fast horizon sheet: fast timing + technique
-    await page.keyboard.press("Escape")
-    await expect(horizonSheet).toHaveCount(0)
-    await teasers.nth(2).click()
-    const fastSheet = page.getByTestId("horizon-sheet")
-    await expect(fastSheet).toHaveAttribute("data-horizon", "fast")
-    await expect(fastSheet).toContainText("Пик уже пройден")
-    await fastSheet.getByTestId("why-horizon-technical-toggle").click()
-    await expect(fastSheet.getByTestId("why-horizon-technical-content")).toContainText("С 8 по 10 июля по Москве")
-    await page.keyboard.press("Escape")
-    await expect(fastSheet).toHaveCount(0)
+    await captureLocator(page.getByTestId("today-focus-technical-content"), "02-why-three-horizons-calculation-mobile.png")
 
     const fullScreenHeight = await screen.evaluate((element) => Math.ceil(element.scrollHeight))
     await page.setViewportSize({ width: 390, height: fullScreenHeight + 96 })

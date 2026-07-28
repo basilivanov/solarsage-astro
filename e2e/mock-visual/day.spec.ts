@@ -145,8 +145,9 @@ async function sectionOrder(page: import("@playwright/test").Page): Promise<stri
       "access-card",
       "evening-checkin-reminder",
       "day-summary-card",
+      "today-focus",
       "concrete-day-advice",
-      "why-expanded",
+      "day-context-disclosure",
       "day-reading-disclosure",
       "day-tech-disclosure",
     ]);
@@ -201,8 +202,10 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(page.getByTestId("access-card")).toBeVisible();
     await expect(page.getByTestId("evening-checkin-reminder")).toHaveCount(0);
     await expect(page.getByTestId("day-summary-card")).toBeVisible();
+    await expect(page.getByTestId("today-focus")).toBeVisible();
     await expect(page.getByTestId("concrete-day-advice")).toBeVisible();
-    await expect(page.getByTestId("why-expanded")).toBeVisible();
+    // This fixture has no v2 block: the period context disclosure stays hidden
+    await expect(page.getByTestId("day-context-disclosure")).toHaveCount(0);
     await expect(page.getByTestId("day-reading-disclosure")).toBeVisible();
     await expect(page.getByTestId("day-tech-disclosure")).toBeVisible();
 
@@ -214,8 +217,8 @@ test.describe("Mock Visual — /day/[date]", () => {
       "day-header",
       "access-card",
       "day-summary-card",
+      "today-focus",
       "concrete-day-advice",
-      "why-expanded",
       "day-reading-disclosure",
       "day-tech-disclosure",
     ]);
@@ -328,7 +331,7 @@ test.describe("Mock Visual — /day/[date]", () => {
 
     await scrollInternalTo(page, metrics.maxScroll);
     await expect(page.getByTestId("day-reading")).toBeVisible();
-    await expect(page.getByTestId("why-expanded")).toBeVisible();
+    await expect(page.getByTestId("day-tech-disclosure")).toBeVisible();
     await expect(page.getByTestId("today-bottom-disclaimer")).toBeVisible();
   });
 
