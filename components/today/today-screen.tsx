@@ -271,7 +271,6 @@ export function TodayScreen({
           {/* Today Focus Block ("Что сошлось именно сегодня" / "События дня") */}
           <TodayFocusCard
             focus={payload.focus}
-            activationEvidence={payload.v2?.activationEvidence}
             onSphereSelect={selectPersonalStorySphere}
           />
 

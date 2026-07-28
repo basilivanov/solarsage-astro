@@ -114,3 +114,60 @@ def test_slow_layer_titles():
     human, tech = build_event_title(f_prof)
     assert human == "Профекция: Марс в фокусе"
     assert tech == "Профекция Марс"
+
+
+def test_return_angular_planet_titles_use_target_and_house():
+    """Angular-planet return factors have no real source planet: title uses the target + house."""
+    f_lunar = {
+        "factor_id": "act:lunar_return__ANGULAR_PLANET__PLUTO__HOUSE_4",
+        "source_key": "LUNAR",
+        "target_key": "PLUTO",
+        "target_type": "planet",
+        "technique_family": "return",
+        "technique": "lunar_return",
+        "house": 4,
+    }
+    human, tech = build_event_title(f_lunar)
+    assert human == "Лунар: Плутон — тема месяца"
+    assert tech == "Лунар: Плутон на углу (4 дом)"
+    assert "LUNAR" not in human and "LUNAR" not in tech
+
+    f_solar = {
+        "factor_id": "act:solar_return__ANGULAR_PLANET__PLUTO__HOUSE_10",
+        "source_key": "SOLAR",
+        "target_key": "PLUTO",
+        "target_type": "planet",
+        "technique_family": "return",
+        "technique": "solar_return",
+        "house": 10,
+    }
+    human, tech = build_event_title(f_solar)
+    assert human == "Соляр: Плутон — тема года"
+    assert tech == "Соляр: Плутон на углу (10 дом)"
+
+
+def test_minor_aspect_labels_never_leak_machine_keys():
+    """sesqui_quadrate / semi_sextile get Russian labels in both title forms."""
+    f_sesqui = {
+        "factor_id": "act:t2n__URANUS__SESQUI_QUADRATE__PLUTO",
+        "source_key": "URANUS",
+        "target_key": "PLUTO",
+        "target_type": "planet",
+        "aspect_type": "sesqui_quadrate",
+    }
+    human, tech = build_event_title(f_sesqui)
+    assert human == "Уран в напряжении с твоим Плутоном"
+    assert tech == "Уран полутораквадрат Плутон"
+    assert "sesqui" not in tech.lower()
+
+    f_semi = {
+        "factor_id": "act:t2n__VENUS__SEMI_SEXTILE__PLUTO",
+        "source_key": "VENUS",
+        "target_key": "PLUTO",
+        "target_type": "planet",
+        "aspect_type": "semi_sextile",
+    }
+    human, tech = build_event_title(f_semi)
+    assert human == "Венера в гармонии с твоим Плутоном"
+    assert tech == "Венера полусекстиль Плутон"
+    assert "semi" not in tech.lower()

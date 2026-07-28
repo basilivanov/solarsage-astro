@@ -127,6 +127,7 @@ export type SphereScoreV2 = components["schemas"]["SphereScoreV2"];
 export type TodayConvergence = components["schemas"]["TodayConvergence"];
 export type TodayFeaturedSphere = components["schemas"]["TodayFeaturedSphere"];
 export type TodayFocusEvent = components["schemas"]["TodayFocusEvent"];
+export type TodayFocusFactor = components["schemas"]["TodayFocusFactor"];
 export type TodayFocus = components["schemas"]["TodayFocus"];
 
 // W-NATAL-FULL (Wave 5): Full report schemas from lib/contracts/natal.ts

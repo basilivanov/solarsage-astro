@@ -41,7 +41,6 @@ const SPHERE_ICON_BY_KEY: Record<string, IconName> = Object.fromEntries(
 
 interface TodayFocusCardProps {
   focus?: TodayFocus | null
-  activationEvidence?: any[]
   onSphereSelect: (key: string) => void
   onRetry?: () => void
 }
@@ -77,7 +76,7 @@ function formatKindLabel(kind: string): { label: string; colorClass: string } {
 }
 
 // START_BLOCK: TODAY_FOCUS_CARD
-export function TodayFocusCard({ focus, activationEvidence = [], onSphereSelect, onRetry }: TodayFocusCardProps) {
+export function TodayFocusCard({ focus, onSphereSelect, onRetry }: TodayFocusCardProps) {
   const [techOpen, setTechOpen] = useState(false)
 
   if (!focus) {
@@ -343,33 +342,30 @@ export function TodayFocusCard({ focus, activationEvidence = [], onSphereSelect,
                       {timeStr ? ` · ${timeStr}` : ""}
                     </span>
                     <span className="inline-flex items-center rounded-full bg-violet-100 dark:bg-violet-500/20 px-2 py-0.5 text-[10.5px] font-semibold text-violet-700 dark:text-violet-200">
-                      сегодня ({ev.kind})
+                      сегодня · {formatKindLabel(ev.kind).label}
                     </span>
                   </div>
                 )
               })}
 
-              {/* Remaining background / supporting activation factors */}
-              {(() => {
-                const eventActIds = new Set(events.flatMap((e) => e.sourceActivationIds || []))
-                const convActIds = convergence?.sourceActivationIds || []
-                const bgActIds = convActIds.filter((id) => !eventActIds.has(id))
-
-                return bgActIds.map((actId) => {
-                  const evMatch = activationEvidence.find((a) => (a.id || a.activationId) === actId)
-                  const title = evMatch?.title || evMatch?.technique || actId
-                  return (
-                    <div key={actId} data-testid="today-focus-factor-item" className="flex items-center justify-between gap-2 border-t border-border/30 pt-1.5">
-                      <span>
-                        <strong className="font-semibold">{title}</strong>
-                      </span>
-                      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-500/20 px-2 py-0.5 text-[10.5px] font-medium text-slate-600 dark:text-slate-400">
-                        фон
-                      </span>
-                    </div>
-                  )
-                })
-              })()}
+              {/* Remaining non-event factors with roles and human titles (backend-owned) */}
+              {(convergence?.backgroundFactors || []).map((f) => {
+                const roleBadge = f.role === "anchor_today"
+                  ? { label: "сегодня", cls: "bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-200 font-semibold" }
+                  : f.role === "supporting"
+                    ? { label: "усиливает", cls: "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-medium" }
+                    : { label: "фон", cls: "bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-400 font-medium" }
+                return (
+                  <div key={f.id} data-testid="today-focus-factor-item" className="flex items-center justify-between gap-2 border-t border-border/30 pt-1.5">
+                    <span>
+                      <strong className="font-semibold">{f.technicalTitle || f.humanTitle}</strong>
+                    </span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] ${roleBadge.cls}`}>
+                      {roleBadge.label}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

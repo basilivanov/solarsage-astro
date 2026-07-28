@@ -144,7 +144,11 @@ def build_factor_ledger(
         target_key_raw = _clean_key(_get_field(act, "target_key") or _get_field(act, "targetKey") or _get_field(act, "target_planet") or _get_field(act, "house"))
         target_type_raw = _get_field(act, "target_type") or _get_field(act, "targetType")
         target_type = _normalize_target_type(str(target_type_raw) if target_type_raw else None, target_key_raw)
-        aspect_type = _clean_aspect(_get_field(act, "aspect_type") or _get_field(act, "aspectType"))
+        aspect_type = _clean_aspect(
+            _get_field(act, "aspect_type")
+            or _get_field(act, "aspectType")
+            or _get_field(act, "aspect")
+        )
 
         ev_str = str(_get_field(act, "evidence") or _get_field(act, "title") or "")
         if ev_str:
@@ -154,7 +158,7 @@ def build_factor_ledger(
                 if match_p:
                     src_planet = _clean_key(match_p.group(1))
             if not aspect_type:
-                match_a = re.search(r'\b(sextile|trine|square|opposition|conjunction|quincunx|semi_square|sesquisquare)\b', ev_str.lower())
+                match_a = re.search(r'\b(sextile|trine|square|opposition|conjunction|quincunx|semi_square|sesquisquare|sesqui_quadrate|semi_sextile)\b', ev_str.lower())
                 if match_a:
                     aspect_type = _clean_aspect(match_a.group(1))
 

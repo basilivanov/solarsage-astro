@@ -4516,6 +4516,14 @@
         "additionalProperties": false,
         "description": "Calculated theme convergence summary (§5).",
         "properties": {
+          "backgroundFactors": {
+            "description": "Non-event factors with human titles and temporal roles",
+            "items": {
+              "$ref": "#/components/schemas/TodayFocusFactor"
+            },
+            "title": "Backgroundfactors",
+            "type": "array"
+          },
           "id": {
             "description": "Convergence cluster identity",
             "title": "Id",
@@ -4813,6 +4821,60 @@
           "humanTitle"
         ],
         "title": "TodayFocusEvent",
+        "type": "object"
+      },
+      "TodayFocusFactor": {
+        "additionalProperties": false,
+        "description": "Non-event convergence factor for the technical disclosure.",
+        "properties": {
+          "humanTitle": {
+            "description": "Human-first factor title without jargon",
+            "title": "Humantitle",
+            "type": "string"
+          },
+          "id": {
+            "description": "Deterministic factor identity",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "description": "Temporal role relative to the user's day",
+            "enum": [
+              "anchor_today",
+              "supporting",
+              "background",
+              "unrelated"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "sourceActivationIds": {
+            "description": "IDs of underlying activations",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sourceactivationids",
+            "type": "array"
+          },
+          "technicalTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional technical disclosure title",
+            "title": "Technicaltitle"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "humanTitle"
+        ],
+        "title": "TodayFocusFactor",
         "type": "object"
       },
       "TodayImportantEvent": {

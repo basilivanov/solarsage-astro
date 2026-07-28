@@ -122,6 +122,7 @@ class TodayFactor:
     temporal_role: TemporalRole
     aspect_type: str | None = None
     target_type: str | None = None
+    house: int | None = None
 
 
 def _get_field(obj: Any, key: str, default: Any = None) -> Any:
@@ -416,6 +417,7 @@ def normalize_factors(
             temporal_role=role,
             aspect_type=_get_field(f, "aspect_type"),
             target_type=_get_field(f, "target_type"),
+            house=_get_field(primary_act, "house") if primary_act else None,
         )
 
         normalized_map[fid] = today_factor
@@ -454,6 +456,17 @@ class TodayFeaturedSphereResult:
 
 
 @dataclass(frozen=True)
+class TodayFocusFactorResult:
+    """Non-event convergence factor for the technical disclosure (roles + human titles)."""
+
+    id: str
+    role: TemporalRole
+    human_title: str
+    technical_title: str | None
+    source_activation_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class TodayConvergenceResult:
     id: str
     theme_key: str
@@ -462,6 +475,7 @@ class TodayConvergenceResult:
     independent_factor_count: int
     technique_families: tuple[str, ...]
     source_activation_ids: tuple[str, ...]
+    background_factors: tuple[TodayFocusFactorResult, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -616,16 +630,6 @@ def build_today_focus(
         all_act_ids = tuple(sorted({act_id for f in winning_factors for act_id in f.activation_ids}))
         all_families = tuple(sorted({f.technique_family for f in winning_factors}))
 
-        convergence = TodayConvergenceResult(
-            id=conv_id,
-            theme_key=theme_key,
-            title="Что сошлось именно сегодня",
-            summary=None,  # LLM-owned in W4-C
-            independent_factor_count=len(winning_group["distinct_ids"]),
-            technique_families=all_families,
-            source_activation_ids=all_act_ids,
-        )
-
         # Build events (0..3): public events are today's anchors across ALL
         # groups, ranked by the group's rank position — the winning group's
         # anchors first, then anchors of other groups. Supporting/background
@@ -637,6 +641,37 @@ def build_today_focus(
                     anchor_pool.append((g_rank, f))
         anchor_pool.sort(key=lambda gf: (gf[0], gf[1].exact_at or gf[1].active_from or local_start_utc, gf[1].factor_id))
         event_factors = [f for _, f in anchor_pool[:3]]
+
+        # Non-event factors of the winning group feed the technical disclosure
+        # with deterministic human titles and their temporal role.
+        event_factor_ids = {f.factor_id for f in event_factors}
+        role_order = {"anchor_today": 0, "supporting": 1, "background": 2, "unrelated": 3}
+        remaining = [f for f in winning_factors if f.factor_id not in event_factor_ids]
+        remaining.sort(key=lambda f: (role_order.get(f.temporal_role, 3), -f.strength, f.factor_id))
+        bg_list: list[TodayFocusFactorResult] = []
+        for f in remaining:
+            human_t, tech_t = _format_event_titles(f)
+            bg_list.append(
+                TodayFocusFactorResult(
+                    id=f"f:{f.factor_id}",
+                    role=f.temporal_role,
+                    human_title=human_t,
+                    technical_title=tech_t,
+                    source_activation_ids=f.activation_ids,
+                )
+            )
+        background_factors = tuple(bg_list)
+
+        convergence = TodayConvergenceResult(
+            id=conv_id,
+            theme_key=theme_key,
+            title="Что сошлось именно сегодня",
+            summary=None,  # LLM-owned in W4-C
+            independent_factor_count=len(winning_group["distinct_ids"]),
+            technique_families=all_families,
+            source_activation_ids=all_act_ids,
+            background_factors=background_factors,
+        )
 
         events_list: list[TodayFocusEventResult] = []
         for f in event_factors[:3]:

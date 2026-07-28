@@ -2365,6 +2365,11 @@ export interface components {
          */
         TodayConvergence: {
             /**
+             * Backgroundfactors
+             * @description Non-event factors with human titles and temporal roles
+             */
+            backgroundFactors?: components["schemas"]["TodayFocusFactor"][];
+            /**
              * Id
              * @description Convergence cluster identity
              */
@@ -2537,6 +2542,38 @@ export interface components {
              * @description IANA timezone name used for classification
              */
             timezone: string;
+        };
+        /**
+         * TodayFocusFactor
+         * @description Non-event convergence factor for the technical disclosure.
+         */
+        TodayFocusFactor: {
+            /**
+             * Humantitle
+             * @description Human-first factor title without jargon
+             */
+            humanTitle: string;
+            /**
+             * Id
+             * @description Deterministic factor identity
+             */
+            id: string;
+            /**
+             * Role
+             * @description Temporal role relative to the user's day
+             * @enum {string}
+             */
+            role: "anchor_today" | "supporting" | "background" | "unrelated";
+            /**
+             * Sourceactivationids
+             * @description IDs of underlying activations
+             */
+            sourceActivationIds?: string[];
+            /**
+             * Technicaltitle
+             * @description Optional technical disclosure title
+             */
+            technicalTitle?: string | null;
         };
         /**
          * TodayImportantEvent

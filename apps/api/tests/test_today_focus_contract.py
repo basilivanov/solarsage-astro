@@ -13,6 +13,7 @@ from app.schemas.today_focus import (
     TodayConvergence,
     TodayFocusEvent,
     TodayFeaturedSphere,
+    TodayFocusFactor,
 )
 from app.services.today_focus_builder import TodayFactor, build_today_focus
 
@@ -255,3 +256,50 @@ def test_check_focus_narrative_safety_validation():
     )
     assert sanitized is None
     assert reason == "length"
+
+
+def test_convergence_background_factors_camel_serialization():
+    """TodayConvergence serializes background_factors as camelCase backgroundFactors with roles and titles."""
+    conv = TodayConvergence(
+        id="conv:1",
+        theme_key="PLUTO",
+        title="Что сошлось именно сегодня",
+        summary=None,
+        independent_factor_count=3,
+        technique_families=["transit", "return"],
+        source_activation_ids=["act-1", "act-2", "act-3"],
+        background_factors=[
+            TodayFocusFactor(
+                id="f:act:t2n__MARS__TRINE__PLUTO",
+                role="supporting",
+                human_title="Марс в гармонии с твоим Плутоном",
+                technical_title="Марс тригон Плутон",
+                source_activation_ids=["act-2"],
+            ),
+            TodayFocusFactor(
+                id="f:act:lunar_return__ANGULAR_PLANET__PLUTO__HOUSE_4",
+                role="background",
+                human_title="Лунар: Плутон — тема месяца",
+                technical_title="Лунар: Плутон на углу (4 дом)",
+                source_activation_ids=["act-3"],
+            ),
+        ],
+    )
+    dumped = conv.model_dump(by_alias=True)
+    assert "backgroundFactors" in dumped
+    bf = dumped["backgroundFactors"]
+    assert len(bf) == 2
+    assert bf[0]["role"] == "supporting"
+    assert bf[0]["humanTitle"] == "Марс в гармонии с твоим Плутоном"
+    assert bf[0]["technicalTitle"] == "Марс тригон Плутон"
+    assert bf[0]["sourceActivationIds"] == ["act-2"]
+    assert bf[1]["role"] == "background"
+    # Default when omitted: empty list, still serialized
+    conv_min = TodayConvergence(
+        id="conv:2",
+        theme_key="SUN",
+        title="t",
+        summary=None,
+        independent_factor_count=2,
+    )
+    assert conv_min.model_dump(by_alias=True)["backgroundFactors"] == []

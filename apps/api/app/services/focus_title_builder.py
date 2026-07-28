@@ -78,6 +78,8 @@ ASPECT_LABELS_RU: dict[str, str] = {
     "quincunx": "квиконс",
     "semi_square": "полуквадрат",
     "sesquisquare": "полутораквадрат",
+    "sesqui_quadrate": "полутораквадрат",
+    "semi_sextile": "полусекстиль",
 }
 
 ANGLE_LABELS_RU: dict[str, str] = {
@@ -149,7 +151,16 @@ def build_event_title(factor: Any) -> tuple[str, str | None]:
         return human, f"Профекция {src_nom}"
     if tech_family in ("solar_return", "lunar_return") or technique in ("solar_return", "lunar_return", "return"):
         label = "Соляр" if "solar" in tech_family or "solar" in technique else "Лунар"
-        human = f"{label}: {src_nom} — тема года"
+        period_word = "года" if label == "Соляр" else "месяца"
+        # Angular-planet return factors carry no real source planet (the ledger
+        # may even capture "Lunar"/"Solar" from the evidence sentence): the
+        # meaningful planet is the TARGET, optionally refined by the house.
+        if src_clean not in PLANET_NOMINATIVE_RU and tgt_clean in PLANET_NOMINATIVE_RU:
+            house = _get_field(factor, "house")
+            house_suffix = f" ({house} дом)" if isinstance(house, int) else ""
+            human = f"{label}: {tgt_nom} — тема {period_word}"
+            return human, f"{label}: {tgt_nom} на углу{house_suffix}"
+        human = f"{label}: {src_nom} — тема {period_word}"
         return human, f"{label} {src_nom}"
 
     # 2. Aspect factors
@@ -158,12 +169,12 @@ def build_event_title(factor: Any) -> tuple[str, str | None]:
         asp_raw = str(_get_field(factor, "aspect_type") or (parts[3] if len(parts) >= 5 else "")).lower()
         asp_ru = ASPECT_LABELS_RU.get(asp_raw, asp_raw)
 
-        if asp_raw in ("opposition", "square", "quincunx", "semi_square", "sesquisquare"):
+        if asp_raw in ("opposition", "square", "quincunx", "semi_square", "sesquisquare", "sesqui_quadrate"):
             if asp_raw == "opposition":
                 human = f"{src_nom} напротив твоего {tgt_gen}"
             else:
                 human = f"{src_nom} в напряжении с твоим {tgt_inst}"
-        elif asp_raw in ("trine", "sextile"):
+        elif asp_raw in ("trine", "sextile", "semi_sextile"):
             human = f"{src_nom} в гармонии с твоим {tgt_inst}"
         elif asp_raw == "conjunction":
             human = f"{src_nom} сошлась с твоим {tgt_inst}"

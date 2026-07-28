@@ -835,7 +835,15 @@ export const DaySummaryBlock = z.object({
   statusLabel: z.string(),
   statusLine: z.string(),
 });
+export const TodayFocusFactor = z.object({
+  humanTitle: z.string(),
+  id: z.string(),
+  role: z.enum(["anchor_today", "supporting", "background", "unrelated"]),
+  sourceActivationIds: z.array(z.string()).optional(),
+  technicalTitle: z.union([z.string(), z.null()]).optional(),
+});
 export const TodayConvergence = z.object({
+  backgroundFactors: z.array(TodayFocusFactor).optional(),
   id: z.string(),
   independentFactorCount: z.number().int(),
   sourceActivationIds: z.array(z.string()).optional(),
@@ -1437,6 +1445,7 @@ export const schemas = {
   DayQuality,
   DaySummaryFact,
   DaySummaryBlock,
+  TodayFocusFactor,
   TodayConvergence,
   TodayFocusEvent,
   TodayFeaturedSphere,

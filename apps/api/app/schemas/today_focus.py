@@ -9,7 +9,7 @@
 # owns:
 #   - apps/api/app/schemas/today_focus.py
 # inputs: none (schema-only)
-# outputs: TodayFocusEvent, TodayFeaturedSphere, TodayConvergence, TodayFocus
+# outputs: TodayFocusEvent, TodayFeaturedSphere, TodayFocusFactor, TodayConvergence, TodayFocus
 # dependencies: app.schemas._base.CamelModel
 # side_effects: none (pure schema)
 # emitted_logs: none
@@ -20,6 +20,7 @@
 # public_entrypoints:
 #   - TodayFocusEvent
 #   - TodayFeaturedSphere
+#   - TodayFocusFactor
 #   - TodayConvergence
 #   - TodayFocus
 # semantic_blocks: none
@@ -86,6 +87,22 @@ class TodayFeaturedSphere(CamelModel):
     )
 
 
+class TodayFocusFactor(CamelModel):
+    """Non-event convergence factor for the technical disclosure."""
+
+    id: str = Field(..., description="Deterministic factor identity")
+    role: Literal["anchor_today", "supporting", "background", "unrelated"] = Field(
+        ..., description="Temporal role relative to the user's day"
+    )
+    human_title: str = Field(..., description="Human-first factor title without jargon")
+    technical_title: str | None = Field(
+        default=None, description="Optional technical disclosure title"
+    )
+    source_activation_ids: list[str] = Field(
+        default_factory=list, description="IDs of underlying activations"
+    )
+
+
 class TodayConvergence(CamelModel):
     """Calculated theme convergence summary (§5)."""
 
@@ -103,6 +120,10 @@ class TodayConvergence(CamelModel):
     )
     source_activation_ids: list[str] = Field(
         default_factory=list, description="IDs of all contributing activations"
+    )
+    background_factors: list[TodayFocusFactor] = Field(
+        default_factory=list,
+        description="Non-event factors with human titles and temporal roles",
     )
 
 

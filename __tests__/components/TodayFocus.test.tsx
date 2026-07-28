@@ -21,6 +21,22 @@ function makeFocus(overrides?: Partial<TodayFocus>): TodayFocus {
       independentFactorCount: 2,
       techniqueFamilies: ["transit"],
       sourceActivationIds: ["act-1", "act-2"],
+      backgroundFactors: [
+        {
+          id: "f:act-3",
+          role: "supporting",
+          humanTitle: "Венера в гармонии с твоим Нептуном",
+          technicalTitle: "Венера тригон Нептун",
+          sourceActivationIds: ["act-3"],
+        },
+        {
+          id: "f:act-4",
+          role: "background",
+          humanTitle: "Лунар: Плутон — тема месяца",
+          technicalTitle: "Лунар: Плутон на углу (4 дом)",
+          sourceActivationIds: ["act-4"],
+        },
+      ],
     },
     events: [
       {
@@ -243,5 +259,30 @@ describe("TodayFocusCard visual system", () => {
     fireEvent.click(link)
     expect(onClose).toHaveBeenCalledOnce()
     expect(onFocusOpen).toHaveBeenCalledOnce()
+  })
+})
+
+describe("TodayFocusCard technical disclosure factors", () => {
+  it("lists event factors and non-event factors with human titles and role badges, never machine keys", () => {
+    render(<TodayFocusCard focus={makeFocus()} onSphereSelect={() => {}} />)
+
+    fireEvent.click(screen.getByTestId("today-focus-technical-toggle"))
+    const content = screen.getByTestId("today-focus-technical-content")
+
+    const items = screen.getAllByTestId("today-focus-factor-item")
+    // 2 events + 2 background factors
+    expect(items).toHaveLength(4)
+
+    expect(content.textContent).toContain("Марс оппозиция Нептун")
+    expect(content.textContent).toContain("сегодня · точный пик")
+    expect(content.textContent).toContain("Венера тригон Нептун")
+    expect(content.textContent).toContain("усиливает")
+    expect(content.textContent).toContain("Лунар: Плутон на углу (4 дом)")
+    expect(content.textContent).toContain("фон")
+
+    // No machine leakage
+    expect(content.textContent).not.toContain("transit_to_natal")
+    expect(content.textContent).not.toContain("lunar_return")
+    expect(content.textContent).not.toContain("(exact)")
   })
 })

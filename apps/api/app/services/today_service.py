@@ -702,6 +702,7 @@ class TodayService:
             TodayFocusEvent,
             TodayFeaturedSphere,
             TodayConvergence,
+            TodayFocusFactor,
         )
 
         ledger_for_focus = getattr(dual, "factor_ledger", None)
@@ -809,6 +810,16 @@ class TodayService:
                 independent_factor_count=c.independent_factor_count,
                 technique_families=list(c.technique_families),
                 source_activation_ids=list(c.source_activation_ids),
+                background_factors=[
+                    TodayFocusFactor(
+                        id=bf.id,
+                        role=bf.role,
+                        human_title=bf.human_title,
+                        technical_title=bf.technical_title,
+                        source_activation_ids=list(bf.source_activation_ids),
+                    )
+                    for bf in c.background_factors
+                ],
             )
 
         event_meanings_map = (

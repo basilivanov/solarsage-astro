@@ -609,3 +609,110 @@ def test_b2_malformed_or_none_input_returns_unavailable():
     assert focus.events == ()
     assert focus.featured_spheres == ()
 
+
+
+def test_b2_convergence_background_factors_exclude_events_and_carry_roles():
+    """Winning-group factors that did not become events land in background_factors with roles and human titles."""
+    target_date = date(2026, 7, 28)
+    exact_dt = datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc)
+
+    tf_anchor = TodayFactor(
+        factor_id="sig:aspect:MARS:OPPOSITION:NEPTUNE",
+        activation_ids=("act-1",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MARS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "decisions"),
+        polarity="tense",
+        strength=0.85,
+        salience=0.85,
+        active_from=exact_dt - timedelta(hours=6),
+        exact_at=exact_dt,
+        active_until=exact_dt + timedelta(hours=6),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+    tf_anchor2 = TodayFactor(
+        factor_id="sig:aspect:MOON:OPPOSITION:NEPTUNE",
+        activation_ids=("act-2",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="MOON",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("relationships", "health"),
+        polarity="tense",
+        strength=0.75,
+        salience=0.75,
+        active_from=exact_dt - timedelta(hours=2),
+        exact_at=exact_dt + timedelta(hours=1),
+        active_until=exact_dt + timedelta(hours=4),
+        phase="exact",
+        temporal_role="anchor_today",
+    )
+    tf_support = TodayFactor(
+        factor_id="sig:aspect:VENUS:TRINE:NEPTUNE",
+        activation_ids=("act-3",),
+        technique="transit_to_natal",
+        technique_family="transit",
+        source_key="VENUS",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("relationships",),
+        polarity="supportive",
+        strength=0.60,
+        salience=0.60,
+        active_from=exact_dt - timedelta(days=3),
+        exact_at=exact_dt + timedelta(days=2),
+        active_until=exact_dt + timedelta(days=5),
+        phase="applying",
+        temporal_role="supporting",
+        aspect_type="trine",
+    )
+    tf_bg = TodayFactor(
+        factor_id="act:firdar:neptune",
+        activation_ids=("act-firdar-neptune",),
+        technique="firdar",
+        technique_family="firdar",
+        source_key="NEPTUNE",
+        target_key="NEPTUNE",
+        theme_keys=("action",),
+        product_spheres=("work", "decisions"),
+        polarity="tense",
+        strength=0.70,
+        salience=0.70,
+        active_from=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        exact_at=None,
+        active_until=datetime(2027, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+        phase=None,
+        temporal_role="background",
+    )
+
+    focus = build_today_focus(
+        [tf_anchor, tf_anchor2, tf_support, tf_bg],
+        tz_name="Europe/Moscow",
+        target_date=target_date,
+    )
+    assert focus.state == "convergence_today"
+    conv = focus.convergence
+    assert conv is not None
+
+    event_factor_ids = {ev.id.removeprefix("ev:") for ev in focus.events}
+    bg = conv.background_factors
+    bg_ids = {f.id.removeprefix("f:") for f in bg}
+
+    # Event factors are not duplicated in background_factors
+    assert not (bg_ids & event_factor_ids)
+    # Non-event winning-group factors are present with roles and clean titles
+    assert "sig:aspect:VENUS:TRINE:NEPTUNE" in bg_ids
+    assert "act:firdar:neptune" in bg_ids
+    roles = {f.id: f.role for f in bg}
+    assert roles["f:sig:aspect:VENUS:TRINE:NEPTUNE"] == "supporting"
+    assert roles["f:act:firdar:neptune"] == "background"
+    titles = {f.id: f.human_title for f in bg}
+    assert titles["f:act:firdar:neptune"] == "Фирдар: Нептун — тема периода"
+    assert "transit_to_natal" not in " ".join(titles.values())
+    # Deterministic order: supporting before background
+    assert [f.role for f in bg] == sorted((f.role for f in bg), key={"anchor_today": 0, "supporting": 1, "background": 2, "unrelated": 3}.get)
