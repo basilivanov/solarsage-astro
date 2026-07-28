@@ -264,7 +264,6 @@ _CONCRETE_ADVICE_JSON_SCHEMA = {
 
 _FOCUS_NARRATIVE_JSON_SCHEMA = {
     "name": "today_focus_narrative",
-    "strict": True,
     "schema": {
         "type": "object",
         "properties": {
@@ -307,7 +306,7 @@ class LLMService:
             raise ValueError(f"Unknown LLM provider: {self.provider}")
 
     async def _openrouter_generate(
-        self, prompt: str, max_tokens: int, *, json_schema: dict | None = None
+        self, prompt: str, max_tokens: int, *, json_schema: dict | None = None, json_object: bool = False
     ) -> str:
         body: dict = {
             "model": settings.llm_model,
@@ -320,6 +319,10 @@ class LLMService:
             # ordinary calls keep the byte-identical body).
             body["response_format"] = {"type": "json_schema", "json_schema": json_schema}
             body["provider"] = {"require_parameters": True}
+        elif json_object:
+            # Plain JSON mode for dynamic-key responses (focus narrative):
+            # provider Structured Outputs cannot express maps with arbitrary keys.
+            body["response_format"] = {"type": "json_object"}
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{settings.openrouter_base_url}/chat/completions",
@@ -369,7 +372,7 @@ class LLMService:
         return resp.content[0].text.strip()
 
     async def _generate_text(
-        self, prompt: str, max_tokens: int, *, json_schema: dict | None = None
+        self, prompt: str, max_tokens: int, *, json_schema: dict | None = None, json_object: bool = False
     ) -> str | None:
         """Generate text with fallback: OpenRouter → DeepSeek → None.
 
@@ -381,14 +384,14 @@ class LLMService:
         """
         # 1. Primary: OpenRouter
         try:
-            return await self._openrouter_generate(prompt, max_tokens, json_schema=json_schema)
+            return await self._openrouter_generate(prompt, max_tokens, json_schema=json_schema, json_object=json_object)
         except Exception as e:
             with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="LLM_CLIENT"):
                 log_event(
                     "llm.response_rejected",
                     level="warn",
                     msg=f"[LLM] OpenRouter failed: {type(e).__name__}",
-                    payload={"reason": "timeout"},
+                    payload={"reason": "provider_error", "kind": type(e).__name__},
                 )
 
         # 2. Fallback: DeepSeek
@@ -400,7 +403,7 @@ class LLMService:
                     "llm.response_rejected",
                     level="warn",
                     msg=f"[LLM] DeepSeek fallback failed: {type(e).__name__}",
-                    payload={"reason": "timeout"},
+                    payload={"reason": "provider_error", "kind": type(e).__name__},
                 )
 
         return None
@@ -1426,7 +1429,7 @@ JSON:"""
 Твой JSON-ответ:"""
 
         response_text = await self._generate_text(
-            prompt, max_tokens=700, json_schema=_FOCUS_NARRATIVE_JSON_SCHEMA
+            prompt, max_tokens=700, json_object=True
         )
         if not response_text:
             return None

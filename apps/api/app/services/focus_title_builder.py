@@ -130,8 +130,15 @@ def build_event_title(factor: Any) -> tuple[str, str | None]:
 
     src_nom = PLANET_NOMINATIVE_RU.get(src_clean, src_clean or "Планета")
     tgt_nom = PLANET_NOMINATIVE_RU.get(tgt_clean, tgt_clean)
-    tgt_inst = PLANET_INSTRUMENTAL_RU.get(tgt_clean, tgt_clean)
-    tgt_gen = PLANET_GENITIVE_RU.get(tgt_clean, tgt_clean)
+    # Lot targets without a human label degrade to «жребий» forms, never machine keys
+    if target_type == "lot" and tgt_clean not in PLANET_NOMINATIVE_RU:
+        lot_nom = LOT_LABELS_RU.get(tgt_clean)
+        tgt_nom = lot_nom or "жребий"
+        tgt_inst = lot_nom or "жребием"
+        tgt_gen = lot_nom or "жребия"
+    else:
+        tgt_inst = PLANET_INSTRUMENTAL_RU.get(tgt_clean, tgt_clean)
+        tgt_gen = PLANET_GENITIVE_RU.get(tgt_clean, tgt_clean)
 
     # 1. Slow layers (firdar / profection / return)
     if tech_family == "firdar" or technique == "firdar":
@@ -173,9 +180,12 @@ def build_event_title(factor: Any) -> tuple[str, str | None]:
         return human, f"{src_nom} на {tgt_clean}"
 
     if target_type == "lot" or tgt_clean in LOT_LABELS_RU:
-        lot_ru = LOT_LABELS_RU.get(tgt_clean, tgt_clean)
-        human = f"{src_nom} у Жребия {lot_ru}"
-        return human, f"{src_nom} у Жребия {lot_ru}"
+        lot_ru = LOT_LABELS_RU.get(tgt_clean)
+        if lot_ru:
+            human = f"{src_nom} у Жребия {lot_ru}"
+            return human, f"{src_nom} у Жребия {lot_ru}"
+        # Lot without a human label: never leak the machine key to users
+        return f"{src_nom} у твоего жребия", f"{src_nom} у жребия"
 
     if target_type == "house" or (len(parts) >= 4 and parts[1] == "house"):
         # House number: the dedicated field, else the target key itself (house factors

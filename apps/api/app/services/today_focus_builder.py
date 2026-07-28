@@ -120,6 +120,8 @@ class TodayFactor:
     active_until: datetime | date | None
     phase: str | None
     temporal_role: TemporalRole
+    aspect_type: str | None = None
+    target_type: str | None = None
 
 
 def _get_field(obj: Any, key: str, default: Any = None) -> Any:
@@ -412,6 +414,8 @@ def normalize_factors(
             active_until=active_until,
             phase=phase,
             temporal_role=role,
+            aspect_type=_get_field(f, "aspect_type"),
+            target_type=_get_field(f, "target_type"),
         )
 
         normalized_map[fid] = today_factor
