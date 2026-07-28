@@ -47,25 +47,32 @@
 # START_MODULE_MAP: M-DAY-SERVICE.api
 # public_entrypoints:
 #   - router
+#   - get_day
+#   - get_focus_event_drilldown
 # semantic_blocks:
 #   - ROUTE_DAY_GET: GET /api/day/:date handler
+#   - ROUTE_FOCUS_EVENT_DRILLDOWN_GET: GET /api/day/:date/focus-event/:event_id handler
 # owned_tests:
 #   - apps/api/tests/test_day_endpoints.py (W-1.3)
+#   - apps/api/tests/test_focus_event_drilldown.py
 # END_MODULE_MAP: M-DAY-SERVICE.api
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, date as Date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import require_session
-from app.db.models import User
+from app.db.models import User, TodayPayloadCache
 from app.db.session import get_session
 from app.schemas.today import TodayPayload
+from app.schemas.today_focus import FocusEventDrilldown
 from app.services.access_service import AccessService
 from app.services.today_preview_guard import (
     TODAY_PREVIEW_HEADER_NAME,
@@ -167,3 +174,84 @@ async def get_day(
 
     return payload
 # END_BLOCK: ROUTE_DAY_GET
+
+
+# START_BLOCK: ROUTE_FOCUS_EVENT_DRILLDOWN_GET
+@router.get(
+    "/{date_str}/focus-event/{event_id:path}",
+    response_model=FocusEventDrilldown,
+    summary="Get focus event drilldown details",
+    description="Get deterministic drilldown for a calculated focus event from cached day payload.",
+)
+async def get_focus_event_drilldown(
+    date_str: str,
+    event_id: str = Path(..., description="Focus event ID string"),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(require_session),
+) -> FocusEventDrilldown:
+    # START_FUNCTION_CONTRACT: F-M-DAY-SERVICE.api.get_focus_event_drilldown
+    # purpose: Serve deterministic FocusEventDrilldown for a focus event from cached day payload (§34-50 of E1 TZ).
+    # inputs: date_str (str), event_id (str), db (AsyncSession), user (User)
+    # returns: FocusEventDrilldown
+    # side_effects: reads TodayPayloadCache DB table
+    # emitted_logs: none
+    # error_behavior: 400 INVALID_DATE, 404 day_payload_not_cached, 404 event_not_found
+    # END_FUNCTION_CONTRACT: F-M-DAY-SERVICE.api.get_focus_event_drilldown
+    if date_str == "today":
+        target_date = Date.today()
+    else:
+        try:
+            target_date = Date.fromisoformat(date_str)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "INVALID_DATE", "message": f"Invalid date format: {date_str}"},
+            )
+
+    # 1. Read cached payload from TodayPayloadCache table for user_id + target_date
+    stmt = select(TodayPayloadCache).where(
+        TodayPayloadCache.user_id == user.id,
+        TodayPayloadCache.target_date == target_date,
+    )
+    result = await db.execute(stmt)
+    cache_entry = result.scalar_one_or_none()
+
+    if not cache_entry:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NOT_FOUND", "message": "day_payload_not_cached"},
+        )
+
+    try:
+        payload_dict = json.loads(cache_entry.payload_json)
+    except Exception:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NOT_FOUND", "message": "day_payload_not_cached"},
+        )
+
+    # 2. Extract focus.events[] from payload_dict
+    focus_dict = payload_dict.get("focus") or {}
+    events_list = focus_dict.get("events") or []
+
+    # Find event by id == event_id
+    matched_event = next((e for e in events_list if e.get("id") == event_id), None)
+    if not matched_event:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NOT_FOUND", "message": "event_not_found"},
+        )
+
+    # 3. Extract v2.activationEvidence[] matching event's sourceActivationIds
+    source_act_ids = set(matched_event.get("sourceActivationIds") or matched_event.get("source_activation_ids") or [])
+    v2_dict = payload_dict.get("v2") or {}
+    activation_evidence_list = v2_dict.get("activationEvidence") or v2_dict.get("activation_evidence") or []
+
+    matched_evidence = [
+        ev for ev in activation_evidence_list
+        if (ev.get("id") or ev.get("activationId") or ev.get("activation_id")) in source_act_ids
+    ]
+
+    from app.services.focus_event_drilldown_builder import build_focus_event_drilldown
+    return build_focus_event_drilldown(event=matched_event, evidence=matched_evidence)
+# END_BLOCK: ROUTE_FOCUS_EVENT_DRILLDOWN_GET

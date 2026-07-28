@@ -239,6 +239,36 @@ export const ConvergenceEvidence = z.object({
   techniques: z.array(z.string()),
   theme: z.string(),
 });
+export const FocusEventNumber = z.object({
+  label: z.string(),
+  value: z.string(),
+});
+export const FocusEventPlanetSide = z.object({
+  frameLabel: z.string(),
+  functionText: z.string(),
+  label: z.string(),
+  planetKey: z.string(),
+});
+export const FocusEventDrilldown = z.object({
+  aspectLabel: z.union([z.string(), z.null()]).optional(),
+  aspectMechanics: z.union([z.string(), z.null()]).optional(),
+  aspectSymbol: z.union([z.string(), z.null()]).optional(),
+  aspectTone: z.union([z.string(), z.null()]).optional(),
+  eventId: z.string(),
+  humanTitle: z.string(),
+  kind: z.string(),
+  kindLabel: z.string(),
+  localTime: z.union([z.string(), z.null()]).optional(),
+  meaning: z.union([z.string(), z.null()]).optional(),
+  numbers: z.array(FocusEventNumber).optional(),
+  occursAt: z.union([z.string(), z.null()]).optional(),
+  source: z.union([FocusEventPlanetSide, z.null()]).optional(),
+  sourceActivationIds: z.array(z.string()).optional(),
+  target: z.union([FocusEventPlanetSide, z.null()]).optional(),
+  technicalTitle: z.union([z.string(), z.null()]).optional(),
+  techniqueLabel: z.string(),
+  timezone: z.string(),
+});
 export const app__schemas__horary__ParagraphBlock = z.object({
   text: z.string(),
   type: z.literal("paragraph").default("paragraph"),
@@ -1373,6 +1403,9 @@ export const schemas = {
   CheckinMetrics,
   CheckinResponse,
   ConvergenceEvidence,
+  FocusEventNumber,
+  FocusEventPlanetSide,
+  FocusEventDrilldown,
   app__schemas__horary__ParagraphBlock,
   app__schemas__horary__LeadBlock,
   app__schemas__horary__HeadingBlock,

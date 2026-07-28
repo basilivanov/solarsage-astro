@@ -90,6 +90,7 @@
     <module id="M-PROMO-CAMPAIGN-GATE" slice="SLICE-SHELL-NAVIGATION" layer="frontend" path="components/promo/promo-campaign-gate.tsx" />
     <module id="M-PROMO-CONFIRMATION-SHEET" slice="SLICE-SHELL-NAVIGATION" layer="frontend" path="components/promo/promo-confirmation-sheet.tsx" />
     <module id="M-ERROR-TRACKING" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/error_tracking.py" />
+    <module id="M-API-FOCUS-EVENT-DRILLDOWN" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/focus_event_drilldown_builder.py" />
   </modules>
 
   <dependency-graph>
@@ -99,6 +100,7 @@
     <edge from="M-WEB-PROFILE-ONBOARDING" to="M-WEB-API" via="frontend-fetch" />
     <edge from="M-WEB-API" to="M-CONTRACTS" via="typescript-types" />
     <edge from="M-BACKEND-API" to="M-BACKEND-SERVICES" via="service-call" />
+    <edge from="M-BACKEND-API" to="M-API-FOCUS-EVENT-DRILLDOWN" via="builder-call" />
     <edge from="M-BACKEND-SERVICES" to="M-DB" via="SQLAlchemy" />
     <edge from="M-BACKEND-SERVICES" to="M-SIDECAR-CALCULATION" via="HTTP" />
     <edge from="M-BACKEND-SERVICES" to="M-SCORING-SEMANTIC-LLM" via="semantic-context" />

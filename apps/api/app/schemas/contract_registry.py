@@ -68,6 +68,7 @@ from .promo import (
 )
 from .scoring_v2 import ScoringV2Result
 from .today import ConvergenceEvidence, TodayPayload
+from .today_focus import FocusEventDrilldown
 
 
 # START_BLOCK: PUBLIC_ROOTS
@@ -82,6 +83,7 @@ PUBLIC_CONTRACT_ROOTS: tuple[type[CamelModel], ...] = (
     CheckinMetrics,
     CheckinResponse,
     ConvergenceEvidence,
+    FocusEventDrilldown,
     HoraryAnswerRead,
     HoraryQuestionCreate,
     HoraryQuestionRead,

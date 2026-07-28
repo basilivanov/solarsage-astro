@@ -2027,6 +2027,243 @@
         "title": "DayValenceFactor",
         "type": "object"
       },
+      "FocusEventDrilldown": {
+        "additionalProperties": false,
+        "description": "Complete response payload for GET /api/day/{date_str}/focus-event/{event_id} (E1).",
+        "properties": {
+          "aspectLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Russian aspect name e.g. Квадратура",
+            "title": "Aspectlabel"
+          },
+          "aspectMechanics": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Explanation of astrological aspect mechanics",
+            "title": "Aspectmechanics"
+          },
+          "aspectSymbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aspect Unicode symbol e.g. □",
+            "title": "Aspectsymbol"
+          },
+          "aspectTone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aspect polarity e.g. supportive|tense|mixed|neutral",
+            "title": "Aspecttone"
+          },
+          "eventId": {
+            "description": "Public event identity string",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "humanTitle": {
+            "description": "Human event title",
+            "title": "Humantitle",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Timing kind: exact|starts|peak|building|separating",
+            "title": "Kind",
+            "type": "string"
+          },
+          "kindLabel": {
+            "description": "Human kind label e.g. точный пик, начинается",
+            "title": "Kindlabel",
+            "type": "string"
+          },
+          "localTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Local HH:MM format in user timezone",
+            "title": "Localtime"
+          },
+          "meaning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Validated narrative text from payload",
+            "title": "Meaning"
+          },
+          "numbers": {
+            "description": "Key numerical metrics",
+            "items": {
+              "$ref": "#/components/schemas/FocusEventNumber"
+            },
+            "title": "Numbers",
+            "type": "array"
+          },
+          "occursAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC ISO instant timestamp",
+            "title": "Occursat"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FocusEventPlanetSide"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source side details"
+          },
+          "sourceActivationIds": {
+            "description": "IDs of underlying activations",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sourceactivationids",
+            "type": "array"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FocusEventPlanetSide"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Target side details"
+          },
+          "technicalTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Technical event title",
+            "title": "Technicaltitle"
+          },
+          "techniqueLabel": {
+            "description": "Technique description e.g. Транзит к твоей натальной карте",
+            "title": "Techniquelabel",
+            "type": "string"
+          },
+          "timezone": {
+            "description": "User IANA timezone",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventId",
+          "humanTitle",
+          "kind",
+          "kindLabel",
+          "timezone",
+          "techniqueLabel"
+        ],
+        "title": "FocusEventDrilldown",
+        "type": "object"
+      },
+      "FocusEventNumber": {
+        "additionalProperties": false,
+        "description": "Key numerical metric for focus event drilldown.",
+        "properties": {
+          "label": {
+            "description": "Metric label e.g. Орб, Точное время, Окно действия",
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "description": "Formatted metric value e.g. 0°19′, 13:31 · Europe/Moscow",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "FocusEventNumber",
+        "type": "object"
+      },
+      "FocusEventPlanetSide": {
+        "additionalProperties": false,
+        "description": "Source or target side representation for a focus event drilldown.",
+        "properties": {
+          "frameLabel": {
+            "description": "Frame origin label e.g. транзитная, твой натальный, твой жребий",
+            "title": "Framelabel",
+            "type": "string"
+          },
+          "functionText": {
+            "description": "Human function text e.g. эмоции и привычки",
+            "title": "Functiontext",
+            "type": "string"
+          },
+          "label": {
+            "description": "Human label e.g. Луна, Жребий",
+            "title": "Label",
+            "type": "string"
+          },
+          "planetKey": {
+            "description": "Planet or lot key e.g. MOON, PLUTO, NECESSITY",
+            "title": "Planetkey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "planetKey",
+          "label",
+          "frameLabel",
+          "functionText"
+        ],
+        "title": "FocusEventPlanetSide",
+        "type": "object"
+      },
       "HighlightItem": {
         "additionalProperties": false,
         "properties": {
@@ -7477,6 +7714,27 @@
           }
         },
         "summary": "Contracts  Convergenceevidence",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/focuseventdrilldown": {
+      "get": {
+        "operationId": "contracts__focuseventdrilldown___contracts___focuseventdrilldown_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FocusEventDrilldown"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Focuseventdrilldown",
         "tags": [
           "__contracts__"
         ]

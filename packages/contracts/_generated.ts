@@ -178,6 +178,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/focuseventdrilldown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Focuseventdrilldown */
+        get: operations["contracts__focuseventdrilldown___contracts___focuseventdrilldown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/horaryanswerread": {
         parameters: {
             query?: never;
@@ -1474,6 +1491,138 @@ export interface components {
              * @description Astrological technique family
              */
             techniqueFamily: string;
+        };
+        /**
+         * FocusEventDrilldown
+         * @description Complete response payload for GET /api/day/{date_str}/focus-event/{event_id} (E1).
+         */
+        FocusEventDrilldown: {
+            /**
+             * Aspectlabel
+             * @description Russian aspect name e.g. Квадратура
+             */
+            aspectLabel?: string | null;
+            /**
+             * Aspectmechanics
+             * @description Explanation of astrological aspect mechanics
+             */
+            aspectMechanics?: string | null;
+            /**
+             * Aspectsymbol
+             * @description Aspect Unicode symbol e.g. □
+             */
+            aspectSymbol?: string | null;
+            /**
+             * Aspecttone
+             * @description Aspect polarity e.g. supportive|tense|mixed|neutral
+             */
+            aspectTone?: string | null;
+            /**
+             * Eventid
+             * @description Public event identity string
+             */
+            eventId: string;
+            /**
+             * Humantitle
+             * @description Human event title
+             */
+            humanTitle: string;
+            /**
+             * Kind
+             * @description Timing kind: exact|starts|peak|building|separating
+             */
+            kind: string;
+            /**
+             * Kindlabel
+             * @description Human kind label e.g. точный пик, начинается
+             */
+            kindLabel: string;
+            /**
+             * Localtime
+             * @description Local HH:MM format in user timezone
+             */
+            localTime?: string | null;
+            /**
+             * Meaning
+             * @description Validated narrative text from payload
+             */
+            meaning?: string | null;
+            /**
+             * Numbers
+             * @description Key numerical metrics
+             */
+            numbers?: components["schemas"]["FocusEventNumber"][];
+            /**
+             * Occursat
+             * @description UTC ISO instant timestamp
+             */
+            occursAt?: string | null;
+            /** @description Source side details */
+            source?: components["schemas"]["FocusEventPlanetSide"] | null;
+            /**
+             * Sourceactivationids
+             * @description IDs of underlying activations
+             */
+            sourceActivationIds?: string[];
+            /** @description Target side details */
+            target?: components["schemas"]["FocusEventPlanetSide"] | null;
+            /**
+             * Technicaltitle
+             * @description Technical event title
+             */
+            technicalTitle?: string | null;
+            /**
+             * Techniquelabel
+             * @description Technique description e.g. Транзит к твоей натальной карте
+             */
+            techniqueLabel: string;
+            /**
+             * Timezone
+             * @description User IANA timezone
+             */
+            timezone: string;
+        };
+        /**
+         * FocusEventNumber
+         * @description Key numerical metric for focus event drilldown.
+         */
+        FocusEventNumber: {
+            /**
+             * Label
+             * @description Metric label e.g. Орб, Точное время, Окно действия
+             */
+            label: string;
+            /**
+             * Value
+             * @description Formatted metric value e.g. 0°19′, 13:31 · Europe/Moscow
+             */
+            value: string;
+        };
+        /**
+         * FocusEventPlanetSide
+         * @description Source or target side representation for a focus event drilldown.
+         */
+        FocusEventPlanetSide: {
+            /**
+             * Framelabel
+             * @description Frame origin label e.g. транзитная, твой натальный, твой жребий
+             */
+            frameLabel: string;
+            /**
+             * Functiontext
+             * @description Human function text e.g. эмоции и привычки
+             */
+            functionText: string;
+            /**
+             * Label
+             * @description Human label e.g. Луна, Жребий
+             */
+            label: string;
+            /**
+             * Planetkey
+             * @description Planet or lot key e.g. MOON, PLUTO, NECESSITY
+             */
+            planetKey: string;
         };
         /** HighlightItem */
         HighlightItem: {
@@ -3334,6 +3483,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConvergenceEvidence"];
+                };
+            };
+        };
+    };
+    contracts__focuseventdrilldown___contracts___focuseventdrilldown_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FocusEventDrilldown"];
                 };
             };
         };

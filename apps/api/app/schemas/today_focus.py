@@ -23,9 +23,13 @@
 #   - TodayFocusFactor
 #   - TodayConvergence
 #   - TodayFocus
+#   - FocusEventPlanetSide
+#   - FocusEventNumber
+#   - FocusEventDrilldown
 # semantic_blocks: none
 # owned_tests:
 #   - apps/api/tests/test_today_focus_contract.py
+#   - apps/api/tests/test_focus_event_drilldown.py
 # END_MODULE_MAP: M-SCHEMAS-TODAY-FOCUS
 
 from __future__ import annotations
@@ -149,3 +153,42 @@ class TodayFocus(CamelModel):
     content_state: Literal["ready", "pending", "unavailable", "not_needed"] = Field(
         default="not_needed", description="LLM content generation status"
     )
+
+
+class FocusEventPlanetSide(CamelModel):
+    """Source or target side representation for a focus event drilldown."""
+
+    planet_key: str = Field(..., description="Planet or lot key e.g. MOON, PLUTO, NECESSITY")
+    label: str = Field(..., description="Human label e.g. Луна, Жребий")
+    frame_label: str = Field(..., description="Frame origin label e.g. транзитная, твой натальный, твой жребий")
+    function_text: str = Field(..., description="Human function text e.g. эмоции и привычки")
+
+
+class FocusEventNumber(CamelModel):
+    """Key numerical metric for focus event drilldown."""
+
+    label: str = Field(..., description="Metric label e.g. Орб, Точное время, Окно действия")
+    value: str = Field(..., description="Formatted metric value e.g. 0°19′, 13:31 · Europe/Moscow")
+
+
+class FocusEventDrilldown(CamelModel):
+    """Complete response payload for GET /api/day/{date_str}/focus-event/{event_id} (E1)."""
+
+    event_id: str = Field(..., description="Public event identity string")
+    human_title: str = Field(..., description="Human event title")
+    technical_title: str | None = Field(default=None, description="Technical event title")
+    kind: str = Field(..., description="Timing kind: exact|starts|peak|building|separating")
+    kind_label: str = Field(..., description="Human kind label e.g. точный пик, начинается")
+    occurs_at: datetime | None = Field(default=None, description="UTC ISO instant timestamp")
+    local_time: str | None = Field(default=None, description="Local HH:MM format in user timezone")
+    timezone: str = Field(..., description="User IANA timezone")
+    meaning: str | None = Field(default=None, description="Validated narrative text from payload")
+    technique_label: str = Field(..., description="Technique description e.g. Транзит к твоей натальной карте")
+    source: FocusEventPlanetSide | None = Field(default=None, description="Source side details")
+    target: FocusEventPlanetSide | None = Field(default=None, description="Target side details")
+    aspect_label: str | None = Field(default=None, description="Russian aspect name e.g. Квадратура")
+    aspect_symbol: str | None = Field(default=None, description="Aspect Unicode symbol e.g. □")
+    aspect_tone: str | None = Field(default=None, description="Aspect polarity e.g. supportive|tense|mixed|neutral")
+    aspect_mechanics: str | None = Field(default=None, description="Explanation of astrological aspect mechanics")
+    numbers: list[FocusEventNumber] = Field(default_factory=list, description="Key numerical metrics")
+    source_activation_ids: list[str] = Field(default_factory=list, description="IDs of underlying activations")
