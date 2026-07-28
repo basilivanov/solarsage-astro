@@ -38,7 +38,6 @@ import { getHumanSphereLabel } from "@/lib/presentation/today-v2"
 interface SphereDetailsSheetProps {
   row: ConcreteAdviceRow | null
   onClose: () => void
-  onWhyOpen: () => void
 }
 
 const VERDICT_BADGE_PRESENTATION: Record<"good" | "neutral" | "caution" | "avoid", {
@@ -64,7 +63,7 @@ const VERDICT_BADGE_PRESENTATION: Record<"good" | "neutral" | "caution" | "avoid
 }
 
 // START_BLOCK: SPHERE_SHEET_RENDER
-export function SphereDetailsSheet({ row, onClose, onWhyOpen }: SphereDetailsSheetProps) {
+export function SphereDetailsSheet({ row, onClose }: SphereDetailsSheetProps) {
   const isOpen = Boolean(row)
 
   if (!row) return null
@@ -157,22 +156,11 @@ export function SphereDetailsSheet({ row, onClose, onWhyOpen }: SphereDetailsShe
           </div>
 
           {/* 5. Action CTAs */}
-          <div className="pt-3 pb-2 flex flex-wrap gap-2.5">
-            <button
-              type="button"
-              data-testid="sphere-why-cta"
-              onClick={() => {
-                onClose()
-                onWhyOpen()
-              }}
-              className="flex-1 min-h-12 rounded-2xl border border-violet-300 bg-violet-50/80 px-4 text-[14.5px] font-semibold text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-violet-400/40 dark:bg-violet-500/15 dark:text-violet-100 active:scale-[0.985] cursor-pointer text-center justify-center flex items-center"
-            >
-              Почему так у меня
-            </button>
+          <div className="pt-3 pb-2 flex gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="min-h-12 rounded-2xl border border-border/60 bg-muted/30 px-5 text-[14.5px] font-medium text-muted-foreground transition hover:text-foreground active:scale-[0.985] cursor-pointer flex items-center justify-center"
+              className="w-full min-h-12 rounded-2xl border border-border/60 bg-muted/30 px-5 text-[14.5px] font-medium text-muted-foreground transition hover:text-foreground active:scale-[0.985] cursor-pointer flex items-center justify-center"
             >
               Закрыть
             </button>

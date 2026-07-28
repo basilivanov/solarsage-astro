@@ -179,9 +179,16 @@ export function TodayFocusCard({ focus, onSphereSelect, onRetry }: TodayFocusCar
             {eyebrowText}
           </span>
           {isConvergence && factorCount > 0 && (
-            <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">
-              {factorCountStr} ▸
-            </span>
+            <button
+              type="button"
+              data-testid="today-focus-factor-toggle"
+              aria-expanded={techOpen}
+              aria-controls="today-focus-technical-content"
+              onClick={() => setTechOpen((prev) => !prev)}
+              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground tabular-nums cursor-pointer flex items-center gap-0.5"
+            >
+              <span>{factorCountStr} ▸</span>
+            </button>
           )}
         </div>
 

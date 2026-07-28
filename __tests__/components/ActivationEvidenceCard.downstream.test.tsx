@@ -28,7 +28,7 @@ describe("ActivationEvidenceCard downstream fixture", () => {
         concreteAdvice={payload.concreteAdvice}
         headlineFallback={payload.headline}
         onSphereSelect={() => {}}
-        onWhyOpen={() => {}}
+       
       />,
     )
     expect(screen.getByTestId("activation-evidence-card")).toBeTruthy()

@@ -52,16 +52,14 @@ const block: ConcreteAdviceBlock = {
 
 function renderNavigator(selectedKey: string | null = null) {
   const onSelectedKeyChange = vi.fn()
-  const onWhyOpen = vi.fn()
   const result = render(
     <ConcreteDayAdvice
       concreteAdvice={block}
       selectedKey={selectedKey}
       onSelectedKeyChange={onSelectedKeyChange}
-      onWhyOpen={onWhyOpen}
     />,
   )
-  return { ...result, onSelectedKeyChange, onWhyOpen }
+  return { ...result, onSelectedKeyChange }
 }
 
 describe("ConcreteDayAdvice human-first navigator", () => {
@@ -134,7 +132,7 @@ describe("ConcreteDayAdvice human-first navigator", () => {
         concreteAdvice={blockWithAssessment}
         selectedKey={null}
         onSelectedKeyChange={vi.fn()}
-        onWhyOpen={vi.fn()}
+       
       />,
     )
 

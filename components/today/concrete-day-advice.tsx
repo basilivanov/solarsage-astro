@@ -41,7 +41,6 @@ type Props = {
   concreteAdvice: ConcreteAdviceBlock
   selectedKey: string | null
   onSelectedKeyChange: (key: string | null) => void
-  onWhyOpen: () => void
 }
 
 const VERDICT_PRESENTATION: Record<"good" | "neutral" | "caution" | "avoid", {
@@ -80,7 +79,6 @@ export function ConcreteDayAdvice({
   concreteAdvice,
   selectedKey,
   onSelectedKeyChange,
-  onWhyOpen,
 }: Props) {
   // START_FUNCTION_CONTRACT: F-M-TODAY-CONCRETE-DAY-ADVICE.ConcreteDayAdvice
   // purpose: Render the full single-column sphere list and one selected details panel.

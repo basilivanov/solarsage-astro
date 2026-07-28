@@ -41,7 +41,6 @@ type ActivationEvidenceCardProps = {
   concreteAdvice?: ConcreteAdviceBlock
   daySummary?: { mainAdvice?: string | null } | null
   onSphereSelect: (key: string) => void
-  onWhyOpen: () => void
   headlineFallback?: string | null
 }
 
@@ -63,7 +62,6 @@ export function ActivationEvidenceCard({
   concreteAdvice = { rows: [], counts: { good: 0, caution: 0, avoid: 0, neutral: 0 } },
   daySummary,
   onSphereSelect,
-  onWhyOpen,
   headlineFallback,
 }: ActivationEvidenceCardProps) {
   // START_FUNCTION_CONTRACT: F-M-ACTIVATION-EVIDENCE-CARD.ActivationEvidenceCard
@@ -144,16 +142,6 @@ export function ActivationEvidenceCard({
             </div>
           </div>
         ) : null}
-
-        <button
-          type="button"
-          data-testid="personal-story-why-cta"
-          onClick={onWhyOpen}
-          className="relative mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-violet-200/80 bg-violet-100/55 px-4 text-[15px] font-semibold text-violet-800 transition hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:border-violet-400/30 dark:bg-violet-500/15 dark:text-violet-100 cursor-pointer"
-        >
-          Почему так у меня
-          <ChevronRight className="h-4 w-4" aria-hidden />
-        </button>
       </div>
     </section>
   )

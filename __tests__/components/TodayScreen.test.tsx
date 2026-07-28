@@ -211,9 +211,9 @@ describe('TodayScreen', () => {
           'day-header',
           'evening-checkin-reminder',
           'day-summary-card',
+          'today-focus',
           'activation-evidence-card',
           'concrete-day-advice',
-          'why-expanded',
           'day-reading-disclosure',
           'day-tech-disclosure',
           'today-bottom-disclaimer',
@@ -225,8 +225,8 @@ describe('TodayScreen', () => {
       'day-header',
       'evening-checkin-reminder',
       'day-summary-card',
+      'today-focus',
       'concrete-day-advice',
-      'why-expanded',
       'day-reading-disclosure',
       'day-tech-disclosure',
       'today-bottom-disclaimer',
@@ -236,7 +236,7 @@ describe('TodayScreen', () => {
     expect(screen.queryByTestId('today-notes')).toBeNull()
     expect(screen.getByTestId('day-reading-disclosure')).toBeTruthy()
     expect(screen.getByTestId('day-tech-disclosure')).toBeTruthy()
-    expect(screen.getByTestId('why-expanded')).toBeTruthy()
+    expect(screen.getByTestId('today-focus')).toBeTruthy()
     expect(screen.queryByTestId('paywall')).toBeNull()
   })
 
@@ -327,7 +327,7 @@ describe('TodayScreen', () => {
     ])
   })
 
-  it('resets V2 sphere and Why state to the deeplink default when the date changes', () => {
+  it('resets V2 sphere selection state when the date changes', () => {
     const payload = buildPayload({
       v2: {
         activationSummary: { headline: 'Персональный сюжет дня', topActivatedTargets: [] },
@@ -345,9 +345,7 @@ describe('TodayScreen', () => {
       <TodayScreen selectedDate={selectedDate} access={buildAccess()} payload={payload} onDateChange={onDateChange} />,
     )
 
-    fireEvent.click(screen.getByTestId('personal-story-why-cta'))
     fireEvent.click(screen.getByTestId('concrete-day-advice-row'))
-    expect(screen.getByTestId('why-expanded').getAttribute('data-open')).toBe('true')
     expect(screen.getByTestId('concrete-day-advice-row').getAttribute('data-selected')).toBe('true')
 
     view.rerender(
@@ -358,7 +356,6 @@ describe('TodayScreen', () => {
         onDateChange={onDateChange}
       />,
     )
-    expect(screen.getByTestId('why-expanded').getAttribute('data-open')).toBe('false')
     expect(screen.getByTestId('concrete-day-advice-row').getAttribute('data-selected')).toBe('false')
   })
 
@@ -387,8 +384,8 @@ describe('TodayScreen', () => {
           'day-header',
           'evening-checkin-reminder',
           'day-summary-card',
+          'today-focus',
           'concrete-day-advice',
-          'why-expanded',
           'day-reading-disclosure',
           'day-tech-disclosure',
           'today-bottom-disclaimer',
@@ -400,8 +397,8 @@ describe('TodayScreen', () => {
     expect(orderedIds).toEqual([
       'day-header',
       'day-summary-card',
+      'today-focus',
       'concrete-day-advice',
-      'why-expanded',
       'day-reading-disclosure',
       'day-tech-disclosure',
       'today-bottom-disclaimer',
@@ -766,7 +763,7 @@ describe('V2 activation evidence and audit rendering', () => {
         v2={v2Fixture}
         concreteAdvice={{ rows: [], counts: { good: 0, caution: 0, avoid: 0, neutral: 0 } }}
         onSphereSelect={() => {}}
-        onWhyOpen={() => {}}
+       
         headlineFallback="Безопасный заголовок"
       />
     )

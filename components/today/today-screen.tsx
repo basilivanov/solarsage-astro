@@ -58,7 +58,6 @@ import { useSearchParams } from "next/navigation"
 import { DateHeader } from "./date-header"
 import { TodayNotes } from "./today-notes"
 import { DayReading } from "./day-reading"
-import { WhyExpanded } from "./why-expanded"
 import { WeekStrip } from "./week-strip"
 import { DayChart } from "./day-chart"
 import { DaySummaryCard } from "./day-summary-card"
@@ -110,7 +109,6 @@ export function TodayScreen({
   const isToday = sameDay(selectedDate, TODAY)
   const [selectedSphereKey, setSelectedSphereKey] = useState<string | null>(null)
   const whyDeeplinkDefault = searchParams?.get("why") === "1"
-  const [whyOpen, setWhyOpen] = useState(whyDeeplinkDefault)
 
   // Навигация по дням: можно выходить только в пределах ±180 дней от сегодня
   const dayDiff = Math.round(
@@ -127,8 +125,7 @@ export function TodayScreen({
 
   useEffect(() => {
     setSelectedSphereKey(null)
-    setWhyOpen(whyDeeplinkDefault)
-  }, [selectedDate, whyDeeplinkDefault])
+  }, [selectedDate])
 
   function selectPersonalStorySphere(key: string) {
     // Guard: only open modal for existing rows
@@ -137,25 +134,17 @@ export function TodayScreen({
   }
 
   useEffect(() => {
-    if (!whyOpen) return
-    scrollAndFocusWhy()
-  }, [whyOpen])
-
-  function scrollAndFocusWhy() {
+    if (!whyDeeplinkDefault) return
     const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
     schedule(() => {
-      document.getElementById("why-expanded")?.scrollIntoView({ behavior: "smooth", block: "start" })
-      document.getElementById("why-expanded-toggle")?.focus({ preventScroll: true })
+      document.querySelector('[data-testid="today-focus"]')?.scrollIntoView({ behavior: "smooth", block: "start" })
+      const toggle = document.querySelector('[data-testid="today-focus-factor-toggle"]') as HTMLButtonElement | null
+        ?? document.querySelector('[data-testid="today-focus-technical-toggle"]') as HTMLButtonElement | null
+      if (toggle && toggle.getAttribute("aria-expanded") !== "true") {
+        toggle.click()
+      }
     })
-  }
-
-  function openWhy() {
-    if (whyOpen) {
-      scrollAndFocusWhy()
-      return
-    }
-    setWhyOpen(true)
-  }
+  }, [whyDeeplinkDefault])
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
@@ -265,7 +254,6 @@ export function TodayScreen({
             concreteAdvice={payload.concreteAdvice}
             daySummary={payload.daySummary}
             onSphereSelect={selectPersonalStorySphere}
-            onWhyOpen={openWhy}
             headlineFallback={payload.headline}
           />
 
@@ -273,20 +261,69 @@ export function TodayScreen({
             concreteAdvice={payload.concreteAdvice}
             selectedKey={selectedSphereKey}
             onSelectedKeyChange={setSelectedSphereKey}
-            onWhyOpen={openWhy}
           />
 
-          {/* Why comes before disclosures in human-first V2. */}
-          <WhyExpanded
-            sections={payload.why}
-            keyInsight={payload.keyInsight}
-            v2={payload.v2}
-            wireIdentity={payload.wireIdentity}
-            concreteAdvice={payload.concreteAdvice}
-            onSphereSelect={selectPersonalStorySphere}
-            open={payload.v2 ? whyOpen : undefined}
-            onOpenChange={payload.v2 ? setWhyOpen : undefined}
-          />
+          {/* Period Context Disclosure (Long-term horizon background) */}
+          {payload.v2?.horizons?.items?.find((h) => h.horizon === "long") ? (
+            <DayCollapsible title="Контекст периода" dataTestId="day-context-disclosure">
+              {(() => {
+                const longHorizon = payload.v2.horizons.items.find((h) => h.horizon === "long")!
+                const title = longHorizon.title || "Долгий контекст периода"
+                const eyebrow = longHorizon.eyebrow || "Долгий цикл"
+                const summary = longHorizon.summary || null
+                const plainExplanation = longHorizon.plainExplanation || null
+                const rangeLabel = longHorizon.timing?.rangeLabel || null
+                const stateLabel = longHorizon.timing?.stateLabel || null
+                const manifestations = longHorizon.manifestations || []
+
+                return (
+                  <div className="space-y-4 text-foreground">
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
+                        {eyebrow}
+                      </p>
+                      <h4 className="font-serif text-[20px] font-semibold leading-snug">
+                        {title}
+                      </h4>
+                      {rangeLabel && (
+                        <p className="text-[13px] font-medium text-muted-foreground">
+                          {rangeLabel}{stateLabel ? ` · ${stateLabel}` : ""}
+                        </p>
+                      )}
+                    </div>
+                    {summary && (
+                      <p className="text-[14.5px] leading-relaxed text-foreground/90 font-medium">
+                        {summary}
+                      </p>
+                    )}
+                    {plainExplanation && (
+                      <p className="text-[14px] leading-relaxed text-muted-foreground">
+                        {plainExplanation}
+                      </p>
+                    )}
+                    {manifestations.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-border/40">
+                        <p className="text-[12.5px] font-semibold uppercase tracking-[0.12em] text-violet-700 dark:text-violet-300">
+                          Как проявляется
+                        </p>
+                        <ul className="space-y-1.5 pl-0 list-none text-[14px] leading-relaxed text-muted-foreground">
+                          {manifestations.map((m: any, idx: number) => {
+                            const text = typeof m === "string" ? m : m.body || m.title || ""
+                            return (
+                              <li key={idx} className="flex items-start gap-2">
+                                <span className="h-1.5 w-1.5 rounded-full bg-violet-400 flex-none mt-2" aria-hidden="true" />
+                                <span>{text}</span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </DayCollapsible>
+          ) : null}
 
           {/* Day reading disclosure */}
           <DayCollapsible title="Полный разбор дня" dataTestId="day-reading-disclosure">
@@ -352,7 +389,6 @@ export function TodayScreen({
             : null
         }
         onClose={() => setSelectedSphereKey(null)}
-        onWhyOpen={openWhy}
       />
     </div>
   )

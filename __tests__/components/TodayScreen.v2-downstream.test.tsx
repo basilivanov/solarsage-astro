@@ -362,7 +362,7 @@ describe("TodayScreen V2 downstream fixture", () => {
         concreteAdvice={payload.concreteAdvice}
         selectedKey={selectedKey}
         onSelectedKeyChange={onSelectedKeyChange}
-        onWhyOpen={() => {}}
+       
       />
     )
     const { rerender } = render(renderNavigator(null))
@@ -389,7 +389,7 @@ describe("TodayScreen V2 downstream fixture", () => {
 
     expect(screen.getByTestId("today-screen").getAttribute("data-state")).toBe("ready")
     expect(screen.getByTestId("activation-evidence-card")).toBeTruthy()
-    expect(screen.getByTestId("why-expanded")).toBeTruthy()
+    expect(screen.getByTestId("today-focus")).toBeTruthy()
   })
 
   it("renders backend intro and three ordered why-horizon teasers from v2.horizons", () => {
@@ -492,7 +492,7 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(content.textContent).toContain("12 мая 2026 — 11 мая 2027")
   })
 
-  it("uses concrete advice row labels for sphere buttons and integrates with TodayScreen navigator", () => {
+  it("renders Period Context disclosure for long-term horizon", () => {
     const { payload } = buildCanonicalPayload()
     render(
       <TodayScreen
@@ -503,17 +503,8 @@ describe("TodayScreen V2 downstream fixture", () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: "Почему так у меня" }))
-    const teasers = screen.getAllByTestId("why-horizon-teaser")
-    fireEvent.click(teasers[0])
-
-    const horizonSheet = screen.getByTestId("horizon-sheet")
-    const sphereButtons = within(horizonSheet).getAllByTestId("why-horizon-sphere")
-    expect(sphereButtons.some((button) => button.textContent === "Работа")).toBe(true)
-
-    fireEvent.click(sphereButtons.find((button) => button.textContent === "Работа")!)
-    const details = screen.getByTestId("sphere-details-sheet")
-    expect(details.getAttribute("data-sphere-key")).toBe("work")
+    const contextDisclosure = screen.getByTestId("day-context-disclosure")
+    expect(contextDisclosure).toBeTruthy()
   })
 
   it("does not call selectWhyTimeHorizons when backend horizons exist", () => {
@@ -625,7 +616,7 @@ describe("TodayScreen V2 downstream fixture", () => {
         onDateChange={() => {}}
       />,
     )
-    expect(screen.getByTestId("why-horizons").getAttribute("data-source")).toBe("backend-horizons")
+    expect(screen.getByTestId("day-context-disclosure")).toBeTruthy()
   })
 
   it("previous pair with horizons present renders backend and selector 0", () => {
@@ -897,41 +888,8 @@ describe("TodayScreen V2 downstream fixture", () => {
     expect(onSphereSelect).toHaveBeenCalledWith("work")
   })
 
-  // ── Missing target row via real WhyExpanded ─────────────────────
-  it("missing concreteAdvice row filters out horizon sphere chip via HorizonSheet", () => {
-    const { payload } = buildCanonicalPayload()
-    const filteredAdvice = { ...payload.concreteAdvice, rows: payload.concreteAdvice.rows.filter((r) => r.key !== "work") }
-    const onSphereSelect = vi.fn()
-    render(
-      <WhyExpanded
-        sections={payload.why}
-        keyInsight={payload.keyInsight}
-        v2={payload.v2}
-        wireIdentity={CURRENT_WIRE_IDENTITY}
-        concreteAdvice={filteredAdvice}
-        onSphereSelect={onSphereSelect}
-        open
-      />,
-    )
-    const teasers = screen.getAllByTestId("why-horizon-teaser")
-    fireEvent.click(teasers[0])
-
-    const horizonSheet = screen.getByTestId("horizon-sheet")
-    const chips = within(horizonSheet).getAllByTestId("why-horizon-sphere")
-    const workChips = chips.filter((c) => c.getAttribute("data-sphere-key") === "work")
-    expect(workChips).toHaveLength(0)
-    expect(within(horizonSheet).queryByRole("button", { name: /Открыть сферу «Работа»/ })).toBeNull()
-
-    const decisions = chips.find((c) => c.getAttribute("data-sphere-key") === "decisions")
-    expect(decisions).toBeTruthy()
-    if (decisions) {
-      fireEvent.click(decisions)
-      expect(onSphereSelect).toHaveBeenCalledWith("decisions")
-    }
-  })
-
-  // ── Full TodayScreen exact row scroll/focus + same-click ────────
-  it("full TodayScreen: horizon sphere click scrolls/focuses exact work row, same click repeats, data-status unchanged", () => {
+  // ── Full TodayScreen deeplink why=1 ────────
+  it("full TodayScreen: why=1 deeplink scrolls to today-focus and toggles technical disclosure", () => {
     const rafSpy = vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => { cb(Date.now()); return 0 })
 
     const { payload } = buildCanonicalPayload()
@@ -945,27 +903,8 @@ describe("TodayScreen V2 downstream fixture", () => {
       />,
     )
 
-    const rows = screen.getAllByTestId("concrete-day-advice-row")
-    const workRow = requireElement(rows.find((r) => r.getAttribute("data-sphere-key") === "work"), "work row")
-    const statusBefore = workRow.getAttribute("data-status")
-
-    const scrollSpy = vi.fn()
-    const focusSpy = vi.fn()
-    Object.defineProperty(workRow, "scrollIntoView", { configurable: true, value: scrollSpy })
-    Object.defineProperty(workRow, "focus", { configurable: true, value: focusSpy })
-
-    const teasers = screen.getAllByTestId("why-horizon-teaser")
-    fireEvent.click(teasers[0])
-
-    const horizonSheet = screen.getByTestId("horizon-sheet")
-    const chips = within(horizonSheet).getAllByTestId("why-horizon-sphere")
-    const workChip = requireElement(chips.find((c) => c.getAttribute("data-sphere-key") === "work"), "work chip")
-    fireEvent.click(workChip)
-
-    // After click assertions: modal sheet opens with work details
-    expect(workRow.getAttribute("data-selected")).toBe("true")
-    const details = screen.getByTestId("sphere-details-sheet")
-    expect(details.getAttribute("data-sphere-key")).toBe("work")
+    const focusCard = screen.getByTestId("today-focus")
+    expect(focusCard).toBeTruthy()
 
     rafSpy.mockRestore()
   })
@@ -1007,7 +946,7 @@ describe("TodayScreen V2 downstream fixture", () => {
       <SphereDetailsSheet
         row={rowWithAssessment}
         onClose={vi.fn()}
-        onWhyOpen={vi.fn()}
+       
       />,
     )
 

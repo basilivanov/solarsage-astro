@@ -35,7 +35,7 @@ function makeV2(): TodayV2Block {
 describe("ActivationEvidenceCard human-first", () => {
   it("returns null without V2", () => {
     const { container } = render(
-      <ActivationEvidenceCard v2={null} concreteAdvice={concreteAdvice} onSphereSelect={() => {}} onWhyOpen={() => {}} />,
+      <ActivationEvidenceCard v2={null} concreteAdvice={concreteAdvice} onSphereSelect={() => {}} />,
     )
     expect(container.querySelector('[data-testid="activation-evidence-card"]')).toBeNull()
   })
@@ -47,7 +47,7 @@ describe("ActivationEvidenceCard human-first", () => {
         concreteAdvice={concreteAdvice}
         daySummary={{ mainAdvice: "СЕНТИНЕЛ главное дня" }}
         onSphereSelect={() => {}}
-        onWhyOpen={() => {}}
+       
       />,
     )
     const card = screen.getByTestId("activation-evidence-card")
@@ -66,34 +66,30 @@ describe("ActivationEvidenceCard human-first", () => {
         concreteAdvice={concreteAdvice}
         daySummary={null}
         onSphereSelect={() => {}}
-        onWhyOpen={() => {}}
+       
       />,
     )
     const card = screen.getByTestId("activation-evidence-card")
     expect(card.textContent).not.toContain("Главное:")
   })
 
-  it("delegates exact sphere and Why callbacks through real buttons", () => {
+  it("delegates exact sphere callbacks through real buttons", () => {
     const onSphereSelect = vi.fn()
-    const onWhyOpen = vi.fn()
     render(
       <ActivationEvidenceCard
         v2={makeV2()}
         concreteAdvice={concreteAdvice}
         onSphereSelect={onSphereSelect}
-        onWhyOpen={onWhyOpen}
       />,
     )
     fireEvent.click(screen.getAllByTestId("personal-story-sphere-link")[0])
     expect(onSphereSelect).toHaveBeenCalledWith("work")
-    fireEvent.click(screen.getByTestId("personal-story-why-cta"))
-    expect(onWhyOpen).toHaveBeenCalledOnce()
   })
 
   it("uses only a human-safe V2 headline or an explicitly safe backend fallback", () => {
     const technicalV2 = makeV2()
     technicalV2.activationSummary.headline = "Сходимость транзитов и профекции"
-    const callbacks = { onSphereSelect: () => {}, onWhyOpen: () => {} }
+    const callbacks = { onSphereSelect: () => {} }
     const { rerender } = render(
       <ActivationEvidenceCard
         v2={technicalV2}
