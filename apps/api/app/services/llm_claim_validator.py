@@ -22,12 +22,14 @@
 #   - LLMClaimValidator.check_concrete_advice_text_safety
 #   - LLMClaimValidator.validate_concrete_advice_details
 #   - LLMClaimValidator.check_concrete_advice_details_safety
+#   - LLMClaimValidator.check_focus_narrative_safety
 # semantic_blocks: none
 # owned_tests:
 #   - tests/test_llm_claim_validator.py
 # END_MODULE_MAP: M-LLM-CLAIM-VALIDATOR
 
 from __future__ import annotations
+from typing import Any
 from app.schemas.today import ConcreteAdviceEvidence
 
 BANNED_ASTRO_STEMS: list[str] = [
@@ -78,6 +80,93 @@ class LLMClaimValidator:
     def validate_day_main(self, text: str | None) -> str | None:
         sanitized, _ = self.check_day_main_safety(text)
         return sanitized
+
+    def check_focus_narrative_safety(
+        self,
+        narrative: dict[str, Any] | None,
+        *,
+        state: str,
+        expected_event_ids: list[str],
+        expected_sphere_keys: list[str],
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """Validate LLM focus narrative output against schema, bounds, jargon, and expected keys.
+
+        Returns:
+            (sanitized_dict, None) on success.
+            (None, reason_code) on rejection.
+        """
+        import re
+
+        if not narrative or not isinstance(narrative, dict):
+            return None, "parse"
+
+        conv_summary = narrative.get("convergence_summary")
+        if state == "convergence_today":
+            if not isinstance(conv_summary, str) or not conv_summary.strip():
+                return None, "empty"
+            cs_clean = conv_summary.strip()
+            if len(cs_clean) > 220:
+                return None, "length"
+            if re.search(r"[A-Za-z]", cs_clean):
+                return None, "parse"
+            if has_banned_jargon(cs_clean, "convergence_summary"):
+                return None, "banned_jargon"
+            conv_summary = cs_clean
+        else:
+            conv_summary = None
+
+        event_meanings_raw = narrative.get("event_meanings")
+        if not isinstance(event_meanings_raw, dict):
+            return None, "parse"
+        if set(event_meanings_raw.keys()) != set(expected_event_ids):
+            return None, "parse"
+
+        sanitized_event_meanings: dict[str, str] = {}
+        for ev_id in expected_event_ids:
+            meaning = event_meanings_raw.get(ev_id)
+            if not isinstance(meaning, str) or not meaning.strip():
+                return None, "empty"
+            m_clean = meaning.strip()
+            if len(m_clean) > 160:
+                return None, "length"
+            if re.search(r"[A-Za-z]", m_clean):
+                return None, "parse"
+            if has_banned_jargon(m_clean, f"event_meaning:{ev_id}"):
+                return None, "banned_jargon"
+            sanitized_event_meanings[ev_id] = m_clean
+
+        featured_spheres_raw = narrative.get("featured_spheres")
+        if not isinstance(featured_spheres_raw, dict):
+            return None, "parse"
+        if set(featured_spheres_raw.keys()) != set(expected_sphere_keys):
+            return None, "parse"
+
+        sanitized_featured: dict[str, dict[str, str]] = {}
+        for s_key in expected_sphere_keys:
+            s_obj = featured_spheres_raw.get(s_key)
+            if not isinstance(s_obj, dict):
+                return None, "parse"
+            summary = s_obj.get("summary")
+            action = s_obj.get("action")
+            if not isinstance(summary, str) or not summary.strip():
+                return None, "empty"
+            if not isinstance(action, str) or not action.strip():
+                return None, "empty"
+            sum_clean = summary.strip()
+            act_clean = action.strip()
+            if len(sum_clean) > 140 or len(act_clean) > 100:
+                return None, "length"
+            if re.search(r"[A-Za-z]", sum_clean) or re.search(r"[A-Za-z]", act_clean):
+                return None, "parse"
+            if has_banned_jargon(sum_clean, s_key) or has_banned_jargon(act_clean, s_key):
+                return None, "banned_jargon"
+            sanitized_featured[s_key] = {"summary": sum_clean, "action": act_clean}
+
+        return {
+            "convergence_summary": conv_summary,
+            "event_meanings": sanitized_event_meanings,
+            "featured_spheres": sanitized_featured,
+        }, None
 
     def check_concrete_advice_text_safety(
         self,

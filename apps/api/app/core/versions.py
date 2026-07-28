@@ -91,4 +91,4 @@ TODAY_CONTENT_VERSION = 11
 
 # LLM prompt/content identity for Today: bumped when the prompt shape or
 # content policy changes so stale cached payloads never pass as current.
-TODAY_LLM_PROMPT_VERSION = 3
+TODAY_LLM_PROMPT_VERSION = 4

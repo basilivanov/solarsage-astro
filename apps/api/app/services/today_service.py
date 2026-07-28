@@ -86,6 +86,7 @@ import os
 import time
 import json
 from datetime import UTC, date as Date, datetime, timedelta
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -475,6 +476,15 @@ class TodayService:
         # apply. Target typical 7-8s, hard LLM phase ceiling 10s — the
         # sidecar/DB work is OUTSIDE this ceiling.
         from app.services.today_interpretation_service import TodayInterpretationService
+        from app.core.config import settings
+        has_llm_keys = any(
+            bool((key or "").strip())
+            for key in (
+                settings.openrouter_api_key,
+                settings.anthropic_api_key,
+                getattr(settings, "deepseek_api_key", ""),
+            )
+        )
         llm_service = LLMService()
         interpretation_service = TodayInterpretationService()
 
@@ -721,19 +731,91 @@ class TodayService:
             target_date=target_date,
         )
 
+        # W4-C2: Focus Narrative LLM core generation and atomic validation
+        focus_content_state: Literal["ready", "pending", "unavailable", "not_needed"] = "not_needed"
+        narrative_result: dict[str, Any] | None = None
+
+        valence_assessments = getattr(dual, "valence_assessments", None) or {}
+
+        if focus_res.state in ("convergence_today", "single_impulses") and has_llm_keys:
+            compact_events = [
+                {
+                    "id": e.id,
+                    "title": e.human_title,
+                    "kind": e.kind,
+                    "time": e.occurs_at.strftime("%H:%M") if e.occurs_at else None,
+                }
+                for e in focus_res.events
+            ]
+            compact_featured = [
+                {
+                    "key": s.key,
+                    "label": s.key.capitalize(),
+                    "verdict": (valence_assessments[s.key].verdict if s.key in valence_assessments else "neutral"),
+                }
+                for s in focus_res.featured_spheres
+            ]
+            focus_input = {
+                "state": focus_res.state,
+                "events": compact_events,
+                "featured_spheres": compact_featured,
+            }
+
+            try:
+                narrative_raw = await llm_service.generate_focus_narrative(focus_input)
+                from app.services.llm_claim_validator import LLMClaimValidator
+                validator = LLMClaimValidator()
+                sanitized_narrative, reject_reason = validator.check_focus_narrative_safety(
+                    narrative_raw,
+                    state=focus_res.state,
+                    expected_event_ids=[e.id for e in focus_res.events],
+                    expected_sphere_keys=[s.key for s in focus_res.featured_spheres],
+                )
+                if sanitized_narrative:
+                    narrative_result = sanitized_narrative
+                    focus_content_state = "ready"
+                else:
+                    log_event(
+                        "llm.response_rejected",
+                        level="warning",
+                        payload={"row_key": "focus_narrative", "reason": reject_reason or "validation_failed"},
+                    )
+                    focus_content_state = "unavailable"
+            except Exception:
+                log_event(
+                    "llm.response_rejected",
+                    level="warning",
+                    payload={"row_key": "focus_narrative", "reason": "provider_error"},
+                )
+                focus_content_state = "unavailable"
+        elif focus_res.state in ("convergence_today", "single_impulses"):
+            focus_content_state = "unavailable"
+        else:
+            focus_content_state = "not_needed"
+
         mapped_convergence = None
         if focus_res.convergence is not None:
             c = focus_res.convergence
+            c_summary = (
+                narrative_result.get("convergence_summary")
+                if focus_content_state == "ready" and narrative_result
+                else None
+            )
             mapped_convergence = TodayConvergence(
                 id=c.id,
                 theme_key=c.theme_key,
                 title=c.title,
-                summary=c.summary,
+                summary=c_summary,
                 independent_factor_count=c.independent_factor_count,
                 technique_families=list(c.technique_families),
                 source_activation_ids=list(c.source_activation_ids),
             )
 
+        event_meanings_map = (
+            narrative_result.get("event_meanings", {})
+            if focus_content_state == "ready" and narrative_result
+            else {}
+        )
         mapped_events = [
             TodayFocusEvent(
                 id=e.id,
@@ -744,19 +826,24 @@ class TodayService:
                 precision=e.precision,
                 human_title=e.human_title,
                 technical_title=e.technical_title,
-                meaning=e.meaning,
+                meaning=event_meanings_map.get(e.id) if focus_content_state == "ready" else None,
                 source_activation_ids=list(e.source_activation_ids),
             )
             for e in focus_res.events
         ]
 
+        featured_map = (
+            narrative_result.get("featured_spheres", {})
+            if focus_content_state == "ready" and narrative_result
+            else {}
+        )
         mapped_featured = [
             TodayFeaturedSphere(
                 key=s.key,
                 relevance_rank=s.relevance_rank,
                 state=s.state,
-                summary=s.summary,
-                action=s.action,
+                summary=featured_map.get(s.key, {}).get("summary") if focus_content_state == "ready" else None,
+                action=featured_map.get(s.key, {}).get("action") if focus_content_state == "ready" else None,
                 convergence_id=s.convergence_id,
                 source_event_ids=list(s.source_event_ids),
                 source_activation_ids=list(s.source_activation_ids),
@@ -769,7 +856,7 @@ class TodayService:
             convergence=mapped_convergence,
             events=mapped_events,
             featured_spheres=mapped_featured,
-            content_state="not_needed",
+            content_state=focus_content_state,
         )
 
         payload = TodayPayload(

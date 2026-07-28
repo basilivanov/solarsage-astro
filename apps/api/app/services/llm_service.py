@@ -262,6 +262,35 @@ _CONCRETE_ADVICE_JSON_SCHEMA = {
     },
 }
 
+_FOCUS_NARRATIVE_JSON_SCHEMA = {
+    "name": "today_focus_narrative",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "convergence_summary": {"type": ["string", "null"]},
+            "event_meanings": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+            },
+            "featured_spheres": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "summary": {"type": "string"},
+                        "action": {"type": "string"},
+                    },
+                    "required": ["summary", "action"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["convergence_summary", "event_meanings", "featured_spheres"],
+        "additionalProperties": False,
+    },
+}
+
 
 class LLMService:
 
@@ -1346,6 +1375,81 @@ JSON:"""
                 )
             return None
     # END_BLOCK: CONCRETE_ADVICE_GENERATION
+
+    # START_BLOCK: FOCUS_NARRATIVE_GENERATION
+    async def generate_focus_narrative(
+        self,
+        focus_input: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_focus_narrative
+        # purpose: Generate compact Russian narrative fields (convergence_summary, event_meanings, featured_spheres summary+action) for today focus (§3 of C2 TZ).
+        # inputs: focus_input (dict) — compact evidence pack with state, events, background, featured spheres
+        # returns: dict | None — structured narrative response or None on failure
+        # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_focus_narrative
+        if not focus_input or not isinstance(focus_input, dict):
+            return None
+
+        state = focus_input.get("state", "no_accent")
+        events = focus_input.get("events") or []
+        featured = focus_input.get("featured_spheres") or []
+
+        event_lines = []
+        for ev in events:
+            time_str = f" в {ev['time']}" if ev.get("time") else ""
+            event_lines.append(f"- [{ev['id']}] {ev['title']}{time_str} ({ev.get('kind', 'exact')})")
+
+        sphere_lines = []
+        for s in featured:
+            sphere_lines.append(f"- {s['label']} (ключ: {s['key']}), Вердикт: {s.get('verdict', 'neutral')}")
+
+        prompt = f"""{_ASTRO_BOUNDARY_RULES}
+
+Ты — профессиональный астрологический копирайтер. Напиши краткие смыслы на русском языке на «ты» для вывода дня.
+
+Состояние дня: {state}
+События дня:
+{"\n".join(event_lines) if event_lines else "— нет точных событий"}
+
+Избранные сферы дня:
+{"\n".join(sphere_lines) if sphere_lines else "— нет избранных сфер"}
+
+ТРЕБОВАНИЯ К ТЕКСТАМ:
+1. convergence_summary (если состояние convergence_today): 1–2 предложения (до 220 символов), объединяющие суть дня. Если не convergence_today — верни null.
+2. event_meanings: объект, где для каждого ID события из списка выше написана 1 емкая строка жизненного смысла (до 160 символов, на «ты», без фатализма).
+3. featured_spheres: объект, где для каждого ключа сферы из списка выше заполнена строка "summary" (до 140 символов) и отдельная императивная фраза действия "action" (до 100 символов, одно понятное действие на «ты»).
+
+ЗАПРЕТЫ:
+- Запрещены слова-астротермины (транзит, аспект, орб, натал, планета, дом, градусов) и фразы-абстракции (энергия, поддержка, гармония, день складывается).
+- Не повторяй один и тот же текст в summary и action.
+- Верни строго валидный JSON-объект с ключами: "convergence_summary", "event_meanings", "featured_spheres".
+
+Твой JSON-ответ:"""
+
+        response_text = await self._generate_text(
+            prompt, max_tokens=700, json_schema=_FOCUS_NARRATIVE_JSON_SCHEMA
+        )
+        if not response_text:
+            return None
+
+        cleaned = response_text.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+
+        try:
+            return json_lib.loads(cleaned)
+        except Exception as e:
+            with log_block(slice="W4-CONVERGENCE", module="M-LLM-SERVICE", block="FOCUS_NARRATIVE"):
+                log_event(
+                    "llm.response_rejected",
+                    level="warn",
+                    msg=f"[LLM] Failed to parse focus narrative JSON: {type(e).__name__}",
+                    payload={"reason": "schema_invalid"},
+                )
+            return None
+    # END_BLOCK: FOCUS_NARRATIVE_GENERATION
 
     # START_BLOCK: PLANET_INTERPRETATION_GENERATION
     async def generate_planet_interpretations(

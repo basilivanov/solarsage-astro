@@ -45,6 +45,7 @@ from zoneinfo import ZoneInfo
 
 from app.schemas.day_valence import DayValenceFactor, FactorLedger
 from app.services.astro_utils import strip_prefix
+from app.services.focus_title_builder import build_event_title
 
 TemporalRole = Literal["anchor_today", "supporting", "background", "unrelated"]
 
@@ -421,18 +422,6 @@ def normalize_factors(
 # END_BLOCK: FACTOR_NORMALIZER
 
 
-PLANET_LABELS_RU: dict[str, str] = {
-    "SUN": "Солнце", "MOON": "Луна", "MERCURY": "Меркурий",
-    "VENUS": "Венера", "MARS": "Марс", "JUPITER": "Юпитер",
-    "SATURN": "Сатурн", "URANUS": "Уран", "NEPTUNE": "Нептун", "PLUTO": "Плутон"
-}
-
-ASPECT_LABELS_RU: dict[str, str] = {
-    "conjunction": "соединение", "opposition": "оппозиция",
-    "trine": "тригон", "square": "квадратура", "sextile": "секстиль"
-}
-
-
 # START_BLOCK: FOCUS_ASSEMBLY
 @dataclass(frozen=True)
 class TodayFocusEventResult:
@@ -481,39 +470,7 @@ class TodayFocusResult:
 
 
 def _format_event_titles(factor: TodayFactor) -> tuple[str, str | None]:
-    src = PLANET_LABELS_RU.get((factor.source_key or "").upper(), factor.source_key or "")
-    tgt = PLANET_LABELS_RU.get((factor.target_key or "").upper(), factor.target_key or "")
-
-    # Try aspect parsing from factor_id or technique
-    parts = factor.factor_id.split(":")
-    if len(parts) >= 5 and parts[1] == "aspect":
-        asp_raw = parts[3].lower()
-        asp_ru = ASPECT_LABELS_RU.get(asp_raw, asp_raw)
-
-        # Human title
-        if asp_raw == "opposition":
-            human = f"{src} напротив твоего {tgt}"
-        elif asp_raw == "conjunction":
-            human = f"{src} в соединении с твоим {tgt}"
-        elif asp_raw == "square":
-            human = f"{src} в напряжении с твоим {tgt}"
-        elif asp_raw == "trine":
-            human = f"{src} в тригоне к твоему {tgt}"
-        elif asp_raw == "sextile":
-            human = f"{src} в секстиле к твоему {tgt}"
-        else:
-            human = f"{src} {asp_ru} {tgt}"
-
-        tech = f"{src} {asp_ru} {tgt}"
-        return human, tech
-
-    if len(parts) >= 4 and parts[1] == "house":
-        house_num = parts[3]
-        human = f"{src} в {house_num} доме"
-        return human, human
-
-    human = f"{src} {tgt}".strip() or factor.factor_id
-    return human, human
+    return build_event_title(factor)
 
 
 def build_today_focus(

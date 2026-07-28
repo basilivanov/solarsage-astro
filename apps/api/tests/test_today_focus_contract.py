@@ -179,6 +179,79 @@ async def test_today_service_builds_focus_in_payload(async_client, make_initdata
     focus = data["focus"]
     assert focus is not None
     assert focus["state"] in ("convergence_today", "single_impulses", "background_only", "no_accent")
-    assert focus["contentState"] == "not_needed"
+    assert focus["contentState"] in ("ready", "not_needed", "unavailable")
     assert isinstance(focus["events"], list)
     assert isinstance(focus["featuredSpheres"], list)
+
+
+def test_check_focus_narrative_safety_validation():
+    """C2: Test LLM focus narrative validation rules (banned jargon, length, keys match)."""
+    from app.services.llm_claim_validator import LLMClaimValidator
+
+    validator = LLMClaimValidator()
+
+    valid_raw = {
+        "convergence_summary": "Сложный день: важно сохранять баланс и проверять факты.",
+        "event_meanings": {
+            "ev:1": "Первый импульс требует хладнокровия.",
+            "ev:2": "Вторая встреча откроет полезные детали.",
+        },
+        "featured_spheres": {
+            "work": {
+                "summary": "На работе возможны переговоры.",
+                "action": "Проверь документы перед отправкой.",
+            }
+        },
+    }
+
+    # 1. Valid case
+    sanitized, reason = validator.check_focus_narrative_safety(
+        valid_raw,
+        state="convergence_today",
+        expected_event_ids=["ev:1", "ev:2"],
+        expected_sphere_keys=["work"],
+    )
+    assert sanitized is not None
+    assert reason is None
+    assert sanitized["convergence_summary"] == "Сложный день: важно сохранять баланс и проверять факты."
+
+    # 2. Banned jargon in summary
+    jargon_raw = valid_raw.copy()
+    jargon_raw["convergence_summary"] = "Транзит Марса создает напряжение."
+    sanitized, reason = validator.check_focus_narrative_safety(
+        jargon_raw,
+        state="convergence_today",
+        expected_event_ids=["ev:1", "ev:2"],
+        expected_sphere_keys=["work"],
+    )
+    assert sanitized is None
+    assert reason == "banned_jargon"
+
+    # 3. Missing event ID key
+    missing_key_raw = valid_raw.copy()
+    missing_key_raw["event_meanings"] = {"ev:1": "Только одно направление."}
+    sanitized, reason = validator.check_focus_narrative_safety(
+        missing_key_raw,
+        state="convergence_today",
+        expected_event_ids=["ev:1", "ev:2"],
+        expected_sphere_keys=["work"],
+    )
+    assert sanitized is None
+    assert reason == "parse"
+
+    # 4. Length limit exceeded (> 100 for action)
+    long_action_raw = valid_raw.copy()
+    long_action_raw["featured_spheres"] = {
+        "work": {
+            "summary": "Сводка.",
+            "action": "А" * 105,
+        }
+    }
+    sanitized, reason = validator.check_focus_narrative_safety(
+        long_action_raw,
+        state="convergence_today",
+        expected_event_ids=["ev:1", "ev:2"],
+        expected_sphere_keys=["work"],
+    )
+    assert sanitized is None
+    assert reason == "length"
