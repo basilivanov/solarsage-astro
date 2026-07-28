@@ -217,8 +217,8 @@ test.describe("Mock Visual — /day/[date]", () => {
       "day-header",
       "access-card",
       "day-summary-card",
-      "today-focus",
       "concrete-day-advice",
+      "today-focus",
       "day-reading-disclosure",
       "day-tech-disclosure",
     ]);

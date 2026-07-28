@@ -41,6 +41,7 @@ const SPHERE_ICON_BY_KEY: Record<string, IconName> = Object.fromEntries(
 
 interface TodayFocusCardProps {
   focus?: TodayFocus | null
+  activationEvidence?: any[]
   onSphereSelect: (key: string) => void
   onRetry?: () => void
 }
@@ -76,7 +77,7 @@ function formatKindLabel(kind: string): { label: string; colorClass: string } {
 }
 
 // START_BLOCK: TODAY_FOCUS_CARD
-export function TodayFocusCard({ focus, onSphereSelect, onRetry }: TodayFocusCardProps) {
+export function TodayFocusCard({ focus, activationEvidence = [], onSphereSelect, onRetry }: TodayFocusCardProps) {
   const [techOpen, setTechOpen] = useState(false)
 
   if (!focus) {
@@ -328,14 +329,47 @@ export function TodayFocusCard({ focus, onSphereSelect, onRetry }: TodayFocusCar
             <div
               id="today-focus-technical-content"
               data-testid="today-focus-technical-content"
-              className="mt-2 space-y-1.5 text-[12px] text-muted-foreground/90 bg-muted/30 p-3 rounded-xl"
+              className="mt-2 space-y-2 text-[12px] text-muted-foreground/90 bg-muted/30 p-3 rounded-xl"
             >
               <p><strong className="font-semibold">Состояние:</strong> {state}</p>
-              {events.map((ev) => (
-                <p key={ev.id}>
-                  <strong className="font-semibold">{ev.technicalTitle || ev.humanTitle}:</strong> {ev.kind} ({ev.timezone})
-                </p>
-              ))}
+
+              {/* Event Factors */}
+              {events.map((ev) => {
+                const timeStr = formatLocalTime(ev.occursAt, ev.timezone)
+                return (
+                  <div key={ev.id} data-testid="today-focus-factor-item" className="flex items-center justify-between gap-2 border-t border-border/30 pt-1.5">
+                    <span>
+                      <strong className="font-semibold">{ev.technicalTitle || ev.humanTitle}</strong>
+                      {timeStr ? ` · ${timeStr}` : ""}
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-violet-100 dark:bg-violet-500/20 px-2 py-0.5 text-[10.5px] font-semibold text-violet-700 dark:text-violet-200">
+                      сегодня ({ev.kind})
+                    </span>
+                  </div>
+                )
+              })}
+
+              {/* Remaining background / supporting activation factors */}
+              {(() => {
+                const eventActIds = new Set(events.flatMap((e) => e.sourceActivationIds || []))
+                const convActIds = convergence?.sourceActivationIds || []
+                const bgActIds = convActIds.filter((id) => !eventActIds.has(id))
+
+                return bgActIds.map((actId) => {
+                  const evMatch = activationEvidence.find((a) => (a.id || a.activationId) === actId)
+                  const title = evMatch?.title || evMatch?.technique || actId
+                  return (
+                    <div key={actId} data-testid="today-focus-factor-item" className="flex items-center justify-between gap-2 border-t border-border/30 pt-1.5">
+                      <span>
+                        <strong className="font-semibold">{title}</strong>
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-500/20 px-2 py-0.5 text-[10.5px] font-medium text-slate-600 dark:text-slate-400">
+                        фон
+                      </span>
+                    </div>
+                  )
+                })
+              })()}
             </div>
           )}
         </div>

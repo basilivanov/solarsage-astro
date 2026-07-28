@@ -198,9 +198,9 @@ test.describe("V2 human-first navigator mock visual", () => {
     const order = await page.evaluate(() => {
       const nodes = [
         document.querySelector('[data-testid="day-summary-card"]'),
-        document.querySelector('[data-testid="today-focus"]'),
         document.querySelector('[data-testid="activation-evidence-card"]'),
         document.querySelector('[data-testid="concrete-day-advice"]'),
+        document.querySelector('[data-testid="today-focus"]'),
         document.querySelector('[data-testid="day-context-disclosure"]'),
         document.querySelector('[data-testid="day-reading-disclosure"]'),
         document.querySelector('[data-testid="day-tech-disclosure"]'),

@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import React from "react"
 import { TodayFocusCard } from "@/components/today/today-focus"
+import { SphereDetailsSheet } from "@/components/today/sphere-details-sheet"
 import type { TodayFocus } from "@/lib/contracts/today"
 
 function makeFocus(overrides?: Partial<TodayFocus>): TodayFocus {
@@ -196,5 +197,51 @@ describe("TodayFocusCard visual system", () => {
     expect(content.textContent).toContain("Марс оппозиция Нептун")
     expect(content.textContent).not.toContain("Transit_")
     expect(content.textContent).not.toContain("Natal_")
+  })
+
+  it("renders 'Почему сегодня' section in SphereDetailsSheet for featured sphere and invokes onFocusOpen on link click", () => {
+    const onFocusOpen = vi.fn()
+    const onClose = vi.fn()
+
+    const featuredSphere = {
+      key: "work",
+      relevanceRank: 1,
+      state: "convergence_today" as const,
+      summary: "На работе важный день для фокуса.",
+      action: "Проверь контракт перед ответом.",
+      convergenceId: "conv:1",
+      sourceEventIds: ["ev:1"],
+      sourceActivationIds: ["act-1"],
+    }
+
+    const row = {
+      key: "work" as const,
+      label: "Работа",
+      iconName: "briefcase",
+      rank: 1,
+      verdict: "good" as const,
+      confidence: "high" as const,
+      text: "Совет для работы",
+      evidence: [],
+    }
+
+    render(
+      <SphereDetailsSheet
+        row={row}
+        featured={featuredSphere}
+        onClose={onClose}
+        onFocusOpen={onFocusOpen}
+      />,
+    )
+
+    const section = screen.getByTestId("sphere-focus-section")
+    expect(section.textContent).toContain("Почему сегодня")
+    expect(section.textContent).toContain("На работе важный день для фокуса.")
+    expect(section.textContent).toContain("Проверь контракт перед ответом.")
+
+    const link = screen.getByTestId("sphere-focus-link")
+    fireEvent.click(link)
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(onFocusOpen).toHaveBeenCalledOnce()
   })
 })

@@ -31,13 +31,15 @@
 
 import React from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
-import type { ConcreteAdviceRow } from "@/lib/contracts/today"
+import type { ConcreteAdviceRow, TodayFeaturedSphere } from "@/lib/contracts/today"
 import { getIcon } from "@/lib/icons"
 import { getHumanSphereLabel } from "@/lib/presentation/today-v2"
 
 interface SphereDetailsSheetProps {
   row: ConcreteAdviceRow | null
+  featured?: TodayFeaturedSphere | null
   onClose: () => void
+  onFocusOpen?: () => void
 }
 
 const VERDICT_BADGE_PRESENTATION: Record<"good" | "neutral" | "caution" | "avoid", {
@@ -63,7 +65,7 @@ const VERDICT_BADGE_PRESENTATION: Record<"good" | "neutral" | "caution" | "avoid
 }
 
 // START_BLOCK: SPHERE_SHEET_RENDER
-export function SphereDetailsSheet({ row, onClose }: SphereDetailsSheetProps) {
+export function SphereDetailsSheet({ row, featured, onClose, onFocusOpen }: SphereDetailsSheetProps) {
   const isOpen = Boolean(row)
 
   if (!row) return null
@@ -154,6 +156,38 @@ export function SphereDetailsSheet({ row, onClose }: SphereDetailsSheetProps) {
               {adviceText}
             </p>
           </div>
+
+          {/* 4.5 Section "Почему сегодня" for featured spheres */}
+          {featured && (featured.summary || featured.action) ? (
+            <div data-testid="sphere-focus-section" className="space-y-2 pt-2 border-t border-border/40">
+              <h4 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-violet-700 dark:text-violet-200">
+                Почему сегодня
+              </h4>
+              {featured.summary && (
+                <p className="text-[14.5px] leading-relaxed text-muted-foreground">
+                  {featured.summary}
+                </p>
+              )}
+              {featured.action && (
+                <p className="text-[14.5px] font-medium leading-relaxed text-foreground">
+                  {featured.action}
+                </p>
+              )}
+              {onFocusOpen && (
+                <button
+                  type="button"
+                  data-testid="sphere-focus-link"
+                  onClick={() => {
+                    onClose()
+                    onFocusOpen()
+                  }}
+                  className="mt-1 flex items-center gap-1.5 text-[13.5px] font-semibold text-violet-700 dark:text-violet-300 hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 rounded-lg"
+                >
+                  <span>Всё схождение дня ↓</span>
+                </button>
+              )}
+            </div>
+          ) : null}
 
           {/* 5. Action CTAs */}
           <div className="pt-3 pb-2 flex gap-2.5">

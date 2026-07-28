@@ -133,6 +133,17 @@ export function TodayScreen({
     setSelectedSphereKey(key)
   }
 
+  function openFocus() {
+    const focusEl = document.querySelector('[data-testid="today-focus"]')
+    if (focusEl) {
+      focusEl.scrollIntoView({ behavior: "smooth", block: "start" })
+      focusEl.classList.add("ring-2", "ring-violet-500", "ring-offset-2")
+      setTimeout(() => {
+        focusEl.classList.remove("ring-2", "ring-violet-500", "ring-offset-2")
+      }, 1200)
+    }
+  }
+
   useEffect(() => {
     if (!whyDeeplinkDefault) return
     const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0))
@@ -242,12 +253,6 @@ export function TodayScreen({
             relativeStatus={(payload as any).relativeStatus}
           />
 
-          {/* Today Focus Block ("Что сошлось именно сегодня" / "События дня") */}
-          <TodayFocusCard
-            focus={payload.focus}
-            onSphereSelect={selectPersonalStorySphere}
-          />
-
           {/* Personal V2 story immediately below summary; null when V2 is absent. */}
           <ActivationEvidenceCard
             v2={payload.v2}
@@ -261,6 +266,13 @@ export function TodayScreen({
             concreteAdvice={payload.concreteAdvice}
             selectedKey={selectedSphereKey}
             onSelectedKeyChange={setSelectedSphereKey}
+          />
+
+          {/* Today Focus Block ("Что сошлось именно сегодня" / "События дня") */}
+          <TodayFocusCard
+            focus={payload.focus}
+            activationEvidence={payload.v2?.activationEvidence}
+            onSphereSelect={selectPersonalStorySphere}
           />
 
           {/* Period Context Disclosure (Long-term horizon background) */}
@@ -388,7 +400,13 @@ export function TodayScreen({
             ? payload.concreteAdvice.rows.find((r) => r.key === selectedSphereKey) || null
             : null
         }
+        featured={
+          selectedSphereKey
+            ? payload.focus?.featuredSpheres?.find((s) => s.key === selectedSphereKey) || null
+            : null
+        }
         onClose={() => setSelectedSphereKey(null)}
+        onFocusOpen={openFocus}
       />
     </div>
   )
