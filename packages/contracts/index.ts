@@ -123,6 +123,12 @@ export type TodayV2HorizonsBlock = components["schemas"]["TodayV2HorizonsBlock"]
 export type ActivationEvidence = components["schemas"]["ActivationEvidence"];
 export type SphereScoreV2 = components["schemas"]["SphereScoreV2"];
 
+// W4-TODAY-CONVERGENCE: TodayFocus wire contracts
+export type TodayConvergence = components["schemas"]["TodayConvergence"];
+export type TodayFeaturedSphere = components["schemas"]["TodayFeaturedSphere"];
+export type TodayFocusEvent = components["schemas"]["TodayFocusEvent"];
+export type TodayFocus = components["schemas"]["TodayFocus"];
+
 // W-NATAL-FULL (Wave 5): Full report schemas from lib/contracts/natal.ts
 export type {
   NatalReportRead,

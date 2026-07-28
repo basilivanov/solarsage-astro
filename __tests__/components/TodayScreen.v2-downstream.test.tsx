@@ -988,13 +988,17 @@ describe("TodayScreen V2 downstream fixture", () => {
       assessment: {
         sphere: "work",
         assessment: {
-          verdict: "good" as const,
+          balance: 1,
           confidence: "low" as const,
-          score: 3,
-          raw_score: 3,
-          positive_volume: 3,
-          negative_volume: 0,
-          top_factors: [],
+          effectiveFactorCount: 1,
+          factorCount: 1,
+          independentFamilyCount: 1,
+          key: "work",
+          salienceScore: 3,
+          supportScore: 3,
+          tensionScore: 0,
+          verdict: "good" as const,
+          verdictRule: "good_support_1_3x" as const,
         },
       },
     }

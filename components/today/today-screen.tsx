@@ -64,6 +64,7 @@ import { DayChart } from "./day-chart"
 import { DaySummaryCard } from "./day-summary-card"
 import { ConcreteDayAdvice } from "./concrete-day-advice"
 import { ActivationEvidenceCard } from "./activation-evidence-card"
+import { TodayFocusCard } from "./today-focus"
 import { DevAuditDrawer } from "./dev-audit-drawer"
 import { AstroHistoryWidget } from "./astro-history-widget"
 import { DayCollapsible } from "./day-collapsible"
@@ -250,6 +251,12 @@ export function TodayScreen({
             daySummary={payload.daySummary}
             humanFirst={Boolean(payload.v2)}
             relativeStatus={(payload as any).relativeStatus}
+          />
+
+          {/* Today Focus Block ("Что сошлось именно сегодня" / "События дня") */}
+          <TodayFocusCard
+            focus={payload.focus}
+            onSphereSelect={selectPersonalStorySphere}
           />
 
           {/* Personal V2 story immediately below summary; null when V2 is absent. */}

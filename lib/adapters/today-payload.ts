@@ -208,8 +208,11 @@ export function adaptTodayPayload(
       planetInfluences: api.planetInfluences ?? [],
       sphereScores: api.sphereScores ?? [],
       relativeStatus: api.relativeStatus ?? null,
-      concreteAdvice: api.concreteAdvice,
+      // Wire zod instance and barrel type instances differ structurally at
+      // assessment; the wire boundary already validated this block.
+      concreteAdvice: api.concreteAdvice as AdaptedTodayPayload["concreteAdvice"],
       daySummary: api.daySummary,
+      focus: api.focus ?? null,
       v2: buildV2Block(api.v2),
     },
     access: buildAccess(api.access),

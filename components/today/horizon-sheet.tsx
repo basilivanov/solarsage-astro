@@ -143,9 +143,9 @@ export function HorizonSheet({
           {/* 3. Timing — skip labels already stated verbatim in the meaning text (dedupe) */}
           {(() => {
             const meaningText = `${horizon.summary} ${horizon.plainExplanation}`
-            const showRange = Boolean(horizon.timing.rangeLabel) && !meaningText.includes(horizon.timing.rangeLabel)
-            const showPeak = Boolean(horizon.timing.peakLabel) && !meaningText.includes(horizon.timing.peakLabel)
-            const showState = Boolean(horizon.timing.stateLabel) && !meaningText.includes(horizon.timing.stateLabel)
+            const showRange = Boolean(horizon.timing.rangeLabel) && !meaningText.includes(horizon.timing.rangeLabel ?? "")
+            const showPeak = Boolean(horizon.timing.peakLabel) && !meaningText.includes(horizon.timing.peakLabel ?? "")
+            const showState = Boolean(horizon.timing.stateLabel) && !meaningText.includes(horizon.timing.stateLabel ?? "")
             if (!showRange && !showPeak && !showState) return null
             return (
               <div data-testid="why-horizon-timing" className={`rounded-2xl border px-3 py-2.5 text-[13px] leading-relaxed text-foreground/85 ${toneStyle.timing}`}>

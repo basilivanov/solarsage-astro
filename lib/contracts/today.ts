@@ -59,6 +59,9 @@ import type {
   SphereScoreV2 as SphereScoreV2Wire,
   SphereValenceRead,
   TodayFocus as TodayFocusWire,
+  TodayConvergence as TodayConvergenceWire,
+  TodayFeaturedSphere as TodayFeaturedSphereWire,
+  TodayFocusEvent as TodayFocusEventWire,
 } from "@/packages/contracts"
 import {
   TodayPayloadWireSchema,
@@ -67,7 +70,6 @@ import {
   TodayV2HorizonWireSchema,
   TodayV2HorizonTimingWireSchema,
   TodayV2ProvenanceWireSchema,
-  TodayFocusWireSchema,
 } from "@/packages/contracts/runtime"
 
 // START_BLOCK: WIRE_IDENTITY
@@ -266,7 +268,10 @@ export const TodayV2HorizonsBlockSchema = TodayV2HorizonsBlockWireSchema
 export const TodayV2HorizonSchema = TodayV2HorizonWireSchema
 export const TodayV2HorizonTimingSchema = TodayV2HorizonTimingWireSchema
 export const TodayV2ProvenanceSchema = TodayV2ProvenanceWireSchema
-export const TodayFocusSchema = TodayFocusWireSchema
+export type TodayConvergence = TodayConvergenceWire
+export type TodayFeaturedSphere = TodayFeaturedSphereWire
+export type TodayFocusEvent = TodayFocusEventWire
+export type TodayFocus = TodayFocusWire
 // END_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS
 
 export const RelativeStatusBaselineSchema = z.object({
@@ -315,6 +320,8 @@ export const TodayPayloadSchema = z.object({
   relativeStatus: RelativeDayStatusSchema.nullable().optional(),
   /** W6: optional V2 block */
   v2: TodayV2BlockSchema.nullable().optional(),
+  /** W4: deterministic TodayFocus block (convergence/events/featured spheres). */
+  focus: z.custom<TodayFocus>().nullable().optional(),
 })
 
 export type IconName = z.infer<typeof IconNameSchema>
