@@ -130,6 +130,11 @@ export type TodayFocusEvent = components["schemas"]["TodayFocusEvent"];
 export type TodayFocusFactor = components["schemas"]["TodayFocusFactor"];
 export type TodayFocus = components["schemas"]["TodayFocus"];
 
+// W5-FOCUS-EVENT-DRILLDOWN: FocusEventDrilldown wire contracts
+export type FocusEventPlanetSide = components["schemas"]["FocusEventPlanetSide"];
+export type FocusEventNumber = components["schemas"]["FocusEventNumber"];
+export type FocusEventDrilldown = components["schemas"]["FocusEventDrilldown"];
+
 // W-NATAL-FULL (Wave 5): Full report schemas from lib/contracts/natal.ts
 export type {
   NatalReportRead,

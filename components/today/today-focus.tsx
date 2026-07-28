@@ -42,6 +42,7 @@ const SPHERE_ICON_BY_KEY: Record<string, IconName> = Object.fromEntries(
 interface TodayFocusCardProps {
   focus?: TodayFocus | null
   onSphereSelect: (key: string) => void
+  onEventSelect?: (event: TodayFocusEvent) => void
   onRetry?: () => void
 }
 
@@ -76,7 +77,7 @@ function formatKindLabel(kind: string): { label: string; colorClass: string } {
 }
 
 // START_BLOCK: TODAY_FOCUS_CARD
-export function TodayFocusCard({ focus, onSphereSelect, onRetry }: TodayFocusCardProps) {
+export function TodayFocusCard({ focus, onSphereSelect, onEventSelect, onRetry }: TodayFocusCardProps) {
   const [techOpen, setTechOpen] = useState(false)
 
   if (!focus) {
@@ -231,18 +232,13 @@ export function TodayFocusCard({ focus, onSphereSelect, onRetry }: TodayFocusCar
               const kindMeta = formatKindLabel(ev.kind)
               const isTomorrow = ev.kind === "building"
 
-              return (
-                <div
-                  key={ev.id}
-                  data-testid="today-focus-event"
-                  data-event-kind={ev.kind}
-                  className={`flex items-start gap-3.5 ${isTomorrow ? "opacity-60" : ""}`}
-                >
+              const rowInner = (
+                <>
                   <span className="w-12 flex-none font-mono text-[15px] font-semibold tabular-nums text-foreground pt-0.5">
                     {timeDisplay}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex flex-wrap items-center gap-x-1.5 text-[15px] font-semibold leading-snug text-foreground">
+                    <div className="flex flex-wrap items-center gap-x-1.5 text-[15px] font-semibold leading-snug text-foreground group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">
                       <span>{ev.humanTitle}</span>
                       <span className="text-muted-foreground/60 font-normal">·</span>
                       <span className={`text-[12px] font-medium ${kindMeta.colorClass}`}>
@@ -261,6 +257,36 @@ export function TodayFocusCard({ focus, onSphereSelect, onRetry }: TodayFocusCar
                       </p>
                     ) : null}
                   </div>
+                  {onEventSelect && (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-none mt-1 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  )}
+                </>
+              )
+
+              if (onEventSelect) {
+                return (
+                  <button
+                    key={ev.id}
+                    type="button"
+                    data-testid="today-focus-event"
+                    data-event-kind={ev.kind}
+                    aria-haspopup="dialog"
+                    onClick={() => onEventSelect(ev)}
+                    className={`group w-full flex items-start gap-3.5 text-left rounded-xl p-1.5 -mx-1.5 transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 cursor-pointer ${isTomorrow ? "opacity-60" : ""}`}
+                  >
+                    {rowInner}
+                  </button>
+                )
+              }
+
+              return (
+                <div
+                  key={ev.id}
+                  data-testid="today-focus-event"
+                  data-event-kind={ev.kind}
+                  className={`flex items-start gap-3.5 ${isTomorrow ? "opacity-60" : ""}`}
+                >
+                  {rowInner}
                 </div>
               )
             })}

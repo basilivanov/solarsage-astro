@@ -62,6 +62,9 @@ import type {
   TodayConvergence as TodayConvergenceWire,
   TodayFeaturedSphere as TodayFeaturedSphereWire,
   TodayFocusEvent as TodayFocusEventWire,
+  FocusEventDrilldown as FocusEventDrilldownWire,
+  FocusEventPlanetSide as FocusEventPlanetSideWire,
+  FocusEventNumber as FocusEventNumberWire,
 } from "@/packages/contracts"
 import {
   TodayPayloadWireSchema,
@@ -272,6 +275,9 @@ export type TodayConvergence = TodayConvergenceWire
 export type TodayFeaturedSphere = TodayFeaturedSphereWire
 export type TodayFocusEvent = TodayFocusEventWire
 export type TodayFocus = TodayFocusWire
+export type FocusEventDrilldown = FocusEventDrilldownWire
+export type FocusEventPlanetSide = FocusEventPlanetSideWire
+export type FocusEventNumber = FocusEventNumberWire
 // END_BLOCK: GENERATED_V2_WIRE_SCHEMA_ALIAS
 
 export const RelativeStatusBaselineSchema = z.object({

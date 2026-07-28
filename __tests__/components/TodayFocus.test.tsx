@@ -215,6 +215,22 @@ describe("TodayFocusCard visual system", () => {
     expect(content.textContent).not.toContain("Natal_")
   })
 
+  it("invokes onEventSelect when an event row is clicked", () => {
+    const onEventSelect = vi.fn()
+    const focus = makeFocus()
+
+    render(<TodayFocusCard focus={focus} onSphereSelect={() => {}} onEventSelect={onEventSelect} />)
+
+    const eventButtons = screen.getAllByTestId("today-focus-event")
+    expect(eventButtons[0].tagName).toBe("BUTTON")
+    expect(eventButtons[0].getAttribute("aria-haspopup")).toBe("dialog")
+
+    fireEvent.click(eventButtons[0])
+    expect(onEventSelect).toHaveBeenCalledWith(focus.events![0])
+  })
+})
+
+describe("TodayFocusCard drilldown and sphere details", () => {
   it("renders 'Почему сегодня' section in SphereDetailsSheet for featured sphere and invokes onFocusOpen on link click", () => {
     const onFocusOpen = vi.fn()
     const onClose = vi.fn()
@@ -260,9 +276,7 @@ describe("TodayFocusCard visual system", () => {
     expect(onClose).toHaveBeenCalledOnce()
     expect(onFocusOpen).toHaveBeenCalledOnce()
   })
-})
 
-describe("TodayFocusCard technical disclosure factors", () => {
   it("lists event factors and non-event factors with human titles and role badges, never machine keys", () => {
     render(<TodayFocusCard focus={makeFocus()} onSphereSelect={() => {}} />)
 

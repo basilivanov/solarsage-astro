@@ -258,6 +258,59 @@ test.describe("V2 human-first navigator mock visual", () => {
     await expect(focus).toContainText("Луна в напряжении с твоим Плутоном")
     await expect(focus).toContainText("точный пик")
 
+    // Event click opens focus-event-sheet
+    await page.route("**/api/day/*/focus-event/*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          eventId: "ev:act:t2n__MOON__SQUARE__PLUTO",
+          humanTitle: "Луна в напряжении с твоим Плутоном",
+          technicalTitle: "Луна квадратура Плутон",
+          kind: "exact",
+          kindLabel: "точный пик",
+          occursAt: "2026-07-08T13:31:00Z",
+          localTime: "16:31",
+          timezone: "Europe/Moscow",
+          meaning: "Реакция может быть глубже обычного — не принимай её за решение.",
+          techniqueLabel: "Транзит к твоей натальной карте",
+          source: {
+            planetKey: "MOON",
+            label: "Луна",
+            frameLabel: "транзитная",
+            functionText: "эмоции и привычки",
+          },
+          target: {
+            planetKey: "PLUTO",
+            label: "Плутон",
+            frameLabel: "твой натальный",
+            functionText: "глубокая трансформация и эмоциональная интенсивность",
+          },
+          aspectLabel: "Квадрат",
+          aspectSymbol: "□",
+          aspectTone: "tense",
+          aspectMechanics: "Динамический вызов и трение, требующие роста.",
+          numbers: [
+            { label: "Орб", value: "0°19′" },
+            { label: "Точное время", value: "16:31 · Europe/Moscow" },
+            { label: "Фаза", value: "точный" },
+            { label: "Сила влияния", value: "72%" },
+            { label: "Полюс", value: "напряжённый" },
+          ],
+          sourceActivationIds: ["act-moon-sq-pluto"],
+        }),
+      })
+    })
+
+    const focusEventRow = focus.getByTestId("today-focus-event").first()
+    await focusEventRow.click()
+    const eventSheet = page.getByTestId("focus-event-sheet")
+    await expect(eventSheet).toBeVisible()
+    await expect(eventSheet).toHaveAttribute("data-state", "ready")
+    await expect(eventSheet).toContainText("Точные цифры")
+    await page.keyboard.press("Escape")
+    await expect(eventSheet).toBeHidden()
+
     // Period context disclosure: open and verify the long horizon content
     await contextDisclosure.getByTestId("day-context-disclosure-toggle").click()
     await expect(contextDisclosure.getByTestId("day-context-disclosure-toggle")).toHaveAttribute("aria-expanded", "true")

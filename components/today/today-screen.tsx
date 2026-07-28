@@ -68,6 +68,8 @@ import { DevAuditDrawer } from "./dev-audit-drawer"
 import { AstroHistoryWidget } from "./astro-history-widget"
 import { DayCollapsible } from "./day-collapsible"
 import { SphereDetailsSheet } from "./sphere-details-sheet"
+import { FocusEventSheet } from "./focus-event-sheet"
+import type { TodayFocusEvent } from "@/lib/contracts/today"
 import { Paywall } from "@/components/paywall"
 import { TrialBanner } from "@/components/trial-banner"
 import { YesterdayEchoLoader } from "@/components/checkin/yesterday-echo"
@@ -108,6 +110,7 @@ export function TodayScreen({
   const accessible = isDayAccessible(selectedDate, access)
   const isToday = sameDay(selectedDate, TODAY)
   const [selectedSphereKey, setSelectedSphereKey] = useState<string | null>(null)
+  const [selectedFocusEvent, setSelectedFocusEvent] = useState<TodayFocusEvent | null>(null)
   const whyDeeplinkDefault = searchParams?.get("why") === "1"
 
   // Навигация по дням: можно выходить только в пределах ±180 дней от сегодня
@@ -125,6 +128,7 @@ export function TodayScreen({
 
   useEffect(() => {
     setSelectedSphereKey(null)
+    setSelectedFocusEvent(null)
   }, [selectedDate])
 
   function selectPersonalStorySphere(key: string) {
@@ -272,6 +276,7 @@ export function TodayScreen({
           <TodayFocusCard
             focus={payload.focus}
             onSphereSelect={selectPersonalStorySphere}
+            onEventSelect={setSelectedFocusEvent}
           />
 
           {/* Period Context Disclosure (Long-term horizon background) */}
@@ -406,6 +411,13 @@ export function TodayScreen({
         }
         onClose={() => setSelectedSphereKey(null)}
         onFocusOpen={openFocus}
+      />
+
+      {/* Focus Event BottomSheet modal */}
+      <FocusEventSheet
+        date={payload.date}
+        event={selectedFocusEvent}
+        onClose={() => setSelectedFocusEvent(null)}
       />
     </div>
   )
