@@ -624,3 +624,135 @@ async def test_fresh_payload_meta_and_cache_key_share_prompt_version_4(
     assert body["meta"]["promptVersion"] == 4
     assert captured, "expected the cache key capture on the cacheable payload"
     assert captured[0].llm_prompt_version == 4
+
+
+@pytest.mark.asyncio
+async def test_llm_service_fallback_budget_and_cancellation():
+    """Verify LLMService fallback budget check (remaining < 15s) and CancelledError propagation (doc 29 §6.3, §6.4)."""
+    from app.services.llm_service import LLMService
+
+    service = LLMService()
+
+    # 1. Fallback budget test: remaining < 15s skips DeepSeek fallback
+    with patch.object(service, "_openrouter_generate", side_effect=RuntimeError("OpenRouter down")), \
+         patch.object(service, "_deepseek_generate", side_effect=RuntimeError("DeepSeek down")) as mock_deepseek:
+        import time
+        now = time.monotonic()
+        # deadline_at is in 10 seconds (remaining = 10s < 15s)
+        res = await service._generate_text("test prompt", max_tokens=100, deadline_at=now + 10.0)
+        assert res is None
+        mock_deepseek.assert_not_called()
+
+    # 2. CancelledError test: CancelledError in provider is re-raised, not swallowed
+    with patch.object(service, "_openrouter_generate", side_effect=asyncio.CancelledError()):
+        with pytest.raises(asyncio.CancelledError):
+            await service._generate_text("test prompt", max_tokens=100)
+
+
+@pytest.mark.asyncio
+async def test_slow_focus_narrative_bounded_facts_preserved(
+    async_client: AsyncClient, make_initdata, db_session, monkeypatch
+):
+    # START_BLOCK: FOCUS_BOUNDED_PROOF
+    # doc 29 §6.2: a slow focus_narrative call must be cancelled at the
+    # request-local deadline; the factual focus (state/events) is preserved
+    # with contentState="unavailable" and all LLM-owned fields null, the
+    # endpoint completes near the deadline, and no task leaks.
+    raw = make_initdata(user_id=8006, username="focusdeadline")
+    await async_client.post("/api/auth/telegram", json={"initData": raw})
+    await async_client.put("/api/profile", json={
+        "gender": "male",
+        "birth": {
+            "birthday": "1990-01-15", "birthTime": "12:00",
+            "birthCity": "Moscow", "birthLat": 55.75, "birthLon": 37.61,
+            "birthTz": "Europe/Moscow",
+        }
+    })
+
+    from app.services import today_service as ts_module
+    from datetime import datetime, timezone, date as Date
+    from app.services.today_focus_builder import (
+        TodayFocusEventResult,
+        TodayFocusResult,
+    )
+
+    monkeypatch.setattr(ts_module, "LLM_PHASE_DEADLINE_SECONDS", 0.5)
+
+    # Synthetic convergence focus so the focus_narrative task is created.
+    fake_event = TodayFocusEventResult(
+        id="ev:act:t2n__MOON__SQUARE__PLUTO",
+        kind="exact",
+        occurs_at=datetime(2026, 7, 28, 10, 31, 0, tzinfo=timezone.utc),
+        local_date=Date(2026, 7, 28),
+        timezone="Europe/Moscow",
+        precision="minute",
+        human_title="Луна в напряжении с твоим Плутоном",
+        technical_title="Луна квадратура Плутон",
+        meaning=None,
+        source_activation_ids=("t2n__MOON__SQUARE__PLUTO",),
+    )
+    fake_focus = TodayFocusResult(
+        state="convergence_today",
+        convergence=None,
+        events=(fake_event,),
+        featured_spheres=(),
+        content_state="not_needed",
+    )
+
+    async def fast_none(*args, **kwargs):
+        await asyncio.sleep(0.01)
+        return None
+
+    slow_focus_started = asyncio.Event()
+
+    async def slow_focus_narrative(*args, **kwargs):
+        slow_focus_started.set()
+        await asyncio.sleep(5)
+        return {"convergence_summary": "must never appear"}
+
+    with patch("app.services.natal_context_service.get_solarsage_client") as client_factory, \
+         patch("app.services.today_service.get_solarsage_client", client_factory), \
+         patch("app.services.today_service.LLMService") as ts_llm_class, \
+         patch("app.services.today_interpretation_service.LLMService") as ti_llm_class, \
+         patch("app.services.today_focus_builder.build_today_focus", return_value=fake_focus), \
+         patch.object(settings, "openrouter_api_key", "test-key"):
+        client_factory.return_value = _sidecar_client_mock()
+
+        ts = ts_llm_class.return_value
+        ts.generate_headline = fast_none
+        ts.generate_reading = fast_none
+        ts.generate_notes = fast_none
+        ts.generate_why_sections = fast_none
+        ts.generate_focus_narrative = slow_focus_narrative
+
+        ti = ti_llm_class.return_value
+        ti.generate_concrete_advice = fast_none
+        ti.generate_planet_interpretations = fast_none
+
+        t0 = time.perf_counter()
+        resp = await async_client.get("/api/day/today")
+        elapsed = time.perf_counter() - t0
+
+    assert resp.status_code == 200, resp.text
+    # Completes near the 0.5s deadline, never the 5s slow narrative.
+    assert elapsed < 3.0, f"endpoint took {elapsed:.2f}s — focus narrative not bounded"
+    assert slow_focus_started.is_set()
+
+    day = resp.json()
+    focus = day["focus"]
+    # Facts preserved; honest unavailable; all LLM-owned fields null.
+    assert focus["state"] == "convergence_today"
+    assert focus["contentState"] == "unavailable"
+    assert focus["events"][0]["id"] == "ev:act:t2n__MOON__SQUARE__PLUTO"
+    assert focus["events"][0]["occursAt"] is not None
+    assert focus["events"][0]["meaning"] is None
+
+    await asyncio.sleep(0.05)
+    current = asyncio.current_task()
+    pending = [t for t in asyncio.all_tasks() if not t.done() and t is not current]
+    leaked = [
+        t.get_coro().__qualname__ for t in pending
+        if t.get_coro() is not None and "slow_focus_narrative" in t.get_coro().__qualname__
+    ]
+    assert not leaked, f"leaked cancelled focus narrative: {leaked}"
+    # END_BLOCK: FOCUS_BOUNDED_PROOF

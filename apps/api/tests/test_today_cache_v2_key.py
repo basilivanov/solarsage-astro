@@ -14,7 +14,8 @@ from app.services.cache_key_service import (
     TodayRuntimeIdentity,
 )
 from app.db.models import TodayPayloadCache, SemanticLayerCache, User, UserProfile
-from app.schemas.today import TodayPayload, TodayMeta, DaySummaryBlock, ConcreteAdviceBlock, ConcreteAdviceCounts
+from app.schemas.today import TodayPayload, TodayMeta, DaySummaryBlock, ConcreteAdviceBlock, ConcreteAdviceCounts, TodayV2Block
+from app.schemas.today_focus import TodayFocus, TodayFocusEvent, TodayFeaturedSphere, TodayConvergence, TodayFocusFactor
 from app.schemas.access import ContentAccessState
 from app.services.today_service import TodayService, TODAY_CONTENT_VERSION
 from app.services.calendar_service import CalendarService
@@ -872,3 +873,135 @@ class TestRuntimeIdentityResolver:
         assert isinstance(identity, TodayRuntimeIdentity)
         with pytest.raises(AttributeError):
             identity.calculation_version = "changed"
+
+
+@pytest.mark.asyncio
+async def test_today_cache_quality_predicate_and_parity(db_session):
+    """Verify cache quality matrix (§6.7) and fresh-vs-cached parity (§6.8)."""
+    uid = uuid.uuid4()
+    target_date = Date(2026, 7, 28)
+    profile_hash = "prof_hash_test"
+    service = TodayService(db_session)
+
+    cache_key = build_today_cache_key(
+        user_id=uid,
+        target_date="2026-07-28",
+        profile_hash=profile_hash,
+        scoring_version=SCORING_V2_VERSION,
+    )
+
+    base_payload = make_minimal_today_payload(target_date)
+    base_payload.meta.payload_version = TODAY_V2_PAYLOAD_VERSION
+    base_payload.meta.frontend_payload_version = V2_FRONTEND_PAYLOAD_VERSION
+    base_payload.meta.content_version = TODAY_CONTENT_VERSION
+    v2_dummy = TodayV2Block(
+        activation_summary={"headline": "H", "top_activated_targets": []},
+        activation_evidence=[],
+        score_breakdown={},
+        why_today=[],
+        audit={
+            "available": False,
+            "payload_version": TODAY_V2_PAYLOAD_VERSION,
+            "calculation_version": "1",
+            "scoring_version": "1",
+            "canon_versions": {},
+            "horizon_pipeline": {"status": "unavailable", "reason": "no_coherent_triple", "selected_count": 0},
+        },
+    )
+    base_payload.v2 = v2_dummy
+
+    # Helper to test cache read for raw focus dict bypassing model validation to simulate corrupted/legacy cache payload_json
+    async def _check_cache_raw(focus_dict: dict | None) -> TodayPayload | None:
+        p_dict = base_payload.model_dump(by_alias=True)
+        p_dict["meta"]["payloadVersion"] = TODAY_V2_PAYLOAD_VERSION
+        p_dict["meta"]["frontendPayloadVersion"] = V2_FRONTEND_PAYLOAD_VERSION
+        p_dict["meta"]["contentVersion"] = TODAY_CONTENT_VERSION
+        p_dict["focus"] = focus_dict
+        p_json = json.dumps(p_dict)
+
+        result = await db_session.execute(
+            select(TodayPayloadCache).where(
+                TodayPayloadCache.user_id == uid,
+                TodayPayloadCache.target_date == target_date,
+                TodayPayloadCache.profile_hash == profile_hash,
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            existing.payload_json = p_json
+            existing.cache_key_hash = cache_key.cache_key_hash
+        else:
+            entry = TodayPayloadCache(
+                user_id=uid,
+                target_date=target_date,
+                profile_hash=profile_hash,
+                payload_json=p_json,
+                cache_key_hash=cache_key.cache_key_hash,
+                calculation_version="1",
+                scoring_version="ss-scoring-2.0",
+                canon_versions_hash="",
+                llm_prompt_version=4,
+                frontend_payload_version=4,
+            )
+            db_session.add(entry)
+        await db_session.commit()
+
+        # Pass cache_key with matching expected identity
+        return await service._get_cached_payload(uid, target_date, profile_hash, cache_key)
+
+    # 1. Missing focus -> MISS
+    res = await _check_cache_raw(None)
+    assert res is None
+
+    # 2. convergence_today + contentState=unavailable -> MISS
+    res = await _check_cache_raw({"state": "convergence_today", "contentState": "unavailable", "events": []})
+    assert res is None
+
+    # 3. convergence_today + contentState=pending -> MISS
+    res = await _check_cache_raw({"state": "convergence_today", "contentState": "pending", "events": []})
+    assert res is None
+
+    # 4. background_only + contentState=ready -> MISS
+    res = await _check_cache_raw({"state": "background_only", "contentState": "ready", "events": []})
+    assert res is None
+
+    # 5. background_only + contentState=not_needed -> HIT
+    res = await _check_cache_raw({"state": "background_only", "contentState": "not_needed", "events": []})
+    assert res is not None
+    assert res.focus.state == "background_only"
+
+    # 6. convergence_today + contentState=ready -> HIT & Parity check
+    focus_ready = {
+        "state": "convergence_today",
+        "contentState": "ready",
+        "convergence": {
+            "id": "conv:1",
+            "themeKey": "PLUTO",
+            "title": "Схождение",
+            "summary": "Разбор",
+            "independentFactorCount": 2,
+            "techniqueFamilies": ["transit"],
+            "sourceActivationIds": ["act-1"],
+            "backgroundFactors": [],
+        },
+        "events": [
+            {
+                "id": "ev:1",
+                "kind": "exact",
+                "occursAt": "2026-07-28T10:31:00Z",
+                "localDate": "2026-07-28",
+                "timezone": "Europe/Moscow",
+                "precision": "minute",
+                "humanTitle": "Событие 1",
+                "meaning": "Смысл 1",
+                "sourceActivationIds": ["act-1"],
+            }
+        ],
+        "featuredSpheres": [],
+    }
+    cached_payload = await _check_cache_raw(focus_ready)
+    assert cached_payload is not None
+    assert cached_payload.focus.state == "convergence_today"
+    assert cached_payload.focus.content_state == "ready"
+    assert [e.id for e in cached_payload.focus.events] == ["ev:1"]
+    assert cached_payload.focus.events[0].occurs_at == datetime(2026, 7, 28, 10, 31, 0, tzinfo=UTC)

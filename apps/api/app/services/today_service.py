@@ -468,7 +468,7 @@ class TodayService:
         planet_influences = self._build_planet_influences(day_signals)
         sphere_scores = self._build_sphere_scores(scoring_result["sphere_scores"])
 
-        # W-5.1 + W-4.2 + interpretation: concurrent LLM generation with one
+        # W-5.1 + W-4.2 + interpretation + focus: concurrent LLM generation with one
         # request-local hard deadline for the whole foreground LLM phase.
         # All branches start concurrently; completed results are kept;
         # pending branches are cancelled AND awaited at the deadline (no
@@ -488,7 +488,74 @@ class TodayService:
         llm_service = LLMService()
         interpretation_service = TodayInterpretationService()
 
+        # W4-C1: build TodayFocus deterministically before LLM phase
+        from app.services.today_focus_builder import build_today_focus, normalize_factors
+        from app.schemas.today_focus import (
+            TodayFocus,
+            TodayFocusEvent,
+            TodayFeaturedSphere,
+            TodayConvergence,
+            TodayFocusFactor,
+        )
+
+        ledger_for_focus = getattr(dual, "factor_ledger", None)
+        if ledger_for_focus is None:
+            from app.services.day_factor_ledger import build_factor_ledger
+            ledger_for_focus = build_factor_ledger(day_signals, activation_layer.activations if activation_layer else [])
+
+        user_tz = profile.current_tz or profile.birth_tz or "Europe/Moscow"
+
+        day_delta_dict = {
+            "new_today": [strip_prefix(getattr(s, "planet", "")) for s in signals if getattr(s, "delta_kind", None) == "new_today"],
+            "peak": [strip_prefix(getattr(s, "planet", "")) for s in signals if getattr(s, "delta_kind", None) == "peak_today"],
+        }
+
+        today_factors = normalize_factors(
+            ledger=ledger_for_focus,
+            activation_layer=activation_layer,
+            day_delta=day_delta_dict,
+            target_date=target_date,
+            tz_info=user_tz,
+        )
+
+        focus_res = build_today_focus(
+            factors=today_factors,
+            valence_assessments=getattr(dual, "valence_assessments", None),
+            tz_name=user_tz,
+            target_date=target_date,
+        )
+
+        valence_assessments = getattr(dual, "valence_assessments", None) or {}
+        focus_input = None
+        if focus_res.state in ("convergence_today", "single_impulses") and has_llm_keys:
+            from zoneinfo import ZoneInfo
+            tz_obj = ZoneInfo(user_tz)
+            compact_events = [
+                {
+                    "id": e.id,
+                    "title": e.human_title,
+                    "kind": e.kind,
+                    "time": e.occurs_at.astimezone(tz_obj).strftime("%H:%M") if e.occurs_at else None,
+                }
+                for e in focus_res.events
+            ]
+            compact_featured = [
+                {
+                    "key": s.key,
+                    "label": s.key.capitalize(),
+                    "verdict": (valence_assessments[s.key].verdict if s.key in valence_assessments else "neutral"),
+                }
+                for s in focus_res.featured_spheres
+            ]
+            focus_input = {
+                "state": focus_res.state,
+                "events": compact_events,
+                "featured_spheres": compact_featured,
+            }
+
         llm_phase_started = time.perf_counter()
+        deadline_at = time.monotonic() + LLM_PHASE_DEADLINE_SECONDS
+
         llm_tasks: dict[str, asyncio.Task] = {
             "headline": asyncio.create_task(llm_service.generate_headline(
                 scoring_result["day_status"],
@@ -525,17 +592,17 @@ class TodayService:
                 valence_assessments=getattr(dual, "valence_assessments", None),
             )),
         }
+        if focus_input:
+            llm_tasks["focus_narrative"] = asyncio.create_task(
+                llm_service.generate_focus_narrative(focus_input, deadline_at=deadline_at)
+            )
+
         try:
+            remaining_time = max(0.1, deadline_at - time.monotonic())
             done, pending = await asyncio.wait(
-                llm_tasks.values(), timeout=LLM_PHASE_DEADLINE_SECONDS
+                llm_tasks.values(), timeout=remaining_time
             )
         except BaseException:
-            # The request itself was cancelled (or any unexpected failure
-            # happened) while the LLM phase was in flight: cancel EVERY
-            # unfinished child, consume all results, and re-raise the
-            # original exception. No paid provider request keeps running in
-            # the background, and force_no_llm never rebuilds after a
-            # request-level cancellation.
             for task in llm_tasks.values():
                 if not task.done():
                     task.cancel()
@@ -547,36 +614,7 @@ class TodayService:
         for task in pending:
             task.cancel()
         if pending:
-            # Await every cancellation so no task leaks past the deadline
-            # and every result/cancellation is consumed.
             await asyncio.gather(*pending, return_exceptions=True)
-
-        headline = llm_tasks["headline"].result() if llm_tasks["headline"] in done else None
-        reading_paragraphs = llm_tasks["reading"].result() if llm_tasks["reading"] in done else None
-        notes_text = llm_tasks["notes"].result() if llm_tasks["notes"] in done else None
-        why_sections = llm_tasks["why"].result() if llm_tasks["why"] in done else None
-        if llm_tasks["interpretation"] in done:
-            interpretation_result = llm_tasks["interpretation"].result()
-        else:
-            # Honest deterministic fallback for the whole interpretation
-            # tuple: the same builder with LLM disabled (advice fallback
-            # rows, planet interpretation fallback, deterministic summary).
-            interpretation_result = await interpretation_service.build(
-                target_date=target_date,
-                day_status=scoring_result["day_status"],
-                scoring_result=scoring_result,
-                signals=day_signals,
-                semantic_layer=semantic_layer,
-                day_chart=day_chart,
-                planet_influences=planet_influences,
-                sphere_scores=sphere_scores,
-                important_items=important_items,
-                lunar=None,
-                activation_layer=activation_layer if v2_selected else None,
-                scoring_v2_result=dual.v2_result if v2_selected else None,
-                valence_assessments=getattr(dual, "valence_assessments", None),
-                force_no_llm=True,
-            )
 
         llm_phase_duration_ms = (time.perf_counter() - llm_phase_started) * 1000
         with log_block(slice="W-5.1", module="M-TODAY-SERVICE", block="LLM_PHASE_DEADLINE"):
@@ -611,15 +649,31 @@ class TodayService:
                     duration_ms=llm_phase_duration_ms,
                 )
 
+        headline = llm_tasks["headline"].result() if llm_tasks["headline"] in done else None
+        reading_paragraphs = llm_tasks["reading"].result() if llm_tasks["reading"] in done else None
+        notes_text = llm_tasks["notes"].result() if llm_tasks["notes"] in done else None
+        why_sections = llm_tasks["why"].result() if llm_tasks["why"] in done else None
+        if llm_tasks["interpretation"] in done:
+            interpretation_result = llm_tasks["interpretation"].result()
+        else:
+            interpretation_result = await interpretation_service.build(
+                target_date=target_date,
+                day_status=scoring_result["day_status"],
+                scoring_result=scoring_result,
+                signals=day_signals,
+                semantic_layer=semantic_layer,
+                day_chart=day_chart,
+                planet_influences=planet_influences,
+                sphere_scores=sphere_scores,
+                important_items=important_items,
+                lunar=None,
+                activation_layer=activation_layer if v2_selected else None,
+                scoring_v2_result=dual.v2_result if v2_selected else None,
+                valence_assessments=getattr(dual, "valence_assessments", None),
+                force_no_llm=True,
+            )
+
         concrete_advice, day_summary, updated_day_chart = interpretation_result
-
-        # W-4.2: Build top_flags from top signals
-        top_flags = self._build_top_flags(scoring_result["top_signals"])
-
-        # W-3.4: Build minimal TodayPayload from raw data
-        # W-4.2: Add scoring layer
-        # W-5.1: Add LLM-generated text
-        # W-5.2: meta.cached = False (fresh generation)
 
         # Fallback for LLM failures — show placeholder text so tests catch it
         if not headline:
@@ -670,6 +724,50 @@ class TodayService:
                 valence_breakdown=dual.valence_breakdown,
             )
 
+        # W-4.2: Build top_flags from top signals
+        top_flags = self._build_top_flags(scoring_result["top_signals"])
+
+        # Process focus_narrative task result
+        focus_content_state: Literal["ready", "pending", "unavailable", "not_needed"] = "not_needed"
+        narrative_result: dict[str, Any] | None = None
+
+        if focus_res.state in ("convergence_today", "single_impulses"):
+            if "focus_narrative" in llm_tasks and llm_tasks["focus_narrative"] in done:
+                try:
+                    narrative_raw = llm_tasks["focus_narrative"].result()
+                    if narrative_raw:
+                        from app.services.llm_claim_validator import LLMClaimValidator
+                        validator = LLMClaimValidator()
+                        sanitized_narrative, reject_reason = validator.check_focus_narrative_safety(
+                            narrative_raw,
+                            state=focus_res.state,
+                            expected_event_ids=[e.id for e in focus_res.events],
+                            expected_sphere_keys=[s.key for s in focus_res.featured_spheres],
+                        )
+                        if sanitized_narrative:
+                            narrative_result = sanitized_narrative
+                            focus_content_state = "ready"
+                        else:
+                            log_event(
+                                "llm.response_rejected",
+                                level="warning",
+                                payload={"row_key": "focus_narrative", "reason": reject_reason or "validation_failed"},
+                            )
+                            focus_content_state = "unavailable"
+                    else:
+                        focus_content_state = "unavailable"
+                except Exception:
+                    log_event(
+                        "llm.response_rejected",
+                        level="warning",
+                        payload={"row_key": "focus_narrative", "reason": "provider_error"},
+                    )
+                    focus_content_state = "unavailable"
+            else:
+                focus_content_state = "unavailable"
+        else:
+            focus_content_state = "not_needed"
+
         # W-DAY: relative status calculation and history persistence.
         # W2-VALENCE: when the valence engine ran, its signed breakdown is the
         # canonical scale for the personal baseline; legacy v2 breakdown (raw
@@ -694,105 +792,6 @@ class TodayService:
             tension_score=today_tension,
             absolute_v2_status=scoring_result["day_status"],
         )
-
-        # W4-C1: build TodayFocus deterministically
-        from app.services.today_focus_builder import build_today_focus, normalize_factors
-        from app.schemas.today_focus import (
-            TodayFocus,
-            TodayFocusEvent,
-            TodayFeaturedSphere,
-            TodayConvergence,
-            TodayFocusFactor,
-        )
-
-        ledger_for_focus = getattr(dual, "factor_ledger", None)
-        if ledger_for_focus is None:
-            from app.services.day_factor_ledger import build_factor_ledger
-            ledger_for_focus = build_factor_ledger(day_signals, activation_layer.activations)
-
-        user_tz = profile.current_tz or profile.birth_tz or "Europe/Moscow"
-
-        day_delta_dict = {
-            "new_today": [strip_prefix(getattr(s, "planet", "")) for s in signals if getattr(s, "delta_kind", None) == "new_today"],
-            "peak": [strip_prefix(getattr(s, "planet", "")) for s in signals if getattr(s, "delta_kind", None) == "peak_today"],
-        }
-
-        today_factors = normalize_factors(
-            ledger=ledger_for_focus,
-            activation_layer=activation_layer,
-            day_delta=day_delta_dict,
-            target_date=target_date,
-            tz_info=user_tz,
-        )
-
-        focus_res = build_today_focus(
-            factors=today_factors,
-            valence_assessments=getattr(dual, "valence_assessments", None),
-            tz_name=user_tz,
-            target_date=target_date,
-        )
-
-        # W4-C2: Focus Narrative LLM core generation and atomic validation
-        focus_content_state: Literal["ready", "pending", "unavailable", "not_needed"] = "not_needed"
-        narrative_result: dict[str, Any] | None = None
-
-        valence_assessments = getattr(dual, "valence_assessments", None) or {}
-
-        if focus_res.state in ("convergence_today", "single_impulses") and has_llm_keys:
-            compact_events = [
-                {
-                    "id": e.id,
-                    "title": e.human_title,
-                    "kind": e.kind,
-                    "time": e.occurs_at.strftime("%H:%M") if e.occurs_at else None,
-                }
-                for e in focus_res.events
-            ]
-            compact_featured = [
-                {
-                    "key": s.key,
-                    "label": s.key.capitalize(),
-                    "verdict": (valence_assessments[s.key].verdict if s.key in valence_assessments else "neutral"),
-                }
-                for s in focus_res.featured_spheres
-            ]
-            focus_input = {
-                "state": focus_res.state,
-                "events": compact_events,
-                "featured_spheres": compact_featured,
-            }
-
-            try:
-                narrative_raw = await llm_service.generate_focus_narrative(focus_input)
-                from app.services.llm_claim_validator import LLMClaimValidator
-                validator = LLMClaimValidator()
-                sanitized_narrative, reject_reason = validator.check_focus_narrative_safety(
-                    narrative_raw,
-                    state=focus_res.state,
-                    expected_event_ids=[e.id for e in focus_res.events],
-                    expected_sphere_keys=[s.key for s in focus_res.featured_spheres],
-                )
-                if sanitized_narrative:
-                    narrative_result = sanitized_narrative
-                    focus_content_state = "ready"
-                else:
-                    log_event(
-                        "llm.response_rejected",
-                        level="warning",
-                        payload={"row_key": "focus_narrative", "reason": reject_reason or "validation_failed"},
-                    )
-                    focus_content_state = "unavailable"
-            except Exception:
-                log_event(
-                    "llm.response_rejected",
-                    level="warning",
-                    payload={"row_key": "focus_narrative", "reason": "provider_error"},
-                )
-                focus_content_state = "unavailable"
-        elif focus_res.state in ("convergence_today", "single_impulses"):
-            focus_content_state = "unavailable"
-        else:
-            focus_content_state = "not_needed"
 
         mapped_convergence = None
         if focus_res.convergence is not None:
@@ -1129,6 +1128,25 @@ class TodayService:
             and content_version != TODAY_CONTENT_VERSION
         ):
             return None
+
+        # Quality predicate for cache (§2.5 doc 29):
+        # Allow cache hit only if:
+        # - state in (convergence_today, single_impulses) -> contentState == ready
+        # - state in (background_only, no_accent) -> contentState == not_needed
+        # - state == unavailable -> miss
+        # - focus missing or content_state invalid -> miss
+        focus_dict = payload_dict.get("focus")
+        if payload_version in TODAY_V2_COMPATIBLE_PAYLOAD_VERSIONS:
+            if not focus_dict or not isinstance(focus_dict, dict):
+                return None
+            st = focus_dict.get("state")
+            cst = focus_dict.get("contentState", focus_dict.get("content_state"))
+            if st in ("convergence_today", "single_impulses") and cst != "ready":
+                return None
+            if st in ("background_only", "no_accent") and cst != "not_needed":
+                return None
+            if st not in ("convergence_today", "single_impulses", "background_only", "no_accent"):
+                return None
 
         # Treat legacy bad V2 cache rows as miss: V2 identity without v2 body.
         frontend_version = meta.get("frontend_payload_version", meta.get("frontendPayloadVersion"))

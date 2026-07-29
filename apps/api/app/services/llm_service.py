@@ -60,6 +60,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json as json_lib
 from typing import Any
 
@@ -306,7 +307,13 @@ class LLMService:
             raise ValueError(f"Unknown LLM provider: {self.provider}")
 
     async def _openrouter_generate(
-        self, prompt: str, max_tokens: int, *, json_schema: dict | None = None, json_object: bool = False
+        self,
+        prompt: str,
+        max_tokens: int,
+        *,
+        json_schema: dict | None = None,
+        json_object: bool = False,
+        deadline_at: float | None = None,
     ) -> str:
         body: dict = {
             "model": settings.llm_model,
@@ -323,6 +330,15 @@ class LLMService:
             # Plain JSON mode for dynamic-key responses (focus narrative):
             # provider Structured Outputs cannot express maps with arbitrary keys.
             body["response_format"] = {"type": "json_object"}
+
+        timeout = 60.0
+        if deadline_at is not None:
+            import time
+            remaining = deadline_at - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Deadline exceeded before request start")
+            timeout = min(60.0, remaining)
+
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{settings.openrouter_base_url}/chat/completions",
@@ -333,7 +349,7 @@ class LLMService:
                     "X-Title": settings.openrouter_app_name,
                 },
                 json=body,
-                timeout=60.0,
+                timeout=timeout,
             )
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
@@ -342,10 +358,24 @@ class LLMService:
             # byte-identical .strip() behavior.
             return content.strip() if isinstance(content, str) else ""
 
-    async def _deepseek_generate(self, prompt: str, max_tokens: int) -> str:
+    async def _deepseek_generate(
+        self,
+        prompt: str,
+        max_tokens: int,
+        deadline_at: float | None = None,
+    ) -> str:
         key = getattr(settings, "deepseek_api_key", None)
         if not key:
             raise ValueError("DEEPSEEK_API_KEY not set")
+
+        timeout = 60.0
+        if deadline_at is not None:
+            import time
+            remaining = deadline_at - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Deadline exceeded before request start")
+            timeout = min(60.0, remaining)
+
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 "https://api.deepseek.com/v1/chat/completions",
@@ -358,7 +388,7 @@ class LLMService:
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": max_tokens,
                 },
-                timeout=60.0,
+                timeout=timeout,
             )
             resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"].strip()
@@ -372,7 +402,13 @@ class LLMService:
         return resp.content[0].text.strip()
 
     async def _generate_text(
-        self, prompt: str, max_tokens: int, *, json_schema: dict | None = None, json_object: bool = False
+        self,
+        prompt: str,
+        max_tokens: int,
+        *,
+        json_schema: dict | None = None,
+        json_object: bool = False,
+        deadline_at: float | None = None,
     ) -> str | None:
         """Generate text with fallback: OpenRouter → DeepSeek → None.
 
@@ -384,8 +420,12 @@ class LLMService:
         """
         # 1. Primary: OpenRouter
         try:
-            return await self._openrouter_generate(prompt, max_tokens, json_schema=json_schema, json_object=json_object)
+            return await self._openrouter_generate(
+                prompt, max_tokens, json_schema=json_schema, json_object=json_object, deadline_at=deadline_at
+            )
         except Exception as e:
+            if isinstance(e, asyncio.CancelledError):
+                raise
             with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="LLM_CLIENT"):
                 log_event(
                     "llm.response_rejected",
@@ -394,10 +434,25 @@ class LLMService:
                     payload={"reason": "provider_error", "kind": type(e).__name__},
                 )
 
-        # 2. Fallback: DeepSeek
+        # 2. Fallback: DeepSeek - check if enough remaining budget (>= 15s)
+        if deadline_at is not None:
+            import time
+            remaining = deadline_at - time.monotonic()
+            if remaining < 15.0:
+                with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="LLM_CLIENT"):
+                    log_event(
+                        "llm.response_rejected",
+                        level="warn",
+                        msg=f"[LLM] Skipping DeepSeek fallback: remaining budget {remaining:.1f}s < 15.0s threshold",
+                        payload={"reason": "insufficient_remaining_budget"},
+                    )
+                return None
+
         try:
-            return await self._deepseek_generate(prompt, max_tokens)
+            return await self._deepseek_generate(prompt, max_tokens, deadline_at=deadline_at)
         except Exception as e:
+            if isinstance(e, asyncio.CancelledError):
+                raise
             with log_block(slice="W-5.1", module="M-LLM-SERVICE", block="LLM_CLIENT"):
                 log_event(
                     "llm.response_rejected",
@@ -1383,10 +1438,11 @@ JSON:"""
     async def generate_focus_narrative(
         self,
         focus_input: dict[str, Any],
+        deadline_at: float | None = None,
     ) -> dict[str, Any] | None:
         # START_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_focus_narrative
         # purpose: Generate compact Russian narrative fields (convergence_summary, event_meanings, featured_spheres summary+action) for today focus (§3 of C2 TZ).
-        # inputs: focus_input (dict) — compact evidence pack with state, events, background, featured spheres
+        # inputs: focus_input (dict) — compact evidence pack with state, events, background, featured spheres; deadline_at (float | None)
         # returns: dict | None — structured narrative response or None on failure
         # END_FUNCTION_CONTRACT: F-M-LLM-SERVICE.generate_focus_narrative
         if not focus_input or not isinstance(focus_input, dict):
@@ -1429,7 +1485,7 @@ JSON:"""
 Твой JSON-ответ:"""
 
         response_text = await self._generate_text(
-            prompt, max_tokens=700, json_object=True
+            prompt, max_tokens=700, json_object=True, deadline_at=deadline_at
         )
         if not response_text:
             return None

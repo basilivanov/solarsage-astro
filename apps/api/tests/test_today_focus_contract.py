@@ -18,76 +18,86 @@ from app.schemas.today_focus import (
 from app.services.today_focus_builder import TodayFactor, build_today_focus
 
 
-def test_today_focus_schema_invariants():
-    """Contract §5: state != convergence_today requires convergence=None and featured_spheres=[]."""
-    # 1. single_impulses state
-    tf_single = TodayFocus(
-        state="single_impulses",
-        convergence=None,
-        events=[
-            TodayFocusEvent(
-                id="ev:1",
-                kind="exact",
-                occurs_at=datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc),
-                local_date=date(2026, 7, 28),
-                timezone="Europe/Moscow",
-                precision="minute",
-                human_title="Марс напротив твоей Луны",
-                technical_title="Марс оппозиция Луна",
-                meaning=None,
-                source_activation_ids=["act-1"],
-            )
-        ],
-        featured_spheres=[],
-        content_state="not_needed",
-    )
-    assert tf_single.state == "single_impulses"
-    assert tf_single.convergence is None
-    assert tf_single.featured_spheres == []
+def test_today_focus_schema_negative_validation_matrix():
+    """Negative validation matrix for TodayFocus Pydantic schema (doc 29 §4.3, §6 п.6)."""
+    from pydantic import ValidationError
 
-    # 2. convergence_today state
-    tf_conv = TodayFocus(
-        state="convergence_today",
-        convergence=TodayConvergence(
-            id="conv:1",
-            theme_key="NEPTUNE",
-            title="Что сошлось именно сегодня",
-            summary=None,
-            independent_factor_count=2,
-            technique_families=["transit"],
-            source_activation_ids=["act-1", "act-2"],
-        ),
-        events=[
-            TodayFocusEvent(
-                id="ev:1",
-                kind="exact",
-                occurs_at=datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc),
-                local_date=date(2026, 7, 28),
-                timezone="Europe/Moscow",
-                precision="minute",
-                human_title="Марс напротив твоей Луны",
-                technical_title="Марс оппозиция Луна",
-                meaning=None,
-                source_activation_ids=["act-1"],
+    def _make_event(ev_id: str = "ev:1") -> TodayFocusEvent:
+        return TodayFocusEvent(
+            id=ev_id,
+            kind="exact",
+            occurs_at=datetime(2026, 7, 28, 12, 0, 0, tzinfo=timezone.utc),
+            local_date=date(2026, 7, 28),
+            timezone="Europe/Moscow",
+            precision="minute",
+            human_title="Тест",
+            source_activation_ids=["act-1"],
+        )
+
+    def _make_featured(key: str = "work") -> TodayFeaturedSphere:
+        return TodayFeaturedSphere(
+            key=key,
+            relevance_rank=1,
+            state="convergence_today",
+            convergence_id="conv:1",
+            source_event_ids=["ev:1"],
+            source_activation_ids=["act-1"],
+        )
+
+    # 1. Invalid state x contentState pairs
+    invalid_pairs = [
+        ("convergence_today", "not_needed"),
+        ("single_impulses", "not_needed"),
+        ("background_only", "ready"),
+        ("background_only", "pending"),
+        ("background_only", "unavailable"),
+        ("no_accent", "ready"),
+        ("no_accent", "pending"),
+        ("no_accent", "unavailable"),
+        ("unavailable", "ready"),
+        ("unavailable", "pending"),
+        ("unavailable", "not_needed"),
+    ]
+
+    for st, cst in invalid_pairs:
+        with pytest.raises(ValidationError, match="Invalid content_state"):
+            TodayFocus(
+                state=st,  # type: ignore[arg-type]
+                events=[_make_event()] if st in ("convergence_today", "single_impulses") else [],
+                content_state=cst,  # type: ignore[arg-type]
             )
-        ],
-        featured_spheres=[
-            TodayFeaturedSphere(
-                key="work",
-                relevance_rank=1,
-                state="convergence_today",
-                summary=None,
-                action=None,
-                convergence_id="conv:1",
-                source_event_ids=["ev:1"],
-                source_activation_ids=["act-1"],
-            )
-        ],
-        content_state="not_needed",
-    )
-    assert tf_conv.state == "convergence_today"
-    assert tf_conv.convergence is not None
-    assert len(tf_conv.featured_spheres) == 1
+
+    # 2. Events cap > 3
+    with pytest.raises(ValidationError, match="exceeds cap of 3"):
+        TodayFocus(
+            state="single_impulses",
+            events=[_make_event(f"ev:{i}") for i in range(4)],
+            content_state="ready",
+        )
+
+    # 3. Featured spheres cap > 3
+    with pytest.raises(ValidationError, match="exceeds cap of 3"):
+        TodayFocus(
+            state="convergence_today",
+            featured_spheres=[_make_featured(f"s{i}") for i in range(4)],
+            content_state="ready",
+        )
+
+    # 4. Duplicate event IDs
+    with pytest.raises(ValidationError, match="duplicate public event IDs"):
+        TodayFocus(
+            state="single_impulses",
+            events=[_make_event("ev:1"), _make_event("ev:1")],
+            content_state="ready",
+        )
+
+    # 5. Empty event ID
+    with pytest.raises(ValidationError, match="cannot be empty"):
+        TodayFocus(
+            state="single_impulses",
+            events=[_make_event("   ")],
+            content_state="ready",
+        )
 
 
 def test_today_focus_events_sorting_and_tz():

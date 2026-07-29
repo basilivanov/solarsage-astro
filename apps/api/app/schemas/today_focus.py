@@ -36,7 +36,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Literal
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.schemas._base import CamelModel
 
@@ -153,6 +153,38 @@ class TodayFocus(CamelModel):
     content_state: Literal["ready", "pending", "unavailable", "not_needed"] = Field(
         default="not_needed", description="LLM content generation status"
     )
+
+    @model_validator(mode="after")
+    def validate_focus_invariants(self) -> TodayFocus:
+        # 1. State x ContentState matrix validation (§4.3 doc 29)
+        allowed_content_states: dict[str, set[str]] = {
+            "convergence_today": {"ready", "pending", "unavailable"},
+            "single_impulses": {"ready", "pending", "unavailable"},
+            "background_only": {"not_needed"},
+            "no_accent": {"not_needed"},
+            "unavailable": {"unavailable"},
+        }
+        allowed = allowed_content_states.get(self.state, set())
+        if self.content_state not in allowed:
+            raise ValueError(
+                f"Invalid content_state '{self.content_state}' for focus state '{self.state}'. Allowed: {allowed}"
+            )
+
+        # 2. Caps validation (doc 29 §4.3)
+        if len(self.events) > 3:
+            raise ValueError(f"events count {len(self.events)} exceeds cap of 3")
+        if len(self.featured_spheres) > 3:
+            raise ValueError(f"featured_spheres count {len(self.featured_spheres)} exceeds cap of 3")
+
+        # 3. Duplicate public event IDs and empty IDs validation (doc 29 §4.3)
+        event_ids = [e.id for e in self.events]
+        for ev_id in event_ids:
+            if not ev_id or not ev_id.strip():
+                raise ValueError("event.id cannot be empty")
+        if len(event_ids) != len(set(event_ids)):
+            raise ValueError(f"duplicate public event IDs found: {event_ids}")
+
+        return self
 
 
 class FocusEventPlanetSide(CamelModel):
