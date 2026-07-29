@@ -1,0 +1,143 @@
+schema_version: today_convergence.v1
+status: draft_pending_canon_compliant_rerun
+# DRAFT: ablation v2 измерен классификатором, который НЕ применял
+# hero_confirmation:false и hero_target_types (ablation_harness.py:805).
+# Измеренные 10/81 включают 2 hero, нарушающих этот canon (06-04, 06-17).
+# Ожидание после canon-compliant re-run: ~8/81 exact. Снять draft-статус
+# после совпадения harness и canon + freeze-коммита.
+description: >
+  Today Convergence Rewrite (formula today-convergence-2): пятислойная
+  evidence-модель, пороги значимости, трёхуровневая eligibility, hero-правило C1,
+  проекция сфер, birth-time robustness (sparse/oracle). Нормативный источник —
+  docs/work/2026-07-29_today-convergence-rewrite/00_MASTER_TZ.md (v1.6+).
+  Калибровка — docs/work/2026-07-29_today-convergence-rewrite/analysis/
+  (ablation v2 + sect/oracle; owner corpus, 81 день).
+
+formula_version: today-convergence-2
+
+# ── Слой 2: значимый импульс ─────────────────────────────────────────────
+significance:
+  aspect_weight_min: 0.55        # sextile и выше по aspect_rules.v1 (естественное колено)
+  orb_ratio_max: 0.5             # внутренняя половина орба (orb / max_orb источника)
+  # Не-аспектные факторы: auto-pass ЗАПРЕЩЁН, значимость по event_class.
+  event_class:
+    timelord_period_change: {significant: true}
+    solar_return: {significant: true}
+    lunar_return: {significant: true}       # значим, но НЕ rare (см. ниже)
+    monthly_profection: {significant: true} # значим, но НЕ rare
+    house_ingress: {significant: false}     # отсекается (ablation F6)
+
+# ── Слой 3: трёхуровневая eligibility ────────────────────────────────────
+eligibility:
+  fast_sources: [MOON, MERCURY, VENUS]
+  fast:
+    impulse: true
+    evidence: true
+    rare_anchor: false
+    hero_confirmation: false   # C1 v1: быстрые НЕ засчитываются как независимое hero-подтверждение
+  slow:
+    impulse: true
+    evidence: true
+    rare_anchor: true
+    hero_confirmation: true
+
+# ── Реестр rare/structural (якорь дня) ───────────────────────────────────
+rare_anchor_eligible:
+  - slow_major_transit_exact    # JUPITER..PLUTO, мажорный аспект, exact_at сегодня
+  - structural_lunar_event      # eclipse / lunation — явные event class'ы
+  - timelord_period_change      # смена периода time-lord техники
+rare_anchor_excluded:
+  - lunar_return
+  - monthly_profection          # остаются supporting/context, НЕ rare
+
+# ── Независимость (rule B: distinct driver) ──────────────────────────────
+independence:
+  rule: distinct_driver
+  driver_key:
+    transit: source_planet
+    timelord: technique_family
+  note: >
+    Два быстрых аспекта одного driver/horizon — НЕ два независимых свидетельства.
+    Ablation: rule B даёт hero 10/81 против 1/81 у rule A (family-distinct) —
+    принят rule B.
+
+background:
+  in_groups: false  # ни членом, ни свидетелем, ни в independence count; только контекст
+
+# ── Группировка ──────────────────────────────────────────────────────────
+grouping:
+  rule: direct_star             # anchor-seeded; транзитивные мосты A→B→C запрещены
+  link: [shared_target_key, theme_intersection]
+  hero_target_types: [natal_planet, angle]   # lots — исключены (подтверждено ablation)
+
+# ── Hero (норматив C1, утверждён владельцем 2026-07-29) ──────────────────
+hero_rule: |
+  Hero = rare/structural фактор, точный именно сегодня,
+       + минимум одна независимая non-background evidence-единица,
+       + прямая связь по target/theme,
+       + устойчивая сфера и полярность.
+
+# ── Проекция сфер (без fan-out) ──────────────────────────────────────────
+sphere_projection:
+  rule: group_to_spheres        # физическая группа → одна canonical convergence → сферы
+  primary: majority_anchor_tiebreak
+  secondary_max: 1
+  # Ревизия маппинга (ablation: decisions забирал 79–100% hero как catch-all):
+  planet_sphere_limits:
+    max_spheres_per_planet: 2
+    decisions: [SATURN, PLUTO]  # decisions НЕ catch-all для SUN/MARS/JUPITER
+
+# ── Состояния и presentation ─────────────────────────────────────────────
+states: [convergence_today, quiet_day, unavailable]
+content_states:
+  convergence_today: [ready, pending, unavailable]
+  quiet_day: [ready, pending, unavailable, not_needed]
+  unavailable: [unavailable]
+evidence_levels: [high, medium]  # low — diagnostic only, не публичный
+
+# ── Canonical event ID ───────────────────────────────────────────────────
+canonical_event:
+  identity: versioned_hash(normalized_physical_fields + event_window)
+  producer_precedence: [activation, day_signal]   # обогащает provenance, НЕ меняет identity
+  strip_prefixes: [Transit_, Natal_]
+  daydelta_contract: semantic_keys   # new_today/peak несут semantic keys, НЕ имена планет
+
+# ── Входные данные (fail-closed) ─────────────────────────────────────────
+inputs:
+  planet_house: from_sidecar_or_null        # fallback "or 1" ЗАПРЕЩЁН
+  birth_time_noon_fallback: forbidden       # birth_time or "12:00" ЗАПРЕЩЕНО везде
+  orb:
+    rule: explicit_max_orb_or_exclude       # ORB_FALLBACK запрещён
+    excluded_sources: [SOLAR, PROGRESSED]   # до явного orb-профиля (ablation F7)
+  sect:
+    rule: geometric_sun_altitude            # высота Солнца в дату/место рождения
+    not_from: house_number                  # Whole Sign house ≠ altitude (баг ephemeris.py:168 + activation_builder.py:116)
+    sun_house_null: fail_closed             # НЕ превращать автоматически в day chart
+    range_crossing_sunrise_sunset: time_sensitive
+
+# ── Неопределённое время рождения ────────────────────────────────────────
+birth_time:
+  modes: [exact, bucket, unknown]
+  buckets_local:
+    night: [0, 6]
+    morning: [6, 12]
+    day: [12, 18]
+    evening: [18, 24]
+  control_grid:
+    bucket: edges_plus_middle    # 3 точки
+    unknown: every_4h_plus_2359  # 7 точек, включая конечную 23:59
+  orb_margin:
+    rule: canonical_fixed        # НЕ от фактического зазора сэмпла
+    gap_hours: {bucket: 3, unknown: 4}
+    formula: speed(target_deg_per_hour) * gap_hours / max_orb(source)
+  gate: published_sparse_subset_of_robust_dense   # редкая сетка может потерять, не может опубликовать неустойчивое
+  capabilities:
+    exact: {houses: true, angles: true, lots: true, exact_timing: true}
+    bucket: {houses: false, angles: false, lots: false, exact_timing: false}
+    unknown: {houses: false, angles: false, lots: false, exact_timing: false}
+  migration: {null_birth_time: unknown, non_null: exact}
+
+# ── Измеренные частоты (мониторинг, НЕ квота; owner corpus, 81 день) ─────
+measured:
+  hero: {exact: 10, night: 3, morning: 3, day: 3, evening: 2, unknown: 1}
+  hypothesis: hero_rate 0.08..0.20   # мониторинг; отклонение → пересмотр определений

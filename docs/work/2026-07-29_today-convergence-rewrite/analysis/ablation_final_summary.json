@@ -1,0 +1,359 @@
+{
+ "config": {
+  "name": "C1-final",
+  "theta_w": 0.55,
+  "theta_o": 0.5,
+  "independence": "B(distinct driver)",
+  "hero": "rare_anchor_eligible anchor (slow JUPITER..PLUTO or structural; lunar_return/monthly_profection excluded)",
+  "fixes": {
+   "F1_three_tier": true,
+   "F2_background_out": true,
+   "F3_direct_grouping": true,
+   "F4_delta_fixed": true,
+   "F5_sphere_no_fanout": true,
+   "F6_event_class": "whitelist_timelord",
+   "F7_orb_fail_closed": true,
+   "F8_rare_narrowed": true
+  },
+  "sect": "geometric (Swiss Ephemeris apparent altitude > 0 at birth date/place)",
+  "orb_margin": "CANONICAL FIXED: speed(target_planet) * canonical_gap / canon_max_orb(source); canonical_gap = 3h (every bucket) / 4h (unknown), independent of probing grid",
+  "sparse_grids": {
+   "night": [
+    "00:00",
+    "03:00",
+    "05:59"
+   ],
+   "morning": [
+    "06:00",
+    "09:00",
+    "11:59"
+   ],
+   "day": [
+    "12:00",
+    "15:00",
+    "17:59"
+   ],
+   "evening": [
+    "18:00",
+    "21:00",
+    "23:59"
+   ],
+   "unknown": [
+    "00:00",
+    "04:00",
+    "08:00",
+    "12:00",
+    "16:00",
+    "20:00",
+    "23:59"
+   ]
+  }
+ },
+ "strata": {
+  "exact": {
+   "hero_days_n": 10,
+   "hero_days": [
+    "2026-06-04",
+    "2026-06-15",
+    "2026-06-17",
+    "2026-06-24",
+    "2026-07-01",
+    "2026-07-03",
+    "2026-07-08",
+    "2026-07-21",
+    "2026-07-23",
+    "2026-08-03"
+   ],
+   "state_distribution": {
+    "convergence": 69,
+    "hero": 10,
+    "single_impulse": 2
+   },
+   "median_significant": 44,
+   "public_per_day": 158.2,
+   "ts_per_day": 0,
+   "zero_robust_days": 0,
+   "gate_violations": null
+  },
+  "night": {
+   "hero_days_n": 3,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-02",
+    "2026-07-21"
+   ],
+   "state_distribution": {
+    "convergence": 72,
+    "hero": 3,
+    "single_impulse": 4,
+    "quiet_impulses": 2
+   },
+   "median_significant": 16,
+   "public_per_day": 25.6,
+   "ts_per_day": 287.3,
+   "zero_robust_days": 0,
+   "gate_violations": 0
+  },
+  "morning": {
+   "hero_days_n": 3,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-21",
+    "2026-07-22"
+   ],
+   "state_distribution": {
+    "convergence": 71,
+    "hero": 3,
+    "single_impulse": 5,
+    "quiet_impulses": 2
+   },
+   "median_significant": 14,
+   "public_per_day": 23.4,
+   "ts_per_day": 294.5,
+   "zero_robust_days": 0,
+   "gate_violations": 0
+  },
+  "day": {
+   "hero_days_n": 3,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-03",
+    "2026-07-21"
+   ],
+   "state_distribution": {
+    "convergence": 69,
+    "hero": 3,
+    "single_impulse": 7,
+    "quiet_impulses": 2
+   },
+   "median_significant": 14,
+   "public_per_day": 23.2,
+   "ts_per_day": 299.2,
+   "zero_robust_days": 0,
+   "gate_violations": 0
+  },
+  "evening": {
+   "hero_days_n": 2,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-03"
+   ],
+   "state_distribution": {
+    "convergence": 69,
+    "hero": 2,
+    "single_impulse": 7,
+    "quiet_impulses": 3
+   },
+   "median_significant": 16,
+   "public_per_day": 25.3,
+   "ts_per_day": 293.5,
+   "zero_robust_days": 0,
+   "gate_violations": 0
+  },
+  "unknown": {
+   "hero_days_n": 1,
+   "hero_days": [
+    "2026-06-04"
+   ],
+   "state_distribution": {
+    "convergence": 68,
+    "hero": 1,
+    "single_impulse": 7,
+    "quiet_impulses": 5
+   },
+   "median_significant": 13,
+   "public_per_day": 21.6,
+   "ts_per_day": 532.6,
+   "zero_robust_days": 0,
+   "gate_violations": 0
+  }
+ },
+ "gate": {
+  "status": "pass",
+  "margin_rule": "sparse: canonical margin; oracle: bare theta_o (dense truth)",
+  "violations_total": 0,
+  "per_stratum": {
+   "night": 0,
+   "morning": 0,
+   "day": 0,
+   "evening": 0,
+   "unknown": 0
+  },
+  "examples": {}
+ },
+ "fixtures": {
+  "8_unknown_no_house_angle_lot": "pass",
+  "9_shifted_sample_invariance": {
+   "night": "fail(46d)",
+   "morning": "fail(25d)",
+   "day": "fail(23d)",
+   "evening": "fail(27d)"
+  },
+  "9_diff_kinds": {
+   "night": {
+    "non_aspect": 29,
+    "aspect": 87
+   },
+   "morning": {
+    "aspect": 61
+   },
+   "day": {
+    "aspect": 134
+   },
+   "evening": {
+    "aspect": 73
+   }
+  },
+  "11_sampling_no_multiplication": "pass",
+  "9_detail": {
+   "night": {
+    "identical_days": 35,
+    "differing_days": 46,
+    "pass": false,
+    "diff_kinds": {
+     "non_aspect": 29,
+     "aspect": 32
+    },
+    "residual_grid_artifacts": 32,
+    "residual_range_sensitive_missed_by_one_probe": 29
+   },
+   "morning": {
+    "identical_days": 56,
+    "differing_days": 25,
+    "pass": false,
+    "diff_kinds": {
+     "aspect": 27
+    },
+    "residual_grid_artifacts": 27,
+    "residual_range_sensitive_missed_by_one_probe": 0
+   },
+   "day": {
+    "identical_days": 58,
+    "differing_days": 23,
+    "pass": false,
+    "diff_kinds": {
+     "aspect": 29
+    },
+    "residual_grid_artifacts": 29,
+    "residual_range_sensitive_missed_by_one_probe": 0
+   },
+   "evening": {
+    "identical_days": 54,
+    "differing_days": 27,
+    "pass": false,
+    "diff_kinds": {
+     "aspect": 32
+    },
+    "residual_grid_artifacts": 32,
+    "residual_range_sensitive_missed_by_one_probe": 0
+   }
+  },
+  "9_residual_samples": {
+   "grid_artifacts": {
+    "night": [
+     "2026-06-03 aspect:SUN:semi_square:natal_planet:MOON",
+     "2026-06-04 aspect:MOON:opposition:natal_planet:MOON",
+     "2026-06-05 aspect:SUN:semi_square:natal_planet:MOON",
+     "2026-06-06 aspect:MARS:opposition:natal_planet:MERCURY",
+     "2026-06-07 aspect:SUN:opposition:natal_planet:MARS",
+     "2026-06-12 aspect:VENUS:conjunction:natal_planet:MOON",
+     "2026-06-13 aspect:MOON:sextile:natal_planet:MOON",
+     "2026-06-14 aspect:MOON:semi_square:natal_planet:MOON"
+    ],
+    "morning": [
+     "2026-06-01 aspect:VENUS:quincunx:natal_planet:MARS",
+     "2026-06-06 aspect:SUN:semi_square:natal_planet:MOON",
+     "2026-06-08 aspect:SUN:semi_square:natal_planet:MOON",
+     "2026-06-10 aspect:SATURN:quincunx:natal_planet:MERCURY",
+     "2026-06-12 aspect:MOON:opposition:natal_planet:MERCURY",
+     "2026-06-13 aspect:SATURN:sesqui_quadrate:natal_planet:URANUS",
+     "2026-06-22 aspect:SUN:semi_sextile:natal_planet:MOON",
+     "2026-06-24 aspect:SUN:semi_sextile:natal_planet:MOON"
+    ],
+    "day": [
+     "2026-06-02 aspect:MOON:quincunx:natal_planet:MOON",
+     "2026-06-02 aspect:MOON:square:natal_planet:VENUS",
+     "2026-06-05 aspect:URANUS:trine:natal_planet:VENUS",
+     "2026-06-18 aspect:URANUS:trine:natal_planet:JUPITER",
+     "2026-06-22 aspect:VENUS:trine:natal_planet:MARS",
+     "2026-06-25 aspect:SUN:semi_sextile:natal_planet:MOON",
+     "2026-06-27 aspect:PLUTO:square:natal_planet:SUN",
+     "2026-06-28 aspect:MOON:sesqui_quadrate:natal_planet:MOON"
+    ],
+    "evening": [
+     "2026-06-01 aspect:MOON:sesqui_quadrate:natal_planet:MOON",
+     "2026-06-02 aspect:JUPITER:quincunx:natal_planet:NEPTUNE",
+     "2026-06-03 aspect:MERCURY:square:natal_planet:VENUS",
+     "2026-06-03 aspect:SATURN:quincunx:natal_planet:MERCURY",
+     "2026-06-04 aspect:MERCURY:trine:natal_planet:SUN",
+     "2026-06-10 aspect:URANUS:trine:natal_planet:VENUS",
+     "2026-06-12 aspect:PLUTO:square:natal_planet:SUN",
+     "2026-06-13 aspect:PLUTO:square:natal_planet:SUN"
+    ]
+   },
+   "range_sensitive_missed": {
+    "night": [
+     "2026-06-01 activation:monthly_profection__LORD_OF_MONTH__SATURN",
+     "2026-06-02 activation:monthly_profection__LORD_OF_MONTH__SATURN",
+     "2026-06-03 activation:monthly_profection__LORD_OF_MONTH__SATURN",
+     "2026-06-04 activation:monthly_profection__LORD_OF_MONTH__SATURN",
+     "2026-06-05 activation:monthly_profection__LORD_OF_MONTH__SATURN",
+     "2026-06-06 activation:monthly_profection__LORD_OF_MONTH__SATURN",
+     "2026-06-07 activation:monthly_profection__LORD_OF_MONTH__SATURN",
+     "2026-06-08 activation:monthly_profection__LORD_OF_MONTH__SATURN"
+    ],
+    "morning": [],
+    "day": [],
+    "evening": []
+   }
+  },
+  "9_before_after": {
+   "note": "differing days: margin=actual grid gap (v1.6) -> canonical fixed gap (3h/4h)",
+   "night": {
+    "before": 64,
+    "after": 46
+   },
+   "morning": {
+    "before": 46,
+    "after": 25
+   },
+   "day": {
+    "before": 76,
+    "after": 23
+   },
+   "evening": {
+    "before": 53,
+    "after": 27
+   }
+  },
+  "9_residual_note": "(b) genuinely range-sensitive = 29 night-bucket monthly-profection flips at the 05:00->05:59 edge (expected; canonical grid with 05:59 endpoint always excludes them, shifted probe misses). (a) grid artifacts = 27-32/bucket, NOT zero: oracle-robust aspects in the conservative margin band (theta_o - m, theta_o] — margin is a sufficient-not-necessary test; probes disagree when the orb-curve max region is sampled by one probe only. Options: accept+document; tighten margin to speed*gap/2 (halves the band); or drop margin from publication and rely on the oracle gate alone (then (a)=0 by construction and gate=0 empirically on this dataset, but the gate loses its guarantee)."
+ },
+ "sect": {
+  "sunrise_local": "08:46",
+  "sunset_local": "16:17",
+  "strata_sect_stable": {
+   "night": true,
+   "morning": false,
+   "day": false,
+   "evening": true,
+   "unknown": false
+  }
+ },
+ "strata_margin_canonicalization_check": {
+  "night": {
+   "days_with_changed_public_set": 0
+  },
+  "morning": {
+   "days_with_changed_public_set": 0
+  },
+  "day": {
+   "days_with_changed_public_set": 0
+  },
+  "evening": {
+   "days_with_changed_public_set": 0
+  },
+  "unknown": {
+   "days_with_changed_public_set": 0
+  }
+ }
+}

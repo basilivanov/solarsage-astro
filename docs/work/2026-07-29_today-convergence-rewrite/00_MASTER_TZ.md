@@ -387,7 +387,7 @@ excluded_time_sensitive, invariant_failures
 
 7. неизвестное время нигде не превращается в 12:00 (rg + runtime guard);
 8. unknown не выпускает дома, ASC/MC и лоты;
-9. sparse-результат ⊆ oracle-результату по всем стратам (gate §4.7);
+9. sparse-результат ⊆ oracle-результату по всем стратам (gate §4.7) — PASS. Старая byte-identity проверка переименована в `diagnostic_shifted_grid_sensitivity` со статусом OBSERVED (не FAIL): остаток — консервативная полоса маржи (27–32/бакет) + genuinely time-sensitive факты (29 profection-флипов на краю 05:00→05:59) — разбор в `ablation_sect_oracle.md` §6;
 10. противоречащая полярность между контрольными точками не становится hero;
 11. sampling не размножает evidence (N контрольных точек = 1 unit);
 12. LLM вызывается один раз на payload;

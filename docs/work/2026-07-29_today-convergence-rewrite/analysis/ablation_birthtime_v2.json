@@ -1,0 +1,428 @@
+{
+ "meta": {
+  "c1": {
+   "theta_w": 0.55,
+   "theta_o": 0.5
+  },
+  "fixes": {
+   "F1_three_tier": true,
+   "F2_background_out": true,
+   "F3_direct_grouping": true,
+   "F4_delta_fixed": true,
+   "F5_sphere_no_fanout": true,
+   "F6_event_class": "whitelist_timelord",
+   "F7_orb_fail_closed": true,
+   "F8_rare_narrowed": true
+  },
+  "dump_meta": {
+   "owner_tg": "basil_ivanov",
+   "range": [
+    "2026-06-01",
+    "2026-08-20"
+   ],
+   "strata": {
+    "night": [
+     "00:00",
+     "03:00",
+     "05:59"
+    ],
+    "morning": [
+     "06:00",
+     "09:00",
+     "11:59"
+    ],
+    "day": [
+     "12:00",
+     "15:00",
+     "17:59"
+    ],
+    "evening": [
+     "18:00",
+     "21:00",
+     "23:59"
+    ],
+    "unknown": [
+     "00:00",
+     "04:00",
+     "08:00",
+     "12:00",
+     "16:00",
+     "20:00"
+    ],
+    "shifted_night": [
+     "01:00",
+     "03:00",
+     "05:00"
+    ],
+    "shifted_morning": [
+     "07:00",
+     "09:00",
+     "11:00"
+    ],
+    "shifted_day": [
+     "13:00",
+     "15:00",
+     "17:00"
+    ],
+    "shifted_evening": [
+     "19:00",
+     "21:00",
+     "23:00"
+    ]
+   },
+   "day_delta": "computed per control time; corrected trigger keys stored per time",
+   "current_location_passed": true,
+   "elapsed_s": 598.9,
+   "act_layer_calls": 1944,
+   "natal_calls": 24,
+   "transit_calls": 82
+  }
+ },
+ "strata": {
+  "exact": {
+   "n_days": 81,
+   "hero_days_n": 10,
+   "hero_days": [
+    "2026-06-04",
+    "2026-06-15",
+    "2026-06-17",
+    "2026-06-24",
+    "2026-07-01",
+    "2026-07-03",
+    "2026-07-08",
+    "2026-07-21",
+    "2026-07-23",
+    "2026-08-03"
+   ],
+   "state_distribution": {
+    "convergence": 69,
+    "hero": 10,
+    "single_impulse": 2
+   },
+   "median_significant": 44,
+   "zero_robust_public_days": 0,
+   "mean_public_per_day": 158.2,
+   "mean_ts_excluded_per_day": 0.0,
+   "total_ts_excluded": 0,
+   "top_time_sensitive_victims": []
+  },
+  "night": {
+   "n_days": 81,
+   "hero_days_n": 3,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-02",
+    "2026-07-21"
+   ],
+   "state_distribution": {
+    "convergence": 73,
+    "hero": 3,
+    "quiet_impulses": 2,
+    "single_impulse": 3
+   },
+   "median_significant": 17,
+   "zero_robust_public_days": 0,
+   "mean_public_per_day": 27.3,
+   "mean_ts_excluded_per_day": 285.7,
+   "total_ts_excluded": 23138,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 7515
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 4472
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "natal_planet",
+     "count": 3008
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 2430
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 1717
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 1285
+    }
+   ]
+  },
+  "morning": {
+   "n_days": 81,
+   "hero_days_n": 3,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-21",
+    "2026-07-22"
+   ],
+   "state_distribution": {
+    "convergence": 73,
+    "hero": 3,
+    "single_impulse": 4,
+    "quiet_impulses": 1
+   },
+   "median_significant": 17,
+   "zero_robust_public_days": 0,
+   "mean_public_per_day": 26.7,
+   "mean_ts_excluded_per_day": 291.2,
+   "total_ts_excluded": 23589,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 7869
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 4676
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "natal_planet",
+     "count": 3015
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 1864
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 1620
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 1425
+    }
+   ]
+  },
+  "day": {
+   "n_days": 81,
+   "hero_days_n": 3,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-03",
+    "2026-07-21"
+   ],
+   "state_distribution": {
+    "convergence": 70,
+    "hero": 3,
+    "single_impulse": 6,
+    "quiet_impulses": 2
+   },
+   "median_significant": 19,
+   "zero_robust_public_days": 0,
+   "mean_public_per_day": 28.8,
+   "mean_ts_excluded_per_day": 293.6,
+   "total_ts_excluded": 23780,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 7981
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 4426
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "natal_planet",
+     "count": 2900
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 2430
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 1754
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 1409
+    }
+   ]
+  },
+  "evening": {
+   "n_days": 81,
+   "hero_days_n": 2,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-03"
+   ],
+   "state_distribution": {
+    "convergence": 70,
+    "hero": 2,
+    "single_impulse": 6,
+    "quiet_impulses": 3
+   },
+   "median_significant": 17,
+   "zero_robust_public_days": 0,
+   "mean_public_per_day": 26.7,
+   "mean_ts_excluded_per_day": 292.1,
+   "total_ts_excluded": 23662,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 7537
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 4726
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "natal_planet",
+     "count": 3115
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 1816
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 1620
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 1566
+    }
+   ]
+  },
+  "unknown": {
+   "n_days": 81,
+   "hero_days_n": 2,
+   "hero_days": [
+    "2026-06-04",
+    "2026-07-21"
+   ],
+   "state_distribution": {
+    "convergence": 69,
+    "hero": 2,
+    "single_impulse": 7,
+    "quiet_impulses": 3
+   },
+   "median_significant": 14,
+   "zero_robust_public_days": 0,
+   "mean_public_per_day": 22.7,
+   "mean_ts_excluded_per_day": 502.8,
+   "total_ts_excluded": 40729,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 13523
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 7276
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 4860
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "natal_planet",
+     "count": 3506
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 3162
+    },
+    {
+     "technique_family": "return",
+     "target_type": "house",
+     "count": 2474
+    }
+   ]
+  }
+ },
+ "fixtures": {
+  "8_unknown_no_house_angle_lot": {
+   "violations": 0,
+   "pass": true
+  },
+  "9_shifted_sample_invariance": {
+   "night": {
+    "identical_days": 34,
+    "differing_days": 47,
+    "pass": false
+   },
+   "morning": {
+    "identical_days": 45,
+    "differing_days": 36,
+    "pass": false
+   },
+   "day": {
+    "identical_days": 0,
+    "differing_days": 81,
+    "pass": false
+   },
+   "evening": {
+    "identical_days": 60,
+    "differing_days": 21,
+    "pass": false
+   }
+  },
+  "11_sampling_no_multiplication": {
+   "night": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 8.2,
+    "pass": true
+   },
+   "morning": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 8.3,
+    "pass": true
+   },
+   "day": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 7.96,
+    "pass": true
+   },
+   "evening": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 8.69,
+    "pass": true
+   },
+   "unknown": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 16.27,
+    "pass": true
+   }
+  }
+ },
+ "perf": {
+  "dump_elapsed_s": 598.9,
+  "act_layer_calls_total": 1944,
+  "per_control_time_day_s": 0.308
+ }
+}
