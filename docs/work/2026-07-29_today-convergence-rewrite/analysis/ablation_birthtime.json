@@ -1,0 +1,4645 @@
+{
+ "meta": {
+  "c1": {
+   "theta_w": 0.55,
+   "theta_o": 0.5,
+   "theta_p": "non_fast",
+   "rule": "B",
+   "hero_predicate": "rare_anchor"
+  },
+  "strata": {
+   "night": [
+    "00:00",
+    "03:00",
+    "05:59"
+   ],
+   "morning": [
+    "06:00",
+    "09:00",
+    "11:59"
+   ],
+   "day": [
+    "12:00",
+    "15:00",
+    "17:59"
+   ],
+   "evening": [
+    "18:00",
+    "21:00",
+    "23:59"
+   ],
+   "unknown": [
+    "00:00",
+    "04:00",
+    "08:00",
+    "12:00",
+    "16:00",
+    "20:00"
+   ],
+   "shifted_night": [
+    "01:00",
+    "03:00",
+    "05:00"
+   ],
+   "shifted_morning": [
+    "07:00",
+    "09:00",
+    "11:00"
+   ],
+   "shifted_day": [
+    "13:00",
+    "15:00",
+    "17:00"
+   ],
+   "shifted_evening": [
+    "19:00",
+    "21:00",
+    "23:00"
+   ]
+  },
+  "dump_meta": {
+   "owner_tg": "basil_ivanov",
+   "range": [
+    "2026-06-01",
+    "2026-08-20"
+   ],
+   "strata": {
+    "night": [
+     "00:00",
+     "03:00",
+     "05:59"
+    ],
+    "morning": [
+     "06:00",
+     "09:00",
+     "11:59"
+    ],
+    "day": [
+     "12:00",
+     "15:00",
+     "17:59"
+    ],
+    "evening": [
+     "18:00",
+     "21:00",
+     "23:59"
+    ],
+    "unknown": [
+     "00:00",
+     "04:00",
+     "08:00",
+     "12:00",
+     "16:00",
+     "20:00"
+    ],
+    "shifted_night": [
+     "01:00",
+     "03:00",
+     "05:00"
+    ],
+    "shifted_morning": [
+     "07:00",
+     "09:00",
+     "11:00"
+    ],
+    "shifted_day": [
+     "13:00",
+     "15:00",
+     "17:00"
+    ],
+    "shifted_evening": [
+     "19:00",
+     "21:00",
+     "23:00"
+    ]
+   },
+   "day_delta_skipped_content_neutral": true,
+   "current_location_passed": true,
+   "elapsed_s": 590.8,
+   "act_layer_calls": 1944,
+   "natal_calls": 24,
+   "transit_calls": 81
+  }
+ },
+ "strata": {
+  "exact": {
+   "n_days": 81,
+   "hero_days_n": 10,
+   "hero_days": [
+    "2026-06-15",
+    "2026-06-18",
+    "2026-06-24",
+    "2026-07-01",
+    "2026-07-03",
+    "2026-07-08",
+    "2026-07-21",
+    "2026-07-23",
+    "2026-08-03",
+    "2026-08-12"
+   ],
+   "state_distribution": {
+    "no_anchor": 38,
+    "convergence": 25,
+    "single_impulse": 8,
+    "hero": 10
+   },
+   "median_significant": 47,
+   "zero_robust_public_days": 0,
+   "zero_significant_days": 0,
+   "mean_public_per_day": 158.2,
+   "mean_ts_excluded_per_day": 0.0,
+   "total_ts_excluded": 0,
+   "top_time_sensitive_victims": [],
+   "days": [
+    {
+     "date": "2026-06-01",
+     "state": "no_anchor",
+     "n_public": 164,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-02",
+     "state": "no_anchor",
+     "n_public": 170,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-03",
+     "state": "no_anchor",
+     "n_public": 158,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-04",
+     "state": "convergence",
+     "n_public": 156,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-05",
+     "state": "no_anchor",
+     "n_public": 152,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-06",
+     "state": "convergence",
+     "n_public": 163,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-07",
+     "state": "no_anchor",
+     "n_public": 163,
+     "n_significant": 48,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-08",
+     "state": "no_anchor",
+     "n_public": 165,
+     "n_significant": 50,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-09",
+     "state": "convergence",
+     "n_public": 166,
+     "n_significant": 53,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-10",
+     "state": "no_anchor",
+     "n_public": 161,
+     "n_significant": 52,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-11",
+     "state": "single_impulse",
+     "n_public": 170,
+     "n_significant": 51,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-12",
+     "state": "no_anchor",
+     "n_public": 157,
+     "n_significant": 51,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-13",
+     "state": "convergence",
+     "n_public": 166,
+     "n_significant": 49,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-14",
+     "state": "no_anchor",
+     "n_public": 165,
+     "n_significant": 51,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-15",
+     "state": "hero",
+     "n_public": 172,
+     "n_significant": 53,
+     "n_ts": 0,
+     "hero_spheres": [
+      "decisions",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-06-16",
+     "state": "no_anchor",
+     "n_public": 160,
+     "n_significant": 54,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-17",
+     "state": "single_impulse",
+     "n_public": 165,
+     "n_significant": 54,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-18",
+     "state": "hero",
+     "n_public": 157,
+     "n_significant": 55,
+     "n_ts": 0,
+     "hero_spheres": [
+      "decisions",
+      "health",
+      "money",
+      "sport",
+      "travel",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-06-19",
+     "state": "no_anchor",
+     "n_public": 169,
+     "n_significant": 55,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-20",
+     "state": "convergence",
+     "n_public": 168,
+     "n_significant": 54,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-21",
+     "state": "convergence",
+     "n_public": 175,
+     "n_significant": 57,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-22",
+     "state": "convergence",
+     "n_public": 176,
+     "n_significant": 55,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-23",
+     "state": "no_anchor",
+     "n_public": 165,
+     "n_significant": 55,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-24",
+     "state": "hero",
+     "n_public": 169,
+     "n_significant": 54,
+     "n_ts": 0,
+     "hero_spheres": [
+      "decisions",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-06-25",
+     "state": "convergence",
+     "n_public": 164,
+     "n_significant": 55,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-26",
+     "state": "convergence",
+     "n_public": 169,
+     "n_significant": 53,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-27",
+     "state": "convergence",
+     "n_public": 161,
+     "n_significant": 53,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-28",
+     "state": "no_anchor",
+     "n_public": 170,
+     "n_significant": 53,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-29",
+     "state": "convergence",
+     "n_public": 167,
+     "n_significant": 50,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-30",
+     "state": "no_anchor",
+     "n_public": 163,
+     "n_significant": 49,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-01",
+     "state": "hero",
+     "n_public": 165,
+     "n_significant": 48,
+     "n_ts": 0,
+     "hero_spheres": [
+      "decisions",
+      "money",
+      "relationships",
+      "shopping",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-02",
+     "state": "no_anchor",
+     "n_public": 162,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-03",
+     "state": "hero",
+     "n_public": 163,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": [
+      "communication",
+      "decisions",
+      "money",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-04",
+     "state": "no_anchor",
+     "n_public": 164,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-05",
+     "state": "convergence",
+     "n_public": 160,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-06",
+     "state": "no_anchor",
+     "n_public": 161,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-07",
+     "state": "convergence",
+     "n_public": 152,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-08",
+     "state": "hero",
+     "n_public": 151,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": [
+      "decisions",
+      "documents",
+      "health",
+      "money",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-09",
+     "state": "convergence",
+     "n_public": 146,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-10",
+     "state": "no_anchor",
+     "n_public": 157,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-11",
+     "state": "no_anchor",
+     "n_public": 150,
+     "n_significant": 42,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-12",
+     "state": "no_anchor",
+     "n_public": 151,
+     "n_significant": 40,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-13",
+     "state": "no_anchor",
+     "n_public": 155,
+     "n_significant": 41,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-14",
+     "state": "convergence",
+     "n_public": 148,
+     "n_significant": 41,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-15",
+     "state": "no_anchor",
+     "n_public": 147,
+     "n_significant": 41,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-16",
+     "state": "no_anchor",
+     "n_public": 153,
+     "n_significant": 42,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-17",
+     "state": "convergence",
+     "n_public": 155,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-18",
+     "state": "no_anchor",
+     "n_public": 156,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-19",
+     "state": "no_anchor",
+     "n_public": 161,
+     "n_significant": 48,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-20",
+     "state": "single_impulse",
+     "n_public": 153,
+     "n_significant": 48,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-21",
+     "state": "hero",
+     "n_public": 153,
+     "n_significant": 48,
+     "n_ts": 0,
+     "hero_spheres": [
+      "decisions",
+      "documents",
+      "health",
+      "money",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-22",
+     "state": "no_anchor",
+     "n_public": 152,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-23",
+     "state": "hero",
+     "n_public": 155,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": [
+      "decisions",
+      "documents",
+      "health",
+      "money",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-24",
+     "state": "no_anchor",
+     "n_public": 153,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-25",
+     "state": "no_anchor",
+     "n_public": 154,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-26",
+     "state": "no_anchor",
+     "n_public": 161,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-27",
+     "state": "convergence",
+     "n_public": 151,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-28",
+     "state": "single_impulse",
+     "n_public": 146,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-29",
+     "state": "no_anchor",
+     "n_public": 144,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-30",
+     "state": "convergence",
+     "n_public": 135,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-31",
+     "state": "convergence",
+     "n_public": 143,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-01",
+     "state": "no_anchor",
+     "n_public": 145,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-02",
+     "state": "no_anchor",
+     "n_public": 154,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-03",
+     "state": "hero",
+     "n_public": 156,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": [
+      "communication",
+      "decisions",
+      "health",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-08-04",
+     "state": "no_anchor",
+     "n_public": 151,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-05",
+     "state": "convergence",
+     "n_public": 157,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-06",
+     "state": "no_anchor",
+     "n_public": 156,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-07",
+     "state": "single_impulse",
+     "n_public": 159,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-08",
+     "state": "convergence",
+     "n_public": 159,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-09",
+     "state": "single_impulse",
+     "n_public": 164,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-10",
+     "state": "no_anchor",
+     "n_public": 158,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-11",
+     "state": "convergence",
+     "n_public": 160,
+     "n_significant": 49,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-12",
+     "state": "hero",
+     "n_public": 153,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": [
+      "decisions",
+      "health",
+      "money"
+     ]
+    },
+    {
+     "date": "2026-08-13",
+     "state": "single_impulse",
+     "n_public": 156,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-14",
+     "state": "no_anchor",
+     "n_public": 151,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-15",
+     "state": "convergence",
+     "n_public": 167,
+     "n_significant": 46,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-16",
+     "state": "no_anchor",
+     "n_public": 153,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-17",
+     "state": "convergence",
+     "n_public": 158,
+     "n_significant": 47,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-18",
+     "state": "convergence",
+     "n_public": 153,
+     "n_significant": 49,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-19",
+     "state": "no_anchor",
+     "n_public": 153,
+     "n_significant": 45,
+     "n_ts": 0,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-20",
+     "state": "single_impulse",
+     "n_public": 151,
+     "n_significant": 44,
+     "n_ts": 0,
+     "hero_spheres": []
+    }
+   ]
+  },
+  "night": {
+   "n_days": 81,
+   "hero_days_n": 2,
+   "hero_days": [
+    "2026-07-02",
+    "2026-07-21"
+   ],
+   "state_distribution": {
+    "no_anchor": 54,
+    "convergence": 14,
+    "single_impulse": 11,
+    "hero": 2
+   },
+   "median_significant": 15,
+   "zero_robust_public_days": 0,
+   "zero_significant_days": 0,
+   "mean_public_per_day": 63.6,
+   "mean_ts_excluded_per_day": 249.4,
+   "total_ts_excluded": 20198,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 7515
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 4472
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 2430
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 1717
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 1285
+    },
+    {
+     "technique_family": "return",
+     "target_type": "house",
+     "count": 1007
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "angle",
+     "count": 506
+    },
+    {
+     "technique_family": "profection",
+     "target_type": "natal_planet",
+     "count": 427
+    }
+   ],
+   "days": [
+    {
+     "date": "2026-06-01",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 13,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-02",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 13,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-03",
+     "state": "convergence",
+     "n_public": 58,
+     "n_significant": 14,
+     "n_ts": 247,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-04",
+     "state": "single_impulse",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-05",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 243,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-06",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 15,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-07",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-08",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 15,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-09",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 16,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-10",
+     "state": "convergence",
+     "n_public": 60,
+     "n_significant": 15,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-11",
+     "state": "single_impulse",
+     "n_public": 66,
+     "n_significant": 15,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-12",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 16,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-13",
+     "state": "single_impulse",
+     "n_public": 60,
+     "n_significant": 16,
+     "n_ts": 266,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-14",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 16,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-15",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 16,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-16",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 16,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-17",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 17,
+     "n_ts": 241,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-18",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 17,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-19",
+     "state": "no_anchor",
+     "n_public": 68,
+     "n_significant": 17,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-20",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 17,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-21",
+     "state": "convergence",
+     "n_public": 69,
+     "n_significant": 17,
+     "n_ts": 247,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-22",
+     "state": "no_anchor",
+     "n_public": 68,
+     "n_significant": 17,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-23",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 17,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-24",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 19,
+     "n_ts": 244,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-25",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 20,
+     "n_ts": 237,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-26",
+     "state": "convergence",
+     "n_public": 66,
+     "n_significant": 18,
+     "n_ts": 247,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-27",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 18,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-28",
+     "state": "convergence",
+     "n_public": 65,
+     "n_significant": 18,
+     "n_ts": 241,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-29",
+     "state": "convergence",
+     "n_public": 65,
+     "n_significant": 17,
+     "n_ts": 238,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-30",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 17,
+     "n_ts": 243,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-01",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 17,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-02",
+     "state": "hero",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 242,
+     "hero_spheres": [
+      "communication",
+      "decisions",
+      "money",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-03",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 14,
+     "n_ts": 247,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-04",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 13,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-05",
+     "state": "convergence",
+     "n_public": 65,
+     "n_significant": 14,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-06",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 15,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-07",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-08",
+     "state": "convergence",
+     "n_public": 65,
+     "n_significant": 15,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-09",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-10",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 14,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-11",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-12",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-13",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 15,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-14",
+     "state": "single_impulse",
+     "n_public": 59,
+     "n_significant": 15,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-15",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-16",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-17",
+     "state": "convergence",
+     "n_public": 60,
+     "n_significant": 16,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-18",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 17,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-19",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 17,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-20",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 17,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-21",
+     "state": "hero",
+     "n_public": 59,
+     "n_significant": 16,
+     "n_ts": 258,
+     "hero_spheres": [
+      "decisions",
+      "documents",
+      "health",
+      "money",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-22",
+     "state": "convergence",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-23",
+     "state": "single_impulse",
+     "n_public": 60,
+     "n_significant": 15,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-24",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 16,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-25",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 15,
+     "n_ts": 252,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-26",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 244,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-27",
+     "state": "convergence",
+     "n_public": 59,
+     "n_significant": 16,
+     "n_ts": 244,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-28",
+     "state": "single_impulse",
+     "n_public": 56,
+     "n_significant": 15,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-29",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 15,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-30",
+     "state": "single_impulse",
+     "n_public": 59,
+     "n_significant": 15,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-31",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 15,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-01",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-02",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 14,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-03",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 13,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-04",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 12,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-05",
+     "state": "convergence",
+     "n_public": 69,
+     "n_significant": 13,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-06",
+     "state": "no_anchor",
+     "n_public": 69,
+     "n_significant": 13,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-07",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 13,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-08",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 14,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-09",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 13,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-10",
+     "state": "convergence",
+     "n_public": 68,
+     "n_significant": 14,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-11",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 15,
+     "n_ts": 240,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-12",
+     "state": "single_impulse",
+     "n_public": 67,
+     "n_significant": 16,
+     "n_ts": 232,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-13",
+     "state": "single_impulse",
+     "n_public": 66,
+     "n_significant": 15,
+     "n_ts": 244,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-14",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 17,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-15",
+     "state": "single_impulse",
+     "n_public": 69,
+     "n_significant": 15,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-16",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 239,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-17",
+     "state": "single_impulse",
+     "n_public": 65,
+     "n_significant": 15,
+     "n_ts": 243,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-18",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 238,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-19",
+     "state": "no_anchor",
+     "n_public": 68,
+     "n_significant": 13,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-20",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 13,
+     "n_ts": 240,
+     "hero_spheres": []
+    }
+   ]
+  },
+  "morning": {
+   "n_days": 81,
+   "hero_days_n": 2,
+   "hero_days": [
+    "2026-07-21",
+    "2026-07-22"
+   ],
+   "state_distribution": {
+    "no_anchor": 55,
+    "convergence": 14,
+    "single_impulse": 10,
+    "hero": 2
+   },
+   "median_significant": 15,
+   "zero_robust_public_days": 0,
+   "zero_significant_days": 0,
+   "mean_public_per_day": 64.7,
+   "mean_ts_excluded_per_day": 253.2,
+   "total_ts_excluded": 20509,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 7869
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 4676
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 1864
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 1620
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 1425
+    },
+    {
+     "technique_family": "return",
+     "target_type": "house",
+     "count": 1315
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "angle",
+     "count": 644
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "natal_planet",
+     "count": 432
+    }
+   ],
+   "days": [
+    {
+     "date": "2026-06-01",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-02",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-03",
+     "state": "convergence",
+     "n_public": 58,
+     "n_significant": 15,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-04",
+     "state": "single_impulse",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-05",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 15,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-06",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 16,
+     "n_ts": 247,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-07",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 16,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-08",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-09",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 17,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-10",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 16,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-11",
+     "state": "single_impulse",
+     "n_public": 68,
+     "n_significant": 16,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-12",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-13",
+     "state": "single_impulse",
+     "n_public": 63,
+     "n_significant": 16,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-14",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-15",
+     "state": "no_anchor",
+     "n_public": 69,
+     "n_significant": 15,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-16",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-17",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 17,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-18",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-19",
+     "state": "no_anchor",
+     "n_public": 68,
+     "n_significant": 16,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-20",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 16,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-21",
+     "state": "convergence",
+     "n_public": 66,
+     "n_significant": 16,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-22",
+     "state": "convergence",
+     "n_public": 67,
+     "n_significant": 16,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-23",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 16,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-24",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 16,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-25",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 17,
+     "n_ts": 243,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-26",
+     "state": "convergence",
+     "n_public": 66,
+     "n_significant": 16,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-27",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 16,
+     "n_ts": 252,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-28",
+     "state": "convergence",
+     "n_public": 66,
+     "n_significant": 16,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-29",
+     "state": "convergence",
+     "n_public": 66,
+     "n_significant": 17,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-30",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 18,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-01",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 18,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-02",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 18,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-03",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 15,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-04",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 15,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-05",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 266,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-06",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 16,
+     "n_ts": 264,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-07",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 16,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-08",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-09",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 16,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-10",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-11",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 16,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-12",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 16,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-13",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 17,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-14",
+     "state": "single_impulse",
+     "n_public": 60,
+     "n_significant": 16,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-15",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-16",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-17",
+     "state": "convergence",
+     "n_public": 62,
+     "n_significant": 15,
+     "n_ts": 262,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-18",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-19",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-20",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-21",
+     "state": "hero",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 248,
+     "hero_spheres": [
+      "decisions",
+      "documents",
+      "health",
+      "money",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-22",
+     "state": "hero",
+     "n_public": 63,
+     "n_significant": 14,
+     "n_ts": 237,
+     "hero_spheres": [
+      "decisions",
+      "documents",
+      "health",
+      "money",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-23",
+     "state": "single_impulse",
+     "n_public": 62,
+     "n_significant": 14,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-24",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 252,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-25",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 16,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-26",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 17,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-27",
+     "state": "convergence",
+     "n_public": 63,
+     "n_significant": 16,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-28",
+     "state": "single_impulse",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-29",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 244,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-30",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-31",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 15,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-01",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 15,
+     "n_ts": 265,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-02",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 14,
+     "n_ts": 266,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-03",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 13,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-04",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 12,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-05",
+     "state": "convergence",
+     "n_public": 71,
+     "n_significant": 13,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-06",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 12,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-07",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 13,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-08",
+     "state": "convergence",
+     "n_public": 69,
+     "n_significant": 14,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-09",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 14,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-10",
+     "state": "no_anchor",
+     "n_public": 69,
+     "n_significant": 14,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-11",
+     "state": "no_anchor",
+     "n_public": 71,
+     "n_significant": 15,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-12",
+     "state": "single_impulse",
+     "n_public": 71,
+     "n_significant": 15,
+     "n_ts": 237,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-13",
+     "state": "single_impulse",
+     "n_public": 70,
+     "n_significant": 15,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-14",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 17,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-15",
+     "state": "single_impulse",
+     "n_public": 70,
+     "n_significant": 16,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-16",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 15,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-17",
+     "state": "single_impulse",
+     "n_public": 66,
+     "n_significant": 14,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-18",
+     "state": "convergence",
+     "n_public": 67,
+     "n_significant": 14,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-19",
+     "state": "no_anchor",
+     "n_public": 71,
+     "n_significant": 13,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-20",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 13,
+     "n_ts": 248,
+     "hero_spheres": []
+    }
+   ]
+  },
+  "day": {
+   "n_days": 81,
+   "hero_days_n": 2,
+   "hero_days": [
+    "2026-07-03",
+    "2026-07-21"
+   ],
+   "state_distribution": {
+    "no_anchor": 53,
+    "convergence": 15,
+    "single_impulse": 11,
+    "hero": 2
+   },
+   "median_significant": 17,
+   "zero_robust_public_days": 0,
+   "zero_significant_days": 0,
+   "mean_public_per_day": 64.5,
+   "mean_ts_excluded_per_day": 257.9,
+   "total_ts_excluded": 20891,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 7981
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 4426
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 2430
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 1754
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 1409
+    },
+    {
+     "technique_family": "return",
+     "target_type": "house",
+     "count": 1269
+    },
+    {
+     "technique_family": "profection",
+     "target_type": "natal_planet",
+     "count": 456
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "angle",
+     "count": 400
+    }
+   ],
+   "days": [
+    {
+     "date": "2026-06-01",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 16,
+     "n_ts": 264,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-02",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-03",
+     "state": "convergence",
+     "n_public": 57,
+     "n_significant": 16,
+     "n_ts": 268,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-04",
+     "state": "single_impulse",
+     "n_public": 59,
+     "n_significant": 17,
+     "n_ts": 267,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-05",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 17,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-06",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 18,
+     "n_ts": 270,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-07",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 17,
+     "n_ts": 274,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-08",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 17,
+     "n_ts": 280,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-09",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 18,
+     "n_ts": 271,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-10",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 17,
+     "n_ts": 278,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-11",
+     "state": "single_impulse",
+     "n_public": 65,
+     "n_significant": 17,
+     "n_ts": 271,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-12",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 17,
+     "n_ts": 264,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-13",
+     "state": "single_impulse",
+     "n_public": 61,
+     "n_significant": 16,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-14",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 16,
+     "n_ts": 262,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-15",
+     "state": "no_anchor",
+     "n_public": 68,
+     "n_significant": 17,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-16",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 16,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-17",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 18,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-18",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 19,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-19",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 18,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-20",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 18,
+     "n_ts": 264,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-21",
+     "state": "convergence",
+     "n_public": 67,
+     "n_significant": 18,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-22",
+     "state": "convergence",
+     "n_public": 66,
+     "n_significant": 18,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-23",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 18,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-24",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 18,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-25",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 20,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-26",
+     "state": "convergence",
+     "n_public": 65,
+     "n_significant": 18,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-27",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 18,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-28",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 18,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-29",
+     "state": "convergence",
+     "n_public": 65,
+     "n_significant": 18,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-30",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 18,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-01",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 18,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-02",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 18,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-03",
+     "state": "hero",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 262,
+     "hero_spheres": [
+      "communication",
+      "decisions",
+      "money",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-04",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 264,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-05",
+     "state": "convergence",
+     "n_public": 63,
+     "n_significant": 16,
+     "n_ts": 272,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-06",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 17,
+     "n_ts": 270,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-07",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 17,
+     "n_ts": 264,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-08",
+     "state": "convergence",
+     "n_public": 62,
+     "n_significant": 16,
+     "n_ts": 269,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-09",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 17,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-10",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 16,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-11",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 17,
+     "n_ts": 262,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-12",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 16,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-13",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 18,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-14",
+     "state": "single_impulse",
+     "n_public": 59,
+     "n_significant": 18,
+     "n_ts": 266,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-15",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 19,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-16",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 18,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-17",
+     "state": "convergence",
+     "n_public": 62,
+     "n_significant": 18,
+     "n_ts": 269,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-18",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 19,
+     "n_ts": 268,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-19",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 19,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-20",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 19,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-21",
+     "state": "hero",
+     "n_public": 59,
+     "n_significant": 19,
+     "n_ts": 256,
+     "hero_spheres": [
+      "decisions",
+      "documents",
+      "health",
+      "money",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-22",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 17,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-23",
+     "state": "single_impulse",
+     "n_public": 62,
+     "n_significant": 17,
+     "n_ts": 247,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-24",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 19,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-25",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 19,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-26",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 21,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-27",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 21,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-28",
+     "state": "single_impulse",
+     "n_public": 63,
+     "n_significant": 20,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-29",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 20,
+     "n_ts": 239,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-30",
+     "state": "convergence",
+     "n_public": 63,
+     "n_significant": 20,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-31",
+     "state": "single_impulse",
+     "n_public": 61,
+     "n_significant": 19,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-01",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 17,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-02",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 17,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-03",
+     "state": "no_anchor",
+     "n_public": 68,
+     "n_significant": 17,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-04",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 266,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-05",
+     "state": "convergence",
+     "n_public": 67,
+     "n_significant": 15,
+     "n_ts": 262,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-06",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 15,
+     "n_ts": 262,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-07",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 15,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-08",
+     "state": "convergence",
+     "n_public": 67,
+     "n_significant": 16,
+     "n_ts": 252,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-09",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 16,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-10",
+     "state": "no_anchor",
+     "n_public": 71,
+     "n_significant": 16,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-11",
+     "state": "convergence",
+     "n_public": 74,
+     "n_significant": 17,
+     "n_ts": 238,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-12",
+     "state": "single_impulse",
+     "n_public": 73,
+     "n_significant": 17,
+     "n_ts": 244,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-13",
+     "state": "single_impulse",
+     "n_public": 71,
+     "n_significant": 15,
+     "n_ts": 240,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-14",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 18,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-15",
+     "state": "single_impulse",
+     "n_public": 73,
+     "n_significant": 18,
+     "n_ts": 252,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-16",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 17,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-17",
+     "state": "single_impulse",
+     "n_public": 68,
+     "n_significant": 16,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-18",
+     "state": "convergence",
+     "n_public": 69,
+     "n_significant": 15,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-19",
+     "state": "no_anchor",
+     "n_public": 71,
+     "n_significant": 14,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-20",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 14,
+     "n_ts": 249,
+     "hero_spheres": []
+    }
+   ]
+  },
+  "evening": {
+   "n_days": 81,
+   "hero_days_n": 1,
+   "hero_days": [
+    "2026-07-03"
+   ],
+   "state_distribution": {
+    "no_anchor": 58,
+    "single_impulse": 12,
+    "convergence": 10,
+    "hero": 1
+   },
+   "median_significant": 14,
+   "zero_robust_public_days": 0,
+   "zero_significant_days": 0,
+   "mean_public_per_day": 64.0,
+   "mean_ts_excluded_per_day": 254.7,
+   "total_ts_excluded": 20633,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 7537
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 4726
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 1816
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 1620
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 1566
+    },
+    {
+     "technique_family": "return",
+     "target_type": "house",
+     "count": 1313
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "natal_planet",
+     "count": 678
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "angle",
+     "count": 674
+    }
+   ],
+   "days": [
+    {
+     "date": "2026-06-01",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 13,
+     "n_ts": 273,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-02",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 12,
+     "n_ts": 264,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-03",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 12,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-04",
+     "state": "single_impulse",
+     "n_public": 60,
+     "n_significant": 13,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-05",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-06",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 265,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-07",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 14,
+     "n_ts": 275,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-08",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 273,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-09",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 269,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-10",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 15,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-11",
+     "state": "single_impulse",
+     "n_public": 66,
+     "n_significant": 15,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-12",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-13",
+     "state": "single_impulse",
+     "n_public": 60,
+     "n_significant": 13,
+     "n_ts": 252,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-14",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 13,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-15",
+     "state": "no_anchor",
+     "n_public": 69,
+     "n_significant": 13,
+     "n_ts": 247,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-16",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 13,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-17",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 15,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-18",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-19",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-20",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-21",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 266,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-22",
+     "state": "convergence",
+     "n_public": 65,
+     "n_significant": 14,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-23",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 252,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-24",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 14,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-25",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 16,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-26",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-27",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-28",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 14,
+     "n_ts": 258,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-29",
+     "state": "convergence",
+     "n_public": 62,
+     "n_significant": 14,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-30",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 14,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-01",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 14,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-02",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 252,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-03",
+     "state": "hero",
+     "n_public": 64,
+     "n_significant": 12,
+     "n_ts": 255,
+     "hero_spheres": [
+      "communication",
+      "decisions",
+      "money",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-04",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 12,
+     "n_ts": 270,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-05",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 12,
+     "n_ts": 270,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-06",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 13,
+     "n_ts": 265,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-07",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 13,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-08",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 264,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-09",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 262,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-10",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 13,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-11",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 14,
+     "n_ts": 265,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-12",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 13,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-13",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 13,
+     "n_ts": 260,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-14",
+     "state": "single_impulse",
+     "n_public": 59,
+     "n_significant": 14,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-15",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 14,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-16",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 14,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-17",
+     "state": "single_impulse",
+     "n_public": 62,
+     "n_significant": 13,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-18",
+     "state": "no_anchor",
+     "n_public": 63,
+     "n_significant": 13,
+     "n_ts": 262,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-19",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 263,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-20",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 14,
+     "n_ts": 257,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-21",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 14,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-22",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 12,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-23",
+     "state": "convergence",
+     "n_public": 57,
+     "n_significant": 12,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-24",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 14,
+     "n_ts": 261,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-25",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 14,
+     "n_ts": 259,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-26",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 14,
+     "n_ts": 250,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-27",
+     "state": "convergence",
+     "n_public": 64,
+     "n_significant": 15,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-28",
+     "state": "single_impulse",
+     "n_public": 62,
+     "n_significant": 14,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-29",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 16,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-30",
+     "state": "convergence",
+     "n_public": 63,
+     "n_significant": 17,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-31",
+     "state": "single_impulse",
+     "n_public": 62,
+     "n_significant": 17,
+     "n_ts": 246,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-01",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 16,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-02",
+     "state": "no_anchor",
+     "n_public": 70,
+     "n_significant": 16,
+     "n_ts": 256,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-03",
+     "state": "no_anchor",
+     "n_public": 69,
+     "n_significant": 15,
+     "n_ts": 254,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-04",
+     "state": "no_anchor",
+     "n_public": 67,
+     "n_significant": 14,
+     "n_ts": 253,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-05",
+     "state": "convergence",
+     "n_public": 70,
+     "n_significant": 14,
+     "n_ts": 255,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-06",
+     "state": "no_anchor",
+     "n_public": 71,
+     "n_significant": 14,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-07",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 13,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-08",
+     "state": "single_impulse",
+     "n_public": 66,
+     "n_significant": 15,
+     "n_ts": 251,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-09",
+     "state": "no_anchor",
+     "n_public": 69,
+     "n_significant": 15,
+     "n_ts": 244,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-10",
+     "state": "no_anchor",
+     "n_public": 69,
+     "n_significant": 15,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-11",
+     "state": "no_anchor",
+     "n_public": 71,
+     "n_significant": 16,
+     "n_ts": 245,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-12",
+     "state": "single_impulse",
+     "n_public": 71,
+     "n_significant": 15,
+     "n_ts": 238,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-13",
+     "state": "single_impulse",
+     "n_public": 68,
+     "n_significant": 15,
+     "n_ts": 243,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-14",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 17,
+     "n_ts": 248,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-15",
+     "state": "single_impulse",
+     "n_public": 73,
+     "n_significant": 17,
+     "n_ts": 249,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-16",
+     "state": "no_anchor",
+     "n_public": 66,
+     "n_significant": 16,
+     "n_ts": 242,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-17",
+     "state": "single_impulse",
+     "n_public": 68,
+     "n_significant": 15,
+     "n_ts": 243,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-18",
+     "state": "convergence",
+     "n_public": 69,
+     "n_significant": 15,
+     "n_ts": 241,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-19",
+     "state": "no_anchor",
+     "n_public": 73,
+     "n_significant": 13,
+     "n_ts": 233,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-20",
+     "state": "no_anchor",
+     "n_public": 68,
+     "n_significant": 13,
+     "n_ts": 236,
+     "hero_spheres": []
+    }
+   ]
+  },
+  "unknown": {
+   "n_days": 81,
+   "hero_days_n": 1,
+   "hero_days": [
+    "2026-07-21"
+   ],
+   "state_distribution": {
+    "no_anchor": 62,
+    "single_impulse": 10,
+    "convergence": 8,
+    "hero": 1
+   },
+   "median_significant": 12,
+   "zero_robust_public_days": 0,
+   "zero_significant_days": 0,
+   "mean_public_per_day": 58.7,
+   "mean_ts_excluded_per_day": 466.8,
+   "total_ts_excluded": 37814,
+   "top_time_sensitive_victims": [
+    {
+     "technique_family": "transit",
+     "target_type": "lot",
+     "count": 13523
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "angle",
+     "count": 7276
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "house",
+     "count": 4860
+    },
+    {
+     "technique_family": "return",
+     "target_type": "natal_planet",
+     "count": 3162
+    },
+    {
+     "technique_family": "return",
+     "target_type": "house",
+     "count": 2474
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "lot",
+     "count": 2424
+    },
+    {
+     "technique_family": "progression",
+     "target_type": "angle",
+     "count": 1180
+    },
+    {
+     "technique_family": "transit",
+     "target_type": "natal_planet",
+     "count": 834
+    }
+   ],
+   "days": [
+    {
+     "date": "2026-06-01",
+     "state": "no_anchor",
+     "n_public": 56,
+     "n_significant": 11,
+     "n_ts": 478,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-02",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 11,
+     "n_ts": 472,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-03",
+     "state": "no_anchor",
+     "n_public": 54,
+     "n_significant": 11,
+     "n_ts": 454,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-04",
+     "state": "single_impulse",
+     "n_public": 56,
+     "n_significant": 12,
+     "n_ts": 464,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-05",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 12,
+     "n_ts": 437,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-06",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 13,
+     "n_ts": 454,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-07",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 13,
+     "n_ts": 459,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-08",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 13,
+     "n_ts": 471,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-09",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 472,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-10",
+     "state": "no_anchor",
+     "n_public": 56,
+     "n_significant": 13,
+     "n_ts": 477,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-11",
+     "state": "single_impulse",
+     "n_public": 61,
+     "n_significant": 13,
+     "n_ts": 491,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-12",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 13,
+     "n_ts": 464,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-13",
+     "state": "single_impulse",
+     "n_public": 56,
+     "n_significant": 12,
+     "n_ts": 482,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-14",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 12,
+     "n_ts": 472,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-15",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 13,
+     "n_ts": 480,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-16",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 12,
+     "n_ts": 468,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-17",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 13,
+     "n_ts": 476,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-18",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 14,
+     "n_ts": 465,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-19",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 14,
+     "n_ts": 477,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-20",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 14,
+     "n_ts": 476,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-21",
+     "state": "convergence",
+     "n_public": 59,
+     "n_significant": 14,
+     "n_ts": 491,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-22",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 14,
+     "n_ts": 491,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-23",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 14,
+     "n_ts": 484,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-24",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 14,
+     "n_ts": 487,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-25",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 15,
+     "n_ts": 475,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-26",
+     "state": "convergence",
+     "n_public": 59,
+     "n_significant": 14,
+     "n_ts": 493,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-27",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 14,
+     "n_ts": 481,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-28",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 13,
+     "n_ts": 477,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-29",
+     "state": "convergence",
+     "n_public": 62,
+     "n_significant": 13,
+     "n_ts": 478,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-06-30",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 13,
+     "n_ts": 466,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-01",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 13,
+     "n_ts": 472,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-02",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 12,
+     "n_ts": 474,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-03",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 11,
+     "n_ts": 475,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-04",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 10,
+     "n_ts": 482,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-05",
+     "state": "convergence",
+     "n_public": 60,
+     "n_significant": 11,
+     "n_ts": 476,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-06",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 12,
+     "n_ts": 475,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-07",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 12,
+     "n_ts": 460,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-08",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 12,
+     "n_ts": 461,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-09",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 12,
+     "n_ts": 448,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-10",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 11,
+     "n_ts": 452,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-11",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 12,
+     "n_ts": 452,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-12",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 11,
+     "n_ts": 455,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-13",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 11,
+     "n_ts": 452,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-14",
+     "state": "single_impulse",
+     "n_public": 55,
+     "n_significant": 12,
+     "n_ts": 452,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-15",
+     "state": "no_anchor",
+     "n_public": 56,
+     "n_significant": 12,
+     "n_ts": 445,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-16",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 12,
+     "n_ts": 444,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-17",
+     "state": "convergence",
+     "n_public": 55,
+     "n_significant": 12,
+     "n_ts": 445,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-18",
+     "state": "no_anchor",
+     "n_public": 56,
+     "n_significant": 13,
+     "n_ts": 452,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-19",
+     "state": "no_anchor",
+     "n_public": 55,
+     "n_significant": 13,
+     "n_ts": 454,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-20",
+     "state": "no_anchor",
+     "n_public": 53,
+     "n_significant": 13,
+     "n_ts": 447,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-21",
+     "state": "hero",
+     "n_public": 54,
+     "n_significant": 12,
+     "n_ts": 454,
+     "hero_spheres": [
+      "decisions",
+      "documents",
+      "health",
+      "money",
+      "relationships",
+      "sport",
+      "work"
+     ]
+    },
+    {
+     "date": "2026-07-22",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 11,
+     "n_ts": 435,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-23",
+     "state": "single_impulse",
+     "n_public": 56,
+     "n_significant": 11,
+     "n_ts": 454,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-24",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 13,
+     "n_ts": 452,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-25",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 13,
+     "n_ts": 439,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-26",
+     "state": "no_anchor",
+     "n_public": 59,
+     "n_significant": 12,
+     "n_ts": 460,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-27",
+     "state": "convergence",
+     "n_public": 57,
+     "n_significant": 14,
+     "n_ts": 451,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-28",
+     "state": "single_impulse",
+     "n_public": 53,
+     "n_significant": 13,
+     "n_ts": 461,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-29",
+     "state": "no_anchor",
+     "n_public": 56,
+     "n_significant": 13,
+     "n_ts": 465,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-30",
+     "state": "no_anchor",
+     "n_public": 55,
+     "n_significant": 13,
+     "n_ts": 458,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-07-31",
+     "state": "no_anchor",
+     "n_public": 52,
+     "n_significant": 13,
+     "n_ts": 470,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-01",
+     "state": "no_anchor",
+     "n_public": 54,
+     "n_significant": 12,
+     "n_ts": 466,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-02",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 12,
+     "n_ts": 474,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-03",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 11,
+     "n_ts": 475,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-04",
+     "state": "no_anchor",
+     "n_public": 56,
+     "n_significant": 10,
+     "n_ts": 475,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-05",
+     "state": "convergence",
+     "n_public": 61,
+     "n_significant": 11,
+     "n_ts": 484,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-06",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 10,
+     "n_ts": 479,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-07",
+     "state": "no_anchor",
+     "n_public": 60,
+     "n_significant": 11,
+     "n_ts": 482,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-08",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 12,
+     "n_ts": 472,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-09",
+     "state": "no_anchor",
+     "n_public": 64,
+     "n_significant": 11,
+     "n_ts": 489,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-10",
+     "state": "no_anchor",
+     "n_public": 62,
+     "n_significant": 12,
+     "n_ts": 478,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-11",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 13,
+     "n_ts": 476,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-12",
+     "state": "single_impulse",
+     "n_public": 65,
+     "n_significant": 13,
+     "n_ts": 452,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-13",
+     "state": "single_impulse",
+     "n_public": 62,
+     "n_significant": 12,
+     "n_ts": 467,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-14",
+     "state": "no_anchor",
+     "n_public": 58,
+     "n_significant": 15,
+     "n_ts": 459,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-15",
+     "state": "single_impulse",
+     "n_public": 65,
+     "n_significant": 13,
+     "n_ts": 473,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-16",
+     "state": "no_anchor",
+     "n_public": 57,
+     "n_significant": 13,
+     "n_ts": 465,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-17",
+     "state": "single_impulse",
+     "n_public": 61,
+     "n_significant": 12,
+     "n_ts": 473,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-18",
+     "state": "convergence",
+     "n_public": 61,
+     "n_significant": 12,
+     "n_ts": 468,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-19",
+     "state": "no_anchor",
+     "n_public": 65,
+     "n_significant": 11,
+     "n_ts": 459,
+     "hero_spheres": []
+    },
+    {
+     "date": "2026-08-20",
+     "state": "no_anchor",
+     "n_public": 61,
+     "n_significant": 11,
+     "n_ts": 464,
+     "hero_spheres": []
+    }
+   ]
+  }
+ },
+ "fixtures": {
+  "8_unknown_no_house_angle_lot": {
+   "violations": 0,
+   "pass": true
+  },
+  "9_shifted_sample_invariance": {
+   "night": {
+    "identical_days": 25,
+    "differing_days": 56,
+    "examples": [
+     {
+      "date": "2026-06-01",
+      "only_main": [],
+      "only_shifted": [
+       "[\"activation:monthly_profection__LORD_OF_MONTH__SATURN\", \"neutral\", [\"work\", \"money\", \"documents\", \"relationships\", \"sport\", \"health\", \"decisions\"]]",
+       "[\"aspect:PLUTO:opposition:natal_planet:MOON\", \"tense\", [\"work\", \"relationships\", \"sport\", \"communication\", \"health\", \"decisions\"]]"
+      ]
+     },
+     {
+      "date": "2026-06-02",
+      "only_main": [],
+      "only_shifted": [
+       "[\"activation:monthly_profection__LORD_OF_MONTH__SATURN\", \"neutral\", [\"work\", \"money\", \"documents\", \"relationships\", \"sport\", \"health\", \"decisions\"]]",
+       "[\"aspect:JUPITER:trine:natal_planet:MERCURY\", \"supportive\", [\"work\", \"money\", \"documents\", \"communication\", \"decisions\", \"study\"]]",
+       "[\"aspect:PLUTO:opposition:natal_planet:MOON\", \"tense\", [\"work\", \"relationships\", \"sport\", \"communication\", \"health\", \"decisions\"]]"
+      ]
+     },
+     {
+      "date": "2026-06-03",
+      "only_main": [],
+      "only_shifted": [
+       "[\"activation:monthly_profection__LORD_OF_MONTH__SATURN\", \"neutral\", [\"work\", \"money\", \"documents\", \"relationships\", \"sport\", \"health\", \"decisions\"]]",
+       "[\"aspect:PLUTO:opposition:natal_planet:MOON\", \"tense\", [\"work\", \"relationships\", \"sport\", \"communication\", \"health\", \"decisions\"]]"
+      ]
+     }
+    ]
+   },
+   "morning": {
+    "identical_days": 56,
+    "differing_days": 25,
+    "examples": [
+     {
+      "date": "2026-06-05",
+      "only_main": [],
+      "only_shifted": [
+       "[\"aspect:JUPITER:conjunction:natal_planet:MOON\", \"mixed\", [\"work\", \"money\", \"relationships\", \"sport\", \"communication\", \"health\", \"decisions\"]]"
+      ]
+     },
+     {
+      "date": "2026-06-06",
+      "only_main": [],
+      "only_shifted": [
+       "[\"aspect:JUPITER:conjunction:natal_planet:MOON\", \"mixed\", [\"work\", \"money\", \"relationships\", \"sport\", \"communication\", \"health\", \"decisions\"]]"
+      ]
+     },
+     {
+      "date": "2026-06-07",
+      "only_main": [],
+      "only_shifted": [
+       "[\"aspect:JUPITER:conjunction:natal_planet:MOON\", \"mixed\", [\"work\", \"money\", \"relationships\", \"sport\", \"communication\", \"health\", \"decisions\"]]"
+      ]
+     }
+    ]
+   },
+   "day": {
+    "identical_days": 0,
+    "differing_days": 81,
+    "examples": [
+     {
+      "date": "2026-06-01",
+      "only_main": [
+       "[\"activation:firdar_major__PERIOD_LORD__SUN\", \"neutral\", [\"work\", \"sport\", \"decisions\"]]",
+       "[\"activation:firdar_minor__SUBPERIOD_LORD__SATURN\", \"neutral\", [\"work\", \"money\", \"documents\", \"relationships\", \"sport\", \"health\", \"decisions\"]]"
+      ],
+      "only_shifted": []
+     },
+     {
+      "date": "2026-06-02",
+      "only_main": [
+       "[\"activation:firdar_major__PERIOD_LORD__SUN\", \"neutral\", [\"work\", \"sport\", \"decisions\"]]",
+       "[\"activation:firdar_minor__SUBPERIOD_LORD__SATURN\", \"neutral\", [\"work\", \"money\", \"documents\", \"relationships\", \"sport\", \"health\", \"decisions\"]]"
+      ],
+      "only_shifted": []
+     },
+     {
+      "date": "2026-06-03",
+      "only_main": [
+       "[\"activation:firdar_major__PERIOD_LORD__SUN\", \"neutral\", [\"work\", \"sport\", \"decisions\"]]",
+       "[\"activation:firdar_minor__SUBPERIOD_LORD__SATURN\", \"neutral\", [\"work\", \"money\", \"documents\", \"relationships\", \"sport\", \"health\", \"decisions\"]]"
+      ],
+      "only_shifted": [
+       "[\"aspect:MARS:square:natal_planet:MOON\", \"tense\", [\"work\", \"relationships\", \"sport\", \"communication\", \"health\", \"decisions\"]]"
+      ]
+     }
+    ]
+   },
+   "evening": {
+    "identical_days": 24,
+    "differing_days": 57,
+    "examples": [
+     {
+      "date": "2026-06-01",
+      "only_main": [],
+      "only_shifted": [
+       "[\"aspect:SOLAR:conjunction:natal_planet:MERCURY\", \"mixed\", [\"documents\", \"communication\", \"study\"]]",
+       "[\"aspect:SOLAR:semi_sextile:natal_planet:SUN\", \"neutral\", [\"work\", \"sport\", \"decisions\"]]"
+      ]
+     },
+     {
+      "date": "2026-06-02",
+      "only_main": [],
+      "only_shifted": [
+       "[\"aspect:SOLAR:conjunction:natal_planet:MERCURY\", \"mixed\", [\"documents\", \"communication\", \"study\"]]",
+       "[\"aspect:SOLAR:semi_sextile:natal_planet:SUN\", \"neutral\", [\"work\", \"sport\", \"decisions\"]]"
+      ]
+     },
+     {
+      "date": "2026-06-03",
+      "only_main": [],
+      "only_shifted": [
+       "[\"aspect:SOLAR:conjunction:natal_planet:MERCURY\", \"mixed\", [\"documents\", \"communication\", \"study\"]]",
+       "[\"aspect:SOLAR:semi_sextile:natal_planet:SUN\", \"neutral\", [\"work\", \"sport\", \"decisions\"]]",
+       "[\"aspect:SOLAR:trine:natal_planet:VENUS\", \"supportive\", [\"money\", \"relationships\", \"shopping\"]]"
+      ]
+     }
+    ]
+   }
+  },
+  "11_sampling_no_multiplication": {
+   "night": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 3.5,
+    "pass": true
+   },
+   "morning": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 3.4,
+    "pass": true
+   },
+   "day": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 3.53,
+    "pass": true
+   },
+   "evening": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 3.58,
+    "pass": true
+   },
+   "unknown": {
+    "duplicate_identity_violations": 0,
+    "mean_dedup_ratio": 6.23,
+    "pass": true
+   }
+  }
+ },
+ "perf": {
+  "dump_elapsed_s": 590.8,
+  "act_layer_calls_total": 1944,
+  "natal_calls_total": 24,
+  "transit_calls_total": 81,
+  "per_control_time_day_s": 0.304,
+  "per_user_day_bucket_est_s": 1.01,
+  "per_user_day_unknown_est_s": 1.97,
+  "per_user_day_exact_est_s": 0.4
+ }
+}

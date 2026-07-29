@@ -1,0 +1,7 @@
+# Сырые факторные дампы — не коммитим (100+ МБ; воспроизводимы скриптами из этого каталога).
+# В репозитории: скрипты, MD-отчёты, компактные summary JSON, checksum + команда воспроизведения (00_MASTER_TZ.md §9).
+factor_dump*.json
+convergence_probe_results.json
+__pycache__/
+*.tmp
+*.log
