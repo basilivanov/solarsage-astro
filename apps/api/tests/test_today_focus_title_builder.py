@@ -4,7 +4,23 @@
 # DEPENDENCIES: pytest, app.services.focus_title_builder
 # ############################################################################
 
-from app.services.focus_title_builder import build_event_title
+from app.services.focus_title_builder import build_event_title, check_public_title_eligibility
+
+
+def test_check_public_title_eligibility():
+    """Verify check_public_title_eligibility logic and reason codes."""
+    assert check_public_title_eligibility("") == "empty_title"
+    assert check_public_title_eligibility("   ") == "empty_title"
+    assert check_public_title_eligibility(None) == "empty_title"
+
+    assert check_public_title_eligibility("Transit_Moon square Saturn") == "machine_key"
+    assert check_public_title_eligibility("Moon sextile Natal_Mercury") == "machine_key"
+    assert check_public_title_eligibility("Луна у твоего NECESSITY") == "machine_key"
+    assert check_public_title_eligibility("Марс ANGULAR_PLANET Нептун") == "machine_key"
+
+    assert check_public_title_eligibility("Марс напротив твоего Нептуна") is None
+    assert check_public_title_eligibility("Луна в гармонии с твоим Ураном") is None
+
 
 
 def test_aspect_title_phrasings_and_declensions():

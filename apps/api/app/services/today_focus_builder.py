@@ -31,6 +31,7 @@
 #   - TIME_BOUNDS: DST-safe UTC boundary calculation
 #   - ROLE_CLASSIFICATION: temporal role classifier (anchor_today, supporting, background, unrelated)
 #   - FACTOR_NORMALIZER: factor ledger + activation layer normalization and merging
+#   - PUBLIC_EVENT_SELECTION: deterministic selection of public events (0..3) per amendment §3
 #   - FOCUS_ASSEMBLY: deterministic grouping, ranking, state determination, events (0..3), and featured spheres (0..3)
 # owned_tests:
 #   - tests/test_today_focus_builder.py
@@ -40,12 +41,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timezone, timedelta
+from functools import cmp_to_key
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 from app.schemas.day_valence import DayValenceFactor, FactorLedger
 from app.services.astro_utils import strip_prefix
-from app.services.focus_title_builder import build_event_title
+from app.services.focus_title_builder import build_event_title, check_public_title_eligibility
 
 TemporalRole = Literal["anchor_today", "supporting", "background", "unrelated"]
 
@@ -428,6 +430,195 @@ def normalize_factors(
 # END_BLOCK: FACTOR_NORMALIZER
 
 
+# START_BLOCK: PUBLIC_EVENT_SELECTION
+@dataclass(frozen=True)
+class _PublicEventCandidate:
+    factor: TodayFactor
+    human_title: str
+    technical_title: str | None
+    kind: Literal["exact", "starts", "peak", "building", "separating"]
+    occurs_at: datetime | None
+    precision: Literal["minute", "date", "window"]
+    precision_rank: int
+    valence_rank: int
+    strength: float
+
+
+def _evaluate_candidate(
+    factor: TodayFactor,
+    local_start_utc: datetime,
+    local_end_utc: datetime,
+) -> _PublicEventCandidate | None:
+    # Title eligibility check (§3.1 п.5)
+    human_t, tech_t = _format_event_titles(factor)
+    if check_public_title_eligibility(human_t) is not None:
+        return None
+
+    # Determine kind
+    kind: Literal["exact", "starts", "peak", "building", "separating"] = "peak"
+    if factor.exact_at and (local_start_utc <= factor.exact_at < local_end_utc):
+        kind = "exact"
+    elif factor.active_from and (local_start_utc <= factor.active_from < local_end_utc):
+        kind = "starts"
+    elif factor.phase == "building":
+        kind = "building"
+    elif factor.phase == "separating":
+        kind = "separating"
+    elif factor.temporal_role == "anchor_today":
+        kind = "peak"
+
+    occurs_at = factor.exact_at or factor.active_from
+
+    # For exact/starts/peak: must fall inside local day interval [local_start_utc, local_end_utc) (§3.1 п.3)
+    if kind in ("exact", "starts", "peak") and occurs_at is not None:
+        if not (local_start_utc <= occurs_at < local_end_utc):
+            return None
+
+    precision: Literal["minute", "date", "window"] = "minute" if factor.exact_at else "date"
+
+    # precision_rank: exact_today (3) -> starts_today (2) -> delta_peak (1) -> 0 (§3.3)
+    precision_rank = 0
+    if kind == "exact":
+        precision_rank = 3
+    elif kind == "starts":
+        precision_rank = 2
+    elif kind == "peak":
+        precision_rank = 1
+
+    # valenced_factor (supportive|tense|mixed) = 1, neutral = 0 (§3.3)
+    valence_rank = 1 if factor.polarity in ("supportive", "tense", "mixed") else 0
+
+    return _PublicEventCandidate(
+        factor=factor,
+        human_title=human_t,
+        technical_title=tech_t,
+        kind=kind,
+        occurs_at=occurs_at,
+        precision=precision,
+        precision_rank=precision_rank,
+        valence_rank=valence_rank,
+        strength=factor.strength,
+    )
+
+
+def _candidate_is_better(c1: _PublicEventCandidate, c2: _PublicEventCandidate) -> bool:
+    # Lexicographical comparison per §3.3
+    # 1. precision_rank (higher is better)
+    if c1.precision_rank != c2.precision_rank:
+        return c1.precision_rank > c2.precision_rank
+    # 2. valenced factor > neutral (higher is better)
+    if c1.valence_rank != c2.valence_rank:
+        return c1.valence_rank > c2.valence_rank
+    # 3. strength DESC (higher is better)
+    if abs(c1.strength - c2.strength) > 1e-9:
+        return c1.strength > c2.strength
+    # 4. occurs_at ASC (earlier is better, nulls last)
+    if c1.occurs_at != c2.occurs_at:
+        if c1.occurs_at is None:
+            return False
+        if c2.occurs_at is None:
+            return True
+        return c1.occurs_at < c2.occurs_at
+    # 5. factor_id ASC (smaller string is better)
+    return c1.factor.factor_id < c2.factor.factor_id
+
+
+def _cmp_candidates(c1: _PublicEventCandidate, c2: _PublicEventCandidate) -> int:
+    if _candidate_is_better(c1, c2):
+        return -1
+    if _candidate_is_better(c2, c1):
+        return 1
+    return 0
+
+
+def select_public_events(
+    state: str,
+    winning_factors: list[TodayFactor] | None,
+    all_anchors: list[TodayFactor],
+    local_start_utc: datetime,
+    local_end_utc: datetime,
+    target_date: date,
+    tz_name: str,
+) -> list[TodayFocusEventResult]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-FOCUS-BUILDER.select_public_events
+    # purpose: Deterministically select 0..3 public events based on candidate pool, reserved winning anchor, priority ranking, and display sorting (§3 amendment).
+    # inputs: state (str), winning_factors (list[TodayFactor] | None), all_anchors (list[TodayFactor]), local_start_utc (datetime), local_end_utc (datetime), target_date (date), tz_name (str)
+    # returns: list[TodayFocusEventResult]
+    # side_effects: none
+    # emitted_logs: none
+    # error_behavior: skips non-eligible candidates
+    # END_FUNCTION_CONTRACT: F-M-TODAY-FOCUS-BUILDER.select_public_events
+    if state not in ("convergence_today", "single_impulses"):
+        return []
+
+    selected_candidates: list[_PublicEventCandidate] = []
+    selected_factor_ids: set[str] = set()
+
+    # 1. Reserved Winner Anchor (§3.2) for convergence_today
+    if state == "convergence_today" and winning_factors:
+        winning_anchors = [f for f in winning_factors if f.temporal_role == "anchor_today"]
+        winning_anchors.sort(key=lambda f: (-f.strength, f.factor_id))
+
+        reserved_cand = None
+        for anchor in winning_anchors:
+            cand = _evaluate_candidate(anchor, local_start_utc, local_end_utc)
+            if cand is not None:
+                reserved_cand = cand
+                break
+
+        if reserved_cand is not None:
+            selected_candidates.append(reserved_cand)
+            selected_factor_ids.add(reserved_cand.factor.factor_id)
+
+    # 2. Remaining slots (§3.3) from all anchors
+    remaining_candidates: list[_PublicEventCandidate] = []
+    seen_ids: set[str] = set()
+
+    for anchor in all_anchors:
+        if anchor.factor_id in selected_factor_ids or anchor.factor_id in seen_ids:
+            continue
+        cand = _evaluate_candidate(anchor, local_start_utc, local_end_utc)
+        if cand is not None:
+            remaining_candidates.append(cand)
+            seen_ids.add(anchor.factor_id)
+
+    remaining_candidates.sort(key=cmp_to_key(_cmp_candidates))
+
+    needed = 3 - len(selected_candidates)
+    if needed > 0:
+        selected_candidates.extend(remaining_candidates[:needed])
+
+    # 3. Display sorting (§3.4): (occurs_at is null) ASC, occurs_at ASC, id ASC
+    def _display_sort_key(c: _PublicEventCandidate) -> tuple[int, datetime | float, str]:
+        ev_id = f"ev:{c.factor.factor_id}"
+        if c.occurs_at is None:
+            return (1, float("inf"), ev_id)
+        return (0, c.occurs_at, ev_id)
+
+    selected_candidates.sort(key=_display_sort_key)
+
+    # Build TodayFocusEventResult instances
+    result_events: list[TodayFocusEventResult] = []
+    for c in selected_candidates:
+        result_events.append(
+            TodayFocusEventResult(
+                id=f"ev:{c.factor.factor_id}",
+                kind=c.kind,
+                occurs_at=c.occurs_at,
+                local_date=target_date,
+                timezone=tz_name,
+                precision=c.precision,
+                human_title=c.human_title,
+                technical_title=c.technical_title,
+                meaning=None,
+                source_activation_ids=c.factor.activation_ids,
+            )
+        )
+
+    return result_events
+# END_BLOCK: PUBLIC_EVENT_SELECTION
+
+
 # START_BLOCK: FOCUS_ASSEMBLY
 @dataclass(frozen=True)
 class TodayFocusEventResult:
@@ -630,21 +821,22 @@ def build_today_focus(
         all_act_ids = tuple(sorted({act_id for f in winning_factors for act_id in f.activation_ids}))
         all_families = tuple(sorted({f.technique_family for f in winning_factors}))
 
-        # Build events (0..3): public events are today's anchors across ALL
-        # groups, ranked by the group's rank position — the winning group's
-        # anchors first, then anchors of other groups. Supporting/background
-        # factors never become events.
-        anchor_pool: list[tuple[int, TodayFactor]] = []
-        for g_rank, g in enumerate(candidate_groups):
-            for f in g["factors"]:
-                if f.temporal_role == "anchor_today":
-                    anchor_pool.append((g_rank, f))
-        anchor_pool.sort(key=lambda gf: (gf[0], gf[1].exact_at or gf[1].active_from or local_start_utc, gf[1].factor_id))
-        event_factors = [f for _, f in anchor_pool[:3]]
+        # Build events (0..3) using normative public event selection (§3)
+        events = tuple(
+            select_public_events(
+                state="convergence_today",
+                winning_factors=winning_factors,
+                all_anchors=anchors,
+                local_start_utc=local_start_utc,
+                local_end_utc=local_end_utc,
+                target_date=target_date,
+                tz_name=tz_name,
+            )
+        )
 
         # Non-event factors of the winning group feed the technical disclosure
         # with deterministic human titles and their temporal role.
-        event_factor_ids = {f.factor_id for f in event_factors}
+        event_factor_ids = {e.id.removeprefix("ev:") for e in events}
         role_order = {"anchor_today": 0, "supporting": 1, "background": 2, "unrelated": 3}
         remaining = [f for f in winning_factors if f.factor_id not in event_factor_ids]
         remaining.sort(key=lambda f: (role_order.get(f.temporal_role, 3), -f.strength, f.factor_id))
@@ -672,41 +864,6 @@ def build_today_focus(
             source_activation_ids=all_act_ids,
             background_factors=background_factors,
         )
-
-        events_list: list[TodayFocusEventResult] = []
-        for f in event_factors[:3]:
-            human_t, tech_t = _format_event_titles(f)
-
-            kind: Literal["exact", "starts", "peak", "building", "separating"] = "exact"
-            if f.exact_at and (local_start_utc <= f.exact_at < local_end_utc):
-                kind = "exact"
-            elif f.active_from and (local_start_utc <= f.active_from < local_end_utc):
-                kind = "starts"
-            elif f.phase == "building":
-                kind = "building"
-            elif f.phase == "separating":
-                kind = "separating"
-            elif f.temporal_role == "anchor_today":
-                kind = "peak"
-
-            occurs_at = f.exact_at or f.active_from
-            precision: Literal["minute", "date", "window"] = "minute" if f.exact_at else "date"
-
-            ev_res = TodayFocusEventResult(
-                id=f"ev:{f.factor_id}",
-                kind=kind,
-                occurs_at=occurs_at,
-                local_date=target_date,
-                timezone=tz_name,
-                precision=precision,
-                human_title=human_t,
-                technical_title=tech_t,
-                meaning=None,  # LLM-owned in W4-C
-                source_activation_ids=f.activation_ids,
-            )
-            events_list.append(ev_res)
-
-        events = tuple(events_list)
 
         # Build featured spheres (0..3) from winning group factors (§4.5)
         spheres_in_group = set()
@@ -762,29 +919,21 @@ def build_today_focus(
         )
 
     elif anchors:
-        events_list = []
-        for f in anchors[:3]:
-            human_t, tech_t = _format_event_titles(f)
-            occurs_at = f.exact_at or f.active_from
-            precision = "minute" if f.exact_at else "date"
-            events_list.append(
-                TodayFocusEventResult(
-                    id=f"ev:{f.factor_id}",
-                    kind="exact" if f.exact_at else "peak",
-                    occurs_at=occurs_at,
-                    local_date=target_date,
-                    timezone=tz_name,
-                    precision=precision,
-                    human_title=human_t,
-                    technical_title=tech_t,
-                    meaning=None,
-                    source_activation_ids=f.activation_ids,
-                )
+        events = tuple(
+            select_public_events(
+                state="single_impulses",
+                winning_factors=None,
+                all_anchors=anchors,
+                local_start_utc=local_start_utc,
+                local_end_utc=local_end_utc,
+                target_date=target_date,
+                tz_name=tz_name,
             )
+        )
         return TodayFocusResult(
             state="single_impulses",
             convergence=None,
-            events=tuple(events_list),
+            events=events,
             featured_spheres=(),
             content_state="not_needed",
         )

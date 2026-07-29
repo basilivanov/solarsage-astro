@@ -98,10 +98,21 @@ def main() -> None:
     breakdown = audit.get("dayStatusBreakdown")
     rel = d.get("relativeStatus")
     meta = d.get("meta") or {}
+    focus = d.get("focus") or {}
 
     print(f"== DAY {args.date} ==")
-    print(f"versions: scoring={audit.get('scoringVersion')} payload={meta.get('payloadVersion')} valence={audit.get('valenceVersion')}")
+    print(f"versions: scoring={audit.get('scoringVersion')} payload={meta.get('payloadVersion')} valence={audit.get('valenceVersion')} content={meta.get('contentVersion')}")
     print(f"dayStatus: {d.get('dayStatus')}")
+    if focus:
+        conv = focus.get("convergence") or {}
+        events = focus.get("events") or []
+        print(f"focus: state={focus.get('state')} contentState={focus.get('contentState')} convTheme={conv.get('themeKey')} convFactors={conv.get('independentFactorCount')}")
+        print(f"focus events ({len(events)}):")
+        for ev in events:
+            occurs = ev.get("occursAt") or ev.get("occurs_at") or "null"
+            print(f"  - {ev.get('id'):35s} kind={ev.get('kind'):6s} time={occurs} title={ev.get('humanTitle')!r}")
+    else:
+        print("focus: MISSING")
     if breakdown:
         print(
             "breakdown: support={supportScore:.3f} tension={tensionScore:.3f} rule={rule} "
@@ -184,6 +195,24 @@ def main() -> None:
 
     if not meta.get("payloadVersion"):
         problems.append("meta.payloadVersion missing")
+
+    # Sanitized Focus invariants (§6.2, §8.2 amendment)
+    if not focus:
+        problems.append("focus section missing")
+    else:
+        st = focus.get("state")
+        cst = focus.get("contentState")
+        evs = focus.get("events") or []
+        if st not in ("convergence_today", "single_impulses", "background_only", "no_accent", "unavailable"):
+            problems.append(f"invalid focus.state: {st}")
+        if len(evs) > 3:
+            problems.append(f"focus.events count exceeds cap 3: {len(evs)}")
+        for ev in evs:
+            if not ev.get("id") or not str(ev.get("id")).startswith("ev:"):
+                problems.append(f"invalid focus event id format: {ev.get('id')}")
+            src_ids = ev.get("sourceActivationIds") or ev.get("source_activation_ids") or []
+            if not src_ids:
+                problems.append(f"focus event missing sourceActivationIds: {ev.get('id')}")
 
     print("\n== INVARIANTS ==")
     if problems:

@@ -19,8 +19,10 @@
 # START_MODULE_MAP: M-FOCUS-TITLE-BUILDER
 # public_entrypoints:
 #   - build_event_title
+#   - check_public_title_eligibility
 # semantic_blocks:
 #   - TITLE_BUILDER: Russian declension, aspect phrasing, house/angle/lot formatting
+#   - TITLE_ELIGIBILITY: deterministic check for public title eligibility
 # owned_tests:
 #   - tests/test_today_focus_title_builder.py
 # END_MODULE_MAP: M-FOCUS-TITLE-BUILDER
@@ -215,3 +217,27 @@ def build_event_title(factor: Any) -> tuple[str, str | None]:
     human = f"{src_nom} {tgt_nom}".strip() or factor_id
     return human, human
 # END_BLOCK: TITLE_BUILDER
+
+
+# START_BLOCK: TITLE_ELIGIBILITY
+def check_public_title_eligibility(human_title: str | None) -> str | None:
+    # START_FUNCTION_CONTRACT: F-M-FOCUS-TITLE-BUILDER.check_public_title_eligibility
+    # purpose: Check deterministic eligibility of human title for public event selection (amendment §3.1 п.5).
+    # inputs: human_title (str | None)
+    # returns: reason_code (str) if ineligible, or None if eligible
+    # side_effects: none
+    # emitted_logs: none
+    # error_behavior: returns reason code on missing or invalid title
+    # END_FUNCTION_CONTRACT: F-M-FOCUS-TITLE-BUILDER.check_public_title_eligibility
+    if not human_title or not human_title.strip():
+        return "empty_title"
+
+    if any(prefix in human_title for prefix in ("Transit_", "Natal_", "transit_", "natal_")):
+        return "machine_key"
+
+    import re
+    if re.search(r"\b[A-Z][A-Z0-9_]{2,}\b", human_title):
+        return "machine_key"
+
+    return None
+# END_BLOCK: TITLE_ELIGIBILITY
