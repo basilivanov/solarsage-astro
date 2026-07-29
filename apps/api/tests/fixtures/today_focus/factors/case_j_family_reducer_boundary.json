@@ -1,0 +1,156 @@
+{
+  "caseId": "family-reducer-boundary-j",
+  "decisionRequired": true,
+  "expected": {
+    "contentState": "not_needed",
+    "convergence": {
+      "id": "conv:act:t2n__MARS__SQUARE__PLUTO",
+      "independentFactorCount": 4,
+      "themeKey": "PLUTO"
+    },
+    "events": [
+      {
+        "id": "ev:act:t2n__MARS__SQUARE__PLUTO",
+        "kind": "exact",
+        "occursAt": "2026-07-28T10:00:00Z",
+        "sourceActivationIds": [
+          "t2n__MARS__SQUARE__PLUTO"
+        ]
+      },
+      {
+        "id": "ev:act:t2n__SUN__SQUARE__PLUTO",
+        "kind": "exact",
+        "occursAt": "2026-07-28T10:10:00Z",
+        "sourceActivationIds": [
+          "t2n__SUN__SQUARE__PLUTO"
+        ]
+      },
+      {
+        "id": "ev:act:t2n__MERCURY__SQUARE__PLUTO",
+        "kind": "exact",
+        "occursAt": "2026-07-28T10:20:00Z",
+        "sourceActivationIds": [
+          "t2n__MERCURY__SQUARE__PLUTO"
+        ]
+      }
+    ],
+    "featuredSpheres": [
+      {
+        "key": "work",
+        "relevanceRank": 1,
+        "state": "convergence_today"
+      }
+    ],
+    "state": "convergence_today"
+  },
+  "factors": [
+    {
+      "activationIds": [
+        "t2n__MARS__SQUARE__PLUTO"
+      ],
+      "activeFrom": "2026-07-28T08:00:00Z",
+      "activeUntil": "2026-07-28T12:00:00Z",
+      "aspectType": "square",
+      "exactAt": "2026-07-28T10:00:00Z",
+      "factorId": "act:t2n__MARS__SQUARE__PLUTO",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.5,
+      "sourceKey": "MARS",
+      "strength": 0.5,
+      "targetKey": "PLUTO",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "PLUTO"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__SUN__SQUARE__PLUTO"
+      ],
+      "activeFrom": "2026-07-28T08:00:00Z",
+      "activeUntil": "2026-07-28T12:00:00Z",
+      "aspectType": "square",
+      "exactAt": "2026-07-28T10:10:00Z",
+      "factorId": "act:t2n__SUN__SQUARE__PLUTO",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.5,
+      "sourceKey": "SUN",
+      "strength": 0.5,
+      "targetKey": "PLUTO",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "PLUTO"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__MERCURY__SQUARE__PLUTO"
+      ],
+      "activeFrom": "2026-07-28T08:00:00Z",
+      "activeUntil": "2026-07-28T12:00:00Z",
+      "aspectType": "square",
+      "exactAt": "2026-07-28T10:20:00Z",
+      "factorId": "act:t2n__MERCURY__SQUARE__PLUTO",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.5,
+      "sourceKey": "MERCURY",
+      "strength": 0.5,
+      "targetKey": "PLUTO",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "PLUTO"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__VENUS__SQUARE__PLUTO"
+      ],
+      "activeFrom": "2026-07-28T08:00:00Z",
+      "activeUntil": "2026-07-28T12:00:00Z",
+      "aspectType": "square",
+      "exactAt": "2026-07-28T10:30:00Z",
+      "factorId": "act:t2n__VENUS__SQUARE__PLUTO",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.5,
+      "sourceKey": "VENUS",
+      "strength": 0.5,
+      "targetKey": "PLUTO",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "PLUTO"
+      ]
+    }
+  ],
+  "fixtureVersion": "today-focus-factor.v1",
+  "targetDate": "2026-07-28",
+  "timezone": "Europe/Moscow",
+  "valenceAssessments": {}
+}

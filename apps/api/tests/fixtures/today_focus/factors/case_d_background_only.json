@@ -1,0 +1,42 @@
+{
+  "caseId": "background-only-d",
+  "expected": {
+    "contentState": "not_needed",
+    "convergence": null,
+    "events": [],
+    "featuredSpheres": [],
+    "state": "background_only"
+  },
+  "factors": [
+    {
+      "activationIds": [
+        "firdar_sun"
+      ],
+      "activeFrom": "2026-01-01T00:00:00Z",
+      "activeUntil": "2027-01-01T00:00:00Z",
+      "aspectType": null,
+      "exactAt": null,
+      "factorId": "act:firdar:sun",
+      "phase": null,
+      "polarity": "supportive",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.7,
+      "sourceKey": "SUN",
+      "strength": 0.7,
+      "targetKey": "SUN",
+      "targetType": "natal_planet",
+      "technique": "firdar",
+      "techniqueFamily": "firdar",
+      "temporalRole": "background",
+      "themeKeys": [
+        "SUN"
+      ]
+    }
+  ],
+  "fixtureVersion": "today-focus-factor.v1",
+  "targetDate": "2026-07-28",
+  "timezone": "Europe/Moscow",
+  "valenceAssessments": {}
+}

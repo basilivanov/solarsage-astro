@@ -1,0 +1,123 @@
+{
+  "caseId": "convergence-20260729-b",
+  "expected": {
+    "contentState": "not_needed",
+    "convergence": {
+      "id": "conv:act:t2n__MOON__SQUARE__SUN",
+      "independentFactorCount": 2,
+      "themeKey": "SUN"
+    },
+    "events": [
+      {
+        "id": "ev:act:t2n__MOON__SQUARE__SUN",
+        "kind": "exact",
+        "occursAt": "2026-07-29T16:24:00Z",
+        "sourceActivationIds": [
+          "t2n__MOON__SQUARE__SUN"
+        ]
+      },
+      {
+        "id": "ev:act:t2n__MOON__OPPOSITION__MOON",
+        "kind": "exact",
+        "occursAt": "2026-07-29T16:40:00Z",
+        "sourceActivationIds": [
+          "t2n__MOON__OPPOSITION__MOON"
+        ]
+      }
+    ],
+    "featuredSpheres": [
+      {
+        "key": "work",
+        "relevanceRank": 1,
+        "state": "convergence_today"
+      }
+    ],
+    "state": "convergence_today"
+  },
+  "factors": [
+    {
+      "activationIds": [
+        "t2n__MOON__SQUARE__SUN"
+      ],
+      "activeFrom": "2026-07-29T14:00:00Z",
+      "activeUntil": "2026-07-29T18:00:00Z",
+      "aspectType": "square",
+      "exactAt": "2026-07-29T16:24:00Z",
+      "factorId": "act:t2n__MOON__SQUARE__SUN",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work",
+        "decisions"
+      ],
+      "salience": 0.85,
+      "sourceKey": "MOON",
+      "strength": 0.85,
+      "targetKey": "SUN",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "SUN"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__MOON__OPPOSITION__MOON"
+      ],
+      "activeFrom": "2026-07-29T15:00:00Z",
+      "activeUntil": "2026-07-29T19:00:00Z",
+      "aspectType": "opposition",
+      "exactAt": "2026-07-29T16:40:00Z",
+      "factorId": "act:t2n__MOON__OPPOSITION__MOON",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work",
+        "relationships"
+      ],
+      "salience": 0.8,
+      "sourceKey": "MOON",
+      "strength": 0.8,
+      "targetKey": "SUN",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "SUN"
+      ]
+    },
+    {
+      "activationIds": [
+        "firdar_sun"
+      ],
+      "activeFrom": "2026-01-01T00:00:00Z",
+      "activeUntil": "2027-01-01T00:00:00Z",
+      "aspectType": null,
+      "exactAt": null,
+      "factorId": "act:firdar:sun",
+      "phase": null,
+      "polarity": "supportive",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.7,
+      "sourceKey": "SUN",
+      "strength": 0.7,
+      "targetKey": "SUN",
+      "targetType": "natal_planet",
+      "technique": "firdar",
+      "techniqueFamily": "firdar",
+      "temporalRole": "background",
+      "themeKeys": [
+        "SUN"
+      ]
+    }
+  ],
+  "fixtureVersion": "today-focus-factor.v1",
+  "targetDate": "2026-07-29",
+  "timezone": "Europe/Moscow",
+  "valenceAssessments": {}
+}

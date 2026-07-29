@@ -35,6 +35,7 @@ import subprocess
 import sys
 import urllib.request
 from collections import Counter
+from pathlib import Path
 
 BANNED_JARGON = ("транзит", "аспект", "орб", "натал", "планет", "профекц", "фирдар")
 
@@ -89,7 +90,8 @@ def main() -> None:
     parser.add_argument("--date", required=True)
     parser.add_argument("--api", default="http://127.0.0.1:8000")
     parser.add_argument("--expect-valence", action="store_true", default=True)
-    parser.add_argument("--freeze", default=None, help="write sanitized payload JSON to this path")
+    parser.add_argument("--freeze", default=None, help="full payload regression fixture (NOT sanitized, not for W4 canary)")
+    parser.add_argument("--freeze-focus", default=None, help="write sanitized focus-only fixture JSON to this path (doc 30 §7)")
     args = parser.parse_args()
 
     d = fetch_day(args.api, args.tg_id, args.username, args.date)
@@ -226,7 +228,57 @@ def main() -> None:
     if args.freeze:
         with open(args.freeze, "w") as fh:
             json.dump(d, fh, ensure_ascii=False, indent=1)
-        print(f"frozen -> {args.freeze}")
+        print(f"frozen full payload -> {args.freeze}")
+
+    if args.freeze_focus:
+        # doc 30 §7 safe exporter contract: allowlisted focus-only output,
+        # recursive privacy denylist scan (refuse on hit), deterministic
+        # sorted keys, atomic write, non-zero exit on privacy failure.
+        sanitized = {
+            "caseId": f"sanitized-{args.date}",
+            "fixtureVersion": "today-focus-public.v1",
+            "meta": {
+                "contentVersion": meta.get("contentVersion"),
+                "payloadVersion": meta.get("payloadVersion"),
+            },
+            "focus": focus,
+        }
+        privacy_hits = _check_focus_privacy(sanitized)
+        if privacy_hits:
+            for hit in privacy_hits:
+                print(f"PRIVACY FAIL: {hit}", file=sys.stderr)
+            print("refusing to write --freeze-focus output", file=sys.stderr)
+            sys.exit(2)
+        out_path = Path(args.freeze_focus)
+        tmp_path = out_path.with_suffix(out_path.suffix + ".tmp")
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            json.dump(sanitized, fh, ensure_ascii=False, indent=2, sort_keys=True)
+            fh.write("\n")
+        tmp_path.replace(out_path)
+        print(f"frozen sanitized focus -> {args.freeze_focus}")
+
+
+# Keep in sync with scripts/contracts/normalize_today_focus_fixture.py PRIVACY_DENYLIST
+_FOCUS_PRIVACY_DENYLIST = [
+    "tg", "telegram", "username", "userid", "user_id", "uuid",
+    "birthday", "coordinates", "initdata", "cookie", "token",
+    "profile", "prompt", "response",
+]
+
+
+def _check_focus_privacy(obj: object, path_str: str = "$") -> list[str]:
+    hits: list[str] = []
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            lowered = str(key).lower()
+            for banned in _FOCUS_PRIVACY_DENYLIST:
+                if banned in lowered:
+                    hits.append(f"key '{key}' matches banned word '{banned}' in {path_str}")
+            hits.extend(_check_focus_privacy(value, f"{path_str}.{key}"))
+    elif isinstance(obj, list):
+        for idx, item in enumerate(obj):
+            hits.extend(_check_focus_privacy(item, f"{path_str}[{idx}]"))
+    return hits
 
 
 if __name__ == "__main__":

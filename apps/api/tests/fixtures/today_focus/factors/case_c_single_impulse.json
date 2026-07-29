@@ -1,0 +1,52 @@
+{
+  "caseId": "single-impulse-c",
+  "expected": {
+    "contentState": "not_needed",
+    "convergence": null,
+    "events": [
+      {
+        "id": "ev:act:t2n__MARS__OPPOSITION__NEPTUNE",
+        "kind": "exact",
+        "occursAt": "2026-07-28T16:52:00Z",
+        "sourceActivationIds": [
+          "t2n__MARS__OPPOSITION__NEPTUNE"
+        ]
+      }
+    ],
+    "featuredSpheres": [],
+    "state": "single_impulses"
+  },
+  "factors": [
+    {
+      "activationIds": [
+        "t2n__MARS__OPPOSITION__NEPTUNE"
+      ],
+      "activeFrom": "2026-07-28T12:00:00Z",
+      "activeUntil": "2026-07-28T20:00:00Z",
+      "aspectType": "opposition",
+      "exactAt": "2026-07-28T16:52:00Z",
+      "factorId": "act:t2n__MARS__OPPOSITION__NEPTUNE",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work",
+        "decisions"
+      ],
+      "salience": 0.9076,
+      "sourceKey": "MARS",
+      "strength": 0.9076,
+      "targetKey": "NEPTUNE",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "NEPTUNE"
+      ]
+    }
+  ],
+  "fixtureVersion": "today-focus-factor.v1",
+  "targetDate": "2026-07-28",
+  "timezone": "Europe/Moscow",
+  "valenceAssessments": {}
+}

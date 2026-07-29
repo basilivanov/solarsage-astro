@@ -1,0 +1,15 @@
+{
+  "caseId": "no-accent-e",
+  "expected": {
+    "contentState": "not_needed",
+    "convergence": null,
+    "events": [],
+    "featuredSpheres": [],
+    "state": "no_accent"
+  },
+  "factors": [],
+  "fixtureVersion": "today-focus-factor.v1",
+  "targetDate": "2026-07-28",
+  "timezone": "Europe/Moscow",
+  "valenceAssessments": {}
+}

@@ -1,0 +1,39 @@
+{
+  "caseId": "llm-unavailable-g",
+  "fixtureVersion": "today-focus-public.v1",
+  "focus": {
+    "contentState": "unavailable",
+    "convergence": {
+      "id": "conv:act:t2n__MARS__OPPOSITION__NEPTUNE",
+      "independentFactorCount": 2,
+      "summary": null,
+      "techniqueFamilies": [
+        "transit"
+      ],
+      "themeKey": "NEPTUNE",
+      "title": "Что сошлось именно сегодня"
+    },
+    "events": [
+      {
+        "humanTitle": "Марс напротив твоего Нептуна",
+        "id": "ev:act:t2n__MARS__OPPOSITION__NEPTUNE",
+        "kind": "exact",
+        "localDate": "2026-07-28",
+        "meaning": null,
+        "occursAt": "2026-07-28T16:52:00Z",
+        "precision": "minute",
+        "sourceActivationIds": [
+          "t2n__MARS__OPPOSITION__NEPTUNE"
+        ],
+        "technicalTitle": "Марс оппозиция Нептун",
+        "timezone": "Europe/Moscow"
+      }
+    ],
+    "featuredSpheres": [],
+    "state": "convergence_today"
+  },
+  "meta": {
+    "contentVersion": 12,
+    "payloadVersion": "today.v2.2"
+  }
+}

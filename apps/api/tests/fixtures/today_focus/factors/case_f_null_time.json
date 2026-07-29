@@ -1,0 +1,85 @@
+{
+  "caseId": "null-time-f",
+  "expected": {
+    "contentState": "not_needed",
+    "convergence": null,
+    "events": [
+      {
+        "id": "ev:act:t2n__MARS__OPPOSITION__NEPTUNE",
+        "kind": "exact",
+        "occursAt": "2026-07-28T16:52:00Z",
+        "sourceActivationIds": [
+          "t2n__MARS__OPPOSITION__NEPTUNE"
+        ]
+      },
+      {
+        "id": "ev:act:untimed_peak",
+        "kind": "building",
+        "occursAt": null,
+        "sourceActivationIds": [
+          "untimed_peak"
+        ]
+      }
+    ],
+    "featuredSpheres": [],
+    "state": "single_impulses"
+  },
+  "factors": [
+    {
+      "activationIds": [
+        "t2n__MARS__OPPOSITION__NEPTUNE"
+      ],
+      "activeFrom": "2026-07-28T12:00:00Z",
+      "activeUntil": "2026-07-28T20:00:00Z",
+      "aspectType": "opposition",
+      "exactAt": "2026-07-28T16:52:00Z",
+      "factorId": "act:t2n__MARS__OPPOSITION__NEPTUNE",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.8,
+      "sourceKey": "MARS",
+      "strength": 0.8,
+      "targetKey": "NEPTUNE",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "NEPTUNE"
+      ]
+    },
+    {
+      "activationIds": [
+        "untimed_peak"
+      ],
+      "activeFrom": null,
+      "activeUntil": null,
+      "aspectType": "trine",
+      "exactAt": null,
+      "factorId": "act:untimed_peak",
+      "phase": "building",
+      "polarity": "supportive",
+      "productSpheres": [
+        "creativity"
+      ],
+      "salience": 0.95,
+      "sourceKey": "VENUS",
+      "strength": 0.95,
+      "targetKey": "JUPITER",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "JUPITER"
+      ]
+    }
+  ],
+  "fixtureVersion": "today-focus-factor.v1",
+  "targetDate": "2026-07-28",
+  "timezone": "Europe/Moscow",
+  "valenceAssessments": {}
+}

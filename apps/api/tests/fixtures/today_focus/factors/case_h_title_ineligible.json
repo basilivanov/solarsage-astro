@@ -1,0 +1,77 @@
+{
+  "caseId": "title-ineligible-h",
+  "expected": {
+    "contentState": "not_needed",
+    "convergence": null,
+    "events": [
+      {
+        "id": "ev:act:t2n__MOON__SQUARE__PLUTO",
+        "kind": "exact",
+        "occursAt": "2026-07-28T10:31:00Z",
+        "sourceActivationIds": [
+          "t2n__MOON__SQUARE__PLUTO"
+        ]
+      }
+    ],
+    "featuredSpheres": [],
+    "state": "single_impulses"
+  },
+  "factors": [
+    {
+      "activationIds": [
+        "t2n__MOON__SQUARE__NECESSITY"
+      ],
+      "activeFrom": "2026-07-28T08:00:00Z",
+      "activeUntil": "2026-07-28T12:00:00Z",
+      "aspectType": null,
+      "exactAt": "2026-07-28T10:00:00Z",
+      "factorId": "act:t2n__MOON__SQUARE__NECESSITY",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.99,
+      "sourceKey": "MOON",
+      "strength": 0.99,
+      "targetKey": "NECESSITY",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "NECESSITY"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__MOON__SQUARE__PLUTO"
+      ],
+      "activeFrom": "2026-07-28T08:00:00Z",
+      "activeUntil": "2026-07-28T13:00:00Z",
+      "aspectType": "square",
+      "exactAt": "2026-07-28T10:31:00Z",
+      "factorId": "act:t2n__MOON__SQUARE__PLUTO",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.72,
+      "sourceKey": "MOON",
+      "strength": 0.72,
+      "targetKey": "PLUTO",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "PLUTO"
+      ]
+    }
+  ],
+  "fixtureVersion": "today-focus-factor.v1",
+  "targetDate": "2026-07-28",
+  "timezone": "Europe/Moscow",
+  "valenceAssessments": {}
+}

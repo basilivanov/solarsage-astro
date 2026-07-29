@@ -1,0 +1,88 @@
+{
+  "caseId": "convergence-20260728-a",
+  "fixtureVersion": "today-focus-public.v1",
+  "focus": {
+    "contentState": "ready",
+    "convergence": {
+      "id": "conv:act:t2n__MOON__SQUARE__PLUTO",
+      "independentFactorCount": 2,
+      "sourceActivationIds": [
+        "t2n__MOON__SQUARE__PLUTO",
+        "t2n__MARS__TRINE__PLUTO",
+        "lunar_return__ANGULAR_PLANET__PLUTO__HOUSE_4",
+        "solar_return__ANGULAR_PLANET__PLUTO__HOUSE_10"
+      ],
+      "summary": "Synthetic test-only summary for Pluto convergence.",
+      "techniqueFamilies": [
+        "transit"
+      ],
+      "themeKey": "PLUTO",
+      "title": "Что сошлось именно сегодня"
+    },
+    "events": [
+      {
+        "humanTitle": "Луна в напряжении с твоим Плутоном",
+        "id": "ev:act:t2n__MOON__SQUARE__PLUTO",
+        "kind": "exact",
+        "localDate": "2026-07-28",
+        "meaning": "Synthetic test-only meaning for Moon-Pluto.",
+        "occursAt": "2026-07-28T10:31:00Z",
+        "precision": "minute",
+        "sourceActivationIds": [
+          "t2n__MOON__SQUARE__PLUTO"
+        ],
+        "technicalTitle": "Луна квадратура Плутон",
+        "timezone": "Europe/Moscow"
+      },
+      {
+        "humanTitle": "Луна в гармонии с твоим Ураном",
+        "id": "ev:act:t2n__MOON__SEXTILE__URANUS",
+        "kind": "exact",
+        "localDate": "2026-07-28",
+        "meaning": "Synthetic test-only meaning for Moon-Uranus.",
+        "occursAt": "2026-07-28T15:19:00Z",
+        "precision": "minute",
+        "sourceActivationIds": [
+          "t2n__MOON__SEXTILE__URANUS"
+        ],
+        "technicalTitle": "Луна секстиль Уран",
+        "timezone": "Europe/Moscow"
+      },
+      {
+        "humanTitle": "Марс напротив твоего Нептуна",
+        "id": "ev:act:t2n__MARS__OPPOSITION__NEPTUNE",
+        "kind": "exact",
+        "localDate": "2026-07-28",
+        "meaning": "Synthetic test-only meaning for Mars-Neptune.",
+        "occursAt": "2026-07-28T16:52:00Z",
+        "precision": "minute",
+        "sourceActivationIds": [
+          "t2n__MARS__OPPOSITION__NEPTUNE"
+        ],
+        "technicalTitle": "Марс оппозиция Нептун",
+        "timezone": "Europe/Moscow"
+      }
+    ],
+    "featuredSpheres": [
+      {
+        "action": "Synthetic action for work.",
+        "convergenceId": "conv:act:t2n__MOON__SQUARE__PLUTO",
+        "key": "work",
+        "relevanceRank": 1,
+        "sourceActivationIds": [
+          "t2n__MOON__SQUARE__PLUTO"
+        ],
+        "sourceEventIds": [
+          "ev:act:t2n__MOON__SQUARE__PLUTO"
+        ],
+        "state": "convergence_today",
+        "summary": "Synthetic summary for work."
+      }
+    ],
+    "state": "convergence_today"
+  },
+  "meta": {
+    "contentVersion": 12,
+    "payloadVersion": "today.v2.2"
+  }
+}

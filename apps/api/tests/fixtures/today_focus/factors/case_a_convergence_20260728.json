@@ -1,0 +1,216 @@
+{
+  "caseId": "convergence-20260728-a",
+  "expected": {
+    "contentState": "not_needed",
+    "convergence": {
+      "id": "conv:act:t2n__MOON__SQUARE__PLUTO",
+      "independentFactorCount": 2,
+      "themeKey": "PLUTO"
+    },
+    "events": [
+      {
+        "id": "ev:act:t2n__MOON__SQUARE__PLUTO",
+        "kind": "exact",
+        "occursAt": "2026-07-28T10:31:00Z",
+        "sourceActivationIds": [
+          "t2n__MOON__SQUARE__PLUTO"
+        ]
+      },
+      {
+        "id": "ev:act:t2n__MOON__SEXTILE__URANUS",
+        "kind": "exact",
+        "occursAt": "2026-07-28T15:19:00Z",
+        "sourceActivationIds": [
+          "t2n__MOON__SEXTILE__URANUS"
+        ]
+      },
+      {
+        "id": "ev:act:t2n__MARS__OPPOSITION__NEPTUNE",
+        "kind": "exact",
+        "occursAt": "2026-07-28T16:52:00Z",
+        "sourceActivationIds": [
+          "t2n__MARS__OPPOSITION__NEPTUNE"
+        ]
+      }
+    ],
+    "featuredSpheres": [
+      {
+        "key": "work",
+        "relevanceRank": 1,
+        "state": "convergence_today"
+      },
+      {
+        "key": "decisions",
+        "relevanceRank": 2,
+        "state": "convergence_today"
+      }
+    ],
+    "state": "convergence_today"
+  },
+  "factors": [
+    {
+      "activationIds": [
+        "t2n__MOON__SQUARE__PLUTO"
+      ],
+      "activeFrom": "2026-07-28T08:00:00Z",
+      "activeUntil": "2026-07-28T13:00:00Z",
+      "aspectType": "square",
+      "exactAt": "2026-07-28T10:31:00Z",
+      "factorId": "act:t2n__MOON__SQUARE__PLUTO",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work",
+        "decisions"
+      ],
+      "salience": 0.72,
+      "sourceKey": "MOON",
+      "strength": 0.72,
+      "targetKey": "PLUTO",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "PLUTO"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__MARS__SQUARE__PLUTO"
+      ],
+      "activeFrom": "2026-07-28T00:00:00Z",
+      "activeUntil": "2026-07-29T00:00:00Z",
+      "aspectType": "square",
+      "exactAt": null,
+      "factorId": "act:t2n__MARS__SQUARE__PLUTO",
+      "phase": "building",
+      "polarity": "tense",
+      "productSpheres": [
+        "work",
+        "decisions"
+      ],
+      "salience": 0.65,
+      "sourceKey": "MARS",
+      "strength": 0.65,
+      "targetKey": "PLUTO",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "supporting",
+      "themeKeys": [
+        "PLUTO"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__MARS__OPPOSITION__NEPTUNE"
+      ],
+      "activeFrom": "2026-07-28T12:00:00Z",
+      "activeUntil": "2026-07-28T20:00:00Z",
+      "aspectType": "opposition",
+      "exactAt": "2026-07-28T16:52:00Z",
+      "factorId": "act:t2n__MARS__OPPOSITION__NEPTUNE",
+      "phase": "exact",
+      "polarity": "tense",
+      "productSpheres": [
+        "work",
+        "decisions"
+      ],
+      "salience": 0.9076,
+      "sourceKey": "MARS",
+      "strength": 0.9076,
+      "targetKey": "NEPTUNE",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "NEPTUNE"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__MOON__SEXTILE__URANUS"
+      ],
+      "activeFrom": "2026-07-28T13:00:00Z",
+      "activeUntil": "2026-07-28T17:00:00Z",
+      "aspectType": "sextile",
+      "exactAt": "2026-07-28T15:19:00Z",
+      "factorId": "act:t2n__MOON__SEXTILE__URANUS",
+      "phase": "exact",
+      "polarity": "supportive",
+      "productSpheres": [
+        "travel",
+        "decisions"
+      ],
+      "salience": 0.2005,
+      "sourceKey": "MOON",
+      "strength": 0.2005,
+      "targetKey": "URANUS",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "URANUS"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__MOON__QUINCUNX__LOT_FORTUNE"
+      ],
+      "activeFrom": "2026-07-27T21:35:00Z",
+      "activeUntil": "2026-07-27T23:00:00Z",
+      "aspectType": "quincunx",
+      "exactAt": "2026-07-27T21:35:00Z",
+      "factorId": "act:t2n__MOON__QUINCUNX__LOT_FORTUNE",
+      "phase": "exact",
+      "polarity": "neutral",
+      "productSpheres": [
+        "work"
+      ],
+      "salience": 0.1144,
+      "sourceKey": "MOON",
+      "strength": 0.1144,
+      "targetKey": "FORTUNE",
+      "targetType": "lot",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "FORTUNE"
+      ]
+    },
+    {
+      "activationIds": [
+        "t2n__MOON__SEXTILE__MERCURY"
+      ],
+      "activeFrom": "2026-07-27T21:18:00Z",
+      "activeUntil": "2026-07-27T23:00:00Z",
+      "aspectType": "sextile",
+      "exactAt": "2026-07-27T21:18:00Z",
+      "factorId": "act:t2n__MOON__SEXTILE__MERCURY",
+      "phase": "exact",
+      "polarity": "supportive",
+      "productSpheres": [
+        "communication"
+      ],
+      "salience": 0.0137,
+      "sourceKey": "MOON",
+      "strength": 0.0137,
+      "targetKey": "MERCURY",
+      "targetType": "natal_planet",
+      "technique": "transit_to_natal",
+      "techniqueFamily": "transit",
+      "temporalRole": "anchor_today",
+      "themeKeys": [
+        "MERCURY"
+      ]
+    }
+  ],
+  "fixtureVersion": "today-focus-factor.v1",
+  "targetDate": "2026-07-28",
+  "timezone": "Europe/Moscow",
+  "valenceAssessments": {}
+}

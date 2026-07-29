@@ -117,22 +117,37 @@ solarsage:
 	@echo "ERROR: 'make solarsage' is disabled here. The sidecar runs as container solarsage-sidecar in the canonical app stack (infra/production/docker-compose.app.yml, port 18091); see docs/DEPLOYMENT.md."
 	@exit 1
 
-.PHONY: audit-day audit-day-live audit-day-freeze audit-downstream-v2 audit-golden
+.PHONY: audit-day audit-day-live audit-day-freeze audit-focus-live audit-focus-freeze audit-downstream-v2 audit-golden
 
 # Prefer explicit mode targets. Bare audit-day fails fast so frozen baseline
 # is never silently treated as live production proof.
 audit-day:
 	@echo "ERROR: choose audit-day-live or audit-day-freeze explicitly."
-	@echo "  make audit-day-live  USER_ID=... DATE=YYYY-MM-DD"
-	@echo "  make audit-day-freeze USER_ID=... DATE=YYYY-MM-DD"
+	@echo "  make audit-day-live  TG_ID=... DATE=YYYY-MM-DD"
+	@echo "  make audit-day-freeze TG_ID=... DATE=YYYY-MM-DD"
 	@exit 1
 
 audit-day-live:
 	python3 scripts/audit_day_contract.py --tg-id $(or $(TG_ID),833478509) --date $(DATE) --api $(or $(API),http://127.0.0.1:8000)
 
 audit-day-freeze:
+	@echo "NOTE: audit-day-freeze exports full payload regression fixture (NOT sanitized, not for W4 canary)."
 	python3 scripts/audit_day_contract.py --tg-id $(or $(TG_ID),833478509) --date $(DATE) --api $(or $(API),http://127.0.0.1:8000) --freeze apps/api/tests/fixtures/day_valence/frozen-$(DATE).json
 	apps/api/.venv/bin/python -m pytest apps/api/tests/test_frozen_day_contract.py -q
+
+audit-focus-live:
+	@if [ -z "$(TG_ID)" ] || [ -z "$(DATE)" ]; then \
+		echo "ERROR: TG_ID and DATE are required. Usage: make audit-focus-live TG_ID=12345 DATE=2026-07-28"; \
+		exit 1; \
+	fi
+	python3 scripts/audit_day_contract.py --tg-id $(TG_ID) --date $(DATE) --api $(or $(API),http://127.0.0.1:8000)
+
+audit-focus-freeze:
+	@if [ -z "$(TG_ID)" ] || [ -z "$(DATE)" ]; then \
+		echo "ERROR: TG_ID and DATE are required. Usage: make audit-focus-freeze TG_ID=12345 DATE=2026-07-28 OUT=path/to/focus.json"; \
+		exit 1; \
+	fi
+	python3 scripts/audit_day_contract.py --tg-id $(TG_ID) --date $(DATE) --api $(or $(API),http://127.0.0.1:8000) --freeze-focus $(or $(OUT),/tmp/sanitized-focus-$(DATE).json)
 
 audit-downstream-v2:
 	apps/api/.venv/bin/python scripts/audit_downstream_v2.py --user-id $(USER_ID) --date $(DATE) --out artifacts/audit/$(DATE)/downstream
