@@ -433,6 +433,41 @@ describe("adaptTodayPayload", () => {
   // END_BLOCK: WHY_SECTIONS_TESTS
 
   // START_BLOCK: IDENTITY_TESTS
+  it("preserves focus block from API without modification or ranking fallback", () => {
+    const focusBlock = {
+      state: "convergence_today" as const,
+      convergence: {
+        id: "conv:1",
+        themeKey: "PLUTO",
+        title: "Что сошлось именно сегодня",
+        summary: "Тест",
+        independentFactorCount: 2,
+        techniqueFamilies: ["transit"],
+        sourceActivationIds: ["act-1"],
+      },
+      events: [
+        {
+          id: "ev:1",
+          kind: "exact" as const,
+          occursAt: "2026-07-28T10:31:00Z",
+          localDate: "2026-07-28",
+          timezone: "Europe/Moscow",
+          precision: "minute" as const,
+          humanTitle: "Луна в напряжении с твоим Плутоном",
+          technicalTitle: "Луна квадратура Плутон",
+          meaning: "Тестовое значение",
+          sourceActivationIds: ["act-1"],
+        },
+      ],
+      featuredSpheres: [],
+      contentState: "ready" as const,
+    }
+    const api = createBaseApi({ focus: focusBlock })
+    const { payload } = adaptTodayPayload(api, TODAY)
+
+    expect(payload.focus).toEqual(focusBlock)
+  })
+
   it("adapted payload validates against the UI TodayPayloadSchema", () => {
     const api = createBaseApi({
       notes: "Реальная заметка",

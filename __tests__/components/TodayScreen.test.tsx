@@ -220,23 +220,22 @@ describe('TodayScreen', () => {
         ].includes(id ?? ''),
       )
 
-    // No v2 → no activation-evidence-card gap between summary and advice
+    // No focus and no v2 -> neither ActivationEvidenceCard nor TodayFocus is rendered
     expect(orderedIds).toEqual([
       'day-header',
       'evening-checkin-reminder',
       'day-summary-card',
       'concrete-day-advice',
-      'today-focus',
       'day-reading-disclosure',
       'day-tech-disclosure',
       'today-bottom-disclaimer',
     ])
     expect(screen.queryByTestId('activation-evidence-card')).toBeNull()
+    expect(screen.queryByTestId('today-focus')).toBeNull()
     expect(screen.queryByText('Standalone headline should not be in the top flow')).toBeNull()
     expect(screen.queryByTestId('today-notes')).toBeNull()
     expect(screen.getByTestId('day-reading-disclosure')).toBeTruthy()
     expect(screen.getByTestId('day-tech-disclosure')).toBeTruthy()
-    expect(screen.getByTestId('today-focus')).toBeTruthy()
     expect(screen.queryByTestId('paywall')).toBeNull()
   })
 
@@ -256,57 +255,32 @@ describe('TodayScreen', () => {
     expect(screen.queryByTestId('paywall')).toBeNull()
   })
 
-  it('places V2 personal card between day summary and concrete advice', () => {
+  it('renders both V2 story and TodayFocusCard (F3 layers) when focus != null, focus after spheres', () => {
     const payload = buildPayload({
-      v2: {
-        activationSummary: {
-          headline: 'Персональный сюжет дня',
-          topActivatedTargets: [
-            {
-              targetType: 'planet',
-              targetKey: 'PLUTO',
-              label: 'Плутон',
-              familyCount: 3,
-              techniques: ['transit_to_natal', 'annual_profection', 'firdar_major'],
-              spheres: ['crisis_transformation_control'],
-              activationIds: ['act-1'],
-            },
-          ],
+      focus: {
+        state: 'convergence_today',
+        convergence: {
+          id: 'conv:1',
+          themeKey: 'PLUTO',
+          title: 'Что сошлось именно сегодня',
+          summary: 'Сюжет дня',
+          independentFactorCount: 2,
+          techniqueFamilies: ['transit'],
+          sourceActivationIds: ['act-1'],
         },
-        activationEvidence: [
-          {
-            id: 'act-1',
-            technique: 'transit_to_natal',
-            techniqueFamily: 'transit',
-            targetType: 'planet',
-            targetKey: 'PLUTO',
-            kind: 'aspect',
-            active: true,
-            strength: 0.7,
-            evidence: 'structured',
-            phase: 'separating',
-            polarity: 'tense',
-            sourcePlanet: 'Moon',
-            targetPlanet: 'Pluto',
-            aspect: 'opposition',
-            orb: 1.0,
-            debug: {},
-          },
-        ],
+        events: [],
+        featuredSpheres: [],
+        contentState: 'ready',
+      },
+      v2: {
+        activationSummary: { headline: 'Персональный сюжет дня', topActivatedTargets: [] },
+        activationEvidence: [],
         scoreBreakdown: {},
         whyToday: [],
-        audit: {
-          available: false,
-          payloadVersion: 'today.v2',
-          calculationVersion: 'ss-calc-1.1.0',
-          scoringVersion: 'ss-scoring-2.0',
-          canonVersions: {},
-        },
+        audit: { available: false, payloadVersion: 'today.v2', calculationVersion: '1', scoringVersion: '1', canonVersions: {} },
       },
-      reading: { paragraphs: ['p1'] },
-      why: [whyFixture],
-      keyInsight: 'Why',
     })
+
     render(
       <TodayScreen
         selectedDate={selectedDate}
@@ -315,16 +289,48 @@ describe('TodayScreen', () => {
         onDateChange={onDateChange}
       />,
     )
+
+    // F3 composition (owner decision, supersedes doc 28 §3.2 either/or):
+    // «ИМЕННО ДЛЯ ТЕБЯ» personal summary stays; focus is a separate layer after spheres
+    expect(screen.getByTestId('today-focus')).toBeTruthy()
+    expect(screen.getByTestId('activation-evidence-card')).toBeTruthy()
+
     const orderedIds = Array.from(screen.getByTestId('today-screen').querySelectorAll('[data-testid]'))
       .map((node) => node.getAttribute('data-testid'))
       .filter((id) =>
-        ['day-summary-card', 'activation-evidence-card', 'concrete-day-advice'].includes(id ?? ''),
+        ['day-summary-card', 'activation-evidence-card', 'concrete-day-advice', 'today-focus'].includes(id ?? ''),
       )
     expect(orderedIds).toEqual([
       'day-summary-card',
       'activation-evidence-card',
       'concrete-day-advice',
+      'today-focus',
     ])
+  })
+
+  it('renders legacy ActivationEvidenceCard when focus == null', () => {
+    const payload = buildPayload({
+      focus: null,
+      v2: {
+        activationSummary: { headline: 'Персональный сюжет дня', topActivatedTargets: [] },
+        activationEvidence: [],
+        scoreBreakdown: {},
+        whyToday: [],
+        audit: { available: false, payloadVersion: 'today.v2', calculationVersion: '1', scoringVersion: '1', canonVersions: {} },
+      },
+    })
+
+    render(
+      <TodayScreen
+        selectedDate={selectedDate}
+        access={buildAccess()}
+        payload={payload}
+        onDateChange={onDateChange}
+      />,
+    )
+
+    expect(screen.getByTestId('activation-evidence-card')).toBeTruthy()
+    expect(screen.queryByTestId('today-focus')).toBeNull()
   })
 
   it('resets V2 sphere selection state when the date changes', () => {
@@ -398,7 +404,6 @@ describe('TodayScreen', () => {
       'day-header',
       'day-summary-card',
       'concrete-day-advice',
-      'today-focus',
       'day-reading-disclosure',
       'day-tech-disclosure',
       'today-bottom-disclaimer',

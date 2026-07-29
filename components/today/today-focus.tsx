@@ -33,6 +33,7 @@ import { ChevronDown, ChevronRight, Sparkles, RefreshCw } from "lucide-react"
 import type { TodayFocus, TodayFocusEvent } from "@/lib/contracts/today"
 import { getIcon, type IconName } from "@/lib/icons"
 import { getHumanSphereLabel } from "@/lib/presentation/today-v2"
+import { getEventRelation } from "@/lib/presentation/today-focus-relation"
 import { CANONICAL_PRODUCT_ORDER } from "@/lib/display/sphere-labels"
 
 const SPHERE_ICON_BY_KEY: Record<string, IconName> = Object.fromEntries(
@@ -228,13 +229,14 @@ export function TodayFocusCard({ focus, onSphereSelect, onEventSelect, onRetry }
               const timeStr = formatLocalTime(ev.occursAt, ev.timezone)
               const timeDisplay =
                 timeStr ||
-                (ev.precision === "date" || ev.precision === "window" ? "весь день" : "днём")
+                (ev.precision === "date" || ev.precision === "window" ? "" : "")
               const kindMeta = formatKindLabel(ev.kind)
               const isTomorrow = ev.kind === "building"
+              const relation = getEventRelation(ev, state, convergence?.sourceActivationIds)
 
               const rowInner = (
                 <>
-                  <span className="w-12 flex-none font-mono text-[15px] font-semibold tabular-nums text-foreground pt-0.5">
+                  <span className={`flex-none font-mono text-[15px] font-semibold tabular-nums text-foreground pt-0.5 ${timeDisplay ? "w-12" : "w-0"}`}>
                     {timeDisplay}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1">
@@ -269,7 +271,9 @@ export function TodayFocusCard({ focus, onSphereSelect, onEventSelect, onRetry }
                     key={ev.id}
                     type="button"
                     data-testid="today-focus-event"
+                    data-event-id={ev.id}
                     data-event-kind={ev.kind}
+                    data-event-relation={relation}
                     aria-haspopup="dialog"
                     onClick={() => onEventSelect(ev)}
                     className={`group w-full flex items-start gap-3.5 text-left rounded-xl p-1.5 -mx-1.5 transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 cursor-pointer ${isTomorrow ? "opacity-60" : ""}`}
@@ -283,7 +287,9 @@ export function TodayFocusCard({ focus, onSphereSelect, onEventSelect, onRetry }
                 <div
                   key={ev.id}
                   data-testid="today-focus-event"
+                  data-event-id={ev.id}
                   data-event-kind={ev.kind}
+                  data-event-relation={relation}
                   className={`flex items-start gap-3.5 ${isTomorrow ? "opacity-60" : ""}`}
                 >
                   {rowInner}

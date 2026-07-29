@@ -100,6 +100,15 @@ describe("TodayFocusCard visual system", () => {
     const events = screen.getAllByTestId("today-focus-event")
     expect(events).toHaveLength(2)
 
+    // Check data-event-id, data-event-kind, data-event-relation machine attributes (doc 28 §4)
+    expect(events[0].getAttribute("data-event-id")).toBe("ev:1")
+    expect(events[0].getAttribute("data-event-kind")).toBe("exact")
+    expect(events[0].getAttribute("data-event-relation")).toBe("convergence_event")
+
+    expect(events[1].getAttribute("data-event-id")).toBe("ev:2")
+    expect(events[1].getAttribute("data-event-kind")).toBe("building")
+    expect(events[1].getAttribute("data-event-relation")).toBe("convergence_event")
+
     // Kind labels
     expect(events[0].textContent).toContain("точный пик")
     expect(events[1].textContent).toContain("пик завтра")
@@ -135,6 +144,9 @@ describe("TodayFocusCard visual system", () => {
     expect(section.textContent).not.toContain("СОШЛОСЬ СЕГОДНЯ")
     expect(section.textContent).not.toContain("Что сошлось именно сегодня")
     expect(screen.queryAllByTestId("today-featured-sphere")).toHaveLength(0)
+
+    const events = screen.getAllByTestId("today-focus-event")
+    expect(events[0].getAttribute("data-event-relation")).toBe("independent_event")
   })
 
   it("renders background_only state as a quiet muted string without hero card", () => {
@@ -298,5 +310,30 @@ describe("TodayFocusCard drilldown and sphere details", () => {
     expect(content.textContent).not.toContain("transit_to_natal")
     expect(content.textContent).not.toContain("lunar_return")
     expect(content.textContent).not.toContain("(exact)")
+  })
+
+  it("handles null occursAt displaying no time string (no fake 00:00)", () => {
+    const focus = makeFocus({
+      events: [
+        {
+          id: "ev:nulltime",
+          kind: "building",
+          occursAt: null,
+          localDate: "2026-07-28",
+          timezone: "Europe/Moscow",
+          precision: "window",
+          humanTitle: "Марс в напряжении с твоим Сатурном",
+          technicalTitle: "Марс квадратура Сатурн",
+          meaning: "Тестовое событие без точного времени.",
+          sourceActivationIds: ["act-2"],
+        },
+      ],
+    })
+
+    render(<TodayFocusCard focus={focus} onSphereSelect={() => {}} />)
+
+    const events = screen.getAllByTestId("today-focus-event")
+    expect(events[0].textContent).not.toContain("00:00")
+    expect(events[0].textContent).not.toContain("весь день")
   })
 })

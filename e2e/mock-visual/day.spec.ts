@@ -202,7 +202,8 @@ test.describe("Mock Visual — /day/[date]", () => {
     await expect(page.getByTestId("access-card")).toBeVisible();
     await expect(page.getByTestId("evening-checkin-reminder")).toHaveCount(0);
     await expect(page.getByTestId("day-summary-card")).toBeVisible();
-    await expect(page.getByTestId("today-focus")).toBeVisible();
+    // Legacy today.v1 fixture has no focus block: controlled legacy branch (doc 28 §3.2) — no focus card
+    await expect(page.getByTestId("today-focus")).toHaveCount(0);
     await expect(page.getByTestId("concrete-day-advice")).toBeVisible();
     // This fixture has no v2 block: the period context disclosure stays hidden
     await expect(page.getByTestId("day-context-disclosure")).toHaveCount(0);
@@ -218,7 +219,6 @@ test.describe("Mock Visual — /day/[date]", () => {
       "access-card",
       "day-summary-card",
       "concrete-day-advice",
-      "today-focus",
       "day-reading-disclosure",
       "day-tech-disclosure",
     ]);

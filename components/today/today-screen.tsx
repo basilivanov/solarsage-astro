@@ -257,7 +257,7 @@ export function TodayScreen({
             relativeStatus={(payload as any).relativeStatus}
           />
 
-          {/* Personal V2 story immediately below summary; null when V2 is absent. */}
+          {/* Personal V2 story immediately below summary; null when V2 is absent. Коexists with TodayFocusCard по решению владельца (F3): это слой «личная сводка дня», а не конкурирующий сюжет «что сошлось» (doc 28 §3.2 either/or — superseded by F3 composition). */}
           <ActivationEvidenceCard
             v2={payload.v2}
             concreteAdvice={payload.concreteAdvice}
@@ -272,12 +272,14 @@ export function TodayScreen({
             onSelectedKeyChange={setSelectedSphereKey}
           />
 
-          {/* Today Focus Block ("Что сошлось именно сегодня" / "События дня") */}
-          <TodayFocusCard
-            focus={payload.focus}
-            onSphereSelect={selectPersonalStorySphere}
-            onEventSelect={setSelectedFocusEvent}
-          />
+          {/* Today Focus Block ("Что сошлось именно сегодня" / "События дня") — рендерится только при focus != null (doc 28 §3.2 legacy branch сохранён выше для старых payload) */}
+          {payload.focus && (
+            <TodayFocusCard
+              focus={payload.focus}
+              onSphereSelect={selectPersonalStorySphere}
+              onEventSelect={setSelectedFocusEvent}
+            />
+          )}
 
           {/* Period Context Disclosure (Long-term horizon background) */}
           {payload.v2?.horizons?.items?.find((h) => h.horizon === "long") ? (
