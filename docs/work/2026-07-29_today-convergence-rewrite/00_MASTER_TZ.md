@@ -1,11 +1,18 @@
 # MASTER TZ: Today Convergence Rewrite — `today-convergence-2`
 
 Дата: 2026-07-30
-Версия: **v1.8** (2026-07-30) — W1 frozen: полный rewrite boundary, ортогональный `dayTone`, nightly pregen policy, semantic-delta attestation и owner-approved population baseline. v1.0–v1.7 superseded.
-Статус: **W1 frozen; W2 ready to start.** Единственный источник нормативов для нового экрана Дня и его потребителей (Calendar, Yesterday, check-in, pregen). Старые frontend/API contracts не переносятся и удаляются только по `W9_LEGACY_REMOVAL_MANIFEST.md` после W8 cutover.
+Версия: **v1.12** (2026-07-30) — зарегистрированы обязательные W2/W7 start-gates из code-coverage audit и закрыты Yesterday/migration UX gaps; W1 formula/canon и replay fingerprint остаются frozen. v1.0–v1.11 superseded как редакции master.
+Статус: **W1 frozen; implementation pack ready; W2 ready to start.** Единственный источник нормативов для нового экрана Дня и его потребителей (Calendar, Yesterday, check-in, pregen). Legacy test fixtures заменяются в W7, публичные generated roots — в W8, оставшийся недостижимый runtime удаляется по `W9_LEGACY_REMOVAL_MANIFEST.md`; в новый контракт ничего из старого не переносится.
 Суперсидит: `docs/work/2026-07-27_today-premium-first-screen/00_MASTER_TZ.md` (FROZEN / SUPERSEDED, последний принятый SHA `0d4b265a`, волна W6 закрыта).
 Исполнитель W1 freeze: Codex. Исполнитель W2 назначается отдельно; остановленный coder-loop не считается активным исполнителем.
 Коммит/пуш: только ревьюер.
+
+**Audit lineage:** `audit/01_W1_FREEZE_REALITY_CROSS_CHECK_CLAUDE.md` —
+исторический REVISE до owner/freeze-решений и не является текущим вердиктом.
+Его блокеры закрыты в master/canon/attestation. Текущая цепочка:
+`audit/03_IMPLEMENTATION_PACK_AUDIT.md` — PASS и
+`audit/04_CODE_COVERAGE_AUDIT_CLAUDE.md` — PASS с обязательными executor-gates
+§8, перенесёнными в профильные ТЗ этой редакции.
 
 ## 1. Зачем rewrite
 
@@ -69,11 +76,12 @@ dual-write**:
   enum или сохраняют оба контракта одновременно.
 
 Новая frontend/API связка строится только на envelope §5 и его `formulaVersion`;
-старый UI не является fallback для нового snapshot. Старый код и контракты можно
-временно оставить в Git и в работающем production-релизе до атомарного W8
-cutover, но после успешного cutover они удаляются отдельным W9 cleanup-релизом.
-Git-история — единственный архив старой реализации; совместимость с ней не входит
-в scope rewrite.
+старый UI не является fallback для нового snapshot. Старый production runtime
+можно оставить работающим до атомарного W8 cutover. Активные test fixtures
+заменяются в W7, legacy roots исключаются из generated contract перед W8 build,
+а оставшийся недостижимый код удаляется отдельным W9 cleanup-релизом.
+Git-история — единственный архив старой реализации; совместимость с ней не
+входит в scope rewrite.
 
 Это правило **не распространяется** на protected user data, auth, payments,
 subscriptions, профили и существующие check-in/streak записи: они сохраняются и
@@ -199,7 +207,7 @@ tone-aware corpus replay пройден, `tone-candidate-0.1` принят ре�
 |---|---|
 | convergence_today | hero «Что сошлось сегодня» (1–3 сферы) |
 | quiet_day | 0–3 импульса + optional main_event + нейтральный контекст; слово «сошлось» запрещено |
-| unavailable | честный статус, детерминированные факты — если есть |
+| unavailable | честный статус; персональный snapshot и частичные факты не публикуются |
 
 **T5. Root state:** `convergence_today | quiet_day | unavailable`. State и presentation согласованы 1:1.
 
@@ -217,7 +225,13 @@ birth_time: HH:MM | null            — только при exact
 birth_time_bucket: night | morning | day | evening | null
 ```
 
-Границы bucket'ов — в canon (локальное время места рождения): night 00:00–06:00, morning 06:00–12:00, day 12:00–18:00, evening 18:00–24:00. `unknown` = весь день [00:00, 24:00). Миграция: существующий `birth_time = null` → `unknown`, непустое → `exact`.
+Границы bucket'ов — в canon и всегда трактуются как полуоткрытые интервалы
+`[start, end)` локального времени места рождения: night `[00:00, 06:00)`,
+morning `[06:00, 12:00)`, day `[12:00, 18:00)`, evening
+`[18:00, 24:00)`. Пары `buckets_local: [start_hour, end_hour]` в frozen canon
+— YAML-последовательности с этой же семантикой, а не замкнутые математические
+интервалы. `unknown` = `[00:00, 24:00)`. Миграция: существующий
+`birth_time = null` → `unknown`, непустое → `exact`.
 
 **Profile readiness ≠ расчётные возможности.** Отсутствие времени НЕ делает аккаунт незавершённым (`birth_time` уходит из обязательных полей натал-контекста, `natal_context_service.py:95`). Возможности выводятся из режима:
 
@@ -251,14 +265,17 @@ birth_time_bucket: night | morning | day | evening | null
 **Контрактная целостность:**
 
 - precision/range добавляются в API, БД, profile hash, cache key и published snapshot (`birth_time_mode`, фактически использованный диапазон);
-- все production-fallbacks `birth_time or "12:00"` удаляются (`today_service.py:334`, `calendar_service.py:316`, найденные по rg — все);
-- в LLM передаются capabilities: `houses_available`, `exact_timing_available`, `lots_available`; валидатор отклоняет упоминания домов/ASC/точных часов при недоступности;
+- все fallback'и `birth_time or "12:00"` на новом Day/Calendar call graph
+  удаляются (`today_service.py:334`, `calendar_service.py:316`); новый pipeline
+  использует только explicit mode/range. Отдельное совпадение в Synastry не
+  входит в этот rewrite и не может переиспользоваться новым Day-путём;
+- в LLM передаются capabilities: `houses_available`, `angles_available`, `lots_available`, `exact_timing_available`; валидатор отклоняет упоминания домов/ASC/MC/lots/точных часов при недоступности;
 - переход `unknown/bucket → exact`: пересчёт будущих данных, новая версия snapshot; опубликованные прогнозы не переписываются (§6);
 - UI-формулировка (спокойная, один раз): «Покажем только то, что не зависит от точных минут рождения. Дома и точные часы событий использовать не будем. Время можно уточнить позже».
 
 ## 5. Публичный контракт
 
-### 5.1 Root envelope (скетч; полная схема — W1/C1)
+### 5.1 Root envelope (скетч; полная runtime-схема — `04_W2_W3_RUNTIME_CONTRACT_TZ.md`)
 
 ```json
 {
@@ -269,12 +286,15 @@ birth_time_bucket: night | morning | day | evening | null
   "publishedAt": "2026-07-30T01:07:00Z",
   "access": {"state": "full | preview | locked", "reason": "…"},
   "birthTime": {"mode": "exact | bucket | unknown",
-                "capabilities": {"houses": true, "exactTiming": true, "lots": true}},
+                "capabilities": {"houses": true, "angles": true,
+                                 "lots": true, "exactTiming": true}},
   "state": "convergence_today | quiet_day | unavailable",
   "dayTone": "supportive | tense | mixed | steady | null",
   "personal": true,
+  "previewTeaser": null,
   "convergences": [
-    {"sphere": "work", "polarity": "tense", "evidenceLevel": "high",
+    {"id": "cvg_1", "primarySphere": "work", "secondarySphere": null,
+     "polarity": "tense", "evidenceLevel": "high",
      "eventIds": ["evt_1", "evt_2"], "summary": null}
   ],
   "mainEvent": null,
@@ -283,11 +303,12 @@ birth_time_bucket: night | morning | day | evening | null
   "lookahead": null,
   "events": [],
   "contentState": "ready | pending | unavailable | not_needed",
-  "formulaVersion": "today-convergence-2"
+  "formulaVersion": "today-convergence-2",
+  "calculationVersion": "ss-calc-1.3.0"
 }
 ```
 
-**Ортогональность:** calculation state ≠ content state ≠ access state. Locked payload НЕ создаёт и не публикует snapshot; `snapshotId` nullable только там, где персональный прогноз не опубликован. Contract-test: один deterministic result для трёх access-состояний.
+**Ортогональность:** calculation state ≠ content state ≠ access state. Locked payload НЕ создаёт и не публикует snapshot; `snapshotId` nullable только там, где персональный прогноз не опубликован. Contract-test прогоняет один source fixture через три access-проекции и доказывает, что preview/locked не раскрывают скрытые поля.
 
 ### 5.2 Матрица state × contentState
 
@@ -314,11 +335,16 @@ birth_time_bucket: night | morning | day | evening | null
 `contentState=unavailable` не обнуляет уже рассчитанные `dayTone`, события или
 сферы — обнуляются только LLM-owned поля.
 
+`state` nullable только при `access.state=locked`. Для `state=unavailable`
+персональный snapshot отсутствует; это не то же состояние, что LLM-сбой
+`contentState=unavailable`. Полная wire-матрица и правила nullability — в
+`04_W2_W3_RUNTIME_CONTRACT_TZ.md`.
+
 ### 5.3 Cache и latency
 
 - factual snapshot отдаётся сразу, даже при `contentState=unavailable`; повторный GET НЕ запускает новый provider-call на каждый refresh;
 - single-flight: один generation lease + cooldown на `(snapshot_id, prompt_version)` (`today_service.py:1175–1211` сейчас без lease);
-- `unavailable` не считается успешным прогревом (норматив W6-S4a в силе);
+- `contentState=unavailable` не считается успешным прогревом (норматив W6-S4a в силе);
 - SLO (цели W5): cache hit < 1 с; cold deterministic path ограничен bounded deadline;
 - нагрузочный contract-test: 20 одновременных GET одного user/date при зависшем LLM.
 
@@ -349,25 +375,35 @@ birth_time_bucket: night | morning | day | evening | null
 ```
 snapshot_id, user_id, target_date, timezone,
 profile_hash, input_hash, canon_hash,
-formula_version, llm_prompt_version,
-calculated_at, published_at,
+formula_version, calculation_version, ephemeris_artifact_id,
+created_at, published_at, first_day_seen_at, first_lookahead_seen_at,
 state, deterministic_result, canonical_input_ref,
-content_state, supersedes_snapshot_id,
+supersedes_snapshot_id,
 birth_time_mode, birth_time_range
 ```
 
+LLM content/status/lease хранится в отдельной versioned записи по
+`(snapshot_id, prompt_version)` и не мутирует deterministic snapshot.
+
 ### 6.2 Identity и concurrency
 
-- unique constraint: `(user_id, target_date, profile_hash, formula_version, canon_hash)`;
+- unique constraint: `(user_id, target_date, input_hash, formula_version, calculation_version, canon_hash)`;
+- полная нормативная identity/lineage-схема — `04_W2_W3_RUNTIME_CONTRACT_TZ.md` §7.1; при расхождении действует она;
 - атомарный publish/claim (INSERT … ON CONFLICT DO NOTHING или эквивалент);
-- `published_at` = первый ответ пользователю; после него snapshot неизменяем;
+- `published_at` = атомарная публикация snapshot (включая pregen), не доказательство показа; после неё deterministic fields неизменяемы;
 - исправление бага → новый snapshot с `supersedes_snapshot_id`: только внутри owner/date, без циклов;
 - check-in FK validation: `snapshot.user_id == authenticated user` И `snapshot.target_date == checkin.target_date`;
-- ON DELETE CASCADE; retention ≥ 180 дней.
+- narrative rows удаляются CASCADE со snapshot; check-in FK — `ON DELETE SET NULL`;
+- новые published snapshots не входят в W9 legacy cleanup; retention ≥ 180 дней до отдельной privacy/retention policy.
 
 ### 6.3 Impression
 
-`prediction_seen_at` НЕ пишется в EveningCheckin напрямую (строки ещё нет). Server-side impression endpoint/событие при показе дня; при submit check-in timestamp связывается. Редактирование check-in сохраняет исходную связь, если пользователь явно не видел более новый опубликованный snapshot.
+`prediction_seen_at` НЕ пишется в EveningCheckin напрямую (строки ещё нет).
+Snapshot хранит два idempotent server timestamps: `first_day_seen_at` и
+`first_lookahead_seen_at`. Для lookahead endpoint проверяет ссылку на завтрашний
+snapshot из snapshot открытого дня. При первом submit check-in full-day exposure
+имеет приоритет над lookahead; обычное редактирование не перепривязывает
+lineage. Полный wire/ownership-контракт — `04_W2_W3_RUNTIME_CONTRACT_TZ.md` §7.
 
 ### 6.4 Canonical input
 
@@ -375,7 +411,9 @@ Prod-таблица хранит только `published`; `canonical_input_ref`
 
 ## 7. Check-in (additive-миграция)
 
-- `forecast_snapshot_id` (nullable, FK + owner/date validation §6.2) + `prediction_seen_at` (nullable, из impression §6.3);
+- `forecast_snapshot_id` (nullable, FK + owner/date validation §6.2) +
+  `prediction_seen_at` + `prediction_seen_surface: day|lookahead|null`
+  (nullable, из impression §6.3);
 - один опциональный мультиселект «Что сегодня больше всего проявилось?» → `observed_spheres[]`;
 - `target_date` check-in — локальный день пользователя на момент submit;
 - `mood` — метрика резонанса дня, НЕ полярность сферы;
@@ -484,19 +522,22 @@ excluded_time_sensitive, invariant_failures
 
 **Consumer matrix (обязательна в W5):** `consumer → поля → какой snapshot → access rule → cache key`, включая строку «календарный месяц» (дни вне pregen-окна — пустые чипы, НЕ старый valence). Drilldown адресуется через snapshot/event identity.
 
-**Обязательный фикс в W5:** `/api/day/today` — локальная timezone профиля вместо UTC (`api/day.py:133–139`); contract suite вокруг полуночи и DST.
+**Обязательный фикс в W2/W5:** единый resolver локальной даты пользователя
+используется day/today, calendar, drilldown, yesterday, check-in и pregen вместо
+UTC-даты (`api/day.py:133–139`); contract suite вокруг полуночи и DST. Точный
+контракт — `04_W2_W3_RUNTIME_CONTRACT_TZ.md` §5.
 
 **Legacy-removal gate (W9):** `rg "dayStatus|relativeStatus|ScoringV2|DayValence|SemanticV2|today\.v2"` — каждое совпадение удалено или обосновано.
 
-**Rewrite contract gate (W7/W9):** `rg` по старым TodayFocus enums, legacy
+**Rewrite contract gate (W7/W8/W9):** `rg` по старым TodayFocus enums, legacy
 `contentState`-матрицам, old `data-testid`/fixture payloads и V1/V2 response
 shapes должен вернуть только supersession-документацию или Git-архив. Старые
-frontend/API contracts не адаптируются в новый envelope и удаляются после W8
-cutover отдельным allowlisted cleanup.
+frontend/API contracts не адаптируются в новый envelope: fixtures заменяются в
+W7, generated public roots исчезают до W8 build, implementation удаляется W9.
 
 ## 11. Деплой и rollback
 
-- DB-изменения сначала additive: новые поля (`birth_time_mode`, `birth_time_bucket`, snapshot precision/range) — nullable с миграцией существующих (`null birth_time → unknown`, непустое → `exact`); старые derived rows удаляются после успешного cutover;
+- DB-изменения сначала additive: новые поля (`birth_time_mode`, `birth_time_bucket`, `birth_time_prompt_dismissed`, snapshot precision/range) с миграцией существующих (`null birth_time → unknown`, непустое → `exact`; migrated unknown не получает массовую плашку); старые derived rows удаляются после успешного cutover;
 - API и frontend атомарно через orchestrator; sidecar digest в атомарный release при изменении его контракта (sect §4.4, house, контрольные времена §4.7);
 - новый frontend и API деплоятся как один новый контракт; старый frontend/API не
   держится параллельно как compatibility path. Rollback выполняется на прежний
@@ -526,17 +567,17 @@ cutover отдельным allowlisted cleanup.
 
 ## 13. Порядок работ (волны)
 
-- **W0 — закрыта этим документом (v1.8).**
+- **W0 — закрыта этим документом (v1.12).**
 - **W1 — FROZEN:** machine-readable canon (§4.3.1 + §4.7: поля evidence-единицы, трёхуровневая eligibility, driver/horizon-правила, rare/structural классы, hero target types, bucket-границы и каноническая сетка + oracle-гейт, event_class пороги, ORB fail-closed, DayDelta identity, sphere mapping и проекция §4.5, геометрическая sect §4.4, fan-out, direct relation); theme registry; коэффициенты evidence; truth tables T1–T5 machine-readable; копирайт-канон; полная C1-схема; исправленный harness re-run (§9), расчётные mutation fixtures 1–5, birth-time fixtures 8–11, sphere semantic-delta attestation, version/parity/sect gates. Fixtures 6/7/12/13 закрываются владельцами runtime-слоёв W2/W6/W3, а не имитируются в W1.
   **Критерий W1 выполнен:** machine-readable canon + исправленный re-run (новый классификатор, дамп → sweep → C1 → страты) + sect-fix в движке + sparse-oracle gate зелёный + расчётная mutation suite + sphere semantic-delta attestation + согласованные state/content/API truth tables. Полный evidence — `analysis/W1_FREEZE_DELTA_ATTESTATION.md`.
-- **W2 — deterministic pipeline:** canonical event ID, fail-closed house, пятислойная модель, birth-time robustness, группы, polarity/evidence, выбор, DayDelta contract.
-- **W3 — persistence:** snapshot (§6), canonical_input_ref, check-in (additive), profile contract (§4.7).
+- **W2 — deterministic pipeline:** начинается только с Gate 0 в `04_W2_W3_RUNTIME_CONTRACT_TZ.md` §8.1 (noon-fallback и legacy contract isolation); затем canonical event ID, fail-closed house, пятислойная модель, birth-time robustness, группы, polarity/evidence, выбор, DayDelta contract.
+- **W3 — persistence:** snapshot (§6), canonical_input_ref, check-in (additive), profile contract (§4.7); persistence/lineage contract — `04_W2_W3_RUNTIME_CONTRACT_TZ.md`.
 - **W4 — replay harness как постоянный инструмент** + расширенный корпусный отчёт.
-- **W5 — API endpoint + wiring:** consumer matrix, календарный бюджет, local-today фикс, **двухступенчатый pregen по §5.4** (cohort → deterministic snapshot → selective LLM warm-up), calendar/yesterday + typed pregen outcomes/retry/telemetry, single-flight lease, SLO.
+- **W5 — API endpoint + wiring:** consumer matrix, календарный бюджет, local-date фикс, **двухступенчатый pregen по §5.4** (cohort → deterministic snapshot → selective LLM warm-up), calendar/yesterday + typed pregen outcomes/retry/telemetry, single-flight lease, SLO; operations contract — `05_W5_W8_OPERATIONS_AND_RELEASE_TZ.md`.
 - **W6 — LLM-слой:** один компактный вызов, claim binding, capability-gated validation, null-path.
-- **W7 — frontend + contracts + e2e:** только новый envelope (convergence/quiet/unavailable × exact/bucket/unknown × dayTone), статический навигатор, onboarding-режимы, calendar, yesterday, check-in hint; старые frontend contracts/fixtures не переносятся.
-- **W8 — атомарный cutover** (§11).
-- **W9 — после стабильности:** legacy removal по gate §10, удаление старых frontend/API contracts и fixtures, затем destructive cleanup по §11.
+- **W7 — frontend + contracts + e2e:** начинается с замены legacy Today-fixtures по `03_W7_FRONTEND_DESIGN_TZ.md` §14; только новый envelope (convergence/quiet/unavailable × exact/bucket/unknown × dayTone), статический навигатор, onboarding-режимы, calendar, yesterday/check-in recap; старые frontend contracts/fixtures не переносятся.
+- **W8 — атомарный cutover** (§11, `05_W5_W8_OPERATIONS_AND_RELEASE_TZ.md`).
+- **W9 — после стабильности:** удаление оставшегося недостижимого legacy runtime/adapters по gate §10, затем destructive cleanup derived rows по §11; fixtures и public generated roots к этому моменту уже отсутствуют.
 - **W10 — через 60–90 дней:** валидация и ablation по §14.
 
 Каждая волна регистрирует модули/gates в `grace/verification-matrix.md`; per-file тесты — через `owned_tests`.
@@ -573,6 +614,7 @@ cutover отдельным allowlisted cleanup.
 ```text
 Дата → [hero «Что сошлось сегодня» | quiet: «Импульсы дня» / «Главное событие дня»]
      → Импульсы дня (1–3, если не главный блок)
+     → Завтра факторы сходятся… (optional; только из frozen snapshot завтра)
      → Контекст периода ▸
      → Сферы жизни (12 статических тайлов, D8)
      → Как это рассчитано ▸
@@ -598,4 +640,28 @@ cutover отдельным allowlisted cleanup.
 
 Drilldown выбранной сферы (тап по маркированному тайлу, hero- или вторичной строке) — D10.
 
-Calendar-чип: точка = был hero; пустая дата = обычный день/нет данных; цветных заливок старой valence нет. Check-in hint: «Вчера: сошлось в работе» / «Вчера: N импульса» — из snapshot вчерашнего дня, не из dayStatus.
+Calendar-чип: точка = был hero; без точки = опубликованный обычный день; пустой
+контур = день не рассчитан. Цветных заливок старой valence нет. Check-in hint:
+«Вчера: сошлось в работе» / «Вчера: N импульса» — из snapshot вчерашнего дня,
+не из dayStatus.
+
+## 17. Downstream implementation pack (post-freeze)
+
+W1-формула, canon, corpus baseline и replay fingerprint этой редакцией не
+изменяются. Для реализации обязательны три производных документа:
+
+1. `04_W2_W3_RUNTIME_CONTRACT_TZ.md` — единственный новый wire-контракт,
+   local-date/profile semantics, snapshot persistence и check-in linkage.
+2. `05_W5_W8_OPERATIONS_AND_RELEASE_TZ.md` — cohort nightly pregen, LLM lease,
+   latency/capacity gates, real E2E, atomic cutover и rollback.
+3. `03_W7_FRONTEND_DESIGN_TZ.md` — presentation, responsive layout,
+   accessibility и публичный DOM/test contract.
+
+Порядок разрешения расхождений: W1 calculation truth и machine-readable canon
+не переопределяются downstream-документами; runtime-форма берётся из `04`,
+операционное выполнение — из `05`, presentation/DOM — из `03`. Legacy-код и
+старые payload shapes не являются нормативом и не получают compatibility path.
+
+Первый implementation checkpoint: generated contract + state-matrix fixtures +
+additive migration + local-date/profile tests. До его зелёной приёмки frontend
+не фиксирует собственный ручной shape.

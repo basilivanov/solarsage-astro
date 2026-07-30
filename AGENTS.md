@@ -141,8 +141,17 @@ systemctl restart solarsage-api solarsage-frontend solarsage-sidecar
 - Каждый крупный экран имеет стабильный root selector: `data-testid="today-screen"`, `calendar-screen`, `profile-screen`, `readings-screen`, `horary-screen`, `natal-screen`.
 - Крупные повторяемые блоки имеют стабильные `data-testid`: карточки, строки календаря, CTA, paywall, loading/error/empty states.
 - Состояния, важные для UI и тестов, отражаются в DOM:
-  - `data-state="loading|ready|empty|error|locked|disabled"`
-  - `data-status="calm|tense|favorable|neutral"` или другой контрактный enum
+  - для экранов и блоков вне нового Today:
+    `data-state="loading|ready|empty|error|locked|disabled"`
+  - для нового Today: `data-state="convergence_today|quiet_day|unavailable"`,
+    `data-screen-state="loading|ready|error"`,
+    `data-day-tone="steady|supportive|mixed|tense"`,
+    `data-content-state="ready|pending|unavailable|not_needed"`,
+    `data-access-state="full|preview|locked"` и
+    `data-birth-time-mode="exact|bucket|unknown"`
+  - старый Today `data-status="calm|tense|favorable|neutral"` superseded и не
+    используется новым экраном; для остальных экранов действует их собственный
+    контрактный enum
   - `disabled`, `aria-disabled`, `aria-busy`, `aria-pressed`, `aria-expanded`, `aria-current`, `aria-selected`
 - Icon-only buttons обязательно имеют `aria-label`.
 - Табы и основная навигация используют `nav`, `aria-label`, `aria-current="page"` или `aria-selected`.
@@ -162,13 +171,21 @@ systemctl restart solarsage-api solarsage-frontend solarsage-sidecar
 Пример контракта:
 
 ```tsx
-<section data-testid="today-summary" data-status={dayStatus}>
+<section
+  data-testid="today-screen"
+  data-screen-state={screenState}
+  data-state={state}
+  data-day-tone={dayTone ?? undefined}
+  data-content-state={contentState}
+  data-access-state={access.state}
+  data-birth-time-mode={birthTime.mode}
+>
   <button
     type="button"
     aria-expanded={open}
-    aria-controls="today-summary-details"
+    aria-controls="today-calculation-details"
   >
-    Подробнее
+    Как это рассчитано
   </button>
 </section>
 ```
@@ -176,8 +193,10 @@ systemctl restart solarsage-api solarsage-frontend solarsage-sidecar
 Тест должен обращаться к публичному DOM-контракту:
 
 ```ts
-await expect(page.getByTestId("today-summary")).toHaveAttribute("data-status", "calm")
-await expect(page.getByRole("button", { name: "Подробнее" })).toHaveAttribute("aria-expanded", "false")
+await expect(page.getByTestId("today-screen")).toHaveAttribute("data-state", "quiet_day")
+await expect(page.getByTestId("today-screen")).toHaveAttribute("data-screen-state", "ready")
+await expect(page.getByTestId("today-screen")).toHaveAttribute("data-day-tone", "steady")
+await expect(page.getByRole("button", { name: "Как это рассчитано" })).toHaveAttribute("aria-expanded", "false")
 ```
 
 ## GRACE Canon и структурные логи
