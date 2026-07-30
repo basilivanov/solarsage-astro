@@ -1,0 +1,442 @@
+diff --git a/__tests__/components/CheckinStatsCard.test.tsx b/__tests__/components/CheckinStatsCard.test.tsx
+index 8210738f..c70e57e1 100644
+--- a/__tests__/components/CheckinStatsCard.test.tsx
++++ b/__tests__/components/CheckinStatsCard.test.tsx
+@@ -20,6 +20,8 @@ describe("CheckinStatsCard", () => {
+       moodDistribution: {},
+       accuracyDistribution: {},
+       tagFrequency: {},
++      moodTrend: "up",
++      moodTrendDelta: 0.75,
+     })
+ 
+     render(<CheckinStatsCard />)
+@@ -32,5 +34,33 @@ describe("CheckinStatsCard", () => {
+     })
+     expect(screen.getByText("Неделя")).toBeDefined()
+     expect(screen.getByText("Месяц")).toBeDefined()
++    expect(screen.getByTestId("checkin-mood-trend").getAttribute("data-trend")).toBe("up")
++    expect(screen.getByText("Настроение: растёт")).toBeDefined()
++  })
++
++  it.each([
++    ["up", "Настроение: растёт"],
++    ["steady", "Настроение: стабильно"],
++    ["down", "Настроение: снижается"],
++    ["insufficient", "Настроение: мало данных"],
++  ] as const)("renders the %s mood trend contract", async (trend, label) => {
++    vi.mocked(getCheckinMetrics).mockResolvedValue({
++      totalCheckins: 3,
++      currentStreak: 1,
++      longestStreak: 1,
++      averageMood: 3,
++      averageEnergy: null,
++      averageAccuracy: null,
++      moodDistribution: {},
++      accuracyDistribution: {},
++      tagFrequency: {},
++      moodTrend: trend,
++      moodTrendDelta: trend === "insufficient" ? null : 0,
++    })
++
++    render(<CheckinStatsCard />)
++
++    await waitFor(() => expect(screen.getByText(label)).toBeDefined())
++    expect(screen.getByTestId("checkin-mood-trend").getAttribute("data-trend")).toBe(trend)
+   })
+ })
+diff --git a/apps/api/app/schemas/checkin.py b/apps/api/app/schemas/checkin.py
+index 4d0c77c4..975ecb87 100644
+--- a/apps/api/app/schemas/checkin.py
++++ b/apps/api/app/schemas/checkin.py
+@@ -9,7 +9,7 @@
+ # owns:
+ #   - apps/api/app/schemas/checkin.py
+ # inputs: request dicts
+-# outputs: validated models
++# outputs: validated models, including the metrics mood trend contract
+ # dependencies: none
+ # side_effects: none
+ # emitted_logs: none
+@@ -21,8 +21,11 @@
+ # public_entrypoints:
+ #   - CheckinCreate
+ #   - CheckinResponse
++#   - CheckinMoodTrend
++#   - CheckinMetrics
+ # semantic_blocks: none
+-# owned_tests: none
++# owned_tests:
++#   - apps/api/tests/test_checkin_endpoints.py
+ # END_MODULE_MAP: M-SCHEMAS-CHECKIN
+ 
+ from __future__ import annotations
+@@ -31,6 +34,7 @@ from datetime import date, datetime
+ from typing import Literal
+ 
+ from pydantic import Field
++from pydantic.json_schema import SkipJsonSchema
+ 
+ from app.schemas._base import CamelModel
+ 
+@@ -38,6 +42,7 @@ from app.schemas._base import CamelModel
+ CheckinMood = Literal[1, 2, 3, 4, 5]
+ CheckinAccuracy = Literal[1, 2, 3]
+ CheckinEnergy = Literal[1, 2, 3, 4, 5]
++CheckinMoodTrend = Literal["up", "steady", "down", "insufficient"]
+ 
+ 
+ class CheckinCreate(CamelModel):
+@@ -77,3 +82,5 @@ class CheckinMetrics(CamelModel):
+     mood_distribution: dict[str, int]
+     accuracy_distribution: dict[str, int]
+     tag_frequency: dict[str, int]
++    mood_trend: CheckinMoodTrend | SkipJsonSchema[None] = None
++    mood_trend_delta: float | None = None
+diff --git a/apps/api/app/services/checkin_service.py b/apps/api/app/services/checkin_service.py
+index 3b8fb5d8..6ba8c37f 100644
+--- a/apps/api/app/services/checkin_service.py
++++ b/apps/api/app/services/checkin_service.py
+@@ -7,7 +7,7 @@
+ # ############################################################################
+ 
+ # START_MODULE_CONTRACT: M-CHECKIN-SERVICE
+-# purpose: Manage evening checkins, calculate user streak metrics, and format responses.
++# purpose: Manage evening checkins, calculate user streak and bounded mood trend metrics, and format responses.
+ # owns:
+ #   - apps/api/app/services/checkin_service.py
+ # inputs:
+@@ -17,7 +17,7 @@
+ # dependencies:
+ #   - M-DB-SESSION (AsyncSession)
+ #   - M-DB-MODELS (EveningCheckin, User, UserProfile)
+-#   - M-SCHEMAS-CHECKIN (CheckinMetrics, CheckinResponse)
++#   - M-SCHEMAS-CHECKIN (CheckinMetrics, CheckinMoodTrend, CheckinResponse)
+ # side_effects:
+ #   - inserts/updates EveningCheckin rows
+ # emitted_logs: none
+@@ -36,6 +36,7 @@
+ #   - CheckinService.to_response
+ # semantic_blocks:
+ #   - CHECKIN_HELPERS: pure conversion and date utility functions
++#   - CHECKIN_METRICS: bounded aggregate and mood trend calculations
+ #   - CHECKIN_SERVICE_CLASS: CheckinService business logic class
+ # owned_tests:
+ #   - apps/api/tests/test_checkin.py
+@@ -247,8 +248,9 @@ class CheckinService:
+         # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.metrics
+         # purpose: Calculate aggregated checkin metrics for date range.
+         # inputs: user_id, from_date, to_date, fallback_to_date
+-        # returns: CheckinMetrics
++        # returns: CheckinMetrics with a two-window mood trend derived only from selected rows
+         # side_effects: none
++        # emitted_logs: none
+         # error_behavior: propagates DB exceptions
+         # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.metrics
+         lower = from_date or date.min
+@@ -275,6 +277,40 @@ class CheckinService:
+             tag_frequency.update(_row_tags(row))
+ 
+         all_dates = [row.target_date for row in rows]
++        # START_BLOCK: CHECKIN_METRICS
++        current_window_start = upper - timedelta(days=6)
++        previous_window_start = upper - timedelta(days=13)
++        previous_window_end = upper - timedelta(days=7)
++        current_moods = [
++            _row_mood(row)
++            for row in rows
++            if current_window_start <= row.target_date <= upper
++        ]
++        previous_moods = [
++            _row_mood(row)
++            for row in rows
++            if previous_window_start <= row.target_date <= previous_window_end
++        ]
++        if len(current_moods) < 3 or len(previous_moods) < 3:
++            mood_trend = "insufficient"
++            mood_trend_delta = None
++        else:
++            mood_trend_delta = round(
++                sum(current_moods) / len(current_moods)
++                - sum(previous_moods) / len(previous_moods),
++                2,
++            )
++            raw_delta = sum(current_moods) / len(current_moods) - sum(
++                previous_moods
++            ) / len(previous_moods)
++            if raw_delta >= 0.5:
++                mood_trend = "up"
++            elif raw_delta <= -0.5:
++                mood_trend = "down"
++            else:
++                mood_trend = "steady"
++        # END_BLOCK: CHECKIN_METRICS
++
+         return CheckinMetrics(
+             total_checkins=total,
+             current_streak=self._current_streak_from_dates(all_dates, upper),
+@@ -287,6 +323,8 @@ class CheckinService:
+             mood_distribution=dict(Counter(str(mood) for mood in moods)),
+             accuracy_distribution=dict(Counter(str(value) for value in accuracies)),
+             tag_frequency=dict(tag_frequency),
++            mood_trend=mood_trend,
++            mood_trend_delta=mood_trend_delta,
+         )
+ 
+     def to_response(self, row: EveningCheckin) -> CheckinResponse:
+diff --git a/apps/api/tests/test_checkin_endpoints.py b/apps/api/tests/test_checkin_endpoints.py
+index 5d1305bf..126c8a2e 100644
+--- a/apps/api/tests/test_checkin_endpoints.py
++++ b/apps/api/tests/test_checkin_endpoints.py
+@@ -1,3 +1,30 @@
++# ############################################################################
++# AI_HEADER: TEST_CHECKIN_ENDPOINTS — API coverage for check-in contracts and metrics.
++# ROLE: Verify authenticated check-in CRUD, timezone behavior, aggregates and mood trends.
++# ############################################################################
++
++# START_MODULE_CONTRACT: TEST-CHECKIN-ENDPOINTS
++# purpose: Exercise check-in API behavior through the authenticated HTTP boundary.
++# owns:
++#   - apps/api/tests/test_checkin_endpoints.py
++# inputs: async API client, test authentication data, isolated database session
++# outputs: endpoint assertions for check-in response and metrics contracts
++# dependencies: pytest, httpx, app.db.models, check-in API routes
++# side_effects: creates isolated test check-in rows
++# emitted_logs: none
++# invariants: tests use only the public API and preserve the existing metric range semantics
++# failure_policy: assertion failures fail the test suite
++# END_MODULE_CONTRACT: TEST-CHECKIN-ENDPOINTS
++
++# START_MODULE_MAP: TEST-CHECKIN-ENDPOINTS
++# public_entrypoints: none
++# semantic_blocks:
++#   - CHECKIN_CRUD: create, read and yesterday endpoint coverage
++#   - CHECKIN_METRICS: aggregate, streak and bounded mood trend coverage
++# owned_tests:
++#   - apps/api/tests/test_checkin_endpoints.py
++# END_MODULE_MAP: TEST-CHECKIN-ENDPOINTS
++
+ from __future__ import annotations
+ 
+ from datetime import date, datetime, timezone
+@@ -260,6 +287,69 @@ async def test_metrics_returns_real_aggregates_and_streaks(
+     assert data["moodDistribution"] == {"3": 1, "4": 1, "5": 1}
+     assert data["accuracyDistribution"] == {"1": 1, "2": 1, "3": 1}
+     assert data["tagFrequency"] == {"tired": 1, "support": 2, "calm": 1}
++    assert data["moodTrend"] == "insufficient"
++    assert data["moodTrendDelta"] is None
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize(
++    ("previous_moods", "current_moods", "from_date", "expected_trend", "expected_delta"),
++    [
++        ([3, 3, 3, 3], [3, 3, 4, 4], "2026-07-01", "up", 0.5),
++        ([3, 3, 3, 3], [2, 2, 3, 3], "2026-07-01", "down", -0.5),
++        ([3, 3, 3], [3, 3, 4], "2026-07-01", "steady", 0.33),
++        ([3, 3, 3, 3], [4, 4, 4, 4], "2026-07-03", "insufficient", None),
++    ],
++)
++async def test_metrics_mood_trend_uses_bounded_windows_and_from_range(
++    async_client: AsyncClient,
++    make_initdata,
++    previous_moods: list[int],
++    current_moods: list[int],
++    from_date: str,
++    expected_trend: str,
++    expected_delta: float | None,
++):
++    await _login(
++        async_client,
++        make_initdata,
++        user_id=223009,
++        username=f"checkin_trend_{expected_trend}_{from_date[-2:]}",
++    )
++
++    for day, mood in zip(range(1, 5), previous_moods):
++        response = await async_client.post(
++            "/api/checkin",
++            json={
++                "targetDate": f"2026-07-{day:02d}",
++                "mood": mood,
++                "tags": [],
++                "note": None,
++            },
++        )
++        assert response.status_code == 200
++    for day, mood in zip(range(8, 12), current_moods):
++        response = await async_client.post(
++            "/api/checkin",
++            json={
++                "targetDate": f"2026-07-{day:02d}",
++                "mood": mood,
++                "tags": [],
++                "note": None,
++            },
++        )
++        assert response.status_code == 200
++
++    response = await async_client.get(
++        f"/api/checkin/metrics?from={from_date}&to=2026-07-14",
++    )
++
++    assert response.status_code == 200
++    data = response.json()
++    assert data["moodTrend"] == expected_trend
++    assert data["moodTrendDelta"] == expected_delta
++    if from_date == "2026-07-03":
++        assert data["totalCheckins"] == 6
+ 
+ 
+ @pytest.mark.asyncio
+diff --git a/components/profile/checkin-stats-card.tsx b/components/profile/checkin-stats-card.tsx
+index 4a3d0689..d5522eb8 100644
+--- a/components/profile/checkin-stats-card.tsx
++++ b/components/profile/checkin-stats-card.tsx
+@@ -5,7 +5,7 @@
+ // ############################################################################
+ 
+ // START_MODULE_CONTRACT: M-PROFILE-CHECKIN-STATS-CARD
+-// purpose: Render checkin streak metrics, total count, and milestone badges (3/7/14/30 days) on Profile screen.
++// purpose: Render checkin streak metrics, bounded mood trend, and milestone badges (3/7/14/30 days) on Profile screen.
+ // owns:
+ //   - components/profile/checkin-stats-card.tsx
+ // inputs: timeZone (optional)
+@@ -20,7 +20,7 @@
+ // public_entrypoints:
+ //   - CheckinStatsCard
+ // semantic_blocks:
+-//   - CHECKIN_STATS_CARD_COMPONENT: streak metrics & milestones component
++//   - CHECKIN_STATS_CARD_COMPONENT: streak metrics, mood trend & milestones component
+ // owned_tests:
+ //   - __tests__/components/CheckinStatsCard.test.tsx
+ // END_MODULE_MAP: M-PROFILE-CHECKIN-STATS-CARD
+@@ -39,8 +39,23 @@ const MILESTONES = [
+   { days: 30, label: "Месяц" },
+ ]
+ 
++const MOOD_TREND_LABELS = {
++  up: "Настроение: растёт",
++  steady: "Настроение: стабильно",
++  down: "Настроение: снижается",
++  insufficient: "Настроение: мало данных",
++} as const
++
+ // START_BLOCK: CHECKIN_STATS_CARD_COMPONENT
+ export function CheckinStatsCard() {
++  // START_FUNCTION_CONTRACT: F-M-PROFILE-CHECKIN-STATS-CARD.CheckinStatsCard
++  // purpose: Load and render check-in totals, streaks, mood trend and milestones.
++  // inputs: none
++  // returns: CheckinStatsCard React element
++  // side_effects: fetches check-in metrics on mount
++  // emitted_logs: none
++  // error_behavior: fails open with zero totals and insufficient trend state
++  // END_FUNCTION_CONTRACT: F-M-PROFILE-CHECKIN-STATS-CARD.CheckinStatsCard
+   const [metrics, setMetrics] = useState<CheckinMetrics | null>(null)
+   const [loading, setLoading] = useState(true)
+ 
+@@ -73,6 +88,7 @@ export function CheckinStatsCard() {
+   const streak = metrics?.currentStreak ?? 0
+   const longest = metrics?.longestStreak ?? 0
+   const total = metrics?.totalCheckins ?? 0
++  const moodTrend = metrics?.moodTrend ?? "insufficient"
+ 
+   return (
+     <div className="rounded-2xl border border-border/70 bg-card p-5 space-y-4" data-testid="checkin-stats-card">
+@@ -97,6 +113,14 @@ export function CheckinStatsCard() {
+         </div>
+       </div>
+ 
++      <div
++        data-testid="checkin-mood-trend"
++        data-trend={moodTrend}
++        className="rounded-xl bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground"
++      >
++        {MOOD_TREND_LABELS[moodTrend]}
++      </div>
++
+       {/* Milestones grid */}
+       <div className="space-y-1.5 pt-1">
+         <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1">
+diff --git a/grace/verification-matrix.md b/grace/verification-matrix.md
+index 54422a35..d89c5c99 100644
+--- a/grace/verification-matrix.md
++++ b/grace/verification-matrix.md
+@@ -55,6 +55,14 @@ These gates apply before broad autonomous business-feature work.
+ 
+ ---
+ 
++## UC-PROFILE-CHECKIN-TREND · Check-in mood trend metrics and card
++
++| Modules | Gates | Scenarios |
++|---|---|---|
++| M-PROFILE-CHECKIN-STATS-CARD → M-CONTRACTS → M-SCHEMAS-CHECKIN → M-CHECKIN-SERVICE → M-DB | Metrics expose camelCase `moodTrend` and `moodTrendDelta`; current and previous seven-day windows are anchored to the resolved upper date and use only rows selected by `from`/`to`; fewer than three rows in either window fails closed to `insufficient`/`null`; classification uses raw ±0.5 thresholds; Profile card preserves fail-open/streak/milestones and exposes stable trend DOM attributes. | S1: endpoint tests cover `up`, `down`, `steady`, exact `+0.5`/`-0.5`, and insufficient data. S2: a `from` range truncating a window remains insufficient without widening the query. S3: generated OpenAPI/TypeScript/Zod contracts contain camelCase fields and the four-value enum. S4: `CheckinStatsCard` renders all four exact Russian labels with `data-testid="checkin-mood-trend"` and matching `data-trend`. |
++
++---
++
+ ## UC-DAY-VIEW · Today screen
+ 
+ | Modules | Gates | Scenarios |
+diff --git a/packages/contracts/_generated.ts b/packages/contracts/_generated.ts
+index 3692d7c4..f45185f8 100644
+--- a/packages/contracts/_generated.ts
++++ b/packages/contracts/_generated.ts
+@@ -1109,6 +1109,13 @@ export interface components {
+             moodDistribution: {
+                 [key: string]: number;
+             };
++            /**
++             * Moodtrend
++             * @enum {string}
++             */
++            moodTrend?: "up" | "steady" | "down" | "insufficient";
++            /** Moodtrenddelta */
++            moodTrendDelta?: number | null;
+             /** Tagfrequency */
+             tagFrequency: {
+                 [key: string]: number;
+diff --git a/packages/contracts/_generated.zod.ts b/packages/contracts/_generated.zod.ts
+index ecc179c4..e6ec3e44 100644
+--- a/packages/contracts/_generated.zod.ts
++++ b/packages/contracts/_generated.zod.ts
+@@ -218,6 +218,8 @@ export const CheckinMetrics = z.object({
+   currentStreak: z.number().int().gte(0),
+   longestStreak: z.number().int().gte(0),
+   moodDistribution: z.record(z.number().int()),
++  moodTrend: z.enum(["up", "steady", "down", "insufficient"]).optional(),
++  moodTrendDelta: z.union([z.number(), z.null()]).optional(),
+   tagFrequency: z.record(z.number().int()),
+   totalCheckins: z.number().int().gte(0),
+ });
+diff --git a/packages/contracts/openapi.json b/packages/contracts/openapi.json
+index d1455e2c..8641fc54 100644
+--- a/packages/contracts/openapi.json
++++ b/packages/contracts/openapi.json
+@@ -943,6 +943,27 @@
+             "title": "Mooddistribution",
+             "type": "object"
+           },
++          "moodTrend": {
++            "enum": [
++              "up",
++              "steady",
++              "down",
++              "insufficient"
++            ],
++            "title": "Moodtrend",
++            "type": "string"
++          },
++          "moodTrendDelta": {
++            "anyOf": [
++              {
++                "type": "number"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "title": "Moodtrenddelta"
++          },
+           "tagFrequency": {
+             "additionalProperties": {
+               "type": "integer"

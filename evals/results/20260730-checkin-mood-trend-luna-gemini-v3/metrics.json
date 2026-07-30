@@ -1,0 +1,351 @@
+{
+  "baseline": [
+    {
+      "name": "backend-checkin",
+      "command": "apps/api/.venv/bin/python -m pytest apps/api/tests/test_checkin_endpoints.py -q",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 5.385,
+      "passed": true,
+      "stdout": "verification-backend-checkin.stdout.log",
+      "stderr": "verification-backend-checkin.stderr.log"
+    },
+    {
+      "name": "frontend-checkin",
+      "command": "npx vitest run __tests__/components/CheckinStatsCard.test.tsx __tests__/api/checkin.test.ts",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 1.377,
+      "passed": true,
+      "stdout": "verification-frontend-checkin.stdout.log",
+      "stderr": "verification-frontend-checkin.stderr.log"
+    },
+    {
+      "name": "typescript",
+      "command": "npx tsc --noEmit",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 14.18,
+      "passed": true,
+      "stdout": "verification-typescript.stdout.log",
+      "stderr": "verification-typescript.stderr.log"
+    },
+    {
+      "name": "grace-backend",
+      "command": "python3 scripts/grace_lint.py apps/api/app",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 0.567,
+      "passed": true,
+      "stdout": "verification-grace-backend.stdout.log",
+      "stderr": "verification-grace-backend.stderr.log"
+    },
+    {
+      "name": "diff-check",
+      "command": "git diff --check",
+      "returncode": 0,
+      "timedOut": false,
+      "wallSeconds": 0.215,
+      "passed": true,
+      "stdout": "verification-diff-check.stdout.log",
+      "stderr": "verification-diff-check.stderr.log"
+    }
+  ],
+  "candidates": [
+    {
+      "candidate": "B",
+      "runner": "codex",
+      "modelKey": "luna-high",
+      "model": "gpt-5.6-luna",
+      "cliVersion": "codex-cli 0.146.0",
+      "pricingKey": "gpt-5.6-luna-2026-07-30",
+      "dependencyWarnings": [],
+      "agent": {
+        "command": [
+          "codex",
+          "exec",
+          "--json",
+          "--ephemeral",
+          "-s",
+          "danger-full-access",
+          "-m",
+          "gpt-5.6-luna",
+          "-C",
+          "/opt/solarsage-astro/.eval-runs/20260730-checkin-mood-trend-luna-gemini-v3/worktrees/candidate-b",
+          "-c",
+          "model_reasoning_effort=\"high\"",
+          "-c",
+          "approval_policy=\"never\"",
+          "-c",
+          "features.multi_agent=false",
+          "-"
+        ],
+        "returncode": 0,
+        "timedOut": false,
+        "wallSeconds": 484.804
+      },
+      "headIntegrity": {
+        "expected": "ec2331614b48866a03c670cf0ca9c6d730f4b916",
+        "afterAgent": "ec2331614b48866a03c670cf0ca9c6d730f4b916",
+        "passed": true,
+        "afterVerification": "ec2331614b48866a03c670cf0ca9c6d730f4b916"
+      },
+      "changedPaths": [
+        "__tests__/components/CheckinStatsCard.test.tsx",
+        "apps/api/app/schemas/checkin.py",
+        "apps/api/app/services/checkin_service.py",
+        "apps/api/tests/test_checkin_endpoints.py",
+        "components/profile/checkin-stats-card.tsx",
+        "grace/verification-matrix.md",
+        "packages/contracts/_generated.ts",
+        "packages/contracts/_generated.zod.ts",
+        "packages/contracts/openapi.json"
+      ],
+      "scopeViolations": [],
+      "patchSha256": "69e42268299d24fe88e5dce35ea1a129df1aca0f01b443a8346e202d44e6e833",
+      "patchBytes": 17842,
+      "verificationDependencyWarnings": [],
+      "verification": [
+        {
+          "name": "backend-checkin",
+          "command": "apps/api/.venv/bin/python -m pytest apps/api/tests/test_checkin_endpoints.py -q",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 5.18,
+          "passed": true,
+          "stdout": "verification-backend-checkin.stdout.log",
+          "stderr": "verification-backend-checkin.stderr.log"
+        },
+        {
+          "name": "frontend-checkin",
+          "command": "npx vitest run __tests__/components/CheckinStatsCard.test.tsx __tests__/api/checkin.test.ts",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 1.525,
+          "passed": true,
+          "stdout": "verification-frontend-checkin.stdout.log",
+          "stderr": "verification-frontend-checkin.stderr.log"
+        },
+        {
+          "name": "typescript",
+          "command": "npx tsc --noEmit",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 3.141,
+          "passed": true,
+          "stdout": "verification-typescript.stdout.log",
+          "stderr": "verification-typescript.stderr.log"
+        },
+        {
+          "name": "grace-backend",
+          "command": "python3 scripts/grace_lint.py apps/api/app",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.517,
+          "passed": true,
+          "stdout": "verification-grace-backend.stdout.log",
+          "stderr": "verification-grace-backend.stderr.log"
+        },
+        {
+          "name": "diff-check",
+          "command": "git diff --check",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.017,
+          "passed": true,
+          "stdout": "verification-diff-check.stdout.log",
+          "stderr": "verification-diff-check.stderr.log"
+        }
+      ],
+      "verificationMutatedPatch": false,
+      "postVerificationChangedPaths": [
+        "__tests__/components/CheckinStatsCard.test.tsx",
+        "apps/api/app/schemas/checkin.py",
+        "apps/api/app/services/checkin_service.py",
+        "apps/api/tests/test_checkin_endpoints.py",
+        "components/profile/checkin-stats-card.tsx",
+        "grace/verification-matrix.md",
+        "packages/contracts/_generated.ts",
+        "packages/contracts/_generated.zod.ts",
+        "packages/contracts/openapi.json"
+      ],
+      "controllerValidity": {
+        "passed": true,
+        "violations": []
+      },
+      "usage": {
+        "input_tokens": 2561400,
+        "cached_input_tokens": 2447872,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 19690,
+        "reasoning_tokens": 8123,
+        "reported_cost_usd": null
+      },
+      "cost": {
+        "pricingKey": "gpt-5.6-luna-2026-07-30",
+        "pricingAsOf": "2026-07-30",
+        "pricingSource": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+        "componentsUsd": {
+          "uncachedInput": 0.0227056,
+          "cachedInput": 0.04895744,
+          "cacheWrite": 0.0,
+          "output": 0.023628
+        },
+        "normalizedCostUsd": 0.09529104,
+        "reportedCostUsd": null,
+        "warnings": [
+          "aggregate input exceeds long-context threshold; exact per-request surcharge is unknown"
+        ]
+      },
+      "usageError": null
+    },
+    {
+      "candidate": "A",
+      "runner": "opencode",
+      "modelKey": "gemini-3.6-high",
+      "model": "cliproxy/gemini-3.6-flash-high",
+      "cliVersion": "1.18.9",
+      "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+      "dependencyWarnings": [],
+      "openCodePolicy": {
+        "configSha256": "85c5bc1b5ad80887202dc4abad60a2c69423ac2265c72a218b02ebe3408792cf",
+        "agent": "repo-eval",
+        "resolvedSha256": "fd573cc96e983300ca6dd74f69dba16b3eff28aeb79cbeedcc4e1ecb2e797fe5"
+      },
+      "agent": {
+        "command": [
+          "opencode",
+          "run",
+          "--pure",
+          "--dir",
+          "/opt/solarsage-astro/.eval-runs/20260730-checkin-mood-trend-luna-gemini-v3/worktrees/candidate-a",
+          "--model",
+          "cliproxy/gemini-3.6-flash-high",
+          "--format",
+          "json",
+          "--title",
+          "eval:checkin-mood-trend-v1:A",
+          "--agent",
+          "repo-eval",
+          "<EVAL_PROMPT>"
+        ],
+        "returncode": 0,
+        "timedOut": false,
+        "wallSeconds": 220.508
+      },
+      "headIntegrity": {
+        "expected": "ec2331614b48866a03c670cf0ca9c6d730f4b916",
+        "afterAgent": "ec2331614b48866a03c670cf0ca9c6d730f4b916",
+        "passed": true,
+        "afterVerification": "ec2331614b48866a03c670cf0ca9c6d730f4b916"
+      },
+      "changedPaths": [
+        "__tests__/components/CheckinStatsCard.test.tsx",
+        "apps/api/app/schemas/checkin.py",
+        "apps/api/app/services/checkin_service.py",
+        "apps/api/tests/test_checkin_endpoints.py",
+        "components/profile/checkin-stats-card.tsx",
+        "grace/verification-matrix.md",
+        "packages/contracts/_generated.ts",
+        "packages/contracts/_generated.zod.ts",
+        "packages/contracts/openapi.json"
+      ],
+      "scopeViolations": [],
+      "patchSha256": "7975a7281925965dd688d728ce914b4cedda011db85b275ce754c2f03935a673",
+      "patchBytes": 17610,
+      "verificationDependencyWarnings": [],
+      "verification": [
+        {
+          "name": "backend-checkin",
+          "command": "apps/api/.venv/bin/python -m pytest apps/api/tests/test_checkin_endpoints.py -q",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 5.381,
+          "passed": true,
+          "stdout": "verification-backend-checkin.stdout.log",
+          "stderr": "verification-backend-checkin.stderr.log"
+        },
+        {
+          "name": "frontend-checkin",
+          "command": "npx vitest run __tests__/components/CheckinStatsCard.test.tsx __tests__/api/checkin.test.ts",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 1.384,
+          "passed": true,
+          "stdout": "verification-frontend-checkin.stdout.log",
+          "stderr": "verification-frontend-checkin.stderr.log"
+        },
+        {
+          "name": "typescript",
+          "command": "npx tsc --noEmit",
+          "returncode": 2,
+          "timedOut": false,
+          "wallSeconds": 10.559,
+          "passed": false,
+          "stdout": "verification-typescript.stdout.log",
+          "stderr": "verification-typescript.stderr.log"
+        },
+        {
+          "name": "grace-backend",
+          "command": "python3 scripts/grace_lint.py apps/api/app",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.516,
+          "passed": true,
+          "stdout": "verification-grace-backend.stdout.log",
+          "stderr": "verification-grace-backend.stderr.log"
+        },
+        {
+          "name": "diff-check",
+          "command": "git diff --check",
+          "returncode": 0,
+          "timedOut": false,
+          "wallSeconds": 0.017,
+          "passed": true,
+          "stdout": "verification-diff-check.stdout.log",
+          "stderr": "verification-diff-check.stderr.log"
+        }
+      ],
+      "verificationMutatedPatch": false,
+      "postVerificationChangedPaths": [
+        "__tests__/components/CheckinStatsCard.test.tsx",
+        "apps/api/app/schemas/checkin.py",
+        "apps/api/app/services/checkin_service.py",
+        "apps/api/tests/test_checkin_endpoints.py",
+        "components/profile/checkin-stats-card.tsx",
+        "grace/verification-matrix.md",
+        "packages/contracts/_generated.ts",
+        "packages/contracts/_generated.zod.ts",
+        "packages/contracts/openapi.json"
+      ],
+      "controllerValidity": {
+        "passed": true,
+        "violations": []
+      },
+      "openCodeSessionId": "ses_04b074c15ffe7KNaqt8g6vDNIz",
+      "usage": {
+        "input_tokens": 348947,
+        "cached_input_tokens": 2529826,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 29960,
+        "reasoning_tokens": 3761,
+        "reported_cost_usd": 0.0
+      },
+      "cost": {
+        "pricingKey": "gemini-3.6-flash-standard-2026-07-30",
+        "pricingAsOf": "2026-07-30",
+        "pricingSource": "https://ai.google.dev/gemini-api/docs/pricing",
+        "componentsUsd": {
+          "uncachedInput": 0.5234205,
+          "cachedInput": 0.3794739,
+          "cacheWrite": 0.0,
+          "output": 0.2529075
+        },
+        "normalizedCostUsd": 1.1558019,
+        "reportedCostUsd": 0.0,
+        "warnings": []
+      },
+      "usageError": null
+    }
+  ]
+}

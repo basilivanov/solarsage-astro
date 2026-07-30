@@ -1,0 +1,46 @@
+schema_version = 1
+id = "checkin-mood-trend-v1"
+title = "Check-in mood trend — full-stack slice"
+base_sha = "ec2331614b48866a03c670cf0ca9c6d730f4b916"
+base_tree = "bac1ac37828af2cc934234a74114146dc8a3d678"
+prompt_file = "prompt.md"
+rubric_file = "rubric.md"
+timeout_seconds = 2700
+dependency_links = ["node_modules", "apps/api/.venv"]
+
+allowed_paths = [
+  "apps/api/app/schemas/checkin.py",
+  "apps/api/app/services/checkin_service.py",
+  "apps/api/tests/test_checkin_endpoints.py",
+  "components/profile/checkin-stats-card.tsx",
+  "__tests__/components/CheckinStatsCard.test.tsx",
+  "packages/contracts/openapi.json",
+  "packages/contracts/_generated.ts",
+  "packages/contracts/_generated.zod.ts",
+  "grace/verification-matrix.md",
+]
+
+[[verification]]
+name = "backend-checkin"
+command = "apps/api/.venv/bin/python -m pytest apps/api/tests/test_checkin_endpoints.py -q"
+timeout_seconds = 600
+
+[[verification]]
+name = "frontend-checkin"
+command = "npx vitest run __tests__/components/CheckinStatsCard.test.tsx __tests__/api/checkin.test.ts"
+timeout_seconds = 600
+
+[[verification]]
+name = "typescript"
+command = "npx tsc --noEmit"
+timeout_seconds = 600
+
+[[verification]]
+name = "grace-backend"
+command = "python3 scripts/grace_lint.py apps/api/app"
+timeout_seconds = 300
+
+[[verification]]
+name = "diff-check"
+command = "git diff --check"
+timeout_seconds = 60

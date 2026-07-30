@@ -1,0 +1,2 @@
+# Stored unified diffs contain literal one-space context markers by design.
+evals/results/**/*.patch -whitespace

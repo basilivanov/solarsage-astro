@@ -1,0 +1,483 @@
+diff --git a/__tests__/components/CheckinStatsCard.test.tsx b/__tests__/components/CheckinStatsCard.test.tsx
+index 8210738f..05074524 100644
+--- a/__tests__/components/CheckinStatsCard.test.tsx
++++ b/__tests__/components/CheckinStatsCard.test.tsx
+@@ -20,6 +20,8 @@ describe("CheckinStatsCard", () => {
+       moodDistribution: {},
+       accuracyDistribution: {},
+       tagFrequency: {},
++      moodTrend: "insufficient",
++      moodTrendDelta: null,
+     })
+ 
+     render(<CheckinStatsCard />)
+@@ -33,4 +35,34 @@ describe("CheckinStatsCard", () => {
+     expect(screen.getByText("Неделя")).toBeDefined()
+     expect(screen.getByText("Месяц")).toBeDefined()
+   })
++
++  it.each([
++    { trend: "up" as const, delta: 0.75, expectedLabel: "Настроение: растёт" },
++    { trend: "steady" as const, delta: 0.2, expectedLabel: "Настроение: стабильно" },
++    { trend: "down" as const, delta: -0.6, expectedLabel: "Настроение: снижается" },
++    { trend: "insufficient" as const, delta: null, expectedLabel: "Настроение: мало данных" },
++  ])("renders mood trend label '$expectedLabel' and data-trend attribute '$trend'", async ({ trend, delta, expectedLabel }) => {
++    vi.mocked(getCheckinMetrics).mockResolvedValue({
++      totalCheckins: 10,
++      currentStreak: 2,
++      longestStreak: 5,
++      averageMood: 4.0,
++      averageEnergy: 4.0,
++      averageAccuracy: 3.0,
++      moodDistribution: {},
++      accuracyDistribution: {},
++      tagFrequency: {},
++      moodTrend: trend,
++      moodTrendDelta: delta,
++    })
++
++    render(<CheckinStatsCard />)
++
++    await waitFor(() => {
++      const trendEl = screen.getByTestId("checkin-mood-trend")
++      expect(trendEl).toBeDefined()
++      expect(trendEl.getAttribute("data-trend")).toBe(trend)
++      expect(trendEl.textContent).toBe(expectedLabel)
++    })
++  })
+ })
+diff --git a/apps/api/app/schemas/checkin.py b/apps/api/app/schemas/checkin.py
+index 4d0c77c4..6ef860d8 100644
+--- a/apps/api/app/schemas/checkin.py
++++ b/apps/api/app/schemas/checkin.py
+@@ -21,6 +21,9 @@
+ # public_entrypoints:
+ #   - CheckinCreate
+ #   - CheckinResponse
++#   - YesterdayCheckinResponse
++#   - CheckinMetrics
++#   - CheckinMoodTrend
+ # semantic_blocks: none
+ # owned_tests: none
+ # END_MODULE_MAP: M-SCHEMAS-CHECKIN
+@@ -38,6 +41,7 @@ from app.schemas._base import CamelModel
+ CheckinMood = Literal[1, 2, 3, 4, 5]
+ CheckinAccuracy = Literal[1, 2, 3]
+ CheckinEnergy = Literal[1, 2, 3, 4, 5]
++CheckinMoodTrend = Literal["up", "steady", "down", "insufficient"]
+ 
+ 
+ class CheckinCreate(CamelModel):
+@@ -77,3 +81,5 @@ class CheckinMetrics(CamelModel):
+     mood_distribution: dict[str, int]
+     accuracy_distribution: dict[str, int]
+     tag_frequency: dict[str, int]
++    mood_trend: CheckinMoodTrend
++    mood_trend_delta: float | None
+diff --git a/apps/api/app/services/checkin_service.py b/apps/api/app/services/checkin_service.py
+index 3b8fb5d8..eb8e0523 100644
+--- a/apps/api/app/services/checkin_service.py
++++ b/apps/api/app/services/checkin_service.py
+@@ -53,7 +53,7 @@ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ 
+ from app.db.models import EveningCheckin, User, UserProfile
+-from app.schemas.checkin import CheckinMetrics, CheckinResponse
++from app.schemas.checkin import CheckinMetrics, CheckinMoodTrend, CheckinResponse
+ 
+ 
+ LEGACY_MOOD_TO_SCORE = {
+@@ -274,6 +274,30 @@ class CheckinService:
+         for row in rows:
+             tag_frequency.update(_row_tags(row))
+ 
++        cur_start = upper - timedelta(days=6)
++        prev_start = upper - timedelta(days=13)
++        prev_end = upper - timedelta(days=7)
++
++        cur_moods = [_row_mood(r) for r in rows if cur_start <= r.target_date <= upper]
++        prev_moods = (
++            [_row_mood(r) for r in rows if prev_start <= r.target_date <= prev_end]
++        )
++
++        if len(cur_moods) < 3 or len(prev_moods) < 3:
++            mood_trend: CheckinMoodTrend = "insufficient"
++            mood_trend_delta: float | None = None
++        else:
++            cur_mean = sum(cur_moods) / len(cur_moods)
++            prev_mean = sum(prev_moods) / len(prev_moods)
++            raw_diff = cur_mean - prev_mean
++            if raw_diff >= 0.5:
++                mood_trend = "up"
++            elif raw_diff <= -0.5:
++                mood_trend = "down"
++            else:
++                mood_trend = "steady"
++            mood_trend_delta = round(raw_diff, 2)
++
+         all_dates = [row.target_date for row in rows]
+         return CheckinMetrics(
+             total_checkins=total,
+@@ -287,6 +311,8 @@ class CheckinService:
+             mood_distribution=dict(Counter(str(mood) for mood in moods)),
+             accuracy_distribution=dict(Counter(str(value) for value in accuracies)),
+             tag_frequency=dict(tag_frequency),
++            mood_trend=mood_trend,
++            mood_trend_delta=mood_trend_delta,
+         )
+ 
+     def to_response(self, row: EveningCheckin) -> CheckinResponse:
+diff --git a/apps/api/tests/test_checkin_endpoints.py b/apps/api/tests/test_checkin_endpoints.py
+index 5d1305bf..070130ad 100644
+--- a/apps/api/tests/test_checkin_endpoints.py
++++ b/apps/api/tests/test_checkin_endpoints.py
+@@ -260,6 +260,8 @@ async def test_metrics_returns_real_aggregates_and_streaks(
+     assert data["moodDistribution"] == {"3": 1, "4": 1, "5": 1}
+     assert data["accuracyDistribution"] == {"1": 1, "2": 1, "3": 1}
+     assert data["tagFrequency"] == {"tired": 1, "support": 2, "calm": 1}
++    assert data["moodTrend"] == "insufficient"
++    assert data["moodTrendDelta"] is None
+ 
+ 
+ @pytest.mark.asyncio
+@@ -327,3 +329,197 @@ async def test_legacy_string_mood_and_notes_remain_readable(
+     data = response.json()
+     assert data["mood"] == 5
+     assert data["note"] == "Legacy notes column"
++
++
++@pytest.mark.asyncio
++async def test_metrics_mood_trend_up_and_exact_plus_half_boundary(
++    async_client: AsyncClient,
++    make_initdata,
++):
++    await _login(
++        async_client,
++        make_initdata,
++        user_id=223009,
++        username="checkin_trend_up",
++    )
++    # Upper anchor date = 2026-07-14
++    # Previous window (2026-07-01..2026-07-07): 4 checkins with mood 3 -> mean = 3.0
++    # Current window (2026-07-08..2026-07-14): 4 checkins with moods [3, 4, 4, 3] -> mean = 3.5
++    # Raw difference = +0.5 -> exact +0.5 boundary -> "up", delta = 0.5
++    checkins = [
++        ("2026-07-01", 3),
++        ("2026-07-02", 3),
++        ("2026-07-03", 3),
++        ("2026-07-04", 3),
++        ("2026-07-08", 3),
++        ("2026-07-09", 4),
++        ("2026-07-10", 4),
++        ("2026-07-11", 3),
++    ]
++    for target_date, mood in checkins:
++        res = await async_client.post(
++            "/api/checkin",
++            json={
++                "targetDate": target_date,
++                "mood": mood,
++                "accuracy": 3,
++                "energy": 3,
++                "tags": [],
++                "note": None,
++            },
++        )
++        assert res.status_code == 200
++
++    response = await async_client.get(
++        "/api/checkin/metrics?from=2026-07-01&to=2026-07-14",
++    )
++    assert response.status_code == 200
++    data = response.json()
++    assert data["moodTrend"] == "up"
++    assert data["moodTrendDelta"] == 0.5
++
++
++@pytest.mark.asyncio
++async def test_metrics_mood_trend_down_and_exact_minus_half_boundary(
++    async_client: AsyncClient,
++    make_initdata,
++):
++    await _login(
++        async_client,
++        make_initdata,
++        user_id=223010,
++        username="checkin_trend_down",
++    )
++    # Upper anchor date = 2026-07-14
++    # Previous window (2026-07-01..2026-07-07): 4 checkins with mood 4 -> mean = 4.0
++    # Current window (2026-07-08..2026-07-14): 4 checkins with moods [3, 4, 4, 3] -> mean = 3.5
++    # Raw difference = -0.5 -> exact -0.5 boundary -> "down", delta = -0.5
++    checkins = [
++        ("2026-07-01", 4),
++        ("2026-07-02", 4),
++        ("2026-07-03", 4),
++        ("2026-07-04", 4),
++        ("2026-07-08", 3),
++        ("2026-07-09", 4),
++        ("2026-07-10", 4),
++        ("2026-07-11", 3),
++    ]
++    for target_date, mood in checkins:
++        res = await async_client.post(
++            "/api/checkin",
++            json={
++                "targetDate": target_date,
++                "mood": mood,
++                "accuracy": 3,
++                "energy": 3,
++                "tags": [],
++                "note": None,
++            },
++        )
++        assert res.status_code == 200
++
++    response = await async_client.get(
++        "/api/checkin/metrics?from=2026-07-01&to=2026-07-14",
++    )
++    assert response.status_code == 200
++    data = response.json()
++    assert data["moodTrend"] == "down"
++    assert data["moodTrendDelta"] == -0.5
++
++
++@pytest.mark.asyncio
++async def test_metrics_mood_trend_steady_and_unrounded_classification(
++    async_client: AsyncClient,
++    make_initdata,
++):
++    await _login(
++        async_client,
++        make_initdata,
++        user_id=223011,
++        username="checkin_trend_steady",
++    )
++    # Previous window (2026-07-01..2026-07-07): 6 checkins with mood 2 -> mean = 2.0
++    # Current window (2026-07-08..2026-07-14): 7 checkins with sum 17 -> mean = 17/7 = 2.4285714...
++    # Raw diff = 0.4285714... (< 0.5 -> "steady")
++    # Rounded delta = round(0.4285714..., 2) = 0.43
++    checkins = [
++        ("2026-07-01", 2),
++        ("2026-07-02", 2),
++        ("2026-07-03", 2),
++        ("2026-07-04", 2),
++        ("2026-07-05", 2),
++        ("2026-07-06", 2),
++        ("2026-07-08", 3),
++        ("2026-07-09", 2),
++        ("2026-07-10", 3),
++        ("2026-07-11", 2),
++        ("2026-07-12", 3),
++        ("2026-07-13", 2),
++        ("2026-07-14", 2),
++    ]
++    for target_date, mood in checkins:
++        res = await async_client.post(
++            "/api/checkin",
++            json={
++                "targetDate": target_date,
++                "mood": mood,
++                "accuracy": 3,
++                "energy": 3,
++                "tags": [],
++                "note": None,
++            },
++        )
++        assert res.status_code == 200
++
++    response = await async_client.get(
++        "/api/checkin/metrics?from=2026-07-01&to=2026-07-14",
++    )
++    assert response.status_code == 200
++    data = response.json()
++    assert data["moodTrend"] == "steady"
++    assert data["moodTrendDelta"] == 0.43
++
++
++@pytest.mark.asyncio
++async def test_metrics_mood_trend_insufficient_when_from_truncates_window(
++    async_client: AsyncClient,
++    make_initdata,
++):
++    await _login(
++        async_client,
++        make_initdata,
++        user_id=223012,
++        username="checkin_trend_truncate",
++    )
++    # Checkins in DB on 2026-07-01, 2026-07-02, 2026-07-03 (3 checkins in prev window)
++    # and 2026-07-08, 2026-07-09, 2026-07-10 (3 checkins in cur window)
++    checkins = [
++        ("2026-07-01", 3),
++        ("2026-07-02", 3),
++        ("2026-07-03", 3),
++        ("2026-07-08", 4),
++        ("2026-07-09", 4),
++        ("2026-07-10", 4),
++    ]
++    for target_date, mood in checkins:
++        res = await async_client.post(
++            "/api/checkin",
++            json={
++                "targetDate": target_date,
++                "mood": mood,
++                "accuracy": 3,
++                "energy": 3,
++                "tags": [],
++                "note": None,
++            },
++        )
++        assert res.status_code == 200
++
++    # Query with from=2026-07-02: truncates 2026-07-01 from DB query, so query returns only 2 checkins for prev window!
++    response = await async_client.get(
++        "/api/checkin/metrics?from=2026-07-02&to=2026-07-14",
++    )
++    assert response.status_code == 200
++    data = response.json()
++    assert data["moodTrend"] == "insufficient"
++    assert data["moodTrendDelta"] is None
+diff --git a/components/profile/checkin-stats-card.tsx b/components/profile/checkin-stats-card.tsx
+index 4a3d0689..2d63a33e 100644
+--- a/components/profile/checkin-stats-card.tsx
++++ b/components/profile/checkin-stats-card.tsx
+@@ -5,7 +5,7 @@
+ // ############################################################################
+ 
+ // START_MODULE_CONTRACT: M-PROFILE-CHECKIN-STATS-CARD
+-// purpose: Render checkin streak metrics, total count, and milestone badges (3/7/14/30 days) on Profile screen.
++// purpose: Render checkin streak metrics, total count, mood trend, and milestone badges (3/7/14/30 days) on Profile screen.
+ // owns:
+ //   - components/profile/checkin-stats-card.tsx
+ // inputs: timeZone (optional)
+@@ -39,6 +39,13 @@ const MILESTONES = [
+   { days: 30, label: "Месяц" },
+ ]
+ 
++const MOOD_TREND_LABELS = {
++  up: "Настроение: растёт",
++  steady: "Настроение: стабильно",
++  down: "Настроение: снижается",
++  insufficient: "Настроение: мало данных",
++} as const
++
+ // START_BLOCK: CHECKIN_STATS_CARD_COMPONENT
+ export function CheckinStatsCard() {
+   const [metrics, setMetrics] = useState<CheckinMetrics | null>(null)
+@@ -73,6 +80,7 @@ export function CheckinStatsCard() {
+   const streak = metrics?.currentStreak ?? 0
+   const longest = metrics?.longestStreak ?? 0
+   const total = metrics?.totalCheckins ?? 0
++  const moodTrend = metrics?.moodTrend ?? "insufficient"
+ 
+   return (
+     <div className="rounded-2xl border border-border/70 bg-card p-5 space-y-4" data-testid="checkin-stats-card">
+@@ -97,6 +105,14 @@ export function CheckinStatsCard() {
+         </div>
+       </div>
+ 
++      <div
++        data-testid="checkin-mood-trend"
++        data-trend={moodTrend}
++        className="text-[13px] text-muted-foreground pt-1 border-t border-border/40"
++      >
++        {MOOD_TREND_LABELS[moodTrend]}
++      </div>
++
+       {/* Milestones grid */}
+       <div className="space-y-1.5 pt-1">
+         <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground flex items-center gap-1">
+diff --git a/grace/verification-matrix.md b/grace/verification-matrix.md
+index 54422a35..a29c186f 100644
+--- a/grace/verification-matrix.md
++++ b/grace/verification-matrix.md
+@@ -55,6 +55,14 @@ These gates apply before broad autonomous business-feature work.
+ 
+ ---
+ 
++## UC-CHECKIN-MOOD-TREND · Truthful two-week mood trend in check-in metrics
++
++| Modules | Gates | Scenarios |
++|---|---|---|
++| M-SCHEMAS-CHECKIN → M-CHECKIN-SERVICE → M-PROFILE-CHECKIN-STATS-CARD → M-CONTRACTS | `GET /api/checkin/metrics` extends CheckinMetrics with `moodTrend` ("up" \| "steady" \| "down" \| "insufficient") and `moodTrendDelta` (rounded float or null). `CheckinStatsCard` renders `data-testid="checkin-mood-trend"` with `data-trend` and exact public labels. | S1: `test_checkin_endpoints.py` covers up, down, steady, insufficient, exact ±0.5 boundaries, and `from` range window truncation. S2: `CheckinStatsCard.test.tsx` covers all 4 labels and `data-trend` DOM attributes. S3: generated TypeScript and Zod contracts stay synced with camelCase wire names. |
++
++---
++
+ ## UC-DAY-VIEW · Today screen
+ 
+ | Modules | Gates | Scenarios |
+diff --git a/packages/contracts/_generated.ts b/packages/contracts/_generated.ts
+index 3692d7c4..631670d4 100644
+--- a/packages/contracts/_generated.ts
++++ b/packages/contracts/_generated.ts
+@@ -1109,6 +1109,13 @@ export interface components {
+             moodDistribution: {
+                 [key: string]: number;
+             };
++            /**
++             * Moodtrend
++             * @enum {string}
++             */
++            moodTrend: "up" | "steady" | "down" | "insufficient";
++            /** Moodtrenddelta */
++            moodTrendDelta: number | null;
+             /** Tagfrequency */
+             tagFrequency: {
+                 [key: string]: number;
+diff --git a/packages/contracts/_generated.zod.ts b/packages/contracts/_generated.zod.ts
+index ecc179c4..57940b51 100644
+--- a/packages/contracts/_generated.zod.ts
++++ b/packages/contracts/_generated.zod.ts
+@@ -218,6 +218,8 @@ export const CheckinMetrics = z.object({
+   currentStreak: z.number().int().gte(0),
+   longestStreak: z.number().int().gte(0),
+   moodDistribution: z.record(z.number().int()),
++  moodTrend: z.enum(["up", "steady", "down", "insufficient"]),
++  moodTrendDelta: z.union([z.number(), z.null()]),
+   tagFrequency: z.record(z.number().int()),
+   totalCheckins: z.number().int().gte(0),
+ });
+diff --git a/packages/contracts/openapi.json b/packages/contracts/openapi.json
+index d1455e2c..dea5458c 100644
+--- a/packages/contracts/openapi.json
++++ b/packages/contracts/openapi.json
+@@ -943,6 +943,27 @@
+             "title": "Mooddistribution",
+             "type": "object"
+           },
++          "moodTrend": {
++            "enum": [
++              "up",
++              "steady",
++              "down",
++              "insufficient"
++            ],
++            "title": "Moodtrend",
++            "type": "string"
++          },
++          "moodTrendDelta": {
++            "anyOf": [
++              {
++                "type": "number"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "title": "Moodtrenddelta"
++          },
+           "tagFrequency": {
+             "additionalProperties": {
+               "type": "integer"
+@@ -965,7 +986,9 @@
+           "averageAccuracy",
+           "moodDistribution",
+           "accuracyDistribution",
+-          "tagFrequency"
++          "tagFrequency",
++          "moodTrend",
++          "moodTrendDelta"
+         ],
+         "title": "CheckinMetrics",
+         "type": "object"

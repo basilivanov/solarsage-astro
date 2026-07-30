@@ -1,0 +1,29 @@
+schema_version = 1
+
+# Prices are immutable snapshots used only to normalize token usage. Historical
+# run costs must never be recomputed with a newer price entry.
+
+[pricing."gpt-5.6-luna-2026-07-30"]
+provider = "OpenAI"
+as_of = "2026-07-30"
+source = "https://developers.openai.com/api/docs/models/gpt-5.6-luna"
+input_per_million = 0.20
+cached_input_per_million = 0.02
+cache_write_per_million = 0.25
+output_per_million = 1.20
+input_includes_cached = true
+output_includes_reasoning = true
+long_context_threshold = 272000
+long_context_input_multiplier = 2.0
+long_context_output_multiplier = 1.5
+
+[pricing."gemini-3.6-flash-standard-2026-07-30"]
+provider = "Google"
+as_of = "2026-07-30"
+source = "https://ai.google.dev/gemini-api/docs/pricing"
+input_per_million = 1.50
+cached_input_per_million = 0.15
+cache_write_per_million = 1.50
+output_per_million = 7.50
+input_includes_cached = false
+output_includes_reasoning = false

@@ -1,0 +1,21 @@
+schema_version = 1
+
+# Model entries contain no credentials. Codex and OpenCode use their existing
+# local authentication/configuration. Add future OpenCode-backed models (for
+# example DeepSeek) by adding one table; no runner code change is required.
+
+[models."luna-high"]
+runner = "codex"
+executable = "codex"
+model = "gpt-5.6-luna"
+effort = "high"
+usage_parser = "codex_jsonl"
+pricing = "gpt-5.6-luna-2026-07-30"
+
+[models."gemini-3.6-high"]
+runner = "opencode"
+executable = "opencode"
+model = "cliproxy/gemini-3.6-flash-high"
+agent = "repo-eval"
+usage_parser = "opencode_jsonl"
+pricing = "gemini-3.6-flash-standard-2026-07-30"
