@@ -14,13 +14,15 @@
 #   normalized signals, and timing scope.
 # outputs: PreparedChart, TargetBundle, and compact FactorDay records.
 # dependencies: shared sidecar calculation core; API normalization, scoring,
-#   DayDelta, activation-layer, factor-ledger, and focus normalization services.
+#   DayDelta, activation-layer, factor-ledger, focus normalization services,
+#   and the strict W1 convergence canon loader.
 # side_effects: Swiss Ephemeris artifact reads; process-local canon caches only.
 # emitted_logs: none.
 # invariants:
 #   - No HTTP, DB, LLM, or user-profile access occurs.
 #   - Sidecar HTTP routes and this module share the same calculation core.
 #   - Corrected DayDelta keys use canonical semantic identities.
+#   - Product spheres come from the new W1 canon, never the legacy Today map.
 # failure_policy: raises on any invalid calculation or contract; corpus runner
 #   records the shard failure and never treats it as a successful sample.
 # END_MODULE_CONTRACT: M-DIRECT-REPLAY-PIPELINE
@@ -42,6 +44,7 @@
 #   - DIRECT_PIPELINE: in-process product calculation path.
 # owned_tests:
 #   - docs/work/2026-07-29_today-convergence-rewrite/analysis/test_direct_replay_pipeline.py
+#   - docs/work/2026-07-29_today-convergence-rewrite/analysis/test_sphere_mapping_delta.py
 # END_MODULE_MAP: M-DIRECT-REPLAY-PIPELINE
 
 from __future__ import annotations
@@ -72,12 +75,8 @@ from app.services.day_scoring_signals import filter_day_scored_signals  # noqa: 
 from app.services.natal_context_service import NatalContextService  # noqa: E402
 from app.services.normalization_service import NormalizationService  # noqa: E402
 from app.services.scoring_service import ScoringService  # noqa: E402
-from app.services.today_focus_builder import (  # noqa: E402
-    CANONICAL_PRODUCT_KEYS,
-    PLANET_TO_PRODUCT_MAP,
-    TECH_SPHERE_TO_PRODUCT_MAP,
-    normalize_factors,
-)
+from app.services.today_focus_builder import normalize_factors  # noqa: E402
+from convergence_canon import map_product_spheres  # noqa: E402
 from solarsage.services.calculation_core import (  # noqa: E402
     NatalCalculationContext,
     TargetCalculationContext,
@@ -194,18 +193,7 @@ def strict_product_spheres(
     source_key: str | None,
     target_key: str | None,
 ) -> list[str]:
-    mapped: set[str] = set()
-    for technical in technical_spheres or ():
-        product = TECH_SPHERE_TO_PRODUCT_MAP.get(str(technical).lower())
-        if product:
-            mapped.add(product)
-    for key in (source_key, target_key):
-        if not key:
-            continue
-        planet_spheres = PLANET_TO_PRODUCT_MAP.get(strip_prefix(str(key)).upper())
-        if planet_spheres:
-            mapped.update(planet_spheres)
-    return [key for key in CANONICAL_PRODUCT_KEYS if key in mapped]
+    return list(map_product_spheres(technical_spheres, source_key, target_key))
 # END_BLOCK: SEMANTIC_KEYS
 
 

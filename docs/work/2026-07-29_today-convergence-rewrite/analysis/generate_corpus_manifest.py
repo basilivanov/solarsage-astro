@@ -96,6 +96,7 @@ FINGERPRINT_FILES: tuple[str, ...] = (
     "apps/api/app/services/today_focus_builder.py",
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/ablation_harness.py",
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/birthtime_replay.py",
+    "docs/work/2026-07-29_today-convergence-rewrite/analysis/convergence_canon.py",
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/corpus_replay.py",
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/direct_replay_pipeline.py",
     "docs/work/2026-07-29_today-convergence-rewrite/analysis/tone_policy_candidate.py",

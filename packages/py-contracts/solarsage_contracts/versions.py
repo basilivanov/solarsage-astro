@@ -34,7 +34,7 @@ from __future__ import annotations
 # START_BLOCK: WIRE_VERSION_CONSTANTS
 ACTIVATION_SCHEMA_VERSION = "activation-layer.v1"
 ACTIVATION_LAYER_VERSION = "al-1.1"
-CALCULATION_VERSION = "ss-calc-1.2.0"
+CALCULATION_VERSION = "ss-calc-1.3.0"
 
 __all__ = [
     "ACTIVATION_SCHEMA_VERSION",

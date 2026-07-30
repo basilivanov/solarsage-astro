@@ -1,10 +1,10 @@
 # MASTER TZ: Today Convergence Rewrite — `today-convergence-2`
 
 Дата: 2026-07-30
-Версия: **v1.7** (2026-07-30) — v1.6 + явная граница полного rewrite (старые frontend/API-контракты не переносятся), ортогональный `dayTone` contract и политика двухступенчатого nightly pregen (W5). v1.0–v1.6 superseded. **W1 ещё не frozen: статус станет `frozen_w1` только после закрытия replay-source checkpoint, owner-решения и gate'ов §9.**
-Статус: активный. Единственный источник нормативов для экрана Дня и его потребителей (Calendar, Yesterday, check-in, pregen). **W2 запрещено начинать до утверждения machine-readable canon и replay-ablation (§13, критерий готовности W1).**
+Версия: **v1.8** (2026-07-30) — W1 frozen: полный rewrite boundary, ортогональный `dayTone`, nightly pregen policy, semantic-delta attestation и owner-approved population baseline. v1.0–v1.7 superseded.
+Статус: **W1 frozen; W2 ready to start.** Единственный источник нормативов для нового экрана Дня и его потребителей (Calendar, Yesterday, check-in, pregen). Старые frontend/API contracts не переносятся и удаляются только по `W9_LEGACY_REMOVAL_MANIFEST.md` после W8 cutover.
 Суперсидит: `docs/work/2026-07-27_today-premium-first-screen/00_MASTER_TZ.md` (FROZEN / SUPERSEDED, последний принятый SHA `0d4b265a`, волна W6 закрыта).
-Исполнитель: кодер (opencode/Gemini, tmux astro2). Архитектор/ревьюер: Kimi.
+Исполнитель W1 freeze: Codex. Исполнитель W2 назначается отдельно; остановленный coder-loop не считается активным исполнителем.
 Коммит/пуш: только ревьюер.
 
 ## 1. Зачем rewrite
@@ -108,6 +108,7 @@ semantic/history rows после dump и restore rehearsal.
 - **D11. Главное событие дня.** Одно исключительное редкое событие (без второго независимого) показывается как «Главное событие дня» внутри quiet_day — НЕ называется «сошлось».
 - **D12. Неопределённое время рождения (P0, §4.7).** Три режима: `exact | bucket | unknown`. Никакой подстановки условного полудня. Пользователь без времени — полноценный аккаунт с менее детальным, но честным расчётом: только факты, устойчивые по всему диапазону неопределённости. Часы событий — только при exact; иначе часть суток или дата.
 - **D13. Nightly pregen — не для всей базы и не один большой LLM-вызов.** Ночью выбирается только cohort пользователей с недавней активностью (текущий baseline: session за последние 14 дней), полным birth identity (`birthday`, birth timezone, latitude, longitude) и допустимым доступом к Дню. Для cohort сначала строится детерминированный factual snapshot; LLM warm-up выполняется только для разрешённой тёплой подкогорты по access/engagement policy W5. Dormant users не прогреваются и получают расчёт по запросу. Failed/`unavailable` результат не считается успешным прогревом и ставится на retry. Неувиденный snapshot не участвует в live-валидации: check-in связывается только через `forecast_snapshot_id` + server-side `prediction_seen_at` (§6.3–§7).
+- **D14. Owner freeze decision (2026-07-30).** Population replay `120 × 730 × 6` принят как W1 baseline: exact hero-rate `4.9041%` (`1.47/30d`), а не продуктовая квота/SLA; прежняя гипотеза `8–20%` superseded и остаётся только исторической. `tone-candidate-0.1` принят как W1 tone policy: exact tense `4.7728%`, mixed `6.1199%`, supportive `6.4612%`, steady `82.6461%`. Это доказывает механику и распределение, но не корреляцию с жизнью; последняя проверяется только snapshot-linked check-in (§14).
 
 ## 4. Модель: pipeline
 
@@ -168,7 +169,7 @@ birth_time_mode, birth_time_robustness (robust | time_sensitive)
 
 ### 4.5 Проекция на сферы
 
-Порядок изменён (запрет fan-out): **физическая группа по target/direct relation → одна canonical convergence → проекция группы в primary sphere → максимум одна secondary sphere.** Не факторы размножаются по сферам, а группа получает сферу(ы) целиком. Unmapped-фактор исключается (audit `excluded_unmapped`). `decisions` — не catch-all для SUN/MARS/JUPITER/SATURN/PLUTO: sphere mapping пересматривается в W1 как часть канона (сейчас decisions забирает 79–100% hero — артефакт маппинга). Один фактор виден в нескольких сферах, но при подсчёте остаётся одним фактором (§4.3.1 fan-out).
+Порядок изменён (запрет fan-out): **физическая группа по target/direct relation → одна canonical convergence → проекция группы в primary sphere → максимум одна secondary sphere.** Не факторы размножаются по сферам, а группа получает сферу(ы) целиком. Unmapped-фактор исключается (audit `excluded_unmapped`). `decisions` больше не catch-all: в planet-map она разрешена только SATURN/PLUTO; technical theme может добавить её только по явному канону. Один фактор виден в нескольких сферах, но при подсчёте остаётся одним фактором (§4.3.1 fan-out).
 
 ### 4.6 Truth tables (финальные)
 
@@ -176,12 +177,12 @@ birth_time_mode, birth_time_robustness (robust | time_sensitive)
 
 **T2. Polarity группы:** `supportive | tense | mixed`. Считается по independent units, не по raw-дублям; смешанный фактор делится; равенство → mixed.
 
-**Tone amendment (candidate, не freeze):** общий `day_tone` не выводится из наличия
+**Tone policy (W1, owner-approved):** общий `day_tone` не выводится из наличия
 одного tense unit. Сначала разделяются `unit_polarity` → `group_polarity` →
 `day_tone`; supporting-длинные темы остаются контекстом, быстрые источники не могут
 в одиночку создать общий tone. Полная truth table и audit-поля —
 `02_TONE_POLICY_AMENDMENT.md` и `grace/canon/today_convergence.v1.yml`;
-promotion разрешена только после tone-aware corpus replay.
+tone-aware corpus replay пройден, `tone-candidate-0.1` принят решением D14.
 
 **T3. evidence_level:**
 
@@ -429,7 +430,7 @@ excluded_time_sensitive, invariant_failures
 
 **Политика коммита артефактов:** в репозиторий — исполняемые скрипты, MD-отчёты, компактный summary JSON, checksum и команда воспроизведения. Сырые дампы (`factor_dump*.json`, `convergence_probe_results.json`, 100+ МБ) — gitignored или внешнее хранилище.
 
-**Обязательный исправленный re-run перед freeze W1 (новым классификатором):** трёхуровневая eligibility; background вне групп; direct grouping; суженный rare-set (без lunar/monthly); event_class пороги; ORB fail-closed; исправленный DayDelta identity; новый sphere mapping; геометрическая sect. Затем factor_dump → полный sweep → сравнение с C1 baseline → **страты exact/bucket/unknown тем же новым классификатором** (текущий `ablation_birthtime.py:85` использовал старый `classify_day` — его числа недействительны для финала). Только после этого частоты C1 могут быть заморожены.
+**Исправленный replay перед freeze W1:** полный прогон `120 карт × 730 дней × 6 режимов` выполнен новым классификатором для трёхуровневой eligibility, background-out, direct grouping, суженного rare-set, event_class, ORB fail-closed, DayDelta identity и геометрической sect; lineage — source fingerprint `90c691f0…`. Sphere registry был уточнён после этого прогона. Повторный ephemeris replay для него не требуется только при зелёном semantic-delta gate: старый и новый mapping распознают один и тот же набор planet/technical keys; `state`, hero IDs и `dayTone` byte-equivalent; меняются только projected primary/secondary; каждая группа имеет `≤2` сферы. Оба fingerprint и команды доказательства записываются в freeze delta-attestation. Любое нарушение этого gate возвращает требование полного replay.
 
 **Invariants (replay обязан проверять):**
 
@@ -452,7 +453,7 @@ excluded_time_sensitive, invariant_failures
 3. фактор на границе orb → excluded noise;
 4. две независимые техники на одном target → hero только при rare/structural;
 5. транзитивная цепочка A→B→C не объединяет несвязанные группы;
-6. исключительное одиночное событие → `main_event`, не convergence.
+6. исключительное одиночное событие → `main_event`, не convergence (**W2 presentation gate; не расчётный W1 fixture**).
 
 **Birth-time fixtures (P0):**
 
@@ -461,8 +462,8 @@ excluded_time_sensitive, invariant_failures
 9. sparse-результат ⊆ oracle-результату по всем стратам (gate §4.7) — PASS. Старая byte-identity проверка переименована в `diagnostic_shifted_grid_sensitivity` со статусом OBSERVED (не FAIL): остаток — консервативная полоса маржи (27–32/бакет) + genuinely time-sensitive факты (29 profection-флипов на краю 05:00→05:59) — разбор в `ablation_sect_oracle.md` §6;
 10. противоречащая полярность между контрольными точками не становится hero;
 11. sampling не размножает evidence (N контрольных точек = 1 unit);
-12. LLM вызывается один раз на payload;
-13. unknown → exact меняет hash/cache, но не старый published snapshot.
+12. LLM вызывается один раз на payload (**W6 gate**);
+13. unknown → exact меняет hash/cache, но не старый published snapshot (**W3 gate**).
 
 **Replay-корпус до freeze W1:** 100–200 карт × 2–3 года; разные широты, TZ/DST; **отдельные прогоны для exact, каждого из 4 bucket'ов и unknown**. Отчёт: impulse count, independent units, hero rate, sphere fan-out, noise exclusions, time_sensitive exclusions, tense streaks (**только по выбранным публичным units**), latency.
 
@@ -525,9 +526,9 @@ cutover отдельным allowlisted cleanup.
 
 ## 13. Порядок работ (волны)
 
-- **W0 — закрыта этим документом (v1.6).**
-- **W1 — контракт + canon + КАЛИБРОВКА:** machine-readable canon (§4.3.1 + §4.7: поля evidence-единицы, трёхуровневая eligibility, driver/horizon-правила, rare/structural классы, hero target types, bucket-границы и каноническая сетка + oracle-гейт, event_class пороги, ORB fail-closed, DayDelta identity, sphere mapping и проекция §4.5, геометрическая sect §4.4, fan-out, direct relation); theme registry; коэффициенты evidence; truth tables T1–T5 machine-readable; копирайт-канон; полная C1-схема; **исправленный harness re-run новым классификатором** (§9) + mutation suite (1–13).
-  **Критерий готовности W1 (без него W2 не декомпозируется):** machine-readable canon + исправленный re-run (новый классификатор, дамп → sweep → C1 → страты) + sect-fix в движке + sparse-oracle gate зелёный + mutation suite + согласованные state/content/API truth tables.
+- **W0 — закрыта этим документом (v1.8).**
+- **W1 — FROZEN:** machine-readable canon (§4.3.1 + §4.7: поля evidence-единицы, трёхуровневая eligibility, driver/horizon-правила, rare/structural классы, hero target types, bucket-границы и каноническая сетка + oracle-гейт, event_class пороги, ORB fail-closed, DayDelta identity, sphere mapping и проекция §4.5, геометрическая sect §4.4, fan-out, direct relation); theme registry; коэффициенты evidence; truth tables T1–T5 machine-readable; копирайт-канон; полная C1-схема; исправленный harness re-run (§9), расчётные mutation fixtures 1–5, birth-time fixtures 8–11, sphere semantic-delta attestation, version/parity/sect gates. Fixtures 6/7/12/13 закрываются владельцами runtime-слоёв W2/W6/W3, а не имитируются в W1.
+  **Критерий W1 выполнен:** machine-readable canon + исправленный re-run (новый классификатор, дамп → sweep → C1 → страты) + sect-fix в движке + sparse-oracle gate зелёный + расчётная mutation suite + sphere semantic-delta attestation + согласованные state/content/API truth tables. Полный evidence — `analysis/W1_FREEZE_DELTA_ATTESTATION.md`.
 - **W2 — deterministic pipeline:** canonical event ID, fail-closed house, пятислойная модель, birth-time robustness, группы, polarity/evidence, выбор, DayDelta contract.
 - **W3 — persistence:** snapshot (§6), canonical_input_ref, check-in (additive), profile contract (§4.7).
 - **W4 — replay harness как постоянный инструмент** + расширенный корпусный отчёт.

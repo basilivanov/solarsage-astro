@@ -1,6 +1,6 @@
 # Tone policy amendment — unit → group → day
 
-Статус: **candidate / full replay завершён / REVISE до owner review и contract gates**, не новый freeze-канон.
+Статус: **frozen_w1 / owner-approved / full replay и final attestation завершены**.
 
 ## Почему текущая агрегация даёт «все дни тяжёлые»
 
@@ -25,7 +25,7 @@ units могут быть корректными; ошибочен слой св
    `supportive | tense | mixed | steady`. Это не заменяет polarity каждой сферы
    и не должен красить 12 статических тайлов.
 
-## Candidate truth table
+## W1 truth table
 
 | условие | `day_tone` |
 |---|---|
@@ -42,7 +42,7 @@ units могут быть корректными; ошибочен слой св
 
 ## Weighted balance
 
-Candidate implementation: `tone_policy_candidate.py`.
+Implementation: `tone_policy_candidate.py` (`tone-candidate-0.1`).
 
 - anchor_today weight = `strength × 1.0`;
 - supporting/context weight = `strength × 0.5`;
@@ -51,8 +51,9 @@ Candidate implementation: `tone_policy_candidate.py`.
 - минимальная сторона group balance = `0.25`, margin mixed = `max(0.25,
   25% от общего баланса)`.
 
-Эти числа — explicit calibration knobs, не квота частот. Перед W1 freeze нужны
-ablation на полном корпусе и проверка на owner snapshot.
+Эти числа — explicit calibration knobs, не квота частот. Полный replay и owner
+review пройдены; live-валидность будет проверяться только по snapshot-linked
+check-in, не синтетическим распределением.
 
 ## Что сохраняем в audit/snapshot
 
@@ -77,8 +78,8 @@ ablation на полном корпусе и проверка на owner snapsho
 3. Один финальный corpus replay 120 карт × 730 дней × exact/buckets/unknown
    (сделано: 120/120 `ok`, 2026-07-30).
 4. Утвердить/скорректировать пороги и правило `supporting=context` по итогам
-   full replay — **ожидает owner review**.
-5. Freeze только если hero/gate/sparse-oracle и tone-audit зелёные; частота не
+   full replay — **утверждено владельцем 2026-07-30**.
+5. Freeze выполнен: hero/gate/sparse-oracle, sphere-delta и tone-audit зелёные; частота не
    используется как acceptance quota.
 
 ## Full corpus replay — результат 2026-07-30
@@ -98,13 +99,11 @@ ablation на полном корпусе и проверка на owner snapsho
 | unknown | 80.82% | 1.17% | 2 | 0.25 |
 
 Tone truth-table audit дал 0 нарушений. `invalid_ledger=0`, `zero_public_days=0`,
-median selected units = 3. Candidate прошёл проверку как лечение tense-inflation.
+median selected units = 3. Policy прошёл проверку как лечение tense-inflation.
 
-До freeze остаются три решения:
+После freeze остаются только runtime-волны W2–W9:
 
-1. population exact hero-rate = 4.9%, ниже monitoring hypothesis 8–20%; не
-   подгонять пороги под квоту, а явно принять частоту или пересмотреть определение;
-2. добавить ортогональный `dayTone` в public API/W7 contract и запретить UI
-   трактовать `quiet_day + steady` как пустой экран;
-3. доказать group-level sphere cap (`primary + secondary_max=1`), потому что
-   day-level span не различает корректные несколько групп и fan-out одной группы.
+1. `CALCULATION_VERSION=ss-calc-1.3.0` и source fingerprint delta уже зафиксированы;
+2. W1 строка зарегистрирована в verification matrix;
+3. старые contracts остаются
+   superseded и удаляются отдельным W9 cleanup после атомарного cutover.

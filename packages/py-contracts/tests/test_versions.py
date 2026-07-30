@@ -87,7 +87,7 @@ def _dependencies(path: Path) -> list[str]:
 def test_exact_shared_wire_constants():
     assert ACTIVATION_SCHEMA_VERSION == "activation-layer.v1"
     assert ACTIVATION_LAYER_VERSION == "al-1.1"
-    assert CALCULATION_VERSION == "ss-calc-1.2.0"
+    assert CALCULATION_VERSION == "ss-calc-1.3.0"
 
 
 def test_app_core_values_equal_shared_values():

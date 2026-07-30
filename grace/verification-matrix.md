@@ -61,6 +61,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-WEB-TODAY-CALENDAR → M-WEB-API → M-BACKEND-API/M-BACKEND-SERVICES → M-CONTRACTS | TodayPayload schema valid; access honored; cache behavior correct; frontend renders without calculating astrology. | S1: valid auth/profile/date → TodayPayload. S2: not onboarded → contract error. S3: no access → preview/locked payload. S4: invalid date → error. S5: cache hit where cache layer enabled. |
 
+## UC-TODAY-CONVERGENCE-W1 · W1 deterministic convergence canon
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-SIDECAR-CALCULATION → M-TODAY-CONVERGENCE-CANON → M-TODAY-REPLAY → M-CONTRACTS | New `state × dayTone × contentState` envelope is orthogonal; C1 hero requires a rare anchor plus an independent direct witness; background and transitive bridges cannot inflate it; sphere projection is primary + at most one secondary per physical group; unknown mapping fails closed; formula/calculation versions participate in lineage. | S1: `test_convergence_canon.py`, `test_convergence_mutation_fixtures.py`, `test_sphere_mapping_delta.py`. S2: direct replay parity on owner fixture. S3: 120-chart population aggregate is monitoring evidence, not a quota. S4: `CALCULATION_VERSION=ss-calc-1.3.0` parity/sect/health tests pass. S5: freeze delta-attestation records old/new source fingerprints. |
+
 ---
 
 ## UC-DAY-NAV · Navigate days

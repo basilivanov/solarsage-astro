@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ############################################################################
 # AI_HEADER: TONE_POLICY_CANDIDATE — separate unit, group, and day tone.
-# ROLE: Experimental W1 policy for polarity aggregation; never mutates factors.
+# ROLE: Replay-verified W1 policy for polarity aggregation; never mutates factors.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TONE-POLICY-CANDIDATE
@@ -19,7 +19,7 @@
 #   - supporting/ongoing units are context for day tone, not fresh threats;
 #   - independent counts use distinct driver keys, never raw duplicate rows.
 # failure_policy: malformed/unknown polarity is mapped to steady and recorded.
-# status: candidate; thresholds require replay calibration before canon freeze.
+# status: replay-verified and owner-approved; promotion is frozen with W1 canon.
 # END_MODULE_CONTRACT: M-TONE-POLICY-CANDIDATE
 
 # START_MODULE_MAP: M-TONE-POLICY-CANDIDATE
@@ -47,8 +47,8 @@ BACKGROUND_ROLE = "background"
 FRESH_ROLE = "anchor_today"
 ROLE_WEIGHT = {FRESH_ROLE: 1.0, "supporting": 0.5, BACKGROUND_ROLE: 0.0}
 
-# These are explicit candidate constants, not a frequency target. They are
-# intentionally kept here until a replay/ablation promotes them into canon.
+# These are explicit policy constants, not a frequency target. Their observed
+# distribution is recorded for monitoring; thresholds are never quota-tuned.
 HIGH_CONFIDENCE_STRENGTH = 0.75
 MIN_INDEPENDENT_POLARITY_UNITS = 2
 MIN_GROUP_SIDE_WEIGHT = 0.25

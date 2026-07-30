@@ -72,7 +72,7 @@ The `/etc/solarsage/app.env` file must exist on the host as a real non-symlink f
 - **OFFSITE_RESTIC_PASSWORD_FILE**: path to a real non-symlink `root:astro 0640` file containing the restic repository password (e.g. `/etc/solarsage/backup/restic-password`).
 
 - **GEONAMES_USERNAME**: GeoNames account used by `/api/geo/*` city/timezone lookups (fail-closed: compose interpolation and the endpoint both refuse to run without it).
-- **EXPECTED_CALCULATION_VERSION**: canonical calculation version the sidecar must report exactly (currently `ss-calc-1.2.0`). Required: the orchestrator's health proof compares the sidecar's `calculation_version` against this value.
+- **EXPECTED_CALCULATION_VERSION**: canonical calculation version the sidecar must report exactly (currently `ss-calc-1.3.0`). Required: the orchestrator's health proof compares the sidecar's `calculation_version` against this value.
 - **EPHEMERIS_EXPECTED_ARTIFACT_ID** and **EPHEMERIS_EXPECTED_MANIFEST_SHA256**: exact identity pins of the installed Swiss Ephemeris artifact (see section 5.1). Required once the artifact is installed: health proof matches them exactly against the sidecar's reported `ephemeris_artifact_id` / `ephemeris_manifest_sha256`.
 
 ### 2.1 Billing (YooKassa) and natal report flags

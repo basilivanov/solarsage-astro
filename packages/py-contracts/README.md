@@ -16,7 +16,7 @@ apps/api/.venv/bin/python -m pip install -e ./packages/py-contracts
 apps/solarsage/venv/bin/python -m pip install -e ./packages/py-contracts
 ```
 
-The package distribution version (`0.1.0`) is not a wire version. Wire versions remain `activation-layer.v1`, `al-1.1`, and `ss-calc-1.2.0`.
+The package distribution version (`0.1.0`) is not a wire version. Current wire versions are `activation-layer.v1`, `al-1.1`, and `ss-calc-1.3.0`.
 
 Contract workflow commands from the repository root:
 

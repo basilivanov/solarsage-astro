@@ -241,7 +241,7 @@ case "$url" in
   *:8000/api/health)
     printf '{"status":"ok","version":"0.1.0","git_sha":"g","release_sha":"%s"}\n' "$active" ;;
   *:18091/v1/health)
-    printf '{"ok":true,"version":"g","engine":"swieph","calculation_version":"ss-calc-1.2.0","ephemeris_artifact_id":"se-test-artifact","ephemeris_manifest_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","fallback":false,"release_sha":"%s"}\n' "$active" ;;
+    printf '{"ok":true,"version":"g","engine":"swieph","calculation_version":"ss-calc-1.3.0","ephemeris_artifact_id":"se-test-artifact","ephemeris_manifest_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","fallback":false,"release_sha":"%s"}\n' "$active" ;;
   *:3002/api/release-health)
     printf '{"status":"ok","release_sha":"%s"}\n' "$active" ;;
   *:3002/)
@@ -339,7 +339,7 @@ CORS_ALLOWED_ORIGINS=https://astro.example.com
 OPENROUTER_API_KEY=$CANARY_OR
 RESTIC_REPOSITORY=canary-repo
 OFFSITE_RESTIC_PASSWORD_FILE=$TEST_DIR/restic-password
-EXPECTED_CALCULATION_VERSION=ss-calc-1.2.0
+EXPECTED_CALCULATION_VERSION=ss-calc-1.3.0
 EPHEMERIS_EXPECTED_ARTIFACT_ID=se-test-artifact
 EPHEMERIS_EXPECTED_MANIFEST_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 EOF

@@ -664,11 +664,11 @@ FIXES: dict = {
     "hero_target_types": ("natal_planet", "angle"),
 }
 
-# Mirror of today_focus_builder.CANONICAL_PRODUCT_KEYS (kept as a literal so the
-# harness stays import-free of the app package).
 CANONICAL_PRODUCT_KEYS_V2: tuple[str, ...] = (
-    "work", "money", "documents", "relationships", "sport", "communication",
-    "health", "decisions", "travel", "creativity", "study", "shopping",
+    *(
+        str(value)
+        for value in CONVERGENCE_CANON["sphere_projection"]["canonical_order"]
+    ),
 )
 
 EVENT_CLASS_WHITELIST_TECHNIQUES = {
@@ -987,6 +987,8 @@ def classify_day_v2(
             if g:
                 primary, secondary = project_group_spheres(g["members"], g["anchor"])
                 g["spheres"] = tuple(s for s in (primary, secondary) if s)
+                if len(g["spheres"]) > 2:
+                    raise AssertionError("one convergence group may expose at most two spheres")
                 groups.append(g)
     else:
         for sphere in sorted({s for u in member_pool for s in u["spheres"]}):

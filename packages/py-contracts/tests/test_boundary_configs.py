@@ -230,7 +230,7 @@ def test_nested_activation_runtime_type_is_boundary_wrapper():
 
 
 def test_wrapper_ast_contains_no_local_contract_implementation():
-    forbidden_literals = {"activation-layer.v1", "al-1.1", "ss-calc-1.2.0"}
+    forbidden_literals = {"activation-layer.v1", "al-1.1", "ss-calc-1.3.0"}
     for path in (API_WRAPPER, SIDECAR_WRAPPER):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):

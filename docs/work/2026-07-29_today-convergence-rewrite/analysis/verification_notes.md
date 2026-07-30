@@ -15,7 +15,7 @@
 - Рабочее дерево уже содержало чужой незакоммиченный W2-чаинсет с геометрической сектой; мои изменения поверх: `sect_polar_condition` ("polar_day"/"polar_night"/None) в `NatalCalculationContext` + debug firdar major/minor (`solarsage/services/activation_builder.py`); тесты (a)–(d) в `tests/test_geometric_sect.py`.
 - Сьют: **240 passed, 1 failed**; единственный фейл `test_solar_return...same_year_after` — пре-существующий 1-секундный флейк (падает и на чистом HEAD, проверено git stash).
 - Live A/B :18091 vs :18099 по карте владельца (время не печаталось): старый — немонотонные флипы секты (firdar SUN↔SATURN 12:00↔13:00); новый — стабильно по высоте (12:00 +7.97° day, 13:00 +8.01° day, 16:00 +0.10° day, 17:59 −9.83° night). Секта в 12:00 изменилась (night→day) → фикс меняет firdar-лорды.
-- **Блокер для прод-выката**: `CALCULATION_VERSION="ss-calc-1.2.0"` живёт в `packages/py-contracts/solarsage_contracts/versions.py` (вне разрешённой зоны записи). Нужен бамп одной строкой, иначе кэши natal/activation не инвалидируются по новой секте.
+- **Закрыто перед W1 freeze**: `CALCULATION_VERSION="ss-calc-1.3.0"` живёт в общем `packages/py-contracts/solarsage_contracts/versions.py`; parity/sect/health gates зелёные, поэтому кэши natal/activation получают новый version key. Подробность — `W1_FREEZE_DELTA_ATTESTATION.md`.
 - Фиксированный сайдкар standalone на `127.0.0.1:18099` (uvicorn из venv сайдкара). Перезапуск: `cd /opt/solarsage-astro/apps/solarsage && PYTHONPATH=/opt/solarsage-astro/apps/solarsage venv/bin/uvicorn solarsage.app:app --host 127.0.0.1 --port 18099`.
 
 ## T3 — corpus runner

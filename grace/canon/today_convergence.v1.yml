@@ -1,17 +1,12 @@
 schema_version: today_convergence.v1
-status: draft_pending_canon_compliant_rerun
-# DRAFT: ablation v2 измерен классификатором, который НЕ применял
-# hero_confirmation:false и hero_target_types (ablation_harness.py:805).
-# Измеренные 10/81 включают 2 hero, нарушающих этот canon (06-04, 06-17).
-# Ожидание после canon-compliant re-run: ~8/81 exact. Снять draft-статус
-# после совпадения harness и canon + freeze-коммита.
+status: frozen_w1
 description: >
   Today Convergence Rewrite (formula today-convergence-2): пятислойная
   evidence-модель, пороги значимости, трёхуровневая eligibility, hero-правило C1,
   проекция сфер, birth-time robustness (sparse/oracle). Нормативный источник —
-  docs/work/2026-07-29_today-convergence-rewrite/00_MASTER_TZ.md (v1.6+).
-  Калибровка — docs/work/2026-07-29_today-convergence-rewrite/analysis/
-  (ablation v2 + sect/oracle; owner corpus, 81 день).
+  docs/work/2026-07-29_today-convergence-rewrite/00_MASTER_TZ.md (v1.8+).
+  Проверка механики — docs/work/2026-07-29_today-convergence-rewrite/analysis/
+  (owner probe 81 день + population replay 120 карт x 730 дней x 6 режимов).
 
 formula_version: today-convergence-2
 
@@ -82,7 +77,54 @@ sphere_projection:
   rule: group_to_spheres        # физическая группа → одна canonical convergence → сферы
   primary: majority_anchor_tiebreak
   secondary_max: 1
-  # Ревизия маппинга (ablation: decisions забирал 79–100% hero как catch-all):
+  fail_unmapped: true           # неизвестный factor не превращается в work
+  canonical_order:
+    [work, money, documents, relationships, sport, communication,
+     health, decisions, travel, creativity, study, shopping]
+  # Техническая theme-map применяется первой и остаётся отдельным evidence.
+  technical_to_product:
+    thinking_speech_learning: [communication, study, documents]
+    work_status_achievement: [work, decisions]
+    relationships_partnership: [relationships]
+    money_security_resources: [money, shopping, documents]
+    body_energy_health: [health, sport]
+    home_family_roots: [relationships]
+    inner_background_unconscious: [health, creativity]
+    crisis_transformation_control: [decisions, money]
+  technical_alias_to_product:
+    career: [work]
+    career_social_status: [work]
+    public_image: [work]
+    technology_innovation: [work]
+    finance_money: [money]
+    legal_affairs: [documents]
+    partnerships_contracts: [documents]
+    relationships: [relationships]
+    home_family: [relationships]
+    inheritance: [relationships]
+    daily_routine: [sport]
+    service_routine: [sport]
+    communication_learning: [communication, study]
+    friendship_social: [communication]
+    spirituality_inner_growth: [health]
+    healing: [health]
+    hidden_matters: [health]
+    career_ambition: [decisions]
+    crisis_transformation: [decisions]
+    philosophy: [decisions]
+    travel_adventure: [travel]
+  # Planet-map не раздувает один фактор более чем на две продуктовые сферы.
+  planet_to_product:
+    SUN: [work]
+    MARS: [sport, work]
+    VENUS: [relationships, money]
+    MERCURY: [communication, documents]
+    JUPITER: [money, work]
+    SATURN: [decisions, documents]
+    MOON: [relationships, health]
+    URANUS: [travel, creativity]
+    NEPTUNE: [creativity, health]
+    PLUTO: [decisions]
   planet_sphere_limits:
     max_spheres_per_planet: 2
     decisions: [SATURN, PLUTO]  # decisions НЕ catch-all для SUN/MARS/JUPITER
@@ -94,6 +136,25 @@ content_states:
   quiet_day: [ready, pending, unavailable, not_needed]
   unavailable: [unavailable]
 evidence_levels: [high, medium]  # low — diagnostic only, не публичный
+day_tone:
+  field: dayTone
+  values: [supportive, tense, mixed, steady]
+  nullable_only_when_state: unavailable
+  matrix:
+    convergence_today:
+      day_tone: [supportive, tense, mixed, steady]
+      content_state: [ready, pending, unavailable]
+    quiet_day:
+      day_tone: [supportive, tense, mixed, steady]
+      content_state: [ready, pending, unavailable, not_needed]
+    unavailable:
+      day_tone: [null]
+      content_state: [unavailable]
+  invariants:
+    - deterministic_not_llm
+    - content_unavailable_preserves_calculated_tone_events_and_spheres
+    - quiet_steady_is_not_empty
+    - quiet_tense_is_zone_of_attention_not_heavy_day
 
 # ── Canonical event ID ───────────────────────────────────────────────────
 canonical_event:
@@ -137,14 +198,44 @@ birth_time:
     unknown: {houses: false, angles: false, lots: false, exact_timing: false}
   migration: {null_birth_time: unknown, non_null: exact}
 
-# ── Измеренные частоты (мониторинг, НЕ квота; owner corpus, 81 день) ─────
+# ── Измеренные частоты (мониторинг, НЕ квота) ────────────────────────────
 measured:
-  hero: {exact: 10, night: 3, morning: 3, day: 3, evening: 2, unknown: 1}
-  hypothesis: hero_rate 0.08..0.20   # мониторинг; отклонение → пересмотр определений
+  owner_probe_81_days:
+    artifact: analysis/ablation_t1_canon_align.json
+    hero_days_exact: 8
+    hero_rate_exact: 0.098765
+  population_replay:
+    artifact: analysis/corpus_replay_tone_v3.json
+    baseline_source_fingerprint_sha256: 90c691f0a3282f75231668a430a623dbd9bf453273608e5fcc35518740671d0e
+    charts: 120
+    days_per_mode: 87600
+    hero_rate:
+      exact: 0.049041
+      night: 0.013733
+      morning: 0.013916
+      day: 0.013973
+      evening: 0.013904
+      unknown: 0.008345
+    zero_public_days: 0
+  superseded_frequency_hypothesis: hero_rate 0.08..0.20
+  interpretation: distribution_monitoring_not_acceptance_quota
 
-# ── Candidate tone layers (promote only after tone-aware replay) ───────────
+owner_decisions:
+  accepted_at: 2026-07-30
+  hero_rate:
+    decision: accept_population_exact_0.049041_as_w1_baseline
+    rationale: observed_frequency_not_quota_or_sla
+    revisit_via: snapshot_linked_live_validation
+  tone_policy:
+    decision: promote_tone_candidate_0.1
+  legacy_contracts:
+    decision: delete_after_atomic_cutover
+    compatibility_layer: forbidden
+    archive: git_history_only
+
+# ── Tone layers (replay-verified and owner-approved) ─────────────────────
 tone_policy:
-  status: candidate_pending_replay
+  status: frozen_w1
   version: tone-candidate-0.1
   layers: [unit_polarity, group_polarity, day_tone]
   unit_polarity: [supportive, tense, mixed, steady]
@@ -160,7 +251,9 @@ tone_policy:
     mixed_margin: 0.25
   day_tone:
     values: [supportive, tense, mixed, steady]
-    fresh_role: anchor_today
+    fresh_predicate:
+      - temporal_role == anchor_today
+      - exact_at local_date == target_date
     ongoing_roles_are_context: [supporting, background]
     fast_sources_detail_only: [MOON, MERCURY, VENUS]
     high_confidence_strength: 0.75

@@ -45,7 +45,7 @@ async def test_health_endpoint():
         assert "version" in data
         assert "ephemeris_path" in data
         assert "calculation_version" in data
-        assert data["calculation_version"] == "ss-calc-1.2.0"
+        assert data["calculation_version"] == "ss-calc-1.3.0"
         assert "release_sha" in data
         assert isinstance(data["release_sha"], str) and data["release_sha"]
 
