@@ -43,6 +43,42 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# START_BLOCK: FRONTEND_DISCOVERY
+FRONTEND_DISCOVERY_EXCLUDED_ROOTS = frozenset(
+    {
+        ".worktrees",
+        "node_modules",
+        ".next",
+        ".next-prod",
+        "dist",
+        "out",
+        "coverage",
+        "playwright-report",
+        "test-results",
+        ".turbo",
+    }
+)
+
+
+def _is_frontend_discovery_excluded(path: Path) -> bool:
+    # START_FUNCTION_CONTRACT: F-M-TOOL-OBSERVABILITY-GUARDRAILS._is_frontend_discovery_excluded
+    # purpose: Identify generated/build/worktree paths that frontend discovery must skip.
+    # inputs: path — repository path candidate.
+    # returns: bool — whether any path component is a known artifact root or .next-* root.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: paths outside ROOT are treated as not excluded.
+    # END_FUNCTION_CONTRACT: F-M-TOOL-OBSERVABILITY-GUARDRAILS._is_frontend_discovery_excluded
+    try:
+        relative_parts = path.relative_to(ROOT).parts
+    except ValueError:
+        return False
+    return any(
+        part in FRONTEND_DISCOVERY_EXCLUDED_ROOTS or part.startswith(".next-")
+        for part in relative_parts
+    )
+# END_BLOCK: FRONTEND_DISCOVERY
+
 # ── AST Constants/Helpers ──────────────────────────────────────────────────
 FORBIDDEN_RAW_NAMES = {
     "user_id", "tg_user_id", "telegram_id", "session_id", "token",
@@ -290,11 +326,6 @@ def check_backend_logger() -> bool:
 
 def check_frontend_console() -> bool:
     exclude_dirs = {
-        ROOT / "node_modules",
-        ROOT / ".next",
-        ROOT / ".next-prod",
-        ROOT / ".next-v2-real-preview",
-        ROOT / ".next-v2-preview",
         ROOT / ".grace",
         ROOT / "__tests__",
         ROOT / "legacy",
@@ -323,7 +354,9 @@ def check_frontend_console() -> bool:
 
     for ext in ["*.ts", "*.tsx", "*.js", "*.jsx"]:
         for path in ROOT.rglob(ext):
-            # Exclude directories
+            if _is_frontend_discovery_excluded(path):
+                continue
+            # Preserve existing non-artifact source exclusions.
             if any(path.is_relative_to(d) for d in exclude_dirs):
                 continue
             # Exclude only logging-layer files by path
@@ -511,6 +544,26 @@ log_event("system.error", payload={"credit_id_hash": hash_log_identifier("credit
     # Unsafe 7 test (report.id)
     v_unsafe_7 = _violations_for_snippet(unsafe_code_7)
     assert any("raw attribute chain: report.id" in x for x in v_unsafe_7), f"Unsafe code 7 did not trigger report.id violation: {v_unsafe_7}"
+
+    excluded_frontend_paths = (
+        ROOT / ".worktrees" / "feature" / "page.tsx",
+        ROOT / ".next" / "static" / "chunk.js",
+        ROOT / ".next-prod" / "static" / "chunk.js",
+        ROOT / ".next-v2-preview" / "static" / "chunk.js",
+        ROOT / "dist" / "bundle.js",
+        ROOT / "out" / "index.html",
+        ROOT / "coverage" / "lcov-report" / "index.html",
+        ROOT / "playwright-report" / "index.html",
+        ROOT / "test-results" / "trace" / "index.html",
+        ROOT / ".turbo" / "cache" / "result.json",
+    )
+    for path in excluded_frontend_paths:
+        assert _is_frontend_discovery_excluded(path), f"Artifact path was not excluded: {path}"
+
+    production_source_path = ROOT / "app" / "dashboard" / "page.tsx"
+    assert not _is_frontend_discovery_excluded(production_source_path), (
+        f"Production source path was incorrectly excluded: {production_source_path}"
+    )
 
     print("AST guardrail self-tests PASSED.")
     return True
