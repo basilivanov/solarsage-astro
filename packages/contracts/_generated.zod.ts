@@ -113,6 +113,12 @@ export const BirthData = z
     birthLat: z.union([z.number(), z.null()]),
     birthLon: z.union([z.number(), z.null()]),
     birthTime: z.union([z.string(), z.null()]),
+    birthTimeBucket: z.union([
+      z.enum(["night", "morning", "day", "evening"]),
+      z.null(),
+    ]),
+    birthTimeMode: z.union([z.enum(["exact", "bucket", "unknown"]), z.null()]),
+    birthTimePromptDismissed: z.union([z.boolean(), z.null()]),
     birthTz: z.union([z.string(), z.null()]),
     birthday: z.union([z.string(), z.null()]),
   })

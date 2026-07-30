@@ -996,6 +996,12 @@ export interface components {
             birthLon?: number | null;
             /** Birthtime */
             birthTime?: string | null;
+            /** Birthtimebucket */
+            birthTimeBucket?: ("night" | "morning" | "day" | "evening") | null;
+            /** Birthtimemode */
+            birthTimeMode?: ("exact" | "bucket" | "unknown") | null;
+            /** Birthtimepromptdismissed */
+            birthTimePromptDismissed?: boolean | null;
             /** Birthtz */
             birthTz?: string | null;
         };

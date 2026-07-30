@@ -530,6 +530,50 @@
             ],
             "title": "Birthtime"
           },
+          "birthTimeBucket": {
+            "anyOf": [
+              {
+                "enum": [
+                  "night",
+                  "morning",
+                  "day",
+                  "evening"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthtimebucket"
+          },
+          "birthTimeMode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "exact",
+                  "bucket",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthtimemode"
+          },
+          "birthTimePromptDismissed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birthtimepromptdismissed"
+          },
           "birthTz": {
             "anyOf": [
               {

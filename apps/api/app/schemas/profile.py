@@ -17,9 +17,14 @@
 #   - all fields snake_case in Python, camelCase on the wire (CamelModel).
 #   - birth_lat ∈ [-90, 90]; birth_lon ∈ [-180, 180].
 #   - if either birth_lat or birth_lon is set, BOTH must be set (validator).
+#   - BirthData keeps birth_time_mode and birth_time_prompt_dismissed optional
+#     at the transitional shared read/write schema boundary; GET /api/profile
+#     supplies non-null values from the non-null DB columns via its adapter.
+#     birth_time_bucket remains nullable.
 #   - birth_tz must be in zoneinfo.available_timezones() if provided.
 #   - birthday >= 1900-01-01 if provided.
 #   - ProfileRead never echoes tg_user_id, tokens, or other privacy keys.
+# emitted_logs: none
 # non_goals:
 #   - no geocoding, no address validation
 # END_MODULE_CONTRACT: M-PROFILE.schemas
@@ -32,7 +37,7 @@
 # semantic_blocks:
 #   - BIRTH_DATA: BirthData
 #   - PROFILE_READ: ProfileRead
-#   - PROFILE_WRITE: ProfileWrite
+#   - PROFILE_WRITE: ProfileWrite with nested BirthData dependency
 # owned_tests:
 #   - apps/api/tests/test_profile_endpoints.py
 # END_MODULE_MAP: M-PROFILE.schemas
@@ -49,6 +54,8 @@ from pydantic import Field, field_validator, model_validator
 from app.schemas._base import CamelModel
 
 _MIN_BIRTHDAY: date = date(1900, 1, 1)
+BirthTimeMode = Literal["exact", "bucket", "unknown"]
+BirthTimeBucket = Literal["night", "morning", "day", "evening"]
 
 
 # START_BLOCK: LOCATION_DATA
@@ -83,6 +90,11 @@ class BirthData(CamelModel):
 
     birthday: date | None = None
     birth_time: time | None = None
+    # Transitional shared read/write fields: GET /api/profile fills these from
+    # the non-null DB invariant, while PUT must preserve omitted-vs-null input.
+    birth_time_mode: BirthTimeMode | None = None
+    birth_time_bucket: BirthTimeBucket | None = None
+    birth_time_prompt_dismissed: bool | None = None
     birth_city: str | None = Field(None, max_length=200)
     birth_lat: float | None = Field(None, ge=-90, le=90)
     birth_lon: float | None = Field(None, ge=-180, le=180)

@@ -17,16 +17,21 @@
 #   - AsyncSession, TelegramUser, ProfileWrite
 # outputs:
 #   - User, UserProfile, missing_onboarding_fields, mark_profile_dirty(user_id)
+#   - InvalidBirthTimeState for stable profile-wire validation failures
 # invariants:
 #   - get_or_create_user is idempotent: same tg_user_id never produces two rows
 #   - read_profile is idempotent: ensures one row per user
 #   - update_profile applies partial semantics (model_dump(exclude_unset=True))
 #   - missing_onboarding_fields evaluates birthday, non-empty birth_city, and gender in {male, female}
+#   - birth-time validation runs against merged state before any profile field mutation
+#   - only safe field names and reason enums are emitted in profile logs
+# emitted_logs:
+#   - profile.lazy_created, profile.updated, profile.update_failed
 # failure_policy:
 #   - any DB error propagates; the routes do not catch them
 # non_goals:
 #   - no caching (Redis lands in W-CACHE)
-#   - no audit log (W-1.6 logging spine retrofit)
+#   - no audit log beyond the canonical profile event registry
 # END_MODULE_CONTRACT: M-PROFILE.service
 
 # START_MODULE_MAP: M-PROFILE.service
@@ -34,12 +39,14 @@
 #   - get_or_create_user
 #   - read_profile
 #   - update_profile
+#   - InvalidBirthTimeState
 #   - missing_onboarding_fields
 #   - mark_profile_dirty
 # semantic_blocks:
 #   - USER_UPSERT: get_or_create_user by tg_user_id
 #   - PROFILE_READ: read_profile (lazy create)
 #   - PROFILE_WRITE: update_profile (partial)
+#   - BIRTH_TIME_STATE: merged exact/bucket/unknown validation
 #   - BASE_ONBOARDING_CHECK: missing_onboarding_fields helper
 #   - INVALIDATION_MARKER: mark_profile_dirty stub (UC-PROFILE-EDIT)
 # owned_tests:
@@ -55,6 +62,7 @@ from decimal import Decimal as D
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import log_block, log_event
 from app.db.models import User, UserProfile
 from app.schemas.profile import LocationData, ProfileWrite
 from app.services.telegram_auth import TelegramUser
@@ -163,8 +171,126 @@ async def read_profile(db: AsyncSession, user_id: uuid.UUID) -> UserProfile:
         row = UserProfile(user_id=user_id)
         db.add(row)
         await db.flush()
+        with log_block(
+            slice="W-PROFILE", module="M-PROFILE-SERVICE", block="PROFILE_READ"
+        ):
+            log_event(
+                "profile.lazy_created",
+                payload={"reason": "missing_profile"},
+            )
     return row
 # END_BLOCK: PROFILE_READ
+
+
+# START_BLOCK: BIRTH_TIME_STATE
+class InvalidBirthTimeState(ValueError):
+    """Stable, safe reason wrapper for merged profile birth-time failures."""
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+
+def _merged_birth_time_state(
+    profile: UserProfile, birth: dict | None
+) -> tuple[object, object, object, object]:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.service._merged_birth_time_state
+    # purpose: Build the candidate birth-time state without mutating profile.
+    # inputs: profile — persisted state; birth — partial nested write fields.
+    # returns: (time, mode, bucket, dismissed) merged candidate values.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: none; shape validation is delegated to the next helper.
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.service._merged_birth_time_state
+    values = {
+        "birth_time": profile.birth_time,
+        "birth_time_mode": profile.birth_time_mode,
+        "birth_time_bucket": profile.birth_time_bucket,
+        "birth_time_prompt_dismissed": profile.birth_time_prompt_dismissed,
+    }
+    if isinstance(birth, dict):
+        for field in values:
+            if field in birth:
+                values[field] = birth[field]
+    return (
+        values["birth_time"],
+        values["birth_time_mode"],
+        values["birth_time_bucket"],
+        values["birth_time_prompt_dismissed"],
+    )
+
+
+def _validate_birth_time_state(
+    *,
+    birth_time: object,
+    birth_time_mode: object,
+    birth_time_bucket: object,
+    birth_time_prompt_dismissed: object,
+    previous_prompt_dismissed: bool,
+) -> None:
+    # START_FUNCTION_CONTRACT: F-M-PROFILE.service._validate_birth_time_state
+    # purpose: Enforce atomic exact/bucket/unknown and dismissal transition rules.
+    # inputs: Merged birth-time values plus persisted dismissal flag.
+    # returns: None for an accepted state.
+    # side_effects: none.
+    # emitted_logs: none; caller emits profile.update_failed with reason enum.
+    # error_behavior: Raises InvalidBirthTimeState with a safe reason enum.
+    # END_FUNCTION_CONTRACT: F-M-PROFILE.service._validate_birth_time_state
+    if birth_time_mode not in {"exact", "bucket", "unknown"}:
+        raise InvalidBirthTimeState("mode_required")
+    if birth_time_prompt_dismissed not in {True, False}:
+        raise InvalidBirthTimeState("dismissed_must_be_boolean")
+    if previous_prompt_dismissed and birth_time_prompt_dismissed is False:
+        raise InvalidBirthTimeState("dismissal_irreversible")
+
+    if birth_time_mode == "exact":
+        if birth_time is None:
+            raise InvalidBirthTimeState("exact_requires_time")
+        if birth_time_bucket is not None:
+            raise InvalidBirthTimeState("exact_forbids_bucket")
+        return
+
+    if birth_time_mode == "bucket":
+        if birth_time is not None:
+            raise InvalidBirthTimeState("bucket_forbids_time")
+        if birth_time_bucket not in {"night", "morning", "day", "evening"}:
+            raise InvalidBirthTimeState("bucket_requires_valid_bucket")
+        return
+
+    if birth_time is not None:
+        raise InvalidBirthTimeState("unknown_forbids_time")
+    if birth_time_bucket is not None:
+        raise InvalidBirthTimeState("unknown_forbids_bucket")
+
+
+def _profile_changed_fields(data: dict) -> list[str]:
+    """Return only safe, stable field names for profile event payloads."""
+    fields: list[str] = []
+    for field in (
+        "first_name",
+        "gender",
+        "current_location",
+        "birthday_location",
+    ):
+        if field in data:
+            fields.append(field)
+    birth = data.get("birth")
+    if isinstance(birth, dict):
+        for field in (
+            "birthday",
+            "birth_time",
+            "birth_time_mode",
+            "birth_time_bucket",
+            "birth_time_prompt_dismissed",
+            "birth_city",
+            "birth_lat",
+            "birth_lon",
+            "birth_tz",
+        ):
+            if field in birth:
+                fields.append(f"birth.{field}")
+    return fields
+# END_BLOCK: BIRTH_TIME_STATE
 
 
 # START_BLOCK: PROFILE_WRITE
@@ -172,26 +298,53 @@ async def update_profile(
     db: AsyncSession, user_id: uuid.UUID, payload: ProfileWrite
 ) -> UserProfile:
     # START_FUNCTION_CONTRACT: F-M-PROFILE.service.update_profile
-    # purpose: Apply partial profile update and mark cache as dirty.
+    # purpose: Validate merged birth-time state, then apply partial profile
+    #   update and mark cache as dirty.
     # inputs: db (AsyncSession), user_id (UUID), payload (ProfileWrite)
     # returns: updated UserProfile
-    # side_effects: updates profile row, sets is_onboarded if conditions met, marks cache dirty
-    # emitted_logs: profile.updated, profile.cache_invalidation_requested
+    # side_effects: validates and updates profile row, sets is_onboarded if
+    #   conditions met, emits safe profile events, marks cache dirty
+    # emitted_logs: profile.updated, profile.update_failed
     # error_behavior: DB errors propagate
     # END_FUNCTION_CONTRACT: F-M-PROFILE.service.update_profile
     """Apply a partial profile update + mark the user as cache-dirty."""
     profile = await read_profile(db, user_id)
 
     data = payload.model_dump(exclude_unset=True, by_alias=False)
+    birth = data.get("birth")
+    try:
+        merged_time, merged_mode, merged_bucket, merged_dismissed = _merged_birth_time_state(
+            profile, birth
+        )
+        _validate_birth_time_state(
+            birth_time=merged_time,
+            birth_time_mode=merged_mode,
+            birth_time_bucket=merged_bucket,
+            birth_time_prompt_dismissed=merged_dismissed,
+            previous_prompt_dismissed=profile.birth_time_prompt_dismissed,
+        )
+    except InvalidBirthTimeState as exc:
+        with log_block(
+            slice="W-PROFILE", module="M-PROFILE-SERVICE", block="PROFILE_WRITE"
+        ):
+            log_event(
+                "profile.update_failed",
+                level="warning",
+                payload={"reason": exc.reason},
+            )
+        raise
+
     if "first_name" in data:
         profile.first_name = data["first_name"]
     if "gender" in data:
         profile.gender = data["gender"]
-    birth = data.get("birth")
     if isinstance(birth, dict):
         for f in (
             "birthday",
             "birth_time",
+            "birth_time_mode",
+            "birth_time_bucket",
+            "birth_time_prompt_dismissed",
             "birth_city",
             "birth_lat",
             "birth_lon",
@@ -209,6 +362,13 @@ async def update_profile(
         profile.is_onboarded = True
 
     await db.flush()
+    with log_block(
+        slice="W-PROFILE", module="M-PROFILE-SERVICE", block="PROFILE_WRITE"
+    ):
+        log_event(
+            "profile.updated",
+            payload={"changed_fields": _profile_changed_fields(data)},
+        )
     mark_profile_dirty(user_id)
     return profile
 # END_BLOCK: PROFILE_WRITE

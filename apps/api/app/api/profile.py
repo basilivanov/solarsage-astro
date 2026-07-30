@@ -7,8 +7,9 @@
 
 # START_MODULE_CONTRACT: M-PROFILE.api
 # purpose: GET /api/profile returns ProfileRead; PUT /api/profile applies a
-#   partial update. On any successful PUT the profile_service marks the user
-#   cache-dirty (no-op marker in W-1.2; W-CACHE wires real invalidation).
+#   partial update with atomic merged birth-time validation. On any successful
+#   PUT the profile_service marks the user cache-dirty and the route invalidates
+#   Today caches.
 # owns:
 #   - apps/api/app/api/profile.py
 # inputs:
@@ -23,12 +24,19 @@
 # invariants:
 #   - GET on a brand-new user lazily creates an empty profile row; never 404.
 #   - PUT is partial: omitted fields stay as-is.
+#   - birth-time state is explicit and stable on the wire.
+#   - invalid merged birth-time state returns 422 with INVALID_BIRTH_TIME_STATE
+#     before any profile field mutation.
 #   - Response NEVER carries tg_user_id / token_hash / other privacy keys.
+# emitted_logs:
+#   - profile.viewed, profile.lazy_created, profile.update_failed
+#   - profile.updated, profile.cache_invalidation_requested,
+#     profile.cache_invalidated
 # failure_policy:
 #   - 401 propagates from current_user_id
-#   - 422 from FastAPI on invalid body shape (Pydantic validators)
+#   - 422 from FastAPI on invalid body shape or INVALID_BIRTH_TIME_STATE
 # non_goals:
-#   - no audit log (W-1.6 retrofit)
+#   - no storage of raw profile values in structured event payloads
 # END_MODULE_CONTRACT: M-PROFILE.api
 
 # START_MODULE_MAP: M-PROFILE.api
@@ -46,14 +54,19 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import current_user_id
+from app.core.logging import log_block, log_event
 from app.db.models import UserProfile
 from app.db.session import get_session
 from app.schemas.profile import BirthData, LocationData, ProfileRead, ProfileWrite
-from app.services.profile_service import read_profile, update_profile
+from app.services.profile_service import (
+    InvalidBirthTimeState,
+    read_profile,
+    update_profile,
+)
 
 router = APIRouter()
 
@@ -82,6 +95,9 @@ def _to_read(profile: UserProfile) -> ProfileRead:
         birth=BirthData(
             birthday=profile.birthday,
             birth_time=profile.birth_time,
+            birth_time_mode=profile.birth_time_mode,
+            birth_time_bucket=profile.birth_time_bucket,
+            birth_time_prompt_dismissed=profile.birth_time_prompt_dismissed,
             birth_city=profile.birth_city,
             birth_lat=(
                 float(profile.birth_lat)
@@ -116,6 +132,8 @@ async def get_profile(
     # END_FUNCTION_CONTRACT: F-M-PROFILE.api.get_profile
     profile = await read_profile(db, user_id)
     await db.commit()
+    with log_block(slice="W-PROFILE", module="M-PROFILE-API", block="ROUTE_PROFILE_GET"):
+        log_event("profile.viewed")
     return _to_read(profile)
 # END_BLOCK: ROUTE_PROFILE_GET
 
@@ -132,21 +150,40 @@ async def put_profile(
     db: AsyncSession = Depends(get_session),
 ) -> ProfileRead:
     # START_FUNCTION_CONTRACT: F-M-PROFILE.api.put_profile
-    # purpose: Apply partial profile update and invalidate cache.
+    # purpose: Apply partial profile update, validate merged birth-time state,
+    #   and invalidate cache.
     # inputs: body (ProfileWrite), user_id from session, db session
     # returns: ProfileRead with updated data
     # side_effects: updates profile row, invalidates today cache
-    # emitted_logs: profile.updated, profile.cache_invalidation_requested
+    # emitted_logs: profile.updated, profile.update_failed,
+    #   profile.cache_invalidation_requested, profile.cache_invalidated
     # error_behavior: 401 if not authenticated, 422 on validation failure
     # END_FUNCTION_CONTRACT: F-M-PROFILE.api.put_profile
-    profile = await update_profile(db, user_id, body)
+    try:
+        profile = await update_profile(db, user_id, body)
+    except InvalidBirthTimeState as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "INVALID_BIRTH_TIME_STATE", "reason": exc.reason},
+        ) from exc
 
     # W-5.2: Invalidate cache after profile edit
     from app.services.today_service import TodayService
+
+    with log_block(slice="W-PROFILE", module="M-PROFILE-API", block="ROUTE_PROFILE_PUT"):
+        log_event(
+            "profile.cache_invalidation_requested",
+            payload={"reason": "profile_updated"},
+        )
     today_service = TodayService(db)
     await today_service.invalidate_cache(user_id)
+    with log_block(slice="W-PROFILE", module="M-PROFILE-API", block="ROUTE_PROFILE_PUT"):
+        log_event(
+            "profile.cache_invalidated",
+            payload={"reason": "profile_updated"},
+        )
 
     await db.commit()
-    # TODO(W-1.6): log.event("profile.updated", {fields: list(...)} )
     return _to_read(profile)
 # END_BLOCK: ROUTE_PROFILE_PUT

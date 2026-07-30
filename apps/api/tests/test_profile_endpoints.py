@@ -27,6 +27,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
+import app.services.profile_service as profile_service_module
 from app.db.models import SemanticLayerCache, User
 from app.services.access_service import AccessService
 
@@ -71,6 +72,9 @@ async def test_get_profile_creates_empty(
     assert body["firstName"] is None
     assert body["birth"]["birthday"] is None
     assert body["birth"]["birthTz"] is None
+    assert body["birth"]["birthTimeMode"] == "unknown"
+    assert body["birth"]["birthTimeBucket"] is None
+    assert body["birth"]["birthTimePromptDismissed"] is False
 
 
 @pytest.mark.asyncio
@@ -83,6 +87,7 @@ async def test_put_profile_round_trip(
         "birth": {
             "birthday": "1985-12-10",
             "birthTime": "12:00:00",
+            "birthTimeMode": "exact",
             "birthCity": "London",
             "birthLat": 51.5074,
             "birthLon": -0.1278,
@@ -119,6 +124,38 @@ async def test_put_profile_round_trip(
 
 
 @pytest.mark.asyncio
+async def test_profile_updated_log_uses_changed_fields(
+    async_client: AsyncClient, make_initdata, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: list[dict[str, object]] = []
+
+    def capture(event: str, **kwargs: object) -> None:
+        if event == "profile.updated":
+            captured.append(kwargs)
+
+    monkeypatch.setattr(profile_service_module, "log_event", capture)
+    await _login(async_client, make_initdata, user_id=624)
+
+    response = await async_client.put(
+        "/api/profile",
+        json={
+            "firstName": "Ada",
+            "birth": {"birthTimeMode": "exact", "birthTime": "12:00:00"},
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert captured
+    payload = captured[-1]["payload"]
+    assert payload["changed_fields"] == [
+        "first_name",
+        "birth.birth_time",
+        "birth.birth_time_mode",
+    ]
+    assert "fields" not in payload
+
+
+@pytest.mark.asyncio
 async def test_put_profile_invalidates_semantic_calendar_cache(
     async_client: AsyncClient, make_initdata, db_session
 ) -> None:
@@ -139,6 +176,7 @@ async def test_put_profile_invalidates_semantic_calendar_cache(
             "birth": {
                 "birthday": "1985-12-10",
                 "birthTime": "12:00:00",
+                "birthTimeMode": "exact",
                 "birthCity": "London",
                 "birthLat": 51.5074,
                 "birthLon": -0.1278,
@@ -289,6 +327,7 @@ async def test_put_profile_all_three_locations_with_tz(
         "birth": {
             "birthday": "1990-06-15",
             "birthTime": "14:30:00",
+            "birthTimeMode": "exact",
             "birthCity": "Monchegorsk, Russia",
             "birthLat": 67.93972,
             "birthLon": 32.87389,
@@ -359,6 +398,7 @@ async def test_put_profile_partial_location_update_preserves_fields(
             "birth": {
                 "birthday": "1985-03-20",
                 "birthTime": "10:00:00",
+                "birthTimeMode": "exact",
                 "birthCity": "London",
                 "birthLat": 51.51,
                 "birthLon": -0.13,
@@ -403,6 +443,7 @@ async def test_put_profile_same_as_birth_copies_tz(
         "birth": {
             "birthday": "2000-01-01",
             "birthTime": "06:00:00",
+            "birthTimeMode": "exact",
             "birthCity": "Tokyo, Japan",
             "birthLat": 35.68,
             "birthLon": 139.69,
@@ -422,6 +463,199 @@ async def test_put_profile_same_as_birth_copies_tz(
     assert body["birth"]["birthTz"] == "Asia/Tokyo"
     assert body["currentLocation"]["tz"] == "Asia/Tokyo"
     assert body["currentLocation"]["city"] == "Tokyo, Japan"
+
+
+@pytest.mark.parametrize(
+    ("user_id", "birth", "expected_mode", "expected_bucket", "expected_time"),
+    [
+        (
+            601,
+            {"birthTimeMode": "exact", "birthTime": "12:00:00"},
+            "exact",
+            None,
+            "12:00:00",
+        ),
+        (602, {"birthTimeMode": "bucket", "birthTimeBucket": "night"}, "bucket", "night", None),
+        (603, {"birthTimeMode": "bucket", "birthTimeBucket": "morning"}, "bucket", "morning", None),
+        (604, {"birthTimeMode": "bucket", "birthTimeBucket": "day"}, "bucket", "day", None),
+        (605, {"birthTimeMode": "bucket", "birthTimeBucket": "evening"}, "bucket", "evening", None),
+        (
+            606,
+            {"birthTimeMode": "unknown", "birthTime": None, "birthTimeBucket": None},
+            "unknown",
+            None,
+            None,
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_put_profile_birth_time_mode_shapes(
+    async_client: AsyncClient,
+    make_initdata,
+    user_id: int,
+    birth: dict[str, str | None],
+    expected_mode: str,
+    expected_bucket: str | None,
+    expected_time: str | None,
+) -> None:
+    await _login(async_client, make_initdata, user_id=user_id)
+    response = await async_client.put("/api/profile", json={"birth": birth})
+
+    assert response.status_code == 200, response.text
+    returned_birth = response.json()["birth"]
+    assert returned_birth["birthTimeMode"] == expected_mode
+    assert returned_birth["birthTimeBucket"] == expected_bucket
+    assert returned_birth["birthTimePromptDismissed"] is False
+    assert returned_birth["birthTime"] == expected_time
+
+
+@pytest.mark.parametrize(
+    "birth",
+    [
+        {"birthTimeMode": "exact"},
+        {"birthTimeMode": "exact", "birthTime": None},
+        {"birthTimeMode": "bucket", "birthTimeBucket": None},
+        {"birthTimeMode": "bucket", "birthTimeBucket": "night", "birthTime": "12:00:00"},
+        {"birthTimeMode": "unknown", "birthTimeBucket": "morning"},
+        {"birthTimeMode": "unknown", "birthTime": "12:00:00"},
+    ],
+)
+@pytest.mark.asyncio
+async def test_put_profile_rejects_invalid_birth_time_shapes(
+    async_client: AsyncClient, make_initdata, birth: dict[str, str | None]
+) -> None:
+    await _login(async_client, make_initdata, user_id=620)
+    response = await async_client.put("/api/profile", json={"birth": birth})
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "INVALID_BIRTH_TIME_STATE"
+
+
+@pytest.mark.parametrize(
+    ("birth", "reason"),
+    [
+        ({"birthTimeMode": None}, "mode_required"),
+        ({"birthTimePromptDismissed": None}, "dismissed_must_be_boolean"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_put_profile_rejects_explicit_null_birth_time_fields(
+    async_client: AsyncClient,
+    make_initdata,
+    birth: dict[str, None],
+    reason: str,
+) -> None:
+    await _login(async_client, make_initdata, user_id=625)
+    response = await async_client.put("/api/profile", json={"birth": birth})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "INVALID_BIRTH_TIME_STATE",
+        "reason": reason,
+    }
+
+
+@pytest.mark.asyncio
+async def test_put_profile_rejects_legacy_birth_time_without_mode(
+    async_client: AsyncClient, make_initdata
+) -> None:
+    await _login(async_client, make_initdata, user_id=621)
+    response = await async_client.put(
+        "/api/profile", json={"birth": {"birthTime": "12:00:00"}}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "INVALID_BIRTH_TIME_STATE"
+
+
+@pytest.mark.asyncio
+async def test_put_profile_invalid_birth_time_does_not_mutate_adjacent_fields(
+    async_client: AsyncClient, make_initdata
+) -> None:
+    await _login(async_client, make_initdata, user_id=622)
+    initial = await async_client.put(
+        "/api/profile",
+        json={
+            "firstName": "Before",
+            "birth": {"birthTimeMode": "exact", "birthTime": "12:00:00"},
+        },
+    )
+    assert initial.status_code == 200, initial.text
+
+    invalid = await async_client.put(
+        "/api/profile",
+        json={"firstName": "After", "birth": {"birthTimeMode": "unknown"}},
+    )
+    assert invalid.status_code == 422
+    assert invalid.json()["detail"]["code"] == "INVALID_BIRTH_TIME_STATE"
+
+    current = await async_client.get("/api/profile")
+    assert current.status_code == 200
+    assert current.json()["firstName"] == "Before"
+    assert current.json()["birth"]["birthTimeMode"] == "exact"
+    assert current.json()["birth"]["birthTime"] == "12:00:00"
+
+
+@pytest.mark.asyncio
+async def test_put_profile_exact_to_unknown_requires_and_accepts_explicit_clear(
+    async_client: AsyncClient, make_initdata
+) -> None:
+    await _login(async_client, make_initdata, user_id=626)
+    initial = await async_client.put(
+        "/api/profile",
+        json={"birth": {"birthTimeMode": "exact", "birthTime": "08:15:00"}},
+    )
+    assert initial.status_code == 200, initial.text
+
+    changed = await async_client.put(
+        "/api/profile",
+        json={
+            "birth": {
+                "birthTimeMode": "unknown",
+                "birthTime": None,
+                "birthTimeBucket": None,
+            }
+        },
+    )
+
+    assert changed.status_code == 200, changed.text
+    returned_birth = changed.json()["birth"]
+    assert returned_birth["birthTimeMode"] == "unknown"
+    assert returned_birth["birthTime"] is None
+    assert returned_birth["birthTimeBucket"] is None
+
+
+@pytest.mark.asyncio
+async def test_birth_time_prompt_dismissal_is_irreversible(
+    async_client: AsyncClient, make_initdata
+) -> None:
+    await _login(async_client, make_initdata, user_id=623)
+
+    first = await async_client.put(
+        "/api/profile",
+        json={
+            "birth": {
+                "birthTimeMode": "unknown",
+                "birthTimePromptDismissed": True,
+            }
+        },
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["birth"]["birthTimePromptDismissed"] is True
+
+    second = await async_client.put(
+        "/api/profile", json={"birth": {"birthTimePromptDismissed": True}}
+    )
+    assert second.status_code == 200, second.text
+
+    rollback = await async_client.put(
+        "/api/profile", json={"birth": {"birthTimePromptDismissed": False}}
+    )
+    assert rollback.status_code == 422
+    assert rollback.json()["detail"]["code"] == "INVALID_BIRTH_TIME_STATE"
+
+    current = await async_client.get("/api/profile")
+    assert current.json()["birth"]["birthTimePromptDismissed"] is True
 
 
 @pytest.mark.asyncio
