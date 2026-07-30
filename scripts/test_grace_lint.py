@@ -7,7 +7,7 @@
 
 # START_MODULE_CONTRACT: T-GRACE-LINT
 # purpose: Pin grace_lint.py behaviour so future edits to the linter cannot
-#   silently weaken any of the five Level-3 invariants.
+#   silently weaken active marker/size invariants or re-enable deferred gates.
 # owns:
 #   - scripts/test_grace_lint.py
 # inputs: none (self-contained fixtures via tempfile)
@@ -16,8 +16,10 @@
 # side_effects: creates and cleans up a temporary directory per test
 # invariants:
 #   - a clean, fully-contracted file is reported OK
-#   - each violation class (banner, contract, map, function-contract, block)
+#   - each active violation class (banner, contract, map, block, function-size)
 #     produces exactly one matching violation code on a minimal failing fixture
+#   - deferred GRC010/GRC011/GRC030 remain non-reporting until their policy is
+#     explicitly changed in scripts/grace_lint.py
 # failure_policy: any failing case fails CI
 # non_goals: does not test ruff/mypy/pytest integration
 # END_MODULE_CONTRACT: T-GRACE-LINT
@@ -28,7 +30,7 @@
 #   - FIXTURES: clean and broken source builders
 #   - BANNER_TESTS: GRC001 coverage
 #   - PAIRING_TESTS: GRC002/003/004/020/021 coverage
-#   - FUNCTION_TESTS: GRC010/011 coverage
+#   - FUNCTION_TESTS: deferred GRC010/011 policy boundaries
 # owned_tests: self
 # END_MODULE_MAP: T-GRACE-LINT
 
@@ -126,7 +128,7 @@ class PairingTests(unittest.TestCase):
 
 # START_BLOCK: FUNCTION_TESTS
 class FunctionContractTests(unittest.TestCase):
-    def test_missing_function_contract(self) -> None:
+    def test_missing_function_contract_is_not_reported(self) -> None:
         broken = CLEAN_SOURCE.replace(
             "    # START_FUNCTION_CONTRACT: T-FIX.do_thing\n",
             "",
@@ -134,11 +136,16 @@ class FunctionContractTests(unittest.TestCase):
             "    # END_FUNCTION_CONTRACT: T-FIX.do_thing\n",
             "",
         )
-        self.assertIn("GRC010", _lint(broken))
+        # GRC010 is intentionally disabled: contracts are required only for
+        # non-trivial public functions, which this mechanical check cannot
+        # determine fail-closed.
+        self.assertEqual(_lint(broken), [])
 
-    def test_missing_required_field(self) -> None:
+    def test_missing_required_field_is_not_reported(self) -> None:
         broken = CLEAN_SOURCE.replace("    # error_behavior: none\n", "")
-        self.assertIn("GRC011", _lint(broken))
+        # GRC011 is part of the same intentionally deferred function-contract
+        # policy as GRC010.
+        self.assertEqual(_lint(broken), [])
 
     def test_private_function_is_exempt(self) -> None:
         src = CLEAN_SOURCE.replace("def do_thing", "def _do_thing")
@@ -167,12 +174,13 @@ class SizeTests(unittest.TestCase):
         self.assertEqual(len(src.splitlines()), 1000)
         self.assertEqual(_lint(src), [])
 
-    def test_file_1001_lines_fails_grc030(self) -> None:
+    def test_file_1001_lines_is_allowed_while_grc030_is_disabled(self) -> None:
         lines = CLEAN_SOURCE.splitlines()
         padding = 1001 - len(lines)
         src = CLEAN_SOURCE + "\n" * padding
         self.assertEqual(len(src.splitlines()), 1001)
-        self.assertIn("GRC030", _lint(src))
+        # GRC030 remains deferred until the backend files are refactored.
+        self.assertEqual(_lint(src), [])
 
     def test_function_normal_passes(self) -> None:
         # CLEAN_SOURCE has a normal-sized function
