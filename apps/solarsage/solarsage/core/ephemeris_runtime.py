@@ -22,13 +22,16 @@
 # inputs: filesystem artifact tree at settings.ephemeris_root.
 # outputs: EphemerisIdentity for health/reporting; checked calc results.
 # dependencies: solarsage.core.config settings; swisseph.
-# side_effects: reads artifact files; calls swe.set_ephe_path once per verify.
+# side_effects: reads artifact files; configures swe ephemeris path once per
+#   calculation thread after process-level artifact verification.
 # emitted_logs: none.
 # invariants:
 #   - Unknown/extra/missing files, symlinks (checked before resolve), wrong
 #     size/hash, empty manifest.sha256, missing ephe dir all fail closed.
 #   - Production (app_env == "production") never accepts Moshier.
 #   - Every real calculation passes through calc_ut_checked.
+#   - A process-level identity cache never substitutes for thread-local Swiss
+#     Ephemeris path configuration.
 # failure_policy: raises EphemerisError on any verification failure.
 # END_MODULE_CONTRACT: M-EPHEMERIS-RUNTIME
 
@@ -56,6 +59,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from threading import local
 
 import swisseph as swe
 
@@ -85,6 +89,7 @@ class EphemerisIdentity:
 
 
 _identity: EphemerisIdentity | None = None
+_thread_state = local()
 # END_BLOCK: CONSTANTS
 
 
@@ -238,6 +243,14 @@ def _moshier_allowed() -> bool:
 
 
 # START_BLOCK: IDENTITY_CACHE
+def _configure_current_thread(identity: EphemerisIdentity) -> None:
+    """Point Swiss Ephemeris at the verified path once per calling thread."""
+    if getattr(_thread_state, "ephemeris_path", None) == identity.ephemeris_path:
+        return
+    swe.set_ephe_path(identity.ephemeris_path)
+    _thread_state.ephemeris_path = identity.ephemeris_path
+
+
 def verify_and_configure() -> EphemerisIdentity:
     # START_FUNCTION_CONTRACT: F-M-EPHEMERIS-RUNTIME.verify_and_configure
     # purpose: One-shot verification + configuration used by the startup gate
@@ -252,6 +265,7 @@ def verify_and_configure() -> EphemerisIdentity:
     # END_FUNCTION_CONTRACT: F-M-EPHEMERIS-RUNTIME.verify_and_configure
     global _identity
     if _identity is not None:
+        _configure_current_thread(_identity)
         return _identity
 
     root = Path(settings.ephemeris_root)
@@ -270,6 +284,7 @@ def verify_and_configure() -> EphemerisIdentity:
                 ephemeris_path=str(Path(settings.ephemeris_path)),
                 fallback=True,
             )
+            _thread_state.ephemeris_path = _identity.ephemeris_path
             return _identity
         raise
 
@@ -282,6 +297,7 @@ def verify_and_configure() -> EphemerisIdentity:
         ephemeris_path=str(ephe_dir),
         fallback=False,
     )
+    _thread_state.ephemeris_path = _identity.ephemeris_path
     return _identity
 
 
@@ -345,4 +361,6 @@ def cross_ut_checked(fn, *args):
 def _reset_identity_for_tests() -> None:
     global _identity
     _identity = None
+    if hasattr(_thread_state, "ephemeris_path"):
+        del _thread_state.ephemeris_path
 # END_BLOCK: CHECKED_CALC

@@ -1,7 +1,7 @@
 # MASTER TZ: Today Convergence Rewrite — `today-convergence-2`
 
-Дата: 2026-07-29
-Версия: **v1.6** (2026-07-29) — v1.5 + C1 утверждён как НОРМАТИВНОЕ правило (каноническая формулировка D7); найден корень sect-флипов (§4.4); схема sparse-oracle для birth-time robustness (§4.7); политика коммита артефактов (§9). v1.0–v1.5 superseded. **C1 — нормативное правило, но НЕ окончательно подтверждённые частоты: заморозка частот только после re-run новым классификатором (§9).**
+Дата: 2026-07-30
+Версия: **v1.7** (2026-07-30) — v1.6 + явная граница полного rewrite (старые frontend/API-контракты не переносятся), ортогональный `dayTone` contract и политика двухступенчатого nightly pregen (W5). v1.0–v1.6 superseded. **W1 ещё не frozen: статус станет `frozen_w1` только после закрытия replay-source checkpoint, owner-решения и gate'ов §9.**
 Статус: активный. Единственный источник нормативов для экрана Дня и его потребителей (Calendar, Yesterday, check-in, pregen). **W2 запрещено начинать до утверждения machine-readable canon и replay-ablation (§13, критерий готовности W1).**
 Суперсидит: `docs/work/2026-07-27_today-premium-first-screen/00_MASTER_TZ.md` (FROZEN / SUPERSEDED, последний принятый SHA `0d4b265a`, волна W6 закрыта).
 Исполнитель: кодер (opencode/Gemini, tmux astro2). Архитектор/ревьюер: Kimi.
@@ -53,6 +53,33 @@ V1/V2/V2.1/V2.2-линейка дала нормативный drift (три к�
 - V1/V2/V2.1/V2.2-контракты и valence-линейка (12–17_TZ старого master);
 - старый master как источник нормативов.
 
+### Граница rewrite: старые контракты не переносятся
+
+Полный rewrite — это новая контрактная поверхность, а не V3-адаптер старого
+Today-пути. В новую версию **не переносятся и не поддерживаются через dual-read/
+dual-write**:
+
+- старые API/Pydantic/Zod-типы состояний (`single_impulses`, `background_only`,
+  `no_accent`, legacy `dayStatus`/`relativeStatus`);
+- старые frontend-компоненты Today/Calendar/Yesterday, завязанные на эти поля,
+  их `data-testid`, fixture payloads и visual/e2e baselines;
+- старые V1/V2/V2.1/V2.2 response-shapes, valence-поля, winning-group и
+  fallback-тексты;
+- старые consumer-адаптеры, которые молча переводят новый результат в legacy
+  enum или сохраняют оба контракта одновременно.
+
+Новая frontend/API связка строится только на envelope §5 и его `formulaVersion`;
+старый UI не является fallback для нового snapshot. Старый код и контракты можно
+временно оставить в Git и в работающем production-релизе до атомарного W8
+cutover, но после успешного cutover они удаляются отдельным W9 cleanup-релизом.
+Git-история — единственный архив старой реализации; совместимость с ней не входит
+в scope rewrite.
+
+Это правило **не распространяется** на protected user data, auth, payments,
+subscriptions, профили и существующие check-in/streak записи: они сохраняются и
+мигрируют additive-полями по §11. Удаляются только legacy derived Today/cache/
+semantic/history rows после dump и restore rehearsal.
+
 ### Переносим в новый план
 
 - typed pregen outcomes / retry / telemetry (бывший W6-S4b) → волна W5 (§13).
@@ -80,6 +107,7 @@ V1/V2/V2.1/V2.2-линейка дала нормативный drift (три к�
 - **D10. Drilldown выбранной сферы — «Почему сошлось».** Доказательная цепочка: драйверы с временами и окнами, основание связи, period context сферы. Полностью детерминирован. «Полный разбор дня» и «Почему так у меня» из экрана дня удаляются.
 - **D11. Главное событие дня.** Одно исключительное редкое событие (без второго независимого) показывается как «Главное событие дня» внутри quiet_day — НЕ называется «сошлось».
 - **D12. Неопределённое время рождения (P0, §4.7).** Три режима: `exact | bucket | unknown`. Никакой подстановки условного полудня. Пользователь без времени — полноценный аккаунт с менее детальным, но честным расчётом: только факты, устойчивые по всему диапазону неопределённости. Часы событий — только при exact; иначе часть суток или дата.
+- **D13. Nightly pregen — не для всей базы и не один большой LLM-вызов.** Ночью выбирается только cohort пользователей с недавней активностью (текущий baseline: session за последние 14 дней), полным birth identity (`birthday`, birth timezone, latitude, longitude) и допустимым доступом к Дню. Для cohort сначала строится детерминированный factual snapshot; LLM warm-up выполняется только для разрешённой тёплой подкогорты по access/engagement policy W5. Dormant users не прогреваются и получают расчёт по запросу. Failed/`unavailable` результат не считается успешным прогревом и ставится на retry. Неувиденный snapshot не участвует в live-валидации: check-in связывается только через `forecast_snapshot_id` + server-side `prediction_seen_at` (§6.3–§7).
 
 ## 4. Модель: pipeline
 
@@ -147,6 +175,13 @@ birth_time_mode, birth_time_robustness (robust | time_sensitive)
 **T1. Eligibility hero-convergence:** нормативное правило D7: ≥1 rare/structural якорь дня + ≥1 независимая non-background единица + ≥1 сегодняшняя динамика + direct связь target/theme + устойчивые сфера и полярность.
 
 **T2. Polarity группы:** `supportive | tense | mixed`. Считается по independent units, не по raw-дублям; смешанный фактор делится; равенство → mixed.
+
+**Tone amendment (candidate, не freeze):** общий `day_tone` не выводится из наличия
+одного tense unit. Сначала разделяются `unit_polarity` → `group_polarity` →
+`day_tone`; supporting-длинные темы остаются контекстом, быстрые источники не могут
+в одиночку создать общий tone. Полная truth table и audit-поля —
+`02_TONE_POLICY_AMENDMENT.md` и `grace/canon/today_convergence.v1.yml`;
+promotion разрешена только после tone-aware corpus replay.
 
 **T3. evidence_level:**
 
@@ -235,6 +270,7 @@ birth_time_bucket: night | morning | day | evening | null
   "birthTime": {"mode": "exact | bucket | unknown",
                 "capabilities": {"houses": true, "exactTiming": true, "lots": true}},
   "state": "convergence_today | quiet_day | unavailable",
+  "dayTone": "supportive | tense | mixed | steady | null",
   "personal": true,
   "convergences": [
     {"sphere": "work", "polarity": "tense", "evidenceLevel": "high",
@@ -262,6 +298,21 @@ birth_time_bucket: night | morning | day | evening | null
 
 `contentState=unavailable` → все LLM-owned поля null, детерминированные события/сферы остаются (21_TZ §6.6).
 
+### 5.2.1 Матрица state × dayTone × contentState
+
+`dayTone` — детерминированное поле расчёта, не поле LLM и не синоним `state`.
+
+| state | допустимый dayTone | допустимые contentState | presentation invariant |
+|---|---|---|---|
+| `convergence_today` | `supportive \| tense \| mixed \| steady` | `ready \| pending \| unavailable` | Показывается convergence; tone не меняет факт hero |
+| `quiet_day` | `supportive \| tense \| mixed \| steady` | `ready \| pending \| unavailable \| not_needed` | Показываются 0–3 импульса/контекст; `steady` не означает пустой экран |
+| `unavailable` | `null` | `unavailable` | Персональный расчёт не публикуется; не создавать выдуманный tone |
+
+`quiet_day + tense` не называется «тяжёлым днём» без hero: UI использует
+конструктивную «зону внимания». `quiet_day + steady` не получает empty-state.
+`contentState=unavailable` не обнуляет уже рассчитанные `dayTone`, события или
+сферы — обнуляются только LLM-owned поля.
+
 ### 5.3 Cache и latency
 
 - factual snapshot отдаётся сразу, даже при `contentState=unavailable`; повторный GET НЕ запускает новый provider-call на каждый refresh;
@@ -269,6 +320,26 @@ birth_time_bucket: night | morning | day | evening | null
 - `unavailable` не считается успешным прогревом (норматив W6-S4a в силе);
 - SLO (цели W5): cache hit < 1 с; cold deterministic path ограничен bounded deadline;
 - нагрузочный contract-test: 20 одновременных GET одного user/date при зависшем LLM.
+
+### 5.4 Nightly pregen policy (реализация W5)
+
+- **Calculation cohort:** недавно активные пользователи с полным birth identity;
+  baseline `active_days=14` конфигурируем, но не выбираем всех пользователей из
+  базы. Профиль с `birth_time=null` допускается как `unknown`, если дата/место/
+  timezone заполнены.
+- **Два этапа:** (1) deterministic calculation + immutable snapshot, (2) LLM
+  warm-up только для access/engagement cohort. Snapshot не зависит от успеха LLM.
+- **On-demand:** пользователь вне cohort или без LLM warm-up получает factual
+  snapshot по запросу; разрешённый текст генерируется single-flight на
+  `(snapshot_id, prompt_version)` и кэшируется.
+- **Failure/retry:** `contentState=unavailable` не считается успехом pregen;
+  сохраняется typed outcome, причина и retry с cooldown. Шаблонный персональный
+  fallback запрещён.
+- **Validation:** generated snapshot сам по себе не является impression. В
+  check-in попадает только snapshot, который был показан и получил
+  `prediction_seen_at`.
+- **Capacity:** cohort selection, concurrency, provider budget, retry и telemetry
+  задаются в W5 consumer matrix; ночной job не должен блокировать дневной запрос.
 
 ## 6. Snapshot и canonical input
 
@@ -416,10 +487,19 @@ excluded_time_sensitive, invariant_failures
 
 **Legacy-removal gate (W9):** `rg "dayStatus|relativeStatus|ScoringV2|DayValence|SemanticV2|today\.v2"` — каждое совпадение удалено или обосновано.
 
+**Rewrite contract gate (W7/W9):** `rg` по старым TodayFocus enums, legacy
+`contentState`-матрицам, old `data-testid`/fixture payloads и V1/V2 response
+shapes должен вернуть только supersession-документацию или Git-архив. Старые
+frontend/API contracts не адаптируются в новый envelope и удаляются после W8
+cutover отдельным allowlisted cleanup.
+
 ## 11. Деплой и rollback
 
 - DB-изменения сначала additive: новые поля (`birth_time_mode`, `birth_time_bucket`, snapshot precision/range) — nullable с миграцией существующих (`null birth_time → unknown`, непустое → `exact`); старые derived rows удаляются после успешного cutover;
 - API и frontend атомарно через orchestrator; sidecar digest в атомарный release при изменении его контракта (sect §4.4, house, контрольные времена §4.7);
+- новый frontend и API деплоятся как один новый контракт; старый frontend/API не
+  держится параллельно как compatibility path. Rollback выполняется на прежний
+  OCI release целиком, а не смешением старых и новых payload shapes;
 - app rollback ≠ schema rollback (prod-orchestrator §:53);
 - **protected-data denylist**: users, profiles, access ledger, payments, subscriptions, EveningCheckin, DayFeedback, paid reports;
 - **allowlist** destructive cleanup: только derived Today/cache/semantic/history;
@@ -440,6 +520,8 @@ excluded_time_sensitive, invariant_failures
 10. Подтверждены ли частоты C1 re-run'ом новым классификатором, включая страты? (да — committed ablation-отчёт W1)
 11. Может ли где-то в системе появиться условное полуденное время или секта из номера дома? (нет — §4.4, fixtures 7–9)
 12. Считаются ли метрики только по публичным units? (да — §9)
+13. Генерируем ли ночью payload для всех пользователей? (нет — только cohort §5.4; dormant по запросу)
+14. Переносим ли старые frontend/API contracts в новый envelope? (нет — Git-архив и W9 cleanup, без dual-read/dual-write)
 
 ## 13. Порядок работ (волны)
 
@@ -449,11 +531,11 @@ excluded_time_sensitive, invariant_failures
 - **W2 — deterministic pipeline:** canonical event ID, fail-closed house, пятислойная модель, birth-time robustness, группы, polarity/evidence, выбор, DayDelta contract.
 - **W3 — persistence:** snapshot (§6), canonical_input_ref, check-in (additive), profile contract (§4.7).
 - **W4 — replay harness как постоянный инструмент** + расширенный корпусный отчёт.
-- **W5 — API endpoint + wiring:** consumer matrix, календарный бюджет, local-today фикс, pregen/calendar/yesterday + typed pregen outcomes/retry/telemetry, single-flight lease, SLO.
+- **W5 — API endpoint + wiring:** consumer matrix, календарный бюджет, local-today фикс, **двухступенчатый pregen по §5.4** (cohort → deterministic snapshot → selective LLM warm-up), calendar/yesterday + typed pregen outcomes/retry/telemetry, single-flight lease, SLO.
 - **W6 — LLM-слой:** один компактный вызов, claim binding, capability-gated validation, null-path.
-- **W7 — frontend + contracts + e2e:** today (convergence/quiet/unavailable × exact/bucket/unknown), статический навигатор, onboarding-режимы, calendar, yesterday, check-in hint.
+- **W7 — frontend + contracts + e2e:** только новый envelope (convergence/quiet/unavailable × exact/bucket/unknown × dayTone), статический навигатор, onboarding-режимы, calendar, yesterday, check-in hint; старые frontend contracts/fixtures не переносятся.
 - **W8 — атомарный cutover** (§11).
-- **W9 — после стабильности:** legacy removal по gate §10 + destructive cleanup по §11.
+- **W9 — после стабильности:** legacy removal по gate §10, удаление старых frontend/API contracts и fixtures, затем destructive cleanup по §11.
 - **W10 — через 60–90 дней:** валидация и ablation по §14.
 
 Каждая волна регистрирует модули/gates в `grace/verification-matrix.md`; per-file тесты — через `owned_tests`.

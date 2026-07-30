@@ -44,17 +44,15 @@
   },
   {
    "step": "+F1 three-tier (fast = impulse/evidence)",
-   "hero": 12,
-   "convergence": 69,
+   "hero": 9,
+   "convergence": 72,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 59,
    "p90_sig": 68,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-18",
     "2026-06-24",
     "2026-07-01",
@@ -62,25 +60,22 @@
     "2026-07-08",
     "2026-07-21",
     "2026-07-23",
-    "2026-08-03",
-    "2026-08-12"
+    "2026-08-03"
    ],
    "delta_upgraded_total": 0,
    "excluded_orb_fail_closed_total": 0
   },
   {
    "step": "+F2 background out of groups",
-   "hero": 12,
-   "convergence": 67,
+   "hero": 9,
+   "convergence": 70,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 59,
    "p90_sig": 68,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-18",
     "2026-06-24",
     "2026-07-01",
@@ -88,25 +83,22 @@
     "2026-07-08",
     "2026-07-21",
     "2026-07-23",
-    "2026-08-03",
-    "2026-08-12"
+    "2026-08-03"
    ],
    "delta_upgraded_total": 0,
    "excluded_orb_fail_closed_total": 0
   },
   {
    "step": "+F3 direct star grouping",
-   "hero": 12,
-   "convergence": 67,
+   "hero": 9,
+   "convergence": 70,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 59,
    "p90_sig": 68,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-18",
     "2026-06-24",
     "2026-07-01",
@@ -114,79 +106,68 @@
     "2026-07-08",
     "2026-07-21",
     "2026-07-23",
-    "2026-08-03",
-    "2026-08-12"
+    "2026-08-03"
    ],
    "delta_upgraded_total": 0,
    "excluded_orb_fail_closed_total": 0
   },
   {
    "step": "+F4 corrected DayDelta triggers",
-   "hero": 13,
-   "convergence": 68,
+   "hero": 9,
+   "convergence": 72,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 59,
    "p90_sig": 68,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-18",
     "2026-06-24",
-    "2026-06-30",
     "2026-07-01",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
     "2026-07-23",
-    "2026-08-03",
-    "2026-08-12"
+    "2026-08-03"
    ],
    "delta_upgraded_total": 169,
    "excluded_orb_fail_closed_total": 0
   },
   {
    "step": "+F5 sphere no fan-out",
-   "hero": 13,
-   "convergence": 68,
+   "hero": 9,
+   "convergence": 72,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 59,
    "p90_sig": 68,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-18",
     "2026-06-24",
-    "2026-06-30",
     "2026-07-01",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
     "2026-07-23",
-    "2026-08-03",
-    "2026-08-12"
+    "2026-08-03"
    ],
    "delta_upgraded_total": 169,
    "excluded_orb_fail_closed_total": 0
   },
   {
    "step": "+F6 event_class=whitelist_timelord",
-   "hero": 11,
-   "convergence": 68,
+   "hero": 9,
+   "convergence": 70,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 49,
    "p90_sig": 58,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-18",
     "2026-06-24",
     "2026-07-01",
@@ -201,17 +182,15 @@
   },
   {
    "step": "+F7 orb fail-closed",
-   "hero": 11,
-   "convergence": 68,
+   "hero": 9,
+   "convergence": 70,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 44,
    "p90_sig": 53,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-18",
     "2026-06-24",
     "2026-07-01",
@@ -226,17 +205,15 @@
   },
   {
    "step": "+F8 rare narrowed (all fixes)",
-   "hero": 10,
-   "convergence": 69,
+   "hero": 8,
+   "convergence": 71,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 44,
    "p90_sig": 53,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
     "2026-07-01",
     "2026-07-03",
@@ -251,63 +228,49 @@
  ],
  "sweep_fixed": [
   {
-   "hero": 15,
-   "convergence": 65,
+   "hero": 7,
+   "convergence": 73,
    "single_impulse": 1,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 49,
    "p90_sig": 57,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-22",
-    "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-08",
     "2026-07-21",
-    "2026-07-22",
     "2026-07-23",
-    "2026-07-27",
-    "2026-08-03"
+    "2026-07-27"
    ],
    "delta_upgraded_total": 169,
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.25_o0.3_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 67,
+    "max_streak": 17,
+    "median_streak": 5,
+    "n_streaks": 9
    }
   },
   {
-   "hero": 17,
-   "convergence": 64,
+   "hero": 11,
+   "convergence": 70,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 70,
    "p90_sig": 79,
    "hero_days": [
-    "2026-06-02",
     "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-22",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
-    "2026-07-22",
     "2026-07-23",
     "2026-07-27",
     "2026-08-03"
@@ -316,35 +279,29 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.25_o0.5_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 69,
+    "max_streak": 18,
+    "median_streak": 6,
+    "n_streaks": 9
    }
   },
   {
-   "hero": 17,
-   "convergence": 64,
+   "hero": 11,
+   "convergence": 70,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 95,
    "p90_sig": 104,
    "hero_days": [
-    "2026-06-02",
     "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-22",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
-    "2026-07-22",
     "2026-07-23",
     "2026-07-27",
     "2026-08-03"
@@ -353,15 +310,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.25_o0.7_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 71,
+    "max_streak": 23,
+    "median_streak": 6.5,
+    "n_streaks": 8
    }
   },
   {
-   "hero": 18,
-   "convergence": 63,
+   "hero": 14,
+   "convergence": 67,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
@@ -371,17 +328,13 @@
     "2026-06-02",
     "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-22",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
     "2026-07-02",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
-    "2026-07-22",
     "2026-07-23",
     "2026-07-27",
     "2026-08-03",
@@ -391,15 +344,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.25_o1.0_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 72,
+    "max_streak": 23,
+    "median_streak": 7,
+    "n_streaks": 7
    }
   },
   {
-   "hero": 12,
-   "convergence": 67,
+   "hero": 7,
+   "convergence": 72,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
@@ -407,46 +360,37 @@
    "p90_sig": 54,
    "hero_days": [
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-22",
-    "2026-06-24",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-08",
     "2026-07-21",
     "2026-07-23",
-    "2026-07-27",
-    "2026-08-03"
+    "2026-07-27"
    ],
    "delta_upgraded_total": 169,
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.3_o0.3_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 70,
+    "max_streak": 17,
+    "median_streak": 5,
+    "n_streaks": 9
    }
   },
   {
-   "hero": 15,
-   "convergence": 66,
+   "hero": 11,
+   "convergence": 70,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 65,
    "p90_sig": 74,
    "hero_days": [
-    "2026-06-02",
     "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-22",
     "2026-06-24",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
@@ -458,31 +402,26 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.3_o0.5_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 69,
+    "max_streak": 23,
+    "median_streak": 5.0,
+    "n_streaks": 10
    }
   },
   {
-   "hero": 16,
-   "convergence": 65,
+   "hero": 11,
+   "convergence": 70,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 89,
    "p90_sig": 97,
    "hero_days": [
-    "2026-06-02",
     "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-22",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
@@ -494,15 +433,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.3_o0.7_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 70,
+    "max_streak": 28,
+    "median_streak": 6.5,
+    "n_streaks": 8
    }
   },
   {
-   "hero": 17,
-   "convergence": 64,
+   "hero": 14,
+   "convergence": 67,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
@@ -512,11 +451,8 @@
     "2026-06-02",
     "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-22",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
     "2026-07-02",
     "2026-07-03",
@@ -531,15 +467,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.3_o1.0_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 71,
+    "max_streak": 28,
+    "median_streak": 6.5,
+    "n_streaks": 8
    }
   },
   {
-   "hero": 10,
-   "convergence": 62,
+   "hero": 5,
+   "convergence": 67,
    "single_impulse": 7,
    "quiet_impulses": 2,
    "quiet": 0,
@@ -547,42 +483,33 @@
    "p90_sig": 46,
    "hero_days": [
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
-    "2026-06-24",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-08",
     "2026-07-21",
-    "2026-07-23",
-    "2026-08-03"
+    "2026-07-23"
    ],
    "delta_upgraded_total": 169,
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.4_o0.3_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 68,
+    "max_streak": 12,
+    "median_streak": 5,
+    "n_streaks": 11
    }
   },
   {
-   "hero": 12,
-   "convergence": 69,
+   "hero": 8,
+   "convergence": 73,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 52,
    "p90_sig": 62,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-24",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
@@ -593,29 +520,24 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.4_o0.5_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 66,
+    "max_streak": 10,
+    "median_streak": 5,
+    "n_streaks": 15
    }
   },
   {
-   "hero": 13,
-   "convergence": 68,
+   "hero": 8,
+   "convergence": 73,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 67,
    "p90_sig": 77,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
-    "2026-07-02",
     "2026-07-03",
     "2026-07-08",
     "2026-07-21",
@@ -626,15 +548,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.4_o0.7_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 70,
+    "max_streak": 26,
+    "median_streak": 4.5,
+    "n_streaks": 10
    }
   },
   {
-   "hero": 15,
-   "convergence": 66,
+   "hero": 12,
+   "convergence": 69,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
@@ -644,10 +566,7 @@
     "2026-06-02",
     "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-18",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
     "2026-07-02",
     "2026-07-03",
@@ -661,15 +580,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.4_o1.0_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 71,
+    "max_streak": 26,
+    "median_streak": 5,
+    "n_streaks": 9
    }
   },
   {
-   "hero": 8,
-   "convergence": 60,
+   "hero": 5,
+   "convergence": 63,
    "single_impulse": 10,
    "quiet_impulses": 3,
    "quiet": 0,
@@ -677,36 +596,31 @@
    "p90_sig": 40,
    "hero_days": [
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-24",
     "2026-07-01",
     "2026-07-08",
     "2026-07-21",
-    "2026-07-23",
-    "2026-08-03"
+    "2026-07-23"
    ],
    "delta_upgraded_total": 169,
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.55_o0.3_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 72,
+    "max_streak": 21,
+    "median_streak": 5,
+    "n_streaks": 9
    }
   },
   {
-   "hero": 10,
-   "convergence": 69,
+   "hero": 8,
+   "convergence": 71,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 44,
    "p90_sig": 53,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
     "2026-07-01",
     "2026-07-03",
@@ -719,26 +633,23 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.55_o0.5_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 68,
+    "max_streak": 10,
+    "median_streak": 4.5,
+    "n_streaks": 14
    }
   },
   {
-   "hero": 11,
-   "convergence": 70,
+   "hero": 8,
+   "convergence": 73,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 56,
    "p90_sig": 63,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
     "2026-07-03",
     "2026-07-08",
@@ -750,15 +661,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.55_o0.7_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 68,
+    "max_streak": 19,
+    "median_streak": 5.0,
+    "n_streaks": 12
    }
   },
   {
-   "hero": 14,
-   "convergence": 67,
+   "hero": 12,
+   "convergence": 69,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
@@ -768,9 +679,7 @@
     "2026-06-02",
     "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-01",
     "2026-07-02",
     "2026-07-03",
@@ -784,15 +693,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.55_o1.0_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 67,
+    "max_streak": 26,
+    "median_streak": 4,
+    "n_streaks": 11
    }
   },
   {
-   "hero": 6,
-   "convergence": 51,
+   "hero": 3,
+   "convergence": 54,
    "single_impulse": 15,
    "quiet_impulses": 9,
    "quiet": 0,
@@ -800,25 +709,22 @@
    "p90_sig": 37,
    "hero_days": [
     "2026-06-15",
-    "2026-06-17",
-    "2026-06-24",
     "2026-07-08",
-    "2026-07-23",
-    "2026-08-03"
+    "2026-07-23"
    ],
    "delta_upgraded_total": 169,
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.85_o0.3_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 74,
+    "max_streak": 39,
+    "median_streak": 5.0,
+    "n_streaks": 8
    }
   },
   {
-   "hero": 6,
-   "convergence": 66,
+   "hero": 5,
+   "convergence": 67,
    "single_impulse": 5,
    "quiet_impulses": 4,
    "quiet": 0,
@@ -826,7 +732,6 @@
    "p90_sig": 48,
    "hero_days": [
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
     "2026-07-08",
     "2026-07-23",
@@ -836,15 +741,15 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.85_o0.5_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 72,
+    "max_streak": 20,
+    "median_streak": 5,
+    "n_streaks": 9
    }
   },
   {
-   "hero": 7,
-   "convergence": 70,
+   "hero": 5,
+   "convergence": 72,
    "single_impulse": 2,
    "quiet_impulses": 2,
    "quiet": 0,
@@ -852,9 +757,7 @@
    "p90_sig": 57,
    "hero_days": [
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-08",
     "2026-07-23",
     "2026-08-03"
@@ -863,26 +766,23 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.85_o0.7_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 71,
+    "max_streak": 17,
+    "median_streak": 6.5,
+    "n_streaks": 10
    }
   },
   {
-   "hero": 10,
-   "convergence": 71,
+   "hero": 7,
+   "convergence": 74,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 65,
    "p90_sig": 73,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
-    "2026-06-25",
     "2026-07-02",
     "2026-07-08",
     "2026-07-23",
@@ -893,17 +793,17 @@
    "excluded_orb_fail_closed_total": 459,
    "name": "w0.85_o1.0_fixed_B",
    "tense": {
-    "tense_days": 81,
-    "max_streak": 81,
-    "median_streak": 81,
-    "n_streaks": 1
+    "tense_days": 71,
+    "max_streak": 26,
+    "median_streak": 5.0,
+    "n_streaks": 10
    }
   }
  ],
  "theta_p_collapse_check": {
-  "any": 10,
-  "non_moon": 10,
-  "non_fast": 10
+  "any": 8,
+  "non_moon": 8,
+  "non_fast": 8
  },
  "rule_A_fixed": {
   "hero": 1,
@@ -939,19 +839,16 @@
  },
  "f6_options": {
   "auto": {
-   "hero": 11,
-   "convergence": 70,
+   "hero": 8,
+   "convergence": 73,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 54,
    "p90_sig": 63,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
-    "2026-06-30",
     "2026-07-01",
     "2026-07-03",
     "2026-07-08",
@@ -963,17 +860,15 @@
    "excluded_orb_fail_closed_total": 459
   },
   "whitelist_timelord": {
-   "hero": 10,
-   "convergence": 69,
+   "hero": 8,
+   "convergence": 71,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 44,
    "p90_sig": 53,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
     "2026-07-01",
     "2026-07-03",
@@ -986,19 +881,16 @@
    "excluded_orb_fail_closed_total": 459
   },
   "strength_0.5": {
-   "hero": 11,
-   "convergence": 70,
+   "hero": 8,
+   "convergence": 73,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 51,
    "p90_sig": 60,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
-    "2026-06-30",
     "2026-07-01",
     "2026-07-03",
     "2026-07-08",
@@ -1010,18 +902,15 @@
    "excluded_orb_fail_closed_total": 459
   },
   "strength_0.7": {
-   "hero": 10,
-   "convergence": 71,
+   "hero": 7,
+   "convergence": 74,
    "single_impulse": 0,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 41,
    "p90_sig": 50,
    "hero_days": [
-    "2026-06-04",
-    "2026-06-17",
     "2026-06-24",
-    "2026-06-30",
     "2026-07-01",
     "2026-07-03",
     "2026-07-08",
@@ -1035,17 +924,15 @@
  },
  "f3_verification": {
   "components": {
-   "hero": 10,
-   "convergence": 69,
+   "hero": 8,
+   "convergence": 71,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 44,
    "p90_sig": 53,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
     "2026-07-01",
     "2026-07-03",
@@ -1058,17 +945,15 @@
    "excluded_orb_fail_closed_total": 459
   },
   "star": {
-   "hero": 10,
-   "convergence": 69,
+   "hero": 8,
+   "convergence": 71,
    "single_impulse": 2,
    "quiet_impulses": 0,
    "quiet": 0,
    "med_sig": 44,
    "p90_sig": 53,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
     "2026-07-01",
     "2026-07-03",
@@ -1095,10 +980,9 @@
    "documents": 3
   },
   "after_v2": {
-   "communication": 5,
-   "decisions": 1,
    "work": 9,
    "relationships": 2,
+   "communication": 2,
    "money": 5,
    "sport": 2
   }
@@ -1111,10 +995,10 @@
    "n_streaks": 1
   },
   "fixed_v2": {
-   "tense_days": 81,
-   "max_streak": 81,
-   "median_streak": 81,
-   "n_streaks": 1
+   "tense_days": 68,
+   "max_streak": 10,
+   "median_streak": 4.5,
+   "n_streaks": 14
   }
  },
  "c1_fixed_days": [
@@ -1144,37 +1028,11 @@
   },
   {
    "date": "2026-06-04",
-   "state": "hero",
+   "state": "convergence",
    "n_significant": 44,
    "n_anchors": 12,
    "delta_upgraded": 3,
-   "hero_groups": [
-    {
-     "spheres": [
-      "communication",
-      "decisions"
-     ],
-     "n_independent": 2,
-     "members": [
-      {
-       "semantic_key": "aspect:JUPITER:trine:natal_planet:URANUS",
-       "role": "anchor_today",
-       "driver": "src:JUPITER",
-       "orb_fraction": 0.003,
-       "polarity": "supportive",
-       "rare_anchor": true
-      },
-      {
-       "semantic_key": "aspect:MOON:sextile:natal_planet:URANUS",
-       "role": "anchor_today",
-       "driver": "src:MOON",
-       "orb_fraction": 0.361,
-       "polarity": "supportive",
-       "rare_anchor": false
-      }
-     ]
-    }
-   ]
+   "hero_groups": []
   },
   {
    "date": "2026-06-05",
@@ -1300,36 +1158,11 @@
   },
   {
    "date": "2026-06-17",
-   "state": "hero",
+   "state": "convergence",
    "n_significant": 54,
    "n_anchors": 12,
    "delta_upgraded": 1,
-   "hero_groups": [
-    {
-     "spheres": [
-      "communication"
-     ],
-     "n_independent": 2,
-     "members": [
-      {
-       "semantic_key": "aspect:JUPITER:trine:lot:MARRIAGE",
-       "role": "anchor_today",
-       "driver": "src:JUPITER",
-       "orb_fraction": 0.014,
-       "polarity": "supportive",
-       "rare_anchor": true
-      },
-      {
-       "semantic_key": "aspect:MOON:trine:lot:MARRIAGE",
-       "role": "anchor_today",
-       "driver": "src:MOON",
-       "orb_fraction": 0.089,
-       "polarity": "supportive",
-       "rare_anchor": false
-      }
-     ]
-    }
-   ]
+   "hero_groups": []
   },
   {
    "date": "2026-06-18",
@@ -1448,30 +1281,6 @@
        "driver": "src:MARS",
        "orb_fraction": 0.338,
        "polarity": "supportive",
-       "rare_anchor": false
-      }
-     ]
-    },
-    {
-     "spheres": [
-      "communication"
-     ],
-     "n_independent": 2,
-     "members": [
-      {
-       "semantic_key": "aspect:JUPITER:square:lot:FORTUNE",
-       "role": "anchor_today",
-       "driver": "src:JUPITER",
-       "orb_fraction": 0.006,
-       "polarity": "tense",
-       "rare_anchor": true
-      },
-      {
-       "semantic_key": "aspect:MOON:conjunction:lot:FORTUNE",
-       "role": "anchor_today",
-       "driver": "src:MOON",
-       "orb_fraction": 0.305,
-       "polarity": "mixed",
        "rare_anchor": false
       }
      ]

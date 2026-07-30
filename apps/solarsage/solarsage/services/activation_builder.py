@@ -11,8 +11,11 @@ from __future__ import annotations
 import calendar
 import os
 import pathlib
+from copy import deepcopy
+from dataclasses import dataclass
 from datetime import date as Date, timedelta
-from typing import Any
+from functools import lru_cache
+from typing import Any, Literal
 
 import yaml
 
@@ -29,6 +32,7 @@ from solarsage.schemas.activation import ActivationLayer, ActivationEvidence
 from solarsage.utils.ephemeris import (
     calculate_julian_day,
     calculate_positions,
+    calculate_solar_altitude,
     calculate_houses_cusps,
     get_sign,
     julian_day_to_utc_iso,
@@ -74,20 +78,28 @@ def _resolve_canon_path(relative: str) -> str:
     return os.path.join(root, relative)
 
 
-def _load_aspect_rules() -> dict[str, Any]:
-    path = _resolve_canon_path("grace/canon/aspect_rules.v1.yml")
+@lru_cache(maxsize=8)
+def _load_yaml_mapping_cached(path: str, mtime_ns: int, size: int) -> dict[str, Any]:
+    """Read one immutable canon revision once per worker process."""
+    del mtime_ns, size  # cache-key material; path owns the actual read
     with open(path) as f:
         return yaml.safe_load(f)
 
 
-def _get_orb(rules: dict, source_planet: str, target_key: str | None) -> float:
+def _load_aspect_rules() -> dict[str, Any]:
+    path = _resolve_canon_path("grace/canon/aspect_rules.v1.yml")
+    stat = os.stat(path)
+    return deepcopy(_load_yaml_mapping_cached(path, stat.st_mtime_ns, stat.st_size))
+
+
+def _get_orb(rules: dict, source_planet: str, target_key: str | None) -> float | None:
     """Determine max orb for a transit->target pair."""
     profile = rules.get("orb_profile_default", {})
     if target_key and target_key in profile:
         return float(profile[target_key])
     if source_planet.upper() in profile:
         return float(profile[source_planet.upper()])
-    return 5.0
+    return None
 
 
 def _get_aspect_weight(rules: dict, aspect_name: str) -> float:
@@ -112,12 +124,6 @@ def _angular_distance(lon1: float, lon2: float) -> float:
 
 
 # ── Lot calculations ─────────────────────────────────────────────────────────
-
-def _is_day_chart(natal_sun_house: int | None) -> bool:
-    """Day chart if Sun is in houses 7..12 (above horizon)."""
-    if natal_sun_house is None:
-        return True  # default to day
-    return natal_sun_house >= 7
 
 
 def _normalize_degrees(val: float) -> float:
@@ -406,8 +412,15 @@ def _ruler_of_sign(sign: str) -> str:
 def _load_activation_rules() -> dict[str, Any]:
     """Load activation_rules.v1.yml for period strengths."""
     path = _resolve_canon_path("grace/canon/activation_rules.v1.yml")
-    with open(path) as f:
-        return yaml.safe_load(f)
+    stat = os.stat(path)
+    return deepcopy(_load_yaml_mapping_cached(path, stat.st_mtime_ns, stat.st_size))
+
+
+def _load_convergence_rules() -> dict[str, Any]:
+    """Load the current convergence canon for explicit offline timing scope."""
+    path = _resolve_canon_path("grace/canon/today_convergence.v1.yml")
+    stat = os.stat(path)
+    return deepcopy(_load_yaml_mapping_cached(path, stat.st_mtime_ns, stat.st_size))
 
 
 def _get_period_strength(rules: dict, technique: str) -> float:
@@ -476,6 +489,174 @@ def _local_date(date_str: str, tz_str: str) -> Date:
     return Date.fromisoformat(date_str)
 
 
+@dataclass(frozen=True)
+class NatalCalculationContext:
+    """Immutable-per-request natal inputs reusable across target dates."""
+
+    birth_date: str
+    birth_time: str
+    birth_lat: float
+    birth_lon: float
+    birth_tz: str
+    requested_house_system: str
+    natal_jd: float
+    natal_positions: tuple[dict[str, Any], ...]
+    natal_houses_raw: tuple[dict[str, Any], ...]
+    natal_special_points: tuple[dict[str, Any], ...]
+    resolved_house_system: str
+    natal_by_name: dict[str, dict[str, Any]]
+    natal_sun_house: int | None
+    sun_altitude_deg: float
+    is_day: bool
+    sect_polar_condition: str | None
+    angles: dict[str, float]
+    lots: tuple[dict[str, Any], ...]
+
+
+@dataclass(frozen=True)
+class TargetCalculationContext:
+    """Transit positions reusable across charts at one target moment."""
+
+    target_date: str
+    target_time: str
+    target_tz: str
+    target_jd: float
+    transit_positions: tuple[dict[str, Any], ...]
+    transit_by_name: dict[str, dict[str, Any]]
+
+
+# START_BLOCK: PRECOMPUTED_CONTEXTS
+def _sect_polar_condition(birth_date: str, birth_tz: str, birth_lat: float, birth_lon: float) -> str | None:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-ACTIVATION-BUILDER._sect_polar_condition
+    # purpose: Classify continuous-daylight ("polar_day") or continuous-darkness
+    #   ("polar_night") on the local birth date, or None for a normal day/night cycle.
+    # inputs: birth_date, birth_tz, birth_lat, birth_lon.
+    # returns: "polar_day" | "polar_night" | None.
+    # side_effects: Swiss Ephemeris altitude evaluations (48 per birth date).
+    # emitted_logs: none.
+    # error_behavior: propagates ephemeris errors fail-closed.
+    # END_FUNCTION_CONTRACT
+    # Sample every 30 minutes of the local birth date; at polar latitudes the
+    # diurnal altitude curve is flat, so half-hour sampling is decisive.
+    midnight_jd = calculate_julian_day(birth_date, "00:00", birth_tz)
+    altitudes = [
+        calculate_solar_altitude(midnight_jd + step / 48.0, birth_lat, birth_lon)
+        for step in range(49)
+    ]
+    if min(altitudes) > 0.0:
+        return "polar_day"
+    if max(altitudes) <= 0.0:
+        return "polar_night"
+    return None
+
+
+def prepare_natal_context(
+    *,
+    birth_date: str,
+    birth_time: str,
+    birth_lat: float,
+    birth_lon: float,
+    birth_tz: str,
+    house_system: str,
+) -> NatalCalculationContext:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-ACTIVATION-BUILDER.prepare_natal_context
+    # purpose: Calculate invariant natal geometry once for many target dates.
+    # inputs: exact birth event and requested house system.
+    # returns: NatalCalculationContext shared by activation builds.
+    # side_effects: Swiss Ephemeris calculations and canon reads.
+    # emitted_logs: none.
+    # error_behavior: propagates calculation errors fail-closed.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-ACTIVATION-BUILDER.prepare_natal_context
+    natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
+    natal_positions = tuple(calculate_positions(natal_jd))
+    sun_altitude_deg = calculate_solar_altitude(natal_jd, birth_lat, birth_lon)
+    is_day = sun_altitude_deg > 0.0
+    sect_polar_condition = _sect_polar_condition(birth_date, birth_tz, birth_lat, birth_lon)
+    houses, special_points, resolved_house_system = calculate_houses_cusps(
+        natal_jd, birth_lat, birth_lon, house_system,
+    )
+    natal_by_name = {item["name"]: item for item in natal_positions}
+    natal_sun = natal_by_name.get("Sun", {})
+    natal_sun_house = (
+        _find_house(natal_sun.get("longitude", 0.0), houses)
+        if natal_sun
+        else None
+    )
+
+    special_by_name = {item["name"]: item for item in special_points}
+    asc_lon = special_by_name.get("ASC", {}).get("longitude", 0.0)
+    mc_lon = special_by_name.get("MC", {}).get("longitude", 0.0)
+    angles = {
+        "ASC": asc_lon,
+        "MC": mc_lon,
+        "DSC": (asc_lon + 180.0) % 360.0,
+        "IC": (mc_lon + 180.0) % 360.0,
+    }
+
+    lots = _compute_lots(
+        asc_lon=asc_lon,
+        sun_lon=natal_sun.get("longitude", 0.0),
+        moon_lon=natal_by_name.get("Moon", {}).get("longitude", 0.0),
+        mercury_lon=natal_by_name.get("Mercury", {}).get("longitude", 0.0),
+        venus_lon=natal_by_name.get("Venus", {}).get("longitude", 0.0),
+        jupiter_lon=natal_by_name.get("Jupiter", {}).get("longitude", 0.0),
+        saturn_lon=natal_by_name.get("Saturn", {}).get("longitude", 0.0),
+        dsc_lon=angles["DSC"],
+        is_day=is_day,
+    )
+    for lot in lots:
+        lot["house"] = _find_house(lot["longitude"], houses)
+        lot["sign"] = get_sign(lot["longitude"])
+
+    return NatalCalculationContext(
+        birth_date=birth_date,
+        birth_time=birth_time,
+        birth_lat=birth_lat,
+        birth_lon=birth_lon,
+        birth_tz=birth_tz,
+        requested_house_system=house_system,
+        natal_jd=natal_jd,
+        natal_positions=natal_positions,
+        natal_houses_raw=tuple(houses),
+        natal_special_points=tuple(special_points),
+        resolved_house_system=resolved_house_system,
+        natal_by_name=natal_by_name,
+        natal_sun_house=natal_sun_house,
+        sun_altitude_deg=sun_altitude_deg,
+        is_day=is_day,
+        sect_polar_condition=sect_polar_condition,
+        angles=angles,
+        lots=tuple(lots),
+    )
+
+
+def prepare_target_context(
+    *,
+    target_date: str,
+    target_time: str,
+    target_tz: str,
+) -> TargetCalculationContext:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-ACTIVATION-BUILDER.prepare_target_context
+    # purpose: Calculate transit geometry once for a target moment.
+    # inputs: target local date, time, and timezone.
+    # returns: TargetCalculationContext reusable across charts.
+    # side_effects: Swiss Ephemeris calculations.
+    # emitted_logs: none.
+    # error_behavior: propagates calculation errors fail-closed.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-ACTIVATION-BUILDER.prepare_target_context
+    target_jd = calculate_julian_day(target_date, target_time, target_tz)
+    positions = tuple(calculate_positions(target_jd))
+    return TargetCalculationContext(
+        target_date=target_date,
+        target_time=target_time,
+        target_tz=target_tz,
+        target_jd=target_jd,
+        transit_positions=positions,
+        transit_by_name={item["name"]: item for item in positions},
+    )
+# END_BLOCK: PRECOMPUTED_CONTEXTS
+
+
 def build_activation_layer(
     *,
     birth_date: str,
@@ -489,6 +670,10 @@ def build_activation_layer(
     house_system: str,
     techniques: list[str] | None = None,
     current_location: dict[str, Any] | None = None,
+    timing_scope: Literal["all", "convergence_eligible"] = "all",
+    natal_context: NatalCalculationContext | None = None,
+    target_context: TargetCalculationContext | None = None,
+    timing_solver: TransitTimingSolver | None = None,
 ) -> ActivationLayer:
     """Build activation layer for a given birth + target context.
 
@@ -496,6 +681,9 @@ def build_activation_layer(
 
     Unsupported W3+ techniques generate deterministic warnings and are skipped.
     """
+    if timing_scope not in ("all", "convergence_eligible"):
+        raise ValueError(f"Unsupported timing_scope: {timing_scope}")
+
     if techniques is None or len(techniques) == 0:
         requested = list(ALL_TECHNIQUES)
     else:
@@ -528,76 +716,53 @@ def build_activation_layer(
     # ── 1. Load aspect rules ─────────────────────────────────────────
     aspect_rules = _load_aspect_rules()
 
-    # ── 2. Calculate natal chart ─────────────────────────────────────
-    natal_jd = calculate_julian_day(birth_date, birth_time, birth_tz)
-    natal_positions = calculate_positions(natal_jd)
-    natal_houses_raw, natal_special_points, resolved_house_system = calculate_houses_cusps(
-        natal_jd, birth_lat, birth_lon, house_system,
-    )
+    # ── 2. Reuse invariant natal/target geometry when supplied by replay.
+    if natal_context is None:
+        natal_context = prepare_natal_context(
+            birth_date=birth_date,
+            birth_time=birth_time,
+            birth_lat=birth_lat,
+            birth_lon=birth_lon,
+            birth_tz=birth_tz,
+            house_system=house_system,
+        )
+    elif (
+        natal_context.birth_date != birth_date
+        or natal_context.birth_time != birth_time
+        or natal_context.birth_tz != birth_tz
+        or natal_context.requested_house_system != house_system
+        or natal_context.birth_lat != birth_lat
+        or natal_context.birth_lon != birth_lon
+    ):
+        raise ValueError("natal_context does not match activation birth context")
 
-    # Build useful lookup maps
-    natal_by_name: dict[str, dict] = {}
-    for p in natal_positions:
-        natal_by_name[p["name"]] = p
+    if target_context is None:
+        target_context = prepare_target_context(
+            target_date=target_date,
+            target_time=target_time,
+            target_tz=target_tz,
+        )
+    elif (
+        target_context.target_date != target_date
+        or target_context.target_time != target_time
+        or target_context.target_tz != target_tz
+    ):
+        raise ValueError("target_context does not match activation target context")
 
-    # Find natal Sun house for day/night determination
+    natal_jd = natal_context.natal_jd
+    natal_houses_raw = list(natal_context.natal_houses_raw)
+    natal_special_points = list(natal_context.natal_special_points)
+    resolved_house_system = natal_context.resolved_house_system
+    natal_by_name = natal_context.natal_by_name
     natal_sun = natal_by_name.get("Sun", {})
-    natal_sun_house = None
-    if natal_sun:
-        natal_sun_house = _find_house(natal_sun.get("longitude", 0.0), natal_houses_raw)
-
-    is_day = _is_day_chart(natal_sun_house)
-
-    # Angles
-    def _find_special(name: str) -> dict | None:
-        for sp in natal_special_points:
-            if sp["name"] == name:
-                return sp
-        return None
-
-    asc_sp = _find_special("ASC")
-    mc_sp = _find_special("MC")
-    asc_lon = asc_sp["longitude"] if asc_sp else 0.0
-    mc_lon = mc_sp["longitude"] if mc_sp else 0.0
-    dsc_lon = (asc_lon + 180.0) % 360.0
-    ic_lon = (mc_lon + 180.0) % 360.0
-
-    angles = {
-        "ASC": asc_lon,
-        "MC": mc_lon,
-        "DSC": dsc_lon,
-        "IC": ic_lon,
-    }
-
-    # ── 3. Calculate transit positions ───────────────────────────────
-    target_jd = calculate_julian_day(target_date, target_time, target_tz)
-    transit_positions = calculate_positions(target_jd)
-    transit_by_name: dict[str, dict] = {}
-    for p in transit_positions:
-        transit_by_name[p["name"]] = p
-
-    # ── 4. Compute lots (always, for indexing) ───────────────────────
-    natal_mercury = natal_by_name.get("Mercury", {})
-    natal_venus = natal_by_name.get("Venus", {})
-    natal_jupiter = natal_by_name.get("Jupiter", {})
-    natal_saturn = natal_by_name.get("Saturn", {})
-
-    lots = _compute_lots(
-        asc_lon=asc_lon,
-        sun_lon=natal_sun.get("longitude", 0.0),
-        moon_lon=natal_by_name.get("Moon", {}).get("longitude", 0.0),
-        mercury_lon=natal_mercury.get("longitude", 0.0),
-        venus_lon=natal_venus.get("longitude", 0.0),
-        jupiter_lon=natal_jupiter.get("longitude", 0.0),
-        saturn_lon=natal_saturn.get("longitude", 0.0),
-        dsc_lon=dsc_lon,
-        is_day=is_day,
-    )
-
-    # Find lot houses
-    for lot in lots:
-        lot["house"] = _find_house(lot["longitude"], natal_houses_raw)
-        lot["sign"] = get_sign(lot["longitude"])
+    natal_sun_house = natal_context.natal_sun_house
+    sun_altitude_deg = natal_context.sun_altitude_deg
+    is_day = natal_context.is_day
+    sect_polar_condition = natal_context.sect_polar_condition
+    angles = natal_context.angles
+    lots = [dict(item) for item in natal_context.lots]
+    target_jd = target_context.target_jd
+    transit_by_name = target_context.transit_by_name
 
     # ── 5. Build activations ─────────────────────────────────────────
     activations: list[ActivationEvidence] = []
@@ -609,9 +774,21 @@ def build_activation_layer(
     # Cache for firdar context (computed once when both techniques are active)
     firdar_ctx: tuple | None = None
 
-    # Request-scoped TransitTimingSolver
+    # Request-scoped by default.  Offline replay may pass a target-moment
+    # workspace shared sequentially across birth-time control points; the
+    # ephemeris grids depend on transit planet + target moment, not natal data.
     has_transit_tech = any(t in active for t in ("transit_to_natal", "transit_to_angle", "transit_to_lot"))
-    timing_solver = TransitTimingSolver(target_jd=target_jd) if has_transit_tech else None
+    if timing_solver is not None and abs(timing_solver.target_jd - target_jd) > 1e-9:
+        raise ValueError("timing_solver target_jd does not match activation target context")
+    if timing_solver is None and has_transit_tech:
+        timing_solver = TransitTimingSolver(target_jd=target_jd)
+    convergence_timing_thresholds: tuple[float, float] | None = None
+    if timing_scope == "convergence_eligible":
+        significance_rules = _load_convergence_rules().get("significance", {})
+        convergence_timing_thresholds = (
+            float(significance_rules["aspect_weight_min"]),
+            float(significance_rules["orb_ratio_max"]),
+        )
 
     for tech in active:
         if tech == "transit_planet_in_house":
@@ -651,6 +828,11 @@ def build_activation_layer(
                 for tkey, (ttype, tlon_target) in targets.items():
                     adist = _angular_distance(tlon, tlon_target)
                     max_orb = _get_orb(aspect_rules, tname, tkey if ttype == "planet" else None)
+                    if max_orb is None:
+                        warning = f"orb_profile_missing:{tname.upper()}"
+                        if warning not in warnings_list:
+                            warnings_list.append(warning)
+                        continue
 
                     # Check each canonical aspect
                     best_aspect: str | None = None
@@ -677,11 +859,21 @@ def build_activation_layer(
                     polarity = _classify_polarity(best_aspect)
 
                     # Phase / applying — compare orb to aspect, not raw distance
-                    # Try using the request-scoped solver first
+                    # Try using the request-scoped solver first. Offline replay
+                    # can defer exact timing for facts that cannot pass the
+                    # convergence significance gate; the raw fact is retained.
                     timing_result = None
                     timing_error_code: str | None = None
+                    timing_requested = True
+                    if convergence_timing_thresholds is not None:
+                        min_weight, max_orb_ratio = convergence_timing_thresholds
+                        timing_requested = (
+                            aspect_weight >= min_weight
+                            and max_orb > 0.0
+                            and orb / max_orb <= max_orb_ratio
+                        )
                     try:
-                        if timing_solver:
+                        if timing_solver and timing_requested:
                             timing_result = timing_solver.solve(
                                 source_planet=tname,
                                 target_longitude=tlon_target,
@@ -705,12 +897,18 @@ def build_activation_layer(
                         exact_at = timing_result.exact_at_utc
                         active_until = timing_result.active_until_utc
                     else:
-                        probe_jd = target_jd + 0.1
-                        probe_positions = calculate_positions(probe_jd)
-                        probe_by_name: dict[str, dict] = {}
-                        for pp in probe_positions:
-                            probe_by_name[pp["name"]] = pp
-                        probe_tlon = probe_by_name.get(tname, {}).get("longitude", tlon)
+                        if timing_requested:
+                            probe_jd = target_jd + 0.1
+                            probe_positions = calculate_positions(probe_jd)
+                            probe_by_name: dict[str, dict] = {}
+                            for pp in probe_positions:
+                                probe_by_name[pp["name"]] = pp
+                            probe_tlon = probe_by_name.get(tname, {}).get("longitude", tlon)
+                        else:
+                            # A linear 0.1-day probe is sufficient for the raw
+                            # applying/separating label; no extra ephemeris call.
+                            speed = float(tpos.get("speed", 0.0) or 0.0)
+                            probe_tlon = (tlon + speed * 0.1) % 360.0
                         probe_adist = _angular_distance(probe_tlon, tlon_target)
 
                         aspect_angle = ASPECT_ANGLES[best_aspect]
@@ -774,6 +972,13 @@ def build_activation_layer(
                             "warning_code": timing_error_code,
                             "boundary_tolerance_seconds": 300,
                             "exact_tolerance_seconds": 60,
+                        }
+                    elif not timing_requested:
+                        debug_info["applying_probe_days"] = 0.1
+                        debug_info["timing"] = {
+                            "status": "not_requested",
+                            "scope": "convergence_eligible",
+                            "reason": "below_convergence_significance_gate",
                         }
 
                     extra_kw: dict[str, Any] = {}
@@ -1086,8 +1291,11 @@ def build_activation_layer(
                     debug={
                         "schema_version": firdar_result.schema_version,
                         "is_day_birth": firdar_result.is_day_birth,
-                        "sect_basis": "sun_house",
+                        "sect_basis": "geometric_sun_altitude",
+                        "sect_polar_condition": sect_polar_condition,
+                        "sun_altitude_deg": round(sun_altitude_deg, 6),
                         "sun_house": firdar_result.sun_house,
+                        "sun_house_role": "audit_only",
                         "birth_local_date": birth_date,
                         "target_local_date": target_date,
                         "age_years": round(firdar_result.age_years, 8),
@@ -1125,8 +1333,11 @@ def build_activation_layer(
                     debug={
                         "schema_version": firdar_result.schema_version,
                         "is_day_birth": firdar_result.is_day_birth,
-                        "sect_basis": "sun_house",
+                        "sect_basis": "geometric_sun_altitude",
+                        "sect_polar_condition": sect_polar_condition,
+                        "sun_altitude_deg": round(sun_altitude_deg, 6),
                         "sun_house": firdar_result.sun_house,
+                        "sun_house_role": "audit_only",
                         "birth_local_date": birth_date,
                         "target_local_date": target_date,
                         "age_years": round(firdar_result.age_years, 8),

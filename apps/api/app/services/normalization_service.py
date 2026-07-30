@@ -152,7 +152,9 @@ class NormalizationService:
         if transit_planets and houses_raw:
             for tp in transit_planets:
                 longitude = float(tp["longitude"])
-                house_num = find_house(longitude, houses_raw) or 1
+                house_num = find_house(longitude, houses_raw)
+                if house_num is None:
+                    continue
                 signals.append(AstroSignal(
                     type="planet_in_house",
                     planet=f"Transit_{tp['name']}",
@@ -214,7 +216,9 @@ class NormalizationService:
         for planet in planets:
             # Find which house the planet is in
             planet_lon = planet["longitude"]
-            house_num = find_house(planet_lon, houses) or 1
+            house_num = find_house(planet_lon, houses)
+            if house_num is None:
+                continue
 
             signals.append(AstroSignal(
                 type="planet_in_house",

@@ -1,0 +1,105 @@
+{
+ "charts": [
+  "syn-005-murmansk (high 68.97N)",
+  "syn-045-sao_paulo (south -23.55)",
+  "syn-040-quito (equatorial)",
+  "syn-000-moscow (mid)",
+  "syn-020-london (mid)"
+ ],
+ "days": 30,
+ "modes": [
+  "exact",
+  "bucket",
+  "unknown"
+ ],
+ "chart_days": 450,
+ "wall_s": {
+  "w1": 254.9,
+  "w2": 249.7,
+  "w4": 262.6
+ },
+ "sidecar_cpu_s": {
+  "w1": 239.6,
+  "w2": 245.2,
+  "w4": 255.0
+ },
+ "sidecar_cores": {
+  "w1": 0.94,
+  "w2": 0.98,
+  "w4": 0.97
+ },
+ "scaling_efficiency": {
+  "w2_vs_w1": 0.51,
+  "w4_vs_w1": 0.243
+ },
+ "per_chart_day_s": {
+  "n": 450,
+  "mean": 0.561,
+  "median": 0.451,
+  "p90": 1.103,
+  "max": 1.446
+ },
+ "corpus_projection": {
+  "charts": 120,
+  "days_per_chart": 800,
+  "modes": 3,
+  "chart_days_est": 288000,
+  "single_sidecar_hours_est": 44.9
+ },
+ "modes_stats_w1": {
+  "bucket": {
+   "chart_days": 150,
+   "charts": 5,
+   "state_distribution": {
+    "convergence": 103,
+    "quiet_impulses": 29,
+    "single_impulse": 18
+   },
+   "hero_rate": 0.0,
+   "median_significant": 13.0,
+   "p90_significant": 16.0,
+   "median_public": 13.0,
+   "median_ts_excluded": 49.0,
+   "tense_day_share": 1.0,
+   "tense_streak_max_over_charts": 30,
+   "tense_streak_median_over_charts": 30,
+   "hero_sphere_distribution": {}
+  },
+  "exact": {
+   "chart_days": 150,
+   "charts": 5,
+   "state_distribution": {
+    "convergence": 110,
+    "quiet_impulses": 23,
+    "single_impulse": 17
+   },
+   "hero_rate": 0.0,
+   "median_significant": 15.0,
+   "p90_significant": 18.0,
+   "median_public": 40.5,
+   "median_ts_excluded": 0.0,
+   "tense_day_share": 1.0,
+   "tense_streak_max_over_charts": 30,
+   "tense_streak_median_over_charts": 30,
+   "hero_sphere_distribution": {}
+  },
+  "unknown": {
+   "chart_days": 150,
+   "charts": 5,
+   "state_distribution": {
+    "convergence": 97,
+    "quiet_impulses": 38,
+    "single_impulse": 15
+   },
+   "hero_rate": 0.0,
+   "median_significant": 12.0,
+   "p90_significant": 15.0,
+   "median_public": 12.0,
+   "median_ts_excluded": 82.0,
+   "tense_day_share": 1.0,
+   "tense_streak_max_over_charts": 30,
+   "tense_streak_median_over_charts": 30,
+   "hero_sphere_distribution": {}
+  }
+ }
+}

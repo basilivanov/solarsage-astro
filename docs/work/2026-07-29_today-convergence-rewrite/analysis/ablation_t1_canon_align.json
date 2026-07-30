@@ -1,0 +1,180 @@
+{
+ "config": {
+  "theta_w": 0.55,
+  "theta_o": 0.5,
+  "rule": "B",
+  "hero_confirmation_fast_allowed": false,
+  "hero_target_types": [
+   "natal_planet",
+   "angle"
+  ],
+  "fixes": {
+   "F1_three_tier": true,
+   "F2_background_out": true,
+   "F3_direct_grouping": true,
+   "F4_delta_fixed": true,
+   "F5_sphere_no_fanout": true,
+   "F6_event_class": "whitelist_timelord",
+   "F7_orb_fail_closed": true,
+   "F8_rare_narrowed": true,
+   "hero_confirmation_fast_allowed": false,
+   "hero_target_types": [
+    "natal_planet",
+    "angle"
+   ]
+  }
+ },
+ "hero_days_n": 8,
+ "hero_days": [
+  "2026-06-15",
+  "2026-06-24",
+  "2026-07-01",
+  "2026-07-03",
+  "2026-07-08",
+  "2026-07-21",
+  "2026-07-23",
+  "2026-08-03"
+ ],
+ "state_distribution": {
+  "convergence": 71,
+  "hero": 8,
+  "single_impulse": 2
+ },
+ "dropped_vs_v2": {
+  "2026-06-04": "rare anchor JUPITER trine natal URANUS had only MOON witness (hero_confirmation:false)",
+  "2026-06-17": "rare anchor JUPITER trine lot MARRIAGE (lot target + MOON witness; both rules)"
+ },
+ "hero_group_details": [
+  {
+   "date": "2026-06-15",
+   "spheres": [
+    "work",
+    "relationships"
+   ],
+   "anchor": "aspect:SATURN:trine:natal_planet:MARS",
+   "target_type": "natal_planet",
+   "witnesses": [
+    "activation:lunar_return__ANGULAR_PLANET__MARS__HOUSE_7"
+   ]
+  },
+  {
+   "date": "2026-06-24",
+   "spheres": [
+    "work",
+    "communication"
+   ],
+   "anchor": "aspect:JUPITER:conjunction:angle:ASC",
+   "target_type": "angle",
+   "witnesses": [
+    "aspect:MOON:square:angle:ASC",
+    "aspect:MARS:sextile:angle:ASC"
+   ]
+  },
+  {
+   "date": "2026-06-24",
+   "spheres": [
+    "work",
+    "communication"
+   ],
+   "anchor": "aspect:JUPITER:opposition:angle:DSC",
+   "target_type": "angle",
+   "witnesses": [
+    "aspect:MOON:square:angle:DSC",
+    "aspect:MARS:trine:angle:DSC"
+   ]
+  },
+  {
+   "date": "2026-07-01",
+   "spheres": [
+    "work",
+    "money"
+   ],
+   "anchor": "aspect:JUPITER:sextile:natal_planet:VENUS",
+   "target_type": "natal_planet",
+   "witnesses": [
+    "aspect:MARS:trine:natal_planet:VENUS"
+   ]
+  },
+  {
+   "date": "2026-07-03",
+   "spheres": [
+    "work",
+    "money"
+   ],
+   "anchor": "aspect:JUPITER:sextile:natal_planet:JUPITER",
+   "target_type": "natal_planet",
+   "witnesses": [
+    "aspect:MARS:trine:natal_planet:JUPITER"
+   ]
+  },
+  {
+   "date": "2026-07-08",
+   "spheres": [
+    "work",
+    "money"
+   ],
+   "anchor": "aspect:PLUTO:trine:natal_planet:SATURN",
+   "target_type": "natal_planet",
+   "witnesses": [
+    "aspect:NEPTUNE:opposition:natal_planet:SATURN",
+    "aspect:URANUS:trine:natal_planet:SATURN",
+    "aspect:MARS:trine:natal_planet:SATURN",
+    "aspect:JUPITER:sextile:natal_planet:SATURN"
+   ]
+  },
+  {
+   "date": "2026-07-21",
+   "spheres": [
+    "work",
+    "money"
+   ],
+   "anchor": "aspect:JUPITER:sextile:natal_planet:SATURN",
+   "target_type": "natal_planet",
+   "witnesses": [
+    "aspect:NEPTUNE:opposition:natal_planet:SATURN",
+    "aspect:URANUS:trine:natal_planet:SATURN",
+    "aspect:PLUTO:trine:natal_planet:SATURN"
+   ]
+  },
+  {
+   "date": "2026-07-23",
+   "spheres": [
+    "work",
+    "money"
+   ],
+   "anchor": "aspect:URANUS:trine:natal_planet:SATURN",
+   "target_type": "natal_planet",
+   "witnesses": [
+    "aspect:NEPTUNE:opposition:natal_planet:SATURN",
+    "aspect:PLUTO:trine:natal_planet:SATURN",
+    "aspect:JUPITER:sextile:natal_planet:SATURN"
+   ]
+  },
+  {
+   "date": "2026-08-03",
+   "spheres": [
+    "relationships",
+    "sport"
+   ],
+   "anchor": "aspect:JUPITER:conjunction:natal_planet:MOON",
+   "target_type": "natal_planet",
+   "witnesses": [
+    "aspect:MOON:trine:natal_planet:MOON",
+    "aspect:SUN:conjunction:natal_planet:MOON",
+    "aspect:URANUS:sextile:natal_planet:MOON"
+   ]
+  },
+  {
+   "date": "2026-08-03",
+   "spheres": [
+    "work",
+    "sport"
+   ],
+   "anchor": "aspect:JUPITER:square:natal_planet:SUN",
+   "target_type": "natal_planet",
+   "witnesses": [
+    "aspect:SUN:square:natal_planet:SUN"
+   ]
+  }
+ ]
+}

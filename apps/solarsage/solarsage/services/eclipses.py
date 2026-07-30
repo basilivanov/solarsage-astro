@@ -33,7 +33,9 @@ from __future__ import annotations
 
 import os
 import pathlib
+from copy import deepcopy
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any
 
 import swisseph as swe
@@ -44,6 +46,7 @@ import yaml
 from solarsage.utils.ephemeris import (
     calculate_julian_day,
     calculate_houses_cusps,
+    calculate_solar_altitude,
 )
 
 # ── Eclipse type mapping ─────────────────────────────────────────────────────
@@ -80,12 +83,20 @@ def _resolve_canon_path(relative: str) -> str:
     return os.path.join(root, relative)
 
 
+@lru_cache(maxsize=8)
+def _read_eclipse_canon_cached(path: str, mtime_ns: int, size: int) -> dict[str, Any]:
+    """Read one eclipse canon revision once per worker process."""
+    del mtime_ns, size
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
 def _load_canon_config() -> dict[str, Any]:
     """Load eclipse_window config from activation_rules.v1.yml.
     Strict: missing or non-numeric keys raise."""
     path = _resolve_canon_path("grace/canon/activation_rules.v1.yml")
-    with open(path) as f:
-        rules = yaml.safe_load(f)
+    stat = os.stat(path)
+    rules = deepcopy(_read_eclipse_canon_cached(path, stat.st_mtime_ns, stat.st_size))
     tech = rules.get("techniques", {}).get("eclipse_window")
     if tech is None:
         raise KeyError("eclipse_window not found in activation_rules.v1.yml")
@@ -252,11 +263,10 @@ def find_eclipses(
         natal_angles["IC"] = (natal_angles["MC"] + 180.0) % 360.0
 
     # Natal lots
-    from solarsage.services.activation_builder import _is_day_chart, _compute_lots
+    from solarsage.services.activation_builder import _compute_lots
     natal_sun = natal_by_name.get("Sun", {})
     natal_sun_lon = natal_sun.get("longitude", 0.0)
-    natal_sun_house = _find_house(natal_sun_lon, natal_houses_raw) if natal_sun else None
-    is_day = _is_day_chart(natal_sun_house)
+    is_day = calculate_solar_altitude(natal_jd, birth_lat, birth_lon) > 0.0
     asc_lon = natal_angles.get("ASC", 0.0)
     dsc_lon = natal_angles.get("DSC", (asc_lon + 180.0) % 360.0)
     lots = _compute_lots(

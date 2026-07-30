@@ -10,12 +10,14 @@
 # owns:
 #   - apps/solarsage/solarsage/utils/ephemeris.py
 # inputs: date, time, timezone, JD.
-# outputs: Julian Day, planetary positions, house cusps, UTC ISO formatted timestamps.
+# outputs: Julian Day, planetary positions, geometric solar altitude, house
+#   cusps, UTC ISO formatted timestamps.
 # dependencies: swisseph, zoneinfo, datetime.
 # side_effects: none (pure ephemeris computation).
 # emitted_logs: none.
 # invariants:
 #   - julian_day_to_utc_iso converts JD to UTC ISO string with 'Z' suffix up to seconds precision.
+#   - calculate_solar_altitude is geometric and independent of house system.
 # failure_policy: propagates ValueError or swisseph errors.
 # END_MODULE_CONTRACT: M-SOLARSAGE-EPHEMERIS-UTILS
 
@@ -24,11 +26,14 @@
 #   - get_sign
 #   - calculate_julian_day
 #   - calculate_positions
+#   - calculate_solar_altitude
 #   - calculate_houses_cusps
 #   - julian_day_to_utc_iso
 # semantic_blocks:
 #   - EPHEMERIS_HELPERS: sign, JD and positions calculators.
 #   - FORMATTERS: UTC ISO formatters.
+# owned_tests:
+#   - apps/solarsage/tests/test_geometric_sect.py
 # END_MODULE_MAP: M-SOLARSAGE-EPHEMERIS-UTILS
 
 import swisseph as swe
@@ -64,6 +69,7 @@ SIGNS = [
 ]
 
 
+# START_BLOCK: EPHEMERIS_HELPERS
 def get_sign(longitude: float) -> str:
     """
     Get zodiac sign from longitude.
@@ -123,6 +129,39 @@ def calculate_positions(jd: float) -> List[Dict[str, Any]]:
         })
 
     return planets
+
+
+# START_FUNCTION_CONTRACT: F-M-SOLARSAGE-EPHEMERIS-UTILS.calculate_solar_altitude
+# purpose: Calculate the geometric altitude of the Sun centre above the local
+#   astronomical horizon for a Julian day and terrestrial coordinates.
+# inputs: jd - Julian day UT; lat/lon - geographic degrees.
+# returns: float - true (unrefracted) solar altitude in degrees.
+# side_effects: reads the configured Swiss Ephemeris artifact on first call.
+# emitted_logs: none.
+# error_behavior: raises ValueError for invalid coordinates and propagates
+#   ephemeris runtime errors fail-closed.
+# END_FUNCTION_CONTRACT: F-M-SOLARSAGE-EPHEMERIS-UTILS.calculate_solar_altitude
+def calculate_solar_altitude(jd: float, lat: float, lon: float) -> float:
+    """Return true solar altitude; positive means the Sun is above horizon."""
+    if not -90.0 <= lat <= 90.0:
+        raise ValueError(f"Latitude outside [-90, 90]: {lat}")
+    if not -180.0 <= lon <= 180.0:
+        raise ValueError(f"Longitude outside [-180, 180]: {lon}")
+
+    solar_position, _ = calc_ut_checked(
+        jd,
+        swe.SUN,
+        swe.FLG_SWIEPH | swe.FLG_SPEED,
+    )
+    _azimuth, true_altitude, _apparent_altitude = swe.azalt(
+        jd,
+        swe.ECL2HOR,
+        (lon, lat, 0.0),
+        0.0,
+        0.0,
+        solar_position[:3],
+    )
+    return float(true_altitude)
 
 
 def calculate_houses_cusps(
@@ -193,6 +232,7 @@ def calculate_houses_cusps(
     ]
 
     return houses, special_points, resolved_name
+# END_BLOCK: EPHEMERIS_HELPERS
 
 # START_BLOCK: FORMATTERS
 # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-EPHEMERIS-UTILS.julian_day_to_utc_iso

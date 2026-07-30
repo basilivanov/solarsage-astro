@@ -110,6 +110,10 @@ class TransitPositionCache:
         # error_behavior: none.
         # END_FUNCTION_CONTRACT: F-M-SIDECAR-TRANSIT-TIMING.TransitPositionCache.__init__
         self.cache: dict[tuple[int, float], TransitPosition] = {}
+        # Hot exact-float lookup avoids re-rounding the same grid/bisection JD
+        # hundreds of times.  ``cache`` remains the canonical rounded store so
+        # numerically equivalent JDs still collapse to one Swiss calculation.
+        self._raw_cache: dict[tuple[int, float], TransitPosition] = {}
         self.hits = 0
         self.misses = 0
         self._calc_func = calc_func or self._default_calc
@@ -137,14 +141,22 @@ class TransitPositionCache:
         # emitted_logs: none.
         # error_behavior: propagates provider errors.
         # END_FUNCTION_CONTRACT: F-M-SIDECAR-TRANSIT-TIMING.TransitPositionCache.get
+        raw_key = (planet_id, jd)
+        raw_hit = self._raw_cache.get(raw_key)
+        if raw_hit is not None:
+            self.hits += 1
+            return raw_hit
         key = (planet_id, round(jd, 10))
         if key in self.cache:
             self.hits += 1
-            return self.cache[key]
+            position = self.cache[key]
+            self._raw_cache[raw_key] = position
+            return position
         self.misses += 1
         lon, speed_lon = self._calc_func(jd, planet_id)
         pos = TransitPosition(jd=jd, longitude=lon % 360.0, speed_longitude=speed_lon)
         self.cache[key] = pos
+        self._raw_cache[raw_key] = pos
         return pos
 # END_BLOCK: CACHING
 
@@ -309,7 +321,9 @@ class TransitTimingSolver:
         diff_plus = abs(signed_delta(current_pos.longitude, target_plus))
         diff_minus = abs(signed_delta(current_pos.longitude, target_minus))
 
-        if diff_plus <= diff_minus:
+        # At 0°/180° both branches can be geometrically identical.  Floating
+        # modulo noise must not flip the canonical tie-breaker between runs.
+        if diff_plus <= diff_minus + 1e-12:
             selected_lon = target_plus
             selected_branch = "plus"
         else:

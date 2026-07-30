@@ -1,0 +1,160 @@
+# ############################################################################
+# AI_HEADER: SIDECAR_CALCULATION_CORE — shared in-process calculation facade.
+# ROLE: Owns the single calculation entrypoints used by HTTP routes and by
+#       deterministic offline replay workers.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-SIDECAR-CALCULATION-CORE
+# purpose: Expose natal, transit, and activation-layer calculations without
+#   requiring an HTTP hop while preserving the exact sidecar response models.
+# owns:
+#   - apps/solarsage/solarsage/services/calculation_core.py
+# inputs: validated birth, target, location, house-system, and technique data.
+# outputs: NatalResponse, TransitsResponse, or ActivationLayer models.
+# dependencies: NatalService; ephemeris utilities; activation_builder; sidecar
+#   response schemas.
+# side_effects: Swiss Ephemeris artifact reads and process-local canon caches.
+# emitted_logs: none.
+# invariants:
+#   - HTTP routes and offline replay call these same functions.
+#   - Returned models serialize identically for identical inputs.
+# failure_policy: propagates validation and calculation errors fail-closed.
+# END_MODULE_CONTRACT: M-SIDECAR-CALCULATION-CORE
+
+# START_MODULE_MAP: M-SIDECAR-CALCULATION-CORE
+# public_entrypoints:
+#   - calculate_natal_response
+#   - calculate_transits_response
+#   - calculate_activation_layer
+#   - prepare_natal_context
+#   - prepare_target_context
+# semantic_blocks:
+#   - NATAL: natal chart response construction.
+#   - TRANSITS: target-moment transit response construction.
+#   - ACTIVATION_LAYER: activation evidence calculation.
+# owned_tests:
+#   - apps/solarsage/tests/test_calculation_core.py
+# END_MODULE_MAP: M-SIDECAR-CALCULATION-CORE
+
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from solarsage.schemas.activation import ActivationLayer
+from solarsage.schemas.natal import House, NatalResponse, Planet, SpecialPoint
+from solarsage.schemas.transits import TransitsResponse
+from solarsage.services.activation_builder import (
+    NatalCalculationContext,
+    TargetCalculationContext,
+    build_activation_layer,
+    prepare_natal_context,
+    prepare_target_context,
+)
+from solarsage.services.natal import NatalService
+from solarsage.services.transit_timing import TransitTimingSolver
+from solarsage.utils.ephemeris import calculate_julian_day, calculate_positions
+
+
+# START_BLOCK: NATAL
+def calculate_natal_response(
+    *,
+    birth_date: str,
+    birth_time: str,
+    birth_lat: float,
+    birth_lon: float,
+    birth_tz: str,
+    house_system: str = "PLACIDUS",
+) -> NatalResponse:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_natal_response
+    # purpose: Calculate and validate one natal response in process.
+    # inputs: exact birth event and requested house system.
+    # returns: NatalResponse matching POST /v1/natal output.
+    # side_effects: Swiss Ephemeris calculations.
+    # emitted_logs: none.
+    # error_behavior: propagates calculation or schema errors.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_natal_response
+    chart = NatalService().calculate_natal_chart(
+        date_str=birth_date,
+        time_str=birth_time,
+        tz_str=birth_tz,
+        latitude=birth_lat,
+        longitude=birth_lon,
+        house_system=house_system,
+    )
+    return NatalResponse(
+        planets=[Planet(**item) for item in chart.positions],
+        houses=[House(**item) for item in chart.houses],
+        special_points=[SpecialPoint(**item) for item in chart.special_points],
+        house_system=chart.house_system,
+    )
+# END_BLOCK: NATAL
+
+
+# START_BLOCK: TRANSITS
+def calculate_transits_response(
+    *,
+    target_date: str,
+    target_time: str,
+    target_tz: str,
+) -> TransitsResponse:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_transits_response
+    # purpose: Calculate and validate one target-moment transit response.
+    # inputs: target local date, time, and timezone.
+    # returns: TransitsResponse matching POST /v1/transits output.
+    # side_effects: Swiss Ephemeris calculations.
+    # emitted_logs: none.
+    # error_behavior: propagates calculation or schema errors.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_transits_response
+    target_jd = calculate_julian_day(target_date, target_time, target_tz)
+    return TransitsResponse(
+        planets=[Planet(**item) for item in calculate_positions(target_jd)],
+        target_jd=target_jd,
+    )
+# END_BLOCK: TRANSITS
+
+
+# START_BLOCK: ACTIVATION_LAYER
+def calculate_activation_layer(
+    *,
+    birth_date: str,
+    birth_time: str,
+    birth_lat: float,
+    birth_lon: float,
+    birth_tz: str,
+    target_date: str,
+    target_time: str,
+    target_tz: str,
+    house_system: str = "PLACIDUS",
+    techniques: list[str] | None = None,
+    current_location: dict[str, Any] | None = None,
+    timing_scope: Literal["all", "convergence_eligible"] = "all",
+    natal_context: NatalCalculationContext | None = None,
+    target_context: TargetCalculationContext | None = None,
+    timing_solver: TransitTimingSolver | None = None,
+) -> ActivationLayer:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_activation_layer
+    # purpose: Calculate one activation layer through the shared builder.
+    # inputs: birth/target context, house system, techniques, current location.
+    # returns: ActivationLayer matching the nested HTTP response model.
+    # side_effects: Swiss Ephemeris calculations and process-local canon caches.
+    # emitted_logs: none.
+    # error_behavior: propagates calculation or schema errors.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_activation_layer
+    return build_activation_layer(
+        birth_date=birth_date,
+        birth_time=birth_time,
+        birth_lat=birth_lat,
+        birth_lon=birth_lon,
+        birth_tz=birth_tz,
+        target_date=target_date,
+        target_time=target_time,
+        target_tz=target_tz,
+        house_system=house_system,
+        techniques=techniques,
+        current_location=current_location,
+        timing_scope=timing_scope,
+        natal_context=natal_context,
+        target_context=target_context,
+        timing_solver=timing_solver,
+    )
+# END_BLOCK: ACTIVATION_LAYER

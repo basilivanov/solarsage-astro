@@ -26,8 +26,7 @@
 from fastapi import APIRouter, HTTPException
 
 from ..schemas.transits import TransitsRequest, TransitsResponse
-from ..schemas.natal import Planet
-from ..utils.ephemeris import calculate_julian_day, calculate_positions
+from ..services.calculation_core import calculate_transits_response
 
 router = APIRouter(prefix="/v1", tags=["transits"])
 
@@ -42,20 +41,10 @@ async def post_transits(request: TransitsRequest) -> TransitsResponse:
     Returns planet positions at the specified moment.
     """
     try:
-        # Calculate Julian Day for target date
-        jd = calculate_julian_day(
-            request.target_date,
-            request.target_time,
-            request.target_tz
-        )
-
-        # Calculate transit planets
-        planets_data = calculate_positions(jd)
-        planets = [Planet(**p) for p in planets_data]
-
-        return TransitsResponse(
-            planets=planets,
-            target_jd=jd,
+        return calculate_transits_response(
+            target_date=request.target_date,
+            target_time=request.target_time,
+            target_tz=request.target_tz,
         )
 
     except Exception as e:

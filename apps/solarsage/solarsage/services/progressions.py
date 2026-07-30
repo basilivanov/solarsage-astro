@@ -40,7 +40,9 @@ from __future__ import annotations
 
 import os
 import pathlib
+from copy import deepcopy
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any
 
 import swisseph as swe
@@ -49,6 +51,7 @@ import yaml
 from solarsage.utils.ephemeris import (
     calculate_julian_day,
     calculate_positions,
+    calculate_solar_altitude,
     calculate_houses_cusps,
 )
 
@@ -91,16 +94,24 @@ def _resolve_canon_path(relative: str) -> str:
     return os.path.join(root, relative)
 
 
-def _load_aspect_rules() -> dict[str, Any]:
-    path = _resolve_canon_path("grace/canon/aspect_rules.v1.yml")
+@lru_cache(maxsize=8)
+def _load_yaml_mapping_cached(path: str, mtime_ns: int, size: int) -> dict[str, Any]:
+    """Read one immutable canon revision once per worker process."""
+    del mtime_ns, size
     with open(path) as f:
         return yaml.safe_load(f)
+
+
+def _load_aspect_rules() -> dict[str, Any]:
+    path = _resolve_canon_path("grace/canon/aspect_rules.v1.yml")
+    stat = os.stat(path)
+    return deepcopy(_load_yaml_mapping_cached(path, stat.st_mtime_ns, stat.st_size))
 
 
 def _load_activation_rules() -> dict[str, Any]:
     path = _resolve_canon_path("grace/canon/activation_rules.v1.yml")
-    with open(path) as f:
-        return yaml.safe_load(f)
+    stat = os.stat(path)
+    return deepcopy(_load_yaml_mapping_cached(path, stat.st_mtime_ns, stat.st_size))
 
 
 def _get_progression_orb(technique: str) -> float:
@@ -256,10 +267,8 @@ def calculate_solar_arc_context(
         natal_angles["IC"] = _normalize(natal_angles["MC"] + 180.0)
 
     # Natal lots
-    from solarsage.services.activation_builder import _is_day_chart
     from solarsage.services.activation_builder import _compute_lots
-    natal_sun_house = _find_house(natal_sun_lon, natal_houses_raw) if natal_sun else None
-    is_day = _is_day_chart(natal_sun_house)
+    is_day = calculate_solar_altitude(birth_jd, birth_lat, birth_lon) > 0.0
     asc_lon = natal_angles.get("ASC", 0.0)
     dsc_lon = natal_angles.get("DSC", (asc_lon + 180.0) % 360.0)
 
@@ -407,10 +416,8 @@ def calculate_secondary_progression_context(
         natal_angles["IC"] = _normalize(natal_angles["MC"] + 180.0)
 
     # Natal lots
-    from solarsage.services.activation_builder import _is_day_chart
     from solarsage.services.activation_builder import _compute_lots
-    natal_sun_house = _find_house(natal_sun_lon, natal_houses_raw) if natal_sun else None
-    is_day = _is_day_chart(natal_sun_house)
+    is_day = calculate_solar_altitude(birth_jd, birth_lat, birth_lon) > 0.0
     asc_lon = natal_angles.get("ASC", 0.0)
     dsc_lon = natal_angles.get("DSC", (asc_lon + 180.0) % 360.0)
 

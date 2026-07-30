@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from ..core.versions import ACTIVATION_LAYER_VERSION
 from ..schemas.activation import ActivationLayer
-from ..services.activation_builder import build_activation_layer
+from ..services.calculation_core import calculate_activation_layer
 
 router = APIRouter(prefix="/v1", tags=["activation_layer"])
 
@@ -61,7 +61,7 @@ async def post_activation_layer(request: ActivationLayerRequest) -> ActivationLa
     for return chart location.
     """
     try:
-        layer = build_activation_layer(
+        layer = calculate_activation_layer(
             birth_date=request.birth.date,
             birth_time=request.birth.time,
             birth_lat=request.birth.lat,

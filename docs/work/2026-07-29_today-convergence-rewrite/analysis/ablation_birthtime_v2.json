@@ -81,11 +81,9 @@
  "strata": {
   "exact": {
    "n_days": 81,
-   "hero_days_n": 10,
+   "hero_days_n": 8,
    "hero_days": [
-    "2026-06-04",
     "2026-06-15",
-    "2026-06-17",
     "2026-06-24",
     "2026-07-01",
     "2026-07-03",
@@ -95,8 +93,8 @@
     "2026-08-03"
    ],
    "state_distribution": {
-    "convergence": 69,
-    "hero": 10,
+    "convergence": 71,
+    "hero": 8,
     "single_impulse": 2
    },
    "median_significant": 44,
@@ -108,17 +106,16 @@
   },
   "night": {
    "n_days": 81,
-   "hero_days_n": 3,
+   "hero_days_n": 2,
    "hero_days": [
-    "2026-06-04",
     "2026-07-02",
     "2026-07-21"
    ],
    "state_distribution": {
-    "convergence": 73,
-    "hero": 3,
+    "convergence": 74,
     "quiet_impulses": 2,
-    "single_impulse": 3
+    "single_impulse": 3,
+    "hero": 2
    },
    "median_significant": 17,
    "zero_robust_public_days": 0,
@@ -160,17 +157,16 @@
   },
   "morning": {
    "n_days": 81,
-   "hero_days_n": 3,
+   "hero_days_n": 2,
    "hero_days": [
-    "2026-06-04",
     "2026-07-21",
     "2026-07-22"
    ],
    "state_distribution": {
-    "convergence": 73,
-    "hero": 3,
+    "convergence": 74,
     "single_impulse": 4,
-    "quiet_impulses": 1
+    "quiet_impulses": 1,
+    "hero": 2
    },
    "median_significant": 17,
    "zero_robust_public_days": 0,
@@ -212,17 +208,16 @@
   },
   "day": {
    "n_days": 81,
-   "hero_days_n": 3,
+   "hero_days_n": 2,
    "hero_days": [
-    "2026-06-04",
     "2026-07-03",
     "2026-07-21"
    ],
    "state_distribution": {
-    "convergence": 70,
-    "hero": 3,
+    "convergence": 71,
     "single_impulse": 6,
-    "quiet_impulses": 2
+    "quiet_impulses": 2,
+    "hero": 2
    },
    "median_significant": 19,
    "zero_robust_public_days": 0,
@@ -264,16 +259,15 @@
   },
   "evening": {
    "n_days": 81,
-   "hero_days_n": 2,
+   "hero_days_n": 1,
    "hero_days": [
-    "2026-06-04",
     "2026-07-03"
    ],
    "state_distribution": {
-    "convergence": 70,
-    "hero": 2,
+    "convergence": 71,
     "single_impulse": 6,
-    "quiet_impulses": 3
+    "quiet_impulses": 3,
+    "hero": 1
    },
    "median_significant": 17,
    "zero_robust_public_days": 0,
@@ -315,16 +309,15 @@
   },
   "unknown": {
    "n_days": 81,
-   "hero_days_n": 2,
+   "hero_days_n": 1,
    "hero_days": [
-    "2026-06-04",
     "2026-07-21"
    ],
    "state_distribution": {
-    "convergence": 69,
-    "hero": 2,
+    "convergence": 70,
     "single_impulse": 7,
-    "quiet_impulses": 3
+    "quiet_impulses": 3,
+    "hero": 1
    },
    "median_significant": 14,
    "zero_robust_public_days": 0,

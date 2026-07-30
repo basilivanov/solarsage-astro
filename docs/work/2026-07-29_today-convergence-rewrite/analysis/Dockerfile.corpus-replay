@@ -1,0 +1,55 @@
+# ############################################################################
+# AI_HEADER: CORPUS-REPLAY-IMAGE — isolated offline replay image.
+# ROLE: Adds the current API/replay source to the pinned production sidecar
+#       image without changing any production service image or container.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-CORPUS-REPLAY-IMAGE
+# purpose: Build a disposable calculation image with the licensed ephemeris
+#   bundle inherited from the exact production sidecar image.
+# owns:
+#   - docs/work/2026-07-29_today-convergence-rewrite/analysis/Dockerfile.corpus-replay
+# inputs: repo-root build context and SIDECAR_BASE digest.
+# outputs: local-only replay OCI image; no service entrypoint.
+# dependencies: pinned production sidecar image; API Python dependencies.
+# side_effects: package installation inside the disposable image only.
+# emitted_logs: none.
+# invariants:
+#   - Production compose, images, containers, DB, and ports are untouched.
+#   - Current source is imported from /opt/solarsage-astro.
+#   - The ephemeris artifact is inherited byte-for-byte from SIDECAR_BASE.
+# failure_policy: build fails on dependency/import or ephemeris verification.
+# END_MODULE_CONTRACT: M-CORPUS-REPLAY-IMAGE
+
+# START_MODULE_MAP: M-CORPUS-REPLAY-IMAGE
+# public_entrypoints:
+#   - docker build -f docs/work/2026-07-29_today-convergence-rewrite/analysis/Dockerfile.corpus-replay .
+# semantic_blocks:
+#   - REPLAY_RUNTIME: dependency/source assembly and import proof.
+# owned_tests:
+#   - image import gate in this Dockerfile.
+# END_MODULE_MAP: M-CORPUS-REPLAY-IMAGE
+
+ARG SIDECAR_BASE
+FROM ${SIDECAR_BASE}
+
+# START_BLOCK: REPLAY_RUNTIME
+WORKDIR /opt/solarsage-astro
+
+COPY packages/py-contracts packages/py-contracts
+COPY apps/solarsage apps/solarsage
+COPY apps/api apps/api
+COPY grace/canon grace/canon
+COPY docs/work/2026-07-29_today-convergence-rewrite/analysis docs/work/2026-07-29_today-convergence-rewrite/analysis
+
+RUN python -m pip install --no-cache-dir packages/py-contracts apps/api \
+    && python -m pip check \
+    && SOLARSAGE_APP_ENV=production \
+       SOLARSAGE_EPHEMERIS_ROOT=/opt/solarsage-ephemeris/bundle \
+       PYTHONPATH=/opt/solarsage-astro/apps/solarsage:/opt/solarsage-astro/apps/api \
+       python -c 'from solarsage.core.ephemeris_runtime import verify_and_configure; from app.services.normalization_service import NormalizationService; identity = verify_and_configure(); assert identity.engine == "swieph" and not identity.fallback; print(identity.artifact_id, NormalizationService.__name__)'
+
+ENV PYTHONPATH=/opt/solarsage-astro/apps/solarsage:/opt/solarsage-astro/apps/api:/opt/solarsage-astro/docs/work/2026-07-29_today-convergence-rewrite/analysis
+
+ENTRYPOINT ["python", "docs/work/2026-07-29_today-convergence-rewrite/analysis/corpus_replay.py"]
+# END_BLOCK: REPLAY_RUNTIME

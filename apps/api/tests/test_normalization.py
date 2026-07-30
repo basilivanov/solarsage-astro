@@ -72,6 +72,16 @@ def test_planets_in_houses(sample_natal):
     assert signals[0].house == 3  # 69.5 deg is in house 3 (60-90)
 
 
+def test_missing_houses_do_not_fabricate_house_one(sample_natal, sample_transits):
+    """Missing geometry fails closed instead of inventing house 1."""
+    natal = {**sample_natal, "houses": []}
+    service = NormalizationService()
+
+    assert service._planets_in_houses(natal) == []
+    day_signals = service.normalize_day(natal, sample_transits)
+    assert not any(signal.type == "planet_in_house" for signal in day_signals)
+
+
 def test_planets_in_signs(sample_natal):
     """Normalization generates planet_in_sign signals."""
     service = NormalizationService()

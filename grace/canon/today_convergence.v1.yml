@@ -141,3 +141,36 @@ birth_time:
 measured:
   hero: {exact: 10, night: 3, morning: 3, day: 3, evening: 2, unknown: 1}
   hypothesis: hero_rate 0.08..0.20   # мониторинг; отклонение → пересмотр определений
+
+# ── Candidate tone layers (promote only after tone-aware replay) ───────────
+tone_policy:
+  status: candidate_pending_replay
+  version: tone-candidate-0.1
+  layers: [unit_polarity, group_polarity, day_tone]
+  unit_polarity: [supportive, tense, mixed, steady]
+  neutral_maps_to: steady
+  weights:
+    anchor_today: 1.0
+    supporting_context: 0.5
+    background: 0.0
+    mixed_split: 0.5
+  group_balance:
+    independence: distinct_driver
+    min_side_weight: 0.25
+    mixed_margin: 0.25
+  day_tone:
+    values: [supportive, tense, mixed, steady]
+    fresh_role: anchor_today
+    ongoing_roles_are_context: [supporting, background]
+    fast_sources_detail_only: [MOON, MERCURY, VENUS]
+    high_confidence_strength: 0.75
+    min_independent_tense_units: 2
+    min_independent_supportive_units: 2
+    mixed_requires_fresh_support_and_tense: true
+  audit_fields:
+    - unit_polarity_counts
+    - group_polarity_counts
+    - day_tone
+    - tone_scores
+    - tone_trigger_keys
+    - legacy_any_selected_tense

@@ -179,6 +179,14 @@ def test_transit_planet_in_house_populates_by_house():
         assert act["active_until"] is None
 
 
+def test_orb_profile_missing_fails_closed():
+    from solarsage.services.activation_builder import _get_orb
+
+    rules = {"orb_profile_default": {"SUN": 8.0}}
+    assert _get_orb(rules, "Sun", None) == 8.0
+    assert _get_orb(rules, "Chiron", None) is None
+
+
 def test_real_plus_and_minus_branch_debug_is_truthful():
     layer = _basil_layer()
     activations = {a["id"]: a for a in layer["activations"]}

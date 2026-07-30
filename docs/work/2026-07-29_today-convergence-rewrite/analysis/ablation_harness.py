@@ -44,6 +44,7 @@ DUMP_PATH = ANALYSIS / "factor_dump.json"
 GRID_PATH = ANALYSIS / "ablation_grid.json"
 REPORT_PATH = ANALYSIS / "ablation_report.md"
 CANON_PATH = Path("/opt/solarsage-astro/grace/canon/aspect_rules.v1.yml")
+CONVERGENCE_CANON_PATH = Path("/opt/solarsage-astro/grace/canon/today_convergence.v1.yml")
 
 TIME_LORD_FAMILIES = {
     "firdar", "profection", "solar_return", "lunar_return",
@@ -56,6 +57,17 @@ ORB_FALLBACK = 6.0
 CANON = yaml.safe_load(CANON_PATH.read_text())
 ASPECT_WEIGHTS: dict[str, float] = {k.upper(): v for k, v in CANON["aspect_weights"].items()}
 ORB_PROFILE: dict[str, float] = CANON["orb_profile_default"]
+CONVERGENCE_CANON = yaml.safe_load(CONVERGENCE_CANON_PATH.read_text())
+HERO_TARGET_TYPES: frozenset[str] = frozenset(
+    str(value).lower()
+    for value in CONVERGENCE_CANON["grouping"]["hero_target_types"]
+)
+FAST_HERO_CONFIRMATION = bool(
+    CONVERGENCE_CANON["eligibility"]["fast"].get("hero_confirmation", False)
+)
+SLOW_HERO_CONFIRMATION = bool(
+    CONVERGENCE_CANON["eligibility"]["slow"].get("hero_confirmation", True)
+)
 
 DUMP = json.loads(DUMP_PATH.read_text())
 DAYS: list[dict] = [d for d in DUMP["days"] if "error" not in d]
@@ -644,6 +656,12 @@ FIXES: dict = {
     "F6_event_class": "whitelist_timelord",  # auto | whitelist_timelord | strength_0.5 | strength_0.7
     "F7_orb_fail_closed": True,   # sources outside canon orb profile excluded (no 6.0 fallback)
     "F8_rare_narrowed": True,     # lunar_return & monthly_profection out of rare_anchor_eligible
+    # Canon hero rules (master): hero_confirmation=false — fast sources never
+    # count as the independent second witness for HERO (they still count for
+    # impulses/medium); hero_target_types — the rare anchor's target must be a
+    # natal planet or an angle (lot-target groups are medium, never hero).
+    "hero_confirmation_fast_allowed": False,
+    "hero_target_types": ("natal_planet", "angle"),
 }
 
 # Mirror of today_focus_builder.CANONICAL_PRODUCT_KEYS (kept as a literal so the
@@ -659,6 +677,12 @@ EVENT_CLASS_WHITELIST_TECHNIQUES = {
     "primary_direction", "progression",
 }
 RARE_EXCLUDED_TECHNIQUES = {"lunar_return", "monthly_profection"}  # F8
+STRUCTURAL_RARE_TECHNIQUES = {
+    "eclipse_window",
+    "lunation",
+    "solar_eclipse",
+    "lunar_eclipse",
+}
 
 
 def significance_v2(
@@ -712,10 +736,77 @@ def is_rare_anchor_eligible_v2(f: dict, fixes: dict) -> bool:
         return False
     if is_time_lord(f):
         return True
+    if tech in STRUCTURAL_RARE_TECHNIQUES:
+        return True
     src = (f["source_planet"] or "").upper()
     if src in FAST_SOURCES:  # D7: never rare_anchor, though impulse+evidence ok
         return False
     return src in SLOW_SOURCES
+
+
+def is_hero_confirmation_eligible_v2(f: dict) -> bool:
+    """Return whether a significant unit may confirm a rare hero anchor.
+
+    Fast sources remain valid public impulses/evidence, but C1 deliberately
+    excludes them from the independent hero-confirmation slot.  Background
+    units are filtered before grouping and are repeated here as a fail-closed
+    guard for callers that use this helper directly.
+    """
+    if f.get("temporal_role") == "background":
+        return False
+    source = (f.get("source_planet") or "").upper()
+    if source in FAST_SOURCES:
+        return FAST_HERO_CONFIRMATION
+    if source in SLOW_SOURCES:
+        return SLOW_HERO_CONFIRMATION
+    # Non-planetary structural/time-lord evidence is eligible unless its
+    # technique is explicitly excluded from the evidence layer.
+    return True
+
+
+def _hero_anchor_and_confirmation(
+    members: list[dict],
+    anchors: list[dict],
+    rule: str,
+    fixes: dict,
+) -> tuple[dict | None, dict | None]:
+    """Find a rare anchor with a direct, independent C1 confirmation.
+
+    The old harness only checked ``any(rare anchor)`` and therefore accepted
+    a fast Moon aspect as the second witness.  C1 requires the confirmer to be
+    directly related to the same rare anchor and to use a distinct driver.
+    """
+    rare_anchors = [
+        a
+        for a in anchors
+        if (a.get("target_type") or "").lower() in HERO_TARGET_TYPES
+        and is_rare_anchor_eligible_v2(a, fixes)
+    ]
+    rare_anchors.sort(key=lambda a: (-float(a.get("strength") or 0.0), a["semantic_key"]))
+    for rare in rare_anchors:
+        rare_driver = driver_of(rare)
+        confirmations = [
+            u
+            for u in members
+            if u is not rare
+            and is_hero_confirmation_eligible_v2(u)
+            and driver_of(u) != rare_driver
+            and _connected(rare, u)
+        ]
+        if rule == "A":
+            confirmations = [
+                u
+                for u in confirmations
+                if (u.get("technique_family") or "").lower()
+                != (rare.get("technique_family") or "").lower()
+            ]
+        if confirmations:
+            confirmer = sorted(
+                confirmations,
+                key=lambda u: (-float(u.get("strength") or 0.0), u["semantic_key"]),
+            )[0]
+            return rare, confirmer
+    return None, None
 
 
 def apply_fixed_delta_triggers(factors: list[dict], trigger_keys: set[str]) -> int:
@@ -771,6 +862,62 @@ def project_group_spheres(members: list[dict], anchor: dict) -> tuple[str | None
     return primary, secondary
 
 
+def _public_unit_sort_key(unit: dict) -> tuple:
+    """Canonical presentation order for the public 0–3 unit window."""
+    role_rank = {"anchor_today": 0, "supporting": 1, "background": 2}
+    exact_at = unit.get("exact_at") or "9999-12-31T23:59:59+00:00"
+    return (
+        -float(unit.get("strength") or 0.0),
+        role_rank.get(unit.get("temporal_role"), 3),
+        exact_at,
+        unit.get("factor_id") or unit.get("semantic_key") or "",
+    )
+
+
+def select_public_units_v2(sig_units: list[dict], groups: list[dict]) -> list[dict]:
+    """Select at most three units used by presentation and tense metrics.
+
+    This is deliberately performed after grouping.  Raw/background/noise
+    units may remain in the audit, but they cannot keep a day permanently
+    tense merely because they exist in the ledger.
+    """
+    if groups:
+        candidate_units = [u for g in groups for u in g["members"]]
+    else:
+        candidate_units = list(sig_units)
+    unique: dict[str, dict] = {}
+    for unit in candidate_units:
+        if unit.get("temporal_role") == "background":
+            continue
+        key = unit.get("semantic_key") or unit.get("factor_id")
+        if key and key not in unique:
+            unique[key] = unit
+    return sorted(unique.values(), key=_public_unit_sort_key)[:3]
+
+
+def _hero_ok(comp: list[dict], anchors_in: list[dict], fx: dict) -> bool:
+    """Hero group: >=1 rare_anchor_eligible anchor whose target_type is in
+    hero_target_types (natal_planet/angle), AND >=1 independent witness that
+    is NOT a fast source when hero_confirmation_fast_allowed is False.
+    Medium/convergence groups are unaffected (fast witnesses allowed there)."""
+    target_types = fx.get("hero_target_types", ("natal_planet", "angle"))
+    fast_ok = fx.get("hero_confirmation_fast_allowed", False)
+    for a in anchors_in:
+        if not is_rare_anchor_eligible_v2(a, fx):
+            continue
+        if (a["target_type"] or "") not in target_types:
+            continue
+        for u in comp:
+            if u is a:
+                continue
+            if driver_of(u) == driver_of(a):
+                continue
+            if not fast_ok and (u["source_planet"] or "").upper() in FAST_SOURCES:
+                continue
+            return True
+    return False
+
+
 def classify_day_v2(
     factors: list[dict],
     theta_w: float,
@@ -811,10 +958,21 @@ def classify_day_v2(
         anchors_in = [m for m in comp if m["temporal_role"] == "anchor_today"]
         if not anchors_in or independence_count(comp) < 2:
             return None
-        seed = sorted(anchors_in, key=lambda m: (-m["strength"], m["semantic_key"]))[0]
-        hero = any(is_rare_anchor_eligible_v2(m, fx) for m in anchors_in)
-        return {"members": comp, "anchor": seed, "n_independent": independence_count(comp),
-                "hero": hero, "sphere_hint": sphere_hint}
+        hero_anchor, hero_confirmation = _hero_anchor_and_confirmation(
+            comp, anchors_in, rule, fx
+        )
+        seed = hero_anchor or sorted(
+            anchors_in, key=lambda m: (-m["strength"], m["semantic_key"])
+        )[0]
+        return {
+            "members": comp,
+            "anchor": seed,
+            "hero_anchor": hero_anchor,
+            "hero_confirmation": hero_confirmation,
+            "n_independent": independence_count(comp),
+            "hero": hero_anchor is not None,
+            "sphere_hint": sphere_hint,
+        }
 
     groups: list[dict] = []
     if fx.get("F5_sphere_no_fanout"):
@@ -846,6 +1004,7 @@ def classify_day_v2(
                     groups.append(g)
 
     hero_groups = [g for g in groups if g["hero"]]
+    selected_public_units = select_public_units_v2(sig_units, groups)
     n_sig = len(sig_units)
     n_anchor = sum(1 for u in sig_units if u["temporal_role"] == "anchor_today")
     if hero_groups:
@@ -862,10 +1021,11 @@ def classify_day_v2(
         "state": state,
         "n_significant": n_sig,
         "n_anchors": n_anchor,
-        "tense": any(u["polarity"] == "tense" for u in sig_units),
+        "tense": any(u["polarity"] == "tense" for u in selected_public_units),
         "groups": groups,
         "hero_groups": hero_groups,
         "sig_units": sig_units,
+        "selected_public_units": selected_public_units,
         "delta_upgraded": delta_upgraded,
         "excluded_orb_fail_closed": excluded_orb_fail_closed,
     }

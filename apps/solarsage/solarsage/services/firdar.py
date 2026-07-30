@@ -46,9 +46,11 @@ from __future__ import annotations
 import calendar
 import os
 import pathlib
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date as Date
 from datetime import timedelta
+from functools import lru_cache
 from math import ceil, floor
 from typing import Any
 
@@ -90,7 +92,16 @@ def _resolve_canon_path(relative: str) -> str:
     return os.path.join(root, relative)
 
 
+@lru_cache(maxsize=8)
+def _read_firdar_canon_cached(path: str, mtime_ns: int, size: int) -> dict[str, Any]:
+    """Read one firdar canon revision once per worker process."""
+    del mtime_ns, size
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
 def _load_firdar_canon() -> dict[str, Any]:
+    """Load and validate firdar canon, reusing an immutable parsed revision."""
     # START_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._load_firdar_canon
     # purpose: Load firdar period sequences from grace/canon/firdar.v1.yml.
     # inputs: none
@@ -101,8 +112,8 @@ def _load_firdar_canon() -> dict[str, Any]:
     #   ValueError on malformed canon values (zero cycle, empty sequences, sum mismatch)
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-FIRDAR._load_firdar_canon
     path = _resolve_canon_path("grace/canon/firdar.v1.yml")
-    with open(path) as f:
-        data = yaml.safe_load(f)
+    stat = os.stat(path)
+    data = deepcopy(_read_firdar_canon_cached(path, stat.st_mtime_ns, stat.st_size))
     if not isinstance(data, dict):
         raise ValueError("firdar.v1.yml must be a mapping")
     required_keys = ["cycle_years", "minor_divisions", "day_sequence", "night_sequence", "node_minor_sequence"]
