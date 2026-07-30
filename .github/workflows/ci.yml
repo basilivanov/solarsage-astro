@@ -78,6 +78,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Run fast GRACE gates
+        run: bash scripts/guardrails.sh fast
+
       - name: Install Ruff
         run: |
           python -m pip install --upgrade pip
