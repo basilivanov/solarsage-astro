@@ -70,6 +70,9 @@ LogEventName = Literal[
     "feedback.received",
     "day.payload_built",
     "day.llm_phase_completed",
+    "day.pregen_started",
+    "day.pregen_user_finished",
+    "day.pregen_completed",
     "calendar.viewed",
     # access / referral / payments
     "access.checked",

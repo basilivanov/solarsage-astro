@@ -273,6 +273,21 @@
       <payload-field name="timed_out_branches" type="number" required="true" />
       <payload-field name="deadline_ms"        type="number" required="true" />
     </event>
+    <event name="day.pregen_started" owner="W-P0-G" desc="Legacy nightly day pre-generation batch selected and started.">
+      <payload-field name="users_total" type="number" required="true" />
+      <payload-field name="days_ahead" type="number" required="true" />
+      <payload-field name="concurrency" type="number" required="true" />
+    </event>
+    <event name="day.pregen_user_finished" owner="W-P0-G" desc="One legacy day pre-generation user/date operation finished.">
+      <payload-field name="outcome" type="string" enum="completed,fast_path,failed" required="true" />
+      <payload-field name="duration_ms" type="number" required="true" />
+      <payload-field name="error_type" type="string" required="false" />
+    </event>
+    <event name="day.pregen_completed" owner="W-P0-G" desc="Legacy nightly day pre-generation batch finished with outcome counters.">
+      <payload-field name="completed" type="number" required="true" />
+      <payload-field name="fast_path" type="number" required="true" />
+      <payload-field name="failed" type="number" required="true" />
+    </event>
     <event name="calendar.viewed"         owner="W-1.4">
       <payload-field name="month" type="string" format="YYYY-MM" required="true" />
     </event>
