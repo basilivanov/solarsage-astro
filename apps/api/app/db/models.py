@@ -21,7 +21,8 @@
 #   - app.db.session.Base (DeclarativeBase singleton)
 # outputs:
 #   - User: row in `users` keyed by UUID, unique tg_user_id
-#   - UserProfile: row in `user_profiles` (1:1 with User), birth data
+#   - UserProfile: row in `user_profiles` (1:1 with User), birth data and
+#     persisted birth-time precision/dismissal state
 #   - Session: row in `sessions`, opaque-token-hash → user_id mapping
 #   - AccessLedger: row in `access_ledger`, tracks referral_bonus and subscription entries
 #   - Referral: row in `referrals`, tracks referrer → invitee relationships
@@ -47,6 +48,10 @@
 #   - MicrocopyMiss: key is indexed for fast lookup (W-9.2)
 #   - PromoCampaign: unique code_hash, positive max_redemptions, ends_at > starts_at constraint
 #   - PromoRedemption: unique (campaign_id, user_id) constraint
+#   - UserProfile.birth_time_mode is one of "exact", "bucket", "unknown"
+#   - UserProfile.birth_time_bucket is NULL or one of "night", "morning",
+#     "day", "evening"
+#   - UserProfile.birth_time_prompt_dismissed is always non-null
 #   - timestamps are always UTC (server_default=now()) and never null
 #   - sensitive birth data lives ONLY on UserProfile, never on User
 # failure_policy:
@@ -87,6 +92,7 @@
 #   - apps/api/tests/test_auth_endpoints.py
 #   - apps/api/tests/test_profile_endpoints.py
 #   - apps/api/tests/test_alembic_roundtrip.py
+#   - apps/api/tests/test_birth_time_mode_migration.py
 #   - apps/api/tests/test_access_service.py
 #   - apps/api/tests/test_cache.py
 #   - apps/api/tests/test_microcopy_misses.py
@@ -101,6 +107,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -114,6 +121,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
     Uuid,
+    false,
     text as sa_text,
     func,
     text,
@@ -206,6 +214,14 @@ class UserProfile(Base):
             "birthday_lon IS NULL OR (birthday_lon >= -180 AND birthday_lon <= 180)",
             name="ck_user_profiles_birthday_lon_range",
         ),
+        CheckConstraint(
+            "birth_time_mode IN ('exact', 'bucket', 'unknown')",
+            name="ck_user_profiles_birth_time_mode",
+        ),
+        CheckConstraint(
+            "birth_time_bucket IS NULL OR birth_time_bucket IN ('night', 'morning', 'day', 'evening')",
+            name="ck_user_profiles_birth_time_bucket",
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -218,6 +234,13 @@ class UserProfile(Base):
     gender: Mapped[str | None] = mapped_column(String(10), nullable=True)
     birthday: Mapped[date | None] = mapped_column(Date, nullable=True)
     birth_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    birth_time_mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="unknown", server_default="unknown"
+    )
+    birth_time_bucket: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    birth_time_prompt_dismissed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     birth_city: Mapped[str | None] = mapped_column(String(200), nullable=True)
     birth_lat: Mapped[Decimal | None] = mapped_column(Numeric(8, 5), nullable=True)
     birth_lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 5), nullable=True)
