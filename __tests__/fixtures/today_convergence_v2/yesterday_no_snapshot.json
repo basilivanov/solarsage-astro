@@ -1,0 +1,22 @@
+{
+  "targetDate": "2026-08-01",
+  "hadCheckin": true,
+  "checkin": {
+    "id": 8102,
+    "targetDate": "2026-08-01",
+    "mood": 3,
+    "accuracy": null,
+    "energy": 4,
+    "tags": ["пауза"],
+    "note": null,
+    "streak": 1,
+    "filledAt": "2026-08-01T22:05:00+03:00",
+    "createdAt": "2026-08-01T22:05:00+03:00",
+    "observedSpheres": null,
+    "forecastSnapshotId": null,
+    "predictionSeenAt": null,
+    "predictionSeenSurface": null
+  },
+  "forecastAvailable": false,
+  "forecastRecap": null
+}
