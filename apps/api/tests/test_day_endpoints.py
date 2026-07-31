@@ -275,6 +275,7 @@ async def _login_onboarded_user(async_client: AsyncClient, db_session: AsyncSess
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30:00",
+            "birthTimeMode": "exact",
             "birthCity": "Moscow",
             "birthLat": 55.7558,
             "birthLon": 37.6173,

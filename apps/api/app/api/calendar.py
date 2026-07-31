@@ -22,11 +22,13 @@
 # dependencies:
 #   - M-AUTH-TG.dependencies (require_session)
 #   - M-CALENDAR-SERVICE (CalendarService)
+#   - M-USER-LOCAL-DATE (canonical local-date resolver)
 #   - M-DB-SESSION (get_session)
 # invariants:
 #   - Month must be in YYYY-MM format
-#   - Month must be within ±2 years from current date
+#   - Month must be within ±2 years from the resolved user local date
 #   - User must be onboarded
+#   - Invalid selected user timezone → 422 INVALID_USER_TIMEZONE
 #   - Requires session cookie (401 if missing)
 # failure_policy:
 #   - Invalid month format → 400 INVALID_DATE
@@ -35,7 +37,7 @@
 #   - No auth → 401 (from require_session)
 # non_goals:
 #   - no caching (W-3.4)
-#   - no timezone handling (W-PROFILE.1)
+#   - no Calendar payload/status semantic changes
 # END_MODULE_CONTRACT: M-CALENDAR-API
 
 # START_MODULE_MAP: M-CALENDAR-API
@@ -47,6 +49,7 @@
 #   - RANGE_CHECK: check allowed range
 # owned_tests:
 #   - apps/api/tests/test_calendar_endpoints.py (W-1.4)
+#   - apps/api/tests/test_user_local_date_consumers.py
 # END_MODULE_MAP: M-CALENDAR-API
 
 from __future__ import annotations
@@ -62,6 +65,7 @@ from app.db.models import User
 from app.db.session import get_session
 from app.schemas.calendar import CalendarPayload
 from app.services.calendar_service import CalendarService
+from app.services.user_local_date import UserLocalDateError, resolve_user_local_date
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
@@ -79,7 +83,8 @@ async def get_calendar(
     # returns: CalendarPayload with prev/curr/next month grid
     # side_effects: reads from DB for access and semantic layer
     # emitted_logs: calendar.viewed
-    # error_behavior: 400 INVALID_DATE, 422 NOT_ONBOARDED, 401 from require_session
+    # error_behavior: 400 INVALID_DATE, 422 NOT_ONBOARDED or
+    #   INVALID_USER_TIMEZONE, 401 from require_session
     # END_FUNCTION_CONTRACT: F-M-API-CALENDAR.get_calendar
     """
     Get 3-month calendar grid (prev/curr/next).
@@ -100,10 +105,18 @@ async def get_calendar(
     # END_BLOCK: MONTH_VALIDATION
 
     # START_BLOCK: RANGE_CHECK
-    # Check range (allow ±2 years from now)
-    now = datetime.now(UTC)
-    min_date = datetime(now.year - 2, 1, 1)
-    max_date = datetime(now.year + 2, 12, 31)
+    # Resolve one aware instant once; this same local date drives range checks
+    # and is passed unchanged to CalendarService for isToday classification.
+    try:
+        today = resolve_user_local_date(user, datetime.now(UTC))
+    except UserLocalDateError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "INVALID_USER_TIMEZONE", "reason": exc.code},
+        ) from None
+
+    min_date = datetime(today.year - 2, 1, 1)
+    max_date = datetime(today.year + 2, 12, 31)
 
     if requested_date < min_date or requested_date > max_date:
         raise HTTPException(
@@ -123,7 +136,8 @@ async def get_calendar(
     calendar_service = CalendarService(db)
     payload = await calendar_service.get_calendar(
         user_id=user.id,
-        month=month
+        month=month,
+        today=today,
     )
 
     return payload

@@ -27,9 +27,12 @@
 #   - M-TODAY-PREVIEW-GUARD (pure transport authorization)
 #   - M-TODAY-SELECTION-CONTEXT (immutable request selection)
 #   - M-TODAY-PREVIEW-ACCESS (pure request-scoped access derivation)
+#   - M-USER-LOCAL-DATE (canonical local-date resolver)
 # invariants:
-#   - 'today' resolves to current date (UTC for now, W-PROFILE.1 for timezone).
+#   - 'today' resolves through current_tz → birth_tz → UTC exactly once.
+#   - Explicit ISO dates are preserved exactly and never timezone-shifted.
 #   - Invalid date format → 400 INVALID_DATE.
+#   - Invalid selected user timezone → 422 INVALID_USER_TIMEZONE.
 #   - Not onboarded → 422 NOT_ONBOARDED.
 #   - No auth → 401 (from require_session).
 #   - Preview denial is never an HTTP error and never changes ordinary global selection.
@@ -41,7 +44,7 @@
 # failure_policy:
 #   - HTTPException with code + message in detail.
 # non_goals:
-#   - timezone-aware 'today' resolution (W-PROFILE.1)
+#   - changing TodayService, Today payloads, or convergence pipeline
 # END_MODULE_CONTRACT: M-DAY-SERVICE.api
 
 # START_MODULE_MAP: M-DAY-SERVICE.api
@@ -55,6 +58,7 @@
 # owned_tests:
 #   - apps/api/tests/test_day_endpoints.py (W-1.3)
 #   - apps/api/tests/test_focus_event_drilldown.py
+#   - apps/api/tests/test_user_local_date_consumers.py
 # END_MODULE_MAP: M-DAY-SERVICE.api
 
 from __future__ import annotations
@@ -82,6 +86,7 @@ from app.services.today_preview_guard import (
 from app.services.today_preview_access import resolve_today_access_for_selection
 from app.services.today_selection_context import resolve_today_selection_context
 from app.services.today_service import TodayService
+from app.services.user_local_date import UserLocalDateError, resolve_user_local_date
 
 router = APIRouter(prefix="/api/day", tags=["day"])
 
@@ -100,7 +105,8 @@ async def get_day(
     # returns: TodayPayload with day status, signals, reading, etc.
     # side_effects: reads from DB, calls sidecar for transits, calls LLM
     # emitted_logs: none (TODO: W-1.6 — add day.viewed)
-    # error_behavior: 400 INVALID_DATE, 422 NOT_ONBOARDED, 401 from require_session
+    # error_behavior: 400 INVALID_DATE, 422 NOT_ONBOARDED or
+    #   INVALID_USER_TIMEZONE, 401 from require_session
     # END_FUNCTION_CONTRACT: F-M-API-DAY.get_day
     """
     Get TodayPayload for a specific date.
@@ -130,10 +136,15 @@ async def get_day(
         preview_authorized=preview_decision.authorized,
     )
 
-    # Resolve 'today' to current date in user's timezone
+    # Resolve 'today' once from the authenticated user's profile timezone.
     if date_str == "today":
-        # TODO(W-PROFILE.1): use user.profile.current_location.timezone when available
-        target_date = datetime.now(UTC).date()
+        try:
+            target_date = resolve_user_local_date(user, datetime.now(UTC))
+        except UserLocalDateError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "INVALID_USER_TIMEZONE", "reason": exc.code},
+            ) from None
     else:
         try:
             target_date = Date.fromisoformat(date_str)
@@ -195,10 +206,17 @@ async def get_focus_event_drilldown(
     # returns: FocusEventDrilldown
     # side_effects: reads TodayPayloadCache DB table
     # emitted_logs: none
-    # error_behavior: 400 INVALID_DATE, 404 day_payload_not_cached, 404 event_not_found
+    # error_behavior: 400 INVALID_DATE, 422 INVALID_USER_TIMEZONE,
+    #   404 day_payload_not_cached, 404 event_not_found
     # END_FUNCTION_CONTRACT: F-M-DAY-SERVICE.api.get_focus_event_drilldown
     if date_str == "today":
-        target_date = Date.today()
+        try:
+            target_date = resolve_user_local_date(user, datetime.now(UTC))
+        except UserLocalDateError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "INVALID_USER_TIMEZONE", "reason": exc.code},
+            ) from None
     else:
         try:
             target_date = Date.fromisoformat(date_str)

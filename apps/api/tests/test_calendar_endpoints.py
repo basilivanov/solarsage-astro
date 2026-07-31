@@ -81,6 +81,7 @@ async def _onboard_user(
         "birth": {
             "birthday": "1990-01-15",
             "birthTime": "14:30:00",
+            "birthTimeMode": "exact",
             "birthCity": "Moscow",
             "birthLat": 55.7558,
             "birthLon": 37.6173,

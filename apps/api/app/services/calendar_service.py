@@ -13,6 +13,7 @@
 # inputs:
 #   - user_id: int
 #   - month: str (YYYY-MM format)
+#   - today: resolved user-local date for isToday and allowed-range semantics
 #   - db: AsyncSession
 # outputs:
 #   - CalendarPayload
@@ -22,11 +23,13 @@
 #   - M-CONTRACTS.access (ContentAccessState)
 #   - M-ACCESS (AccessService)
 #   - M-CACHE-KEY-SERVICE (TodayCacheKey, resolve_today_runtime_identity)
+#   - M-USER-LOCAL-DATE (resolved local date supplied by the API)
 # invariants:
 #   - Returns exactly 3 months: prev, current, next
 #   - Full-access days use cached/computed real status when available
 #   - Locked/preview days may return no day status
-#   - Allowed range is ±2 years from current date
+#   - Allowed range is ±2 years from the explicitly provided local date
+#   - isToday and allowed range derive from the same explicitly provided date
 #   - Semantic-cache write identity and pre-read expected identity derive from
 #     the same selected scoring family resolver.
 # failure_policy:
@@ -45,6 +48,7 @@
 #   - REAL_ACCESS: access state from AccessService
 # owned_tests:
 #   - apps/api/tests/test_calendar_endpoints.py (W-1.4)
+#   - apps/api/tests/test_user_local_date_consumers.py
 # END_MODULE_MAP: M-CALENDAR-SERVICE
 
 from __future__ import annotations
@@ -81,14 +85,16 @@ class CalendarService:
         self._request_natal_context: dict | None = None
         self._lunar_facts = LunarFactsService()
 
-    async def get_calendar(self, user_id: uuid.UUID, month: str) -> CalendarPayload:
+    async def get_calendar(
+        self, user_id: uuid.UUID, month: str, *, today: Date
+    ) -> CalendarPayload:
         # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE.get_calendar
         # purpose: Get 3-month calendar grid with day statuses and access.
-        # inputs: user_id (UUID), month (str YYYY-MM)
+        # inputs: user_id (UUID), month (str YYYY-MM), today (resolved local date)
         # returns: CalendarPayload with prev/curr/next month days
         # side_effects: reads from DB for access and semantic layer
         # emitted_logs: calendar.viewed
-        # error_behavior: invalid month format handled by caller
+        # error_behavior: invalid month format handled by caller; today is required
         # END_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE.get_calendar
         """
         Get 3-month calendar grid (prev/curr/next).
@@ -98,7 +104,6 @@ class CalendarService:
         """
         # Parse requested month
         requested_date = datetime.strptime(month, "%Y-%m")
-        today = datetime.now(UTC).date()
         await self._prepare_request_context(user_id)
 
         # Calculate prev/curr/next months
@@ -111,10 +116,9 @@ class CalendarService:
         for month_date in [prev_month, curr_month, next_month]:
             days.extend(await self._generate_month_days(month_date, curr_month, today, user_id))
 
-        # Calculate allowed range (±2 years from now)
-        now = datetime.now(UTC)
-        allowed_from = datetime(now.year - 2, 1, 1).date()
-        allowed_to = datetime(now.year + 2, 12, 31).date()
+        # Calculate allowed range (±2 years from the user's local today).
+        allowed_from = Date(today.year - 2, 1, 1)
+        allowed_to = Date(today.year + 2, 12, 31)
 
         # Generate title (e.g., "May 2026")
         title = curr_month.strftime("%B %Y")
