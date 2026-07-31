@@ -36,7 +36,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0030_today_sphere_natal_narratives"
+revision = "0030_sphere_natal_narr"
 down_revision = "0029_today_snapshot_lineage"
 branch_labels = None
 depends_on = None
