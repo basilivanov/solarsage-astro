@@ -75,6 +75,8 @@
     <module id="M-CONTRACTS" slice="SLICE-CONTRACTS" layer="shared" path="apps/api/app/schemas/, scripts/contracts/, packages/contracts/" />
     <module id="M-BACKEND-API" slice="SLICE-BACKEND-API-ROUTERS" layer="backend" path="apps/api/app/api/, apps/api/app/schemas/" />
     <module id="M-BACKEND-SERVICES" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/, apps/api/app/core/" />
+    <module id="M-TODAY-CONVERGENCE-CANON" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_canon.py" />
+    <module id="M-TODAY-CONVERGENCE-UNITS" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_units.py" />
     <module id="M-DB" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/, apps/api/alembic/versions/" />
     <module id="M-SIDECAR-CALCULATION" slice="SLICE-SIDECAR-CALCULATION" layer="sidecar" path="apps/solarsage/, apps/api/calculations/" />
     <module id="M-SCORING-SEMANTIC-LLM" slice="SLICE-SCORING-SEMANTIC-LLM" layer="backend" path="apps/api/scoring/, apps/api/normalization/, apps/api/semantic/, related services" />
@@ -104,6 +106,7 @@
     <edge from="M-BACKEND-SERVICES" to="M-DB" via="SQLAlchemy" />
     <edge from="M-BACKEND-SERVICES" to="M-SIDECAR-CALCULATION" via="HTTP" />
     <edge from="M-BACKEND-SERVICES" to="M-SCORING-SEMANTIC-LLM" via="semantic-context" />
+    <edge from="M-TODAY-CONVERGENCE-UNITS" to="M-TODAY-CONVERGENCE-CANON" via="frozen-canon-policy" />
     <edge from="M-GUARDRAILS" to="M-GRACE-PROJECT-ADAPTER" via="docs-orchestrator-checks" />
     <edge from="M-GUARDRAILS" to="M-CONTRACTS" via="contract-generation-check" />
     <edge from="M-API-PROMO" to="M-PROMO-CAMPAIGN-SERVICE" via="service-call" />

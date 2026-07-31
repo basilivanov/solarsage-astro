@@ -67,6 +67,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-SIDECAR-CALCULATION → M-TODAY-CONVERGENCE-CANON → M-TODAY-REPLAY → M-CONTRACTS | New `state × dayTone × contentState` envelope is orthogonal; C1 hero requires a rare anchor plus an independent direct witness; background and transitive bridges cannot inflate it; sphere projection is primary + at most one secondary per physical group; unknown mapping fails closed; formula/calculation versions participate in lineage. | S1: `test_convergence_canon.py`, `test_convergence_mutation_fixtures.py`, `test_sphere_mapping_delta.py`. S2: direct replay parity on owner fixture. S3: 120-chart population aggregate is monitoring evidence, not a quota. S4: `CALCULATION_VERSION=ss-calc-1.3.0` parity/sect/health tests pass. S5: freeze delta-attestation records old/new source fingerprints. |
 
+## UC-TODAY-CONVERGENCE-W2-UNITS · canonical physical units
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-UNITS → M-TODAY-CONVERGENCE-CANON | Frozen canon is loaded strictly; physical identity is producer-independent and window-aware; aspect/event-class/orb/target/data-quality failures are typed and fail closed; eligibility nesting and background exclusion hold; structural lunar events remain excluded until a canonical significance rule exists. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py -q`. S2: producer parity and prefix stripping preserve one `evt_v1_` ID. S3: `python -m ruff check` on the four packet Python files, `python3 scripts/grace_lint.py apps/api/app --quiet`, `bash scripts/grace/check-markers.sh`, and `git diff --check` pass. |
+
 ---
 
 ## UC-DAY-NAV · Navigate days
