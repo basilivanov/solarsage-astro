@@ -117,6 +117,30 @@ describe("fetchSpherePage", () => {
     expect((failure as SpherePageApiError).status).toBe(0)
   })
 
+  it("falls back to the default message for http errors without details", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response("not-json", { status: 500 }),
+    )
+
+    const failure = await fetchSpherePage("work").catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(SpherePageApiError)
+    expect((failure as SpherePageApiError).kind).toBe("http")
+    expect((failure as SpherePageApiError).status).toBe(500)
+  })
+
+  it("keeps a wrapped SpherePageApiError untouched", async () => {
+    mockInstrumentedFetch.mockRejectedValueOnce(
+      new SpherePageApiError("boom", "http", 502, "UPSTREAM"),
+    )
+
+    const failure = await fetchSpherePage("work").catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(SpherePageApiError)
+    expect((failure as SpherePageApiError).status).toBe(502)
+    expect((failure as SpherePageApiError).code).toBe("UPSTREAM")
+  })
+
   it("rejects an invalid payload as typed invalid error", async () => {
     mockInstrumentedFetch.mockResolvedValueOnce(
       new Response(JSON.stringify({ sphere: "work" }), { status: 200 }),
