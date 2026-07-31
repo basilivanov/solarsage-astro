@@ -3,7 +3,8 @@
 # purpose: HTTP client for SolarSage sidecar
 
 # START_MODULE_CONTRACT: M-SOLARSAGE-CLIENT
-# purpose: HTTP client for SolarSage sidecar single-layer and birth-time-grid endpoints.
+# purpose: HTTP client for SolarSage sidecar single-layer and birth-time-grid endpoints,
+#   preserving the verified ephemeris artifact identity on grid responses.
 # owns:
 #   - apps/api/app/clients/solarsage_client.py
 # inputs:
@@ -12,7 +13,7 @@
 # outputs:
 #   - dict with planets, houses, special_points (natal)
 #   - dict with planets, target_jd (transits)
-#   - immutable ActivationGridSample records (activation grid)
+#   - immutable ActivationGridBatch records (activation grid, versions, and artifact identity)
 # dependencies:
 #   - M-CONFIG (settings.solarsage_url)
 #   - httpx (AsyncClient)
@@ -20,6 +21,7 @@
 #   - HTTP POST to sidecar
 # invariants:
 #   - singleton instance via get_solarsage_client()
+#   - grid artifact identity is required, bounded, and never replaced by a fallback
 #   - timeout 30s
 # failure_policy:
 #   - httpx.HTTPStatusError on non-2xx response
@@ -35,6 +37,7 @@
 #   - SolarSageClient.get_transits
 #   - SolarSageClient.get_activation_layer_grid
 #   - ActivationGridSample
+#   - ActivationGridBatch
 #   - SolarSageClientError
 #   - get_solarsage_client
 # semantic_blocks:
@@ -68,6 +71,16 @@ class ActivationGridSample:
 
     birth_time: str
     activation_layer: ActivationLayer
+
+
+@dataclass(frozen=True)
+class ActivationGridBatch:
+    """Immutable ordered grid plus the sidecar's verified lineage metadata."""
+
+    calculation_version: str
+    activation_layer_version: str
+    ephemeris_artifact_id: str
+    samples: tuple[ActivationGridSample, ...]
 
 
 def _grid_fail(reason: str) -> None:
@@ -270,11 +283,12 @@ class SolarSageClient:
         house_system: str = "PLACIDUS",
         techniques: list[str] | None = None,
         current_location: dict | None = None,
-    ) -> tuple[ActivationGridSample, ...]:
+    ) -> ActivationGridBatch:
         # START_FUNCTION_CONTRACT: F-M-SOLARSAGE-CLIENT.get_activation_layer_grid
         # purpose: Request and validate one ordered birth-time activation grid.
         # inputs: birth date/times, target moment, house system, techniques, and optional current location.
-        # returns: Frozen typed samples in the exact requested birth-time order.
+        # returns: Frozen typed batch with exact versions, artifact identity, and
+        # samples in the requested birth-time order.
         # side_effects: one HTTP POST to /v1/activation-layer-grid.
         # emitted_logs: none.
         # error_behavior: raises SolarSageClientError for malformed response; HTTP errors preserve httpx behavior.
@@ -310,9 +324,22 @@ class SolarSageClient:
             _grid_fail("meta_mapping")
         if not isinstance(samples, Sequence) or isinstance(samples, (str, bytes)):
             _grid_fail("samples_sequence")
-        required_meta = ("calculation_version", "activation_layer_version", "sample_count")
+        required_meta = (
+            "calculation_version",
+            "activation_layer_version",
+            "sample_count",
+        )
         if any(key not in meta for key in required_meta):
             _grid_fail("meta_fields")
+        if "ephemeris_artifact_id" not in meta:
+            _grid_fail("ephemeris_artifact_id")
+        artifact_id = meta["ephemeris_artifact_id"]
+        if (
+            not isinstance(artifact_id, str)
+            or not artifact_id.strip()
+            or len(artifact_id) > 128
+        ):
+            _grid_fail("ephemeris_artifact_id")
         sample_count = meta["sample_count"]
         if isinstance(sample_count, bool) or not isinstance(sample_count, int):
             _grid_fail("sample_count")
@@ -342,7 +369,12 @@ class SolarSageClient:
             ):
                 _grid_fail("version_disagreement")
             validated.append(ActivationGridSample(birth_time=expected_time, activation_layer=layer))
-        return tuple(validated)
+        return ActivationGridBatch(
+            calculation_version=meta["calculation_version"],
+            activation_layer_version=meta["activation_layer_version"],
+            ephemeris_artifact_id=artifact_id,
+            samples=tuple(validated),
+        )
 
 # END_BLOCK: CLIENT_CLASS
 
@@ -377,3 +409,12 @@ def get_solarsage_client() -> SolarSageClient:
         _client = client
     return _client
 # END_BLOCK: SINGLETON
+
+
+__all__ = [
+    "ActivationGridBatch",
+    "ActivationGridSample",
+    "SolarSageClient",
+    "SolarSageClientError",
+    "get_solarsage_client",
+]

@@ -25,8 +25,10 @@
 
 import pytest
 from copy import deepcopy
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import app.clients.solarsage_client as client_module
 from app.clients.solarsage_client import ActivationGridSample, SolarSageClient, SolarSageClientError
 from app.core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
 from app.schemas.activation import ActivationLayer
@@ -186,6 +188,7 @@ def _valid_grid_response(times: list[str]) -> dict:
             "calculation_version": CALCULATION_VERSION,
             "activation_layer_version": ACTIVATION_LAYER_VERSION,
             "sample_count": len(times),
+            "ephemeris_artifact_id": "swieph-test-artifact",
         },
         "samples": [
             {"birth_time": birth_time, "activation_layer": _valid_grid_layer()}
@@ -230,10 +233,74 @@ async def test_get_activation_layer_grid_posts_once_and_returns_ordered_typed_sa
         "house_system": "PLACIDUS",
         "techniques": ["transit_to_natal"],
     }
-    assert isinstance(result, tuple)
-    assert all(isinstance(sample, ActivationGridSample) for sample in result)
-    assert [sample.birth_time for sample in result] == times
-    assert all(isinstance(sample.activation_layer, ActivationLayer) for sample in result)
+    assert hasattr(client_module, "ActivationGridBatch")
+    assert isinstance(result, client_module.ActivationGridBatch)
+    assert result.calculation_version == CALCULATION_VERSION
+    assert result.activation_layer_version == ACTIVATION_LAYER_VERSION
+    assert result.ephemeris_artifact_id == "swieph-test-artifact"
+    assert isinstance(result.samples, tuple)
+    assert isinstance(result.samples[0], ActivationGridSample)
+    assert all(isinstance(sample, ActivationGridSample) for sample in result.samples)
+    assert [sample.birth_time for sample in result.samples] == times
+    assert all(isinstance(sample.activation_layer, ActivationLayer) for sample in result.samples)
+    with pytest.raises((AttributeError, TypeError)):
+        result.ephemeris_artifact_id = "changed"  # type: ignore[misc]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "artifact_id",
+    [None, "", " " * 128, [], True, "x" * 129, f"{' ' * 128}x"],
+)
+async def test_get_activation_layer_grid_rejects_invalid_ephemeris_artifact_id(artifact_id):
+    client = SolarSageClient()
+    payload = _valid_grid_response(["00:00"])
+    payload["meta"]["ephemeris_artifact_id"] = artifact_id
+    response = MagicMock()
+    response.raise_for_status = MagicMock()
+    response.json.return_value = payload
+
+    with patch.object(client.client, "post", AsyncMock(return_value=response)):
+        with pytest.raises(
+            SolarSageClientError,
+            match=r"^solarsage_client:activation_grid:ephemeris_artifact_id$",
+        ):
+            await client.get_activation_layer_grid(
+                birth_date="1980-10-30",
+                birth_times=["00:00"],
+                birth_lat=67.9394,
+                birth_lon=32.8144,
+                birth_tz="Europe/Moscow",
+                target_date="2026-07-08",
+                target_time="12:00",
+                target_tz="Europe/Moscow",
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_activation_layer_grid_rejects_missing_ephemeris_artifact_id() -> None:
+    client = SolarSageClient()
+    payload = _valid_grid_response(["00:00"])
+    payload["meta"].pop("ephemeris_artifact_id")
+    response = MagicMock()
+    response.raise_for_status = MagicMock()
+    response.json.return_value = payload
+
+    with patch.object(client.client, "post", AsyncMock(return_value=response)):
+        with pytest.raises(
+            SolarSageClientError,
+            match=r"^solarsage_client:activation_grid:ephemeris_artifact_id$",
+        ):
+            await client.get_activation_layer_grid(
+                birth_date="1980-10-30",
+                birth_times=["00:00"],
+                birth_lat=67.9394,
+                birth_lon=32.8144,
+                birth_tz="Europe/Moscow",
+                target_date="2026-07-08",
+                target_time="12:00",
+                target_tz="Europe/Moscow",
+            )
 
 
 @pytest.mark.asyncio
@@ -312,3 +379,9 @@ async def test_get_activation_layer_grid_does_not_swallow_unexpected_model_error
                 target_time="12:00",
                 target_tz="Europe/Moscow",
             )
+
+
+def test_activation_grid_client_source_has_no_health_or_artifact_fallback() -> None:
+    source = Path(__file__).resolve().parents[1].joinpath("app/clients/solarsage_client.py").read_text(encoding="utf-8")
+    assert "/health" not in source
+    assert "moshier-only" not in source

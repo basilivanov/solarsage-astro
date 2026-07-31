@@ -1,6 +1,7 @@
 # ############################################################################
 # AI_HEADER: TEST_ACTIVATION_GRID — shared birth-time activation-grid tests.
-# ROLE: Proves strict grid validation, shared-context orchestration, and direct parity.
+# ROLE: Proves strict grid validation, shared-context orchestration, direct parity,
+#       and verified ephemeris artifact lineage.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TEST-ACTIVATION-GRID
@@ -8,11 +9,13 @@
 # owns:
 #   - apps/solarsage/tests/test_activation_grid.py
 # inputs: Birth-time control grids, deterministic spies, and one real ephemeris parity fixture.
-# outputs: Assertions for validation, reuse, order, solver policy, and byte/value parity.
+# outputs: Assertions for validation, reuse, order, solver policy, byte/value parity,
+#   and artifact identity propagation.
 # dependencies: M-SIDECAR-CALCULATION-CORE and sidecar activation schemas.
 # side_effects: One real ephemeris calculation in the parity test; all other tests use spies.
 # emitted_logs: none.
-# invariants: no parallelism, no hidden cache, and one target context per grid request.
+# invariants: no parallelism, no hidden cache, one target context per grid request,
+#   and no artifact fallback in the endpoint.
 # failure_policy: invalid grids raise ValueError before calculation; calculation failures propagate.
 # END_MODULE_CONTRACT: M-TEST-ACTIVATION-GRID
 
@@ -38,6 +41,7 @@ from fastapi.testclient import TestClient
 
 from solarsage.app import app
 from solarsage.core import versions
+from solarsage.core import ephemeris_runtime
 from solarsage.schemas.activation import ActivationLayer
 from solarsage.services import calculation_core
 
@@ -210,8 +214,62 @@ def test_activation_grid_endpoint_accepts_canonical_grids_and_preserves_order(mo
     assert response.status_code == 200
     data = response.json()
     assert data["meta"]["sample_count"] == len(times)
+    assert data["meta"]["ephemeris_artifact_id"]
     assert [sample["birth_time"] for sample in data["samples"]] == times
     assert all(sample["activation_layer"]["calculation_version"] == versions.CALCULATION_VERSION for sample in data["samples"])
+
+
+def test_activation_grid_endpoint_reads_verified_identity_once(monkeypatch):
+    identity = SimpleNamespace(artifact_id="swieph-test-artifact")
+    identity_getter = Mock(return_value=identity)
+    grid_calculator = Mock(return_value=(_layer(),))
+    monkeypatch.setattr(activation_api, "get_identity", identity_getter, raising=False)
+    monkeypatch.setattr(activation_api, "calculate_activation_grid", grid_calculator)
+
+    response = client.post("/v1/activation-layer-grid", json=_grid_request(["14:27"]))
+
+    assert response.status_code == 200
+    assert response.json()["meta"]["ephemeris_artifact_id"] == "swieph-test-artifact"
+    identity_getter.assert_called_once_with()
+    grid_calculator.assert_called_once()
+
+
+def test_activation_grid_endpoint_identity_failures_are_generic(monkeypatch):
+    monkeypatch.setattr(
+        activation_api,
+        "get_identity",
+        lambda: (_ for _ in ()).throw(RuntimeError("secret identity details")),
+        raising=False,
+    )
+
+    response = client.post("/v1/activation-layer-grid", json=_grid_request(["14:27"]))
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Activation layer grid calculation failed"}
+    assert "secret identity details" not in response.text
+
+
+@pytest.mark.parametrize("identity", [SimpleNamespace(artifact_id=""), SimpleNamespace()])
+def test_activation_grid_endpoint_rejects_empty_or_missing_identity(monkeypatch, identity):
+    monkeypatch.setattr(activation_api, "get_identity", lambda: identity, raising=False)
+
+    response = client.post("/v1/activation-layer-grid", json=_grid_request(["14:27"]))
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Activation layer grid calculation failed"}
+
+
+def test_activation_grid_endpoint_reports_real_test_only_moshier_identity(monkeypatch):
+    def reject_pinned_artifact(*_args, **_kwargs):
+        raise ephemeris_runtime.EphemerisError("test-only forced artifact failure")
+
+    monkeypatch.setattr(ephemeris_runtime, "_load_and_verify_manifest", reject_pinned_artifact)
+    monkeypatch.setattr(activation_api, "calculate_activation_grid", lambda **_: (_layer(),))
+
+    response = client.post("/v1/activation-layer-grid", json=_grid_request(["14:27"]))
+
+    assert response.status_code == 200
+    assert response.json()["meta"]["ephemeris_artifact_id"] == "moshier-only"
 
 
 @pytest.mark.parametrize(

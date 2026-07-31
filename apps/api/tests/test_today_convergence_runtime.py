@@ -1,7 +1,7 @@
 # ############################################################################
 # AI_HEADER: TEST_TODAY-CONVERGENCE-RUNTIME — runtime calculation boundary tests.
 # ROLE: Proves strict profile validation, one activation-grid call, typed stage
-#       composition, and immutable built/unavailable calculation results.
+#       composition, ephemeris lineage, and immutable built/unavailable results.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-RUNTIME
@@ -11,12 +11,13 @@
 #   - apps/api/tests/test_today_convergence_runtime.py
 # inputs: Direct profile-like values, typed synthetic activation-grid samples,
 #   and injected network clients.
-# outputs: pytest assertions for deterministic built/unavailable results.
+# outputs: pytest assertions for deterministic built/unavailable results and
+#   exact artifact propagation.
 # dependencies: today_convergence_runtime and its accepted resolver/client/facts/pipeline stages.
 # side_effects: none; network is always replaced by an injected fake client.
 # emitted_logs: none.
 # invariants: one ordered sidecar request, no fallback/retry, safe failure tokens,
-#   and frozen result records.
+#   frozen result records, and no health/artifact fallback path.
 # failure_policy: unexpected programming errors propagate; typed boundary errors
 #   become the declared unavailable stage.
 # END_MODULE_CONTRACT: M-TEST-TODAY-CONVERGENCE-RUNTIME
@@ -44,6 +45,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+import app.clients.solarsage_client as client_module
 from app.clients.solarsage_client import ActivationGridSample, SolarSageClientError
 from app.core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
 from app.schemas.activation import ActivationLayer
@@ -62,6 +64,7 @@ from app.services.today_convergence_runtime import (
 
 TARGET_DATE = date(2026, 7, 31)
 CANON = load_today_convergence_canon()
+EPHEMERIS_ARTIFACT_ID = "swieph-test-artifact"
 
 
 def profile(**overrides):
@@ -106,9 +109,16 @@ class FakeGridClient:
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
-        return tuple(
-            ActivationGridSample(birth_time=birth_time, activation_layer=empty_layer(kwargs["target_tz"]))
-            for birth_time in kwargs["birth_times"]
+        batch_type = getattr(client_module, "ActivationGridBatch", None)
+        assert batch_type is not None
+        return batch_type(
+            calculation_version=CALCULATION_VERSION,
+            activation_layer_version=ACTIVATION_LAYER_VERSION,
+            ephemeris_artifact_id=EPHEMERIS_ARTIFACT_ID,
+            samples=tuple(
+                ActivationGridSample(birth_time=birth_time, activation_layer=empty_layer(kwargs["target_tz"]))
+                for birth_time in kwargs["birth_times"]
+            ),
         )
 
 
@@ -152,6 +162,7 @@ async def test_modes_make_one_exact_grid_call_and_built_result(
     assert result.birth_time.control_times == expected_controls
     assert result.calculation_version == CALCULATION_VERSION
     assert result.activation_layer_version == ACTIVATION_LAYER_VERSION
+    assert result.ephemeris_artifact_id == EPHEMERIS_ARTIFACT_ID
     assert result.facts_audit.input_sample_count == len(expected_controls)
     assert result.pipeline.state == result.state
     with pytest.raises(FrozenInstanceError):
@@ -345,6 +356,25 @@ async def test_expected_sidecar_errors_map_to_safe_activation_grid_failure(error
 
 
 @pytest.mark.asyncio
+async def test_malformed_artifact_stops_before_facts_and_pipeline(monkeypatch) -> None:
+    def unexpected_facts(*_args):
+        raise AssertionError("malformed artifact must not reach facts")
+
+    monkeypatch.setattr(runtime_module, "build_birth_time_facts", unexpected_facts)
+    result = await calculate_today_convergence(
+        profile(),
+        TARGET_DATE,
+        client=FakeGridClient(
+            SolarSageClientError("solarsage_client:activation_grid:ephemeris_artifact_id")
+        ),
+    )
+
+    assert_safe_unavailable(result, "activation_grid")
+    assert result.facts_audit is None
+    assert result.pipeline is None
+
+
+@pytest.mark.asyncio
 async def test_unexpected_sidecar_programming_error_propagates() -> None:
     with pytest.raises(RuntimeError, match="programmer bug"):
         await calculate_today_convergence(profile(), TARGET_DATE, client=FakeGridClient(RuntimeError("programmer bug")))
@@ -411,6 +441,8 @@ def test_runtime_source_has_no_legacy_or_analysis_imports_or_birth_noon_fallback
     assert "scoring" not in source
     assert "normalization" not in source
     assert "birth_time or \"12:00\"" not in source
+    assert "health" not in source
+    assert "moshier-only" not in source
 
 
 # END_BLOCK: IMMUTABILITY

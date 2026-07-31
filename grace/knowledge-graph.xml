@@ -89,6 +89,7 @@
     <module id="M-TODAY-CONVERGENCE-THEMES" slice="SLICE-BACKEND-SERVICES" layer="shared" path="grace/canon/today_convergence_themes.v1.yml" />
     <module id="M-DB" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/, apps/api/alembic/versions/" />
     <module id="M-SIDECAR-CALCULATION" slice="SLICE-SIDECAR-CALCULATION" layer="sidecar" path="apps/solarsage/, apps/api/calculations/" />
+    <module id="M-EPHEMERIS-RUNTIME" slice="SLICE-SIDECAR-CALCULATION" layer="sidecar" path="apps/solarsage/solarsage/core/ephemeris_runtime.py" />
     <module id="M-SIDECAR-ACTIVATION-GRID" slice="SLICE-SIDECAR-CALCULATION" layer="sidecar" path="apps/solarsage/solarsage/services/calculation_core.py, apps/solarsage/solarsage/api/activation_layer.py, apps/api/app/clients/solarsage_client.py" />
     <module id="M-SCORING-SEMANTIC-LLM" slice="SLICE-SCORING-SEMANTIC-LLM" layer="backend" path="apps/api/scoring/, apps/api/normalization/, apps/api/semantic/, related services" />
     <module id="M-LOGGING-SPINE" slice="SLICE-LOGGING-SPINE" layer="cross-cutting" path="lib/grace/, backend logging helpers" />
@@ -147,6 +148,8 @@
     <edge from="M-TODAY-BIRTH-TIME" to="M-TODAY-CONVERGENCE-CANON" via="strict-birth-time-canon" />
     <edge from="M-TODAY-BIRTH-TIME" to="M-SIDECAR-ACTIVATION-GRID" via="birth-time-control-grid" />
     <edge from="M-SIDECAR-ACTIVATION-GRID" to="M-SIDECAR-CALCULATION" via="shared-target-and-single-layer-reuse" />
+    <edge from="M-EPHEMERIS-RUNTIME" to="M-SIDECAR-ACTIVATION-GRID" via="ephemeris-artifact-lineage" />
+    <edge from="M-SIDECAR-ACTIVATION-GRID" to="M-TODAY-CONVERGENCE-RUNTIME" via="ephemeris-artifact-lineage" />
     <edge from="M-GUARDRAILS" to="M-GRACE-PROJECT-ADAPTER" via="docs-orchestrator-checks" />
     <edge from="M-GUARDRAILS" to="M-CONTRACTS" via="contract-generation-check" />
     <edge from="M-API-PROMO" to="M-PROMO-CAMPAIGN-SERVICE" via="service-call" />

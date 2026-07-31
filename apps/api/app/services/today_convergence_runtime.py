@@ -1,7 +1,8 @@
 # ############################################################################
 # AI_HEADER: MODULE_TODAY-CONVERGENCE-RUNTIME — deterministic runtime calculation boundary.
-# ROLE: Validates one direct profile, requests one activation grid, builds robust
-#       facts, and composes the accepted canonical convergence pipeline.
+# ROLE: Validates one direct profile, requests one activation grid, preserves its
+#       verified ephemeris lineage, builds robust facts, and composes the accepted
+#       canonical convergence pipeline.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-RUNTIME
@@ -11,14 +12,16 @@
 #   - apps/api/app/services/today_convergence_runtime.py
 # inputs: Direct profile fields, target local date, optional canonical DayDelta
 #   semantic keys, and an injectable SolarSage grid client.
-# outputs: Immutable built or unavailable runtime calculation records.
+# outputs: Immutable built or unavailable runtime calculation records; built
+#   records preserve the activation-grid ephemeris artifact identity.
 # dependencies: today_birth_time, solarsage_client, today_birth_time_facts,
 #   and today_convergence_pipeline only.
 # side_effects: one activation-grid HTTP request through the accepted client;
 #   no writes, retries, cache, logs, or fallback calculation.
 # emitted_logs: none.
 # invariants: canonical target time is 12:00; profile and target boundaries fail
-#   closed; successful stages are preserved in unavailable results.
+#   closed; successful stages are preserved in unavailable results; built records
+#   carry the batch artifact without fallback.
 # failure_policy: typed profile, transport, facts, and pipeline failures become
 #   safe today_convergence_runtime-prefixed unavailable tokens; programming errors propagate.
 # END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-RUNTIME
@@ -54,6 +57,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import httpx
 
 from app.clients.solarsage_client import (
+    ActivationGridBatch,
     SolarSageClient,
     SolarSageClientError,
     get_solarsage_client,
@@ -108,6 +112,7 @@ class TodayConvergenceCalculationBuilt:
     birth_time: BirthTimeResolution
     calculation_version: str
     activation_layer_version: str
+    ephemeris_artifact_id: str
     facts_audit: BirthTimeFactsAudit
     pipeline: CanonicalPipelineBuilt
 
@@ -243,7 +248,7 @@ async def _request_activation_grid(
     target_timezone: str,
     current_location: dict[str, float | str] | None,
     client: SolarSageClient | object | None,
-):
+) -> ActivationGridBatch:
     selected_client = get_solarsage_client() if client is None else client
     return await selected_client.get_activation_layer_grid(
         birth_date=profile_values["birthday"].isoformat(),  # type: ignore[union-attr]
@@ -292,7 +297,7 @@ async def calculate_today_convergence(
         return _unavailable(target_date=target_date, stage="profile", reason="profile:invalid")
 
     try:
-        samples = await _request_activation_grid(
+        batch = await _request_activation_grid(
             profile_values=values,
             resolution=resolution,
             target_date=target_date,
@@ -318,7 +323,7 @@ async def calculate_today_convergence(
         )
 
     try:
-        facts = build_birth_time_facts(resolution, samples)
+        facts = build_birth_time_facts(resolution, batch.samples)
     except TodayBirthTimeFactsError:
         return _unavailable(
             target_date=target_date,
@@ -347,15 +352,15 @@ async def calculate_today_convergence(
     if not isinstance(pipeline, CanonicalPipelineBuilt):
         raise TodayConvergenceRuntimeError("invalid_pipeline_result")
 
-    first_sample = samples[0]
     return TodayConvergenceCalculationBuilt(
         state=pipeline.state,
         target_date=target_date,
         target_timezone=target_timezone,
         target_time=CANONICAL_TARGET_TIME,
         birth_time=resolution,
-        calculation_version=first_sample.activation_layer.calculation_version,
-        activation_layer_version=first_sample.activation_layer.activation_layer_version,
+        calculation_version=batch.calculation_version,
+        activation_layer_version=batch.activation_layer_version,
+        ephemeris_artifact_id=batch.ephemeris_artifact_id,
         facts_audit=facts.audit,
         pipeline=pipeline,
     )

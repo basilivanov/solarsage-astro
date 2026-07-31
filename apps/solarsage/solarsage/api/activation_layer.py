@@ -1,7 +1,8 @@
 # ############################################################################
 # AI_HEADER: MODULE_SIDECAR_API_ACTIVATION_LAYER — activation layer endpoint.
 # ROLE: POST /v1/activation-layer and /v1/activation-layer-grid — internal
-#       sidecar calculation endpoints preserving the existing single-layer wire.
+#       sidecar calculation endpoints preserving the existing single-layer wire
+#       and carrying verified ephemeris lineage on the grid only.
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-SIDECAR-API-ACTIVATION-LAYER
@@ -9,11 +10,13 @@
 # owns:
 #   - apps/solarsage/solarsage/api/activation_layer.py
 # inputs: Validated single birth or ordered birth-time grid, target, technique, and location requests.
-# outputs: Existing single ActivationLayerResponse or internal ActivationLayerGridResponse.
+# outputs: Existing single ActivationLayerResponse or internal ActivationLayerGridResponse
+#   carrying the verified ephemeris artifact identity.
 # dependencies: calculation_core and sidecar activation schemas.
 # side_effects: Swiss Ephemeris calculations through the core service.
 # emitted_logs: none.
-# invariants: single endpoint payload/versions remain unchanged; grid is sequential and internal-only.
+# invariants: single endpoint payload/versions remain unchanged; grid is sequential
+#   and internal-only; each grid reads one verified ephemeris identity.
 # failure_policy: Pydantic 422 for malformed grid requests; generic 500 for unexpected grid calculation errors.
 # END_MODULE_CONTRACT: M-SIDECAR-API-ACTIVATION-LAYER
 
@@ -33,6 +36,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from ..core.versions import ACTIVATION_LAYER_VERSION, CALCULATION_VERSION
+from ..core.ephemeris_runtime import get_identity
 from ..schemas.activation import ActivationLayer
 from ..services.calculation_core import calculate_activation_grid, calculate_activation_layer, validate_birth_time_grid
 
@@ -104,6 +108,7 @@ class ActivationLayerGridMeta(BaseModel):
     calculation_version: str
     activation_layer_version: str = ACTIVATION_LAYER_VERSION
     sample_count: int
+    ephemeris_artifact_id: str = Field(..., min_length=1, max_length=128)
 
 
 class ActivationGridSample(BaseModel):
@@ -165,6 +170,7 @@ async def post_activation_layer_grid(request: ActivationLayerGridRequest) -> Act
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-API-ACTIVATION-LAYER.post_activation_layer_grid
     """Calculate ordered birth-time samples with one shared target workspace."""
     try:
+        identity = get_identity()
         layers = calculate_activation_grid(
             birth_date=request.birth.date,
             birth_times=request.birth.times,
@@ -189,6 +195,7 @@ async def post_activation_layer_grid(request: ActivationLayerGridRequest) -> Act
                 calculation_version=calculation_version,
                 activation_layer_version=activation_layer_version,
                 sample_count=len(layers),
+                ephemeris_artifact_id=identity.artifact_id,
             ),
             samples=[
                 ActivationGridSample(birth_time=birth_time, activation_layer=layer)
