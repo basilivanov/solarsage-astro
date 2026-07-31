@@ -146,6 +146,7 @@ export function OnboardingFlow({
         birth: {
           birthday,
           birthTime,
+          birthTimeMode: state.birthTime.unknown ? "unknown" : "exact",
           birthCity: birthPlaceStr,
           birthLat: birthPlaceCity?.lat ?? undefined,
           birthLon: birthPlaceCity?.lon ?? undefined,
