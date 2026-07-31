@@ -10,9 +10,9 @@
 #   - month is YYYY-MM string.
 #   - allowedRange.from/to are ISO date strings.
 #   - day.date is ISO date string.
-#   - meta.schema_version is "calendar/v1".
+#   - meta.schema_version is "calendar/v2".
 # emits: nothing.
-# consumes: schemas._base.CamelModel, schemas.today.{DayStatus,ContentAccessState}.
+# consumes: schemas._base.CamelModel, schemas.access.ContentAccessState.
 # END_MODULE_CONTRACT: M-CONTRACTS.calendar
 
 # START_MODULE_MAP: M-CONTRACTS.calendar
@@ -30,7 +30,7 @@ from typing import Literal
 from pydantic import Field
 
 from ._base import CamelModel
-from .today import ContentAccessState, DayStatus
+from .access import ContentAccessState
 
 
 class CalendarLunarFields(CamelModel):
@@ -59,13 +59,13 @@ class CalendarDay(CamelModel):
     is_current_month: bool
     is_today: bool
     disabled: bool
-    day_status: DayStatus | None = None
+    day_state: Literal["hero", "ordinary", "not-computed"]
     access: ContentAccessState | None = None
     lunar: CalendarLunarFields = Field(default_factory=CalendarLunarFields)
 
 
 class CalendarMeta(CamelModel):
-    schema_version: Literal["calendar/v1"]
+    schema_version: Literal["calendar/v2"]
     contract_version: int
     generated_at: str
 

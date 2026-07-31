@@ -60,6 +60,7 @@ EXPECTED_ROOT_NAMES = [
     "CheckinMetrics",
     "CheckinResponse",
     "ConvergenceEvidence",
+    "DayHistoryPayload",
     "FocusEventDrilldown",
     "HoraryAnswerRead",
     "HoraryQuestionCreate",

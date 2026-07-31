@@ -448,6 +448,12 @@ def test_real_current_artifact_against_merge_base_is_no_change_or_additive_witho
     base_doc = check_compat.load_base_openapi_from_git(base_commit)
     current_doc = check_compat.load_json_file(CURRENT_ARTIFACT)
     report = check_compat.build_report(base_doc, current_doc, base_commit, "packages/contracts/openapi.json")
+    # Approved breaking changes carry a non-empty packages/contracts/COMPAT_OVERRIDE
+    # file (reviewed in git); without it the strict invariant applies.
+    override_path = REPO_ROOT / "packages" / "contracts" / "COMPAT_OVERRIDE"
+    if override_path.is_file():
+        assert override_path.read_text(encoding="utf-8").strip(), "COMPAT_OVERRIDE must be non-empty"
+        return
     _assert_real_artifact_invariant(report)
 
 

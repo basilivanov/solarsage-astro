@@ -645,21 +645,14 @@
             "title": "Daynumber",
             "type": "integer"
           },
-          "dayStatus": {
-            "anyOf": [
-              {
-                "enum": [
-                  "supportive",
-                  "steady",
-                  "tense"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          "dayState": {
+            "enum": [
+              "hero",
+              "ordinary",
+              "not-computed"
             ],
-            "title": "Daystatus"
+            "title": "Daystate",
+            "type": "string"
           },
           "disabled": {
             "title": "Disabled",
@@ -682,7 +675,8 @@
           "dayNumber",
           "isCurrentMonth",
           "isToday",
-          "disabled"
+          "disabled",
+          "dayState"
         ],
         "title": "CalendarDay",
         "type": "object"
@@ -806,7 +800,7 @@
             "type": "string"
           },
           "schemaVersion": {
-            "const": "calendar/v1",
+            "const": "calendar/v2",
             "title": "Schemaversion",
             "type": "string"
           }
@@ -1890,6 +1884,82 @@
           "longitude"
         ],
         "title": "DayChartTransitPlanet",
+        "type": "object"
+      },
+      "DayHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "dayTone": {
+            "enum": [
+              "steady",
+              "supportive",
+              "mixed",
+              "tense"
+            ],
+            "title": "Daytone",
+            "type": "string"
+          },
+          "impulseCount": {
+            "minimum": 0.0,
+            "title": "Impulsecount",
+            "type": "integer"
+          },
+          "snapshotId": {
+            "title": "Snapshotid",
+            "type": "string"
+          },
+          "sphereKeys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Spherekeys",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "convergence_today",
+              "quiet_day"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "snapshotId",
+          "state",
+          "dayTone",
+          "sphereKeys",
+          "impulseCount"
+        ],
+        "title": "DayHistoryItem",
+        "type": "object"
+      },
+      "DayHistoryPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "$ref": "#/components/schemas/ContentAccessState"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DayHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "access"
+        ],
+        "title": "DayHistoryPayload",
         "type": "object"
       },
       "DayQuality": {
@@ -8774,6 +8844,27 @@
           }
         },
         "summary": "Contracts  Convergenceevidence",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/dayhistorypayload": {
+      "get": {
+        "operationId": "contracts__dayhistorypayload___contracts___dayhistorypayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayHistoryPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Dayhistorypayload",
         "tags": [
           "__contracts__"
         ]

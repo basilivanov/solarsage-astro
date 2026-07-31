@@ -178,6 +178,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/dayhistorypayload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Dayhistorypayload */
+        get: operations["contracts__dayhistorypayload___contracts___dayhistorypayload_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/focuseventdrilldown": {
         parameters: {
             query?: never;
@@ -1039,8 +1056,11 @@ export interface components {
             date: string;
             /** Daynumber */
             dayNumber: number;
-            /** Daystatus */
-            dayStatus?: ("supportive" | "steady" | "tense") | null;
+            /**
+             * Daystate
+             * @enum {string}
+             */
+            dayState: "hero" | "ordinary" | "not-computed";
             /** Disabled */
             disabled: boolean;
             /** Iscurrentmonth */
@@ -1078,7 +1098,7 @@ export interface components {
              * Schemaversion
              * @constant
              */
-            schemaVersion: "calendar/v1";
+            schemaVersion: "calendar/v2";
         };
         /** CalendarPayload */
         CalendarPayload: {
@@ -1373,6 +1393,36 @@ export interface components {
             sign?: string | null;
             /** Speed */
             speed?: number | null;
+        };
+        /** DayHistoryItem */
+        DayHistoryItem: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Daytone
+             * @enum {string}
+             */
+            dayTone: "steady" | "supportive" | "mixed" | "tense";
+            /** Impulsecount */
+            impulseCount: number;
+            /** Snapshotid */
+            snapshotId: string;
+            /** Spherekeys */
+            sphereKeys: string[];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "convergence_today" | "quiet_day";
+        };
+        /** DayHistoryPayload */
+        DayHistoryPayload: {
+            access: components["schemas"]["ContentAccessState"];
+            /** Items */
+            items: components["schemas"]["DayHistoryItem"][];
         };
         /** DayQuality */
         DayQuality: {
@@ -3763,6 +3813,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConvergenceEvidence"];
+                };
+            };
+        };
+    };
+    contracts__dayhistorypayload___contracts___dayhistorypayload_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayHistoryPayload"];
                 };
             };
         };

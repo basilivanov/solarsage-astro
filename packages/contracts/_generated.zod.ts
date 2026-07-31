@@ -169,9 +169,7 @@ export const CalendarDay = z.object({
   access: z.union([ContentAccessState, z.null()]).optional(),
   date: z.string(),
   dayNumber: z.number().int(),
-  dayStatus: z
-    .union([z.enum(["supportive", "steady", "tense"]), z.null()])
-    .optional(),
+  dayState: z.enum(["hero", "ordinary", "not-computed"]),
   disabled: z.boolean(),
   isCurrentMonth: z.boolean(),
   isToday: z.boolean(),
@@ -180,7 +178,7 @@ export const CalendarDay = z.object({
 export const CalendarMeta = z.object({
   contractVersion: z.number().int(),
   generatedAt: z.string(),
-  schemaVersion: z.literal("calendar/v1"),
+  schemaVersion: z.literal("calendar/v2"),
 });
 export const CalendarPayload = z.object({
   allowedRange: AllowedRange,
@@ -291,6 +289,18 @@ export const ConvergenceEvidence = z.object({
   summary: z.string(),
   techniques: z.array(z.string()),
   theme: z.string(),
+});
+export const DayHistoryItem = z.object({
+  date: z.string(),
+  dayTone: z.enum(["steady", "supportive", "mixed", "tense"]),
+  impulseCount: z.number().int().gte(0),
+  snapshotId: z.string(),
+  sphereKeys: z.array(z.string()).max(3),
+  state: z.enum(["convergence_today", "quiet_day"]),
+});
+export const DayHistoryPayload = z.object({
+  access: ContentAccessState,
+  items: z.array(DayHistoryItem),
 });
 export const FocusEventNumber = z.object({
   label: z.string(),
@@ -1690,6 +1700,8 @@ export const schemas = {
   CheckinMetrics,
   CheckinResponse,
   ConvergenceEvidence,
+  DayHistoryItem,
+  DayHistoryPayload,
   FocusEventNumber,
   FocusEventPlanetSide,
   FocusEventDrilldown,

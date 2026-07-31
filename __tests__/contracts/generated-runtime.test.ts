@@ -458,7 +458,7 @@ describe("generated runtime zod schemas", () => {
 
     const validCalendarPayload = {
       meta: {
-        schemaVersion: "calendar/v1",
+        schemaVersion: "calendar/v2",
         contractVersion: 1,
         generatedAt: "2026-07-24T00:00:00Z",
       },
@@ -475,7 +475,7 @@ describe("generated runtime zod schemas", () => {
           disabled: false,
           isCurrentMonth: true,
           isToday: true,
-          dayStatus: "supportive",
+          dayState: "ordinary",
           access: { state: "full" },
         },
       ],

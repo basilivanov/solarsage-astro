@@ -1,13 +1,13 @@
 # ############################################################################
 # AI_HEADER: MODULE_CALENDAR_SERVICE
-# ROLE: CalendarService — generates 3-month calendar grid with real statuses and access.
-# DEPENDENCIES: sqlalchemy, app.schemas.calendar, app.schemas.access
-# GRACE_ANCHORS: [CALENDAR_GENERATION, REAL_STATUS_LOOKUP, REAL_ACCESS]
+# ROLE: CalendarService — projects a 3-month grid from published snapshots and access.
+# DEPENDENCIES: sqlalchemy, app.schemas.calendar, app.schemas.access, snapshot models
+# GRACE_ANCHORS: [CALENDAR_GENERATION, SNAPSHOT_INDEX, REAL_ACCESS]
 # ############################################################################
 
 # START_MODULE_CONTRACT: M-CALENDAR-SERVICE
-# purpose: Generate CalendarPayload for prev/current/next month grid with
-#   cached/computed real day statuses and real access decisions.
+# purpose: Generate CalendarPayload for a prev/current/next month grid from
+#   published TodaySnapshot heads and real access projections.
 # owns:
 #   - apps/api/app/services/calendar_service.py
 # inputs:
@@ -21,17 +21,15 @@
 #   - M-DB-SESSION (AsyncSession)
 #   - M-CONTRACTS.calendar (CalendarPayload, CalendarDay, CalendarMeta, AllowedRange)
 #   - M-CONTRACTS.access (ContentAccessState)
-#   - M-ACCESS (AccessService)
-#   - M-CACHE-KEY-SERVICE (TodayCacheKey, resolve_today_runtime_identity)
-#   - M-USER-LOCAL-DATE (resolved local date supplied by the API)
+#   - M-DB-MODELS (TodaySnapshot, AccessLedger)
+#   - M-LUNAR-FACTS-SERVICE (LunarFactsService)
 # invariants:
 #   - Returns exactly 3 months: prev, current, next
-#   - Full-access days use cached/computed real status when available
-#   - Locked/preview days may return no day status
+#   - Snapshot states are read-only projections: hero, ordinary, or not-computed
+#   - Missing published snapshots never trigger a calculation
 #   - Allowed range is ±2 years from the explicitly provided local date
 #   - isToday and allowed range derive from the same explicitly provided date
-#   - Semantic-cache write identity and pre-read expected identity derive from
-#     the same selected scoring family resolver.
+#   - Superseded snapshot rows are excluded by a local NOT EXISTS query.
 # failure_policy:
 #   - Invalid month format handled by caller (calendar.py)
 #   - Out of range handled by caller
@@ -44,8 +42,8 @@
 #   - CalendarService.get_calendar
 # semantic_blocks:
 #   - CALENDAR_GENERATION: generate 3-month grid
-#   - REAL_STATUS_LOOKUP: cache-backed day status lookup/computation
-#   - REAL_ACCESS: access state from AccessService
+#   - SNAPSHOT_INDEX: load published, non-superseded snapshot heads
+#   - REAL_ACCESS: bulk-load and project access state without per-day queries
 # owned_tests:
 #   - apps/api/tests/test_calendar_endpoints.py (W-1.4)
 #   - apps/api/tests/test_user_local_date_consumers.py
@@ -57,23 +55,26 @@ import json
 import uuid
 from calendar import monthrange
 from datetime import UTC, date as Date, datetime
+from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
+from app.db.models import AccessLedger, SemanticLayerCache, TodayPayloadCache, TodaySnapshot, UserProfile
+from app.schemas.access import ContentAccessState
 from app.schemas.calendar import AllowedRange, CalendarDay, CalendarMeta, CalendarPayload
 from app.schemas.today import DayStatus
 from app.core.config import settings
 from app.clients.solarsage_client import get_solarsage_client
-from app.db.models import SemanticLayerCache, TodayPayloadCache, UserProfile
-from app.services.access_service import AccessService
 from app.services.natal_context_service import NatalContextService
 from app.services.normalization_service import NormalizationService
 from app.services.semantic_service import SemanticService
 from app.services.today_service import TODAY_CONTENT_VERSION
 from app.services.day_scoring_signals import filter_day_scored_signals
 from app.services.lunar_facts_service import LunarFactsService
+from app.services.access_service import AccessService  # noqa: F401 - legacy method compatibility
 
 
 # START_BLOCK: CALENDAR_GENERATION
@@ -89,32 +90,51 @@ class CalendarService:
         self, user_id: uuid.UUID, month: str, *, today: Date
     ) -> CalendarPayload:
         # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE.get_calendar
-        # purpose: Get 3-month calendar grid with day statuses and access.
+        # purpose: Get 3-month calendar grid from the published snapshot index.
         # inputs: user_id (UUID), month (str YYYY-MM), today (resolved local date)
-        # returns: CalendarPayload with prev/curr/next month days
-        # side_effects: reads from DB for access and semantic layer
+        # returns: CalendarPayload with prev/curr/next month days and wire states.
+        # side_effects: reads published snapshots, access ledger, and lunar facts.
         # emitted_logs: calendar.viewed
         # error_behavior: invalid month format handled by caller; today is required
         # END_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE.get_calendar
         """
         Get 3-month calendar grid (prev/curr/next).
 
-        Uses real access decisions. Full-access days return a cached or
-        computed real status when the pipeline can produce one.
+        The semantic state is a read-only projection of published snapshot
+        heads. Missing dates remain ``not-computed`` and never enter the day
+        calculation pipeline.
         """
         # Parse requested month
         requested_date = datetime.strptime(month, "%Y-%m")
-        await self._prepare_request_context(user_id)
 
         # Calculate prev/curr/next months
         prev_month = self._add_months(requested_date, -1)
         curr_month = requested_date
         next_month = self._add_months(requested_date, 1)
 
+        snapshot_index = await self._load_snapshot_index(
+            user_id,
+            start_date=Date(prev_month.year, prev_month.month, 1),
+            end_date=Date(
+                next_month.year,
+                next_month.month,
+                monthrange(next_month.year, next_month.month)[1],
+            ),
+        )
+        access_entries = await self._load_access_entries(user_id)
+
         # Generate all days for 3 months
         days = []
         for month_date in [prev_month, curr_month, next_month]:
-            days.extend(await self._generate_month_days(month_date, curr_month, today, user_id))
+            days.extend(
+                await self._generate_month_days(
+                    month_date,
+                    curr_month,
+                    today,
+                    snapshot_index=snapshot_index,
+                    access_entries=access_entries,
+                )
+            )
 
         # Calculate allowed range (±2 years from the user's local today).
         allowed_from = Date(today.year - 2, 1, 1)
@@ -125,7 +145,7 @@ class CalendarService:
 
         return CalendarPayload(
             meta=CalendarMeta(
-                schema_version="calendar/v1",
+                schema_version="calendar/v2",
                 contract_version=2,
                 generated_at=datetime.now(UTC).isoformat() + "Z",
             ),
@@ -143,7 +163,9 @@ class CalendarService:
         month_date: datetime,
         current_month: datetime,
         today,
-        user_id: uuid.UUID,
+        *,
+        snapshot_index: dict[Date, TodaySnapshot],
+        access_entries: list[AccessLedger],
     ) -> list[CalendarDay]:
         """Generate days for one month."""
         year = month_date.year
@@ -156,8 +178,8 @@ class CalendarService:
             is_current_month = (year == current_month.year and month == current_month.month)
             is_today = (date == today)
 
-            access = await AccessService(self.db).can_access_day(user_id, date)
-            status = await self._get_day_status(user_id, date, access.state)
+            access = self._access_for_date(access_entries, date, today)
+            day_state = self._day_state(snapshot_index.get(date))
             lunar = self._lunar_facts.facts_for_date(date)
 
             # Disabled if outside current month (for UI purposes)
@@ -169,13 +191,142 @@ class CalendarService:
                 is_current_month=is_current_month,
                 is_today=is_today,
                 disabled=disabled,
-                day_status=status,
+                day_state=day_state,
                 access=access.model_dump(by_alias=True),  # Convert to dict for Pydantic
                 lunar=lunar,
             ))
 
         return days
 # END_BLOCK: CALENDAR_GENERATION
+
+    # START_BLOCK: SNAPSHOT_INDEX
+    async def _load_snapshot_index(
+        self,
+        user_id: uuid.UUID,
+        *,
+        start_date: Date,
+        end_date: Date,
+    ) -> dict[Date, TodaySnapshot]:
+        # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._load_snapshot_index
+        # purpose: Load published, non-superseded snapshot heads for one calendar range.
+        # inputs: user_id and inclusive start/end dates.
+        # returns: One newest head snapshot per target date.
+        # side_effects: one indexed TodaySnapshot SELECT; no calculation calls.
+        # emitted_logs: none
+        # error_behavior: database errors propagate.
+        # END_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._load_snapshot_index
+        child = aliased(TodaySnapshot)
+        statement = (
+            select(TodaySnapshot)
+            .where(
+                TodaySnapshot.user_id == user_id,
+                TodaySnapshot.target_date >= start_date,
+                TodaySnapshot.target_date <= end_date,
+                TodaySnapshot.published_at.is_not(None),
+                ~exists(
+                    select(1).where(
+                        child.user_id == user_id,
+                        child.supersedes_snapshot_id == TodaySnapshot.id,
+                    )
+                ),
+            )
+            .order_by(
+                TodaySnapshot.target_date,
+                TodaySnapshot.published_at.desc(),
+                TodaySnapshot.id.desc(),
+            )
+        )
+        result = await self.db.execute(statement)
+        index: dict[Date, TodaySnapshot] = {}
+        for snapshot in result.scalars().all():
+            index.setdefault(snapshot.target_date, snapshot)
+        return index
+    # END_BLOCK: SNAPSHOT_INDEX
+
+    # START_BLOCK: REAL_ACCESS
+    async def _load_access_entries(self, user_id: uuid.UUID) -> list[AccessLedger]:
+        # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._load_access_entries
+        # purpose: Load the user's access window once for the three-month projection.
+        # inputs: user_id (UUID).
+        # returns: Access ledger rows ordered by start and end date.
+        # side_effects: one access-ledger SELECT.
+        # emitted_logs: none
+        # error_behavior: database errors propagate.
+        # END_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._load_access_entries
+        result = await self.db.execute(
+            select(AccessLedger)
+            .where(AccessLedger.user_id == user_id)
+            .order_by(AccessLedger.start_date, AccessLedger.end_date)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    def _access_for_date(
+        entries: list[AccessLedger],
+        target_date: Date,
+        current_date: Date,
+    ) -> ContentAccessState:
+        # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._access_for_date
+        # purpose: Project one ContentAccessState from a bulk-loaded access window.
+        # inputs: access ledger rows, target date, and resolved local current date.
+        # returns: full, preview, or locked access projection.
+        # side_effects: none.
+        # emitted_logs: none
+        # error_behavior: never raises for an empty access window.
+        # END_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._access_for_date
+        for entry in entries:
+            if entry.start_date <= target_date <= entry.end_date:
+                days_left = (entry.end_date - target_date).days + 1
+                if entry.entry_type == "referral_bonus":
+                    return ContentAccessState(
+                        state="full",
+                        reason="active_referral_days",
+                        referral_days_left=days_left,
+                        subscription_active=None,
+                        access_until=entry.end_date.isoformat(),
+                    )
+                return ContentAccessState(
+                    state="full",
+                    reason="active_subscription",
+                    referral_days_left=None,
+                    subscription_active=True,
+                    access_until=entry.end_date.isoformat(),
+                )
+
+        if not entries:
+            if target_date <= current_date:
+                return ContentAccessState(state="preview", reason="expired_access")
+            return ContentAccessState(state="locked", reason="outside_access_window")
+
+        last_entry = max(entries, key=lambda entry: entry.end_date)
+        if target_date > last_entry.end_date and target_date > current_date:
+            return ContentAccessState(
+                state="locked",
+                reason="outside_access_window",
+                access_until=last_entry.end_date.isoformat(),
+            )
+        return ContentAccessState(
+            state="preview",
+            reason="expired_access",
+            access_until=last_entry.end_date.isoformat(),
+        )
+
+    @staticmethod
+    def _day_state(snapshot: TodaySnapshot | None) -> Literal["hero", "ordinary", "not-computed"]:
+        # START_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._day_state
+        # purpose: Map one published deterministic snapshot to the calendar wire state.
+        # inputs: optional published snapshot head.
+        # returns: hero, ordinary, or not-computed.
+        # side_effects: none.
+        # emitted_logs: none
+        # error_behavior: a published state other than convergence is ordinary.
+        # END_FUNCTION_CONTRACT: F-M-CALENDAR-SERVICE._day_state
+        if snapshot is None:
+            return "not-computed"
+        result = snapshot.deterministic_result_json
+        state = result.get("state") if isinstance(result, dict) else None
+        return "hero" if state == "convergence_today" else "ordinary"
+    # END_BLOCK: REAL_ACCESS
 
     async def _prepare_request_context(self, user_id: uuid.UUID) -> None:
         result = await self.db.execute(

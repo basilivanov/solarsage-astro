@@ -1,6 +1,6 @@
 # ############################################################################
 # AI_HEADER: MODULE_CALENDAR_API
-# ROLE: GET /api/calendar endpoint — returns 3-month calendar grid.
+# ROLE: GET /api/calendar endpoint — returns a snapshot-indexed 3-month grid.
 # DEPENDENCIES: fastapi, app.services.calendar_service, app.core.dependencies
 # GRACE_ANCHORS: [ROUTE_CALENDAR_GET, MONTH_VALIDATION, RANGE_CHECK]
 # ############################################################################
@@ -8,9 +8,7 @@
 # START_MODULE_CONTRACT: M-CALENDAR-API
 # purpose: HTTP surface for GET /api/calendar?month=YYYY-MM.
 #   Returns CalendarPayload for prev/current/next month grid.
-#   W-1.4: neutral statuses, access stub.
-#   W-4.3: real statuses from semantic layer.
-#   W-ACCESS.1: real access logic.
+#   P4-D3A: published snapshot state and bulk access projection.
 # owns:
 #   - apps/api/app/api/calendar.py
 # inputs:
@@ -18,7 +16,7 @@
 #   - user: from require_session dependency
 #   - db: AsyncSession
 # outputs:
-#   - CalendarPayload
+#   - CalendarPayload with hero/ordinary/not-computed dayState values
 # dependencies:
 #   - M-AUTH-TG.dependencies (require_session)
 #   - M-CALENDAR-SERVICE (CalendarService)
@@ -37,7 +35,7 @@
 #   - No auth → 401 (from require_session)
 # non_goals:
 #   - no caching (W-3.4)
-#   - no Calendar payload/status semantic changes
+#   - no cold calculations for absent snapshot dates
 # END_MODULE_CONTRACT: M-CALENDAR-API
 
 # START_MODULE_MAP: M-CALENDAR-API
@@ -61,6 +59,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_session
+from app.core.logging import log_block, log_event
 from app.db.models import User
 from app.db.session import get_session
 from app.schemas.calendar import CalendarPayload
@@ -78,21 +77,15 @@ async def get_calendar(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> CalendarPayload:
     # START_FUNCTION_CONTRACT: F-M-API-CALENDAR.get_calendar
-    # purpose: Get 3-month calendar grid with day statuses and access state.
+    # purpose: Get 3-month calendar grid with snapshot-derived dayState and access state.
     # inputs: month (str YYYY-MM), user (User from auth), db (AsyncSession)
     # returns: CalendarPayload with prev/curr/next month grid
-    # side_effects: reads from DB for access and semantic layer
+    # side_effects: reads from DB for snapshots, access, and lunar facts
     # emitted_logs: calendar.viewed
     # error_behavior: 400 INVALID_DATE, 422 NOT_ONBOARDED or
     #   INVALID_USER_TIMEZONE, 401 from require_session
     # END_FUNCTION_CONTRACT: F-M-API-CALENDAR.get_calendar
-    """
-    Get 3-month calendar grid (prev/curr/next).
-
-    W-1.4: neutral statuses (steady/supportive/tense rotation), access stub.
-    W-4.3: real statuses from semantic layer.
-    W-ACCESS.1: real access logic.
-    """
+    """Get a 3-month calendar grid (prev/current/next) from published snapshots."""
     # START_BLOCK: MONTH_VALIDATION
     # Validate month format
     try:
@@ -139,6 +132,9 @@ async def get_calendar(
         month=month,
         today=today,
     )
+
+    with log_block(slice="W-TODAY-CONVERGENCE", module="M-CALENDAR-API", block="ROUTE_CALENDAR_GET"):
+        log_event("calendar.viewed")
 
     return payload
 # END_BLOCK: ROUTE_CALENDAR_GET
