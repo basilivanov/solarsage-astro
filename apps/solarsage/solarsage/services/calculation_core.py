@@ -10,7 +10,8 @@
 # owns:
 #   - apps/solarsage/solarsage/services/calculation_core.py
 # inputs: validated birth, target, location, house-system, and technique data.
-# outputs: NatalResponse, TransitsResponse, or ActivationLayer models.
+# outputs: NatalResponse, TransitsResponse, or ActivationLayer models with
+#   physical natal-target speed debug on transit-to-natal planet evidence.
 # dependencies: NatalService; ephemeris utilities; activation_builder; sidecar
 #   response schemas.
 # side_effects: Swiss Ephemeris artifact reads and process-local canon caches.
@@ -18,6 +19,8 @@
 # invariants:
 #   - HTTP routes and offline replay call these same functions.
 #   - Returned models serialize identically for identical inputs.
+#   - Target-speed debug uses only finite speed from the exact natal context;
+#     angle, lot, missing, and invalid speeds never receive a fallback.
 # failure_policy: propagates validation and calculation errors fail-closed.
 # END_MODULE_CONTRACT: M-SIDECAR-CALCULATION-CORE
 
@@ -33,17 +36,19 @@
 # semantic_blocks:
 #   - NATAL: natal chart response construction.
 #   - TRANSITS: target-moment transit response construction.
-#   - ACTIVATION_LAYER: activation evidence calculation.
+#   - ACTIVATION_LAYER: activation evidence calculation and target-speed enrichment.
 #   - ACTIVATION_GRID: shared target-context and timing-solver orchestration.
 # owned_tests:
 #   - apps/solarsage/tests/test_calculation_core.py
 #   - apps/solarsage/tests/test_activation_grid.py
+#   - apps/solarsage/tests/test_activation_target_speed.py
 # END_MODULE_MAP: M-SIDECAR-CALCULATION-CORE
 
 from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from math import isfinite
 from typing import Any, Literal
 
 from solarsage.schemas.activation import ActivationLayer
@@ -121,6 +126,38 @@ def calculate_transits_response(
 
 
 # START_BLOCK: ACTIVATION_LAYER
+def _enrich_target_speed(layer: ActivationLayer, natal_context: NatalCalculationContext) -> ActivationLayer:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE._enrich_target_speed
+    # purpose: Add physical natal-target speed to transit-to-natal planet debug only.
+    # inputs: builder-produced ActivationLayer and the exact NatalCalculationContext used to build it.
+    # returns: Equivalent ActivationLayer with finite target-speed debug enrichment.
+    # side_effects: none; returns a model copy when enrichment changes an activation.
+    # emitted_logs: none.
+    # error_behavior: missing or non-finite natal speed omits the debug key without fallback.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE._enrich_target_speed
+    speed_by_target = {
+        str(name).strip().upper(): value.get("speed")
+        for name, value in natal_context.natal_by_name.items()
+    }
+    enriched = []
+    changed = False
+    for activation in layer.activations:
+        if activation.technique != "transit_to_natal" or activation.target_type != "planet":
+            enriched.append(activation)
+            continue
+        debug = dict(activation.debug)
+        speed = speed_by_target.get(activation.target_key.strip().upper())
+        if not isinstance(speed, bool) and isinstance(speed, (int, float)) and isfinite(float(speed)):
+            debug["target_speed_deg_per_hour"] = abs(float(speed)) / 24.0
+        else:
+            debug.pop("target_speed_deg_per_hour", None)
+        if debug != activation.debug:
+            activation = activation.model_copy(update={"debug": debug})
+            changed = True
+        enriched.append(activation)
+    return layer.model_copy(update={"activations": enriched}) if changed else layer
+
+
 def calculate_activation_layer(
     *,
     birth_date: str,
@@ -147,7 +184,15 @@ def calculate_activation_layer(
     # emitted_logs: none.
     # error_behavior: propagates calculation or schema errors.
     # END_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_activation_layer
-    return build_activation_layer(
+    resolved_natal_context = natal_context or prepare_natal_context(
+        birth_date=birth_date,
+        birth_time=birth_time,
+        birth_lat=birth_lat,
+        birth_lon=birth_lon,
+        birth_tz=birth_tz,
+        house_system=house_system,
+    )
+    layer = build_activation_layer(
         birth_date=birth_date,
         birth_time=birth_time,
         birth_lat=birth_lat,
@@ -160,10 +205,11 @@ def calculate_activation_layer(
         techniques=techniques,
         current_location=current_location,
         timing_scope=timing_scope,
-        natal_context=natal_context,
+        natal_context=resolved_natal_context,
         target_context=target_context,
         timing_solver=timing_solver,
     )
+    return _enrich_target_speed(layer, resolved_natal_context)
 # END_BLOCK: ACTIVATION_LAYER
 
 
