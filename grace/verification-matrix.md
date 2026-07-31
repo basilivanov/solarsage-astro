@@ -73,6 +73,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-UNITS → M-TODAY-CONVERGENCE-CANON | Frozen canon and the versioned theme registry are loaded strictly; physical identity is producer-independent and window-aware; aspect/event-class/orb/target/data-quality failures are typed and fail closed; eligibility nesting and background exclusion hold; structural lunar events remain excluded until a canonical significance rule exists; canonical theme mappings project into immutable `theme_keys` without grouping, tone, or adapter behavior. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py -q`, including registry parity and malformed-copy rejection. S2: producer parity and prefix stripping preserve one `evt_v1_` ID; changing technical annotations changes only the mapped theme tuple; unknown mappings return `()`. S3: `python -m ruff check` on the four packet Python files, `python3 scripts/grace_lint.py apps/api/app --quiet`, `bash scripts/grace/check-markers.sh`, and `git diff --check` pass. |
 
+## UC-TODAY-CONVERGENCE-W2-LEDGER · canonical ledger, deduplication, and DayDelta
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-LEDGER → M-TODAY-CONVERGENCE-UNITS → M-TODAY-CONVERGENCE-CANON | Pure immutable ledger deduplicates only by `canonical_event_id`; frozen producer precedence selects enrichment without changing identity; provenance is a sorted union; malformed rows and unknown producers fail closed into audit; audit-only units stay non-public; DayDelta matches exact semantic keys only. Grouping, hero, tone, projection, and adapters remain out of scope. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py tests/test_today_convergence_ledger.py -q`. S2: activation/day_signal dedup, permutation parity, deterministic same-producer conflict, immutable audit, malformed-row aggregation, and background/time-sensitive preservation. S3: exact semantic-key upgrade passes; duplicate and unmatched trigger counts are deterministic; planet-name trigger does not upgrade. S4: packet Ruff, `grace_lint`, marker, and `git diff --check` gates pass. |
+
 ---
 
 ## UC-DAY-NAV · Navigate days
