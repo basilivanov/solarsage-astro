@@ -57,6 +57,9 @@ from app.schemas.today_convergence import (
 
 
 _FORMULA_VERSION = "today-convergence-2"
+# Versioned registry title for the honest quiet-day no_strong_accent context
+# (04 §3.3: deterministic registry text, never an LLM placeholder).
+_NO_STRONG_ACCENT_TITLE = "Ровный фон без сильного акцента"
 _MISSING = object()
 _SPHERES = frozenset({
     "work",
@@ -752,8 +755,20 @@ def _snapshot_payload(
         timezone,
     )
 
+    period_context: dict[str, Any] | None = None
     if selection.state == "quiet_day" and main_event is None and not impulses:
-        _fail("quiet_content_missing")
+        # 04 §3.3: quiet without mainEvent/impulses must carry the honest
+        # no_strong_accent period context from the versioned registry —
+        # never an LLM placeholder and never a projection failure.
+        period_context = {
+            "id": "pcx_v1_no_strong_accent",
+            "kind": "no_strong_accent",
+            "sphere": None,
+            "title": _NO_STRONG_ACCENT_TITLE,
+            "active_from": None,
+            "active_until": None,
+            "event_ids": [],
+        }
 
     if access_state.state == "preview":
         wire: dict[str, Any] = {
@@ -802,7 +817,7 @@ def _snapshot_payload(
         "convergences": groups,
         "main_event": main_event,
         "impulses": impulses,
-        "period_context": None,
+        "period_context": period_context,
         "lookahead": None,
         "events": events,
         "content_state": content_state,

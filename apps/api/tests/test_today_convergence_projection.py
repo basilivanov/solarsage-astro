@@ -434,6 +434,29 @@ def test_bucket_and_unknown_event_times_use_contract_modes() -> None:
     assert unknown_payload.events[0].time.mode == "date"
 
 
+def test_quiet_without_content_gets_honest_no_strong_accent_context() -> None:
+    # START_FUNCTION_CONTRACT: F-TEST.no_strong_accent
+    # purpose: Quiet day without mainEvent/impulses yields the versioned
+    #   no_strong_accent period context instead of a projection failure.
+    # END_FUNCTION_CONTRACT: F-TEST.no_strong_accent
+    snapshot = _snapshot(_quiet_result(with_main_and_impulses=False), [])
+
+    full_payload = project_snapshot_payload(snapshot, None, _access("full"))
+    preview_payload = project_snapshot_payload(snapshot, None, _access("preview"))
+
+    context = full_payload.period_context
+    assert context is not None
+    assert context.kind == "no_strong_accent"
+    assert context.title
+    assert context.sphere is None
+    assert context.event_ids == []
+    assert full_payload.events == []
+    assert full_payload.content_state == "pending"
+    # Preview keeps every content block hidden (04 §3.2) and stays valid.
+    assert preview_payload.period_context is None
+    assert preview_payload.preview_teaser is not None
+
+
 # END_BLOCK: MATRIX
 
 

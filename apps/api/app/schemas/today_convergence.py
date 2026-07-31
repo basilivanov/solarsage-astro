@@ -469,7 +469,9 @@ class TodayConvergencePayload(CamelModel):
         elif self.state == "quiet_day":
             if self.convergences:
                 _fail("quiet_convergences_forbidden")
-            if self.main_event is None and not self.impulses and self.period_context is None:
+            # Preview hides all content blocks; the quiet content rule applies
+            # to full payloads only (04 §3.2 preview projection).
+            if self.access.state != "preview" and self.main_event is None and not self.impulses and self.period_context is None:
                 _fail("quiet_content_required")
         elif self.lookahead is not None:
             _fail("lookahead_state_forbidden")
