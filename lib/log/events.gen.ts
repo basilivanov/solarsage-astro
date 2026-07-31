@@ -62,6 +62,11 @@ export type LogEventName =
   | "day.snapshot_superseded"
   | "day.impression_recorded"
   | "day.impression_rejected"
+  | "day.narrative_lease_acquired"
+  | "day.narrative_lease_recovered"
+  | "day.narrative_lease_skipped"
+  | "day.narrative_lease_completed"
+  | "day.narrative_lease_failed"
   | "calendar.viewed"
   // access / referral / payments
   | "access.checked"

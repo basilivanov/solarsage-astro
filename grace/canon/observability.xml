@@ -322,6 +322,21 @@
       <payload-field name="surface" type="string" enum="day,lookahead" required="true" />
       <payload-field name="reason" type="string" enum="not_found,invalid_relation" required="true" />
     </event>
+    <event name="day.narrative_lease_acquired" owner="W-TODAY-CONVERGENCE-W3" desc="A narrative lease was acquired for a published deterministic Today snapshot.">
+      <payload-field name="outcome" type="string" enum="created,retry" required="true" />
+    </event>
+    <event name="day.narrative_lease_recovered" owner="W-TODAY-CONVERGENCE-W3" desc="An expired narrative lease was recovered by a new worker.">
+      <payload-field name="outcome" type="string" enum="expired" required="true" />
+    </event>
+    <event name="day.narrative_lease_skipped" owner="W-TODAY-CONVERGENCE-W3" desc="Narrative generation was skipped because the version is ready, in flight, cooling down, or exhausted.">
+      <payload-field name="reason" type="string" enum="ready,in_flight,cooldown,exhausted" required="true" />
+    </event>
+    <event name="day.narrative_lease_completed" owner="W-TODAY-CONVERGENCE-W3" desc="An owned narrative lease completed with ready content.">
+      <payload-field name="outcome" type="string" enum="ready" required="true" />
+    </event>
+    <event name="day.narrative_lease_failed" owner="W-TODAY-CONVERGENCE-W3" desc="An owned narrative lease completed honestly as unavailable.">
+      <payload-field name="retry_scheduled" type="boolean" required="true" />
+    </event>
     <event name="calendar.viewed"         owner="W-1.4">
       <payload-field name="month" type="string" format="YYYY-MM" required="true" />
     </event>

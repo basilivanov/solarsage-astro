@@ -87,6 +87,7 @@
     <module id="M-TODAY-CONVERGENCE-RUNTIME" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_runtime.py" />
     <module id="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_convergence_snapshot.py" />
     <module id="M-TODAY-SNAPSHOT-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_snapshot_service.py" />
+    <module id="M-TODAY-NARRATIVE-LEASE-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/today_narrative_lease_service.py" />
     <module id="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/models.py, apps/api/alembic/versions/0028_today_convergence_snapshots.py, apps/api/alembic/versions/0029_today_snapshot_lineage_guards.py" />
     <module id="M-SCHEMAS-CHECKIN" slice="SLICE-CONTRACTS" layer="backend" path="apps/api/app/schemas/checkin.py" />
     <module id="M-CHECKIN-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/checkin_service.py" />
@@ -102,6 +103,7 @@
     <module id="M-TESTS" slice="SLICE-TESTS" layer="tests" path="__tests__/, apps/api/tests/, apps/solarsage/tests/" />
     <module id="M-GUARDRAILS" slice="SLICE-GUARDRAILS-TOOLING" layer="tooling" path="scripts/" />
     <module id="M-GRACE-PROJECT-ADAPTER" slice="SLICE-ORCHESTRATOR-ADAPTER" layer="canon" path="grace/orchestrator/, grace/*.xml, grace/*.md, grace/canon.yaml" />
+    <module id="M-GRACE-VERIFICATION-MATRIX" slice="SLICE-ORCHESTRATOR-ADAPTER" layer="canon" path="grace/verification-matrix.md" />
     <module id="M-API-PROMO" slice="SLICE-BACKEND-API-ROUTERS" layer="backend" path="apps/api/app/api/promo.py" />
     <module id="M-PROMO-CAMPAIGN-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/promo_campaign_service.py" />
     <module id="M-PROMO-ADMIN-SERVICE" slice="SLICE-BACKEND-SERVICES" layer="backend" path="apps/api/app/services/promo_admin_service.py" />
@@ -152,6 +154,8 @@
     <edge from="M-TODAY-CONVERGENCE-RUNTIME" to="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" via="deterministic-runtime-document" />
     <edge from="M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT" to="M-TODAY-SNAPSHOT-SERVICE" via="typed-deterministic-publication" />
     <edge from="M-TODAY-SNAPSHOT-SERVICE" to="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" via="postgresql-atomic-publication" />
+    <edge from="M-TODAY-NARRATIVE-LEASE-SERVICE" to="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" via="published-snapshot-narrative-lease-persistence" />
+    <edge from="M-TODAY-NARRATIVE-LEASE-SERVICE" to="M-OBSERVABILITY-LOGGING" via="sanitized-narrative-lease-events" />
     <edge from="M-BACKEND-API" to="M-TODAY-SNAPSHOT-SERVICE" via="authenticated-impression-mutation" />
     <edge from="M-TODAY-SNAPSHOT-SERVICE" to="M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA" via="postgresql-lineage-and-first-seen-guards" />
     <edge from="M-BACKEND-API" to="M-CONTRACTS" via="strict-impression-request" />
