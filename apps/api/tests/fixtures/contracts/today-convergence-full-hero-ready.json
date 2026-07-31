@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": "snap-hero-2026-07-31",
+  "targetDate": "2026-07-31",
+  "timezone": "Europe/Moscow",
+  "publishedAt": "2026-07-30T21:00:00Z",
+  "access": {
+    "state": "full",
+    "reason": "active_subscription",
+    "referralDaysLeft": null,
+    "subscriptionActive": true,
+    "accessUntil": "2026-08-31"
+  },
+  "birthTime": {
+    "mode": "exact",
+    "bucket": null,
+    "rangeStart": "12:34",
+    "rangeEnd": "12:34",
+    "capabilities": {
+      "houses": true,
+      "angles": true,
+      "lots": true,
+      "exactTiming": true
+    }
+  },
+  "state": "convergence_today",
+  "dayTone": "tense",
+  "personal": true,
+  "previewTeaser": null,
+  "convergences": [
+    {
+      "id": "cvg-hero",
+      "primarySphere": "work",
+      "secondarySphere": "documents",
+      "polarity": "tense",
+      "evidenceLevel": "high",
+      "eventIds": ["evt-1", "evt-2"],
+      "summary": {
+        "text": "Two independent signals converge on work and documents.",
+        "sourceEventIds": ["evt-1", "evt-2"]
+      },
+      "meaning": null,
+      "action": null
+    }
+  ],
+  "mainEvent": null,
+  "impulses": [],
+  "periodContext": null,
+  "lookahead": null,
+  "events": [
+    {
+      "id": "evt-1",
+      "kind": "aspect",
+      "sphere": "work",
+      "polarity": "tense",
+      "evidenceLevel": "high",
+      "time": {
+        "mode": "exact",
+        "peak": "15:40",
+        "start": "13:00",
+        "end": "18:00",
+        "partOfDay": null
+      },
+      "sourceIds": ["activation-1"]
+    },
+    {
+      "id": "evt-2",
+      "kind": "structural",
+      "sphere": "documents",
+      "polarity": "mixed",
+      "evidenceLevel": "medium",
+      "time": {
+        "mode": "exact",
+        "peak": "10:20",
+        "start": null,
+        "end": null,
+        "partOfDay": null
+      },
+      "sourceIds": ["activation-2"]
+    }
+  ],
+  "contentState": "ready",
+  "formulaVersion": "today-convergence-2",
+  "calculationVersion": "ss-calc-1.3.0"
+}

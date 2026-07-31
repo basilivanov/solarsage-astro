@@ -712,6 +712,240 @@ export const SubscriptionStatusResponse = z.object({
 export const TelegramAuthRequest = z.object({
   initData: z.string().min(1).max(8192),
 });
+export const TodayConvergenceBirthCapabilities = z.object({
+  angles: z.boolean(),
+  exactTiming: z.boolean(),
+  houses: z.boolean(),
+  lots: z.boolean(),
+});
+export const TodayConvergenceBirthTime = z.object({
+  bucket: z.union([z.enum(["night", "morning", "day", "evening"]), z.null()]),
+  capabilities: TodayConvergenceBirthCapabilities,
+  mode: z.enum(["exact", "bucket", "unknown"]),
+  rangeEnd: z.string(),
+  rangeStart: z.string(),
+});
+export const TodayConvergenceNarrativeClaim = z.object({
+  sourceEventIds: z.array(z.string()).min(1),
+  text: z.string().min(1),
+});
+export const TodayConvergenceSummary = z.object({
+  sourceEventIds: z.array(z.string()).min(1),
+  text: z.string().min(1).max(220),
+});
+export const TodayConvergenceGroup = z.object({
+  action: z.union([TodayConvergenceNarrativeClaim, z.null()]).optional(),
+  eventIds: z.array(z.string()).min(2),
+  evidenceLevel: z.enum(["high", "medium"]),
+  id: z.string(),
+  meaning: z.union([TodayConvergenceNarrativeClaim, z.null()]).optional(),
+  polarity: z.enum(["supportive", "tense", "mixed"]),
+  primarySphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  secondarySphere: z
+    .union([
+      z.enum([
+        "work",
+        "money",
+        "documents",
+        "relationships",
+        "sport",
+        "communication",
+        "health",
+        "decisions",
+        "travel",
+        "creativity",
+        "study",
+        "shopping",
+      ]),
+      z.null(),
+    ])
+    .optional(),
+  summary: z.union([TodayConvergenceSummary, z.null()]).optional(),
+});
+export const TodayConvergenceEventTime = z.object({
+  end: z.union([z.string(), z.null()]).optional(),
+  mode: z.enum(["exact", "partofday", "date"]),
+  partOfDay: z
+    .union([z.enum(["night", "morning", "day", "evening"]), z.null()])
+    .optional(),
+  peak: z.union([z.string(), z.null()]).optional(),
+  start: z.union([z.string(), z.null()]).optional(),
+});
+export const TodayConvergenceEvent = z.object({
+  evidenceLevel: z.enum(["high", "medium"]),
+  id: z.string(),
+  kind: z.string(),
+  polarity: z.enum(["supportive", "tense", "mixed"]),
+  sourceIds: z.array(z.string()).optional(),
+  sphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  time: TodayConvergenceEventTime,
+});
+export const TodayConvergenceImpulse = z.object({
+  action: z.union([TodayConvergenceNarrativeClaim, z.null()]).optional(),
+  eventId: z.string(),
+  evidenceLevel: z.enum(["high", "medium"]),
+  meaning: z.union([TodayConvergenceNarrativeClaim, z.null()]).optional(),
+  polarity: z.enum(["supportive", "tense", "mixed"]),
+  sphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  summary: z.union([TodayConvergenceSummary, z.null()]).optional(),
+  time: TodayConvergenceEventTime,
+});
+export const TodayConvergenceLookahead = z.object({
+  snapshotId: z.string(),
+  sphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  targetDate: z.string(),
+});
+export const TodayConvergenceMainEvent = z.object({
+  action: z.union([TodayConvergenceNarrativeClaim, z.null()]).optional(),
+  eventId: z.string(),
+  evidenceLevel: z.enum(["high", "medium"]),
+  id: z.string(),
+  meaning: z.union([TodayConvergenceNarrativeClaim, z.null()]).optional(),
+  polarity: z.enum(["supportive", "tense", "mixed"]),
+  sphere: z.enum([
+    "work",
+    "money",
+    "documents",
+    "relationships",
+    "sport",
+    "communication",
+    "health",
+    "decisions",
+    "travel",
+    "creativity",
+    "study",
+    "shopping",
+  ]),
+  summary: z.union([TodayConvergenceSummary, z.null()]).optional(),
+  time: TodayConvergenceEventTime,
+});
+export const TodayConvergencePeriodContext = z.object({
+  activeFrom: z.union([z.string(), z.null()]),
+  activeUntil: z.union([z.string(), z.null()]),
+  eventIds: z.array(z.string()).optional(),
+  id: z.string(),
+  kind: z.enum(["active_period", "no_strong_accent"]),
+  sphere: z.union([
+    z.enum([
+      "work",
+      "money",
+      "documents",
+      "relationships",
+      "sport",
+      "communication",
+      "health",
+      "decisions",
+      "travel",
+      "creativity",
+      "study",
+      "shopping",
+    ]),
+    z.null(),
+  ]),
+  title: z.union([z.string(), z.null()]),
+});
+export const TodayConvergencePreviewTeaser = z
+  .object({
+    spheres: z
+      .array(
+        z.enum([
+          "work",
+          "money",
+          "documents",
+          "relationships",
+          "sport",
+          "communication",
+          "health",
+          "decisions",
+          "travel",
+          "creativity",
+          "study",
+          "shopping",
+        ])
+      )
+      .max(3),
+  })
+  .partial();
+export const TodayConvergencePayload = z.object({
+  access: ContentAccessState,
+  birthTime: TodayConvergenceBirthTime,
+  calculationVersion: z.string().min(1),
+  contentState: z.enum(["ready", "pending", "unavailable", "not_needed"]),
+  convergences: z.array(TodayConvergenceGroup).max(3),
+  dayTone: z.union([
+    z.enum(["steady", "supportive", "mixed", "tense"]),
+    z.null(),
+  ]),
+  events: z.array(TodayConvergenceEvent),
+  formulaVersion: z.literal("today-convergence-2"),
+  impulses: z.array(TodayConvergenceImpulse).max(3),
+  lookahead: z.union([TodayConvergenceLookahead, z.null()]),
+  mainEvent: z.union([TodayConvergenceMainEvent, z.null()]),
+  periodContext: z.union([TodayConvergencePeriodContext, z.null()]),
+  personal: z.union([z.boolean(), z.null()]),
+  previewTeaser: z.union([TodayConvergencePreviewTeaser, z.null()]),
+  publishedAt: z.union([z.string(), z.null()]),
+  schemaVersion: z.literal(1),
+  snapshotId: z.union([z.string(), z.null()]),
+  state: z.union([
+    z.enum(["convergence_today", "quiet_day", "unavailable"]),
+    z.null(),
+  ]),
+  targetDate: z.string(),
+  timezone: z.string(),
+});
 export const TodayAction = z.object({
   href: z.union([z.string(), z.null()]).optional(),
   id: z.string(),
@@ -1468,6 +1702,19 @@ export const schemas = {
   SubscriptionStartResponse,
   SubscriptionStatusResponse,
   TelegramAuthRequest,
+  TodayConvergenceBirthCapabilities,
+  TodayConvergenceBirthTime,
+  TodayConvergenceNarrativeClaim,
+  TodayConvergenceSummary,
+  TodayConvergenceGroup,
+  TodayConvergenceEventTime,
+  TodayConvergenceEvent,
+  TodayConvergenceImpulse,
+  TodayConvergenceLookahead,
+  TodayConvergenceMainEvent,
+  TodayConvergencePeriodContext,
+  TodayConvergencePreviewTeaser,
+  TodayConvergencePayload,
   TodayAction,
   ConcreteAdviceCounts,
   ProductSphereAssessment,

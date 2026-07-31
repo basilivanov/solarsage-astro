@@ -552,6 +552,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/__contracts__/todayconvergencepayload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contracts  Todayconvergencepayload */
+        get: operations["contracts__todayconvergencepayload___contracts___todayconvergencepayload_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/__contracts__/todaypayload": {
         parameters: {
             query?: never;
@@ -2560,6 +2577,253 @@ export interface components {
              */
             title: string;
         };
+        /** TodayConvergenceBirthCapabilities */
+        TodayConvergenceBirthCapabilities: {
+            /** Angles */
+            angles: boolean;
+            /** Exacttiming */
+            exactTiming: boolean;
+            /** Houses */
+            houses: boolean;
+            /** Lots */
+            lots: boolean;
+        };
+        /** TodayConvergenceBirthTime */
+        TodayConvergenceBirthTime: {
+            /** Bucket */
+            bucket: ("night" | "morning" | "day" | "evening") | null;
+            capabilities: components["schemas"]["TodayConvergenceBirthCapabilities"];
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "exact" | "bucket" | "unknown";
+            /** Rangeend */
+            rangeEnd: string;
+            /** Rangestart */
+            rangeStart: string;
+        };
+        /** TodayConvergenceEvent */
+        TodayConvergenceEvent: {
+            /**
+             * Evidencelevel
+             * @enum {string}
+             */
+            evidenceLevel: "high" | "medium";
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Polarity
+             * @enum {string}
+             */
+            polarity: "supportive" | "tense" | "mixed";
+            /** Sourceids */
+            sourceIds?: string[];
+            /**
+             * Sphere
+             * @enum {string}
+             */
+            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            time: components["schemas"]["TodayConvergenceEventTime"];
+        };
+        /** TodayConvergenceEventTime */
+        TodayConvergenceEventTime: {
+            /** End */
+            end?: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "exact" | "partofday" | "date";
+            /** Partofday */
+            partOfDay?: ("night" | "morning" | "day" | "evening") | null;
+            /** Peak */
+            peak?: string | null;
+            /** Start */
+            start?: string | null;
+        };
+        /** TodayConvergenceGroup */
+        TodayConvergenceGroup: {
+            action?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
+            /** Eventids */
+            eventIds: string[];
+            /**
+             * Evidencelevel
+             * @enum {string}
+             */
+            evidenceLevel: "high" | "medium";
+            /** Id */
+            id: string;
+            meaning?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
+            /**
+             * Polarity
+             * @enum {string}
+             */
+            polarity: "supportive" | "tense" | "mixed";
+            /**
+             * Primarysphere
+             * @enum {string}
+             */
+            primarySphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            /** Secondarysphere */
+            secondarySphere?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping") | null;
+            summary?: components["schemas"]["TodayConvergenceSummary"] | null;
+        };
+        /** TodayConvergenceImpulse */
+        TodayConvergenceImpulse: {
+            action?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
+            /** Eventid */
+            eventId: string;
+            /**
+             * Evidencelevel
+             * @enum {string}
+             */
+            evidenceLevel: "high" | "medium";
+            meaning?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
+            /**
+             * Polarity
+             * @enum {string}
+             */
+            polarity: "supportive" | "tense" | "mixed";
+            /**
+             * Sphere
+             * @enum {string}
+             */
+            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            summary?: components["schemas"]["TodayConvergenceSummary"] | null;
+            time: components["schemas"]["TodayConvergenceEventTime"];
+        };
+        /** TodayConvergenceLookahead */
+        TodayConvergenceLookahead: {
+            /** Snapshotid */
+            snapshotId: string;
+            /**
+             * Sphere
+             * @enum {string}
+             */
+            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            /**
+             * Targetdate
+             * Format: date
+             */
+            targetDate: string;
+        };
+        /** TodayConvergenceMainEvent */
+        TodayConvergenceMainEvent: {
+            action?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
+            /** Eventid */
+            eventId: string;
+            /**
+             * Evidencelevel
+             * @enum {string}
+             */
+            evidenceLevel: "high" | "medium";
+            /** Id */
+            id: string;
+            meaning?: components["schemas"]["TodayConvergenceNarrativeClaim"] | null;
+            /**
+             * Polarity
+             * @enum {string}
+             */
+            polarity: "supportive" | "tense" | "mixed";
+            /**
+             * Sphere
+             * @enum {string}
+             */
+            sphere: "work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping";
+            summary?: components["schemas"]["TodayConvergenceSummary"] | null;
+            time: components["schemas"]["TodayConvergenceEventTime"];
+        };
+        /** TodayConvergenceNarrativeClaim */
+        TodayConvergenceNarrativeClaim: {
+            /** Sourceeventids */
+            sourceEventIds: string[];
+            /** Text */
+            text: string;
+        };
+        /** TodayConvergencePayload */
+        TodayConvergencePayload: {
+            access: components["schemas"]["ContentAccessState"];
+            birthTime: components["schemas"]["TodayConvergenceBirthTime"];
+            /** Calculationversion */
+            calculationVersion: string;
+            /**
+             * Contentstate
+             * @enum {string}
+             */
+            contentState: "ready" | "pending" | "unavailable" | "not_needed";
+            /** Convergences */
+            convergences: components["schemas"]["TodayConvergenceGroup"][];
+            /** Daytone */
+            dayTone: ("steady" | "supportive" | "mixed" | "tense") | null;
+            /** Events */
+            events: components["schemas"]["TodayConvergenceEvent"][];
+            /**
+             * Formulaversion
+             * @constant
+             */
+            formulaVersion: "today-convergence-2";
+            /** Impulses */
+            impulses: components["schemas"]["TodayConvergenceImpulse"][];
+            lookahead: components["schemas"]["TodayConvergenceLookahead"] | null;
+            mainEvent: components["schemas"]["TodayConvergenceMainEvent"] | null;
+            periodContext: components["schemas"]["TodayConvergencePeriodContext"] | null;
+            /** Personal */
+            personal: boolean | null;
+            previewTeaser: components["schemas"]["TodayConvergencePreviewTeaser"] | null;
+            /** Publishedat */
+            publishedAt: string | null;
+            /**
+             * Schemaversion
+             * @constant
+             */
+            schemaVersion: 1;
+            /** Snapshotid */
+            snapshotId: string | null;
+            /** State */
+            state: ("convergence_today" | "quiet_day" | "unavailable") | null;
+            /**
+             * Targetdate
+             * Format: date
+             */
+            targetDate: string;
+            /** Timezone */
+            timezone: string;
+        };
+        /** TodayConvergencePeriodContext */
+        TodayConvergencePeriodContext: {
+            /** Activefrom */
+            activeFrom: string | null;
+            /** Activeuntil */
+            activeUntil: string | null;
+            /** Eventids */
+            eventIds?: string[];
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "active_period" | "no_strong_accent";
+            /** Sphere */
+            sphere: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping") | null;
+            /** Title */
+            title: string | null;
+        };
+        /** TodayConvergencePreviewTeaser */
+        TodayConvergencePreviewTeaser: {
+            /** Spheres */
+            spheres?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[];
+        };
+        /** TodayConvergenceSummary */
+        TodayConvergenceSummary: {
+            /** Sourceeventids */
+            sourceEventIds: string[];
+            /** Text */
+            text: string;
+        };
         /**
          * TodayFeaturedSphere
          * @description Featured sphere recommendation card for convergence (§5).
@@ -3929,6 +4193,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TelegramAuthRequest"];
+                };
+            };
+        };
+    };
+    contracts__todayconvergencepayload___contracts___todayconvergencepayload_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayConvergencePayload"];
                 };
             };
         };

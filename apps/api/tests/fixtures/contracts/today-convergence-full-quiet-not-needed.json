@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "snapshotId": "snap-quiet-2026-07-31",
+  "targetDate": "2026-07-31",
+  "timezone": "Europe/Moscow",
+  "publishedAt": "2026-07-30T21:00:00Z",
+  "access": {
+    "state": "full",
+    "reason": "active_subscription",
+    "referralDaysLeft": null,
+    "subscriptionActive": true,
+    "accessUntil": "2026-08-31"
+  },
+  "birthTime": {
+    "mode": "exact",
+    "bucket": null,
+    "rangeStart": "12:34",
+    "rangeEnd": "12:34",
+    "capabilities": {
+      "houses": true,
+      "angles": true,
+      "lots": true,
+      "exactTiming": true
+    }
+  },
+  "state": "quiet_day",
+  "dayTone": "steady",
+  "personal": false,
+  "previewTeaser": null,
+  "convergences": [],
+  "mainEvent": null,
+  "impulses": [],
+  "periodContext": {
+    "id": "period-none",
+    "kind": "no_strong_accent",
+    "sphere": null,
+    "title": "No strong accent",
+    "activeFrom": null,
+    "activeUntil": null,
+    "eventIds": []
+  },
+  "lookahead": {
+    "targetDate": "2026-08-01",
+    "sphere": "work",
+    "snapshotId": "snap-next-2026-08-01"
+  },
+  "events": [],
+  "contentState": "not_needed",
+  "formulaVersion": "today-convergence-2",
+  "calculationVersion": "ss-calc-1.3.0"
+}

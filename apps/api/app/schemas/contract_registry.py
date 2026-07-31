@@ -68,6 +68,7 @@ from .promo import (
 )
 from .scoring_v2 import ScoringV2Result
 from .today import ConvergenceEvidence, TodayPayload
+from .today_convergence import TodayConvergencePayload
 from .today_focus import FocusEventDrilldown
 
 
@@ -105,6 +106,7 @@ PUBLIC_CONTRACT_ROOTS: tuple[type[CamelModel], ...] = (
     SubscriptionStartResponse,
     SubscriptionStatusResponse,
     TelegramAuthRequest,
+    TodayConvergencePayload,
     TodayPayload,
     YesterdayCheckinResponse,
 )

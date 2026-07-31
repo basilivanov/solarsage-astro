@@ -4863,6 +4863,926 @@
         "title": "TodayConvergence",
         "type": "object"
       },
+      "TodayConvergenceBirthCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "angles": {
+            "title": "Angles",
+            "type": "boolean"
+          },
+          "exactTiming": {
+            "title": "Exacttiming",
+            "type": "boolean"
+          },
+          "houses": {
+            "title": "Houses",
+            "type": "boolean"
+          },
+          "lots": {
+            "title": "Lots",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "houses",
+          "angles",
+          "lots",
+          "exactTiming"
+        ],
+        "title": "TodayConvergenceBirthCapabilities",
+        "type": "object"
+      },
+      "TodayConvergenceBirthTime": {
+        "additionalProperties": false,
+        "properties": {
+          "bucket": {
+            "anyOf": [
+              {
+                "enum": [
+                  "night",
+                  "morning",
+                  "day",
+                  "evening"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bucket"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/TodayConvergenceBirthCapabilities"
+          },
+          "mode": {
+            "enum": [
+              "exact",
+              "bucket",
+              "unknown"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "rangeEnd": {
+            "title": "Rangeend",
+            "type": "string"
+          },
+          "rangeStart": {
+            "title": "Rangestart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "bucket",
+          "rangeStart",
+          "rangeEnd",
+          "capabilities"
+        ],
+        "title": "TodayConvergenceBirthTime",
+        "type": "object"
+      },
+      "TodayConvergenceEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "evidenceLevel": {
+            "enum": [
+              "high",
+              "medium"
+            ],
+            "title": "Evidencelevel",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "polarity": {
+            "enum": [
+              "supportive",
+              "tense",
+              "mixed"
+            ],
+            "title": "Polarity",
+            "type": "string"
+          },
+          "sourceIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sourceids",
+            "type": "array"
+          },
+          "sphere": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Sphere",
+            "type": "string"
+          },
+          "time": {
+            "$ref": "#/components/schemas/TodayConvergenceEventTime"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "sphere",
+          "polarity",
+          "evidenceLevel",
+          "time"
+        ],
+        "title": "TodayConvergenceEvent",
+        "type": "object"
+      },
+      "TodayConvergenceEventTime": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "mode": {
+            "enum": [
+              "exact",
+              "partofday",
+              "date"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "partOfDay": {
+            "anyOf": [
+              {
+                "enum": [
+                  "night",
+                  "morning",
+                  "day",
+                  "evening"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partofday"
+          },
+          "peak": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "TodayConvergenceEventTime",
+        "type": "object"
+      },
+      "TodayConvergenceGroup": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceNarrativeClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventIds": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 2,
+            "title": "Eventids",
+            "type": "array"
+          },
+          "evidenceLevel": {
+            "enum": [
+              "high",
+              "medium"
+            ],
+            "title": "Evidencelevel",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "meaning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceNarrativeClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "polarity": {
+            "enum": [
+              "supportive",
+              "tense",
+              "mixed"
+            ],
+            "title": "Polarity",
+            "type": "string"
+          },
+          "primarySphere": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Primarysphere",
+            "type": "string"
+          },
+          "secondarySphere": {
+            "anyOf": [
+              {
+                "enum": [
+                  "work",
+                  "money",
+                  "documents",
+                  "relationships",
+                  "sport",
+                  "communication",
+                  "health",
+                  "decisions",
+                  "travel",
+                  "creativity",
+                  "study",
+                  "shopping"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secondarysphere"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "primarySphere",
+          "polarity",
+          "evidenceLevel",
+          "eventIds"
+        ],
+        "title": "TodayConvergenceGroup",
+        "type": "object"
+      },
+      "TodayConvergenceImpulse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceNarrativeClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventId": {
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceLevel": {
+            "enum": [
+              "high",
+              "medium"
+            ],
+            "title": "Evidencelevel",
+            "type": "string"
+          },
+          "meaning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceNarrativeClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "polarity": {
+            "enum": [
+              "supportive",
+              "tense",
+              "mixed"
+            ],
+            "title": "Polarity",
+            "type": "string"
+          },
+          "sphere": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Sphere",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "time": {
+            "$ref": "#/components/schemas/TodayConvergenceEventTime"
+          }
+        },
+        "required": [
+          "eventId",
+          "sphere",
+          "polarity",
+          "evidenceLevel",
+          "time"
+        ],
+        "title": "TodayConvergenceImpulse",
+        "type": "object"
+      },
+      "TodayConvergenceLookahead": {
+        "additionalProperties": false,
+        "properties": {
+          "snapshotId": {
+            "title": "Snapshotid",
+            "type": "string"
+          },
+          "sphere": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Sphere",
+            "type": "string"
+          },
+          "targetDate": {
+            "format": "date",
+            "title": "Targetdate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetDate",
+          "sphere",
+          "snapshotId"
+        ],
+        "title": "TodayConvergenceLookahead",
+        "type": "object"
+      },
+      "TodayConvergenceMainEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceNarrativeClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventId": {
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceLevel": {
+            "enum": [
+              "high",
+              "medium"
+            ],
+            "title": "Evidencelevel",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "meaning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceNarrativeClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "polarity": {
+            "enum": [
+              "supportive",
+              "tense",
+              "mixed"
+            ],
+            "title": "Polarity",
+            "type": "string"
+          },
+          "sphere": {
+            "enum": [
+              "work",
+              "money",
+              "documents",
+              "relationships",
+              "sport",
+              "communication",
+              "health",
+              "decisions",
+              "travel",
+              "creativity",
+              "study",
+              "shopping"
+            ],
+            "title": "Sphere",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "time": {
+            "$ref": "#/components/schemas/TodayConvergenceEventTime"
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "sphere",
+          "polarity",
+          "evidenceLevel",
+          "time"
+        ],
+        "title": "TodayConvergenceMainEvent",
+        "type": "object"
+      },
+      "TodayConvergenceNarrativeClaim": {
+        "additionalProperties": false,
+        "properties": {
+          "sourceEventIds": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Sourceeventids",
+            "type": "array"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "sourceEventIds"
+        ],
+        "title": "TodayConvergenceNarrativeClaim",
+        "type": "object"
+      },
+      "TodayConvergencePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "access": {
+            "$ref": "#/components/schemas/ContentAccessState"
+          },
+          "birthTime": {
+            "$ref": "#/components/schemas/TodayConvergenceBirthTime"
+          },
+          "calculationVersion": {
+            "minLength": 1,
+            "title": "Calculationversion",
+            "type": "string"
+          },
+          "contentState": {
+            "enum": [
+              "ready",
+              "pending",
+              "unavailable",
+              "not_needed"
+            ],
+            "title": "Contentstate",
+            "type": "string"
+          },
+          "convergences": {
+            "items": {
+              "$ref": "#/components/schemas/TodayConvergenceGroup"
+            },
+            "maxItems": 3,
+            "title": "Convergences",
+            "type": "array"
+          },
+          "dayTone": {
+            "anyOf": [
+              {
+                "enum": [
+                  "steady",
+                  "supportive",
+                  "mixed",
+                  "tense"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daytone"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/TodayConvergenceEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "formulaVersion": {
+            "const": "today-convergence-2",
+            "title": "Formulaversion",
+            "type": "string"
+          },
+          "impulses": {
+            "items": {
+              "$ref": "#/components/schemas/TodayConvergenceImpulse"
+            },
+            "maxItems": 3,
+            "title": "Impulses",
+            "type": "array"
+          },
+          "lookahead": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceLookahead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mainEvent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergenceMainEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergencePeriodContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "personal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personal"
+          },
+          "previewTeaser": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodayConvergencePreviewTeaser"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publishedat"
+          },
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "snapshotId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshotid"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "convergence_today",
+                  "quiet_day",
+                  "unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "targetDate": {
+            "format": "date",
+            "title": "Targetdate",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "snapshotId",
+          "targetDate",
+          "timezone",
+          "publishedAt",
+          "access",
+          "birthTime",
+          "state",
+          "dayTone",
+          "personal",
+          "previewTeaser",
+          "convergences",
+          "mainEvent",
+          "impulses",
+          "periodContext",
+          "lookahead",
+          "events",
+          "contentState",
+          "formulaVersion",
+          "calculationVersion"
+        ],
+        "title": "TodayConvergencePayload",
+        "type": "object"
+      },
+      "TodayConvergencePeriodContext": {
+        "additionalProperties": false,
+        "properties": {
+          "activeFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activefrom"
+          },
+          "activeUntil": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activeuntil"
+          },
+          "eventIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Eventids",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "active_period",
+              "no_strong_accent"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "sphere": {
+            "anyOf": [
+              {
+                "enum": [
+                  "work",
+                  "money",
+                  "documents",
+                  "relationships",
+                  "sport",
+                  "communication",
+                  "health",
+                  "decisions",
+                  "travel",
+                  "creativity",
+                  "study",
+                  "shopping"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sphere"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "sphere",
+          "title",
+          "activeFrom",
+          "activeUntil"
+        ],
+        "title": "TodayConvergencePeriodContext",
+        "type": "object"
+      },
+      "TodayConvergencePreviewTeaser": {
+        "additionalProperties": false,
+        "properties": {
+          "spheres": {
+            "items": {
+              "enum": [
+                "work",
+                "money",
+                "documents",
+                "relationships",
+                "sport",
+                "communication",
+                "health",
+                "decisions",
+                "travel",
+                "creativity",
+                "study",
+                "shopping"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Spheres",
+            "type": "array"
+          }
+        },
+        "title": "TodayConvergencePreviewTeaser",
+        "type": "object"
+      },
+      "TodayConvergenceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "sourceEventIds": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Sourceeventids",
+            "type": "array"
+          },
+          "text": {
+            "maxLength": 220,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "sourceEventIds"
+        ],
+        "title": "TodayConvergenceSummary",
+        "type": "object"
+      },
       "TodayFeaturedSphere": {
         "additionalProperties": false,
         "description": "Featured sphere recommendation card for convergence (§5).",
@@ -8220,6 +9140,27 @@
           }
         },
         "summary": "Contracts  Telegramauthrequest",
+        "tags": [
+          "__contracts__"
+        ]
+      }
+    },
+    "/__contracts__/todayconvergencepayload": {
+      "get": {
+        "operationId": "contracts__todayconvergencepayload___contracts___todayconvergencepayload_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayConvergencePayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Contracts  Todayconvergencepayload",
         "tags": [
           "__contracts__"
         ]

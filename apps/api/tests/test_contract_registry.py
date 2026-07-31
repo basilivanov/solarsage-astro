@@ -82,6 +82,7 @@ EXPECTED_ROOT_NAMES = [
     "SubscriptionStartResponse",
     "SubscriptionStatusResponse",
     "TelegramAuthRequest",
+    "TodayConvergencePayload",
     "TodayPayload",
     "YesterdayCheckinResponse",
 ]
