@@ -36,6 +36,7 @@ import yaml
 
 from app.services.today_convergence_canon import (
     TodayConvergenceCanonError,
+    compute_today_convergence_canon_hash,
     event_class_significance,
     hero_confirmation_policy,
     is_fast_source,
@@ -237,6 +238,43 @@ def test_missing_theme_registry_fails_closed(tmp_path: Path) -> None:
     (target / "today_convergence_themes.v1.yml").unlink()
     with pytest.raises(TodayConvergenceCanonError, match="theme_missing"):
         load_today_convergence_canon(target)
+
+
+def test_canon_hash_is_stable_cwd_independent_and_64_hex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    target = copied_canons(tmp_path)
+    first = compute_today_convergence_canon_hash(target)
+    monkeypatch.chdir(tmp_path)
+    second = compute_today_convergence_canon_hash(target)
+
+    assert first == second
+    assert len(first) == 64
+    assert first == first.lower()
+    assert all(character in "0123456789abcdef" for character in first)
+
+
+@pytest.mark.parametrize("filename", [
+    "today_convergence.v1.yml",
+    "aspect_rules.v1.yml",
+    "today_convergence_themes.v1.yml",
+])
+def test_canon_hash_changes_when_any_frozen_artifact_bytes_change(tmp_path: Path, filename: str) -> None:
+    target = copied_canons(tmp_path)
+    original = compute_today_convergence_canon_hash(target)
+    path = target / filename
+    path.write_bytes(path.read_bytes() + b"\n# byte mutation\n")
+
+    assert compute_today_convergence_canon_hash(target) != original
+
+
+def test_invalid_canon_does_not_receive_a_fingerprint(tmp_path: Path) -> None:
+    target = copied_canons(tmp_path)
+    today_path = target / "today_convergence.v1.yml"
+    today = yaml.safe_load(today_path.read_text(encoding="utf-8"))
+    today["status"] = "draft"
+    today_path.write_text(yaml.safe_dump(today), encoding="utf-8")
+
+    with pytest.raises(TodayConvergenceCanonError, match="today_convergence_canon:status"):
+        compute_today_convergence_canon_hash(target)
 
 
 def test_mapping_and_threshold_helpers_are_canon_driven_and_fail_closed() -> None:

@@ -141,6 +141,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-SNAPSHOT-SCHEMA → M-DB | Additive `TodaySnapshot` and versioned `TodaySnapshotNarrative` tables persist only published deterministic data; nullable `EveningCheckin` lineage preserves the existing owner/date uniqueness and streak contract. | S1: `cd apps/api && PYTHONPATH=. /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_snapshot_schema.py tests/test_birth_time_mode_migration.py tests/test_checkin.py tests/test_checkin_endpoints.py -q`. S2: SQLite `0027 → head → 0027 → head` roundtrip preserves legacy rows and proves exact columns, nullability, defaults, named constraints/indexes, FK actions, JSON payloads, server timestamps, cascade, and SET NULL behavior. S3: duplicate identities/versions and invalid mode/status/attempt/surface fail closed; migration has no legacy Today imports and one Alembic head. S4: packet Ruff, model GRACE lint, marker parity, and `git diff --check` pass. |
 
+## UC-TODAY-CONVERGENCE-W3-DOCUMENT · P3-B deterministic snapshot document
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-CANON → M-TODAY-CONVERGENCE-RUNTIME → M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT | Pure document construction fingerprints the strictly loaded three-file canon, derives mode-aware privacy-safe profile identity, content-addresses one canonical factor pack, and normalizes deterministic hero/quiet references without publishing to DB or wire. | S1: `cd apps/api && PYTHONPATH=. /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_snapshot.py tests/test_today_convergence_runtime.py -q`. S2: exact/bucket/unknown, current-location/gender exclusion, negative-zero normalization, Decimal coordinates, Enum serialization, hero/quiet references, audit blocks, canonical unit uniqueness, extra unselected groups, repeated/permuted equality, and unknown→exact hash changes pass. S3: malformed canon/profile/resolution/version/state/reference/finite-value cases fail with stable `today_convergence_snapshot:*` tokens; privacy/source guards exclude raw profile, Telegram, legacy Today/cache, persistence, network, LLM, and artifact fallback. S4: packet Ruff, `python3 scripts/grace_lint.py apps/api/app --quiet`, marker parity, and `git diff --check` pass. No DB publication is claimed in this row. |
+
 ## UC-DAY-NAV · Navigate days
 
 | Modules | Gates | Scenarios |

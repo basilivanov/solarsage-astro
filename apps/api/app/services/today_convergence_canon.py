@@ -8,7 +8,8 @@
 # owns:
 #   - apps/api/app/services/today_convergence_canon.py
 # inputs: Today convergence, aspect-rules, and versioned narrow-theme YAML canons.
-# outputs: immutable TodayConvergenceCanon/TonePolicyCanon and pure mapping/significance/eligibility helpers.
+# outputs: immutable TodayConvergenceCanon/TonePolicyCanon, strict canon
+#   artifact fingerprints, and pure mapping/significance/eligibility helpers.
 # dependencies: PyYAML and Python standard library only.
 # side_effects: reads three YAML files; never writes or emits runtime logs.
 # emitted_logs: none.
@@ -25,6 +26,7 @@
 #   - TonePolicyCanon
 #   - TodayConvergenceCanonError
 #   - load_today_convergence_canon
+#   - compute_today_convergence_canon_hash
 #   - map_factor_to_product_spheres
 #   - aspect_weight
 #   - source_max_orb
@@ -42,6 +44,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 from math import isfinite
 from pathlib import Path
 from types import MappingProxyType
@@ -167,6 +170,16 @@ def _read_yaml(path: Path, label: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         _fail(f"{label}_mapping")
     return value
+
+
+def _canon_artifact_paths(canon_dir: Path | None) -> tuple[Path, Path, Path]:
+    directory = _DEFAULT_CANON_DIR if canon_dir is None else canon_dir
+    if directory.is_file():
+        today_path = directory
+        directory = directory.parent
+    else:
+        today_path = directory / _TODAY_FILENAME
+    return today_path, directory / _ASPECT_FILENAME, directory / _THEME_FILENAME
 
 
 def _require_mapping(value: Any, reason: str) -> Mapping[str, Any]:
@@ -422,14 +435,7 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
     # emitted_logs: none.
     # error_behavior: raises TodayConvergenceCanonError on any missing/malformed/unknown value.
     # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.load_today_convergence_canon
-    directory = canon_dir or _DEFAULT_CANON_DIR
-    if directory.is_file():
-        today_path = directory
-        directory = directory.parent
-    else:
-        today_path = directory / _TODAY_FILENAME
-    aspect_path = directory / _ASPECT_FILENAME
-    theme_path = directory / _THEME_FILENAME
+    today_path, aspect_path, theme_path = _canon_artifact_paths(canon_dir)
     today = _read_yaml(today_path, "today")
     aspect = _read_yaml(aspect_path, "aspect")
     theme = _read_yaml(theme_path, "theme")
@@ -787,6 +793,25 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
         tone_policy=tone_policy,
         birth_time=birth_time_canon,
     )
+
+
+def compute_today_convergence_canon_hash(canon_dir: Path | None = None) -> str:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.compute_today_convergence_canon_hash
+    # purpose: Fingerprint exact bytes of the three strictly validated W1 canon artifacts.
+    # inputs: canon_dir — repository canon directory or a complete copied canon directory.
+    # returns: lowercase SHA-256 hex digest with filename boundaries.
+    # side_effects: reads the three canon files; does not cache or write.
+    # emitted_logs: none.
+    # error_behavior: raises TodayConvergenceCanonError before hashing malformed/missing canon.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.compute_today_convergence_canon_hash
+    load_today_convergence_canon(canon_dir)
+    digest = sha256()
+    for path in _canon_artifact_paths(canon_dir):
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
 # END_BLOCK: CANON_LOADER
 
 
@@ -974,6 +999,7 @@ __all__ = [
     "TodayConvergenceCanonError",
     "TonePolicyCanon",
     "load_today_convergence_canon",
+    "compute_today_convergence_canon_hash",
     "map_factor_to_product_spheres",
     "map_factor_to_theme_keys",
     "aspect_weight",
