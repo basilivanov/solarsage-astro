@@ -445,3 +445,71 @@ describe('onboardingStateFromProfile', () => {
     expect(fullProfile).toEqual(copy)
   })
 });
+
+describe('additional branch coverage', () => {
+  it('go_to_step ignores unknown steps', () => {
+    const state = onboardingReducer(initialOnboardingState, { type: 'go_to_step', value: 'nope' as never })
+    expect(state).toBe(initialOnboardingState)
+  })
+
+  it('go_to_step accepts a valid step', () => {
+    const state = onboardingReducer(initialOnboardingState, { type: 'go_to_step', value: 'gender' })
+    expect(state.step).toBe('gender')
+  })
+
+  it('set_* events update their fields', () => {
+    let state = onboardingReducer(initialOnboardingState, { type: 'set_birth_time', value: { hours: '10', minutes: '30', unknown: false } })
+    expect(state.birthTime.hours).toBe('10')
+    state = onboardingReducer(state, { type: 'set_current_city', value: { name: 'СПб', country: 'Россия' } })
+    expect(state.currentCity?.name).toBe('СПб')
+    state = onboardingReducer(state, { type: 'set_same_as_birth', value: true })
+    expect(state.sameAsBirth).toBe(true)
+    state = onboardingReducer(state, { type: 'set_birthday_city', value: { name: 'Сочи', country: 'Россия' } })
+    expect(state.birthdayCity?.name).toBe('Сочи')
+    state = onboardingReducer(state, { type: 'set_birthday_same_as_current', value: false })
+    expect(state.birthdaySameAsCurrent).toBe(false)
+    state = onboardingReducer(state, { type: 'unknown_event' } as never)
+    expect(state.birthdaySameAsCurrent).toBe(false)
+  })
+
+  it('isValidBirthTime accepts unknown and rejects bad ranges', () => {
+    expect(isValidBirthTime({ hours: '', minutes: '', unknown: true })).toBe(true)
+    expect(isValidBirthTime({ hours: '24', minutes: '00', unknown: false })).toBe(false)
+    expect(isValidBirthTime({ hours: '10', minutes: '60', unknown: false })).toBe(false)
+    expect(isValidBirthTime({ hours: 'x', minutes: '00', unknown: false })).toBe(false)
+    expect(isValidBirthTime({ hours: '10', minutes: '30', unknown: false })).toBe(true)
+  })
+
+  it('isStepValid covers birth and place branches', () => {
+    const base = { ...initialOnboardingState, step: 'birth' as const }
+    expect(isStepValid({ ...base, birthDate: { day: '10', month: '08', year: '1992' }, birthTime: { hours: '', minutes: '', unknown: true } })).toBe(true)
+    expect(isStepValid({ ...base, birthDate: { day: '', month: '', year: '' }, birthTime: { hours: '', minutes: '', unknown: true } })).toBe(false)
+
+    const place = { ...initialOnboardingState, step: 'place' as const, birthPlace: { name: 'Москва', country: 'Россия' } }
+    expect(isStepValid({ ...place, sameAsBirth: true })).toBe(true)
+    expect(isStepValid({ ...place, sameAsBirth: false, currentCity: null })).toBe(false)
+    expect(isStepValid({ ...place, sameAsBirth: false, currentCity: { name: 'СПб', country: 'Россия' } })).toBe(true)
+
+    const noPlace = { ...initialOnboardingState, step: 'place' as const, birthPlace: null }
+    expect(isStepValid(noPlace)).toBe(false)
+
+    const welcome = { ...initialOnboardingState, step: 'welcome' as const }
+    expect(isStepValid(welcome)).toBe(true)
+    const done = { ...initialOnboardingState, step: 'done' as const }
+    expect(isStepValid(done)).toBe(true)
+    const gender = { ...initialOnboardingState, step: 'gender' as const, gender: 'male' as const }
+    expect(isStepValid(gender)).toBe(true)
+    const unknown = { ...initialOnboardingState, step: 'zzz' as never }
+    expect(isStepValid(unknown)).toBe(false)
+  })
+
+  it('selectEffective* and selectProgress cover same-as branches', () => {
+    const city = { name: 'Москва', country: 'Россия' }
+    const other = { name: 'Сочи', country: 'Россия' }
+    expect(selectEffectiveCurrentCity({ ...initialOnboardingState, sameAsBirth: true, birthPlace: city, currentCity: other })).toBe(city)
+    expect(selectEffectiveCurrentCity({ ...initialOnboardingState, sameAsBirth: false, birthPlace: city, currentCity: other })).toBe(other)
+    expect(selectEffectiveBirthdayCity({ ...initialOnboardingState, birthdaySameAsCurrent: false, birthdayCity: other })).toBe(other)
+    expect(selectProgress({ ...initialOnboardingState, step: 'done' })).toBe(100)
+    expect(selectProgress({ ...initialOnboardingState, step: 'welcome' })).toBe(0)
+  })
+});

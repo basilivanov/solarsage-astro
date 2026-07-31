@@ -52,9 +52,15 @@ vi.mock("@/lib/api/today-convergence", () => ({
   retryTodayConvergence: mocks.retryTodayConvergence,
   recordDayImpression: mocks.recordDayImpression,
   TodayConvergenceApiError: class TodayConvergenceApiError extends Error {
-    kind: "network" | "invalid" | "http" = "http";
-    status = 500;
+    kind: "network" | "invalid" | "http";
+    status: number;
     code?: string;
+    constructor(message: string, kind: "network" | "invalid" | "http", status: number, code?: string) {
+      super(message);
+      this.kind = kind;
+      this.status = status;
+      this.code = code;
+    }
   },
 }));
 
@@ -218,3 +224,49 @@ describe("useTodayConvergence retry and lifecycle", () => {
   });
 });
 // END_BLOCK: RETRY_AND_LIFECYCLE
+
+// START_BLOCK: ERROR_AND_REDIRECT
+describe("useTodayConvergence error and onboarding branches", () => {
+  it("exposes the error screen state when the initial fetch fails", async () => {
+    mocks.fetchTodayConvergence.mockRejectedValue(new Error("offline"));
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await waitFor(() => expect(result.current.screenState).toBe("error"));
+  });
+
+  it("redirects to onboarding for a 422 NOT_ONBOARDED failure", async () => {
+    const { TodayConvergenceApiError } = await import("@/lib/api/today-convergence");
+    mocks.fetchTodayConvergence.mockRejectedValue(
+      new TodayConvergenceApiError("Profile is incomplete", "http", 422, "NOT_ONBOARDED"),
+    );
+    renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/onboarding"));
+  });
+
+  it("reschedules polling after a failed poll attempt", async () => {
+    vi.useFakeTimers();
+    mocks.fetchTodayConvergence
+      .mockResolvedValueOnce(contentPending)
+      .mockRejectedValueOnce(new Error("poll offline"))
+      .mockResolvedValueOnce(quietSteady);
+    const { result } = renderHook(() => useTodayConvergence("2026-08-01"));
+
+    await flushPromises();
+    expect(result.current.payload).toBe(contentPending);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PENDING_POLL_INTERVAL_MS);
+    });
+    await flushPromises();
+    expect(mocks.fetchTodayConvergence).toHaveBeenCalledTimes(2);
+    expect(result.current.payload).toBe(contentPending);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PENDING_POLL_INTERVAL_MS);
+    });
+    await flushPromises();
+    expect(result.current.payload).toBe(quietSteady);
+  });
+});
+// END_BLOCK: ERROR_AND_REDIRECT
