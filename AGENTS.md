@@ -105,9 +105,11 @@ Nginx (`/etc/nginx/sites-enabled/astro.conf`): `dev.astro.vasiliy-ivanov.ru` и 
 | `solarsage-frontend-dev-3000.service` | `pnpm next dev` (обычно inactive; 3000 поднимают вручную, nginx его не обслуживает) | 3000 |
 | `solarsage-frontend-mock-dev-3001.service` | mock preview из worktree `/opt/solarsage-astro-mock-preview` (`archive/demo-origin-main`) | 3001 |
 | `solarsage-synastry-reconcile.timer` (+ `.service`) | oneshot `python -m app.jobs.synastry_reconcile` каждые 5 мин — доводит зависшие synastry-репорты до ready/failed+refund | — |
-| `solarsage-day-pregen.timer` (+ `.service`) | oneshot `python -m app.jobs.day_pregen` ежедневно в 04:07 — предгенерация завтрашнего дня активным пользователям (cache hit вместо ~75 сек LLM). Юнит несёт `TODAY_VALENCE_V1_ENABLED=true` inline; источники в `infra/systemd/` | — |
+| `solarsage-day-pregen.timer` (+ `.service`) | oneshot `python -m app.jobs.day_pregen` ежедневно в 04:07 — предгенерация завтрашнего дня активным пользователям на новом convergence-контракте (deterministic snapshot → selective LLM warm-up; cache hit вместо ~75 сек LLM). Юнит без valence-флагов; источники в `infra/systemd/` | — |
 
-Девовский API-юнит имеет drop-in `/etc/systemd/system/solarsage-api.service.d/valence.conf` с `TODAY_VALENCE_V1_ENABLED=true` (флаг НЕ в `.env`, чтобы тесты не подхватывали). `TODAY_VALENCE_V1_DUAL_RUN=true` стоит в `.env` (теневые логи valence безопасны для тестов).
+Девовский API-юнит больше НЕ несёт valence drop-in (`/etc/systemd/system/solarsage-api.service.d/valence.conf` удалён при convergence cutover). `TODAY_VALENCE_V1_ENABLED`, `TODAY_VALENCE_V1_DUAL_RUN`, `SOLARSAGE_V2_ENABLED`, `SOLARSAGE_V2_FRONTEND_ENABLED` — legacy routing flags, удалены из всех runtime-окружений; новый Today от них не зависит.
+
+Новые env в `.env` (convergence RC): `DAY_PREGEN_ACTIVE_DAYS` (14), `DAY_PREGEN_LLM_ACTIVE_DAYS` (7), `DAY_PREGEN_CONCURRENCY` (3), `DAY_PREGEN_MAX_USERS` (500), `DAY_PREGEN_DETERMINISTIC_DEADLINE_SECONDS` (10), `DAY_PREGEN_LLM_DEADLINE_SECONDS` (45), `TODAY_NARRATIVE_MAX_OUTPUT_TOKENS` (700), `TODAY_NARRATIVE_TIMEOUT_SECONDS` (45), `TODAY_NARRATIVE_PROMPT_VERSION` (`today-narrative-v1`), `TODAY_LLM_ON_DEMAND_CONCURRENCY` (3), `RELEASE_SHA`. Sidecar получает release identity через drop-in `/etc/systemd/system/solarsage-sidecar.service.d/release.conf` (`SOLARSAGE_RELEASE_SHA`).
 
 Девовский `.env`: `APP_ENV=staging`, `DEV_MODE=false`, `APP_DOMAIN=dev.astro.vasiliy-ivanov.ru` → auth только через Telegram HMAC, `/api/auth/dev` на деве недоступен.
 
