@@ -26,24 +26,31 @@
 #   - calculate_natal_response
 #   - calculate_transits_response
 #   - calculate_activation_layer
+#   - calculate_activation_grid
+#   - validate_birth_time_grid
 #   - prepare_natal_context
 #   - prepare_target_context
 # semantic_blocks:
 #   - NATAL: natal chart response construction.
 #   - TRANSITS: target-moment transit response construction.
 #   - ACTIVATION_LAYER: activation evidence calculation.
+#   - ACTIVATION_GRID: shared target-context and timing-solver orchestration.
 # owned_tests:
 #   - apps/solarsage/tests/test_calculation_core.py
+#   - apps/solarsage/tests/test_activation_grid.py
 # END_MODULE_MAP: M-SIDECAR-CALCULATION-CORE
 
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from solarsage.schemas.activation import ActivationLayer
 from solarsage.schemas.natal import House, NatalResponse, Planet, SpecialPoint
 from solarsage.schemas.transits import TransitsResponse
 from solarsage.services.activation_builder import (
+    ALL_TECHNIQUES,
     NatalCalculationContext,
     TargetCalculationContext,
     build_activation_layer,
@@ -158,3 +165,101 @@ def calculate_activation_layer(
         timing_solver=timing_solver,
     )
 # END_BLOCK: ACTIVATION_LAYER
+
+
+# START_BLOCK: ACTIVATION_GRID
+_BIRTH_TIME_PATTERN = re.compile(r"(?:[01][0-9]|2[0-3]):[0-5][0-9]")
+_TIMING_TECHNIQUES = frozenset({"transit_to_natal", "transit_to_angle", "transit_to_lot"})
+
+
+def validate_birth_time_grid(birth_times: Sequence[str]) -> tuple[str, ...]:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.validate_birth_time_grid
+    # purpose: Validate and return the ordered minute-precision birth-time grid used by core and HTTP callers.
+    # inputs: Sequence of strict HH:MM strings, one through seven values.
+    # returns: The same ordered tuple after strict uniqueness and range validation.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: raises ValueError for non-sequences, malformed values, or non-increasing grids.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.validate_birth_time_grid
+    if isinstance(birth_times, (str, bytes)) or not isinstance(birth_times, Sequence):
+        raise ValueError("birth_times must be a sequence")
+    values = tuple(birth_times)
+    if not 1 <= len(values) <= 7:
+        raise ValueError("birth_times must contain between 1 and 7 values")
+
+    previous_minutes = -1
+    for value in values:
+        if not isinstance(value, str) or _BIRTH_TIME_PATTERN.fullmatch(value) is None:
+            raise ValueError("birth_times must contain minute-precision HH:MM values")
+        hours, minutes = (int(part) for part in value.split(":"))
+        total_minutes = hours * 60 + minutes
+        if total_minutes <= previous_minutes:
+            raise ValueError("birth_times must be strictly increasing and unique")
+        previous_minutes = total_minutes
+    return values
+
+
+def calculate_activation_grid(
+    *,
+    birth_date: str,
+    birth_times: Sequence[str],
+    birth_lat: float,
+    birth_lon: float,
+    birth_tz: str,
+    target_date: str,
+    target_time: str,
+    target_tz: str,
+    house_system: str = "PLACIDUS",
+    techniques: list[str] | None = None,
+    current_location: dict[str, Any] | None = None,
+) -> tuple[ActivationLayer, ...]:
+    # START_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_activation_grid
+    # purpose: Calculate ordered birth-time control layers with one shared target context and optional timing solver.
+    # inputs: birth date/times, target moment, location, house system, and requested activation techniques.
+    # returns: ActivationLayer tuple in exact validated birth-time request order.
+    # side_effects: Swiss Ephemeris calculations; no parallelism or hidden cache.
+    # emitted_logs: none.
+    # error_behavior: invalid grids raise ValueError; calculation errors propagate unchanged.
+    # END_FUNCTION_CONTRACT: F-M-SIDECAR-CALCULATION-CORE.calculate_activation_grid
+    validated_times = validate_birth_time_grid(birth_times)
+    target_context = prepare_target_context(
+        target_date=target_date,
+        target_time=target_time,
+        target_tz=target_tz,
+    )
+    requested_techniques = list(ALL_TECHNIQUES) if not techniques else list(techniques)
+    timing_solver = None
+    if _TIMING_TECHNIQUES.intersection(requested_techniques):
+        timing_solver = TransitTimingSolver(target_jd=target_context.target_jd)
+
+    layers: list[ActivationLayer] = []
+    for birth_time in validated_times:
+        natal_context = prepare_natal_context(
+            birth_date=birth_date,
+            birth_time=birth_time,
+            birth_lat=birth_lat,
+            birth_lon=birth_lon,
+            birth_tz=birth_tz,
+            house_system=house_system,
+        )
+        layers.append(
+            calculate_activation_layer(
+                birth_date=birth_date,
+                birth_time=birth_time,
+                birth_lat=birth_lat,
+                birth_lon=birth_lon,
+                birth_tz=birth_tz,
+                target_date=target_date,
+                target_time=target_time,
+                target_tz=target_tz,
+                house_system=house_system,
+                techniques=list(techniques) if techniques else None,
+                current_location=current_location,
+                timing_scope="convergence_eligible",
+                natal_context=natal_context,
+                target_context=target_context,
+                timing_solver=timing_solver,
+            )
+        )
+    return tuple(layers)
+# END_BLOCK: ACTIVATION_GRID

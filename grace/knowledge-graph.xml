@@ -86,6 +86,7 @@
     <module id="M-TODAY-CONVERGENCE-THEMES" slice="SLICE-BACKEND-SERVICES" layer="shared" path="grace/canon/today_convergence_themes.v1.yml" />
     <module id="M-DB" slice="SLICE-DB-MODELS-MIGRATIONS" layer="backend" path="apps/api/app/db/, apps/api/alembic/versions/" />
     <module id="M-SIDECAR-CALCULATION" slice="SLICE-SIDECAR-CALCULATION" layer="sidecar" path="apps/solarsage/, apps/api/calculations/" />
+    <module id="M-SIDECAR-ACTIVATION-GRID" slice="SLICE-SIDECAR-CALCULATION" layer="sidecar" path="apps/solarsage/solarsage/services/calculation_core.py, apps/solarsage/solarsage/api/activation_layer.py, apps/api/app/clients/solarsage_client.py" />
     <module id="M-SCORING-SEMANTIC-LLM" slice="SLICE-SCORING-SEMANTIC-LLM" layer="backend" path="apps/api/scoring/, apps/api/normalization/, apps/api/semantic/, related services" />
     <module id="M-LOGGING-SPINE" slice="SLICE-LOGGING-SPINE" layer="cross-cutting" path="lib/grace/, backend logging helpers" />
     <module id="M-TESTS" slice="SLICE-TESTS" layer="tests" path="__tests__/, apps/api/tests/, apps/solarsage/tests/" />
@@ -112,6 +113,7 @@
     <edge from="M-BACKEND-API" to="M-API-FOCUS-EVENT-DRILLDOWN" via="builder-call" />
     <edge from="M-BACKEND-SERVICES" to="M-DB" via="SQLAlchemy" />
     <edge from="M-BACKEND-SERVICES" to="M-SIDECAR-CALCULATION" via="HTTP" />
+    <edge from="M-BACKEND-SERVICES" to="M-SIDECAR-ACTIVATION-GRID" via="activation-grid-client" />
     <edge from="M-BACKEND-SERVICES" to="M-SCORING-SEMANTIC-LLM" via="semantic-context" />
     <edge from="M-TODAY-CONVERGENCE-UNITS" to="M-TODAY-CONVERGENCE-CANON" via="frozen-canon-policy" />
     <edge from="M-TODAY-CONVERGENCE-LEDGER" to="M-TODAY-CONVERGENCE-UNITS" via="raw-fact-normalization" />
@@ -132,6 +134,8 @@
     <edge from="M-TODAY-CONVERGENCE-PIPELINE" to="M-TODAY-CONVERGENCE-SELECTION" via="presentation-selection-orchestration" />
     <edge from="M-TODAY-CONVERGENCE-CANON" to="M-TODAY-CONVERGENCE-THEMES" via="strict-yaml-load" />
     <edge from="M-TODAY-BIRTH-TIME" to="M-TODAY-CONVERGENCE-CANON" via="strict-birth-time-canon" />
+    <edge from="M-TODAY-BIRTH-TIME" to="M-SIDECAR-ACTIVATION-GRID" via="birth-time-control-grid" />
+    <edge from="M-SIDECAR-ACTIVATION-GRID" to="M-SIDECAR-CALCULATION" via="shared-target-and-single-layer-reuse" />
     <edge from="M-GUARDRAILS" to="M-GRACE-PROJECT-ADAPTER" via="docs-orchestrator-checks" />
     <edge from="M-GUARDRAILS" to="M-CONTRACTS" via="contract-generation-check" />
     <edge from="M-API-PROMO" to="M-PROMO-CAMPAIGN-SERVICE" via="service-call" />

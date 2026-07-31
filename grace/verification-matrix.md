@@ -79,6 +79,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-BIRTH-TIME → M-TODAY-CONVERGENCE-CANON | The existing frozen `birth_time` section is extracted into immutable typed records; exact, bucket, and unknown states derive deterministic ranges and control grids; capability gates and migration values remain canon-driven; malformed persisted combinations fail closed without inference or fallback. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_birth_time.py -q`. S2: exact, all four bucket grids, unknown grid, capability immutability, malformed canon copies, invalid state combinations, precision rejection, profile parity, and no-analysis/noon-fallback source guard. S3: packet Ruff, `python3 scripts/grace_lint.py apps/api/app --quiet`, marker parity, and `git diff --check` pass. |
 
+## UC-TODAY-BIRTH-TIME-ACTIVATION-GRID · shared sidecar activation grid
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-BIRTH-TIME → M-SIDECAR-ACTIVATION-GRID → M-SIDECAR-CALCULATION | One internal request validates 1–7 strict minute controls, reuses one target context and one transit timing solver when needed, prepares one natal context per sample, preserves request order, and returns unchanged activation/calculation versions. Single-layer behavior remains the source of truth; transport failures are typed client failures without N-call fallback. | S1: sidecar grid, existing calculation-core, and endpoint tests; API client and activation contract tests pass. S2: deterministic spy proves reuse/order/non-transit solver absence; one-point real ephemeris grid equals direct `convergence_eligible` output; HTTP canonical/invalid/generic-error and client malformed-response matrices pass. S3: packet Ruff, both GRACE lint scopes, marker parity, and `git diff --check` pass. |
+
 ## UC-TODAY-CONVERGENCE-W2-LEDGER · canonical ledger, deduplication, and DayDelta
 
 | Modules | Gates | Scenarios |
