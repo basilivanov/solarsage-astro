@@ -213,6 +213,27 @@ export const CheckinCreate = z.object({
     z.literal(5),
   ]),
   note: z.union([z.string(), z.null()]).optional(),
+  observedSpheres: z
+    .union([
+      z.array(
+        z.enum([
+          "work",
+          "money",
+          "documents",
+          "relationships",
+          "sport",
+          "communication",
+          "health",
+          "decisions",
+          "travel",
+          "creativity",
+          "study",
+          "shopping",
+        ])
+      ),
+      z.null(),
+    ])
+    .optional(),
   tags: z.array(z.string()).optional(),
   targetDate: z.string(),
 });
@@ -232,9 +253,35 @@ export const CheckinResponse = z.object({
   createdAt: z.string().datetime({ offset: true }),
   energy: z.union([z.number(), z.null()]).optional(),
   filledAt: z.union([z.string(), z.null()]),
+  forecastSnapshotId: z.union([z.string(), z.null()]).optional(),
   id: z.number().int(),
   mood: z.number().int().gte(1).lte(5),
   note: z.union([z.string(), z.null()]),
+  observedSpheres: z
+    .union([
+      z.array(
+        z.enum([
+          "work",
+          "money",
+          "documents",
+          "relationships",
+          "sport",
+          "communication",
+          "health",
+          "decisions",
+          "travel",
+          "creativity",
+          "study",
+          "shopping",
+        ])
+      ),
+      z.null(),
+    ])
+    .optional(),
+  predictionSeenAt: z.union([z.string(), z.null()]).optional(),
+  predictionSeenSurface: z
+    .union([z.enum(["day", "lookahead"]), z.null()])
+    .optional(),
   streak: z.number().int().gte(1),
   tags: z.array(z.string()),
   targetDate: z.string(),

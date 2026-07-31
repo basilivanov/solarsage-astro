@@ -69,6 +69,10 @@ async def test_post_checkin_accepts_numeric_payload_and_returns_real_contract(
         "streak": 1,
         "filledAt": data["filledAt"],
         "createdAt": data["createdAt"],
+        "observedSpheres": None,
+        "forecastSnapshotId": None,
+        "predictionSeenAt": None,
+        "predictionSeenSurface": None,
     }
     filled_at = datetime.fromisoformat(data["filledAt"].replace("Z", "+00:00"))
     assert filled_at.utcoffset() == timezone.utc.utcoffset(filled_at)

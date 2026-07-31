@@ -39,6 +39,7 @@
 # owned_tests:
 #   - apps/api/tests/test_checkin_endpoints.py
 #   - apps/api/tests/test_checkin.py
+#   - apps/api/tests/test_checkin_snapshot_lineage.py
 # END_MODULE_MAP: M-API-CHECKIN
 
 from __future__ import annotations
@@ -74,7 +75,7 @@ async def create_checkin(
     # purpose: Submit or update evening checkin for target_date.
     # inputs: checkin (CheckinCreate), db (AsyncSession), user (User)
     # returns: CheckinResponse
-    # side_effects: inserts/updates EveningCheckin, emits checkin.submitted
+    # side_effects: inserts/updates EveningCheckin through CheckinService; emits checkin.submitted
     # emitted_logs: checkin.submitted
     # error_behavior: 400/401 standard FastAPI error
     # END_FUNCTION_CONTRACT: F-M-API-CHECKIN.create_checkin
@@ -87,6 +88,7 @@ async def create_checkin(
         energy=checkin.energy,
         tags=checkin.tags,
         note=checkin.note,
+        observed_spheres=checkin.observed_spheres,
     )
     log_event("checkin.submitted", payload={
         "has_accuracy": checkin.accuracy is not None,

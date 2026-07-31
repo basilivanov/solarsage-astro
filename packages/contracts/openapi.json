@@ -914,6 +914,35 @@
             ],
             "title": "Note"
           },
+          "observedSpheres": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "work",
+                    "money",
+                    "documents",
+                    "relationships",
+                    "sport",
+                    "communication",
+                    "health",
+                    "decisions",
+                    "travel",
+                    "creativity",
+                    "study",
+                    "shopping"
+                  ],
+                  "type": "string"
+                },
+                "maxItems": 12,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observedspheres"
+          },
           "tags": {
             "items": {
               "type": "string"
@@ -1060,6 +1089,18 @@
             ],
             "title": "Filledat"
           },
+          "forecastSnapshotId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecastsnapshotid"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -1080,6 +1121,61 @@
               }
             ],
             "title": "Note"
+          },
+          "observedSpheres": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "work",
+                    "money",
+                    "documents",
+                    "relationships",
+                    "sport",
+                    "communication",
+                    "health",
+                    "decisions",
+                    "travel",
+                    "creativity",
+                    "study",
+                    "shopping"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observedspheres"
+          },
+          "predictionSeenAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predictionseenat"
+          },
+          "predictionSeenSurface": {
+            "anyOf": [
+              {
+                "enum": [
+                  "day",
+                  "lookahead"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predictionseensurface"
           },
           "streak": {
             "minimum": 1.0,

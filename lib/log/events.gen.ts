@@ -44,6 +44,9 @@ export type LogEventName =
   // day / calendar
   | "day.viewed"
   | "checkin.submitted"
+  | "checkin.lineage_bound"
+  | "checkin.lineage_absent"
+  | "checkin.lineage_preserved"
   | "feedback.reminder_sent"
   | "feedback.broadcast_skipped"
   | "feedback.received"

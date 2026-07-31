@@ -1104,6 +1104,8 @@ export interface components {
             mood: 1 | 2 | 3 | 4 | 5;
             /** Note */
             note?: string | null;
+            /** Observedspheres */
+            observedSpheres?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[] | null;
             /** Tags */
             tags?: string[];
             /**
@@ -1152,12 +1154,20 @@ export interface components {
             energy?: number | null;
             /** Filledat */
             filledAt: string | null;
+            /** Forecastsnapshotid */
+            forecastSnapshotId?: string | null;
             /** Id */
             id: number;
             /** Mood */
             mood: number;
             /** Note */
             note: string | null;
+            /** Observedspheres */
+            observedSpheres?: ("work" | "money" | "documents" | "relationships" | "sport" | "communication" | "health" | "decisions" | "travel" | "creativity" | "study" | "shopping")[] | null;
+            /** Predictionseenat */
+            predictionSeenAt?: string | null;
+            /** Predictionseensurface */
+            predictionSeenSurface?: ("day" | "lookahead") | null;
             /** Streak */
             streak: number;
             /** Tags */

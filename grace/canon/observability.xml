@@ -254,6 +254,15 @@
       <payload-field name="cached"       type="boolean" required="true" />
     </event>
     <event name="checkin.submitted"      owner="W-FEEDBACK" desc="Evening checkin submitted." />
+    <event name="checkin.lineage_bound" owner="W-TODAY-CONVERGENCE-W3" desc="First check-in submit bound to a server-recorded published snapshot.">
+      <payload-field name="surface" type="string" enum="day,lookahead" required="true" />
+    </event>
+    <event name="checkin.lineage_absent" owner="W-TODAY-CONVERGENCE-W3" desc="First check-in submit had no server-recorded published snapshot impression.">
+      <payload-field name="reason" type="string" enum="no_impression" required="true" />
+    </event>
+    <event name="checkin.lineage_preserved" owner="W-TODAY-CONVERGENCE-W3" desc="Check-in edit preserved its original prediction lineage.">
+      <payload-field name="has_lineage" type="boolean" required="true" />
+    </event>
     <event name="feedback.reminder_sent"  owner="W-FEEDBACK" desc="Feedback broadcast reminder sent.">
       <payload-field name="count"        type="number" required="true" />
     </event>

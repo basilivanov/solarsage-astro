@@ -55,6 +55,10 @@ async def test_create_checkin(async_client: AsyncClient, make_initdata):
     assert data["energy"] == 4
     assert data["tags"] == ["calm"]
     assert data["note"] == "Отличный день!"
+    assert data["observedSpheres"] is None
+    assert data["forecastSnapshotId"] is None
+    assert data["predictionSeenAt"] is None
+    assert data["predictionSeenSurface"] is None
 
 
 @pytest.mark.asyncio

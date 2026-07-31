@@ -16,11 +16,11 @@
 #   - EveningCheckin, CheckinMetrics, CheckinResponse
 # dependencies:
 #   - M-DB-SESSION (AsyncSession)
-#   - M-DB-MODELS (EveningCheckin, User, UserProfile)
+#   - M-DB-MODELS (EveningCheckin, TodaySnapshot, User, UserProfile)
 #   - M-SCHEMAS-CHECKIN (CheckinMetrics, CheckinResponse)
 # side_effects:
 #   - inserts/updates EveningCheckin rows
-# emitted_logs: none
+# emitted_logs: checkin.lineage_bound, checkin.lineage_absent, checkin.lineage_preserved
 # failure_policy: propagates DB errors
 # END_MODULE_CONTRACT: M-CHECKIN-SERVICE
 
@@ -37,8 +37,11 @@
 # semantic_blocks:
 #   - CHECKIN_HELPERS: pure conversion and date utility functions
 #   - CHECKIN_SERVICE_CLASS: CheckinService business logic class
+#   - CHECKIN_LINEAGE: server-owned snapshot impression selection and telemetry
 # owned_tests:
 #   - apps/api/tests/test_checkin.py
+#   - apps/api/tests/test_checkin_endpoints.py
+#   - apps/api/tests/test_checkin_snapshot_lineage.py
 # END_MODULE_MAP: M-CHECKIN-SERVICE
 
 from __future__ import annotations
@@ -47,12 +50,14 @@ import json
 import uuid
 from collections import Counter
 from datetime import UTC, date, datetime, timedelta
+from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import EveningCheckin, User, UserProfile
+from app.core.logging import log_block, log_event
+from app.db.models import EveningCheckin, TodaySnapshot, User, UserProfile
 from app.schemas.checkin import CheckinMetrics, CheckinResponse
 
 
@@ -112,6 +117,85 @@ def _as_utc(value: datetime | None) -> datetime | None:
 # END_BLOCK: CHECKIN_HELPERS
 
 
+# START_BLOCK: CHECKIN_LINEAGE
+async def _load_snapshot_lineage(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    target_date: date,
+) -> tuple[uuid.UUID, datetime, Literal["day", "lookahead"]] | None:
+    # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._load_snapshot_lineage
+    # purpose: Select the first server-recorded impression for owner/date.
+    # inputs: db, authenticated user_id, check-in target_date.
+    # returns: snapshot UUID, first-seen timestamp, and day/lookahead surface; or None.
+    # side_effects: two read-only snapshot queries at most.
+    # emitted_logs: none.
+    # error_behavior: propagates database errors.
+    # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._load_snapshot_lineage
+    base = (
+        TodaySnapshot.user_id == user_id,
+        TodaySnapshot.target_date == target_date,
+        TodaySnapshot.published_at.is_not(None),
+    )
+    day = (
+        await db.execute(
+            select(TodaySnapshot)
+            .where(*base, TodaySnapshot.first_day_seen_at.is_not(None))
+            .order_by(
+                TodaySnapshot.first_day_seen_at.desc(),
+                TodaySnapshot.published_at.desc(),
+                TodaySnapshot.id.desc(),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if day is not None:
+        return day.id, day.first_day_seen_at, "day"
+
+    lookahead = (
+        await db.execute(
+            select(TodaySnapshot)
+            .where(*base, TodaySnapshot.first_lookahead_seen_at.is_not(None))
+            .order_by(
+                TodaySnapshot.first_lookahead_seen_at.desc(),
+                TodaySnapshot.published_at.desc(),
+                TodaySnapshot.id.desc(),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if lookahead is None:
+        return None
+    return lookahead.id, lookahead.first_lookahead_seen_at, "lookahead"
+
+
+def _log_lineage_event(
+    event: Literal[
+        "checkin.lineage_bound",
+        "checkin.lineage_absent",
+        "checkin.lineage_preserved",
+    ],
+    payload: dict[str, object],
+) -> None:
+    # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._log_lineage_event
+    # purpose: Emit sanitized check-in lineage telemetry without affecting submit.
+    # inputs: event name and packet-approved payload.
+    # returns: None.
+    # side_effects: writes one structured log event when logging is available.
+    # emitted_logs: checkin.lineage_bound, checkin.lineage_absent, checkin.lineage_preserved.
+    # error_behavior: swallows logging failures after the business mutation.
+    # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE._log_lineage_event
+    try:
+        with log_block(
+            slice="W-TODAY-CONVERGENCE-W3",
+            module="M-CHECKIN-SERVICE",
+            block="CHECKIN_LINEAGE",
+        ):
+            log_event(event, msg="checkin snapshot lineage", payload=payload)
+    except Exception:
+        return
+# END_BLOCK: CHECKIN_LINEAGE
+
+
 # START_BLOCK: CHECKIN_SERVICE_CLASS
 class CheckinService:
     """Evening check-in service."""
@@ -128,13 +212,14 @@ class CheckinService:
         energy: int | None,
         tags: list[str] | None,
         note: str | None,
+        observed_spheres: list[str] | None,
     ) -> EveningCheckin:
         # START_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.create_checkin
         # purpose: Create or update evening checkin for target date.
-        # inputs: user_id, target_date, mood, accuracy, energy, tags, note
+        # inputs: user_id, target_date, mood, accuracy, energy, tags, note, observed_spheres
         # returns: EveningCheckin
-        # side_effects: inserts/updates EveningCheckin row
-        # emitted_logs: none
+        # side_effects: inserts/updates EveningCheckin row and reads snapshot lineage
+        # emitted_logs: checkin.lineage_bound, checkin.lineage_absent, checkin.lineage_preserved
         # error_behavior: propagates DB exceptions
         # END_FUNCTION_CONTRACT: F-M-CHECKIN-SERVICE.create_checkin
         result = await self.db.execute(
@@ -148,14 +233,18 @@ class CheckinService:
         filled_at = utc_now()
         streak = await self.calculate_streak(user_id, target_date)
         tags_list = tags or []
+        is_new = checkin is None
+        lineage = await _load_snapshot_lineage(self.db, user_id, target_date) if is_new else None
 
-        if checkin is None:
+        if is_new:
             checkin = EveningCheckin(
                 user_id=user_id,
                 target_date=target_date,
                 mood=SCORE_TO_LEGACY_MOOD[mood],
                 notes=note,
             )
+            if lineage is not None:
+                checkin.forecast_snapshot_id, checkin.prediction_seen_at, checkin.prediction_seen_surface = lineage
             self.db.add(checkin)
         else:
             checkin.mood = SCORE_TO_LEGACY_MOOD[mood]
@@ -166,11 +255,22 @@ class CheckinService:
         checkin.energy = energy
         checkin.tags_json = json.dumps(tags_list, ensure_ascii=False)
         checkin.note = note
+        checkin.observed_spheres = list(observed_spheres) if observed_spheres is not None else None
         checkin.streak = streak
         checkin.filled_at = filled_at
 
         await self.db.commit()
         await self.db.refresh(checkin)
+        if is_new:
+            if lineage is None:
+                _log_lineage_event("checkin.lineage_absent", {"reason": "no_impression"})
+            else:
+                _log_lineage_event("checkin.lineage_bound", {"surface": lineage[2]})
+        else:
+            _log_lineage_event(
+                "checkin.lineage_preserved",
+                {"has_lineage": checkin.forecast_snapshot_id is not None},
+            )
         return checkin
 
     async def get_checkin(
@@ -308,6 +408,10 @@ class CheckinService:
             streak=row.streak or 1,
             filled_at=_as_utc(row.filled_at or row.created_at),
             created_at=_as_utc(row.created_at) or utc_now(),
+            observed_spheres=row.observed_spheres,
+            forecast_snapshot_id=row.forecast_snapshot_id,
+            prediction_seen_at=_as_utc(row.prediction_seen_at),
+            prediction_seen_surface=row.prediction_seen_surface,
         )
 
     async def _checkin_dates_through(
