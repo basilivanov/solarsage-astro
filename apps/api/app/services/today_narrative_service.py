@@ -594,10 +594,16 @@ def _build_prompt(context: _SnapshotContext, prompt_version: str) -> str:
   предсказаний. Если для блока нечего добавить, верни null.
 - Учитывай mode и capabilities: не упоминай недоступные детали расчёта.
 
-Верни строго один JSON-объект без markdown и без дополнительных ключей. Для пустых
-полей используй null:
-{{"convergences":{{"<group_id>":{{"summary":null,"meaning":null,"action":null}}}},"main_event":null,"impulses":{{"<event_id>":{{"summary":null,"meaning":null,"action":null}}}}}}
-Каждый claim имеет строго вид {{"text":"...","sourceEventIds":["..."]}}.
+Верни строго один JSON-объект без markdown и без дополнительных ключей.
+КАЖДЫЙ ненулевой claim — это ОБЪЕКТ вида {{"text":"...","sourceEventIds":["..."]}},
+а НЕ строка. Каждый блок — это объект с ключами summary/meaning/action, а НЕ
+сам claim. Пример заполненного ответа:
+{{"main_event":{{"summary":{{"text":"Спокойный день для текущих дел.","sourceEventIds":["evt_v1_abc123"]}},"meaning":null,"action":null}},"convergences":{{}},"impulses":{{"evt_v1_def456":{{"summary":{{"text":"Короткая поддержка в делах.","sourceEventIds":["evt_v1_def456"]}},"meaning":null,"action":null}}}}}}
+Ключи карт "convergences" и "impulses" — это ТОЧНЫЕ идентификаторы из входа
+(groupId вида cvg_v1_... и eventId вида evt_v1_...). Запрещено заменять их
+названиями сфер или произвольными словами: если ключ не evt_v1_/cvg_v1_ из
+входа, весь ответ отклоняется.
+Для пустых полей используй null. Текст summary — не длиннее 220 символов.
 Верхнеуровневые ключи блоков и ключи карт должны в точности соответствовать входу.
 
 Вход:
