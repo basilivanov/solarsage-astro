@@ -554,8 +554,9 @@ async def test_two_parallel_retries_have_one_claim_and_one_provider_call(
     async def acquire(*args, **kwargs):
         nonlocal acquire_calls
         acquire_calls += 1
+        call_number = acquire_calls
         await asyncio.sleep(0)
-        return claim if acquire_calls == 1 else pending
+        return claim if call_number == 1 else pending
 
     monkeypatch.setattr("app.api.day.TodayNarrativeLeaseService.acquire", AsyncMock(side_effect=acquire))
     monkeypatch.setattr(
