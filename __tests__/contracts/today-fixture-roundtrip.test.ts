@@ -80,7 +80,7 @@ describe("today v2 fixture roundtrip and single source", () => {
   })
 
   it("verifies current V2 version and audit/canon family", () => {
-    expect(dayPayloadV2.meta.calculationVersion).toBe("ss-calc-1.2.0")
+    expect(dayPayloadV2.meta.calculationVersion).toBe("ss-calc-1.3.0")
     expect(dayPayloadV2.meta.activationLayerVersion).toBe("al-1.1")
     expect(dayPayloadV2.meta.scoringVersion).toBe("ss-scoring-2.0")
     expect(dayPayloadV2.meta.payloadVersion).toBe("today.v2.1")

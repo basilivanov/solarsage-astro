@@ -223,6 +223,7 @@ def _validate_profile(
     target_timezone = _valid_timezone(selected_timezone)
 
     current_values = (values["current_lat"], values["current_lon"], values["current_tz"])
+    current_location: dict[str, float | str] | None
     if all(value is None for value in current_values):
         current_location = None
     elif all(value is not None for value in current_values):

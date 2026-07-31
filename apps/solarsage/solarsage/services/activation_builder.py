@@ -749,9 +749,7 @@ def build_activation_layer(
     ):
         raise ValueError("target_context does not match activation target context")
 
-    natal_jd = natal_context.natal_jd
     natal_houses_raw = list(natal_context.natal_houses_raw)
-    natal_special_points = list(natal_context.natal_special_points)
     resolved_house_system = natal_context.resolved_house_system
     natal_by_name = natal_context.natal_by_name
     natal_sun = natal_by_name.get("Sun", {})

@@ -40,7 +40,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime
 from math import isfinite
-from typing import Literal, Sequence
+from typing import Literal, NoReturn, Sequence, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.services.today_convergence_canon import TodayConvergenceCanon, load_today_convergence_canon
@@ -115,14 +115,14 @@ class _ToneUnit:
 
 
 # START_BLOCK: INPUT_VALIDATION
-def _fail(reason: str) -> None:
+def _fail(reason: str) -> NoReturn:
     raise TodayConvergenceToneError(f"today_convergence_tone:{reason}")
 
 
 def _require_sequence(value: object, reason: str) -> Sequence[object]:
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
         _fail(reason)
-    return value
+    return cast(Sequence[object], value)
 
 
 def _validate_inputs(
@@ -211,7 +211,7 @@ def _unit_polarity(unit: CanonicalUnit, canon: TodayConvergenceCanon) -> UnitPol
         polarity = policy.neutral_maps_to
     if polarity not in policy.unit_polarities:
         _fail("invalid_polarity")
-    return polarity  # type: ignore[return-value]
+    return cast(UnitPolarity, polarity)
 
 
 def _tone_weight(unit: CanonicalUnit, canon: TodayConvergenceCanon) -> float:

@@ -154,9 +154,10 @@ def _window_tuple(
     target_tz: ZoneInfo,
     exact: bool,
 ) -> tuple[date | datetime | None, date | datetime | None, date | datetime | None]:
-    windows = tuple(
-        _parse_window(value)
-        for value in (activation.active_from, activation.exact_at, activation.active_until)
+    windows = (
+        _parse_window(activation.active_from),
+        _parse_window(activation.exact_at),
+        _parse_window(activation.active_until),
     )
     typed_values = tuple(value for value in windows if value is not None)
     if not typed_values:
@@ -175,10 +176,11 @@ def _window_tuple(
         raise ValueError("window order") from exc
     if exact:
         return windows
-    return tuple(
-        value.astimezone(target_tz).date() if isinstance(value, datetime) else value
-        for value in windows
-    )  # type: ignore[return-value]
+    return (
+        windows[0].astimezone(target_tz).date() if isinstance(windows[0], datetime) else windows[0],
+        windows[1].astimezone(target_tz).date() if isinstance(windows[1], datetime) else windows[1],
+        windows[2].astimezone(target_tz).date() if isinstance(windows[2], datetime) else windows[2],
+    )
 
 
 def _identity(activation: ActivationEvidence) -> tuple[str, ...]:

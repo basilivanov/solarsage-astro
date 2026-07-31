@@ -39,7 +39,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from math import isfinite
-from typing import Literal, Sequence
+from typing import Literal, NoReturn, Sequence, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.services.today_convergence_canon import TodayConvergenceCanon, load_today_convergence_canon
@@ -110,14 +110,14 @@ class _ValidatedInputs:
     tone_by_group_id: dict[str, str]
 
 
-def _fail(reason: str) -> None:
+def _fail(reason: str) -> NoReturn:
     raise TodayConvergenceSelectionError(f"today_convergence_selection:{reason}")
 
 
 def _require_sequence(value: object, reason: str) -> Sequence[object]:
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
         _fail(reason)
-    return value
+    return cast(Sequence[object], value)
 
 
 def _finite_unit_strength(unit: CanonicalUnit) -> float:
@@ -285,7 +285,7 @@ def _public_polarity(unit: CanonicalUnit, canon: TodayConvergenceCanon) -> Publi
         _fail("invalid_polarity")
     if polarity not in _PUBLIC_POLARITIES:
         return None
-    return polarity  # type: ignore[return-value]
+    return cast(PublicPolarity, polarity)
 
 
 def _presentation_sphere(unit: CanonicalUnit, canon: TodayConvergenceCanon) -> str:
@@ -364,7 +364,7 @@ def _selected_convergences(
         if group_polarity not in _PUBLIC_POLARITIES:
             steady_exclusions += 1
             continue
-        polarity = group_polarity  # type: ignore[assignment]
+        polarity = cast(PublicPolarity, group_polarity)
         pair = _evidence_pair(group, inputs.unit_by_id, canon, inputs.local_zone)
         if pair is not None:
             public_groups.append((group, polarity, pair))

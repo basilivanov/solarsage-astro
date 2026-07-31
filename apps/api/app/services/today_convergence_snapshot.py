@@ -46,6 +46,7 @@ from hashlib import sha256
 from math import isfinite
 from numbers import Real
 from pathlib import Path
+from typing import NoReturn, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.services.today_birth_time import BirthTimeResolution, TodayBirthTimeError, resolve_profile_birth_time
@@ -92,7 +93,7 @@ class TodayConvergenceSnapshotDocument:
     deterministic_result_json: dict[str, object]
 
 
-def _fail(reason: str) -> None:
+def _fail(reason: str) -> NoReturn:
     raise TodayConvergenceSnapshotError(f"today_convergence_snapshot:{reason}")
 
 
@@ -198,7 +199,7 @@ def _resolution_for_profile(profile: object, canon: TodayConvergenceCanon) -> Bi
 def _unit_payload(unit: CanonicalUnit) -> dict[str, object]:
     if not isinstance(unit, CanonicalUnit):
         _fail("factor_unit_type")
-    return _safe_json_value(unit)  # type: ignore[return-value]
+    return cast(dict[str, object], _safe_json_value(unit))
 
 
 def _validated_units(pipeline: CanonicalPipelineBuilt) -> tuple[CanonicalUnit, ...]:

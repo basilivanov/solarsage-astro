@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import time
-from typing import Literal, Protocol
+from typing import Literal, NoReturn, Protocol, cast
 
 from app.services.today_convergence_canon import (
     BirthTimeCapabilities,
@@ -75,7 +75,7 @@ class BirthTimeProfileLike(Protocol):
 
 
 # START_BLOCK: INPUT_VALIDATION
-def _fail(reason: str) -> None:
+def _fail(reason: str) -> NoReturn:
     raise TodayBirthTimeError(f"today_birth_time:{reason}")
 
 
@@ -95,13 +95,13 @@ def _format_minutes(total_minutes: int) -> str:
 def _validate_mode(mode: object, canon: TodayConvergenceCanon) -> BirthTimeMode:
     if not isinstance(mode, str) or mode not in canon.birth_time.modes:
         _fail("invalid_mode")
-    return mode  # type: ignore[return-value]
+    return cast(BirthTimeMode, mode)
 
 
 def _validate_bucket(bucket: object, canon: TodayConvergenceCanon) -> BirthTimeBucket:
     if not isinstance(bucket, str) or bucket not in canon.birth_time.buckets_local:
         _fail("invalid_bucket")
-    return bucket  # type: ignore[return-value]
+    return cast(BirthTimeBucket, bucket)
 
 
 def _validate_exact_time(birth_time: object) -> time:
@@ -217,7 +217,10 @@ def resolve_profile_birth_time(
     bucket = getattr(profile, "birth_time_bucket", sentinel)
     if any(value is sentinel for value in (mode, birth_time, bucket)):
         _fail("profile_attribute")
-    return resolve_birth_time(mode=mode, birth_time=birth_time, bucket=bucket, canon=canon)  # type: ignore[arg-type]
+    if birth_time is sentinel:
+        _fail("profile_attribute")
+    resolved_birth_time = cast(time | None, birth_time)
+    return resolve_birth_time(mode=mode, birth_time=resolved_birth_time, bucket=bucket, canon=canon)
 
 
 # END_BLOCK: PROFILE

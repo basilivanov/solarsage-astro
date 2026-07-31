@@ -148,7 +148,9 @@ def _public_pool(units: Sequence[CanonicalUnit]) -> tuple[tuple[CanonicalUnit, .
     return tuple(sorted(pool, key=lambda unit: unit.canonical_event_id)), background_exclusions, ineligible_exclusions
 
 
-def _star_candidates(pool: Sequence[CanonicalUnit]) -> tuple[tuple[tuple[str, ...], tuple[CanonicalUnit, ...]], int, int]:
+def _star_candidates(
+    pool: Sequence[CanonicalUnit],
+) -> tuple[tuple[tuple[tuple[str, ...], tuple[CanonicalUnit, ...]], ...], int, int]:
     anchors = [unit for unit in pool if unit.temporal_role == "anchor_today"]
     stars: dict[tuple[str, ...], tuple[CanonicalUnit, ...]] = {}
     for anchor in sorted(anchors, key=lambda unit: unit.canonical_event_id):

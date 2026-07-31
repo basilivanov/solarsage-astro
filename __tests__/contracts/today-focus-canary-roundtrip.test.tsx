@@ -19,7 +19,7 @@
 // failure_policy: fail test
 // END_MODULE_CONTRACT: M-TEST-FOCUS-CANARY-ROUNDTRIP
 
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import { render, screen } from "@testing-library/react"
 import React from "react"
 import fs from "node:fs"

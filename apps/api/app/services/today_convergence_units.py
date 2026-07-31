@@ -457,12 +457,13 @@ def _accepted_result(
     hero = hero_confirmation_policy(canon, source, technique_family=family, event_class=event_class)
     time_sensitive = birth_time_robustness == "time_sensitive" and birth_time_mode in {"bucket", "unknown"}
     background = temporal_role == "background"
+    exclusion_reason: ExclusionReason | None
     if time_sensitive:
         impulse = evidence = rare = hero = False
         exclusion_reason = ExclusionReason.TIME_SENSITIVE_BIRTH_TIME
     elif background:
         impulse = evidence = rare = hero = False
-        exclusion_reason: ExclusionReason | None = ExclusionReason.BACKGROUND
+        exclusion_reason = ExclusionReason.BACKGROUND
     else:
         impulse = True
         evidence = True

@@ -50,7 +50,7 @@ import json
 import uuid
 from collections import Counter
 from datetime import UTC, date, datetime, timedelta
-from typing import Literal
+from typing import Literal, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
@@ -149,7 +149,7 @@ async def _load_snapshot_lineage(
         )
     ).scalar_one_or_none()
     if day is not None:
-        return day.id, day.first_day_seen_at, "day"
+        return day.id, cast(datetime, day.first_day_seen_at), "day"
 
     lookahead = (
         await db.execute(
@@ -165,7 +165,7 @@ async def _load_snapshot_lineage(
     ).scalar_one_or_none()
     if lookahead is None:
         return None
-    return lookahead.id, lookahead.first_lookahead_seen_at, "lookahead"
+    return lookahead.id, cast(datetime, lookahead.first_lookahead_seen_at), "lookahead"
 
 
 def _log_lineage_event(
@@ -247,9 +247,11 @@ class CheckinService:
                 checkin.forecast_snapshot_id, checkin.prediction_seen_at, checkin.prediction_seen_surface = lineage
             self.db.add(checkin)
         else:
+            checkin = cast(EveningCheckin, checkin)
             checkin.mood = SCORE_TO_LEGACY_MOOD[mood]
             checkin.notes = note
 
+        checkin = cast(EveningCheckin, checkin)
         checkin.mood_score = mood
         checkin.accuracy = accuracy
         checkin.energy = energy

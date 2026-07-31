@@ -365,7 +365,7 @@ describe("TodayScreen V2 downstream fixture", () => {
        
       />
     )
-    const { rerender } = render(renderNavigator(null))
+    render(renderNavigator(null))
 
     // All rows are visible in canonical order, no show-all expander
     expect(screen.getAllByTestId("concrete-day-advice-row")).toHaveLength(payload.concreteAdvice.rows.length)

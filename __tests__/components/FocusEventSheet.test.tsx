@@ -4,7 +4,7 @@
 // DEPENDENCIES: vitest, @testing-library/react, components/today/focus-event-sheet
 // ############################################################################
 
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
+import { describe, expect, it, vi, beforeEach } from "vitest"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import React from "react"
 import { FocusEventSheet } from "@/components/today/focus-event-sheet"
@@ -66,7 +66,7 @@ describe("FocusEventSheet", () => {
   })
 
   it("fetches and renders ready state with all required sections and camelCase fields", async () => {
-    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+    vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => drilldownFixture,
