@@ -156,8 +156,22 @@ async def test_sphere_page_returns_natal_and_period_layers(
     await _login(async_client, make_initdata, 247002)
     user = await _complete_profile(db_session, 247002)
     client = _PeriodClient()
+    from app.schemas.access import ContentAccessState
+
     with (
         patch("app.services.today_sphere_page_service.get_solarsage_client", return_value=client),
+        patch(
+            "app.services.today_sphere_page_service.AccessService.can_access_day",
+            new=AsyncMock(
+                return_value=ContentAccessState(
+                    state="full",
+                    reason="active_subscription",
+                    referral_days_left=None,
+                    subscription_active=True,
+                    access_until="2027-01-01",
+                )
+            ),
+        ),
         patch(
             "app.services.today_sphere_page_service.NatalContextService.get_or_build_natal_context",
             new=AsyncMock(return_value=_context()),
@@ -189,8 +203,22 @@ async def test_sphere_page_keeps_natal_when_period_sidecar_is_unavailable(
     await _login(async_client, make_initdata, 247003)
     await _complete_profile(db_session, 247003, mode="bucket")
     client = _PeriodClient(fail=True)
+    from app.schemas.access import ContentAccessState
+
     with (
         patch("app.services.today_sphere_page_service.get_solarsage_client", return_value=client),
+        patch(
+            "app.services.today_sphere_page_service.AccessService.can_access_day",
+            new=AsyncMock(
+                return_value=ContentAccessState(
+                    state="full",
+                    reason="active_subscription",
+                    referral_days_left=None,
+                    subscription_active=True,
+                    access_until="2027-01-01",
+                )
+            ),
+        ),
         patch(
             "app.services.today_sphere_page_service.NatalContextService.get_or_build_natal_context",
             new=AsyncMock(return_value=_context()),

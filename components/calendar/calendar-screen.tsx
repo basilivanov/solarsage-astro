@@ -37,10 +37,10 @@ import { useEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 import { CalendarGrid } from "@/components/grace/CalendarGrid"
-import type { AccessInfo } from "@/lib/access"
 import { getMonthCalendar, type CalendarPayloadReadModel } from "@/lib/api/calendar"
 import { MONTHS_RU_NOM } from "@/lib/date"
 import { TODAY } from "@/lib/today"
+import type { AccessInfo } from "@/lib/access"
 
 type Props = {
   access?: AccessInfo
@@ -70,7 +70,7 @@ function sameMonth(left: Date, right: Date): boolean {
 }
 
 // START_BLOCK: CALENDAR_FETCH
-export function CalendarScreen({}: Props) {
+export function CalendarScreen(_props: Props = {}) {
   // START_FUNCTION_CONTRACT: F-M-CALENDAR-CALENDAR-SCREEN.CalendarScreen
   // purpose: Load the selected month and render the active calendar/v2 grid lifecycle.
   // inputs: compatibility props are accepted by the route but navigation is owned by CalendarMonth links.
