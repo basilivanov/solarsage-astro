@@ -127,6 +127,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-PIPELINE → M-TODAY-CONVERGENCE-CANON → M-TODAY-CONVERGENCE-LEDGER → M-TODAY-CONVERGENCE-GROUPS → M-TODAY-CONVERGENCE-TONE → M-TODAY-CONVERGENCE-SELECTION | One pure entrypoint composes the accepted W2 stages in canon → ledger → direct groups → provisional tone → selection → tone rebind order; typed failures are unavailable at their exact stage; selection is audit-only for tone; immutable records expose no legacy aliases. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py tests/test_today_convergence_ledger.py tests/test_today_convergence_groups.py tests/test_today_convergence_tone.py tests/test_today_convergence_selection.py tests/test_today_convergence_pipeline.py -q`. S2: literal fixed probe `apps/api/tests/fixtures/today_convergence_pipeline_probe.v1.json` and mutation fixtures 1–6 prove hero/quiet, duplicate, edge-orb, direct-star, rare-main, background, birth-time, DayDelta, permutation, and stage-reason parity. S3: packet Ruff, `python3 scripts/grace_lint.py apps/api/app --quiet`, marker parity, and `git diff --check` pass. |
 
+## UC-TODAY-CONVERGENCE-W2-RUNTIME · P2-F runtime calculation boundary
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-TODAY-CONVERGENCE-RUNTIME → M-TODAY-BIRTH-TIME → M-SIDECAR-ACTIVATION-GRID → M-TODAY-BIRTH-TIME-FACTS → M-TODAY-CONVERGENCE-PIPELINE | Direct profile and target validation fail closed; one canonical 12:00 activation-grid request is composed with the resolver controls and optional complete current location; no retry/fallback/cache/logging/legacy path; typed unavailable results preserve only completed stages and never expose raw transport/profile data. | S1: `tests/test_today_convergence_runtime.py` proves exact/bucket/unknown controls, timezone priority, location matrix, one-call forwarding, stage composition, and immutable records. S2: transport/facts/pipeline failures map to `profile|activation_grid|facts|pipeline`; unexpected programming errors propagate; semantic keys are passed unchanged. S3: packet API focused suite, Ruff, runtime GRACE lint, marker parity, and `git diff --check` pass. |
+
 ---
 
 ## UC-DAY-NAV · Navigate days
