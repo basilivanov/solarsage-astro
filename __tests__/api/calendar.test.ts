@@ -137,3 +137,70 @@ describe("fetchCalendar error boundary", () => {
   });
 });
 // END_BLOCK: ERROR_BOUNDARY
+
+// START_BLOCK: STATE_HELPERS
+describe("calendar day-state helpers", () => {
+  it("normalizeDayState accepts canonical states and rejects others", async () => {
+    const { normalizeDayState } = await import("@/lib/api/calendar")
+
+    expect(normalizeDayState("hero")).toBe("hero")
+    expect(normalizeDayState("ordinary")).toBe("ordinary")
+    expect(normalizeDayState("not-computed")).toBe("not-computed")
+    expect(normalizeDayState("tense")).toBeNull()
+    expect(normalizeDayState(null)).toBeNull()
+    expect(normalizeDayState(42)).toBeNull()
+  })
+
+  it("getDayStatus projects a convergence payload to hero", async () => {
+    const { getDayStatus } = await import("@/lib/api/calendar")
+    const { heroTense } = await import("../fixtures/today_convergence_v2")
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(200, heroTense))
+
+    const result = await getDayStatus(new Date("2026-08-01T10:00:00Z"))
+
+    expect(result).toBe("hero")
+    expect(mockInstrumentedFetch.mock.calls[0][0].url).toBe("/api/day/2026-08-01")
+  })
+
+  it("getDayStatus returns null for a payload without canonical state", async () => {
+    const { getDayStatus } = await import("@/lib/api/calendar")
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(200, { state: "unknown-value" }))
+
+    expect(await getDayStatus(new Date("2026-08-01T10:00:00Z"))).toBeNull()
+  })
+
+  it("getDayStatus throws on http failure", async () => {
+    const { getDayStatus } = await import("@/lib/api/calendar")
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(500, {}))
+
+    await expect(getDayStatus(new Date("2026-08-01T10:00:00Z"))).rejects.toThrow("API error 500")
+  })
+
+  it("getMonthStatuses derives a keyed map from the month payload", async () => {
+    const { getMonthStatuses } = await import("@/lib/api/calendar")
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(200, {
+      meta: { contractVersion: 2, generatedAt: "2026-07-31T00:00:00Z", schemaVersion: "calendar/v2" },
+      month: "2026-08",
+      title: "Август 2026",
+      allowedRange: { from: "2025-08-01", to: "2027-08-01" },
+      days: [
+        { access: { state: "full" }, date: "2026-08-01", dayNumber: 1, dayState: "hero", disabled: false, isCurrentMonth: true, isToday: false },
+        { access: { state: "full" }, date: "2026-08-02", dayNumber: 2, dayState: "ordinary", disabled: false, isCurrentMonth: true, isToday: false },
+      ],
+    }))
+
+    const map = await getMonthStatuses(2026, 7)
+
+    expect(map["2026-08-01"]).toBe("hero")
+    expect(map["2026-08-02"]).toBe("ordinary")
+  })
+
+  it("keeps Async aliases reference-equal", async () => {
+    const api = await import("@/lib/api/calendar")
+
+    expect(api.getDayStatusAsync).toBe(api.getDayStatus)
+    expect(api.getMonthStatusesAsync).toBe(api.getMonthStatuses)
+    expect(api.getMonthCalendarAsync).toBe(api.getMonthCalendar)
+  })
+})
+// END_BLOCK: STATE_HELPERS

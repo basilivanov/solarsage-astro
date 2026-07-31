@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { 
   getSphereLabel, 
+  getPlanetLabel,
   BACKEND_TO_PRODUCT_KEY_MAP, 
   PRODUCT_SPHERE_META,
   CANONICAL_PRODUCT_ORDER
@@ -66,5 +67,14 @@ describe("getSphereLabel", () => {
     expect(BACKEND_TO_PRODUCT_KEY_MAP["crisis_transformation_control"]).toBe("decisions");
     expect(BACKEND_TO_PRODUCT_KEY_MAP["inner_background_unconscious"]).toBe("health");
     expect(BACKEND_TO_PRODUCT_KEY_MAP["meaning_expansion_vector"]).toBe("travel");
+  });
+});
+
+describe("getPlanetLabel", () => {
+  it("returns RU labels for known planets and falls back to the raw name", () => {
+    expect(getPlanetLabel("Sun")).toBe("Солнце");
+    expect(getPlanetLabel("Moon")).toBe("Луна");
+    expect(getPlanetLabel("Pluto")).toBe("Плутон");
+    expect(getPlanetLabel("Chiron")).toBe("Chiron");
   });
 });

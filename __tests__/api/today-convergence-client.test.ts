@@ -40,7 +40,12 @@ vi.mock("@/lib/log", () => ({
   logEvent: vi.fn(),
 }))
 
-import { recordDayImpression, retryTodayConvergence } from "@/lib/api/today-convergence"
+import {
+  fetchSphereDrilldown,
+  fetchTodayConvergence,
+  recordDayImpression,
+  retryTodayConvergence,
+} from "@/lib/api/today-convergence"
 import heroTense from "../fixtures/today_convergence_v2/02_hero_tense.json"
 
 beforeEach(() => {
@@ -70,6 +75,26 @@ describe("retryTodayConvergence", () => {
 
     expect(result.payload).toBeUndefined()
     expect(result.retryAfterSeconds).toBe(17)
+  })
+
+  it("returns undefined retryAfterSeconds for a malformed header", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response("{}", { status: 202, headers: { "Retry-After": "abc" } }),
+    )
+
+    const result = await retryTodayConvergence("2026-08-01")
+
+    expect(result.retryAfterSeconds).toBeUndefined()
+  })
+
+  it("returns undefined retryAfterSeconds for a negative header", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response("{}", { status: 202, headers: { "Retry-After": "-5" } }),
+    )
+
+    const result = await retryTodayConvergence("2026-08-01")
+
+    expect(result.retryAfterSeconds).toBeUndefined()
   })
 
   it("returns undefined retryAfterSeconds when the header is absent", async () => {
@@ -109,3 +134,85 @@ describe("recordDayImpression", () => {
   })
 })
 // END_BLOCK: IMPRESSION
+
+// START_BLOCK: DRILLDOWN
+describe("fetchSphereDrilldown", () => {
+  it("returns the validated drilldown payload", async () => {
+    const payload = {
+      snapshotId: "snap-1",
+      sphere: "work",
+      state: "convergence_today",
+      dayTone: "tense",
+      birthTimeMode: "exact",
+      events: [],
+      convergence: null,
+    }
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify(payload), { status: 200 }),
+    )
+
+    const result = await fetchSphereDrilldown("snap-1", "work")
+
+    expect(result.sphere).toBe("work")
+    expect(mockInstrumentedFetch.mock.calls[0][0].url).toBe(
+      "/api/day/snapshots/snap-1/spheres/work",
+    )
+  })
+
+  it("throws a typed http error for 403", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: { code: "ACCESS_REQUIRED" } }), { status: 403 }),
+    )
+
+    const failure = await fetchSphereDrilldown("snap-1", "work").catch((error: unknown) => error)
+
+    expect((failure as { status: number }).status).toBe(403)
+  })
+})
+// END_BLOCK: DRILLDOWN
+
+// START_BLOCK: FETCH_DAY
+describe("fetchTodayConvergence", () => {
+  it("returns the validated day payload", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify(heroTense), { status: 200 }),
+    )
+
+    const payload = await fetchTodayConvergence("today")
+
+    expect(payload.state).toBe("convergence_today")
+    expect(mockInstrumentedFetch.mock.calls[0][0].url).toBe("/api/day/today")
+  })
+
+  it("throws a typed http error with backend code", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: { code: "NOT_ONBOARDED" } }), { status: 422 }),
+    )
+
+    const failure = await fetchTodayConvergence("today").catch((error: unknown) => error)
+
+    expect((failure as { status: number }).status).toBe(422)
+    expect((failure as { code?: string }).code).toBe("NOT_ONBOARDED")
+  })
+
+  it("throws a typed invalid error for a malformed payload", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ nope: 1 }), { status: 200 }),
+    )
+
+    const failure = await fetchTodayConvergence("today").catch((error: unknown) => error)
+
+    expect((failure as { kind: string }).kind).toBe("invalid")
+  })
+
+  it("throws a typed invalid error for a malformed drilldown payload", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ nope: 1 }), { status: 200 }),
+    )
+
+    const failure = await fetchSphereDrilldown("snap-1", "work").catch((error: unknown) => error)
+
+    expect((failure as { kind: string }).kind).toBe("invalid")
+  })
+})
+// END_BLOCK: FETCH_DAY
