@@ -1,0 +1,42 @@
+schema_version = 1
+id = "sidecar-planet-house-v1"
+title = "Planet house — sidecar emission + API backward-compatible consumer"
+base_sha = "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+base_tree = "598ee39b17f2f12cb0b7dda7a673cebded285cd9"
+prompt_file = "prompt.md"
+rubric_file = "rubric.md"
+timeout_seconds = 2700
+dependency_links = ["apps/api/.venv", "apps/solarsage/.venv"]
+
+allowed_paths = [
+  "apps/solarsage/solarsage/schemas/natal.py",
+  "apps/solarsage/solarsage/models/chart.py",
+  "apps/solarsage/solarsage/services/natal.py",
+  "apps/solarsage/solarsage/services/calculation_core.py",
+  "apps/solarsage/solarsage/api/natal.py",
+  "apps/solarsage/tests/**",
+  "apps/api/app/services/normalization_service.py",
+  "apps/api/app/services/natal_context_service.py",
+  "apps/api/tests/test_normalization_planet_house.py",
+  "grace/verification-matrix.md",
+]
+
+[[verification]]
+name = "sidecar-natal"
+command = "bash -c 'set -e; apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_natal.py -q; [ ! -f apps/solarsage/tests/test_planet_house.py ] || apps/solarsage/.venv/bin/python -m pytest apps/solarsage/tests/test_planet_house.py -q'"
+timeout_seconds = 600
+
+[[verification]]
+name = "api-normalization"
+command = "bash -c '[ ! -f apps/api/tests/test_normalization_planet_house.py ] || apps/api/.venv/bin/python -m pytest apps/api/tests/test_normalization_planet_house.py -q'"
+timeout_seconds = 600
+
+[[verification]]
+name = "grace-backend"
+command = "python3 scripts/grace_lint.py apps/api/app"
+timeout_seconds = 300
+
+[[verification]]
+name = "diff-check"
+command = "git diff --check"
+timeout_seconds = 60

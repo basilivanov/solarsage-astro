@@ -42,6 +42,39 @@ Codex usage is read from its JSONL `turn.completed` event. OpenCode usage is
 read from live `step_finish` JSON events; the local OpenCode 1.18.9 export
 command is not used as the accounting source.
 
+## Tasks
+
+- `checkin-mood-trend-v1` — full-stack slice (API + UI + contracts).
+- `day-momentum-v1` — pure deterministic backend algorithm
+  (`day_relative_status.py`); fast gates, no global TypeScript gate noise.
+- `grace-event-registry-v1` — canon-first observability event registration;
+  the trap is editing generated registries without the XML canon.
+- `ui-contract-disclosure-v1` — UI Semantic/Test Contract adherence on the
+  Profile check-in statistics section (data-state, aria disclosure).
+- `sidecar-planet-house-v1` — cross-codebase change (SolarSage sidecar + API)
+  with backward-compatible consumption of a new response field.
+
+## Report and publication
+
+After a run is scored, generate the HTML report (radar chart included) and
+publish it through an ephemeral Cloudflare quick tunnel:
+
+```bash
+python3 scripts/agent_eval_report.py \
+  --run evals/results/<run-id> \
+  --review evals/results/<run-id>/review.json \
+  --out evals/results/<run-id>/report.html
+scripts/agent_eval_publish.sh evals/results/<run-id>/report.html   # prints URL
+scripts/agent_eval_publish.sh --status                             # current URL
+scripts/agent_eval_publish.sh --stop                               # tear down
+```
+
+`review.json` carries the human blind-review scores and verdict; its schema is
+documented in the generator's docstring. The tunnel needs no Cloudflare
+account: the `cloudflared` binary lives in the gitignored `.eval-runs/bin/`
+and the URL is unguessable but public — publish only directories without
+secrets. HTTP is served on `127.0.0.1` only; exposure is tunnel-only.
+
 The controller creates a temporary `repo-eval` OpenCode agent inside each
 candidate worktree. It disables subagents, web tools, questions, access outside
 the worktree and Git history-changing commands, then removes that config before

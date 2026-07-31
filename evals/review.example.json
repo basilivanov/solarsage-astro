@@ -1,0 +1,73 @@
+{
+  "title": "Nova high vs Quinn vs Luna low",
+  "subtitle": "Пример review-файла для scripts/agent_eval_report.py: три кандидата на одном закреплённом snapshot, человеческие оценки дополняют metrics.json контроллера.",
+  "dateLabel": "1 августа 2026",
+  "taskId": "example-task-v1",
+  "baseSha": "0123456789abcdef0123456789abcdef01234567",
+  "verdict": {
+    "winnerModelKey": "nova-high",
+    "headline": "Nova — основной кодер для этого среза",
+    "text": "Nova единственная прошла все контроллерные гейты и сохранила scope. Quinn быстрее и дешевле, но сломала TypeScript; Luna low уступает обеим по выполнению.",
+    "scoreLabel": "Nova · final score",
+    "scoreCaption": "5/5 gates · ≈ $0.210 за запуск"
+  },
+  "candidates": [
+    {
+      "modelKey": "nova-high",
+      "label": "Nova high",
+      "runnerLabel": "Codex · high effort",
+      "completion": 92,
+      "accuracy": 100,
+      "accuracyDetail": "8/8",
+      "blind": 88,
+      "status": "Готово к поставке",
+      "statusOk": true,
+      "note": "Полный патч, все гейты зелёные."
+    },
+    {
+      "modelKey": "quinn-medium",
+      "label": "Quinn",
+      "runnerLabel": "OpenCode · medium",
+      "completion": 80,
+      "accuracy": 87.5,
+      "accuracyDetail": "7/8",
+      "blind": 91,
+      "status": "TypeScript fail",
+      "statusOk": false,
+      "note": "Слепое ревью оценило выше всех, но контроллерный tsc красный."
+    },
+    {
+      "modelKey": "luna-low",
+      "label": "Luna low",
+      "runnerLabel": "Codex · low effort",
+      "completion": 70,
+      "accuracy": 75,
+      "accuracyDetail": "6/8",
+      "blind": 72,
+      "status": "Неполный патч",
+      "statusOk": false,
+      "note": "Не реализована половина бизнес-кейсов."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Основной кодер — Nova",
+      "text": "Единственный поставляемый патч без ручных исправлений.",
+      "modelKey": "nova-high"
+    },
+    {
+      "title": "Quinn — дешёвый второй взгляд",
+      "text": "Полезна для прототипа и ревью, но не как финальный исполнитель.",
+      "modelKey": "quinn-medium"
+    },
+    {
+      "title": "Это пример, не рейтинг",
+      "text": "Файл демонстрирует схему review JSON для трёх кандидатов.",
+      "modelKey": null
+    }
+  ],
+  "footerNotes": [
+    "<strong>Метод:</strong> одинаковая задача и SHA, изолированные worktree, слепое ревью патчей, затем независимые проверки контроллера.",
+    "<strong>Стоимость:</strong> нормализована по официальным price snapshot'ам на дату прогона."
+  ]
+}

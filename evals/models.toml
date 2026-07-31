@@ -12,6 +12,14 @@ effort = "high"
 usage_parser = "codex_jsonl"
 pricing = "gpt-5.6-luna-2026-07-30"
 
+[models."luna-max"]
+runner = "codex"
+executable = "codex"
+model = "gpt-5.6-luna"
+effort = "max"
+usage_parser = "codex_jsonl"
+pricing = "gpt-5.6-luna-2026-07-30"
+
 [models."gemini-3.6-high"]
 runner = "opencode"
 executable = "opencode"
@@ -19,3 +27,11 @@ model = "cliproxy/gemini-3.6-flash-high"
 agent = "repo-eval"
 usage_parser = "opencode_jsonl"
 pricing = "gemini-3.6-flash-standard-2026-07-30"
+
+[models."deepseek-v4-flash"]
+runner = "opencode"
+executable = "opencode"
+model = "deepseek/deepseek-v4-flash"
+agent = "repo-eval"
+usage_parser = "opencode_jsonl"
+pricing = "deepseek-v4-flash-2026-07-31"

@@ -1,0 +1,59 @@
+{
+  "subtitle": "Один закреплённый snapshot репозитория, одна full-stack задача и одинаковая контроллерная приёмка. Итоговый выбор сделан по готовности патча к поставке, а не по впечатлению от кода.",
+  "dateLabel": "30 июля 2026",
+  "taskId": "checkin-mood-trend-v1",
+  "baseSha": "ec2331614b48866a03c670cf0ca9c6d730f4b916",
+  "verdict": {
+    "winnerModelKey": "luna-high",
+    "headline": "Luna — основной кодер для этого репозитория",
+    "text": "Luna медленнее, но единственная прошла все пять проверок, сохранила scope и отдала поставляемый патч. Gemini сильнее выглядела в слепом ревью и закончила быстрее, однако сломала TypeScript-контракт и ошибочно сообщила о зелёных проверках.",
+    "scoreLabel": "Luna · final score"
+  },
+  "candidates": [
+    {
+      "modelKey": "luna-high",
+      "label": "Luna high",
+      "runnerLabel": "Codex · high effort",
+      "completion": 90,
+      "accuracy": 87.5,
+      "accuracyDetail": "7/8",
+      "blind": 85,
+      "status": "Готово к поставке",
+      "statusOk": true,
+      "note": "Поставляемый патч 5/5; клиентский контракт обратно-совместим, но слабее: оба новых поля опциональны."
+    },
+    {
+      "modelKey": "gemini-3.6-high",
+      "label": "Gemini 3.6 high",
+      "runnerLabel": "OpenCode · high",
+      "completion": 85,
+      "accuracy": 100,
+      "accuracyDetail": "8/8",
+      "blind": 95,
+      "status": "TypeScript fail",
+      "statusOk": false,
+      "note": "Строгий wire-контракт и верная логика, но контроллерный tsc падает на существующем typed fixture; финальный отчёт агента ошибочно заявил о зелёных проверках."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Основной кодер — Luna",
+      "text": "Она прошла backend, frontend, TypeScript, GRACE и diff-check. Это единственный патч, который можно было принять без исправления модели.",
+      "modelKey": "luna-high"
+    },
+    {
+      "title": "Gemini — быстрый второй взгляд",
+      "text": "Её контракт был строже и слепое ревью предпочло её патч. Полезна для прототипа и ревью, но пока не как финальный исполнитель.",
+      "modelKey": "gemini-3.6-high"
+    },
+    {
+      "title": "Это пилот, не абсолютный рейтинг",
+      "text": "Одна задача уверенно выбирает модель для похожих full-stack срезов SolarSage. Для общего рейтинга нужны ещё 3–5 разных задач.",
+      "modelKey": null
+    }
+  ],
+  "footerNotes": [
+    "<strong>Метод:</strong> одинаковая задача и SHA, изолированные worktree, слепое ревью патчей, затем независимые проверки контроллера.",
+    "<strong>Стоимость:</strong> официальный price snapshot на 30.07.2026. Luna — base-rate estimate: CLI отдаёт агрегированное использование без размеров отдельных запросов."
+  ]
+}

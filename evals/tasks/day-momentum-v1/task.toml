@@ -1,0 +1,39 @@
+schema_version = 1
+id = "day-momentum-v1"
+title = "Day support momentum — pure backend algorithm"
+base_sha = "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+base_tree = "598ee39b17f2f12cb0b7dda7a673cebded285cd9"
+prompt_file = "prompt.md"
+rubric_file = "rubric.md"
+timeout_seconds = 2700
+dependency_links = ["node_modules", "apps/api/.venv"]
+
+allowed_paths = [
+  "apps/api/app/schemas/day.py",
+  "apps/api/app/services/day_relative_status.py",
+  "apps/api/tests/test_day_relative_status.py",
+  "packages/contracts/openapi.json",
+  "packages/contracts/_generated.ts",
+  "packages/contracts/_generated.zod.ts",
+  "grace/verification-matrix.md",
+]
+
+[[verification]]
+name = "backend-relative-status"
+command = "apps/api/.venv/bin/python -m pytest apps/api/tests/test_day_relative_status.py -q"
+timeout_seconds = 600
+
+[[verification]]
+name = "typescript"
+command = "npx tsc --noEmit"
+timeout_seconds = 600
+
+[[verification]]
+name = "grace-backend"
+command = "python3 scripts/grace_lint.py apps/api/app"
+timeout_seconds = 300
+
+[[verification]]
+name = "diff-check"
+command = "git diff --check"
+timeout_seconds = 60

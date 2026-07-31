@@ -1,0 +1,36 @@
+schema_version = 1
+id = "ui-contract-disclosure-v1"
+title = "Profile statistics — UI semantic contract + disclosure"
+base_sha = "ae8dba4f4f1aeeb55604eca005927df688e5f553"
+base_tree = "598ee39b17f2f12cb0b7dda7a673cebded285cd9"
+prompt_file = "prompt.md"
+rubric_file = "rubric.md"
+timeout_seconds = 1800
+dependency_links = ["node_modules"]
+
+allowed_paths = [
+  "components/profile/checkin-statistics.tsx",
+  "__tests__/components/CheckinStatistics.test.tsx",
+  "__tests__/components/ProfileScreen.test.tsx",
+  "grace/verification-matrix.md",
+]
+
+[[verification]]
+name = "frontend-checkin-statistics"
+command = "npx vitest run __tests__/components/CheckinStatistics.test.tsx __tests__/components/ProfileScreen.test.tsx"
+timeout_seconds = 600
+
+[[verification]]
+name = "typescript"
+command = "npx tsc --noEmit"
+timeout_seconds = 600
+
+[[verification]]
+name = "grace-frontend"
+command = "python3 scripts/grace_front_lint.py components/profile/checkin-statistics.tsx"
+timeout_seconds = 300
+
+[[verification]]
+name = "diff-check"
+command = "git diff --check"
+timeout_seconds = 60
