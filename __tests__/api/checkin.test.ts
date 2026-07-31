@@ -1,155 +1,165 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+// ############################################################################
+// AI_HEADER: TEST_API_CHECKIN_V2 — Yesterday recap and observed-spheres client tests.
+// ROLE: Verifies generated YesterdayCheckinResponse parsing and canonical POST payload wiring.
+// ############################################################################
+
+// START_MODULE_CONTRACT: M-TEST-API-CHECKIN-V2
+// purpose: Test the check-in client against the snapshot-aware Yesterday envelope.
+// owns:
+//   - __tests__/api/checkin.test.ts
+// inputs: generated Yesterday fixtures, mocked instrumented fetch, and local dates.
+// outputs: parsed recap, observed sphere request, date helper, and error assertions.
+// dependencies: lib/api/checkin, generated fixture barrel, instrumentedFetch.
+// side_effects: none.
+// invariants: forecastRecap is validated at the boundary; observed spheres use canonical keys and camelCase wire naming.
+// failure_policy: fail on HTTP, schema, or date-lineage drift.
+// END_MODULE_CONTRACT: M-TEST-API-CHECKIN-V2
+
+// START_MODULE_MAP: M-TEST-API-CHECKIN-V2
+// public_entrypoints:
+//   - Yesterday response parsing
+//   - check-in create payload
+//   - local-date helpers
+// semantic_blocks:
+//   - YESTERDAY_RESPONSE
+//   - CREATE_PAYLOAD
+//   - DATE_RESOLUTION
+// owned_tests:
+//   - self
+// END_MODULE_MAP: M-TEST-API-CHECKIN-V2
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { yesterdayPostSubmit, yesterdayPreSubmit } from "../fixtures/today_convergence_v2";
+
+const { mockInstrumentedFetch } = vi.hoisted(() => ({
+  mockInstrumentedFetch: vi.fn(),
+}));
+
+vi.mock("@/lib/log/instrumented-fetch", () => ({
+  instrumentedFetch: mockInstrumentedFetch,
+}));
 
 import {
   createCheckin,
   formatDateInTimeZone,
-  getCheckin,
-  getCheckinMetrics,
   getYesterdayCheckin,
   resolveCheckinTargetDate,
-} from "@/lib/api/checkin"
+} from "@/lib/api/checkin";
 
-describe("check-in API client", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
-  it("posts the real numeric check-in payload with credentials", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        id: 7,
-        targetDate: "2026-07-06",
-        mood: 5,
-        accuracy: 3,
-        energy: 4,
-        tags: ["calm"],
-        note: "Real note",
-        streak: 2,
-        filledAt: "2026-07-06T20:00:00Z",
-        createdAt: "2026-07-06T20:00:00Z",
+// START_BLOCK: YESTERDAY_RESPONSE
+describe("getYesterdayCheckin snapshot recap", () => {
+  it("parses pre-submit response without exposing recap", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(200, yesterdayPreSubmit));
+
+    const result = await getYesterdayCheckin();
+
+    expect(result.forecastAvailable).toBe(true);
+    expect(result.forecastRecap).toBeNull();
+    expect(result.checkin).toBeNull();
+    expect(mockInstrumentedFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "checkin.get_yesterday",
+        routeTemplate: "GET /api/checkin/yesterday",
+        url: "/api/checkin/yesterday",
       }),
-    }))
+    );
+  });
+
+  it("parses post-submit recap with tone and sphere keys", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(200, yesterdayPostSubmit));
+
+    const result = await getYesterdayCheckin();
+
+    expect(result.forecastRecap).toEqual({
+      snapshotId: "snap_v1_00000000000000000000000000000161",
+      state: "quiet_day",
+      dayTone: "steady",
+      sphereKeys: ["work", "communication"],
+    });
+  });
+
+  it("rejects malformed Yesterday envelopes", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(200, {
+      targetDate: "2026-08-01",
+      hadCheckin: false,
+      forecastRecap: { state: "quiet_day" },
+    }));
+
+    await expect(getYesterdayCheckin()).rejects.toThrow("неверный формат");
+  });
+});
+// END_BLOCK: YESTERDAY_RESPONSE
+
+// START_BLOCK: CREATE_PAYLOAD
+describe("createCheckin observed spheres", () => {
+  it("sends canonical observedSpheres in the real POST payload", async () => {
+    const response = {
+      id: 91,
+      targetDate: "2026-08-01",
+      mood: 4,
+      accuracy: 2,
+      energy: 3,
+      tags: [],
+      note: null,
+      streak: 2,
+      filledAt: "2026-08-01T21:15:00+03:00",
+      createdAt: "2026-08-01T21:15:00+03:00",
+      observedSpheres: ["work", "communication"],
+    };
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(200, response));
 
     await createCheckin({
-      targetDate: "2026-07-06",
-      mood: 5,
-      accuracy: 3,
-      energy: 4,
-      tags: ["calm"],
-      note: "Real note",
-    })
+      targetDate: "2026-08-01",
+      mood: 4,
+      accuracy: 2,
+      energy: 3,
+      tags: [],
+      note: null,
+      observedSpheres: ["work", "communication"],
+    });
 
-    expect(global.fetch).toHaveBeenCalledWith("/api/checkin", expect.objectContaining({
-      method: "POST",
-      credentials: "include",
-      headers: expect.objectContaining({
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      }),
-      body: JSON.stringify({
-        targetDate: "2026-07-06",
-        mood: 5,
-        accuracy: 3,
-        energy: 4,
-        tags: ["calm"],
-        note: "Real note",
-      }),
-    }))
-  })
+    const request = mockInstrumentedFetch.mock.calls[0][0];
+    expect(request.init.method).toBe("POST");
+    expect(JSON.parse(request.init.body)).toMatchObject({
+      targetDate: "2026-08-01",
+      observedSpheres: ["work", "communication"],
+    });
+    expect(request.init.credentials).toBe("include");
+  });
 
-  it("formats a date in the supplied profile timezone instead of UTC ISO date", () => {
-    const instant = new Date("2026-01-01T10:30:00.000Z")
+  it("preserves backend error messages", async () => {
+    mockInstrumentedFetch.mockResolvedValueOnce(jsonResponse(422, {
+      detail: "Check-in is closed",
+    }));
 
-    expect(instant.toISOString().split("T")[0]).toBe("2026-01-01")
-    expect(formatDateInTimeZone(instant, "Pacific/Kiritimati")).toBe("2026-01-02")
-    expect(formatDateInTimeZone(instant, "America/Los_Angeles")).toBe("2026-01-01")
-  })
+    await expect(createCheckin({ mood: 3, targetDate: "2026-08-01" })).rejects.toThrow("Check-in is closed");
+  });
+});
+// END_BLOCK: CREATE_PAYLOAD
 
-  it("resolves yesterday relative to the profile timezone", () => {
-    const instant = new Date("2026-01-01T10:30:00.000Z")
+// START_BLOCK: DATE_RESOLUTION
+describe("check-in local-date resolution", () => {
+  it("formats the same instant according to the user timezone", () => {
+    const value = new Date("2026-08-01T23:30:00Z");
+    expect(formatDateInTimeZone(value, "Europe/Moscow")).toBe("2026-08-02");
+    expect(formatDateInTimeZone(value, "America/Los_Angeles")).toBe("2026-08-01");
+  });
 
-    expect(
-      resolveCheckinTargetDate(instant, "Pacific/Kiritimati", "yesterday"),
-    ).toBe("2026-01-01")
-    expect(
-      resolveCheckinTargetDate(instant, "America/Los_Angeles", "yesterday"),
-    ).toBe("2025-12-31")
-  })
-
-  it("returns null from GET when backend sends the null wrapper", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ checkin: null }),
-    }))
-
-    await expect(getCheckin("2026-07-06")).resolves.toBeNull()
-    expect(global.fetch).toHaveBeenCalledWith("/api/checkin/2026-07-06", expect.objectContaining({
-      credentials: "include",
-      headers: expect.objectContaining({ Accept: "application/json" }),
-    }))
-  })
-
-  it("throws backend detail messages without falling back to demo data", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: false,
-      status: 422,
-      json: async () => ({ detail: "invalid check-in" }),
-    }))
-
-    await expect(
-      createCheckin({
-        targetDate: "2026-07-06",
-        mood: 5,
-        accuracy: 3,
-        energy: 4,
-        tags: [],
-        note: null,
-      }),
-    ).rejects.toThrow("invalid check-in")
-  })
-
-  it("calls yesterday and metrics real endpoints", async () => {
-    vi.stubGlobal("fetch", vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ hadCheckin: false, checkin: null }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          totalCheckins: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          averageMood: 0,
-          averageEnergy: null,
-          averageAccuracy: null,
-          moodDistribution: {},
-          accuracyDistribution: {},
-          tagFrequency: {},
-        }),
-      }))
-
-    await getYesterdayCheckin()
-    await getCheckinMetrics({ from: "2026-07-01", to: "2026-07-31" })
-
-    expect(global.fetch).toHaveBeenNthCalledWith(1, "/api/checkin/yesterday", expect.objectContaining({
-      credentials: "include",
-      headers: expect.objectContaining({ Accept: "application/json" }),
-    }))
-    expect(global.fetch).toHaveBeenNthCalledWith(
-      2,
-      "/api/checkin/metrics?from=2026-07-01&to=2026-07-31",
-      expect.objectContaining({
-        credentials: "include",
-        headers: expect.objectContaining({ Accept: "application/json" }),
-      }),
-    )
-  })
-})
+  it("resolves yesterday across a month boundary and preserves explicit ISO target", () => {
+    const value = new Date("2026-08-01T00:30:00Z");
+    expect(resolveCheckinTargetDate(value, "Europe/Moscow", "yesterday")).toBe("2026-07-31");
+    expect(resolveCheckinTargetDate(value, "Europe/Moscow", "2026-07-15")).toBe("2026-07-15");
+  });
+});
+// END_BLOCK: DATE_RESOLUTION

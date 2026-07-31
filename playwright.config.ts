@@ -95,6 +95,11 @@ export default defineConfig({
       name: 'mobile',
       use: { ...devices['iPhone 13'] },
     },
+    {
+      name: 'webkit-smoke',
+      grep: /@webkit-smoke/,
+      use: { ...devices['Desktop Safari'] },
+    },
   ],
   // webServer disabled - tests run against deployed environment
   // webServer: {

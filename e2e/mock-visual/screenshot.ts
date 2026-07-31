@@ -16,7 +16,7 @@
 // invariants:
 //   - never masks or hides real UI content; only animation/caret noise and
 //     the test-preview framework chrome (Next.js dev overlay/portal/toast/
-//     build-watcher) are suppressed — the same selectors the day-v2 suite
+//     build-watcher) are suppressed — the same selectors the Today convergence suite
 //     already uses in hideNextOverlay.
 // failure_policy: errors propagate to the calling test.
 // END_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-SCREENSHOT

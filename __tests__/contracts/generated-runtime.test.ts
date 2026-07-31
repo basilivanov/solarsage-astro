@@ -4,16 +4,16 @@
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-TEST-CONTRACTS-GENERATED-RUNTIME
-// purpose: Validate generated zod schema behaviors on canonical fixtures.
+// purpose: Validate generated zod schema behaviors on current non-legacy contracts and generator invariants.
 // owns:
 //   - __tests__/contracts/generated-runtime.test.ts
-// inputs: mock payloads, e2e fixture
+// inputs: mock payloads and canonical OpenAPI/generator documents
 // outputs: vitest assertions
-// dependencies: packages/contracts/runtime.ts, e2e fixture
+// dependencies: packages/contracts/runtime.ts, generated zod schemas, contracts generator
 // side_effects: none
 // emitted_logs: none
 // invariants:
-//   - generated schemas must accept unknown fields
+//   - generated schemas must accept unknown fields where the wire contract permits them
 //   - missing required fields must be rejected
 // failure_policy: fail test
 // END_MODULE_CONTRACT: M-TEST-CONTRACTS-GENERATED-RUNTIME
@@ -28,12 +28,7 @@
 
 // START_BLOCK: SCHEMA_TESTS
 import { describe, expect, it } from "vitest"
-import { dayPayloadV2 } from "@/e2e/mock-visual/fixtures/day-v2-2026-07-08"
 import {
-  TodayPayloadWireSchema,
-  TodayV2BlockWireSchema,
-  TodayV2HorizonsBlockWireSchema,
-  ActivationEvidenceWireSchema,
   AccessSummaryWireSchema,
   CalendarPayloadWireSchema,
   ProfileReadWireSchema,
@@ -47,134 +42,9 @@ import {
 } from "@/packages/contracts/_generated.zod"
 
 describe("generated runtime zod schemas", () => {
-  it("parses a canonical valid API payload", () => {
-    const parsed = TodayPayloadWireSchema.safeParse(dayPayloadV2)
-    expect(parsed.success).toBe(true)
-    expect(TodayV2HorizonsBlockWireSchema.safeParse(dayPayloadV2.v2?.horizons).success).toBe(true)
-  })
-
-  it("accepts previous v2 identity and current fixture carries pipeline audit", () => {
-    const previous: Record<string, unknown> = structuredClone(dayPayloadV2)
-    const previousMeta = previous.meta as Record<string, unknown>
-    const previousV2 = previous.v2 as Record<string, unknown>
-    const previousAudit = previousV2.audit as Record<string, unknown>
-    previousMeta.payloadVersion = "today.v2"
-    previousMeta.frontendPayloadVersion = 2
-    previousAudit.payloadVersion = "today.v2"
-    delete previousAudit.horizonPipeline
-    expect(TodayPayloadWireSchema.safeParse(previous).success).toBe(true)
-
-    expect(dayPayloadV2.meta.payloadVersion).toBe("today.v2.1")
-    expect(dayPayloadV2.meta.frontendPayloadVersion).toBe(3)
-    expect(dayPayloadV2.v2!.audit.horizonPipeline).toEqual({
-      schemaVersion: "today-horizon-pipeline-audit.v1",
-      status: "built",
-      reason: "selected",
-      selectedCount: 3,
-    })
-  })
-
-  it("rejects structurally invalid horizon audit union values", () => {
-    const invalidAudit: Record<string, unknown> = structuredClone(dayPayloadV2)
-    const invalidV2 = invalidAudit.v2 as Record<string, unknown>
-    const invalidAuditBlock = invalidV2.audit as Record<string, unknown>
-    invalidAuditBlock.horizonPipeline = {
-      schemaVersion: "today-horizon-pipeline-audit.v1",
-      status: "built",
-      reason: "missing_fast",
-      selectedCount: 0,
-    }
-    expect(TodayPayloadWireSchema.safeParse(invalidAudit).success).toBe(false)
-  })
-
-  it("rejects missing required root field", () => {
-    const malformed: Record<string, unknown> = { ...dayPayloadV2 }
-    delete malformed.date
-    const parsed = TodayPayloadWireSchema.safeParse(malformed)
-    expect(parsed.success).toBe(false)
-  })
-
-  it("validates V2 nested activation fields", () => {
-    const evidence = dayPayloadV2.v2!.activationEvidence[0]
-    expect(ActivationEvidenceWireSchema.safeParse(evidence).success).toBe(true)
-
-    const malformedEvidence: Record<string, unknown> = { ...evidence }
-    delete malformedEvidence.id
-    expect(ActivationEvidenceWireSchema.safeParse(malformedEvidence).success).toBe(false)
-  })
-
-  it("does not reject unknown additive fields (forward compatibility)", () => {
-    const additivePayload = {
-      ...dayPayloadV2,
-      extraNewFieldFromFutureBackend: "yes",
-      v2: {
-        ...dayPayloadV2.v2,
-        horizons: {
-          ...dayPayloadV2.v2!.horizons,
-          futureBackendField: "allowed-and-stripped",
-        },
-      },
-    }
-    const parsed = TodayPayloadWireSchema.safeParse(additivePayload)
-    expect(parsed.success).toBe(true)
-    expect(parsed.success && Reflect.has(parsed.data.v2!.horizons as object, "futureBackendField")).toBe(false)
-  })
-
-  it("rejects invalid horizon tone and timing scalar", () => {
-    const malformedTone = structuredClone(dayPayloadV2)
-    malformedTone.v2!.horizons!.items[0].tone = "bad-tone" as never
-    expect(TodayPayloadWireSchema.safeParse(malformedTone).success).toBe(false)
-
-    const malformedTiming = structuredClone(dayPayloadV2)
-    malformedTiming.v2!.horizons!.items[1].timing.precision = "bad-precision" as never
-    expect(TodayPayloadWireSchema.safeParse(malformedTiming).success).toBe(false)
-  })
-
-  it("accepts null or absent horizons for rolling fallback", () => {
-    const nullHorizons = {
-      ...dayPayloadV2,
-      v2: {
-        ...dayPayloadV2.v2!,
-        audit: {
-          ...dayPayloadV2.v2!.audit,
-          horizonPipeline: {
-            schemaVersion: "today-horizon-pipeline-audit.v1",
-            status: "unavailable",
-            reason: "missing_fast",
-            selectedCount: 0,
-          },
-        },
-        horizons: null,
-      },
-    }
-    expect(TodayPayloadWireSchema.safeParse(nullHorizons).success).toBe(true)
-
-    const absentHorizons = structuredClone(dayPayloadV2)
-    absentHorizons.v2!.audit.horizonPipeline = {
-      schemaVersion: "today-horizon-pipeline-audit.v1",
-      status: "unavailable",
-      reason: "missing_fast",
-      selectedCount: 0,
-    }
-    delete (absentHorizons.v2 as Record<string, unknown>).horizons
-    expect(TodayPayloadWireSchema.safeParse(absentHorizons).success).toBe(true)
-  })
-
-  it("proves that generated zod validator rejects wrong known timing type", () => {
-    const evidence = dayPayloadV2.v2!.activationEvidence[0]
-    const malformedEvidence = {
-      ...evidence,
-      activeFrom: 123, // should be string or null
-    }
-    expect(ActivationEvidenceWireSchema.safeParse(malformedEvidence).success).toBe(false)
-  })
-
   it("proves that importing _generated.zod.ts no longer throws and discriminated union is functional", () => {
-    // TodayV2BlockWireSchema parses dayPayloadV2.v2
-    expect(TodayV2BlockWireSchema.safeParse(dayPayloadV2.v2).success).toBe(true)
-
-    // 2. generated horary paragraph branch contains literal discriminator
-    // 3. valid HoraryAnswerRead sample с type: "paragraph" parses
+    // 1. generated horary paragraph branch contains literal discriminator
+    // 2. valid HoraryAnswerRead sample с type: "paragraph" parses
     const validHoraryAnswer = {
       verdict: "yes",
       confidence: 0.8,
@@ -189,7 +59,7 @@ describe("generated runtime zod schemas", () => {
     }
     expect(HoraryAnswerRead.safeParse(validHoraryAnswer).success).toBe(true)
 
-    // 4. unknown horary type rejects
+    // 3. unknown horary type rejects
     const invalidHoraryAnswer = {
       ...validHoraryAnswer,
       blocks: [
@@ -201,7 +71,7 @@ describe("generated runtime zod schemas", () => {
     }
     expect(HoraryAnswerRead.safeParse(invalidHoraryAnswer).success).toBe(false)
 
-    // 5. missing discriminator in a discriminated parent rejects
+    // 4. missing discriminator in a discriminated parent rejects
     const missingDiscrimHoraryAnswer = {
       ...validHoraryAnswer,
       blocks: [
@@ -212,7 +82,7 @@ describe("generated runtime zod schemas", () => {
     }
     expect(HoraryAnswerRead.safeParse(missingDiscrimHoraryAnswer).success).toBe(false)
 
-    // 6. valid NatalSection sample parses
+    // 5. valid NatalSection sample parses
     const validNatalSection = {
       id: "sec-1",
       title: "Test Natal",

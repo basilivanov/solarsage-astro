@@ -1,178 +1,176 @@
 // ############################################################################
-// AI_HEADER: MODULE_DAY_DATE_PAGE — isolated real-day and local timing-fixture routes.
-// ROLE: Chooses a normal authenticated day branch or a development-only fixture
-//       branch without allowing either branch's side-effect hooks into the other.
+// AI_HEADER: MODULE_DAY_DATE_PAGE — real Today Convergence route wiring.
+// ROLE: Preserves date routing/onboarding while delegating data and state to the generated Today screen.
 // ############################################################################
 
-// START_MODULE_CONTRACT: M-DAY-DATE-PAGE
-// purpose: Render /day/[date] with isolated real API/auth and local fixture branches.
+// START_MODULE_CONTRACT: M-APP-DAY-PAGE
+// purpose: Render /day/[date] and /day/today from the Today Convergence envelope.
 // owns:
 //   - app/(grace)/day/[date]/page.tsx
-// inputs: route date and fixture query parameter.
-// outputs: TodayScreen, loader, or error boundary.
-// dependencies: next/navigation; useDay; useOnboarded; dev fixture hook; calendar API.
-// side_effects: Normal branch authenticates, fetches day/calendar, and syncs onboarding;
-//               fixture branch fetches only the local development fixture endpoint.
-// emitted_logs: delegated to useDay and child modules.
-// invariants:
-//   - Fixture branch requires development mode, 2026-07-08, and fixture=three-horizon-timing.
-//   - Normal branch never receives fixture data or a fixture feature flag.
-//   - Fixture day navigation drops fixture query and returns to ordinary /day flow.
-//   - Every LoadedDay branch exposes the public today-screen root:
-//     loading → data-state="loading" + aria-busy (CosmicLoader),
-//     error → data-state="error" (ErrorBoundary),
-//     ready → TodayScreen owns the root itself (never duplicated).
-// failure_policy: Invalid date redirects in normal flow; request failures use ErrorBoundary.
-// END_MODULE_CONTRACT: M-DAY-DATE-PAGE
+// inputs: route date parameter, authenticated session, and hook payload.
+// outputs: date navigation plus TodayScreen transport/ready/error states.
+// dependencies: next/navigation, useTodayConvergence, useOnboarded, lib/date, lib/today, generated Today contract.
+// side_effects: API lifecycle delegated to the hook; route replace/push and onboarding sync.
+// emitted_logs: delegated to useTodayConvergence and authentication/profile hooks.
+// invariants: today and valid ISO parameters reach the API unchanged; invalid parameters redirect to today's ISO route;
+//             transport fallback payload is never rendered as ready content.
+// failure_policy: TodayScreen owns loading/error presentation; invalid routes are replaced with today's route.
+// END_MODULE_CONTRACT: M-APP-DAY-PAGE
 
-// START_MODULE_MAP: M-DAY-DATE-PAGE
+// START_MODULE_MAP: M-APP-DAY-PAGE
 // public_entrypoints:
 //   - DayPage
 // semantic_blocks:
-//   - ROUTE_SELECTION: exact local fixture eligibility.
-//   - NORMAL_DAY_BRANCH: Telegram-authenticated real day and calendar loading.
-//   - FIXTURE_DAY_BRANCH: development fixture-only loading without real APIs.
+//   - ROUTE_DATE: normalize today/ISO route values and invalid redirects.
+//   - DATE_NAVIGATION: preserve previous/today/next route navigation.
+//   - TODAY_WIRING: connect hook state to the new TodayScreen.
 // owned_tests:
-//   - e2e/dev-timing-fixture.spec.ts
-// END_MODULE_MAP: M-DAY-DATE-PAGE
+//   - __tests__/app/day-page.test.tsx
+// END_MODULE_MAP: M-APP-DAY-PAGE
 
-"use client"
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { TodayScreen } from "@/components/today/today-screen"
-import { CosmicLoader } from "@/components/shared/cosmic-loader"
-import { ErrorBoundary } from "@/components/grace/ErrorBoundary"
-import { useDay } from "@/lib/grace/hooks/useDay"
-import { useThreeHorizonTimingFixture } from "@/lib/dev-fixtures/use-three-horizon-timing-fixture"
-import { useOnboarded } from "@/hooks/use-onboarded"
-import { fromDateParam, toDateParam } from "@/lib/date"
-import { TODAY } from "@/lib/today"
-import { adaptTodayPayload } from "@/lib/adapters/today-payload"
-import { getMonthCalendar } from "@/lib/api/calendar"
-import type { CalendarLunarFields, TodayPayload } from "@/packages/contracts"
+import { useCallback, useEffect, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { TodayScreen } from "@/components/today-convergence/today-screen";
+import { useOnboarded } from "@/hooks/use-onboarded";
+import { useTodayConvergence } from "@/lib/grace/hooks/useTodayConvergence";
+import { fromDateParam, toDateParam } from "@/lib/date";
+import { TODAY } from "@/lib/today";
 
-const TIMING_FIXTURE_DATE = "2026-07-08"
+const TRANSPORT_PAYLOAD = {
+  schemaVersion: 1,
+  snapshotId: null,
+  targetDate: "",
+  timezone: "UTC",
+  publishedAt: null,
+  access: {
+    state: "locked",
+    reason: "outside_access_window",
+    referralDaysLeft: 0,
+    subscriptionActive: false,
+    accessUntil: null,
+  },
+  birthTime: {
+    mode: "unknown",
+    bucket: null,
+    rangeStart: "00:00",
+    rangeEnd: "24:00",
+    capabilities: { houses: false, angles: false, lots: false, exactTiming: false },
+  },
+  state: null,
+  dayTone: null,
+  personal: null,
+  previewTeaser: null,
+  convergences: [],
+  mainEvent: null,
+  impulses: [],
+  periodContext: null,
+  lookahead: null,
+  events: [],
+  contentState: "not_needed",
+  formulaVersion: "today-convergence-2",
+  calculationVersion: "transport",
+} satisfies Parameters<typeof TodayScreen>[0]["payload"];
 
-// START_BLOCK: ROUTE_SELECTION
+function shiftDate(date: Date, days: number): Date {
+  const shifted = new Date(date);
+  shifted.setDate(shifted.getDate() + days);
+  return shifted;
+}
+
+// START_BLOCK: ROUTE_DATE
 export default function DayPage() {
-  // START_FUNCTION_CONTRACT: F-M-DAY-DATE-PAGE.DayPage
-  // purpose: Determine whether the request should load the isolated dev timing fixture or proceed with the authenticated normal day page flow.
-  // inputs: URL route params, query search params, and process.env.NODE_ENV.
-  // returns: TimingFixtureDayPage or NormalDayPage client components.
-  // side_effects: none (routing decisions only).
-  // emitted_logs: none.
-  // error_behavior: bubbles up rendering errors to React/Next error boundary; does not handle them locally.
-  // END_FUNCTION_CONTRACT: F-M-DAY-DATE-PAGE.DayPage
-  const params = useParams()
-  const searchParams = useSearchParams()
-  const dateStr = params.date as string
-  const useTimingFixture = process.env.NODE_ENV === "development"
-    && dateStr === TIMING_FIXTURE_DATE
-    && searchParams?.get("fixture") === "three-horizon-timing"
-
-  return useTimingFixture ? <TimingFixtureDayPage dateStr={dateStr} /> : <NormalDayPage dateStr={dateStr} />
-}
-// END_BLOCK: ROUTE_SELECTION
-
-function NormalDayPage({ dateStr }: { dateStr: string }) {
-  const router = useRouter()
-  const { setOnboarded } = useOnboarded()
-  const selectedDate = useMemo(() => fromDateParam(dateStr) ?? TODAY, [dateStr])
-  const { data, loading, error } = useDay(dateStr)
-  const [calendarLunar, setCalendarLunar] = useState<CalendarLunarFields | null>(null)
+  // START_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.DayPage
+  // purpose: Resolve the route parameter and connect the Today Convergence hook to the page.
+  // inputs: Next route params containing today or an ISO date.
+  // returns: date navigation and TodayScreen.
+  // side_effects: route replacement/push, onboarding sync, and delegated hook requests.
+  // emitted_logs: delegated hook/auth events.
+  // error_behavior: invalid date parameters are replaced with today's ISO route.
+  // END_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.DayPage
+  const params = useParams<{ date?: string }>();
+  const router = useRouter();
+  const { setOnboarded } = useOnboarded();
+  const rawDateParam = typeof params.date === "string" ? params.date : "today";
+  const isTodayParam = rawDateParam === "today";
+  const selectedDate = useMemo(
+    () => (isTodayParam ? TODAY : fromDateParam(rawDateParam) ?? TODAY),
+    [isTodayParam, rawDateParam],
+  );
+  const isValidDateParam = isTodayParam || fromDateParam(rawDateParam) !== null;
+  const requestDateParam = isValidDateParam ? rawDateParam : "today";
+  const { screenState, payload, refetch } = useTodayConvergence(requestDateParam);
 
   useEffect(() => {
-    if (!fromDateParam(dateStr)) router.replace(`/day/${toDateParam(TODAY)}`)
-  }, [dateStr, router])
+    if (!isValidDateParam) router.replace(`/day/${toDateParam(TODAY)}`);
+  }, [isValidDateParam, router]);
 
   useEffect(() => {
-    if (data) setOnboarded(true)
-  }, [data, setOnboarded])
+    if (screenState === "ready" && payload) setOnboarded(true);
+  }, [payload, screenState, setOnboarded]);
 
-  useEffect(() => {
-    let cancelled = false
-    getMonthCalendar(selectedDate.getFullYear(), selectedDate.getMonth())
-      .then((calendar) => {
-        if (!cancelled) setCalendarLunar(calendar.days.find((item) => item.date === toDateParam(selectedDate))?.lunar ?? null)
-      })
-      .catch(() => {
-        if (!cancelled) setCalendarLunar(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [selectedDate])
-
-  const onDateChange = useCallback((date: Date) => router.push(`/day/${toDateParam(date)}`), [router])
-  return <LoadedDay data={data} loading={loading} error={error} selectedDate={selectedDate} calendarLunar={calendarLunar} onDateChange={onDateChange} />
-}
-
-function TimingFixtureDayPage({ dateStr }: { dateStr: string }) {
-  const router = useRouter()
-  const selectedDate = useMemo(() => fromDateParam(dateStr) ?? TODAY, [dateStr])
-  const { data, loading, error } = useThreeHorizonTimingFixture()
-  const onDateChange = useCallback((date: Date) => router.push(`/day/${toDateParam(date)}`), [router])
+  const navigateToDate = useCallback(
+    (date: Date) => router.push(`/day/${toDateParam(date)}`),
+    [router],
+  );
 
   return (
-    <div data-testid="dev-timing-fixture">
-      <LoadedDay
-        data={data}
-        loading={loading}
-        error={error}
+    <div className="min-h-full bg-background">
+      <DayDateNavigation
         selectedDate={selectedDate}
-        calendarLunar={null}
-        onDateChange={onDateChange}
+        onDateChange={navigateToDate}
+      />
+      <TodayScreen
+        payload={payload ?? TRANSPORT_PAYLOAD}
+        screenState={screenState}
+        onRetry={() => void refetch()}
       />
     </div>
-  )
+  );
 }
+// END_BLOCK: ROUTE_DATE
 
-function LoadedDay({
-  data,
-  loading,
-  error,
+// START_BLOCK: DATE_NAVIGATION
+function DayDateNavigation({
   selectedDate,
-  calendarLunar,
   onDateChange,
 }: {
-  data: TodayPayload | null
-  loading: boolean
-  error: Error | null
-  selectedDate: Date
-  calendarLunar: CalendarLunarFields | null
-  onDateChange: (date: Date) => void
+  selectedDate: Date;
+  onDateChange: (date: Date) => void;
 }) {
-  const ready = Boolean(data) && !loading
-
-  // The loader disappears as soon as the payload is ready; the artificial
-  // 600 ms hold is removed. Every branch exposes the public today-screen
-  // root: loading with aria-busy (CosmicLoader role=status), error
-  // (ErrorBoundary role=alert); ready is owned by TodayScreen itself.
-  if (error) {
-    return (
-      <div data-testid="today-screen" data-state="error">
-        <ErrorBoundary error={error} title="Не удалось загрузить день" message={error.message} />
-      </div>
-    )
-  }
-  if (!ready || !data) {
-    return (
-      <div data-testid="today-screen" data-state="loading" aria-busy="true">
-        <CosmicLoader done={ready} />
-      </div>
-    )
-  }
-
-  const { payload, access } = adaptTodayPayload(data, selectedDate)
+  // START_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.DayDateNavigation
+  // purpose: Preserve the previous/today/next day navigation around the new screen.
+  // inputs: selectedDate and route callback.
+  // returns: accessible day navigation.
+  // side_effects: invokes onDateChange on button activation.
+  // emitted_logs: none.
+  // error_behavior: none.
+  // END_FUNCTION_CONTRACT: F-M-APP-DAY-PAGE.DayDateNavigation
   return (
-    <TodayScreen
-      selectedDate={selectedDate}
-      access={access}
-      payload={payload}
-      calendarLunar={calendarLunar}
-      onDateChange={onDateChange}
-      importantToday={data.importantToday || []}
-    />
-  )
+    <nav
+      data-testid="day-date-navigation"
+      aria-label="Навигация по дням"
+      className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 pt-4"
+    >
+      <button
+        type="button"
+        aria-label="Предыдущий день"
+        onClick={() => onDateChange(shiftDate(selectedDate, -1))}
+        className="min-h-11 rounded-full px-4 text-[13px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        ←
+      </button>
+      <span className="text-[13px] font-medium">{toDateParam(selectedDate)}</span>
+      <button
+        type="button"
+        aria-label="Следующий день"
+        onClick={() => onDateChange(shiftDate(selectedDate, 1))}
+        className="min-h-11 rounded-full px-4 text-[13px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        →
+      </button>
+    </nav>
+  );
 }
+// END_BLOCK: DATE_NAVIGATION
