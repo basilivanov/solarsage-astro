@@ -451,8 +451,6 @@ class TodayConvergencePayload(CamelModel):
                 _fail("quiet_convergences_forbidden")
             if self.main_event is None and not self.impulses and self.period_context is None:
                 _fail("quiet_content_required")
-            if self.main_event is not None and self.impulses:
-                _fail("quiet_main_impulses_exclusive")
         elif self.lookahead is not None:
             _fail("lookahead_state_forbidden")
 

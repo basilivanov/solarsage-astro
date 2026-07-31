@@ -91,6 +91,12 @@ These gates apply before broad autonomous business-feature work.
 |---|---|---|
 | M-TODAY-CONVERGENCE-TONE → M-TODAY-CONVERGENCE-GROUPS → M-TODAY-CONVERGENCE-LEDGER → M-TODAY-CONVERGENCE-CANON | Strict canon exposes the exact `tone-candidate-0.1` block; unit/group coefficients are canon-driven; day tone uses aware IANA local-date freshness, distinct drivers, and selected-only legacy audit; no selector, wire, or adapter behavior. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_canon.py tests/test_today_convergence_units.py tests/test_today_convergence_ledger.py tests/test_today_convergence_groups.py tests/test_today_convergence_tone.py -q`. S2: timezone boundary, supporting context, fast/mixed sparse regressions, hero/two-driver thresholds, weighted supportive+tense mixed balance, and selection-independent day tone. S3: malformed tone canon and foreign/duplicate references fail closed; output and trigger order are permutation-deterministic; internal `steady` group polarity is not wire behavior. S4: packet Ruff, `grace_lint`, markers, and `git diff --check` pass. |
 
+## UC-TODAY-CONVERGENCE-W2-WIRE · legal quiet composition
+
+| Modules | Gates | Scenarios |
+|---|---|---|
+| M-BACKEND-API → M-CONTRACTS | Quiet payloads allow the legal maximum `mainEvent + 3 impulses + lookahead`; quiet still forbids convergences, preserves event-ledger/narrative/access guards, and caps the union of presentation spheres at three. | S1: `cd apps/api && /opt/solarsage-astro/apps/api/.venv/bin/python -m pytest tests/test_today_convergence_contract.py -q`. S2: four unique exact-time event records round-trip in the maximum quiet composition; fourth presentation sphere fails `sphere_union_cap`; convergence/hero/preview/locked/unavailable guards remain green. S3: generated contracts report zero drift. |
+
 ---
 
 ## UC-DAY-NAV · Navigate days

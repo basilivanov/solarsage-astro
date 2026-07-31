@@ -156,36 +156,123 @@ def test_convergence_state_has_groups_only() -> None:
     invalid(payload, "convergence_main_event_forbidden")
 
 
-def test_quiet_state_requires_content_and_excludes_main_event_and_impulses_together() -> None:
+def _max_quiet_composition() -> dict:
     payload = fixture("today-convergence-full-quiet-not-needed.json")
+    payload["contentState"] = "ready"
     payload["periodContext"] = None
-    invalid(payload, "quiet_content_required")
-
-    payload = fixture("today-convergence-full-quiet-not-needed.json")
-    payload["events"] = [{"id": "evt-quiet", "kind": "aspect", "sphere": "work", "polarity": "supportive", "evidenceLevel": "medium", "time": {"mode": "partofday", "peak": None, "start": None, "end": None, "partOfDay": "day"}, "sourceIds": []}]
+    payload["lookahead"] = {
+        "targetDate": "2026-08-01",
+        "sphere": "work",
+        "snapshotId": "snap-next-2026-08-01",
+    }
     payload["mainEvent"] = {
         "id": "main-quiet",
-        "eventId": "evt-quiet",
+        "eventId": "evt-main",
         "sphere": "work",
         "polarity": "supportive",
         "evidenceLevel": "medium",
-        "time": {"mode": "partofday", "peak": None, "start": None, "end": None, "partOfDay": "day"},
+        "time": {"mode": "exact", "peak": "09:00", "start": None, "end": None, "partOfDay": None},
         "summary": None,
         "meaning": None,
         "action": None,
     }
-    payload["impulses"] = [{
-        "eventId": "evt-quiet",
-        "sphere": "work",
-        "polarity": "supportive",
-        "evidenceLevel": "medium",
-        "time": {"mode": "partofday", "peak": None, "start": None, "end": None, "partOfDay": "day"},
-        "summary": None,
-        "meaning": None,
-        "action": None,
-    }]
+    payload["impulses"] = [
+        {
+            "eventId": "evt-impulse-1",
+            "sphere": "work",
+            "polarity": "supportive",
+            "evidenceLevel": "medium",
+            "time": {"mode": "exact", "peak": "10:00", "start": None, "end": None, "partOfDay": None},
+            "summary": None,
+            "meaning": None,
+            "action": None,
+        },
+        {
+            "eventId": "evt-impulse-2",
+            "sphere": "documents",
+            "polarity": "tense",
+            "evidenceLevel": "medium",
+            "time": {"mode": "exact", "peak": "11:00", "start": None, "end": None, "partOfDay": None},
+            "summary": None,
+            "meaning": None,
+            "action": None,
+        },
+        {
+            "eventId": "evt-impulse-3",
+            "sphere": "relationships",
+            "polarity": "mixed",
+            "evidenceLevel": "medium",
+            "time": {"mode": "exact", "peak": "12:00", "start": None, "end": None, "partOfDay": None},
+            "summary": None,
+            "meaning": None,
+            "action": None,
+        },
+    ]
+    payload["events"] = [
+        {
+            "id": "evt-main",
+            "kind": "structural",
+            "sphere": "work",
+            "polarity": "supportive",
+            "evidenceLevel": "medium",
+            "time": {"mode": "exact", "peak": "09:00", "start": None, "end": None, "partOfDay": None},
+            "sourceIds": [],
+        },
+        {
+            "id": "evt-impulse-1",
+            "kind": "aspect",
+            "sphere": "work",
+            "polarity": "supportive",
+            "evidenceLevel": "medium",
+            "time": {"mode": "exact", "peak": "10:00", "start": None, "end": None, "partOfDay": None},
+            "sourceIds": [],
+        },
+        {
+            "id": "evt-impulse-2",
+            "kind": "aspect",
+            "sphere": "documents",
+            "polarity": "tense",
+            "evidenceLevel": "medium",
+            "time": {"mode": "exact", "peak": "11:00", "start": None, "end": None, "partOfDay": None},
+            "sourceIds": [],
+        },
+        {
+            "id": "evt-impulse-3",
+            "kind": "aspect",
+            "sphere": "relationships",
+            "polarity": "mixed",
+            "evidenceLevel": "medium",
+            "time": {"mode": "exact", "peak": "12:00", "start": None, "end": None, "partOfDay": None},
+            "sourceIds": [],
+        },
+    ]
+    return payload
+
+
+def test_quiet_state_allows_main_event_three_impulses_and_lookahead() -> None:
+    payload = _max_quiet_composition()
+
+    parsed = TodayConvergencePayload.model_validate(payload)
+
+    assert parsed.state == "quiet_day"
+    assert parsed.main_event is not None
+    assert len(parsed.impulses) == 3
+    assert parsed.lookahead is not None
+    assert len(parsed.events) == 4
+
+
+def test_quiet_maximum_composition_rejects_fourth_presentation_sphere() -> None:
+    payload = _max_quiet_composition()
+    payload["impulses"][0]["sphere"] = "money"
+    payload["events"][1]["sphere"] = "money"
+
+    invalid(payload, "sphere_union_cap")
+
+
+def test_quiet_state_requires_content() -> None:
+    payload = fixture("today-convergence-full-quiet-not-needed.json")
     payload["periodContext"] = None
-    invalid(payload, "quiet_main_impulses_exclusive")
+    invalid(payload, "quiet_content_required")
 
 
 def test_content_without_narrative_is_fail_closed() -> None:
