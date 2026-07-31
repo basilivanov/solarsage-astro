@@ -1,7 +1,7 @@
 # ############################################################################
 # AI_HEADER: MODULE_TESTS_TODAY_FOCUS_CONTRACT
-# ROLE: Contract and integration tests for TodayFocus API block (Slice C1).
-# DEPENDENCIES: pytest, app.schemas.today_focus, app.schemas.today, app.services.today_service
+# ROLE: Contract tests for the legacy TodayFocus schema and pure builder.
+# DEPENDENCIES: pytest, app.schemas.today_focus, app.services.today_focus_builder
 # ############################################################################
 
 from datetime import date, datetime, timezone
@@ -148,51 +148,6 @@ def test_today_focus_events_sorting_and_tz():
     assert res.events[0].occurs_at == dt1
     assert res.events[1].occurs_at == dt2
     assert res.events[0].occurs_at.tzinfo is not None
-
-
-@pytest.mark.asyncio
-async def test_today_service_builds_focus_in_payload(async_client, make_initdata, db_session):
-    """Integration: GET /api/day/today returns a valid TodayPayload with non-null focus block."""
-    from datetime import timedelta, date as Date
-    from sqlalchemy import select
-    from app.db.models import AccessLedger, User
-
-    raw_init = make_initdata(user_id=987654, username="focus_user")
-    await async_client.post("/api/auth/telegram", json={"initData": raw_init})
-    await async_client.put(
-        "/api/profile",
-        json={
-            "gender": "male",
-            "birth": {
-                "birthday": "1990-01-15",
-                "birthTime": "12:00",
-                "birthTimeMode": "exact",
-                "birthCity": "Moscow",
-                "birthLat": 55.75,
-                "birthLon": 37.61,
-                "birthTz": "Europe/Moscow",
-            },
-        },
-    )
-
-    user = (await db_session.execute(select(User).where(User.tg_user_id == 987654))).scalar_one()
-    db_session.add(AccessLedger(
-        user_id=user.id, entry_type="subscription", days_granted=30,
-        start_date=Date.today() - timedelta(days=1), end_date=Date.today() + timedelta(days=29),
-    ))
-    await db_session.commit()
-
-    resp = await async_client.get("/api/day/2026-07-28")
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-
-    assert "focus" in data
-    focus = data["focus"]
-    assert focus is not None
-    assert focus["state"] in ("convergence_today", "single_impulses", "background_only", "no_accent")
-    assert focus["contentState"] in ("ready", "not_needed", "unavailable")
-    assert isinstance(focus["events"], list)
-    assert isinstance(focus["featuredSpheres"], list)
 
 
 def test_check_focus_narrative_safety_validation():

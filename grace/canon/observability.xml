@@ -337,6 +337,26 @@
     <event name="day.narrative_lease_failed" owner="W-TODAY-CONVERGENCE-W3" desc="An owned narrative lease completed honestly as unavailable.">
       <payload-field name="retry_scheduled" type="boolean" required="true" />
     </event>
+    <event name="day.narrative_generation_started" owner="W-TODAY-CONVERGENCE-W6" desc="Bounded narrative LLM generation started for a published Today snapshot.">
+      <payload-field name="snapshot_id" type="string" required="true" />
+      <payload-field name="prompt_version" type="string" required="true" />
+      <payload-field name="convergence_count" type="number" required="true" />
+      <payload-field name="main_event_present" type="number" required="true" />
+      <payload-field name="impulse_count" type="number" required="true" />
+    </event>
+    <event name="day.narrative_generation_completed" owner="W-TODAY-CONVERGENCE-W6" desc="Bounded narrative generation produced validated ready content.">
+      <payload-field name="snapshot_id" type="string" required="true" />
+      <payload-field name="prompt_version" type="string" required="true" />
+      <payload-field name="latency_ms" type="number" required="true" />
+      <payload-field name="claims_count" type="number" required="true" />
+      <payload-field name="output_tokens" type="number" required="false" />
+    </event>
+    <event name="day.narrative_generation_failed" owner="W-TODAY-CONVERGENCE-W6" desc="Bounded narrative generation ended with a typed honest failure.">
+      <payload-field name="snapshot_id" type="string" required="true" />
+      <payload-field name="prompt_version" type="string" required="true" />
+      <payload-field name="error_code" type="string" required="true" />
+      <payload-field name="latency_ms" type="number" required="true" />
+    </event>
     <event name="calendar.viewed"         owner="W-1.4">
       <payload-field name="month" type="string" format="YYYY-MM" required="true" />
     </event>

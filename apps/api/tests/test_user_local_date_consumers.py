@@ -103,11 +103,23 @@ def _patch_day_downstream(monkeypatch: pytest.MonkeyPatch):
             access_until=None,
         )
     )
-    today_service = Mock()
-    today_service.get_today_payload = AsyncMock(return_value=object())
     monkeypatch.setattr(day_api, "AccessService", lambda _db: access)
-    monkeypatch.setattr(day_api, "TodayService", lambda _db: today_service)
-    return access, today_service
+    resolution = SimpleNamespace(
+        mode="unknown",
+        bucket=None,
+        range_start="00:00",
+        range_end="24:00",
+        capabilities=SimpleNamespace(houses=False, angles=False, lots=False, exact_timing=False),
+    )
+    monkeypatch.setattr(day_api, "resolve_profile_birth_time", lambda _profile: resolution)
+    monkeypatch.setattr(day_api, "compute_today_profile_hash", lambda *_args: "h" * 64)
+    snapshot_service = Mock()
+    snapshot_service.load_current = AsyncMock(return_value=None)
+    monkeypatch.setattr(day_api, "TodaySnapshotService", lambda _db: snapshot_service)
+    # Non-Built sentinel drives the honest unavailable projection path.
+    calculate = AsyncMock(return_value=SimpleNamespace())
+    monkeypatch.setattr(day_api, "calculate_today_convergence", calculate)
+    return access, calculate
 
 
 # START_BLOCK: DAY_WIRING
@@ -123,11 +135,11 @@ async def test_day_today_uses_previous_western_local_date(monkeypatch: pytest.Mo
     # END_FUNCTION_CONTRACT: F-M-TESTS-USER-LOCAL-DATE-CONSUMERS.day_west
     _FrozenDateTime.frozen = datetime(2026, 7, 29, 0, 30, tzinfo=UTC)
     monkeypatch.setattr(day_api, "datetime", _FrozenDateTime)
-    _, today_service = _patch_day_downstream(monkeypatch)
+    _, calculate = _patch_day_downstream(monkeypatch)
 
     await day_api.get_day("today", _request(), _user(current_tz="America/Los_Angeles"), object())
 
-    assert today_service.get_today_payload.await_args.kwargs["target_date"] == date(2026, 7, 28)
+    assert calculate.await_args.args[1] == date(2026, 7, 28)
 
 
 @pytest.mark.asyncio
@@ -142,11 +154,11 @@ async def test_day_today_uses_next_eastern_local_date(monkeypatch: pytest.Monkey
     # END_FUNCTION_CONTRACT: F-M-TESTS-USER-LOCAL-DATE-CONSUMERS.day_east
     _FrozenDateTime.frozen = datetime(2026, 7, 28, 23, 30, tzinfo=UTC)
     monkeypatch.setattr(day_api, "datetime", _FrozenDateTime)
-    _, today_service = _patch_day_downstream(monkeypatch)
+    _, calculate = _patch_day_downstream(monkeypatch)
 
     await day_api.get_day("today", _request(), _user(current_tz="Asia/Tokyo"), object())
 
-    assert today_service.get_today_payload.await_args.kwargs["target_date"] == date(2026, 7, 29)
+    assert calculate.await_args.args[1] == date(2026, 7, 29)
 
 
 @pytest.mark.asyncio
@@ -163,14 +175,14 @@ async def test_day_explicit_date_is_not_resolved_or_shifted(
     # END_FUNCTION_CONTRACT: F-M-TESTS-USER-LOCAL-DATE-CONSUMERS.day_explicit
     resolver = Mock(side_effect=AssertionError("explicit date must not resolve"))
     monkeypatch.setattr(day_api, "resolve_user_local_date", resolver)
-    _, today_service = _patch_day_downstream(monkeypatch)
+    _, calculate = _patch_day_downstream(monkeypatch)
 
     await day_api.get_day(
         "2026-07-28", _request(), _user(current_tz="Asia/Tokyo"), object()
     )
 
     resolver.assert_not_called()
-    assert today_service.get_today_payload.await_args.kwargs["target_date"] == date(2026, 7, 28)
+    assert calculate.await_args.args[1] == date(2026, 7, 28)
 
 
 @pytest.mark.asyncio

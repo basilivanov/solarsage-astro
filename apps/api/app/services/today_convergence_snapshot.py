@@ -26,6 +26,7 @@
 #   - TodayConvergenceSnapshotDocument
 #   - TodayConvergenceSnapshotError
 #   - build_today_convergence_snapshot_document
+#   - compute_today_profile_hash
 # semantic_blocks:
 #   - PROFILE_IDENTITY: strict mode-aware profile hash and resolution parity.
 #   - CANONICAL_INPUT: canon fingerprint and normalized factor pack.
@@ -344,6 +345,18 @@ def _profile_hash(profile: object, resolution: BirthTimeResolution) -> str:
     return sha256(_canonical_bytes(_profile_payload(profile, resolution))).hexdigest()
 
 
+def compute_today_profile_hash(profile: object, resolution: BirthTimeResolution) -> str:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT.compute_today_profile_hash
+    # purpose: Expose the deterministic profile identity used by day endpoint cache lookup.
+    # inputs: profile — direct persisted profile; resolution — validated birth-time resolution.
+    # returns: SHA-256 profile hash with the same canonical input as snapshot publication.
+    # side_effects: none.
+    # emitted_logs: none.
+    # error_behavior: propagates the strict profile/resolution validation errors from the hash boundary.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-SNAPSHOT-DOCUMENT.compute_today_profile_hash
+    return _profile_hash(profile, resolution)
+
+
 def _selected_event_payload(event: CanonicalSelectedEvent) -> dict[str, object]:
     return {
         "event_id": event.unit.canonical_event_id,
@@ -475,4 +488,5 @@ __all__ = [
     "TodayConvergenceSnapshotDocument",
     "TodayConvergenceSnapshotError",
     "build_today_convergence_snapshot_document",
+    "compute_today_profile_hash",
 ]

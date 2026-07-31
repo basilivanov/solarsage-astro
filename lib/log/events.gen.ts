@@ -67,6 +67,9 @@ export type LogEventName =
   | "day.narrative_lease_skipped"
   | "day.narrative_lease_completed"
   | "day.narrative_lease_failed"
+  | "day.narrative_generation_started"
+  | "day.narrative_generation_completed"
+  | "day.narrative_generation_failed"
   | "calendar.viewed"
   // access / referral / payments
   | "access.checked"
