@@ -7,7 +7,7 @@ SHELL := /bin/bash
 # solarsage targets here stay disabled (fail-closed hints only).
 # ----------------------------------------------------------------------
 
-.PHONY: help dev up down api web migrate db-create deploy backup logs solarsage
+.PHONY: help dev up down api web migrate db-create deploy backup logs solarsage e2e-release
 
 help:
 	@echo "Dev targets:"
@@ -43,6 +43,22 @@ api:
 
 web:
 	pnpm dev
+
+# ---- Today convergence release list (shared by local runs and e2e.yml) -----
+
+TODAY_CONVERGENCE_RELEASE_SPECS := \
+	e2e/onboarding-real.spec.ts \
+	e2e/today-convergence.spec.ts \
+	e2e/mock-visual/today-convergence.spec.ts \
+	e2e/mock-visual/calendar.spec.ts \
+	e2e/cross-feature-navigation.spec.ts \
+	e2e/readings-horary.spec.ts \
+	e2e/natal-report.spec.ts \
+	e2e/referral-deeplink.spec.ts \
+	e2e/payment-sandbox.spec.ts
+
+e2e-release:
+	pnpm exec playwright test $(TODAY_CONVERGENCE_RELEASE_SPECS) --project=chromium --fail-on-flaky-tests
 
 migrate:
 	$(MAKE) -C apps/api migrate

@@ -25,11 +25,10 @@
 # dependencies: scripts/generate-telegram-test-initdata.py,
 #   scripts/acceptance/cleanup_e2e_users.py, e2e/* specs.
 # invariants:
-#   - The release suite runs ONLY existing real-HMAC specs without route
-#     interception: onboarding-real, today, calendar,
-#     cross-feature-navigation, profile-city-checkin, readings-horary,
-#     natal-report, referral-deeplink, payment-sandbox (dev-v2 and
-#     edge-cases are intentionally excluded from the gate).
+#   - The release suite uses the single TODAY_CONVERGENCE_RELEASE_SPECS list
+#     from Makefile: the real Today convergence spec plus the Today/calendar
+#     mock visual contracts. Other release-critical real flows remain explicit
+#     in their own suites; deleted legacy Today/calendar specs are not invoked.
 #   - The ephemeral sidecar runs ONLY in explicit Moshier-only mode
 #     (SOLARSAGE_EPHEMERIS_ALLOW_MOSHIER=1 + SOLARSAGE_APP_ENV=development,
 #     identical to ci.yml); the production SWIEPH fail-closed proof stays
@@ -336,12 +335,11 @@ jobs:
 
             if [ "${{ inputs.suite }}" = "smoke" ]; then
               echo "Running E2E smoke suite..."
-              pnpm exec playwright test today.spec.ts calendar.spec.ts cross-feature-navigation.spec.ts --project=chromium
+              pnpm exec playwright test e2e/today-convergence.spec.ts e2e/mock-visual/today-convergence.spec.ts e2e/mock-visual/calendar.spec.ts --project=chromium
             elif [ "${{ inputs.suite }}" = "release" ]; then
               echo "Running E2E release gate suite..."
-              # Release gate must not accept flaky passes: a retried green is
-              # still a release-blocking failure (retries stay for diagnosis).
-              pnpm exec playwright test e2e/onboarding-real.spec.ts e2e/today.spec.ts e2e/calendar.spec.ts e2e/cross-feature-navigation.spec.ts e2e/profile-city-checkin.spec.ts e2e/readings-horary.spec.ts e2e/natal-report.spec.ts e2e/referral-deeplink.spec.ts e2e/payment-sandbox.spec.ts --project=chromium --fail-on-flaky-tests
+              # The Makefile owns this exact release list for local/CI parity.
+              make e2e-release
             else
               echo "Running E2E full suite..."
               pnpm exec playwright test e2e/*.spec.ts --project=chromium

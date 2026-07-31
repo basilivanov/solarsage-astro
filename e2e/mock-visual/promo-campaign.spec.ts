@@ -20,7 +20,7 @@
 // dependencies:
 //   - @playwright/test
 //   - ./route-interception (installMockApiRoutes, expectNoMissingApiFixtures)
-//   - ./fixtures/day-2026-07-05, ./fixtures/calendar-2026-07, ./fixtures/profile
+//   - ../../__tests__/fixtures/today_convergence_v2, ./fixtures/calendar-2026-07, ./fixtures/profile
 // side_effects: None (all API calls intercepted)
 // invariants:
 //   - Promo token fixture matches the canonical promo alphabet/length
@@ -43,9 +43,9 @@
 
 import { expect, test } from "@playwright/test";
 import { expectNoMissingApiFixtures, installMockApiRoutes, type MockApiRouteFixtures } from "./route-interception";
-import { dayPayload, referralPayload } from "./fixtures/day-2026-07-05";
+import { quietSteady } from "../../__tests__/fixtures/today_convergence_v2";
 import { calendarPayload } from "./fixtures/calendar-2026-07";
-import { profilePayload } from "./fixtures/profile";
+import { profilePayload, referralPayload } from "./fixtures/profile";
 
 // ############################################################################
 // Fixtures
@@ -61,15 +61,7 @@ const promoOffer = {
   unlockNatal: true,
 };
 
-const WEEK_STRIP_MIN_DATES = [
-  "2026-06-28",
-  "2026-06-29",
-  "2026-06-30",
-  "2026-07-01",
-  "2026-07-02",
-  "2026-07-03",
-  "2026-07-04",
-];
+const dayPayload = quietSteady;
 
 function buildBaseFixtures(): MockApiRouteFixtures {
   const fixtures: MockApiRouteFixtures = {
@@ -82,10 +74,9 @@ function buildBaseFixtures(): MockApiRouteFixtures {
     "/api/referral": { body: referralPayload },
     "/api/profile": { body: profilePayload },
   };
-  for (const dateStr of WEEK_STRIP_MIN_DATES) {
-    const day = dayPayload.weekStrip.find((w) => w.date === dateStr);
-    fixtures[`/api/day/${dateStr}`] = {
-      body: { dayStatus: day?.dayStatus ?? "steady" },
+  if (dayPayload.snapshotId) {
+    fixtures[`/api/day/snapshots/${dayPayload.snapshotId}/impression`] = {
+      body: { ok: true },
     };
   }
   return fixtures;

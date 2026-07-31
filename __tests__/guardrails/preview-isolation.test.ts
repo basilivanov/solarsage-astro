@@ -15,7 +15,7 @@
 // emitted_logs: none.
 // invariants:
 //   - No static imports of mock-visual or dev-fixtures are allowed in product code.
-//   - The only exception is dynamic await import in app/api/dev-fixtures/three-horizon-timing/route.ts, situated after security guards.
+//   - No product runtime path may import development or E2E fixture modules.
 // failure_policy: fail test.
 // END_MODULE_CONTRACT: M-TEST-PREVIEW-ISOLATION
 
@@ -38,7 +38,7 @@ describe("preview isolation guards", () => {
     expect(src).toContain("DEV_API_REWRITE_BASE_URL")
     expect(src).toMatch(/NODE_ENV\s*===\s*["']production["']/)
     // must not import fixture/mock modules
-    expect(src).not.toMatch(/mock-visual|day-v2-2026|fixtures\//)
+    expect(src).not.toMatch(/mock-visual|fixtures\//)
   })
 
   it("next.config sets a rewrite proxyTimeout that covers synchronous generation", () => {
@@ -71,45 +71,15 @@ describe("preview isolation guards", () => {
     }
 
     const violations: string[] = []
-    let allowedImportCount = 0
     for (const root of roots) {
       for (const file of walk(root)) {
         const text = readFileSync(file, "utf8")
         for (const m of text.matchAll(importRe)) {
-          // Rule 2 & 3: The only exception is dynamic await import in app/api/dev-fixtures/three-horizon-timing/route.ts
-          if (file === "app/api/dev-fixtures/three-horizon-timing/route.ts") {
-            const allowedSpecifier = "../../../../e2e/mock-visual/fixtures/day-v2-2026-07-08"
-            const matchIndex = m.index ?? -1
-            const hasExactSpecifier = m[1] === allowedSpecifier
-            const hasExactForm =
-              matchIndex >= 6
-              && m[0].startsWith(`import("${allowedSpecifier}"`)
-              && text.slice(matchIndex - 6, matchIndex) === "await "
-
-            // Rule 4: Verify it occurs after development, local dev host, and proxy checks
-            const idxDev = text.indexOf('process.env.NODE_ENV !== "development"')
-            const idxHost = text.indexOf('!isLocalDevHost')
-            const idxProxy = text.indexOf('hasUnsafeProxyOriginHeaders')
-            const idx404 = text.indexOf('return NextResponse.json({ error: "Not found" }, { status: 404 })')
-
-            const hasDevelopmentGuard = idxDev >= 0 && idxDev < matchIndex
-            const hasHostGuard = idxHost >= 0 && idxHost < matchIndex
-            const hasProxyGuard = idxProxy >= 0 && idxProxy < matchIndex
-            const has404Guard = idx404 >= 0 && idx404 < matchIndex
-
-            if (hasExactSpecifier && hasExactForm && hasDevelopmentGuard && hasHostGuard && hasProxyGuard && has404Guard) {
-              allowedImportCount++
-              if (allowedImportCount === 1) {
-                continue
-              }
-            }
-          }
           violations.push(`${file}: imports ${m[1]}`)
         }
       }
     }
     expect(violations).toEqual([])
-    expect(allowedImportCount).toBe(1)
   })
 
   describe("production API rewrite base branches", () => {

@@ -1,16 +1,17 @@
 // ############################################################################
 // AI_HEADER: MODULE_E2E_MOCK_VISUAL_START_V2_PREVIEW
-// ROLE: Test-only one-command launcher: mock API on 18092 + Next dev on 3003.
+// ROLE: Test-only one-command launcher: Today/calendar mock API on 18092 + Next dev on 3003.
 // DEPENDENCIES: node http, child_process, node fs, node path, node url, node net
 // ############################################################################
 
 // START_MODULE_CONTRACT: M-E2E-MOCK-VISUAL-START-V2-PREVIEW
-// purpose: Start local mock API + Next preview for V2 personal day UX review.
+// purpose: Start local mock API + Next preview for Today convergence and calendar/v2 visual review.
 // owns:
 //   - e2e/mock-visual/start-v2-preview.mjs
-// inputs: JSON fixtures under e2e/mock-visual/fixtures/json/
+// inputs: JSON fixtures under e2e/mock-visual/fixtures/json/ plus the generated
+//   Today convergence fixture barrel under __tests__/fixtures/today_convergence_v2/.
 // outputs: HTTP mock on 127.0.0.1:18092, Next on 0.0.0.0:3003
-// dependencies: node http, child_process, local fixture JSON only
+// dependencies: node http, child_process, local fixture JSON only; Next webpack dev server.
 // side_effects: binds ports, spawns next, writes process lifecycle
 // emitted_logs: stdout preview URL and lifecycle
 // invariants:
@@ -33,6 +34,7 @@ import process from "node:process"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, "../..")
 const FIX_DIR = join(__dirname, "fixtures/json")
+const TODAY_FIXTURE_DIR = join(ROOT, "__tests__/fixtures/today_convergence_v2")
 
 const MOCK_HOST = "127.0.0.1"
 const MOCK_PORT = 18092
@@ -45,6 +47,32 @@ function loadJson(name) {
     throw new Error(`Missing fixture JSON: ${p}`)
   }
   return JSON.parse(readFileSync(p, "utf8"))
+}
+
+function loadJsonAt(path) {
+  if (!existsSync(path)) {
+    throw new Error(`Missing fixture JSON: ${path}`)
+  }
+  return JSON.parse(readFileSync(path, "utf8"))
+}
+
+function calendarV2FromLegacy(payload) {
+  return {
+    ...payload,
+    meta: {
+      ...payload.meta,
+      contractVersion: 2,
+      schemaVersion: "calendar/v2",
+    },
+    days: payload.days.map(({ dayStatus, ...day }) => ({
+      ...day,
+      dayState: dayStatus === "supportive"
+        ? "hero"
+        : dayStatus === "tense"
+          ? "not-computed"
+          : "ordinary",
+    })),
+  }
 }
 
 function portFree(host, port) {
@@ -70,18 +98,19 @@ function createMockServer() {
   // Acceptance override: serve the exact audit payload instead of the bundled
   // fixture when ACCEPTANCE_PAYLOAD_PATH points at a produced artifact JSON.
   const overridePath = process.env.ACCEPTANCE_PAYLOAD_PATH
-  const dayV2 = overridePath
+  const dayPayload = overridePath
     ? JSON.parse(readFileSync(overridePath, "utf-8"))
-    : loadJson("day-v2-2026-07-08.json")
+    : loadJsonAt(join(TODAY_FIXTURE_DIR, "05_quiet_steady.json"))
   const week = loadJson("week-neighbours.json")
-  const calendar = loadJson("calendar-2026-07.json")
+  const calendar = calendarV2FromLegacy(loadJson("calendar-2026-07.json"))
   const profile = loadJson("profile.json")
   const referral = loadJson("referral.json")
 
-  const dayByDate = {
-    [overridePath ? dayV2.date : "2026-07-08"]: dayV2,
-    ...week,
-  }
+  const primaryDate = dayPayload.targetDate || dayPayload.date || "2026-08-01"
+  const dayByDate = Object.fromEntries(
+    Object.keys(week).map((date) => [date, { ...dayPayload, targetDate: date }]),
+  )
+  dayByDate[primaryDate] = dayPayload
 
   return http.createServer((req, res) => {
     const url = new URL(req.url || "/", `http://${MOCK_HOST}:${MOCK_PORT}`)
@@ -255,7 +284,7 @@ async function main() {
   // Spawn Next CLI directly through current Node executable
   const next = spawn(
     process.execPath,
-    [nextCliPath, "dev", "--hostname", NEXT_HOST, "--port", String(NEXT_PORT)],
+    [nextCliPath, "dev", "--webpack", "--hostname", NEXT_HOST, "--port", String(NEXT_PORT)],
     {
       cwd: ROOT,
       env,
@@ -432,7 +461,7 @@ async function main() {
     }
   })
 
-  console.log(`[preview:v2] http://127.0.0.1:3003/day/2026-07-08`)
+  console.log(`[preview:v2] http://127.0.0.1:3003/day/2026-08-01`)
   console.log("[preview:v2] TEST-ONLY mock visual preview. Do not use for production.")
 }
 
