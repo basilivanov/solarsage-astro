@@ -269,7 +269,7 @@ export { expect };
 //   today-screen root. loading/error are never success; a test must not
 //   proceed (or finish) while a day request is still in flight.
 // inputs: page — Playwright page; expected — 'ready' | 'locked' |
-//   'terminal' (either ready or locked); timeout — default 90000
+//   'terminal' (either ready-with-calculation or locked); timeout — default 90000
 //   (evidence-based: observed real /api/day first-pass range 8.3–67.5s
 //   across candidate runs, incl. a valid HTTP 200 at 67.515s that a 60s
 //   budget killed early; 90s covers the deterministic pipeline work plus
@@ -284,11 +284,25 @@ export async function waitForTodayState(
   timeout = 90000,
 ): Promise<void> {
   const screen = page.getByTestId('today-screen');
-  if (expected === 'terminal') {
-    await expect(screen).toHaveAttribute('data-state', /^(ready|locked)$/, { timeout });
-  } else {
-    await expect(screen).toHaveAttribute('data-state', expected, { timeout });
+  // New Today contract: data-screen-state marks transport readiness,
+  // data-access-state=locked means no calculation is exposed at all, and a
+  // ready non-locked screen carries data-state convergence_today|quiet_day|unavailable.
+  if (expected === 'locked') {
+    await expect(screen).toHaveAttribute('data-access-state', 'locked', { timeout });
+    return;
   }
+  await expect(screen).toHaveAttribute('data-screen-state', 'ready', { timeout });
+  if (expected === 'terminal') {
+    const access = await screen.getAttribute('data-access-state');
+    const state = await screen.getAttribute('data-state');
+    if (access === 'locked') {
+      expect(state).toBeNull();
+    } else {
+      expect(state).toMatch(/^(convergence_today|quiet_day|unavailable)$/);
+    }
+    return;
+  }
+  await expect(screen).toHaveAttribute('data-state', /^(convergence_today|quiet_day|unavailable)$/, { timeout });
 }
 // END_BLOCK: TODAY_TERMINAL_WAIT
 
