@@ -41,6 +41,7 @@ from app.services.today_convergence_canon import (
     is_fast_source,
     is_rare_source,
     load_today_convergence_canon,
+    map_factor_to_theme_keys,
     map_factor_to_product_spheres,
     source_max_orb,
 )
@@ -55,6 +56,7 @@ def copied_canons(tmp_path: Path) -> Path:
     target.mkdir()
     shutil.copy(CANON_DIR / "today_convergence.v1.yml", target / "today_convergence.v1.yml")
     shutil.copy(CANON_DIR / "aspect_rules.v1.yml", target / "aspect_rules.v1.yml")
+    shutil.copy(CANON_DIR / "today_convergence_themes.v1.yml", target / "today_convergence_themes.v1.yml")
     return target
 
 
@@ -72,6 +74,21 @@ def test_repository_canon_loads_strictly_from_both_yaml_sources() -> None:
     assert canon.orb_ratio_max == 0.5
     assert source_max_orb(canon, "Jupiter") == 7.0
     assert canon.rare_transit_sources == frozenset({"JUPITER", "SATURN", "URANUS", "NEPTUNE", "PLUTO"})
+    assert canon.theme_schema_version == "today_convergence_themes.v1"
+    assert canon.theme_status == "frozen_w1"
+    assert canon.theme_formula_version == "today-convergence-2"
+    assert canon.theme_canonical_order == (
+        "communication_learning_documents",
+        "structure_boundaries_control",
+        "relationships_values_closeness",
+        "resources_security",
+        "energy_body_pacing",
+        "home_belonging",
+        "inner_clarity_recovery",
+        "direction_growth_meaning",
+        "creativity_visibility",
+        "change_innovation",
+    )
 
 
 @pytest.mark.parametrize(
@@ -126,6 +143,46 @@ def test_missing_normative_file_fails_closed(tmp_path: Path) -> None:
         load_today_convergence_canon(target)
 
 
+def test_theme_registry_matches_horizon_reference_without_runtime_import() -> None:
+    canon = load_today_convergence_canon()
+    registry = yaml.safe_load((CANON_DIR / "today_convergence_themes.v1.yml").read_text(encoding="utf-8"))
+    reference = yaml.safe_load((CANON_DIR / "horizon_selection.v1.yml").read_text(encoding="utf-8"))
+
+    assert registry["technical_sphere_themes"] == reference["technical_sphere_themes"]
+    assert registry["target_planet_themes"] == reference["target_planet_themes"]
+    assert {key: list(value) for key, value in canon.technical_sphere_themes.items()} == reference["technical_sphere_themes"]
+    assert {key: list(value) for key, value in canon.target_planet_themes.items()} == reference["target_planet_themes"]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        (lambda theme: theme.update(schema_version="other"), "theme_schema_version"),
+        (lambda theme: theme.update(canonical_order=["communication_learning_documents"]), "theme_reference"),
+        (lambda theme: theme["technical_sphere_themes"].update(unknown_theme=["not_in_order"]), "theme_reference"),
+        (lambda theme: theme["technical_sphere_themes"].update(work_status_achievement=["not_in_order"]), "theme_reference"),
+        (lambda theme: theme["target_planet_themes"].update(Transit_MOON=["energy_body_pacing"]), "theme_target_keys"),
+        (lambda theme: theme["target_planet_themes"].update(MOON=["energy_body_pacing", "energy_body_pacing"]), "theme_target_keys"),
+    ],
+)
+def test_malformed_theme_registry_copy_fails_closed(tmp_path: Path, mutation, reason: str) -> None:
+    target = copied_canons(tmp_path)
+    registry_path = target / "today_convergence_themes.v1.yml"
+    registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+    mutation(registry)
+    registry_path.write_text(yaml.safe_dump(registry), encoding="utf-8")
+
+    with pytest.raises(TodayConvergenceCanonError, match=reason):
+        load_today_convergence_canon(target)
+
+
+def test_missing_theme_registry_fails_closed(tmp_path: Path) -> None:
+    target = copied_canons(tmp_path)
+    (target / "today_convergence_themes.v1.yml").unlink()
+    with pytest.raises(TodayConvergenceCanonError, match="theme_missing"):
+        load_today_convergence_canon(target)
+
+
 def test_mapping_and_threshold_helpers_are_canon_driven_and_fail_closed() -> None:
     canon = load_today_convergence_canon()
 
@@ -139,6 +196,21 @@ def test_mapping_and_threshold_helpers_are_canon_driven_and_fail_closed() -> Non
     assert event_class_significance(canon, "house_ingress") is False
     assert event_class_significance(canon, "unknown_class") is None
     assert source_max_orb(canon, "CERES") is None
+    assert map_factor_to_theme_keys(canon, technical_spheres=["thinking_speech_learning"]) == (
+        "communication_learning_documents",
+    )
+    assert map_factor_to_theme_keys(
+        canon,
+        technical_spheres=["relationships_partnership", "money_security_resources"],
+        source_key="Transit_VENUS",
+        target_key="Natal_MOON",
+    ) == (
+        "relationships_values_closeness",
+        "resources_security",
+        "energy_body_pacing",
+    )
+    assert map_factor_to_theme_keys(canon, technical_spheres=["unknown_factor"]) == ()
+    assert map_factor_to_theme_keys(canon, source_key="UNKNOWN", target_key="UNKNOWN") == ()
 
 
 def test_structural_lunar_event_gap_is_explicitly_fail_closed() -> None:

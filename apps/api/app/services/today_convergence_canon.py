@@ -7,7 +7,7 @@
 # purpose: Load the frozen Today Convergence and aspect canons without legacy or reference-analysis imports.
 # owns:
 #   - apps/api/app/services/today_convergence_canon.py
-# inputs: grace/canon/today_convergence.v1.yml and grace/canon/aspect_rules.v1.yml.
+# inputs: Today convergence, aspect-rules, and versioned narrow-theme YAML canons.
 # outputs: immutable TodayConvergenceCanon and pure mapping/significance/eligibility helpers.
 # dependencies: PyYAML and Python standard library only.
 # side_effects: reads two YAML files; never writes or emits runtime logs.
@@ -55,6 +55,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 _DEFAULT_CANON_DIR = _REPO_ROOT / "grace" / "canon"
 _TODAY_FILENAME = "today_convergence.v1.yml"
 _ASPECT_FILENAME = "aspect_rules.v1.yml"
+_THEME_FILENAME = "today_convergence_themes.v1.yml"
 _RARE_TRANSIT_SOURCES = frozenset({"JUPITER", "SATURN", "URANUS", "NEPTUNE", "PLUTO"})
 
 
@@ -82,6 +83,12 @@ class TodayConvergenceCanon:
     rare_anchor_excluded: frozenset[str]
     driver_rules: Mapping[str, str]
     hero_target_types: frozenset[str]
+    theme_schema_version: str
+    theme_status: str
+    theme_formula_version: str
+    theme_canonical_order: tuple[str, ...]
+    technical_sphere_themes: Mapping[str, tuple[str, ...]]
+    target_planet_themes: Mapping[str, tuple[str, ...]]
 
 
 def _fail(reason: str) -> None:
@@ -182,10 +189,45 @@ def _normal_technique_family(value: str | None) -> str | None:
     return value or None
 
 
+def _normalized_theme_token(value: Any, reason: str) -> str:
+    token = _text(value, reason)
+    normalized = token.lower()
+    if token != normalized or any(not (char.isalnum() or char == "_") for char in token):
+        _fail(reason)
+    return normalized
+
+
+def _normalized_registry_key(value: Any, reason: str, *, uppercase: bool) -> str:
+    token = _text(value, reason)
+    normalized = token.upper() if uppercase else token.lower()
+    if token != normalized or any(not (char.isalnum() or char == "_") for char in token):
+        _fail(reason)
+    if normalized.startswith(("TRANSIT_", "NATAL_")):
+        _fail(reason)
+    return normalized
+
+
+def _theme_mapping(value: Any, reason: str, *, uppercase_keys: bool) -> dict[str, tuple[str, ...]]:
+    mapping = _require_mapping(value, reason)
+    if not mapping:
+        _fail(reason)
+    result: dict[str, tuple[str, ...]] = {}
+    for raw_key, raw_values in mapping.items():
+        key = _normalized_registry_key(raw_key, reason, uppercase=uppercase_keys)
+        if key in result:
+            _fail(reason)
+        values = _string_tuple(raw_values, reason)
+        normalized_values = tuple(_normalized_theme_token(item, reason) for item in values)
+        if len(normalized_values) != len(set(normalized_values)):
+            _fail(reason)
+        result[key] = normalized_values
+    return result
+
+
 def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConvergenceCanon:
     # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.load_today_convergence_canon
-    # purpose: Load and validate the frozen Today Convergence and aspect YAML pair.
-    # inputs: canon_dir — directory containing both normative YAML files; repository canon by default.
+    # purpose: Load and validate the frozen convergence, aspect, and theme YAML canons.
+    # inputs: canon_dir — directory containing all three normative YAML files; repository canon by default.
     # returns: immutable TodayConvergenceCanon.
     # side_effects: reads YAML files only.
     # emitted_logs: none.
@@ -198,8 +240,35 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
     else:
         today_path = directory / _TODAY_FILENAME
     aspect_path = directory / _ASPECT_FILENAME
+    theme_path = directory / _THEME_FILENAME
     today = _read_yaml(today_path, "today")
     aspect = _read_yaml(aspect_path, "aspect")
+    theme = _read_yaml(theme_path, "theme")
+
+    _require_keys(
+        theme,
+        {"schema_version", "status", "formula_version", "canonical_order", "technical_sphere_themes", "target_planet_themes"},
+        "theme_top_keys",
+    )
+    if theme.get("schema_version") != "today_convergence_themes.v1":
+        _fail("theme_schema_version")
+    if theme.get("status") != "frozen_w1":
+        _fail("theme_status")
+    if theme.get("formula_version") != "today-convergence-2":
+        _fail("theme_formula_version")
+    theme_canonical_order = tuple(
+        _normalized_theme_token(value, "theme_order")
+        for value in _string_tuple(theme["canonical_order"], "theme_order")
+    )
+    if len(theme_canonical_order) != len(set(theme_canonical_order)):
+        _fail("theme_order")
+    technical_sphere_themes = _theme_mapping(theme["technical_sphere_themes"], "theme_technical_keys", uppercase_keys=False)
+    target_planet_themes = _theme_mapping(theme["target_planet_themes"], "theme_target_keys", uppercase_keys=True)
+    known_themes = set(theme_canonical_order)
+    if any(set(values) - known_themes for values in technical_sphere_themes.values()):
+        _fail("theme_reference")
+    if any(set(values) - known_themes for values in target_planet_themes.values()):
+        _fail("theme_reference")
 
     _require_keys(
         today,
@@ -404,6 +473,12 @@ def load_today_convergence_canon(canon_dir: Path | None = None) -> TodayConverge
         rare_anchor_excluded=frozenset(value for value in rare_anchor_excluded if value is not None),
         driver_rules=MappingProxyType(driver_rules),
         hero_target_types=hero_target_types,
+        theme_schema_version=theme["schema_version"],
+        theme_status=theme["status"],
+        theme_formula_version=theme["formula_version"],
+        theme_canonical_order=theme_canonical_order,
+        technical_sphere_themes=MappingProxyType(technical_sphere_themes),
+        target_planet_themes=MappingProxyType(target_planet_themes),
     )
 # END_BLOCK: CANON_LOADER
 
@@ -437,6 +512,34 @@ def map_factor_to_product_spheres(
         if key is not None:
             mapped.update(canon.planet_to_product.get(key, ()))
     return tuple(sphere for sphere in canon.canonical_spheres if sphere in mapped)
+
+
+def map_factor_to_theme_keys(
+    canon: TodayConvergenceCanon,
+    technical_spheres: Sequence[str] | None = None,
+    source_key: str | None = None,
+    target_key: str | None = None,
+) -> tuple[str, ...]:
+    # START_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.map_factor_to_theme_keys
+    # purpose: Project physical and technical factors through the versioned narrow-theme registry.
+    # inputs: canon plus optional technical, source, and target keys.
+    # returns: de-duplicated theme keys in registry canonical order; unknown input returns ().
+    # side_effects: none; registry is already materialized in canon.
+    # emitted_logs: none.
+    # error_behavior: unknown values remain unmapped without fallback themes or product spheres.
+    # END_FUNCTION_CONTRACT: F-M-TODAY-CONVERGENCE-CANON.map_factor_to_theme_keys
+    mapped: set[str] = set()
+    if technical_spheres is None or isinstance(technical_spheres, (str, bytes)) or not isinstance(technical_spheres, Sequence):
+        technical_values: Sequence[str] = ()
+    else:
+        technical_values = technical_spheres
+    for value in technical_values:
+        mapped.update(canon.technical_sphere_themes.get(str(value).strip().lower(), ()))
+    for value in (source_key, target_key):
+        key = _normal_source(value)
+        if key is not None:
+            mapped.update(canon.target_planet_themes.get(key, ()))
+    return tuple(theme for theme in canon.theme_canonical_order if theme in mapped)
 
 
 def aspect_weight(canon: TodayConvergenceCanon, aspect_type: str | None) -> float | None:
@@ -561,6 +664,7 @@ __all__ = [
     "TodayConvergenceCanonError",
     "load_today_convergence_canon",
     "map_factor_to_product_spheres",
+    "map_factor_to_theme_keys",
     "aspect_weight",
     "source_max_orb",
     "event_class_significance",

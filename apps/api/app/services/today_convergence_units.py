@@ -50,6 +50,7 @@ from app.services.today_convergence_canon import (
     is_rare_source,
     load_today_convergence_canon,
     map_factor_to_product_spheres,
+    map_factor_to_theme_keys,
     source_max_orb,
 )
 
@@ -142,6 +143,7 @@ class CanonicalUnit:
     birth_time_mode: str
     birth_time_robustness: str
     product_spheres: tuple[str, ...]
+    theme_keys: tuple[str, ...]
     polarity: str
     strength: float
     impulse_eligible: bool
@@ -338,6 +340,7 @@ def _accepted_result(
     mapped_spheres = map_factor_to_product_spheres(canon, technical_spheres, source, target)
     if not mapped_spheres:
         return _exclude(ExclusionReason.UNMAPPED_FACTOR)
+    theme_keys = map_factor_to_theme_keys(canon, technical_spheres, source, target)
 
     normalized_aspect = _text(raw.aspect_type)
     normalized_aspect = normalized_aspect.lower() if normalized_aspect is not None else None
@@ -490,6 +493,7 @@ def _accepted_result(
         birth_time_mode=birth_time_mode,
         birth_time_robustness=birth_time_robustness,
         product_spheres=mapped_spheres,
+        theme_keys=theme_keys,
         polarity=polarity,
         strength=float(raw.strength),
         impulse_eligible=impulse,

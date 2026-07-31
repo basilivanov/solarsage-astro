@@ -96,6 +96,11 @@ def test_valid_unit_normalizes_fields_and_is_immutable() -> None:
     assert unit.aspect_type == "sextile"
     assert unit.polarity == "tense"
     assert unit.data_quality == "high"
+    assert unit.theme_keys == (
+        "structure_boundaries_control",
+        "resources_security",
+        "direction_growth_meaning",
+    )
     assert unit.provenance_ids == ("a-provenance", "z-provenance")
     assert unit.impulse_eligible is True
     assert unit.evidence_eligible is True
@@ -103,6 +108,8 @@ def test_valid_unit_normalizes_fields_and_is_immutable() -> None:
     assert unit.hero_confirmation_eligible is True
     with pytest.raises(FrozenInstanceError):
         unit.source_key = "MOON"  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        unit.theme_keys = ()  # type: ignore[misc]
 
 
 def test_target_domain_and_normalized_non_enum_fields_are_preserved() -> None:
@@ -156,6 +163,25 @@ def test_producer_and_provenance_changes_do_not_change_identity() -> None:
     assert first.canonical_event_id == second.canonical_event_id
     assert first.provenance_ids == ("act-1",)
     assert second.provenance_ids == ("sig-1", "sig-2")
+    assert first.theme_keys == second.theme_keys
+
+
+def test_technical_annotation_changes_themes_but_not_identity() -> None:
+    first = build_canonical_unit(fact(technical_spheres=("work_status_achievement",)), CANON).unit
+    second = build_canonical_unit(fact(technical_spheres=("relationships_partnership",)), CANON).unit
+    assert first is not None and second is not None
+    assert first.canonical_event_id == second.canonical_event_id
+    assert first.theme_keys != second.theme_keys
+
+
+def test_unknown_technical_annotation_has_no_fallback_but_source_mapping_survives() -> None:
+    unit = build_canonical_unit(fact(technical_spheres=("unknown_factor",)), CANON).unit
+    assert unit is not None
+    assert unit.theme_keys == (
+        "structure_boundaries_control",
+        "resources_security",
+        "direction_growth_meaning",
+    )
 
 
 def test_technique_and_factor_prefix_variants_preserve_canonical_identity() -> None:

@@ -1,0 +1,98 @@
+# ############################################################################
+# AI_HEADER: TODAY_CONVERGENCE_THEMES — frozen narrow theme registry.
+# ROLE: Versioned source of truth for direct theme intersection in Today.
+# ############################################################################
+
+# START_MODULE_CONTRACT: M-TODAY-CONVERGENCE-THEMES
+# purpose: Define immutable narrow themes used by the Today convergence boundary.
+# owns:
+#   - grace/canon/today_convergence_themes.v1.yml
+# inputs: none; this file is the versioned registry source.
+# outputs: canonical order and technical/planet theme mappings.
+# dependencies: none at runtime beyond the strict Today canon loader.
+# side_effects: none.
+# emitted_logs: none.
+# invariants: every mapped theme is in canonical_order; keys and values are normalized and unique.
+# failure_policy: loader rejects missing, malformed, unknown, or duplicate registry values.
+# END_MODULE_CONTRACT: M-TODAY-CONVERGENCE-THEMES
+
+# START_MODULE_MAP: M-TODAY-CONVERGENCE-THEMES
+# public_entrypoints:
+#   - canonical_order
+#   - technical_sphere_themes
+#   - target_planet_themes
+# semantic_blocks:
+#   - THEME_ORDER: stable narrow-theme order.
+#   - FACTOR_MAPS: technical-sphere and target-planet projections.
+# owned_tests:
+#   - apps/api/tests/test_today_convergence_canon.py
+# END_MODULE_MAP: M-TODAY-CONVERGENCE-THEMES
+
+schema_version: today_convergence_themes.v1
+status: frozen_w1
+formula_version: today-convergence-2
+
+canonical_order:
+  - communication_learning_documents
+  - structure_boundaries_control
+  - relationships_values_closeness
+  - resources_security
+  - energy_body_pacing
+  - home_belonging
+  - inner_clarity_recovery
+  - direction_growth_meaning
+  - creativity_visibility
+  - change_innovation
+
+technical_sphere_themes:
+  thinking_speech_learning:
+    - communication_learning_documents
+  work_status_achievement:
+    - structure_boundaries_control
+  relationships_partnership:
+    - relationships_values_closeness
+  money_security_resources:
+    - resources_security
+  body_energy_health:
+    - energy_body_pacing
+  home_family_roots:
+    - home_belonging
+  inner_background_unconscious:
+    - inner_clarity_recovery
+  crisis_transformation_control:
+    - structure_boundaries_control
+  meaning_expansion_vector:
+    - direction_growth_meaning
+
+target_planet_themes:
+  SATURN:
+    - structure_boundaries_control
+  PLUTO:
+    - structure_boundaries_control
+  MERCURY:
+    - communication_learning_documents
+  VENUS:
+    - relationships_values_closeness
+    - resources_security
+  MOON:
+    - relationships_values_closeness
+    - energy_body_pacing
+  MARS:
+    - energy_body_pacing
+    - structure_boundaries_control
+  SUN:
+    - creativity_visibility
+  JUPITER:
+    - direction_growth_meaning
+    - resources_security
+  URANUS:
+    - change_innovation
+  NEPTUNE:
+    - inner_clarity_recovery
+    - creativity_visibility
+  CHIRON:
+    - inner_clarity_recovery
+  NORTH_NODE:
+    - direction_growth_meaning
+  SOUTH_NODE:
+    - inner_clarity_recovery
