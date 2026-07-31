@@ -171,6 +171,9 @@ class Settings(BaseSettings):
     today_narrative_prompt_version: str = Field(
         "today-narrative-v1", alias="TODAY_NARRATIVE_PROMPT_VERSION"
     )
+    today_llm_on_demand_concurrency: int = Field(
+        3, alias="TODAY_LLM_ON_DEMAND_CONCURRENCY"
+    )
 
     # OpenRouter specific settings
     openrouter_base_url: str = Field(

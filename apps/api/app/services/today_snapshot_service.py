@@ -35,11 +35,13 @@
 #   - TodaySnapshotService.publish_superseding
 #   - TodaySnapshotService.record_impression
 #   - TodaySnapshotService.load_owned
+#   - TodaySnapshotService.load_current
 # semantic_blocks:
 #   - PUBLISH: atomic PostgreSQL insert and committed conflict winner.
 #   - SUPERSESSION: same-owner/date chain successor publication.
 #   - IMPRESSION: atomic independent day/lookahead first-seen timestamps.
 #   - LOAD_OWNED: one owner-scoped lookup with indistinguishable miss semantics.
+#   - LOAD_CURRENT: published head lookup for one owner/local-date chain.
 #   - LOGGING: sanitized publication, lookup, and SQL failure events.
 # owned_tests:
 #   - apps/api/tests/test_today_snapshot_service.py
@@ -61,6 +63,7 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.logging import log_block, log_event
 from app.db.models import TodaySnapshot
@@ -556,6 +559,49 @@ class TodaySnapshotService:
         _log_event(event, block="LOAD_OWNED", payload={"lookup": "owned_id"})
         return snapshot
     # END_BLOCK: LOAD_OWNED
+
+    # START_BLOCK: LOAD_CURRENT
+    async def load_current(self, user_id: UUID, target_date: date) -> TodaySnapshot | None:
+        # START_FUNCTION_CONTRACT: F-M-TODAY-SNAPSHOT-SERVICE.load_current
+        # purpose: Load the published head of one owner/date supersession chain.
+        # inputs: real UUID owner and exact local target date.
+        # returns: published head with no child row, or None for a miss.
+        # side_effects: one owner/date PostgreSQL SELECT and lookup event; no writes.
+        # emitted_logs: day.snapshot_lookup_hit, day.snapshot_lookup_miss, system.error.
+        # error_behavior: type errors before SQL; SQLAlchemy errors become typed persistence errors.
+        # END_FUNCTION_CONTRACT: F-M-TODAY-SNAPSHOT-SERVICE.load_current
+        if not isinstance(user_id, UUID):
+            raise TypeError("user_id must be UUID")
+        if type(target_date) is not date:
+            raise TypeError("target_date must be date")
+        child = aliased(TodaySnapshot)
+        child_exists = select(child.id).where(
+            child.supersedes_snapshot_id == TodaySnapshot.id
+        ).exists()
+        try:
+            result = await self.db.execute(
+                select(TodaySnapshot)
+                .where(
+                    TodaySnapshot.user_id == user_id,
+                    TodaySnapshot.target_date == target_date,
+                    TodaySnapshot.published_at.is_not(None),
+                    ~child_exists,
+                )
+                .order_by(TodaySnapshot.published_at.desc(), TodaySnapshot.created_at.desc())
+                .limit(1)
+            )
+            snapshot = result.scalar_one_or_none()
+        except SQLAlchemyError as exc:
+            try:
+                await self.db.rollback()
+            except Exception:
+                pass
+            _log_event("system.error", block="LOAD_CURRENT", error={"type": type(exc).__name__})
+            raise _persistence_failure() from exc
+        event = "day.snapshot_lookup_hit" if snapshot is not None else "day.snapshot_lookup_miss"
+        _log_event(event, block="LOAD_CURRENT", payload={"lookup": "current"})
+        return snapshot
+    # END_BLOCK: LOAD_CURRENT
 
 
 __all__ = [
