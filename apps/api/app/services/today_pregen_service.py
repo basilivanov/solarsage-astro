@@ -502,13 +502,14 @@ class TodayPregenService:
             else:
                 user, profile, raw_activity = row
             try:
+                birth_tz = getattr(profile, "birth_tz", None)
                 if (
                     profile is None
                     or getattr(profile, "birthday", None) is None
                     or getattr(profile, "birth_lat", None) is None
                     or getattr(profile, "birth_lon", None) is None
-                    or not isinstance(getattr(profile, "birth_tz", None), str)
-                    or not profile.birth_tz.strip()
+                    or not isinstance(birth_tz, str)
+                    or not birth_tz.strip()
                 ):
                     continue
                 last_active = _normalise_activity(raw_activity, getattr(user, "updated_at", None), now)

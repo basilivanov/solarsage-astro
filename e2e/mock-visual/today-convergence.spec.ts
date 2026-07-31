@@ -44,21 +44,11 @@ import type {
 import type { TodaySpherePagePayload } from "../../packages/contracts/today-sphere-page"
 import type { TodayConvergencePayload } from "../../packages/contracts/today-convergence"
 import {
-  accessLocked,
-  accessPreview,
-  birthBucket,
   birthUnknown,
-  contentPending,
   contentUnavailable,
   heroMixed,
-  heroSupportive,
   heroTense,
-  heroThreeSpheres,
-  quietGeneralBackground,
-  quietMainMax,
   quietSteady,
-  quietTenseImpulse,
-  quietZeroImpulses,
   stateUnavailable,
   todayConvergenceFixtures,
   yesterdayNoSnapshot,
